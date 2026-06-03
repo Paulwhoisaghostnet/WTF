@@ -11,8 +11,6 @@ import {
 } from "@shared/types";
 import {
   evaluateBrowserRouteAccess,
-  type DesktopAppAvailability,
-  type PageAccessDeniedReason,
 } from "@shared/wtf-browser-route-access";
 import { BROWSER_ROUTE_META } from "@shared/wtf-browser-routes";
 import { findAdminSurfaceForPath } from "../features/admin-os/admin-surface-registry";
@@ -215,6 +213,9 @@ const UxLabPage = lazy(() =>
 );
 const SkywirePage = lazy(() =>
   import("../pages/Skywire").then((m) => ({ default: m.Skywire }))
+);
+const WtfLivePage = lazy(() =>
+  import("../pages/WtfLive").then((m) => ({ default: m.WtfLive }))
 );
 const Tz2atPage = lazy(() =>
   import("../pages/Tz2at").then((m) => ({ default: m.Tz2at }))
@@ -544,6 +545,7 @@ export const PAGE_DEFS: PageDef[] = [
     startMenu: true,
   },
   { pattern: "/skywire", component: SkywirePage, auth: true, title: "Skywire", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/live", component: WtfLivePage, auth: true, title: "WTF LIVE", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/tz2at", component: Tz2atPage, auth: true, title: "tz2at", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/crp-nominate", component: CrpNominatePage, auth: true, title: "CRP Nominations", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/wim", component: AimPage, auth: true, title: "WIM", group: "social", startMenu: true },

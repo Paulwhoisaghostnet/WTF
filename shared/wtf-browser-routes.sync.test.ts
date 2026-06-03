@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { BROWSER_ROUTE_META } from "./wtf-browser-routes.ts";
+import { BROWSER_ROUTE_META } from "./wtf-browser-routes";
 
 test("BROWSER_ROUTE_META stays aligned with PAGE_DEFS route patterns", () => {
   const pageDefsSource = readFileSync("client/src/routes/page-defs.ts", "utf8");

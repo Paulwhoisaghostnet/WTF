@@ -327,12 +327,22 @@ async function compileSmartPyTemplate(data: ClubDuesCustomization) {
 export async function compileClubDuesContract(input: ClubDuesCustomization) {
   const data = clubDuesCustomizationSchema.parse(input);
   const local = await compileSmartPyTemplate(data);
-  const workflow = await kilnFetch<any>("/api/kiln/workflow/run", {
-    sourceType: "michelson",
-    source: local.code,
-    initialStorage: local.init,
-    simulationSteps: [],
-  });
+  let workflow: any;
+  try {
+    workflow = await kilnFetch<any>("/api/kiln/workflow/run", {
+      sourceType: "michelson",
+      source: local.code,
+      initialStorage: local.init,
+      simulationSteps: [],
+    });
+  } catch (err) {
+    workflow = {
+      ok: false,
+      skipped: true,
+      source: "local-smartpy-fallback",
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
   const artifacts = workflow?.artifacts ?? workflow?.json?.artifacts ?? {};
   const code = typeof artifacts.michelson === "string" ? artifacts.michelson : local.code;
   const init =

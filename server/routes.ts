@@ -57,6 +57,7 @@ import systemLogRoutes from "./routes/system-logs";
 import wtfSubdomainRoutes from "./routes/wtf-subdomains";
 import atprotoRoutes from "./routes/atproto";
 import skywireRoutes from "./routes/skywire";
+import wtfLiveRoutes from "./routes/wtf-live";
 import { createAppViewRouter } from "./features/atproto-spine/appview/router";
 import tz2atRoutes from "./routes/tz2at";
 import crpNominationRoutes from "./features/crp-nominations/routes";
@@ -193,6 +194,7 @@ export function registerRoutes(app: Express) {
   app.use(systemLogRoutes);
   app.use(atprotoRoutes);
   app.use(skywireRoutes);
+  app.use(wtfLiveRoutes);
   // AppView read API (S3.2). Additive + flag-gated: 404s unless ATPROTO_SPINE_ENABLED.
   app.use(createAppViewRouter());
   app.use(tz2atRoutes);

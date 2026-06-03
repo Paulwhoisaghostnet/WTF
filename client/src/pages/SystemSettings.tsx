@@ -170,7 +170,7 @@ export function SystemSettings() {
         label: "Theme Builder",
         route: "/theme-builder",
         owner: "Desktop OS",
-        detail: "theme colors, wallpaper, cursor, physics mode",
+        detail: "OS appearance, theme colors, wallpaper, cursor, physics mode",
         icon: Brush,
       },
       {

@@ -32,6 +32,18 @@ test("WTF OS surface grants can unlock registered experimental routes", () => {
   assert.equal(canOpenPageDef(uxLab, ["test_subject"], ["ux-lab"]), true);
 });
 
+test("skywire staff-alpha rollout unlocks operator and test-subject roles", () => {
+  const skywire = PAGE_DEFS.find((def) => def.pattern === "/skywire");
+  const live = PAGE_DEFS.find((def) => def.pattern === "/live");
+  assert.ok(skywire);
+  assert.ok(live);
+  for (const role of ["admin", "host", "cohost", "resident_wizard", "test_subject"] as const) {
+    assert.equal(canOpenPageDef(skywire!, role, ["skywire"], { skywire: true }), true, role);
+    assert.equal(canOpenPageDef(live!, role, ["skywire"], { skywire: true }), true, role);
+  }
+  assert.equal(canOpenPageDef(skywire!, "witness", [], { skywire: true }), false);
+});
+
 test("desktop app disabled state is a runtime route denial, not only launcher chrome", () => {
   const arcade = PAGE_DEFS.find((def) => def.pattern === "/arcade");
   const missionControl = PAGE_DEFS.find((def) => def.pattern === "/mission-control");

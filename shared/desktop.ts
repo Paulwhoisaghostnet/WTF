@@ -58,6 +58,32 @@ export type DesktopBackgroundFit = (typeof DESKTOP_BACKGROUND_FITS)[number];
 
 export const DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
 
+export const DESKTOP_APPEARANCE_STYLES = [
+  {
+    key: "classic-95",
+    label: "Classic 95",
+    summary: "Strict Windows 95 spoof with square bevels and dense utility chrome.",
+  },
+  {
+    key: "wtf-xp",
+    label: "wtfXP",
+    summary: "Windows XP spoof with rounded plastic chrome, chunkier taskbar, and friendly spacing.",
+  },
+  {
+    key: "wtf-aqua",
+    label: "wtfAqua",
+    summary: "Early Aqua-style desktop with glossy floating windows, smooth controls, and deeper shadows.",
+  },
+  {
+    key: "wtf-zine",
+    label: "wtfZine",
+    summary: "Printed zine OS with hard outlines, offset shadows, sticker controls, and tabbed-paper panels.",
+  },
+] as const;
+
+export type DesktopAppearanceStyleKey =
+  (typeof DESKTOP_APPEARANCE_STYLES)[number]["key"];
+
 export const DESKTOP_COLOR_SCHEMES = [
   {
     key: "wtf-teal",
@@ -220,6 +246,7 @@ export const DESKTOP_COLOR_SCHEMES = [
 export type DesktopColorSchemeKey = (typeof DESKTOP_COLOR_SCHEMES)[number]["key"];
 
 export interface DesktopAppearance {
+  appearanceStyleKey: DesktopAppearanceStyleKey;
   colorSchemeKey: DesktopColorSchemeKey;
   desktopColor: string;
   windowColor: string;
@@ -239,8 +266,10 @@ export interface DesktopAppearance {
 }
 
 const DEFAULT_SCHEME = DESKTOP_COLOR_SCHEMES[0];
+const DEFAULT_APPEARANCE_STYLE = DESKTOP_APPEARANCE_STYLES[0];
 
 export const DEFAULT_DESKTOP_APPEARANCE: DesktopAppearance = {
+  appearanceStyleKey: DEFAULT_APPEARANCE_STYLE.key,
   colorSchemeKey: DEFAULT_SCHEME.key,
   desktopColor: DEFAULT_SCHEME.desktopColor,
   windowColor: DEFAULT_SCHEME.windowColor,
@@ -484,9 +513,17 @@ export function getDesktopColorScheme(key: unknown) {
   );
 }
 
+export function getDesktopAppearanceStyle(key: unknown) {
+  return (
+    DESKTOP_APPEARANCE_STYLES.find((style) => style.key === key) ??
+    DEFAULT_APPEARANCE_STYLE
+  );
+}
+
 export function normalizeDesktopAppearance(input: unknown): DesktopAppearance {
   if (!isRecord(input)) return { ...DEFAULT_DESKTOP_APPEARANCE };
 
+  const appearanceStyle = getDesktopAppearanceStyle(input.appearanceStyleKey);
   const scheme = getDesktopColorScheme(input.colorSchemeKey);
   const cursorStyle = DESKTOP_CURSOR_STYLES.includes(input.cursorStyle as DesktopCursorStyle)
     ? (input.cursorStyle as DesktopCursorStyle)
@@ -499,6 +536,7 @@ export function normalizeDesktopAppearance(input: unknown): DesktopAppearance {
     : DEFAULT_DESKTOP_APPEARANCE.backgroundFit;
 
   return {
+    appearanceStyleKey: appearanceStyle.key,
     colorSchemeKey: scheme.key,
     desktopColor: normalizeColor(input.desktopColor, scheme.desktopColor),
     windowColor: normalizeColor(input.windowColor, scheme.windowColor),

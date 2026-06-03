@@ -174,7 +174,11 @@ function freshnessLabel(freshness: NonNullable<RatRaceHotTokensResponse["diagnos
   if (!freshness) return "n/a";
   const state = freshness.state || (freshness.ok === false ? "stale" : freshness.ok === true ? "fresh" : "unknown");
   const lag = freshness.headLagBlocks === null ? "unknown lag" : `${freshness.headLagBlocks} block lag`;
-  return `${state}, ${lag}`;
+  const processed =
+    freshness.processedLevel !== null && freshness.intakeLevel !== null
+      ? `processed ${freshness.processedLevel.toLocaleString()} / intake ${freshness.intakeLevel.toLocaleString()}`
+      : null;
+  return [state, lag, processed].filter(Boolean).join(", ");
 }
 
 function tokenRef(item: RatRaceHotToken) {
@@ -192,7 +196,7 @@ type RatRaceFilters = {
 const DEFAULT_FILTERS: RatRaceFilters = {
   limit: 24,
   windowHours: 24,
-  mintedWithinDays: 14,
+  mintedWithinDays: 7,
   minSoldPercent: 50,
   minRecentSales: 2,
 };
@@ -200,7 +204,7 @@ const DEFAULT_FILTERS: RatRaceFilters = {
 const FILTER_LIMITS = {
   limit: { min: 1, max: 60 },
   windowHours: { min: 1, max: 168 },
-  mintedWithinDays: { min: 1, max: 365 },
+  mintedWithinDays: { min: 1, max: 7 },
   minSoldPercent: { min: 1, max: 99 },
   minRecentSales: { min: 1, max: 25 },
 } as const;
@@ -220,11 +224,9 @@ const FILTER_OPTIONS = {
     { value: 168, label: "7 days" },
   ],
   mintedWithinDays: [
+    { value: 1, label: "24 hours" },
+    { value: 3, label: "3 days" },
     { value: 7, label: "7 days" },
-    { value: 14, label: "14 days" },
-    { value: 30, label: "30 days" },
-    { value: 90, label: "90 days" },
-    { value: 365, label: "1 year" },
   ],
   minSoldPercent: [
     { value: 10, label: "10% sold" },
@@ -299,7 +301,7 @@ export function RatRace() {
   const query = useQuery({
     queryKey: ["rat-race", "hot-tokens", filters],
     queryFn: () => api.get<RatRaceHotTokensResponse>(ratRaceQueryPath(filters)),
-    refetchInterval: 45_000,
+    refetchInterval: (currentQuery) => (currentQuery.state.fetchStatus === "fetching" ? false : 45_000),
   });
 
   useEffect(() => {
@@ -444,8 +446,15 @@ export function RatRace() {
 
         {error ? <GroupBox label="Wallet">{error}</GroupBox> : null}
 
-        {query.isLoading ? (
-          <Hourglass size={32} />
+        {error || query.error ? (
+          <GroupBox label="Scan error">{error || (query.error as Error)?.message || "Rat Race scan failed"}</GroupBox>
+        ) : null}
+
+        {query.isLoading || query.isFetching ? (
+          <GroupBox label="Scan">
+            <Hourglass size={32} />
+            <Fine>Pulling the tz2at rolling market stream...</Fine>
+          </GroupBox>
         ) : items.length === 0 ? (
           <GroupBox label="Feed">
             <div>{diagnostics?.note || "No hot editions match the urgency filter yet."}</div>
@@ -469,10 +478,20 @@ export function RatRace() {
                     <StatValue>{freshnessLabel(diagnostics.sourceFreshness)}</StatValue>
                   </Stat>
                   <Stat>
+                    <StatLabel>Supplements</StatLabel>
+                    <StatValue>
+                      {(diagnostics.supplementSources ?? [])
+                        .filter((source) => source.used)
+                        .map((source) => source.source)
+                        .join(", ") || "none"}
+                    </StatValue>
+                  </Stat>
+                  <Stat>
                     <StatLabel>Rejected</StatLabel>
                     <StatValue>
-                      {diagnostics.rejectedByUnknownSupply} supply / {diagnostics.rejectedByMintWindow} old /{" "}
-                      {diagnostics.rejectedByRecentSales} quiet / {diagnostics.rejectedBySoldPercent} low
+                      {diagnostics.rejectedByUnknownSupply} supply / {diagnostics.rejectedByNoActiveListing} listing /{" "}
+                      {diagnostics.rejectedByMintWindow} old / {diagnostics.rejectedByRecentSales} quiet /{" "}
+                      {diagnostics.rejectedBySoldPercent} low
                     </StatValue>
                   </Stat>
                 </DiagnosticGrid>

@@ -20,7 +20,7 @@ export type RoleSurfaceAccessMatrix = Record<UserRole, Record<string, boolean>>;
 
 const SURFACE_IDS = new Set(ALL_ADMIN_SURFACES.map((surface) => surface.id));
 const ADMIN_SURFACE_KINDS = new Set<AdminSurface["kind"]>(["admin-tool"]);
-const EXPERIMENTAL_SURFACE_IDS = new Set(["ux-lab"]);
+const EXPERIMENTAL_SURFACE_IDS = new Set(["ux-lab", "skywire", "wtf-live"]);
 
 function isMissingRelationError(err: unknown): boolean {
   const candidate = err as { code?: string; cause?: { code?: string } } | null;

@@ -31,6 +31,7 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/my-photos": "gallery",
   "/my-music": "gallery",
   "/skywire": "skywire",
+  "/live": "wtf-live",
   "/tz2at": "tz2at",
   "/crp-nominate": "crp-nominations",
   "/rat-race": "rat-race",

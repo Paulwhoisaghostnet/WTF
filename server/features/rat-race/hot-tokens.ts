@@ -1,7 +1,14 @@
 import { sql } from "drizzle-orm";
 import { externalMarketplaceInfo, externalMarketplaceName } from "@shared/external-marketplaces";
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
-import type { RatRaceFeedDiagnostics, RatRaceHotToken, RatRaceNearMiss, RatRacePurchaseIntent, RatRaceSourceFreshness } from "@shared/tezos-intel";
+import type {
+  RatRaceFeedDiagnostics,
+  RatRaceHotToken,
+  RatRaceNearMiss,
+  RatRacePurchaseIntent,
+  RatRaceSourceFreshness,
+  RatRaceSupplementSource,
+} from "@shared/tezos-intel";
 import { db } from "../../db";
 import { loadTz2atRatRaceRows } from "./tz2at-atproto";
 
@@ -51,7 +58,7 @@ function envNumber(name: string, fallback: number, min: number, max: number, int
 
 export const RAT_RACE_FILTER_LIMITS = {
   windowHours: { min: 1, max: 168 },
-  mintedWithinDays: { min: 1, max: 365 },
+  mintedWithinDays: { min: 1, max: 7 },
   minSoldPercent: { min: 1, max: 99 },
   minRecentSales: { min: 1, max: 25 },
   limit: { min: 1, max: 60 },
@@ -61,7 +68,7 @@ export const RAT_RACE_DEFAULT_FILTER_VALUES = {
   windowHours: envNumber("RAT_RACE_DEFAULT_WINDOW_HOURS", 24, RAT_RACE_FILTER_LIMITS.windowHours.min, RAT_RACE_FILTER_LIMITS.windowHours.max),
   mintedWithinDays: envNumber(
     "RAT_RACE_DEFAULT_MINTED_WITHIN_DAYS",
-    14,
+    7,
     RAT_RACE_FILTER_LIMITS.mintedWithinDays.min,
     RAT_RACE_FILTER_LIMITS.mintedWithinDays.max
   ),
@@ -138,6 +145,7 @@ function rowSnapshot(row: RatRaceCandidateRow, filter: RatRaceFilter): RatRaceNe
     reasons.push(`${soldPercent.toFixed(1)}% sold, needs ${filter.minSoldPercent}%`);
   }
   if (recentSaleCount < filter.minRecentSales) reasons.push(`${recentSaleCount} recent sale(s), needs ${filter.minRecentSales}`);
+  if (asNumber(row.active_listing_count) <= 0) reasons.push("no active rolling listing signal");
   if (mintedAt) {
     const mintedAgeDays = (filter.now.getTime() - new Date(mintedAt).getTime()) / 86_400_000;
     if (Number.isFinite(mintedAgeDays) && mintedAgeDays > filter.mintedWithinDays) {
@@ -169,17 +177,20 @@ function buildDiagnostics(
     tz2atCandidateRows: number;
     rankedItems: number;
     sourceFreshness?: RatRaceSourceFreshness | null;
+    supplementSources?: RatRaceSupplementSource[];
   }
 ): RatRaceFeedDiagnostics {
   let rejectedByMintWindow = 0;
   let rejectedByRecentSales = 0;
   let rejectedBySoldPercent = 0;
   let rejectedByUnknownSupply = 0;
+  let rejectedByNoActiveListing = 0;
   const nearMisses = rows
     .map((row) => {
       const miss = rowSnapshot(row, filter);
       if (!miss) return null;
       if (miss.reasons.some((reason) => reason.includes("unknown total edition supply"))) rejectedByUnknownSupply += 1;
+      if (miss.reasons.some((reason) => reason.includes("no active rolling listing"))) rejectedByNoActiveListing += 1;
       if (miss.reasons.some((reason) => reason.includes("minted"))) rejectedByMintWindow += 1;
       if (miss.reasons.some((reason) => reason.includes("recent sale"))) rejectedByRecentSales += 1;
       if (miss.reasons.some((reason) => reason.includes("% sold"))) rejectedBySoldPercent += 1;
@@ -194,17 +205,27 @@ function buildDiagnostics(
       ? "Rat Race found tokens matching the urgency filter."
       : counts.sourceFreshness?.ok === false
         ? "Rat Race did not rank tokens because the tz2at replay source is reporting stale indexer health."
-      : counts.localCandidateRows === 0 && counts.tz2atCandidateRows === 0
-        ? "Rat Race did not find buyable sale candidates in the local index or tz2at replay stream."
-        : "Rat Race found candidates, but none passed every hot-edition filter.";
+        : counts.localCandidateRows === 0 && counts.tz2atCandidateRows === 0
+          ? "Rat Race did not find buyable sale candidates in the local index or tz2at replay stream."
+          : rejectedByRecentSales > 0 &&
+              counts.tz2atCandidateRows > 0 &&
+              rejectedByRecentSales >= counts.tz2atCandidateRows
+            ? `Rat Race found ${counts.tz2atCandidateRows} sale candidate(s), but none had ${filter.minRecentSales}+ sale(s) in the last ${filter.windowHours} hour window. tz2at processed sales are behind intake${
+                counts.sourceFreshness?.processedLagBlocks
+                  ? ` by ${counts.sourceFreshness.processedLagBlocks.toLocaleString()} blocks`
+                  : ""
+              } - widen the sales window (try 72h) or restore tz2at block processing.`
+            : "Rat Race found candidates, but none passed every hot-edition filter.";
 
   return {
     source,
     sourceFreshness: counts.sourceFreshness ?? null,
+    supplementSources: counts.supplementSources ?? [],
     localCandidateRows: counts.localCandidateRows,
     tz2atCandidateRows: counts.tz2atCandidateRows,
     rankedItems: counts.rankedItems,
     rejectedByUnknownSupply,
+    rejectedByNoActiveListing,
     rejectedByMintWindow,
     rejectedByRecentSales,
     rejectedBySoldPercent,
@@ -284,7 +305,8 @@ export function buildRatRacePurchaseIntent(row: RatRaceCandidateRow): RatRacePur
 
 export function rankRatRaceCandidates(
   rows: RatRaceCandidateRow[],
-  filter: RatRaceFilter = DEFAULT_RAT_RACE_FILTER
+  filter: RatRaceFilter = DEFAULT_RAT_RACE_FILTER,
+  source: RatRaceHotToken["source"] = "tz2at-firehose"
 ): RatRaceHotToken[] {
   const items: RatRaceHotToken[] = [];
   for (const row of rows) {
@@ -301,6 +323,8 @@ export function rankRatRaceCandidates(
     const soldPercent = totalEditions > 0 ? (soldEditions / totalEditions) * 100 : 0;
     const recentSaleCount = asNumber(row.recent_sale_count);
     const recentEditionsSold = asNumber(row.recent_editions_sold);
+    const activeListingCount = asNumber(row.active_listing_count);
+    if (activeListingCount <= 0) continue;
     if (soldPercent < filter.minSoldPercent || recentSaleCount < filter.minRecentSales) continue;
 
     const mintedAt = asIso(row.minted_at);
@@ -328,7 +352,6 @@ export function rankRatRaceCandidates(
         ? null
         : new Date(filter.now.getTime() + hoursToSellout * 3_600_000).toISOString();
 
-    const activeListingCount = asNumber(row.active_listing_count);
     const selloutPressure = hoursToSellout === null ? 0 : 100 / Math.max(1, hoursToSellout);
     const scarcityPressure = soldPercent * 1.5;
     const recentPressure = recentSaleCount * 20 + recentEditionsSold * 8;
@@ -356,7 +379,7 @@ export function rankRatRaceCandidates(
       salesVelocityPerHour: Number(salesVelocityPerHour.toFixed(4)),
       remainingEditions,
       marketUrl: marketUrl(tokenContract, tokenId),
-      source: "local-index",
+      source,
       purchaseIntent: buildRatRacePurchaseIntent(row),
     });
   }
@@ -370,16 +393,27 @@ export function rankRatRaceCandidates(
       if (b.hoursToSellout !== null) return 1;
       return b.urgencyScore - a.urgencyScore;
     })
-    .slice(0, filter.limit)
-    .map((item) => ({ ...item, source: "tz2at-firehose" }));
+    .slice(0, filter.limit);
 }
 
-export async function loadRatRaceHotTokenFeed(options: Partial<RatRaceFilter> = {}): Promise<RatRaceFeedResult> {
+function normalizeRatRaceFilter(options: Partial<RatRaceFilter> = {}): RatRaceFilter {
   const filter = { ...DEFAULT_RAT_RACE_FILTER, ...options };
-  const windowHours = Math.max(1, Math.min(168, Math.floor(filter.windowHours)));
-  const mintedWithinDays = Math.max(1, Math.min(365, Math.floor(filter.mintedWithinDays)));
-  const limit = Math.max(1, Math.min(60, Math.floor(filter.limit)));
-  const now = filter.now ?? new Date();
+  return {
+    ...filter,
+    windowHours: Math.max(
+      RAT_RACE_FILTER_LIMITS.windowHours.min,
+      Math.min(RAT_RACE_FILTER_LIMITS.windowHours.max, Math.floor(filter.windowHours))
+    ),
+    mintedWithinDays: Math.max(
+      RAT_RACE_FILTER_LIMITS.mintedWithinDays.min,
+      Math.min(RAT_RACE_FILTER_LIMITS.mintedWithinDays.max, Math.floor(filter.mintedWithinDays))
+    ),
+    limit: Math.max(RAT_RACE_FILTER_LIMITS.limit.min, Math.min(RAT_RACE_FILTER_LIMITS.limit.max, Math.floor(filter.limit))),
+    now: options.now ?? new Date(),
+  };
+}
+
+async function loadLocalRatRaceRows(filter: RatRaceFilter): Promise<RatRaceCandidateRow[]> {
   const rows = await db.execute(sql`
     WITH mint_summary AS (
       SELECT
@@ -389,7 +423,7 @@ export async function loadRatRaceHotTokenFeed(options: Partial<RatRaceFilter> = 
         SUM(editions)::int AS minted_editions
       FROM token_mint_events
       GROUP BY token_contract, token_id
-    ),
+      ),
     sale_summary AS (
       SELECT
         token_contract,
@@ -397,8 +431,8 @@ export async function loadRatRaceHotTokenFeed(options: Partial<RatRaceFilter> = 
         COUNT(*)::int AS sale_count,
         SUM(editions_sold)::int AS sold_editions,
         SUM(CASE WHEN is_primary THEN editions_sold ELSE 0 END)::int AS primary_sold_editions,
-        COUNT(*) FILTER (WHERE sold_at >= ${now}::timestamptz - (${windowHours} || ' hours')::interval)::int AS recent_sale_count,
-        COALESCE(SUM(editions_sold) FILTER (WHERE sold_at >= ${now}::timestamptz - (${windowHours} || ' hours')::interval), 0)::int AS recent_editions_sold,
+        COUNT(*) FILTER (WHERE sold_at >= ${filter.now}::timestamptz - (${filter.windowHours} || ' hours')::interval)::int AS recent_sale_count,
+        COALESCE(SUM(editions_sold) FILTER (WHERE sold_at >= ${filter.now}::timestamptz - (${filter.windowHours} || ' hours')::interval), 0)::int AS recent_editions_sold,
         MAX(sold_at) AS last_sale_at
       FROM token_sales
       GROUP BY token_contract, token_id
@@ -452,55 +486,45 @@ export async function loadRatRaceHotTokenFeed(options: Partial<RatRaceFilter> = 
       AND COALESCE(ls.active_listing_count, 0) > 0
       AND (
         ms.minted_at IS NULL
-        OR ms.minted_at >= ${now}::timestamptz - (${mintedWithinDays} || ' days')::interval
+        OR ms.minted_at >= ${filter.now}::timestamptz - (${filter.mintedWithinDays} || ' days')::interval
       )
     ORDER BY ss.recent_sale_count DESC, ss.last_sale_at DESC
-    LIMIT ${limit * 8}
+    LIMIT ${filter.limit * 8}
   `);
-  const sourceRows = (((rows as any).rows ?? rows) as RatRaceCandidateRow[]);
-  const normalizedFilter = {
-    ...filter,
-    windowHours,
-    mintedWithinDays,
-    limit,
-    now,
-  };
-  const localItems = rankRatRaceCandidates(sourceRows, normalizedFilter);
-  if (localItems.length > 0) {
-    return {
-      items: localItems,
-      diagnostics: buildDiagnostics(sourceRows, normalizedFilter, "local-index", {
-        localCandidateRows: sourceRows.length,
-        tz2atCandidateRows: 0,
-        rankedItems: localItems.length,
-      }),
-    };
-  }
+  return (((rows as any).rows ?? rows) as RatRaceCandidateRow[]);
+}
+
+export async function loadRatRaceHotTokenFeed(options: Partial<RatRaceFilter> = {}): Promise<RatRaceFeedResult> {
+  const normalizedFilter = normalizeRatRaceFilter(options);
 
   try {
     const tz2atResult = await loadTz2atRatRaceRows(normalizedFilter);
     const tz2atRows = tz2atResult.rows;
-    const tz2atItems = rankRatRaceCandidates(tz2atRows, normalizedFilter);
+    const tz2atItems = rankRatRaceCandidates(tz2atRows, normalizedFilter, "tz2at-firehose");
     return {
       items: tz2atItems,
       diagnostics: buildDiagnostics(tz2atRows, normalizedFilter, tz2atResult.source, {
-        localCandidateRows: sourceRows.length,
+        localCandidateRows: 0,
         tz2atCandidateRows: tz2atRows.length,
         rankedItems: tz2atItems.length,
         sourceFreshness: tz2atResult.sourceFreshness ?? null,
+        supplementSources: tz2atResult.supplementSources ?? [],
       }),
     };
   } catch (err) {
-    console.warn("[rat-race] tz2at AT Protocol fallback failed:", err);
-    return {
-      items: localItems,
-      diagnostics: buildDiagnostics(sourceRows, normalizedFilter, sourceRows.length > 0 ? "local-index" : "none", {
-        localCandidateRows: sourceRows.length,
-        tz2atCandidateRows: 0,
-        rankedItems: localItems.length,
-      }),
-    };
+    console.warn("[rat-race] tz2at canonical feed failed; falling back to local market index:", err);
   }
+
+  const sourceRows = await loadLocalRatRaceRows(normalizedFilter);
+  const localItems = rankRatRaceCandidates(sourceRows, normalizedFilter, "local-index");
+  return {
+    items: localItems,
+    diagnostics: buildDiagnostics(sourceRows, normalizedFilter, sourceRows.length > 0 ? "local-index" : "none", {
+      localCandidateRows: sourceRows.length,
+      tz2atCandidateRows: 0,
+      rankedItems: localItems.length,
+    }),
+  };
 }
 
 export async function loadRatRaceHotTokens(options: Partial<RatRaceFilter> = {}) {

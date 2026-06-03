@@ -5,6 +5,7 @@ import {
   loadTz2atRatRaceRows,
   loadTz2atReplayRatRaceRows,
   normalizeTz2atCollectRecord,
+  normalizeTz2atListingSignalRecord,
   normalizeTz2atTransferRecord,
   type Tz2atRepoRecord,
 } from "./tz2at-atproto";
@@ -14,7 +15,7 @@ const tokenContract = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
 
 const filter: RatRaceFilter = {
   windowHours: 24,
-  mintedWithinDays: 14,
+  mintedWithinDays: 7,
   minSoldPercent: 50,
   minRecentSales: 2,
   limit: 10,
@@ -129,6 +130,89 @@ test("builds Rat Race rows by resolving collect records through Objkt metadata a
   assert.equal(rows[0].sold_editions, 2);
   assert.equal(rows[0].recent_sale_count, 2);
   assert.equal(rows[0].listing_id, "300");
+});
+
+test("uses tz2at listing signals before Objkt listing hydration", async () => {
+  const collects = [
+    normalizeTz2atCollectRecord({
+      value: {
+        buyer: "tz1Buyer",
+        seller: "tz1Seller",
+        amount: "1",
+        tokenId: "78",
+        tokenContract,
+        timestamp: "2026-05-26T18:00:00Z",
+        priceMutez: "100000",
+        marketplace: "KT1FvqJwEDWb1Gwc55Jd1jjTHRVWbYKUUpyq",
+        operationHash: "opA",
+        subjectAddresses: [tokenContract, "tz1Buyer", "tz1Seller"],
+      },
+    }),
+    normalizeTz2atCollectRecord({
+      value: {
+        buyer: "tz1Buyer2",
+        seller: "tz1Seller",
+        amount: "1",
+        tokenId: "78",
+        tokenContract,
+        timestamp: "2026-05-26T19:00:00Z",
+        priceMutez: "110000",
+        marketplace: "KT1FvqJwEDWb1Gwc55Jd1jjTHRVWbYKUUpyq",
+        operationHash: "opB",
+        subjectAddresses: [tokenContract, "tz1Buyer2", "tz1Seller"],
+      },
+    }),
+  ].filter(Boolean) as any;
+  const listingSignals = [
+    normalizeTz2atListingSignalRecord({
+      value: {
+        $type: "store.tz2at.marketplace.swap",
+        amount: "2",
+        tokenId: "78",
+        tokenContract,
+        timestamp: "2026-05-26T17:00:00Z",
+        priceMutez: "90000",
+        marketplace: "KT1FvqJwEDWb1Gwc55Jd1jjTHRVWbYKUUpyq",
+        operationHash: "opList",
+        entrypoint: "list_create",
+        subjectAddresses: [tokenContract, "tz1Seller"],
+      },
+    }),
+  ].filter(Boolean) as any;
+  const hydrated = new Map([
+    [
+      `${tokenContract}:78`,
+      {
+        token: {
+          fa_contract: tokenContract,
+          token_id: "78",
+          name: "tz2at Listed",
+          supply: 4,
+          timestamp: "2026-05-25T18:00:00Z",
+          creators: [{ creator_address: "tz1Creator" }],
+        },
+        listings: [
+          {
+            id: "should-not-attach-to-tz2at-floor",
+            price: "100000",
+            amount_left: 1,
+            status: "active",
+            marketplace_contract: "KT1FvqJwEDWb1Gwc55Jd1jjTHRVWbYKUUpyq",
+            timestamp: "2026-05-26T17:30:00Z",
+            token: { fa_contract: tokenContract, token_id: "78" },
+          },
+        ],
+      },
+    ],
+  ]);
+
+  const rows = await buildTz2atAtprotoRatRaceRows(collects, [], filter, hydrated, listingSignals);
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].active_listing_count, 1);
+  assert.equal(rows[0].floor_mutez, "90000");
+  assert.equal(rows[0].listing_id, null);
+  assert.equal(rows[0].marketplace_contract, "KT1FvqJwEDWb1Gwc55Jd1jjTHRVWbYKUUpyq");
 });
 
 test("builds Rat Race rows from the fresh tz2at replay record stream", async () => {
@@ -346,7 +430,146 @@ test("keeps healthy empty replay windows as replay diagnostics instead of fallin
   assert.deepEqual(result.rows, []);
 });
 
+test("builds Rat Race rows from store.tz2at replay collect records", async () => {
+  const replayEvents = [
+    {
+      event: {
+        $type: "store.tz2at.marketplace.collect",
+        buyer: "tz1Buyer",
+        seller: "tz1Seller",
+        amount: "1",
+        network: "mainnet",
+        tokenId: "89",
+        tokenContract,
+        tokenRef: `tezos:mainnet:${tokenContract}:token:89`,
+        timestamp: "2026-05-26T18:00:00Z",
+        blockLevel: 1000,
+        priceMutez: "100000",
+        marketplace: "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
+        operationHash: "opStoreA",
+        eventIndex: 10001,
+        subjectAddresses: ["KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X", tokenContract, "tz1Buyer", "tz1Seller"],
+      },
+    },
+    {
+      event: {
+        $type: "store.tz2at.marketplace.collect",
+        buyer: "tz1Buyer2",
+        seller: "tz1Seller",
+        amount: "1",
+        network: "mainnet",
+        tokenId: "89",
+        tokenContract,
+        tokenRef: `tezos:mainnet:${tokenContract}:token:89`,
+        timestamp: "2026-05-26T19:00:00Z",
+        blockLevel: 1001,
+        priceMutez: "110000",
+        marketplace: "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
+        operationHash: "opStoreB",
+        eventIndex: 10001,
+        subjectAddresses: ["KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X", tokenContract, "tz1Buyer2", "tz1Seller"],
+      },
+    },
+  ];
+  const tz2atClient = {
+    async getJson<T>(path: string): Promise<T> {
+      if (path === "/health") {
+        return {
+          ok: true,
+          rollingIndexer: { lastLevel: 5000, headLevel: 5000, ok: true },
+          processed: { lastLevel: 1001 },
+        } as T;
+      }
+      if (path === "/replay") return replayEvents as T;
+      throw new Error(`unexpected tz2at path ${path}`);
+    },
+    async postJson<T>(): Promise<T> {
+      throw new Error("unexpected tz2at post");
+    },
+  };
+  const objktClient = {
+    async getJson<T>(): Promise<T> {
+      throw new Error("unexpected objkt get");
+    },
+    async postJson<T>(): Promise<T> {
+      return {
+        data: {
+          token: [
+            {
+              fa_contract: tokenContract,
+              token_id: "89",
+              name: "Store Prefix Runner",
+              supply: 4,
+              timestamp: "2026-05-25T18:00:00Z",
+              creators: [{ creator_address: "tz1Creator" }],
+            },
+          ],
+          listing: [
+            {
+              id: "901",
+              price: "130000",
+              amount_left: 2,
+              status: "active",
+              marketplace_contract: "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
+              timestamp: "2026-05-26T17:00:00Z",
+              token: { fa_contract: tokenContract, token_id: "89" },
+            },
+          ],
+        },
+      } as T;
+    },
+  };
+
+  const rows = await loadTz2atReplayRatRaceRows(filter, { tz2atClient, objktClient });
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].token_name, "Store Prefix Runner");
+  assert.equal(rows[0].recent_sale_count, 2);
+});
+
+test("caps replay scans at processed checkpoint instead of intake head", async () => {
+  process.env.RAT_RACE_TZ2AT_MAX_REPLAY_PAGES = "999";
+  const replayRanges: Array<{ fromLevel: number; toLevel: number }> = [];
+  const tz2atClient = {
+    async getJson<T>(path: string, params?: Record<string, unknown>): Promise<T> {
+      if (path === "/health") {
+        return {
+          ok: true,
+          rollingIndexer: { lastLevel: 200_000, headLevel: 200_000, ok: true },
+          processed: { lastLevel: 150_000 },
+          intake: { lastLevel: 200_000 },
+        } as T;
+      }
+      if (path === "/replay") {
+        replayRanges.push({
+          fromLevel: Number(params?.fromLevel),
+          toLevel: Number(params?.toLevel),
+        });
+        return [] as T;
+      }
+      throw new Error(`legacy fallback should not be called: ${path}`);
+    },
+    async postJson<T>(): Promise<T> {
+      throw new Error("unexpected tz2at post");
+    },
+  };
+  const objktClient = {
+    async getJson<T>(): Promise<T> {
+      throw new Error("unexpected objkt get");
+    },
+    async postJson<T>(): Promise<T> {
+      throw new Error("empty replay should not hydrate Objkt");
+    },
+  };
+
+  await loadTz2atRatRaceRows(filter, { tz2atClient, objktClient });
+
+  assert.equal(Math.max(...replayRanges.map((range) => range.toLevel)), 150_000);
+  assert.equal(Math.min(...replayRanges.map((range) => range.fromLevel)), 135_600);
+});
+
 test("scans the full requested replay window for multi-day Rat Race filters", async () => {
+  process.env.RAT_RACE_TZ2AT_MAX_REPLAY_PAGES = "999";
   const replayRanges: Array<{ fromLevel: number; toLevel: number }> = [];
   const wideFilter: RatRaceFilter = {
     ...filter,
@@ -384,6 +607,44 @@ test("scans the full requested replay window for multi-day Rat Race filters", as
   assert.ok(replayRanges.length > 1);
   assert.equal(Math.min(...replayRanges.map((range) => range.fromLevel)), 156_800);
   assert.equal(Math.max(...replayRanges.map((range) => range.toLevel)), 200_000);
+});
+
+test("honors replay max pages within concurrent batches", async () => {
+  process.env.RAT_RACE_TZ2AT_MAX_REPLAY_PAGES = "1";
+  const replayRanges: Array<{ fromLevel: number; toLevel: number }> = [];
+  const wideFilter: RatRaceFilter = {
+    ...filter,
+    windowHours: 72,
+  };
+  const tz2atClient = {
+    async getJson<T>(path: string, params?: Record<string, unknown>): Promise<T> {
+      if (path === "/health") return { rollingIndexer: { lastLevel: 200_000, headLevel: 200_000, ok: true } } as T;
+      if (path === "/replay") {
+        replayRanges.push({
+          fromLevel: Number(params?.fromLevel),
+          toLevel: Number(params?.toLevel),
+        });
+        return [] as T;
+      }
+      throw new Error(`legacy fallback should not be called: ${path}`);
+    },
+    async postJson<T>(): Promise<T> {
+      throw new Error("unexpected tz2at post");
+    },
+  };
+  const objktClient = {
+    async getJson<T>(): Promise<T> {
+      throw new Error("unexpected objkt get");
+    },
+    async postJson<T>(): Promise<T> {
+      throw new Error("empty replay should not hydrate Objkt");
+    },
+  };
+
+  await loadTz2atRatRaceRows(wideFilter, { tz2atClient, objktClient });
+
+  assert.equal(replayRanges.length, 1);
+  assert.deepEqual(replayRanges[0], { fromLevel: 199_501, toLevel: 200_000 });
 });
 
 test("fails closed on stale tz2at replay health without probing replay pages", async () => {

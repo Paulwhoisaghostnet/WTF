@@ -44,6 +44,8 @@ import {
 import { emitAtprotoSystemEvent } from "../features/atproto/events";
 import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
 import { resolveUserTezosIdentity } from "../lib/user-tezos-identity";
+import { skywireRolloutStatusForRole } from "../lib/skywire-access";
+import { userEligibleForSkywireRollout } from "@shared/skywire-rollout";
 
 const router = Router();
 
@@ -393,8 +395,10 @@ router.get("/api/atproto/me", isAuthenticated, async (req, res) => {
   const user = req.user as any;
   const account = await linkedAccountForUser(user.id);
   const tezosIdentity = await resolveUserTezosIdentity(user.id);
+  const rollout = skywireRolloutStatusForRole(user.roles ?? user.role ?? null);
   res.json({
-    enabled: isAtprotoEnabled(),
+    enabled: isAtprotoEnabled() && rollout.eligible,
+    rollout,
     account: safeAtprotoAccount(account),
     handleClaims: await listClaims(user.id),
     tezosAlias: tezosIdentity.preferredTezosDomain,
@@ -599,6 +603,9 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
   const returnTo = safeReturnPath(parsed.data.returnTo);
   const popup = parsed.data.popup === "1";
   const appName = parsed.data.app === "tz2at" ? "tz2at" : "skywire";
+  if (appName === "skywire" && !userEligibleForSkywireRollout((req.user as any).roles ?? (req.user as any).role)) {
+    return res.status(403).json({ error: "Skywire is not available for your account yet", code: "skywire_rollout_denied" });
+  }
   const tz2atStep = normalizeTz2atPermissionStep(parsed.data.step);
   const tier = normalizeSkywirePermissionTier(parsed.data.tier);
   const chatEnabled = parsed.data.chat === "1" || parsed.data.chat === "true";

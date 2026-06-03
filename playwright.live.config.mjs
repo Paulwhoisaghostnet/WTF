@@ -10,6 +10,9 @@ const serverPort = new URL(baseURL).port || "3000";
 const reuseServer = process.env.WTF_E2E_REUSE_SERVER !== "0";
 const existingCors = process.env.CORS_ALLOWED_ORIGINS || "";
 const corsOrigins = [existingCors, new URL(baseURL).origin].filter(Boolean).join(",");
+const localDataRoot =
+  process.env.WTF_E2E_DATA_ROOT ||
+  `${process.cwd()}/.tmp/live-e2e-wtf-data`;
 
 export default defineConfig({
   testDir: "./tests/playwright/live",
@@ -43,6 +46,15 @@ export default defineConfig({
           CORS_ALLOWED_ORIGINS: corsOrigins,
           WTF_E2E_RATE_LIMIT_BYPASS: "1",
           WTF_E2E_DISABLE_LOGIN_BACKFILL: "1",
+          WTF_DATA_ROOT: process.env.WTF_DATA_ROOT || localDataRoot,
+          UPLOAD_STAGING_DIR:
+            process.env.UPLOAD_STAGING_DIR || `${localDataRoot}/uploads-staging`,
+          MEDIA_HOT_CACHE_DIR:
+            process.env.MEDIA_HOT_CACHE_DIR || `${localDataRoot}/tv-cache/users`,
+          TMP_PROCESSING_DIR:
+            process.env.TMP_PROCESSING_DIR || `${localDataRoot}/tmp-processing`,
+          RAT_RACE_TZ2AT_MAX_REPLAY_PAGES:
+            process.env.RAT_RACE_TZ2AT_MAX_REPLAY_PAGES || "1",
         },
       }
     : undefined,

@@ -109,18 +109,29 @@ export interface RatRaceSourceFreshness {
   headLevel: number | null;
   headLagBlocks: number | null;
   maxHeadLagBlocks: number | null;
+  processedLevel: number | null;
+  intakeLevel: number | null;
+  processedLagBlocks: number | null;
   updatedAt: string | null;
   ageMs: number | null;
   maxStaleMs: number | null;
 }
 
+export interface RatRaceSupplementSource {
+  source: "objkt" | "tzkt";
+  used: boolean;
+  purpose: string;
+}
+
 export interface RatRaceFeedDiagnostics {
   source: "local-index" | "tz2at-replay" | "tz2at-atproto" | "none";
   sourceFreshness?: RatRaceSourceFreshness | null;
+  supplementSources: RatRaceSupplementSource[];
   localCandidateRows: number;
   tz2atCandidateRows: number;
   rankedItems: number;
   rejectedByUnknownSupply: number;
+  rejectedByNoActiveListing: number;
   rejectedByMintWindow: number;
   rejectedByRecentSales: number;
   rejectedBySoldPercent: number;

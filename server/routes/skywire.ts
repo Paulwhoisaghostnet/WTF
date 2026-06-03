@@ -28,6 +28,7 @@ import {
 import { emitAtprotoSystemEvent, skywireEventId } from "../features/atproto/events";
 import { issueAtprotoBridgeCredential } from "../features/atproto/event-bridge";
 import { ingestSystemEvent } from "../challenges/events/ingest";
+import { requireSkywireRollout, requireWtfLiveRollout, skywireRolloutStatusForRole } from "../lib/skywire-access";
 
 const router = Router();
 
@@ -784,256 +785,17 @@ router.get("/api/skywire/share-intent", (req, res) => {
   res.json({ url: buildBskyIntentUrl(String(req.query.text || "")) });
 });
 
-router.get("/api/skywire/rooms", isAuthenticated, async (_req, res) => {
-  res.json({
-    rooms: SKYWIRE_ROOMS,
-    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
-    storage: "public_atproto_repo_records",
-  });
-});
-
-router.get("/api/skywire/rooms/:roomId/messages", isAuthenticated, async (req, res) => {
-  const roomId = roomIdSchema.safeParse(req.params.roomId);
-  const parsed = roomMessagesQuerySchema.safeParse(req.query);
-  if (!roomId.success || !parsed.success) return res.status(400).json({ error: "Invalid Skywire room query" });
-  const accounts = await db
-    .select({
-      did: atprotoAccounts.did,
-      handle: atprotoAccounts.handle,
-    })
-    .from(atprotoAccounts)
-    .where(isNull(atprotoAccounts.disconnectedAt))
-    .orderBy(desc(atprotoAccounts.lastSyncedAt), desc(atprotoAccounts.updatedAt))
-    .limit(50);
-  const agent = getPublicAtprotoAgent();
-  const reads = await Promise.allSettled(
-    accounts.map(async (account) => {
-      const records = await agent.com.atproto.repo.listRecords({
-        repo: account.did,
-        collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
-        limit: 50,
-        reverse: true,
-      });
-      return (records.data.records ?? []).map((record) =>
-        normalizeRoomMessageRecord({
-          repoDid: account.did,
-          repoHandle: account.handle,
-          uri: record.uri,
-          cid: record.cid,
-          value: record.value,
-        })
-      );
-    })
-  );
-  const messages = reads
-    .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
-    .filter((message) => message.roomId === roomId.data)
-    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-    .slice(0, parsed.data.limit);
-  res.json({
-    roomId: roomId.data,
-    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
-    messages,
-    cursor: null,
-    source: "skywire.connectedUserRepos",
-    upstreamAvailable: reads.some((result) => result.status === "fulfilled"),
-  });
-});
-
-router.post("/api/skywire/rooms/:roomId/messages", isAuthenticated, actionLimiter, async (req, res) => {
+router.get("/api/skywire/status", isAuthenticated, requireSkywireRollout, async (req, res) => {
   const user = req.user as any;
-  const roomId = roomIdSchema.safeParse(req.params.roomId);
-  const parsed = roomMessageSchema.safeParse(req.body);
-  if (!roomId.success || !parsed.success) return res.status(400).json({ error: "Invalid Skywire room message" });
-  const account = await requireLinkedAccount(user.id);
-  requireAtprotoCapability(account, "rooms", "be-heard");
-  const agent = await getAtprotoAgentForDid(account.did);
-  const quotedPost = parsed.data.quotedPost?.uri
-    ? {
-        uri: parsed.data.quotedPost.uri,
-        cid: parsed.data.quotedPost.cid || null,
-        sourceUrl: parsed.data.quotedPost.sourceUrl || sourceUrlForAtUri(parsed.data.quotedPost.uri),
-        text: parsed.data.quotedPost.text || "",
-        authorHandle: parsed.data.quotedPost.authorHandle || null,
-        authorDid: parsed.data.quotedPost.authorDid || null,
-        createdAt: parsed.data.quotedPost.createdAt || null,
-      }
-    : null;
-  const record = {
-    $type: SKYWIRE_ROOM_MESSAGE_COLLECTION,
-    roomId: roomId.data,
-    text: parsed.data.text,
-    quotedPost,
-    audienceDids: parsed.data.audienceDids,
-    authorDid: account.did,
-    authorHandle: account.handle,
-    authorDisplayName: account.displayName || null,
-    authorAvatar: account.avatarUrl || null,
-    wtfUserId: user.id,
-    wtfUsername: user.username ?? null,
-    source: "wtfos.skywire.rooms",
-    createdAt: new Date().toISOString(),
-  };
-  const result = await agent.com.atproto.repo.createRecord(
-    {
-      repo: account.did,
-      collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
-      record,
-      validate: false,
-    },
-    { encoding: "application/json" }
-  );
-  await emitAtprotoSystemEvent({
-    eventType: "atproto.room.message_sent",
-    userId: user.id,
-    did: account.did,
-    handle: account.handle,
-    uri: result.data.uri,
-    cid: result.data.cid,
-    text: parsed.data.text,
-    rawRefType: "atproto_room_message",
-    rawRefId: result.data.uri,
-    metadata: {
-      roomId: roomId.data,
-      collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
-      quotedUri: quotedPost?.uri ?? null,
-      audienceDids: parsed.data.audienceDids,
-    },
-  });
-  res.status(201).json({
-    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
-    uri: result.data.uri,
-    cid: result.data.cid,
-    record,
-  });
-});
-
-router.get("/api/skywire/stages", isAuthenticated, async (_req, res) => {
+  const rollout = skywireRolloutStatusForRole(user.roles ?? user.role ?? null);
   res.json({
-    stages: SKYWIRE_STAGES,
-    collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
-    storage: "public_atproto_repo_records",
-    mode: "one_way_broadcast",
+    ...rollout,
+    pipelines: SKYWIRE_PIPELINES.filter((pipeline) => pipeline.id === "wtf-live" || rollout.wtfLiveEligible),
   });
 });
 
-router.get("/api/skywire/stages/:stageId/broadcasts", isAuthenticated, async (req, res) => {
-  const stageId = stageIdSchema.safeParse(req.params.stageId);
-  const parsed = stageBroadcastsQuerySchema.safeParse(req.query);
-  if (!stageId.success || !parsed.success) return res.status(400).json({ error: "Invalid Skywire stage query" });
-  const accounts = await db
-    .select({
-      did: atprotoAccounts.did,
-      handle: atprotoAccounts.handle,
-    })
-    .from(atprotoAccounts)
-    .where(isNull(atprotoAccounts.disconnectedAt))
-    .orderBy(desc(atprotoAccounts.lastSyncedAt), desc(atprotoAccounts.updatedAt))
-    .limit(50);
-  const agent = getPublicAtprotoAgent();
-  const reads = await Promise.allSettled(
-    accounts.map(async (account) => {
-      const records = await agent.com.atproto.repo.listRecords({
-        repo: account.did,
-        collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
-        limit: 50,
-        reverse: true,
-      });
-      return (records.data.records ?? []).map((record) =>
-        normalizeStageBroadcastRecord({
-          repoDid: account.did,
-          repoHandle: account.handle,
-          uri: record.uri,
-          cid: record.cid,
-          value: record.value,
-        })
-      );
-    })
-  );
-  const broadcasts = reads
-    .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
-    .filter((broadcast) => broadcast.stageId === stageId.data)
-    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-    .slice(0, parsed.data.limit);
-  res.json({
-    stageId: stageId.data,
-    collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
-    broadcasts,
-    cursor: null,
-    source: "skywire.connectedUserRepos",
-    upstreamAvailable: reads.some((result) => result.status === "fulfilled"),
-  });
-});
+router.use("/api/skywire", isAuthenticated, requireSkywireRollout);
 
-router.post("/api/skywire/stages/:stageId/broadcasts", isAuthenticated, actionLimiter, async (req, res) => {
-  const user = req.user as any;
-  const stageId = stageIdSchema.safeParse(req.params.stageId);
-  const parsed = stageBroadcastSchema.safeParse(req.body);
-  if (!stageId.success || !parsed.success) return res.status(400).json({ error: "Invalid Skywire stage broadcast" });
-  const account = await requireLinkedAccount(user.id);
-  requireAtprotoCapability(account, "stages", "be-heard");
-  const agent = await getAtprotoAgentForDid(account.did);
-  const quotedPost = parsed.data.quotedPost?.uri
-    ? {
-        uri: parsed.data.quotedPost.uri,
-        cid: parsed.data.quotedPost.cid || null,
-        sourceUrl: parsed.data.quotedPost.sourceUrl || sourceUrlForAtUri(parsed.data.quotedPost.uri),
-        text: parsed.data.quotedPost.text || "",
-        authorHandle: parsed.data.quotedPost.authorHandle || null,
-        authorDid: parsed.data.quotedPost.authorDid || null,
-        createdAt: parsed.data.quotedPost.createdAt || null,
-      }
-    : null;
-  const record = {
-    $type: SKYWIRE_STAGE_BROADCAST_COLLECTION,
-    stageId: stageId.data,
-    text: parsed.data.text,
-    mode: parsed.data.mode,
-    liveUrl: parsed.data.liveUrl || null,
-    quotedPost,
-    authorDid: account.did,
-    authorHandle: account.handle,
-    authorDisplayName: account.displayName || null,
-    authorAvatar: account.avatarUrl || null,
-    wtfUserId: user.id,
-    wtfUsername: user.username ?? null,
-    source: "wtfos.skywire.stages",
-    createdAt: new Date().toISOString(),
-  };
-  const result = await agent.com.atproto.repo.createRecord(
-    {
-      repo: account.did,
-      collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
-      record,
-      validate: false,
-    },
-    { encoding: "application/json" }
-  );
-  await emitAtprotoSystemEvent({
-    eventType: "atproto.stage.broadcast_sent",
-    userId: user.id,
-    did: account.did,
-    handle: account.handle,
-    uri: result.data.uri,
-    cid: result.data.cid,
-    text: parsed.data.text,
-    rawRefType: "atproto_stage_broadcast",
-    rawRefId: result.data.uri,
-    metadata: {
-      stageId: stageId.data,
-      collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
-      mode: parsed.data.mode,
-      liveUrl: parsed.data.liveUrl || null,
-      quotedUri: quotedPost?.uri ?? null,
-    },
-  });
-  res.status(201).json({
-    collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
-    uri: result.data.uri,
-    cid: result.data.cid,
-    record,
-  });
-});
 
 router.get("/api/skywire/pipelines", isAuthenticated, async (_req, res) => {
   res.json({
@@ -1079,12 +841,21 @@ router.get("/api/skywire/pipelines/history", isAuthenticated, async (req, res) =
   });
 });
 
-router.post("/api/skywire/pipelines/dispatch", isAuthenticated, actionLimiter, async (req, res) => {
+router.post("/api/skywire/pipelines/dispatch", actionLimiter, async (req, res) => {
   const user = req.user as any;
   const parsed = skywirePipelineDispatchSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire pipeline dispatch" });
   const pipeline = skywirePipelineById(parsed.data.pipelineId);
   if (!pipeline) return res.status(400).json({ error: "Unknown Skywire pipeline" });
+  if (pipeline.id === "wtf-live") {
+    const rollout = skywireRolloutStatusForRole(user.roles ?? user.role ?? null);
+    if (!rollout.wtfLiveEligible) {
+      return res.status(403).json({
+        error: "WTF LIVE is not available for your account yet",
+        code: "wtf_live_rollout_denied",
+      });
+    }
+  }
 
   const account = await linkedAccountForUser(user.id);
   const result = await dispatchSkywirePipeline({
@@ -1100,10 +871,17 @@ router.post("/api/skywire/pipelines/dispatch", isAuthenticated, actionLimiter, a
   });
 });
 
-router.post("/api/skywire/pipelines/dispatch-batch", isAuthenticated, actionLimiter, async (req, res) => {
+router.post("/api/skywire/pipelines/dispatch-batch", actionLimiter, async (req, res) => {
   const user = req.user as any;
   const parsed = skywirePipelineBatchDispatchSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire pipeline batch dispatch" });
+  const rollout = skywireRolloutStatusForRole(user.roles ?? user.role ?? null);
+  if (parsed.data.pipelineIds.includes("wtf-live") && !rollout.wtfLiveEligible) {
+    return res.status(403).json({
+      error: "WTF LIVE is not available for your account yet",
+      code: "wtf_live_rollout_denied",
+    });
+  }
   const account = await linkedAccountForUser(user.id);
   const results = [];
   for (const pipelineId of parsed.data.pipelineIds) {

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { DEFAULT_DESKTOP_APP_CONFIG } from "../../shared/desktop-apps";
 
 process.env.DATABASE_URL ||= "postgresql://wtf:wtf@localhost:5432/wtf_test";
 
@@ -8,6 +9,7 @@ test("isMcpFeatureEnabled mirrors admin desktop app gates", async () => {
   const { isMcpFeatureEnabled } = await import("./wtf-mcp");
 
   const apps = {
+    ...DEFAULT_DESKTOP_APP_CONFIG,
     wtfiam: true,
     hoard: true,
     wim: true,
@@ -106,6 +108,7 @@ test("standard access manifest exposes browser, API, and MCP without cookie/bear
     origin: "https://wtfos.app",
     mcpEndpoint: "https://wtfos.app/mcp",
     apps: {
+      ...DEFAULT_DESKTOP_APP_CONFIG,
       wtfiam: true,
       hoard: true,
       wim: true,

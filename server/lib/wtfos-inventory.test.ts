@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildWtfOsRegisteredInventory } from "./wtfos-inventory";
+import { DEFAULT_DESKTOP_APP_CONFIG } from "../../shared/desktop-apps";
 import { WTF_APP_PACKAGE_ACCEPTANCE } from "../../shared/wtf-app-packages";
 
 const apps = {
+  ...DEFAULT_DESKTOP_APP_CONFIG,
   wtfiam: true,
   hoard: true,
   wim: true,

@@ -31,7 +31,7 @@ function rolloutMode(raw: string | undefined): SkywireRolloutMode {
 }
 
 export function getSkywireRolloutConfig(
-  env: Pick<NodeJS.ProcessEnv, "SKYWIRE_ROLLOUT_MODE" | "SKYWIRE_WTF_LIVE_ENABLED" | "ATPROTO_ENABLED"> = process.env
+  env: Partial<Pick<NodeJS.ProcessEnv, "SKYWIRE_ROLLOUT_MODE" | "SKYWIRE_WTF_LIVE_ENABLED" | "ATPROTO_ENABLED">> = process.env
 ): SkywireRolloutConfig {
   return {
     rolloutMode: rolloutMode(env.SKYWIRE_ROLLOUT_MODE),

@@ -140,7 +140,8 @@ app.post("/api/auth/gm-welcome/complete", (_req, res) => {
 });
 
 const desktopAppearance = {
-  colorSchemeKey: "classic-teal",
+  appearanceStyleKey: "classic-95",
+  colorSchemeKey: "wtf-teal",
   desktopColor: "#008080",
   windowColor: "#c0c0c0",
   activeTitleColor: "#000080",
@@ -175,6 +176,7 @@ const desktopApps = {
   studio: true,
   gallery: true,
   skywire: true,
+  "wtf-live": true,
   tz2at: true,
   "rat-race": true,
   "map-lab": true,
@@ -713,6 +715,54 @@ function apiMock(req, res) {
         maxScope: "atproto transition:generic chat.bsky",
       },
     });
+  }
+  if (pathName === "/api/wtf-live/status") {
+    return res.json({
+      rolloutMode: "staff_alpha",
+      eligible: true,
+      wtfLiveEligible: true,
+      wtfLiveEnabled: true,
+      atprotoEnabled: true,
+      skywireSettingsPath: "/skywire?tab=account",
+      publishesThrough: "Skywire AT Protocol identity",
+    });
+  }
+  if (pathName === "/api/wtf-live/rooms" && req.method === "GET") {
+    return res.json({
+      rooms: [
+        { id: "wtf-live", title: "WTF LIVE", kind: "room", description: "Official show room", source: "system" },
+      ],
+      collection: "app.wtfgameshow.skywire.room.message",
+      storage: "public_atproto_repo_records",
+      skywirePath: "/skywire?tab=account",
+    });
+  }
+  if (pathName === "/api/wtf-live/rooms" && req.method === "POST") {
+    const title = String(req.body?.title || "New Room").trim();
+    return res.status(201).json({
+      room: { id: "my-room", title, kind: "room", description: req.body?.description || "", source: "user" },
+    });
+  }
+  if (pathName === "/api/wtf-live/stages" && req.method === "GET") {
+    return res.json({
+      stages: [{ id: "wtf-stage", title: "WTF Stage", kind: "stage", description: "Official stage", liveUrl: "/live", source: "system" }],
+      collection: "app.wtfgameshow.skywire.stage.broadcast",
+      storage: "public_atproto_repo_records",
+      mode: "one_way_broadcast",
+      skywirePath: "/skywire?tab=account",
+    });
+  }
+  if (pathName === "/api/wtf-live/stages" && req.method === "POST") {
+    const title = String(req.body?.title || "New Stage").trim();
+    return res.status(201).json({
+      stage: { id: "my-stage", title, kind: "stage", description: req.body?.description || "", liveUrl: req.body?.liveUrl || null, source: "user" },
+    });
+  }
+  if (/^\/api\/wtf-live\/rooms\/[^/]+\/messages$/.test(pathName) && req.method === "GET") {
+    return res.json({ roomId: pathName.split("/")[4], collection: "app.wtfgameshow.skywire.room.message", messages: [], cursor: null, source: "harness" });
+  }
+  if (/^\/api\/wtf-live\/stages\/[^/]+\/broadcasts$/.test(pathName) && req.method === "GET") {
+    return res.json({ stageId: pathName.split("/")[4], collection: "app.wtfgameshow.skywire.stage.broadcast", broadcasts: [], cursor: null, source: "harness" });
   }
   if (pathName === "/api/skywire/feed") {
     const post = {
@@ -1740,7 +1790,7 @@ function apiMock(req, res) {
     return res.json({
       limit: Number(url.searchParams.get("limit") || 24),
       windowHours: Number(url.searchParams.get("windowHours") || 24),
-      mintedWithinDays: Number(url.searchParams.get("mintedWithinDays") || 14),
+      mintedWithinDays: Number(url.searchParams.get("mintedWithinDays") || 7),
       minSoldPercent: Number(url.searchParams.get("minSoldPercent") || 50),
       minRecentSales: Number(url.searchParams.get("minRecentSales") || 2),
       generatedAt: new Date().toISOString(),
@@ -1749,7 +1799,15 @@ function apiMock(req, res) {
         localCandidateRows: 0,
         tz2atCandidateRows: 1,
         rankedItems: 0,
+        supplementSources: [
+          {
+            source: "objkt",
+            used: true,
+            purpose: "Harness metadata/listing supplement for tz2at rolling sale records.",
+          },
+        ],
         rejectedByUnknownSupply: 0,
+        rejectedByNoActiveListing: 0,
         rejectedByMintWindow: 1,
         rejectedByRecentSales: 1,
         rejectedBySoldPercent: 0,
@@ -1767,7 +1825,7 @@ function apiMock(req, res) {
             mintedAt: "2021-07-15T22:17:46.000Z",
             lastSaleAt: "2026-05-26T10:17:37.000Z",
             marketUrl: "https://objkt.com/tokens/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/170670",
-            reasons: ["1 recent sale(s), needs 2", "minted 1776 days ago, window is 14 days"],
+            reasons: ["1 recent sale(s), needs 2", "minted 1776 days ago, window is 7 days"],
           },
         ],
       },

@@ -10,7 +10,6 @@ import { registerAdminInAppMarketRoutes } from "../features/admin/in-app-market-
 import { registerAdminWDigestRoutes } from "../features/admin/w-digest-routes";
 import { registerSpineAdminRoutes } from "../features/atproto-spine/admin-routes";
 import { registerAppRegistryRoutes } from "../features/app-registry/admin-routes";
-import { registerAdminWDigestRoutes } from "../features/admin/w-digest-routes";
 
 const router = Router();
 

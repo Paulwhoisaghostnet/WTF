@@ -81,6 +81,7 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   studio: domainGuides.mediaTvStudio,
   gallery: domainGuides.mediaTvStudio,
   skywire: domainGuides.identityAndSocial,
+  "wtf-live": domainGuides.identityAndSocial,
   tz2at: domainGuides.identityAndSocial,
   "crp-nominations": domainGuides.identityAndSocial,
   "rat-race": domainGuides.commerceAndWallets,
@@ -103,6 +104,7 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
   studio: ["Studio project storage", "media storage"],
   gallery: ["Media storage", "TzKT", "Objkt"],
   skywire: ["AT Protocol", "Bluesky OAuth", "Tezos Domains"],
+  "wtf-live": ["AT Protocol", "Skywire OAuth identity", "connected user PDS repos"],
   tz2at: ["AT Protocol", "WTFOS PDS", "tz2at relay/firehose", "tzbsky public records", "Tezos wallets", "Etherlink wallets"],
   "crp-nominations": [
     "AT Protocol",
@@ -114,7 +116,7 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
     "tzbsky public records",
     "Bluesky intent compose",
   ],
-  "rat-race": ["tz2at firehose", "TzKT", "Objkt", "Tezos wallet preflight"],
+  "rat-race": ["tz2at rolling market stream", "Objkt metadata/listing-key supplement", "Tezos wallet preflight"],
   "map-lab": ["AT Protocol repo reads", "AT Protocol firehose previews", "WTFOS repo save/restore"],
   mail: ["Resend inbound email"],
 };
@@ -136,6 +138,7 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
   studio: ["studio_projects", "studio_files", "media_items"],
   gallery: ["media_items", "token media cache", "user media libraries"],
   skywire: ["atproto_accounts", "oauth_sessions", "users.tezos_identity"],
+  "wtf-live": ["wtf_live_rooms", "wtf_live_stages", "atproto_accounts", "challenge_system_events"],
   tz2at: ["atproto_accounts", "wtfos_atproto_identities", "wtfos_atproto_outbox", "tz2at_identity_links", "user_wallets", "user_etherlink_wallets"],
   "crp-nominations": [
     "wtfos_atproto_outbox",

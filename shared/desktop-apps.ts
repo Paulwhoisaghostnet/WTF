@@ -52,6 +52,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   studio: true,
   gallery: true,
   skywire: true,
+  "wtf-live": true,
   tz2at: true,
   "crp-nominations": true,
   "rat-race": false,

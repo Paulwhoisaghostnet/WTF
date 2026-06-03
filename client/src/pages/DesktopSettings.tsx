@@ -30,6 +30,7 @@ import { HamsterPixelSprite } from "../components/layout/HamsterPixelSprite";
 import { api } from "../lib/api";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
+  DESKTOP_APPEARANCE_STYLES,
   DESKTOP_BACKGROUND_FITS,
   DESKTOP_COLOR_SCHEMES,
   DESKTOP_CURSOR_LABELS,
@@ -155,6 +156,69 @@ const PresetGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
   gap: 8px;
+`;
+
+const StyleGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(142px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+`;
+
+const StyleButton = styled.button<{ $active: boolean; $styleKey: string }>`
+  min-height: 92px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 8px;
+  border: 2px solid;
+  border-color: ${(p) => (p.$active ? "#000 #fff #fff #000" : "#fff #404040 #404040 #fff")};
+  border-radius: ${(p) =>
+    p.$styleKey === "wtf-xp" ? "10px" : p.$styleKey === "wtf-aqua" ? "14px" : p.$styleKey === "wtf-zine" ? "2px" : "0"};
+  background:
+    ${(p) =>
+      p.$styleKey === "wtf-xp"
+        ? "linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.10)), var(--wtf-button-face, #c0c0c0)"
+        : p.$styleKey === "wtf-aqua"
+          ? "radial-gradient(circle at 50% 0, rgba(255,255,255,0.9), transparent 44%), var(--wtf-button-face, #c0c0c0)"
+          : p.$styleKey === "wtf-zine"
+            ? "repeating-linear-gradient(-8deg, rgba(0,0,0,0.10) 0 8px, transparent 8px 16px), var(--wtf-button-face, #c0c0c0)"
+            : "var(--wtf-button-face, #c0c0c0)"};
+  color: var(--wtf-text-color, #111);
+  text-align: left;
+  box-shadow: ${(p) =>
+    p.$styleKey === "wtf-zine"
+      ? "4px 4px 0 #000"
+      : p.$styleKey === "classic-95"
+        ? "inset 1px 1px 0 #fff, inset -1px -1px 0 #808080"
+        : "0 3px 10px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.72)"};
+`;
+
+const StylePreview = styled.span<{ $styleKey: string }>`
+  display: block;
+  height: 26px;
+  border: ${(p) => (p.$styleKey === "wtf-zine" ? "3px solid #000" : "1px solid #111")};
+  border-radius: ${(p) =>
+    p.$styleKey === "wtf-xp" ? "8px 8px 2px 2px" : p.$styleKey === "wtf-aqua" ? "12px 12px 5px 5px" : p.$styleKey === "wtf-zine" ? "1px" : "0"};
+  background:
+    linear-gradient(180deg, var(--wtf-active-title, #000080) 0 42%, var(--wtf-window-color, #c0c0c0) 42% 100%);
+  box-shadow: ${(p) =>
+    p.$styleKey === "wtf-zine"
+      ? "3px 3px 0 #000"
+      : p.$styleKey === "wtf-aqua"
+        ? "0 5px 10px rgba(0,0,0,0.22)"
+        : p.$styleKey === "wtf-xp"
+          ? "0 4px 8px rgba(0,0,0,0.20)"
+          : "none"};
+`;
+
+const StyleName = styled.span`
+  font-weight: 700;
+`;
+
+const StyleSummary = styled.span`
+  font-size: 10px;
+  line-height: 1.18;
 `;
 
 const PresetButton = styled.button<{ $active: boolean }>`
@@ -568,6 +632,7 @@ export function DesktopSettings() {
     onSuccess: (result) => {
       qc.setQueryData(["desktop", "settings"], result);
       reportThemeBuilderEvent("desktop.appearance.updated", "save", {
+        appearanceStyleKey: result.appearance.appearanceStyleKey,
         colorSchemeKey: result.appearance.colorSchemeKey,
         cursorStyle: result.appearance.cursorStyle,
         backgroundFit: result.appearance.backgroundFit,
@@ -756,6 +821,23 @@ export function DesktopSettings() {
     <AppWindow title="Theme Builder">
       <Shell>
         <Group variant="outside">
+          <GroupTitle>OS appearance</GroupTitle>
+          <StyleGrid>
+            {DESKTOP_APPEARANCE_STYLES.map((style) => (
+              <StyleButton
+                key={style.key}
+                type="button"
+                $active={draft.appearanceStyleKey === style.key}
+                $styleKey={style.key}
+                onClick={() => patchDraft({ appearanceStyleKey: style.key })}
+              >
+                <StylePreview $styleKey={style.key} />
+                <StyleName>{style.label}</StyleName>
+                <StyleSummary>{style.summary}</StyleSummary>
+              </StyleButton>
+            ))}
+          </StyleGrid>
+          <Separator style={{ margin: "10px 0" }} />
           <GroupTitle>Color schemes</GroupTitle>
           <PresetGrid>
             {DESKTOP_COLOR_SCHEMES.map((scheme) => (

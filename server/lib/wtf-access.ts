@@ -48,7 +48,7 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
   { path: "/notification-center", title: "Notification Center", access: "browser-session", purpose: "First-class notification inbox and preference surface." },
   { path: "/notifications", title: "Notifications", access: "browser-session", purpose: "Legacy alias for Notification Center." },
   { path: "/dashboard", title: "Dashboard", access: "browser-session", purpose: "Signed-in user home." },
-  { path: "/theme-builder", title: "Theme Builder", access: "browser-session", purpose: "Desktop theme, wallpaper, cursor, physics, pet switch, and MCP pairing." },
+  { path: "/theme-builder", title: "Theme Builder", access: "browser-session", purpose: "Desktop OS appearance grammar, theme colors, wallpaper, cursor, physics, pet switch, and MCP pairing." },
   { path: "/desktop-settings", title: "System Appearance", access: "browser-session", purpose: "Legacy alias for Theme Builder and desktop appearance." },
   { path: "/profile", title: "Profile", access: "browser-session", purpose: "Profile, wallets, and account settings." },
   { path: "/mail", title: "WTF Mail", access: "browser-session", purpose: "Official user mailbox for wtfOS mail addresses." },
@@ -60,6 +60,8 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
   { path: "/trade-boards", title: "Trade Boards", access: "browser-session", purpose: "Trade-board management.", appGate: "hoard" },
   { path: "/w", title: "W Feed", access: "browser-session", purpose: "Social feed and posting.", appGate: "w" },
   { path: "/crp-nominate", title: "CRP Nominations", access: "browser-session", purpose: "Tezos Commons Recognition Program nomination AppView.", appGate: "crp-nominations" },
+  { path: "/skywire", title: "Skywire", access: "browser-session", purpose: "Bluesky-compatible AT Protocol social cockpit.", appGate: "skywire" },
+  { path: "/live", title: "WTF LIVE", access: "browser-session", purpose: "Standalone public rooms and one-way stage broadcasts via Skywire AT identity.", appGate: "wtf-live" },
   { path: "/tv", title: "WTF TV", access: "browser-session", purpose: "TV creator/player surface.", appGate: "tv" },
   { path: "/console", title: "WTF Console", access: "browser-session", purpose: "Personal stock and owned game cartridges.", appGate: "console" },
   { path: "/game-studio", title: "Game Studio", access: "browser-session", purpose: "Create and submit browser games.", appGate: "game-studio" },
@@ -118,6 +120,12 @@ export const WTF_STANDARD_API_ROUTES: WtfApiAccessRoute[] = [
   { method: "GET", path: "/api/crp-nominations/mine", access: "browser-session", purpose: "List attributed CRP nominations and anonymous credit count.", appGate: "crp-nominations" },
   { method: "GET", path: "/api/crp-nominations/credits", access: "browser-session", purpose: "Read anonymous CRP nomination credit count.", appGate: "crp-nominations" },
   { method: "GET", path: "/api/crp-nominations/share", access: "browser-session", purpose: "Build X/Bluesky share intents for an owned nomination.", appGate: "crp-nominations" },
+  { method: "GET", path: "/api/skywire/status", access: "browser-session", purpose: "Read Skywire rollout eligibility and social cockpit metadata.", appGate: "skywire" },
+  { method: "GET", path: "/api/wtf-live/status", access: "browser-session", purpose: "Read WTF LIVE rollout eligibility and Skywire identity lane metadata.", appGate: "wtf-live" },
+  { method: "GET", path: "/api/wtf-live/rooms", access: "browser-session", purpose: "List WTF LIVE room definitions.", appGate: "wtf-live" },
+  { method: "POST", path: "/api/wtf-live/rooms", access: "browser-session", purpose: "Create a user-owned WTF LIVE room.", appGate: "wtf-live" },
+  { method: "GET", path: "/api/wtf-live/stages", access: "browser-session", purpose: "List WTF LIVE stage definitions.", appGate: "wtf-live" },
+  { method: "POST", path: "/api/wtf-live/stages", access: "browser-session", purpose: "Create a user-owned WTF LIVE stage.", appGate: "wtf-live" },
 ];
 
 export const WTF_MCP_SCOPE_GROUPS = [
