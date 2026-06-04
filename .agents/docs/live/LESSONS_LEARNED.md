@@ -1,3 +1,13 @@
+## 2026-06-04 — WTF LIVE schema changes must ship numbered SQL migrations
+
+**What happened**: WTF LIVE public rooms shipped with Drizzle schema for `wtf_live_rooms` and `wtf_live_stages`, but no numbered production SQL migration created those tables. Production then returned 503/500 responses from room/stage registry routes when users tried to list or create rooms.
+
+**Why it mattered**: The inventory harness mocked WTF LIVE APIs and did not exercise the real Postgres tables, so build and route smoke passed while the live app could not persist user-created rooms.
+
+**Rule**: Any WTF LIVE change that adds or reads persistent tables must include a numbered `drizzle/0xxx_*.sql` production migration in the same commit and a deploy-migration policy test for the table names. Harness mocks are not proof that the real registry can query production DB tables.
+
+---
+
 ## 2026-06-04 — WTF LIVE public rooms need room-only guest lanes
 
 **What happened**: WTF LIVE needed the Odio-style public room experience, but the existing `/live` surface mixed host controls, identity state, room lists, stages, and desktop navigation into one signed-in app.

@@ -4,6 +4,7 @@ import test from "node:test";
 
 const migrations = readFileSync("scripts/apply-production-migrations.sh", "utf8");
 const deploy = readFileSync("scripts/server-deploy.sh", "utf8");
+const wtfLiveMigration = readFileSync("drizzle/0097_wtf_live_rooms.sql", "utf8");
 
 test("LAW.TT1/10 production migrations fail closed on SQL errors", () => {
   assert.match(migrations, /set -euo pipefail/);
@@ -50,4 +51,12 @@ test("LAW.TT1/10 deploy starts the app only after production migrations pass", (
   );
   assert.doesNotMatch(deploy, /npm run db:push/);
   assert.doesNotMatch(deploy, /drizzle-kit push/);
+});
+
+test("WTF LIVE persistent room tables have a numbered production migration", () => {
+  assert.match(wtfLiveMigration, /CREATE TABLE IF NOT EXISTS wtf_live_rooms/);
+  assert.match(wtfLiveMigration, /CREATE TABLE IF NOT EXISTS wtf_live_stages/);
+  assert.match(wtfLiveMigration, /owner_user_id integer NOT NULL REFERENCES users\(id\) ON DELETE CASCADE/);
+  assert.match(wtfLiveMigration, /CREATE UNIQUE INDEX IF NOT EXISTS wtf_live_rooms_slug_idx/);
+  assert.match(wtfLiveMigration, /CREATE UNIQUE INDEX IF NOT EXISTS wtf_live_stages_slug_idx/);
 });
