@@ -208,7 +208,14 @@ export function restoreSessionFromRow(row: typeof atprotoAccounts.$inferSelect):
 
 export async function persistOAuthSessionForDid(
   did: string,
-  session: NodeSavedSession
+  session: NodeSavedSession,
+  options: {
+    accountId?: number;
+    userId?: number;
+    oauthRequestedScopes?: string | null;
+    oauthPermissionTier?: string | null;
+    oauthChatEnabled?: boolean;
+  } = {}
 ): Promise<void> {
   const fields = encryptedSessionFields(session);
   const updateValues = {
@@ -219,12 +226,21 @@ export async function persistOAuthSessionForDid(
     oauthIssuer: fields.oauthIssuer,
     ...(fields.oauthAudience ? { pdsUrl: fields.oauthAudience } : {}),
     oauthScopes: fields.oauthScopes,
+    ...(options.oauthRequestedScopes ? { oauthRequestedScopes: options.oauthRequestedScopes } : {}),
+    ...(options.oauthPermissionTier ? { oauthPermissionTier: options.oauthPermissionTier } : {}),
+    ...(typeof options.oauthChatEnabled === "boolean" ? { oauthChatEnabled: options.oauthChatEnabled } : {}),
     updatedAt: new Date(),
   };
+  const whereClause =
+    options.accountId != null
+      ? and(eq(atprotoAccounts.id, options.accountId), eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt))
+      : options.userId != null
+        ? and(eq(atprotoAccounts.userId, options.userId), eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt))
+        : and(eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt));
   const rows = await db
     .update(atprotoAccounts)
     .set(updateValues)
-    .where(and(eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt)))
+    .where(whereClause)
     .returning({ id: atprotoAccounts.id });
   if (rows.length === 0) {
     pendingOAuthSessions.set(did, session);

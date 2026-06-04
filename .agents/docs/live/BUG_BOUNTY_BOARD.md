@@ -54,7 +54,7 @@ Priority labels:
 | WTF-BB-180 | Verified | Codex WTF LIVE migration hotfix | 2026-06-04 | WTF LIVE / DB migrations | P1 | 12 | 7 | 2 | 5 | 1 | WTF LIVE user room tables declared in schema but missing production migration |
 | WTF-BB-199 | Verified | Codex WTF LIVE realtime media/chat pass | 2026-06-04 | WTF LIVE / realtime room transport | P0 | 15 | 2 | 4 | 5 | 1 | WTF LIVE guest room media controls are local-only and do not connect participants |
 | WTF-BB-200 | Verified | Codex Skywire OAuth permission sync pass | 2026-06-04 | Skywire / AT OAuth permission lifecycle | P1 | 13 | 5 | 2 | 5 | 2 | Skywire chat add-on OAuth completion can strand upgraded permissions in the popup/new window instead of the original client |
-| WTF-BB-203 | Verified | Codex Skywire stranded-popup OAuth pass | 2026-06-04 | Skywire / AT OAuth permission lifecycle | P1 | 13 | 5 | 2 | 5 | 2 | Skywire chat add-on OAuth can leave the original window disabled when the popup becomes the only upgraded Skywire instance |
+| WTF-BB-203 | Verified | Codex Skywire OAuth state persistence repair | 2026-06-04 | Skywire / AT OAuth permission lifecycle | P1 | 13 | 5 | 2 | 5 | 2 | Skywire chat add-on OAuth can leave the original window disabled when the popup becomes the only upgraded Skywire instance |
 | WTF-BB-201 | Verified | Codex WTF LIVE crowded-room layout pass | 2026-06-04 | WTF LIVE / public room layout | P1 | 12 | 7 | 2 | 5 | 1 | WTF LIVE idle participants render as empty media boxes and push room chat offscreen |
 | WTF-BB-202 | Verified | Codex WTF LIVE room exit/new-tab pass | 2026-06-04 | WTF LIVE / public room lifecycle UX | P1 | 11 | 8 | 2 | 5 | 0 | WTF LIVE public rooms lack obvious leave/close controls and signed-in Join replaces the wtfOS window |
 | WTF-BB-179 | Verified | Codex Rat Race Objkt pk hydration pass | 2026-05-28 | Rat Race / Objkt hydration | P1 | 12 | 7 | 3 | 5 | 0 | Objkt replay collect records use token pk and fail FA2 token hydration |
@@ -313,20 +313,24 @@ Priority labels:
 
 - Category: Skywire / AT OAuth permission lifecycle
 - Status: Verified
-- Owner/Session: Codex Skywire stranded-popup OAuth pass
+- Owner/Session: Codex Skywire OAuth state persistence repair
 - Score: C2 + F5 + S2 + P1(4) = 13
 - Evidence:
   - User report on 2026-06-04: enabling Skywire chat permissions opens a new WTF/Skywire instance where chat is allowed, while the original Skywire window remains chat-disabled; closing the upgraded window leaves the original disabled.
   - Code inspection found the original window only refetched `/api/atproto/me` on popup close or popup completion messages. If the popup became a second Skywire page and stayed open, the original window had no active canonical-state watcher.
+  - Reopened on 2026-06-04 after user clarified the permission also disappears after closing all windows and reopening. That means popup/opener refresh alone was insufficient; the OAuth callback must persist the requested chat scope to the canonical `atproto_accounts` row even when the popup callback does not carry the original Express session.
 - Correction:
   - Add original-window polling of `/api/atproto/me` while the OAuth popup is open, complete the local upgrade when the persisted account shows the requested tier/chat scope, and close the popup from the opener's retained window handle.
   - Make OAuth-created Skywire fallback windows broadcast structured completion metadata and close based on the OAuth popup window name, even when the URL does not carry `popup=1`.
+  - Store Skywire OAuth app metadata in a server-side pending-state map keyed by OAuth `state`, recover it on callback when the popup/new window has a drifted browser session, and write `oauthRequestedScopes`, `oauthPermissionTier`, and `oauthChatEnabled` with the persisted token session on the exact user+DID account row.
 - Verification:
-  - Passed `npm run check -- --pretty false`.
-  - Passed `npm run test:e2e:inventory:coverage`.
-  - Passed `npm run build`.
-  - Passed focused `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "OAuth popup"` with 3/3 popup lifecycle regressions.
-  - Passed full `npm run test:e2e:inventory` with 287/287 tests, including the stranded-popup canonical polling and Skywire fallback popup-close regressions.
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts server/features/atproto/permission-tiers.test.ts`
+  - `npm run build`
+  - `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "OAuth popup"`
+  - `npm run test:e2e:inventory`
 
 ### WTF-BB-201 - WTF LIVE idle participants render as empty media boxes and push room chat offscreen
 

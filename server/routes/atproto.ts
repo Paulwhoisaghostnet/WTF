@@ -28,6 +28,7 @@ import {
   SKYWIRE_PERMISSION_TIER_OPTIONS,
   buildTz2atAtprotoScope,
   buildSkywireAtprotoScope,
+  grantedSkywireCapabilities,
   normalizeTz2atPermissionStep,
   normalizeSkywirePermissionTier,
   type SkywirePermissionTier,
@@ -91,6 +92,61 @@ const mutationLimiter = createInMemoryRateLimit({
   keyGenerator: (req) => `user:${(req.user as any)?.id ?? req.ip}`,
   message: { error: "Too many Skywire identity requests, please try again later" },
 });
+
+type AtprotoOAuthAppName = "skywire" | "tz2at";
+
+type AtprotoOAuthPendingState = {
+  state: string;
+  returnTo: string;
+  popup: boolean;
+  userId: number;
+  appName: AtprotoOAuthAppName;
+  tz2atStep: string;
+  permissionTier: SkywirePermissionTier;
+  chatEnabled: boolean;
+  requestedScope: string;
+  startedAt: number;
+};
+
+const ATPROTO_OAUTH_STATE_TTL_MS = 15 * 60 * 1000;
+const pendingAtprotoOAuthStates = new Map<string, AtprotoOAuthPendingState>();
+
+function prunePendingAtprotoOAuthStates(now = Date.now()): void {
+  for (const [state, value] of pendingAtprotoOAuthStates.entries()) {
+    if (now - Number(value.startedAt || 0) > ATPROTO_OAUTH_STATE_TTL_MS) {
+      pendingAtprotoOAuthStates.delete(state);
+    }
+  }
+}
+
+function rememberAtprotoOAuthState(value: AtprotoOAuthPendingState): void {
+  prunePendingAtprotoOAuthStates(value.startedAt);
+  pendingAtprotoOAuthStates.set(value.state, value);
+}
+
+function requestAtprotoOAuthState(req: any): AtprotoOAuthPendingState | null {
+  const value = req.session?.atprotoOAuth;
+  if (!value || typeof value !== "object" || typeof value.state !== "string") return null;
+  return value as AtprotoOAuthPendingState;
+}
+
+function atprotoOAuthStateForCallback(req: any, callbackState: string | null): AtprotoOAuthPendingState | null {
+  prunePendingAtprotoOAuthStates();
+  const sessionState = requestAtprotoOAuthState(req);
+  if (sessionState?.state === callbackState) return sessionState;
+  if (callbackState) {
+    const pending = pendingAtprotoOAuthStates.get(callbackState);
+    if (pending) return pending;
+  }
+  return sessionState;
+}
+
+function clearAtprotoOAuthState(req: any, state: string): void {
+  pendingAtprotoOAuthStates.delete(state);
+  if (req.session?.atprotoOAuth?.state === state) {
+    delete req.session.atprotoOAuth;
+  }
+}
 
 function safeReturnPath(value: unknown): string {
   const requested = typeof value === "string" ? value : "/skywire";
@@ -369,6 +425,17 @@ async function linkedAccountForUser(userId: number) {
     .select()
     .from(atprotoAccounts)
     .where(and(eq(atprotoAccounts.userId, userId), isNull(atprotoAccounts.disconnectedAt)))
+    .orderBy(desc(atprotoAccounts.updatedAt))
+    .limit(1);
+  return account ?? null;
+}
+
+async function linkedAccountForUserDid(userId: number, did: string) {
+  const [account] = await db
+    .select()
+    .from(atprotoAccounts)
+    .where(and(eq(atprotoAccounts.userId, userId), eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt)))
+    .orderBy(desc(atprotoAccounts.updatedAt))
     .limit(1);
   return account ?? null;
 }
@@ -649,7 +716,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     return res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_handle`);
   }
   const state = randomProofToken();
-  (req.session as any).atprotoOAuth = {
+  const oauthState: AtprotoOAuthPendingState = {
     state,
     returnTo,
     popup,
@@ -661,6 +728,8 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     requestedScope,
     startedAt: Date.now(),
   };
+  (req.session as any).atprotoOAuth = oauthState;
+  rememberAtprotoOAuthState(oauthState);
   try {
     const client = await getAtprotoOAuthClient();
     const url = await client.authorize(handle, { scope: requestedScope, state });
@@ -686,10 +755,14 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
       });
     }
     req.session.save((err) => {
-      if (err) return res.status(500).json({ error: "Failed to persist OAuth state" });
+      if (err) {
+        clearAtprotoOAuthState(req, state);
+        return res.status(500).json({ error: "Failed to persist OAuth state" });
+      }
       res.redirect(url.toString());
     });
   } catch (err) {
+    clearAtprotoOAuthState(req, state);
     console.warn("[skywire] atproto oauth start failed:", {
       handle,
       tier,
@@ -706,11 +779,12 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
 });
 
 router.get("/api/atproto/oauth/callback", async (req, res) => {
-  const sessionState = (req.session as any).atprotoOAuth;
-  if (!req.isAuthenticated?.() || !sessionState?.userId) {
+  const params = new URLSearchParams(req.originalUrl.split("?")[1] || "");
+  const callbackState = params.get("state");
+  const sessionState = atprotoOAuthStateForCallback(req, callbackState);
+  if (!sessionState?.userId) {
     return res.redirect(`${publicBaseUrl()}/skywire?error=atproto_session`);
   }
-  const params = new URLSearchParams(req.originalUrl.split("?")[1] || "");
   const returnTo = safeReturnPath(sessionState.returnTo);
   const popup = sessionState.popup === true;
   const appName = sessionState.appName === "tz2at" ? "tz2at" : "skywire";
@@ -737,6 +811,10 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     }
     return res.redirect(`${publicBaseUrl()}${returnTo}?${parsed.toString()}`);
   };
+  const authenticatedUserId = req.isAuthenticated?.() ? Number((req.user as any)?.id) : null;
+  if (authenticatedUserId && authenticatedUserId !== Number(sessionState.userId)) {
+    return redirectWith("error=atproto_session");
+  }
   try {
     const client = await getAtprotoOAuthClient();
     const { session, state } = await client.callback(params);
@@ -748,6 +826,17 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     const api = new Agent(session);
     const profile = await api.getProfile({ actor: session.did });
     const tokenInfo = await session.getTokenInfo(false).catch(() => null);
+    const grantedScope = tokenInfo?.scope ?? sessionState.requestedScope ?? ATPROTO_SCOPE;
+    const requestedScope = sessionState.requestedScope ?? tokenInfo?.scope ?? ATPROTO_SCOPE;
+    const resolvedPermissionTier =
+      appName === "tz2at"
+        ? sessionState.tz2atStep === "wallet-link"
+          ? "tz2at-wallet-link"
+          : "tz2at-identity"
+        : (normalizeSkywirePermissionTier(sessionState.permissionTier) as SkywirePermissionTier);
+    const resolvedChatEnabled =
+      appName === "skywire" &&
+      (Boolean(sessionState.chatEnabled) || grantedSkywireCapabilities(grantedScope).has("chat"));
 
     const accountValues = {
       userId: sessionState.userId,
@@ -760,20 +849,17 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       indexedAt: new Date(),
       lastSyncedAt: new Date(),
       oauthIssuer: tokenInfo?.iss ?? null,
-      oauthScopes: tokenInfo?.scope ?? sessionState.requestedScope ?? ATPROTO_SCOPE,
-      oauthRequestedScopes: sessionState.requestedScope ?? tokenInfo?.scope ?? ATPROTO_SCOPE,
-      oauthPermissionTier:
-        appName === "tz2at"
-          ? sessionState.tz2atStep === "wallet-link"
-            ? "tz2at-wallet-link"
-            : "tz2at-identity"
-          : (normalizeSkywirePermissionTier(sessionState.permissionTier) as SkywirePermissionTier),
-      oauthChatEnabled: Boolean(sessionState.chatEnabled),
+      oauthScopes: grantedScope,
+      oauthRequestedScopes: requestedScope,
+      oauthPermissionTier: resolvedPermissionTier,
+      oauthChatEnabled: resolvedChatEnabled,
       tokenExpiresAt: tokenInfo?.expiresAt ?? null,
       disconnectedAt: null,
       updatedAt: new Date(),
     };
-    const existingAccount = await linkedAccountForUser(sessionState.userId);
+    const existingAccount =
+      (await linkedAccountForUserDid(sessionState.userId, session.did)) ??
+      (await linkedAccountForUser(sessionState.userId));
     const [account] = existingAccount
       ? await db
           .update(atprotoAccounts)
@@ -793,22 +879,25 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
         indexedAt: new Date(),
         lastSyncedAt: new Date(),
         oauthIssuer: tokenInfo?.iss ?? null,
-        oauthScopes: tokenInfo?.scope ?? sessionState.requestedScope ?? ATPROTO_SCOPE,
-        oauthRequestedScopes: sessionState.requestedScope ?? tokenInfo?.scope ?? ATPROTO_SCOPE,
-        oauthPermissionTier:
-          appName === "tz2at"
-            ? sessionState.tz2atStep === "wallet-link"
-              ? "tz2at-wallet-link"
-              : "tz2at-identity"
-            : (normalizeSkywirePermissionTier(sessionState.permissionTier) as SkywirePermissionTier),
-        oauthChatEnabled: Boolean(sessionState.chatEnabled),
+        oauthScopes: grantedScope,
+        oauthRequestedScopes: requestedScope,
+        oauthPermissionTier: resolvedPermissionTier,
+        oauthChatEnabled: resolvedChatEnabled,
         tokenExpiresAt: tokenInfo?.expiresAt ?? null,
         updatedAt: new Date(),
       })
           .returning();
 
     const storedSession = takePendingOAuthSessionForDid(session.did);
-    if (storedSession) await persistOAuthSessionForDid(session.did, storedSession);
+    if (storedSession) {
+      await persistOAuthSessionForDid(session.did, storedSession, {
+        accountId: account.id,
+        userId: sessionState.userId,
+        oauthRequestedScopes: requestedScope,
+        oauthPermissionTier: resolvedPermissionTier,
+        oauthChatEnabled: resolvedChatEnabled,
+      });
+    }
 
     await emitAtprotoSystemEvent({
       eventType: "atproto.account.linked",
@@ -819,32 +908,28 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       rawRefId: account.id,
       metadata: {
         pdsUrl: tokenInfo?.aud ?? null,
-        permissionTier:
-          appName === "tz2at"
-            ? sessionState.tz2atStep === "wallet-link"
-              ? "tz2at-wallet-link"
-              : "tz2at-identity"
-            : normalizeSkywirePermissionTier(sessionState.permissionTier),
-        chatEnabled: Boolean(sessionState.chatEnabled),
+        permissionTier: resolvedPermissionTier,
+        chatEnabled: resolvedChatEnabled,
         appName,
-        requestedScope: sessionState.requestedScope ?? null,
-        grantedScope: tokenInfo?.scope ?? null,
+        requestedScope,
+        grantedScope,
       },
     });
 
-    delete (req.session as any).atprotoOAuth;
+    clearAtprotoOAuthState(req, sessionState.state);
     const verifiedParams = new URLSearchParams({
       verified: "atproto",
       handle: profile.data.handle,
       accountId: String(account.id),
       permissionTier: String(sessionState.permissionTier || sessionState.tz2atStep || ""),
-      chat: Boolean(sessionState.chatEnabled) ? "1" : "0",
+      chat: resolvedChatEnabled ? "1" : "0",
     });
-    if (sessionState.requestedScope) verifiedParams.set("requestedScope", sessionState.requestedScope);
-    if (tokenInfo?.scope) verifiedParams.set("grantedScope", tokenInfo.scope);
+    if (requestedScope) verifiedParams.set("requestedScope", requestedScope);
+    if (grantedScope) verifiedParams.set("grantedScope", grantedScope);
     req.session.save(() => redirectWith(verifiedParams.toString()));
   } catch (err) {
     console.warn("[skywire] atproto oauth callback failed:", err);
+    clearAtprotoOAuthState(req, sessionState.state);
     redirectWith("error=atproto_oauth");
   }
 });

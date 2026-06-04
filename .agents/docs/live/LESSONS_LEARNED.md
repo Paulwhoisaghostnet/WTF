@@ -1,3 +1,13 @@
+## 2026-06-04 — Skywire OAuth upgrades must persist from OAuth state, not popup session state
+
+**What happened**: The Skywire Chat Add-on popup could finish OAuth and land in a second Skywire/wtfOS instance that looked upgraded, while the original window and later fresh sessions still showed chat disabled. The earlier popup-sync fix proved the opener could react to canonical state, but it did not prove the callback always wrote the upgraded scope to the canonical account row. The callback depended on `req.session.atprotoOAuth` for `popup`, `userId`, requested scope, tier, and chat intent, so a popup/new-window OAuth callback with drifted browser session state could fall back to a normal Skywire redirect or lose the app-owned chat metadata.
+
+**Why it mattered**: OAuth permissions are account state, not window state. If chat exists only because a popup URL says `chat=1`, users get a fake upgrade that disappears after closing windows, refreshing, or reopening WTF OS.
+
+**Rule**: Skywire OAuth start must store app-owned metadata in a server-side pending-state record keyed by the OAuth `state` token, and the callback must recover from that state before writing the exact user+DID `atproto_accounts` row. Token persistence must carry `oauthRequestedScopes`, `oauthPermissionTier`, and `oauthChatEnabled` along with encrypted token material so every later `/api/atproto/me` read reflects the durable permission.
+
+---
+
 ## 2026-06-04 — Skywire Market Feed search must use a search-capable AppView
 
 **What happened**: Skywire's Market Feed could show "This lane is quiet right now" even while Bluesky had fresh posts linking Objkt and Teia tokens. The server was calling `app.bsky.feed.searchPosts` through the same public AppView helper used for read-only profile/feed calls, and `public.api.bsky.app` returned HTTP 403 for `searchPosts`. Because the route settled all domain searches and returned an empty successful feed, the client rendered an empty-lane state instead of an upstream search failure.

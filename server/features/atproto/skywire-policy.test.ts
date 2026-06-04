@@ -34,6 +34,10 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /"\/api\/atproto\/register\/phone-verification"/);
   assert.match(route, /"\/api\/atproto\/register"/);
   assert.match(route, /"\/api\/atproto\/oauth\/start"/);
+  assert.match(route, /pendingAtprotoOAuthStates/);
+  assert.match(route, /rememberAtprotoOAuthState\(oauthState\)/);
+  assert.match(route, /atprotoOAuthStateForCallback\(req,\s*callbackState\)/);
+  assert.match(route, /const callbackState = params\.get\("state"\)/);
   assert.match(route, /popupCompletionPage/);
   assert.match(route, /BroadcastChannel/);
   assert.match(route, /postMessage\(message/);
@@ -64,6 +68,12 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /oauthRequestedScopes/);
   assert.match(route, /oauthPermissionTier/);
   assert.match(route, /oauthChatEnabled/);
+  assert.match(route, /resolvedChatEnabled/);
+  assert.match(route, /grantedSkywireCapabilities\(grantedScope\)\.has\("chat"\)/);
+  assert.match(route, /linkedAccountForUserDid\(sessionState\.userId,\s*session\.did\)/);
+  assert.match(route, /persistOAuthSessionForDid\(session\.did,\s*storedSession,\s*\{/);
+  assert.match(route, /oauthChatEnabled:\s*resolvedChatEnabled/);
+  assert.doesNotMatch(route, /if \(!req\.isAuthenticated\?\.\(\) \|\| !sessionState\?\.userId\)/);
   assert.match(route, /buildSkywireAtprotoScope/);
   assert.match(route, /normalizeSkywirePermissionTier/);
   assert.match(route, /new Agent\(session\)/);
