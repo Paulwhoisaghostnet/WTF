@@ -85,6 +85,16 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     const teiaPreview = page.locator("[data-skywire-token-preview='true']").filter({ hasText: "Harness Teia Token" });
     await expect(teiaPreview.getByText("Teia", { exact: true })).toBeVisible();
     await expect(teiaPreview.getByRole("button", { name: "Buy 0.25 tez" })).toBeVisible();
+
+    await firstCard.getByRole("button", { name: /Harness Skywire/i }).click();
+    await expect(page.getByText("Mocked Skywire feed actor")).toBeVisible();
+    const followButton = page.locator("[data-skywire-actor-follow='true']");
+    await expect(followButton).toBeVisible();
+    await expect(followButton).toBeEnabled();
+    await followButton.click();
+    await expect(followButton).toContainText("Following");
+    const state = await (await request.get("/__test/state")).json();
+    expect(state.skywireFollowPayloads).toEqual([{ did: "did:plc:harness" }]);
     expect(fatalErrors(errors)).toEqual([]);
   });
 

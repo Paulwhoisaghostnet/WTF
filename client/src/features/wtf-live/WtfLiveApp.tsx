@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, TextField } from "react95";
-import { Copy, ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, LogIn, Power, Trash2 } from "lucide-react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { skywirePermissionTierLabel, type SkywirePermissionTier } from "@shared/atproto-permissions";
 import {
+  ActionGrid,
+  ButtonLabel,
   ContentPane,
   ContextBar,
   DialogCard,
@@ -23,7 +25,6 @@ import {
   RoomDirectory,
   Sidebar,
   ShareLink,
-  SplitActions,
   Stack,
   TextArea,
   WideGrid,
@@ -238,8 +239,14 @@ export function WtfLiveApp() {
   const canRooms = Boolean(account && accountHasCapability(account, "rooms"));
   const canStages = Boolean(account && accountHasCapability(account, "stages"));
 
-  const roomOptions = (roomsQuery.data?.rooms ?? []).filter((r) => r.kind === "room");
+  const publicRoomOptions = (roomsQuery.data?.rooms ?? []).filter((r) => r.kind === "room" && r.isPublic !== false);
   const ownedRoomOptions = ownedRoomsQuery.data?.rooms ?? [];
+  const roomOptions = useMemo(() => {
+    const byId = new Map<string, WtfLiveRoom>();
+    publicRoomOptions.forEach((room) => byId.set(room.id, room));
+    ownedRoomOptions.forEach((room) => byId.set(room.id, room));
+    return Array.from(byId.values());
+  }, [ownedRoomOptions, publicRoomOptions]);
   const stageOptions = stagesQuery.data?.stages ?? [];
   const selectedRoom = roomOptions.find((r) => r.id === roomId) ?? null;
   const selectedStage = stageOptions.find((s) => s.id === stageId) ?? null;
@@ -285,6 +292,25 @@ export function WtfLiveApp() {
       qc.invalidateQueries({ queryKey: ["wtf-live", "stages"] });
     },
   });
+  const updateRoomVisibility = useMutation({
+    mutationFn: ({ room, isPublic }: { room: WtfLiveRoom; isPublic: boolean }) =>
+      api.patch<{ room?: WtfLiveRoom }>(`/api/wtf-live/rooms/${encodeURIComponent(room.id)}`, { isPublic }),
+    onSuccess: (data: { room?: WtfLiveRoom }, variables) => {
+      const room = data?.room ?? variables.room;
+      setCopyStatus(`${room.title} is ${variables.isPublic ? "open" : "closed"} to guests.`);
+      qc.invalidateQueries({ queryKey: ["wtf-live", "rooms"] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "mine"] });
+    },
+  });
+  const deleteRoom = useMutation({
+    mutationFn: (room: WtfLiveRoom) => api.delete<{ ok: true; roomId: string }>(`/api/wtf-live/rooms/${encodeURIComponent(room.id)}`),
+    onSuccess: (_data: { ok: true; roomId: string }, room: WtfLiveRoom) => {
+      if (roomId === room.id) setRoomId("wtf-live");
+      setCopyStatus(`${room.title} deleted.`);
+      qc.invalidateQueries({ queryKey: ["wtf-live", "rooms"] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "mine"] });
+    },
+  });
   const sendRoom = useMutation({
     mutationFn: () =>
       api.post(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/messages`, {
@@ -324,29 +350,63 @@ export function WtfLiveApp() {
     window.open(publicRoomPath(room.id), "_blank", "noopener,noreferrer");
   }
 
+  function joinPublicRoom(room: WtfLiveRoom) {
+    window.location.href = publicRoomPath(room.id);
+  }
+
   function openHostRoom(room: WtfLiveRoom) {
     setRoomId(room.id);
     setTab("rooms");
   }
 
+  function toggleRoomOpen(room: WtfLiveRoom) {
+    updateRoomVisibility.mutate({ room, isPublic: room.isPublic === false });
+  }
+
+  function confirmDeleteRoom(room: WtfLiveRoom) {
+    if (!window.confirm(`Delete ${room.title}? The guest URL will stop working.`)) return;
+    deleteRoom.mutate(room);
+  }
+
+  function canManageRoom(room: WtfLiveRoom) {
+    return room.source === "user" && ownedRoomOptions.some((ownedRoom) => ownedRoom.id === room.id);
+  }
+
   function renderRoomCard(room: WtfLiveRoom, owned: boolean) {
+    const closed = room.isPublic === false;
     return (
       <RoomCard key={`${owned ? "owned" : "public"}-${room.id}`}>
-        <RoomBadge>{owned ? "Owned" : room.source === "system" ? "Official" : "Open"}</RoomBadge>
+        <RoomBadge $closed={closed}>
+          {closed ? "Closed" : owned ? "Owned" : room.source === "system" ? "Official" : "Open"}
+        </RoomBadge>
         <strong>{room.title}</strong>
         {room.description ? <MutedText>{room.description}</MutedText> : null}
+        {closed ? <MutedText>Closed to guests until the owner reopens it.</MutedText> : null}
         <ShareLink>{publicRoomUrl(room.id)}</ShareLink>
-        <SplitActions>
-          <Button size="sm" onClick={() => copyPublicRoom(room)}>
-            <Copy size={14} aria-hidden /> Copy URL
+        <ActionGrid>
+          <Button primary size="sm" disabled={closed} onClick={() => joinPublicRoom(room)}>
+            <ButtonLabel><LogIn size={14} aria-hidden /> Join</ButtonLabel>
           </Button>
-          <Button size="sm" onClick={() => openPublicRoom(room)}>
-            <ExternalLink size={14} aria-hidden /> Guest View
+          <Button size="sm" onClick={() => copyPublicRoom(room)}>
+            <ButtonLabel><Copy size={14} aria-hidden /> Copy URL</ButtonLabel>
+          </Button>
+          <Button size="sm" disabled={closed} onClick={() => openPublicRoom(room)}>
+            <ButtonLabel><ExternalLink size={14} aria-hidden /> Guest View</ButtonLabel>
           </Button>
           <Button size="sm" onClick={() => openHostRoom(room)}>
             Host View
           </Button>
-        </SplitActions>
+          {owned ? (
+            <Button size="sm" disabled={updateRoomVisibility.isPending} onClick={() => toggleRoomOpen(room)}>
+              <ButtonLabel><Power size={14} aria-hidden /> {closed ? "Reopen" : "Close"}</ButtonLabel>
+            </Button>
+          ) : null}
+          {owned ? (
+            <Button size="sm" disabled={deleteRoom.isPending} onClick={() => confirmDeleteRoom(room)}>
+              <ButtonLabel><Trash2 size={14} aria-hidden /> Delete</ButtonLabel>
+            </Button>
+          ) : null}
+        </ActionGrid>
       </RoomCard>
     );
   }
@@ -418,8 +478,8 @@ export function WtfLiveApp() {
             <GroupBox label="Open public rooms">
               <RoomDirectory>
                 {roomsQuery.isLoading ? <Hourglass size={24} /> : null}
-                {roomOptions.length ? (
-                  roomOptions.map((room) => renderRoomCard(room, false))
+                {publicRoomOptions.length ? (
+                  publicRoomOptions.map((room) => renderRoomCard(room, false))
                 ) : (
                   <MutedText>No public rooms are open.</MutedText>
                 )}
@@ -482,24 +542,40 @@ export function WtfLiveApp() {
                 <NativeSelect value={roomId} onChange={(e) => setRoomId(e.target.value)}>
                   {roomOptions.map((room) => (
                     <option key={room.id} value={room.id}>
-                      {room.title}
+                      {room.title}{room.isPublic === false ? " (closed)" : ""}
                     </option>
                   ))}
                 </NativeSelect>
                 {selectedRoom ? (
                   <RoomCard>
-                    <RoomBadge>{selectedRoom.source === "system" ? "Official" : "Open"}</RoomBadge>
+                    <RoomBadge $closed={selectedRoom.isPublic === false}>
+                      {selectedRoom.isPublic === false ? "Closed" : selectedRoom.source === "system" ? "Official" : "Open"}
+                    </RoomBadge>
                     <strong>{selectedRoom.title}</strong>
                     {selectedRoom.description ? <MutedText>{selectedRoom.description}</MutedText> : null}
+                    {selectedRoom.isPublic === false ? <MutedText>Closed to guests until you reopen it.</MutedText> : null}
                     <ShareLink>{publicRoomUrl(selectedRoom.id)}</ShareLink>
-                    <SplitActions>
+                    <ActionGrid>
+                      <Button primary size="sm" disabled={selectedRoom.isPublic === false} onClick={() => joinPublicRoom(selectedRoom)}>
+                        <ButtonLabel><LogIn size={14} aria-hidden /> Join</ButtonLabel>
+                      </Button>
                       <Button size="sm" onClick={() => copyPublicRoom(selectedRoom)}>
-                        <Copy size={14} aria-hidden /> Copy URL
+                        <ButtonLabel><Copy size={14} aria-hidden /> Copy URL</ButtonLabel>
                       </Button>
-                      <Button size="sm" onClick={() => openPublicRoom(selectedRoom)}>
-                        <ExternalLink size={14} aria-hidden /> Guest View
+                      <Button size="sm" disabled={selectedRoom.isPublic === false} onClick={() => openPublicRoom(selectedRoom)}>
+                        <ButtonLabel><ExternalLink size={14} aria-hidden /> Guest View</ButtonLabel>
                       </Button>
-                    </SplitActions>
+                      {canManageRoom(selectedRoom) ? (
+                        <Button size="sm" disabled={updateRoomVisibility.isPending} onClick={() => toggleRoomOpen(selectedRoom)}>
+                          <ButtonLabel><Power size={14} aria-hidden /> {selectedRoom.isPublic === false ? "Reopen" : "Close"}</ButtonLabel>
+                        </Button>
+                      ) : null}
+                      {canManageRoom(selectedRoom) ? (
+                        <Button size="sm" disabled={deleteRoom.isPending} onClick={() => confirmDeleteRoom(selectedRoom)}>
+                          <ButtonLabel><Trash2 size={14} aria-hidden /> Delete</ButtonLabel>
+                        </Button>
+                      ) : null}
+                    </ActionGrid>
                   </RoomCard>
                 ) : null}
                 <FeedList>

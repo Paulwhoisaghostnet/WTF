@@ -24,7 +24,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `node -e "import('./tests/playwright/harness.mjs'); setInterval(() => {}, 1000)"`,
+    command: "node tests/playwright/harness.mjs",
     url: `http://127.0.0.1:${PORT}/`,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,

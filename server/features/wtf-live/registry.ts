@@ -70,6 +70,25 @@ export const SYSTEM_WTF_LIVE_STAGES: WtfLiveStageRecord[] = [
   },
 ];
 
+function roomRecordFromRow(row: {
+  slug: string;
+  title: string;
+  description: string;
+  ownerUserId: number;
+  isPublic: boolean;
+}): WtfLiveRoomRecord {
+  return {
+    id: row.slug,
+    title: row.title,
+    kind: "room" as const,
+    description: row.description,
+    source: "user" as const,
+    ownerUserId: row.ownerUserId,
+    ownerUsername: null,
+    isPublic: row.isPublic,
+  };
+}
+
 export function slugifyWtfLiveId(raw: string): string {
   const slug = raw
     .trim()
@@ -88,7 +107,7 @@ async function uniqueRoomSlug(base: string): Promise<string> {
     const existing = await db
       .select({ id: wtfLiveRooms.id })
       .from(wtfLiveRooms)
-      .where(and(eq(wtfLiveRooms.slug, candidate), isNull(wtfLiveRooms.archivedAt)))
+      .where(eq(wtfLiveRooms.slug, candidate))
       .limit(1);
     if (
       existing.length === 0 &&
@@ -108,7 +127,7 @@ async function uniqueStageSlug(base: string): Promise<string> {
     const existing = await db
       .select({ id: wtfLiveStages.id })
       .from(wtfLiveStages)
-      .where(and(eq(wtfLiveStages.slug, candidate), isNull(wtfLiveStages.archivedAt)))
+      .where(eq(wtfLiveStages.slug, candidate))
       .limit(1);
     if (
       existing.length === 0 &&
@@ -130,21 +149,12 @@ export async function listWtfLiveRooms(): Promise<WtfLiveRoomRecord[]> {
       isPublic: wtfLiveRooms.isPublic,
     })
     .from(wtfLiveRooms)
-    .where(isNull(wtfLiveRooms.archivedAt))
+    .where(and(isNull(wtfLiveRooms.archivedAt), eq(wtfLiveRooms.isPublic, true)))
     .orderBy(wtfLiveRooms.createdAt);
 
   return [
     ...SYSTEM_WTF_LIVE_ROOMS,
-    ...rows.map((row) => ({
-      id: row.slug,
-      title: row.title,
-      kind: "room" as const,
-      description: row.description,
-      source: "user" as const,
-      ownerUserId: row.ownerUserId,
-      ownerUsername: null,
-      isPublic: row.isPublic,
-    })),
+    ...rows.map(roomRecordFromRow),
   ];
 }
 
@@ -161,16 +171,7 @@ export async function listOwnedWtfLiveRooms(ownerUserId: number): Promise<WtfLiv
     .where(and(eq(wtfLiveRooms.ownerUserId, ownerUserId), isNull(wtfLiveRooms.archivedAt)))
     .orderBy(wtfLiveRooms.createdAt);
 
-  return rows.map((row) => ({
-    id: row.slug,
-    title: row.title,
-    kind: "room" as const,
-    description: row.description,
-    source: "user" as const,
-    ownerUserId: row.ownerUserId,
-    ownerUsername: null,
-    isPublic: row.isPublic,
-  }));
+  return rows.map(roomRecordFromRow);
 }
 
 export async function getWtfLiveRoom(roomId: string): Promise<WtfLiveRoomRecord | null> {
@@ -189,16 +190,7 @@ export async function getWtfLiveRoom(roomId: string): Promise<WtfLiveRoomRecord 
     .limit(1);
   const row = rows[0];
   if (!row) return null;
-  return {
-    id: row.slug,
-    title: row.title,
-    kind: "room" as const,
-    description: row.description,
-    source: "user" as const,
-    ownerUserId: row.ownerUserId,
-    ownerUsername: null,
-    isPublic: row.isPublic,
-  };
+  return roomRecordFromRow(row);
 }
 
 export async function getPublicWtfLiveRoom(roomId: string): Promise<WtfLiveRoomRecord | null> {
@@ -284,6 +276,56 @@ export async function createWtfLiveRoom(input: {
     ownerUsername: null,
     isPublic: true,
   } satisfies WtfLiveRoomRecord;
+}
+
+export async function updateOwnedWtfLiveRoomVisibility(input: {
+  ownerUserId: number;
+  roomId: string;
+  isPublic: boolean;
+}): Promise<WtfLiveRoomRecord | null> {
+  const [row] = await db
+    .update(wtfLiveRooms)
+    .set({
+      isPublic: input.isPublic,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(wtfLiveRooms.slug, input.roomId),
+        eq(wtfLiveRooms.ownerUserId, input.ownerUserId),
+        isNull(wtfLiveRooms.archivedAt),
+      ),
+    )
+    .returning({
+      slug: wtfLiveRooms.slug,
+      title: wtfLiveRooms.title,
+      description: wtfLiveRooms.description,
+      ownerUserId: wtfLiveRooms.ownerUserId,
+      isPublic: wtfLiveRooms.isPublic,
+    });
+  return row ? roomRecordFromRow(row) : null;
+}
+
+export async function archiveOwnedWtfLiveRoom(input: {
+  ownerUserId: number;
+  roomId: string;
+}): Promise<boolean> {
+  const [row] = await db
+    .update(wtfLiveRooms)
+    .set({
+      archivedAt: new Date(),
+      isPublic: false,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(wtfLiveRooms.slug, input.roomId),
+        eq(wtfLiveRooms.ownerUserId, input.ownerUserId),
+        isNull(wtfLiveRooms.archivedAt),
+      ),
+    )
+    .returning({ id: wtfLiveRooms.id });
+  return Boolean(row);
 }
 
 export async function createWtfLiveStage(input: {

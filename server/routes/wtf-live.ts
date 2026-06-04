@@ -21,12 +21,14 @@ import { sourceUrlForAtUri } from "../features/atproto/identity";
 import { emitAtprotoSystemEvent } from "../features/atproto/events";
 import { requireWtfLiveRollout, skywireRolloutStatusForRole } from "../lib/skywire-access";
 import {
+  archiveOwnedWtfLiveRoom,
   createWtfLiveRoom,
   createWtfLiveStage,
   getPublicWtfLiveRoom,
   listOwnedWtfLiveRooms,
   listWtfLiveRooms,
   listWtfLiveStages,
+  updateOwnedWtfLiveRoomVisibility,
   wtfLiveRoomExists,
   wtfLiveStageExists,
 } from "../features/wtf-live/registry";
@@ -59,6 +61,10 @@ const quotedPostSnapshotSchema = z
 const createRoomSchema = z.object({
   title: z.string().trim().min(2).max(120),
   description: z.string().trim().max(500).optional().default(""),
+});
+
+const updateRoomSchema = z.object({
+  isPublic: z.boolean(),
 });
 
 const createStageSchema = z.object({
@@ -347,6 +353,42 @@ router.post("/api/wtf-live/rooms", actionLimiter, async (req, res) => {
     res.status(201).json({ room });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message || "Could not create room" });
+  }
+});
+
+router.patch("/api/wtf-live/rooms/:roomId", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  const parsed = updateRoomSchema.safeParse(req.body);
+  if (!roomId.success || !parsed.success) {
+    return res.status(400).json({ error: "Invalid room update", details: parsed.success ? undefined : parsed.error.flatten() });
+  }
+  try {
+    const room = await updateOwnedWtfLiveRoomVisibility({
+      ownerUserId: user.id,
+      roomId: roomId.data,
+      isPublic: parsed.data.isPublic,
+    });
+    if (!room) return res.status(404).json({ error: "Owned room not found" });
+    res.json({ room });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message || "Could not update room" });
+  }
+});
+
+router.delete("/api/wtf-live/rooms/:roomId", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  if (!roomId.success) return res.status(400).json({ error: "Invalid room" });
+  try {
+    const archived = await archiveOwnedWtfLiveRoom({
+      ownerUserId: user.id,
+      roomId: roomId.data,
+    });
+    if (!archived) return res.status(404).json({ error: "Owned room not found" });
+    res.json({ ok: true, roomId: roomId.data });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message || "Could not delete room" });
   }
 });
 

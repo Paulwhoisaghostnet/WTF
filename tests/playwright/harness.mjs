@@ -20,6 +20,8 @@ const state = {
   groupchatLog: [],
   interactionLog: [],
   skywirePostPayloads: [],
+  skywireFollowPayloads: [],
+  wtfLiveOwnedRoom: { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, isPublic: true },
 };
 
 function nowIso() {
@@ -47,6 +49,8 @@ app.post("/__test/state", (req, res) => {
   state.groupchatLog = [];
   state.interactionLog = [];
   state.skywirePostPayloads = [];
+  state.skywireFollowPayloads = [];
+  state.wtfLiveOwnedRoom = { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, isPublic: true };
   resetHarnessMarketState();
   res.json({ ok: true, state: { mode: state.mode, userRole: state.userRole } });
 });
@@ -59,6 +63,7 @@ app.get("/__test/state", (_req, res) => {
     groupchatLog: state.groupchatLog,
     interactionLog: state.interactionLog,
     skywirePostPayloads: state.skywirePostPayloads,
+    skywireFollowPayloads: state.skywireFollowPayloads,
   });
 });
 
@@ -762,9 +767,11 @@ function apiMock(req, res) {
     return res.json({ roomId: "wtf-live", collection: "app.wtfgameshow.skywire.room.message", messages: [], cursor: null, source: "harness" });
   }
   if (pathName === "/api/wtf-live/rooms" && req.method === "GET") {
+    const ownedRoom = state.wtfLiveOwnedRoom?.isPublic ? state.wtfLiveOwnedRoom : null;
     return res.json({
       rooms: [
         { id: "wtf-live", title: "WTF LIVE", kind: "room", description: "Official show room", source: "system", ownerUserId: null, isPublic: true },
+        ...(ownedRoom ? [ownedRoom] : []),
       ],
       collection: "app.wtfgameshow.skywire.room.message",
       storage: "public_atproto_repo_records",
@@ -773,18 +780,36 @@ function apiMock(req, res) {
   }
   if (pathName === "/api/wtf-live/rooms/mine" && req.method === "GET") {
     return res.json({
-      rooms: [
-        { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, isPublic: true },
-      ],
+      rooms: state.wtfLiveOwnedRoom ? [state.wtfLiveOwnedRoom] : [],
       collection: "app.wtfgameshow.skywire.room.message",
       storage: "wtf_live_rooms",
     });
   }
   if (pathName === "/api/wtf-live/rooms" && req.method === "POST") {
     const title = String(req.body?.title || "New Room").trim();
+    state.wtfLiveOwnedRoom = { id: "my-room", title, kind: "room", description: req.body?.description || "", source: "user", ownerUserId: 1, isPublic: true };
     return res.status(201).json({
-      room: { id: "my-room", title, kind: "room", description: req.body?.description || "", source: "user", ownerUserId: 1, isPublic: true },
+      room: state.wtfLiveOwnedRoom,
     });
+  }
+  if (/^\/api\/wtf-live\/rooms\/[^/]+$/.test(pathName) && req.method === "PATCH") {
+    const roomId = pathName.split("/")[4];
+    if (!state.wtfLiveOwnedRoom || state.wtfLiveOwnedRoom.id !== roomId) {
+      return res.status(404).json({ error: "Owned room not found" });
+    }
+    state.wtfLiveOwnedRoom = {
+      ...state.wtfLiveOwnedRoom,
+      isPublic: Boolean(req.body?.isPublic),
+    };
+    return res.json({ room: state.wtfLiveOwnedRoom });
+  }
+  if (/^\/api\/wtf-live\/rooms\/[^/]+$/.test(pathName) && req.method === "DELETE") {
+    const roomId = pathName.split("/")[4];
+    if (!state.wtfLiveOwnedRoom || state.wtfLiveOwnedRoom.id !== roomId) {
+      return res.status(404).json({ error: "Owned room not found" });
+    }
+    state.wtfLiveOwnedRoom = null;
+    return res.json({ ok: true, roomId });
   }
   if (pathName === "/api/wtf-live/stages" && req.method === "GET") {
     return res.json({
@@ -958,6 +983,28 @@ function apiMock(req, res) {
       cid: "bafyreivaultshare",
       sourceUrl: "https://bsky.app/profile/wtf-admin.bsky.social/post/vault-share",
       claimable: false,
+    });
+  }
+  if (pathName === "/api/skywire/actors/follows" && req.method === "GET") {
+    return res.json({
+      cursor: null,
+      source: "inventory.harness.skywire.follows",
+      actors: [
+        {
+          did: "did:plc:already-followed",
+          handle: "already-followed.bsky.social",
+          displayName: "Already Followed",
+          avatar: null,
+          description: "Harness actor already in the graph.",
+        },
+      ],
+    });
+  }
+  if (pathName === "/api/skywire/follow" && req.method === "POST") {
+    state.skywireFollowPayloads.push(req.body ?? {});
+    return res.status(201).json({
+      uri: `at://did:plc:skywiretest/app.bsky.graph.follow/${state.skywireFollowPayloads.length}`,
+      cid: "bafyreifollowharness",
     });
   }
   if (pathName === "/api/skywire/events" && req.method === "POST") {
@@ -1213,6 +1260,38 @@ function apiMock(req, res) {
         { post: openEditionPost, reason: { type: "repost", by: basePost.author, indexedAt: nowIso() } },
         { post: teiaPost, reason: null },
       ],
+    });
+  }
+  if (/^\/api\/skywire\/actor\/[^/]+\/feed$/.test(pathName) && req.method === "GET") {
+    const actorKey = decodeURIComponent(pathName.split("/")[4] || "");
+    const actor = {
+      did: actorKey.startsWith("did:") ? actorKey : "did:plc:harness",
+      handle: actorKey.includes(".") ? actorKey : "harness.bsky.social",
+      displayName: "Harness Skywire",
+      avatar: null,
+      description: "Mocked Skywire feed actor",
+    };
+    const post = {
+      uri: `at://${actor.did}/app.bsky.feed.post/actor-feed`,
+      cid: "bafyreiactorfeed",
+      sourceUrl: `https://bsky.app/profile/${actor.handle}/post/actor-feed`,
+      author: actor,
+      text: "Author feed loaded from the actor card.",
+      createdAt: nowIso(),
+      indexedAt: nowIso(),
+      replyRoot: null,
+      replyParent: null,
+      counts: { reply: 0, repost: 0, like: 1, quote: 0 },
+      viewer: { like: null, repost: null, threadMuted: false, embeddingDisabled: false },
+      embed: { images: [], external: null, video: null },
+      links: [],
+      quote: null,
+    };
+    return res.json({
+      actor,
+      cursor: null,
+      source: "inventory.harness.skywire.actor-feed",
+      feed: [{ post, reason: null }],
     });
   }
   if (pathName === "/api/skywire/post/thread") {

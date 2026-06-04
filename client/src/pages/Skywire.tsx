@@ -7,7 +7,7 @@ import {
   TabBody,
   TextField,
 } from "react95";
-import { ExternalLink, SendHorizontal, Share2 } from "lucide-react";
+import { Check, ExternalLink, SendHorizontal, Share2, UserPlus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
@@ -2562,6 +2562,7 @@ function SkywireTezosVaultPanel({ me }: { me: AtprotoMe }) {
 
 function ActorFeedPanel({
   actor,
+  me,
   canUseSocialActions,
   canCompose,
   onActorSelect,
@@ -2572,6 +2573,7 @@ function ActorFeedPanel({
   onChatQuote,
 }: {
   actor: SkywireActor | null;
+  me: AtprotoMe;
   canUseSocialActions: boolean;
   canCompose: boolean;
   onActorSelect?: (actor: SkywireActor) => void;
@@ -2582,6 +2584,37 @@ function ActorFeedPanel({
   onChatQuote?: (quote: SkywireQuotePost, members?: string[]) => void;
 }) {
   const actorId = actor?.did || actor?.handle || "";
+  const qc = useQueryClient();
+  const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
+  const canFollowActor = canUseAtprotoSession && canUseSocialActions;
+  const isSelf = Boolean(me.account?.did && actor?.did && actor.did === me.account.did);
+  const [followedOverride, setFollowedOverride] = useState<string | null>(null);
+  useEffect(() => {
+    setFollowedOverride(null);
+  }, [actor?.did]);
+  const followedActors = useInfiniteQuery<ActorSearchResponse>({
+    queryKey: ["skywire", "actors", "follows", "actor-card"],
+    enabled: Boolean(me.account && actor?.did),
+    initialPageParam: "",
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: "100" });
+      if (pageParam) params.set("cursor", String(pageParam));
+      return api.get(`/api/skywire/actors/follows?${params.toString()}`);
+    },
+    getNextPageParam: (lastPage) => lastPage.cursor || undefined,
+  });
+  const followedDidSet = new Set(
+    (followedActors.data?.pages.flatMap((page) => page.actors) ?? []).map((followedActor) => followedActor.did),
+  );
+  const alreadyFollowing = Boolean(actor?.did && (followedOverride === actor.did || followedDidSet.has(actor.did)));
+  const follow = useMutation({
+    mutationFn: (did: string) => api.post("/api/skywire/follow", { did }),
+    onSuccess: (_data, did) => {
+      setFollowedOverride(did);
+      qc.invalidateQueries({ queryKey: ["skywire", "actors"] });
+      qc.invalidateQueries({ queryKey: ["skywire", "actor-feed", actorId] });
+    },
+  });
   const query = useInfiniteQuery<FeedResponse>({
     queryKey: ["skywire", "actor-feed", actorId],
     enabled: Boolean(actorId),
@@ -2604,6 +2637,7 @@ function ActorFeedPanel({
   if (query.isLoading) return <Hourglass size={24} />;
   if (query.isError) return <p>{(query.error as Error).message}</p>;
   const feed = query.data?.pages.flatMap((page) => page.feed) ?? [];
+  const followLabel = isSelf ? "You" : alreadyFollowing ? "Following" : follow.isPending ? "Following..." : "Follow";
   return (
     <FeedColumn>
       <GroupBox label="Author">
@@ -2613,9 +2647,24 @@ function ActorFeedPanel({
             <strong>{actor?.displayName || actor?.handle || actorId}</strong>
             <div>@{actor?.handle || actorId}</div>
           </div>
+          <Button
+            size="sm"
+            data-skywire-actor-follow="true"
+            disabled={!actor?.did || !canFollowActor || isSelf || alreadyFollowing || follow.isPending}
+            onClick={() => actor?.did && follow.mutate(actor.did)}
+          >
+            <ButtonGlyph>
+              {alreadyFollowing || isSelf ? <Check size={14} aria-hidden /> : <UserPlus size={14} aria-hidden />}
+              {followLabel}
+            </ButtonGlyph>
+          </Button>
         </Row>
         {actor?.description ? <p>{actor.description}</p> : null}
         <Mono>{actorId}</Mono>
+        {canUseAtprotoSession && !canUseSocialActions && !isSelf ? (
+          <FinePrint>Choose Be Social or higher to follow this creator from Skywire.</FinePrint>
+        ) : null}
+        {follow.isError ? <InlineState>{(follow.error as Error).message}</InlineState> : null}
       </GroupBox>
       <FeedList $social data-skywire-feed-list="true">
         {feed.length === 0 ? (
@@ -4369,6 +4418,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
               {tab === "actor" ? (
                 <ActorFeedPanel
                   actor={selectedActor}
+                  me={me}
                   canUseSocialActions={canUseSocialActions}
                   canCompose={canCompose}
                   onActorSelect={openActorFeed}

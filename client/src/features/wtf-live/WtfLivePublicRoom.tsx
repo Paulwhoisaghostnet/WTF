@@ -139,6 +139,39 @@ const ControlButton = styled(Button)<{ $active?: boolean }>`
   }
 `;
 
+const ButtonLabel = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+`;
+
+const MicMeter = styled.div`
+  border: 2px inset #fff;
+  background: #ffffff;
+  padding: 7px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+`;
+
+const MicMeterTrack = styled.div`
+  height: 12px;
+  border: 1px solid #202020;
+  background: #d5d5d5;
+  overflow: hidden;
+`;
+
+const MicMeterFill = styled.div<{ $level: number }>`
+  width: ${({ $level }) => `${Math.round(Math.max(0, Math.min(1, $level)) * 100)}%`};
+  height: 100%;
+  background: ${({ $level }) => ($level > 0.18 ? "#06893d" : $level > 0.06 ? "#c8a600" : "#9aa0a6")};
+  transition: width 80ms linear;
+`;
+
 const StatusLine = styled.div`
   min-height: 20px;
   font-size: 12px;
@@ -224,10 +257,12 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const [joined, setJoined] = useState(false);
   const [status, setStatus] = useState("");
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  const [micLevel, setMicLevel] = useState(0);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const cameraRef = useRef<HTMLVideoElement | null>(null);
   const screenRef = useRef<HTMLVideoElement | null>(null);
+  const micAnimationRef = useRef<number | null>(null);
   const room = roomQuery.data?.room;
   const roomUrl = useMemo(() => {
     if (typeof window === "undefined") return `/live/r/${roomId}`;
@@ -242,6 +277,51 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     stopStream(cameraStream);
     stopStream(screenStream);
   }, [cameraStream, micStream, screenStream]);
+
+  useEffect(() => {
+    if (!micStream) {
+      setMicLevel(0);
+      return;
+    }
+
+    const AudioContextCtor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) {
+      setMicLevel(0);
+      setStatus("Mic ready. Level meter is not supported in this browser.");
+      return;
+    }
+
+    const audioContext = new AudioContextCtor();
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    const source = audioContext.createMediaStreamSource(micStream);
+    source.connect(analyser);
+    const samples = new Uint8Array(analyser.fftSize);
+    audioContext.resume().catch(() => undefined);
+
+    const readLevel = () => {
+      analyser.getByteTimeDomainData(samples);
+      let sum = 0;
+      for (const sample of samples) {
+        const normalized = (sample - 128) / 128;
+        sum += normalized * normalized;
+      }
+      const rms = Math.sqrt(sum / samples.length);
+      const nextLevel = Math.min(1, rms * 5);
+      setMicLevel((current) => (Math.abs(current - nextLevel) > 0.015 ? nextLevel : current));
+      micAnimationRef.current = requestAnimationFrame(readLevel);
+    };
+
+    readLevel();
+
+    return () => {
+      if (micAnimationRef.current !== null) cancelAnimationFrame(micAnimationRef.current);
+      micAnimationRef.current = null;
+      source.disconnect();
+      audioContext.close().catch(() => undefined);
+      setMicLevel(0);
+    };
+  }, [micStream]);
 
   async function copyRoomUrl() {
     await navigator.clipboard?.writeText(roomUrl);
@@ -263,9 +343,13 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       setStatus("Mic off.");
       return;
     }
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    setMicStream(stream);
-    setStatus("Mic ready.");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setMicStream(stream);
+      setStatus("Mic ready.");
+    } catch {
+      setStatus("Mic permission was blocked.");
+    }
   }
 
   async function toggleCamera() {
@@ -275,9 +359,13 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       setStatus("Camera off.");
       return;
     }
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-    setCameraStream(stream);
-    setStatus("Camera ready.");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      setCameraStream(stream);
+      setStatus("Camera ready.");
+    } catch {
+      setStatus("Camera permission was blocked.");
+    }
   }
 
   async function toggleScreen() {
@@ -292,9 +380,17 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       setStatus("Screen share is not available in this browser.");
       return;
     }
-    const stream = await getDisplayMedia({ video: true, audio: true });
-    setScreenStream(stream);
-    setStatus("Screen share ready.");
+    try {
+      const stream = await getDisplayMedia({ video: true, audio: true });
+      stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        setScreenStream(null);
+        setStatus("Screen share ended.");
+      });
+      setScreenStream(stream);
+      setStatus("Screen share ready.");
+    } catch {
+      setStatus("Screen share was cancelled.");
+    }
   }
 
   if (roomQuery.isLoading) {
@@ -352,7 +448,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
                 {joined ? "Joined" : "Join Room"}
               </Button>
               <Button onClick={copyRoomUrl}>
-                <Copy size={16} aria-hidden /> Copy URL
+                <ButtonLabel><Copy size={16} aria-hidden /> Copy URL</ButtonLabel>
               </Button>
             </GuestGrid>
             <GuestGrid>
@@ -366,6 +462,15 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
                 {screenStream ? <Square aria-hidden /> : <MonitorUp aria-hidden />} Screen
               </ControlButton>
             </GuestGrid>
+            {joined ? (
+              <MicMeter aria-label={`Mic level ${Math.round(micLevel * 100)} percent`}>
+                <span>Mic check</span>
+                <MicMeterTrack>
+                  <MicMeterFill $level={micStream ? micLevel : 0} />
+                </MicMeterTrack>
+                <span>{micStream ? (micLevel > 0.04 ? "Signal" : "Quiet") : "Off"}</span>
+              </MicMeter>
+            ) : null}
             <StatusLine aria-live="polite">{status}</StatusLine>
           </Panel>
 

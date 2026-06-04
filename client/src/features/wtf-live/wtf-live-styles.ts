@@ -116,6 +116,29 @@ export const SplitActions = styled.div`
   }
 `;
 
+export const ActionGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 6px;
+
+  button {
+    min-width: 0;
+  }
+`;
+
+export const ButtonLabel = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+
+  svg {
+    flex: 0 0 auto;
+  }
+`;
+
 export const ShareLink = styled.code`
   display: block;
   border: 2px inset #fff;
@@ -130,10 +153,10 @@ export const MutedText = styled.span`
   font-size: 12px;
 `;
 
-export const RoomBadge = styled.span`
+export const RoomBadge = styled.span<{ $closed?: boolean }>`
   width: max-content;
   border: 1px solid #222;
-  background: #dff7e8;
+  background: ${({ $closed }) => ($closed ? "#ffd9d9" : "#dff7e8")};
   padding: 2px 5px;
   font-size: 10px;
   text-transform: uppercase;

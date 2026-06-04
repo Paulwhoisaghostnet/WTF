@@ -176,6 +176,9 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(route, /"\/api\/skywire\/actors\/recommended"/);
   assert.match(route, /"\/api\/skywire\/actors\/follows"/);
   assert.match(route, /"\/api\/skywire\/actors\/suggestions"/);
+  assert.match(route, /"\/api\/skywire\/follow"/);
+  assert.match(route, /agent\.follow\(parsed\.data\.did\)/);
+  assert.match(route, /eventType:\s*"atproto\.actor\.followed"/);
   assert.match(route, /source:\s*"app\.bsky\.graph\.getFollows"/);
   assert.match(route, /source:\s*"skywire\.peerFollowGraph"/);
   assert.match(route, /agent\.getFollows\(/);
@@ -255,6 +258,9 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(page, /Date Minted/);
   assert.match(page, /Token URL/);
   assert.match(page, /data-skywire-vault-share/);
+  assert.match(page, /data-skywire-actor-follow/);
+  assert.match(page, /api\.post\("\/api\/skywire\/follow"/);
+  assert.match(page, /Choose Be Social or higher to follow this creator from Skywire/);
   assert.match(page, /Post to Bluesky/);
   assert.doesNotMatch(page, /I created/);
   assert.doesNotMatch(page, /I own/);

@@ -3613,3 +3613,39 @@
 **Fix**: Vault shares now pass the visible token media URL to the post API, which safe-fetches the image, uploads it through the signed-in user's AT agent as a PDS blob, and attaches it as the Bluesky external embed thumbnail.
 
 **Rule**: Vault share behavior should be driven by the existing vault token record: title, creator, collection, minted date, token URL, and displayed media. Keep blob uploads bound to the posting user's AT agent, and guard all server-side media fetches with the shared outbound URL safety policy.
+
+---
+
+## 2026-06-04 - Feed actor cards need direct social graph actions
+
+**What happened**: Skywire could follow actors from Discover, but the actor card opened by clicking a creator in the feed had no Follow action. That made the most natural creator-discovery path feel like a dead end.
+
+**Why it mattered**: Skywire's feed is where users encounter artists and token links. If the creator card only shows metadata and posts, users have to hunt elsewhere to build their Bluesky graph, which weakens the Tezos/social connection the client is supposed to make.
+
+**Fix**: The actor feed card now exposes a Be Social-gated Follow button backed by the existing `/api/skywire/follow` endpoint, checks self/following/session states, and updates the inventory harness plus browser test to prove feed-author follow works.
+
+**Rule**: Any Skywire actor card opened from a post should expose the same core graph actions as Discover, using the signed-in user's linked AT account and the existing capability-gated server route.
+
+---
+
+## 2026-06-04 - Playwright harness should run the server module directly
+
+**What happened**: The inventory Playwright webServer command wrapped the harness in a dynamic `node -e` import. During Skywire verification the browser could load static assets, but the harness process then disappeared before app API calls such as `/api/auth/user`, leaving the page on the logged-out desktop and timing out unrelated chat assertions.
+
+**Why it mattered**: A dying harness looks like an app regression even when the mocked routes and compiled client are correct. It also makes isolated reruns unreliable because auth and desktop app availability fail after initial navigation.
+
+**Fix**: The Playwright config now launches `tests/playwright/harness.mjs` directly. The repo is ESM and the Express listener keeps Node alive without a wrapper interval.
+
+**Rule**: Test server launchers should execute the actual server module directly when that module owns its lifecycle. Avoid dynamic-import wrappers for long-running E2E harnesses unless the wrapper is itself tested for process lifetime.
+
+---
+
+## 2026-06-04 - WTF LIVE rooms need owner lifecycle controls and local media readiness
+
+**What happened**: WTF LIVE mirrored the simple public-room URL model, but owners could not temporarily close or delete rooms, the room directory did not expose an obvious Join action, and guest mic enablement had no visual input feedback.
+
+**Why it mattered**: Public room URLs are only simple if hosts can manage their availability without support intervention, and guests need immediate confirmation that local media permissions produced a working input before any real transport layer exists.
+
+**Fix**: WTF LIVE now keeps open public rooms separate from owned rooms, lets owners close/reopen rooms through `is_public`, archives deleted rooms through `archived_at`, adds Join buttons to room cards, and shows a local Web Audio mic level meter after a guest joins.
+
+**Rule**: Public room features must separate public discoverability from owner manageability. Closing should remove guest access without hiding the room from its owner, deletion should archive existing rows, archived rows must still reserve unique slugs, and media controls need visible readiness feedback before claiming a room is usable.
