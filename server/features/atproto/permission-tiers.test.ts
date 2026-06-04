@@ -61,6 +61,11 @@ test("Skywire capabilities are inferred from granted scopes, not selected labels
   assert.equal(inferSkywirePermissionTier(buildSkywireAtprotoScope("be-bold", true)), "be-bold");
 });
 
+test("Skywire chat capability survives stored chat scope aliases", () => {
+  assert.equal(grantedSkywireCapabilities("atproto transition:generic transition:chat.bsky").has("chat"), true);
+  assert.equal(grantedSkywireCapabilities("atproto transition:generic chat.bsky").has("chat"), true);
+});
+
 test("tz2at scope builder stays narrow until wallet-link publish", () => {
   const identity = buildTz2atAtprotoScope("identity");
   const walletLink = buildTz2atAtprotoScope("wallet-link");

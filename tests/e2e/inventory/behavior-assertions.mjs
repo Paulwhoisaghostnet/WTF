@@ -216,6 +216,30 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The live harness reads public links, FAQ, access, leaderboard, gallery state, and the WTFOS inventory tool, rejects unauthenticated MCP calls, creates a scoped MCP token, proves tools/list works without setting cookies, and revokes the token.",
   },
   {
+    id: "skywire.market-feed-search-source",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["skywire"],
+    ownerSpec: "server/features/atproto/skywire-policy.test.ts, tests/playwright/inventory/skywire-feed.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test server/features/atproto/skywire-policy.test.ts && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"market feed\"",
+    userVisibleAssertion:
+      "Skywire Market Feed renders Bluesky posts containing Objkt/Teia token hrefs with token previews and buy overlays instead of showing a false quiet lane.",
+    durableSideEffectAssertion:
+      "The server uses a search-capable Bluesky AppView for app.bsky.feed.searchPosts, domain-filters Objkt and Teia searches, filters normalized text/embed/facet hrefs through Skywire's token parser, and returns 502 when every upstream marketplace search fails.",
+  },
+  {
+    id: "skywire.oauth-popup-permission-sync",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["skywire"],
+    ownerSpec: "tests/playwright/inventory/skywire-feed.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"OAuth popup\"",
+    userVisibleAssertion:
+      "When a user enables the Skywire Chat Add-on through OAuth in a popup, the original Skywire window refetches canonical account state, reflects the granted chat permission, and does not leave the upgraded permission trapped in a second Skywire window.",
+    durableSideEffectAssertion:
+      "The callback writes a structured completion payload through BroadcastChannel/storage fallback, includes tier/chat/scope metadata, the original window polls `/api/atproto/me` while the popup is open, and OAuth-created Skywire fallback windows close after broadcasting completion.",
+  },
+  {
     id: "wtf-live.owner-room-lifecycle-controls",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["wtf-live"],
@@ -228,6 +252,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The inventory harness accepts the delete confirmation, clears the owned-room fixture through the WTF LIVE room DELETE API, and the UI removes every matching room card.",
   },
   {
+    id: "wtf-live.public-room-window-exit-controls",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    userVisibleAssertion:
+      "A signed-in WTF LIVE user joins a public room from the dashboard in a new browser tab/window while the wtfOS app remains on /live, and the public room exposes visible Leave Room and Close Window controls.",
+    durableSideEffectAssertion:
+      "The inventory harness verifies Join opens /live/r/:roomId as a popup, Leave Room resets socket/media/chat-enabled state, and Close Window requests browser tab closure after cleanup.",
+  },
+  {
     id: "wtf-live.public-room-realtime-media-chat",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["wtf-live"],
@@ -235,9 +271,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     userVisibleAssertion:
-      "Two WTF LIVE public-room guests see each other as room peers; when one guest turns on camera media, the other guest receives a remote video stream and active media state.",
+      "WTF LIVE public-room guests see each other as room peers; active camera media renders as a remote video stream, while crowded rooms with idle peers keep room chat visible and reachable.",
     durableSideEffectAssertion:
-      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, media-state events, and room chat, then verifies a text message plus GIF attachment reaches the second guest.",
+      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, media-state events, and room chat, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests do not create empty remote video placeholders that push the chat composer offscreen.",
   },
   {
     id: "w.groupchat-readonly-config-source",

@@ -50,8 +50,13 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-204 | Verified | Codex Skywire market feed search-source pass | 2026-06-04 | Skywire / Market Feed source | P1 | 13 | 5 | 3 | 5 | 1 | Skywire Market Feed can show a false empty lane when searchPosts hits the non-search public AppView |
 | WTF-BB-180 | Verified | Codex WTF LIVE migration hotfix | 2026-06-04 | WTF LIVE / DB migrations | P1 | 12 | 7 | 2 | 5 | 1 | WTF LIVE user room tables declared in schema but missing production migration |
 | WTF-BB-199 | Verified | Codex WTF LIVE realtime media/chat pass | 2026-06-04 | WTF LIVE / realtime room transport | P0 | 15 | 2 | 4 | 5 | 1 | WTF LIVE guest room media controls are local-only and do not connect participants |
+| WTF-BB-200 | Verified | Codex Skywire OAuth permission sync pass | 2026-06-04 | Skywire / AT OAuth permission lifecycle | P1 | 13 | 5 | 2 | 5 | 2 | Skywire chat add-on OAuth completion can strand upgraded permissions in the popup/new window instead of the original client |
+| WTF-BB-203 | Verified | Codex Skywire stranded-popup OAuth pass | 2026-06-04 | Skywire / AT OAuth permission lifecycle | P1 | 13 | 5 | 2 | 5 | 2 | Skywire chat add-on OAuth can leave the original window disabled when the popup becomes the only upgraded Skywire instance |
+| WTF-BB-201 | Verified | Codex WTF LIVE crowded-room layout pass | 2026-06-04 | WTF LIVE / public room layout | P1 | 12 | 7 | 2 | 5 | 1 | WTF LIVE idle participants render as empty media boxes and push room chat offscreen |
+| WTF-BB-202 | Verified | Codex WTF LIVE room exit/new-tab pass | 2026-06-04 | WTF LIVE / public room lifecycle UX | P1 | 11 | 8 | 2 | 5 | 0 | WTF LIVE public rooms lack obvious leave/close controls and signed-in Join replaces the wtfOS window |
 | WTF-BB-179 | Verified | Codex Rat Race Objkt pk hydration pass | 2026-05-28 | Rat Race / Objkt hydration | P1 | 12 | 7 | 3 | 5 | 0 | Objkt replay collect records use token pk and fail FA2 token hydration |
 | WTF-BB-178 | Verified | Codex Rat Race replay-window pass | 2026-05-28 | Rat Race / replay ingestion | P1 | 11 | 8 | 2 | 5 | 0 | Multi-day hot filters silently scan only one day of tz2at replay |
 | WTF-BB-148 | Verified | Codex TTC calendar full-send | 2026-05-24 | Browser security / CSP | P1 | 11 | 9 | 2 | 4 | 1 | TTC submit iframe blocked by production CSP frame-src |
@@ -244,6 +249,29 @@ Priority labels:
 
 ## Issue Details
 
+### WTF-BB-204 - Skywire Market Feed can show a false empty lane when searchPosts hits the non-search public AppView
+
+- Category: Skywire / Market Feed source
+- Status: Verified
+- Owner/Session: Codex Skywire market feed search-source pass
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - User report on 2026-06-04: Skywire Market Feed returned no posts and displayed "This lane is quiet right now" even though Bluesky has fresh posts linking Objkt/Teia marketplace tokens.
+  - Direct AppView probe showed `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=objkt.com&domain=objkt.com` returned HTTP 403, while `https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=objkt.com&domain=objkt.com` returned HTTP 200 with fresh posts containing `app.bsky.richtext.facet#link` hrefs to Objkt tokens.
+- Correction:
+  - Use a search-capable Bluesky AppView for Skywire Market/Search/Discover `app.bsky.feed.searchPosts` calls and keep the domain-scoped Objkt/Teia URL filtering in place.
+  - Return a 502 upstream-unavailable response when every marketplace domain search fails, so the UI does not mislabel an upstream search outage as a quiet social lane.
+- Verification:
+  - `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=objkt.com&domain=objkt.com` returned HTTP 403 while `https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=objkt.com&domain=objkt.com` returned HTTP 200 with fresh Objkt token-link posts.
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npx tsx --test shared/skywire-token-links.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run build`
+  - `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs tests/playwright/inventory/wtf-live-owner-controls.spec.mjs`
+  - `npm run test:e2e:inventory` (287/287 passed)
+- Last touched: 2026-06-04
+
 ### WTF-BB-180 - WTF LIVE user room tables declared in schema but missing production migration
 
 - Category: WTF LIVE / DB migrations
@@ -280,6 +308,62 @@ Priority labels:
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed focused `npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "public room guests"`.
   - Passed full `npm run test:e2e:inventory` with 281/281 tests, including the new two-user WTF LIVE media/chat behavior assertion.
+
+### WTF-BB-203 - Skywire chat add-on OAuth can leave the original window disabled when the popup becomes the only upgraded Skywire instance
+
+- Category: Skywire / AT OAuth permission lifecycle
+- Status: Verified
+- Owner/Session: Codex Skywire stranded-popup OAuth pass
+- Score: C2 + F5 + S2 + P1(4) = 13
+- Evidence:
+  - User report on 2026-06-04: enabling Skywire chat permissions opens a new WTF/Skywire instance where chat is allowed, while the original Skywire window remains chat-disabled; closing the upgraded window leaves the original disabled.
+  - Code inspection found the original window only refetched `/api/atproto/me` on popup close or popup completion messages. If the popup became a second Skywire page and stayed open, the original window had no active canonical-state watcher.
+- Correction:
+  - Add original-window polling of `/api/atproto/me` while the OAuth popup is open, complete the local upgrade when the persisted account shows the requested tier/chat scope, and close the popup from the opener's retained window handle.
+  - Make OAuth-created Skywire fallback windows broadcast structured completion metadata and close based on the OAuth popup window name, even when the URL does not carry `popup=1`.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run build`.
+  - Passed focused `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "OAuth popup"` with 3/3 popup lifecycle regressions.
+  - Passed full `npm run test:e2e:inventory` with 287/287 tests, including the stranded-popup canonical polling and Skywire fallback popup-close regressions.
+
+### WTF-BB-201 - WTF LIVE idle participants render as empty media boxes and push room chat offscreen
+
+- Category: WTF LIVE / public room layout
+- Status: Verified
+- Owner/Session: Codex WTF LIVE crowded-room layout pass
+- Score: C2 + F5 + S1 + P1(4) = 12
+- Evidence:
+  - User report on 2026-06-04: each joined public-room participant created a black camera/screen placeholder area, growing the people list until the bottom chat composer was pushed offscreen with no reachable scrollbar.
+  - Code inspection found the public room stacked remote participant tiles, local preview, message list, and composer in one normal-flow panel; every remote peer rendered a `PeerVideoFrame` even when that peer had no active media tracks.
+- Correction:
+  - Split the public room into bounded control, media, and chat panes so the chat log/composer has its own stable column and scroll behavior.
+  - Render idle participants as compact light presence rows; only peers with live video tracks receive video-sized frames, while mic-only peers use a hidden audio element for playback without taking video space.
+  - Added a crowded-room Playwright regression that joins Alice plus seven idle guests and asserts the chat composer remains inside the viewport with no remote video placeholders.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run build`.
+  - Passed `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs`, including the crowded idle room regression with Alice plus seven guests.
+
+### WTF-BB-202 - WTF LIVE public rooms lack obvious leave/close controls and signed-in Join replaces the wtfOS window
+
+- Category: WTF LIVE / public room lifecycle UX
+- Status: Verified
+- Owner/Session: Codex WTF LIVE room exit/new-tab pass
+- Score: C2 + F5 + S0 + P1(4) = 11
+- Evidence:
+  - User report on 2026-06-04: public room visitors have no obvious button to leave the room or close the room window.
+  - Code inspection found the signed-in WTF LIVE dashboard `Join` action assigns `window.location.href = /live/r/:roomId`, replacing the wtfOS app window instead of launching the room as a separate browser tab/window.
+  - Public room cleanup existed only as unmount/socket close behavior, not as an explicit user control.
+- Correction:
+  - Added visible Leave Room and Close Window controls, made Leave perform full media/socket/peer cleanup, made Close Window cleanup first then request `window.close()`, and changed signed-in Join actions to open `/live/r/:roomId` in a new tab/window.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run build`.
+  - Passed `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs`, including new-tab Join plus Leave Room and Close Window controls.
 
 ### WTF-BB-198 - Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links
 

@@ -36,6 +36,7 @@ export const SKYWIRE_DEFAULT_PERMISSION_TIER: SkywirePermissionTier = "be-social
 export const ATPROTO_BASE_SCOPE = "atproto";
 export const ATPROTO_TRANSITION_GENERIC_SCOPE = "transition:generic";
 export const ATPROTO_CHAT_SCOPE = "transition:chat.bsky";
+export const ATPROTO_CHAT_SCOPE_ALIASES = [ATPROTO_CHAT_SCOPE, "chat.bsky"] as const;
 export const TZ2AT_TZBSKY_COLLECTION = "com.tzbsky.cryptoAddress";
 export const TZ2AT_WALLET_LINK_COLLECTION = "xyz.tz2at.identity.walletLink";
 export const SKYWIRE_SIGNAL_COLLECTION = "app.wtfgameshow.skywire.signal";
@@ -299,7 +300,7 @@ export function grantedSkywireCapabilities(scopes: string | null | undefined): S
   if (hasGeneric || granted.has(`repo:${SKYWIRE_STAGE_BROADCAST_COLLECTION}`)) {
     capabilities.add("stages");
   }
-  if (granted.has(ATPROTO_CHAT_SCOPE)) {
+  if (ATPROTO_CHAT_SCOPE_ALIASES.some((scope) => granted.has(scope))) {
     capabilities.add("chat");
   }
 

@@ -10,6 +10,7 @@ import {
   accountHasAtprotoCapability,
   getAtprotoAgentForDid,
   getPublicAtprotoAgent,
+  getSearchAtprotoAgent,
   isAtprotoSessionUnavailableError,
 } from "../features/atproto/oauth";
 import {
@@ -1750,7 +1751,7 @@ router.get("/api/skywire/feed", isAuthenticated, async (req, res) => {
     });
   }
   if (feedType === "market") {
-    const agent = getPublicAtprotoAgent();
+    const agent = getSearchAtprotoAgent();
     const domainCursors = decodeMarketFeedCursor(cursor);
     const perDomainLimit = Math.min(100, Math.max(limit * 2, 25));
     const searches = await Promise.allSettled(
@@ -1784,6 +1785,21 @@ router.get("/api/skywire/feed", isAuthenticated, async (req, res) => {
         return bTime - aTime;
       })
       .slice(0, limit);
+    const upstreamAvailable = searches.some((result) => result.status === "fulfilled");
+    if (!upstreamAvailable) {
+      return res.status(502).json({
+        error: "Skywire Market Feed search is unavailable right now",
+        feedType: "market",
+        source: "app.bsky.feed.searchPosts",
+        domains: SKYWIRE_MARKET_FEED_DOMAINS,
+        urlPatterns: SKYWIRE_MARKET_FEED_SEARCH_TERMS,
+        q: q?.trim() || SKYWIRE_MARKET_FEED_DOMAINS.map((domain) => SKYWIRE_MARKET_FEED_QUERY_BY_DOMAIN[domain]).join(" OR "),
+        feed: [],
+        cursor: null,
+        upstreamAvailable: false,
+        sessionFallback: false,
+      });
+    }
     return res.json({
       feedType: "market",
       source: "app.bsky.feed.searchPosts",
@@ -1792,11 +1808,11 @@ router.get("/api/skywire/feed", isAuthenticated, async (req, res) => {
       q: q?.trim() || SKYWIRE_MARKET_FEED_DOMAINS.map((domain) => SKYWIRE_MARKET_FEED_QUERY_BY_DOMAIN[domain]).join(" OR "),
       feed,
       cursor: encodeMarketFeedCursor(nextCursors),
-      upstreamAvailable: searches.some((result) => result.status === "fulfilled"),
+      upstreamAvailable,
       sessionFallback: false,
     });
   }
-  const agent = getPublicAtprotoAgent();
+  const agent = getSearchAtprotoAgent();
   const searchQuery = feedSearchQuery(feedType, q);
   const feed = await agent.app.bsky.feed.searchPosts({
     q: searchQuery,

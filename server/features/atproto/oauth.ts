@@ -26,6 +26,8 @@ export const ATPROTO_SCOPE = buildSkywireAtprotoScope("be-bold", false);
 export const ATPROTO_MAX_SCOPE = buildSkywireAtprotoMaxScope();
 
 const DEFAULT_ATPROTO_PDS = "https://bsky.social";
+const DEFAULT_ATPROTO_APPVIEW = "https://api.bsky.app";
+const DEFAULT_ATPROTO_SEARCH_APPVIEW = "https://api.bsky.app";
 
 export class AtprotoSessionUnavailableError extends Error {
   status = 409;
@@ -338,7 +340,11 @@ export async function getAtprotoAgentForDid(did: string): Promise<Agent> {
 }
 
 export function getPublicAtprotoAgent(): Agent {
-  return new Agent(process.env.ATPROTO_DEFAULT_APPVIEW || "https://public.api.bsky.app");
+  return new Agent(process.env.ATPROTO_DEFAULT_APPVIEW || DEFAULT_ATPROTO_APPVIEW);
+}
+
+export function getSearchAtprotoAgent(): Agent {
+  return new Agent(process.env.ATPROTO_SEARCH_APPVIEW || DEFAULT_ATPROTO_SEARCH_APPVIEW);
 }
 
 export async function persistCredentialSessionForDid(

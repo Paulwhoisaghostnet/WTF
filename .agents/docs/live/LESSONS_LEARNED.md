@@ -1,3 +1,53 @@
+## 2026-06-04 — Skywire Market Feed search must use a search-capable AppView
+
+**What happened**: Skywire's Market Feed could show "This lane is quiet right now" even while Bluesky had fresh posts linking Objkt and Teia tokens. The server was calling `app.bsky.feed.searchPosts` through the same public AppView helper used for read-only profile/feed calls, and `public.api.bsky.app` returned HTTP 403 for `searchPosts`. Because the route settled all domain searches and returned an empty successful feed, the client rendered an empty-lane state instead of an upstream search failure.
+
+**Why it mattered**: Market Feed is supposed to connect users to Tezos token posts across Bluesky. An empty-but-successful response hides the source outage and makes it look like there is no marketplace activity or that Skywire's token filtering is broken.
+
+**Rule**: Skywire Market/Search/Discover feeds that call `app.bsky.feed.searchPosts` must use a search-capable AppView (`https://api.bsky.app` by default, overridable with `ATPROTO_SEARCH_APPVIEW`) and keep domain-scoped Objkt/Teia searches. If every marketplace domain search fails, return an upstream-unavailable error instead of converting the outage into a quiet feed.
+
+---
+
+## 2026-06-04 — Skywire OAuth popups need canonical-state polling while they remain open
+
+**What happened**: The first Skywire Chat Add-on sync fix handled popup completion messages and popup-close refetches, but a popup could still become a second Skywire instance with the upgraded chat permission while the original window stayed disabled. Because that second window remained open, the original window never hit its close-poll refetch path.
+
+**Why it mattered**: OAuth permission upgrades are persisted account state, and users keep working in the original wtfOS window. If that window waits for the popup to close or for a fragile cross-window event, the UI can misrepresent the user's real grants and make chat look like it vanished when the popup is closed.
+
+**Rule**: When Skywire starts an OAuth permission upgrade in a popup, the original window must actively poll canonical `/api/atproto/me` until the requested tier/chat scope is visible, update itself from that state, and close the popup from the retained window handle. Any OAuth-created Skywire fallback page must broadcast structured completion metadata and close based on the OAuth popup window name, even when `popup=1` is missing from the URL.
+
+---
+
+## 2026-06-04 — WTF LIVE room joins must preserve wtfOS and expose explicit exits
+
+**What happened**: The signed-in WTF LIVE dashboard used `window.location.href` for room Join, replacing the wtfOS app with the public guest room. Once inside the public room, users had no obvious Leave Room or Close Window control and could only escape by using browser chrome.
+
+**Why it mattered**: A public live room is a separate guest surface, not a replacement for the signed-in WTF OS workspace. Users also need a clear way to disconnect media/signaling state before walking away, especially after granting mic/camera/screen permissions.
+
+**Rule**: WTF LIVE dashboard Join opens `/live/r/:roomId` in a separate browser tab/window and leaves `/live` intact. Public room pages must show explicit Leave Room and Close Window controls; Leave performs socket, peer connection, local media, and state cleanup, while Close performs the same cleanup before requesting tab closure.
+
+---
+
+## 2026-06-04 — WTF LIVE participant presence must not push chat offscreen
+
+**What happened**: Public room guests who joined without turning on camera or screen still rendered as black media placeholder tiles. As more people entered the room, those idle tiles consumed the main panel and pushed the bottom chat composer offscreen without a usable scroll path.
+
+**Why it mattered**: A live room needs chat to remain usable precisely when the room fills up. Treating idle presence like active video also makes users think media is broken because every participant appears as an empty black box.
+
+**Rule**: Separate presence from media. Idle WTF LIVE peers render as compact presence rows, mic-only peers attach audio without taking a video frame, and only live video tracks get media-sized tiles. The public room workspace must keep media and chat in bounded, independently scrollable panes and test a crowded idle room with the chat composer still inside the viewport.
+
+---
+
+## 2026-06-04 — Skywire OAuth permission upgrades must sync the opener window from canonical account state
+
+**What happened**: Enabling the Skywire Chat Add-on opened a Bluesky OAuth popup, but completion only signaled through fragile popup-local storage. Users could see the permission upgrade in the new OAuth window while the original Skywire window stayed on the old `/api/atproto/me` state, making chat appear disabled again when the popup closed.
+
+**Why it mattered**: OAuth permission changes are account state, not popup state. If the original app window does not refetch the persisted `atproto_accounts` row after callback, users cannot trust that Be Bold + chat permissions actually stuck.
+
+**Rule**: Skywire OAuth callbacks must emit structured same-origin completion metadata (tier, chat flag, requested/granted scopes, account id) through BroadcastChannel plus storage fallback, and the opener/original Skywire client must refetch `/api/atproto/me` on completion and popup close. Chat capability detection must tolerate stored `transition:chat.bsky` and `chat.bsky` spellings while still requesting the canonical transitional scope.
+
+---
+
 ## 2026-06-04 — WTF LIVE media controls must prove remote tracks, not local preview
 
 **What happened**: WTF LIVE guest rooms exposed Mic, Camera, Screen, and media capability labels, but the public room client only rendered local previews. There was no public room signaling socket, no WebRTC peer connection, no remote stream rendering, and no room-scoped chat/media lane, so two guests in the same room could not hear or see each other.

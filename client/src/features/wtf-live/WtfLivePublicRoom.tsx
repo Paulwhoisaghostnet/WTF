@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type RefObject } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Camera, Copy, Mic, MonitorUp, Paperclip, Radio, Send, Square, Wifi, WifiOff } from "lucide-react";
+import { Camera, Copy, LogOut, Mic, MonitorUp, Paperclip, Radio, Send, Square, Wifi, WifiOff, X } from "lucide-react";
 import styled from "styled-components";
 import { Button, Hourglass, TextField } from "react95";
 import { api } from "../../lib/api";
@@ -112,13 +112,21 @@ const GuestShell = styled.main`
 
 const RoomFrame = styled.section`
   width: min(1120px, 100%);
-  min-height: calc(100vh - clamp(20px, 4vw, 44px));
+  height: calc(100vh - clamp(20px, 4vw, 44px));
+  min-height: 640px;
   margin: 0 auto;
   display: grid;
   grid-template-rows: auto 1fr;
   border: 2px outset #fff;
   background: #e9e9e9;
   box-shadow: 10px 12px 0 rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+
+  @media (max-width: 820px) {
+    height: auto;
+    min-height: calc(100vh - clamp(20px, 4vw, 44px));
+    overflow: visible;
+  }
 `;
 
 const TitleBar = styled.header`
@@ -139,9 +147,11 @@ const RoomBody = styled.div`
   gap: 10px;
   padding: 10px;
   min-height: 0;
+  overflow: hidden;
 
   @media (max-width: 820px) {
     grid-template-columns: 1fr;
+    overflow: visible;
   }
 `;
 
@@ -152,6 +162,50 @@ const Panel = styled.section`
   display: grid;
   gap: 10px;
   align-content: start;
+  min-height: 0;
+`;
+
+const ControlPanel = styled(Panel)`
+  overflow: auto;
+`;
+
+const RoomWorkspace = styled(Panel)`
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  align-content: stretch;
+  overflow: hidden;
+
+  @media (max-width: 980px) {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  @media (max-width: 820px) {
+    overflow: visible;
+  }
+`;
+
+const MediaColumn = styled.div`
+  display: grid;
+  grid-template-rows: auto minmax(120px, 1fr) auto auto;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+`;
+
+const ChatColumn = styled.div`
+  border: 2px inset #fff;
+  background: #f0f0f0;
+  padding: 8px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+
+  @media (max-width: 980px) {
+    min-height: 420px;
+  }
 `;
 
 const RoomHeader = styled.div`
@@ -275,25 +329,43 @@ const LiveSectionHeader = styled.div`
 const RemoteGrid = styled.div`
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  align-content: start;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 3px;
 `;
 
-const PeerTile = styled.article`
+const PeerTile = styled.article<{ $hasMedia?: boolean }>`
   border: 2px inset #fff;
-  background: #111;
-  color: #f5f5f5;
+  background: ${({ $hasMedia }) => ($hasMedia ? "#111" : "#fff")};
+  color: ${({ $hasMedia }) => ($hasMedia ? "#f5f5f5" : "#07120f")};
   display: grid;
   gap: 6px;
-  min-height: 190px;
+  min-height: ${({ $hasMedia }) => ($hasMedia ? "188px" : "auto")};
   padding: 6px;
 `;
 
 const PeerVideoFrame = styled.div`
-  min-height: 150px;
+  min-height: 142px;
   display: grid;
   place-items: center;
   background: #050505;
   overflow: hidden;
+`;
+
+const PeerPresence = styled.div`
+  display: grid;
+  gap: 5px;
+  min-height: 64px;
+  align-content: center;
+  background: #f7f7f7;
+  border: 1px solid #d0d0d0;
+  padding: 8px;
+`;
+
+const RemoteAudio = styled.audio`
+  display: none;
 `;
 
 const PeerMeta = styled.div`
@@ -322,8 +394,7 @@ const MediaPill = styled.span<{ $active?: boolean }>`
 const MessageList = styled.div`
   border: 2px inset #fff;
   background: #fff;
-  min-height: 220px;
-  max-height: min(52vh, 540px);
+  min-height: 0;
   overflow: auto;
   display: grid;
   align-content: start;
@@ -357,6 +428,7 @@ const ChatComposer = styled.div`
   padding: 8px;
   display: grid;
   gap: 7px;
+  min-width: 0;
 `;
 
 const ChatTextArea = styled.textarea`
@@ -407,7 +479,11 @@ function stopStream(stream: MediaStream | null) {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
-function useVideoStream(ref: RefObject<HTMLVideoElement | null>, stream: MediaStream | null, signature = "") {
+function useMediaStream<T extends HTMLMediaElement>(
+  ref: RefObject<T | null>,
+  stream: MediaStream | null,
+  signature = "",
+) {
   useEffect(() => {
     if (!ref.current) return;
     ref.current.srcObject = stream;
@@ -479,31 +555,37 @@ function readAttachment(file: File): Promise<LiveChatAttachment> {
 
 function RemotePeerTile({ peer }: { peer: LivePeer }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const streamSignature = peer.stream
     .getTracks()
     .map((track) => `${track.kind}:${track.id}:${track.readyState}`)
     .join("|");
-  useVideoStream(videoRef, peer.stream, streamSignature);
   const hasVideo = peer.stream.getVideoTracks().some((track) => track.readyState === "live");
   const hasAudio = peer.stream.getAudioTracks().some((track) => track.readyState === "live");
+  useMediaStream(videoRef, hasVideo ? peer.stream : null, streamSignature);
+  useMediaStream(audioRef, !hasVideo && hasAudio ? peer.stream : null, streamSignature);
   return (
-    <PeerTile data-wtf-live-remote-peer={peer.peerId}>
+    <PeerTile $hasMedia={hasVideo} data-wtf-live-remote-peer={peer.peerId}>
       <PeerMeta>
         <strong>{peer.guestName}</strong>
         <span>{peer.connected ? "Connected" : "Connecting"}</span>
       </PeerMeta>
-      <PeerVideoFrame>
-        {hasVideo || hasAudio ? (
+      {hasVideo ? (
+        <PeerVideoFrame>
           <PreviewVideo
             ref={videoRef}
             data-wtf-live-remote-video={peer.peerId}
             autoPlay
             playsInline
           />
-        ) : (
-          <span>No media yet</span>
-        )}
-      </PeerVideoFrame>
+        </PeerVideoFrame>
+      ) : (
+        <PeerPresence>
+          <strong>{peer.guestName}</strong>
+          <span>{hasAudio ? "Mic live" : peer.connected ? "Listening in" : "Connecting..."}</span>
+        </PeerPresence>
+      )}
+      {!hasVideo && hasAudio ? <RemoteAudio ref={audioRef} data-wtf-live-remote-audio={peer.peerId} autoPlay /> : null}
       <PillRow>
         <MediaPill $active={peer.mediaState.mic}>Mic</MediaPill>
         <MediaPill $active={peer.mediaState.camera}>Camera</MediaPill>
@@ -552,8 +634,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     return `${window.location.origin}/live/r/${roomId}`;
   }, [roomId]);
 
-  useVideoStream(cameraRef, cameraStream);
-  useVideoStream(screenRef, screenStream);
+  useMediaStream(cameraRef, cameraStream);
+  useMediaStream(screenRef, screenStream);
 
   useEffect(() => {
     localStreamsRef.current = { micStream, cameraStream, screenStream };
@@ -620,6 +702,29 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     if (!socket || socket.readyState !== WebSocket.OPEN) return false;
     socket.send(JSON.stringify(payload));
     return true;
+  }
+
+  function resetRoomSession(nextStatus: string) {
+    const socket = socketRef.current;
+    socketRef.current = null;
+    socket?.close();
+    for (const connection of peerConnectionsRef.current.values()) connection.close();
+    peerConnectionsRef.current.clear();
+    remoteStreamsRef.current.clear();
+    selfPeerIdRef.current = null;
+    lastMediaStateRef.current = { mic: false, camera: false, screen: false };
+    stopStream(localStreamsRef.current.micStream);
+    stopStream(localStreamsRef.current.cameraStream);
+    stopStream(localStreamsRef.current.screenStream);
+    setMicStream(null);
+    setCameraStream(null);
+    setScreenStream(null);
+    setRemotePeers([]);
+    setSocketReady(false);
+    setJoined(false);
+    setPeerId(null);
+    setMicLevel(0);
+    setStatus(nextStatus);
   }
 
   function currentMediaState() {
@@ -950,6 +1055,18 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     connectRoomSocket(name);
   }
 
+  function leaveRoom() {
+    resetRoomSession("Left room.");
+  }
+
+  function closeRoomWindow() {
+    resetRoomSession("Closing room window...");
+    window.close();
+    window.setTimeout(() => {
+      if (!window.closed) setStatus("Left room. Browser blocked auto-close; close this tab when ready.");
+    }, 150);
+  }
+
   async function toggleMic() {
     if (micStream) {
       stopStream(micStream);
@@ -1084,7 +1201,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
           </span>
         </TitleBar>
         <RoomBody>
-          <Panel>
+          <ControlPanel>
             <RoomHeader>
               <span><Radio size={16} aria-hidden /> PUBLIC ROOM</span>
               <h1>{room.title}</h1>
@@ -1103,6 +1220,12 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
               </Button>
               <Button onClick={copyRoomUrl}>
                 <ButtonLabel><Copy size={16} aria-hidden /> Copy URL</ButtonLabel>
+              </Button>
+              <Button disabled={!joined} onClick={leaveRoom} data-wtf-live-leave-room>
+                <ButtonLabel><LogOut size={16} aria-hidden /> Leave Room</ButtonLabel>
+              </Button>
+              <Button onClick={closeRoomWindow} data-wtf-live-close-window>
+                <ButtonLabel><X size={16} aria-hidden /> Close Window</ButtonLabel>
               </Button>
             </GuestGrid>
             <GuestGrid>
@@ -1126,113 +1249,124 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
               </MicMeter>
             ) : null}
             <StatusLine aria-live="polite">{status}</StatusLine>
-          </Panel>
+          </ControlPanel>
 
-          <Panel>
-            <LiveSectionHeader>
-              <span>People in room</span>
-              <span>{remotePeers.length ? `${remotePeers.length} remote` : "waiting"}</span>
-            </LiveSectionHeader>
-            <RemoteGrid data-wtf-live-remote-grid>
-              {remotePeers.length ? remotePeers.map((peer) => <RemotePeerTile key={peer.peerId} peer={peer} />) : (
-                <PeerTile>
-                  <PeerVideoFrame><span>No other participants yet</span></PeerVideoFrame>
-                  <PeerMeta><strong>Room</strong><span>{socketReady ? "Connected" : "Offline"}</span></PeerMeta>
-                </PeerTile>
-              )}
-            </RemoteGrid>
-            <LiveSectionHeader>
-              <span>Local preview</span>
-              <span>{peerId ? peerId.slice(0, 12) : "not joined"}</span>
-            </LiveSectionHeader>
-            <PreviewGrid>
-              <PreviewBox>
-                {cameraStream ? <PreviewVideo ref={cameraRef} muted autoPlay playsInline /> : <span>Camera preview</span>}
-              </PreviewBox>
-              <PreviewBox>
-                {screenStream ? <PreviewVideo ref={screenRef} muted autoPlay playsInline /> : <span>Screen preview</span>}
-              </PreviewBox>
-            </PreviewGrid>
-            <MessageList aria-label="WTF LIVE room chat" data-wtf-live-chat-log>
-              {messagesQuery.isLoading ? <Hourglass size={24} /> : null}
-              {liveMessages.map((message) => (
-                <MessageItem key={message.id} data-wtf-live-chat-message={message.id}>
-                  <strong>{message.guestName}</strong>
-                  <span>{formatDate(message.createdAt)}</span>
-                  {message.text ? <div>{message.text}</div> : null}
-                  {message.attachments.length ? (
-                    <AttachmentStrip>
-                      {message.attachments.map((attachment) => (
-                        <AttachmentPreview key={attachment.id}>
-                          {attachment.kind === "video" ? (
-                            <video src={attachment.dataUrl} controls playsInline />
-                          ) : (
-                            <img src={attachment.dataUrl} alt={attachment.name} />
-                          )}
-                          <span>{attachment.name} {formatFileSize(attachment.sizeBytes)}</span>
-                        </AttachmentPreview>
-                      ))}
-                    </AttachmentStrip>
-                  ) : null}
-                </MessageItem>
-              ))}
-              {messages.length ? <MessageDivider>Public AT room notes</MessageDivider> : null}
-              {messages.length ? (
-                [...messages].reverse().map((message) => (
-                  <MessageItem key={message.uri}>
-                    <strong>{message.author?.displayName || message.author?.handle || "host"}</strong>
-                    {formatDate(message.createdAt) ? <span>{formatDate(message.createdAt)}</span> : null}
-                    <div>{message.text}</div>
+          <RoomWorkspace>
+            <MediaColumn>
+              <LiveSectionHeader>
+                <span>People in room</span>
+                <span>{remotePeers.length ? `${remotePeers.length} remote` : "waiting"}</span>
+              </LiveSectionHeader>
+              <RemoteGrid data-wtf-live-remote-grid>
+                {remotePeers.length ? remotePeers.map((peer) => <RemotePeerTile key={peer.peerId} peer={peer} />) : (
+                  <PeerTile $hasMedia={false}>
+                    <PeerPresence>
+                      <strong>Room</strong>
+                      <span>{socketReady ? "Connected" : "Offline"}</span>
+                      <span>No other participants yet</span>
+                    </PeerPresence>
+                  </PeerTile>
+                )}
+              </RemoteGrid>
+              <LiveSectionHeader>
+                <span>Local preview</span>
+                <span>{peerId ? peerId.slice(0, 12) : "not joined"}</span>
+              </LiveSectionHeader>
+              <PreviewGrid>
+                <PreviewBox>
+                  {cameraStream ? <PreviewVideo ref={cameraRef} muted autoPlay playsInline /> : <span>Camera preview</span>}
+                </PreviewBox>
+                <PreviewBox>
+                  {screenStream ? <PreviewVideo ref={screenRef} muted autoPlay playsInline /> : <span>Screen preview</span>}
+                </PreviewBox>
+              </PreviewGrid>
+            </MediaColumn>
+            <ChatColumn data-wtf-live-chat-column="true">
+              <LiveSectionHeader>
+                <span>Room chat</span>
+                <span>{liveMessages.length + messages.length} messages</span>
+              </LiveSectionHeader>
+              <MessageList aria-label="WTF LIVE room chat" data-wtf-live-chat-log>
+                {messagesQuery.isLoading ? <Hourglass size={24} /> : null}
+                {liveMessages.map((message) => (
+                  <MessageItem key={message.id} data-wtf-live-chat-message={message.id}>
+                    <strong>{message.guestName}</strong>
+                    <span>{formatDate(message.createdAt)}</span>
+                    {message.text ? <div>{message.text}</div> : null}
+                    {message.attachments.length ? (
+                      <AttachmentStrip>
+                        {message.attachments.map((attachment) => (
+                          <AttachmentPreview key={attachment.id}>
+                            {attachment.kind === "video" ? (
+                              <video src={attachment.dataUrl} controls playsInline />
+                            ) : (
+                              <img src={attachment.dataUrl} alt={attachment.name} />
+                            )}
+                            <span>{attachment.name} {formatFileSize(attachment.sizeBytes)}</span>
+                          </AttachmentPreview>
+                        ))}
+                      </AttachmentStrip>
+                    ) : null}
                   </MessageItem>
-                ))
-              ) : null}
-              {!liveMessages.length && !messages.length ? <span>No room chat yet.</span> : null}
-            </MessageList>
-            <ChatComposer>
-              <ChatTextArea
-                data-wtf-live-chat-text
-                disabled={!joined || !socketReady}
-                value={chatText}
-                maxLength={1200}
-                placeholder={socketReady ? "Type in the room" : "Join the room to chat"}
-                onChange={(event) => setChatText(event.target.value)}
-              />
-              {chatAttachments.length ? (
-                <AttachmentStrip>
-                  {chatAttachments.map((attachment) => (
-                    <AttachmentPreview key={attachment.id}>
-                      {attachment.kind === "video" ? (
-                        <video src={attachment.dataUrl} controls playsInline />
-                      ) : (
-                        <img src={attachment.dataUrl} alt={attachment.name} />
-                      )}
-                      <span>{attachment.name} {formatFileSize(attachment.sizeBytes)}</span>
-                      <Button onClick={() => removeAttachment(attachment.id)}>Remove</Button>
-                    </AttachmentPreview>
-                  ))}
-                </AttachmentStrip>
-              ) : null}
-              <HiddenFileInput
-                ref={fileInputRef}
-                data-wtf-live-chat-file
-                type="file"
-                multiple
-                accept="image/png,image/jpeg,image/gif,video/mp4"
-                onChange={handleAttachmentInput}
-              />
-              <GuestGrid>
-                <Button
-                  disabled={!joined || !socketReady || chatAttachments.length >= MAX_LIVE_CHAT_ATTACHMENTS}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <ButtonLabel><Paperclip size={16} aria-hidden /> Media</ButtonLabel>
-                </Button>
-                <Button primary disabled={!canSendChat} onClick={sendLiveChat} data-wtf-live-chat-send>
-                  <ButtonLabel><Send size={16} aria-hidden /> Send</ButtonLabel>
-                </Button>
-              </GuestGrid>
-            </ChatComposer>
-          </Panel>
+                ))}
+                {messages.length ? <MessageDivider>Public AT room notes</MessageDivider> : null}
+                {messages.length ? (
+                  [...messages].reverse().map((message) => (
+                    <MessageItem key={message.uri}>
+                      <strong>{message.author?.displayName || message.author?.handle || "host"}</strong>
+                      {formatDate(message.createdAt) ? <span>{formatDate(message.createdAt)}</span> : null}
+                      <div>{message.text}</div>
+                    </MessageItem>
+                  ))
+                ) : null}
+                {!liveMessages.length && !messages.length ? <span>No room chat yet.</span> : null}
+              </MessageList>
+              <ChatComposer data-wtf-live-chat-composer="true">
+                <ChatTextArea
+                  data-wtf-live-chat-text
+                  disabled={!joined || !socketReady}
+                  value={chatText}
+                  maxLength={1200}
+                  placeholder={socketReady ? "Type in the room" : "Join the room to chat"}
+                  onChange={(event) => setChatText(event.target.value)}
+                />
+                {chatAttachments.length ? (
+                  <AttachmentStrip>
+                    {chatAttachments.map((attachment) => (
+                      <AttachmentPreview key={attachment.id}>
+                        {attachment.kind === "video" ? (
+                          <video src={attachment.dataUrl} controls playsInline />
+                        ) : (
+                          <img src={attachment.dataUrl} alt={attachment.name} />
+                        )}
+                        <span>{attachment.name} {formatFileSize(attachment.sizeBytes)}</span>
+                        <Button onClick={() => removeAttachment(attachment.id)}>Remove</Button>
+                      </AttachmentPreview>
+                    ))}
+                  </AttachmentStrip>
+                ) : null}
+                <HiddenFileInput
+                  ref={fileInputRef}
+                  data-wtf-live-chat-file
+                  type="file"
+                  multiple
+                  accept="image/png,image/jpeg,image/gif,video/mp4"
+                  onChange={handleAttachmentInput}
+                />
+                <GuestGrid>
+                  <Button
+                    disabled={!joined || !socketReady || chatAttachments.length >= MAX_LIVE_CHAT_ATTACHMENTS}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <ButtonLabel><Paperclip size={16} aria-hidden /> Media</ButtonLabel>
+                  </Button>
+                  <Button primary disabled={!canSendChat} onClick={sendLiveChat} data-wtf-live-chat-send>
+                    <ButtonLabel><Send size={16} aria-hidden /> Send</ButtonLabel>
+                  </Button>
+                </GuestGrid>
+              </ChatComposer>
+            </ChatColumn>
+          </RoomWorkspace>
         </RoomBody>
       </RoomFrame>
     </GuestShell>

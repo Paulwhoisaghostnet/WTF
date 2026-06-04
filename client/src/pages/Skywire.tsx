@@ -106,6 +106,83 @@ interface AtprotoMe {
   oauth: { clientIdUrl: string; redirectUri: string; scope: string; maxScope: string };
 }
 
+type AtprotoOAuthCompletion = {
+  type: "atproto_oauth_complete";
+  app: "skywire";
+  ok: boolean;
+  handle?: string;
+  error?: string;
+  permissionTier?: string;
+  chatEnabled?: boolean;
+  requestedScope?: string;
+  grantedScope?: string;
+  accountId?: number | null;
+  at?: number;
+};
+
+const SKYWIRE_OAUTH_CHANNEL = "skywire:atproto-oauth";
+const SKYWIRE_OAUTH_LINKED_KEY = "skywire:atproto-linked";
+const SKYWIRE_OAUTH_ERROR_KEY = "skywire:atproto-error";
+const SKYWIRE_OAUTH_PENDING_KEY = "skywire:atproto-oauth-pending";
+const SKYWIRE_OAUTH_POPUP_NAME = "skywire-atproto-oauth";
+
+function skywireOAuthCompletionPayload(value: unknown): AtprotoOAuthCompletion | null {
+  if (!value || typeof value !== "object") return null;
+  const payload = value as Record<string, unknown>;
+  const app = payload.app === "skywire" || payload.app === undefined ? "skywire" : null;
+  if (app !== "skywire") return null;
+  if (payload.type && payload.type !== "atproto_oauth_complete") return null;
+  const numericAccountId =
+    typeof payload.accountId === "number"
+      ? payload.accountId
+      : typeof payload.accountId === "string" && payload.accountId.trim()
+        ? Number(payload.accountId)
+        : null;
+  return {
+    type: "atproto_oauth_complete",
+    app,
+    ok: Boolean(payload.ok ?? !payload.error),
+    handle: typeof payload.handle === "string" ? payload.handle : "",
+    error: typeof payload.error === "string" ? payload.error : "",
+    permissionTier: typeof payload.permissionTier === "string" ? payload.permissionTier : "",
+    chatEnabled: payload.chatEnabled === true || payload.chatEnabled === "true" || payload.chatEnabled === "1",
+    requestedScope: typeof payload.requestedScope === "string" ? payload.requestedScope : "",
+    grantedScope: typeof payload.grantedScope === "string" ? payload.grantedScope : "",
+    accountId: Number.isFinite(numericAccountId) ? numericAccountId : null,
+    at: typeof payload.at === "number" ? payload.at : Date.now(),
+  };
+}
+
+function shareSkywireOAuthCompletion(payload: AtprotoOAuthCompletion) {
+  const storageKey = payload.ok ? SKYWIRE_OAUTH_LINKED_KEY : SKYWIRE_OAUTH_ERROR_KEY;
+  const serialized = JSON.stringify(payload);
+  try {
+    window.localStorage.setItem(storageKey, serialized);
+  } catch {
+    // Popup-to-opener storage sync is best-effort; BroadcastChannel and polling are the durable fallbacks.
+  }
+  try {
+    const channel = new BroadcastChannel(SKYWIRE_OAUTH_CHANNEL);
+    channel.postMessage(payload);
+    window.setTimeout(() => {
+      try {
+        channel.close();
+      } catch {
+        // Ignore channel cleanup failures.
+      }
+    }, 1000);
+  } catch {
+    // BroadcastChannel is not available in every embedded browser context.
+  }
+  try {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(payload, window.location.origin);
+    }
+  } catch {
+    // Cross-context opener access can be denied by browser policy.
+  }
+}
+
 interface FeedResponse {
   feedType: string;
   source?: string;
@@ -3137,10 +3214,12 @@ function AccountPanel({
   me,
   isAdmin,
   seedHandle = "",
+  onOAuthCompletion,
 }: {
   me: AtprotoMe;
   isAdmin: boolean;
   seedHandle?: string;
+  onOAuthCompletion?: (payload: AtprotoOAuthCompletion) => void;
 }) {
   const handleClaims = me.handleClaims ?? [];
   const tezosIdentity = me.tezosIdentity ?? null;
@@ -3187,6 +3266,7 @@ function AccountPanel({
   };
   const startOAuthConnect = (rawHandle: string, tier: SkywirePermissionTier, chatEnabled: boolean) => {
     const connectHandle = normalizedConnectHandle(rawHandle);
+    const requestedScope = buildSkywireAtprotoScope(tier, chatEnabled);
     const params = new URLSearchParams({
       handle: connectHandle,
       returnTo: "/skywire",
@@ -3195,10 +3275,130 @@ function AccountPanel({
       chat: chatEnabled ? "1" : "0",
     });
     const url = `/api/atproto/oauth/start?${params.toString()}`;
-    const popup = window.open("about:blank", "skywire-atproto-oauth", "width=520,height=760");
+    const popup = window.open("about:blank", SKYWIRE_OAUTH_POPUP_NAME, "width=520,height=760");
     if (popup) {
+      try {
+        window.localStorage.setItem(
+          SKYWIRE_OAUTH_PENDING_KEY,
+          JSON.stringify({ handle: connectHandle, tier, chatEnabled, requestedScope, at: Date.now() }),
+        );
+      } catch {
+        // Popup-close refetch is best-effort; the server still persists canonical permission state.
+      }
+      let finished = false;
+      let popupClosedPoll: number | null = null;
+      let canonicalPoll: number | null = null;
+      let canonicalTimeout: number | null = null;
+      let canonicalKickoff: number | null = null;
+      const clearWatchers = () => {
+        if (popupClosedPoll !== null) {
+          window.clearInterval(popupClosedPoll);
+          popupClosedPoll = null;
+        }
+        if (canonicalPoll !== null) {
+          window.clearInterval(canonicalPoll);
+          canonicalPoll = null;
+        }
+        if (canonicalTimeout !== null) {
+          window.clearTimeout(canonicalTimeout);
+          canonicalTimeout = null;
+        }
+        if (canonicalKickoff !== null) {
+          window.clearTimeout(canonicalKickoff);
+          canonicalKickoff = null;
+        }
+      };
+      const permissionUpgradeSatisfied = (account: AtprotoMe["account"]) => {
+        if (!account || account.session?.reconnectRequired) return false;
+        const accountTier = normalizeSkywirePermissionTier(account.oauthPermissionTier || SKYWIRE_DEFAULT_PERMISSION_TIER);
+        const capabilities = accountCapabilities(account);
+        const grantedScope = (account.oauthScopes || "").trim();
+        const storedRequestedScope = (account.oauthRequestedScopes || "").trim();
+        const tierSatisfied = accountTier === tier;
+        const chatSatisfied = !chatEnabled || Boolean(account.oauthChatEnabled || capabilities.has("chat"));
+        const scopeSatisfied =
+          storedRequestedScope === requestedScope ||
+          grantedScope === requestedScope ||
+          (chatEnabled && capabilities.has("chat"));
+        return tierSatisfied && chatSatisfied && scopeSatisfied;
+      };
+      const completeFromCanonicalAccount = (account: NonNullable<AtprotoMe["account"]>) => {
+        if (finished) return;
+        finished = true;
+        clearWatchers();
+        try {
+          window.localStorage.removeItem(SKYWIRE_OAUTH_PENDING_KEY);
+        } catch {
+          // Local pending marker is only a client hint.
+        }
+        const completion: AtprotoOAuthCompletion = {
+          type: "atproto_oauth_complete",
+          app: "skywire",
+          ok: true,
+          handle: account.handle || connectHandle,
+          permissionTier: account.oauthPermissionTier || tier,
+          chatEnabled: Boolean(account.oauthChatEnabled || accountCapabilities(account).has("chat")),
+          requestedScope,
+          grantedScope: account.oauthScopes || "",
+          accountId: account.id,
+          at: Date.now(),
+        };
+        shareSkywireOAuthCompletion(completion);
+        onOAuthCompletion?.(completion);
+        try {
+          if (!popup.closed) popup.close();
+        } catch {
+          // Browser policy may keep the popup open; the original window is already synced.
+        }
+      };
+      const refreshFromCanonicalState = async (): Promise<boolean> => {
+        if (finished) return true;
+        try {
+          const latest = await api.get("/api/atproto/me") as AtprotoMe;
+          qc.setQueryData(["skywire", "me"], latest);
+          if (latest.account && permissionUpgradeSatisfied(latest.account)) {
+            completeFromCanonicalAccount(latest.account);
+            return true;
+          }
+        } catch {
+          // The popup completion event and close poll still provide secondary refresh paths.
+        }
+        return false;
+      };
       popup.opener = null;
       popup.location.href = url;
+      canonicalKickoff = window.setTimeout(() => {
+        void refreshFromCanonicalState();
+      }, 1500);
+      canonicalPoll = window.setInterval(() => {
+        void refreshFromCanonicalState();
+      }, 2500);
+      canonicalTimeout = window.setTimeout(() => {
+        if (canonicalPoll !== null) {
+          window.clearInterval(canonicalPoll);
+          canonicalPoll = null;
+        }
+      }, 120000);
+      popupClosedPoll = window.setInterval(() => {
+        if (!popup.closed) return;
+        if (popupClosedPoll !== null) {
+          window.clearInterval(popupClosedPoll);
+          popupClosedPoll = null;
+        }
+        void refreshFromCanonicalState().finally(() => {
+          if (!finished) {
+            finished = true;
+            clearWatchers();
+            try {
+              window.localStorage.removeItem(SKYWIRE_OAUTH_PENDING_KEY);
+            } catch {
+              // Local pending marker is only a client hint.
+            }
+            qc.invalidateQueries({ queryKey: ["skywire", "me"] });
+            void qc.refetchQueries({ queryKey: ["skywire", "me"], type: "active" });
+          }
+        });
+      }, 750);
     } else {
       params.delete("popup");
       window.location.href = `/api/atproto/oauth/start?${params.toString()}`;
@@ -4162,11 +4362,36 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
     queryKey: ["skywire", "me"],
     queryFn: () => api.get("/api/atproto/me"),
   });
+  const refreshAtprotoAccount = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ["skywire", "me"] });
+    void qc.refetchQueries({ queryKey: ["skywire", "me"], type: "active" });
+  }, [qc]);
+  const handleAtprotoOAuthCompletion = useCallback((payload: AtprotoOAuthCompletion) => {
+    refreshAtprotoAccount();
+    if (!payload.ok) {
+      setTab("account");
+      setNotice(
+        payload.error === "atproto_handle"
+          ? "Enter a Bluesky handle like name.bsky.social, or just the username."
+          : "Bluesky connection did not complete. Try connecting again."
+      );
+      return;
+    }
+    setTab(payload.chatEnabled ? "chat" : "home");
+    setNotice(
+      payload.chatEnabled
+        ? `Skywire Chat Add-on enabled${payload.handle ? ` for @${payload.handle}` : ""}.`
+        : payload.handle
+          ? `Bluesky identity connected: @${payload.handle}`
+          : "Bluesky identity connected."
+    );
+  }, [refreshAtprotoAccount]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const verifiedHandle = params.get("handle");
     const isPopup = params.get("popup") === "1";
+    const isOAuthPopupWindow = isPopup || window.name === SKYWIRE_OAUTH_POPUP_NAME;
     const tabParam = params.get("tab");
     if (
       tabParam &&
@@ -4176,19 +4401,27 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
       setDidChooseInitialTab(true);
     }
     if (params.get("verified") === "atproto") {
-      setTab("home");
-      setNotice(verifiedHandle ? `Bluesky identity connected: @${verifiedHandle}` : "Bluesky identity connected.");
-      qc.invalidateQueries({ queryKey: ["skywire", "me"] });
+      const completion: AtprotoOAuthCompletion = {
+        type: "atproto_oauth_complete",
+        app: "skywire",
+        ok: true,
+        handle: verifiedHandle || "",
+        chatEnabled: params.get("chat") === "1" || params.get("chat") === "true",
+        permissionTier: params.get("permissionTier") || "",
+        requestedScope: params.get("requestedScope") || "",
+        grantedScope: params.get("grantedScope") || "",
+        accountId: params.get("accountId") ? Number(params.get("accountId")) : null,
+        at: Date.now(),
+      };
+      handleAtprotoOAuthCompletion(completion);
+      shareSkywireOAuthCompletion(completion);
       try {
-        window.localStorage.setItem(
-          "skywire:atproto-linked",
-          JSON.stringify({ handle: verifiedHandle, at: Date.now() })
-        );
+        window.localStorage.removeItem(SKYWIRE_OAUTH_PENDING_KEY);
       } catch {
-        // Storage sync is best-effort for popup completion.
+        // Local pending marker is only a client hint.
       }
-      if (isPopup) {
-        window.close();
+      if (isOAuthPopupWindow) {
+        window.setTimeout(() => window.close(), 50);
       }
     }
     const error = params.get("error");
@@ -4200,7 +4433,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
     if (params.has("verified") || params.has("error")) {
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, [qc]);
+  }, [handleAtprotoOAuthCompletion]);
 
   useEffect(() => {
     const me = meQuery.data;
@@ -4210,31 +4443,41 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   }, [didChooseInitialTab, initialTab, meQuery.data]);
 
   useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== "skywire:atproto-linked" && event.key !== "skywire:atproto-error") return;
-      let payload: { handle?: string; error?: string } = {};
-      try {
-        payload = JSON.parse(event.newValue || "{}") || {};
-      } catch {
-        payload = {};
-      }
-      if (event.key === "skywire:atproto-error") {
-        setTab("account");
-        setNotice(
-          payload.error === "atproto_handle"
-            ? "Enter a Bluesky handle like name.bsky.social, or just the username."
-            : "Bluesky connection did not complete. Try connecting again."
-        );
-        return;
-      }
-      const handle = payload.handle || "";
-      setTab("home");
-      setNotice(handle ? `Bluesky identity connected: @${handle}` : "Bluesky identity connected.");
-      qc.invalidateQueries({ queryKey: ["skywire", "me"] });
+    const completeFromRawPayload = (rawPayload: unknown) => {
+      const payload = skywireOAuthCompletionPayload(rawPayload);
+      if (!payload) return;
+      handleAtprotoOAuthCompletion(payload);
     };
+    const onStorage = (event: StorageEvent) => {
+      if (
+        event.key !== SKYWIRE_OAUTH_LINKED_KEY &&
+        event.key !== SKYWIRE_OAUTH_ERROR_KEY
+      ) return;
+      try {
+        completeFromRawPayload(JSON.parse(event.newValue || "{}") || {});
+      } catch {
+        completeFromRawPayload({ app: "skywire", ok: event.key === SKYWIRE_OAUTH_LINKED_KEY });
+      }
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      completeFromRawPayload(event.data);
+    };
+    const channel =
+      typeof BroadcastChannel !== "undefined"
+        ? new BroadcastChannel(SKYWIRE_OAUTH_CHANNEL)
+        : null;
+    if (channel) {
+      channel.onmessage = (event) => completeFromRawPayload(event.data);
+    }
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, [qc]);
+    window.addEventListener("message", onMessage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("message", onMessage);
+      channel?.close();
+    };
+  }, [handleAtprotoOAuthCompletion]);
 
   const me = meQuery.data;
   const canUseAtprotoSession = Boolean(me?.account && !me.account.session?.reconnectRequired);
@@ -4368,6 +4611,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
                   me={me}
                   isAdmin={isAdmin}
                   seedHandle={welcomeHandle}
+                  onOAuthCompletion={handleAtprotoOAuthCompletion}
                 />
               ) : null}
               {tab === "home" ? (

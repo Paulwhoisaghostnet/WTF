@@ -226,6 +226,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/skywire/feed?feedType=wtf" },
       { method: "GET", path: "/api/skywire/feed?feedType=tezos" },
       { method: "GET", path: "/api/skywire/feed?feedType=market", expectedStatuses: [200, 400, 401, 502] },
+      { method: "GET", path: "/api/skywire/feed?feedType=market&q=teia.art", expectedStatuses: [200, 400, 401, 502] },
       { method: "GET", path: "/api/skywire/actors/recommended" },
       { method: "GET", path: "/api/skywire/actors/follows", expectedStatuses: [200, 400, 401] },
       { method: "GET", path: "/api/skywire/actors/suggestions", expectedStatuses: [200, 400, 401] },

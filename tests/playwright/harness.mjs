@@ -23,6 +23,7 @@ const state = {
   interactionLog: [],
   skywirePostPayloads: [],
   skywireFollowPayloads: [],
+  skywireChatEnabled: true,
   wtfLiveOwnedRoom: { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, isPublic: true },
 };
 
@@ -52,9 +53,10 @@ app.post("/__test/state", (req, res) => {
   state.interactionLog = [];
   state.skywirePostPayloads = [];
   state.skywireFollowPayloads = [];
+  state.skywireChatEnabled = req.body?.skywireChatEnabled !== false;
   state.wtfLiveOwnedRoom = { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, isPublic: true };
   resetHarnessMarketState();
-  res.json({ ok: true, state: { mode: state.mode, userRole: state.userRole } });
+  res.json({ ok: true, state: { mode: state.mode, userRole: state.userRole, skywireChatEnabled: state.skywireChatEnabled } });
 });
 
 app.get("/__test/state", (_req, res) => {
@@ -66,6 +68,7 @@ app.get("/__test/state", (_req, res) => {
     interactionLog: state.interactionLog,
     skywirePostPayloads: state.skywirePostPayloads,
     skywireFollowPayloads: state.skywireFollowPayloads,
+    skywireChatEnabled: state.skywireChatEnabled,
   });
 });
 
@@ -699,7 +702,32 @@ function apiMock(req, res) {
   if (pathName === "/api/desktop/settings") {
     return res.json({ appearance: desktopAppearance, iconLayout: {} });
   }
+  if (pathName === "/api/atproto/oauth/start") {
+    const wantsChat = url.searchParams.get("chat") === "1" || url.searchParams.get("chat") === "true";
+    const handle = url.searchParams.get("handle") || "wtf-admin.bsky.social";
+    return res.type("html").send(`<!doctype html>
+<html>
+  <head><title>Harness Skywire OAuth</title></head>
+  <body>
+    <p>Harness Skywire OAuth ${wantsChat ? "chat upgrade" : "connect"} pending for @${handle}.</p>
+  </body>
+</html>`);
+  }
   if (pathName === "/api/atproto/me") {
+    const skywireChatEnabled = state.skywireChatEnabled !== false;
+    const skywireOauthScopes = skywireChatEnabled
+      ? "atproto transition:generic chat.bsky"
+      : "atproto transition:generic";
+    const skywireCapabilities = [
+      "profileWrite",
+      "socialActions",
+      "compose",
+      "signals",
+      "rooms",
+      "stages",
+      "notifications",
+      ...(skywireChatEnabled ? ["chat"] : []),
+    ];
     return res.json({
       enabled: true,
       account: {
@@ -713,11 +741,11 @@ function apiMock(req, res) {
         hasEncryptedTokens: true,
         hasDpopKey: true,
         lastSyncedAt: nowIso(),
-        oauthScopes: "atproto transition:generic chat.bsky",
-        oauthRequestedScopes: "atproto transition:generic chat.bsky",
+        oauthScopes: skywireOauthScopes,
+        oauthRequestedScopes: skywireOauthScopes,
         oauthPermissionTier: "be-bold",
-        oauthChatEnabled: true,
-        oauthCapabilities: ["profileWrite", "socialActions", "compose", "signals", "rooms", "stages", "chat", "notifications"],
+        oauthChatEnabled: skywireChatEnabled,
+        oauthCapabilities: skywireCapabilities,
         oauthHasBroadScope: true,
         session: { status: "oauth_ready", reconnectRequired: false, reason: null },
       },

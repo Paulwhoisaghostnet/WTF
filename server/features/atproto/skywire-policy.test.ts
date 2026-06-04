@@ -35,6 +35,10 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /"\/api\/atproto\/register"/);
   assert.match(route, /"\/api\/atproto\/oauth\/start"/);
   assert.match(route, /popupCompletionPage/);
+  assert.match(route, /BroadcastChannel/);
+  assert.match(route, /postMessage\(message/);
+  assert.match(route, /chatEnabled:\s*Boolean\(payload\.chatEnabled\)/);
+  assert.match(route, /verifiedParams\.set\("requestedScope"/);
   assert.match(route, /issues:\s*parsed\.error\.issues\.map/);
   assert.match(route, /normalizeRegistrationHandle/);
   assert.match(route, /atproto_oauth_start/);
@@ -107,6 +111,11 @@ test("Skywire registration UI only offers official signup handoff", () => {
   assert.match(shell, /Welcome to Skywire/);
   assert.match(page, /connectHandle/);
   assert.match(page, /skywire-atproto-oauth/);
+  assert.match(page, /skywire:atproto-oauth-pending/);
+  assert.match(page, /skywireOAuthCompletionPayload/);
+  assert.match(page, /SKYWIRE_OAUTH_CHANNEL\s*=\s*"skywire:atproto-oauth"/);
+  assert.match(page, /BroadcastChannel\(SKYWIRE_OAUTH_CHANNEL\)/);
+  assert.match(page, /refetchQueries\(\{\s*queryKey:\s*\["skywire",\s*"me"\]/);
   assert.match(page, /skywire:atproto-linked/);
   assert.match(page, /skywire:atproto-error/);
   assert.match(page, /atproto_oauth_start/);
@@ -149,7 +158,10 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(route, /source:\s*"app\.bsky\.feed\.searchPosts"/);
   assert.match(route, /SKYWIRE_MARKET_FEED_DOMAINS/);
   assert.match(route, /SKYWIRE_MARKET_FEED_SEARCH_TERMS/);
+  assert.match(route, /getSearchAtprotoAgent/);
   assert.match(route, /domain,\s*\n\s*sort:\s*"latest"/);
+  assert.match(route, /Skywire Market Feed search is unavailable right now/);
+  assert.match(route, /upstreamAvailable:\s*false/);
   assert.match(route, /richTextFacetLinkUris/);
   assert.match(route, /source:\s*"app\.bsky\.feed\.getAuthorFeed"/);
   assert.match(route, /officialTezosAtprotoActors/);
@@ -188,6 +200,9 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(route, /sessionFallback/);
   assert.match(route, /action:\s*err\.action/);
   assert.match(oauth, /action = "reconnect_atproto"/);
+  assert.match(oauth, /DEFAULT_ATPROTO_APPVIEW\s*=\s*"https:\/\/api\.bsky\.app"/);
+  assert.match(oauth, /DEFAULT_ATPROTO_SEARCH_APPVIEW\s*=\s*"https:\/\/api\.bsky\.app"/);
+  assert.match(oauth, /ATPROTO_SEARCH_APPVIEW/);
   assert.match(route, /normalizeFeedItem/);
   assert.match(route, /normalizePostView/);
   assert.match(route, /normalizeQuotedRecord/);

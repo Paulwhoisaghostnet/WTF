@@ -351,7 +351,8 @@ export function WtfLiveApp() {
   }
 
   function joinPublicRoom(room: WtfLiveRoom) {
-    window.location.href = publicRoomPath(room.id);
+    window.open(publicRoomPath(room.id), "_blank", "noopener,noreferrer");
+    setCopyStatus(`Opened ${room.title} in a new browser tab.`);
   }
 
   function openHostRoom(room: WtfLiveRoom) {
@@ -391,8 +392,8 @@ export function WtfLiveApp() {
         <ShareLink>{publicRoomUrl(room.id)}</ShareLink>
         {manageable ? <MutedText data-wtf-live-owner-controls="true">Owner controls</MutedText> : null}
         <ActionGrid data-wtf-live-room-actions={room.id}>
-          <Button primary size="sm" disabled={closed} onClick={() => joinPublicRoom(room)}>
-            <ButtonLabel><LogIn size={14} aria-hidden /> Join</ButtonLabel>
+          <Button primary size="sm" disabled={closed} onClick={() => joinPublicRoom(room)} data-wtf-live-room-join={room.id}>
+            <ButtonLabel><LogIn size={14} aria-hidden /> Join in New Tab</ButtonLabel>
           </Button>
           <Button size="sm" onClick={() => copyPublicRoom(room)}>
             <ButtonLabel><Copy size={14} aria-hidden /> Copy URL</ButtonLabel>
@@ -580,8 +581,8 @@ export function WtfLiveApp() {
                     <ShareLink>{publicRoomUrl(selectedRoom.id)}</ShareLink>
                     {selectedRoomManageable ? <MutedText data-wtf-live-owner-controls="true">Owner controls</MutedText> : null}
                     <ActionGrid data-wtf-live-room-actions={selectedRoom.id}>
-                      <Button primary size="sm" disabled={selectedRoom.isPublic === false} onClick={() => joinPublicRoom(selectedRoom)}>
-                        <ButtonLabel><LogIn size={14} aria-hidden /> Join</ButtonLabel>
+                      <Button primary size="sm" disabled={selectedRoom.isPublic === false} onClick={() => joinPublicRoom(selectedRoom)} data-wtf-live-room-join={selectedRoom.id}>
+                        <ButtonLabel><LogIn size={14} aria-hidden /> Join in New Tab</ButtonLabel>
                       </Button>
                       <Button size="sm" onClick={() => copyPublicRoom(selectedRoom)}>
                         <ButtonLabel><Copy size={14} aria-hidden /> Copy URL</ButtonLabel>

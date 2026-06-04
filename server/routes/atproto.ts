@@ -134,6 +134,11 @@ function popupCompletionPage(payload: {
   error?: string | null;
   returnTo: string;
   app?: "skywire" | "tz2at";
+  permissionTier?: string | null;
+  chatEnabled?: boolean;
+  requestedScope?: string | null;
+  grantedScope?: string | null;
+  accountId?: number | null;
 }): string {
   const appName = payload.app === "tz2at" ? "tz2at" : "skywire";
   const label = appName === "tz2at" ? "AT Protocol identity" : "Bluesky";
@@ -143,12 +148,22 @@ function popupCompletionPage(payload: {
       ? `${label} connected: @${payload.handle}`
       : `${label} connected.`
     : `${label} connection did not complete. Try connecting again.`;
-  const storageKey = payload.ok ? `${appName}:atproto-linked` : `${appName}:atproto-error`;
-  const storagePayload = JSON.stringify({
+  const completionPayload = {
+    type: "atproto_oauth_complete",
+    app: appName,
+    ok: payload.ok,
     handle: payload.handle ?? "",
     error: payload.error ?? "",
+    permissionTier: payload.permissionTier ?? "",
+    chatEnabled: Boolean(payload.chatEnabled),
+    requestedScope: payload.requestedScope ?? "",
+    grantedScope: payload.grantedScope ?? "",
+    accountId: payload.accountId ?? null,
     at: Date.now(),
-  });
+  };
+  const storageKey = payload.ok ? `${appName}:atproto-linked` : `${appName}:atproto-error`;
+  const channelName = `${appName}:atproto-oauth`;
+  const targetOrigin = new URL(publicBaseUrl()).origin;
   const returnUrl = `${publicBaseUrl()}${payload.returnTo}`;
   return `<!doctype html>
 <html>
@@ -167,7 +182,18 @@ function popupCompletionPage(payload: {
     <p><a href="${returnUrl}">Return to ${appName === "tz2at" ? "tz2at" : "Skywire"}</a></p>
     <script>
       (function () {
-        var payload = ${JSON.stringify(storagePayload)};
+        var message = ${JSON.stringify(completionPayload)};
+        var payload = JSON.stringify(message);
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(message, ${JSON.stringify(targetOrigin)});
+          }
+        } catch (err) {}
+        try {
+          var channel = new BroadcastChannel(${JSON.stringify(channelName)});
+          channel.postMessage(message);
+          setTimeout(function () { try { channel.close(); } catch (err) {} }, 1000);
+        } catch (err) {}
         try { window.localStorage.setItem(${JSON.stringify(storageKey)}, payload); } catch (err) {}
         try { window.dispatchEvent(new StorageEvent("storage", { key: ${JSON.stringify(storageKey)}, newValue: payload })); } catch (err) {}
         ${payload.ok ? "setTimeout(function () { window.close(); }, 250);" : ""}
@@ -689,8 +715,9 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
   const popup = sessionState.popup === true;
   const appName = sessionState.appName === "tz2at" ? "tz2at" : "skywire";
   const redirectWith = (query: string) => {
+    const parsed = new URLSearchParams(query);
     if (popup) {
-      const parsed = new URLSearchParams(query);
+      parsed.set("popup", "1");
       return res
         .type("html")
         .send(
@@ -700,10 +727,15 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
             error: parsed.get("error"),
             returnTo,
             app: appName,
+            permissionTier: sessionState.permissionTier || sessionState.tz2atStep || null,
+            chatEnabled: Boolean(sessionState.chatEnabled),
+            requestedScope: sessionState.requestedScope ?? null,
+            grantedScope: parsed.get("grantedScope"),
+            accountId: parsed.get("accountId") ? Number(parsed.get("accountId")) : null,
           })
         );
     }
-    return res.redirect(`${publicBaseUrl()}${returnTo}?${query}`);
+    return res.redirect(`${publicBaseUrl()}${returnTo}?${parsed.toString()}`);
   };
   try {
     const client = await getAtprotoOAuthClient();
@@ -801,9 +833,16 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     });
 
     delete (req.session as any).atprotoOAuth;
-    req.session.save(() =>
-      redirectWith(`verified=atproto&handle=${encodeURIComponent(profile.data.handle)}`)
-    );
+    const verifiedParams = new URLSearchParams({
+      verified: "atproto",
+      handle: profile.data.handle,
+      accountId: String(account.id),
+      permissionTier: String(sessionState.permissionTier || sessionState.tz2atStep || ""),
+      chat: Boolean(sessionState.chatEnabled) ? "1" : "0",
+    });
+    if (sessionState.requestedScope) verifiedParams.set("requestedScope", sessionState.requestedScope);
+    if (tokenInfo?.scope) verifiedParams.set("grantedScope", tokenInfo.scope);
+    req.session.save(() => redirectWith(verifiedParams.toString()));
   } catch (err) {
     console.warn("[skywire] atproto oauth callback failed:", err);
     redirectWith("error=atproto_oauth");
