@@ -3513,3 +3513,15 @@
 **Fix**: Added a dedicated `CREATE!` Start Menu category, generated creation-tool page definitions from `CREATION_TOOLS`, moved tool launchers out of `My Media`, and verified the rebuilt browser harness because Playwright serves `dist/public`.
 
 **Rule**: Creation-tool launcher routes should come from the canonical creation-tool registry. When browser smoke uses the local Playwright harness, rebuild `dist/public` before trusting Start Menu screenshots or flyout assertions.
+
+---
+
+## 2026-06-04 - Rat Race direct buy keys are supplemental, not market signals
+
+**What happened**: After Rat Race began preferring tz2at marketplace swap records for active-listing/floor evidence, the row builder nulled `listing_id` whenever the floor came from tz2at. Cards could show active listings while Buy direct was disabled or unsupported even when Objkt hydration had the numeric contract key needed for the wallet send.
+
+**Why it mattered**: tz2at can be canonical for market evidence without carrying every marketplace-specific purchase key. Wallet sends need the exact ask/swap id and price for the entrypoint being called; using tz2at floor fields as the purchase payload either disables valid buys or risks sending the wrong amount.
+
+**Fix**: Rat Race now keeps tz2at-first floor/listing evidence while attaching direct-buy fields from supplemental Objkt public tez listings. Objkt `bigmap_key` is used as the contract purchase key, with `id` only as fallback, and the buy price/marketplace contract come from the same Objkt listing used for the wallet send.
+
+**Rule**: Do not collapse market-signal fields and wallet-send fields into one source. For external marketplaces, keep the canonical activity source separate from the supplemental contract-call key, and assert that `listing_id`, `listing_price_mutez`, and `marketplace_contract` all refer to the exact listing the wallet will buy.

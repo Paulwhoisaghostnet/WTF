@@ -149,7 +149,10 @@ type ObjktTokenRow = {
 
 type ObjktListingRow = {
   id?: string | number | null;
+  bigmap_key?: string | number | null;
   price?: string | number | null;
+  currency_id?: string | number | null;
+  target_address?: string | null;
   amount_left?: string | number | null;
   status?: string | null;
   seller_address?: string | null;
@@ -616,7 +619,10 @@ function buildObjktRatRaceQuery(refs: TokenRef[]) {
         order_by: [{ price: asc }, { timestamp: asc }]
       ) {
         id
+        bigmap_key
         price
+        currency_id
+        target_address
         amount_left
         status
         seller_address
@@ -733,6 +739,32 @@ function lowestTz2atListing(listings: NormalizedListingSignal[]): NormalizedList
     }, null);
 }
 
+function objktListingPurchaseKey(listing: ObjktListingRow | null | undefined): string | null {
+  const key = trimString(listing?.bigmap_key ?? listing?.id);
+  return /^[0-9]+$/.test(key) ? key : null;
+}
+
+function isPublicTezObjktListing(listing: ObjktListingRow): boolean {
+  const currencyId =
+    listing.currency_id == null || trimString(listing.currency_id) === "" ? 1 : Number(listing.currency_id);
+  return currencyId === 1 && !trimString(listing.target_address);
+}
+
+function lowestObjktListing(listings: ObjktListingRow[]): ObjktListingRow | null {
+  return listings
+    .filter(isPublicTezObjktListing)
+    .reduce<ObjktListingRow | null>((best, listing) => {
+      if (!best) return listing;
+      return numberFrom(listing.price, Number.MAX_SAFE_INTEGER) < numberFrom(best.price, Number.MAX_SAFE_INTEGER)
+        ? listing
+        : best;
+    }, null);
+}
+
+function lowestObjktDirectBuyListing(listings: ObjktListingRow[]): ObjktListingRow | null {
+  return lowestObjktListing(listings.filter((listing) => Boolean(objktListingPurchaseKey(listing))));
+}
+
 export async function buildTz2atAtprotoRatRaceRows(
   collects: NormalizedCollect[],
   transfers: NormalizedTransfer[],
@@ -803,19 +835,19 @@ export async function buildTz2atAtprotoRatRaceRows(
     const observedSoldEditions = Math.max(aggregate.soldEditions, soldBySupply);
     const soldEditions = knownSupply ? Math.min(knownSupply, observedSoldEditions) : observedSoldEditions;
     const floorTz2atListing = lowestTz2atListing(tz2atListings);
-    const floorObjktListing = objktListings.reduce<ObjktListingRow | null>((best, listing) => {
-      if (!best) return listing;
-      return numberFrom(listing.price, Number.MAX_SAFE_INTEGER) < numberFrom(best.price, Number.MAX_SAFE_INTEGER) ? listing : best;
-    }, null);
+    const floorObjktListing = lowestObjktListing(objktListings);
+    const directBuyObjktListing = lowestObjktDirectBuyListing(objktListings);
     const firstListedAt = earliestTimestamp([
       ...tz2atListings.map((listing) => listing.timestamp),
       ...objktListings.map((listing) => listing.timestamp),
     ]);
     const thumbnail = token?.thumbnail_uri || token?.display_uri || token?.artifact_uri || null;
     const floorMutez = floorTz2atListing?.priceMutez ?? (floorObjktListing?.price == null ? null : String(floorObjktListing.price));
-    const marketplaceContract = floorTz2atListing?.marketplace || floorObjktListing?.marketplace_contract || null;
-    const listingPriceMutez = floorMutez;
-    const listingId = floorTz2atListing ? null : floorObjktListing?.id == null ? null : String(floorObjktListing.id);
+    const listingId = objktListingPurchaseKey(directBuyObjktListing);
+    const listingPriceMutez =
+      directBuyObjktListing?.price == null ? (floorTz2atListing?.priceMutez ?? null) : String(directBuyObjktListing.price);
+    const marketplaceContract =
+      directBuyObjktListing?.marketplace_contract || floorTz2atListing?.marketplace || floorObjktListing?.marketplace_contract || null;
 
     rows.push({
       token_contract: tokenContract,

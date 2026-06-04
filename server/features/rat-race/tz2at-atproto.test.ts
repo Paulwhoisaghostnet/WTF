@@ -9,7 +9,7 @@ import {
   normalizeTz2atTransferRecord,
   type Tz2atRepoRecord,
 } from "./tz2at-atproto";
-import type { RatRaceFilter } from "./hot-tokens";
+import { buildRatRacePurchaseIntent, type RatRaceFilter } from "./hot-tokens";
 
 const tokenContract = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
 
@@ -132,7 +132,7 @@ test("builds Rat Race rows by resolving collect records through Objkt metadata a
   assert.equal(rows[0].listing_id, "300");
 });
 
-test("uses tz2at listing signals before Objkt listing hydration", async () => {
+test("uses tz2at listing signals while keeping Objkt direct-buy keys", async () => {
   const collects = [
     normalizeTz2atCollectRecord({
       value: {
@@ -193,7 +193,10 @@ test("uses tz2at listing signals before Objkt listing hydration", async () => {
         },
         listings: [
           {
-            id: "should-not-attach-to-tz2at-floor",
+            id: "999",
+            bigmap_key: "301",
+            currency_id: 1,
+            target_address: null,
             price: "100000",
             amount_left: 1,
             status: "active",
@@ -211,8 +214,10 @@ test("uses tz2at listing signals before Objkt listing hydration", async () => {
   assert.equal(rows.length, 1);
   assert.equal(rows[0].active_listing_count, 1);
   assert.equal(rows[0].floor_mutez, "90000");
-  assert.equal(rows[0].listing_id, null);
+  assert.equal(rows[0].listing_id, "301");
+  assert.equal(rows[0].listing_price_mutez, "100000");
   assert.equal(rows[0].marketplace_contract, "KT1FvqJwEDWb1Gwc55Jd1jjTHRVWbYKUUpyq");
+  assert.equal(buildRatRacePurchaseIntent(rows[0]).supported, true);
 });
 
 test("builds Rat Race rows from the fresh tz2at replay record stream", async () => {
