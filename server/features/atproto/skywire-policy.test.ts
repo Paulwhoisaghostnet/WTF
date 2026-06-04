@@ -69,10 +69,11 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /oauthPermissionTier/);
   assert.match(route, /oauthChatEnabled/);
   assert.match(route, /resolvedChatEnabled/);
-  assert.match(route, /grantedSkywireCapabilities\(grantedScope\)\.has\("chat"\)/);
   assert.match(route, /linkedAccountForUserDid\(sessionState\.userId,\s*session\.did\)/);
-  assert.match(route, /persistOAuthSessionForDid\(session\.did,\s*storedSession,\s*\{/);
   assert.match(route, /oauthChatEnabled:\s*resolvedChatEnabled/);
+  assert.match(route, /resolveAtprotoOAuthGrantState/);
+  assert.match(route, /oauthScopes:\s*grantedScope/);
+  assert.match(route, /persistOAuthSessionForDid\(session\.did,\s*storedSession \?\? \(session as any\),\s*\{/);
   assert.doesNotMatch(route, /if \(!req\.isAuthenticated\?\.\(\) \|\| !sessionState\?\.userId\)/);
   assert.match(route, /buildSkywireAtprotoScope/);
   assert.match(route, /normalizeSkywirePermissionTier/);
@@ -83,6 +84,9 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(oauth, /buildSkywireAtprotoMaxScope/);
   assert.match(oauth, /atprotoAccountCapabilities/);
   assert.match(oauth, /accountHasAtprotoCapability/);
+  assert.match(oauth, /if \(account\?\.oauthChatEnabled\) capabilities\.add\("chat"\)/);
+  assert.match(oauth, /resolveAtprotoOAuthGrantState/);
+  assert.match(oauth, /ATPROTO_CHAT_SCOPE/);
   assert.match(oauth, /pendingOAuthSessions/);
   assert.match(oauth, /pendingOAuthSessions\.get\(key\)/);
   assert.match(oauth, /takePendingOAuthSessionForDid/);
@@ -126,6 +130,9 @@ test("Skywire registration UI only offers official signup handoff", () => {
   assert.match(page, /SKYWIRE_OAUTH_CHANNEL\s*=\s*"skywire:atproto-oauth"/);
   assert.match(page, /BroadcastChannel\(SKYWIRE_OAUTH_CHANNEL\)/);
   assert.match(page, /refetchQueries\(\{\s*queryKey:\s*\["skywire",\s*"me"\]/);
+  assert.match(page, /fetchCanonicalAtprotoAccount/);
+  assert.match(page, /Skywire has not received the durable chat permission yet/);
+  assert.doesNotMatch(page, /popup\.opener\s*=\s*null/);
   assert.match(page, /skywire:atproto-linked/);
   assert.match(page, /skywire:atproto-error/);
   assert.match(page, /atproto_oauth_start/);

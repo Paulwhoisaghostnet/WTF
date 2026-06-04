@@ -3729,3 +3729,15 @@
 **Fix**: WTF LIVE now keeps open public rooms separate from owned rooms, lets owners close/reopen rooms through `is_public`, archives deleted rooms through `archived_at`, adds Join buttons to room cards, and shows a local Web Audio mic level meter after a guest joins.
 
 **Rule**: Public room features must separate public discoverability from owner manageability. Closing should remove guest access without hiding the room from its owner, deletion should archive existing rows, archived rows must still reserve unique slugs, and media controls need visible readiness feedback before claiming a room is usable.
+
+---
+
+## 2026-06-04 - Skywire OAuth popup metadata is not durable permission
+
+**What happened**: Repeated Skywire Chat Add-on fixes proved popup messages, popup close handling, and harness state flips, but still allowed the app to show a popup/new-window Skywire instance as "chat enabled" while the original window and later sessions stayed disabled. The callback could let the OAuth SDK write token material first, then rely on separate route updates for tier/chat metadata, and the client trusted popup completion payloads before forcing a fresh canonical account read.
+
+**Why it mattered**: OAuth permission is account-level state. A URL param, BroadcastChannel payload, or popup-local Skywire instance can only be a hint; if the exact signed-in user plus DID `atproto_accounts` row is not updated with token material, effective scope, requested scope, tier, and chat flag together, the user gets a fake upgrade that disappears or disagrees across windows.
+
+**Fix**: The OAuth callback now resolves effective Skywire grants, performs a final canonical `persistOAuthSessionForDid` write with encrypted token material plus `oauthScopes`, `oauthRequestedScopes`, `oauthPermissionTier`, and `oauthChatEnabled`, and keeps chat capability checks aligned with stored chat consent. The Skywire client no longer severs the popup opener, and completion handlers force a fresh `/api/atproto/me` read before showing Chat Add-on success.
+
+**Rule**: Never verify Skywire OAuth upgrades from popup metadata alone. Tests must prove the callback writes durable account permission and that the original window only announces chat enabled after fresh canonical `/api/atproto/me` state confirms it.

@@ -237,7 +237,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion:
       "When a user enables the Skywire Chat Add-on through OAuth in a popup, the original Skywire window refetches canonical account state, reflects the granted chat permission, and does not leave the upgraded permission trapped in a second Skywire window.",
     durableSideEffectAssertion:
-      "The callback writes a structured completion payload through BroadcastChannel/storage fallback, includes tier/chat/scope metadata, the original window polls `/api/atproto/me` while the popup is open, and OAuth-created Skywire fallback windows close after broadcasting completion.",
+      "The callback writes a structured completion payload through BroadcastChannel/storage fallback, includes tier/chat/scope metadata, the original window polls `/api/atproto/me` while the popup is open, OAuth-created Skywire fallback windows close after broadcasting completion, and popup-local metadata cannot mark chat enabled unless canonical `/api/atproto/me` also has durable chat permission.",
   },
   {
     id: "wtf-live.owner-room-lifecycle-controls",

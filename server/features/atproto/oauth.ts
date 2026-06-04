@@ -9,11 +9,13 @@ import { db } from "../../db";
 import { encryptOAuthSecret, decryptOAuthSecret } from "../../auth/oauth-crypto";
 import { atprotoAccounts } from "@shared/schema";
 import {
+  ATPROTO_CHAT_SCOPE,
   ATPROTO_TRANSITION_GENERIC_SCOPE,
   buildSkywireAtprotoMaxScope,
   buildSkywireAtprotoScope,
   grantedSkywireCapabilities,
   inferSkywirePermissionTier,
+  parseScopeSet,
   type SkywirePermissionCapability,
   type SkywirePermissionTier,
 } from "@shared/atproto-permissions";
@@ -83,6 +85,7 @@ export function atprotoAccountCapabilities(account: typeof atprotoAccounts.$infe
 } {
   const scopes = account?.oauthScopes || "";
   const capabilities = grantedSkywireCapabilities(scopes);
+  if (account?.oauthChatEnabled) capabilities.add("chat");
   return {
     tier: (account?.oauthPermissionTier as SkywirePermissionTier | null) || inferSkywirePermissionTier(scopes),
     chatEnabled: Boolean(account?.oauthChatEnabled || capabilities.has("chat")),
@@ -96,7 +99,7 @@ export function accountHasAtprotoCapability(
   capability: SkywirePermissionCapability
 ): boolean {
   if (!account) return false;
-  return grantedSkywireCapabilities(account.oauthScopes).has(capability);
+  return atprotoAccountCapabilities(account).capabilities.includes(capability);
 }
 
 function publicBaseUrl(): string {
@@ -131,7 +134,41 @@ function safeParseJson<T>(value: string | null | undefined): T | undefined {
   }
 }
 
-function encryptedSessionFields(session: NodeSavedSession): {
+export function resolveAtprotoOAuthGrantState(params: {
+  appName: "skywire" | "tz2at";
+  tokenScope?: string | null;
+  requestedScope?: string | null;
+  chatRequested?: boolean;
+  fallbackScope?: string | null;
+}): {
+  grantedScope: string;
+  requestedScope: string;
+  chatEnabled: boolean;
+} {
+  const fallbackScope = params.fallbackScope?.trim() || ATPROTO_SCOPE;
+  const requestedScope = params.requestedScope?.trim() || params.tokenScope?.trim() || fallbackScope;
+  let grantedScope = params.tokenScope?.trim() || requestedScope;
+  if (params.appName === "skywire") {
+    const requestedChat =
+      Boolean(params.chatRequested) || grantedSkywireCapabilities(requestedScope).has("chat");
+    if (requestedChat && !grantedSkywireCapabilities(grantedScope).has("chat")) {
+      grantedScope = Array.from(
+        new Set([
+          ...parseScopeSet(grantedScope),
+          ATPROTO_TRANSITION_GENERIC_SCOPE,
+          ATPROTO_CHAT_SCOPE,
+        ])
+      ).join(" ");
+    }
+  }
+  return {
+    grantedScope,
+    requestedScope,
+    chatEnabled: params.appName === "skywire" && grantedSkywireCapabilities(grantedScope).has("chat"),
+  };
+}
+
+export function encryptedSessionFields(session: NodeSavedSession, options: { oauthScopes?: string | null } = {}): {
   encryptedAccessToken: string | null;
   encryptedRefreshToken: string | null;
   tokenExpiresAt: Date | null;
@@ -141,6 +178,7 @@ function encryptedSessionFields(session: NodeSavedSession): {
   encryptedDpopKey: string;
 } {
   const tokenSet = (session as any).tokenSet ?? {};
+  const oauthScopesOverride = options.oauthScopes?.trim();
   const rawExpiresAt = tokenSet.expires_at ?? tokenSet.expiresAt;
   const parsedExpiresAt =
     typeof rawExpiresAt === "string" || rawExpiresAt instanceof Date
@@ -163,7 +201,7 @@ function encryptedSessionFields(session: NodeSavedSession): {
     oauthIssuer: typeof tokenSet.iss === "string" ? tokenSet.iss : null,
     oauthAudience: typeof tokenSet.aud === "string" ? tokenSet.aud : null,
     oauthScopes:
-      typeof tokenSet.scope === "string" ? tokenSet.scope : ATPROTO_SCOPE,
+      oauthScopesOverride || (typeof tokenSet.scope === "string" ? tokenSet.scope : ATPROTO_SCOPE),
     encryptedDpopKey: encryptOAuthSecret(JSON.stringify((session as any).dpopJwk ?? null)),
   };
 }
@@ -215,9 +253,10 @@ export async function persistOAuthSessionForDid(
     oauthRequestedScopes?: string | null;
     oauthPermissionTier?: string | null;
     oauthChatEnabled?: boolean;
+    oauthScopes?: string | null;
   } = {}
 ): Promise<void> {
-  const fields = encryptedSessionFields(session);
+  const fields = encryptedSessionFields(session, { oauthScopes: options.oauthScopes });
   const updateValues = {
     encryptedAccessToken: fields.encryptedAccessToken,
     encryptedRefreshToken: fields.encryptedRefreshToken,

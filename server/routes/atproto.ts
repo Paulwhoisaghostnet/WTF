@@ -17,6 +17,7 @@ import {
   isAtprotoEnabled,
   persistCredentialSessionForDid,
   persistOAuthSessionForDid,
+  resolveAtprotoOAuthGrantState,
   takePendingOAuthSessionForDid,
   ATPROTO_SCOPE,
   ATPROTO_MAX_SCOPE,
@@ -28,7 +29,6 @@ import {
   SKYWIRE_PERMISSION_TIER_OPTIONS,
   buildTz2atAtprotoScope,
   buildSkywireAtprotoScope,
-  grantedSkywireCapabilities,
   normalizeTz2atPermissionStep,
   normalizeSkywirePermissionTier,
   type SkywirePermissionTier,
@@ -826,17 +826,24 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     const api = new Agent(session);
     const profile = await api.getProfile({ actor: session.did });
     const tokenInfo = await session.getTokenInfo(false).catch(() => null);
-    const grantedScope = tokenInfo?.scope ?? sessionState.requestedScope ?? ATPROTO_SCOPE;
-    const requestedScope = sessionState.requestedScope ?? tokenInfo?.scope ?? ATPROTO_SCOPE;
+    const sessionTokenScope =
+      typeof (session as any)?.tokenSet?.scope === "string" ? String((session as any).tokenSet.scope) : null;
+    const grants = resolveAtprotoOAuthGrantState({
+      appName,
+      tokenScope: tokenInfo?.scope ?? sessionTokenScope,
+      requestedScope: sessionState.requestedScope,
+      chatRequested: Boolean(sessionState.chatEnabled),
+      fallbackScope: ATPROTO_SCOPE,
+    });
+    const grantedScope = grants.grantedScope;
+    const requestedScope = grants.requestedScope;
     const resolvedPermissionTier =
       appName === "tz2at"
         ? sessionState.tz2atStep === "wallet-link"
           ? "tz2at-wallet-link"
           : "tz2at-identity"
         : (normalizeSkywirePermissionTier(sessionState.permissionTier) as SkywirePermissionTier);
-    const resolvedChatEnabled =
-      appName === "skywire" &&
-      (Boolean(sessionState.chatEnabled) || grantedSkywireCapabilities(grantedScope).has("chat"));
+    const resolvedChatEnabled = grants.chatEnabled;
 
     const accountValues = {
       userId: sessionState.userId,
@@ -889,15 +896,14 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
           .returning();
 
     const storedSession = takePendingOAuthSessionForDid(session.did);
-    if (storedSession) {
-      await persistOAuthSessionForDid(session.did, storedSession, {
-        accountId: account.id,
-        userId: sessionState.userId,
-        oauthRequestedScopes: requestedScope,
-        oauthPermissionTier: resolvedPermissionTier,
-        oauthChatEnabled: resolvedChatEnabled,
-      });
-    }
+    await persistOAuthSessionForDid(session.did, storedSession ?? (session as any), {
+      accountId: account.id,
+      userId: sessionState.userId,
+      oauthScopes: grantedScope,
+      oauthRequestedScopes: requestedScope,
+      oauthPermissionTier: resolvedPermissionTier,
+      oauthChatEnabled: resolvedChatEnabled,
+    });
 
     await emitAtprotoSystemEvent({
       eventType: "atproto.account.linked",

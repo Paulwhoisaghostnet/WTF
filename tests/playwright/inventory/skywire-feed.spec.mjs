@@ -303,4 +303,47 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     await expect.poll(() => popup.isClosed(), { timeout: 15000 }).toBe(true);
     expect(fatalErrors(errors)).toEqual([]);
   });
+
+  test("OAuth popup completion cannot fake chat enabled without canonical account permission", async ({
+    page,
+    request,
+  }) => {
+    const res = await request.post("/__test/state", {
+      data: { userRole: "admin", skywireChatEnabled: false },
+    });
+    expect(res.ok()).toBeTruthy();
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+
+    await page.goto("/skywire?tab=account", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("DM add-on off")).toBeVisible();
+
+    await page.evaluate(() => {
+      const message = {
+        type: "atproto_oauth_complete",
+        app: "skywire",
+        ok: true,
+        handle: "wtf-admin.bsky.social",
+        permissionTier: "be-bold",
+        chatEnabled: true,
+        requestedScope: "atproto transition:generic transition:chat.bsky",
+        grantedScope: "atproto transition:generic transition:chat.bsky",
+        accountId: 1,
+        at: Date.now(),
+      };
+      const channel = new BroadcastChannel("skywire:atproto-oauth");
+      channel.postMessage(message);
+      channel.close();
+    });
+
+    await expect(page.getByText("Skywire has not received the durable chat permission yet.")).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(page.getByText("DM add-on off")).toBeVisible();
+    await expect(page.getByText("Skywire Chat Add-on enabled for @wtf-admin.bsky.social.")).toHaveCount(0);
+    expect(fatalErrors(errors)).toEqual([]);
+  });
 });

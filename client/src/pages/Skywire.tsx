@@ -3365,7 +3365,6 @@ function AccountPanel({
         }
         return false;
       };
-      popup.opener = null;
       popup.location.href = url;
       canonicalKickoff = window.setTimeout(() => {
         void refreshFromCanonicalState();
@@ -4362,30 +4361,57 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
     queryKey: ["skywire", "me"],
     queryFn: () => api.get("/api/atproto/me"),
   });
+  const fetchCanonicalAtprotoAccount = useCallback(async () => {
+    await qc.invalidateQueries({ queryKey: ["skywire", "me"] });
+    const latest = await qc.fetchQuery<AtprotoMe>({
+      queryKey: ["skywire", "me"],
+      queryFn: () => api.get("/api/atproto/me"),
+      staleTime: 0,
+    });
+    qc.setQueryData(["skywire", "me"], latest);
+    return latest;
+  }, [qc]);
   const refreshAtprotoAccount = useCallback(() => {
     qc.invalidateQueries({ queryKey: ["skywire", "me"] });
     void qc.refetchQueries({ queryKey: ["skywire", "me"], type: "active" });
   }, [qc]);
   const handleAtprotoOAuthCompletion = useCallback((payload: AtprotoOAuthCompletion) => {
-    refreshAtprotoAccount();
-    if (!payload.ok) {
-      setTab("account");
+    void (async () => {
+      let latest: AtprotoMe | null = null;
+      try {
+        latest = await fetchCanonicalAtprotoAccount();
+      } catch {
+        refreshAtprotoAccount();
+      }
+      if (!payload.ok) {
+        setTab("account");
+        setNotice(
+          payload.error === "atproto_handle"
+            ? "Enter a Bluesky handle like name.bsky.social, or just the username."
+            : "Bluesky connection did not complete. Try connecting again."
+        );
+        return;
+      }
+      const canonicalAccount = latest?.account ?? null;
+      const canonicalHandle = canonicalAccount?.handle || payload.handle || "";
+      const canonicalChatEnabled = accountHasCapability(canonicalAccount, "chat");
+      if (payload.chatEnabled && !canonicalChatEnabled) {
+        setTab("account");
+        setNotice(
+          "Bluesky OAuth completed, but Skywire has not received the durable chat permission yet. Reconnect and approve the Chat Add-on prompt."
+        );
+        return;
+      }
+      setTab(canonicalChatEnabled ? "chat" : "home");
       setNotice(
-        payload.error === "atproto_handle"
-          ? "Enter a Bluesky handle like name.bsky.social, or just the username."
-          : "Bluesky connection did not complete. Try connecting again."
+        canonicalChatEnabled
+          ? `Skywire Chat Add-on enabled${canonicalHandle ? ` for @${canonicalHandle}` : ""}.`
+          : canonicalHandle
+            ? `Bluesky identity connected: @${canonicalHandle}`
+            : "Bluesky identity connected."
       );
-      return;
-    }
-    setTab(payload.chatEnabled ? "chat" : "home");
-    setNotice(
-      payload.chatEnabled
-        ? `Skywire Chat Add-on enabled${payload.handle ? ` for @${payload.handle}` : ""}.`
-        : payload.handle
-          ? `Bluesky identity connected: @${payload.handle}`
-          : "Bluesky identity connected."
-    );
-  }, [refreshAtprotoAccount]);
+    })();
+  }, [fetchCanonicalAtprotoAccount, refreshAtprotoAccount]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
