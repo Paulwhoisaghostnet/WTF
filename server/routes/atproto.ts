@@ -154,7 +154,22 @@ function safeReturnPath(value: unknown): string {
     .split(",")
     .map((path) => path.trim())
     .filter(Boolean);
-  return allowed.includes(requested) ? requested : "/skywire";
+  try {
+    const parsed = new URL(requested, "http://wtf.local");
+    if (parsed.origin !== "http://wtf.local" || !parsed.pathname.startsWith("/")) return "/skywire";
+    if (!allowed.includes(parsed.pathname)) return "/skywire";
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return "/skywire";
+  }
+}
+
+function returnPathWithQuery(returnTo: string, query: URLSearchParams): string {
+  const parsed = new URL(returnTo, "http://wtf.local");
+  for (const [key, value] of query.entries()) {
+    parsed.searchParams.set(key, value);
+  }
+  return `${parsed.pathname}${parsed.search}`;
 }
 
 function publicBaseUrl(): string {
@@ -809,7 +824,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
           })
         );
     }
-    return res.redirect(`${publicBaseUrl()}${returnTo}?${parsed.toString()}`);
+    return res.redirect(`${publicBaseUrl()}${returnPathWithQuery(returnTo, parsed)}`);
   };
   const authenticatedUserId = req.isAuthenticated?.() ? Number((req.user as any)?.id) : null;
   if (authenticatedUserId && authenticatedUserId !== Number(sessionState.userId)) {

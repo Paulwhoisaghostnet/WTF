@@ -3269,139 +3269,20 @@ function AccountPanel({
     const requestedScope = buildSkywireAtprotoScope(tier, chatEnabled);
     const params = new URLSearchParams({
       handle: connectHandle,
-      returnTo: "/skywire",
-      popup: "1",
+      returnTo: "/skywire?tab=account",
       tier,
       chat: chatEnabled ? "1" : "0",
     });
     const url = `/api/atproto/oauth/start?${params.toString()}`;
-    const popup = window.open("about:blank", SKYWIRE_OAUTH_POPUP_NAME, "width=520,height=760");
-    if (popup) {
-      try {
-        window.localStorage.setItem(
-          SKYWIRE_OAUTH_PENDING_KEY,
-          JSON.stringify({ handle: connectHandle, tier, chatEnabled, requestedScope, at: Date.now() }),
-        );
-      } catch {
-        // Popup-close refetch is best-effort; the server still persists canonical permission state.
-      }
-      let finished = false;
-      let popupClosedPoll: number | null = null;
-      let canonicalPoll: number | null = null;
-      let canonicalTimeout: number | null = null;
-      let canonicalKickoff: number | null = null;
-      const clearWatchers = () => {
-        if (popupClosedPoll !== null) {
-          window.clearInterval(popupClosedPoll);
-          popupClosedPoll = null;
-        }
-        if (canonicalPoll !== null) {
-          window.clearInterval(canonicalPoll);
-          canonicalPoll = null;
-        }
-        if (canonicalTimeout !== null) {
-          window.clearTimeout(canonicalTimeout);
-          canonicalTimeout = null;
-        }
-        if (canonicalKickoff !== null) {
-          window.clearTimeout(canonicalKickoff);
-          canonicalKickoff = null;
-        }
-      };
-      const permissionUpgradeSatisfied = (account: AtprotoMe["account"]) => {
-        if (!account || account.session?.reconnectRequired) return false;
-        const accountTier = normalizeSkywirePermissionTier(account.oauthPermissionTier || SKYWIRE_DEFAULT_PERMISSION_TIER);
-        const capabilities = accountCapabilities(account);
-        const grantedScope = (account.oauthScopes || "").trim();
-        const storedRequestedScope = (account.oauthRequestedScopes || "").trim();
-        const tierSatisfied = accountTier === tier;
-        const chatSatisfied = !chatEnabled || Boolean(account.oauthChatEnabled || capabilities.has("chat"));
-        const scopeSatisfied =
-          storedRequestedScope === requestedScope ||
-          grantedScope === requestedScope ||
-          (chatEnabled && capabilities.has("chat"));
-        return tierSatisfied && chatSatisfied && scopeSatisfied;
-      };
-      const completeFromCanonicalAccount = (account: NonNullable<AtprotoMe["account"]>) => {
-        if (finished) return;
-        finished = true;
-        clearWatchers();
-        try {
-          window.localStorage.removeItem(SKYWIRE_OAUTH_PENDING_KEY);
-        } catch {
-          // Local pending marker is only a client hint.
-        }
-        const completion: AtprotoOAuthCompletion = {
-          type: "atproto_oauth_complete",
-          app: "skywire",
-          ok: true,
-          handle: account.handle || connectHandle,
-          permissionTier: account.oauthPermissionTier || tier,
-          chatEnabled: Boolean(account.oauthChatEnabled || accountCapabilities(account).has("chat")),
-          requestedScope,
-          grantedScope: account.oauthScopes || "",
-          accountId: account.id,
-          at: Date.now(),
-        };
-        shareSkywireOAuthCompletion(completion);
-        onOAuthCompletion?.(completion);
-        try {
-          if (!popup.closed) popup.close();
-        } catch {
-          // Browser policy may keep the popup open; the original window is already synced.
-        }
-      };
-      const refreshFromCanonicalState = async (): Promise<boolean> => {
-        if (finished) return true;
-        try {
-          const latest = await api.get("/api/atproto/me") as AtprotoMe;
-          qc.setQueryData(["skywire", "me"], latest);
-          if (latest.account && permissionUpgradeSatisfied(latest.account)) {
-            completeFromCanonicalAccount(latest.account);
-            return true;
-          }
-        } catch {
-          // The popup completion event and close poll still provide secondary refresh paths.
-        }
-        return false;
-      };
-      popup.location.href = url;
-      canonicalKickoff = window.setTimeout(() => {
-        void refreshFromCanonicalState();
-      }, 1500);
-      canonicalPoll = window.setInterval(() => {
-        void refreshFromCanonicalState();
-      }, 2500);
-      canonicalTimeout = window.setTimeout(() => {
-        if (canonicalPoll !== null) {
-          window.clearInterval(canonicalPoll);
-          canonicalPoll = null;
-        }
-      }, 120000);
-      popupClosedPoll = window.setInterval(() => {
-        if (!popup.closed) return;
-        if (popupClosedPoll !== null) {
-          window.clearInterval(popupClosedPoll);
-          popupClosedPoll = null;
-        }
-        void refreshFromCanonicalState().finally(() => {
-          if (!finished) {
-            finished = true;
-            clearWatchers();
-            try {
-              window.localStorage.removeItem(SKYWIRE_OAUTH_PENDING_KEY);
-            } catch {
-              // Local pending marker is only a client hint.
-            }
-            qc.invalidateQueries({ queryKey: ["skywire", "me"] });
-            void qc.refetchQueries({ queryKey: ["skywire", "me"], type: "active" });
-          }
-        });
-      }, 750);
-    } else {
-      params.delete("popup");
-      window.location.href = `/api/atproto/oauth/start?${params.toString()}`;
+    try {
+      window.localStorage.setItem(
+        SKYWIRE_OAUTH_PENDING_KEY,
+        JSON.stringify({ handle: connectHandle, tier, chatEnabled, requestedScope, at: Date.now() }),
+      );
+    } catch {
+      // Local pending marker is only a client hint.
     }
+    window.location.assign(url);
   };
   const updateProfile = useMutation({
     mutationFn: () => api.post("/api/skywire/profile", { displayName, description }),
@@ -4384,6 +4265,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
         refreshAtprotoAccount();
       }
       if (!payload.ok) {
+        setDidChooseInitialTab(true);
         setTab("account");
         setNotice(
           payload.error === "atproto_handle"
@@ -4396,13 +4278,15 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
       const canonicalHandle = canonicalAccount?.handle || payload.handle || "";
       const canonicalChatEnabled = accountHasCapability(canonicalAccount, "chat");
       if (payload.chatEnabled && !canonicalChatEnabled) {
+        setDidChooseInitialTab(true);
         setTab("account");
         setNotice(
           "Bluesky OAuth completed, but Skywire has not received the durable chat permission yet. Reconnect and approve the Chat Add-on prompt."
         );
         return;
       }
-      setTab(canonicalChatEnabled ? "chat" : "home");
+      setDidChooseInitialTab(true);
+      setTab("account");
       setNotice(
         canonicalChatEnabled
           ? `Skywire Chat Add-on enabled${canonicalHandle ? ` for @${canonicalHandle}` : ""}.`
@@ -4512,20 +4396,24 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   const canUseSignals = Boolean(me?.account && accountHasCapability(me.account, "signals"));
   const canUseChat = Boolean(me?.account && accountHasCapability(me.account, "chat"));
   const canUseNotifications = Boolean(me?.account && accountHasCapability(me.account, "notifications"));
+  const selectTab = (nextTab: SkywireTab) => {
+    setDidChooseInitialTab(true);
+    setTab(nextTab);
+  };
   const openActorFeed = (actor: SkywireActor) => {
     if (!actor.did && !actor.handle) return;
     setSelectedActor(actor);
-    setTab("actor");
+    selectTab("actor");
   };
   const openThread = (post: SkywirePost) => {
     if (!post.uri) return;
     setSelectedThreadPost(post);
-    setTab("thread");
+    selectTab("thread");
   };
   const openPipelinePost = (post: SkywirePost) => {
     if (!post.uri) return;
     setSelectedPipelinePost(post);
-    setTab("pipelines");
+    selectTab("pipelines");
   };
   const handoffToWtfLive = (targetTab: "rooms" | "stages", quote?: SkywireQuotePost | null, id?: string) => {
     if (quote) {
@@ -4545,18 +4433,18 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   const openChatQuote = (quote: SkywireQuotePost, members: string[] = []) => {
     setPendingChatQuote(quote);
     setPendingChatMembers(Array.from(new Set(members.filter(Boolean))));
-    setTab("chat");
+    selectTab("chat");
   };
-  const openSettings = () => setTab("account");
+  const openSettings = () => selectTab("account");
   const enableChatAddOn = () => {
-    setTab("account");
+    selectTab("account");
     setNotice("Enable the Skywire Chat Add-on to reconnect with Be Bold plus Bluesky DM access.");
   };
   const leaveContextView = () => {
     setSelectedThreadPost(null);
     setSelectedActor(null);
     setSelectedPipelinePost(null);
-    setTab("home");
+    selectTab("home");
   };
   const capabilityCount = me?.account ? accountCapabilities(me.account).size : 0;
   const connectionTone = me?.account && canUseAtprotoSession ? "ready" : me?.account ? "warn" : "quiet";
@@ -4609,7 +4497,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
             <SkywireSidebar
               isAdmin={isAdmin}
               activeTab={tab}
-              onSelect={setTab}
+              onSelect={selectTab}
               onOpenWtfLive={() => {
                 window.location.href = "/live";
               }}
@@ -4675,7 +4563,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
                     onHandleChange={setWelcomeHandle}
                     onOpenSettings={openSettings}
                     onConnect={() => {
-                      setTab("account");
+                      selectTab("account");
                       setNotice(
                         welcomeHandle.trim()
                           ? `Next: confirm permissions for @${welcomeHandle.trim()} in Settings.`
@@ -4772,7 +4660,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
                     onHandleChange={setWelcomeHandle}
                     onOpenSettings={openSettings}
                     onConnect={() => {
-                      setTab("account");
+                      selectTab("account");
                       setNotice("Connect Bluesky in Settings to load notifications.");
                     }}
                   />

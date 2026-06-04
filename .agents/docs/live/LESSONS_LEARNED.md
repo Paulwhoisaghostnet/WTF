@@ -1,3 +1,13 @@
+## 2026-06-04 — Skywire permission OAuth must not create a second Skywire reality
+
+**What happened**: Repeated Skywire Chat Add-on fixes kept trying to synchronize a popup/new-window OAuth result back into the original Skywire window. Production still created a second upgraded Skywire instance, while the original settings/account view stayed disabled or snapped back to Home after a few seconds because the app's default-tab logic treated refetched account state as permission to reset the tab.
+
+**Why it mattered**: A permission upgrade is not a background notification problem. Creating another full Skywire window for the OAuth result gives users two conflicting realities and makes the popup look like the only place the permission exists.
+
+**Rule**: Skywire permission-changing OAuth must use the current browser window, return to `/skywire?tab=account`, and keep the account/settings tab selected until canonical `/api/atproto/me` shows the durable account permission. Do not add more popup polling or popup-close recovery for this path; popup/storage completion handling is legacy fallback only.
+
+---
+
 ## 2026-06-04 — Skywire OAuth upgrades must persist from OAuth state, not popup session state
 
 **What happened**: The Skywire Chat Add-on popup could finish OAuth and land in a second Skywire/wtfOS instance that looked upgraded, while the original window and later fresh sessions still showed chat disabled. The earlier popup-sync fix proved the opener could react to canonical state, but it did not prove the callback always wrote the upgraded scope to the canonical account row. The callback depended on `req.session.atprotoOAuth` for `popup`, `userId`, requested scope, tier, and chat intent, so a popup/new-window OAuth callback with drifted browser session state could fall back to a normal Skywire redirect or lose the app-owned chat metadata.

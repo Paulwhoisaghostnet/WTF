@@ -228,16 +228,16 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The server uses a search-capable Bluesky AppView for app.bsky.feed.searchPosts, domain-filters Objkt and Teia searches, filters normalized text/embed/facet hrefs through Skywire's token parser, and returns 502 when every upstream marketplace search fails.",
   },
   {
-    id: "skywire.oauth-popup-permission-sync",
+    id: "skywire.oauth-original-window-permission-sync",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["skywire"],
     ownerSpec: "tests/playwright/inventory/skywire-feed.spec.mjs",
     verificationCommand:
-      "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"OAuth popup\"",
+      "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"OAuth|Chat add-on\"",
     userVisibleAssertion:
-      "When a user enables the Skywire Chat Add-on through OAuth in a popup, the original Skywire window refetches canonical account state, reflects the granted chat permission, and does not leave the upgraded permission trapped in a second Skywire window.",
+      "When a user enables the Skywire Chat Add-on through OAuth, Skywire uses the current browser window, returns to the account/settings tab, and reflects the granted durable chat permission there instead of creating a second upgraded Skywire window.",
     durableSideEffectAssertion:
-      "The callback writes a structured completion payload through BroadcastChannel/storage fallback, includes tier/chat/scope metadata, the original window polls `/api/atproto/me` while the popup is open, OAuth-created Skywire fallback windows close after broadcasting completion, and popup-local metadata cannot mark chat enabled unless canonical `/api/atproto/me` also has durable chat permission.",
+      "The callback recovers the app-owned OAuth state, writes requested tier/scope, granted scope, chat add-on state, encrypted token material, and user+DID account identity to the canonical account row, appends callback params to `/skywire?tab=account`, and popup/local metadata cannot mark chat enabled unless canonical `/api/atproto/me` also has durable chat permission.",
   },
   {
     id: "wtf-live.owner-room-lifecycle-controls",

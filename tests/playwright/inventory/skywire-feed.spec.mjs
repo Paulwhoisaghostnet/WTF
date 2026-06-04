@@ -188,7 +188,7 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     expect(fatalErrors(errors)).toEqual([]);
   });
 
-  test("OAuth popup completion refreshes the original window chat permission state", async ({ page, request }) => {
+  test("legacy OAuth completion refreshes the account tab chat permission state", async ({ page, request }) => {
     const res = await request.post("/__test/state", {
       data: { userRole: "admin", skywireChatEnabled: false },
     });
@@ -227,11 +227,12 @@ test.describe("interaction inventory — Skywire feed usability", () => {
 
     await expect(page.getByText("Skywire Chat Add-on enabled for @wtf-admin.bsky.social.")).toBeVisible();
     await expect(page.getByText("DM add-on on")).toBeVisible();
-    await expect(page.getByText("Chats", { exact: true })).toBeVisible();
+    await expect(page.getByText("Connection & permissions")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Enable Chat Add-on" })).toHaveCount(0);
     expect(fatalErrors(errors)).toEqual([]);
   });
 
-  test("OAuth popup canonical state polling refreshes the original window and closes a stranded popup", async ({
+  test("Chat add-on OAuth uses the original window instead of a popup sandbox", async ({
     page,
     request,
   }) => {
@@ -247,27 +248,20 @@ test.describe("interaction inventory — Skywire feed usability", () => {
 
     await page.goto("/skywire?tab=account", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("DM add-on off")).toBeVisible();
-    const popupPromise = page.waitForEvent("popup");
+    const popupEvents = [];
+    page.on("popup", (popup) => popupEvents.push(popup));
     await page.getByRole("button", { name: "Enable Chat Add-on" }).click();
-    const popup = await popupPromise;
-    await popup.waitForLoadState("domcontentloaded");
-    await expect(popup.getByText(/Harness Skywire OAuth chat upgrade pending/i)).toBeVisible();
-
-    const upgraded = await request.post("/__test/state", {
-      data: { userRole: "admin", skywireChatEnabled: true },
-    });
-    expect(upgraded.ok()).toBeTruthy();
-
-    await expect(page.getByText("Skywire Chat Add-on enabled for @wtf-admin.bsky.social.")).toBeVisible({
-      timeout: 15000,
-    });
-    await expect(page.getByText("DM add-on on")).toBeVisible();
-    await expect(page.getByText("Chats", { exact: true })).toBeVisible();
-    await expect.poll(() => popup.isClosed(), { timeout: 15000 }).toBe(true);
+    await page.waitForURL(/\/api\/atproto\/oauth\/start/);
+    expect(popupEvents).toHaveLength(0);
+    const current = new URL(page.url());
+    expect(current.searchParams.get("popup")).toBeNull();
+    expect(current.searchParams.get("returnTo")).toBe("/skywire?tab=account");
+    expect(current.searchParams.get("chat")).toBe("1");
+    await expect(page.getByText(/Harness Skywire OAuth chat upgrade pending/i)).toBeVisible();
     expect(fatalErrors(errors)).toEqual([]);
   });
 
-  test("OAuth popup Skywire fallback broadcasts completion and closes itself", async ({ page, request }) => {
+  test("same-window OAuth callback keeps settings open and reflects durable chat permission", async ({ page, request }) => {
     const res = await request.post("/__test/state", {
       data: { userRole: "admin", skywireChatEnabled: false },
     });
@@ -285,22 +279,18 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     });
     expect(upgraded.ok()).toBeTruthy();
 
-    const fallbackUrl =
-      "/skywire?verified=atproto&handle=wtf-admin.bsky.social&permissionTier=be-bold&chat=1" +
+    const callbackUrl =
+      "/skywire?tab=account&verified=atproto&handle=wtf-admin.bsky.social&permissionTier=be-bold&chat=1" +
       "&requestedScope=atproto%20transition%3Ageneric%20chat.bsky" +
       "&grantedScope=atproto%20transition%3Ageneric%20chat.bsky&accountId=1";
-    const popupPromise = page.waitForEvent("popup");
-    await page.evaluate((url) => {
-      window.open(url, "skywire-atproto-oauth", "width=520,height=760");
-    }, fallbackUrl);
-    const popup = await popupPromise;
+    await page.goto(callbackUrl, { waitUntil: "domcontentloaded" });
 
     await expect(page.getByText("Skywire Chat Add-on enabled for @wtf-admin.bsky.social.")).toBeVisible({
       timeout: 15000,
     });
     await expect(page.getByText("DM add-on on")).toBeVisible();
-    await expect(page.getByText("Chats", { exact: true })).toBeVisible();
-    await expect.poll(() => popup.isClosed(), { timeout: 15000 }).toBe(true);
+    await expect(page.getByRole("button", { name: "Enable Chat Add-on" })).toHaveCount(0);
+    await expect(page.getByText("Connection & permissions")).toBeVisible();
     expect(fatalErrors(errors)).toEqual([]);
   });
 
