@@ -766,48 +766,58 @@ function apiMock(req, res) {
   }
   if (pathName === "/api/skywire/token-link" && req.method === "GET") {
     const rawUrl = url.searchParams.get("url") || "";
-    if (!/^https:\/\/objkt\.com\/asset\/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton\/1$/.test(rawUrl)) {
+    const allowedTokenLink =
+      /^https:\/\/objkt\.com\/asset\/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton\/1$/.test(rawUrl) ||
+      /^https:\/\/objkt\.com\/open-edition\/333$/.test(rawUrl) ||
+      /^https:\/\/teia\.art\/objkt\/789$/.test(rawUrl);
+    if (!allowedTokenLink) {
       return res.status(400).json({ error: "URL is not a supported Tezos token link." });
     }
+    const isOpenEdition = rawUrl.includes("/open-edition/");
+    const isTeia = rawUrl.includes("teia.art");
+    const tokenId = isOpenEdition ? "333" : isTeia ? "789" : "1";
+    const tokenTitle = isOpenEdition ? "Harness Open Edition" : isTeia ? "Harness Teia Token" : "Harness Token";
+    const tokenImage =
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800'%3E%3Crect width='800' height='800' fill='%230b1f2a'/%3E%3Ccircle cx='400' cy='330' r='190' fill='%2322c7bd'/%3E%3Cpath d='M110 660 290 460 430 570 565 365 690 660z' fill='%23fb7185'/%3E%3Ctext x='96' y='112' font-family='Arial' font-size='62' font-weight='700' fill='%23fff8d6'%3ETezos%3C/text%3E%3C/svg%3E";
     return res.json({
       reference: {
-        source: "objkt",
+        source: isTeia ? "teia" : "objkt",
         sourceUrl: rawUrl,
-        faContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
-        faSlug: null,
-        tokenId: "1",
+        faContract: isOpenEdition ? "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E" : "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+        faSlug: isOpenEdition ? "open_objkt" : null,
+        tokenId,
         marketUrl: rawUrl,
       },
       token: {
-        faContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
-        tokenId: "1",
-        title: "Harness Token",
-        imageUrl: null,
+        faContract: isOpenEdition ? "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E" : "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+        tokenId,
+        title: tokenTitle,
+        imageUrl: tokenImage,
         creatorAddress: "tz1HarnessCreator",
         creatorName: "Harness Creator",
-        collectionName: "Harness Collection",
+        collectionName: isOpenEdition ? "Harness OE" : "Harness Collection",
         marketUrl: rawUrl,
       },
       listing: {
-        kind: "fixed_listing",
-        marketplaceContract: "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
-        marketplaceName: "objkt v6.2",
-        listingId: "1001",
-        priceMutez: "1000000",
-        priceTez: "1",
+        kind: isOpenEdition ? "open_edition" : "fixed_listing",
+        marketplaceContract: isOpenEdition ? "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E" : "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
+        marketplaceName: isOpenEdition ? "objkt open edition" : isTeia ? "Teia" : "objkt v6.2",
+        listingId: isOpenEdition ? tokenId : "1001",
+        priceMutez: isTeia ? "250000" : "1000000",
+        priceTez: isTeia ? "0.25" : "1",
         sellerAddress: "tz1HarnessSeller",
-        amountLeft: 1,
+        amountLeft: isOpenEdition ? null : 1,
       },
       purchaseIntent: {
         supported: true,
         reason: null,
-        marketplaceContract: "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
-        marketplaceName: "objkt v6.2",
-        entrypoint: "fulfill_ask",
-        listingId: "1001",
+        marketplaceContract: isOpenEdition ? "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E" : "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
+        marketplaceName: isOpenEdition ? "objkt open edition" : isTeia ? "Teia" : "objkt v6.2",
+        entrypoint: isOpenEdition ? "claim" : "fulfill_ask",
+        listingId: isOpenEdition ? tokenId : "1001",
         amount: 1,
-        priceMutez: "1000000",
-        totalMutez: "1000000",
+        priceMutez: isTeia ? "250000" : "1000000",
+        totalMutez: isTeia ? "250000" : "1000000",
       },
       source: "objkt",
     });
@@ -870,7 +880,9 @@ function apiMock(req, res) {
   if (pathName === "/api/skywire/feed") {
     const skywireHarnessImage =
       "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 960 540'%3E%3Crect width='960' height='540' fill='%2310212b'/%3E%3Cpath d='M0 390 190 248 340 338 510 170 690 296 960 120v420H0z' fill='%230f8a96'/%3E%3Ccircle cx='760' cy='154' r='72' fill='%23fb7185'/%3E%3Ctext x='72' y='116' font-family='Arial' font-size='54' font-weight='700' fill='%23fff8d6'%3ESkywire media%3C/text%3E%3C/svg%3E";
-    const post = {
+    const skywirePortraitImage =
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 720 1080'%3E%3Crect width='720' height='1080' fill='%230b1f2a'/%3E%3Ccircle cx='360' cy='270' r='170' fill='%23f2c94c'/%3E%3Cpath d='M90 930 260 590 380 780 500 510 640 930z' fill='%2322c7bd'/%3E%3Ctext x='80' y='118' font-family='Arial' font-size='56' font-weight='700' fill='%23fff8d6'%3EFull media%3C/text%3E%3C/svg%3E";
+    const basePost = {
       uri: "at://did:plc:harness/app.bsky.feed.post/pipeline",
       cid: "bafyreiharness",
       sourceUrl: "https://bsky.app/profile/harness.bsky.social/post/pipeline",
@@ -904,11 +916,53 @@ function apiMock(req, res) {
       },
       quote: null,
     };
+    const openEditionPost = {
+      ...basePost,
+      uri: "at://did:plc:harness/app.bsky.feed.post/open-edition",
+      cid: "bafyreiopenedition",
+      sourceUrl: "https://bsky.app/profile/harness.bsky.social/post/open-edition",
+      text: "OE mint should stay inside Skywire instead of falling back to a generic href.",
+      counts: { reply: 4, repost: 7, like: 14, quote: 2 },
+      embed: {
+        images: [],
+        external: {
+          uri: "https://objkt.com/open-edition/333",
+          title: "Harness Open Edition",
+          description: "Objkt open edition listing promoted into a Skywire token preview.",
+        },
+      },
+    };
+    const teiaPost = {
+      ...basePost,
+      uri: "at://did:plc:harness/app.bsky.feed.post/teia-media",
+      cid: "bafyreiteiamedia",
+      sourceUrl: "https://bsky.app/profile/harness.bsky.social/post/teia-media",
+      text: "Tall image media should expand the post card and stay fully visible. https://teia.art/objkt/789",
+      counts: { reply: 1, repost: 2, like: 9, quote: 0 },
+      embed: {
+        images: [
+          {
+            thumb: skywirePortraitImage,
+            fullsize: skywirePortraitImage,
+            alt: "Tall Skywire media preview",
+          },
+        ],
+        external: {
+          uri: "https://teia.art/objkt/789",
+          title: "Harness Teia Token",
+          description: "Teia token link promoted into a Skywire token preview.",
+        },
+      },
+    };
     return res.json({
       feedType: url.searchParams.get("feedType") || "home",
       source: "inventory.harness.skywire.feed",
       cursor: null,
-      feed: [{ post, reason: null }],
+      feed: [
+        { post: basePost, reason: null },
+        { post: openEditionPost, reason: { type: "repost", by: basePost.author, indexedAt: nowIso() } },
+        { post: teiaPost, reason: null },
+      ],
     });
   }
   if (pathName === "/api/skywire/post/thread") {

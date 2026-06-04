@@ -622,39 +622,52 @@ const Mono = styled.code`
   overflow-wrap: anywhere;
 `;
 
-const FeedList = styled.div`
+const FeedColumn = styled.div`
   display: grid;
-  gap: 14px;
-  max-height: min(66vh, 680px);
-  overflow: auto;
-  padding: 2px 6px 6px 2px;
+  gap: 18px;
+  width: min(100%, 920px);
+  margin: 0 auto;
 `;
 
-const FeedItem = styled.article`
+const FeedList = styled.div<{ $social?: boolean }>`
+  display: grid;
+  gap: ${({ $social }) => ($social ? "26px" : "14px")};
+  max-height: ${({ $social }) => ($social ? "none" : "min(66vh, 680px)")};
+  overflow: ${({ $social }) => ($social ? "visible" : "auto")};
+  padding: ${({ $social }) => ($social ? "4px 2px 22px" : "2px 6px 6px 2px")};
+  align-content: start;
+`;
+
+const FeedItem = styled.article<{ $social?: boolean }>`
   position: relative;
   background:
     linear-gradient(180deg, rgba(20, 46, 58, 0.98) 0%, rgba(10, 26, 36, 0.98) 100%);
   border: 1px solid var(--sky-border);
   border-radius: 8px;
-  padding: 12px 12px 12px 16px;
+  padding: ${({ $social }) => ($social ? "18px 20px 20px 24px" : "12px 12px 12px 16px")};
   display: grid;
-  gap: 10px;
-  box-shadow: 0 2px 0 rgba(103, 232, 249, 0.18), 0 14px 26px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
+  gap: ${({ $social }) => ($social ? "14px" : "10px")};
+  min-height: ${({ $social }) => ($social ? "156px" : "auto")};
+  box-shadow:
+    0 2px 0 rgba(103, 232, 249, 0.18),
+    0 18px 34px rgba(0, 0, 0, ${({ $social }) => ($social ? "0.36" : "0.3")});
+  overflow: visible;
+  scroll-margin-block: 18px;
 
   &::before {
     content: "";
     position: absolute;
     inset: 0 auto 0 0;
     width: 5px;
+    border-radius: 8px 0 0 8px;
     background: linear-gradient(180deg, var(--sky-teal) 0%, #5b7cfa 42%, var(--sky-rose) 100%);
   }
 `;
 
-const PostHeader = styled.div`
+const PostHeader = styled.div<{ $social?: boolean }>`
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: ${({ $social }) => ($social ? "54px minmax(0, 1fr)" : "48px minmax(0, 1fr)")};
+  gap: ${({ $social }) => ($social ? "12px" : "10px")};
   align-items: start;
   min-width: 0;
 
@@ -751,28 +764,36 @@ const StatChip = styled.span`
   font-size: 12px;
 `;
 
-const ImageGrid = styled.div`
+const ImageGrid = styled.div<{ $count?: number }>`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 8px;
-  padding: 8px;
+  grid-template-columns: ${({ $count = 1 }) =>
+    $count <= 1 ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))"};
+  gap: 10px;
+  padding: 10px;
   border: 1px solid var(--sky-border);
   border-radius: 8px;
-  background: #10212b;
+  background:
+    linear-gradient(180deg, rgba(7, 19, 26, 0.98), rgba(11, 31, 43, 0.98));
+  justify-items: center;
+  align-items: center;
+  width: 100%;
 
   @media (max-width: 560px) {
     grid-template-columns: 1fr;
   }
 `;
 
-const FeedImage = styled.img`
-  width: 100%;
-  max-height: min(54vh, 520px);
+const FeedImage = styled.img<{ $solo?: boolean }>`
+  width: ${({ $solo }) => ($solo ? "100%" : "100%")};
+  height: auto;
+  max-width: 100%;
+  max-height: min(72vh, 760px);
   object-fit: contain;
   border: 1px solid #29495a;
   border-radius: 6px;
   background: #0a1218;
   display: block;
+  margin: 0 auto;
 `;
 
 const ExternalCard = styled.a`
@@ -1205,6 +1226,8 @@ function extractSkywireTokenUrls(post: SkywirePost): string[] {
   };
   collect(post.text);
   collect(post.embed.external?.uri);
+  collect(post.embed.external?.title);
+  collect(post.embed.external?.description);
   return Array.from(candidates).slice(0, 4);
 }
 
@@ -1342,7 +1365,7 @@ function SkywireTokenMarketCard({ url }: { url: string }) {
   };
 
   return (
-    <TokenMarketCard>
+    <TokenMarketCard data-skywire-token-preview="true">
       <TokenThumb>
         {token?.imageUrl ? <TokenThumbImage src={token.imageUrl} alt="" loading="lazy" /> : null}
       </TokenThumb>
@@ -1438,6 +1461,7 @@ function FeedActions({
   const cid = post.cid;
   const [replyText, setReplyText] = useState("");
   const [quoteText, setQuoteText] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
   const [isQuoting, setIsQuoting] = useState(false);
   const qc = useQueryClient();
   const invalidateFeeds = () => qc.invalidateQueries({ queryKey: ["skywire"] });
@@ -1462,6 +1486,7 @@ function FeedActions({
     },
     onSuccess: () => {
       setReplyText("");
+      setIsReplying(false);
       invalidateFeeds();
     },
   });
@@ -1487,6 +1512,9 @@ function FeedActions({
         </Button>
         <Button size="sm" disabled={!canUseSocialActions || Boolean(post.viewer.repost) || repost.isPending} onClick={() => repost.mutate()}>
           {post.viewer.repost ? "Reposted" : "Repost"}
+        </Button>
+        <Button size="sm" disabled={!canCompose} onClick={() => setIsReplying((value) => !value)}>
+          Reply
         </Button>
         <Button size="sm" disabled={!canCompose} onClick={() => setIsQuoting((value) => !value)}>
           Quote
@@ -1528,18 +1556,20 @@ function FeedActions({
           </Button>
         ) : null}
       </ActionRail>
-      <ComposerRail>
-        <TextField
-          value={replyText}
-          onChange={(e: any) => setReplyText(e.target.value)}
-          placeholder="reply"
-          disabled={!canCompose}
-          fullWidth
-        />
-        <Button size="sm" disabled={!canCompose || !replyText.trim() || reply.isPending} onClick={() => reply.mutate()}>
-          Reply
-        </Button>
-      </ComposerRail>
+      {isReplying ? (
+        <ComposerRail>
+          <TextField
+            value={replyText}
+            onChange={(e: any) => setReplyText(e.target.value)}
+            placeholder="reply"
+            disabled={!canCompose}
+            fullWidth
+          />
+          <Button size="sm" disabled={!canCompose || !replyText.trim() || reply.isPending} onClick={() => reply.mutate()}>
+            Send Reply
+          </Button>
+        </ComposerRail>
+      ) : null}
       {isQuoting ? (
         <Stack>
           <QuotePreview quote={quoteFromPost(post)} />
@@ -1607,9 +1637,9 @@ function FeedCard({
     </div>
   );
   return (
-    <FeedItem>
+    <FeedItem $social data-skywire-feed-card="true">
       {reason?.by ? <StatChip>Reposted by @{reason.by.handle}</StatChip> : null}
-      <PostHeader>
+      <PostHeader $social>
         {author?.avatar ? (
           <ActorButton
             type="button"
@@ -1632,9 +1662,15 @@ function FeedCard({
       </PostHeader>
       {post.replyParent ? <StatChip>Replying in thread</StatChip> : null}
       {post.embed.images.length ? (
-        <ImageGrid>
+        <ImageGrid $count={post.embed.images.length} data-skywire-feed-media="true">
           {post.embed.images.map((image, index) => (
-            <FeedImage key={`${image.thumb || image.fullsize || index}`} src={image.thumb || image.fullsize || ""} alt={image.alt} />
+            <FeedImage
+              key={`${image.fullsize || image.thumb || index}`}
+              $solo={post.embed.images.length === 1}
+              src={image.fullsize || image.thumb || ""}
+              alt={image.alt}
+              loading="lazy"
+            />
           ))}
         </ImageGrid>
       ) : null}
@@ -1708,9 +1744,9 @@ function FeedPanel({
   if (query.isError) return <p>{(query.error as Error).message}</p>;
   const feed = query.data?.pages.flatMap((page) => page.feed) ?? [];
   return (
-    <Stack>
+    <FeedColumn>
       {header}
-      <FeedList>
+      <FeedList $social data-skywire-feed-list="true">
         {feed.length === 0 ? (
           <EmptyState>
             <strong>No posts found.</strong>
@@ -1737,7 +1773,7 @@ function FeedPanel({
           {query.isFetchingNextPage ? "Loading..." : "Load More"}
         </Button>
       ) : null}
-    </Stack>
+    </FeedColumn>
   );
 }
 
@@ -1932,7 +1968,7 @@ function ActorFeedPanel({
   if (query.isError) return <p>{(query.error as Error).message}</p>;
   const feed = query.data?.pages.flatMap((page) => page.feed) ?? [];
   return (
-    <Stack>
+    <FeedColumn>
       <GroupBox label="Author">
         <Row>
           {actor?.avatar ? <img src={actor.avatar} width={40} height={40} alt="" /> : null}
@@ -1944,7 +1980,7 @@ function ActorFeedPanel({
         {actor?.description ? <p>{actor.description}</p> : null}
         <Mono>{actorId}</Mono>
       </GroupBox>
-      <FeedList>
+      <FeedList $social data-skywire-feed-list="true">
         {feed.length === 0 ? (
           <EmptyState>
             <strong>No posts found for this actor.</strong>
@@ -1971,7 +2007,7 @@ function ActorFeedPanel({
           {query.isFetchingNextPage ? "Loading..." : "Load More"}
         </Button>
       ) : null}
-    </Stack>
+    </FeedColumn>
   );
 }
 

@@ -3525,3 +3525,15 @@
 **Fix**: Rat Race now keeps tz2at-first floor/listing evidence while attaching direct-buy fields from supplemental Objkt public tez listings. Objkt `bigmap_key` is used as the contract purchase key, with `id` only as fallback, and the buy price/marketplace contract come from the same Objkt listing used for the wallet send.
 
 **Rule**: Do not collapse market-signal fields and wallet-send fields into one source. For external marketplaces, keep the canonical activity source separate from the supplemental contract-call key, and assert that `listing_id`, `listing_price_mutez`, and `marketplace_contract` all refer to the exact listing the wallet will buy.
+
+---
+
+## 2026-06-04 - Social feed polish needs multi-card spacing and media containment tests
+
+**What happened**: A previous Skywire feed polish pass made individual cards look better in isolation, but the real feed could still collapse into cramped horizontal strips with clipped content, cropped media, and no clear negative space between adjacent posts.
+
+**Why it mattered**: Skywire is supposed to help users connect Bluesky posts to Tezos objects. If post frames cannot breathe, media is treated as decoration, and Objkt/Teia/OE links are not promoted into token previews, the client feels worse than the networks and tools it is trying to bridge.
+
+**Fix**: The Skywire feed now uses a centered social column, self-sizing post cards, explicit inter-card spacing, visible card overflow, contained full-size media stages, token preview detection from text and external embed metadata, and a collapsed-by-default reply composer opened from the Reply action.
+
+**Rule**: Feed UI verification must include multiple stacked posts, at least one tall media asset, at least one marketplace external embed, and assertions for card height, inter-card gap, non-clipping, media containment, token preview rendering, and default composer clutter.

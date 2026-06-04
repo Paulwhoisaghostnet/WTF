@@ -237,8 +237,31 @@ Priority labels:
 | WTF-BB-194 | Verified | Codex CRP sparse route guard during Skywire UI pass | 2026-06-03 | CRP nominations / route resilience | P2 | 8 | 14 | 1 | 4 | 0 | CRP nomination route crashes on sparse inventory harness API payloads |
 | WTF-BB-195 | Verified | Codex Stuffs CREATE menu pass | 2026-06-03 | Desktop OS / Start Menu taxonomy | P2 | 8 | 14 | 2 | 3 | 0 | Stuffs menu lacks a dedicated CREATE! category for creation apps |
 | WTF-BB-196 | Verified | Codex Skywire dark-mode default pass | 2026-06-03 | Skywire / default theme UX | P2 | 8 | 14 | 2 | 3 | 0 | Skywire still opens with light shell/sidebar/input surfaces after feed polish |
+| WTF-BB-197 | Verified | Codex Skywire feed usability repair | 2026-06-04 | Skywire / feed UX and media | P1 | 12 | 7 | 3 | 5 | 0 | Skywire feed rows collapse into cramped strips and crop media instead of reading like social post cards |
 
 ## Issue Details
+
+### WTF-BB-197 - Skywire feed rows collapse into cramped strips and crop media instead of reading like social post cards
+
+- Category: Skywire / feed UX and media
+- Status: Verified
+- Owner/Session: Codex Skywire feed usability repair
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report and screenshot on 2026-06-04 show Skywire home feed rows packed tightly together, card contents clipped, media thumbnails floating/cropped, and post boundaries failing to read like Bluesky/X-style social cards.
+  - Previous Skywire UI verification covered a single media/token fixture but did not prove multiple feed cards had enough vertical spacing or that cards self-expanded around media.
+- Correction direction:
+  - Make the Skywire feed list and cards self-sizing with explicit negative space between posts, remove card-level clipping, put media in a full-width stage that uses the full-size asset when available, and keep Objkt/Teia/OE links promoted into Tezos token cards.
+- Correction:
+  - Rebuilt the Skywire social feed path around self-sizing card frames, a centered feed column, larger inter-card spacing, visible overflow, full-width contained media stages, and token previews sourced from Objkt asset, Objkt open-edition, and Teia token links found in post text or external embed metadata. The reply composer now opens from the Reply action instead of permanently occupying every post.
+- Verification idea:
+  - Extend the inventory harness to return multiple Skywire posts including a media post and token links, then run a Playwright visual/DOM smoke that asserts each feed card has readable height, vertical separation, full media containment, and rendered token preview controls.
+- Verification:
+  - `npm run build` passed.
+  - `npm run check -- --pretty false` passed.
+  - `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs --project=chromium` passed.
+  - `npm run test:e2e:inventory:coverage` passed.
+  - `npm run test:e2e:inventory` passed on rerun with 274/274 tests after an isolated transient `/swap` external-resource smoke was rerun and passed.
 
 ### WTF-BB-196 - Skywire still opens with light shell/sidebar/input surfaces after feed polish
 
