@@ -1,10 +1,10 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
-import { createHash } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
-import { atprotoAccounts, atprotoPostClaims, challengeSystemEvents, challenges, tokenMetadata, userWallets, users, walletHoldings } from "@shared/schema";
+import { atprotoAccounts, atprotoPostClaims, challengeSystemEvents, challenges, tokenMetadata, userMediaLibrary, userWallets, users, walletHoldings } from "@shared/schema";
 import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
 import {
   accountHasAtprotoCapability,
@@ -42,13 +42,24 @@ import {
 } from "@shared/skywire-token-links";
 import { ingestSystemEvent } from "../challenges/events/ingest";
 import { requireSkywireRollout, requireWtfLiveRollout, skywireRolloutStatusForRole } from "../lib/skywire-access";
+import { getSessionSecret } from "../auth/session-secret";
+import { serveStoredMediaFile } from "../lib/storage/media-file-serve";
+import { fetchSafeHttp } from "../lib/outbound-url";
 
 const router = Router();
+const SKYWIRE_CHAT_MEDIA_MAX_ATTACHMENTS = 4;
+const SKYWIRE_CHAT_MEDIA_TOKEN_TTL_MS = Number(process.env.SKYWIRE_CHAT_MEDIA_TOKEN_TTL_MS || 30 * 24 * 60 * 60 * 1000);
+const SKYWIRE_CHAT_MEDIA_LINE_RE = /^\[skywire-media:([A-Za-z0-9_-]+)\]\s+(\S+)$/;
+const SKYWIRE_EXTERNAL_THUMB_MAX_BYTES = 1_000_000;
+const SKYWIRE_EXTERNAL_THUMB_TIMEOUT_MS = 8_000;
 
 const postSchema = z.object({
   text: z.string().trim().min(1).max(300),
   langs: z.array(z.string().trim().min(2).max(12)).max(5).optional(),
   embedUrl: z.string().url().optional().nullable(),
+  embedTitle: z.string().trim().min(1).max(300).optional().nullable(),
+  embedDescription: z.string().trim().max(1000).optional().nullable(),
+  embedThumbUrl: z.string().url().optional().nullable(),
   challengeId: z.coerce.number().int().positive().optional().nullable(),
 });
 
@@ -74,6 +85,59 @@ const actorSearchSchema = z.object({
 const actorRecommendationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
+
+function skywireExternalThumbMime(contentType: string | null): string | null {
+  const mime = (contentType || "").split(";")[0]?.trim().toLowerCase();
+  if (!mime) return null;
+  if (mime === "image/jpg") return "image/jpeg";
+  return ["image/jpeg", "image/png", "image/gif", "image/webp"].includes(mime) ? mime : null;
+}
+
+async function uploadSkywireExternalThumb(agent: any, rawUrl: string | null | undefined): Promise<any | null> {
+  if (!rawUrl) return null;
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SKYWIRE_EXTERNAL_THUMB_TIMEOUT_MS);
+  try {
+    const response = await fetchSafeHttp(url.toString(), {
+      headers: { Accept: "image/avif,image/webp,image/png,image/jpeg,image/gif,image/*" },
+      signal: controller.signal,
+    });
+    if (!response.ok) return null;
+    const mime = skywireExternalThumbMime(response.headers.get("content-type"));
+    if (!mime) return null;
+    const declaredLength = Number(response.headers.get("content-length") || 0);
+    if (declaredLength > SKYWIRE_EXTERNAL_THUMB_MAX_BYTES) return null;
+    const reader = response.body?.getReader();
+    if (!reader) return null;
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > SKYWIRE_EXTERNAL_THUMB_MAX_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        return null;
+      }
+      chunks.push(value);
+    }
+    if (!total) return null;
+    const upload = await agent.uploadBlob(Buffer.concat(chunks, total), { encoding: mime });
+    return upload.data.blob;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 const actorSuggestionSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
@@ -222,12 +286,29 @@ const chatMembersSchema = z.object({
     .transform((members) => Array.from(new Set(members.map((member) => member.replace(/^@/, "").trim()).filter(Boolean)))),
 });
 
-const chatMessageSchema = z.object({
-  text: z.string().trim().min(1).max(10000),
-  quotedPost: quotedPostSnapshotSchema,
+const chatMediaAttachmentSchema = z.object({
+  mediaId: z.coerce.number().int().positive(),
+  title: z.string().trim().min(1).max(300).optional().nullable(),
+  mimeType: z.string().trim().min(1).max(120).optional().nullable(),
 });
 
-const chatSendToMembersSchema = chatMembersSchema.merge(chatMessageSchema);
+const chatMessageBaseSchema = z.object({
+  text: z.string().trim().max(10000).default(""),
+  quotedPost: quotedPostSnapshotSchema,
+  media: z.array(chatMediaAttachmentSchema).max(SKYWIRE_CHAT_MEDIA_MAX_ATTACHMENTS).default([]),
+});
+
+const chatMessageSchema = chatMessageBaseSchema.refine(
+  (value) => Boolean(value.text || value.quotedPost?.uri || value.media.length),
+  "Message text, a quoted post, or media is required"
+);
+
+const chatSendToMembersSchema = chatMembersSchema
+  .merge(chatMessageBaseSchema)
+  .refine(
+    (value) => Boolean(value.text || value.quotedPost?.uri || value.media.length),
+    "Message text, a quoted post, or media is required"
+  );
 
 const chatMessagesQuerySchema = z.object({
   cursor: z.string().trim().min(1).max(2000).optional(),
@@ -397,6 +478,148 @@ function skywireChatAgent(agent: Awaited<ReturnType<typeof getAtprotoAgentForDid
   return agent.withProxy("bsky_chat", "did:web:api.bsky.chat");
 }
 
+function skywirePublicBaseUrl(req: Request): string {
+  return (
+    process.env.ATPROTO_PUBLIC_BASE_URL ||
+    process.env.PUBLIC_SITE_URL ||
+    `${req.protocol}://${req.get("host")}`
+  ).replace(/\/$/, "");
+}
+
+function safeTimingEqual(a: string, b: string): boolean {
+  const aBuffer = Buffer.from(a);
+  const bBuffer = Buffer.from(b);
+  return aBuffer.length === bBuffer.length && timingSafeEqual(aBuffer, bBuffer);
+}
+
+function skywireChatMediaFileToken(input: { mediaId: number; ownerUserId: number; expiresAt: number }): string {
+  const payload = Buffer.from(JSON.stringify(input)).toString("base64url");
+  const signature = createHmac("sha256", getSessionSecret()).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+function verifySkywireChatMediaFileToken(token: string, mediaId: number): { mediaId: number; ownerUserId: number } | null {
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) return null;
+  const expected = createHmac("sha256", getSessionSecret()).update(payload).digest("base64url");
+  if (!safeTimingEqual(signature, expected)) return null;
+  try {
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      mediaId?: unknown;
+      ownerUserId?: unknown;
+      expiresAt?: unknown;
+    };
+    const decodedMediaId = Number(decoded.mediaId);
+    const ownerUserId = Number(decoded.ownerUserId);
+    const expiresAt = Number(decoded.expiresAt);
+    if (!Number.isInteger(decodedMediaId) || decodedMediaId !== mediaId) return null;
+    if (!Number.isInteger(ownerUserId) || ownerUserId <= 0) return null;
+    if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) return null;
+    return { mediaId: decodedMediaId, ownerUserId };
+  } catch {
+    return null;
+  }
+}
+
+type SkywireChatMediaAttachment = {
+  mediaId: number;
+  title: string;
+  mimeType: string;
+  url: string;
+  fileSizeBytes: number | null;
+};
+
+function encodeSkywireChatMediaLine(attachment: SkywireChatMediaAttachment): string {
+  const payload = Buffer.from(JSON.stringify(attachment)).toString("base64url");
+  return `[skywire-media:${payload}] ${attachment.url}`;
+}
+
+function decodeSkywireChatMediaLine(line: string): SkywireChatMediaAttachment | null {
+  const match = line.match(SKYWIRE_CHAT_MEDIA_LINE_RE);
+  if (!match) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(match[1], "base64url").toString("utf8")) as Partial<SkywireChatMediaAttachment>;
+    const mediaId = Number(payload.mediaId);
+    const mimeType = String(payload.mimeType || "").trim();
+    const title = String(payload.title || "Media attachment").trim().slice(0, 300) || "Media attachment";
+    const url = String(match[2] || payload.url || "").trim();
+    const fileSizeBytes = payload.fileSizeBytes == null ? null : Number(payload.fileSizeBytes);
+    if (!Number.isInteger(mediaId) || mediaId <= 0 || !mimeType || !url) return null;
+    return {
+      mediaId,
+      title,
+      mimeType,
+      url,
+      fileSizeBytes: Number.isFinite(fileSizeBytes) ? fileSizeBytes : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parseSkywireChatMessageText(rawText: string): { text: string; media: SkywireChatMediaAttachment[] } {
+  const media: SkywireChatMediaAttachment[] = [];
+  const visibleLines: string[] = [];
+  for (const line of rawText.split(/\r?\n/)) {
+    const attachment = decodeSkywireChatMediaLine(line.trim());
+    if (attachment) {
+      media.push(attachment);
+      continue;
+    }
+    visibleLines.push(line);
+  }
+  return {
+    text: visibleLines.join("\n").trim(),
+    media: media.slice(0, SKYWIRE_CHAT_MEDIA_MAX_ATTACHMENTS),
+  };
+}
+
+async function resolveSkywireChatMediaAttachments(
+  req: Request,
+  userId: number,
+  attachments: z.infer<typeof chatMediaAttachmentSchema>[]
+): Promise<SkywireChatMediaAttachment[]> {
+  const ids = Array.from(new Set(attachments.map((attachment) => attachment.mediaId))).slice(0, SKYWIRE_CHAT_MEDIA_MAX_ATTACHMENTS);
+  if (!ids.length) return [];
+
+  const rows = await db
+    .select({
+      id: userMediaLibrary.id,
+      ownerUserId: userMediaLibrary.ownerUserId,
+      title: userMediaLibrary.title,
+      mimeType: userMediaLibrary.mimeType,
+      sourceType: userMediaLibrary.sourceType,
+      fileSizeBytes: userMediaLibrary.fileSizeBytes,
+      status: userMediaLibrary.status,
+      uploadStatus: userMediaLibrary.uploadStatus,
+    })
+    .from(userMediaLibrary)
+    .where(and(eq(userMediaLibrary.ownerUserId, userId), inArray(userMediaLibrary.id, ids)));
+
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const baseUrl = skywirePublicBaseUrl(req);
+  return ids.map((id) => {
+    const row = byId.get(id);
+    if (!row || row.sourceType !== "upload" || row.status !== "ready" || row.uploadStatus !== "ready") {
+      const err = new Error("One or more Skywire chat media attachments are unavailable");
+      (err as any).status = 400;
+      throw err;
+    }
+    const token = skywireChatMediaFileToken({
+      mediaId: row.id,
+      ownerUserId: userId,
+      expiresAt: Date.now() + SKYWIRE_CHAT_MEDIA_TOKEN_TTL_MS,
+    });
+    return {
+      mediaId: row.id,
+      title: row.title || "Media attachment",
+      mimeType: row.mimeType,
+      fileSizeBytes: row.fileSizeBytes ?? null,
+      url: `${baseUrl}/api/skywire/chat-media/${row.id}/file?token=${encodeURIComponent(token)}`,
+    };
+  });
+}
+
 function normalizeActor(actor: any) {
   if (!actor) return null;
   return {
@@ -439,6 +662,33 @@ function embedExternal(embed: any): { uri: string; title: string; description: s
   };
 }
 
+function embedVideo(embed: any): { playlist: string | null; thumbnail: string | null; alt: string | null; aspectRatio: { width: number; height: number } | null } | null {
+  const candidates = [
+    embed,
+    embed?.media,
+    embed?.record?.embeds?.[0],
+    embed?.record?.value?.embed,
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const type = String(candidate.$type || "");
+    const playlist = candidate.playlist || candidate.video?.playlist || null;
+    const thumbnail = candidate.thumbnail || candidate.thumb || candidate.video?.thumbnail || null;
+    if (!playlist && !thumbnail && !type.includes("app.bsky.embed.video")) continue;
+    const aspectRatio = candidate.aspectRatio || candidate.video?.aspectRatio || null;
+    return {
+      playlist: playlist ? String(playlist) : null,
+      thumbnail: thumbnail ? String(thumbnail) : null,
+      alt: candidate.alt ? String(candidate.alt) : null,
+      aspectRatio:
+        aspectRatio && Number(aspectRatio.width) > 0 && Number(aspectRatio.height) > 0
+          ? { width: Number(aspectRatio.width), height: Number(aspectRatio.height) }
+          : null,
+    };
+  }
+  return null;
+}
+
 function normalizeQuotedRecord(record: any) {
   const view = record?.record?.record || record?.record;
   if (!view?.uri) return null;
@@ -454,6 +704,7 @@ function normalizeQuotedRecord(record: any) {
     embed: {
       images: embedImages(view.embeds?.[0] || value.embed),
       external: embedExternal(view.embeds?.[0] || value.embed),
+      video: embedVideo(view.embeds?.[0] || value.embed),
     },
     state: view.notFound ? "not_found" : view.blocked ? "blocked" : view.detached ? "detached" : "visible",
   };
@@ -584,19 +835,24 @@ function normalizeChatMessage(message: any) {
   if (!message?.id) return null;
   const isDeleted = String(message?.$type || "").includes("deletedMessageView");
   const isSystem = String(message?.$type || "").includes("systemMessageView");
+  const parsedText = parseSkywireChatMessageText(String(message.text || ""));
   return {
     id: String(message.id || ""),
     rev: String(message.rev || ""),
-    text: isDeleted ? "(deleted)" : isSystem ? "System message" : String(message.text || ""),
+    text: isDeleted ? "(deleted)" : isSystem ? "System message" : parsedText.text,
     senderDid: message.sender?.did || null,
     sentAt: message.sentAt || null,
     deleted: isDeleted,
     system: isSystem,
+    media: isDeleted || isSystem ? [] : parsedText.media,
     quote: normalizeQuotedRecord(message.embed),
   };
 }
 
-function chatMessageInputFromBody(body: z.infer<typeof chatMessageSchema>) {
+function chatMessageInputFromBody(
+  body: z.infer<typeof chatMessageBaseSchema>,
+  mediaAttachments: SkywireChatMediaAttachment[]
+) {
   const quotedPost = body.quotedPost?.uri ? body.quotedPost : null;
   const embed =
     quotedPost?.cid && quotedPost.uri
@@ -605,8 +861,12 @@ function chatMessageInputFromBody(body: z.infer<typeof chatMessageSchema>) {
           record: strongRef(quotedPost.uri, quotedPost.cid),
         }
       : undefined;
+  const textParts = [
+    body.text.trim(),
+    ...mediaAttachments.map(encodeSkywireChatMediaLine),
+  ].filter(Boolean);
   return {
-    text: body.text,
+    text: textParts.join("\n") || (quotedPost ? "[quoted post]" : "[media attachment]"),
     ...(embed ? { embed } : {}),
   };
 }
@@ -640,6 +900,7 @@ function normalizePostView(post: any) {
     embed: {
       images: embedImages(post?.embed),
       external,
+      video: embedVideo(post?.embed),
     },
     links: richTextFacetLinkUris(record),
     quote: normalizeQuotedRecord(post?.embed),
@@ -708,6 +969,13 @@ function pickMetadataString(value: unknown): string | null {
   return trimmed ? trimmed : null;
 }
 
+function normalizeSkywireTokenDate(value: unknown): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 function normalizeSkywireVaultToken(row: {
   walletAddress: string;
   tokenContract: string;
@@ -748,6 +1016,15 @@ function normalizeSkywireVaultToken(row: {
   const lastSeen = lastSeenDate && !Number.isNaN(lastSeenDate.getTime())
     ? lastSeenDate.toISOString()
     : null;
+  const mintedAt =
+    normalizeSkywireTokenDate(meta.mintedAt) ??
+    normalizeSkywireTokenDate(meta.minted_at) ??
+    normalizeSkywireTokenDate(meta.timestamp) ??
+    normalizeSkywireTokenDate(meta.date) ??
+    normalizeSkywireTokenDate(meta.createdAt) ??
+    normalizeSkywireTokenDate(meta.created_at) ??
+    normalizeSkywireTokenDate(meta.firstTime) ??
+    normalizeSkywireTokenDate(meta.first_time);
   return {
     walletAddress: row.walletAddress,
     balance: row.balance,
@@ -760,6 +1037,7 @@ function normalizeSkywireVaultToken(row: {
     creatorAddress: row.creatorAddress ?? pickMetadataString(meta.creatorAddress),
     creatorName: pickMetadataString(meta.creatorName) ?? pickMetadataString(meta.creator),
     collectionName: collection,
+    mintedAt,
     marketUrl: `https://objkt.com/tokens/${row.tokenContract}/${row.tokenId}`,
   };
 }
@@ -1082,6 +1360,42 @@ router.post("/api/skywire/pipelines/dispatch-batch", actionLimiter, async (req, 
   });
 });
 
+router.get("/api/skywire/chat-media/:mediaId/file", async (req, res) => {
+  const user = req.user as any;
+  const mediaId = Number(req.params.mediaId);
+  const token = String(req.query.token || "");
+  if (!Number.isInteger(mediaId) || mediaId <= 0 || !token) {
+    return res.status(400).json({ error: "Invalid Skywire chat media link" });
+  }
+  const grant = verifySkywireChatMediaFileToken(token, mediaId);
+  if (!grant) return res.status(403).json({ error: "Skywire chat media link expired or invalid" });
+
+  const account = await requireLinkedAccount(user.id);
+  requireSkywireChatCapability(account);
+
+  const [item] = await db
+    .select({
+      id: userMediaLibrary.id,
+      ownerUserId: userMediaLibrary.ownerUserId,
+      mimeType: userMediaLibrary.mimeType,
+      sourceUrl: userMediaLibrary.sourceUrl,
+      fileData: userMediaLibrary.fileData,
+      sourceType: userMediaLibrary.sourceType,
+      objectStorageBucket: userMediaLibrary.objectStorageBucket,
+      objectStorageKey: userMediaLibrary.objectStorageKey,
+      safeFilename: userMediaLibrary.safeFilename,
+      hotCachePath: userMediaLibrary.hotCachePath,
+    })
+    .from(userMediaLibrary)
+    .where(eq(userMediaLibrary.id, mediaId));
+
+  if (!item || item.sourceType !== "upload" || item.ownerUserId !== grant.ownerUserId) {
+    return res.status(404).json({ error: "Skywire chat media not found" });
+  }
+  const served = await serveStoredMediaFile(req, res, item);
+  if (!served) res.status(404).json({ error: "Skywire chat media file not found" });
+});
+
 router.get("/api/skywire/chats", isAuthenticated, async (req, res) => {
   const parsed = chatConvosQuerySchema.safeParse(req.query);
   if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire chat query" });
@@ -1156,7 +1470,8 @@ router.post("/api/skywire/chats/:convoId/messages", isAuthenticated, actionLimit
   const account = await requireLinkedAccount(user.id);
   requireSkywireChatCapability(account);
   const agent = skywireChatAgent(await getAtprotoAgentForDid(account.did));
-  const messageInput = chatMessageInputFromBody(parsed.data);
+  const mediaAttachments = await resolveSkywireChatMediaAttachments(req, user.id, parsed.data.media);
+  const messageInput = chatMessageInputFromBody(parsed.data, mediaAttachments);
   const result = await agent.chat.bsky.convo.sendMessage(
     {
       convoId: convoId.data,
@@ -1169,13 +1484,15 @@ router.post("/api/skywire/chats/:convoId/messages", isAuthenticated, actionLimit
     userId: user.id,
     did: account.did,
     handle: account.handle,
-    text: parsed.data.text,
+    text: parsed.data.text || (mediaAttachments.length ? "[media attachment]" : "[quoted post]"),
     rawRefType: "atproto_chat_message",
     rawRefId: `${convoId.data}:${result.data.id}`,
     metadata: {
       convoId: convoId.data,
       messageId: result.data.id,
       quotedUri: parsed.data.quotedPost?.uri ?? null,
+      mediaIds: mediaAttachments.map((attachment) => attachment.mediaId),
+      mediaCount: mediaAttachments.length,
     },
   });
   res.status(201).json({
@@ -1192,7 +1509,8 @@ router.post("/api/skywire/chats/send", isAuthenticated, actionLimiter, async (re
   requireSkywireChatCapability(account);
   const agent = skywireChatAgent(await getAtprotoAgentForDid(account.did));
   const convo = await agent.chat.bsky.convo.getConvoForMembers({ members: parsed.data.members });
-  const messageInput = chatMessageInputFromBody(parsed.data);
+  const mediaAttachments = await resolveSkywireChatMediaAttachments(req, user.id, parsed.data.media);
+  const messageInput = chatMessageInputFromBody(parsed.data, mediaAttachments);
   const result = await agent.chat.bsky.convo.sendMessage(
     {
       convoId: convo.data.convo.id,
@@ -1205,7 +1523,7 @@ router.post("/api/skywire/chats/send", isAuthenticated, actionLimiter, async (re
     userId: user.id,
     did: account.did,
     handle: account.handle,
-    text: parsed.data.text,
+    text: parsed.data.text || (mediaAttachments.length ? "[media attachment]" : "[quoted post]"),
     rawRefType: "atproto_chat_message",
     rawRefId: `${convo.data.convo.id}:${result.data.id}`,
     metadata: {
@@ -1213,6 +1531,8 @@ router.post("/api/skywire/chats/send", isAuthenticated, actionLimiter, async (re
       messageId: result.data.id,
       members: parsed.data.members,
       quotedUri: parsed.data.quotedPost?.uri ?? null,
+      mediaIds: mediaAttachments.map((attachment) => attachment.mediaId),
+      mediaCount: mediaAttachments.length,
     },
   });
   res.status(201).json({
@@ -1777,10 +2097,30 @@ router.post("/api/skywire/post", isAuthenticated, actionLimiter, async (req, res
   const account = await requireLinkedAccount(user.id);
   requireAtprotoCapability(account, "compose", "be-heard");
   const agent = await getAtprotoAgentForDid(account.did);
-  const result = await agent.post({
+  const postRecord: any = {
     text: parsed.data.text,
     langs: parsed.data.langs,
-  });
+  };
+  if (parsed.data.embedUrl) {
+    let fallbackTitle = "Skywire link";
+    try {
+      fallbackTitle = new URL(parsed.data.embedUrl).hostname;
+    } catch {
+      fallbackTitle = "Skywire link";
+    }
+    const external: any = {
+      uri: parsed.data.embedUrl,
+      title: parsed.data.embedTitle || fallbackTitle,
+      description: parsed.data.embedDescription || "",
+    };
+    const thumb = await uploadSkywireExternalThumb(agent, parsed.data.embedThumbUrl);
+    if (thumb) external.thumb = thumb;
+    postRecord.embed = {
+      $type: "app.bsky.embed.external",
+      external,
+    };
+  }
+  const result = await agent.post(postRecord);
   await emitAtprotoSystemEvent({
     eventId: skywireEventId("atproto.post.created", result.uri),
     eventType: "atproto.post.created",
@@ -1793,6 +2133,11 @@ router.post("/api/skywire/post", isAuthenticated, actionLimiter, async (req, res
     challengeId: parsed.data.challengeId ?? null,
     rawRefType: "atproto_post",
     rawRefId: result.uri,
+    metadata: {
+      embedUrl: parsed.data.embedUrl ?? null,
+      embedTitle: parsed.data.embedTitle ?? null,
+      embedThumbUrl: parsed.data.embedThumbUrl ?? null,
+    },
   });
   res.status(201).json({
     uri: result.uri,

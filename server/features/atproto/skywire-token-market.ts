@@ -32,6 +32,7 @@ export interface SkywireTokenSummary {
   creatorAddress: string | null;
   creatorName: string | null;
   collectionName: string | null;
+  mintedAt: string | null;
   marketUrl: string;
 }
 
@@ -244,6 +245,13 @@ function creatorFromToken(token: any): SkywireTokenCreator {
   };
 }
 
+function normalizeTokenDate(value: unknown): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 function tokenSummaryFromObjkt(token: any, reference: SkywireTokenReference): SkywireTokenSummary {
   const creator = creatorFromToken(token);
   const contract = pickString(token?.fa_contract) ?? reference.faContract ?? "";
@@ -258,8 +266,22 @@ function tokenSummaryFromObjkt(token: any, reference: SkywireTokenReference): Sk
     creatorAddress: creator.address,
     creatorName: creator.alias,
     collectionName: pickString(token?.fa?.name) ?? pickString(token?.fa?.path),
+    mintedAt: normalizeTokenDate(token?.timestamp),
     marketUrl: reference.marketUrl,
   };
+}
+
+function vaultCollectionSortValue(token: SkywireTokenSummary): string {
+  return token.collectionName?.trim() || token.faContract;
+}
+
+function compareVaultCreatedTokens(a: SkywireTokenSummary, b: SkywireTokenSummary): number {
+  return (
+    vaultCollectionSortValue(a).localeCompare(vaultCollectionSortValue(b), undefined, { sensitivity: "base" }) ||
+    a.faContract.localeCompare(b.faContract, undefined, { sensitivity: "base" }) ||
+    String(a.tokenId).localeCompare(String(b.tokenId), undefined, { numeric: true }) ||
+    a.title.localeCompare(b.title, undefined, { sensitivity: "base" })
+  );
 }
 
 function unsupportedIntent(reason: string): RatRacePurchaseIntent {
@@ -376,6 +398,7 @@ export async function resolveSkywireTokenMarket(
       token(where: { fa_contract: { _eq: $fa }, token_id: { _eq: $tokenId } }, limit: 1) {
         fa_contract
         token_id
+        timestamp
         name
         thumbnail_uri
         display_uri
@@ -451,6 +474,7 @@ export async function fetchObjktCreatedTokens(
       ) {
         fa_contract
         token_id
+        timestamp
         name
         thumbnail_uri
         display_uri
@@ -489,5 +513,6 @@ export async function fetchObjktCreatedTokens(
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    });
+    })
+    .sort(compareVaultCreatedTokens);
 }

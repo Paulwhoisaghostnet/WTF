@@ -36,10 +36,12 @@ test("Skywire AT permission tiers request progressively broader scopes", () => {
 
 test("Skywire chat add-on is explicit and included in the maximum metadata scope", () => {
   const withChat = buildSkywireAtprotoScope("be-safe", true);
+  const boldWithChat = buildSkywireAtprotoScope("be-bold", true);
   const max = buildSkywireAtprotoMaxScope();
 
   assert.match(withChat, new RegExp(ATPROTO_CHAT_SCOPE.replace(".", "\\.")));
   assert.match(withChat, new RegExp(ATPROTO_TRANSITION_GENERIC_SCOPE));
+  assert.equal(boldWithChat, "atproto transition:generic transition:chat.bsky");
   assert.match(max, new RegExp(ATPROTO_CHAT_SCOPE.replace(".", "\\.")));
   assert.match(max, /repo:app\.bsky\.feed\.post/);
   assert.match(max, /transition:generic/);

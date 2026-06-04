@@ -19,6 +19,7 @@ const state = {
   groupchatRequestCount: 0,
   groupchatLog: [],
   interactionLog: [],
+  skywirePostPayloads: [],
 };
 
 function nowIso() {
@@ -32,6 +33,12 @@ function logRequest(req) {
 const app = express();
 app.use(express.json({ limit: "1mb" }));
 
+app.get("/__test/media/harness-alpha-token.png", (_req, res) => {
+  res
+    .type("image/png")
+    .send(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=", "base64"));
+});
+
 // ── Test control ────────────────────────────────────────────────
 app.post("/__test/state", (req, res) => {
   state.mode = String(req.body?.mode || "normal");
@@ -39,6 +46,7 @@ app.post("/__test/state", (req, res) => {
   state.groupchatRequestCount = 0;
   state.groupchatLog = [];
   state.interactionLog = [];
+  state.skywirePostPayloads = [];
   resetHarnessMarketState();
   res.json({ ok: true, state: { mode: state.mode, userRole: state.userRole } });
 });
@@ -50,6 +58,7 @@ app.get("/__test/state", (_req, res) => {
     groupchatRequestCount: state.groupchatRequestCount,
     groupchatLog: state.groupchatLog,
     interactionLog: state.interactionLog,
+    skywirePostPayloads: state.skywirePostPayloads,
   });
 });
 
@@ -831,6 +840,7 @@ function apiMock(req, res) {
         creatorAddress: "tz1HarnessCreator",
         creatorName: "Harness Creator",
         collectionName: isOpenEdition ? "Harness OE" : "Harness Collection",
+        mintedAt: isOpenEdition ? "2024-03-01T12:00:00.000Z" : isTeia ? "2024-02-14T12:00:00.000Z" : "2024-01-08T12:00:00.000Z",
         marketUrl: rawUrl,
       },
       listing: {
@@ -894,33 +904,225 @@ function apiMock(req, res) {
             creatorAddress: "tz1HarnessCreator",
             creatorName: "Harness Creator",
             collectionName: "Harness Collection",
+            mintedAt: "2024-02-02T12:00:00.000Z",
             marketUrl: "https://objkt.com/asset/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/1",
           },
         ],
       },
       created: {
         source: "objkt",
-        total: 1,
+        total: 3,
         error: null,
         items: [
           {
-            faContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+            faContract: "KT1AlphaCreatedCollection",
             tokenId: "2",
-            title: "Harness Created Token",
+            title: "Harness Alpha Token",
+            imageUrl: `http://127.0.0.1:${PORT}/__test/media/harness-alpha-token.png`,
+            creatorAddress: "tz1HarnessWallet",
+            creatorName: "Harness Creator",
+            collectionName: "Harness Alpha Collection",
+            mintedAt: "2024-04-05T12:00:00.000Z",
+            marketUrl: "https://objkt.com/tokens/KT1AlphaCreatedCollection/2",
+          },
+          {
+            faContract: "KT1AlphaCreatedCollection",
+            tokenId: "9",
+            title: "Harness Alpha Edition",
             imageUrl: null,
             creatorAddress: "tz1HarnessWallet",
             creatorName: "Harness Creator",
-            collectionName: "Harness Collection",
-            marketUrl: "https://objkt.com/asset/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/2",
+            collectionName: "Harness Alpha Collection",
+            mintedAt: "2024-04-06T12:00:00.000Z",
+            marketUrl: "https://objkt.com/tokens/KT1AlphaCreatedCollection/9",
+          },
+          {
+            faContract: "KT1BetaCreatedCollection",
+            tokenId: "1",
+            title: "Harness Beta Token",
+            imageUrl: null,
+            creatorAddress: "tz1HarnessWallet",
+            creatorName: "Harness Creator",
+            collectionName: "Harness Beta Collection",
+            mintedAt: "2024-05-01T12:00:00.000Z",
+            marketUrl: "https://objkt.com/tokens/KT1BetaCreatedCollection/1",
           },
         ],
       },
     });
   }
+  if (pathName === "/api/skywire/post" && req.method === "POST") {
+    state.skywirePostPayloads.push(req.body ?? {});
+    return res.status(201).json({
+      uri: "at://did:plc:skywiretest/app.bsky.feed.post/vault-share",
+      cid: "bafyreivaultshare",
+      sourceUrl: "https://bsky.app/profile/wtf-admin.bsky.social/post/vault-share",
+      claimable: false,
+    });
+  }
   if (pathName === "/api/skywire/events" && req.method === "POST") {
     return res.json({ ok: true });
   }
+  if (pathName === "/api/media/upload" && req.method === "POST") {
+    const mimeType = String(req.body?.mimeType || "image/gif");
+    return res.status(201).json({
+      id: 901,
+      title: String(req.body?.title || "Harness chat media"),
+      mimeType,
+      playbackUrl: String(req.body?.fileData || "data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="),
+      fileSizeBytes: 512,
+      status: "ready",
+      uploadStatus: "ready",
+    });
+  }
+  if (pathName === "/api/skywire/chats" && req.method === "GET") {
+    const gifUrl = "data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==";
+    return res.json({
+      convos: [
+        {
+          id: "test-convo",
+          rev: "1",
+          status: "accepted",
+          muted: false,
+          unreadCount: 0,
+          kind: "direct",
+          groupName: null,
+          memberCount: 2,
+          members: [
+            { did: "did:plc:skywiretest", handle: "wtf-admin.bsky.social", displayName: "WTF Admin", avatar: null, description: null },
+            { did: "did:plc:harness", handle: "harness.bsky.social", displayName: "Harness Skywire", avatar: null, description: null },
+          ],
+          lastMessage: {
+            id: "msg-last",
+            rev: "1",
+            text: "GIF attachment",
+            senderDid: "did:plc:harness",
+            sender: null,
+            sentAt: nowIso(),
+            deleted: false,
+            system: false,
+            media: [{ mediaId: 901, title: "Harness GIF", mimeType: "image/gif", url: gifUrl, fileSizeBytes: 512 }],
+            quote: null,
+          },
+        },
+      ],
+      cursor: null,
+      source: "inventory.harness.skywire.chats",
+      service: "did:web:api.bsky.chat#bsky_chat",
+    });
+  }
+  if (pathName === "/api/skywire/chats/resolve" && req.method === "POST") {
+    return res.json({
+      convo: {
+        id: "test-convo",
+        rev: "1",
+        status: "accepted",
+        muted: false,
+        unreadCount: 0,
+        kind: "direct",
+        groupName: null,
+        memberCount: 2,
+        members: [
+          { did: "did:plc:skywiretest", handle: "wtf-admin.bsky.social", displayName: "WTF Admin", avatar: null, description: null },
+          { did: "did:plc:harness", handle: "harness.bsky.social", displayName: "Harness Skywire", avatar: null, description: null },
+        ],
+        lastMessage: null,
+      },
+      source: "inventory.harness.skywire.resolve",
+    });
+  }
+  if (pathName === "/api/skywire/chats/test-convo/messages" && req.method === "GET") {
+    const gifUrl = "data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==";
+    return res.json({
+      convoId: "test-convo",
+      messages: [
+        {
+          id: "msg-in",
+          rev: "1",
+          text: "This GIF should render in chat.",
+          senderDid: "did:plc:harness",
+          sender: { did: "did:plc:harness", handle: "harness.bsky.social", displayName: "Harness Skywire", avatar: null, description: null },
+          sentAt: nowIso(),
+          deleted: false,
+          system: false,
+          media: [{ mediaId: 901, title: "Harness GIF", mimeType: "image/gif", url: gifUrl, fileSizeBytes: 512 }],
+          quote: {
+            uri: "at://did:plc:harness/app.bsky.feed.post/pipeline",
+            cid: "bafyreiharness",
+            sourceUrl: "https://bsky.app/profile/harness.bsky.social/post/pipeline",
+            author: { did: "did:plc:harness", handle: "harness.bsky.social", displayName: "Harness Skywire", avatar: null, description: null },
+            text: "Original post text for quoted chat reply.",
+            createdAt: nowIso(),
+            indexedAt: nowIso(),
+            embed: { images: [], external: null, video: null },
+            state: "visible",
+          },
+        },
+      ],
+      cursor: null,
+      source: "inventory.harness.skywire.messages",
+    });
+  }
+  if (pathName === "/api/skywire/chats/test-convo/messages" && req.method === "POST") {
+    return res.status(201).json({
+      message: {
+        id: "msg-posted",
+        rev: "1",
+        text: String(req.body?.text || ""),
+        senderDid: "did:plc:skywiretest",
+        sender: null,
+        sentAt: nowIso(),
+        deleted: false,
+        system: false,
+        media: Array.isArray(req.body?.media)
+          ? req.body.media.map((item, index) => ({
+              mediaId: Number(item.mediaId || index + 901),
+              title: String(item.title || "Harness media"),
+              mimeType: String(item.mimeType || "image/gif"),
+              url: "data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
+              fileSizeBytes: 512,
+            }))
+          : [],
+        quote: null,
+      },
+      source: "inventory.harness.skywire.sendMessage",
+    });
+  }
+  if (pathName === "/api/skywire/chats/send" && req.method === "POST") {
+    return res.status(201).json({
+      convo: {
+        id: "test-convo",
+        rev: "1",
+        status: "accepted",
+        muted: false,
+        unreadCount: 0,
+        kind: "direct",
+        groupName: null,
+        memberCount: 2,
+        members: [],
+        lastMessage: null,
+      },
+      message: {
+        id: "msg-send",
+        rev: "1",
+        text: String(req.body?.text || ""),
+        senderDid: "did:plc:skywiretest",
+        sentAt: nowIso(),
+        deleted: false,
+        system: false,
+        media: [],
+        quote: null,
+      },
+      source: "inventory.harness.skywire.sendToMembers",
+    });
+  }
+  if (pathName.startsWith("/api/skywire/chat-media/") && pathName.endsWith("/file")) {
+    res.setHeader("Content-Type", "image/gif");
+    return res.send(Buffer.from("R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==", "base64"));
+  }
   if (pathName === "/api/skywire/feed") {
+    const skywireHarnessGif =
+      "data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==";
     const skywireHarnessImage =
       "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 960 540'%3E%3Crect width='960' height='540' fill='%2310212b'/%3E%3Cpath d='M0 390 190 248 340 338 510 170 690 296 960 120v420H0z' fill='%230f8a96'/%3E%3Ccircle cx='760' cy='154' r='72' fill='%23fb7185'/%3E%3Ctext x='72' y='116' font-family='Arial' font-size='54' font-weight='700' fill='%23fff8d6'%3ESkywire media%3C/text%3E%3C/svg%3E";
     const skywirePortraitImage =
@@ -955,7 +1157,9 @@ function apiMock(req, res) {
           uri: "https://objkt.com/asset/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/1",
           title: "Harness Token",
           description: "Objkt listing link promoted into a Skywire token preview.",
+          thumb: skywireHarnessGif,
         },
+        video: { playlist: null, thumbnail: skywireHarnessGif, alt: "Harness animated GIF preview", aspectRatio: { width: 1, height: 1 } },
       },
       links: ["https://objkt.com/asset/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/1"],
       quote: null,

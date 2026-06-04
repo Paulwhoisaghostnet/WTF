@@ -18,6 +18,14 @@
 
 ---
 
+## 2026-06-04 — Skywire vault tests must rebuild the dist harness before checking UI changes
+
+**What happened**: A Skywire vault UI pass split owned and created tokens, grouped created tokens by collection/contract, and added token-share posting. The first Playwright run still showed the old flat vault because the inventory harness serves `dist/public`, not the live Vite source, and the client bundle had not been rebuilt. After rebuilding, the test exposed only a strict-selector issue because collection names appear in both headers and token cards.
+
+**Why it mattered**: A green TypeScript check does not prove the browser harness is exercising the current Skywire UI. Vault behavior is specifically layout and interaction heavy, so stale built assets can make failures look like product regressions or missing DOM hooks when the browser is simply running yesterday's bundle.
+
+**Rule**: For Skywire UI changes, run `npm run build` or `npm run test:e2e:inventory` before Playwright harness assertions that read `dist/public`. Add stable `data-skywire-*` hooks for vault sections/actions, and scope text assertions to the intended header or first match when collection names are repeated in token cards.
+
 ## 2026-06-03 — Skywire dark mode must cover shell, controls, and transparent feed affordances together
 
 **What happened**: A Skywire default-dark pass initially darkened the page shell and feed cards but left React95-inherited controls rendering as gray buttons and turned actor/author buttons into visible button slabs.
@@ -3581,3 +3589,27 @@
 **Fix**: Moved Skywire marketplace URL matching into a shared helper, normalized `app.bsky.richtext.facet#link` URLs into Skywire posts, backed Market Feed with public AppView domain searches, and locally filtered results through the same parser that powers token previews and direct-buy intents.
 
 **Rule**: Any Skywire feed based on marketplace links must over-fetch from AppView/search safely, then post-filter with the exact shared buy-overlay URL matcher. Tests should cover text URLs, external embeds, and rich-text facet hrefs without introducing harness-only token-link URLs that the mock cannot hydrate.
+
+---
+
+## 2026-06-04 - Bluesky chat media needs an explicit Skywire sharing layer
+
+**What happened**: Skywire needed chat media attachments, but the installed Bluesky chat lexicon only accepts text, facets, and `app.bsky.embed.record` quote embeds for chat messages. Treating image or video blobs as native chat embeds would have produced a UI-only illusion that other users could not reliably receive or render.
+
+**Why it mattered**: A sender's normal `/api/media/:id/file` route is owner-only. If Skywire simply attached those URLs, recipients would see broken media; if it made all media IDs broadly readable, private uploads would leak across users.
+
+**Fix**: Skywire now sends uploaded chat media as explicit signed Skywire file links embedded in message text, hides those transport markers in the Skywire UI, and renders the parsed attachments as GIF/image/video/audio cards. Quoted post replies remain native `app.bsky.embed.record` embeds and render above the reply as supertext with quotation marks.
+
+**Rule**: Before adding media to any AT Protocol surface, verify the active lexicon supports that media shape. If it does not, build an explicit signed sharing layer with recipient-visible transport semantics instead of widening private media routes or inventing unsupported native embeds.
+
+---
+
+## 2026-06-04 - Skywire vault shares must use displayed token media
+
+**What happened**: Skywire vault token sharing initially focused on text and Objkt URLs, then risked making the test language sound like minting or token creation work instead of sharing already-displayed Owned/Created vault tokens.
+
+**Why it mattered**: Users expect the token card they can already see in the vault to be the source of truth. Share drafts should use dignified catalog facts, and Bluesky embeds should include the same token media the client already displays, without mixing in first-person ownership copy or unrelated creation flows.
+
+**Fix**: Vault shares now pass the visible token media URL to the post API, which safe-fetches the image, uploads it through the signed-in user's AT agent as a PDS blob, and attaches it as the Bluesky external embed thumbnail.
+
+**Rule**: Vault share behavior should be driven by the existing vault token record: title, creator, collection, minted date, token URL, and displayed media. Keep blob uploads bound to the posting user's AT agent, and guard all server-side media fetches with the shared outbound URL safety policy.

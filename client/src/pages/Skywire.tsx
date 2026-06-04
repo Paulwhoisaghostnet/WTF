@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import {
   Button,
@@ -7,6 +7,7 @@ import {
   TabBody,
   TextField,
 } from "react95";
+import { ExternalLink, SendHorizontal, Share2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
@@ -122,6 +123,13 @@ interface SkywireActor {
   description: string | null;
 }
 
+interface SkywireVideoEmbed {
+  playlist: string | null;
+  thumbnail: string | null;
+  alt: string | null;
+  aspectRatio: { width: number; height: number } | null;
+}
+
 interface SkywirePost {
   uri: string;
   cid: string;
@@ -147,6 +155,7 @@ interface SkywirePost {
   embed: {
     images: Array<{ thumb: string | null; fullsize: string | null; alt: string }>;
     external: { uri: string; title: string; description: string | null; thumb: string | null } | null;
+    video?: SkywireVideoEmbed | null;
   };
   links?: string[];
   quote: SkywireQuotePost | null;
@@ -163,6 +172,7 @@ interface SkywireQuotePost {
   embed: {
     images: Array<{ thumb: string | null; fullsize: string | null; alt: string }>;
     external: { uri: string; title: string; description: string | null; thumb: string | null } | null;
+    video?: SkywireVideoEmbed | null;
   };
   state: "visible" | "blocked" | "detached" | "not_found";
 }
@@ -184,6 +194,7 @@ interface SkywireTokenSummary {
   creatorAddress: string | null;
   creatorName: string | null;
   collectionName: string | null;
+  mintedAt: string | null;
   marketUrl: string;
 }
 
@@ -241,6 +252,20 @@ interface SkywireTezosVaultResponse {
     total: number;
     error: string | null;
   };
+}
+
+type SkywireVaultTokenContext = "owned" | "created";
+
+interface SkywireVaultShareTarget {
+  token: SkywireTokenSummary | SkywireVaultOwnedToken;
+  context: SkywireVaultTokenContext;
+}
+
+interface SkywireVaultCreatedGroup {
+  key: string;
+  label: string;
+  contract: string;
+  items: SkywireTokenSummary[];
 }
 
 interface ActorSearchResponse {
@@ -363,7 +388,25 @@ interface SkywireChatMessage {
   sentAt: string | null;
   deleted: boolean;
   system: boolean;
+  media: SkywireChatMediaAttachment[];
   quote: SkywireQuotePost | null;
+}
+
+interface SkywireChatMediaAttachment {
+  mediaId: number;
+  title: string;
+  mimeType: string;
+  url: string;
+  fileSizeBytes?: number | null;
+}
+
+interface SkywireMediaUploadResponse {
+  id: number;
+  title: string;
+  mimeType: string;
+  playbackUrl?: string | null;
+  fileSizeBytes?: number | null;
+  fileSize?: number | null;
 }
 
 interface SkywireChatsResponse {
@@ -819,6 +862,49 @@ const ExternalCard = styled.a`
   }
 `;
 
+const ExternalThumb = styled.img`
+  width: 100%;
+  max-height: min(58vh, 460px);
+  object-fit: contain;
+  border: 1px solid rgba(103, 232, 249, 0.32);
+  border-radius: 6px;
+  background: #07141c;
+`;
+
+const FeedVideoFrame = styled.div`
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--sky-border);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(7, 19, 26, 0.98), rgba(11, 31, 43, 0.98));
+`;
+
+const FeedVideo = styled.video`
+  width: 100%;
+  max-height: min(72vh, 760px);
+  object-fit: contain;
+  border: 1px solid #29495a;
+  border-radius: 6px;
+  background: #050c10;
+`;
+
+const VideoPosterLink = styled.a`
+  display: grid;
+  gap: 6px;
+  color: var(--sky-text);
+  text-decoration: none;
+
+  img {
+    width: 100%;
+    max-height: min(72vh, 760px);
+    object-fit: contain;
+    border: 1px solid #29495a;
+    border-radius: 6px;
+    background: #050c10;
+  }
+`;
+
 const TokenMarketStack = styled.div`
   display: grid;
   gap: 8px;
@@ -913,8 +999,39 @@ const VaultWalletCard = styled.div`
 
 const VaultGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
+`;
+
+const VaultCollectionStack = styled.div`
+  display: grid;
+  gap: 14px;
+`;
+
+const VaultCollectionGroup = styled.section`
+  display: grid;
   gap: 8px;
+  padding-top: 8px;
+
+  & + & {
+    border-top: 1px solid var(--sky-border);
+  }
+`;
+
+const VaultCollectionHeader = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+
+  strong,
+  span {
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const VaultTokenCard = styled.div`
@@ -929,6 +1046,23 @@ const VaultTokenCard = styled.div`
   min-width: 0;
 `;
 
+const VaultTokenActions = styled.div`
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  button {
+    min-height: 28px;
+  }
+`;
+
+const ButtonGlyph = styled.span`
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+`;
+
 const VaultTokenThumb = styled.a`
   display: block;
   aspect-ratio: 1;
@@ -940,7 +1074,7 @@ const VaultTokenThumb = styled.a`
 
 const VaultTokenText = styled.div`
   display: grid;
-  gap: 3px;
+  gap: 6px;
   min-width: 0;
 
   strong,
@@ -950,6 +1084,48 @@ const VaultTokenText = styled.div`
 
   span {
     color: var(--sky-muted);
+  }
+`;
+
+const VaultTokenFact = styled.div`
+  display: grid;
+  gap: 2px;
+
+  small {
+    color: var(--sky-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+
+  span,
+  code {
+    color: var(--sky-text);
+  }
+`;
+
+const VaultShareDraft = styled.div`
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--sky-border-strong);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(20, 48, 54, 0.94), rgba(8, 23, 32, 0.94));
+`;
+
+const VaultShareHeader = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+
+  strong,
+  span {
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
   }
 `;
 
@@ -978,6 +1154,176 @@ const QuoteCard = styled.button`
     cursor: default;
     color: var(--sky-dim);
   }
+`;
+
+const QuoteSupertext = styled.div`
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--sky-rose);
+  background: rgba(251, 113, 133, 0.1);
+  color: #ffe3e8;
+  font-size: 12px;
+  line-height: 1.35;
+
+  span {
+    color: var(--sky-muted);
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+
+  sup {
+    font-size: 12px;
+    line-height: 1.35;
+    top: 0;
+  }
+`;
+
+const ChatGrid = styled.div`
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+
+  @media (max-width: 840px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ChatPane = styled.div`
+  min-height: min(70vh, 760px);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 8px;
+`;
+
+const ConversationList = styled.div`
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  max-height: min(70vh, 760px);
+  overflow: auto;
+  padding-right: 4px;
+`;
+
+const ConversationButton = styled.button<{ $selected?: boolean }>`
+  appearance: none;
+  width: 100%;
+  border: 1px solid ${({ $selected }) => ($selected ? "var(--sky-cyan)" : "var(--sky-border)")};
+  border-radius: 8px;
+  background: ${({ $selected }) =>
+    $selected
+      ? "linear-gradient(135deg, rgba(14, 78, 86, 0.96), rgba(42, 33, 58, 0.96))"
+      : "linear-gradient(180deg, rgba(15, 39, 50, 0.98), rgba(8, 24, 34, 0.98))"};
+  color: var(--sky-text);
+  padding: 10px;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+  cursor: pointer;
+
+  strong,
+  span {
+    overflow-wrap: anywhere;
+  }
+
+  span {
+    color: var(--sky-muted);
+    font-size: 12px;
+  }
+`;
+
+const MessageStream = styled.div`
+  display: grid;
+  gap: 12px;
+  align-content: end;
+  max-height: min(70vh, 760px);
+  overflow: auto;
+  padding: 4px 8px 10px;
+`;
+
+const MessageRow = styled.div<{ $mine?: boolean }>`
+  display: flex;
+  justify-content: ${({ $mine }) => ($mine ? "flex-end" : "flex-start")};
+`;
+
+const MessageBubble = styled.article<{ $mine?: boolean }>`
+  width: min(100%, 680px);
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid ${({ $mine }) => ($mine ? "rgba(65, 217, 156, 0.58)" : "rgba(103, 232, 249, 0.42)")};
+  border-radius: 8px;
+  background: ${({ $mine }) =>
+    $mine
+      ? "linear-gradient(180deg, rgba(14, 60, 49, 0.98), rgba(8, 34, 34, 0.98))"
+      : "linear-gradient(180deg, rgba(18, 43, 56, 0.98), rgba(9, 25, 35, 0.98))"};
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.26);
+`;
+
+const MessageMeta = styled.div<{ $mine?: boolean }>`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: ${({ $mine }) => ($mine ? "flex-end" : "flex-start")};
+  flex-wrap: wrap;
+  color: var(--sky-muted);
+  font-size: 12px;
+`;
+
+const ChatMediaGrid = styled.div`
+  display: grid;
+  gap: 8px;
+`;
+
+const ChatMediaCard = styled.div`
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(103, 232, 249, 0.4);
+  border-radius: 8px;
+  background: rgba(7, 20, 28, 0.9);
+  color: var(--sky-text);
+  text-decoration: none;
+
+  img,
+  video {
+    width: 100%;
+    max-height: min(58vh, 560px);
+    object-fit: contain;
+    border-radius: 6px;
+    background: #050c10;
+  }
+
+  audio {
+    width: 100%;
+  }
+
+  a {
+    color: var(--sky-cyan);
+  }
+`;
+
+const ChatComposer = styled.div`
+  display: grid;
+  gap: 8px;
+  align-content: start;
+`;
+
+const AttachmentTray = styled.div`
+  display: grid;
+  gap: 6px;
+`;
+
+const AttachmentPill = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid rgba(65, 217, 156, 0.5);
+  border-radius: 8px;
+  background: rgba(14, 60, 49, 0.68);
 `;
 
 const ActionDeck = styled.div`
@@ -1166,12 +1512,128 @@ function formatDate(value: string | null | undefined): string {
   return date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
+function formatDateOnly(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
 function formatTez(value: string | null | undefined): string {
   if (!value) return "tez";
   const numeric = Number(value.replace(/,/g, ""));
   if (!Number.isFinite(numeric)) return `${value} tez`;
   if (numeric === 0) return "free";
   return `${numeric.toLocaleString(undefined, { maximumFractionDigits: 6 })} tez`;
+}
+
+function truncateGraphemes(value: string, maxLength: number): string {
+  const chars = Array.from(value.trim());
+  if (chars.length <= maxLength) return chars.join("");
+  return `${chars.slice(0, Math.max(0, maxLength - 1)).join("").trimEnd()}…`;
+}
+
+function skywireVaultCollectionLabel(token: SkywireTokenSummary): string {
+  return token.collectionName?.trim() || shortAddress(token.faContract);
+}
+
+function skywireVaultCreatorLabel(token: SkywireTokenSummary): string {
+  return token.creatorName?.trim() || (token.creatorAddress ? shortAddress(token.creatorAddress) : "Unknown");
+}
+
+function compareSkywireVaultTokens(a: SkywireTokenSummary, b: SkywireTokenSummary): number {
+  return (
+    skywireVaultCollectionLabel(a).localeCompare(skywireVaultCollectionLabel(b), undefined, { sensitivity: "base" }) ||
+    a.faContract.localeCompare(b.faContract, undefined, { sensitivity: "base" }) ||
+    String(a.tokenId).localeCompare(String(b.tokenId), undefined, { numeric: true }) ||
+    a.title.localeCompare(b.title, undefined, { sensitivity: "base" })
+  );
+}
+
+function groupSkywireCreatedTokens(tokens: SkywireTokenSummary[]): SkywireVaultCreatedGroup[] {
+  const groups = new Map<string, SkywireVaultCreatedGroup>();
+  [...tokens].sort(compareSkywireVaultTokens).forEach((token) => {
+    const label = skywireVaultCollectionLabel(token);
+    const key = `${token.faContract}:${label.toLowerCase()}`;
+    const group = groups.get(key) ?? {
+      key,
+      label,
+      contract: token.faContract,
+      items: [],
+    };
+    group.items.push(token);
+    groups.set(key, group);
+  });
+  return Array.from(groups.values());
+}
+
+function buildSkywireVaultShareText(
+  token: SkywireTokenSummary | SkywireVaultOwnedToken,
+): string {
+  const creator = skywireVaultCreatorLabel(token);
+  const collection = token.collectionName || shortAddress(token.faContract);
+  const minted = formatDateOnly(token.mintedAt) || "Unknown";
+  const draft = [
+    truncateGraphemes(token.title || `${token.faContract} #${token.tokenId}`, 84),
+    `Creator: ${truncateGraphemes(creator, 64)}`,
+    `Collection: ${truncateGraphemes(collection, 64)}`,
+    `Date Minted: ${minted}`,
+    token.marketUrl,
+  ].join("\n");
+  if (Array.from(draft).length <= 300) return draft;
+  const compact = [
+    truncateGraphemes(token.title || `${token.faContract} #${token.tokenId}`, 54),
+    `Creator: ${truncateGraphemes(creator, 42)}`,
+    `Date Minted: ${minted}`,
+    token.marketUrl,
+  ].join("\n");
+  if (Array.from(compact).length <= 300) return compact;
+  const urlLength = Array.from(token.marketUrl).length;
+  if (urlLength >= 300) return truncateGraphemes(token.marketUrl, 300);
+  const metadataBudget = 300 - urlLength - 1;
+  if (metadataBudget < 2) return token.marketUrl;
+  const metadata = truncateGraphemes(
+    [
+      token.title || `${token.faContract} #${token.tokenId}`,
+      `Creator: ${creator}`,
+      `Date Minted: ${minted}`,
+    ].join("\n"),
+    metadataBudget,
+  );
+  return `${metadata}\n${token.marketUrl}`;
+}
+
+function buildSkywireVaultEmbedDescription(token: SkywireTokenSummary | SkywireVaultOwnedToken | null): string {
+  if (!token) return "Tezos token shared from Skywire";
+  return [
+    skywireVaultCreatorLabel(token),
+    token.collectionName || shortAddress(token.faContract),
+    formatDateOnly(token.mintedAt) ? `Minted ${formatDateOnly(token.mintedAt)}` : null,
+  ].filter(Boolean).join(" · ");
+}
+
+function formatBytes(value: number | null | undefined): string {
+  const bytes = Number(value || 0);
+  if (!Number.isFinite(bytes) || bytes <= 0) return "";
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}
+
+function skywireMediaCategoryForMime(mimeType: string): "image" | "video" | "audio" | "other" {
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return "other";
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("Unable to read file"));
+    reader.readAsDataURL(file);
+  });
 }
 
 function extractSkywireTokenUrls(post: SkywirePost): string[] {
@@ -1356,6 +1818,76 @@ function SkywireTokenLinks({ urls }: { urls: string[] }) {
   );
 }
 
+function SkywireVideoEmbedView({ video }: { video?: SkywireVideoEmbed | null }) {
+  if (!video?.playlist && !video?.thumbnail) return null;
+  return (
+    <FeedVideoFrame data-skywire-video-embed="true">
+      {video.playlist ? (
+        <FeedVideo
+          controls
+          playsInline
+          preload="metadata"
+          poster={video.thumbnail || undefined}
+          src={video.playlist}
+          aria-label={video.alt || "Skywire video"}
+        />
+      ) : (
+        <VideoPosterLink href={video.thumbnail || "#"} target="_blank" rel="noopener noreferrer">
+          <img src={video.thumbnail || ""} alt={video.alt || "Skywire video preview"} loading="lazy" />
+          <span>Open media preview</span>
+        </VideoPosterLink>
+      )}
+    </FeedVideoFrame>
+  );
+}
+
+function SkywireChatMedia({ media }: { media: SkywireChatMediaAttachment[] }) {
+  if (!media.length) return null;
+  return (
+    <ChatMediaGrid data-skywire-chat-media="true">
+      {media.map((attachment) => {
+        const category = skywireMediaCategoryForMime(attachment.mimeType);
+        return (
+          <ChatMediaCard
+            key={`${attachment.mediaId}:${attachment.url}`}
+            title={`Open ${attachment.title}`}
+          >
+            {category === "image" ? (
+              <img src={attachment.url} alt={attachment.title} loading="lazy" />
+            ) : category === "video" ? (
+              <video controls playsInline preload="metadata" src={attachment.url} />
+            ) : category === "audio" ? (
+              <audio controls preload="metadata" src={attachment.url} />
+            ) : null}
+            <strong>{attachment.title}</strong>
+            <span>{attachment.mimeType}{formatBytes(attachment.fileSizeBytes) ? ` · ${formatBytes(attachment.fileSizeBytes)}` : ""}</span>
+            <a href={attachment.url} target="_blank" rel="noopener noreferrer">Open media</a>
+          </ChatMediaCard>
+        );
+      })}
+    </ChatMediaGrid>
+  );
+}
+
+function ChatQuotePreview({ quote }: { quote: SkywireQuotePost }) {
+  if (quote.state !== "visible") {
+    return (
+      <QuoteSupertext data-skywire-chat-quote="true">
+        <span>quoted post</span>
+        <sup>"Unavailable quoted post"</sup>
+      </QuoteSupertext>
+    );
+  }
+  const author = quote.author?.handle ? `@${quote.author.handle}` : "quoted post";
+  const text = quote.text || quote.sourceUrl || quote.uri;
+  return (
+    <QuoteSupertext data-skywire-chat-quote="true">
+      <span>quoted {author}</span>
+      <sup>"{text}"</sup>
+    </QuoteSupertext>
+  );
+}
+
 function QuotePreview({ quote }: { quote: SkywireQuotePost }) {
   const author = quote.author;
   const open = () => {
@@ -1379,9 +1911,24 @@ function QuotePreview({ quote }: { quote: SkywireQuotePost }) {
           {formatDate(quote.createdAt || quote.indexedAt) ? <span>{formatDate(quote.createdAt || quote.indexedAt)}</span> : null}
         </div>
       </Row>
+      {quote.embed.images.length ? (
+        <ImageGrid $count={quote.embed.images.length}>
+          {quote.embed.images.map((image, index) => (
+            <FeedImage
+              key={`${image.fullsize || image.thumb || index}`}
+              $solo={quote.embed.images.length === 1}
+              src={image.fullsize || image.thumb || ""}
+              alt={image.alt}
+              loading="lazy"
+            />
+          ))}
+        </ImageGrid>
+      ) : null}
+      <SkywireVideoEmbedView video={quote.embed.video} />
       <PostText>{quote.text || "(no text)"}</PostText>
       {quote.embed.external ? (
         <ExternalCard as="div">
+          {quote.embed.external.thumb ? <ExternalThumb src={quote.embed.external.thumb} alt="" loading="lazy" /> : null}
           <strong>{quote.embed.external.title}</strong>
           {quote.embed.external.description ? <span>{quote.embed.external.description}</span> : null}
         </ExternalCard>
@@ -1579,6 +2126,7 @@ function FeedCard({
   const showEmptyText =
     !post.text &&
     !post.embed.images.length &&
+    !post.embed.video &&
     !post.embed.external &&
     !post.quote &&
     !tokenUrls.length;
@@ -1627,10 +2175,12 @@ function FeedCard({
           ))}
         </ImageGrid>
       ) : null}
+      <SkywireVideoEmbedView video={post.embed.video} />
       {post.text || showEmptyText ? <PostText>{post.text || "(no text)"}</PostText> : null}
       <SkywireTokenLinks urls={tokenUrls} />
       {post.embed.external && !externalIsToken ? (
         <ExternalCard href={post.embed.external.uri} target="_blank" rel="noopener noreferrer">
+          {post.embed.external.thumb ? <ExternalThumb src={post.embed.external.thumb} alt="" loading="lazy" /> : null}
           <strong>{post.embed.external.title}</strong>
           {post.embed.external.description ? <span>{post.embed.external.description}</span> : null}
           <Mono>{post.embed.external.uri}</Mono>
@@ -1732,29 +2282,57 @@ function FeedPanel({
 
 function SkywireVaultTokenTile({
   token,
-  badge,
+  context,
+  onShare,
 }: {
   token: SkywireTokenSummary | SkywireVaultOwnedToken;
-  badge?: string;
+  context: SkywireVaultTokenContext;
+  onShare: (token: SkywireTokenSummary | SkywireVaultOwnedToken, context: SkywireVaultTokenContext) => void;
 }) {
-  const owned = token as SkywireVaultOwnedToken;
+  const creator = skywireVaultCreatorLabel(token);
+  const collection = token.collectionName || shortAddress(token.faContract);
+  const mintedDate = formatDateOnly(token.mintedAt) || "Unknown";
   return (
-    <VaultTokenCard>
+    <VaultTokenCard data-skywire-vault-token={context}>
       <VaultTokenThumb href={token.marketUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open ${token.title}`}>
         {token.imageUrl ? <TokenThumbImage src={token.imageUrl} alt="" loading="lazy" /> : null}
       </VaultTokenThumb>
       <VaultTokenText>
-        <strong>{token.title}</strong>
-        {token.collectionName ? <span>{token.collectionName}</span> : null}
-        <span>{token.creatorName || shortAddress(token.creatorAddress)}</span>
+        <VaultTokenFact>
+          <small>Title</small>
+          <strong>{token.title}</strong>
+        </VaultTokenFact>
+        <VaultTokenFact>
+          <small>Creator</small>
+          <span>{creator}</span>
+        </VaultTokenFact>
+        <VaultTokenFact>
+          <small>Collection</small>
+          <span>{collection}</span>
+        </VaultTokenFact>
+        <VaultTokenFact>
+          <small>Date Minted</small>
+          <span>{mintedDate}</span>
+        </VaultTokenFact>
+        <VaultTokenFact>
+          <small>Token URL</small>
+          <Mono>{token.marketUrl}</Mono>
+        </VaultTokenFact>
       </VaultTokenText>
-      <MetaRow>
-        {badge ? <StatChip>{badge}</StatChip> : null}
-        {"balance" in token ? <StatChip>x{owned.balance}</StatChip> : null}
-      </MetaRow>
-      <Button size="sm" onClick={() => window.open(token.marketUrl, "_blank", "noopener,noreferrer")}>
-        Open Objkt
-      </Button>
+      <VaultTokenActions>
+        <Button size="sm" onClick={() => window.open(token.marketUrl, "_blank", "noopener,noreferrer")}>
+          <ButtonGlyph>
+            <ExternalLink size={13} aria-hidden="true" />
+            Objkt
+          </ButtonGlyph>
+        </Button>
+        <Button size="sm" data-skywire-vault-share={context} onClick={() => onShare(token, context)}>
+          <ButtonGlyph>
+            <Share2 size={13} aria-hidden="true" />
+            Share
+          </ButtonGlyph>
+        </Button>
+      </VaultTokenActions>
     </VaultTokenCard>
   );
 }
@@ -1762,10 +2340,29 @@ function SkywireVaultTokenTile({
 function SkywireTezosVaultPanel({ me }: { me: AtprotoMe }) {
   const wallet = useWallet();
   const qc = useQueryClient();
+  const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
+  const canCompose = Boolean(me.account && accountHasCapability(me.account, "compose"));
+  const [shareTarget, setShareTarget] = useState<SkywireVaultShareTarget | null>(null);
+  const [shareText, setShareText] = useState("");
+  const [sharePostedUri, setSharePostedUri] = useState("");
   const vaultQuery = useQuery<SkywireTezosVaultResponse>({
     queryKey: ["skywire", "tezos-vault"],
     queryFn: () => api.get<SkywireTezosVaultResponse>("/api/skywire/tezos-vault?limit=24"),
     staleTime: 30_000,
+  });
+  const sharePost = useMutation({
+    mutationFn: () =>
+      api.post<{ uri: string; cid: string; sourceUrl: string | null }>("/api/skywire/post", {
+        text: shareText,
+        embedUrl: shareTarget?.token.marketUrl ?? undefined,
+        embedTitle: shareTarget?.token.title ?? undefined,
+        embedDescription: buildSkywireVaultEmbedDescription(shareTarget?.token ?? null),
+        embedThumbUrl: shareTarget?.token.imageUrl ?? undefined,
+      }),
+    onSuccess: (data) => {
+      setSharePostedUri(data.uri);
+      qc.invalidateQueries({ queryKey: ["skywire", "feed"] });
+    },
   });
   const connect = useMutation({
     mutationFn: () => wallet.connect(),
@@ -1786,6 +2383,24 @@ function SkywireTezosVaultPanel({ me }: { me: AtprotoMe }) {
   const wallets = vaultQuery.data?.wallets ?? fallbackWallets;
   const owned = vaultQuery.data?.owned?.items ?? [];
   const created = vaultQuery.data?.created?.items ?? [];
+  const createdGroups = useMemo(() => groupSkywireCreatedTokens(created), [created]);
+  const shareRemaining = 300 - Array.from(shareText).length;
+  const handleShareToken = useCallback(
+    (token: SkywireTokenSummary | SkywireVaultOwnedToken, context: SkywireVaultTokenContext) => {
+      setShareTarget({ token, context });
+      setShareText(buildSkywireVaultShareText(token));
+      setSharePostedUri("");
+      sharePost.reset();
+    },
+    [sharePost],
+  );
+  const openShareIntent = useCallback(async () => {
+    if (!shareText.trim()) return;
+    const { url } = await api.get<{ url: string }>(
+      `/api/skywire/share-intent?text=${encodeURIComponent(shareText)}`,
+    );
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, [shareText]);
 
   return (
     <Stack>
@@ -1830,15 +2445,70 @@ function SkywireTezosVaultPanel({ me }: { me: AtprotoMe }) {
         </Stack>
       </GroupBox>
 
+      {shareTarget ? (
+        <GroupBox label="Bluesky Token Share">
+          <VaultShareDraft data-skywire-vault-share-draft="true">
+            <VaultShareHeader>
+              <div>
+                <strong>Share token</strong>
+                <FinePrint>
+                  {shareTarget.token.title} · {skywireVaultCollectionLabel(shareTarget.token)}
+                </FinePrint>
+              </div>
+              <Button size="sm" onClick={() => setShareTarget(null)}>
+                Close
+              </Button>
+            </VaultShareHeader>
+            <TextArea
+              value={shareText}
+              onChange={(event) => setShareText(event.target.value)}
+              maxLength={300}
+              aria-label="Bluesky token share draft"
+            />
+            <Row>
+              <span>{shareRemaining} characters</span>
+              <Button
+                size="sm"
+                disabled={
+                  !canUseAtprotoSession ||
+                  !canCompose ||
+                  shareRemaining < 0 ||
+                  !shareText.trim() ||
+                  sharePost.isPending
+                }
+                onClick={() => sharePost.mutate()}
+              >
+                <ButtonGlyph>
+                  <SendHorizontal size={13} aria-hidden="true" />
+                  {sharePost.isPending ? "Posting..." : "Post to Bluesky"}
+                </ButtonGlyph>
+              </Button>
+              <Button size="sm" disabled={!shareText.trim()} onClick={openShareIntent}>
+                <ButtonGlyph>
+                  <Share2 size={13} aria-hidden="true" />
+                  Open Intent
+                </ButtonGlyph>
+              </Button>
+            </Row>
+            {!me.account ? <FinePrint>Connect a Bluesky account to post from inside Skywire.</FinePrint> : null}
+            {me.account && !canUseAtprotoSession ? <FinePrint>Reconnect Bluesky from Settings to post from inside Skywire.</FinePrint> : null}
+            {me.account && canUseAtprotoSession && !canCompose ? <FinePrint>Choose Be Heard or Be Bold to post from inside Skywire.</FinePrint> : null}
+            {sharePost.isError ? <InlineState>{(sharePost.error as Error).message}</InlineState> : null}
+            {sharePostedUri ? <Mono>{sharePostedUri}</Mono> : null}
+          </VaultShareDraft>
+        </GroupBox>
+      ) : null}
+
       <GroupBox label="Owned Tokens">
         <Stack>
           {owned.length ? (
-            <VaultGrid>
+            <VaultGrid data-skywire-vault-section="owned">
               {owned.map((token) => (
                 <SkywireVaultTokenTile
                   key={`${token.walletAddress}:${token.faContract}:${token.tokenId}`}
                   token={token}
-                  badge={token.lastSeenAt ? formatDate(token.lastSeenAt) : "Owned"}
+                  context="owned"
+                  onShare={handleShareToken}
                 />
               ))}
             </VaultGrid>
@@ -1851,19 +2521,33 @@ function SkywireTezosVaultPanel({ me }: { me: AtprotoMe }) {
         </Stack>
       </GroupBox>
 
-      <GroupBox label="Created Tokens">
+      <GroupBox label="Created Tokens by Collection">
         <Stack>
           {vaultQuery.data?.created?.error ? <InlineState>{vaultQuery.data.created.error}</InlineState> : null}
-          {created.length ? (
-            <VaultGrid>
-              {created.map((token) => (
-                <SkywireVaultTokenTile
-                  key={`${token.faContract}:${token.tokenId}`}
-                  token={token}
-                  badge="Created"
-                />
+          {createdGroups.length ? (
+            <VaultCollectionStack>
+              {createdGroups.map((group) => (
+                <VaultCollectionGroup key={group.key} data-skywire-vault-created-group="true">
+                  <VaultCollectionHeader>
+                    <div>
+                      <strong>{group.label}</strong>
+                      <FinePrint>{shortAddress(group.contract)}</FinePrint>
+                    </div>
+                    <StatChip>{group.items.length} created</StatChip>
+                  </VaultCollectionHeader>
+                  <VaultGrid data-skywire-vault-section="created">
+                    {group.items.map((token) => (
+                      <SkywireVaultTokenTile
+                        key={`${token.faContract}:${token.tokenId}`}
+                        token={token}
+                        context="created"
+                        onShare={handleShareToken}
+                      />
+                    ))}
+                  </VaultGrid>
+                </VaultCollectionGroup>
               ))}
-            </VaultGrid>
+            </VaultCollectionStack>
           ) : (
             <EmptyState>
               <strong>No created tokens found.</strong>
@@ -2541,6 +3225,16 @@ function AccountPanel({
                       <FinePrint>
                         Capabilities: {(me.account.oauthCapabilities ?? []).join(", ") || "identity"}
                       </FinePrint>
+                      {!me.account.oauthChatEnabled ? (
+                        <GroupBox label="Skywire Chat Add-on">
+                          <Stack>
+                            <span>Enable chat on top of Be Bold permissions with a fresh Bluesky OAuth consent.</span>
+                            <Button onClick={() => startOAuthConnect(me.account?.handle || "", "be-bold", true)}>
+                              Enable Chat Add-on
+                            </Button>
+                          </Stack>
+                        </GroupBox>
+                      ) : null}
                       <Button onClick={() => openPermissionPicker(me.account?.handle || "")}>
                         Change permissions & reconnect
                       </Button>
@@ -3073,17 +3767,21 @@ function ChatPanel({
   pendingQuote,
   initialMembers,
   onQuoteClear,
+  onEnableChat,
 }: {
   me: AtprotoMe;
   canUseChat: boolean;
   pendingQuote: SkywireQuotePost | null;
   initialMembers: string[];
   onQuoteClear: () => void;
+  onEnableChat: () => void;
 }) {
   const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
   const [selectedConvoId, setSelectedConvoId] = useState("");
   const [membersText, setMembersText] = useState("");
   const [messageText, setMessageText] = useState("");
+  const [pendingMedia, setPendingMedia] = useState<SkywireChatMediaAttachment[]>([]);
+  const [uploadError, setUploadError] = useState("");
   const initialMembersKey = initialMembers.join("|");
   const qc = useQueryClient();
   useEffect(() => {
@@ -3117,6 +3815,12 @@ function ChatPanel({
         createdAt: pendingQuote.createdAt || undefined,
       }
     : undefined;
+  const mediaPayload = pendingMedia.map((attachment) => ({
+    mediaId: attachment.mediaId,
+    title: attachment.title,
+    mimeType: attachment.mimeType,
+  }));
+  const canSendMessage = Boolean(messageText.trim() || quotePayload || pendingMedia.length);
   const resolveConvo = useMutation({
     mutationFn: async () =>
       (await api.post("/api/skywire/chats/resolve", { members })) as { convo: SkywireChatConvo },
@@ -3130,9 +3834,12 @@ function ChatPanel({
       api.post(`/api/skywire/chats/${encodeURIComponent(selectedConvoId)}/messages`, {
         text: messageText,
         quotedPost: quotePayload,
+        media: mediaPayload,
       }),
     onSuccess: () => {
       setMessageText("");
+      setPendingMedia([]);
+      setUploadError("");
       onQuoteClear();
       qc.invalidateQueries({ queryKey: ["skywire", "chats"] });
       qc.invalidateQueries({ queryKey: ["skywire", "chats", selectedConvoId, "messages"] });
@@ -3144,15 +3851,64 @@ function ChatPanel({
         members,
         text: messageText,
         quotedPost: quotePayload,
+        media: mediaPayload,
       })) as { convo: SkywireChatConvo },
     onSuccess: (data: { convo: SkywireChatConvo }) => {
       setSelectedConvoId(data.convo.id);
       setMessageText("");
+      setPendingMedia([]);
+      setUploadError("");
       onQuoteClear();
       qc.invalidateQueries({ queryKey: ["skywire", "chats"] });
       qc.invalidateQueries({ queryKey: ["skywire", "chats", data.convo.id, "messages"] });
     },
   });
+  const uploadMedia = useMutation({
+    mutationFn: async (files: File[]) => {
+      const uploaded: SkywireChatMediaAttachment[] = [];
+      for (const file of files) {
+        const fileData = await readFileAsDataUrl(file);
+        const mimeType = file.type || "application/octet-stream";
+        const row = await api.post<SkywireMediaUploadResponse>("/api/media/upload", {
+          title: file.name,
+          originalFilename: file.name,
+          mimeType,
+          fileData,
+          mediaCategory: skywireMediaCategoryForMime(mimeType),
+        });
+        uploaded.push({
+          mediaId: row.id,
+          title: row.title || file.name,
+          mimeType: row.mimeType || mimeType,
+          url: row.playbackUrl || `/api/media/${row.id}/file`,
+          fileSizeBytes: row.fileSizeBytes ?? row.fileSize ?? file.size,
+        });
+      }
+      return uploaded;
+    },
+    onSuccess: (uploaded) => {
+      setPendingMedia((current) => [...current, ...uploaded].slice(0, 4));
+      setUploadError("");
+    },
+    onError: (error) => setUploadError((error as Error)?.message || "Media upload failed."),
+  });
+  const handleMediaSelect = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.currentTarget.files || []);
+      event.currentTarget.value = "";
+      if (!files.length) return;
+      const remainingSlots = 4 - pendingMedia.length;
+      if (remainingSlots <= 0) {
+        setUploadError("Remove an attachment before adding another.");
+        return;
+      }
+      uploadMedia.mutate(files.slice(0, remainingSlots));
+    },
+    [pendingMedia.length, uploadMedia]
+  );
+  const removePendingMedia = (mediaId: number) => {
+    setPendingMedia((current) => current.filter((attachment) => attachment.mediaId !== mediaId));
+  };
   const visibleMessages = [...(messages.data?.messages ?? [])].reverse();
   if (!me.account) {
     return (
@@ -3175,34 +3931,77 @@ function ChatPanel({
       <EmptyState>
         <strong>Enable the DM add-on.</strong>
         <span>Skywire asks for Bluesky chat permission separately so private chat does not hide inside public repo writes.</span>
+        <Button onClick={onEnableChat}>Enable Chat Add-on</Button>
       </EmptyState>
     );
   }
+  const convoTitle = selectedConvo?.groupName || selectedConvo?.members.map((member) => member.handle).join(", ") || "Skywire Chat";
   return (
-    <Grid>
-      <GroupBox label="Chats">
-        <Stack>
-          {chats.isLoading ? <Hourglass size={24} /> : null}
-          {chats.isError ? <span>{(chats.error as Error).message}</span> : null}
-          <NativeSelect value={selectedConvoId} onChange={(event) => setSelectedConvoId(event.target.value)}>
-            <option value="">Choose chat</option>
-            {(chats.data?.convos ?? []).map((convo) => (
-              <option key={convo.id} value={convo.id}>
-                {convo.groupName || convo.members.map((member) => member.handle).join(", ") || convo.id}
-              </option>
-            ))}
-          </NativeSelect>
-          <FeedList>
+    <ChatGrid>
+      <Stack>
+        <GroupBox label="Chats">
+          <Stack>
+            {chats.isLoading ? <Hourglass size={24} /> : null}
+            {chats.isError ? <span>{(chats.error as Error).message}</span> : null}
+            <TextField
+              value={membersText}
+              onChange={(event: any) => setMembersText(event.target.value)}
+              placeholder="handle.bsky.social, did:plc:..."
+              fullWidth
+            />
+            <Row>
+              <Button size="sm" disabled={members.length === 0 || resolveConvo.isPending} onClick={() => resolveConvo.mutate()}>
+                Open Members
+              </Button>
+              <span>{members.length >= 2 ? "Group ready" : "Add handle or DID"}</span>
+            </Row>
+            <ConversationList>
+              {(chats.data?.convos ?? []).map((convo) => {
+                const title = convo.groupName || convo.members.map((member) => member.handle).join(", ") || convo.id;
+                const last = convo.lastMessage?.text || (convo.lastMessage?.media?.length ? "Media attachment" : "");
+                return (
+                  <ConversationButton
+                    key={convo.id}
+                    type="button"
+                    $selected={convo.id === selectedConvoId}
+                    onClick={() => setSelectedConvoId(convo.id)}
+                  >
+                    <strong>{title}</strong>
+                    <span>{convo.unreadCount ? `${convo.unreadCount} unread` : `${convo.memberCount || convo.members.length} members`}</span>
+                    {last ? <span>{last}</span> : null}
+                  </ConversationButton>
+                );
+              })}
+              {!chats.isLoading && !(chats.data?.convos ?? []).length ? (
+                <EmptyState>
+                  <strong>No chats loaded.</strong>
+                  <span>Paste a handle or DID above to open a conversation.</span>
+                </EmptyState>
+              ) : null}
+            </ConversationList>
+          </Stack>
+        </GroupBox>
+        <GroupBox label="AT Contract">
+          <Stack>
+            <Mono>{chats.data?.service || "did:web:api.bsky.chat#bsky_chat"}</Mono>
+            <FinePrint>Private chat service with explicit DM add-on consent. Media travels as signed Skywire file links inside the message.</FinePrint>
+          </Stack>
+        </GroupBox>
+      </Stack>
+
+      <GroupBox label={convoTitle}>
+        <ChatPane>
+          <MessageStream>
+            {!selectedConvoId && !messages.isLoading ? (
+              <EmptyState>
+                <strong>Choose or resolve a chat.</strong>
+                <span>Pick an existing conversation, or paste handles to start a direct or group lane.</span>
+              </EmptyState>
+            ) : null}
             {visibleMessages.length === 0 && selectedConvoId && !messages.isLoading ? (
               <EmptyState>
                 <strong>No messages loaded.</strong>
                 <span>This conversation is ready, but the selected history is empty.</span>
-              </EmptyState>
-            ) : null}
-            {!selectedConvoId && !messages.isLoading ? (
-              <EmptyState>
-                <strong>Choose or resolve a chat.</strong>
-                <span>Pick an existing conversation, or paste handles to create a direct or group lane.</span>
               </EmptyState>
             ) : null}
             {messages.isLoading ? <Hourglass size={24} /> : null}
@@ -3212,83 +4011,88 @@ function ChatPanel({
                 message.sender ||
                 selectedConvo?.members.find((member) => member.did === message.senderDid) ||
                 null;
+              const mine = Boolean(me.account?.did && message.senderDid === me.account.did);
               return (
-                <FeedItem key={message.id}>
-                  <PostHeader>
-                    {sender?.avatar ? <Avatar src={sender.avatar} alt="" /> : <AvatarFallback />}
-                    <div>
+                <MessageRow key={message.id} $mine={mine}>
+                  <MessageBubble $mine={mine}>
+                    <MessageMeta $mine={mine}>
                       <strong>{sender?.displayName || sender?.handle || message.senderDid || "system"}</strong>
-                      {sender?.handle ? <div>@{sender.handle}</div> : null}
+                      {sender?.handle ? <span>@{sender.handle}</span> : null}
                       {formatDate(message.sentAt) ? <span>{formatDate(message.sentAt)}</span> : null}
-                    </div>
-                  </PostHeader>
-                  <PostText>{message.text}</PostText>
-                  {message.quote ? <QuotePreview quote={message.quote} /> : null}
-                </FeedItem>
+                    </MessageMeta>
+                    {message.quote ? <ChatQuotePreview quote={message.quote} /> : null}
+                    {message.text ? <PostText>{message.text}</PostText> : null}
+                    <SkywireChatMedia media={message.media || []} />
+                  </MessageBubble>
+                </MessageRow>
               );
             })}
-          </FeedList>
-        </Stack>
+          </MessageStream>
+
+          <ChatComposer>
+            {initialMembers.length ? <FinePrint>Targeting @{initialMembers.join(", @")}. Add more handles for a group chat.</FinePrint> : null}
+            {pendingQuote ? (
+              <AttachmentTray>
+                <ChatQuotePreview quote={pendingQuote} />
+                <Button size="sm" onClick={onQuoteClear}>Remove Quote</Button>
+              </AttachmentTray>
+            ) : null}
+            {pendingMedia.length ? (
+              <AttachmentTray>
+                <SkywireChatMedia media={pendingMedia} />
+                {pendingMedia.map((attachment) => (
+                  <AttachmentPill key={attachment.mediaId}>
+                    <span>{attachment.title} · {attachment.mimeType}</span>
+                    <Button size="sm" onClick={() => removePendingMedia(attachment.mediaId)}>Remove</Button>
+                  </AttachmentPill>
+                ))}
+              </AttachmentTray>
+            ) : null}
+            <TextArea
+              value={messageText}
+              onChange={(event) => setMessageText(event.target.value)}
+              maxLength={10000}
+              placeholder="write the message"
+            />
+            <Row>
+              <Button
+                size="sm"
+                disabled={uploadMedia.isPending || pendingMedia.length >= 4}
+                onClick={() => document.getElementById("skywire-chat-media-input")?.click()}
+              >
+                {uploadMedia.isPending ? "Uploading..." : "Attach Media"}
+              </Button>
+              <input
+                id="skywire-chat-media-input"
+                type="file"
+                accept="image/*,image/gif,video/*,audio/*"
+                hidden
+                multiple
+                onChange={handleMediaSelect}
+              />
+              <Button
+                disabled={!selectedConvoId || !canSendMessage || sendToConvo.isPending}
+                onClick={() => sendToConvo.mutate()}
+              >
+                Send To Selected Chat
+              </Button>
+              <Button
+                disabled={members.length === 0 || !canSendMessage || sendToMembers.isPending}
+                onClick={() => sendToMembers.mutate()}
+              >
+                Send To Members
+              </Button>
+            </Row>
+            {uploadError ? <span>{uploadError}</span> : null}
+            {resolveConvo.isError || sendToConvo.isError || sendToMembers.isError ? (
+              <span>
+                {((resolveConvo.error || sendToConvo.error || sendToMembers.error) as Error)?.message || "Skywire chat failed."}
+              </span>
+            ) : null}
+          </ChatComposer>
+        </ChatPane>
       </GroupBox>
-      <GroupBox label="Reply In Chat">
-        <Stack>
-          {initialMembers.length ? <FinePrint>Targeting @{initialMembers.join(", @")}. Add more handles for a group chat.</FinePrint> : null}
-          <TextField
-            value={membersText}
-            onChange={(event: any) => setMembersText(event.target.value)}
-            placeholder="handle.bsky.social, did:plc:..."
-            fullWidth
-          />
-          <Row>
-            <Button size="sm" disabled={members.length === 0 || resolveConvo.isPending} onClick={() => resolveConvo.mutate()}>
-              Open Members
-            </Button>
-            <span>{members.length >= 2 ? "Group ready" : "Add 2+ for group"}</span>
-          </Row>
-          {pendingQuote ? (
-            <Stack>
-              <QuotePreview quote={pendingQuote} />
-              <Button size="sm" onClick={onQuoteClear}>Remove Quote</Button>
-            </Stack>
-          ) : null}
-          <TextArea
-            value={messageText}
-            onChange={(event) => setMessageText(event.target.value)}
-            maxLength={10000}
-            placeholder="write the message"
-          />
-          <Button
-            disabled={!selectedConvoId || !messageText.trim() || sendToConvo.isPending}
-            onClick={() => sendToConvo.mutate()}
-          >
-            Send To Selected Chat
-          </Button>
-          <Button
-            disabled={members.length === 0 || !messageText.trim() || sendToMembers.isPending}
-            onClick={() => sendToMembers.mutate()}
-          >
-            Send To Members
-          </Button>
-          {resolveConvo.isError || sendToConvo.isError || sendToMembers.isError ? (
-            <span>
-              {((resolveConvo.error || sendToConvo.error || sendToMembers.error) as Error)?.message || "Skywire chat failed."}
-            </span>
-          ) : null}
-        </Stack>
-      </GroupBox>
-      <GroupBox label="AT Contract">
-        <Stack>
-          <FeedItem>
-            <strong>Service</strong>
-            <Mono>{chats.data?.service || "did:web:api.bsky.chat#bsky_chat"}</Mono>
-          </FeedItem>
-          <FeedItem>
-            <strong>Mode</strong>
-            <span>Bluesky private chat service with explicit DM add-on consent.</span>
-          </FeedItem>
-        </Stack>
-      </GroupBox>
-    </Grid>
+    </ChatGrid>
   );
 }
 
@@ -3426,6 +4230,10 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
     setTab("chat");
   };
   const openSettings = () => setTab("account");
+  const enableChatAddOn = () => {
+    setTab("account");
+    setNotice("Enable the Skywire Chat Add-on to reconnect with Be Bold plus Bluesky DM access.");
+  };
   const leaveContextView = () => {
     setSelectedThreadPost(null);
     setSelectedActor(null);
@@ -3456,7 +4264,12 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
               <span>Session</span>
               <strong>{canUseAtprotoSession ? "Ready" : me?.account ? "Reconnect" : "Offline"}</strong>
             </StatusBadge>
-            <StatusBadge $tone={chatTone}>
+            <StatusBadge
+              $tone={chatTone}
+              role="button"
+              style={{ cursor: "pointer" }}
+              onClick={canUseChat ? openSettings : enableChatAddOn}
+            >
               <span>Chat</span>
               <strong>{canUseChat ? "DM add-on on" : "DM add-on off"}</strong>
             </StatusBadge>
@@ -3655,6 +4468,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
                     setPendingChatQuote(null);
                     setPendingChatMembers([]);
                   }}
+                  onEnableChat={enableChatAddOn}
                 />
               ) : null}
               {tab === "signals" ? <SignalsPanel me={me} canPublishSignals={canUseSignals} /> : null}

@@ -104,4 +104,77 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     await expect(page.getByText("Harness Teia Token")).toBeVisible();
     expect(fatalErrors(errors)).toEqual([]);
   });
+
+  test("vault separates owned tokens from created collections and prefills Bluesky token shares", async ({
+    page,
+    request,
+  }) => {
+    await setAdmin(request);
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+
+    await page.goto("/skywire?tab=vault", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("Owned Tokens", { exact: true })).toBeVisible();
+    await expect(page.locator("[data-skywire-vault-section='owned'] [data-skywire-vault-token='owned']")).toHaveCount(1);
+    const createdGroups = page.locator("[data-skywire-vault-created-group='true']");
+    await expect(createdGroups).toHaveCount(2);
+
+    const alphaGroup = createdGroups.first();
+    await alphaGroup.scrollIntoViewIfNeeded();
+    await expect(alphaGroup.getByText("Harness Alpha Collection").first()).toBeVisible();
+    await expect(alphaGroup.locator("[data-skywire-vault-token='created']")).toHaveCount(2);
+    await expect(createdGroups.nth(1).getByText("Harness Beta Collection").first()).toBeVisible();
+    const alphaToken = alphaGroup.locator("[data-skywire-vault-token='created']").first();
+    await expect(alphaToken.getByText("Title", { exact: true })).toBeVisible();
+    await expect(alphaToken.getByText("Creator", { exact: true })).toBeVisible();
+    await expect(alphaToken.getByText("Harness Creator")).toBeVisible();
+    await expect(alphaToken.getByText("Date Minted", { exact: true })).toBeVisible();
+    await expect(alphaToken.getByText("Apr 5, 2024")).toBeVisible();
+    await expect(alphaToken.getByText("https://objkt.com/tokens/KT1AlphaCreatedCollection/2")).toBeVisible();
+    await expect(alphaToken.locator("img")).toBeVisible();
+
+    await alphaGroup.locator("[data-skywire-vault-share='created']").first().click();
+    const draft = page.locator("[data-skywire-vault-share-draft='true']");
+    await expect(draft).toBeVisible();
+    await expect(draft.getByLabel("Bluesky token share draft")).not.toHaveValue(/I created|I own/);
+    await expect(draft.getByLabel("Bluesky token share draft")).toHaveValue(/^Harness Alpha Token/);
+    await expect(draft.getByLabel("Bluesky token share draft")).toHaveValue(/Creator: Harness Creator/);
+    await expect(draft.getByLabel("Bluesky token share draft")).toHaveValue(/Collection: Harness Alpha Collection/);
+    await expect(draft.getByLabel("Bluesky token share draft")).toHaveValue(/Date Minted: Apr 5, 2024/);
+    await expect(draft.getByLabel("Bluesky token share draft")).toHaveValue(/https:\/\/objkt\.com\/tokens\/KT1AlphaCreatedCollection\/2/);
+    await draft.getByRole("button", { name: /Post to Bluesky/ }).click();
+    await expect(draft.getByText("at://did:plc:skywiretest/app.bsky.feed.post/vault-share")).toBeVisible();
+    const state = await (await request.get("/__test/state")).json();
+    expect(state.skywirePostPayloads).toHaveLength(1);
+    expect(state.skywirePostPayloads[0]).toMatchObject({
+      embedUrl: "https://objkt.com/tokens/KT1AlphaCreatedCollection/2",
+      embedTitle: "Harness Alpha Token",
+      embedDescription: "Harness Creator · Harness Alpha Collection · Minted Apr 5, 2024",
+    });
+    expect(state.skywirePostPayloads[0].embedThumbUrl).toMatch(/\/__test\/media\/harness-alpha-token\.png$/);
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("chat renders quoted replies and GIF media attachments", async ({ page, request }) => {
+    await setAdmin(request);
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+
+    await page.goto("/skywire?tab=chat", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: /harness\.bsky\.social/i }).click();
+
+    await expect(page.locator("[data-skywire-chat-quote='true']")).toContainText(
+      "\"Original post text for quoted chat reply.\"",
+    );
+    await expect(page.locator("[data-skywire-chat-media='true'] img")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open media" })).toBeVisible();
+    await expect(page.getByText("This GIF should render in chat.")).toBeVisible();
+    expect(fatalErrors(errors)).toEqual([]);
+  });
 });
