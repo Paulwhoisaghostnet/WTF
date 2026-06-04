@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, TextField } from "react95";
+import { Copy, ExternalLink } from "lucide-react";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth-context";
 import { skywirePermissionTierLabel, type SkywirePermissionTier } from "@shared/atproto-permissions";
 import {
   ContentPane,
@@ -15,9 +17,16 @@ import {
   NativeSelect,
   NavButton,
   QuoteCard,
+  MutedText,
+  RoomBadge,
+  RoomCard,
+  RoomDirectory,
   Sidebar,
+  ShareLink,
+  SplitActions,
   Stack,
   TextArea,
+  WideGrid,
 } from "./wtf-live-styles";
 import {
   accountHasCapability,
@@ -50,7 +59,15 @@ type AtprotoMe = {
   };
 };
 
-type WtfLiveRoom = { id: string; title: string; kind: string; description?: string };
+type WtfLiveRoom = {
+  id: string;
+  title: string;
+  kind: string;
+  description?: string;
+  source?: "system" | "user";
+  ownerUserId?: number | null;
+  isPublic?: boolean;
+};
 type WtfLiveStage = WtfLiveRoom & { liveUrl?: string | null };
 
 type WtfLiveStatus = {
@@ -114,6 +131,15 @@ function syncLiveUrl(tab: WtfLiveTab, room: string | null, stage: string | null)
   window.history.replaceState({}, "", `/live${search}`);
 }
 
+function publicRoomPath(roomId: string): string {
+  return `/live/r/${encodeURIComponent(roomId)}`;
+}
+
+function publicRoomUrl(roomId: string): string {
+  if (typeof window === "undefined") return publicRoomPath(roomId);
+  return `${window.location.origin}${publicRoomPath(roomId)}`;
+}
+
 function CreateDialog({
   title,
   fields,
@@ -145,16 +171,17 @@ function CreateDialog({
 
 export function WtfLiveApp() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const initial = useMemo(() => parseWtfLiveSearchParams(window.location.search), []);
   const [tab, setTab] = useState<WtfLiveTab>(initial.tab);
   const [roomId, setRoomId] = useState(initial.room || "wtf-live");
   const [stageId, setStageId] = useState(initial.stage || "wtf-stage");
   const [pendingQuote, setPendingQuote] = useState<WtfLivePendingQuote | null>(null);
-  const [roomDialog, setRoomDialog] = useState(false);
   const [stageDialog, setStageDialog] = useState(false);
   const [createTitle, setCreateTitle] = useState("");
   const [createDescription, setCreateDescription] = useState("");
   const [createLiveUrl, setCreateLiveUrl] = useState("");
+  const [copyStatus, setCopyStatus] = useState("");
 
   const meQuery = useQuery<AtprotoMe>({ queryKey: ["wtf-live", "me"], queryFn: () => api.get("/api/atproto/me") });
   const statusQuery = useQuery<WtfLiveStatus>({
@@ -164,6 +191,10 @@ export function WtfLiveApp() {
   const roomsQuery = useQuery<{ rooms: WtfLiveRoom[]; collection: string }>({
     queryKey: ["wtf-live", "rooms"],
     queryFn: () => api.get("/api/wtf-live/rooms"),
+  });
+  const ownedRoomsQuery = useQuery<{ rooms: WtfLiveRoom[]; collection: string }>({
+    queryKey: ["wtf-live", "rooms", "mine"],
+    queryFn: () => api.get("/api/wtf-live/rooms/mine"),
   });
   const stagesQuery = useQuery<{ stages: WtfLiveStage[]; collection: string; mode?: string }>({
     queryKey: ["wtf-live", "stages"],
@@ -208,6 +239,7 @@ export function WtfLiveApp() {
   const canStages = Boolean(account && accountHasCapability(account, "stages"));
 
   const roomOptions = (roomsQuery.data?.rooms ?? []).filter((r) => r.kind === "room");
+  const ownedRoomOptions = ownedRoomsQuery.data?.rooms ?? [];
   const stageOptions = stagesQuery.data?.stages ?? [];
   const selectedRoom = roomOptions.find((r) => r.id === roomId) ?? null;
   const selectedStage = stageOptions.find((s) => s.id === stageId) ?? null;
@@ -223,14 +255,15 @@ export function WtfLiveApp() {
     mutationFn: () =>
       api.post<{ room?: WtfLiveRoom }>("/api/wtf-live/rooms", { title: createTitle.trim(), description: createDescription.trim() }),
     onSuccess: (data: { room?: WtfLiveRoom }) => {
-      setRoomDialog(false);
       setCreateTitle("");
       setCreateDescription("");
       if (data?.room?.id) {
         setRoomId(data.room.id);
         setTab("rooms");
+        setCopyStatus(`Public URL ready: ${publicRoomUrl(data.room.id)}`);
       }
       qc.invalidateQueries({ queryKey: ["wtf-live", "rooms"] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "mine"] });
     },
   });
   const createStage = useMutation({
@@ -282,6 +315,42 @@ export function WtfLiveApp() {
 
   const contextTitle = wtfLiveContextTitle(tab, selectedRoom?.title, selectedStage?.title);
 
+  async function copyPublicRoom(room: WtfLiveRoom) {
+    await navigator.clipboard?.writeText(publicRoomUrl(room.id));
+    setCopyStatus(`Copied ${room.title} room URL.`);
+  }
+
+  function openPublicRoom(room: WtfLiveRoom) {
+    window.open(publicRoomPath(room.id), "_blank", "noopener,noreferrer");
+  }
+
+  function openHostRoom(room: WtfLiveRoom) {
+    setRoomId(room.id);
+    setTab("rooms");
+  }
+
+  function renderRoomCard(room: WtfLiveRoom, owned: boolean) {
+    return (
+      <RoomCard key={`${owned ? "owned" : "public"}-${room.id}`}>
+        <RoomBadge>{owned ? "Owned" : room.source === "system" ? "Official" : "Open"}</RoomBadge>
+        <strong>{room.title}</strong>
+        {room.description ? <MutedText>{room.description}</MutedText> : null}
+        <ShareLink>{publicRoomUrl(room.id)}</ShareLink>
+        <SplitActions>
+          <Button size="sm" onClick={() => copyPublicRoom(room)}>
+            <Copy size={14} aria-hidden /> Copy URL
+          </Button>
+          <Button size="sm" onClick={() => openPublicRoom(room)}>
+            <ExternalLink size={14} aria-hidden /> Guest View
+          </Button>
+          <Button size="sm" onClick={() => openHostRoom(room)}>
+            Host View
+          </Button>
+        </SplitActions>
+      </RoomCard>
+    );
+  }
+
   return (
     <MainLayout>
       <Sidebar aria-label="WTF LIVE navigation">
@@ -309,44 +378,77 @@ export function WtfLiveApp() {
         </ContextBar>
 
         {tab === "overview" ? (
-          <GroupBox label="WTF LIVE · Public AT publishing">
-            <Stack>
-              <p>
-                WTF LIVE publishes public AT Protocol records through your Skywire-linked Bluesky identity. Room messages
-                and stage broadcasts are written to connected users&apos; PDS repos — not private WTF chat.
-              </p>
-              {meQuery.isLoading || statusQuery.isLoading ? <Hourglass size={24} /> : null}
-              <FeedItem>
-                <strong>Skywire account</strong>
-                <span>
-                  {account
-                    ? `${account.displayName || account.handle || account.did} · tier ${skywirePermissionTierLabel((account.oauthPermissionTier as SkywirePermissionTier) || "be-safe")}`
-                    : "Not connected — open Skywire Link to connect Bluesky."}
-                </span>
-              </FeedItem>
-              <FeedItem>
-                <strong>Rollout</strong>
-                <span>
-                  {statusQuery.data?.wtfLiveEnabled
-                    ? "WTF LIVE enabled for your role."
-                    : statusQuery.data?.wtfLiveEligible
-                      ? "Eligible — finish Skywire setup to publish."
-                      : "Check Skywire rollout flags in status."}
-                </span>
-              </FeedItem>
-              <FeedItem>
-                <strong>Collections</strong>
-                <code style={{ fontSize: 10, wordBreak: "break-all" }}>
-                  {statusQuery.data?.collection?.rooms || roomsQuery.data?.collection}
-                </code>
-                <code style={{ fontSize: 10, wordBreak: "break-all" }}>
-                  {statusQuery.data?.collection?.stages || stagesQuery.data?.collection}
-                </code>
-              </FeedItem>
-              <Button onClick={() => setTab("rooms")}>Open Rooms</Button>
-              <Button onClick={() => setTab("stages")}>Open Stages</Button>
-            </Stack>
-          </GroupBox>
+          <WideGrid>
+            <GroupBox label="Create a public room">
+              <Stack>
+                <TextField
+                  value={createTitle}
+                  placeholder="Room title"
+                  fullWidth
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateTitle(e.target.value)}
+                />
+                <TextArea
+                  value={createDescription}
+                  placeholder="Short room description"
+                  onChange={(e) => setCreateDescription(e.target.value)}
+                />
+                <Button
+                  primary
+                  disabled={!createTitle.trim() || createRoom.isPending}
+                  onClick={() => createRoom.mutate()}
+                >
+                  {createRoom.isPending ? "Creating..." : "Create Room"}
+                </Button>
+                {createRoom.isError ? <span>{(createRoom.error as Error).message}</span> : null}
+                {copyStatus ? <MutedText aria-live="polite">{copyStatus}</MutedText> : null}
+              </Stack>
+            </GroupBox>
+
+            <GroupBox label="Owned rooms">
+              <RoomDirectory>
+                {ownedRoomsQuery.isLoading ? <Hourglass size={24} /> : null}
+                {ownedRoomOptions.length ? (
+                  ownedRoomOptions.map((room) => renderRoomCard(room, true))
+                ) : (
+                  <MutedText>No owned rooms yet.</MutedText>
+                )}
+              </RoomDirectory>
+            </GroupBox>
+
+            <GroupBox label="Open public rooms">
+              <RoomDirectory>
+                {roomsQuery.isLoading ? <Hourglass size={24} /> : null}
+                {roomOptions.length ? (
+                  roomOptions.map((room) => renderRoomCard(room, false))
+                ) : (
+                  <MutedText>No public rooms are open.</MutedText>
+                )}
+              </RoomDirectory>
+            </GroupBox>
+
+            <GroupBox label="Identity">
+              <Stack>
+                {meQuery.isLoading || statusQuery.isLoading ? <Hourglass size={24} /> : null}
+                <FeedItem>
+                  <strong>Host</strong>
+                  <span>{user?.username || "signed in"}</span>
+                </FeedItem>
+                <FeedItem>
+                  <strong>Skywire account</strong>
+                  <span>
+                    {account
+                      ? `${account.displayName || account.handle || account.did} · tier ${skywirePermissionTierLabel((account.oauthPermissionTier as SkywirePermissionTier) || "be-safe")}`
+                      : "Not connected"}
+                  </span>
+                </FeedItem>
+                <FeedItem>
+                  <strong>Room publishing</strong>
+                  <span>{canRooms ? "Enabled" : "Needs Be Heard or Be Bold"}</span>
+                </FeedItem>
+                <Button onClick={() => setTab("skywire")}>Skywire Link</Button>
+              </Stack>
+            </GroupBox>
+          </WideGrid>
         ) : null}
 
         {tab === "skywire" ? (
@@ -376,7 +478,6 @@ export function WtfLiveApp() {
           <Grid>
             <GroupBox label="Rooms">
               <Stack>
-                <Button onClick={() => setRoomDialog(true)}>Create Room</Button>
                 {roomsQuery.isLoading ? <Hourglass size={24} /> : null}
                 <NativeSelect value={roomId} onChange={(e) => setRoomId(e.target.value)}>
                   {roomOptions.map((room) => (
@@ -385,6 +486,22 @@ export function WtfLiveApp() {
                     </option>
                   ))}
                 </NativeSelect>
+                {selectedRoom ? (
+                  <RoomCard>
+                    <RoomBadge>{selectedRoom.source === "system" ? "Official" : "Open"}</RoomBadge>
+                    <strong>{selectedRoom.title}</strong>
+                    {selectedRoom.description ? <MutedText>{selectedRoom.description}</MutedText> : null}
+                    <ShareLink>{publicRoomUrl(selectedRoom.id)}</ShareLink>
+                    <SplitActions>
+                      <Button size="sm" onClick={() => copyPublicRoom(selectedRoom)}>
+                        <Copy size={14} aria-hidden /> Copy URL
+                      </Button>
+                      <Button size="sm" onClick={() => openPublicRoom(selectedRoom)}>
+                        <ExternalLink size={14} aria-hidden /> Guest View
+                      </Button>
+                    </SplitActions>
+                  </RoomCard>
+                ) : null}
                 <FeedList>
                   {[...(messagesQuery.data?.messages ?? [])].reverse().map((msg) => (
                     <FeedItem key={msg.uri}>
@@ -482,22 +599,6 @@ export function WtfLiveApp() {
           </Grid>
         ) : null}
       </ContentPane>
-
-      {roomDialog ? (
-        <CreateDialog
-          title="Create Room"
-          busy={createRoom.isPending}
-          onClose={() => setRoomDialog(false)}
-          onSubmit={() => createRoom.mutate()}
-          fields={
-            <Stack>
-              <TextField value={createTitle} placeholder="Room title" fullWidth onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateTitle(e.target.value)} />
-              <TextArea value={createDescription} placeholder="Description (optional)" onChange={(e) => setCreateDescription(e.target.value)} />
-              {createRoom.isError ? <span>{(createRoom.error as Error).message}</span> : null}
-            </Stack>
-          }
-        />
-      ) : null}
 
       {stageDialog ? (
         <CreateDialog

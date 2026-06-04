@@ -61,6 +61,24 @@ test("evaluateBrowserRouteAccess allows public routes anonymously", () => {
   assert.equal(state.allowed, true);
 });
 
+test("evaluateBrowserRouteAccess allows anonymous WTF LIVE room links only on the public room route", () => {
+  const publicRoom = evaluateBrowserRouteAccess("/live/r/wtf-live", BROWSER_ROUTE_META, {
+    role: null,
+    accessSurfaceIds: [],
+    apps: {},
+    findSurfaceForPath: findSurface,
+  });
+  const hostDashboard = evaluateBrowserRouteAccess("/live", BROWSER_ROUTE_META, {
+    role: null,
+    accessSurfaceIds: [],
+    apps: {},
+    findSurfaceForPath: findSurface,
+  });
+  assert.equal(publicRoom.allowed, true);
+  assert.equal(hostDashboard.allowed, false);
+  if (!hostDashboard.allowed) assert.equal(hostDashboard.reason, "auth-required");
+});
+
 test("formatAnonymousCliRouteAccessDenied uses generic copy for all reasons", () => {
   const unknown = formatAnonymousCliRouteAccessDenied({
     allowed: false,

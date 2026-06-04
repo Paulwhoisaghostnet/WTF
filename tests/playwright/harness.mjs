@@ -727,20 +727,54 @@ function apiMock(req, res) {
       publishesThrough: "Skywire AT Protocol identity",
     });
   }
+  if (pathName === "/api/wtf-live/public/rooms/wtf-live" && req.method === "GET") {
+    return res.json({
+      room: {
+        id: "wtf-live",
+        title: "WTF LIVE",
+        kind: "room",
+        description: "Official show room",
+        source: "system",
+        ownerUserId: null,
+        isPublic: true,
+      },
+      joinMode: "guest_room_only",
+      roomPath: "/live/r/wtf-live",
+      capabilities: {
+        audio: true,
+        camera: true,
+        screen: true,
+        media: true,
+        transport: "browser_preview_until_room_transport_enabled",
+      },
+    });
+  }
+  if (pathName === "/api/wtf-live/public/rooms/wtf-live/messages" && req.method === "GET") {
+    return res.json({ roomId: "wtf-live", collection: "app.wtfgameshow.skywire.room.message", messages: [], cursor: null, source: "harness" });
+  }
   if (pathName === "/api/wtf-live/rooms" && req.method === "GET") {
     return res.json({
       rooms: [
-        { id: "wtf-live", title: "WTF LIVE", kind: "room", description: "Official show room", source: "system" },
+        { id: "wtf-live", title: "WTF LIVE", kind: "room", description: "Official show room", source: "system", ownerUserId: null, isPublic: true },
       ],
       collection: "app.wtfgameshow.skywire.room.message",
       storage: "public_atproto_repo_records",
       skywirePath: "/skywire?tab=account",
     });
   }
+  if (pathName === "/api/wtf-live/rooms/mine" && req.method === "GET") {
+    return res.json({
+      rooms: [
+        { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, isPublic: true },
+      ],
+      collection: "app.wtfgameshow.skywire.room.message",
+      storage: "wtf_live_rooms",
+    });
+  }
   if (pathName === "/api/wtf-live/rooms" && req.method === "POST") {
     const title = String(req.body?.title || "New Room").trim();
     return res.status(201).json({
-      room: { id: "my-room", title, kind: "room", description: req.body?.description || "", source: "user" },
+      room: { id: "my-room", title, kind: "room", description: req.body?.description || "", source: "user", ownerUserId: 1, isPublic: true },
     });
   }
   if (pathName === "/api/wtf-live/stages" && req.method === "GET") {

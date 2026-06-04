@@ -39,7 +39,7 @@ import { getInterfaceMode } from "./features/wtfos-cli/interface-mode";
 import {
   getPageAccessState,
   type DesktopAppAvailability,
-  FULLSCREEN_ROUTES,
+  isFullscreenRoute,
   matchPage,
 } from "./routes/page-defs";
 export { PAGE_DEFS, isWindowedRoute, type PageDef } from "./routes/page-defs";
@@ -293,6 +293,44 @@ function FullScreenOverlay({ children }: { children: React.ReactNode }) {
   );
 }
 
+function FullscreenRouteRenderer({
+  match,
+}: {
+  match: NonNullable<ReturnType<typeof matchPage>>;
+}) {
+  const Comp = match.def.component as ComponentType<any>;
+  return (
+    <FullScreenOverlay>
+      <ErrorBoundary
+        resetKey={match.def.pattern}
+        fallback={(error) => (
+          <div role="alert" style={{ padding: 16, background: "#ececec", color: "#050505" }}>
+            <strong>This page hit a render error.</strong>
+            <pre style={{ whiteSpace: "pre-wrap" }}>{error?.message || String(error)}</pre>
+          </div>
+        )}
+      >
+        <Suspense
+          fallback={
+            <div
+              style={{
+                minHeight: "100vh",
+                display: "grid",
+                placeItems: "center",
+                background: "#008080",
+              }}
+            >
+              <Hourglass size={32} />
+            </div>
+          }
+        >
+          <Comp {...match.props} />
+        </Suspense>
+      </ErrorBoundary>
+    </FullScreenOverlay>
+  );
+}
+
 /* ═══ URL ↔ WindowManager sync ═══════════════════════ */
 
 function URLSync({ appAvailability }: { appAvailability: DesktopAppAvailability }) {
@@ -322,7 +360,7 @@ function URLSync({ appAvailability }: { appAvailability: DesktopAppAvailability 
 
   useEffect(() => {
     if (isLoading) return;
-    if (FULLSCREEN_ROUTES.has(location)) return;
+    if (isFullscreenRoute(location)) return;
 
     const match = matchPage(location);
     if (!match) return;
@@ -380,6 +418,14 @@ function AppContent() {
   const showRegister = location === "/register";
   const showLanding = location === "/" && !user;
   const authOverlayActive = showLogin || showRegister || showLanding;
+  const fullscreenMatch = matchPage(location);
+  const routeOnlyFullscreen =
+    fullscreenMatch &&
+    isFullscreenRoute(location) &&
+    location !== "/" &&
+    location !== "/login" &&
+    location !== "/register" &&
+    location !== "/cli";
   useEffect(() => {
     if (isLoading) return;
     if (location === "/cli" && !user) {
@@ -410,6 +456,10 @@ function AppContent() {
       );
     }
     return <WtfOsCliShell />;
+  }
+
+  if (routeOnlyFullscreen) {
+    return <FullscreenRouteRenderer match={fullscreenMatch} />;
   }
 
   return (

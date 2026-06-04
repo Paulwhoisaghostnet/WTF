@@ -10,8 +10,8 @@ export type WtfLiveNavItem = {
 };
 
 export const WTF_LIVE_NAV_ITEMS: WtfLiveNavItem[] = [
-  { id: "overview", label: "Overview", hint: "Publishing model and status", icon: "📋" },
-  { id: "rooms", label: "Rooms", hint: "Public AT room messages", icon: "💬" },
+  { id: "overview", label: "Lobby", hint: "Create and share rooms", icon: "📋" },
+  { id: "rooms", label: "Room Host", hint: "Messages and guest URL", icon: "💬" },
   { id: "stages", label: "Stages", hint: "One-way stage broadcasts", icon: "📡" },
   { id: "skywire", label: "Skywire Link", hint: "Bluesky permissions", icon: "⚙" },
 ];

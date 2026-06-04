@@ -218,6 +218,9 @@ const SkywirePage = lazy(() =>
 const WtfLivePage = lazy(() =>
   import("../pages/WtfLive").then((m) => ({ default: m.WtfLive }))
 );
+const WtfLiveRoomPage = lazy(() =>
+  import("../pages/WtfLiveRoom").then((m) => ({ default: m.WtfLiveRoom }))
+);
 const Tz2atPage = lazy(() =>
   import("../pages/Tz2at").then((m) => ({ default: m.Tz2at }))
 );
@@ -516,6 +519,14 @@ export const PAGE_DEFS: PageDef[] = [
     startMenu: true,
   },
   { pattern: "/skywire", component: SkywirePage, auth: true, title: "Skywire", group: "social", startMenu: true, desktopIcon: true },
+  {
+    pattern: "/live/r/:roomId",
+    component: WtfLiveRoomPage,
+    mapProps: (p) => ({ roomId: p.roomId }),
+    auth: false,
+    title: "WTF LIVE Room",
+    group: "social",
+  },
   { pattern: "/live", component: WtfLivePage, auth: true, title: "WTF LIVE", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/tz2at", component: Tz2atPage, auth: true, title: "tz2at", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/crp-nominate", component: CrpNominatePage, auth: true, title: "CRP Nominations", group: "social", startMenu: true, desktopIcon: true },
@@ -543,7 +554,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
 ];
 
-export const FULLSCREEN_ROUTES = new Set(["/", "/login", "/register", "/cli"]);
+export const FULLSCREEN_ROUTES = new Set(["/", "/login", "/register", "/cli", "/live/r/:roomId"]);
 
 function patternToRegex(pattern: string): {
   regex: RegExp;
@@ -558,9 +569,10 @@ function patternToRegex(pattern: string): {
 }
 
 export function matchPage(path: string) {
+  const cleanPath = path.split("?")[0]?.split("#")[0] ?? path;
   for (const def of PAGE_DEFS) {
     const { regex, paramNames } = patternToRegex(def.pattern);
-    const match = path.match(regex);
+    const match = cleanPath.match(regex);
     if (match) {
       const params: Record<string, string> = {};
       paramNames.forEach((name, i) => {
@@ -571,6 +583,15 @@ export function matchPage(path: string) {
     }
   }
   return null;
+}
+
+export function isFullscreenRoute(path: string): boolean {
+  const cleanPath = path.split("?")[0]?.split("#")[0] ?? path;
+  if (FULLSCREEN_ROUTES.has(cleanPath)) return true;
+  for (const pattern of FULLSCREEN_ROUTES) {
+    if (patternToRegex(pattern).regex.test(cleanPath)) return true;
+  }
+  return false;
 }
 
 export function canOpenPageDef(

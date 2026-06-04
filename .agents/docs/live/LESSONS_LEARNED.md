@@ -1,3 +1,13 @@
+## 2026-06-04 — WTF LIVE public rooms need room-only guest lanes
+
+**What happened**: WTF LIVE needed the Odio-style public room experience, but the existing `/live` surface mixed host controls, identity state, room lists, stages, and desktop navigation into one signed-in app.
+
+**Why it mattered**: A public room link should feel as simple as "open this URL and join this room" without giving anonymous visitors a path into the wider WTF app, host dashboard, stages, or Skywire identity flows.
+
+**Rule**: Keep `/live` as the authenticated WTF LIVE host dashboard. Put no-account visitors on `/live/r/:roomId` with room-scoped public metadata/message APIs only. Adding guest media controls, screen share, camera, or listener affordances must preserve that room-only boundary instead of weakening the `/live` or Skywire gates.
+
+---
+
 ## 2026-06-03 — Skywire dark mode must cover shell, controls, and transparent feed affordances together
 
 **What happened**: A Skywire default-dark pass initially darkened the page shell and feed cards but left React95-inherited controls rendering as gray buttons and turned actor/author buttons into visible button slabs.

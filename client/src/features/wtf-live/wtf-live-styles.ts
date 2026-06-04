@@ -61,6 +61,16 @@ export const Grid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 `;
 
+export const WideGrid = styled.div`
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.25fr);
+
+  @media (max-width: 920px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
 export const Stack = styled.div`
   display: grid;
   gap: 8px;
@@ -80,6 +90,53 @@ export const FeedItem = styled.div`
   display: grid;
   gap: 4px;
   font-size: 12px;
+`;
+
+export const RoomDirectory = styled.div`
+  display: grid;
+  gap: 8px;
+`;
+
+export const RoomCard = styled.div`
+  border: 2px inset #fff;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+`;
+
+export const SplitActions = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+export const ShareLink = styled.code`
+  display: block;
+  border: 2px inset #fff;
+  background: #f7f7f7;
+  padding: 5px;
+  font-size: 10px;
+  word-break: break-all;
+`;
+
+export const MutedText = styled.span`
+  color: #4a4a4a;
+  font-size: 12px;
+`;
+
+export const RoomBadge = styled.span`
+  width: max-content;
+  border: 1px solid #222;
+  background: #dff7e8;
+  padding: 2px 5px;
+  font-size: 10px;
+  text-transform: uppercase;
 `;
 
 export const TextArea = styled.textarea`

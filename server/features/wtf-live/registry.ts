@@ -10,6 +10,7 @@ export type WtfLiveRoomRecord = {
   source: "system" | "user";
   ownerUserId: number | null;
   ownerUsername: string | null;
+  isPublic: boolean;
 };
 
 export type WtfLiveStageRecord = {
@@ -32,6 +33,7 @@ export const SYSTEM_WTF_LIVE_ROOMS: WtfLiveRoomRecord[] = [
     source: "system",
     ownerUserId: null,
     ownerUsername: null,
+    isPublic: true,
   },
   {
     id: "tezos-wire",
@@ -41,6 +43,7 @@ export const SYSTEM_WTF_LIVE_ROOMS: WtfLiveRoomRecord[] = [
     source: "system",
     ownerUserId: null,
     ownerUsername: null,
+    isPublic: true,
   },
 ];
 
@@ -124,6 +127,7 @@ export async function listWtfLiveRooms(): Promise<WtfLiveRoomRecord[]> {
       title: wtfLiveRooms.title,
       description: wtfLiveRooms.description,
       ownerUserId: wtfLiveRooms.ownerUserId,
+      isPublic: wtfLiveRooms.isPublic,
     })
     .from(wtfLiveRooms)
     .where(isNull(wtfLiveRooms.archivedAt))
@@ -139,8 +143,67 @@ export async function listWtfLiveRooms(): Promise<WtfLiveRoomRecord[]> {
       source: "user" as const,
       ownerUserId: row.ownerUserId,
       ownerUsername: null,
+      isPublic: row.isPublic,
     })),
   ];
+}
+
+export async function listOwnedWtfLiveRooms(ownerUserId: number): Promise<WtfLiveRoomRecord[]> {
+  const rows = await db
+    .select({
+      slug: wtfLiveRooms.slug,
+      title: wtfLiveRooms.title,
+      description: wtfLiveRooms.description,
+      ownerUserId: wtfLiveRooms.ownerUserId,
+      isPublic: wtfLiveRooms.isPublic,
+    })
+    .from(wtfLiveRooms)
+    .where(and(eq(wtfLiveRooms.ownerUserId, ownerUserId), isNull(wtfLiveRooms.archivedAt)))
+    .orderBy(wtfLiveRooms.createdAt);
+
+  return rows.map((row) => ({
+    id: row.slug,
+    title: row.title,
+    kind: "room" as const,
+    description: row.description,
+    source: "user" as const,
+    ownerUserId: row.ownerUserId,
+    ownerUsername: null,
+    isPublic: row.isPublic,
+  }));
+}
+
+export async function getWtfLiveRoom(roomId: string): Promise<WtfLiveRoomRecord | null> {
+  const systemRoom = SYSTEM_WTF_LIVE_ROOMS.find((room) => room.id === roomId);
+  if (systemRoom) return systemRoom;
+  const rows = await db
+    .select({
+      slug: wtfLiveRooms.slug,
+      title: wtfLiveRooms.title,
+      description: wtfLiveRooms.description,
+      ownerUserId: wtfLiveRooms.ownerUserId,
+      isPublic: wtfLiveRooms.isPublic,
+    })
+    .from(wtfLiveRooms)
+    .where(and(eq(wtfLiveRooms.slug, roomId), isNull(wtfLiveRooms.archivedAt)))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.slug,
+    title: row.title,
+    kind: "room" as const,
+    description: row.description,
+    source: "user" as const,
+    ownerUserId: row.ownerUserId,
+    ownerUsername: null,
+    isPublic: row.isPublic,
+  };
+}
+
+export async function getPublicWtfLiveRoom(roomId: string): Promise<WtfLiveRoomRecord | null> {
+  const room = await getWtfLiveRoom(roomId);
+  return room?.isPublic ? room : null;
 }
 
 export async function listWtfLiveStages(): Promise<WtfLiveStageRecord[]> {
@@ -219,6 +282,7 @@ export async function createWtfLiveRoom(input: {
     source: "user" as const,
     ownerUserId: row.ownerUserId,
     ownerUsername: null,
+    isPublic: true,
   } satisfies WtfLiveRoomRecord;
 }
 

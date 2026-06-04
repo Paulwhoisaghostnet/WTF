@@ -235,7 +235,10 @@ export const DOMAIN_WORKFLOWS = [
       { method: "POST", path: "/api/skywire/events", body: { eventType: "skywire.token_listing.buy_requested", tokenRef: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton:1" }, expectedStatuses: [200, 400, 401] },
       { method: "GET", path: "/api/skywire/status" },
       { method: "GET", path: "/api/wtf-live/status" },
+      { method: "GET", path: "/api/wtf-live/public/rooms/wtf-live" },
+      { method: "GET", path: "/api/wtf-live/public/rooms/wtf-live/messages" },
       { method: "GET", path: "/api/wtf-live/rooms" },
+      { method: "GET", path: "/api/wtf-live/rooms/mine" },
       { method: "GET", path: "/api/wtf-live/rooms/wtf-live/messages" },
       {
         method: "POST",

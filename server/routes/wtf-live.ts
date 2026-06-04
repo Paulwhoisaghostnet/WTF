@@ -23,6 +23,8 @@ import { requireWtfLiveRollout, skywireRolloutStatusForRole } from "../lib/skywi
 import {
   createWtfLiveRoom,
   createWtfLiveStage,
+  getPublicWtfLiveRoom,
+  listOwnedWtfLiveRooms,
   listWtfLiveRooms,
   listWtfLiveStages,
   wtfLiveRoomExists,
@@ -221,54 +223,7 @@ function normalizeStageBroadcastRecord(row: {
   };
 }
 
-router.get("/api/wtf-live/status", isAuthenticated, requireWtfLiveRollout, async (req, res) => {
-  const user = req.user as any;
-  const rollout = skywireRolloutStatusForRole(user.roles ?? user.role ?? null);
-  res.json({
-    ...rollout,
-    skywireSettingsPath: "/skywire?tab=account",
-    publishesThrough: "Skywire AT Protocol identity",
-    collection: {
-      rooms: SKYWIRE_ROOM_MESSAGE_COLLECTION,
-      stages: SKYWIRE_STAGE_BROADCAST_COLLECTION,
-    },
-  });
-});
-
-router.use("/api/wtf-live", isAuthenticated, requireWtfLiveRollout);
-
-router.get("/api/wtf-live/rooms", async (_req, res) => {
-  const rooms = await listWtfLiveRooms();
-  res.json({
-    rooms: rooms.filter((room) => room.kind === "room"),
-    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
-    storage: "public_atproto_repo_records",
-    skywirePath: "/skywire?tab=account",
-  });
-});
-
-router.post("/api/wtf-live/rooms", actionLimiter, async (req, res) => {
-  const user = req.user as any;
-  const parsed = createRoomSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Invalid room details", details: parsed.error.flatten() });
-  try {
-    const room = await createWtfLiveRoom({
-      ownerUserId: user.id,
-      title: parsed.data.title,
-      description: parsed.data.description,
-    });
-    res.status(201).json({ room });
-  } catch (err) {
-    res.status(500).json({ error: (err as Error).message || "Could not create room" });
-  }
-});
-
-router.get("/api/wtf-live/rooms/:roomId/messages", async (req, res) => {
-  const roomId = roomIdSchema.safeParse(req.params.roomId);
-  const parsed = roomMessagesQuerySchema.safeParse(req.query);
-  if (!roomId.success || !parsed.success) return res.status(400).json({ error: "Invalid room query" });
-  if (!(await wtfLiveRoomExists(roomId.data))) return res.status(404).json({ error: "Room not found" });
-
+async function readPublicRoomMessages(roomId: string, limit: number) {
   const accounts = await db
     .select({ did: atprotoAccounts.did, handle: atprotoAccounts.handle })
     .from(atprotoAccounts)
@@ -297,16 +252,118 @@ router.get("/api/wtf-live/rooms/:roomId/messages", async (req, res) => {
   );
   const messages = reads
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
-    .filter((message) => message.roomId === roomId.data)
+    .filter((message) => message.roomId === roomId)
     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-    .slice(0, parsed.data.limit);
+    .slice(0, limit);
+
+  return {
+    messages,
+    upstreamAvailable: reads.some((result) => result.status === "fulfilled"),
+  };
+}
+
+router.get("/api/wtf-live/status", isAuthenticated, requireWtfLiveRollout, async (req, res) => {
+  const user = req.user as any;
+  const rollout = skywireRolloutStatusForRole(user.roles ?? user.role ?? null);
+  res.json({
+    ...rollout,
+    skywireSettingsPath: "/skywire?tab=account",
+    publishesThrough: "Skywire AT Protocol identity",
+    collection: {
+      rooms: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+      stages: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+    },
+  });
+});
+
+router.get("/api/wtf-live/public/rooms/:roomId", async (req, res) => {
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  if (!roomId.success) return res.status(400).json({ error: "Invalid room" });
+  const room = await getPublicWtfLiveRoom(roomId.data);
+  if (!room) return res.status(404).json({ error: "Room not found" });
+  res.json({
+    room,
+    joinMode: "guest_room_only",
+    roomPath: `/live/r/${encodeURIComponent(room.id)}`,
+    capabilities: {
+      audio: true,
+      camera: true,
+      screen: true,
+      media: true,
+      transport: "browser_preview_until_room_transport_enabled",
+    },
+  });
+});
+
+router.get("/api/wtf-live/public/rooms/:roomId/messages", async (req, res) => {
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  const parsed = roomMessagesQuerySchema.safeParse(req.query);
+  if (!roomId.success || !parsed.success) return res.status(400).json({ error: "Invalid room query" });
+  const room = await getPublicWtfLiveRoom(roomId.data);
+  if (!room) return res.status(404).json({ error: "Room not found" });
+  const { messages, upstreamAvailable } = await readPublicRoomMessages(roomId.data, parsed.data.limit);
+  res.json({
+    roomId: roomId.data,
+    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+    messages,
+    cursor: null,
+    source: "wtf-live.publicConnectedUserRepos",
+    upstreamAvailable,
+  });
+});
+
+router.use("/api/wtf-live", isAuthenticated, requireWtfLiveRollout);
+
+router.get("/api/wtf-live/rooms", async (_req, res) => {
+  const rooms = await listWtfLiveRooms();
+  res.json({
+    rooms: rooms.filter((room) => room.kind === "room"),
+    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+    storage: "public_atproto_repo_records",
+    skywirePath: "/skywire?tab=account",
+  });
+});
+
+router.get("/api/wtf-live/rooms/mine", async (req, res) => {
+  const user = req.user as any;
+  const rooms = await listOwnedWtfLiveRooms(user.id);
+  res.json({
+    rooms,
+    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+    storage: "wtf_live_rooms",
+  });
+});
+
+router.post("/api/wtf-live/rooms", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const parsed = createRoomSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid room details", details: parsed.error.flatten() });
+  try {
+    const room = await createWtfLiveRoom({
+      ownerUserId: user.id,
+      title: parsed.data.title,
+      description: parsed.data.description,
+    });
+    res.status(201).json({ room });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message || "Could not create room" });
+  }
+});
+
+router.get("/api/wtf-live/rooms/:roomId/messages", async (req, res) => {
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  const parsed = roomMessagesQuerySchema.safeParse(req.query);
+  if (!roomId.success || !parsed.success) return res.status(400).json({ error: "Invalid room query" });
+  if (!(await wtfLiveRoomExists(roomId.data))) return res.status(404).json({ error: "Room not found" });
+
+  const { messages, upstreamAvailable } = await readPublicRoomMessages(roomId.data, parsed.data.limit);
   res.json({
     roomId: roomId.data,
     collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
     messages,
     cursor: null,
     source: "wtf-live.connectedUserRepos",
-    upstreamAvailable: reads.some((result) => result.status === "fulfilled"),
+    upstreamAvailable,
   });
 });
 
