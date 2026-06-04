@@ -105,6 +105,7 @@ type AtprotoOAuthPendingState = {
   permissionTier: SkywirePermissionTier;
   chatEnabled: boolean;
   requestedScope: string;
+  requestedHandle: string;
   startedAt: number;
 };
 
@@ -170,6 +171,38 @@ function returnPathWithQuery(returnTo: string, query: URLSearchParams): string {
     parsed.searchParams.set(key, value);
   }
   return `${parsed.pathname}${parsed.search}`;
+}
+
+function reservedSkywirePlatformHandles(): Set<string> {
+  return new Set(
+    [
+      process.env.SKYWIRE_WTF_ATPROTO_ACTOR,
+      process.env.ATPROTO_WTF_ACTOR,
+      "wtfgameshow.bsky.social",
+    ]
+      .map((handle) => normalizeAtHandle(handle || ""))
+      .filter(Boolean)
+  );
+}
+
+function isReservedSkywirePlatformHandle(handle: string | null | undefined): boolean {
+  if (process.env.SKYWIRE_ALLOW_PLATFORM_ACTOR_OAUTH === "true") return false;
+  return reservedSkywirePlatformHandles().has(normalizeAtHandle(handle || ""));
+}
+
+function redirectAtprotoOAuthStartError(res: any, params: {
+  popup: boolean;
+  error: string;
+  returnTo: string;
+  appName: AtprotoOAuthAppName;
+}) {
+  if (params.popup) {
+    return res
+      .type("html")
+      .send(popupCompletionPage({ ok: false, error: params.error, returnTo: params.returnTo, app: params.appName }));
+  }
+  const query = new URLSearchParams({ error: params.error });
+  return res.redirect(`${publicBaseUrl()}${returnPathWithQuery(params.returnTo, query)}`);
 }
 
 function publicBaseUrl(): string {
@@ -501,7 +534,8 @@ router.get("/.well-known/oauth-client-metadata.json", async (_req, res) => {
 
 router.get("/api/atproto/me", isAuthenticated, async (req, res) => {
   const user = req.user as any;
-  const account = await linkedAccountForUser(user.id);
+  const linkedAccount = await linkedAccountForUser(user.id);
+  const account = linkedAccount && !isReservedSkywirePlatformHandle(linkedAccount.handle) ? linkedAccount : null;
   const tezosIdentity = await resolveUserTezosIdentity(user.id);
   const rollout = skywireRolloutStatusForRole(user.roles ?? user.role ?? null);
   res.json({
@@ -723,12 +757,34 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
       : buildSkywireAtprotoScope(tier, chatEnabled);
   const handle = normalizeRegistrationHandle(parsed.data.handle, registrationHandleSuffix());
   if (!isValidAtHandle(handle)) {
-    if (popup) {
-      return res
-        .type("html")
-        .send(popupCompletionPage({ ok: false, error: "atproto_handle", returnTo, app: appName }));
+    return redirectAtprotoOAuthStartError(res, { popup, error: "atproto_handle", returnTo, appName });
+  }
+  if (appName === "skywire" && isReservedSkywirePlatformHandle(handle)) {
+    return redirectAtprotoOAuthStartError(res, {
+      popup,
+      error: "atproto_platform_account_reserved",
+      returnTo,
+      appName,
+    });
+  }
+  if (appName === "skywire" && chatEnabled) {
+    const existingAccount = await linkedAccountForUser((req.user as any).id);
+    if (!existingAccount) {
+      return redirectAtprotoOAuthStartError(res, {
+        popup,
+        error: "atproto_chat_account_required",
+        returnTo,
+        appName,
+      });
     }
-    return res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_handle`);
+    if (normalizeAtHandle(existingAccount.handle) !== handle) {
+      return redirectAtprotoOAuthStartError(res, {
+        popup,
+        error: "atproto_chat_account_mismatch",
+        returnTo,
+        appName,
+      });
+    }
   }
   const state = randomProofToken();
   const oauthState: AtprotoOAuthPendingState = {
@@ -741,6 +797,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     permissionTier: tier,
     chatEnabled,
     requestedScope,
+    requestedHandle: handle,
     startedAt: Date.now(),
   };
   (req.session as any).atprotoOAuth = oauthState;
@@ -859,6 +916,43 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
           : "tz2at-identity"
         : (normalizeSkywirePermissionTier(sessionState.permissionTier) as SkywirePermissionTier);
     const resolvedChatEnabled = grants.chatEnabled;
+    const requestedHandle = normalizeAtHandle(sessionState.requestedHandle || "");
+    const returnedHandle = normalizeAtHandle(profile.data.handle || "");
+    if (appName === "skywire" && isReservedSkywirePlatformHandle(returnedHandle)) {
+      console.warn("[skywire] refused reserved platform actor OAuth binding", {
+        userId: sessionState.userId,
+        requestedHandle,
+        returnedHandle,
+        did: session.did,
+      });
+      return redirectWith("error=atproto_platform_account_reserved");
+    }
+    if (appName === "skywire" && requestedHandle && returnedHandle && requestedHandle !== returnedHandle) {
+      console.warn("[skywire] refused OAuth account mismatch", {
+        userId: sessionState.userId,
+        requestedHandle,
+        returnedHandle,
+        did: session.did,
+      });
+      return redirectWith("error=atproto_account_mismatch");
+    }
+    const existingForDid = await linkedAccountForUserDid(sessionState.userId, session.did);
+    const existingForUser = await linkedAccountForUser(sessionState.userId);
+    if (appName === "skywire" && sessionState.chatEnabled) {
+      if (!existingForUser) {
+        return redirectWith("error=atproto_chat_account_required");
+      }
+      if (existingForUser.did !== session.did || normalizeAtHandle(existingForUser.handle) !== returnedHandle) {
+        console.warn("[skywire] refused chat OAuth upgrade for non-canonical account", {
+          userId: sessionState.userId,
+          existingDid: existingForUser.did,
+          existingHandle: existingForUser.handle,
+          returnedDid: session.did,
+          returnedHandle,
+        });
+        return redirectWith("error=atproto_chat_account_mismatch");
+      }
+    }
 
     const accountValues = {
       userId: sessionState.userId,
@@ -879,9 +973,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       disconnectedAt: null,
       updatedAt: new Date(),
     };
-    const existingAccount =
-      (await linkedAccountForUserDid(sessionState.userId, session.did)) ??
-      (await linkedAccountForUser(sessionState.userId));
+    const existingAccount = existingForDid ?? existingForUser;
     const [account] = existingAccount
       ? await db
           .update(atprotoAccounts)

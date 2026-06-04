@@ -31,6 +31,36 @@ const DEFAULT_ATPROTO_PDS = "https://bsky.social";
 const DEFAULT_ATPROTO_APPVIEW = "https://api.bsky.app";
 const DEFAULT_ATPROTO_SEARCH_APPVIEW = "https://api.bsky.app";
 
+function normalizeAtprotoHandleForCompare(handle: string | null | undefined): string {
+  return String(handle || "").trim().replace(/^@+/, "").toLowerCase().replace(/\.$/, "");
+}
+
+function reservedSkywirePlatformHandles(): Set<string> {
+  return new Set(
+    [
+      process.env.SKYWIRE_WTF_ATPROTO_ACTOR,
+      process.env.ATPROTO_WTF_ACTOR,
+      "wtfgameshow.bsky.social",
+    ]
+      .map(normalizeAtprotoHandleForCompare)
+      .filter(Boolean)
+  );
+}
+
+function isReservedSkywirePlatformHandle(handle: string | null | undefined): boolean {
+  if (process.env.SKYWIRE_ALLOW_PLATFORM_ACTOR_OAUTH === "true") return false;
+  return reservedSkywirePlatformHandles().has(normalizeAtprotoHandleForCompare(handle));
+}
+
+async function didBelongsToReservedSkywirePlatformActor(did: string): Promise<boolean> {
+  const [row] = await db
+    .select({ handle: atprotoAccounts.handle })
+    .from(atprotoAccounts)
+    .where(and(eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt)))
+    .limit(1);
+  return Boolean(row && isReservedSkywirePlatformHandle(row.handle));
+}
+
 export class AtprotoSessionUnavailableError extends Error {
   status = 409;
   code = "atproto_session_reconnect_required";
@@ -270,6 +300,10 @@ export async function persistOAuthSessionForDid(
     ...(typeof options.oauthChatEnabled === "boolean" ? { oauthChatEnabled: options.oauthChatEnabled } : {}),
     updatedAt: new Date(),
   };
+  if (options.accountId == null && options.userId == null && await didBelongsToReservedSkywirePlatformActor(did)) {
+    pendingOAuthSessions.set(did, session);
+    return;
+  }
   const whereClause =
     options.accountId != null
       ? and(eq(atprotoAccounts.id, options.accountId), eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt))

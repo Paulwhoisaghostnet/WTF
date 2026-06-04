@@ -45,6 +45,12 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /verifiedParams\.set\("requestedScope"/);
   assert.match(route, /returnPathWithQuery\(returnTo,\s*parsed\)/);
   assert.match(route, /allowed\.includes\(parsed\.pathname\)/);
+  assert.match(route, /requestedHandle:\s*handle/);
+  assert.match(route, /isReservedSkywirePlatformHandle\(handle\)/);
+  assert.match(route, /atproto_platform_account_reserved/);
+  assert.match(route, /atproto_chat_account_required/);
+  assert.match(route, /atproto_chat_account_mismatch/);
+  assert.match(route, /const account = linkedAccount && !isReservedSkywirePlatformHandle\(linkedAccount\.handle\) \? linkedAccount : null/);
   assert.match(route, /issues:\s*parsed\.error\.issues\.map/);
   assert.match(route, /normalizeRegistrationHandle/);
   assert.match(route, /atproto_oauth_start/);
@@ -71,6 +77,11 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /oauthPermissionTier/);
   assert.match(route, /oauthChatEnabled/);
   assert.match(route, /resolvedChatEnabled/);
+  assert.match(route, /requestedHandle = normalizeAtHandle\(sessionState\.requestedHandle \|\| ""\)/);
+  assert.match(route, /returnedHandle = normalizeAtHandle\(profile\.data\.handle \|\| ""\)/);
+  assert.match(route, /requestedHandle && returnedHandle && requestedHandle !== returnedHandle/);
+  assert.match(route, /existingForUser\.did !== session\.did/);
+  assert.match(route, /refused chat OAuth upgrade for non-canonical account/);
   assert.match(route, /linkedAccountForUserDid\(sessionState\.userId,\s*session\.did\)/);
   assert.match(route, /oauthChatEnabled:\s*resolvedChatEnabled/);
   assert.match(route, /resolveAtprotoOAuthGrantState/);
@@ -91,6 +102,8 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(oauth, /ATPROTO_CHAT_SCOPE/);
   assert.match(oauth, /pendingOAuthSessions/);
   assert.match(oauth, /pendingOAuthSessions\.get\(key\)/);
+  assert.match(oauth, /didBelongsToReservedSkywirePlatformActor/);
+  assert.match(oauth, /options\.accountId == null && options\.userId == null/);
   assert.match(oauth, /takePendingOAuthSessionForDid/);
   assert.match(oauth, /iss:\s*oauthIssuerForRow\(row\)/);
   assert.match(oauth, /sub:\s*row\.did/);
@@ -135,6 +148,10 @@ test("Skywire registration UI only offers official signup handoff", () => {
   assert.match(page, /fetchCanonicalAtprotoAccount/);
   assert.match(page, /Skywire has not received the durable chat permission yet/);
   assert.match(page, /window\.location\.assign\(url\)/);
+  assert.match(page, /SKYWIRE_RESERVED_PLATFORM_HANDLES/);
+  assert.match(page, /isReservedSkywirePlatformHandle\(connectHandle\)/);
+  assert.match(page, /Skywire will not connect the shared WTF Gameshow Bluesky actor/);
+  assert.match(page, /Enable the Chat Add-on only after your own Bluesky account is connected here/);
   assert.doesNotMatch(page, /window\.open\("about:blank",\s*SKYWIRE_OAUTH_POPUP_NAME/);
   assert.doesNotMatch(page, /popup:\s*"1"/);
   assert.doesNotMatch(page, /popup\.opener\s*=\s*null/);

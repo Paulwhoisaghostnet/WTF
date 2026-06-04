@@ -1,3 +1,13 @@
+## 2026-06-04 — Skywire Chat OAuth must bind to the user's requested account, never a shared actor
+
+**What happened**: Skywire Chat Add-on OAuth could steer users into the shared `wtfgameshow.bsky.social` Bluesky actor instead of their own linked account. The start path trusted the handle already present in `/api/atproto/me`, and the callback trusted whichever DID the OAuth provider returned before falling back to the user's latest account row. A poisoned or shared platform actor row could therefore keep the settings UI locked to the wrong handle and make Chat permission changes target the wrong identity.
+
+**Why it mattered**: Chat OAuth is a private-message permission boundary. A shared platform actor must never become a user's durable chat identity, and a returned OAuth DID that differs from the account being upgraded is not an upgrade; it is an identity mismatch.
+
+**Rule**: Skywire OAuth state must persist the requested handle, `/api/atproto/me` must not expose reserved shared platform actors as user accounts, OAuth start/callback must reject reserved platform handles such as `wtfgameshow.bsky.social`, and Chat Add-on callbacks must require the returned DID/handle to match the signed-in user's already-linked account before writing account rows or encrypted token material.
+
+---
+
 ## 2026-06-04 — Skywire permission OAuth must not create a second Skywire reality
 
 **What happened**: Repeated Skywire Chat Add-on fixes kept trying to synchronize a popup/new-window OAuth result back into the original Skywire window. Production still created a second upgraded Skywire instance, while the original settings/account view stayed disabled or snapped back to Home after a few seconds because the app's default-tab logic treated refetched account state as permission to reset the tab.

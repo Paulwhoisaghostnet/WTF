@@ -24,6 +24,7 @@ const state = {
   skywirePostPayloads: [],
   skywireFollowPayloads: [],
   skywireChatEnabled: true,
+  skywireHandle: "wtf-admin.bsky.social",
   wtfLiveOwnedRoom: { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, isPublic: true },
 };
 
@@ -54,9 +55,10 @@ app.post("/__test/state", (req, res) => {
   state.skywirePostPayloads = [];
   state.skywireFollowPayloads = [];
   state.skywireChatEnabled = req.body?.skywireChatEnabled !== false;
+  state.skywireHandle = String(req.body?.skywireHandle || "wtf-admin.bsky.social");
   state.wtfLiveOwnedRoom = { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, isPublic: true };
   resetHarnessMarketState();
-  res.json({ ok: true, state: { mode: state.mode, userRole: state.userRole, skywireChatEnabled: state.skywireChatEnabled } });
+  res.json({ ok: true, state: { mode: state.mode, userRole: state.userRole, skywireChatEnabled: state.skywireChatEnabled, skywireHandle: state.skywireHandle } });
 });
 
 app.get("/__test/state", (_req, res) => {
@@ -69,6 +71,7 @@ app.get("/__test/state", (_req, res) => {
     skywirePostPayloads: state.skywirePostPayloads,
     skywireFollowPayloads: state.skywireFollowPayloads,
     skywireChatEnabled: state.skywireChatEnabled,
+    skywireHandle: state.skywireHandle,
   });
 });
 
@@ -733,7 +736,7 @@ function apiMock(req, res) {
       account: {
         id: 1,
         did: "did:plc:skywiretest",
-        handle: "wtf-admin.bsky.social",
+        handle: state.skywireHandle,
         pdsUrl: "https://bsky.social",
         displayName: "WTF Admin",
         avatarUrl: null,

@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-205 | Verified | Codex Skywire OAuth identity-binding emergency | 2026-06-04 | Skywire / AT OAuth identity binding | P0 | 16 | 1 | 3 | 5 | 5 | Skywire Chat Add-on OAuth can target the shared WTF Gameshow Bluesky actor instead of the signed-in user's linked account |
 | WTF-BB-204 | Verified | Codex Skywire market feed search-source pass | 2026-06-04 | Skywire / Market Feed source | P1 | 13 | 5 | 3 | 5 | 1 | Skywire Market Feed can show a false empty lane when searchPosts hits the non-search public AppView |
 | WTF-BB-180 | Verified | Codex WTF LIVE migration hotfix | 2026-06-04 | WTF LIVE / DB migrations | P1 | 12 | 7 | 2 | 5 | 1 | WTF LIVE user room tables declared in schema but missing production migration |
 | WTF-BB-199 | Verified | Codex WTF LIVE realtime media/chat pass | 2026-06-04 | WTF LIVE / realtime room transport | P0 | 15 | 2 | 4 | 5 | 1 | WTF LIVE guest room media controls are local-only and do not connect participants |
@@ -248,6 +249,35 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-205 - Skywire Chat Add-on OAuth can target the shared WTF Gameshow Bluesky actor instead of the signed-in user's linked account
+
+- Category: Skywire / AT OAuth identity binding
+- Status: Verified
+- Owner/Session: Codex Skywire OAuth identity-binding emergency
+- Score: C3 + F5 + S5 + P0(5) = 16
+- Evidence:
+  - User confirmed on 2026-06-04 that attempting to change Chat Add-on OAuth permissions was locked on `wtfgameshow.bsky.social` instead of the user's own Bluesky account.
+  - The callback accepted whatever DID the OAuth provider returned, then fell back from `linkedAccountForUserDid(userId, session.did)` to the user's latest account and updated that row even when the DID differed.
+  - `/api/atproto/me` treated a reserved shared platform actor row as a normal user account, which could feed the wrong handle back into the Chat Add-on OAuth start URL.
+- Correction:
+  - Refuse reserved shared platform actor handles at Skywire OAuth start and callback unless explicitly enabled by an emergency env escape hatch.
+  - Persist the requested handle in OAuth state and reject callbacks whose returned handle differs.
+  - For chat upgrades, require an existing linked user account and require the returned DID/handle to match that account before writing account/token state.
+  - Hide reserved platform actor rows from `/api/atproto/me` so poisoned rows do not keep the settings UI locked to `wtfgameshow.bsky.social`.
+- Verification idea:
+  - Static policy test proves the reserved-actor and handle/DID mismatch guards exist at start, callback, `/me`, and OAuth session persistence.
+  - Browser harness sets the connected handle to `wtfgameshow.bsky.social`, clicks Enable Chat Add-on, and verifies no OAuth start URL opens.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`
+  - `npm run check -- --pretty false`
+  - `git diff --check`
+  - `npm run build`
+  - `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "OAuth|Chat add-on"`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory` (289/289 passed)
+- Last touched: 2026-06-04
 
 ### WTF-BB-204 - Skywire Market Feed can show a false empty lane when searchPosts hits the non-search public AppView
 

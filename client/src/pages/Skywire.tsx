@@ -125,6 +125,15 @@ const SKYWIRE_OAUTH_LINKED_KEY = "skywire:atproto-linked";
 const SKYWIRE_OAUTH_ERROR_KEY = "skywire:atproto-error";
 const SKYWIRE_OAUTH_PENDING_KEY = "skywire:atproto-oauth-pending";
 const SKYWIRE_OAUTH_POPUP_NAME = "skywire-atproto-oauth";
+const SKYWIRE_RESERVED_PLATFORM_HANDLES = new Set(["wtfgameshow.bsky.social"]);
+
+function normalizeSkywireHandle(value: string | null | undefined): string {
+  return String(value || "").trim().replace(/^@+/, "").toLowerCase().replace(/\.$/, "");
+}
+
+function isReservedSkywirePlatformHandle(value: string | null | undefined): boolean {
+  return SKYWIRE_RESERVED_PLATFORM_HANDLES.has(normalizeSkywireHandle(value));
+}
 
 function skywireOAuthCompletionPayload(value: unknown): AtprotoOAuthCompletion | null {
   if (!value || typeof value !== "object") return null;
@@ -3225,6 +3234,7 @@ function AccountPanel({
   const tezosIdentity = me.tezosIdentity ?? null;
   const [handle, setHandle] = useState(seedHandle);
   const [pendingConnectHandle, setPendingConnectHandle] = useState("");
+  const [connectError, setConnectError] = useState("");
   const [displayName, setDisplayName] = useState(me.account?.displayName || "");
   const [description, setDescription] = useState(me.account?.description || "");
   const [desiredHandle, setDesiredHandle] = useState("");
@@ -3262,10 +3272,19 @@ function AccountPanel({
   const openPermissionPicker = (rawHandle: string) => {
     const trimmed = rawHandle.trim();
     if (!trimmed) return;
+    setConnectError("");
     setPendingConnectHandle(normalizedConnectHandle(trimmed));
   };
   const startOAuthConnect = (rawHandle: string, tier: SkywirePermissionTier, chatEnabled: boolean) => {
     const connectHandle = normalizedConnectHandle(rawHandle);
+    if (isReservedSkywirePlatformHandle(connectHandle)) {
+      setConnectError("Skywire will not connect the shared WTF Gameshow Bluesky actor. Enter your own Bluesky handle.");
+      return;
+    }
+    if (chatEnabled && (!me.account || normalizeSkywireHandle(me.account.handle) !== normalizeSkywireHandle(connectHandle))) {
+      setConnectError("Enable the Chat Add-on only after your own Bluesky account is connected here.");
+      return;
+    }
     const requestedScope = buildSkywireAtprotoScope(tier, chatEnabled);
     const params = new URLSearchParams({
       handle: connectHandle,
@@ -3321,6 +3340,7 @@ function AccountPanel({
         <Grid>
           <GroupBox label="Bluesky account">
             <Stack>
+              {connectError ? <span>{connectError}</span> : null}
               {me.account ? (
                 <>
                   <Row>
@@ -4270,7 +4290,13 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
         setNotice(
           payload.error === "atproto_handle"
             ? "Enter a Bluesky handle like name.bsky.social, or just the username."
-            : "Bluesky connection did not complete. Try connecting again."
+            : payload.error === "atproto_platform_account_reserved"
+              ? "Skywire will not connect the shared WTF Gameshow Bluesky actor. Enter your own Bluesky handle."
+              : payload.error === "atproto_account_mismatch" || payload.error === "atproto_chat_account_mismatch"
+                ? "Bluesky returned a different account than the one Skywire was upgrading. Sign into the correct Bluesky account and try again."
+                : payload.error === "atproto_chat_account_required"
+                  ? "Connect your own Bluesky account before enabling the Chat Add-on."
+                  : "Bluesky connection did not complete. Try connecting again."
         );
         return;
       }
@@ -4340,6 +4366,15 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
     if (error === "atproto_oauth") setNotice("Bluesky connection did not complete. Try connecting again.");
     if (error === "atproto_session") setNotice("Sign in to WTF OS before connecting Bluesky.");
     if (error === "atproto_state") setNotice("Bluesky connection state expired. Try connecting again.");
+    if (error === "atproto_platform_account_reserved") {
+      setNotice("Skywire will not connect the shared WTF Gameshow Bluesky actor. Enter your own Bluesky handle.");
+    }
+    if (error === "atproto_account_mismatch" || error === "atproto_chat_account_mismatch") {
+      setNotice("Bluesky returned a different account than the one Skywire was upgrading. Sign into the correct Bluesky account and try again.");
+    }
+    if (error === "atproto_chat_account_required") {
+      setNotice("Connect your own Bluesky account before enabling the Chat Add-on.");
+    }
     if (params.has("verified") || params.has("error")) {
       window.history.replaceState({}, "", window.location.pathname);
     }
