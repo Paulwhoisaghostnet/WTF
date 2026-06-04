@@ -231,8 +231,29 @@ Priority labels:
 | WTF-BB-188 | Fixed | Codex Rat Race tz2at canonical pass | 2026-06-03 | Rat Race / tz2at rolling scope | P1 | 12 | 8 | 3 | 4 | 1 | Rat Race treats Objkt enrichment as canonical and exposes filters beyond tz2at rolling window |
 | WTF-BB-189 | Verified | Codex Skywire wallet identity hardening pass | 2026-06-03 | Skywire / wallet identity boundary | P1 | 14 | 4 | 2 | 5 | 3 | Direct Skywire buys can trust stale browser wallet state without rechecking current-user wallet ownership |
 | WTF-BB-190 | Verified | Codex holdings derive production health pass | 2026-06-03 | Wallet holdings / scheduler resilience | P1 | 13 | 6 | 2 | 4 | 1 | `holdings-derive` failed after `wallet_holdings_id_seq` exhausted 32-bit serial capacity |
+| WTF-BB-191 | Fixed | Codex Rat Race direct-buy hotfix | 2026-06-04 | Rat Race / marketplace wallet sends | P1 | 13 | 5 | 3 | 4 | 1 | tz2at listing signals can suppress Objkt direct-buy purchase keys |
 
 ## Issue Details
+
+### WTF-BB-191 - tz2at listing signals can suppress Objkt direct-buy purchase keys
+
+- Category: Rat Race / marketplace wallet sends
+- Status: Fixed
+- Owner/Session: Codex Rat Race direct-buy hotfix
+- Score: C1 + F4 + S3 + P1(5) = 13
+- Evidence:
+  - `buildTz2atAtprotoRatRaceRows` sets `listing_id` to `null` whenever a tz2at listing signal supplies the floor, even when Objkt hydration has an active fixed-price listing for the same token.
+  - `buildRatRacePurchaseIntent` requires `listing_id`, `listing_price_mutez`, and `marketplace_contract`, so the Rat Race Buy direct affordance becomes unsupported while the card still shows an active listing.
+  - Live Objkt listing rows expose marketplace purchase shape separately from market-signal data, including `bigmap_key`, `currency_id`, and `target_address`.
+- Why it matters:
+  - Rat Race should treat tz2at as canonical for rolling market activity without disabling valid wallet sends that require supplemental marketplace-specific purchase keys.
+- Fix:
+  - Keep tz2at-first listing/floor evidence, but attach direct-buy fields from the lowest public tez Objkt listing with a numeric contract key. Prefer Objkt `bigmap_key` as the purchase key and use `id` only as a fallback.
+  - Added a regression where tz2at supplies the floor/listing signal and Objkt supplies the direct-buy key, then asserted the resulting purchase intent is supported.
+- Verification:
+  - Verified with `DATABASE_URL=postgres://localhost/wtf_test node --test --import tsx server/features/rat-race/tz2at-atproto.test.ts`.
+  - Verified with `DATABASE_URL=postgres://localhost/wtf_test node --test --import tsx server/features/rat-race/hot-tokens.test.ts server/features/rat-race/tz2at-atproto.test.ts`.
+  - Verified with `npm run check -- --pretty false` and `npm run build`.
 
 ### WTF-BB-190 - `holdings-derive` failed after `wallet_holdings_id_seq` exhausted 32-bit serial capacity
 
