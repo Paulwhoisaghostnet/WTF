@@ -374,16 +374,23 @@ export function WtfLiveApp() {
 
   function renderRoomCard(room: WtfLiveRoom, owned: boolean) {
     const closed = room.isPublic === false;
+    const manageable = canManageRoom(room);
     return (
-      <RoomCard key={`${owned ? "owned" : "public"}-${room.id}`}>
+      <RoomCard
+        key={`${owned ? "owned" : "public"}-${room.id}`}
+        data-wtf-live-room-card={room.id}
+        data-wtf-live-room-surface={owned ? "owned" : "public"}
+        data-wtf-live-owned-room={manageable ? "true" : undefined}
+      >
         <RoomBadge $closed={closed}>
-          {closed ? "Closed" : owned ? "Owned" : room.source === "system" ? "Official" : "Open"}
+          {closed ? "Closed" : manageable || owned ? "Owned" : room.source === "system" ? "Official" : "Open"}
         </RoomBadge>
         <strong>{room.title}</strong>
         {room.description ? <MutedText>{room.description}</MutedText> : null}
         {closed ? <MutedText>Closed to guests until the owner reopens it.</MutedText> : null}
         <ShareLink>{publicRoomUrl(room.id)}</ShareLink>
-        <ActionGrid>
+        {manageable ? <MutedText data-wtf-live-owner-controls="true">Owner controls</MutedText> : null}
+        <ActionGrid data-wtf-live-room-actions={room.id}>
           <Button primary size="sm" disabled={closed} onClick={() => joinPublicRoom(room)}>
             <ButtonLabel><LogIn size={14} aria-hidden /> Join</ButtonLabel>
           </Button>
@@ -396,13 +403,23 @@ export function WtfLiveApp() {
           <Button size="sm" onClick={() => openHostRoom(room)}>
             Host View
           </Button>
-          {owned ? (
-            <Button size="sm" disabled={updateRoomVisibility.isPending} onClick={() => toggleRoomOpen(room)}>
+          {manageable ? (
+            <Button
+              size="sm"
+              data-wtf-live-room-close={room.id}
+              disabled={updateRoomVisibility.isPending}
+              onClick={() => toggleRoomOpen(room)}
+            >
               <ButtonLabel><Power size={14} aria-hidden /> {closed ? "Reopen" : "Close"}</ButtonLabel>
             </Button>
           ) : null}
-          {owned ? (
-            <Button size="sm" disabled={deleteRoom.isPending} onClick={() => confirmDeleteRoom(room)}>
+          {manageable ? (
+            <Button
+              size="sm"
+              data-wtf-live-room-delete={room.id}
+              disabled={deleteRoom.isPending}
+              onClick={() => confirmDeleteRoom(room)}
+            >
               <ButtonLabel><Trash2 size={14} aria-hidden /> Delete</ButtonLabel>
             </Button>
           ) : null}
@@ -410,6 +427,8 @@ export function WtfLiveApp() {
       </RoomCard>
     );
   }
+
+  const selectedRoomManageable = selectedRoom ? canManageRoom(selectedRoom) : false;
 
   return (
     <MainLayout>
@@ -547,15 +566,20 @@ export function WtfLiveApp() {
                   ))}
                 </NativeSelect>
                 {selectedRoom ? (
-                  <RoomCard>
+                  <RoomCard
+                    data-wtf-live-room-card={selectedRoom.id}
+                    data-wtf-live-room-surface="selected"
+                    data-wtf-live-owned-room={selectedRoomManageable ? "true" : undefined}
+                  >
                     <RoomBadge $closed={selectedRoom.isPublic === false}>
-                      {selectedRoom.isPublic === false ? "Closed" : selectedRoom.source === "system" ? "Official" : "Open"}
+                      {selectedRoom.isPublic === false ? "Closed" : selectedRoomManageable ? "Owned" : selectedRoom.source === "system" ? "Official" : "Open"}
                     </RoomBadge>
                     <strong>{selectedRoom.title}</strong>
                     {selectedRoom.description ? <MutedText>{selectedRoom.description}</MutedText> : null}
                     {selectedRoom.isPublic === false ? <MutedText>Closed to guests until you reopen it.</MutedText> : null}
                     <ShareLink>{publicRoomUrl(selectedRoom.id)}</ShareLink>
-                    <ActionGrid>
+                    {selectedRoomManageable ? <MutedText data-wtf-live-owner-controls="true">Owner controls</MutedText> : null}
+                    <ActionGrid data-wtf-live-room-actions={selectedRoom.id}>
                       <Button primary size="sm" disabled={selectedRoom.isPublic === false} onClick={() => joinPublicRoom(selectedRoom)}>
                         <ButtonLabel><LogIn size={14} aria-hidden /> Join</ButtonLabel>
                       </Button>
@@ -565,13 +589,23 @@ export function WtfLiveApp() {
                       <Button size="sm" disabled={selectedRoom.isPublic === false} onClick={() => openPublicRoom(selectedRoom)}>
                         <ButtonLabel><ExternalLink size={14} aria-hidden /> Guest View</ButtonLabel>
                       </Button>
-                      {canManageRoom(selectedRoom) ? (
-                        <Button size="sm" disabled={updateRoomVisibility.isPending} onClick={() => toggleRoomOpen(selectedRoom)}>
+                      {selectedRoomManageable ? (
+                        <Button
+                          size="sm"
+                          data-wtf-live-room-close={selectedRoom.id}
+                          disabled={updateRoomVisibility.isPending}
+                          onClick={() => toggleRoomOpen(selectedRoom)}
+                        >
                           <ButtonLabel><Power size={14} aria-hidden /> {selectedRoom.isPublic === false ? "Reopen" : "Close"}</ButtonLabel>
                         </Button>
                       ) : null}
-                      {canManageRoom(selectedRoom) ? (
-                        <Button size="sm" disabled={deleteRoom.isPending} onClick={() => confirmDeleteRoom(selectedRoom)}>
+                      {selectedRoomManageable ? (
+                        <Button
+                          size="sm"
+                          data-wtf-live-room-delete={selectedRoom.id}
+                          disabled={deleteRoom.isPending}
+                          onClick={() => confirmDeleteRoom(selectedRoom)}
+                        >
                           <ButtonLabel><Trash2 size={14} aria-hidden /> Delete</ButtonLabel>
                         </Button>
                       ) : null}

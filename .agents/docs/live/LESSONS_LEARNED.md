@@ -1,3 +1,13 @@
+## 2026-06-04 — WTF LIVE owner controls must follow ownership, not list context
+
+**What happened**: Owned public rooms could render in the "Open public rooms" directory with `owned=false`, so the visible room card showed join/share actions but not the owner-only Close/Delete controls.
+
+**Why it mattered**: Room owners need to manage the room from the card they are actually looking at. Hiding lifecycle controls in a separate owned-only rendering path makes public rooms feel impossible to close or delete even though the API supports it.
+
+**Rule**: Derive room lifecycle controls from `canManageRoom(room)` wherever a room card is rendered, including public directory cards and selected room cards. Add stable `data-wtf-live-*` hooks and inventory behavior coverage for owner-visible Close/Delete before claiming the lifecycle UX is covered.
+
+---
+
 ## 2026-06-04 — WTF LIVE schema changes must ship numbered SQL migrations
 
 **What happened**: WTF LIVE public rooms shipped with Drizzle schema for `wtf_live_rooms` and `wtf_live_stages`, but no numbered production SQL migration created those tables. Production then returned 503/500 responses from room/stage registry routes when users tried to list or create rooms.

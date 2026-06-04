@@ -216,6 +216,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The live harness reads public links, FAQ, access, leaderboard, gallery state, and the WTFOS inventory tool, rejects unauthenticated MCP calls, creates a scoped MCP token, proves tools/list works without setting cookies, and revokes the token.",
   },
   {
+    id: "wtf-live.owner-room-lifecycle-controls",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    userVisibleAssertion:
+      "A WTF LIVE room owner sees Close and Delete controls on the owned room card even when that room is listed in the public room directory.",
+    durableSideEffectAssertion:
+      "The inventory harness accepts the delete confirmation, clears the owned-room fixture through the WTF LIVE room DELETE API, and the UI removes every matching room card.",
+  },
+  {
     id: "w.groupchat-readonly-config-source",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["w"],

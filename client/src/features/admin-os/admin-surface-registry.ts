@@ -268,11 +268,16 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     automationHandles: [
       "wtf_live.app.viewed",
       "wtf_live.room.created",
+      "wtf_live.room.closed",
+      "wtf_live.room.reopened",
+      "wtf_live.room.deleted",
+      "wtf_live.public_room.joined",
       "wtf_live.stage.created",
       "atproto.room.message_sent",
       "atproto.stage.broadcast_sent",
       "app.interaction.tracked",
     ],
+    behaviorAssertionIds: ["wtf-live.owner-room-lifecycle-controls"],
   },
   {
     id: "tz2at",
