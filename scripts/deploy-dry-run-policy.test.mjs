@@ -29,7 +29,7 @@ test("LAW.DR2/04 deploy dry-run evidence has no interactive schema prompt path",
 test("LAW.DR3/04 deploy dry-run evidence starts app only after schema readiness", () => {
   assert.match(
     deploy,
-    /docker compose up -d postgres[\s\S]*pg_isready[\s\S]*docker compose stop app[\s\S]*apply-production-migrations\.sh[\s\S]*docker compose up -d --remove-orphans app caddy/
+    /docker compose up -d postgres[\s\S]*pg_isready[\s\S]*docker compose stop app[\s\S]*apply-production-migrations\.sh[\s\S]*docker compose up -d --remove-orphans --force-recreate app caddy/
   );
   assert.match(deploy, /if curl -fsS http:\/\/localhost:3000\/api\/health/);
   assert.doesNotMatch(deploy, /exit 0/);
@@ -62,7 +62,8 @@ test("LAW.BB019 deploy preflight requires dedicated credential encryption keys",
   assert.match(deploy, /require_runtime_secret "TWITTER_TOKEN_ENCRYPTION_KEY"/);
   assert.match(deploy, /require_runtime_secret "STUDIO_CRYPTO_KEY"/);
   assert.match(deploy, /require_runtime_secret "TOKEN_ENCRYPTION_KEY"/);
-  assert.match(deploy, /TOKEN_ENCRYPTION_KEY must be a 64-character hex string/);
+  assert.match(deploy, /TOKEN_ENCRYPTION_KEY must be at least 32 characters/);
+  assert.match(deploy, /TOKEN_ENCRYPTION_KEY is non-hex/);
   assert.match(deploy, /required for production deployment/);
   assert.match(
     deploy,

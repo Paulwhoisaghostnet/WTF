@@ -101,12 +101,12 @@ bash "$ROOT_DIR/scripts/apply-production-migrations.sh"
 
 echo "[server-deploy] starting app + caddy"
 compose_up_output=""
-if ! compose_up_output="$(docker compose up -d --remove-orphans app caddy 2>&1)"; then
+if ! compose_up_output="$(docker compose up -d --remove-orphans --force-recreate app caddy 2>&1)"; then
   echo "$compose_up_output"
   if grep -q "already in use" <<<"$compose_up_output"; then
     echo "[server-deploy] docker compose hit a transient recreate-name conflict; retrying once"
     sleep 3
-    docker compose up -d --remove-orphans app caddy
+    docker compose up -d --remove-orphans --force-recreate app caddy
   else
     exit 1
   fi

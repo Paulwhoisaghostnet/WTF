@@ -266,6 +266,7 @@ Priority labels:
 - Correction:
   - Canonicalize WTF platform public origins so legacy `wtfgameshow.app` env values collapse to `https://wtfos.app` for ATProto OAuth client metadata, redirect URI, and client URI.
   - Redirect browser GET/HEAD traffic from `wtfgameshow.app`, `www.wtfgameshow.app`, and `new.wtfgameshow.app` to `https://wtfos.app`, preserving path and query, so the legacy domain cannot keep a separate Skywire/login reality.
+  - Force-recreate the Caddy container during production deploys so the single-file `Caddyfile` bind mount remounts domain routing changes instead of keeping the previous inode.
   - Keep local development origins local and allow explicit non-WTF override origins for previews/tests without silently promoting the legacy production domain.
 - Verification idea:
   - Static/unit tests assert legacy env canonicalization to `wtfos.app`, OAuth metadata never advertises `wtfgameshow.app`, app middleware redirects legacy hosts to canonical with path/query intact, and the Caddyfile redirects legacy apex/www to `wtfos.app`.
@@ -273,6 +274,7 @@ Priority labels:
 - Verification:
   - `npx tsx --test server/lib/canonical-domain.test.ts shared/platform-branding.test.ts server/features/atproto/skywire-policy.test.ts`
   - `node scripts/caddy-domain-policy.test.mjs`
+  - `node scripts/production-migrations-policy.test.mjs scripts/deploy-dry-run-policy.test.mjs`
   - `npm run check -- --pretty false`
   - `npm run test:e2e:inventory:coverage`
   - `git diff --check`
