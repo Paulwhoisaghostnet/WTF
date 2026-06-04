@@ -24,6 +24,14 @@ test("Skywire token parser recognizes objkt asset, token, collection, open editi
     tokenId: "456",
     marketUrl: "https://objkt.com/tokens/clean_slug/456",
   });
+  assert.deepEqual(parseSkywireTokenUrl("https://objkt.com/token/clean_slug/456"), {
+    source: "objkt",
+    sourceUrl: "https://objkt.com/token/clean_slug/456",
+    faContract: null,
+    faSlug: "clean_slug",
+    tokenId: "456",
+    marketUrl: "https://objkt.com/tokens/clean_slug/456",
+  });
   assert.deepEqual(parseSkywireTokenUrl("https://objkt.com/asset/open_objkt/111"), {
     source: "objkt",
     sourceUrl: "https://objkt.com/asset/open_objkt/111",
@@ -51,6 +59,14 @@ test("Skywire token parser recognizes objkt asset, token, collection, open editi
   assert.deepEqual(parseSkywireTokenUrl("https://teia.art/objkt/789"), {
     source: "teia",
     sourceUrl: "https://teia.art/objkt/789",
+    faContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+    faSlug: null,
+    tokenId: "789",
+    marketUrl: "https://teia.art/objkt/789",
+  });
+  assert.deepEqual(parseSkywireTokenUrl("https://teia.art/objkt/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/789"), {
+    source: "teia",
+    sourceUrl: "https://teia.art/objkt/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/789",
     faContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
     faSlug: null,
     tokenId: "789",
@@ -136,6 +152,52 @@ test("Skywire token market resolver resolves objkt collection slugs before token
   assert.equal(market.reference.faContract, "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton");
   assert.equal(market.token?.title, "Slug Token");
   assert.equal(queries.length, 2);
+});
+
+test("Skywire token market resolver maps contractful Teia objkt links to Teia collect intents", async () => {
+  const graphql: SkywireObjktGraphql = async <T = any>(query: string): Promise<T> => {
+    assert.match(query, /SkywireTokenMarket/);
+    return {
+      token: [
+        {
+          fa_contract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+          token_id: "789",
+          name: "Teia Swap",
+          thumbnail_uri: null,
+          fa: { name: "Teia Collection", path: "teia" },
+          creators: [{ creator_address: "tz1Creator", holder: { alias: "Teia Creator" } }],
+          listings_active: [
+            {
+              marketplace_contract: "KT1PHubm9HtyQEJ4BBpMTVomq6mhbfNZ9z5w",
+              id: "2002",
+              bigmap_key: "12002",
+              price: "1500000",
+              currency_id: 1,
+              seller_address: "tz1Seller",
+              amount_left: 3,
+              target_address: null,
+            },
+          ],
+          open_edition_active: null,
+        },
+      ],
+    } as T;
+  };
+
+  const market = await resolveSkywireTokenMarket(
+    "https://teia.art/objkt/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/789",
+    graphql,
+  );
+
+  assert.equal(market.reference.source, "teia");
+  assert.equal(market.reference.faContract, "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton");
+  assert.equal(market.reference.tokenId, "789");
+  assert.equal(market.listing?.marketplaceName, "Teia");
+  assert.equal(market.listing?.priceTez, "1.5");
+  assert.equal(market.purchaseIntent.supported, true);
+  assert.equal(market.purchaseIntent.marketplaceName, "Teia");
+  assert.equal(market.purchaseIntent.entrypoint, "collect");
+  assert.equal(market.purchaseIntent.listingId, "12002");
 });
 
 test("Skywire token market resolver maps open editions to one in-app claim", async () => {

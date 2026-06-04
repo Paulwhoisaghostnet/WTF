@@ -1,10 +1,10 @@
 import { externalMarketplaceInfo } from "@shared/external-marketplaces";
+import { isSkywireTezosContract } from "@shared/skywire-token-links";
 import type { RatRacePurchaseIntent } from "@shared/tezos-intel";
 
 const OBJKT_GRAPHQL_ENDPOINT = "https://data.objkt.com/v3/graphql";
 const TEIA_FA_CONTRACT = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
 const OPEN_OBJKT_CONTRACT = "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E";
-const TEZOS_CONTRACT_RE = /^KT1[0-9A-Za-z]{33}$/;
 
 const FA_SLUG_CACHE: Record<string, string> = {
   open_objkt: OPEN_OBJKT_CONTRACT,
@@ -70,7 +70,7 @@ function isNat(value: string | null | undefined): value is string {
 }
 
 function isTezosContract(value: string | null | undefined): value is string {
-  return Boolean(value && TEZOS_CONTRACT_RE.test(value));
+  return isSkywireTezosContract(value);
 }
 
 function cleanSourceUrl(value: string): string {
@@ -158,7 +158,10 @@ export function parseSkywireTokenUrl(value: string): SkywireTokenReference | nul
   const hostname = url.hostname.replace(/^www\./i, "").toLowerCase();
   const parts = decodedPathParts(url);
   if (hostname === "teia.art") {
-    if (parts[0] === "objkt") return teiaReferenceFromTokenId(url, parts[1]);
+    if (parts[0] === "objkt") {
+      if (isTezosContract(parts[1])) return teiaReferenceFromTokenId(url, parts[2], parts[1]);
+      return teiaReferenceFromTokenId(url, parts[1]);
+    }
     if ((parts[0] === "token" || parts[0] === "tokens") && isNat(parts[1])) {
       return teiaReferenceFromTokenId(url, parts[1]);
     }
@@ -170,7 +173,7 @@ export function parseSkywireTokenUrl(value: string): SkywireTokenReference | nul
 
   if (hostname !== "objkt.com") return null;
 
-  if ((parts[0] === "asset" || parts[0] === "tokens") && parts[1] && isNat(parts[2])) {
+  if ((parts[0] === "asset" || parts[0] === "token" || parts[0] === "tokens") && parts[1] && isNat(parts[2])) {
     return objktReferenceFromPath(url, parts[1], parts[2]);
   }
 

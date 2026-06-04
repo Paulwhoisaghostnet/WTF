@@ -7,6 +7,7 @@ export type SkywireTab =
   | "discover"
   | "wtf"
   | "tezos"
+  | "market"
   | "vault"
   | "mentions"
   | "chat"
@@ -37,6 +38,7 @@ export const SKYWIRE_TAB_IDS: SkywireTab[] = [
   "discover",
   "wtf",
   "tezos",
+  "market",
   "vault",
   "mentions",
   "chat",
@@ -72,6 +74,7 @@ export function skywireNavGroups(isAdmin: boolean): SkywireNavGroup[] {
       items: [
         { id: "wtf", label: "WTF Feed", hint: "Show-native posts", icon: "🎬" },
         { id: "tezos", label: "Tezos Feed", hint: "Tezos-linked posts", icon: "⛓" },
+        { id: "market", label: "Market Feed", hint: "Objkt/Teia links", icon: "☰" },
         { id: "vault", label: "Vault", hint: "Owned and created tokens", icon: "▣" },
         { id: "signals", label: "Signals", hint: "Cross-app signals", icon: "📶" },
         { id: "challenges", label: "Challenges", hint: "Claim challenge posts", icon: "🏆" },

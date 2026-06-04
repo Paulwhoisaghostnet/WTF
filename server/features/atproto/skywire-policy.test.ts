@@ -143,8 +143,13 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   const permissions = readFileSync("shared/atproto-permissions.ts", "utf8");
   const page = readFileSync("client/src/pages/Skywire.tsx", "utf8");
   assert.match(route, /feedType:\s*z\.enum\(\["home",\s*"following"/);
+  assert.match(route, /"market"/);
   assert.match(route, /source:\s*"app\.bsky\.feed\.getTimeline"/);
   assert.match(route, /source:\s*"app\.bsky\.feed\.searchPosts"/);
+  assert.match(route, /SKYWIRE_MARKET_FEED_DOMAINS/);
+  assert.match(route, /SKYWIRE_MARKET_FEED_SEARCH_TERMS/);
+  assert.match(route, /domain,\s*\n\s*sort:\s*"latest"/);
+  assert.match(route, /richTextFacetLinkUris/);
   assert.match(route, /source:\s*"app\.bsky\.feed\.getAuthorFeed"/);
   assert.match(route, /officialTezosAtprotoActors/);
   assert.match(route, /source:\s*"skywire\.curatedTezosAuthorFeeds"/);
@@ -259,6 +264,7 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(page, /chatMemberForActor/);
   assert.match(page, /feedType="home"[\s\S]*canUseSocialActions/);
   assert.match(page, /feedType="wtf"[\s\S]*canUseSocialActions/);
+  assert.match(page, /feedType="market"[\s\S]*canUseSocialActions/);
   assert.match(page, /ActorFeedPanel/);
   assert.match(page, /onActorSelect/);
   assert.match(page, /Following on Bluesky/);

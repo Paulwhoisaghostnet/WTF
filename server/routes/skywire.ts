@@ -30,9 +30,16 @@ import { issueAtprotoBridgeCredential } from "../features/atproto/event-bridge";
 import {
   fetchObjktCreatedTokens,
   normalizeTokenImageUrl,
+  parseSkywireTokenUrl,
   resolveSkywireTokenMarket,
   type SkywireTokenSummary,
 } from "../features/atproto/skywire-token-market";
+import {
+  extractSkywireTokenUrlsFromValues,
+  SKYWIRE_MARKET_FEED_DOMAINS,
+  SKYWIRE_MARKET_FEED_QUERY_BY_DOMAIN,
+  SKYWIRE_MARKET_FEED_SEARCH_TERMS,
+} from "@shared/skywire-token-links";
 import { ingestSystemEvent } from "../challenges/events/ingest";
 import { requireSkywireRollout, requireWtfLiveRollout, skywireRolloutStatusForRole } from "../lib/skywire-access";
 
@@ -83,7 +90,7 @@ const actorFeedSchema = z.object({
 });
 
 const feedQuerySchema = z.object({
-  feedType: z.enum(["home", "following", "discover", "wtf", "tezos", "search"]).catch("home"),
+  feedType: z.enum(["home", "following", "discover", "wtf", "tezos", "market", "search"]).catch("home"),
   q: z.string().trim().min(1).max(160).optional(),
   cursor: z.string().trim().min(1).max(2000).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(30),
@@ -452,6 +459,20 @@ function normalizeQuotedRecord(record: any) {
   };
 }
 
+function richTextFacetLinkUris(record: any): string[] {
+  const facets = Array.isArray(record?.facets) ? record.facets : [];
+  const links = new Set<string>();
+  for (const facet of facets) {
+    const features = Array.isArray(facet?.features) ? facet.features : [];
+    for (const feature of features) {
+      const featureType = String(feature?.$type || "");
+      const uri = typeof feature?.uri === "string" ? feature.uri.trim() : "";
+      if (featureType.includes("app.bsky.richtext.facet#link") && uri) links.add(uri);
+    }
+  }
+  return Array.from(links).slice(0, 12);
+}
+
 function normalizeRoomMessageRecord(row: {
   repoDid: string;
   repoHandle: string | null;
@@ -593,6 +614,7 @@ function chatMessageInputFromBody(body: z.infer<typeof chatMessageSchema>) {
 function normalizePostView(post: any) {
   const record = post?.record ?? {};
   const reply = record?.reply ?? null;
+  const external = embedExternal(post?.embed);
   return {
     uri: String(post?.uri || ""),
     cid: String(post?.cid || ""),
@@ -617,8 +639,9 @@ function normalizePostView(post: any) {
     },
     embed: {
       images: embedImages(post?.embed),
-      external: embedExternal(post?.embed),
+      external,
     },
+    links: richTextFacetLinkUris(record),
     quote: normalizeQuotedRecord(post?.embed),
   };
 }
@@ -763,7 +786,60 @@ function recordSkywireSystemEvent(
 
 function feedSearchQuery(feedType: string, q?: string): string {
   if (feedType === "tezos") return q || "(objkt OR teia OR fxhash OR tezos OR tez OR xtz OR .tez OR WTF)";
+  if (feedType === "market") return q || "(objkt.com OR teia.art)";
   return q || "(Bluesky OR ATProto OR AT Protocol)";
+}
+
+function skywireMarketplaceTokenUrls(post: ReturnType<typeof normalizePostView>): string[] {
+  return extractSkywireTokenUrlsFromValues(
+    [
+      post.text,
+      post.embed.external?.uri,
+      post.embed.external?.title,
+      post.embed.external?.description,
+      ...(Array.isArray(post.links) ? post.links : []),
+    ],
+    8,
+  );
+}
+
+function uniqueSkywireFeedItems(items: ReturnType<typeof normalizeFeedItem>[]): ReturnType<typeof normalizeFeedItem>[] {
+  const seen = new Set<string>();
+  const unique: ReturnType<typeof normalizeFeedItem>[] = [];
+  for (const item of items) {
+    const key = item.post.uri || item.post.cid;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+  }
+  return unique;
+}
+
+function decodeMarketFeedCursor(cursor: string | undefined): Record<string, string> {
+  if (!cursor) return {};
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+    if (!parsed || typeof parsed !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>)
+        .filter(
+          ([domain, value]) =>
+            SKYWIRE_MARKET_FEED_DOMAINS.includes(domain as any) &&
+            typeof value === "string" &&
+            value.trim(),
+        )
+        .map(([domain, value]) => [domain, String(value)]),
+    );
+  } catch {
+    return {};
+  }
+}
+
+function encodeMarketFeedCursor(cursors: Record<string, string | null | undefined>): string | null {
+  const active = Object.fromEntries(
+    Object.entries(cursors).filter(([, value]) => typeof value === "string" && value.trim()),
+  );
+  return Object.keys(active).length ? Buffer.from(JSON.stringify(active)).toString("base64url") : null;
 }
 
 function officialWtfAtprotoActor(): string {
@@ -1350,6 +1426,53 @@ router.get("/api/skywire/feed", isAuthenticated, async (req, res) => {
       feed,
       cursor: null,
       upstreamAvailable: true,
+      sessionFallback: false,
+    });
+  }
+  if (feedType === "market") {
+    const agent = getPublicAtprotoAgent();
+    const domainCursors = decodeMarketFeedCursor(cursor);
+    const perDomainLimit = Math.min(100, Math.max(limit * 2, 25));
+    const searches = await Promise.allSettled(
+      SKYWIRE_MARKET_FEED_DOMAINS.map((domain) =>
+        agent.app.bsky.feed.searchPosts({
+          q: q?.trim() || SKYWIRE_MARKET_FEED_QUERY_BY_DOMAIN[domain],
+          domain,
+          sort: "latest",
+          limit: perDomainLimit,
+          cursor: domainCursors[domain],
+        })
+      )
+    );
+    const nextCursors: Record<string, string | null | undefined> = {};
+    const feed = uniqueSkywireFeedItems(
+      searches.flatMap((result, index) => {
+        const domain = SKYWIRE_MARKET_FEED_DOMAINS[index];
+        if (result.status !== "fulfilled") {
+          console.warn("[skywire] marketplace domain search failed:", domain, result.reason);
+          return [];
+        }
+        nextCursors[domain] = result.value.data.cursor ?? null;
+        return (result.value.data.posts ?? [])
+          .map((post) => normalizeFeedItem({ post }))
+          .filter((item) => skywireMarketplaceTokenUrls(item.post).some((url) => parseSkywireTokenUrl(url)));
+      })
+    )
+      .sort((a, b) => {
+        const aTime = new Date(a.post.indexedAt || a.post.createdAt || 0).getTime();
+        const bTime = new Date(b.post.indexedAt || b.post.createdAt || 0).getTime();
+        return bTime - aTime;
+      })
+      .slice(0, limit);
+    return res.json({
+      feedType: "market",
+      source: "app.bsky.feed.searchPosts",
+      domains: SKYWIRE_MARKET_FEED_DOMAINS,
+      urlPatterns: SKYWIRE_MARKET_FEED_SEARCH_TERMS,
+      q: q?.trim() || SKYWIRE_MARKET_FEED_DOMAINS.map((domain) => SKYWIRE_MARKET_FEED_QUERY_BY_DOMAIN[domain]).join(" OR "),
+      feed,
+      cursor: encodeMarketFeedCursor(nextCursors),
+      upstreamAvailable: searches.some((result) => result.status === "fulfilled"),
       sessionFallback: false,
     });
   }

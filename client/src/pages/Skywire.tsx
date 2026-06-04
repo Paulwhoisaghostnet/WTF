@@ -38,6 +38,10 @@ import {
   type SkywirePermissionCapability,
   type SkywirePermissionTier,
 } from "@shared/atproto-permissions";
+import {
+  extractSkywireTokenUrlsFromValues,
+  isSkywireTokenUrl,
+} from "@shared/skywire-token-links";
 import type { RatRacePurchaseIntent } from "@shared/tezos-intel";
 
 interface AtprotoMe {
@@ -144,6 +148,7 @@ interface SkywirePost {
     images: Array<{ thumb: string | null; fullsize: string | null; alt: string }>;
     external: { uri: string; title: string; description: string | null; thumb: string | null } | null;
   };
+  links?: string[];
   quote: SkywireQuotePost | null;
 }
 
@@ -1169,66 +1174,14 @@ function formatTez(value: string | null | undefined): string {
   return `${numeric.toLocaleString(undefined, { maximumFractionDigits: 6 })} tez`;
 }
 
-function normalizePossibleUrl(value: string): string {
-  return value.trim().replace(/[)\].,;!?]+$/g, "");
-}
-
-const TEZOS_CONTRACT_RE = /^KT1[0-9A-Za-z]{33}$/;
-
-function isNatPath(value: string | null | undefined): boolean {
-  return Boolean(value && /^\d+$/.test(value));
-}
-
-function isObjktTokenPath(parts: string[]): boolean {
-  if ((parts[0] === "asset" || parts[0] === "tokens") && Boolean(parts[1]) && isNatPath(parts[2])) {
-    return true;
-  }
-  if ((parts[0] === "collection" || parts[0] === "collections") && Boolean(parts[1])) {
-    return (parts[2] === "tokens" && isNatPath(parts[3])) || isNatPath(parts[2]);
-  }
-  return (
-    (parts[0] === "open-edition" || parts[0] === "open-editions" || parts[0] === "editions") &&
-    isNatPath(parts[1])
-  );
-}
-
-function isTeiaTokenPath(parts: string[]): boolean {
-  if (parts[0] === "objkt" && isNatPath(parts[1])) return true;
-  if ((parts[0] === "token" || parts[0] === "tokens") && isNatPath(parts[1])) return true;
-  return (
-    (parts[0] === "asset" || parts[0] === "token" || parts[0] === "tokens") &&
-    TEZOS_CONTRACT_RE.test(parts[1] || "") &&
-    isNatPath(parts[2])
-  );
-}
-
-function isSkywireTokenUrl(value: string): boolean {
-  try {
-    const url = new URL(normalizePossibleUrl(value));
-    const host = url.hostname.replace(/^www\./i, "").toLowerCase();
-    const parts = url.pathname.split("/").filter(Boolean);
-    if (host === "teia.art") return isTeiaTokenPath(parts);
-    return host === "objkt.com" && isObjktTokenPath(parts);
-  } catch {
-    return false;
-  }
-}
-
 function extractSkywireTokenUrls(post: SkywirePost): string[] {
-  const candidates = new Set<string>();
-  const collect = (value: string | null | undefined) => {
-    if (!value) return;
-    const urls = value.match(/https?:\/\/[^\s<>"']+/gi) ?? [value];
-    for (const raw of urls) {
-      const candidate = normalizePossibleUrl(raw);
-      if (isSkywireTokenUrl(candidate)) candidates.add(candidate);
-    }
-  };
-  collect(post.text);
-  collect(post.embed.external?.uri);
-  collect(post.embed.external?.title);
-  collect(post.embed.external?.description);
-  return Array.from(candidates).slice(0, 4);
+  return extractSkywireTokenUrlsFromValues([
+    post.text,
+    post.embed.external?.uri,
+    post.embed.external?.title,
+    post.embed.external?.description,
+    ...(post.links ?? []),
+  ]);
 }
 
 function rootForReply(post: SkywirePost): { uri: string; cid: string } {
@@ -1717,7 +1670,7 @@ function FeedPanel({
   onStageQuote,
   onChatQuote,
 }: {
-  feedType: "home" | "discover" | "wtf" | "tezos" | "search";
+  feedType: "home" | "discover" | "wtf" | "tezos" | "market" | "search";
   canUseSocialActions: boolean;
   canCompose: boolean;
   queryText?: string;
@@ -3644,6 +3597,19 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
               {tab === "tezos" ? (
                 <FeedPanel
                   feedType="tezos"
+                  canUseSocialActions={canUseSocialActions}
+                  canCompose={canCompose}
+                  onActorSelect={openActorFeed}
+                  onThreadOpen={openThread}
+                  onPipelineOpen={openPipelinePost}
+                  onRoomQuote={openRoomQuote}
+                  onStageQuote={openStageQuote}
+                  onChatQuote={openChatQuote}
+                />
+              ) : null}
+              {tab === "market" ? (
+                <FeedPanel
+                  feedType="market"
                   canUseSocialActions={canUseSocialActions}
                   canCompose={canCompose}
                   onActorSelect={openActorFeed}

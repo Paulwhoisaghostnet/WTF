@@ -82,6 +82,26 @@ test.describe("interaction inventory — Skywire feed usability", () => {
 
     await expect(page.getByText("Harness Open Edition")).toBeVisible();
     await expect(page.getByText("Harness Teia Token")).toBeVisible();
+    const teiaPreview = page.locator("[data-skywire-token-preview='true']").filter({ hasText: "Harness Teia Token" });
+    await expect(teiaPreview.getByText("Teia", { exact: true })).toBeVisible();
+    await expect(teiaPreview.getByRole("button", { name: "Buy 0.25 tez" })).toBeVisible();
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("market feed channel renders posts with supported marketplace href overlays", async ({ page, request }) => {
+    await setAdmin(request);
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+
+    await page.goto("/skywire?tab=market", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("button", { name: /Market Feed/ })).toHaveAttribute("title", "Objkt/Teia links");
+    await expect(page.locator("[data-skywire-feed-card='true']")).toHaveCount(3);
+    await expect(page.locator("[data-skywire-token-preview='true']")).toHaveCount(3);
+    await expect(page.getByText("Harness Token")).toBeVisible();
+    await expect(page.getByText("Harness Teia Token")).toBeVisible();
     expect(fatalErrors(errors)).toEqual([]);
   });
 });

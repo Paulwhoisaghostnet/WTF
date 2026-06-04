@@ -769,7 +769,8 @@ function apiMock(req, res) {
     const allowedTokenLink =
       /^https:\/\/objkt\.com\/asset\/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton\/1$/.test(rawUrl) ||
       /^https:\/\/objkt\.com\/open-edition\/333$/.test(rawUrl) ||
-      /^https:\/\/teia\.art\/objkt\/789$/.test(rawUrl);
+      /^https:\/\/teia\.art\/objkt\/789$/.test(rawUrl) ||
+      /^https:\/\/teia\.art\/objkt\/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton\/789$/.test(rawUrl);
     if (!allowedTokenLink) {
       return res.status(400).json({ error: "URL is not a supported Tezos token link." });
     }
@@ -800,9 +801,13 @@ function apiMock(req, res) {
       },
       listing: {
         kind: isOpenEdition ? "open_edition" : "fixed_listing",
-        marketplaceContract: isOpenEdition ? "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E" : "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
+        marketplaceContract: isOpenEdition
+          ? "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E"
+          : isTeia
+            ? "KT1PHubm9HtyQEJ4BBpMTVomq6mhbfNZ9z5w"
+            : "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
         marketplaceName: isOpenEdition ? "objkt open edition" : isTeia ? "Teia" : "objkt v6.2",
-        listingId: isOpenEdition ? tokenId : "1001",
+        listingId: isOpenEdition ? tokenId : isTeia ? "2002" : "1001",
         priceMutez: isTeia ? "250000" : "1000000",
         priceTez: isTeia ? "0.25" : "1",
         sellerAddress: "tz1HarnessSeller",
@@ -811,10 +816,14 @@ function apiMock(req, res) {
       purchaseIntent: {
         supported: true,
         reason: null,
-        marketplaceContract: isOpenEdition ? "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E" : "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
+        marketplaceContract: isOpenEdition
+          ? "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E"
+          : isTeia
+            ? "KT1PHubm9HtyQEJ4BBpMTVomq6mhbfNZ9z5w"
+            : "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
         marketplaceName: isOpenEdition ? "objkt open edition" : isTeia ? "Teia" : "objkt v6.2",
-        entrypoint: isOpenEdition ? "claim" : "fulfill_ask",
-        listingId: isOpenEdition ? tokenId : "1001",
+        entrypoint: isOpenEdition ? "claim" : isTeia ? "collect" : "fulfill_ask",
+        listingId: isOpenEdition ? tokenId : isTeia ? "2002" : "1001",
         amount: 1,
         priceMutez: isTeia ? "250000" : "1000000",
         totalMutez: isTeia ? "250000" : "1000000",
@@ -914,6 +923,7 @@ function apiMock(req, res) {
           description: "Objkt listing link promoted into a Skywire token preview.",
         },
       },
+      links: ["https://objkt.com/asset/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/1"],
       quote: null,
     };
     const openEditionPost = {
@@ -931,13 +941,14 @@ function apiMock(req, res) {
           description: "Objkt open edition listing promoted into a Skywire token preview.",
         },
       },
+      links: [],
     };
     const teiaPost = {
       ...basePost,
       uri: "at://did:plc:harness/app.bsky.feed.post/teia-media",
       cid: "bafyreiteiamedia",
       sourceUrl: "https://bsky.app/profile/harness.bsky.social/post/teia-media",
-      text: "Tall image media should expand the post card and stay fully visible. https://teia.art/objkt/789",
+      text: "Tall image media should expand the post card and stay fully visible. https://teia.art/objkt/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/789",
       counts: { reply: 1, repost: 2, like: 9, quote: 0 },
       embed: {
         images: [
@@ -948,11 +959,12 @@ function apiMock(req, res) {
           },
         ],
         external: {
-          uri: "https://teia.art/objkt/789",
+          uri: "https://teia.art/objkt/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/789",
           title: "Harness Teia Token",
           description: "Teia token link promoted into a Skywire token preview.",
         },
       },
+      links: ["https://teia.art/objkt/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/789"],
     };
     return res.json({
       feedType: url.searchParams.get("feedType") || "home",

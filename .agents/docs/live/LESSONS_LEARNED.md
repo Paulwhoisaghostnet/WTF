@@ -3537,3 +3537,27 @@
 **Fix**: The Skywire feed now uses a centered social column, self-sizing post cards, explicit inter-card spacing, visible card overflow, contained full-size media stages, token preview detection from text and external embed metadata, and a collapsed-by-default reply composer opened from the Reply action.
 
 **Rule**: Feed UI verification must include multiple stacked posts, at least one tall media asset, at least one marketplace external embed, and assertions for card height, inter-card gap, non-clipping, media containment, token preview rendering, and default composer clutter.
+
+---
+
+## 2026-06-04 - Teia objkt links include contractful paths
+
+**What happened**: Skywire accepted numeric `teia.art/objkt/{tokenId}` links, but rejected valid contractful `teia.art/objkt/{KT1}/{tokenId}` links in both the client href detector and the server token parser. Other app helpers already emitted contractful Teia URLs, so Skywire was rejecting a link shape the product itself could create.
+
+**Why it mattered**: Rejected Teia links never reached token-link hydration, which meant posts could show valid Teia token URLs without token previews or wallet-buy options even when Teia had an active `collect` listing.
+
+**Fix**: Aligned the client and server Teia parsers around both numeric and contractful `/objkt` shapes, added a contractful Teia resolver fixture that asserts a Teia `collect` purchase intent, and updated the Skywire browser harness plus inventory workflow probe to cover that exact URL family.
+
+**Rule**: Marketplace URL support must test every URL shape emitted elsewhere in the app and every marketplace-specific contract/entrypoint used for direct buys. Do not treat the shortest canonical marketplace URL as the whole supported surface.
+
+---
+
+## 2026-06-04 - Marketplace feeds must use the same URL matcher as buy overlays
+
+**What happened**: Adding a Skywire marketplace channel exposed another drift risk: Bluesky posts can carry hrefs in rich-text facets even when visible text does not show the URL, while the previous overlay extraction only checked raw text and external embed metadata. The first browser harness pass also added a unique facet URL that the token-link mock did not allow, causing noisy 400s.
+
+**Why it mattered**: A marketplace feed should neither miss valid buyable hrefs nor show posts that only mention an Objkt/Teia domain without a supported token path. If feed search, post normalization, and token-card hydration use different URL rules, the channel becomes unreliable immediately.
+
+**Fix**: Moved Skywire marketplace URL matching into a shared helper, normalized `app.bsky.richtext.facet#link` URLs into Skywire posts, backed Market Feed with public AppView domain searches, and locally filtered results through the same parser that powers token previews and direct-buy intents.
+
+**Rule**: Any Skywire feed based on marketplace links must over-fetch from AppView/search safely, then post-filter with the exact shared buy-overlay URL matcher. Tests should cover text URLs, external embeds, and rich-text facet hrefs without introducing harness-only token-link URLs that the mock cannot hydrate.

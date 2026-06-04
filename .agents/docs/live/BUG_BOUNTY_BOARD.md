@@ -238,8 +238,30 @@ Priority labels:
 | WTF-BB-195 | Verified | Codex Stuffs CREATE menu pass | 2026-06-03 | Desktop OS / Start Menu taxonomy | P2 | 8 | 14 | 2 | 3 | 0 | Stuffs menu lacks a dedicated CREATE! category for creation apps |
 | WTF-BB-196 | Verified | Codex Skywire dark-mode default pass | 2026-06-03 | Skywire / default theme UX | P2 | 8 | 14 | 2 | 3 | 0 | Skywire still opens with light shell/sidebar/input surfaces after feed polish |
 | WTF-BB-197 | Verified | Codex Skywire feed usability repair | 2026-06-04 | Skywire / feed UX and media | P1 | 12 | 7 | 3 | 5 | 0 | Skywire feed rows collapse into cramped strips and crop media instead of reading like social post cards |
+| WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-198 - Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links
+
+- Category: Skywire / Teia token links
+- Status: Verified
+- Owner/Session: Codex Skywire Teia link buy-option repair
+- Score: C2 + F5 + S0 + P1(4) = 11
+- Evidence:
+  - User report on 2026-06-04: Objkt links show buying options in Skywire, but posts containing `teia.art/objkt/*` links do not.
+  - Local reproduction: `parseSkywireTokenUrl("https://teia.art/objkt/789")` succeeds, while `parseSkywireTokenUrl("https://teia.art/objkt/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/789")` returns `null`, even though other app helpers emit contractful Teia URLs.
+- Correction direction:
+  - Keep client and server Teia URL parsing in lockstep for both legacy numeric `teia.art/objkt/{tokenId}` and contractful `teia.art/objkt/{KT1}/{tokenId}` paths, then upgrade Skywire feed tests so a Teia post proves token preview plus supported buy intent.
+- Correction:
+  - Extended the server parser and client link detector to accept contractful Teia `objkt/{KT1}/{tokenId}` URLs, then updated the resolver test and Skywire feed harness so Teia contractful posts hydrate a Teia token preview with a supported `collect` purchase intent.
+- Verification:
+  - Passed `DATABASE_URL=postgres://localhost/wtf_test node --test --import tsx server/features/atproto/skywire-token-market.test.ts`.
+  - Passed `npm run build`.
+  - Passed `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs --project=chromium`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory`.
 
 ### WTF-BB-197 - Skywire feed rows collapse into cramped strips and crop media instead of reading like social post cards
 
