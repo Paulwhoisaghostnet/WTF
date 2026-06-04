@@ -20,7 +20,12 @@ import { useAuth } from "../../lib/auth-context";
 import { CustomCursor } from "../../features/desktop/CustomCursor";
 import { CursedDesktopEffects } from "../../features/desktop/CursedDesktopEffects";
 import { DesktopPet, type DesktopObstacle } from "../../features/desktop/DesktopPet";
-import { DesktopWeatherCloud } from "../../features/desktop/environment";
+import {
+  DesktopWeatherCloud,
+  loadDesktopWeatherRule,
+  saveDesktopWeatherRule,
+  type DesktopWeatherRule,
+} from "../../features/desktop/environment";
 import {
   buildDesktopIconDefs,
   clampIconPosition,
@@ -369,6 +374,9 @@ export function Desktop({ children, showTaskbar = true }: { children: ReactNode;
   const [iconPositions, setIconPositions] = useState<DesktopIconLayout>({});
   const [screensaverActive, setScreensaverActive] = useState(false);
   const [hamsterCareOpen, setHamsterCareOpen] = useState(false);
+  const [desktopWeatherRule, setDesktopWeatherRule] = useState<DesktopWeatherRule>(() =>
+    loadDesktopWeatherRule()
+  );
   const [desktopArtifactNow, setDesktopArtifactNow] = useState(() => Date.now());
   const [activeDesktopTool, setActiveDesktopTool] = useState<DesktopCursorTool>("standard");
   const [portalPaintColor, setPortalPaintColor] = useState<PortalColor>("blue");
@@ -491,6 +499,10 @@ export function Desktop({ children, showTaskbar = true }: { children: ReactNode;
   useEffect(() => {
     if (!desktopPetEnabled) setHamsterCareOpen(false);
   }, [desktopPetEnabled]);
+
+  useEffect(() => {
+    saveDesktopWeatherRule(desktopWeatherRule);
+  }, [desktopWeatherRule]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -694,6 +706,21 @@ export function Desktop({ children, showTaskbar = true }: { children: ReactNode;
       });
     },
     [user]
+  );
+
+  const handleDesktopWeatherRuleChange = useCallback(
+    (rule: DesktopWeatherRule) => {
+      if (desktopWeatherRule === rule) return;
+      setDesktopWeatherRule(rule);
+      reportDesktopEvent({
+        eventType: "desktop.weather.updated",
+        objectId: "desktop-weather",
+        objectKind: "weather",
+        action: "set",
+        metadata: { rule },
+      });
+    },
+    [desktopWeatherRule, reportDesktopEvent]
   );
 
   const handlePortalPlace = useCallback(
@@ -1376,7 +1403,7 @@ export function Desktop({ children, showTaskbar = true }: { children: ReactNode;
             onPointerDown={handlePortalPlace}
           />
         </DesktopSurface>
-        <DesktopWeatherCloud bounds={surfaceSize} />
+        <DesktopWeatherCloud bounds={surfaceSize} rule={desktopWeatherRule} />
         <SundayGrass userId={user?.id ?? null} bounds={surfaceSize} />
         <RouteLayer data-route-layer="true">{children}</RouteLayer>
         <DesktopPet
@@ -1397,6 +1424,8 @@ export function Desktop({ children, showTaskbar = true }: { children: ReactNode;
           hamsterCareEnabled={desktopPetEnabled}
           hamsterCareOpen={hamsterCareOpen}
           onToggleHamsterCare={() => setHamsterCareOpen((open) => !open)}
+          weatherRule={desktopWeatherRule}
+          onWeatherRuleChange={handleDesktopWeatherRuleChange}
         />
       ) : null}
       {screensaverActive && (

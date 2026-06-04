@@ -1,36 +1,40 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import styled, { keyframes } from "styled-components";
 
-type WeatherCloudRule = "off" | "gentle" | "stormy";
+export const DESKTOP_WEATHER_RULES = ["off", "gentle", "stormy"] as const;
+export type DesktopWeatherRule = (typeof DESKTOP_WEATHER_RULES)[number];
 
 const STORAGE_KEY = "wtf.desktop.weather-cloud.v1";
 
-function normalizeRule(value: unknown): WeatherCloudRule {
+export function normalizeDesktopWeatherRule(value: unknown): DesktopWeatherRule {
   return value === "gentle" || value === "stormy" ? value : "off";
 }
 
-function loadRule(): WeatherCloudRule {
+export function loadDesktopWeatherRule(): DesktopWeatherRule {
+  if (typeof window === "undefined") return "off";
   try {
-    return normalizeRule(window.localStorage.getItem(STORAGE_KEY));
+    return normalizeDesktopWeatherRule(window.localStorage.getItem(STORAGE_KEY));
   } catch {
     return "off";
   }
 }
 
-export function DesktopWeatherCloud({ bounds }: { bounds: { width: number; height: number } }) {
-  const [rule, setRule] = useState<WeatherCloudRule>(() =>
-    typeof window === "undefined" ? "off" : loadRule()
-  );
-  const [panelOpen, setPanelOpen] = useState(false);
+export function saveDesktopWeatherRule(rule: DesktopWeatherRule) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, rule);
+  } catch {
+    // Weather is decorative and should never block the desktop shell.
+  }
+}
 
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, rule);
-    } catch {
-      // Weather is decorative and should never block the desktop shell.
-    }
-  }, [rule]);
-
+export function DesktopWeatherCloud({
+  bounds,
+  rule,
+}: {
+  bounds: { width: number; height: number };
+  rule: DesktopWeatherRule;
+}) {
   const drops = useMemo(() => {
     const count = rule === "stormy" ? 28 : rule === "gentle" ? 10 : 0;
     return Array.from({ length: count }, (_, index) => ({
@@ -58,24 +62,6 @@ export function DesktopWeatherCloud({ bounds }: { bounds: { width: number; heigh
           $stormy={rule === "stormy"}
         />
       ))}
-      <WeatherControl type="button" data-compact-control="true" onClick={() => setPanelOpen((open) => !open)}>
-        WX
-      </WeatherControl>
-      {panelOpen && (
-        <WeatherPanel>
-          {(["off", "gentle", "stormy"] as WeatherCloudRule[]).map((nextRule) => (
-            <WeatherOption
-              key={nextRule}
-              type="button"
-              data-compact-control="true"
-              $active={rule === nextRule}
-              onClick={() => setRule(nextRule)}
-            >
-              {nextRule}
-            </WeatherOption>
-          ))}
-        </WeatherPanel>
-      )}
     </WeatherRoot>
   );
 }
@@ -98,7 +84,7 @@ const WeatherRoot = styled.div`
   pointer-events: none;
 `;
 
-const CloudBody = styled.div<{ $rule: WeatherCloudRule }>`
+const CloudBody = styled.div<{ $rule: DesktopWeatherRule }>`
   position: absolute;
   width: 118px;
   height: 46px;
@@ -143,44 +129,4 @@ const RainDrop = styled.span<{
   background: ${(p) => (p.$stormy ? "#0ea5e9" : "#7dd3fc")};
   opacity: 0;
   animation: ${rainFall} ${(p) => p.$duration}s linear ${(p) => p.$delay}s infinite;
-`;
-
-const WeatherControl = styled.button`
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  width: 36px;
-  height: 24px;
-  min-height: 0;
-  padding: 0;
-  pointer-events: auto;
-  border: 2px outset #dfdfdf;
-  background: #c0c0c0;
-  color: #111111;
-  font-size: 10px;
-  line-height: 1;
-`;
-
-const WeatherPanel = styled.div`
-  position: absolute;
-  right: 10px;
-  top: 38px;
-  width: 78px;
-  padding: 4px;
-  pointer-events: auto;
-  border: 2px outset #dfdfdf;
-  background: #c0c0c0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-`;
-
-const WeatherOption = styled.button<{ $active: boolean }>`
-  min-height: 18px;
-  padding: 1px 4px;
-  border: 2px ${(p) => (p.$active ? "inset" : "outset")} #dfdfdf;
-  background: ${(p) => (p.$active ? "#b6e0e0" : "#c0c0c0")};
-  color: #111111;
-  text-align: left;
-  font-size: 10px;
 `;

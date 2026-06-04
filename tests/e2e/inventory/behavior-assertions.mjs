@@ -78,7 +78,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["desktop-appearance", "desktop-pet"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand: "npm run test:e2e:live:puppets",
-    userVisibleAssertion: "A contestant can update desktop appearance grammar, colors, layout, and use desktop pet actions.",
+    userVisibleAssertion: "A contestant can update desktop appearance grammar, colors, layout, WX weather, and use desktop pet actions.",
     durableSideEffectAssertion:
       "The harness writes desktop settings, reloads them through a fresh read, records a desktop event with an event id, and confirms the pet action appears in live pet event history.",
   },
@@ -91,7 +91,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test client/src/features/command-palette/command-palette-model.test.ts client/src/components/layout/start-menu-app-gates.test.ts shared/role-system.test.ts",
     userVisibleAssertion:
-      "Apps disabled by admin are hidden from Start Menu and Command Palette launch surfaces, and time-out accounts receive no app launch entries.",
+      "Apps disabled by admin are hidden from Start Menu and Command Palette launch surfaces, creation apps are grouped under Stuffs > CREATE!, and time-out accounts receive no app launch entries.",
     durableSideEffectAssertion:
       "Shared page-access policy denies disabled app routes from the same app gate map used by launcher models while leaving ungated OS/admin routes reachable.",
   },

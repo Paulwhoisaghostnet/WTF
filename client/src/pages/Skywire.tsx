@@ -425,14 +425,81 @@ interface SkywirePipelineHistoryResponse {
 const Shell = styled.div`
   min-height: 100%;
   padding: 10px;
+  --sky-bg: #061116;
+  --sky-panel: #0d1c25;
+  --sky-panel-2: #102733;
+  --sky-card: #122b36;
+  --sky-card-soft: #183643;
+  --sky-border: #285465;
+  --sky-border-strong: #3a8797;
+  --sky-text: #f2fbff;
+  --sky-muted: #abc1ca;
+  --sky-dim: #7f9aa5;
+  --sky-cyan: #67e8f9;
+  --sky-teal: #22c7bd;
+  --sky-rose: #fb7185;
+  --sky-amber: #f2c94c;
   background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(255, 255, 255, 0.45) 1px, transparent 1px),
-    #c0c0c0;
+    radial-gradient(circle at 14% 8%, rgba(34, 199, 189, 0.18), transparent 28%),
+    linear-gradient(90deg, rgba(103, 232, 249, 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(251, 113, 133, 0.06) 1px, transparent 1px),
+    var(--sky-bg);
   background-size: 14px 14px, 14px 14px, auto;
   display: grid;
   gap: 8px;
-  color: #050505;
+  color: var(--sky-text);
+
+  a {
+    color: var(--sky-cyan);
+  }
+
+  input,
+  textarea,
+  select {
+    color-scheme: dark;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    background-color: #07141c !important;
+    color: var(--sky-text) !important;
+    border-color: var(--sky-border-strong) !important;
+  }
+
+  div:has(> input:not([type="checkbox"]):not([type="radio"])) {
+    background-color: #07141c !important;
+    border-color: var(--sky-border-strong) !important;
+  }
+
+  button {
+    color: var(--sky-text) !important;
+  }
+
+  button:not(:disabled) {
+    border-color: var(--sky-border-strong) !important;
+    background-color: var(--sky-card-soft) !important;
+    background-image:
+      linear-gradient(180deg, rgba(24, 54, 67, 0.98), rgba(13, 28, 37, 0.98)) !important;
+    color: var(--sky-text) !important;
+  }
+
+  button:disabled {
+    border-color: var(--sky-border) !important;
+    background-color: #111f27 !important;
+    background-image: none !important;
+    color: var(--sky-dim) !important;
+  }
+
+  fieldset {
+    border-color: var(--sky-border) !important;
+    background: rgba(9, 25, 34, 0.32);
+    color: var(--sky-text);
+  }
+
+  legend {
+    color: var(--sky-text);
+  }
 `;
 
 const Grid = styled.div`
@@ -464,7 +531,8 @@ const SkywireHeader = styled.section`
   gap: 10px;
   align-items: stretch;
   padding: 8px;
-  border: 2px outset #fff;
+  border: 1px solid var(--sky-border-strong);
+  border-radius: 8px;
   background:
     linear-gradient(135deg, #071a44 0%, #003a66 48%, #008080 100%);
   color: #fff;
@@ -507,9 +575,15 @@ const HeaderBadgeGrid = styled.div`
 `;
 
 const StatusBadge = styled.div<{ $tone?: "ready" | "warn" | "quiet" }>`
-  border: 2px ${({ $tone }) => ($tone === "ready" ? "inset" : "outset")} #fff;
-  background: ${({ $tone }) => ($tone === "ready" ? "#e8fff3" : $tone === "warn" ? "#fff5c7" : "#eeeeee")};
-  color: #050505;
+  border: 1px solid ${({ $tone }) => ($tone === "ready" ? "#41d99c" : $tone === "warn" ? "#f2c94c" : "#466575")};
+  border-radius: 8px;
+  background: ${({ $tone }) =>
+    $tone === "ready"
+      ? "linear-gradient(180deg, rgba(18, 86, 64, 0.9), rgba(11, 44, 45, 0.95))"
+      : $tone === "warn"
+        ? "linear-gradient(180deg, rgba(82, 62, 19, 0.9), rgba(45, 35, 19, 0.95))"
+        : "linear-gradient(180deg, rgba(20, 42, 54, 0.9), rgba(11, 30, 41, 0.95))"};
+  color: var(--sky-text);
   padding: 6px;
   display: grid;
   gap: 2px;
@@ -518,7 +592,7 @@ const StatusBadge = styled.div<{ $tone?: "ready" | "warn" | "quiet" }>`
   span {
     font-size: 11px;
     text-transform: uppercase;
-    color: #404040;
+    color: var(--sky-muted);
   }
 
   strong {
@@ -527,16 +601,19 @@ const StatusBadge = styled.div<{ $tone?: "ready" | "warn" | "quiet" }>`
 `;
 
 const NoticeBar = styled.div`
-  border: 2px inset #fff;
-  background: #fff8d6;
+  border: 1px solid rgba(242, 201, 76, 0.72);
+  border-radius: 8px;
+  background: rgba(87, 64, 18, 0.58);
+  color: #ffe9a6;
   padding: 6px 8px;
 `;
 
 const ContentBody = styled(TabBody)`
   padding: 10px;
   background:
-    linear-gradient(180deg, #f7f7f7 0%, #ececec 100%);
-  border-color: #808080 #fff #fff #808080;
+    linear-gradient(180deg, var(--sky-panel) 0%, #091821 100%);
+  border-color: #050c10 #315362 #315362 #050c10;
+  color: var(--sky-text);
 `;
 
 const Mono = styled.code`
@@ -547,51 +624,87 @@ const Mono = styled.code`
 
 const FeedList = styled.div`
   display: grid;
-  gap: 10px;
+  gap: 14px;
   max-height: min(66vh, 680px);
   overflow: auto;
-  padding-right: 2px;
+  padding: 2px 6px 6px 2px;
 `;
 
 const FeedItem = styled.article`
   position: relative;
   background:
-    linear-gradient(90deg, #0f8a96 0, #0f8a96 4px, #fff 4px, #fff 100%);
-  border: 2px outset #fff;
-  padding: 10px 10px 10px 14px;
+    linear-gradient(180deg, rgba(20, 46, 58, 0.98) 0%, rgba(10, 26, 36, 0.98) 100%);
+  border: 1px solid var(--sky-border);
+  border-radius: 8px;
+  padding: 12px 12px 12px 16px;
   display: grid;
-  gap: 8px;
-  box-shadow: 1px 1px 0 #808080;
+  gap: 10px;
+  box-shadow: 0 2px 0 rgba(103, 232, 249, 0.18), 0 14px 26px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 5px;
+    background: linear-gradient(180deg, var(--sky-teal) 0%, #5b7cfa 42%, var(--sky-rose) 100%);
+  }
 `;
 
 const PostHeader = styled.div`
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
-  gap: 8px;
-  align-items: center;
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+
+  strong {
+    color: #f4fcff;
+    font-size: 14px;
+  }
+
+  div,
+  span {
+    color: var(--sky-muted);
+  }
 `;
 
 const Avatar = styled.img`
   width: 48px;
   height: 48px;
   object-fit: cover;
-  border: 2px inset #fff;
-  background: #c0c0c0;
+  border: 1px solid #7fa8b1;
+  border-radius: 6px;
+  background: #d7eef3;
 `;
 
 const AvatarFallback = styled.div`
   width: 48px;
   height: 48px;
-  border: 2px inset #fff;
+  border: 1px solid #7fa8b1;
+  border-radius: 6px;
   background:
-    linear-gradient(135deg, #b8ffff 0 20%, #c0c0c0 20% 44%, #0f8a96 44% 62%, #f7f7f7 62%);
+    linear-gradient(135deg, #fff8d6 0 20%, #d7eef3 20% 44%, #0f8a96 44% 62%, #fb7185 62%);
 `;
 
 const ActorButton = styled.button`
+  &&&,
+  &&&:disabled {
+    border: 0 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    color: inherit !important;
+    box-shadow: none !important;
+  }
+
   appearance: none;
-  border: 0;
-  background: transparent;
-  color: inherit;
+  border: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  color: inherit !important;
+  box-shadow: none !important;
   font: inherit;
   padding: 0;
   margin: 0;
@@ -603,12 +716,17 @@ const ActorButton = styled.button`
   &:hover div {
     text-decoration: underline;
   }
+
+  &:disabled {
+    cursor: default;
+  }
 `;
 
 const PostText = styled.p`
   margin: 0;
-  font-size: 14px;
-  line-height: 1.42;
+  color: var(--sky-text);
+  font-size: 15px;
+  line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 `;
@@ -626,66 +744,91 @@ const StatChip = styled.span`
   gap: 3px;
   min-height: 20px;
   padding: 2px 6px;
-  border: 1px solid #808080;
-  background: #f2f2f2;
+  border: 1px solid rgba(242, 201, 76, 0.76);
+  border-radius: 999px;
+  background: rgba(90, 66, 18, 0.8);
+  color: #ffe9a6;
   font-size: 12px;
 `;
 
 const ImageGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--sky-border);
+  border-radius: 8px;
+  background: #10212b;
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const FeedImage = styled.img`
   width: 100%;
-  max-height: 260px;
-  object-fit: cover;
-  border: 2px inset #fff;
-  background: #c0c0c0;
+  max-height: min(54vh, 520px);
+  object-fit: contain;
+  border: 1px solid #29495a;
+  border-radius: 6px;
+  background: #0a1218;
+  display: block;
 `;
 
 const ExternalCard = styled.a`
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 5px;
-  padding: 8px;
-  border: 2px inset #fff;
-  background: #eef9fa;
-  color: inherit;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid rgba(103, 232, 249, 0.42);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(13, 45, 58, 0.96) 0%, rgba(11, 31, 43, 0.96) 100%);
+  color: var(--sky-text);
   text-decoration: none;
+
+  &:hover {
+    border-color: var(--sky-cyan);
+    box-shadow: 0 0 0 2px rgba(103, 232, 249, 0.14);
+  }
 `;
 
 const TokenMarketStack = styled.div`
   display: grid;
-  gap: 6px;
+  gap: 8px;
 `;
 
 const TokenMarketCard = styled.div`
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 8px;
-  padding: 8px;
-  border: 2px inset #fff;
-  background: #f2fff6;
+  grid-template-columns: minmax(104px, 132px) minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid rgba(65, 217, 156, 0.55);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(11, 47, 43, 0.98) 0%, rgba(17, 34, 41, 0.98) 58%, rgba(52, 22, 34, 0.98) 100%);
+  color: var(--sky-text);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 
   @media (max-width: 560px) {
-    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-columns: 84px minmax(0, 1fr);
   }
 `;
 
 const TokenThumb = styled.div`
   aspect-ratio: 1;
-  border: 2px inset #fff;
-  background: linear-gradient(135deg, #fff 0 18%, #d7f7ff 18% 52%, #0f8a96 52% 70%, #ececec 70%);
+  border: 1px solid var(--sky-border-strong);
+  border-radius: 6px;
+  background: linear-gradient(135deg, #0a1820 0 18%, #164a58 18% 52%, #22c7bd 52% 70%, #fb7185 70%);
   overflow: hidden;
 `;
 
 const TokenThumbImage = styled.img`
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  background: #08131a;
 `;
 
 const TokenMarketBody = styled.div`
@@ -701,15 +844,17 @@ const TokenMarketBody = styled.div`
 
 const TokenMarketActions = styled.div`
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
 `;
 
 const InlineState = styled.div`
-  border: 2px inset #fff;
-  background: #fff8d6;
-  padding: 6px 8px;
+  border: 1px solid rgba(242, 201, 76, 0.72);
+  border-radius: 8px;
+  background: rgba(87, 64, 18, 0.58);
+  color: #ffe9a6;
+  padding: 8px 10px;
   font-size: 12px;
   overflow-wrap: anywhere;
 `;
@@ -729,8 +874,11 @@ const VaultWalletGrid = styled.div`
 `;
 
 const VaultWalletCard = styled.div`
-  border: 2px inset #fff;
-  background: #f7f7f7;
+  border: 1px solid var(--sky-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(18, 47, 58, 0.96), rgba(9, 25, 34, 0.96));
+  color: var(--sky-text);
   padding: 8px;
   display: grid;
   gap: 4px;
@@ -744,8 +892,11 @@ const VaultGrid = styled.div`
 `;
 
 const VaultTokenCard = styled.div`
-  border: 2px outset #fff;
-  background: #fff;
+  border: 1px solid var(--sky-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(20, 46, 58, 0.96), rgba(10, 26, 36, 0.96));
+  color: var(--sky-text);
   padding: 8px;
   display: grid;
   gap: 6px;
@@ -755,8 +906,9 @@ const VaultTokenCard = styled.div`
 const VaultTokenThumb = styled.a`
   display: block;
   aspect-ratio: 1;
-  border: 2px inset #fff;
-  background: linear-gradient(135deg, #fff6d8 0 22%, #d7f7ff 22% 48%, #0f8a96 48% 70%, #ececec 70%);
+  border: 1px solid var(--sky-border-strong);
+  border-radius: 6px;
+  background: linear-gradient(135deg, #0a1820 0 22%, #164a58 22% 48%, #22c7bd 48% 70%, #fb7185 70%);
   overflow: hidden;
 `;
 
@@ -769,46 +921,55 @@ const VaultTokenText = styled.div`
   span {
     overflow-wrap: anywhere;
   }
+
+  span {
+    color: var(--sky-muted);
+  }
 `;
 
 const QuoteCard = styled.button`
   appearance: none;
   display: grid;
-  gap: 5px;
+  gap: 6px;
   width: 100%;
-  padding: 8px;
-  border: 2px inset #fff;
+  padding: 10px;
+  border: 1px solid rgba(242, 201, 76, 0.48);
+  border-radius: 8px;
   background:
-    linear-gradient(90deg, #fff 0, #fff 100%);
-  color: inherit;
+    linear-gradient(180deg, rgba(30, 43, 45, 0.98) 0%, rgba(12, 28, 38, 0.98) 100%);
+  color: var(--sky-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
 
   &:hover {
-    background: #eef9fa;
+    border-color: var(--sky-rose);
+    background:
+      linear-gradient(180deg, rgba(52, 22, 34, 0.98) 0%, rgba(17, 31, 40, 0.98) 100%);
   }
 
   &:disabled {
     cursor: default;
-    color: #404040;
+    color: var(--sky-dim);
   }
 `;
 
 const ActionDeck = styled.div`
   display: grid;
-  gap: 7px;
-  padding-top: 2px;
+  gap: 8px;
+  padding-top: 4px;
 `;
 
 const ActionRail = styled.div`
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
-  padding: 6px;
-  border: 1px solid #b0b0b0;
-  background: #f6f6f6;
+  padding: 8px;
+  border: 1px solid var(--sky-border);
+  border-radius: 8px;
+  background: rgba(11, 31, 43, 0.9);
+  color: var(--sky-text);
 `;
 
 const ComposerRail = styled.div`
@@ -827,25 +988,34 @@ const TextArea = styled.textarea`
   resize: vertical;
   font: inherit;
   padding: 8px;
-  border: 2px inset #fff;
-  background: #fff;
+  border: 1px solid var(--sky-border-strong);
+  border-radius: 6px;
+  background: #07141c;
+  color: var(--sky-text);
   line-height: 1.35;
+
+  &::placeholder {
+    color: var(--sky-dim);
+  }
 `;
 
 const NativeSelect = styled.select`
   font: inherit;
   min-height: 28px;
-  border: 2px inset #fff;
-  background: #fff;
+  border: 1px solid var(--sky-border-strong);
+  border-radius: 6px;
+  background: #07141c;
+  color: var(--sky-text);
 `;
 
 const EmptyState = styled.div`
-  border: 2px inset #fff;
-  background: #fff;
+  border: 1px solid var(--sky-border);
+  border-radius: 8px;
+  background: var(--sky-card);
   padding: 14px;
   display: grid;
   gap: 4px;
-  color: #404040;
+  color: var(--sky-muted);
 `;
 
 const ThreadLayout = styled.div`
@@ -868,7 +1038,7 @@ const ThreadBranch = styled.div`
   display: grid;
   gap: 8px;
   padding-left: 18px;
-  border-left: 2px solid #0f8a96;
+  border-left: 2px solid var(--sky-teal);
 
   @media (max-width: 560px) {
     padding-left: 10px;
@@ -879,8 +1049,10 @@ const ThreadMarker = styled.div<{ $focus?: boolean }>`
   display: inline-flex;
   width: fit-content;
   padding: 2px 7px;
-  border: 1px solid #808080;
-  background: ${({ $focus }) => ($focus ? "#dffcff" : "#f2f2f2")};
+  border: 1px solid ${({ $focus }) => ($focus ? "var(--sky-cyan)" : "var(--sky-border)")};
+  border-radius: 999px;
+  background: ${({ $focus }) => ($focus ? "rgba(103, 232, 249, 0.18)" : "rgba(16, 39, 51, 0.95)")};
+  color: var(--sky-text);
   font-size: 12px;
 `;
 
@@ -898,8 +1070,10 @@ const ModalPanel = styled.div`
   width: min(760px, 100%);
   max-height: min(86vh, 760px);
   overflow: auto;
-  background: #c0c0c0;
-  border: 2px outset #fff;
+  background: var(--sky-panel);
+  border: 1px solid var(--sky-border-strong);
+  border-radius: 8px;
+  color: var(--sky-text);
   padding: 10px;
   display: grid;
   gap: 10px;
@@ -921,8 +1095,11 @@ const TierOption = styled.label<{ $selected: boolean }>`
   align-content: start;
   min-height: 168px;
   padding: 8px;
-  border: 2px ${({ $selected }) => ($selected ? "inset" : "outset")} #fff;
-  background: ${({ $selected }) => ($selected ? "#fff" : "#d8d8d8")};
+  border: 1px solid ${({ $selected }) => ($selected ? "var(--sky-cyan)" : "var(--sky-border)")};
+  border-radius: 8px;
+  background: ${({ $selected }) =>
+    $selected ? "rgba(20, 82, 86, 0.72)" : "rgba(18, 43, 54, 0.95)"};
+  color: var(--sky-text);
   cursor: pointer;
 `;
 
@@ -931,8 +1108,10 @@ const RadioRow = styled.label`
   gap: 8px;
   align-items: flex-start;
   padding: 6px;
-  border: 1px solid #808080;
-  background: #efefef;
+  border: 1px solid var(--sky-border);
+  border-radius: 6px;
+  background: rgba(11, 31, 43, 0.92);
+  color: var(--sky-text);
   cursor: pointer;
 `;
 
@@ -973,17 +1152,42 @@ function normalizePossibleUrl(value: string): string {
   return value.trim().replace(/[)\].,;!?]+$/g, "");
 }
 
+const TEZOS_CONTRACT_RE = /^KT1[0-9A-Za-z]{33}$/;
+
+function isNatPath(value: string | null | undefined): boolean {
+  return Boolean(value && /^\d+$/.test(value));
+}
+
+function isObjktTokenPath(parts: string[]): boolean {
+  if ((parts[0] === "asset" || parts[0] === "tokens") && Boolean(parts[1]) && isNatPath(parts[2])) {
+    return true;
+  }
+  if ((parts[0] === "collection" || parts[0] === "collections") && Boolean(parts[1])) {
+    return (parts[2] === "tokens" && isNatPath(parts[3])) || isNatPath(parts[2]);
+  }
+  return (
+    (parts[0] === "open-edition" || parts[0] === "open-editions" || parts[0] === "editions") &&
+    isNatPath(parts[1])
+  );
+}
+
+function isTeiaTokenPath(parts: string[]): boolean {
+  if (parts[0] === "objkt" && isNatPath(parts[1])) return true;
+  if ((parts[0] === "token" || parts[0] === "tokens") && isNatPath(parts[1])) return true;
+  return (
+    (parts[0] === "asset" || parts[0] === "token" || parts[0] === "tokens") &&
+    TEZOS_CONTRACT_RE.test(parts[1] || "") &&
+    isNatPath(parts[2])
+  );
+}
+
 function isSkywireTokenUrl(value: string): boolean {
   try {
     const url = new URL(normalizePossibleUrl(value));
     const host = url.hostname.replace(/^www\./i, "").toLowerCase();
     const parts = url.pathname.split("/").filter(Boolean);
-    if (host === "teia.art") return parts[0] === "objkt" && /^\d+$/.test(parts[1] || "");
-    if (host !== "objkt.com") return false;
-    return (
-      (parts[0] === "asset" && /^KT1[0-9A-Za-z]{33}$/.test(parts[1] || "") && /^\d+$/.test(parts[2] || "")) ||
-      (parts[0] === "tokens" && Boolean(parts[1]) && /^\d+$/.test(parts[2] || ""))
-    );
+    if (host === "teia.art") return isTeiaTokenPath(parts);
+    return host === "objkt.com" && isObjktTokenPath(parts);
   } catch {
     return false;
   }
@@ -1165,8 +1369,7 @@ function SkywireTokenMarketCard({ url }: { url: string }) {
   );
 }
 
-function SkywireTokenLinks({ post }: { post: SkywirePost }) {
-  const urls = useMemo(() => extractSkywireTokenUrls(post), [post]);
+function SkywireTokenLinks({ urls }: { urls: string[] }) {
   if (!urls.length) return null;
   return (
     <TokenMarketStack>
@@ -1388,6 +1591,14 @@ function FeedCard({
 }) {
   const { post, reason } = item;
   const author = post.author;
+  const tokenUrls = useMemo(() => extractSkywireTokenUrls(post), [post]);
+  const externalIsToken = Boolean(post.embed.external?.uri && isSkywireTokenUrl(post.embed.external.uri));
+  const showEmptyText =
+    !post.text &&
+    !post.embed.images.length &&
+    !post.embed.external &&
+    !post.quote &&
+    !tokenUrls.length;
   const authorDetails = (
     <div>
       <strong>{author?.displayName || author?.handle || "unknown"}</strong>
@@ -1420,7 +1631,6 @@ function FeedCard({
         )}
       </PostHeader>
       {post.replyParent ? <StatChip>Replying in thread</StatChip> : null}
-      <PostText>{post.text || "(no text)"}</PostText>
       {post.embed.images.length ? (
         <ImageGrid>
           {post.embed.images.map((image, index) => (
@@ -1428,14 +1638,15 @@ function FeedCard({
           ))}
         </ImageGrid>
       ) : null}
-      {post.embed.external ? (
+      {post.text || showEmptyText ? <PostText>{post.text || "(no text)"}</PostText> : null}
+      <SkywireTokenLinks urls={tokenUrls} />
+      {post.embed.external && !externalIsToken ? (
         <ExternalCard href={post.embed.external.uri} target="_blank" rel="noopener noreferrer">
           <strong>{post.embed.external.title}</strong>
           {post.embed.external.description ? <span>{post.embed.external.description}</span> : null}
           <Mono>{post.embed.external.uri}</Mono>
         </ExternalCard>
       ) : null}
-      <SkywireTokenLinks post={post} />
       {post.quote ? <QuotePreview quote={post.quote} /> : null}
       <MetaRow>
         <StatChip>{formatCount(post.counts.reply)} replies</StatChip>

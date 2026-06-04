@@ -51,6 +51,8 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/tools/pauls-particles-v1", auth: true, title: "Paul's Particles" },
   { pattern: "/tools/nikshumika-paint", auth: true, title: "Nikshumika Paint" },
   { pattern: "/tools/kandinsky-composer", auth: true, title: "Kandinsky Composer" },
+  { pattern: "/tools/pixel-patterns", auth: true, title: "PixelPatterns" },
+  { pattern: "/tools/penrose-backgrounds", auth: true, title: "PenRose Backgrounds" },
   { pattern: "/swap", auth: true, title: "Swap" },
   { pattern: "/profile", auth: true, title: "Profile" },
   { pattern: "/theme-builder", auth: true, title: "Theme Builder" },

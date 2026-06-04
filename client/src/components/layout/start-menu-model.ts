@@ -29,6 +29,7 @@ export type StartMenuEntry =
 export type StartMenuCategoryKey =
   | "apps"
   | "gameshow"
+  | "create"
   | "social"
   | "on-chain"
   | "gaming"
@@ -41,6 +42,7 @@ export type StartMenuCategoryKey =
 const CATEGORY_META: Record<StartMenuCategoryKey, { label: string; icon: string }> = {
   apps: { label: "Apps", icon: "💿" },
   gameshow: { label: "Gameshow", icon: "🎪" },
+  create: { label: "CREATE!", icon: "✦" },
   social: { label: "Social", icon: "🐦‍⬛" },
   "on-chain": { label: "On Chain", icon: "🏴‍☠️" },
   gaming: { label: "Gaming", icon: "🎮" },
@@ -109,6 +111,8 @@ const ICONS: Record<string, string> = {
   "/tools/pauls-particles-v1": "PP",
   "/tools/nikshumika-paint": "🎨",
   "/tools/kandinsky-composer": "🖼️",
+  "/tools/pixel-patterns": "PX",
+  "/tools/penrose-backgrounds": "PR",
   "/mint-portal": "🌀",
   "/wtf-subdomains": "DNS",
   "/leaderboard": "🏆",
@@ -134,6 +138,7 @@ const LABEL_OVERRIDES: Record<string, string> = {
 const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
   apps: [],
   gameshow: ["/rounds", "/challenges", "/side-quests", "/wtf-recapture", "/calendar", "/mint-portal"],
+  create: ["/studio", "/game-studio", "/mint-portal"],
   social: ["/messages", "/wim", "/skywire", "/live", "/tz2at", "/crp-nominate", "/dear-diary", "/messageboard", "/w", "/tv", "/dicksword", "/i-hate-telegram", "/mail", "/digest", "/wtf-subdomains"],
   "on-chain": ["/wtfiam", "/marketplace", "/rat-race", "/trade-boards", "/dues", "/swap", "/hoard", "/tezos-intel"],
   gaming: ["/casino", "/arcade", "/console", "/game-studio"],
@@ -147,11 +152,6 @@ const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
     "/my-gallery",
     "/studio",
     "/collekt",
-    "/tools/particle-painter",
-    "/tools/industrializer",
-    "/tools/pauls-particles-v1",
-    "/tools/nikshumika-paint",
-    "/tools/kandinsky-composer",
   ],
   browse: ["/leaderboard", "/gallery", "/links", "/faq"],
   account: ["/mission-control", "/dashboard", "/profile", "/notification-center", "/file-manager", "/command-palette", "/task-manager"],
@@ -255,6 +255,16 @@ function pushSection(entries: StartMenuEntry[], section: Array<StartMenuEntry | 
   entries.push(...present);
 }
 
+function uniquePaths(paths: string[]): string[] {
+  return [...new Set(paths)];
+}
+
+function creationToolPaths(pageDefs: PageDef[]): string[] {
+  return pageDefs
+    .filter((def) => def.group === "create" && def.startMenu && !hasRouteParams(def.pattern))
+    .map((def) => def.pattern);
+}
+
 export function buildStartMenuEntries(
   pageDefs: PageDef[],
   apps: StartMenuAppAvailability,
@@ -280,6 +290,16 @@ export function buildStartMenuEntries(
 
   pushSection(entries, [
     groupFor("gameshow", itemsForPaths(CATEGORY_ITEMS.gameshow, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
+    groupFor(
+      "create",
+      itemsForPaths(
+        uniquePaths([...CATEGORY_ITEMS.create, ...creationToolPaths(pageDefs)]),
+        pages,
+        apps,
+        role,
+        { accessSurfaceIds: options.accessSurfaceIds }
+      )
+    ),
     groupFor("social", itemsForPaths(CATEGORY_ITEMS.social, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
     groupFor("on-chain", itemsForPaths(CATEGORY_ITEMS["on-chain"], pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
     groupFor("gaming", itemsForPaths(CATEGORY_ITEMS.gaming, pages, apps, role, { casinoLocked, accessSurfaceIds: options.accessSurfaceIds })),

@@ -450,6 +450,20 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   mail: "WTF Mail",
 };
 
+export const EXPERIMENTAL_DESKTOP_APPS = [
+  "skywire",
+  "wtf-live",
+  "mail",
+  "dues-manager",
+  "rat-race",
+] as const satisfies readonly DesktopAppKey[];
+
+const EXPERIMENTAL_DESKTOP_APP_SET = new Set<string>(EXPERIMENTAL_DESKTOP_APPS);
+
+export function isExperimentalDesktopAppKey(value: unknown): value is DesktopAppKey {
+  return typeof value === "string" && EXPERIMENTAL_DESKTOP_APP_SET.has(value);
+}
+
 // ---------------------------------------------------------------------------
 // Studio microapp
 // ---------------------------------------------------------------------------

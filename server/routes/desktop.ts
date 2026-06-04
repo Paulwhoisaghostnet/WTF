@@ -52,6 +52,7 @@ const DESKTOP_CLIENT_EVENT_TYPES = new Set([
   "desktop.wallpaper.uploaded",
   "desktop.wallpaper.token_set",
   "desktop.physics.updated",
+  "desktop.weather.updated",
   "desktop.object.clicked",
   "desktop.icon.opened",
   "desktop.icon.moved",

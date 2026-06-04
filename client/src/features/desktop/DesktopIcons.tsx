@@ -1,8 +1,29 @@
 import { type ReactNode, useCallback, useRef } from "react";
-import styled from "styled-components";
+import { styled } from "styled-components";
+import {
+  DESKTOP_APPS,
+  EXPERIMENTAL_DESKTOP_APPS,
+  type DesktopAppKey,
+} from "@shared/types";
 
 export const ICON_W = 68;
 export const ICON_H = 66;
+
+const DESKTOP_APP_KEY_SET = new Set<string>(DESKTOP_APPS);
+const EXPERIMENTAL_DESKTOP_APP_SET = new Set<string>(EXPERIMENTAL_DESKTOP_APPS);
+
+function desktopAppKeyForIconKey(key: string): DesktopAppKey | null {
+  const appKey = key === "my-gallery" ? "gallery" : key;
+  return DESKTOP_APP_KEY_SET.has(appKey) ? (appKey as DesktopAppKey) : null;
+}
+
+function markExperimentalIconDefs(defs: DesktopIconDef[]): DesktopIconDef[] {
+  return defs.map((def) => {
+    const appKey = desktopAppKeyForIconKey(def.key);
+    if (!appKey || !EXPERIMENTAL_DESKTOP_APP_SET.has(appKey)) return def;
+    return { ...def, experimental: true };
+  });
+}
 
 const WDeskIcon = styled.div`
   width: 30px;
@@ -345,7 +366,7 @@ const GalleryDeskIcon = styled.div`
   }
 `;
 
-const DesktopIconRoot = styled.div`
+const DesktopIconRoot = styled.div<{ $experimental?: boolean }>`
   position: absolute;
   display: flex;
   flex-direction: column;
@@ -358,6 +379,19 @@ const DesktopIconRoot = styled.div`
   color: #fff;
   text-shadow: 1px 1px 1px #000;
   font-family: var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
+  box-sizing: border-box;
+
+  ${(p) =>
+    p.$experimental
+      ? `
+        outline: 2px solid #ffd400;
+        outline-offset: -1px;
+        background: rgba(255, 212, 0, 0.14);
+        box-shadow:
+          inset 0 0 0 1px rgba(82, 60, 0, 0.68),
+          2px 2px 0 rgba(0, 0, 0, 0.24);
+      `
+      : ""}
 
   html[data-wtf-appearance-style="wtf-aqua"] & {
     text-shadow: 0 2px 5px rgba(0, 0, 0, 0.62);
@@ -417,6 +451,7 @@ export interface DesktopIconDef {
   defaultX: number;
   defaultY: number;
   enabled: boolean;
+  experimental?: boolean;
   openPath?: string;
 }
 
@@ -553,6 +588,8 @@ export function DraggableIcon({
     <DesktopIconRoot
       data-desktop-icon-root="true"
       data-desktop-icon-key={def.key}
+      data-desktop-icon-experimental={def.experimental ? "true" : undefined}
+      $experimental={def.experimental}
       style={{
         left: position.x,
         top: position.y,
@@ -607,7 +644,7 @@ export function buildDesktopIconDefs(
 ): DesktopIconDef[] {
   const canOpenApps = !options.appAccessBlocked;
   const canOpenDisabledApps = Boolean(options.appGateBypass);
-  return [
+  const defs: DesktopIconDef[] = [
     {
       key: "recycle-bin",
       label: "Recycle Bin",
@@ -837,4 +874,5 @@ export function buildDesktopIconDefs(
       openPath: "/my-gallery",
     },
   ];
+  return markExperimentalIconDefs(defs);
 }

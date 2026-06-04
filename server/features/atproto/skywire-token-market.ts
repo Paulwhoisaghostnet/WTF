@@ -77,6 +77,52 @@ function cleanSourceUrl(value: string): string {
   return value.replace(/[)\].,;!?]+$/g, "");
 }
 
+function decodedPathParts(url: URL): string[] {
+  return url.pathname
+    .split("/")
+    .filter(Boolean)
+    .map((part) => {
+      try {
+        return decodeURIComponent(part);
+      } catch {
+        return part;
+      }
+    });
+}
+
+function normalizeFaSlug(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function objktReferenceFromPath(url: URL, fa: string | null | undefined, tokenId: string | null | undefined): SkywireTokenReference | null {
+  const faValue = pickString(fa);
+  if (!faValue || !isNat(tokenId)) return null;
+  const faContract = isTezosContract(faValue) ? faValue : null;
+  const faSlug = faContract ? null : normalizeFaSlug(faValue);
+  return {
+    source: "objkt",
+    sourceUrl: url.toString(),
+    faContract: faContract ?? FA_SLUG_CACHE[faSlug ?? ""] ?? null,
+    faSlug,
+    tokenId,
+    marketUrl: faContract
+      ? `https://objkt.com/asset/${faContract}/${tokenId}`
+      : `https://objkt.com/tokens/${faSlug}/${tokenId}`,
+  };
+}
+
+function teiaReferenceFromTokenId(url: URL, tokenId: string | null | undefined, faContract = TEIA_FA_CONTRACT): SkywireTokenReference | null {
+  if (!isNat(tokenId)) return null;
+  return {
+    source: "teia",
+    sourceUrl: url.toString(),
+    faContract,
+    faSlug: null,
+    tokenId,
+    marketUrl: `https://teia.art/objkt/${tokenId}`,
+  };
+}
+
 export function normalizeTokenImageUrl(uri: string | null | undefined): string | null {
   const value = pickString(uri);
   if (!value) return null;
@@ -110,41 +156,35 @@ export function parseSkywireTokenUrl(value: string): SkywireTokenReference | nul
   }
 
   const hostname = url.hostname.replace(/^www\./i, "").toLowerCase();
-  const parts = url.pathname.split("/").filter(Boolean);
-  if (hostname === "teia.art" && parts[0] === "objkt" && isNat(parts[1])) {
-    return {
-      source: "teia",
-      sourceUrl: url.toString(),
-      faContract: TEIA_FA_CONTRACT,
-      faSlug: null,
-      tokenId: parts[1],
-      marketUrl: `https://teia.art/objkt/${parts[1]}`,
-    };
+  const parts = decodedPathParts(url);
+  if (hostname === "teia.art") {
+    if (parts[0] === "objkt") return teiaReferenceFromTokenId(url, parts[1]);
+    if ((parts[0] === "token" || parts[0] === "tokens") && isNat(parts[1])) {
+      return teiaReferenceFromTokenId(url, parts[1]);
+    }
+    if ((parts[0] === "asset" || parts[0] === "token" || parts[0] === "tokens") && isTezosContract(parts[1])) {
+      return teiaReferenceFromTokenId(url, parts[2], parts[1]);
+    }
+    return null;
   }
 
   if (hostname !== "objkt.com") return null;
 
-  if (parts[0] === "asset" && isTezosContract(parts[1]) && isNat(parts[2])) {
-    return {
-      source: "objkt",
-      sourceUrl: url.toString(),
-      faContract: parts[1],
-      faSlug: null,
-      tokenId: parts[2],
-      marketUrl: `https://objkt.com/asset/${parts[1]}/${parts[2]}`,
-    };
+  if ((parts[0] === "asset" || parts[0] === "tokens") && parts[1] && isNat(parts[2])) {
+    return objktReferenceFromPath(url, parts[1], parts[2]);
   }
 
-  if (parts[0] === "tokens" && parts[1] && isNat(parts[2])) {
-    const fa = parts[1];
-    return {
-      source: "objkt",
-      sourceUrl: url.toString(),
-      faContract: isTezosContract(fa) ? fa : FA_SLUG_CACHE[fa] ?? null,
-      faSlug: isTezosContract(fa) ? null : fa,
-      tokenId: parts[2],
-      marketUrl: `https://objkt.com/tokens/${fa}/${parts[2]}`,
-    };
+  if ((parts[0] === "collection" || parts[0] === "collections") && parts[1]) {
+    if (parts[2] === "tokens" && isNat(parts[3])) {
+      return objktReferenceFromPath(url, parts[1], parts[3]);
+    }
+    if (isNat(parts[2])) {
+      return objktReferenceFromPath(url, parts[1], parts[2]);
+    }
+  }
+
+  if ((parts[0] === "open-edition" || parts[0] === "open-editions" || parts[0] === "editions") && isNat(parts[1])) {
+    return objktReferenceFromPath(url, "open_objkt", parts[1]);
   }
 
   return null;

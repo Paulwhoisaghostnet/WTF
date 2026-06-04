@@ -9,6 +9,17 @@ test("Stuffs menu group clicks reveal populated flyout columns", async ({ page }
   await expect(page.getByText("Terminal", { exact: true }).last()).toBeVisible();
 });
 
+test("Stuffs menu CREATE! category houses creation apps", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open Stuffs menu" }).click();
+  await page.getByText("CREATE!", { exact: true }).click();
+
+  await expect(page.getByText("PArticle Painter", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText("Kandinsky Composer", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText("PixelPatterns", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText("PenRose Backgrounds", { exact: true }).last()).toBeVisible();
+});
+
 test("Mission Control and Command Palette live as named desktop icons, not tray codes", async ({ page }) => {
   await page.goto("/");
 

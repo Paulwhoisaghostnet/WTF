@@ -7,7 +7,7 @@ import {
   type SkywireObjktGraphql,
 } from "./skywire-token-market";
 
-test("Skywire token parser recognizes objkt asset, objkt token, and Teia links", () => {
+test("Skywire token parser recognizes objkt asset, token, collection, open edition, and Teia links", () => {
   assert.deepEqual(parseSkywireTokenUrl("https://objkt.com/asset/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/123"), {
     source: "objkt",
     sourceUrl: "https://objkt.com/asset/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/123",
@@ -24,9 +24,41 @@ test("Skywire token parser recognizes objkt asset, objkt token, and Teia links",
     tokenId: "456",
     marketUrl: "https://objkt.com/tokens/clean_slug/456",
   });
+  assert.deepEqual(parseSkywireTokenUrl("https://objkt.com/asset/open_objkt/111"), {
+    source: "objkt",
+    sourceUrl: "https://objkt.com/asset/open_objkt/111",
+    faContract: "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E",
+    faSlug: "open_objkt",
+    tokenId: "111",
+    marketUrl: "https://objkt.com/tokens/open_objkt/111",
+  });
+  assert.deepEqual(parseSkywireTokenUrl("https://objkt.com/collections/clean_slug/tokens/222"), {
+    source: "objkt",
+    sourceUrl: "https://objkt.com/collections/clean_slug/tokens/222",
+    faContract: null,
+    faSlug: "clean_slug",
+    tokenId: "222",
+    marketUrl: "https://objkt.com/tokens/clean_slug/222",
+  });
+  assert.deepEqual(parseSkywireTokenUrl("https://objkt.com/open-edition/333"), {
+    source: "objkt",
+    sourceUrl: "https://objkt.com/open-edition/333",
+    faContract: "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E",
+    faSlug: "open_objkt",
+    tokenId: "333",
+    marketUrl: "https://objkt.com/tokens/open_objkt/333",
+  });
   assert.deepEqual(parseSkywireTokenUrl("https://teia.art/objkt/789"), {
     source: "teia",
     sourceUrl: "https://teia.art/objkt/789",
+    faContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+    faSlug: null,
+    tokenId: "789",
+    marketUrl: "https://teia.art/objkt/789",
+  });
+  assert.deepEqual(parseSkywireTokenUrl("https://teia.art/tokens/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/789"), {
+    source: "teia",
+    sourceUrl: "https://teia.art/tokens/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/789",
     faContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
     faSlug: null,
     tokenId: "789",
@@ -100,7 +132,7 @@ test("Skywire token market resolver resolves objkt collection slugs before token
     } as T;
   };
 
-  const market = await resolveSkywireTokenMarket("https://objkt.com/tokens/slug/123", graphql);
+  const market = await resolveSkywireTokenMarket("https://objkt.com/asset/slug/123", graphql);
   assert.equal(market.reference.faContract, "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton");
   assert.equal(market.token?.title, "Slug Token");
   assert.equal(queries.length, 2);

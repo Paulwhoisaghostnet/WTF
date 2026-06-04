@@ -270,7 +270,7 @@ function canUsePage(
 
 function categoryForPage(def: PageDef): CommandPaletteCategory {
   if (def.roles?.includes("admin")) return "admin";
-  if (def.group === "media") return "media";
+  if (def.group === "media" || def.group === "create") return "media";
   if (def.group === "market") return "wallet";
   if (def.group === "gameshow") return "reward";
   return "route";

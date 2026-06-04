@@ -13,6 +13,7 @@ import {
   evaluateBrowserRouteAccess,
 } from "@shared/wtf-browser-route-access";
 import { BROWSER_ROUTE_META } from "@shared/wtf-browser-routes";
+import { CREATION_TOOLS } from "../features/creation-tools/tool-registry";
 import { findAdminSurfaceForPath } from "../features/admin-os/admin-surface-registry";
 
 const DashboardPage = lazy(() =>
@@ -246,7 +247,7 @@ export interface PageDef {
   auth: boolean;
   roles?: UserRole[];
   title?: string;
-  group?: "gameshow" | "social" | "market" | "media" | "casino" | "gaming" | "desktop-os" | "admin" | "public";
+  group?: "gameshow" | "social" | "market" | "media" | "create" | "casino" | "gaming" | "desktop-os" | "admin" | "public";
   startMenu?: boolean;
   desktopIcon?: boolean;
 }
@@ -270,6 +271,25 @@ function findSurfaceForPath(path: string) {
   if (!surface) return null;
   return { id: surface.id, desktopAppKey: surface.desktopAppKey };
 }
+
+const CREATION_TOOL_DESKTOP_ICON_PATHS = new Set<string>([
+  "/tools/particle-painter",
+  "/tools/industrializer",
+  "/tools/pauls-particles-v1",
+  "/tools/nikshumika-paint",
+  "/tools/kandinsky-composer",
+]);
+
+const CREATION_TOOL_PAGE_DEFS: PageDef[] = CREATION_TOOLS.map((tool) => ({
+  pattern: tool.routePath,
+  component: CreationToolPage,
+  mapProps: () => ({ toolId: tool.id }),
+  auth: true,
+  title: tool.title,
+  group: "create",
+  startMenu: true,
+  desktopIcon: CREATION_TOOL_DESKTOP_ICON_PATHS.has(tool.routePath),
+}));
 
 export const PAGE_DEFS: PageDef[] = [
   {
@@ -415,56 +435,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/dues", component: DuesManagerPage, auth: false, title: "Club Dues Manager", group: "market", startMenu: true, desktopIcon: true },
   { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "gaming", startMenu: true, desktopIcon: true },
   { pattern: "/game-studio", component: GameStudioPage, auth: true, title: "Game Studio", group: "gaming", startMenu: true, desktopIcon: true },
-  {
-    pattern: "/tools/particle-painter",
-    component: CreationToolPage,
-    mapProps: () => ({ toolId: "particle-painter" }),
-    auth: true,
-    title: "PArticle Painter",
-    group: "media",
-    startMenu: true,
-    desktopIcon: true,
-  },
-  {
-    pattern: "/tools/industrializer",
-    component: CreationToolPage,
-    mapProps: () => ({ toolId: "industrializer" }),
-    auth: true,
-    title: "INDUSTR1ALIZER",
-    group: "media",
-    startMenu: true,
-    desktopIcon: true,
-  },
-  {
-    pattern: "/tools/pauls-particles-v1",
-    component: CreationToolPage,
-    mapProps: () => ({ toolId: "pauls-particles-v1" }),
-    auth: true,
-    title: "Paul's Particles V1.0",
-    group: "media",
-    startMenu: true,
-    desktopIcon: true,
-  },
-  {
-    pattern: "/tools/nikshumika-paint",
-    component: CreationToolPage,
-    mapProps: () => ({ toolId: "nikshumika-paint" }),
-    auth: true,
-    title: "Nikshumika Paint",
-    group: "media",
-    startMenu: true,
-    desktopIcon: true,
-  },
-  {
-    pattern: "/tools/kandinsky-composer",
-    component: CreationToolPage,
-    mapProps: () => ({ toolId: "kandinsky-composer" }),
-    auth: true,
-    title: "Kandinsky Composer",
-    group: "media",
-    startMenu: true,
-    desktopIcon: true,
-  },
+  ...CREATION_TOOL_PAGE_DEFS,
   { pattern: "/swap", component: SwapPage, auth: true, title: "Swap", group: "market", startMenu: true },
   { pattern: "/profile", component: ProfilePage, auth: true, title: "Profile", group: "social", startMenu: true },
   { pattern: "/theme-builder", component: DesktopSettingsPage, auth: true, title: "Theme Builder", group: "desktop-os", startMenu: true, desktopIcon: true },

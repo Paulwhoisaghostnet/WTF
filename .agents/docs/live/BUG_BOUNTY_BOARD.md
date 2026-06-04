@@ -231,8 +231,106 @@ Priority labels:
 | WTF-BB-188 | Fixed | Codex Rat Race tz2at canonical pass | 2026-06-03 | Rat Race / tz2at rolling scope | P1 | 12 | 8 | 3 | 4 | 1 | Rat Race treats Objkt enrichment as canonical and exposes filters beyond tz2at rolling window |
 | WTF-BB-189 | Verified | Codex Skywire wallet identity hardening pass | 2026-06-03 | Skywire / wallet identity boundary | P1 | 14 | 4 | 2 | 5 | 3 | Direct Skywire buys can trust stale browser wallet state without rechecking current-user wallet ownership |
 | WTF-BB-190 | Verified | Codex holdings derive production health pass | 2026-06-03 | Wallet holdings / scheduler resilience | P1 | 13 | 6 | 2 | 4 | 1 | `holdings-derive` failed after `wallet_holdings_id_seq` exhausted 32-bit serial capacity |
+| WTF-BB-191 | Verified | Codex desktop environment corrections | 2026-06-03 | Desktop OS / shell UX | P2 | 9 | 12 | 3 | 3 | 0 | Desktop icon movement, WX controls, and experimental app affordances drift from current shell expectations |
+| WTF-BB-192 | Verified | Codex Skywire feed UI/token preview pass | 2026-06-03 | Skywire / feed UX and token previews | P2 | 11 | 9 | 3 | 5 | 0 | Skywire feed cards bury media and reject common Objkt/Teia/OE token href previews |
+| WTF-BB-193 | Verified | Codex CRP sparse route guard during Skywire UI pass | 2026-06-03 | CRP nominations / route resilience | P2 | 8 | 14 | 1 | 4 | 0 | CRP nomination route crashes on sparse inventory harness API payloads |
+| WTF-BB-194 | Verified | Codex Stuffs CREATE menu pass | 2026-06-03 | Desktop OS / Start Menu taxonomy | P2 | 8 | 14 | 2 | 3 | 0 | Stuffs menu lacks a dedicated CREATE! category for creation apps |
+| WTF-BB-195 | Verified | Codex Skywire dark-mode default pass | 2026-06-03 | Skywire / default theme UX | P2 | 8 | 14 | 2 | 3 | 0 | Skywire still opens with light shell/sidebar/input surfaces after feed polish |
 
 ## Issue Details
+
+### WTF-BB-195 - Skywire still opens with light shell/sidebar/input surfaces after feed polish
+
+- Category: Skywire / default theme UX
+- Status: Verified
+- Owner/Session: Codex Skywire dark-mode default pass
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - User report on 2026-06-03: Skywire must be dark mode by default.
+  - After the feed-card polish, the native Skywire shell still contained light sidebar, welcome, permission, compose, vault, modal, input, and empty-state surfaces, so the first impression could remain stark and inconsistent.
+- Correction:
+  - Introduced shared Skywire dark theme tokens and applied them across the page shell, sidebar navigation, feed cards, embeds, token previews, vault cards, composer, settings, modal choices, action buttons, text fields, and sparse/new-user states.
+- Verification:
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory`
+  - `git diff --check`
+  - Direct Playwright visual smoke of `http://127.0.0.1:4183/skywire` with the inventory harness media/token fixture confirmed dark sidebar/feed/action/input styles, transparent actor header buttons, visible media/token preview/Buy button, and zero console/page errors.
+
+### WTF-BB-194 - Stuffs menu lacks a dedicated CREATE! category for creation apps
+
+- Category: Desktop OS / Start Menu taxonomy
+- Status: Verified
+- Owner/Session: Codex Stuffs CREATE menu pass
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - User report on 2026-06-03: Stuffs menu needs a category named `CREATE!` that houses Composer, PArticle Painter, and other existing or future creation apps.
+  - Current Start Menu model places creation tools in `My Media`, while the creation-tool registry already contains additional tools that should be grouped with the same creator workflow.
+- Correction:
+  - Added a Stuffs menu `CREATE!` category that includes Studio, Game Studio, Mint Portal, and every registered creation-tool route.
+  - Generated creation-tool page definitions from the canonical creation-tool registry so PixelPatterns, PenRose Backgrounds, and future registry additions can land in the launcher taxonomy without another manual route list.
+  - Removed creation-tool routes from the `My Media` Start Menu bucket and updated Start Menu/inventory coverage text.
+- Verification:
+  - `npx tsx --test client/src/components/layout/start-menu-app-gates.test.ts client/src/features/command-palette/command-palette-model.test.ts shared/wtf-browser-routes.sync.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run check -- --pretty false`
+  - `npm run build`
+  - `npx playwright test tests/playwright/start-menu.spec.mjs`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-193 - CRP nomination route crashes on sparse inventory harness API payloads
+
+- Category: CRP nominations / route resilience
+- Status: Verified
+- Owner/Session: Codex CRP sparse route guard during Skywire UI pass
+- Score: C1 + F4 + S0 + P2(3) = 8
+- Evidence:
+  - `npm run test:e2e:inventory` on 2026-06-03 failed only on `/crp-nominate` with `TypeError: Cannot read properties of undefined (reading 'length')`.
+  - The inventory harness catch-all returns sparse `{ ok, mocked, path }` objects for unmocked CRP APIs, while the CRP page assumed `categories`, `bundles`, and `nominations` arrays were always present.
+- Correction:
+  - Guard CRP category, resolve-bundle, source, and nomination collections with `Array.isArray(...)` before reading `.length` or mapping.
+- Verification:
+  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "CRP nomination AppView"`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-192 - Skywire feed cards bury media and reject common Objkt/Teia/OE token href previews
+
+- Category: Skywire / feed UX and token previews
+- Status: Verified
+- Owner/Session: Codex Skywire feed UI/token preview pass
+- Score: C3 + F5 + S0 + P2(3) = 11
+- Evidence:
+  - User report on 2026-06-03: Skywire feed cards feel crowded and flat, media is cut off or deprioritized, and post hrefs to Objkt, Teia, or OE listing pages do not return token previews.
+  - Client token-link detection only accepted Objkt `asset/{KT1}/{id}`, Objkt `tokens/{slug}/{id}`, and Teia `objkt/{id}`, while real embedded external hrefs can use Objkt slug assets, collection token paths, and open-edition routes.
+- Correction:
+  - Restyle Skywire feed cards and embeds for clearer hierarchy, render media without cropping, and keep token previews before generic external cards.
+  - Align client and server token URL parsers around Objkt asset/token/collection/open-edition routes plus Teia token page variants.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-token-market.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory`
+  - Playwright visual smoke of `http://127.0.0.1:4173/skywire` with the inventory harness media/token fixture confirmed the media card, token preview, Buy/Open buttons, no duplicate generic external card, and zero console errors.
+
+### WTF-BB-191 - Desktop icon movement, WX controls, and experimental app affordances drift from current shell expectations
+
+- Category: Desktop OS / shell UX
+- Status: Verified
+- Owner/Session: Codex desktop environment corrections
+- Score: C3 + F3 + S0 + P2(3) = 9
+- Evidence:
+  - User report on 2026-06-03: desktop icons should be movable by the individual user, WX/weather should live behind a system-tray lightning icon instead of a top-right desktop widget, and experimental app icons should have a yellow outline.
+  - Prior verified item WTF-BB-132 covered icon-layout allow-list drift, but newer first-party desktop icon keys have since been added outside the persisted allow-list.
+- Correction:
+  - Expanded native desktop icon layout normalization to current first-party icon keys so per-user moved positions survive server settings saves.
+  - Moved WX/weather controls into a taskbar lightning tray popup next to pet care and wallet, and kept the desktop environment component as the visual weather overlay only.
+  - Added a canonical experimental desktop app list and yellow outline affordance on those launch icons, then updated inventory documentation and registry handles.
+- Verification:
+  - `npx tsx --test shared/desktop.test.ts client/src/features/desktop/DesktopIcons.test.tsx`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory`
+  - `git diff --check`
 
 ### WTF-BB-190 - `holdings-derive` failed after `wallet_holdings_id_seq` exhausted 32-bit serial capacity
 

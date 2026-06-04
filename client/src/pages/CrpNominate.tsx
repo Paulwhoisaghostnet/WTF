@@ -148,10 +148,11 @@ export function CrpNominate() {
   const resolveMutation = useMutation({
     mutationFn: () => api.post<ResolveResponse>("/api/crp-nominations/resolve", { query }),
     onSuccess: (data) => {
-      setSelectedBundleId(data.bundles[0]?.id ?? null);
+      const bundles = Array.isArray(data.bundles) ? data.bundles : [];
+      setSelectedBundleId(bundles[0]?.id ?? null);
       void logClientSystemEvent({
         eventType: "crp.nomination.resolve",
-        metadata: { kind: data.kind, bundleCount: data.bundles.length },
+        metadata: { kind: data.kind, bundleCount: bundles.length },
       });
     },
   });
@@ -167,9 +168,10 @@ export function CrpNominate() {
   const submitMutation = useMutation({
     mutationFn: async () => {
       const resolution = resolveMutation.data;
+      const bundles = Array.isArray(resolution?.bundles) ? resolution.bundles : [];
       const bundle =
-        resolution?.bundles.find((candidate) => candidate.id === selectedBundleId) ??
-        resolution?.bundles[0];
+        bundles.find((candidate) => candidate.id === selectedBundleId) ??
+        bundles[0];
       if (!bundle?.tezosAddress) throw new Error("Select a nominee with a Tezos wallet.");
       return api.post<{
         nomination: NominationRow["value"];
@@ -220,9 +222,22 @@ export function CrpNominate() {
     },
   });
 
+  const categories = useMemo<CrpCategory[]>(
+    () => (Array.isArray(categoriesQuery.data?.categories) ? categoriesQuery.data.categories : []),
+    [categoriesQuery.data]
+  );
+  const resolvedBundles = useMemo<NomineeBundle[]>(
+    () => (Array.isArray(resolveMutation.data?.bundles) ? resolveMutation.data.bundles : []),
+    [resolveMutation.data]
+  );
+  const nominations = useMemo<NominationRow[]>(
+    () => (Array.isArray(mineQuery.data?.nominations) ? mineQuery.data.nominations : []),
+    [mineQuery.data]
+  );
+  const anonymousNominationCredits = Number(mineQuery.data?.anonymousNominationCredits ?? 0);
   const selectedBundle = useMemo(
-    () => resolveMutation.data?.bundles.find((bundle) => bundle.id === selectedBundleId) ?? null,
-    [resolveMutation.data, selectedBundleId]
+    () => resolvedBundles.find((bundle) => bundle.id === selectedBundleId) ?? null,
+    [resolvedBundles, selectedBundleId]
   );
 
   return (
@@ -258,10 +273,10 @@ export function CrpNominate() {
         {resolveMutation.data ? (
           <GroupBox label="Refine nominee identity">
             <Stack>
-              {resolveMutation.data.bundles.length === 0 ? (
+              {resolvedBundles.length === 0 ? (
                 <span>No linked wallets or social handles were found for that query.</span>
               ) : (
-                resolveMutation.data.bundles.map((bundle) => (
+                resolvedBundles.map((bundle) => (
                   <Card key={bundle.id}>
                     <Row>
                       <input
@@ -279,7 +294,7 @@ export function CrpNominate() {
                       {bundle.bskyHandle ? <div>Bluesky: {bundle.bskyHandle}</div> : null}
                     </div>
                     <div>
-                      {bundle.sources.map((source) => (
+                      {(Array.isArray(bundle.sources) ? bundle.sources : []).map((source) => (
                         <SourcePill key={`${bundle.id}-${source}`}>{source}</SourcePill>
                       ))}
                     </div>
@@ -298,7 +313,7 @@ export function CrpNominate() {
               style={{ maxWidth: 420 }}
             >
               <option value="">Select a CRP category…</option>
-              {(categoriesQuery.data?.categories ?? []).map((category) => (
+              {categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.label}
                 </option>
@@ -383,14 +398,14 @@ export function CrpNominate() {
 
         <GroupBox label="My nominations">
           {mineQuery.isLoading ? <Hourglass size={16} /> : null}
-          {(mineQuery.data?.anonymousNominationCredits ?? 0) > 0 ? (
+          {anonymousNominationCredits > 0 ? (
             <div style={{ fontSize: 12, marginBottom: 8 }}>
-              Anonymous nominations submitted: {mineQuery.data?.anonymousNominationCredits}
+              Anonymous nominations submitted: {anonymousNominationCredits}
             </div>
           ) : null}
-          {mineQuery.data?.nominations.length ? (
+          {nominations.length ? (
             <Stack>
-              {mineQuery.data.nominations.map((row) => (
+              {nominations.map((row) => (
                 <NominationCard key={row.uri} row={row} />
               ))}
             </Stack>

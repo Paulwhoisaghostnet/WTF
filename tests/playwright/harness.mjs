@@ -868,6 +868,8 @@ function apiMock(req, res) {
     return res.json({ ok: true });
   }
   if (pathName === "/api/skywire/feed") {
+    const skywireHarnessImage =
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 960 540'%3E%3Crect width='960' height='540' fill='%2310212b'/%3E%3Cpath d='M0 390 190 248 340 338 510 170 690 296 960 120v420H0z' fill='%230f8a96'/%3E%3Ccircle cx='760' cy='154' r='72' fill='%23fb7185'/%3E%3Ctext x='72' y='116' font-family='Arial' font-size='54' font-weight='700' fill='%23fff8d6'%3ESkywire media%3C/text%3E%3C/svg%3E";
     const post = {
       uri: "at://did:plc:harness/app.bsky.feed.post/pipeline",
       cid: "bafyreiharness",
@@ -879,14 +881,27 @@ function apiMock(req, res) {
         avatar: null,
         description: "Mocked Skywire feed actor",
       },
-      text: "Fresh Skywire context ready for TV, Studio, Rat Race, WTF LIVE, and reward automation.",
+      text: "Fresh Skywire context ready for TV, Studio, Rat Race, WTF LIVE, and reward automation. https://objkt.com/asset/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/1",
       createdAt: nowIso(),
       indexedAt: nowIso(),
       replyRoot: null,
       replyParent: null,
       counts: { reply: 2, repost: 3, like: 5, quote: 1 },
       viewer: { like: null, repost: null, threadMuted: false, embeddingDisabled: false },
-      embed: { images: [], external: null },
+      embed: {
+        images: [
+          {
+            thumb: skywireHarnessImage,
+            fullsize: skywireHarnessImage,
+            alt: "Skywire media preview",
+          },
+        ],
+        external: {
+          uri: "https://objkt.com/asset/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/1",
+          title: "Harness Token",
+          description: "Objkt listing link promoted into a Skywire token preview.",
+        },
+      },
       quote: null,
     };
     return res.json({

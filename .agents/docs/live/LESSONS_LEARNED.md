@@ -1,3 +1,21 @@
+## 2026-06-03 — Skywire dark mode must cover shell, controls, and transparent feed affordances together
+
+**What happened**: A Skywire default-dark pass initially darkened the page shell and feed cards but left React95-inherited controls rendering as gray buttons and turned actor/author buttons into visible button slabs.
+
+**Why it mattered**: Partial dark mode makes Skywire feel inconsistent even when the main panels are dark. Feed author affordances need to read like content, while nav/action/input controls need explicit dark treatment so the UI does not fall back to classic gray inside a dark shell.
+
+**Rule**: When changing Skywire's default theme, verify the shared `SkywireShell` sidebar, page shell, feed cards, token previews, compose inputs, React95 buttons, text-field wrappers, modals, vault cards, and actor/avatar buttons in one direct visual smoke. Actor/header buttons must stay transparent; nav and action buttons must not inherit default gray.
+
+## 2026-06-03 — Skywire feed polish must verify real media/token embeds, not text-only route smoke
+
+**What happened**: Skywire feed cards technically rendered, but the UI pass exposed two gaps: the visual smoke fixture had only text posts, so media hierarchy and token cards could pass unseen; and token href detection was split between a narrow client matcher and a slightly broader server resolver, causing valid Objkt/Teia/OE links embedded as Bluesky external cards to be rejected before hydration. During the same inventory rerun, CRP Nominations crashed on sparse harness API responses because it assumed optional arrays were always present.
+
+**Why it mattered**: A Bluesky client can look "green" while still hiding the exact product failure users see: cropped media, generic links instead of Tezos previews, and route crashes under sparse AppView payloads. Token previews must be accepted by the client before the server can resolve listings, and inventory route smoke only protects the UI surface it actually exercises.
+
+**Rule**: When polishing Skywire feed UI, include a harness post with media plus an Objkt/Teia token external href, and visually smoke the rendered card. Keep client and server token URL support in lockstep for Objkt asset/token/collection/open-edition and Teia token routes. For AppViews, treat API array fields as optional at runtime and guard with `Array.isArray(...)` before `.length` or `.map(...)`.
+
+---
+
 ## 2026-05-31 — Rat Race empty feed means fix tz2at Postgres, not add bypass sources
 
 **What happened**: Rat Race showed zero cards for every filter. Investigation traced it to `https://tz2at.xyz/health` and `/replay` returning 500. The tz2at semantic relay Postgres volume had filled the server disk (`No space left on device`), which panicked the checkpointer and left the DB stuck in recovery (`57P03` / "not yet accepting connections"). WTF local market tables were also empty, so Rat Race had no fallback within the intended tz2at pipeline.
@@ -3471,3 +3489,27 @@
 **Fix**: Migrated `wallet_holdings.id` and `wallet_holdings_id_seq` to bigint capacity, reset the sequence above the greater of current max id and current sequence value, and updated the shared schema to `bigserial`. Also kept amount parsing in a `normalized_events` CTE so malformed `token_amount` text cannot be the next all-row derive failure.
 
 **Rule**: Any table refreshed by frequent `INSERT ... ON CONFLICT DO UPDATE` jobs must use bigint primary-key capacity from the start. PostgreSQL sequences advance before conflict handling, so update-heavy upserts can exhaust 32-bit serials far faster than row counts suggest.
+
+---
+
+## 2026-06-03 - Desktop icon layout keys must track the rendered native icon set
+
+**What happened**: Native desktop icons such as Mission Control, Command Palette, Skywire, WTF LIVE, tz2at, CRP Nominations, Rat Race, Map Lab, and Mail were rendered as movable launchers, but several were absent from the shared desktop icon layout allow-list. WX controls also lived in a top-right desktop overlay instead of the tray, and experimental app status had no visible launch-surface affordance.
+
+**Why it mattered**: A drag UI can look per-user movable while the settings API silently discards saved positions for unlisted keys, making icons reset after reload. Desktop environment controls also need to live where users expect shell controls, and experimental status should be visible before launch.
+
+**Fix**: Expanded the shared layout allow-list and focused regression tests to cover every rendered native desktop icon, moved WX/weather selection into a lightning tray popup, and marked experimental desktop app icons with a canonical yellow outline.
+
+**Rule**: Whenever adding or changing native desktop icons, update the shared layout allow-list and regression tests in the same pass. Keep shell controls in their owning tray area, and derive experimental icon affordances from one canonical app metadata source.
+
+---
+
+## 2026-06-03 - Creation tool launchers must be registry-driven
+
+**What happened**: The Stuffs menu grouped creation tools under `My Media`, and `PAGE_DEFS` manually listed only five creation-tool routes even though the canonical creation-tool registry already included PixelPatterns and PenRose Backgrounds.
+
+**Why it mattered**: Manual menu and route lists drift from the tool registry. That makes existing creator apps disappear from launcher surfaces and makes future creation tools easy to add to the registry without becoming reachable from the user's Start Menu.
+
+**Fix**: Added a dedicated `CREATE!` Start Menu category, generated creation-tool page definitions from `CREATION_TOOLS`, moved tool launchers out of `My Media`, and verified the rebuilt browser harness because Playwright serves `dist/public`.
+
+**Rule**: Creation-tool launcher routes should come from the canonical creation-tool registry. When browser smoke uses the local Playwright harness, rebuild `dist/public` before trusting Start Menu screenshots or flyout assertions.

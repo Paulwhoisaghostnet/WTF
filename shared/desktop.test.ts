@@ -129,10 +129,19 @@ test("normalizes icon layout and discards malformed coordinates", () => {
 test("desktop icon layout allow-list covers every first-party desktop icon", () => {
   assert.deepEqual([...DESKTOP_ICON_LAYOUT_KEYS], [
     "recycle-bin",
+    "mission-control",
+    "command-palette",
     "wtfiam",
     "hoard",
     "wim",
     "w",
+    "skywire",
+    "wtf-live",
+    "tz2at",
+    "crp-nominations",
+    "rat-race",
+    "map-lab",
+    "mail",
     "tv",
     "dicksword",
     "i-hate-telegram",
@@ -154,7 +163,8 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
   );
 
   assert.equal(Object.keys(layout).length, DESKTOP_ICON_LAYOUT_KEYS.length);
-  assert.deepEqual(layout["wtfiam"], { x: 10, y: 20 });
+  const wtfiamIndex = DESKTOP_ICON_LAYOUT_KEYS.indexOf("wtfiam");
+  assert.deepEqual(layout["wtfiam"], { x: wtfiamIndex * 10, y: wtfiamIndex * 20 });
   const arcadeIndex = DESKTOP_ICON_LAYOUT_KEYS.indexOf("arcade");
   const gameStudioIndex = DESKTOP_ICON_LAYOUT_KEYS.indexOf("game-studio");
   assert.deepEqual(layout["arcade"], { x: arcadeIndex * 10, y: arcadeIndex * 20 });

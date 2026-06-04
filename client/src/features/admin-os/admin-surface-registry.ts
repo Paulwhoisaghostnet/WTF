@@ -1083,6 +1083,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "token wallpaper",
       "cursor style",
       "physics mode",
+      "weather tray control",
       "MCP pairing",
     ],
     automationHandles: [
@@ -1091,6 +1092,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "desktop.wallpaper.uploaded",
       "desktop.wallpaper.token_set",
       "desktop.physics.updated",
+      "desktop.weather.updated",
       "app.interaction.tracked",
     ],
     behaviorAssertionIds: ["desktop.settings-events-pet"],
@@ -1242,7 +1244,7 @@ export const DESKTOP_ITEM_ADMIN_SURFACES: AdminSurface[] = [
     kind: "desktop-item",
     routePatterns: ["desktop://icons"],
     adminPanelTabs: ["Desktop Apps", "OS Admin"],
-    nativeSettings: ["icon visibility", "desktop layout", "launch routes"],
+    nativeSettings: ["icon visibility", "per-user desktop layout", "experimental icon outline", "launch routes"],
     automationHandles: [
       "desktop.icon.opened",
       "desktop.icon.moved",

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import styled from "styled-components";
 import { AppBar, Toolbar as React95Toolbar, Button, Panel, Window, WindowHeader, WindowContent } from "react95";
-import { Heart, Monitor } from "lucide-react";
+import { Heart, Monitor, Zap } from "lucide-react";
 import { useAuth } from "../../lib/auth-context";
 import { MusicMiniPlayer } from "../../features/music/MusicMiniPlayer";
 import { useSharedMusicPlayer } from "../../features/music/MusicPlayerContext";
@@ -10,6 +10,10 @@ import { useWindowManager } from "../../lib/window-context";
 import { StartMenu } from "./StartMenu";
 import { Win95ContextMenu, type Win95ContextMenuEntry } from "./Win95ContextMenu";
 import { MOBILE } from "../../global-styles";
+import {
+  DESKTOP_WEATHER_RULES,
+  type DesktopWeatherRule,
+} from "../../features/desktop/environment";
 
 const TaskbarContainer = styled.div`
   position: relative;
@@ -216,19 +220,52 @@ const WalletPopup = styled(Window)`
   }
 `;
 
+const WeatherPopup = styled(Window)`
+  position: absolute;
+  bottom: 36px;
+  right: 86px;
+  width: 148px;
+  z-index: 200;
+
+  ${MOBILE} {
+    width: 150px;
+    right: 48px;
+  }
+`;
+
+const WeatherPopupContent = styled(WindowContent)`
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const WeatherOptionButton = styled(Button)<{ $active?: boolean }>`
+  justify-content: flex-start;
+  min-height: 24px;
+  font-size: 11px;
+  border-radius: var(--wtf-control-radius, 0);
+  ${(p) => (p.$active ? "font-weight: bold;" : "")}
+`;
+
 type TaskbarProps = {
   hamsterCareEnabled?: boolean;
   hamsterCareOpen?: boolean;
   onToggleHamsterCare?: () => void;
+  weatherRule?: DesktopWeatherRule;
+  onWeatherRuleChange?: (rule: DesktopWeatherRule) => void;
 };
 
 export function Taskbar({
   hamsterCareEnabled = false,
   hamsterCareOpen = false,
   onToggleHamsterCare,
+  weatherRule = "off",
+  onWeatherRuleChange,
 }: TaskbarProps) {
   const [startOpen, setStartOpen] = useState(false);
   const [walletPopupOpen, setWalletPopupOpen] = useState(false);
+  const [weatherPopupOpen, setWeatherPopupOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -240,6 +277,7 @@ export function Taskbar({
   const { address, isConnecting, connect, disconnect } = useWallet();
   const wm = useWindowManager();
   const popupRef = useRef<HTMLDivElement>(null);
+  const weatherPopupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 60000);
@@ -247,11 +285,22 @@ export function Taskbar({
   }, []);
 
   useEffect(() => {
-    if (!walletPopupOpen) return;
+    if (!walletPopupOpen && !weatherPopupOpen) return;
     const handler = (e: MouseEvent | TouchEvent) => {
       const target = "touches" in e ? e.touches[0]?.target : e.target;
-      if (popupRef.current && !popupRef.current.contains(target as Node)) {
+      const targetElement = target instanceof HTMLElement ? target : null;
+      if (targetElement?.closest("[data-wallet-tray-toggle='true'], [data-weather-tray-toggle='true']")) {
+        return;
+      }
+      if (walletPopupOpen && popupRef.current && !popupRef.current.contains(target as Node)) {
         setWalletPopupOpen(false);
+      }
+      if (
+        weatherPopupOpen &&
+        weatherPopupRef.current &&
+        !weatherPopupRef.current.contains(target as Node)
+      ) {
+        setWeatherPopupOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -260,7 +309,7 @@ export function Taskbar({
       document.removeEventListener("mousedown", handler);
       document.removeEventListener("touchstart", handler);
     };
-  }, [walletPopupOpen]);
+  }, [walletPopupOpen, weatherPopupOpen]);
 
   const handleWindowButton = (path: string) => {
     const isFocused = wm.focusedPath === path && !wm.isMinimized(path);
@@ -360,6 +409,7 @@ export function Taskbar({
               onClick={() => {
                 setStartOpen(false);
                 setWalletPopupOpen(false);
+                setWeatherPopupOpen(false);
                 wm.toggleShowDesktop();
               }}
             >
@@ -380,15 +430,38 @@ export function Taskbar({
                 title="Pet care"
                 onClick={() => {
                   setWalletPopupOpen(false);
+                  setWeatherPopupOpen(false);
                   onToggleHamsterCare?.();
                 }}
               >
                 <Heart />
               </TrayIconButton>
             )}
+            {onWeatherRuleChange && (
+              <TrayIconButton
+                data-compact-control="true"
+                data-weather-tray-toggle="true"
+                size="sm"
+                active={weatherPopupOpen || weatherRule !== "off" ? true : undefined}
+                aria-label="Desktop weather"
+                aria-expanded={weatherPopupOpen}
+                aria-pressed={weatherRule !== "off"}
+                title={`Desktop weather: ${weatherRule}`}
+                onClick={() => {
+                  setWalletPopupOpen(false);
+                  setWeatherPopupOpen((open) => !open);
+                }}
+              >
+                <Zap />
+              </TrayIconButton>
+            )}
             <WifiIcon
+              data-wallet-tray-toggle="true"
               $connected={!!address}
-              onClick={() => setWalletPopupOpen((v) => !v)}
+              onClick={() => {
+                setWeatherPopupOpen(false);
+                setWalletPopupOpen((v) => !v);
+              }}
               title={address ? `Connected: ${address}` : "Wallet not connected"}
             >
               {address ? "📶" : "📡"}
@@ -455,6 +528,38 @@ export function Taskbar({
             )}
           </WindowContent>
         </WalletPopup>
+      )}
+      {weatherPopupOpen && onWeatherRuleChange && (
+        <WeatherPopup ref={weatherPopupRef as any}>
+          <WindowHeader style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 12 }}>WX</span>
+            <Button
+              size="sm"
+              style={{ padding: "0 4px", minWidth: 18, height: 18, fontSize: 10 }}
+              onClick={() => setWeatherPopupOpen(false)}
+            >
+              ✕
+            </Button>
+          </WindowHeader>
+          <WeatherPopupContent>
+            {DESKTOP_WEATHER_RULES.map((rule) => {
+              const active = weatherRule === rule;
+              const label = rule === "off" ? "Off" : rule === "gentle" ? "Gentle" : "Stormy";
+              return (
+                <WeatherOptionButton
+                  key={rule}
+                  data-compact-control="true"
+                  size="sm"
+                  $active={active}
+                  active={active ? true : undefined}
+                  onClick={() => onWeatherRuleChange(rule)}
+                >
+                  {label}
+                </WeatherOptionButton>
+              );
+            })}
+          </WeatherPopupContent>
+        </WeatherPopup>
       )}
       {contextMenu && (
         <Win95ContextMenu

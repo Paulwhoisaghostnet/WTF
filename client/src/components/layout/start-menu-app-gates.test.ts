@@ -5,6 +5,7 @@ import {
   isStartMenuItemEnabled,
 } from "./start-menu-app-gates";
 import { PAGE_DEFS } from "../../routes/page-defs";
+import { CREATION_TOOLS } from "../../features/creation-tools/tool-registry";
 import {
   buildStartMenuEntries,
   buildStartMenuGroups,
@@ -70,10 +71,11 @@ test("Start Menu model uses requested Win95 sections", () => {
         : entry.item.label
   );
 
-  assert.deepEqual(signature.slice(0, 7), [
+  assert.deepEqual(signature.slice(0, 8), [
     "Apps",
     "|",
     "Gameshow",
+    "CREATE!",
     "Social",
     "On Chain",
     "Gaming",
@@ -83,6 +85,33 @@ test("Start Menu model uses requested Win95 sections", () => {
   assert(signature.includes("Settings"));
   assert(signature.includes("Admin"));
   assert(signature.includes("Browse"));
+});
+
+test("Start Menu model houses registered creation apps under CREATE!", () => {
+  const groups = buildStartMenuGroups(PAGE_DEFS, {}, "contestant", {
+    casinoMembershipActive: false,
+  });
+  const byKey = new Map(groups.map((group) => [group.key, group]));
+  const create = byKey.get("create")!;
+  const myMedia = byKey.get("my-media")!;
+  const createPaths = create.items.map((item) => item.path);
+  const myMediaPaths = myMedia.items.map((item) => item.path);
+
+  assert.deepEqual(create.items.slice(0, 3).map((item) => item.label), [
+    "Studio",
+    "Game Studio",
+    "Mint Portal",
+  ]);
+  for (const tool of CREATION_TOOLS) {
+    assert(
+      createPaths.includes(tool.routePath),
+      `${tool.title} should be listed in CREATE!`
+    );
+    assert(
+      !myMediaPaths.includes(tool.routePath),
+      `${tool.title} should not stay buried in My Media`
+    );
+  }
 });
 
 test("Start Menu model keeps Casino in Gaming and My Games in My Media", () => {

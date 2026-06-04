@@ -42,13 +42,17 @@ const MainLayout = styled.div`
 `;
 
 const Sidebar = styled.nav`
-  border: 2px inset #fff;
-  background: #ececec;
+  border: 1px solid var(--sky-border, #285465);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(13, 28, 37, 0.98) 0%, rgba(7, 19, 26, 0.98) 100%);
+  color: var(--sky-text, #f2fbff);
   padding: 8px;
   display: grid;
   gap: 10px;
   max-height: min(72vh, 760px);
   overflow: auto;
+  box-shadow: inset 0 0 0 1px rgba(103, 232, 249, 0.08);
 `;
 
 const NavGroup = styled.section`
@@ -60,15 +64,21 @@ const NavGroupLabel = styled.div`
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #404040;
+  color: var(--sky-muted, #abc1ca);
   padding: 0 4px;
 `;
 
 const NavButton = styled.button<{ $active?: boolean }>`
   appearance: none;
-  border: 2px ${({ $active }) => ($active ? "inset" : "outset")} #fff;
-  background: ${({ $active }) => ($active ? "#0f8a96" : "#f7f7f7")};
-  color: ${({ $active }) => ($active ? "#fff" : "#050505")};
+  border: 1px solid
+    ${({ $active }) => ($active ? "var(--sky-cyan, #67e8f9)" : "var(--sky-border, #285465)")} !important;
+  border-radius: 6px;
+  background-color: ${({ $active }) => ($active ? "rgba(15, 118, 126, 0.98)" : "rgba(16, 39, 51, 0.92)")} !important;
+  background-image: ${({ $active }) =>
+    $active
+      ? "linear-gradient(135deg, rgba(15, 118, 126, 0.98), rgba(31, 41, 99, 0.98))"
+      : "linear-gradient(180deg, rgba(16, 39, 51, 0.95), rgba(9, 25, 34, 0.95))"} !important;
+  color: ${({ $active }) => ($active ? "#f8feff" : "var(--sky-text, #f2fbff)")} !important;
   padding: 6px 8px;
   text-align: left;
   cursor: pointer;
@@ -76,6 +86,7 @@ const NavButton = styled.button<{ $active?: boolean }>`
   grid-template-columns: 22px minmax(0, 1fr);
   gap: 6px;
   align-items: center;
+  box-shadow: ${({ $active }) => ($active ? "0 0 0 2px rgba(103, 232, 249, 0.12)" : "none")};
 
   strong {
     display: block;
@@ -86,12 +97,17 @@ const NavButton = styled.button<{ $active?: boolean }>`
   span {
     display: block;
     font-size: 11px;
-    opacity: ${({ $active }) => ($active ? 0.92 : 0.72)};
+    color: ${({ $active }) => ($active ? "#dbfbff" : "var(--sky-muted, #abc1ca)")};
     line-height: 1.2;
   }
 
   &:hover {
-    filter: brightness(0.98);
+    border-color: var(--sky-cyan, #67e8f9);
+    background-color: ${({ $active }) => ($active ? "rgba(15, 118, 126, 0.98)" : "rgba(20, 55, 66, 0.98)")} !important;
+    background-image: ${({ $active }) =>
+      $active
+        ? "linear-gradient(135deg, rgba(15, 118, 126, 0.98), rgba(31, 41, 99, 0.98))"
+        : "linear-gradient(180deg, rgba(20, 55, 66, 0.98), rgba(11, 31, 43, 0.98))"} !important;
   }
 `;
 
@@ -113,8 +129,10 @@ const ContextBar = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border: 2px inset #fff;
-  background: #fff8d6;
+  border: 1px solid rgba(242, 201, 76, 0.56);
+  border-radius: 8px;
+  background: rgba(87, 64, 18, 0.52);
+  color: #ffe9a6;
   padding: 6px 8px;
 `;
 
@@ -123,8 +141,11 @@ const ContextTitle = styled.strong`
 `;
 
 const WelcomeCard = styled.div`
-  border: 2px outset #fff;
-  background: linear-gradient(180deg, #f7ffff 0%, #ececec 100%);
+  border: 1px solid var(--sky-border, #285465);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(18, 47, 58, 0.96) 0%, rgba(9, 25, 34, 0.96) 100%);
+  color: var(--sky-text, #f2fbff);
   padding: 12px;
   display: grid;
   gap: 10px;
@@ -139,8 +160,10 @@ const StepList = styled.ol`
 `;
 
 const CapabilityCard = styled.div`
-  border: 2px inset #fff;
-  background: #fff5c7;
+  border: 1px solid rgba(242, 201, 76, 0.48);
+  border-radius: 8px;
+  background: rgba(90, 66, 18, 0.56);
+  color: #ffe9a6;
   padding: 10px;
   display: grid;
   gap: 8px;
@@ -158,10 +181,11 @@ const SectionHeader = styled.div`
 
   strong {
     font-size: 14px;
+    color: var(--sky-text, #f2fbff);
   }
 
   span {
-    color: #404040;
+    color: var(--sky-muted, #abc1ca);
     line-height: 1.35;
   }
 `;
@@ -172,8 +196,10 @@ const TierGrid = styled.div`
 `;
 
 const TierCard = styled.div`
-  border: 2px inset #fff;
-  background: #f7f7f7;
+  border: 1px solid var(--sky-border, #285465);
+  border-radius: 8px;
+  background: rgba(16, 39, 51, 0.9);
+  color: var(--sky-text, #f2fbff);
   padding: 8px;
   display: grid;
   gap: 4px;
@@ -182,8 +208,11 @@ const TierCard = styled.div`
 `;
 
 const ComposeBox = styled.div`
-  border: 2px outset #fff;
-  background: #fff;
+  border: 1px solid var(--sky-border, #285465);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(18, 47, 58, 0.96), rgba(9, 25, 34, 0.96));
+  color: var(--sky-text, #f2fbff);
   padding: 10px;
   display: grid;
   gap: 8px;
@@ -192,16 +221,25 @@ const ComposeBox = styled.div`
 const TextArea = styled.textarea`
   width: 100%;
   min-height: 72px;
-  border: 2px inset #fff;
+  border: 1px solid var(--sky-border-strong, #3a8797);
+  border-radius: 6px;
+  background: #07141c;
+  color: var(--sky-text, #f2fbff);
   padding: 6px;
   font: inherit;
   resize: vertical;
   box-sizing: border-box;
+
+  &::placeholder {
+    color: var(--sky-dim, #7f9aa5);
+  }
 `;
 
 const AdminHint = styled.div`
-  border: 2px inset #fff;
-  background: #e8fff3;
+  border: 1px solid rgba(65, 217, 156, 0.48);
+  border-radius: 8px;
+  background: rgba(11, 47, 43, 0.72);
+  color: var(--sky-text, #f2fbff);
   padding: 8px;
   display: grid;
   gap: 6px;
