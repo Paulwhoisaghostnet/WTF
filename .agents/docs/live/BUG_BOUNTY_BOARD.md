@@ -50,7 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-180 | In Progress | Codex WTF LIVE migration hotfix | 2026-06-04 | WTF LIVE / DB migrations | P1 | 12 | 7 | 2 | 5 | 1 | WTF LIVE user room tables declared in schema but missing production migration |
+| WTF-BB-180 | Verified | Codex WTF LIVE migration hotfix | 2026-06-04 | WTF LIVE / DB migrations | P1 | 12 | 7 | 2 | 5 | 1 | WTF LIVE user room tables declared in schema but missing production migration |
 | WTF-BB-179 | Verified | Codex Rat Race Objkt pk hydration pass | 2026-05-28 | Rat Race / Objkt hydration | P1 | 12 | 7 | 3 | 5 | 0 | Objkt replay collect records use token pk and fail FA2 token hydration |
 | WTF-BB-178 | Verified | Codex Rat Race replay-window pass | 2026-05-28 | Rat Race / replay ingestion | P1 | 11 | 8 | 2 | 5 | 0 | Multi-day hot filters silently scan only one day of tz2at replay |
 | WTF-BB-148 | Verified | Codex TTC calendar full-send | 2026-05-24 | Browser security / CSP | P1 | 11 | 9 | 2 | 4 | 1 | TTC submit iframe blocked by production CSP frame-src |
@@ -242,6 +242,23 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-180 - WTF LIVE user room tables declared in schema but missing production migration
+
+- Category: WTF LIVE / DB migrations
+- Status: Verified
+- Owner/Session: Codex WTF LIVE migration hotfix
+- Score: C2 + F5 + S1 + P1(4) = 12
+- Evidence:
+  - User report on 2026-06-04: creating a WTF LIVE room failed with `select "id" from "wtf_live_rooms" where ("wtf_live_rooms"."slug" = $1 and "wtf_live_rooms"."archived_at" is null)` and `/api/wtf-live/rooms`, `/rooms/mine`, and `/stages` returned 503/500 responses.
+  - Code inspection found `shared/schema-wtf-live.ts` declared `wtf_live_rooms` and `wtf_live_stages`, while `drizzle/` had no numbered production migration for either table.
+- Correction:
+  - Added `drizzle/0097_wtf_live_rooms.sql` to create `wtf_live_rooms`, `wtf_live_stages`, slug/owner indexes, public flags, archive timestamps, and owner foreign keys.
+  - Added a production migration policy test that asserts the WTF LIVE persistent tables have a numbered SQL migration.
+- Verification:
+  - Clean-commit checks passed: `npm run security:deploy-migrations`, focused WTF LIVE route/capability tests, `npm run test:e2e:inventory:coverage`, `npm run check`, and `npm run build`.
+  - Hetzner deploy run applied `0097_wtf_live_rooms.sql` and passed health on 2026-06-04.
+  - Production smoke: `https://wtfgameshow.app/api/health` reported commit `49b71b8`; `GET /api/wtf-live/public/rooms/dickfart` returned `404 {"error":"Room not found"}` instead of a 5xx, proving the DB-backed room lookup can query the new table.
 
 ### WTF-BB-198 - Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links
 
