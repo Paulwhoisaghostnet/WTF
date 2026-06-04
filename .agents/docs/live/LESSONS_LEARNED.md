@@ -3783,3 +3783,15 @@
 **Fix**: Added canonical platform-origin helpers that collapse legacy WTF Gameshow platform hosts to `https://wtfos.app` for ATProto OAuth metadata, callback URLs, request-origin recovery, Skywire public media links, and shared platform manifests. Caddy now redirects `wtfgameshow.app`, `www.wtfgameshow.app`, and `new.wtfgameshow.app` to `https://wtfos.app{uri}` instead of serving them as full app peers. The production deploy script also force-recreates Caddy so the single-file `Caddyfile` bind mount remounts the updated inode.
 
 **Rule**: For platform identity and OAuth flows, legacy domains must be aliases, not alternate app realities. Preserve path/query, but canonicalize the host before auth, session, OAuth metadata, callback handling, or hard public URL generation can observe it. Tests must cover both env-derived public URLs and edge/app-level legacy host redirects.
+
+---
+
+## 2026-06-04 - Skywire OAuth callbacks must persist SDK saved sessions, not OAuthSession wrappers
+
+**What happened**: After the canonical-domain repair, Chat Add-on OAuth approval could return to Skywire with the account marked reconnect-required. The callback let the OAuth SDK write the saved `{ tokenSet, dpopJwk }` session through `sessionStore.set`, but for existing account rows `persistOAuthSessionForDid` deleted the pending saved session immediately. The route then executed `storedSession ?? session` and could persist the live `OAuthSession` wrapper, which does not expose the saved token material as plain `tokenSet` and `dpopJwk` fields, overwriting encrypted access/refresh token fields with null.
+
+**Why it mattered**: OAuth approval had succeeded upstream, but Skywire destroyed its own restore material during callback finalization. The user saw the chat permission path complete and then immediately got "reconnect Bluesky" because `/api/atproto/me` correctly detected missing token material.
+
+**Fix**: SDK session-store writes now keep the saved OAuth session available until the route callback performs the final user+DID scoped persistence write. The route no longer falls back to the live `OAuthSession` wrapper, and token encryption now fails closed unless the object has subject, access token, refresh token, and DPoP key material.
+
+**Rule**: Treat `OAuthSession` as a runtime client wrapper, not a persistence DTO. Persist only the SDK saved session object supplied to `sessionStore.set`; if that handoff is missing, fail the callback instead of writing null encrypted token fields. Tests must reject wrapper-shaped objects and prove the callback cannot encode `storedSession ?? session` again.

@@ -164,6 +164,26 @@ function safeParseJson<T>(value: string | null | undefined): T | undefined {
   }
 }
 
+export function assertPersistableOAuthSession(session: unknown): asserts session is NodeSavedSession {
+  const candidate = session as Partial<NodeSavedSession> | null | undefined;
+  const tokenSet = (candidate as any)?.tokenSet;
+  const dpopJwk = (candidate as any)?.dpopJwk;
+  if (
+    !candidate ||
+    !tokenSet ||
+    typeof tokenSet.sub !== "string" ||
+    !tokenSet.sub ||
+    typeof tokenSet.access_token !== "string" ||
+    !tokenSet.access_token ||
+    typeof tokenSet.refresh_token !== "string" ||
+    !tokenSet.refresh_token ||
+    !dpopJwk ||
+    typeof dpopJwk !== "object"
+  ) {
+    throw new AtprotoSessionUnavailableError("oauth_session_persistence_material_missing");
+  }
+}
+
 export function resolveAtprotoOAuthGrantState(params: {
   appName: "skywire" | "tz2at";
   tokenScope?: string | null;
@@ -207,6 +227,7 @@ export function encryptedSessionFields(session: NodeSavedSession, options: { oau
   oauthScopes: string | null;
   encryptedDpopKey: string;
 } {
+  assertPersistableOAuthSession(session);
   const tokenSet = (session as any).tokenSet ?? {};
   const oauthScopesOverride = options.oauthScopes?.trim();
   const rawExpiresAt = tokenSet.expires_at ?? tokenSet.expiresAt;
@@ -286,6 +307,7 @@ export async function persistOAuthSessionForDid(
     oauthScopes?: string | null;
   } = {}
 ): Promise<void> {
+  const sdkStoreWrite = options.accountId == null && options.userId == null;
   const fields = encryptedSessionFields(session, { oauthScopes: options.oauthScopes });
   const updateValues = {
     encryptedAccessToken: fields.encryptedAccessToken,
@@ -300,7 +322,7 @@ export async function persistOAuthSessionForDid(
     ...(typeof options.oauthChatEnabled === "boolean" ? { oauthChatEnabled: options.oauthChatEnabled } : {}),
     updatedAt: new Date(),
   };
-  if (options.accountId == null && options.userId == null && await didBelongsToReservedSkywirePlatformActor(did)) {
+  if (sdkStoreWrite && await didBelongsToReservedSkywirePlatformActor(did)) {
     pendingOAuthSessions.set(did, session);
     return;
   }
@@ -316,6 +338,8 @@ export async function persistOAuthSessionForDid(
     .where(whereClause)
     .returning({ id: atprotoAccounts.id });
   if (rows.length === 0) {
+    pendingOAuthSessions.set(did, session);
+  } else if (sdkStoreWrite) {
     pendingOAuthSessions.set(did, session);
   } else {
     pendingOAuthSessions.delete(did);

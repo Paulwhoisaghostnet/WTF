@@ -51,6 +51,7 @@ Priority labels:
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-207 | Fixed | Codex Skywire canonical-domain OAuth repair | 2026-06-04 | Platform domains / AT OAuth identity boundary | P0 | 16 | 1 | 3 | 5 | 5 | Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity |
+| WTF-BB-208 | Fixed | Codex Skywire chat OAuth session persistence repair | 2026-06-04 | Skywire / AT OAuth session persistence | P0 | 16 | 1 | 3 | 5 | 5 | Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect |
 | WTF-BB-206 | Verified | Codex Skywire OAuth primary-domain repair | 2026-06-04 | Skywire / AT OAuth domain and session binding | P0 | 16 | 1 | 3 | 5 | 5 | Skywire OAuth callback bounces wtfos.app users to legacy wtfgameshow.app and collides with that domain's logged-in identity |
 | WTF-BB-205 | Verified | Codex Skywire OAuth identity-binding emergency | 2026-06-04 | Skywire / AT OAuth identity binding | P0 | 16 | 1 | 3 | 5 | 5 | Skywire Chat Add-on OAuth can target the shared WTF Gameshow Bluesky actor instead of the signed-in user's linked account |
 | WTF-BB-204 | Verified | Codex Skywire market feed search-source pass | 2026-06-04 | Skywire / Market Feed source | P1 | 13 | 5 | 3 | 5 | 1 | Skywire Market Feed can show a false empty lane when searchPosts hits the non-search public AppView |
@@ -251,6 +252,37 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-208 - Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect
+
+- Category: Skywire / AT OAuth session persistence
+- Status: Fixed
+- Owner/Session: Codex Skywire chat OAuth session persistence repair
+- Score: C3 + F5 + S5 + P0(5) = 16
+- Evidence:
+  - User live-tested the canonical-domain fix on 2026-06-04 and reported that approving Chat Add-on permissions now returns to Skywire with the AT session marked ended/reconnect-required.
+  - Code inspection found the OAuth callback performs a final `persistOAuthSessionForDid(session.did, storedSession ?? (session as any), ...)` write after `client.callback(...)`.
+  - The installed `@atproto/oauth-client` returns an `OAuthSession` wrapper from `client.callback`, while the persistable `{ tokenSet, dpopJwk }` value is passed separately through `sessionStore.set`.
+  - For an existing account, `persistOAuthSessionForDid` deletes the pending saved session after the SDK store write, so the final callback falls back to the wrapper and can overwrite encrypted access/refresh token fields with `null`.
+- Likely correction direction:
+  - Keep the SDK-provided saved session available until the route callback performs its final scoped account write.
+  - Remove the route fallback that persists the live `OAuthSession` wrapper.
+  - Fail closed if token persistence is asked to store an object without token set and DPoP key material.
+- Correction:
+  - `persistOAuthSessionForDid` now treats SDK session-store writes as callback handoffs and keeps the SDK saved `{ tokenSet, dpopJwk }` session available until the route callback performs the final user+DID scoped write.
+  - The OAuth callback no longer falls back to persisting the live `OAuthSession` wrapper; if the saved session is missing, callback fails closed instead of overwriting encrypted token fields with null.
+  - `encryptedSessionFields` now asserts token set subject, access token, refresh token, and DPoP key material before producing DB fields.
+- Verification idea:
+  - Unit/policy tests should prove wrapper objects cannot produce null token writes and callback persistence requires the SDK saved session.
+  - Live smoke should complete Chat Add-on approval and show `/api/atproto/me` with `session.reconnectRequired=false`, encrypted token storage, DPoP key, and chat capability.
+- Local verification:
+  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts server/features/atproto/skywire-policy.test.ts server/features/atproto/permission-tiers.test.ts server/lib/canonical-domain.test.ts` passed 26/26.
+  - `npm run check -- --pretty false` passed.
+  - `npm run test:e2e:inventory:coverage` passed.
+  - `npm run build` passed.
+  - `node scripts/caddy-domain-policy.test.mjs` passed.
+  - `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "OAuth|Chat add-on"` passed 5/5.
+  - `npm run test:e2e:inventory` passed 290/290 after rerunning sequentially. The first browser attempt was discarded because two Playwright suites were run in parallel against the same harness and produced shared-server noise.
 
 ### WTF-BB-207 - Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity
 

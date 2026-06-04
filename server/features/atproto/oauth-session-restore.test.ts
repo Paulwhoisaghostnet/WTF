@@ -104,6 +104,7 @@ test("Skywire chat OAuth opt-in persists as canonical account scope and capabili
       dpopJwk: { kty: "EC", crv: "P-256", x: "x", y: "y", d: "d" },
       authMethod: { method: "none" },
       tokenSet: {
+        sub: "did:plc:chatupgrade",
         access_token: "access-token",
         refresh_token: "refresh-token",
         scope: "atproto transition:generic",
@@ -121,5 +122,33 @@ test("Skywire chat OAuth opt-in persists as canonical account scope and capabili
       "chat"
     ),
     true
+  );
+});
+
+test("OAuthSession wrapper objects cannot be persisted as encrypted token material", async () => {
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || "atproto-oauth-restore-test-secret";
+  process.env.NODE_ENV = "test";
+  process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@127.0.0.1:5432/wtf_test";
+  const { encryptedSessionFields } = await import("./oauth");
+
+  const sdkWrapperShape = {
+    did: "did:plc:wrapper",
+    sub: "did:plc:wrapper",
+    getTokenInfo: async () => ({
+      sub: "did:plc:wrapper",
+      scope: "atproto transition:generic transition:chat.bsky",
+      iss: "https://bsky.social",
+      aud: "https://bsky.social",
+    }),
+    getTokenSet: async () => ({
+      sub: "did:plc:wrapper",
+      access_token: "access-token",
+      refresh_token: "refresh-token",
+    }),
+  };
+
+  assert.throws(
+    () => encryptedSessionFields(sdkWrapperShape as any),
+    /Skywire's AT Protocol session needs to be reconnected/
   );
 });

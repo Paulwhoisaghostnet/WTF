@@ -1065,7 +1065,10 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
           .returning();
 
     const storedSession = takePendingOAuthSessionForDid(session.did);
-    await persistOAuthSessionForDid(session.did, storedSession ?? (session as any), {
+    if (!storedSession) {
+      throw new Error("AT Protocol OAuth callback is missing the SDK saved session");
+    }
+    await persistOAuthSessionForDid(session.did, storedSession, {
       accountId: account.id,
       userId: sessionState.userId,
       oauthScopes: grantedScope,

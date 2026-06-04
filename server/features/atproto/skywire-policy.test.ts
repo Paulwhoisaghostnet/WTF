@@ -104,7 +104,10 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /oauthChatEnabled:\s*resolvedChatEnabled/);
   assert.match(route, /resolveAtprotoOAuthGrantState/);
   assert.match(route, /oauthScopes:\s*grantedScope/);
-  assert.match(route, /persistOAuthSessionForDid\(session\.did,\s*storedSession \?\? \(session as any\),\s*\{/);
+  assert.match(route, /if \(!storedSession\)/);
+  assert.match(route, /missing the SDK saved session/);
+  assert.match(route, /persistOAuthSessionForDid\(session\.did,\s*storedSession,\s*\{/);
+  assert.doesNotMatch(route, /storedSession \?\? \(session as any\)/);
   assert.doesNotMatch(route, /if \(!req\.isAuthenticated\?\.\(\) \|\| !sessionState\?\.userId\)/);
   assert.match(route, /buildSkywireAtprotoScope/);
   assert.match(route, /normalizeSkywirePermissionTier/);
@@ -122,6 +125,10 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(oauth, /pendingOAuthSessions\.get\(key\)/);
   assert.match(oauth, /didBelongsToReservedSkywirePlatformActor/);
   assert.match(oauth, /options\.accountId == null && options\.userId == null/);
+  assert.match(oauth, /const sdkStoreWrite = options\.accountId == null && options\.userId == null/);
+  assert.match(oauth, /else if \(sdkStoreWrite\)/);
+  assert.match(oauth, /assertPersistableOAuthSession/);
+  assert.match(oauth, /oauth_session_persistence_material_missing/);
   assert.match(oauth, /takePendingOAuthSessionForDid/);
   assert.match(oauth, /iss:\s*oauthIssuerForRow\(row\)/);
   assert.match(oauth, /sub:\s*row\.did/);
