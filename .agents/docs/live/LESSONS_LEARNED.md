@@ -1,3 +1,13 @@
+## 2026-06-04 — Skywire OAuth must preserve the starting domain and visible account state
+
+**What happened**: A Skywire Chat Add-on OAuth repair used the configured public base URL for callback/error redirects and hid reserved platform actor rows from `/api/atproto/me`. On a browser with different logged-in sessions on `wtfos.app` and legacy `wtfgameshow.app`, OAuth started on `wtfos.app` could land on `wtfgameshow.app`, collide with the wrong domain's user session, and make the primary Skywire view look like its account had been cleared to `null`.
+
+**Why it mattered**: The browser origin is part of the user's active session boundary. A permission upgrade for one domain must not bounce into another domain's cookies, and account reads must not destroy visibility of the durable identity row while trying to block a bad OAuth target.
+
+**Rule**: Skywire OAuth state must carry the origin that started the flow, callback and error redirects must return to that origin instead of `PUBLIC_SITE_URL`, and callback-cookie mismatch checks may only reject when the callback origin matches the OAuth start origin. `/api/atproto/me` must return the durable linked account row; block reserved/shared actors at permission-changing OAuth boundaries, not by masking account state to `null`.
+
+---
+
 ## 2026-06-04 — Skywire Chat OAuth must bind to the user's requested account, never a shared actor
 
 **What happened**: Skywire Chat Add-on OAuth could steer users into the shared `wtfgameshow.bsky.social` Bluesky actor instead of their own linked account. The start path trusted the handle already present in `/api/atproto/me`, and the callback trusted whichever DID the OAuth provider returned before falling back to the user's latest account row. A poisoned or shared platform actor row could therefore keep the settings UI locked to the wrong handle and make Chat permission changes target the wrong identity.

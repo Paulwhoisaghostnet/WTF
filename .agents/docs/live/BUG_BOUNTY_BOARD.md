@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-206 | Verified | Codex Skywire OAuth primary-domain repair | 2026-06-04 | Skywire / AT OAuth domain and session binding | P0 | 16 | 1 | 3 | 5 | 5 | Skywire OAuth callback bounces wtfos.app users to legacy wtfgameshow.app and collides with that domain's logged-in identity |
 | WTF-BB-205 | Verified | Codex Skywire OAuth identity-binding emergency | 2026-06-04 | Skywire / AT OAuth identity binding | P0 | 16 | 1 | 3 | 5 | 5 | Skywire Chat Add-on OAuth can target the shared WTF Gameshow Bluesky actor instead of the signed-in user's linked account |
 | WTF-BB-204 | Verified | Codex Skywire market feed search-source pass | 2026-06-04 | Skywire / Market Feed source | P1 | 13 | 5 | 3 | 5 | 1 | Skywire Market Feed can show a false empty lane when searchPosts hits the non-search public AppView |
 | WTF-BB-180 | Verified | Codex WTF LIVE migration hotfix | 2026-06-04 | WTF LIVE / DB migrations | P1 | 12 | 7 | 2 | 5 | 1 | WTF LIVE user room tables declared in schema but missing production migration |
@@ -249,6 +250,35 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-206 - Skywire OAuth callback bounces wtfos.app users to legacy wtfgameshow.app and collides with that domain's logged-in identity
+
+- Category: Skywire / AT OAuth domain and session binding
+- Status: Verified
+- Owner/Session: Codex Skywire OAuth primary-domain repair
+- Score: C3 + F5 + S5 + P0(5) = 16
+- Evidence:
+  - User report on 2026-06-04: OAuth started from `wtfos.app` returns to `wtfgameshow.app/skywire`, colliding with a different logged-in account on the legacy domain and making Skywire appear to clear or replace the primary-domain account state.
+  - Code inspection found Skywire OAuth callback/error redirects build absolute URLs with `publicBaseUrl()`, which can be configured to the legacy domain rather than the request origin.
+  - Code inspection found callback session mismatch rejection compares the callback request's current logged-in user against OAuth state even when the callback arrived on a different domain than the OAuth start domain.
+  - The previous reserved-actor mitigation also hid reserved platform rows from `/api/atproto/me`, producing a null account response rather than a non-destructive mismatch/error state.
+- Correction:
+  - Persist the OAuth start origin in server-side OAuth state and redirect completion/errors back to that origin, preserving `wtfos.app` when the user started there.
+  - Use request-origin relative redirects for start-time errors and state-missing fallbacks instead of always using `PUBLIC_SITE_URL`.
+  - Only enforce callback-cookie user mismatch when the callback origin matches the OAuth start origin; cross-domain callback completion should trust the server-side OAuth `state` owner and then return to the original origin.
+  - Stop hiding linked account rows from `/api/atproto/me`; account state must stay visible and durable even when a reserved/shared actor guard blocks a permission-changing OAuth action.
+- Verification idea:
+  - Static policy tests assert origin capture, origin-preserving redirects, non-destructive `/api/atproto/me`, and cross-domain callback mismatch handling.
+  - Browser/inventory tests keep proving the shared actor cannot be used as a Chat Add-on OAuth target.
+- Verification:
+  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
+  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run build`
+  - `npm run test:e2e:inventory:coverage`
+  - `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "OAuth|Chat add-on"`
+  - `npm run test:e2e:inventory`
+- Last touched: 2026-06-04
 
 ### WTF-BB-205 - Skywire Chat Add-on OAuth can target the shared WTF Gameshow Bluesky actor instead of the signed-in user's linked account
 

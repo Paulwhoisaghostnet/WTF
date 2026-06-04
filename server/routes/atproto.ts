@@ -106,6 +106,7 @@ type AtprotoOAuthPendingState = {
   chatEnabled: boolean;
   requestedScope: string;
   requestedHandle: string;
+  origin?: string;
   startedAt: number;
 };
 
@@ -173,6 +174,57 @@ function returnPathWithQuery(returnTo: string, query: URLSearchParams): string {
   return `${parsed.pathname}${parsed.search}`;
 }
 
+function normalizedOrigin(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    if (!["http:", "https:"].includes(parsed.protocol)) return null;
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
+function allowedOAuthReturnOrigins(): Set<string> {
+  return new Set(
+    [
+      publicBaseUrl(),
+      process.env.ATPROTO_PUBLIC_BASE_URL,
+      process.env.PUBLIC_SITE_URL,
+      ...(process.env.CORS_ALLOWED_ORIGINS || "").split(","),
+      "https://wtfos.app",
+      "https://www.wtfos.app",
+      "https://wtfgameshow.app",
+      "https://www.wtfgameshow.app",
+      "http://127.0.0.1:3000",
+      "http://localhost:3000",
+    ]
+      .map((origin) => normalizedOrigin(String(origin || "").trim()))
+      .filter((origin): origin is string => Boolean(origin))
+  );
+}
+
+function requestOrigin(req: any): string {
+  const forwardedHost = String(req.headers?.["x-forwarded-host"] || "").split(",")[0]?.trim();
+  const host = forwardedHost || String(req.headers?.host || "").trim();
+  const forwardedProto = String(req.headers?.["x-forwarded-proto"] || "").split(",")[0]?.trim();
+  const localHost = host.startsWith("localhost") || host.startsWith("127.0.0.1");
+  const proto = forwardedProto || (localHost ? req.protocol || "http" : "https");
+  const origin = normalizedOrigin(host ? `${proto}://${host}` : "");
+  if (origin && allowedOAuthReturnOrigins().has(origin)) return origin;
+  return normalizedOrigin(publicBaseUrl()) || "http://127.0.0.1:3000";
+}
+
+function safeOAuthReturnOrigin(value: string | null | undefined, req: any): string {
+  const origin = normalizedOrigin(value || "");
+  if (origin && allowedOAuthReturnOrigins().has(origin)) return origin;
+  return requestOrigin(req);
+}
+
+function originUrl(origin: string, path: string): string {
+  return `${origin}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 function reservedSkywirePlatformHandles(): Set<string> {
   return new Set(
     [
@@ -195,14 +247,15 @@ function redirectAtprotoOAuthStartError(res: any, params: {
   error: string;
   returnTo: string;
   appName: AtprotoOAuthAppName;
+  origin: string;
 }) {
   if (params.popup) {
     return res
       .type("html")
-      .send(popupCompletionPage({ ok: false, error: params.error, returnTo: params.returnTo, app: params.appName }));
+      .send(popupCompletionPage({ ok: false, error: params.error, returnTo: params.returnTo, app: params.appName, origin: params.origin }));
   }
   const query = new URLSearchParams({ error: params.error });
-  return res.redirect(`${publicBaseUrl()}${returnPathWithQuery(params.returnTo, query)}`);
+  return res.redirect(originUrl(params.origin, returnPathWithQuery(params.returnTo, query)));
 }
 
 function publicBaseUrl(): string {
@@ -243,6 +296,7 @@ function popupCompletionPage(payload: {
   requestedScope?: string | null;
   grantedScope?: string | null;
   accountId?: number | null;
+  origin?: string | null;
 }): string {
   const appName = payload.app === "tz2at" ? "tz2at" : "skywire";
   const label = appName === "tz2at" ? "AT Protocol identity" : "Bluesky";
@@ -267,8 +321,8 @@ function popupCompletionPage(payload: {
   };
   const storageKey = payload.ok ? `${appName}:atproto-linked` : `${appName}:atproto-error`;
   const channelName = `${appName}:atproto-oauth`;
-  const targetOrigin = new URL(publicBaseUrl()).origin;
-  const returnUrl = `${publicBaseUrl()}${payload.returnTo}`;
+  const targetOrigin = normalizedOrigin(payload.origin || "") || new URL(publicBaseUrl()).origin;
+  const returnUrl = `${targetOrigin}${payload.returnTo}`;
   return `<!doctype html>
 <html>
   <head>
@@ -534,8 +588,7 @@ router.get("/.well-known/oauth-client-metadata.json", async (_req, res) => {
 
 router.get("/api/atproto/me", isAuthenticated, async (req, res) => {
   const user = req.user as any;
-  const linkedAccount = await linkedAccountForUser(user.id);
-  const account = linkedAccount && !isReservedSkywirePlatformHandle(linkedAccount.handle) ? linkedAccount : null;
+  const account = await linkedAccountForUser(user.id);
   const tezosIdentity = await resolveUserTezosIdentity(user.id);
   const rollout = skywireRolloutStatusForRole(user.roles ?? user.role ?? null);
   res.json({
@@ -743,6 +796,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     return res.status(400).json({ error: "Invalid AT Protocol OAuth request" });
   }
   const returnTo = safeReturnPath(parsed.data.returnTo);
+  const origin = requestOrigin(req);
   const popup = parsed.data.popup === "1";
   const appName = parsed.data.app === "tz2at" ? "tz2at" : "skywire";
   if (appName === "skywire" && !userEligibleForSkywireRollout((req.user as any).roles ?? (req.user as any).role)) {
@@ -757,7 +811,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
       : buildSkywireAtprotoScope(tier, chatEnabled);
   const handle = normalizeRegistrationHandle(parsed.data.handle, registrationHandleSuffix());
   if (!isValidAtHandle(handle)) {
-    return redirectAtprotoOAuthStartError(res, { popup, error: "atproto_handle", returnTo, appName });
+    return redirectAtprotoOAuthStartError(res, { popup, error: "atproto_handle", returnTo, appName, origin });
   }
   if (appName === "skywire" && isReservedSkywirePlatformHandle(handle)) {
     return redirectAtprotoOAuthStartError(res, {
@@ -765,6 +819,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
       error: "atproto_platform_account_reserved",
       returnTo,
       appName,
+      origin,
     });
   }
   if (appName === "skywire" && chatEnabled) {
@@ -775,6 +830,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
         error: "atproto_chat_account_required",
         returnTo,
         appName,
+        origin,
       });
     }
     if (normalizeAtHandle(existingAccount.handle) !== handle) {
@@ -783,6 +839,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
         error: "atproto_chat_account_mismatch",
         returnTo,
         appName,
+        origin,
       });
     }
   }
@@ -798,6 +855,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     chatEnabled,
     requestedScope,
     requestedHandle: handle,
+    origin,
     startedAt: Date.now(),
   };
   (req.session as any).atprotoOAuth = oauthState;
@@ -844,9 +902,10 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     if (popup) {
       return res
         .type("html")
-        .send(popupCompletionPage({ ok: false, error: "atproto_oauth_start", returnTo, app: appName }));
+        .send(popupCompletionPage({ ok: false, error: "atproto_oauth_start", returnTo, app: appName, origin }));
     }
-    res.redirect(`${publicBaseUrl()}${returnTo}?error=atproto_oauth_start`);
+    const query = new URLSearchParams({ error: "atproto_oauth_start" });
+    res.redirect(originUrl(origin, returnPathWithQuery(returnTo, query)));
   }
 });
 
@@ -855,11 +914,13 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
   const callbackState = params.get("state");
   const sessionState = atprotoOAuthStateForCallback(req, callbackState);
   if (!sessionState?.userId) {
-    return res.redirect(`${publicBaseUrl()}/skywire?error=atproto_session`);
+    return res.redirect(originUrl(requestOrigin(req), "/skywire?error=atproto_session"));
   }
   const returnTo = safeReturnPath(sessionState.returnTo);
   const popup = sessionState.popup === true;
   const appName = sessionState.appName === "tz2at" ? "tz2at" : "skywire";
+  const callbackOrigin = requestOrigin(req);
+  const returnOrigin = safeOAuthReturnOrigin(sessionState.origin, req);
   const redirectWith = (query: string) => {
     const parsed = new URLSearchParams(query);
     if (popup) {
@@ -878,13 +939,14 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
             requestedScope: sessionState.requestedScope ?? null,
             grantedScope: parsed.get("grantedScope"),
             accountId: parsed.get("accountId") ? Number(parsed.get("accountId")) : null,
+            origin: returnOrigin,
           })
         );
     }
-    return res.redirect(`${publicBaseUrl()}${returnPathWithQuery(returnTo, parsed)}`);
+    return res.redirect(originUrl(returnOrigin, returnPathWithQuery(returnTo, parsed)));
   };
   const authenticatedUserId = req.isAuthenticated?.() ? Number((req.user as any)?.id) : null;
-  if (authenticatedUserId && authenticatedUserId !== Number(sessionState.userId)) {
+  if (authenticatedUserId && authenticatedUserId !== Number(sessionState.userId) && callbackOrigin === returnOrigin) {
     return redirectWith("error=atproto_session");
   }
   try {

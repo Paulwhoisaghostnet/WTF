@@ -235,9 +235,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"OAuth|Chat add-on\"",
     userVisibleAssertion:
-      "When a user enables the Skywire Chat Add-on through OAuth, Skywire uses the current browser window, returns to the account/settings tab, and reflects the granted durable chat permission there instead of creating a second upgraded Skywire window.",
+      "When a user enables the Skywire Chat Add-on through OAuth, Skywire uses the current browser window, returns to the account/settings tab on the same domain that started OAuth, and reflects the granted durable chat permission there instead of creating a second upgraded Skywire window.",
     durableSideEffectAssertion:
-      "The callback recovers the app-owned OAuth state, refuses reserved shared platform actor handles, refuses chat upgrades when the returned handle/DID does not match the user's already-linked account, writes requested tier/scope, granted scope, chat add-on state, encrypted token material, and user+DID account identity to the canonical account row, appends callback params to `/skywire?tab=account`, and popup/local metadata cannot mark chat enabled unless canonical `/api/atproto/me` also has durable chat permission.",
+      "The callback recovers the app-owned OAuth state including the start origin, refuses reserved shared platform actor handles, refuses chat upgrades when the returned handle/DID does not match the user's already-linked account, writes requested tier/scope, granted scope, chat add-on state, encrypted token material, and user+DID account identity to the canonical account row, appends callback params to `/skywire?tab=account` on the initiating domain, `/api/atproto/me` returns the durable account row without masking it to null, and popup/local metadata cannot mark chat enabled unless canonical `/api/atproto/me` also has durable chat permission.",
   },
   {
     id: "wtf-live.owner-room-lifecycle-controls",
