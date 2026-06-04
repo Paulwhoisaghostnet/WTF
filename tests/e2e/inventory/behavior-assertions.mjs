@@ -228,6 +228,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The inventory harness accepts the delete confirmation, clears the owned-room fixture through the WTF LIVE room DELETE API, and the UI removes every matching room card.",
   },
   {
+    id: "wtf-live.public-room-realtime-media-chat",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    userVisibleAssertion:
+      "Two WTF LIVE public-room guests see each other as room peers; when one guest turns on camera media, the other guest receives a remote video stream and active media state.",
+    durableSideEffectAssertion:
+      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, media-state events, and room chat, then verifies a text message plus GIF attachment reaches the second guest.",
+  },
+  {
     id: "w.groupchat-readonly-config-source",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["w"],

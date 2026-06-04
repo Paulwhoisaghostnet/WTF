@@ -1,3 +1,13 @@
+## 2026-06-04 — WTF LIVE media controls must prove remote tracks, not local preview
+
+**What happened**: WTF LIVE guest rooms exposed Mic, Camera, Screen, and media capability labels, but the public room client only rendered local previews. There was no public room signaling socket, no WebRTC peer connection, no remote stream rendering, and no room-scoped chat/media lane, so two guests in the same room could not hear or see each other.
+
+**Why it mattered**: A live room is useless if media never leaves the local browser. The first focused harness run also showed two easy false positives: stale `dist/public` assets can make Playwright test the old UI, and a visible remote `<video>` shell does not prove `srcObject` contains a remote track.
+
+**Rule**: WTF LIVE media work must include a room-scoped realtime transport plus a two-browser-context Playwright proof that participant B receives participant A's actual `MediaStream` track and chat/media attachment. Avoid empty no-media negotiations; bind video elements to a stream track signature so mutated `MediaStream` objects still attach after tracks arrive.
+
+---
+
 ## 2026-06-04 — WTF LIVE owner controls must follow ownership, not list context
 
 **What happened**: Owned public rooms could render in the "Open public rooms" directory with `owned=false`, so the visible room card showed join/share actions but not the owner-only Close/Delete controls.

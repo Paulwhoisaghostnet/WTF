@@ -6,8 +6,10 @@
 // scenario ("normal", "rate-limited", "cold") and then hits the page.
 
 import express from "express";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { WebSocket, WebSocketServer } from "ws";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, "../../dist/public");
@@ -759,7 +761,7 @@ function apiMock(req, res) {
         camera: true,
         screen: true,
         media: true,
-        transport: "browser_preview_until_room_transport_enabled",
+        transport: "webrtc_mesh_via_wtf_live_signaling",
       },
     });
   }
@@ -2975,8 +2977,149 @@ const server = app.listen(PORT, () => {
   console.log(`[harness] listening on http://127.0.0.1:${PORT} (dist: ${DIST_DIR})`);
 });
 
+const livePeers = new Map();
+const liveWss = new WebSocketServer({ server, path: "/ws/wtf-live" });
+
+function liveSend(ws, payload) {
+  if (ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify(payload));
+}
+
+function liveBroadcast(roomId, payload, excludeWs = null) {
+  for (const [ws, client] of livePeers) {
+    if (ws === excludeWs || client.roomId !== roomId || ws.readyState !== WebSocket.OPEN) continue;
+    liveSend(ws, payload);
+  }
+}
+
+function liveSnapshot(roomId, excludeWs) {
+  return [...livePeers]
+    .filter(([ws, client]) => ws !== excludeWs && client.roomId === roomId)
+    .map(([_ws, client]) => ({
+      peerId: client.peerId,
+      guestName: client.guestName,
+      mediaState: client.mediaState,
+    }));
+}
+
+function liveNormalizeMediaState(value) {
+  const state = value && typeof value === "object" ? value : {};
+  return {
+    mic: Boolean(state.mic),
+    camera: Boolean(state.camera),
+    screen: Boolean(state.screen),
+  };
+}
+
+liveWss.on("connection", (ws) => {
+  const client = {
+    ws,
+    peerId: `peer_${randomUUID().replace(/-/g, "").slice(0, 18)}`,
+    roomId: null,
+    guestName: "guest",
+    mediaState: { mic: false, camera: false, screen: false },
+  };
+  livePeers.set(ws, client);
+  liveSend(ws, { type: "wtf_live_connected", peerId: client.peerId });
+
+  ws.on("message", (raw) => {
+    let message;
+    try {
+      message = JSON.parse(String(raw));
+    } catch {
+      liveSend(ws, { type: "error", message: "Invalid message" });
+      return;
+    }
+
+    if (message.type === "wtf_live_join_room") {
+      const roomId = String(message.roomId || "wtf-live").trim() || "wtf-live";
+      client.roomId = roomId;
+      client.guestName = String(message.guestName || "guest").trim() || "guest";
+      client.mediaState = liveNormalizeMediaState(message.mediaState);
+      liveSend(ws, {
+        type: "wtf_live_room_snapshot",
+        roomId,
+        peerId: client.peerId,
+        peers: liveSnapshot(roomId, ws),
+      });
+      liveBroadcast(
+        roomId,
+        {
+          type: "wtf_live_peer_joined",
+          roomId,
+          peer: {
+            peerId: client.peerId,
+            guestName: client.guestName,
+            mediaState: client.mediaState,
+          },
+        },
+        ws,
+      );
+      return;
+    }
+
+    if (message.type === "wtf_live_media_state" && client.roomId) {
+      client.mediaState = liveNormalizeMediaState(message.mediaState);
+      liveBroadcast(client.roomId, {
+        type: "wtf_live_media_state",
+        roomId: client.roomId,
+        peerId: client.peerId,
+        guestName: client.guestName,
+        mediaState: client.mediaState,
+      });
+      return;
+    }
+
+    if (message.type === "wtf_live_signal" && client.roomId) {
+      const targetPeerId = String(message.toPeerId || "");
+      const target = [...livePeers].find(([_targetWs, targetClient]) =>
+        targetClient.roomId === client.roomId && targetClient.peerId === targetPeerId
+      );
+      if (!target) return;
+      liveSend(target[0], {
+        type: "wtf_live_signal",
+        roomId: client.roomId,
+        fromPeerId: client.peerId,
+        signal: message.signal,
+      });
+      return;
+    }
+
+    if (message.type === "wtf_live_chat_message" && client.roomId) {
+      const text = String(message.text || "").trim().slice(0, 1200);
+      const attachments = Array.isArray(message.attachments) ? message.attachments.slice(0, 4) : [];
+      liveBroadcast(client.roomId, {
+        type: "wtf_live_chat_message",
+        roomId: client.roomId,
+        message: {
+          id: `live_${Date.now()}_${randomUUID().replace(/-/g, "").slice(0, 8)}`,
+          peerId: client.peerId,
+          guestName: client.guestName,
+          text,
+          attachments,
+          createdAt: new Date().toISOString(),
+        },
+      });
+    }
+  });
+
+  ws.on("close", () => {
+    const roomId = client.roomId;
+    livePeers.delete(ws);
+    if (!roomId) return;
+    liveBroadcast(roomId, {
+      type: "wtf_live_peer_left",
+      roomId,
+      peerId: client.peerId,
+      guestName: client.guestName,
+    });
+  });
+});
+
 const shutdown = () => {
-  server.close(() => process.exit(0));
+  liveWss.close(() => {
+    server.close(() => process.exit(0));
+  });
 };
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);

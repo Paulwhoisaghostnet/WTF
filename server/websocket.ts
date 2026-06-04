@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server } from "http";
 import type { IncomingMessage } from "http";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "crypto";
 import { eq } from "drizzle-orm";
 import { pool, db } from "./db";
 import { boardThreads, studioFiles } from "@shared/schema";
@@ -16,8 +16,21 @@ import {
 } from "./lib/board-channel-permissions";
 import { resolveStudioAccess } from "./lib/studio/access";
 import { getSessionSecret } from "./auth/session-secret";
+import { getPublicWtfLiveRoom } from "./features/wtf-live/registry";
 
 const MAX_CHAT_CONTENT_LENGTH = 10_000;
+const MAX_WTF_LIVE_CHAT_TEXT_LENGTH = 1_200;
+const MAX_WTF_LIVE_CHAT_ATTACHMENTS = 4;
+const MAX_WTF_LIVE_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+const MAX_WTF_LIVE_ATTACHMENT_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_ATTACHMENT_BYTES * 1.4);
+const MAX_WTF_LIVE_SIGNAL_LENGTH = 256 * 1024;
+const WTF_LIVE_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "video/mp4"]);
+
+type WtfLiveMediaState = {
+  mic: boolean;
+  camera: boolean;
+  screen: boolean;
+};
 
 interface WsClient {
   ws: WebSocket;
@@ -27,6 +40,11 @@ interface WsClient {
   studioFileId?: number;
   username: string;
   role: UserRole;
+  publicSocket?: "wtf-live";
+  wtfLiveRoomId?: string;
+  wtfLivePeerId?: string;
+  wtfLiveGuestName?: string;
+  wtfLiveMediaState?: WtfLiveMediaState;
 }
 
 const clients = new Set<WsClient>();
@@ -166,17 +184,88 @@ interface HeartbeatSocket extends WebSocket {
   isAlive?: boolean;
 }
 
+function pathnameForRequest(req: IncomingMessage): string {
+  try {
+    return new URL(req.url || "/", "http://localhost").pathname;
+  } catch {
+    return "";
+  }
+}
+
+function installHeartbeat(ws: WebSocket) {
+  const heartbeatWs = ws as HeartbeatSocket;
+  heartbeatWs.isAlive = true;
+  ws.on("pong", () => {
+    heartbeatWs.isAlive = true;
+  });
+}
+
+function sendJson(ws: WebSocket, payload: Record<string, unknown>) {
+  if (ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify(payload));
+}
+
+function normalizeWtfLiveRoomId(value: unknown): string | null {
+  const roomId = String(value || "").trim();
+  if (!/^[a-z0-9][a-z0-9._-]{0,79}$/i.test(roomId)) return null;
+  return roomId;
+}
+
+function normalizeWtfLiveGuestName(value: unknown): string {
+  return String(value || "guest")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 48) || "guest";
+}
+
+function normalizeWtfLiveMediaState(value: unknown): WtfLiveMediaState {
+  const state = typeof value === "object" && value ? value as Record<string, unknown> : {};
+  return {
+    mic: Boolean(state.mic),
+    camera: Boolean(state.camera),
+    screen: Boolean(state.screen),
+  };
+}
+
+function normalizeWtfLiveChatAttachments(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, MAX_WTF_LIVE_CHAT_ATTACHMENTS).flatMap((attachment) => {
+    const item = typeof attachment === "object" && attachment ? attachment as Record<string, unknown> : null;
+    if (!item) return [];
+    const mimeType = String(item.mimeType || "");
+    const dataUrl = String(item.dataUrl || "");
+    if (!WTF_LIVE_MEDIA_TYPES.has(mimeType)) return [];
+    if (!dataUrl.startsWith(`data:${mimeType};base64,`)) return [];
+    if (dataUrl.length > MAX_WTF_LIVE_ATTACHMENT_DATA_URL_LENGTH) return [];
+    const sizeBytes = Number(item.sizeBytes);
+    if (Number.isFinite(sizeBytes) && sizeBytes > MAX_WTF_LIVE_ATTACHMENT_BYTES) return [];
+    return [{
+      id: String(item.id || `att_${randomUUID()}`).slice(0, 80),
+      name: String(item.name || "media").replace(/[^\w.\- ()]/g, "").slice(0, 120) || "media",
+      mimeType,
+      sizeBytes: Number.isFinite(sizeBytes) && sizeBytes >= 0 ? Math.min(sizeBytes, MAX_WTF_LIVE_ATTACHMENT_BYTES) : 0,
+      kind: mimeType.startsWith("video/") ? "video" : "image",
+      dataUrl,
+    }];
+  });
+}
+
+function snapshotWtfLivePeers(roomId: string, exclude?: WsClient) {
+  return [...clients]
+    .filter((client) => client.wtfLiveRoomId === roomId && client !== exclude && client.wtfLivePeerId)
+    .map((client) => ({
+      peerId: client.wtfLivePeerId,
+      guestName: client.wtfLiveGuestName || client.username || "guest",
+      mediaState: client.wtfLiveMediaState || { mic: false, camera: false, screen: false },
+    }));
+}
+
 export function setupWebSocket(server: Server) {
   const wss = new WebSocketServer({ noServer: true });
 
   server.on("upgrade", (req, socket, head) => {
-    let pathname = "";
-    try {
-      pathname = new URL(req.url || "/", "http://localhost").pathname;
-    } catch {
-      pathname = "";
-    }
-    if (pathname !== "/ws") return;
+    const pathname = pathnameForRequest(req);
+    if (pathname !== "/ws" && pathname !== "/ws/wtf-live") return;
 
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit("connection", ws, req);
@@ -184,6 +273,36 @@ export function setupWebSocket(server: Server) {
   });
 
   wss.on("connection", async (ws: WebSocket, req: IncomingMessage) => {
+    const pathname = pathnameForRequest(req);
+    if (pathname === "/ws/wtf-live") {
+      const client: WsClient = {
+        ws,
+        userId: 0,
+        username: "guest",
+        role: "public",
+        publicSocket: "wtf-live",
+        wtfLivePeerId: `peer_${randomUUID().replace(/-/g, "").slice(0, 18)}`,
+        wtfLiveGuestName: "guest",
+        wtfLiveMediaState: { mic: false, camera: false, screen: false },
+      };
+      clients.add(client);
+      installHeartbeat(ws);
+
+      ws.on("message", (raw) => {
+        void (async () => {
+          try {
+            const msg = JSON.parse(raw.toString()) as Record<string, unknown>;
+            await handleMessage(client, msg);
+          } catch {
+            sendJson(ws, { type: "error", message: "Invalid message" });
+          }
+        })();
+      });
+      ws.on("close", () => cleanupClient(client));
+      sendJson(ws, { type: "wtf_live_connected", peerId: client.wtfLivePeerId });
+      return;
+    }
+
     const auth = await resolveSessionUser(req);
     if (!auth) {
       ws.send(JSON.stringify({ type: "error", message: "Unauthorized websocket session" }));
@@ -191,11 +310,7 @@ export function setupWebSocket(server: Server) {
       return;
     }
 
-    const heartbeatWs = ws as HeartbeatSocket;
-    heartbeatWs.isAlive = true;
-    ws.on("pong", () => {
-      heartbeatWs.isAlive = true;
-    });
+    installHeartbeat(ws);
 
     const client: WsClient = {
       ws,
@@ -216,28 +331,7 @@ export function setupWebSocket(server: Server) {
       })();
     });
 
-    ws.on("close", () => {
-      clients.delete(client);
-      if (client.channelId) {
-        broadcastToChannel(client.channelId, {
-          type: "user_left",
-          userId: client.userId,
-          username: client.username,
-        });
-      }
-      if (client.studioProjectId) {
-        broadcastToStudioProject(
-          client.studioProjectId,
-          {
-            type: "studio_presence_left",
-            projectId: client.studioProjectId,
-            userId: client.userId,
-            username: client.username,
-          },
-          client
-        );
-      }
-    });
+    ws.on("close", () => cleanupClient(client));
 
     ws.send(
       JSON.stringify({
@@ -271,6 +365,115 @@ export function setupWebSocket(server: Server) {
 
 async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
   switch (msg.type) {
+    case "wtf_live_join_room": {
+      if (client.publicSocket !== "wtf-live") {
+        sendJson(client.ws, { type: "error", message: "Use the public WTF LIVE room socket." });
+        return;
+      }
+      const roomId = normalizeWtfLiveRoomId(msg.roomId);
+      if (!roomId) {
+        sendJson(client.ws, { type: "error", message: "Invalid WTF LIVE room id" });
+        return;
+      }
+      const room = await getPublicWtfLiveRoom(roomId);
+      if (!room) {
+        sendJson(client.ws, { type: "error", message: "WTF LIVE room is not open" });
+        return;
+      }
+      if (client.wtfLiveRoomId && client.wtfLiveRoomId !== roomId) {
+        leaveWtfLiveRoom(client);
+      }
+      const guestName = normalizeWtfLiveGuestName(msg.guestName);
+      client.username = guestName;
+      client.wtfLiveGuestName = guestName;
+      client.wtfLiveRoomId = roomId;
+      client.wtfLiveMediaState = normalizeWtfLiveMediaState(msg.mediaState);
+
+      sendJson(client.ws, {
+        type: "wtf_live_room_snapshot",
+        roomId,
+        peerId: client.wtfLivePeerId,
+        peers: snapshotWtfLivePeers(roomId, client),
+      });
+      broadcastToWtfLiveRoom(
+        roomId,
+        {
+          type: "wtf_live_peer_joined",
+          roomId,
+          peer: {
+            peerId: client.wtfLivePeerId,
+            guestName,
+            mediaState: client.wtfLiveMediaState,
+          },
+        },
+        client
+      );
+      break;
+    }
+
+    case "wtf_live_leave_room": {
+      leaveWtfLiveRoom(client);
+      break;
+    }
+
+    case "wtf_live_media_state": {
+      if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
+      client.wtfLiveMediaState = normalizeWtfLiveMediaState(msg.mediaState);
+      broadcastToWtfLiveRoom(client.wtfLiveRoomId, {
+        type: "wtf_live_media_state",
+        roomId: client.wtfLiveRoomId,
+        peerId: client.wtfLivePeerId,
+        guestName: client.wtfLiveGuestName || client.username,
+        mediaState: client.wtfLiveMediaState,
+      });
+      break;
+    }
+
+    case "wtf_live_signal": {
+      if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
+      const toPeerId = String(msg.toPeerId || "").trim();
+      const signal = typeof msg.signal === "object" && msg.signal ? msg.signal as Record<string, unknown> : null;
+      if (!/^peer_[a-f0-9]{18}$/i.test(toPeerId) || !signal) return;
+      const encoded = JSON.stringify(signal);
+      if (encoded.length > MAX_WTF_LIVE_SIGNAL_LENGTH) return;
+      const target = [...clients].find((candidate) =>
+        candidate.wtfLiveRoomId === client.wtfLiveRoomId &&
+        candidate.wtfLivePeerId === toPeerId &&
+        candidate.ws.readyState === WebSocket.OPEN
+      );
+      if (!target) return;
+      sendJson(target.ws, {
+        type: "wtf_live_signal",
+        roomId: client.wtfLiveRoomId,
+        fromPeerId: client.wtfLivePeerId,
+        signal,
+      });
+      break;
+    }
+
+    case "wtf_live_chat_message": {
+      if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
+      const text = String(msg.text || "").trim().slice(0, MAX_WTF_LIVE_CHAT_TEXT_LENGTH);
+      const attachments = normalizeWtfLiveChatAttachments(msg.attachments);
+      if (!text && attachments.length === 0) {
+        sendJson(client.ws, { type: "error", message: "Message text or media is required" });
+        return;
+      }
+      broadcastToWtfLiveRoom(client.wtfLiveRoomId, {
+        type: "wtf_live_chat_message",
+        roomId: client.wtfLiveRoomId,
+        message: {
+          id: `live_${Date.now()}_${randomUUID().replace(/-/g, "").slice(0, 10)}`,
+          peerId: client.wtfLivePeerId,
+          guestName: client.wtfLiveGuestName || client.username || "guest",
+          text,
+          attachments,
+          createdAt: new Date().toISOString(),
+        },
+      });
+      break;
+    }
+
     case "join_channel": {
       const channelId = Number(msg.channelId);
       if (!Number.isInteger(channelId) || channelId <= 0) {
@@ -576,6 +779,68 @@ function broadcastToChannel(
     ) {
       c.ws.send(payload);
     }
+  }
+}
+
+function broadcastToWtfLiveRoom(
+  roomId: string,
+  message: Record<string, unknown>,
+  exclude?: WsClient
+) {
+  const payload = JSON.stringify(message);
+  for (const c of clients) {
+    if (
+      c.wtfLiveRoomId === roomId &&
+      c !== exclude &&
+      c.ws.readyState === WebSocket.OPEN
+    ) {
+      c.ws.send(payload);
+    }
+  }
+}
+
+function leaveWtfLiveRoom(client: WsClient) {
+  if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
+  const roomId = client.wtfLiveRoomId;
+  const peerId = client.wtfLivePeerId;
+  const guestName = client.wtfLiveGuestName || client.username || "guest";
+  client.wtfLiveRoomId = undefined;
+  client.wtfLiveMediaState = { mic: false, camera: false, screen: false };
+  broadcastToWtfLiveRoom(
+    roomId,
+    {
+      type: "wtf_live_peer_left",
+      roomId,
+      peerId,
+      guestName,
+    },
+    client
+  );
+}
+
+function cleanupClient(client: WsClient) {
+  clients.delete(client);
+  if (client.channelId) {
+    broadcastToChannel(client.channelId, {
+      type: "user_left",
+      userId: client.userId,
+      username: client.username,
+    });
+  }
+  if (client.studioProjectId) {
+    broadcastToStudioProject(
+      client.studioProjectId,
+      {
+        type: "studio_presence_left",
+        projectId: client.studioProjectId,
+        userId: client.userId,
+        username: client.username,
+      },
+      client
+    );
+  }
+  if (client.wtfLiveRoomId) {
+    leaveWtfLiveRoom(client);
   }
 }
 

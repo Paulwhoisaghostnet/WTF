@@ -296,7 +296,7 @@ router.get("/api/wtf-live/public/rooms/:roomId", async (req, res) => {
       camera: true,
       screen: true,
       media: true,
-      transport: "browser_preview_until_room_transport_enabled",
+      transport: "webrtc_mesh_via_wtf_live_signaling",
     },
   });
 });

@@ -51,6 +51,7 @@ Priority labels:
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-180 | Verified | Codex WTF LIVE migration hotfix | 2026-06-04 | WTF LIVE / DB migrations | P1 | 12 | 7 | 2 | 5 | 1 | WTF LIVE user room tables declared in schema but missing production migration |
+| WTF-BB-199 | Verified | Codex WTF LIVE realtime media/chat pass | 2026-06-04 | WTF LIVE / realtime room transport | P0 | 15 | 2 | 4 | 5 | 1 | WTF LIVE guest room media controls are local-only and do not connect participants |
 | WTF-BB-179 | Verified | Codex Rat Race Objkt pk hydration pass | 2026-05-28 | Rat Race / Objkt hydration | P1 | 12 | 7 | 3 | 5 | 0 | Objkt replay collect records use token pk and fail FA2 token hydration |
 | WTF-BB-178 | Verified | Codex Rat Race replay-window pass | 2026-05-28 | Rat Race / replay ingestion | P1 | 11 | 8 | 2 | 5 | 0 | Multi-day hot filters silently scan only one day of tz2at replay |
 | WTF-BB-148 | Verified | Codex TTC calendar full-send | 2026-05-24 | Browser security / CSP | P1 | 11 | 9 | 2 | 4 | 1 | TTC submit iframe blocked by production CSP frame-src |
@@ -259,6 +260,26 @@ Priority labels:
   - Clean-commit checks passed: `npm run security:deploy-migrations`, focused WTF LIVE route/capability tests, `npm run test:e2e:inventory:coverage`, `npm run check`, and `npm run build`.
   - Hetzner deploy run applied `0097_wtf_live_rooms.sql` and passed health on 2026-06-04.
   - Production smoke: `https://wtfgameshow.app/api/health` reported commit `49b71b8`; `GET /api/wtf-live/public/rooms/dickfart` returned `404 {"error":"Room not found"}` instead of a 5xx, proving the DB-backed room lookup can query the new table.
+
+### WTF-BB-199 - WTF LIVE guest room media controls are local-only and do not connect participants
+
+- Category: WTF LIVE / realtime room transport
+- Status: Verified
+- Owner/Session: Codex WTF LIVE realtime media/chat pass
+- Score: C4 + F5 + S1 + P0(5) = 15
+- Evidence:
+  - User report on 2026-06-04: two users can join a WTF LIVE room and enable camera, screen, or mic, but neither user receives the other user's audio/video/screen.
+  - Code inspection found `client/src/features/wtf-live/WtfLivePublicRoom.tsx` only calls `getUserMedia` / `getDisplayMedia` and renders local preview tiles; no WebRTC peer connection, signaling socket, remote stream rendering, or live room chat send path exists.
+  - `server/routes/wtf-live.ts` advertises `audio`, `camera`, `screen`, and `media` capabilities while returning `transport: "browser_preview_until_room_transport_enabled"`, and `server/websocket.ts` only handles authenticated board/studio sockets.
+- Correction:
+  - Added public `/ws/wtf-live` handling for room presence, WebRTC signaling, media-state relay, room-scoped live chat, and bounded PNG/JPG/GIF/MP4 data URL attachments.
+  - Updated the public room client to join the room socket, maintain room peers, negotiate a WebRTC mesh for mic/camera/screen tracks, render remote streams, and send/receive chat media without exposing the signed-in WTF OS app shell to guests.
+  - Updated the inventory harness with an in-memory WTF LIVE signaling relay and added a two-browser-context behavior spec for Alice/Bob remote media plus GIF chat attachment delivery.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed focused `npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "public room guests"`.
+  - Passed full `npm run test:e2e:inventory` with 281/281 tests, including the new two-user WTF LIVE media/chat behavior assertion.
 
 ### WTF-BB-198 - Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links
 
