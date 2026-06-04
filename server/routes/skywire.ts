@@ -46,6 +46,7 @@ import { requireSkywireRollout, requireWtfLiveRollout, skywireRolloutStatusForRo
 import { getSessionSecret } from "../auth/session-secret";
 import { serveStoredMediaFile } from "../lib/storage/media-file-serve";
 import { fetchSafeHttp } from "../lib/outbound-url";
+import { resolveCanonicalPublicOrigin } from "../lib/canonical-domain";
 
 const router = Router();
 const SKYWIRE_CHAT_MEDIA_MAX_ATTACHMENTS = 4;
@@ -480,11 +481,7 @@ function skywireChatAgent(agent: Awaited<ReturnType<typeof getAtprotoAgentForDid
 }
 
 function skywirePublicBaseUrl(req: Request): string {
-  return (
-    process.env.ATPROTO_PUBLIC_BASE_URL ||
-    process.env.PUBLIC_SITE_URL ||
-    `${req.protocol}://${req.get("host")}`
-  ).replace(/\/$/, "");
+  return resolveCanonicalPublicOrigin(process.env, `${req.protocol}://${req.get("host")}`);
 }
 
 function safeTimingEqual(a: string, b: string): boolean {

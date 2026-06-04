@@ -5,12 +5,23 @@ const caddyfile = readFileSync(new URL("../Caddyfile", import.meta.url), "utf8")
 
 assert.match(
   caddyfile,
-  /www\.wtfos\.app\s*\{\s*redir https:\/\/wtfos\.app\{uri\} permanent\s*\}/s,
-  "Caddyfile must redirect www.wtfos.app to the canonical wtfos.app origin",
+  /www\.wtfos\.app,\s*wtfgameshow\.app,\s*www\.wtfgameshow\.app,\s*new\.wtfgameshow\.app\s*\{\s*redir https:\/\/wtfos\.app\{uri\} permanent\s*\}/s,
+  "Caddyfile must redirect canonical www and legacy platform aliases to the canonical wtfos.app origin",
 );
 
 assert.match(
   caddyfile,
-  /wtfos\.app,\s*wtfgameshow\.app,\s*new\.wtfgameshow\.app,\s*dues\.wtfgameshow\.app\s*\{/,
-  "Caddyfile must serve the canonical wtfos.app host alongside the legacy wtfgameshow aliases",
+  /wtfos\.app,\s*dues\.wtfgameshow\.app\s*\{/,
+  "Caddyfile must serve the canonical wtfos.app host without the legacy wtfgameshow platform aliases",
 );
+
+const servedBlockHeaders = [...caddyfile.matchAll(/^([^{\n]+)\{\s*\n\s*encode/gm)].map((match) =>
+  match[1].trim()
+);
+for (const header of servedBlockHeaders) {
+  assert.doesNotMatch(
+    header,
+    /(^|,\s*)(wtfgameshow\.app|www\.wtfgameshow\.app|new\.wtfgameshow\.app)(\s*,|$)/,
+    "wtfgameshow.app must not be served as a peer platform frontend",
+  );
+}

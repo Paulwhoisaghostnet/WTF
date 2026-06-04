@@ -30,6 +30,20 @@ export function defaultPublicSiteHost(): string {
 }
 
 export function resolvePublicSiteOrigin(envPublicSiteUrl?: string | null): string {
-  const configured = String(envPublicSiteUrl || "").trim().replace(/\/+$/, "");
-  return configured || WTFOS_PLATFORM_ORIGIN;
+  const configured = String(envPublicSiteUrl || "").trim();
+  if (!configured) return WTFOS_PLATFORM_ORIGIN;
+  try {
+    const parsed = new URL(configured);
+    if (
+      parsed.hostname.toLowerCase() === WTFOS_GAMESHOW_DOMAIN ||
+      parsed.hostname.toLowerCase() === `www.${WTFOS_GAMESHOW_DOMAIN}` ||
+      parsed.hostname.toLowerCase() === `new.${WTFOS_GAMESHOW_DOMAIN}` ||
+      parsed.hostname.toLowerCase() === `www.${WTFOS_PLATFORM_DOMAIN}`
+    ) {
+      return WTFOS_PLATFORM_ORIGIN;
+    }
+    return parsed.origin;
+  } catch {
+    return WTFOS_PLATFORM_ORIGIN;
+  }
 }

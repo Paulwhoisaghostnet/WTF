@@ -235,9 +235,21 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"OAuth|Chat add-on\"",
     userVisibleAssertion:
-      "When a user enables the Skywire Chat Add-on through OAuth, Skywire uses the current browser window, returns to the account/settings tab on the same domain that started OAuth, and reflects the granted durable chat permission there instead of creating a second upgraded Skywire window.",
+      "When a user enables the Skywire Chat Add-on through OAuth, Skywire uses the current browser window, returns to the account/settings tab on canonical wtfos.app, and reflects the granted durable chat permission there instead of creating a second upgraded Skywire window.",
     durableSideEffectAssertion:
-      "The callback recovers the app-owned OAuth state including the start origin, refuses reserved shared platform actor handles, refuses chat upgrades when the returned handle/DID does not match the user's already-linked account, writes requested tier/scope, granted scope, chat add-on state, encrypted token material, and user+DID account identity to the canonical account row, appends callback params to `/skywire?tab=account` on the initiating domain, `/api/atproto/me` returns the durable account row without masking it to null, and popup/local metadata cannot mark chat enabled unless canonical `/api/atproto/me` also has durable chat permission.",
+      "The callback recovers the app-owned OAuth state including the start origin, refuses reserved shared platform actor handles, refuses chat upgrades when the returned handle/DID does not match the user's already-linked account, writes requested tier/scope, granted scope, chat add-on state, encrypted token material, and user+DID account identity to the canonical account row, appends callback params to `/skywire?tab=account` on canonical wtfos.app, `/api/atproto/me` returns the durable account row without masking it to null, and popup/local metadata cannot mark chat enabled unless canonical `/api/atproto/me` also has durable chat permission.",
+  },
+  {
+    id: "skywire.oauth-canonical-domain-alias",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["skywire"],
+    ownerSpec: "server/lib/canonical-domain.test.ts, scripts/caddy-domain-policy.test.mjs, server/features/atproto/skywire-policy.test.ts",
+    verificationCommand:
+      "npx tsx --test server/lib/canonical-domain.test.ts server/features/atproto/skywire-policy.test.ts && node scripts/caddy-domain-policy.test.mjs",
+    userVisibleAssertion:
+      "Legacy WTF Gameshow platform hosts redirect to canonical wtfos.app with path and query preserved before Skywire or OAuth can load a separate app session.",
+    durableSideEffectAssertion:
+      "ATProto OAuth client metadata, client id URLs, callback URIs, and Skywire hard public URLs canonicalize legacy wtfgameshow.app env values to https://wtfos.app so the OAuth grant persists against the primary logged-in user session.",
   },
   {
     id: "wtf-live.owner-room-lifecycle-controls",

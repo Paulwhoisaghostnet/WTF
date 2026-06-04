@@ -16,6 +16,7 @@ import {
 } from "./lib/cors-origins";
 import { csrfProtection } from "./lib/csrf";
 import { createAdminMutationAuditMiddleware } from "./lib/admin-mutation-audit";
+import { canonicalDomainRedirectMiddleware } from "./lib/canonical-domain";
 
 /**
  * Read-heavy playback routes exempted from the generic `/api/*` rate
@@ -132,6 +133,7 @@ export async function createApp() {
   if (process.env.NODE_ENV === "production" || process.env.TRUST_PROXY === "1") {
     app.set("trust proxy", 1);
   }
+  app.use(canonicalDomainRedirectMiddleware);
 
   // Base CSP directives shared by the whole app.  Game-cartridge pages get
   // a superset of this (see below) — keeping them derived from the same

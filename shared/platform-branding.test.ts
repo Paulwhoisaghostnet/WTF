@@ -19,7 +19,14 @@ test("wallet login challenges use the platform name, not gameshow", () => {
   assert.doesNotMatch(WTFOS_WALLET_LOGIN_CHALLENGE_PREFIX, /Gameshow/i);
 });
 
-test("resolvePublicSiteOrigin prefers configured origin", () => {
+test("resolvePublicSiteOrigin prefers configured non-legacy origin", () => {
   assert.equal(resolvePublicSiteOrigin("https://preview.example.test/"), "https://preview.example.test");
   assert.equal(resolvePublicSiteOrigin(""), WTFOS_PLATFORM_ORIGIN);
+});
+
+test("resolvePublicSiteOrigin canonicalizes legacy platform domains", () => {
+  assert.equal(resolvePublicSiteOrigin("https://wtfgameshow.app/skywire"), WTFOS_PLATFORM_ORIGIN);
+  assert.equal(resolvePublicSiteOrigin("https://www.wtfgameshow.app"), WTFOS_PLATFORM_ORIGIN);
+  assert.equal(resolvePublicSiteOrigin("https://new.wtfgameshow.app"), WTFOS_PLATFORM_ORIGIN);
+  assert.equal(resolvePublicSiteOrigin("https://www.wtfos.app"), WTFOS_PLATFORM_ORIGIN);
 });

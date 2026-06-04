@@ -254,7 +254,11 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "skywire.pipeline.live_queued",
       "app.interaction.tracked",
     ],
-    behaviorAssertionIds: ["skywire.market-feed-search-source", "skywire.oauth-original-window-permission-sync"],
+    behaviorAssertionIds: [
+      "skywire.market-feed-search-source",
+      "skywire.oauth-original-window-permission-sync",
+      "skywire.oauth-canonical-domain-alias",
+    ],
   },
   {
     id: "wtf-live",

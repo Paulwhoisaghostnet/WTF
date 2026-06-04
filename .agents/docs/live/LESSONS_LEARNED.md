@@ -3771,3 +3771,15 @@
 **Fix**: The OAuth callback now resolves effective Skywire grants, performs a final canonical `persistOAuthSessionForDid` write with encrypted token material plus `oauthScopes`, `oauthRequestedScopes`, `oauthPermissionTier`, and `oauthChatEnabled`, and keeps chat capability checks aligned with stored chat consent. The Skywire client no longer severs the popup opener, and completion handlers force a fresh `/api/atproto/me` read before showing Chat Add-on success.
 
 **Rule**: Never verify Skywire OAuth upgrades from popup metadata alone. Tests must prove the callback writes durable account permission and that the original window only announces chat enabled after fresh canonical `/api/atproto/me` state confirms it.
+
+---
+
+## 2026-06-04 - Skywire OAuth needs one canonical platform origin, not cross-domain sympathy
+
+**What happened**: The previous Skywire OAuth repairs preserved the origin that started the flow, but left ATProto OAuth client metadata and redirect URIs derived from `ATPROTO_PUBLIC_BASE_URL` / `PUBLIC_SITE_URL`. In production, a legacy `wtfgameshow.app` value could still tell Bluesky to return to the old domain, while Caddy served `wtfos.app` and `wtfgameshow.app` as peer frontends with separate browser sessions.
+
+**Why it mattered**: Browser sessions cannot be shared across different apex domains. In incognito, the callback landed on the legacy domain and showed a login screen; in a normal browser with different users signed into each domain, the callback collided with the wrong account context and made Skywire appear to clear or switch identities.
+
+**Fix**: Added canonical platform-origin helpers that collapse legacy WTF Gameshow platform hosts to `https://wtfos.app` for ATProto OAuth metadata, callback URLs, request-origin recovery, Skywire public media links, and shared platform manifests. Caddy now redirects `wtfgameshow.app`, `www.wtfgameshow.app`, and `new.wtfgameshow.app` to `https://wtfos.app{uri}` instead of serving them as full app peers.
+
+**Rule**: For platform identity and OAuth flows, legacy domains must be aliases, not alternate app realities. Preserve path/query, but canonicalize the host before auth, session, OAuth metadata, callback handling, or hard public URL generation can observe it. Tests must cover both env-derived public URLs and edge/app-level legacy host redirects.

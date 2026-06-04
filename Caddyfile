@@ -5,15 +5,11 @@
 # (see the bottom of Caddyfile.wtfos-atproto for exact instructions).
 # import Caddyfile.wtfos-atproto
 
-www.wtfos.app {
+www.wtfos.app, wtfgameshow.app, www.wtfgameshow.app, new.wtfgameshow.app {
 	redir https://wtfos.app{uri} permanent
 }
 
-www.wtfgameshow.app {
-	redir https://wtfgameshow.app{uri} permanent
-}
-
-wtfos.app, wtfgameshow.app, new.wtfgameshow.app, dues.wtfgameshow.app {
+wtfos.app, dues.wtfgameshow.app {
 	encode gzip zstd
 
 	reverse_proxy app:3000 {

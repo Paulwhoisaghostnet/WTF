@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-207 | Fixed | Codex Skywire canonical-domain OAuth repair | 2026-06-04 | Platform domains / AT OAuth identity boundary | P0 | 16 | 1 | 3 | 5 | 5 | Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity |
 | WTF-BB-206 | Verified | Codex Skywire OAuth primary-domain repair | 2026-06-04 | Skywire / AT OAuth domain and session binding | P0 | 16 | 1 | 3 | 5 | 5 | Skywire OAuth callback bounces wtfos.app users to legacy wtfgameshow.app and collides with that domain's logged-in identity |
 | WTF-BB-205 | Verified | Codex Skywire OAuth identity-binding emergency | 2026-06-04 | Skywire / AT OAuth identity binding | P0 | 16 | 1 | 3 | 5 | 5 | Skywire Chat Add-on OAuth can target the shared WTF Gameshow Bluesky actor instead of the signed-in user's linked account |
 | WTF-BB-204 | Verified | Codex Skywire market feed search-source pass | 2026-06-04 | Skywire / Market Feed source | P1 | 13 | 5 | 3 | 5 | 1 | Skywire Market Feed can show a false empty lane when searchPosts hits the non-search public AppView |
@@ -250,6 +251,34 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-207 - Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity
+
+- Category: Platform domains / AT OAuth identity boundary
+- Status: Fixed
+- Owner/Session: Codex Skywire canonical-domain OAuth repair
+- Score: C3 + F5 + S5 + P0(5) = 16
+- Evidence:
+  - User incognito reproduction on 2026-06-04: a Skywire Chat Add-on OAuth flow started on `wtfos.app` asks for the right Bluesky account, but after approval redirects to `wtfgameshow.app` and lands on a login screen because that domain has a separate browser session.
+  - User non-incognito reproduction on 2026-06-04: the same domain switch collides with a different already-signed-in legacy-domain user, replacing the apparent account context in the primary `wtfos.app` Skywire view.
+  - Code inspection found ATProto OAuth client metadata and redirect URI still derive from `ATPROTO_PUBLIC_BASE_URL` / `PUBLIC_SITE_URL`, so a legacy production env value can keep advertising `https://wtfgameshow.app/api/atproto/oauth/callback`.
+  - Caddy still serves `wtfos.app` and `wtfgameshow.app` as peers in the same app block, so the legacy domain remains a full session boundary rather than an alias.
+- Correction:
+  - Canonicalize WTF platform public origins so legacy `wtfgameshow.app` env values collapse to `https://wtfos.app` for ATProto OAuth client metadata, redirect URI, and client URI.
+  - Redirect browser GET/HEAD traffic from `wtfgameshow.app`, `www.wtfgameshow.app`, and `new.wtfgameshow.app` to `https://wtfos.app`, preserving path and query, so the legacy domain cannot keep a separate Skywire/login reality.
+  - Keep local development origins local and allow explicit non-WTF override origins for previews/tests without silently promoting the legacy production domain.
+- Verification idea:
+  - Static/unit tests assert legacy env canonicalization to `wtfos.app`, OAuth metadata never advertises `wtfgameshow.app`, app middleware redirects legacy hosts to canonical with path/query intact, and the Caddyfile redirects legacy apex/www to `wtfos.app`.
+  - Inventory docs and behavior assertions should describe legacy domain aliasing, not cross-domain session isolation.
+- Verification:
+  - `npx tsx --test server/lib/canonical-domain.test.ts shared/platform-branding.test.ts server/features/atproto/skywire-policy.test.ts`
+  - `node scripts/caddy-domain-policy.test.mjs`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory:coverage`
+  - `git diff --check`
+  - `npm run build`
+  - `npm run test:e2e:inventory` (290/290 passed)
+- Last touched: 2026-06-04
 
 ### WTF-BB-206 - Skywire OAuth callback bounces wtfos.app users to legacy wtfgameshow.app and collides with that domain's logged-in identity
 

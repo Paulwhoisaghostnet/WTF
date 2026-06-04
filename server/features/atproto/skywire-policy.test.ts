@@ -29,6 +29,7 @@ test("Skywire post claims verify actor DID and emit idempotent challenge events"
 test("Skywire can register new AT Protocol identities without leaking credentials", () => {
   const route = readFileSync("server/routes/atproto.ts", "utf8");
   const oauth = readFileSync("server/features/atproto/oauth.ts", "utf8");
+  const canonicalDomain = readFileSync("server/lib/canonical-domain.ts", "utf8");
   assert.match(route, /"\/api\/atproto\/registration\/options"/);
   assert.match(route, /"\/api\/atproto\/permissions\/options"/);
   assert.match(route, /"\/api\/atproto\/register\/phone-verification"/);
@@ -58,6 +59,13 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /atproto_chat_account_required/);
   assert.match(route, /atproto_chat_account_mismatch/);
   assert.match(route, /const account = await linkedAccountForUser\(user\.id\)/);
+  assert.match(route, /resolveCanonicalPublicOrigin/);
+  assert.match(oauth, /resolveCanonicalPublicOrigin/);
+  assert.match(oauth, /canonicalizePlatformUrl\(process\.env\.ATPROTO_CLIENT_ID_URL\)/);
+  assert.doesNotMatch(oauth, /process\.env\.ATPROTO_PUBLIC_BASE_URL\s*\|\|\s*\n\s*process\.env\.PUBLIC_SITE_URL/);
+  assert.match(canonicalDomain, /WTFOS_GAMESHOW_DOMAIN/);
+  assert.match(canonicalDomain, /resolveCanonicalPublicOrigin/);
+  assert.match(canonicalDomain, /canonicalDomainRedirectMiddleware/);
   assert.doesNotMatch(route, /const account = linkedAccount && !isReservedSkywirePlatformHandle\(linkedAccount\.handle\) \? linkedAccount : null/);
   assert.doesNotMatch(route, /publicBaseUrl\(\)\}\$\{returnPathWithQuery\(returnTo,\s*parsed\)\}/);
   assert.doesNotMatch(route, /publicBaseUrl\(\)\}\$\{returnTo\}\?error=atproto_oauth_start/);

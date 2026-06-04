@@ -9,6 +9,10 @@ import { db } from "../../db";
 import { encryptOAuthSecret, decryptOAuthSecret } from "../../auth/oauth-crypto";
 import { atprotoAccounts } from "@shared/schema";
 import {
+  canonicalizePlatformUrl,
+  resolveCanonicalPublicOrigin,
+} from "../../lib/canonical-domain";
+import {
   ATPROTO_CHAT_SCOPE,
   ATPROTO_TRANSITION_GENERIC_SCOPE,
   buildSkywireAtprotoMaxScope,
@@ -133,16 +137,12 @@ export function accountHasAtprotoCapability(
 }
 
 function publicBaseUrl(): string {
-  return (
-    process.env.ATPROTO_PUBLIC_BASE_URL ||
-    process.env.PUBLIC_SITE_URL ||
-    "http://127.0.0.1:3000"
-  ).replace(/\/$/, "");
+  return resolveCanonicalPublicOrigin();
 }
 
 export function atprotoClientIdUrl(): string {
   return (
-    process.env.ATPROTO_CLIENT_ID_URL ||
+    canonicalizePlatformUrl(process.env.ATPROTO_CLIENT_ID_URL) ||
     `${publicBaseUrl()}/.well-known/oauth-client-metadata.json`
   );
 }

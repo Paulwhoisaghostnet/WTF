@@ -46,6 +46,10 @@ import { emitAtprotoSystemEvent } from "../features/atproto/events";
 import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
 import { resolveUserTezosIdentity } from "../lib/user-tezos-identity";
 import { skywireRolloutStatusForRole } from "../lib/skywire-access";
+import {
+  canonicalizePlatformOrigin,
+  resolveCanonicalPublicOrigin,
+} from "../lib/canonical-domain";
 import { userEligibleForSkywireRollout } from "@shared/skywire-rollout";
 
 const router = Router();
@@ -210,13 +214,13 @@ function requestOrigin(req: any): string {
   const forwardedProto = String(req.headers?.["x-forwarded-proto"] || "").split(",")[0]?.trim();
   const localHost = host.startsWith("localhost") || host.startsWith("127.0.0.1");
   const proto = forwardedProto || (localHost ? req.protocol || "http" : "https");
-  const origin = normalizedOrigin(host ? `${proto}://${host}` : "");
+  const origin = canonicalizePlatformOrigin(host ? `${proto}://${host}` : "");
   if (origin && allowedOAuthReturnOrigins().has(origin)) return origin;
   return normalizedOrigin(publicBaseUrl()) || "http://127.0.0.1:3000";
 }
 
 function safeOAuthReturnOrigin(value: string | null | undefined, req: any): string {
-  const origin = normalizedOrigin(value || "");
+  const origin = canonicalizePlatformOrigin(value || "");
   if (origin && allowedOAuthReturnOrigins().has(origin)) return origin;
   return requestOrigin(req);
 }
@@ -259,11 +263,7 @@ function redirectAtprotoOAuthStartError(res: any, params: {
 }
 
 function publicBaseUrl(): string {
-  return (
-    process.env.ATPROTO_PUBLIC_BASE_URL ||
-    process.env.PUBLIC_SITE_URL ||
-    "http://127.0.0.1:3000"
-  ).replace(/\/$/, "");
+  return resolveCanonicalPublicOrigin();
 }
 
 function escapeHtml(value: string): string {
