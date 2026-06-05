@@ -55,6 +55,8 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /originUrl\(origin,\s*returnPathWithQuery\(returnTo,\s*query\)\)/);
   assert.match(route, /requestedHandle:\s*handle/);
   assert.match(route, /isReservedSkywirePlatformHandle\(handle\)/);
+  assert.match(route, /resolveAtprotoHandleViaPublicResolver\(handle\)/);
+  assert.match(route, /atproto_handle_not_found/);
   assert.match(route, /atproto_platform_account_reserved/);
   assert.match(route, /atproto_chat_account_required/);
   assert.match(route, /atproto_chat_account_mismatch/);
@@ -169,6 +171,8 @@ test("Skywire registration UI only offers official signup handoff", () => {
   assert.match(page, /skywireOAuthCompletionPayload/);
   assert.match(page, /SKYWIRE_OAUTH_CHANNEL\s*=\s*"skywire:atproto-oauth"/);
   assert.match(page, /BroadcastChannel\(SKYWIRE_OAUTH_CHANNEL\)/);
+  assert.match(page, /shareSkywireOAuthCompletion\(completion\);\s*\n\s*try/);
+  assert.doesNotMatch(page, /if \(isOAuthPopupWindow \|\| window\.opener\)\s*\{\s*shareSkywireOAuthCompletion\(completion\);/);
   assert.match(page, /refetchQueries\(\{\s*queryKey:\s*\["skywire",\s*"me"\]/);
   assert.match(page, /fetchCanonicalAtprotoAccount/);
   assert.match(page, /Skywire has not received the durable chat permission yet/);
@@ -186,6 +190,7 @@ test("Skywire registration UI only offers official signup handoff", () => {
   assert.match(page, /skywire:atproto-linked/);
   assert.match(page, /skywire:atproto-error/);
   assert.match(page, /atproto_oauth_start/);
+  assert.match(page, /atproto_handle_not_found/);
   assert.match(page, /Open Bluesky signup/);
   assert.match(page, /window\.open\(externalSignupUrl/);
   assert.doesNotMatch(page, /Register New AT Identity/);

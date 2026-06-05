@@ -4350,13 +4350,15 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
         setNotice(
           payload.error === "atproto_handle"
             ? "Enter a Bluesky handle like name.bsky.social, or just the username."
-            : payload.error === "atproto_platform_account_reserved"
-              ? "Skywire will not connect the shared WTF Gameshow Bluesky actor. Enter your own Bluesky handle."
-              : payload.error === "atproto_account_mismatch" || payload.error === "atproto_chat_account_mismatch"
-                ? "Bluesky returned a different account than the one Skywire was upgrading. Sign into the correct Bluesky account and try again."
-                : payload.error === "atproto_chat_account_required"
-                  ? "Connect your own Bluesky account before enabling the Chat Add-on."
-                  : "Bluesky connection did not complete. Try connecting again."
+            : payload.error === "atproto_handle_not_found"
+              ? `Bluesky could not find ${payload.handle ? `@${payload.handle}` : "that handle"}. Check the spelling or connect a real Bluesky account.`
+              : payload.error === "atproto_platform_account_reserved"
+                ? "Skywire will not connect the shared WTF Gameshow Bluesky actor. Enter your own Bluesky handle."
+                : payload.error === "atproto_account_mismatch" || payload.error === "atproto_chat_account_mismatch"
+                  ? "Bluesky returned a different account than the one Skywire was upgrading. Sign into the correct Bluesky account and try again."
+                  : payload.error === "atproto_chat_account_required"
+                    ? "Connect your own Bluesky account before enabling the Chat Add-on."
+                    : "Bluesky connection did not complete. Try connecting again."
         );
         return;
       }
@@ -4408,9 +4410,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
         at: Date.now(),
       };
       handleAtprotoOAuthCompletion(completion);
-      if (isOAuthPopupWindow || window.opener) {
-        shareSkywireOAuthCompletion(completion);
-      }
+      shareSkywireOAuthCompletion(completion);
       try {
         window.localStorage.removeItem(SKYWIRE_OAUTH_PENDING_KEY);
       } catch {
@@ -4422,6 +4422,11 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
     }
     const error = params.get("error");
     if (error === "atproto_handle") setNotice("Enter a Bluesky handle like name.bsky.social, or just the username.");
+    if (error === "atproto_handle_not_found") {
+      setNotice(
+        `Bluesky could not find ${params.get("handle") ? `@${params.get("handle")}` : "that handle"}. Check the spelling or connect a real Bluesky account.`
+      );
+    }
     if (error === "atproto_oauth_start") setNotice("Bluesky connection could not start. Check the handle and try again.");
     if (error === "atproto_oauth") setNotice("Bluesky connection did not complete. Try connecting again.");
     if (error === "atproto_session") setNotice("Sign in to WTF OS before connecting Bluesky.");

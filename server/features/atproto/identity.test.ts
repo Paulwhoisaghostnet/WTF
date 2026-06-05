@@ -6,6 +6,7 @@ import {
   normalizeAtHandle,
   normalizeRegistrationHandle,
   parseBskyPostRef,
+  resolveAtprotoHandleViaPublicResolver,
   sourceUrlForAtUri,
 } from "./identity";
 
@@ -51,4 +52,24 @@ test("bsky source URLs keep actors readable for Bluesky profile routes", () => {
     sourceUrlForAtUri("at://did:plc:abc/app.bsky.feed.post/3kabc", "Alice.Bsky.Social"),
     "https://bsky.app/profile/alice.bsky.social/post/3kabc"
   );
+});
+
+test("public handle resolver distinguishes resolved, unresolved, and unavailable handles", async () => {
+  const resolved = await resolveAtprotoHandleViaPublicResolver("alice.bsky.social", async () => ({
+    ok: true,
+    json: async () => ({ did: "did:plc:alice" }),
+  } as Response));
+  assert.deepEqual(resolved, { did: "did:plc:alice", error: null });
+
+  const unresolved = await resolveAtprotoHandleViaPublicResolver("missing.bsky.social", async () => ({
+    ok: false,
+    status: 400,
+    text: async () => JSON.stringify({ error: "InvalidRequest", message: "Unable to resolve handle" }),
+  } as Response));
+  assert.deepEqual(unresolved, { did: null, error: "unresolved" });
+
+  const unavailable = await resolveAtprotoHandleViaPublicResolver("alice.bsky.social", async () => {
+    throw new Error("network down");
+  });
+  assert.deepEqual(unavailable, { did: null, error: "unavailable" });
 });

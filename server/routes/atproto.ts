@@ -35,6 +35,7 @@ import {
 } from "@shared/atproto-permissions";
 import {
   isTezosAlias,
+  resolveAtprotoHandleViaPublicResolver,
   isValidAtHandle,
   normalizeAtHandle,
   normalizeRegistrationHandle,
@@ -252,13 +253,24 @@ function redirectAtprotoOAuthStartError(res: any, params: {
   returnTo: string;
   appName: AtprotoOAuthAppName;
   origin: string;
+  handle?: string | null;
 }) {
   if (params.popup) {
     return res
       .type("html")
-      .send(popupCompletionPage({ ok: false, error: params.error, returnTo: params.returnTo, app: params.appName, origin: params.origin }));
+      .send(
+        popupCompletionPage({
+          ok: false,
+          error: params.error,
+          handle: params.handle,
+          returnTo: params.returnTo,
+          app: params.appName,
+          origin: params.origin,
+        })
+      );
   }
   const query = new URLSearchParams({ error: params.error });
+  if (params.handle) query.set("handle", params.handle);
   return res.redirect(originUrl(params.origin, returnPathWithQuery(params.returnTo, query)));
 }
 
@@ -811,7 +823,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
       : buildSkywireAtprotoScope(tier, chatEnabled);
   const handle = normalizeRegistrationHandle(parsed.data.handle, registrationHandleSuffix());
   if (!isValidAtHandle(handle)) {
-    return redirectAtprotoOAuthStartError(res, { popup, error: "atproto_handle", returnTo, appName, origin });
+    return redirectAtprotoOAuthStartError(res, { popup, error: "atproto_handle", returnTo, appName, origin, handle });
   }
   if (appName === "skywire" && isReservedSkywirePlatformHandle(handle)) {
     return redirectAtprotoOAuthStartError(res, {
@@ -820,7 +832,21 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
       returnTo,
       appName,
       origin,
+      handle,
     });
+  }
+  if (appName === "skywire") {
+    const resolvedHandle = await resolveAtprotoHandleViaPublicResolver(handle).catch(() => null);
+    if (resolvedHandle?.error === "unresolved") {
+      return redirectAtprotoOAuthStartError(res, {
+        popup,
+        error: "atproto_handle_not_found",
+        returnTo,
+        appName,
+        origin,
+        handle,
+      });
+    }
   }
   if (appName === "skywire" && chatEnabled) {
     const existingAccount = await linkedAccountForUser((req.user as any).id);
@@ -831,6 +857,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
         returnTo,
         appName,
         origin,
+        handle,
       });
     }
     if (normalizeAtHandle(existingAccount.handle) !== handle) {
@@ -840,6 +867,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
         returnTo,
         appName,
         origin,
+        handle,
       });
     }
   }

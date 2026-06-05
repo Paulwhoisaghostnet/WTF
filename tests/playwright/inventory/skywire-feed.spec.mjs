@@ -286,6 +286,29 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     expect(fatalErrors(errors)).toEqual([]);
   });
 
+  test("Chat add-on OAuth reports an unresolved Bluesky handle instead of looking stalled", async ({
+    page,
+    request,
+  }) => {
+    const res = await request.post("/__test/state", {
+      data: { userRole: "admin", skywireChatEnabled: false, skywireHandle: "missing.bsky.social" },
+    });
+    expect(res.ok()).toBeTruthy();
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+
+    await page.goto("/skywire?tab=account", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("@missing.bsky.social").first()).toBeVisible();
+    await page.getByRole("button", { name: "Enable Chat Add-on" }).click();
+
+    await expect(page.getByText("Bluesky could not find @missing.bsky.social. Check the spelling or connect a real Bluesky account.")).toBeVisible();
+    await expect(page.getByText("Connection & permissions")).toBeVisible();
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
   test("same-window OAuth callback keeps settings open and reflects durable chat permission", async ({ page, request }) => {
     const res = await request.post("/__test/state", {
       data: { userRole: "admin", skywireChatEnabled: false },
@@ -341,6 +364,52 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     await page.waitForTimeout(1200);
     await expect(page.locator("[data-skywire-feed-card='true']")).toHaveCount(3);
     await expect(page.getByText("Connection & permissions")).toHaveCount(0);
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("same-origin OAuth callback broadcasts completion to an already-open Skywire window", async ({
+    page,
+    request,
+  }) => {
+    const res = await request.post("/__test/state", {
+      data: { userRole: "admin", skywireChatEnabled: false },
+    });
+    expect(res.ok()).toBeTruthy();
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(`original pageerror: ${error.message}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(`original console: ${message.text()}`);
+    });
+
+    await page.goto("/skywire?tab=account", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("DM add-on off")).toBeVisible();
+    await expect(page.getByText("Connection & permissions")).toBeVisible();
+
+    const upgraded = await request.post("/__test/state", {
+      data: { userRole: "admin", skywireChatEnabled: true },
+    });
+    expect(upgraded.ok()).toBeTruthy();
+
+    const callbackPage = await page.context().newPage();
+    callbackPage.on("pageerror", (error) => errors.push(`callback pageerror: ${error.message}`));
+    callbackPage.on("console", (message) => {
+      if (message.type() === "error") errors.push(`callback console: ${message.text()}`);
+    });
+    const callbackUrl =
+      "/skywire?tab=account&verified=atproto&handle=wtf-admin.bsky.social&permissionTier=be-bold&chat=1" +
+      "&requestedScope=atproto%20transition%3Ageneric%20chat.bsky" +
+      "&grantedScope=atproto%20transition%3Ageneric%20chat.bsky&accountId=1";
+    await callbackPage.goto(callbackUrl, { waitUntil: "domcontentloaded" });
+    await expect(callbackPage.getByText("Skywire Chat Add-on enabled for @wtf-admin.bsky.social.")).toBeVisible({
+      timeout: 15000,
+    });
+
+    await expect(page.getByText("Skywire Chat Add-on enabled for @wtf-admin.bsky.social.")).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(page.getByText("DM add-on on")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Enable Chat Add-on" })).toHaveCount(0);
+    await callbackPage.close();
     expect(fatalErrors(errors)).toEqual([]);
   });
 

@@ -1,3 +1,13 @@
+## 2026-06-05 - Skywire OAuth callback broadcast is not the same thing as stale bounce cleanup
+
+**What happened**: The previous stale-settings-bounce repair stopped Skywire from broadcasting OAuth completion unless the callback looked like a popup/opener flow. That made a same-origin callback window update itself but left an already-open Skywire account/settings window unaware that OAuth had completed. At the same time, unresolved Bluesky handles such as `wtf-admin.bsky.social` could fail provider handoff in a way that felt like the permissions request simply stalled.
+
+**Why it mattered**: The original Skywire window is the user's authoritative app session. OAuth completion metadata is still required to tell any already-open same-origin Skywire instance to refetch canonical `/api/atproto/me`; duplicate/stale handling should prevent repeated tab hijacks, not suppress the initial completion signal.
+
+**Rule**: Always broadcast structured Skywire OAuth completion from callback URLs, including same-window/same-origin fallback callbacks. Use durable completion-key dedupe and canonical account refetches to prevent stale Settings bounces. Preflight unresolved Bluesky handles before OAuth provider handoff and show a visible account/settings error instead of letting OAuth start look dead.
+
+---
+
 ## 2026-06-04 - Skywire OAuth completion is a one-shot tab transition
 
 **What happened**: After the Chat Add-on OAuth callback finally persisted the durable permission correctly, Skywire could still jump back to Settings after the user moved on. The client treated every later OAuth completion hint as a fresh callback, accepted empty storage events as successful completions, and left stale tab state able to win again after remount-like app refreshes.

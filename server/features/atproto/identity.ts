@@ -121,3 +121,24 @@ export async function resolveDidViaHttpsWellKnown(
   const text = (await response.text()).trim();
   return text.startsWith("did:") ? text : null;
 }
+
+export async function resolveAtprotoHandleViaPublicResolver(
+  handle: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<{ did: string | null; error: "unresolved" | "unavailable" | "invalid_response" | null }> {
+  const normalized = normalizeAtHandle(handle);
+  const url = new URL("/xrpc/com.atproto.identity.resolveHandle", "https://bsky.social");
+  url.searchParams.set("handle", normalized);
+  const response = await fetchImpl(url.toString(), { redirect: "follow" }).catch(() => null);
+  if (!response) return { did: null, error: "unavailable" };
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    if (response.status === 400 && /unable to resolve handle/i.test(text)) {
+      return { did: null, error: "unresolved" };
+    }
+    return { did: null, error: "unavailable" };
+  }
+  const payload = await response.json().catch(() => null);
+  const did = typeof payload?.did === "string" ? payload.did : "";
+  return did.startsWith("did:") ? { did, error: null } : { did: null, error: "invalid_response" };
+}

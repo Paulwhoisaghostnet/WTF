@@ -708,6 +708,13 @@ function apiMock(req, res) {
   if (pathName === "/api/atproto/oauth/start") {
     const wantsChat = url.searchParams.get("chat") === "1" || url.searchParams.get("chat") === "true";
     const handle = url.searchParams.get("handle") || "wtf-admin.bsky.social";
+    if (handle === "missing.bsky.social") {
+      const redirect = new URL("/skywire", "http://127.0.0.1");
+      redirect.searchParams.set("tab", "account");
+      redirect.searchParams.set("error", "atproto_handle_not_found");
+      redirect.searchParams.set("handle", handle);
+      return res.redirect(`${redirect.pathname}${redirect.search}`);
+    }
     return res.type("html").send(`<!doctype html>
 <html>
   <head><title>Harness Skywire OAuth</title></head>
@@ -2994,7 +3001,7 @@ app.get("/api/w/groupchat", (_req, res) => {
 // surfacing unrelated errors.
 app.use("/api", (req, res) => {
   const mocked = apiMock(req, res);
-  if (mocked) return;
+  if (mocked || res.headersSent) return;
   res.json({ ok: true, mocked: true, path: req.originalUrl });
 });
 
