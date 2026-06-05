@@ -264,6 +264,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The inventory harness accepts the delete confirmation, clears the owned-room fixture through the WTF LIVE room DELETE API, and the UI removes every matching room card.",
   },
   {
+    id: "wtf-live.lobby-room-presence",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    userVisibleAssertion:
+      "The WTF LIVE lobby shows whether public rooms are quiet or active and displays the current live user count on each room card plus the public-room summary.",
+    durableSideEffectAssertion:
+      "The harness joins /live/r/wtf-live from a guest tab, verifies /live updates from 0 active rooms and 0 users to 1 active room and 1 user through the room WebSocket presence snapshot, then verifies the lobby returns to 0 active rooms after the guest tab closes.",
+  },
+  {
     id: "wtf-live.public-room-window-exit-controls",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["wtf-live"],
@@ -283,9 +295,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     userVisibleAssertion:
-      "WTF LIVE public-room guests see each other as room peers; active camera media renders as a remote video stream, while crowded rooms with idle peers keep room chat visible and reachable.",
+      "WTF LIVE public-room guests see each other in collapsible attendance; camera/screen shares take visual priority in the bulk stage, mic-only guests stay out of the stage with lit mic indicators in attendance, chat remains reachable, and shared media can open in pop-out frames/lightboxes.",
     durableSideEffectAssertion:
-      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, media-state events, and room chat, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests do not create empty remote video placeholders that push the chat composer offscreen.",
+      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, activeVideo/avatar/audioOpen media-state events, and room chat, verifies push-to-talk changes another guest's attendance mic state without creating a stage tile, verifies camera-first then screen-share switching remains visible to another guest after camera stops, verifies stage pop-outs and chat media lightboxes open/close, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests remain attendance-only without pushing the chat composer offscreen.",
   },
   {
     id: "w.groupchat-readonly-config-source",

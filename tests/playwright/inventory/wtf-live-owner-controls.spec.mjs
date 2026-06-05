@@ -82,6 +82,9 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       "[data-wtf-live-room-card='wtf-live'][data-wtf-live-room-surface='public']",
     );
     await expect(officialRoom).toBeVisible();
+    await expect(page.locator("[data-wtf-live-active-room-summary]")).toHaveAttribute("data-wtf-live-active-room-count", "0");
+    await expect(officialRoom).toHaveAttribute("data-wtf-live-room-active", "false");
+    await expect(officialRoom.locator("[data-wtf-live-room-user-count='wtf-live']")).toContainText("0 users");
 
     const popupPromise = page.waitForEvent("popup");
     await officialRoom.getByRole("button", { name: "Join in New Tab" }).click();
@@ -91,7 +94,17 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     expect(new URL(roomPage.url()).pathname).toBe("/live/r/wtf-live");
     await expect(page).toHaveURL(/\/live$/);
     await expect(page.getByText("Opened WTF LIVE in a new browser tab.")).toBeVisible();
+    await roomPage.getByRole("button", { name: "Join Room" }).click();
+    await expect(roomPage.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+    await page.bringToFront();
+    await expect(page.locator("[data-wtf-live-active-room-summary]")).toHaveAttribute("data-wtf-live-active-room-count", "1", { timeout: 8_000 });
+    await expect(page.locator("[data-wtf-live-active-room-summary]")).toHaveAttribute("data-wtf-live-active-user-count", "1");
+    await expect(officialRoom).toHaveAttribute("data-wtf-live-room-active", "true");
+    await expect(officialRoom.locator("[data-wtf-live-room-presence='wtf-live']")).toContainText("Active now");
+    await expect(officialRoom.locator("[data-wtf-live-room-user-count='wtf-live']")).toContainText("1 user");
     await roomPage.close();
+    await page.bringToFront();
+    await expect(page.locator("[data-wtf-live-active-room-summary]")).toHaveAttribute("data-wtf-live-active-room-count", "0", { timeout: 8_000 });
     expect(fatalErrors(errors)).toEqual([]);
   });
 
@@ -150,18 +163,68 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       ]);
       await alice.getByPlaceholder("Display name").fill("Alice");
       await bob.getByPlaceholder("Display name").fill("Bob");
-      await alice.getByRole("button", { name: "Join Room" }).click();
-      await bob.getByRole("button", { name: "Join Room" }).click();
+	      await alice.getByRole("button", { name: "Join Room" }).click();
+	      await bob.getByRole("button", { name: "Join Room" }).click();
+	      await alice.locator("[data-wtf-live-attendance-toggle]").click();
+	      await bob.locator("[data-wtf-live-attendance-toggle]").click();
 
+	      const bobAttendanceAlice = bob.locator("[data-wtf-live-attendee]").filter({ hasText: "Alice" });
+	      const aliceAttendanceBob = alice.locator("[data-wtf-live-attendee]").filter({ hasText: "Bob" });
+      await expect(bobAttendanceAlice).toBeVisible();
+      await expect(aliceAttendanceBob).toBeVisible();
+      await expect(bob.locator("[data-wtf-live-stage-peer]").filter({ hasText: "Alice" })).toHaveCount(0);
+      await expect(alice.locator("[data-wtf-live-stage-peer]").filter({ hasText: "Bob" })).toHaveCount(0);
+
+      await bob.locator("[data-wtf-live-avatar-file]").setInputFiles({
+        name: "avatar.gif",
+        mimeType: "image/gif",
+        buffer: Buffer.from("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", "base64"),
+	      });
+	      await bob.locator("[data-wtf-live-toggle-mic]").click();
+	      await expect(alice.locator("[data-wtf-live-stage-peer]").filter({ hasText: "Bob" })).toHaveCount(0);
+	      await expect(aliceAttendanceBob).toHaveAttribute("data-wtf-live-attendee-state", "mic live");
+	      await bob.locator("[data-wtf-live-push-to-talk-toggle]").click();
+	      await expect(aliceAttendanceBob).toHaveAttribute("data-wtf-live-attendee-state", "mic ready");
+	      await bob.locator("[data-wtf-live-push-to-talk-hold]").dispatchEvent("pointerdown", { button: 0 });
+	      await expect(aliceAttendanceBob).toHaveAttribute("data-wtf-live-attendee-state", "mic live");
+	      await bob.locator("[data-wtf-live-push-to-talk-hold]").dispatchEvent("pointerup", { button: 0 });
+	      await expect(aliceAttendanceBob).toHaveAttribute("data-wtf-live-attendee-state", "mic ready");
+
+      await alice.locator("[data-wtf-live-toggle-camera]").click();
+      await expect(alice.locator("[data-wtf-live-active-share]")).toHaveAttribute("data-wtf-live-active-share", "camera");
       const bobSeesAlice = bob.locator("[data-wtf-live-remote-peer]").filter({ hasText: "Alice" });
-      const aliceSeesBob = alice.locator("[data-wtf-live-remote-peer]").filter({ hasText: "Bob" });
       await expect(bobSeesAlice).toBeVisible();
-      await expect(aliceSeesBob).toBeVisible();
+      await expect(bobSeesAlice).toHaveAttribute("data-wtf-live-remote-active-video", "camera");
+      await expect(bobSeesAlice.getByText("Viewing camera", { exact: true })).toBeVisible();
+	      const remoteVideo = bobSeesAlice.locator("video[data-wtf-live-remote-video]").first();
+	      await expect(remoteVideo).toBeVisible();
+	      await expect
+	        .poll(async () => remoteVideo.evaluate((video) => video.srcObject?.getVideoTracks().length ?? 0))
+	        .toBeGreaterThan(0);
+	      await bob.locator("[data-wtf-live-open-stage-popout]").first().click();
+	      const bobPopout = bob.locator("[data-wtf-live-popout-frame]").first();
+	      await expect(bobPopout).toBeVisible();
+	      await bob.locator("[data-wtf-live-popout-maximize]").first().click();
+	      await expect(bobPopout).toBeVisible();
+	      await bob.locator("[data-wtf-live-popout-close]").first().click();
+	      await expect(bob.locator("[data-wtf-live-popout-frame]")).toHaveCount(0);
 
-      await alice.getByRole("button", { name: /Camera/ }).click();
-      await expect(bobSeesAlice.getByText("Camera", { exact: true })).toBeVisible();
-      const remoteVideo = bobSeesAlice.locator("video[data-wtf-live-remote-video]").first();
-      await expect(remoteVideo).toBeVisible();
+      await alice.locator("[data-wtf-live-toggle-screen]").click();
+      await expect(alice.locator("[data-wtf-live-active-share]")).toHaveAttribute("data-wtf-live-active-share", "screen");
+      await expect(bobSeesAlice).toHaveAttribute("data-wtf-live-remote-active-video", "screen");
+      await expect(bobSeesAlice.getByText("Viewing screen", { exact: true })).toBeVisible();
+
+      await alice.locator("[data-wtf-live-share-camera]").click();
+      await expect(alice.locator("[data-wtf-live-active-share]")).toHaveAttribute("data-wtf-live-active-share", "camera");
+      await expect(bobSeesAlice).toHaveAttribute("data-wtf-live-remote-active-video", "camera");
+
+      await alice.locator("[data-wtf-live-share-screen]").click();
+      await expect(alice.locator("[data-wtf-live-active-share]")).toHaveAttribute("data-wtf-live-active-share", "screen");
+      await expect(bobSeesAlice).toHaveAttribute("data-wtf-live-remote-active-video", "screen");
+
+      await alice.locator("[data-wtf-live-toggle-camera]").click();
+      await expect(alice.locator("[data-wtf-live-active-share]")).toHaveAttribute("data-wtf-live-active-share", "screen");
+      await expect(bobSeesAlice).toHaveAttribute("data-wtf-live-remote-active-video", "screen");
       await expect
         .poll(async () => remoteVideo.evaluate((video) => video.srcObject?.getVideoTracks().length ?? 0))
         .toBeGreaterThan(0);
@@ -174,10 +237,15 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       await alice.locator("[data-wtf-live-chat-text]").fill("hello Bob, media is live");
       await alice.locator("[data-wtf-live-chat-send]").click();
 
-      const bobChatLog = bob.locator("[data-wtf-live-chat-log]");
-      await expect(bobChatLog.getByText("hello Bob, media is live")).toBeVisible();
-      await expect(bobChatLog.getByText(/tiny\.gif/)).toBeVisible();
-      await expect(bobChatLog.locator("img[alt='tiny.gif']")).toBeVisible();
+	      const bobChatLog = bob.locator("[data-wtf-live-chat-log]");
+	      await expect(bobChatLog.getByText("hello Bob, media is live")).toBeVisible();
+	      await expect(bobChatLog.getByText(/tiny\.gif/)).toBeVisible();
+	      const bobChatImage = bobChatLog.locator("img[alt='tiny.gif']");
+	      await expect(bobChatImage).toBeVisible();
+	      await bobChatImage.click();
+	      await expect(bob.locator("[data-wtf-live-lightbox]")).toBeVisible();
+	      await bob.locator("[data-wtf-live-popout-close]").first().click();
+	      await expect(bob.locator("[data-wtf-live-lightbox]")).toHaveCount(0);
       expect(fatalErrors(errors)).toEqual([]);
     } finally {
       await aliceContext.close();
@@ -243,26 +311,41 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       return page;
     }
 
-    try {
-      const alice = await joinGuest("Layout Alice");
-      const guestNames = Array.from({ length: 7 }, (_, index) => `Layout Guest ${index + 1}`);
-      for (const guestName of guestNames) {
-        await joinGuest(guestName);
-      }
+	    try {
+	      const alice = await joinGuest("Layout Alice");
+	      const guestNames = Array.from({ length: 7 }, (_, index) => `Layout Guest ${index + 1}`);
+	      for (const guestName of guestNames) {
+	        await joinGuest(guestName);
+	      }
+	      await alice.locator("[data-wtf-live-attendance-toggle]").click();
 
-      for (const guestName of guestNames) {
-        await expect(
-          alice.locator("[data-wtf-live-remote-peer]").filter({ hasText: guestName }),
+	      for (const guestName of guestNames) {
+	        await expect(
+          alice.locator("[data-wtf-live-attendee]").filter({ hasText: guestName }),
         ).toBeVisible({ timeout: 10_000 });
       }
+      await expect(alice.locator("[data-wtf-live-stage-peer]")).toHaveCount(0);
       await expect(alice.locator("video[data-wtf-live-remote-video]")).toHaveCount(0);
 
-      const remoteGridMetrics = await alice.locator("[data-wtf-live-remote-grid]").evaluate((node) => ({
+      const stageMetrics = await alice.locator("[data-wtf-live-stage-grid]").evaluate((node) => ({
         clientHeight: node.clientHeight,
         scrollHeight: node.scrollHeight,
       }));
-      expect(remoteGridMetrics.clientHeight).toBeGreaterThan(0);
-      expect(remoteGridMetrics.scrollHeight).toBeGreaterThanOrEqual(remoteGridMetrics.clientHeight);
+      expect(stageMetrics.clientHeight).toBeGreaterThan(0);
+      expect(stageMetrics.scrollHeight).toBeGreaterThanOrEqual(stageMetrics.clientHeight);
+
+	      const layoutMetrics = await alice.evaluate(() => {
+	        const stage = document.querySelector("[data-wtf-live-stage-area]")?.getBoundingClientRect();
+	        const sidebar = document.querySelector("[data-wtf-live-sidebar]")?.getBoundingClientRect();
+	        const rail = document.querySelector("[data-wtf-live-control-rail]")?.getBoundingClientRect();
+	        return stage && sidebar && rail
+	          ? { stageWidth: stage.width, sidebarWidth: sidebar.width, railWidth: rail.width, sidebarX: sidebar.x, stageX: stage.x }
+	          : null;
+	      });
+	      expect(layoutMetrics).not.toBeNull();
+	      expect(layoutMetrics.stageWidth).toBeGreaterThan(layoutMetrics.sidebarWidth * 1.5);
+	      expect(layoutMetrics.stageWidth).toBeGreaterThan(layoutMetrics.railWidth * 2.2);
+	      expect(layoutMetrics.sidebarX).toBeGreaterThan(layoutMetrics.stageX);
 
       const composerBox = await alice.locator("[data-wtf-live-chat-composer]").evaluate((node) => {
         const rect = node.getBoundingClientRect();

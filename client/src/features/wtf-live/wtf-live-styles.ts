@@ -106,6 +106,52 @@ export const RoomCard = styled.div`
   font-size: 12px;
 `;
 
+export const RoomMetaRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+`;
+
+export const RoomPresenceBadge = styled.span<{ $active?: boolean }>`
+  width: max-content;
+  border: 1px solid #222;
+  background: ${({ $active }) => ($active ? "#041f12" : "#e8e8e8")};
+  color: ${({ $active }) => ($active ? "#ccffd9" : "#333")};
+  padding: 2px 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+
+  svg {
+    flex: 0 0 auto;
+  }
+`;
+
+export const RoomActivitySummary = styled.div<{ $active?: boolean }>`
+  border: 2px inset #fff;
+  background: ${({ $active }) => ($active ? "#e5ffe8" : "#f7f7f7")};
+  padding: 7px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+
+  strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  @media (max-width: 520px) {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+`;
+
 export const SplitActions = styled.div`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

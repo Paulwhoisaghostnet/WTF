@@ -23,13 +23,27 @@ const MAX_WTF_LIVE_CHAT_TEXT_LENGTH = 1_200;
 const MAX_WTF_LIVE_CHAT_ATTACHMENTS = 4;
 const MAX_WTF_LIVE_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const MAX_WTF_LIVE_ATTACHMENT_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_ATTACHMENT_BYTES * 1.4);
+const MAX_WTF_LIVE_AVATAR_BYTES = 512 * 1024;
+const MAX_WTF_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_AVATAR_BYTES * 1.4);
 const MAX_WTF_LIVE_SIGNAL_LENGTH = 256 * 1024;
 const WTF_LIVE_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "video/mp4"]);
 
 type WtfLiveMediaState = {
   mic: boolean;
+  audioOpen: boolean;
   camera: boolean;
   screen: boolean;
+  activeVideo: "camera" | "screen" | null;
+  avatarUrl: string | null;
+};
+
+export type WtfLiveRoomPresence = {
+  active: boolean;
+  participantCount: number;
+  audioOpenCount: number;
+  videoShareCount: number;
+  cameraShareCount: number;
+  screenShareCount: number;
 };
 
 interface WsClient {
@@ -49,6 +63,28 @@ interface WsClient {
 
 const clients = new Set<WsClient>();
 const SESSION_COOKIE_NAME = "connect.sid";
+
+export function getWtfLiveRoomPresence(roomId: string): WtfLiveRoomPresence {
+  const peers = [...clients].filter(
+    (client) =>
+      client.publicSocket === "wtf-live" &&
+      client.wtfLiveRoomId === roomId &&
+      client.wtfLivePeerId &&
+      client.ws.readyState === WebSocket.OPEN,
+  );
+  const audioOpenCount = peers.filter((client) => client.wtfLiveMediaState?.audioOpen).length;
+  const cameraShareCount = peers.filter((client) => client.wtfLiveMediaState?.activeVideo === "camera").length;
+  const screenShareCount = peers.filter((client) => client.wtfLiveMediaState?.activeVideo === "screen").length;
+  const videoShareCount = cameraShareCount + screenShareCount;
+  return {
+    active: peers.length > 0,
+    participantCount: peers.length,
+    audioOpenCount,
+    videoShareCount,
+    cameraShareCount,
+    screenShareCount,
+  };
+}
 
 function parseCookieHeader(header: string | undefined): Map<string, string> {
   const parsed = new Map<string, string>();
@@ -218,12 +254,26 @@ function normalizeWtfLiveGuestName(value: unknown): string {
     .slice(0, 48) || "guest";
 }
 
+function normalizeWtfLiveAvatarUrl(value: unknown): string | null {
+  const avatarUrl = typeof value === "string" ? value : "";
+  if (!avatarUrl) return null;
+  if (!/^data:image\/(?:png|jpe?g|gif|webp);base64,/i.test(avatarUrl)) return null;
+  if (avatarUrl.length > MAX_WTF_LIVE_AVATAR_DATA_URL_LENGTH) return null;
+  return avatarUrl;
+}
+
 function normalizeWtfLiveMediaState(value: unknown): WtfLiveMediaState {
   const state = typeof value === "object" && value ? value as Record<string, unknown> : {};
+  const camera = Boolean(state.camera);
+  const screen = Boolean(state.screen);
+  const requestedActiveVideo = state.activeVideo === "camera" || state.activeVideo === "screen" ? state.activeVideo : null;
   return {
     mic: Boolean(state.mic),
-    camera: Boolean(state.camera),
-    screen: Boolean(state.screen),
+    audioOpen: Boolean(state.audioOpen ?? state.mic),
+    camera,
+    screen,
+    activeVideo: requestedActiveVideo === "camera" && camera ? "camera" : requestedActiveVideo === "screen" && screen ? "screen" : null,
+    avatarUrl: normalizeWtfLiveAvatarUrl(state.avatarUrl),
   };
 }
 
@@ -256,7 +306,7 @@ function snapshotWtfLivePeers(roomId: string, exclude?: WsClient) {
     .map((client) => ({
       peerId: client.wtfLivePeerId,
       guestName: client.wtfLiveGuestName || client.username || "guest",
-      mediaState: client.wtfLiveMediaState || { mic: false, camera: false, screen: false },
+      mediaState: client.wtfLiveMediaState || { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null },
     }));
 }
 
@@ -283,7 +333,7 @@ export function setupWebSocket(server: Server) {
         publicSocket: "wtf-live",
         wtfLivePeerId: `peer_${randomUUID().replace(/-/g, "").slice(0, 18)}`,
         wtfLiveGuestName: "guest",
-        wtfLiveMediaState: { mic: false, camera: false, screen: false },
+        wtfLiveMediaState: { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null },
       };
       clients.add(client);
       installHeartbeat(ws);
@@ -805,7 +855,7 @@ function leaveWtfLiveRoom(client: WsClient) {
   const peerId = client.wtfLivePeerId;
   const guestName = client.wtfLiveGuestName || client.username || "guest";
   client.wtfLiveRoomId = undefined;
-  client.wtfLiveMediaState = { mic: false, camera: false, screen: false };
+  client.wtfLiveMediaState = { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null };
   broadcastToWtfLiveRoom(
     roomId,
     {

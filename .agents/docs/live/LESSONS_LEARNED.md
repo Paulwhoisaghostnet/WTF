@@ -3796,6 +3796,30 @@
 
 ---
 
+## 2026-06-04 - WTF LIVE media previews are not the active published source
+
+**What happened**: WTF LIVE let guests enable camera and screen share at the same time, but the room UI had no explicit active video source. The WebRTC sync path sent every live local track, and peers could stay stuck on the first video source or lose video when the first source stopped.
+
+**Why it mattered**: Local previews are not the same thing as the source peers should receive. A host can reasonably keep camera and screen prepared locally while choosing only one as the room's live visual feed.
+
+**Fix**: Public rooms now track `activeVideo` separately from camera/screen availability, publish that source through `/ws/wtf-live`, and sync peer connections with mic plus only the selected video source. The UI exposes a camera/screen active-share selector and falls back to the remaining live source when the selected one stops.
+
+**Rule**: Any room media feature with multiple candidate visual sources must model source availability and the actively published source separately, then verify both the websocket media state and the remote WebRTC result in a two-peer browser test.
+
+---
+
+## 2026-06-04 - WTF LIVE attendance is not the stage
+
+**What happened**: The public room UI still treated participant presence and active media as one central surface. Even after idle placeholders were compacted, the room did not clearly reserve the bulk of the screen for camera/screen share, and mic-only identity had no customizable visual representation.
+
+**Why it mattered**: A live room's main canvas should be predictable: active screen/camera shares dominate it, mic-only users can appear there as avatars, and silent idle users should stay visible in attendance without taking presentation space.
+
+**Fix**: The room now uses a compact header/settings strip, a dominant stage, and a right rail for attendance plus chat. Media state carries a bounded room avatar URL, stage tiles render active video or mic avatars, and idle guests remain attendance-only.
+
+**Rule**: WTF LIVE layout work must keep attendance, chat, and stage as separate responsibilities. Do not render idle presence in the stage; add tests that prove stage/media geometry, right-rail chat reachability, and avatar media-state relay together.
+
+---
+
 ## 2026-06-04 - Skywire OAuth callbacks must persist SDK saved sessions, not OAuthSession wrappers
 
 **What happened**: After the canonical-domain repair, Chat Add-on OAuth approval could return to Skywire with the account marked reconnect-required. The callback let the OAuth SDK write the saved `{ tokenSet, dpopJwk }` session through `sessionStore.set`, but for existing account rows `persistOAuthSessionForDid` deleted the pending saved session immediately. The route then executed `storedSession ?? session` and could persist the live `OAuthSession` wrapper, which does not expose the saved token material as plain `tokenSet` and `dpopJwk` fields, overwriting encrypted access/refresh token fields with null.
@@ -3805,3 +3829,27 @@
 **Fix**: SDK session-store writes now keep the saved OAuth session available until the route callback performs the final user+DID scoped persistence write. The route no longer falls back to the live `OAuthSession` wrapper, and token encryption now fails closed unless the object has subject, access token, refresh token, and DPoP key material.
 
 **Rule**: Treat `OAuthSession` as a runtime client wrapper, not a persistence DTO. Persist only the SDK saved session object supplied to `sessionStore.set`; if that handoff is missing, fail the callback instead of writing null encrypted token fields. Tests must reject wrapper-shaped objects and prove the callback cannot encode `storedSession ?? session` again.
+
+---
+
+## 2026-06-04 - WTF LIVE audio presence must not consume the visual stage
+
+**What happened**: After the first stage layout pass, mic-only participants were represented as avatar tiles in the same primary stage used for screen/camera sharing. v0.3 testing made the intended hierarchy clearer: screen/camera shares must dominate the room, while mic-only and idle users belong in attendance with compact state indicators.
+
+**Why it mattered**: Audio presence and visual presentation are different jobs. If a mic-only guest takes a stage tile, the UI shrinks the exact content people joined to inspect. It also hides useful diagnostics because "Connecting" blended room presence, media intent, and peer transport into one vague state.
+
+**Fix**: WTF LIVE now keeps the stage screen/camera-only, moves controls/local preview to a narrow left rail, collapses attendance above chat, shows lit mic indicators and WebRTC transport badges in attendance, attaches hidden audio sinks for mic-only peers, supports optional push-to-talk through `audioOpen`, and lets shared media open in closable/maximizable pop-out frames.
+
+**Rule**: Model room presence, audio readiness, audio transmission, and visual sharing separately. Stage layout tests must prove mic-only users stay out of the visual canvas, remote audio still attaches, and diagnostics expose per-peer transport state instead of hiding sync problems behind a single presence label.
+
+---
+
+## 2026-06-05 - WTF LIVE lobby presence must come from the room transport
+
+**What happened**: The signed-in WTF LIVE lobby could list open public rooms, but it did not show whether any room was currently occupied or how many guests were inside.
+
+**Why it mattered**: Hosts and guests should not have to open a room, ask in chat, or rely on outside coordination to know where live activity is happening. A public-room lobby is only useful if it can separate quiet rooms from rooms with people already present.
+
+**Fix**: The room WebSocket layer now exposes a lightweight in-memory presence snapshot per room. WTF LIVE room APIs include that snapshot, and the lobby renders active/quiet plus live user counts on each room card and in the public-room summary.
+
+**Rule**: Room directory activity indicators must be derived from the same transport state that powers guest presence. Tests should prove the lobby changes when a guest joins and returns to quiet when the guest leaves.

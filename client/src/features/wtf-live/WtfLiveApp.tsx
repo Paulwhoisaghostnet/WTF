@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, TextField } from "react95";
-import { Copy, ExternalLink, LogIn, Power, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, LogIn, Power, Radio, Trash2, Users } from "lucide-react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { skywirePermissionTierLabel, type SkywirePermissionTier } from "@shared/atproto-permissions";
@@ -20,9 +20,12 @@ import {
   NavButton,
   QuoteCard,
   MutedText,
+  RoomActivitySummary,
   RoomBadge,
   RoomCard,
   RoomDirectory,
+  RoomMetaRow,
+  RoomPresenceBadge,
   Sidebar,
   ShareLink,
   Stack,
@@ -68,8 +71,18 @@ type WtfLiveRoom = {
   source?: "system" | "user";
   ownerUserId?: number | null;
   isPublic?: boolean;
+  presence?: WtfLiveRoomPresence;
 };
 type WtfLiveStage = WtfLiveRoom & { liveUrl?: string | null };
+
+type WtfLiveRoomPresence = {
+  active?: boolean;
+  participantCount?: number;
+  audioOpenCount?: number;
+  videoShareCount?: number;
+  cameraShareCount?: number;
+  screenShareCount?: number;
+};
 
 type WtfLiveStatus = {
   rolloutMode?: string;
@@ -141,6 +154,37 @@ function publicRoomUrl(roomId: string): string {
   return `${window.location.origin}${publicRoomPath(roomId)}`;
 }
 
+function normalizeCount(value: unknown): number {
+  const count = Number(value);
+  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+}
+
+function roomPresence(room: WtfLiveRoom): Required<WtfLiveRoomPresence> {
+  const participantCount = normalizeCount(room.presence?.participantCount);
+  return {
+    active: Boolean(room.presence?.active || participantCount > 0),
+    participantCount,
+    audioOpenCount: normalizeCount(room.presence?.audioOpenCount),
+    videoShareCount: normalizeCount(room.presence?.videoShareCount),
+    cameraShareCount: normalizeCount(room.presence?.cameraShareCount),
+    screenShareCount: normalizeCount(room.presence?.screenShareCount),
+  };
+}
+
+function userCountLabel(count: number): string {
+  return count === 1 ? "1 user" : `${count} users`;
+}
+
+function shareCountLabel(presence: Required<WtfLiveRoomPresence>): string {
+  if (presence.screenShareCount && presence.cameraShareCount) {
+    return `${presence.screenShareCount} screen / ${presence.cameraShareCount} cam`;
+  }
+  if (presence.screenShareCount) return `${presence.screenShareCount} screen`;
+  if (presence.cameraShareCount) return `${presence.cameraShareCount} cam`;
+  if (presence.audioOpenCount) return `${presence.audioOpenCount} mic`;
+  return "No shares";
+}
+
 function CreateDialog({
   title,
   fields,
@@ -192,10 +236,12 @@ export function WtfLiveApp() {
   const roomsQuery = useQuery<{ rooms: WtfLiveRoom[]; collection: string }>({
     queryKey: ["wtf-live", "rooms"],
     queryFn: () => api.get("/api/wtf-live/rooms"),
+    refetchInterval: 5_000,
   });
   const ownedRoomsQuery = useQuery<{ rooms: WtfLiveRoom[]; collection: string }>({
     queryKey: ["wtf-live", "rooms", "mine"],
     queryFn: () => api.get("/api/wtf-live/rooms/mine"),
+    refetchInterval: 5_000,
   });
   const stagesQuery = useQuery<{ stages: WtfLiveStage[]; collection: string; mode?: string }>({
     queryKey: ["wtf-live", "stages"],
@@ -250,6 +296,8 @@ export function WtfLiveApp() {
   const stageOptions = stagesQuery.data?.stages ?? [];
   const selectedRoom = roomOptions.find((r) => r.id === roomId) ?? null;
   const selectedStage = stageOptions.find((s) => s.id === stageId) ?? null;
+  const activePublicRooms = publicRoomOptions.filter((room) => roomPresence(room).active);
+  const activePublicUserCount = activePublicRooms.reduce((total, room) => total + roomPresence(room).participantCount, 0);
 
   useEffect(() => {
     if (roomOptions.length && !roomOptions.some((r) => r.id === roomId)) setRoomId(roomOptions[0].id);
@@ -376,17 +424,36 @@ export function WtfLiveApp() {
   function renderRoomCard(room: WtfLiveRoom, owned: boolean) {
     const closed = room.isPublic === false;
     const manageable = canManageRoom(room);
+    const presence = roomPresence(room);
     return (
       <RoomCard
         key={`${owned ? "owned" : "public"}-${room.id}`}
         data-wtf-live-room-card={room.id}
         data-wtf-live-room-surface={owned ? "owned" : "public"}
         data-wtf-live-owned-room={manageable ? "true" : undefined}
+        data-wtf-live-room-active={presence.active ? "true" : "false"}
+        data-wtf-live-room-users={presence.participantCount}
       >
-        <RoomBadge $closed={closed}>
-          {closed ? "Closed" : manageable || owned ? "Owned" : room.source === "system" ? "Official" : "Open"}
-        </RoomBadge>
+        <RoomMetaRow>
+          <RoomBadge $closed={closed}>
+            {closed ? "Closed" : manageable || owned ? "Owned" : room.source === "system" ? "Official" : "Open"}
+          </RoomBadge>
+          <RoomPresenceBadge
+            $active={presence.active}
+            data-wtf-live-room-presence={room.id}
+          >
+            <Radio size={11} aria-hidden />
+            {presence.active ? "Active now" : "Quiet"}
+          </RoomPresenceBadge>
+          <RoomPresenceBadge data-wtf-live-room-user-count={room.id}>
+            <Users size={11} aria-hidden />
+            {userCountLabel(presence.participantCount)}
+          </RoomPresenceBadge>
+        </RoomMetaRow>
         <strong>{room.title}</strong>
+        <MutedText data-wtf-live-room-share-summary={room.id}>
+          {presence.active ? shareCountLabel(presence) : "No one in this room right now."}
+        </MutedText>
         {room.description ? <MutedText>{room.description}</MutedText> : null}
         {closed ? <MutedText>Closed to guests until the owner reopens it.</MutedText> : null}
         <ShareLink>{publicRoomUrl(room.id)}</ShareLink>
@@ -430,6 +497,7 @@ export function WtfLiveApp() {
   }
 
   const selectedRoomManageable = selectedRoom ? canManageRoom(selectedRoom) : false;
+  const selectedRoomPresence = selectedRoom ? roomPresence(selectedRoom) : null;
 
   return (
     <MainLayout>
@@ -498,6 +566,20 @@ export function WtfLiveApp() {
             <GroupBox label="Open public rooms">
               <RoomDirectory>
                 {roomsQuery.isLoading ? <Hourglass size={24} /> : null}
+                <RoomActivitySummary
+                  $active={activePublicRooms.length > 0}
+                  data-wtf-live-active-room-summary
+                  data-wtf-live-active-room-count={activePublicRooms.length}
+                  data-wtf-live-active-user-count={activePublicUserCount}
+                >
+                  <strong>
+                    <Radio size={14} aria-hidden />
+                    {activePublicRooms.length
+                      ? `${activePublicRooms.length} active room${activePublicRooms.length === 1 ? "" : "s"}`
+                      : "No active rooms"}
+                  </strong>
+                  <span>{userCountLabel(activePublicUserCount)} live now</span>
+                </RoomActivitySummary>
                 {publicRoomOptions.length ? (
                   publicRoomOptions.map((room) => renderRoomCard(room, false))
                 ) : (
@@ -566,16 +648,34 @@ export function WtfLiveApp() {
                     </option>
                   ))}
                 </NativeSelect>
-                {selectedRoom ? (
+                {selectedRoom && selectedRoomPresence ? (
                   <RoomCard
                     data-wtf-live-room-card={selectedRoom.id}
                     data-wtf-live-room-surface="selected"
                     data-wtf-live-owned-room={selectedRoomManageable ? "true" : undefined}
+                    data-wtf-live-room-active={selectedRoomPresence.active ? "true" : "false"}
+                    data-wtf-live-room-users={selectedRoomPresence.participantCount}
                   >
-                    <RoomBadge $closed={selectedRoom.isPublic === false}>
-                      {selectedRoom.isPublic === false ? "Closed" : selectedRoomManageable ? "Owned" : selectedRoom.source === "system" ? "Official" : "Open"}
-                    </RoomBadge>
+                    <RoomMetaRow>
+                      <RoomBadge $closed={selectedRoom.isPublic === false}>
+                        {selectedRoom.isPublic === false ? "Closed" : selectedRoomManageable ? "Owned" : selectedRoom.source === "system" ? "Official" : "Open"}
+                      </RoomBadge>
+                      <RoomPresenceBadge
+                        $active={selectedRoomPresence.active}
+                        data-wtf-live-room-presence={selectedRoom.id}
+                      >
+                        <Radio size={11} aria-hidden />
+                        {selectedRoomPresence.active ? "Active now" : "Quiet"}
+                      </RoomPresenceBadge>
+                      <RoomPresenceBadge data-wtf-live-room-user-count={selectedRoom.id}>
+                        <Users size={11} aria-hidden />
+                        {userCountLabel(selectedRoomPresence.participantCount)}
+                      </RoomPresenceBadge>
+                    </RoomMetaRow>
                     <strong>{selectedRoom.title}</strong>
+                    <MutedText data-wtf-live-room-share-summary={selectedRoom.id}>
+                      {selectedRoomPresence.active ? shareCountLabel(selectedRoomPresence) : "No one in this room right now."}
+                    </MutedText>
                     {selectedRoom.description ? <MutedText>{selectedRoom.description}</MutedText> : null}
                     {selectedRoom.isPublic === false ? <MutedText>Closed to guests until you reopen it.</MutedText> : null}
                     <ShareLink>{publicRoomUrl(selectedRoom.id)}</ShareLink>

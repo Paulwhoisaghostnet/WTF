@@ -784,6 +784,7 @@ function apiMock(req, res) {
         source: "system",
         ownerUserId: null,
         isPublic: true,
+        presence: liveRoomPresence("wtf-live"),
       },
       joinMode: "guest_room_only",
       roomPath: "/live/r/wtf-live",
@@ -805,7 +806,7 @@ function apiMock(req, res) {
       rooms: [
         { id: "wtf-live", title: "WTF LIVE", kind: "room", description: "Official show room", source: "system", ownerUserId: null, isPublic: true },
         ...(ownedRoom ? [ownedRoom] : []),
-      ],
+      ].map((room) => ({ ...room, presence: liveRoomPresence(room.id) })),
       collection: "app.wtfgameshow.skywire.room.message",
       storage: "public_atproto_repo_records",
       skywirePath: "/skywire?tab=account",
@@ -813,7 +814,7 @@ function apiMock(req, res) {
   }
   if (pathName === "/api/wtf-live/rooms/mine" && req.method === "GET") {
     return res.json({
-      rooms: state.wtfLiveOwnedRoom ? [state.wtfLiveOwnedRoom] : [],
+      rooms: state.wtfLiveOwnedRoom ? [{ ...state.wtfLiveOwnedRoom, presence: liveRoomPresence(state.wtfLiveOwnedRoom.id) }] : [],
       collection: "app.wtfgameshow.skywire.room.message",
       storage: "wtf_live_rooms",
     });
@@ -822,7 +823,7 @@ function apiMock(req, res) {
     const title = String(req.body?.title || "New Room").trim();
     state.wtfLiveOwnedRoom = { id: "my-room", title, kind: "room", description: req.body?.description || "", source: "user", ownerUserId: 1, isPublic: true };
     return res.status(201).json({
-      room: state.wtfLiveOwnedRoom,
+      room: { ...state.wtfLiveOwnedRoom, presence: liveRoomPresence(state.wtfLiveOwnedRoom.id) },
     });
   }
   if (/^\/api\/wtf-live\/rooms\/[^/]+$/.test(pathName) && req.method === "PATCH") {
@@ -834,7 +835,7 @@ function apiMock(req, res) {
       ...state.wtfLiveOwnedRoom,
       isPublic: Boolean(req.body?.isPublic),
     };
-    return res.json({ room: state.wtfLiveOwnedRoom });
+    return res.json({ room: { ...state.wtfLiveOwnedRoom, presence: liveRoomPresence(state.wtfLiveOwnedRoom.id) } });
   }
   if (/^\/api\/wtf-live\/rooms\/[^/]+$/.test(pathName) && req.method === "DELETE") {
     const roomId = pathName.split("/")[4];
@@ -3010,6 +3011,7 @@ const server = app.listen(PORT, () => {
 
 const livePeers = new Map();
 const liveWss = new WebSocketServer({ server, path: "/ws/wtf-live" });
+const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(512 * 1024 * 1.4);
 
 function liveSend(ws, payload) {
   if (ws.readyState !== WebSocket.OPEN) return;
@@ -3033,12 +3035,40 @@ function liveSnapshot(roomId, excludeWs) {
     }));
 }
 
+function liveRoomPresence(roomId) {
+  const peers = [...livePeers]
+    .filter(([ws, client]) => ws.readyState === WebSocket.OPEN && client.roomId === roomId)
+    .map(([_ws, client]) => client);
+  const audioOpenCount = peers.filter((client) => client.mediaState?.audioOpen).length;
+  const cameraShareCount = peers.filter((client) => client.mediaState?.activeVideo === "camera").length;
+  const screenShareCount = peers.filter((client) => client.mediaState?.activeVideo === "screen").length;
+  return {
+    active: peers.length > 0,
+    participantCount: peers.length,
+    audioOpenCount,
+    videoShareCount: cameraShareCount + screenShareCount,
+    cameraShareCount,
+    screenShareCount,
+  };
+}
+
 function liveNormalizeMediaState(value) {
   const state = value && typeof value === "object" ? value : {};
-  return {
-    mic: Boolean(state.mic),
-    camera: Boolean(state.camera),
-    screen: Boolean(state.screen),
+  const camera = Boolean(state.camera);
+  const screen = Boolean(state.screen);
+  const requestedActiveVideo = state.activeVideo === "camera" || state.activeVideo === "screen" ? state.activeVideo : null;
+  const avatarUrl = typeof state.avatarUrl === "string" &&
+    /^data:image\/(?:png|jpe?g|gif|webp);base64,/i.test(state.avatarUrl) &&
+    state.avatarUrl.length <= MAX_LIVE_AVATAR_DATA_URL_LENGTH
+    ? state.avatarUrl
+    : null;
+	  return {
+	    mic: Boolean(state.mic),
+	    audioOpen: Boolean(state.audioOpen ?? state.mic),
+	    camera,
+	    screen,
+    activeVideo: requestedActiveVideo === "camera" && camera ? "camera" : requestedActiveVideo === "screen" && screen ? "screen" : null,
+    avatarUrl,
   };
 }
 
@@ -3048,7 +3078,7 @@ liveWss.on("connection", (ws) => {
     peerId: `peer_${randomUUID().replace(/-/g, "").slice(0, 18)}`,
     roomId: null,
     guestName: "guest",
-    mediaState: { mic: false, camera: false, screen: false },
+	    mediaState: { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null },
   };
   livePeers.set(ws, client);
   liveSend(ws, { type: "wtf_live_connected", peerId: client.peerId });

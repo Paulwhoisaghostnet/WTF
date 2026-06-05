@@ -62,6 +62,10 @@ Priority labels:
 | WTF-BB-203 | Verified | Codex Skywire OAuth same-window repair | 2026-06-04 | Skywire / AT OAuth permission lifecycle | P1 | 13 | 5 | 2 | 5 | 2 | Skywire chat add-on OAuth can leave the original window disabled when the popup becomes the only upgraded Skywire instance |
 | WTF-BB-201 | Verified | Codex WTF LIVE crowded-room layout pass | 2026-06-04 | WTF LIVE / public room layout | P1 | 12 | 7 | 2 | 5 | 1 | WTF LIVE idle participants render as empty media boxes and push room chat offscreen |
 | WTF-BB-202 | Verified | Codex WTF LIVE room exit/new-tab pass | 2026-06-04 | WTF LIVE / public room lifecycle UX | P1 | 11 | 8 | 2 | 5 | 0 | WTF LIVE public rooms lack obvious leave/close controls and signed-in Join replaces the wtfOS window |
+| WTF-BB-209 | Verified | Codex WTF LIVE active share selector | 2026-06-04 | WTF LIVE / public room media selection | P1 | 12 | 7 | 2 | 5 | 1 | WTF LIVE publishes the first video source instead of the user-selected camera/screen share |
+| WTF-BB-210 | Verified | Codex WTF LIVE stage/attendance layout pass | 2026-06-04 | WTF LIVE / public room stage layout | P1 | 12 | 7 | 2 | 5 | 1 | WTF LIVE room layout does not reserve the bulk of the room for active video/screen share |
+| WTF-BB-211 | Verified | Codex WTF LIVE v0.3 room polish pass | 2026-06-04 | WTF LIVE / public room UX and diagnostics | P1 | 13 | 6 | 3 | 5 | 1 | WTF LIVE v0.3 testing exposed weak presence diagnostics, missing media pop-outs, and chat/attendance space competition |
+| WTF-BB-212 | Verified | Codex WTF LIVE lobby presence pass | 2026-06-05 | WTF LIVE / lobby presence | P2 | 8 | 14 | 2 | 3 | 0 | WTF LIVE lobby does not show which rooms are active or how many users are inside |
 | WTF-BB-179 | Verified | Codex Rat Race Objkt pk hydration pass | 2026-05-28 | Rat Race / Objkt hydration | P1 | 12 | 7 | 3 | 5 | 0 | Objkt replay collect records use token pk and fail FA2 token hydration |
 | WTF-BB-178 | Verified | Codex Rat Race replay-window pass | 2026-05-28 | Rat Race / replay ingestion | P1 | 11 | 8 | 2 | 5 | 0 | Multi-day hot filters silently scan only one day of tz2at replay |
 | WTF-BB-148 | Verified | Codex TTC calendar full-send | 2026-05-24 | Browser security / CSP | P1 | 11 | 9 | 2 | 4 | 1 | TTC submit iframe blocked by production CSP frame-src |
@@ -269,6 +273,7 @@ Priority labels:
 - Verification:
   - Passed `npx tsx --test server/features/atproto/skywire-policy.test.ts server/features/atproto/oauth-session-restore.test.ts server/lib/canonical-domain.test.ts`.
   - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run test:e2e:inventory` with 290/290 tests.
   - Passed `npm run build`.
   - Passed `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "OAuth|Chat add-on"`, including a regression that moves from Settings to Home after OAuth and injects duplicate completion/storage noise.
   - `npm run test:e2e:inventory` passed all Skywire tests but ended 288/290 because the unrelated dirty WTF LIVE room tests failed on missing remote-peer presence.
@@ -529,6 +534,91 @@ Priority labels:
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed `npm run build`.
   - Passed `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs`, including new-tab Join plus Leave Room and Close Window controls.
+
+### WTF-BB-209 - WTF LIVE publishes the first video source instead of the user-selected camera/screen share
+
+- Category: WTF LIVE / public room media selection
+- Status: Verified
+- Owner/Session: Codex WTF LIVE active share selector
+- Score: C2 + F5 + S1 + P1(4) = 12
+- Evidence:
+  - User report on 2026-06-04: when a room guest starts camera first and then starts screen share, other users still see only camera; when camera is stopped while screen share remains enabled, peers see nothing until screen share is toggled off and back on.
+  - Code inspection found the public-room WebRTC sender added all local mic/camera/screen tracks, while the UI exposed separate camera and screen previews without an explicit active video source. The websocket media-state relay also stripped any future source-selection field down to only `mic`, `camera`, and `screen`.
+- Correction:
+  - Added an explicit active camera/screen selector to the public room UI, publishes `mediaState.activeVideo` over `/ws/wtf-live`, and changed WebRTC sync to send mic plus only the selected video source.
+  - Starting screen share selects screen by default; stopping the selected camera or screen falls back to the remaining live video source when one exists.
+  - Expanded the WTF LIVE inventory Playwright spec to cover camera-first, screen-share selection, manual source switching, and camera stop while screen remains visible to a remote peer.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run build`.
+  - Passed `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs`, including the active camera/screen share regression.
+  - Passed `npm run test:e2e:inventory` with 290/290 tests.
+
+### WTF-BB-210 - WTF LIVE room layout does not reserve the bulk of the room for active video/screen share
+
+- Category: WTF LIVE / public room stage layout
+- Status: Verified
+- Owner/Session: Codex WTF LIVE stage/attendance layout pass
+- Score: C2 + F5 + S1 + P1(4) = 12
+- Evidence:
+  - User report on 2026-06-04: the room UI should reserve the bulk of the room for screen/video sharing, put chat and attendance on the right, and keep idle users out of the screen-share area while mic-only users appear as customizable avatars.
+  - Code inspection found public rooms still arranged around a left control column plus a smaller remote-peer grid, so presence and media competed for the main screen area.
+- Correction:
+  - Reworked `/live/r/:roomId` into a compact header/settings strip, a dominant stage panel, and a right rail containing attendance plus chat.
+  - Added room-scoped avatar data to WTF LIVE media state, bounded to small image data URLs and relayed through `/ws/wtf-live`.
+  - Stage tiles now render active camera/screen streams or mic-only avatars; idle participants stay in attendance only.
+  - Updated the inventory Playwright behavior to prove custom mic avatars, camera/screen stage switching, idle attendance-only rows, right-rail chat reachability, and stage-vs-sidebar width.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run build`.
+  - Passed `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs`.
+  - Passed `npm run test:e2e:inventory` with 290/290 tests.
+  - Visual smoke captured `/tmp/wtf-live-stage-layout-final.png`: stage 982px wide, right rail 380px wide, chat composer in viewport, active share `screen`.
+
+### WTF-BB-211 - WTF LIVE v0.3 testing exposed weak presence diagnostics, missing media pop-outs, and chat/attendance space competition
+
+- Category: WTF LIVE / public room UX and diagnostics
+- Status: Verified
+- Owner/Session: Codex WTF LIVE v0.3 room polish pass
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - User v0.3 testing summary on 2026-06-04 reported users could join, chat, upload media, invite others, and share screens, but the room still had confusing participant sync states, no maximize/fullscreen affordance for screen share, no image lightbox, weak chat auto-scroll behavior, and insufficient media/audio diagnostics.
+  - The current room UI ranked attendance/settings/local preview too high relative to screen/camera shares, and mic-only participants still consumed stage area even though the stage should be reserved for visual shares.
+- Correction:
+  - Re-ranked `/live/r/:roomId` layout into compact title bar, narrow left control rail, dominant screen/camera stage, and right rail with collapsible attendance above chat.
+  - Changed media state to distinguish mic device readiness from `audioOpen`, added optional push-to-talk, and kept mic-only participants out of the visual stage while still attaching hidden remote audio sinks.
+  - Added per-peer WebRTC diagnostics from local `RTCPeerConnection` state/stats, attendance mic indicators, stage/local-preview pop-out frames with close/maximize/resize/drag controls, chat media lightbox pop-outs, and near-bottom chat auto-scroll with a new-message jump control.
+  - Updated the WTF LIVE public room inventory behavior, domain workflow handles, harness media-state relay, and focused Playwright spec.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `git diff --check`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run build`.
+  - Passed `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs` with 5/5 tests.
+  - Visual smoke captured `/tmp/wtf-live-v03-layout.png`: stage 843px wide, left rail 216px, right rail 317px, attendance collapsed, chat composer in viewport, active share `screen`.
+
+### WTF-BB-212 - WTF LIVE lobby does not show which rooms are active or how many users are inside
+
+- Category: WTF LIVE / lobby presence
+- Status: Verified
+- Owner/Session: Codex WTF LIVE lobby presence pass
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - User report on 2026-06-05: the WTF LIVE lobby should show if rooms are active and how many users are in them.
+  - `/live` room cards only listed room metadata/actions, so hosts had to join or ask outside the app to know whether a public room was occupied.
+- Correction:
+  - Added a runtime WTF LIVE room presence snapshot derived from public `/ws/wtf-live` peers, including active state, participant count, open mic count, and camera/screen share counts.
+  - Returned `presence` on public room metadata, signed-in public room lists, owned room lists, create-room responses, and visibility-update responses.
+  - Added compact active/quiet and user-count badges to lobby/host room cards plus an aggregate active-room summary in the Open public rooms section, refreshed every 5 seconds.
+  - Updated the inventory handle, admin behavior registry, behavior assertion, harness mock API, and focused WTF LIVE Playwright coverage.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run build`.
+  - Passed `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs` with 5/5 tests.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run test:e2e:inventory` with 290/290 tests.
 
 ### WTF-BB-198 - Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links
 

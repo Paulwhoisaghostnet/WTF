@@ -32,6 +32,7 @@ import {
   wtfLiveRoomExists,
   wtfLiveStageExists,
 } from "../features/wtf-live/registry";
+import { getWtfLiveRoomPresence } from "../websocket";
 
 const router = Router();
 const actionLimiter = createInMemoryRateLimit({
@@ -229,6 +230,15 @@ function normalizeStageBroadcastRecord(row: {
   };
 }
 
+function withWtfLivePresence<T extends { id: string }>(room: T): T & {
+  presence: ReturnType<typeof getWtfLiveRoomPresence>;
+} {
+  return {
+    ...room,
+    presence: getWtfLiveRoomPresence(room.id),
+  };
+}
+
 async function readPublicRoomMessages(roomId: string, limit: number) {
   const accounts = await db
     .select({ did: atprotoAccounts.did, handle: atprotoAccounts.handle })
@@ -288,7 +298,7 @@ router.get("/api/wtf-live/public/rooms/:roomId", async (req, res) => {
   const room = await getPublicWtfLiveRoom(roomId.data);
   if (!room) return res.status(404).json({ error: "Room not found" });
   res.json({
-    room,
+    room: withWtfLivePresence(room),
     joinMode: "guest_room_only",
     roomPath: `/live/r/${encodeURIComponent(room.id)}`,
     capabilities: {
@@ -323,7 +333,7 @@ router.use("/api/wtf-live", isAuthenticated, requireWtfLiveRollout);
 router.get("/api/wtf-live/rooms", async (_req, res) => {
   const rooms = await listWtfLiveRooms();
   res.json({
-    rooms: rooms.filter((room) => room.kind === "room"),
+    rooms: rooms.filter((room) => room.kind === "room").map(withWtfLivePresence),
     collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
     storage: "public_atproto_repo_records",
     skywirePath: "/skywire?tab=account",
@@ -334,7 +344,7 @@ router.get("/api/wtf-live/rooms/mine", async (req, res) => {
   const user = req.user as any;
   const rooms = await listOwnedWtfLiveRooms(user.id);
   res.json({
-    rooms,
+    rooms: rooms.map(withWtfLivePresence),
     collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
     storage: "wtf_live_rooms",
   });
@@ -350,7 +360,7 @@ router.post("/api/wtf-live/rooms", actionLimiter, async (req, res) => {
       title: parsed.data.title,
       description: parsed.data.description,
     });
-    res.status(201).json({ room });
+    res.status(201).json({ room: withWtfLivePresence(room) });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message || "Could not create room" });
   }
@@ -370,7 +380,7 @@ router.patch("/api/wtf-live/rooms/:roomId", actionLimiter, async (req, res) => {
       isPublic: parsed.data.isPublic,
     });
     if (!room) return res.status(404).json({ error: "Owned room not found" });
-    res.json({ room });
+    res.json({ room: withWtfLivePresence(room) });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message || "Could not update room" });
   }

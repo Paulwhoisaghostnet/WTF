@@ -296,6 +296,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     ],
     behaviorAssertionIds: [
       "wtf-live.owner-room-lifecycle-controls",
+      "wtf-live.lobby-room-presence",
       "wtf-live.public-room-window-exit-controls",
       "wtf-live.public-room-realtime-media-chat",
     ],
