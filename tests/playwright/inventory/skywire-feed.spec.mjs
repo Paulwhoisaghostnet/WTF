@@ -316,6 +316,31 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     await expect(page.getByText("DM add-on on")).toBeVisible();
     await expect(page.getByRole("button", { name: "Enable Chat Add-on" })).toHaveCount(0);
     await expect(page.getByText("Connection & permissions")).toBeVisible();
+
+    await page.getByRole("button", { name: /Home/ }).click();
+    await expect(page.locator("[data-skywire-feed-card='true']")).toHaveCount(3);
+    expect(new URL(page.url()).searchParams.get("tab")).not.toBe("account");
+    await page.evaluate(() => {
+      const message = {
+        type: "atproto_oauth_complete",
+        app: "skywire",
+        ok: true,
+        handle: "wtf-admin.bsky.social",
+        permissionTier: "be-bold",
+        chatEnabled: true,
+        requestedScope: "atproto transition:generic chat.bsky",
+        grantedScope: "atproto transition:generic chat.bsky",
+        accountId: 1,
+        at: Date.now(),
+      };
+      const channel = new BroadcastChannel("skywire:atproto-oauth");
+      channel.postMessage(message);
+      channel.close();
+      window.dispatchEvent(new StorageEvent("storage", { key: "skywire:atproto-linked", newValue: null }));
+    });
+    await page.waitForTimeout(1200);
+    await expect(page.locator("[data-skywire-feed-card='true']")).toHaveCount(3);
+    await expect(page.getByText("Connection & permissions")).toHaveCount(0);
     expect(fatalErrors(errors)).toEqual([]);
   });
 

@@ -172,6 +172,9 @@ test("Skywire registration UI only offers official signup handoff", () => {
   assert.match(page, /refetchQueries\(\{\s*queryKey:\s*\["skywire",\s*"me"\]/);
   assert.match(page, /fetchCanonicalAtprotoAccount/);
   assert.match(page, /Skywire has not received the durable chat permission yet/);
+  assert.match(page, /durableOAuthCompletionKeysRef/);
+  assert.match(page, /replaceSkywireTabUrl/);
+  assert.match(page, /if \(!event\.newValue\) return/);
   assert.match(page, /window\.location\.assign\(url\)/);
   assert.match(page, /SKYWIRE_RESERVED_PLATFORM_HANDLES/);
   assert.match(page, /isReservedSkywirePlatformHandle\(connectHandle\)/);

@@ -1,3 +1,13 @@
+## 2026-06-04 - Skywire OAuth completion is a one-shot tab transition
+
+**What happened**: After the Chat Add-on OAuth callback finally persisted the durable permission correctly, Skywire could still jump back to Settings after the user moved on. The client treated every later OAuth completion hint as a fresh callback, accepted empty storage events as successful completions, and left stale tab state able to win again after remount-like app refreshes.
+
+**Why it mattered**: OAuth completion metadata is only a signal to refetch canonical account state. Once `/api/atproto/me` confirms the permission, stale BroadcastChannel/localStorage echoes must not keep changing the user's selected Skywire tab.
+
+**Rule**: Skywire may force Settings exactly for the active OAuth return or for a failed/incomplete permission upgrade. After durable permission is confirmed, duplicate completion metadata should only refresh account state, empty storage payloads must be ignored, and manual tab selections must replace stale `tab=account` URL state.
+
+---
+
 ## 2026-06-04 — Skywire OAuth must preserve the starting domain and visible account state
 
 **What happened**: A Skywire Chat Add-on OAuth repair used the configured public base URL for callback/error redirects and hid reserved platform actor rows from `/api/atproto/me`. On a browser with different logged-in sessions on `wtfos.app` and legacy `wtfgameshow.app`, OAuth started on `wtfos.app` could land on `wtfgameshow.app`, collide with the wrong domain's user session, and make the primary Skywire view look like its account had been cleared to `null`.

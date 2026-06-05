@@ -52,6 +52,7 @@ Priority labels:
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-207 | Fixed | Codex Skywire canonical-domain OAuth repair | 2026-06-04 | Platform domains / AT OAuth identity boundary | P0 | 16 | 1 | 3 | 5 | 5 | Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity |
 | WTF-BB-208 | Fixed | Codex Skywire chat OAuth session persistence repair | 2026-06-04 | Skywire / AT OAuth session persistence | P0 | 16 | 1 | 3 | 5 | 5 | Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect |
+| WTF-BB-210 | Verified | Codex Skywire post-OAuth settings bounce repair | 2026-06-04 | Skywire / AT OAuth tab lifecycle | P1 | 12 | 7 | 2 | 5 | 1 | Stale OAuth completion metadata can keep forcing Skywire back to Settings after chat permission is already enabled |
 | WTF-BB-206 | Verified | Codex Skywire OAuth primary-domain repair | 2026-06-04 | Skywire / AT OAuth domain and session binding | P0 | 16 | 1 | 3 | 5 | 5 | Skywire OAuth callback bounces wtfos.app users to legacy wtfgameshow.app and collides with that domain's logged-in identity |
 | WTF-BB-205 | Verified | Codex Skywire OAuth identity-binding emergency | 2026-06-04 | Skywire / AT OAuth identity binding | P0 | 16 | 1 | 3 | 5 | 5 | Skywire Chat Add-on OAuth can target the shared WTF Gameshow Bluesky actor instead of the signed-in user's linked account |
 | WTF-BB-204 | Verified | Codex Skywire market feed search-source pass | 2026-06-04 | Skywire / Market Feed source | P1 | 13 | 5 | 3 | 5 | 1 | Skywire Market Feed can show a false empty lane when searchPosts hits the non-search public AppView |
@@ -252,6 +253,25 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-210 - Stale OAuth completion metadata can keep forcing Skywire back to Settings after chat permission is already enabled
+
+- Category: Skywire / AT OAuth tab lifecycle
+- Status: Verified
+- Owner/Session: Codex Skywire post-OAuth settings bounce repair
+- Score: C2 + F5 + S1 + P1(4) = 12
+- Evidence:
+  - User report on 2026-06-04: after Chat Add-on OAuth is approved and working, Skywire redirects back to Settings every few seconds.
+  - Code inspection found every OAuth completion payload calls `setTab("account")`, storage events with missing payloads can be interpreted as successful completions, and manual tab selections do not clear or replace stale `tab=account` URL state.
+- Correction:
+  - Consume OAuth completion only once after canonical `/api/atproto/me` confirms durable permission.
+  - Ignore empty storage events and sync manual tab choices to the current Skywire URL.
+- Verification:
+  - Passed `npx tsx --test server/features/atproto/skywire-policy.test.ts server/features/atproto/oauth-session-restore.test.ts server/lib/canonical-domain.test.ts`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run build`.
+  - Passed `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "OAuth|Chat add-on"`, including a regression that moves from Settings to Home after OAuth and injects duplicate completion/storage noise.
+  - `npm run test:e2e:inventory` passed all Skywire tests but ended 288/290 because the unrelated dirty WTF LIVE room tests failed on missing remote-peer presence.
 
 ### WTF-BB-208 - Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect
 
