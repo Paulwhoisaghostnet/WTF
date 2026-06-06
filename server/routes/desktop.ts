@@ -62,7 +62,10 @@ const DESKTOP_CLIENT_EVENT_TYPES = new Set([
   "desktop.tool.selected",
   "desktop.item.effect_triggered",
   "wim.chat.opened",
+  "wim.friend.added",
   "wim.message.sent",
+  "wim.offline_popup.opened",
+  "wim.offline_popup.dismissed",
 ]);
 
 function safeObject(value: unknown): Record<string, unknown> {

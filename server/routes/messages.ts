@@ -37,6 +37,34 @@ import { emitPrivateDmToSpine } from "../features/atproto-spine/private-emit";
 
 const router = Router();
 
+const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const WIM_ACTIVE_PRESENCE_WINDOW_MS = 15 * 60 * 1000;
+
+type WimPresenceStatus = "active" | "inactive" | "offline";
+
+function normalizeSessionDate(value: unknown): Date | null {
+  const date = value instanceof Date ? value : new Date(String(value ?? ""));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function wimPresenceFromExpiresAt(expiresAt: Date | null): {
+  status: WimPresenceStatus;
+  lastActiveAt: Date | null;
+  sessionExpiresAt: Date | null;
+} {
+  if (!expiresAt || expiresAt.getTime() <= Date.now()) {
+    return { status: "offline", lastActiveAt: null, sessionExpiresAt: null };
+  }
+
+  const lastActiveAt = new Date(expiresAt.getTime() - SESSION_MAX_AGE_MS);
+  const idleMs = Math.max(0, Date.now() - lastActiveAt.getTime());
+  return {
+    status: idleMs <= WIM_ACTIVE_PRESENCE_WINDOW_MS ? "active" : "inactive",
+    lastActiveAt,
+    sessionExpiresAt: expiresAt,
+  };
+}
+
 const ALL_ROLES: UserRole[] = [...ROLE_ORDER];
 const channelTypes = ["async", "sync", "thread"] as const;
 const channelAccessLevels = ["all", "contestants", "hosts", "witnesses"] as const;
@@ -175,10 +203,6 @@ router.get("/api/messages/users", isAuthenticated, async (req, res) => {
       whereClauses.push(sql`${users.id} <> ${(req.user as any).id}`);
     }
 
-    if (excludeSelf) {
-      whereClauses.push(sql`${users.id} <> ${(req.user as any).id}`);
-    }
-
     const rows = await db
       .select({
         id: users.id,
@@ -193,12 +217,12 @@ router.get("/api/messages/users", isAuthenticated, async (req, res) => {
       .orderBy(users.username)
       .limit(limit);
 
-    const onlineUserIds = new Set<number>();
     const rowIds = rows.map((row) => row.id);
     if (rowIds.length > 0) {
       const activeSessions = await db
         .select({
           userId: sql<number>`NULLIF(${sessions.sess}->'passport'->>'user', '')::int`,
+          expiresAt: sessions.expire,
         })
         .from(sessions)
         .where(sql`
@@ -209,12 +233,40 @@ router.get("/api/messages/users", isAuthenticated, async (req, res) => {
             sql`, `
           )})
         `);
+      const sessionByUserId = new Map<number, Date>();
       for (const session of activeSessions) {
-        if (Number.isInteger(session.userId)) onlineUserIds.add(Number(session.userId));
+        if (!Number.isInteger(session.userId)) continue;
+        const expiresAt = normalizeSessionDate(session.expiresAt);
+        if (!expiresAt) continue;
+        const existing = sessionByUserId.get(Number(session.userId));
+        if (!existing || expiresAt.getTime() > existing.getTime()) {
+          sessionByUserId.set(Number(session.userId), expiresAt);
+        }
       }
+
+      return res.json(
+        rows.map((row) => {
+          const presence = wimPresenceFromExpiresAt(sessionByUserId.get(row.id) ?? null);
+          return {
+            ...row,
+            online: presence.status === "active",
+            presenceStatus: presence.status,
+            lastActiveAt: presence.lastActiveAt?.toISOString() ?? null,
+            sessionExpiresAt: presence.sessionExpiresAt?.toISOString() ?? null,
+          };
+        })
+      );
     }
 
-    res.json(rows.map((row) => ({ ...row, online: onlineUserIds.has(row.id) })));
+    res.json(
+      rows.map((row) => ({
+        ...row,
+        online: false,
+        presenceStatus: "offline",
+        lastActiveAt: null,
+        sessionExpiresAt: null,
+      }))
+    );
   } catch {
     res.status(500).json({ error: "Failed to search users" });
   }

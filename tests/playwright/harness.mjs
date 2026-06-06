@@ -1602,7 +1602,53 @@ function apiMock(req, res) {
   if (pathName === "/api/messages/dms" && req.method === "POST") {
     return res.status(201).json({ id: 101, existed: false });
   }
-  if (pathName === "/api/messages/dms") return res.json([]);
+  if (pathName === "/api/messages/dms") {
+    return res.json([
+      {
+        id: 77,
+        title: null,
+        unreadCount: 2,
+        conversationType: "direct",
+        peers: [
+          {
+            id: 3,
+            userId: 3,
+            username: "wim-away",
+            displayName: "WIM Away",
+            online: false,
+          },
+        ],
+        latestMessage: {
+          id: 501,
+          senderId: 3,
+          content: "Queued WIM ping from the harness.",
+          createdAt: nowIso(),
+        },
+      },
+    ]);
+  }
+  if (pathName === "/api/messages/dms/77/messages") {
+    return res.json([
+      {
+        id: 501,
+        senderId: 3,
+        username: "wim-away",
+        displayName: "WIM Away",
+        content: "Queued WIM ping from the harness.",
+        createdAt: nowIso(),
+      },
+    ]);
+  }
+  if (pathName === "/api/messages/dms/101/messages" && req.method === "POST") {
+    return res.status(201).json({
+      id: 601,
+      senderId: 1,
+      username: "admin",
+      displayName: "Admin User",
+      content: String(req.body?.content || "Harness WIM message"),
+      createdAt: nowIso(),
+    });
+  }
   if (pathName === "/api/messages/dms/101/messages") return res.json([]);
   if (pathName === "/api/messages/users") {
     return res.json([
@@ -1614,6 +1660,9 @@ function apiMock(req, res) {
         role: "contestant",
         experiencePoints: 42,
         online: true,
+        presenceStatus: "active",
+        lastActiveAt: nowIso(),
+        sessionExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       },
       {
         id: 3,
@@ -1623,6 +1672,23 @@ function apiMock(req, res) {
         role: "witness",
         experiencePoints: 7,
         online: false,
+        presenceStatus: "inactive",
+        lastActiveAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+        sessionExpiresAt: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000 - 45 * 60 * 1000
+        ).toISOString(),
+      },
+      {
+        id: 4,
+        username: "wim-offline",
+        displayName: "WIM Offline",
+        avatarUrl: null,
+        role: "witness",
+        experiencePoints: 3,
+        online: false,
+        presenceStatus: "offline",
+        lastActiveAt: null,
+        sessionExpiresAt: null,
       },
     ]);
   }

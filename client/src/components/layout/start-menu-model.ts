@@ -74,7 +74,6 @@ const ICONS: Record<string, string> = {
   "/side-quests": "🐹",
   "/messages": "👻",
   "/wim": "WIM",
-  "/aim": "WIM",
   "/mail": "📧",
   "/digest": "📰",
   "/skywire": "🦋",

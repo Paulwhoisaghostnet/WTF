@@ -215,6 +215,8 @@ export const DOMAIN_WORKFLOWS = [
       "wim.chat.opened",
       "wim.friend.added",
       "wim.message.sent",
+      "wim.offline_popup.opened",
+      "wim.offline_popup.dismissed",
       "browser.link.opened",
       "browser.navigation.blocked",
       "xp.awarded",

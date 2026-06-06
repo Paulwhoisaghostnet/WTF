@@ -227,8 +227,8 @@ const Tz2atPage = lazy(() =>
 const CrpNominatePage = lazy(() =>
   import("../pages/CrpNominate").then((m) => ({ default: m.CrpNominate }))
 );
-const AimPage = lazy(() =>
-  import("../pages/Aim").then((m) => ({ default: m.Aim }))
+const WimPage = lazy(() =>
+  import("../pages/Wim").then((m) => ({ default: m.Wim }))
 );
 const MailPage = lazy(() =>
   import("../pages/Mail").then((m) => ({ default: m.Mail }))
@@ -530,8 +530,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/live", component: WtfLivePage, auth: true, title: "WTF LIVE", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/tz2at", component: Tz2atPage, auth: true, title: "tz2at", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/crp-nominate", component: CrpNominatePage, auth: true, title: "CRP Nominations", group: "social", startMenu: true, desktopIcon: true },
-  { pattern: "/wim", component: AimPage, auth: true, title: "WIM", group: "social", startMenu: true },
-  { pattern: "/aim", component: AimPage, auth: true, title: "WIM", group: "social" },
+  { pattern: "/wim", component: WimPage, auth: true, title: "WIM", group: "social", startMenu: true },
   { pattern: "/mail", component: MailPage, auth: true, title: "WTF Mail", group: "social", startMenu: true },
   { pattern: "/digest", component: DigestPage, auth: true, title: "Digest", group: "social", startMenu: true },
   { pattern: "/browser", component: BrowserPage, auth: true, title: "Browser", group: "desktop-os", startMenu: true },

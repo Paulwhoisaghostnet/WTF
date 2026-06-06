@@ -3875,3 +3875,27 @@
 **Fix**: Postgres-backed rate-limit keys now include a stable limiter name before the requester key and window start. The shared `createRateLimit` factory requires that name, app-level persisted limiters declare explicit names, and `getRateKeeper` uses its registry name as the persisted namespace.
 
 **Rule**: Any persisted or shared rate-limit store must include the limiter identity in its bucket key, not only the requester key and time window. New Postgres-backed limiters must have a stable name and a regression proving two limiters with the same requester and window cannot share a counter.
+
+---
+
+## 2026-06-06 - Portaled app UI cannot rely on shell-scoped CSS variables
+
+**What happened**: WIM's unread-message popup rendered through a portal so it could appear as a desktop toast, but its popup chrome used CSS variables defined only inside the WIM app shell. In the browser smoke, the popup title stayed white while the header background declaration was invalid, making the title nearly unreadable.
+
+**Why it mattered**: Desktop popups, menus, and modals often live outside their owning app's DOM subtree. If their critical colors come only from shell-scoped variables, a production build can look correct in the app body while portaled UI loses contrast.
+
+**Fix**: WIM now defines the needed color variables on the popup stack and uses fallback values in the header gradient. The source regression test checks for the popup fallback so the portal cannot silently lose chrome color again.
+
+**Rule**: Any portaled app-owned UI must define or fallback its own critical CSS variables at the portal root. Visual smoke should include at least one portaled state whenever the feature depends on OS/theme chrome.
+
+---
+
+## 2026-06-06 - WIM naming must be canonical in active code and routes
+
+**What happened**: The WIM upgrade kept a retired nostalgic reference in the active source module, test filename, route alias, route fixtures, access manifest, and registry metadata. The visible app said WIM, but the implementation still carried the old reference as a product name in places operators and future agents would touch.
+
+**Why it mattered**: Product naming is part of the contract. If active files, routes, or inventory labels keep retired reference names, future work will copy the wrong vocabulary and may accidentally expose it in UI, docs, analytics, or admin surfaces.
+
+**Fix**: Renamed the WIM page and test modules, switched React Query keys to `wim`, removed the retired route alias from route registration, route fixtures, browser routes, app access, start-menu mapping, admin registry, and active inventory text, then added a focused regression that keeps the active WIM source and inventory free of the retired reference.
+
+**Rule**: Nostalgic inspiration may inform design, but active product code, routes, tests, inventory, admin metadata, and user-facing summaries must use the canonical product name only. If a reference name is retired, remove aliases unless the user explicitly asks for backwards compatibility.

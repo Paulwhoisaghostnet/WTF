@@ -92,7 +92,6 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/tz2at", auth: true, title: "tz2at" },
   { pattern: "/crp-nominate", auth: true, title: "CRP Nominations" },
   { pattern: "/wim", auth: true, title: "WIM" },
-  { pattern: "/aim", auth: true, title: "WIM" },
   { pattern: "/mail", auth: true, title: "WTF Mail" },
   { pattern: "/digest", auth: true, title: "Digest" },
   { pattern: "/browser", auth: true, title: "Browser" },

@@ -20,7 +20,6 @@ export const ROUTE_FIXTURES = [
   { pattern: "/mail", path: "/mail", title: "WTF Mail", domain: "social", subdomain: "Mail", auth: true },
   { pattern: "/digest", path: "/digest", title: "Digest", domain: "social", subdomain: "Unified timeline", auth: true },
   { pattern: "/wim", path: "/wim", title: "WIM", domain: "social", subdomain: "Instant messenger", auth: true },
-  { pattern: "/aim", path: "/aim", title: "WIM", domain: "social", subdomain: "Instant messenger legacy alias", auth: true },
   { pattern: "/browser", path: "/browser", title: "Browser", domain: "desktop-os", subdomain: "Controlled link chamber", auth: true },
   { pattern: "/notifications", path: "/notifications", title: "Notification Center", domain: "desktop-os", subdomain: "Notification Center", auth: true },
   { pattern: "/dear-diary", path: "/dear-diary", title: "Dear Diary", domain: "social", subdomain: "Dear Diary", auth: true },
