@@ -2,10 +2,30 @@ import { useState, useEffect } from "react";
 import {
   Button,
   GroupBox,
-  Tabs,
-  Tab,
-  TabBody,
 } from "react95";
+import type { LucideIcon } from "lucide-react";
+import {
+  BadgeCheck,
+  Bot,
+  Boxes,
+  ClipboardList,
+  Coins,
+  FileText,
+  Gamepad2,
+  Gift,
+  HardDrive,
+  Layers,
+  MonitorCog,
+  Package,
+  RadioTower,
+  ReceiptText,
+  ShieldCheck,
+  ShoppingBag,
+  Trophy,
+  Tv,
+  UserCog,
+  Users,
+} from "lucide-react";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { BoardAdminTab } from "../features/admin/tabs/BoardAdminTab";
@@ -58,50 +78,276 @@ const AdminFrame = styled.div`
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(238, 241, 244, 0.88)),
+    repeating-linear-gradient(90deg, rgba(17, 24, 39, 0.05) 0 1px, transparent 1px 24px);
+  padding: 10px;
+  color: #15171a;
+`;
+
+const SuiteHeader = styled.header`
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(300px, 1.2fr);
+  gap: 10px;
+
+  @media (max-width: 920px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const SuiteTitlePanel = styled.div`
+  border: 1px solid #15171a;
+  background: #f7f7f4;
+  box-shadow: 4px 4px 0 #15171a;
+  padding: 12px;
+  min-width: 0;
+`;
+
+const SuiteKicker = styled.div`
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6f1d1b;
+  font-weight: 700;
+`;
+
+const SuiteTitle = styled.h2`
+  margin: 2px 0 0;
+  font-size: clamp(20px, 3vw, 32px);
+  line-height: 1;
+`;
+
+const SuiteSubtitle = styled.div`
+  margin-top: 6px;
+  font-size: 12px;
+  color: #3b3f45;
 `;
 
 const OverviewBox = styled(GroupBox)`
-  flex: 0 0 auto;
   margin-bottom: 0;
+  min-width: 0;
 `;
 
 const OverviewStats = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
-  gap: 6px 10px;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 7px;
   font-size: 12px;
 `;
 
-const TabStrip = styled(Tabs)`
-  flex: 0 0 auto;
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  white-space: nowrap;
-  padding-bottom: 2px;
+const StatTile = styled.span`
+  display: grid;
+  gap: 1px;
+  border: 1px solid #9ea5ad;
+  background: #ffffff;
+  padding: 7px 8px;
+  min-width: 0;
+
+  strong {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  span {
+    color: #4b5563;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+`;
+
+const SuiteBody = styled.div`
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(218px, 252px) minmax(0, 1fr);
+  gap: 10px;
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+`;
+
+const SuiteNav = styled.nav`
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid #15171a;
+  background: #202326;
+  color: #f7f7f4;
+  box-shadow: 4px 4px 0 #15171a;
+  padding: 9px;
   scrollbar-gutter: stable;
 `;
 
-const AdminTab = styled(Tab)`
-  min-width: 56px;
-  max-width: 108px;
-  padding-left: 7px;
-  padding-right: 7px;
+const NavGroup = styled.div`
+  display: grid;
+  gap: 5px;
+  margin-bottom: 12px;
+`;
+
+const NavGroupTitle = styled.div`
+  color: #f4c542;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 3px;
+`;
+
+const NavButton = styled.button<{ $active?: boolean; $accent: string }>`
+  width: 100%;
+  border: 1px solid ${({ $active, $accent }) => ($active ? $accent : "#5b626b")};
+  background: ${({ $active }) => ($active ? "#f7f7f4" : "#2d3136")};
+  color: ${({ $active }) => ($active ? "#15171a" : "#f7f7f4")};
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+  padding: 8px;
+  min-height: 44px;
+  box-shadow: ${({ $active, $accent }) => ($active ? `3px 3px 0 ${$accent}` : "none")};
+  cursor: pointer;
+
+  &:hover {
+    border-color: ${({ $accent }) => $accent};
+    background: ${({ $active }) => ($active ? "#ffffff" : "#383d43")};
+  }
+`;
+
+const NavIcon = styled.span<{ $accent: string }>`
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid ${({ $accent }) => $accent};
+  background: rgba(255, 255, 255, 0.08);
+  color: ${({ $accent }) => $accent};
+`;
+
+const NavCopy = styled.span`
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+`;
+
+const NavLabel = styled.span`
+  font-weight: 700;
+  font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
 `;
 
-const AdminTabBody = styled(TabBody)`
+const NavDescription = styled.span`
+  color: inherit;
+  opacity: 0.7;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const AdminTabBody = styled.section`
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  border: 1px solid #15171a;
+  background: #f5f5f2;
+  box-shadow: 4px 4px 0 #15171a;
+  padding: 12px;
+  scrollbar-gutter: stable;
+`;
+
+const ActivePanelHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid #15171a;
+  padding-bottom: 8px;
+`;
+
+const ActivePanelTitle = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+
+  h3 {
+    margin: 0;
+    font-size: 20px;
+  }
+
+  p {
+    margin: 2px 0 0;
+    color: #505862;
+    font-size: 12px;
+  }
+`;
+
+const ActivePanelIcon = styled.span<{ $accent: string }>`
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #15171a;
+  background: ${({ $accent }) => $accent};
+  color: #111111;
+  box-shadow: 2px 2px 0 #15171a;
+  flex: 0 0 auto;
+`;
+
+const ActivePanelBadge = styled.div<{ $accent: string }>`
+  border: 1px solid #15171a;
+  background: ${({ $accent }) => $accent};
+  color: #111111;
+  padding: 5px 8px;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  white-space: nowrap;
 `;
 
 const EMPTY_JSON_OBJECT = "{}";
+
+type AdminSection = {
+  value: number;
+  title: string;
+  label: string;
+  description: string;
+  group: string;
+  accent: string;
+  Icon: LucideIcon;
+};
+
+const ADMIN_SECTIONS: AdminSection[] = [
+  { value: 0, title: "Users", label: "Users", description: "Accounts, XP, roles", group: "Identity & Access", accent: "#86efac", Icon: Users },
+  { value: 11, title: "Roles", label: "Role Control", description: "Permissions, apps, visibility", group: "Identity & Access", accent: "#facc15", Icon: ShieldCheck },
+  { value: 17, title: "OS Admin", label: "OS Surfaces", description: "App registry, native ADM", group: "Identity & Access", accent: "#38bdf8", Icon: MonitorCog },
+  { value: 9, title: "Desktop and Start Menu Apps", label: "App Gates", description: "Launchers, docs, install keys", group: "Identity & Access", accent: "#fb7185", Icon: Boxes },
+  { value: 1, title: "Seasons", label: "Seasons", description: "Season structure", group: "Gameshow Ops", accent: "#fda4af", Icon: Trophy },
+  { value: 2, title: "Rounds", label: "Rounds", description: "Rounds and windows", group: "Gameshow Ops", accent: "#fdba74", Icon: Layers },
+  { value: 3, title: "Challenges", label: "Tasks", description: "Challenges and grading", group: "Gameshow Ops", accent: "#a7f3d0", Icon: ClipboardList },
+  { value: 4, title: "Side Quests", label: "Quests", description: "Daily/social quests", group: "Gameshow Ops", accent: "#fde68a", Icon: BadgeCheck },
+  { value: 18, title: "Automation", label: "Automation", description: "Triggers and rewards", group: "Gameshow Ops", accent: "#c4b5fd", Icon: Bot },
+  { value: 8, title: "Rewards", label: "Rewards", description: "Ledger and payouts", group: "Economy", accent: "#bbf7d0", Icon: Gift },
+  { value: 7, title: "XP Log", label: "XP", description: "Experience audit", group: "Economy", accent: "#bae6fd", Icon: Coins },
+  { value: 10, title: "Contract Ledger", label: "Ledger", description: "On-chain activity", group: "Economy", accent: "#fecaca", Icon: ReceiptText },
+  { value: 15, title: "In-App Market", label: "Market", description: "Catalog and pricing", group: "Economy", accent: "#bef264", Icon: ShoppingBag },
+  { value: 14, title: "WTF Tez", label: "Domains", description: "Subdomain grants", group: "Platform Apps", accent: "#93c5fd", Icon: Package },
+  { value: 12, title: "WTF TV", label: "TV", description: "Channels and source mode", group: "Platform Apps", accent: "#f0abfc", Icon: Tv },
+  { value: 13, title: "Studio", label: "Studio", description: "Storage and Drive", group: "Platform Apps", accent: "#5eead4", Icon: HardDrive },
+  { value: 16, title: "Arcade", label: "Arcade", description: "Games and reports", group: "Platform Apps", accent: "#fdba74", Icon: Gamepad2 },
+  { value: 19, title: "W Digest", label: "W", description: "Digest handles", group: "Platform Apps", accent: "#d8b4fe", Icon: RadioTower },
+  { value: 5, title: "Board", label: "Board", description: "Threads and moderation", group: "Content", accent: "#f9a8d4", Icon: FileText },
+  { value: 6, title: "Content", label: "Content", description: "Links and FAQ", group: "Content", accent: "#cbd5e1", Icon: FileText },
+];
 
 function ConfirmButton({
   label,
@@ -414,50 +660,88 @@ export function Admin() {
     );
   });
 
+  const activeSection =
+    ADMIN_SECTIONS.find((section) => section.value === activeTab) ?? ADMIN_SECTIONS[0];
+  const ActiveSectionIcon = activeSection.Icon;
+  const groupedSections = ADMIN_SECTIONS.reduce<Record<string, AdminSection[]>>(
+    (acc, section) => {
+      acc[section.group] = [...(acc[section.group] ?? []), section];
+      return acc;
+    },
+    {}
+  );
+
   return (
     <AppWindow title="Admin Panel">
       <AdminFrame>
-        {/* ═══ OVERVIEW ═══ */}
-        {stats && (
-          <OverviewBox label="Overview">
+        <SuiteHeader>
+          <SuiteTitlePanel>
+            <SuiteKicker>wtfOS admin</SuiteKicker>
+            <SuiteTitle>Control Suite</SuiteTitle>
+            <SuiteSubtitle>{activeSection.group} / {activeSection.label}</SuiteSubtitle>
+          </SuiteTitlePanel>
+
+          <OverviewBox label="Live inventory">
             <OverviewStats>
-              <span>Users: <strong>{stats.users}</strong></span>
-              <span>Seasons: <strong>{stats.seasons}</strong></span>
-              <span>Rounds: <strong>{stats.rounds}</strong></span>
-              <span>Challenges: <strong>{stats.challenges}</strong></span>
-              <span>Quests: <strong>{stats.sideQuests}</strong></span>
-              <span>Listings: <strong>{stats.listings}</strong></span>
-              <span>Threads: <strong>{stats.threads}</strong></span>
-              <span>Links: <strong>{stats.links}</strong></span>
-              <span>FAQ: <strong>{stats.faq}</strong></span>
+              <StatTile><strong>{stats?.users ?? "-"}</strong><span>Users</span></StatTile>
+              <StatTile><strong>{stats?.seasons ?? "-"}</strong><span>Seasons</span></StatTile>
+              <StatTile><strong>{stats?.rounds ?? "-"}</strong><span>Rounds</span></StatTile>
+              <StatTile><strong>{stats?.challenges ?? "-"}</strong><span>Tasks</span></StatTile>
+              <StatTile><strong>{stats?.sideQuests ?? "-"}</strong><span>Quests</span></StatTile>
+              <StatTile><strong>{stats?.listings ?? "-"}</strong><span>Listings</span></StatTile>
+              <StatTile><strong>{stats?.threads ?? "-"}</strong><span>Threads</span></StatTile>
+              <StatTile><strong>{stats?.links ?? "-"}</strong><span>Links</span></StatTile>
+              <StatTile><strong>{stats?.faq ?? "-"}</strong><span>FAQ</span></StatTile>
             </OverviewStats>
           </OverviewBox>
-        )}
+        </SuiteHeader>
 
-        <TabStrip value={activeTab} onChange={(v: number) => setActiveTab(v)}>
-          <AdminTab value={0} title="Users">Users</AdminTab>
-          <AdminTab value={1} title="Seasons">Seasons</AdminTab>
-          <AdminTab value={2} title="Rounds">Rounds</AdminTab>
-          <AdminTab value={3} title="Challenges">Tasks</AdminTab>
-          <AdminTab value={4} title="Side Quests">Quests</AdminTab>
-          <AdminTab value={5} title="Board">Board</AdminTab>
-          <AdminTab value={6} title="Content">Content</AdminTab>
-          <AdminTab value={7} title="XP Log">XP</AdminTab>
-          <AdminTab value={8} title="Rewards">Rewards</AdminTab>
-          <AdminTab value={9} title="Desktop and Start Menu Apps">Apps</AdminTab>
-          <AdminTab value={10} title="Contract Ledger">Ledger</AdminTab>
-          <AdminTab value={11} title="Roles">Roles</AdminTab>
-          <AdminTab value={12} title="WTF TV">TV</AdminTab>
-          <AdminTab value={13} title="Studio">Studio</AdminTab>
-          <AdminTab value={14} title="WTF Tez">Domains</AdminTab>
-          <AdminTab value={15} title="In-App Market">Market</AdminTab>
-          <AdminTab value={16} title="Arcade">Arcade</AdminTab>
-          <AdminTab value={17} title="OS Admin">OS</AdminTab>
-          <AdminTab value={18} title="Automation">Automate</AdminTab>
-          <AdminTab value={19} title="W Digest">W</AdminTab>
-        </TabStrip>
+        <SuiteBody>
+          <SuiteNav aria-label="Admin suite panels">
+            {Object.entries(groupedSections).map(([group, sections]) => (
+              <NavGroup key={group}>
+                <NavGroupTitle>{group}</NavGroupTitle>
+                {sections.map((section) => {
+                  const Icon = section.Icon;
+                  const isActive = section.value === activeTab;
+                  return (
+                    <NavButton
+                      key={section.value}
+                      $active={isActive}
+                      $accent={section.accent}
+                      title={section.title}
+                      aria-current={isActive ? "page" : undefined}
+                      onClick={() => setActiveTab(section.value)}
+                    >
+                      <NavIcon $accent={section.accent}>
+                        <Icon size={16} strokeWidth={2.4} aria-hidden="true" />
+                      </NavIcon>
+                      <NavCopy>
+                        <NavLabel>{section.label}</NavLabel>
+                        <NavDescription>{section.description}</NavDescription>
+                      </NavCopy>
+                    </NavButton>
+                  );
+                })}
+              </NavGroup>
+            ))}
+          </SuiteNav>
 
-        <AdminTabBody>
+          <AdminTabBody>
+          <ActivePanelHeader>
+            <ActivePanelTitle>
+              <ActivePanelIcon $accent={activeSection.accent}>
+                <ActiveSectionIcon size={18} strokeWidth={2.4} aria-hidden="true" />
+              </ActivePanelIcon>
+              <div>
+                <h3>{activeSection.label}</h3>
+                <p>{activeSection.description}</p>
+              </div>
+            </ActivePanelTitle>
+            <ActivePanelBadge $accent={activeSection.accent}>
+              {activeSection.group}
+            </ActivePanelBadge>
+          </ActivePanelHeader>
         {/* ═══ TAB 0: USERS ═══ */}
         {activeTab === 0 && (
           <UsersAdminTab
@@ -734,7 +1018,8 @@ export function Admin() {
         )}
         {activeTab === 18 && <ChallengeAutomationAdminTab />}
         {activeTab === 19 && <WDigestAdminTab />}
-        </AdminTabBody>
+          </AdminTabBody>
+        </SuiteBody>
       </AdminFrame>
     </AppWindow>
   );

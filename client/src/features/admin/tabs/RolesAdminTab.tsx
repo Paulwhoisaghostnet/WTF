@@ -1,18 +1,25 @@
-import { useMemo, useState, type Dispatch, type ReactElement, type SetStateAction } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type ReactElement, type SetStateAction } from "react";
+import { Button, Hourglass, Select } from "react95";
+import type { LucideIcon } from "lucide-react";
 import {
-  Button,
-  Hourglass,
-  Select,
-  Table,
-  TableBody,
-  TableDataCell,
-  TableHead,
-  TableHeadCell,
-  TableRow,
-} from "react95";
+  BadgeCheck,
+  Ban,
+  Boxes,
+  Gauge,
+  KeyRound,
+  Layers,
+  Lock,
+  Network,
+  RotateCcw,
+  Route,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+  UserCog,
+  Workflow,
+} from "lucide-react";
 import styled from "styled-components";
 import {
-  CATEGORY_LABELS,
   PERMISSIONS,
   PERMISSION_CATEGORIES,
   ROLE_CATEGORIES,
@@ -22,6 +29,7 @@ import {
   type RoleDefinition,
 } from "@shared/types";
 import type {
+  AdminSurfaceAccess,
   ResetRoleSurfaceAccessPayload,
   ResetPermissionPayload,
   RoleAccessResponse,
@@ -31,11 +39,442 @@ import type {
   UpsertRolePayload,
 } from "../types";
 
+const PERMISSION_CATEGORY_LABELS: Record<PermissionCategory, string> = {
+  general: "General",
+  game: "Game",
+  social: "Social",
+  market: "Market",
+  moderation: "Moderation",
+  admin: "Administration",
+};
+
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: 7px;
   align-items: center;
   flex-wrap: wrap;
+
+  svg {
+    vertical-align: -2px;
+  }
+`;
+
+const RoleWorkspace = styled.div`
+  display: grid;
+  gap: 14px;
+`;
+
+const HeroPanel = styled.section`
+  border: 1px solid #15171a;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(236, 239, 243, 0.92)),
+    repeating-linear-gradient(135deg, rgba(21, 23, 26, 0.06) 0 1px, transparent 1px 13px);
+  box-shadow: 4px 4px 0 #15171a;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(320px, 1.4fr);
+  gap: 14px;
+
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const HeroCopy = styled.div`
+  min-width: 0;
+
+  h3 {
+    margin: 0;
+    font-size: clamp(22px, 3vw, 34px);
+    line-height: 1;
+  }
+
+  p {
+    color: #3f464f;
+    font-size: 12px;
+    margin: 7px 0 0;
+  }
+`;
+
+const RoleAccent = styled.span<{ $color?: string | null }>`
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1px solid #15171a;
+  background: ${({ $color }) => $color || "#facc15"};
+  box-shadow: 2px 2px 0 #15171a;
+  margin-right: 7px;
+`;
+
+const HeroMeta = styled.div`
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+`;
+
+const MetaChip = styled.span<{ $tone?: "good" | "warn" | "dark" | "plain" }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #15171a;
+  background: ${({ $tone }) =>
+    $tone === "good" ? "#bbf7d0" : $tone === "warn" ? "#fde68a" : $tone === "dark" ? "#202326" : "#ffffff"};
+  color: ${({ $tone }) => ($tone === "dark" ? "#ffffff" : "#15171a")};
+  padding: 4px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+`;
+
+const MetricGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+`;
+
+const MetricTile = styled.div`
+  border: 1px solid #15171a;
+  background: #ffffff;
+  padding: 9px;
+  min-width: 0;
+
+  strong {
+    display: block;
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  span {
+    display: block;
+    margin-top: 4px;
+    color: #4b5563;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+`;
+
+const ControlGrid = styled.div`
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.4fr);
+  gap: 12px;
+  align-items: start;
+
+  @media (max-width: 1060px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const Panel = styled.section`
+  border: 1px solid #15171a;
+  background: #ffffff;
+  box-shadow: 4px 4px 0 #15171a;
+  padding: 12px;
+  min-width: 0;
+`;
+
+const PanelHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 2px solid #15171a;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+`;
+
+const PanelTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  h4 {
+    margin: 0;
+    font-size: 15px;
+  }
+
+  span {
+    display: block;
+    margin-top: 2px;
+    color: #5b626b;
+    font-size: 11px;
+  }
+`;
+
+const IconBadge = styled.span<{ $color?: string }>`
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #15171a;
+  background: ${({ $color }) => $color || "#facc15"};
+  box-shadow: 2px 2px 0 #15171a;
+  flex: 0 0 auto;
+`;
+
+const RoleCardGrid = styled.div`
+  display: grid;
+  gap: 8px;
+`;
+
+const RoleCard = styled.button<{ $active?: boolean; $color?: string | null }>`
+  border: 1px solid ${({ $active, $color }) => ($active ? ($color || "#15171a") : "#b8bec6")};
+  background: ${({ $active }) => ($active ? "#f8fafc" : "#ffffff")};
+  box-shadow: ${({ $active, $color }) => ($active ? `3px 3px 0 ${$color || "#15171a"}` : "none")};
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  padding: 9px;
+  cursor: pointer;
+
+  &:hover {
+    border-color: ${({ $color }) => $color || "#15171a"};
+  }
+`;
+
+const RoleCardTop = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+`;
+
+const RoleName = styled.strong`
+  font-size: 13px;
+`;
+
+const RoleSlug = styled.span`
+  color: #5b626b;
+  display: block;
+  font-size: 10px;
+  margin-top: 1px;
+`;
+
+const RoleStatsLine = styled.div`
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+`;
+
+const TinyChip = styled.span`
+  border: 1px solid #c7cdd4;
+  background: #f7f7f4;
+  color: #30363d;
+  padding: 2px 5px;
+  font-size: 10px;
+`;
+
+const FormGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const FullSpan = styled.div`
+  grid-column: 1 / -1;
+`;
+
+const FieldLabel = styled.label`
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #30363d;
+`;
+
+const TextInput = styled.input`
+  border: 1px solid #8d949e;
+  background: #ffffff;
+  padding: 6px 7px;
+  width: 100%;
+`;
+
+const TextArea = styled.textarea`
+  border: 1px solid #8d949e;
+  background: #ffffff;
+  padding: 6px 7px;
+  width: 100%;
+  min-height: 68px;
+  resize: vertical;
+`;
+
+const CheckboxLine = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+`;
+
+const CategoryRail = styled.div`
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+`;
+
+const SegmentButton = styled.button<{ $active?: boolean }>`
+  border: 1px solid ${({ $active }) => ($active ? "#15171a" : "#a6adb6")};
+  background: ${({ $active }) => ($active ? "#15171a" : "#ffffff")};
+  color: ${({ $active }) => ($active ? "#ffffff" : "#15171a")};
+  padding: 6px 8px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: ${({ $active }) => ($active ? "2px 2px 0 #facc15" : "none")};
+`;
+
+const PermissionGroups = styled.div`
+  display: grid;
+  gap: 10px;
+`;
+
+const PermissionGroup = styled.div`
+  border: 1px solid #aeb5bd;
+  background: #f8fafc;
+`;
+
+const PermissionGroupHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid #aeb5bd;
+  background: #eef2f6;
+  padding: 7px 9px;
+  font-weight: 700;
+`;
+
+const PermissionToggleGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 7px;
+  padding: 8px;
+`;
+
+const PermissionToggle = styled.label<{ $active?: boolean; $locked?: boolean }>`
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 7px;
+  align-items: start;
+  border: 1px solid ${({ $active }) => ($active ? "#15803d" : "#c7cdd4")};
+  background: ${({ $active }) => ($active ? "#ecfdf3" : "#ffffff")};
+  opacity: ${({ $locked }) => ($locked ? 0.78 : 1)};
+  padding: 8px;
+
+  strong {
+    display: block;
+    font-size: 12px;
+  }
+
+  span {
+    display: block;
+    color: #5b626b;
+    font-size: 10px;
+    margin-top: 2px;
+  }
+`;
+
+const SurfaceToolbar = styled.div`
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+  gap: 7px;
+  align-items: center;
+  margin-bottom: 10px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const SurfaceGroups = styled.div`
+  display: grid;
+  gap: 12px;
+`;
+
+const SurfaceDomain = styled.div`
+  display: grid;
+  gap: 7px;
+`;
+
+const SurfaceDomainTitle = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 2px solid #15171a;
+  padding-bottom: 5px;
+  font-weight: 800;
+`;
+
+const SurfaceGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 8px;
+`;
+
+const SurfaceCard = styled.div<{ $active?: boolean }>`
+  border: 1px solid ${({ $active }) => ($active ? "#15803d" : "#aeb5bd")};
+  background: ${({ $active }) => ($active ? "#f0fdf4" : "#ffffff")};
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+`;
+
+const SurfaceCardHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+`;
+
+const SurfaceName = styled.div`
+  strong {
+    display: block;
+    font-size: 13px;
+  }
+
+  span {
+    color: #5b626b;
+    display: block;
+    font-size: 10px;
+    margin-top: 1px;
+  }
+`;
+
+const SurfaceSignals = styled.div`
+  display: grid;
+  gap: 5px;
+`;
+
+const SignalLine = styled.div`
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+  font-size: 10px;
+  color: #3f464f;
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+`;
+
+const EmptyState = styled.div`
+  border: 1px dashed #8d949e;
+  background: #f8fafc;
+  padding: 14px;
+  color: #4b5563;
+  font-size: 12px;
 `;
 
 type AdminMutation<TPayload> = {
@@ -63,6 +502,97 @@ type RolesAdminTabProps = {
   }) => ReactElement;
 };
 
+type RoleFormState = {
+  slug: string;
+  label: string;
+  category: string;
+  purpose: string;
+  description: string;
+  accessLevel: string;
+  sortOrder: string;
+  color: string;
+  icon: string;
+  defaultWtfOsAccess: boolean;
+  isAssignable: boolean;
+};
+
+const EMPTY_ROLE_FORM: RoleFormState = {
+  slug: "",
+  label: "",
+  category: "access",
+  purpose: "",
+  description: "",
+  accessLevel: "0",
+  sortOrder: "1000",
+  color: "#facc15",
+  icon: "",
+  defaultWtfOsAccess: false,
+  isAssignable: true,
+};
+
+const EMPTY_ROLE_ACCESS_MATRIX: RoleAccessResponse["matrix"] = {};
+const EMPTY_ROLE_ACCESS_SURFACES: AdminSurfaceAccess[] = [];
+
+const SURFACE_KIND_LABELS: Record<string, string> = {
+  app: "App",
+  tool: "Tool",
+  "desktop-item": "Desktop item",
+  "admin-tool": "Admin tool",
+  "public-surface": "Public surface",
+};
+
+function countPermissionsForRole(role: string, rolePerms: RolePermissionMatrix | undefined): number {
+  const perms = rolePerms?.[role];
+  if (!perms) return 0;
+  return PERMISSIONS.filter((permission) => perms[permission.key as PermissionKey]).length;
+}
+
+function countSurfacesForRole(role: string, roleAccess: RoleAccessResponse | undefined): number {
+  if (!roleAccess) return 0;
+  const matrix = roleAccess.matrix?.[role] ?? {};
+  const surfaces = Array.isArray(roleAccess.surfaces) ? roleAccess.surfaces : EMPTY_ROLE_ACCESS_SURFACES;
+  return surfaces.filter((surface) => matrix[surface.id]).length;
+}
+
+function summarizeList(items: string[], fallback: string) {
+  const unique = [...new Set(items.filter(Boolean))];
+  if (unique.length === 0) return fallback;
+  const visible = unique.slice(0, 4);
+  const suffix = unique.length > visible.length ? ` +${unique.length - visible.length}` : "";
+  return `${visible.join(", ")}${suffix}`;
+}
+
+function groupSurfacesByDomain(surfaces: AdminSurfaceAccess[]) {
+  return surfaces.reduce<Record<string, AdminSurfaceAccess[]>>((acc, surface) => {
+    acc[surface.domain] = [...(acc[surface.domain] ?? []), surface];
+    return acc;
+  }, {});
+}
+
+function PanelLabel({
+  icon: Icon,
+  color,
+  title,
+  detail,
+}: {
+  icon: LucideIcon;
+  color?: string;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <PanelTitle>
+      <IconBadge $color={color}>
+        <Icon size={15} strokeWidth={2.4} aria-hidden="true" />
+      </IconBadge>
+      <div>
+        <h4>{title}</h4>
+        <span>{detail}</span>
+      </div>
+    </PanelTitle>
+  );
+}
+
 export function RolesAdminTab({
   permCategoryFilter,
   setPermCategoryFilter,
@@ -76,404 +606,618 @@ export function RolesAdminTab({
   resetRoleSurfaceAccessMutation,
   ConfirmButton,
 }: RolesAdminTabProps) {
-  const roles = useMemo(() => {
-    const catalog = roleAccess?.roles ?? roleCatalog ?? [];
+  const roleAccessRoles = Array.isArray(roleAccess?.roles) ? roleAccess.roles : undefined;
+  const roleAccessMatrix =
+    roleAccess?.matrix && typeof roleAccess.matrix === "object"
+      ? roleAccess.matrix
+      : EMPTY_ROLE_ACCESS_MATRIX;
+  const roleAccessSurfaces = Array.isArray(roleAccess?.surfaces)
+    ? roleAccess.surfaces
+    : EMPTY_ROLE_ACCESS_SURFACES;
+
+  const roles = useMemo<RoleDefinition[]>(() => {
+    const catalog = roleAccessRoles ?? roleCatalog ?? [];
     if (catalog.length > 0) return catalog;
     const slugs = new Set<string>([
       ...Object.keys(rolePerms ?? {}),
-      ...Object.keys(roleAccess?.matrix ?? {}),
+      ...Object.keys(roleAccessMatrix),
     ]);
     return [...slugs].map((slug, index) => ({
       slug,
       label: formatRoleLabel(slug),
       category: "access",
       purpose: "Role catalog row has not been loaded yet.",
+      description: null,
       accessLevel: 0,
       sortOrder: 1000 + index,
+      color: null,
+      icon: null,
       defaultWtfOsAccess: false,
       isSystem: false,
       isAssignable: true,
     }));
-  }, [roleAccess?.roles, roleAccess?.matrix, roleCatalog, rolePerms]);
+  }, [roleAccessRoles, roleAccessMatrix, roleCatalog, rolePerms]);
 
-  const [roleForm, setRoleForm] = useState({
-    slug: "",
-    label: "",
-    category: "access",
-    purpose: "",
-    accessLevel: "0",
-  });
+  const [selectedRoleSlug, setSelectedRoleSlug] = useState("admin");
+  const [roleForm, setRoleForm] = useState<RoleFormState>(EMPTY_ROLE_FORM);
+  const [surfaceDomainFilter, setSurfaceDomainFilter] = useState("");
+  const [surfaceKindFilter, setSurfaceKindFilter] = useState("");
+  const [surfaceSearch, setSurfaceSearch] = useState("");
+
+  useEffect(() => {
+    if (!roles.length) return;
+    if (!roles.some((role) => role.slug === selectedRoleSlug)) {
+      setSelectedRoleSlug(roles[0].slug);
+    }
+  }, [roles, selectedRoleSlug]);
+
+  const selectedRole = roles.find((role) => role.slug === selectedRoleSlug) ?? roles[0];
+  const selectedRolePerms = selectedRole ? rolePerms?.[selectedRole.slug] ?? {} : {};
+  const selectedSurfaceMatrix = selectedRole && roleAccess
+    ? roleAccessMatrix[selectedRole.slug] ?? {}
+    : {};
+  const selectedSurfaces = roleAccess
+    ? roleAccessSurfaces.filter((surface) => selectedSurfaceMatrix[surface.id])
+    : [];
+
+  const selectedPermissionCount = selectedRole
+    ? countPermissionsForRole(selectedRole.slug, rolePerms)
+    : 0;
+  const selectedSurfaceCount = selectedRole
+    ? countSurfacesForRole(selectedRole.slug, roleAccess)
+    : 0;
+  const selectedDesktopAppCount = new Set(
+    selectedSurfaces.map((surface) => surface.desktopAppKey).filter(Boolean)
+  ).size;
+  const selectedRouteCount = new Set(selectedSurfaces.flatMap((surface) => surface.routePatterns)).size;
+  const selectedNativeSettingsCount = new Set(selectedSurfaces.flatMap((surface) => surface.nativeSettings)).size;
+  const selectedAutomationCount = new Set(selectedSurfaces.flatMap((surface) => surface.automationHandles)).size;
+  const selectedRoleLocked = selectedRole?.slug === "admin";
+
+  const categoryPermissionCounts = useMemo(() => {
+    return Object.fromEntries(
+      PERMISSION_CATEGORIES.map((category) => {
+        const categoryPerms = PERMISSIONS.filter((permission) => permission.category === category);
+        const granted = categoryPerms.filter(
+          (permission) => selectedRolePerms[permission.key as PermissionKey]
+        ).length;
+        return [category, { granted, total: categoryPerms.length }];
+      })
+    ) as Record<PermissionCategory, { granted: number; total: number }>;
+  }, [selectedRolePerms]);
+
+  const visiblePermissionCategories = PERMISSION_CATEGORIES.filter(
+    (category) => !permCategoryFilter || category === permCategoryFilter
+  );
+
+  const surfaceDomains = useMemo(
+    () => [...new Set(roleAccessSurfaces.map((surface) => surface.domain))].sort(),
+    [roleAccessSurfaces]
+  );
+  const surfaceKinds = useMemo(
+    () => [...new Set(roleAccessSurfaces.map((surface) => surface.kind))].sort(),
+    [roleAccessSurfaces]
+  );
+
+  const filteredSurfaces = useMemo(() => {
+    const query = surfaceSearch.trim().toLowerCase();
+    return roleAccessSurfaces.filter((surface) => {
+      if (surfaceDomainFilter && surface.domain !== surfaceDomainFilter) return false;
+      if (surfaceKindFilter && surface.kind !== surfaceKindFilter) return false;
+      if (!query) return true;
+      return [
+        surface.id,
+        surface.label,
+        surface.domain,
+        surface.subdomain,
+        surface.kind,
+        surface.desktopAppKey,
+        ...surface.routePatterns,
+        ...surface.nativeSettings,
+        ...surface.automationHandles,
+      ].some((value) => String(value ?? "").toLowerCase().includes(query));
+    });
+  }, [roleAccessSurfaces, surfaceDomainFilter, surfaceKindFilter, surfaceSearch]);
+
+  const groupedSurfaces = useMemo(() => groupSurfacesByDomain(filteredSurfaces), [filteredSurfaces]);
+
+  function loadSelectedRoleIntoForm() {
+    if (!selectedRole) return;
+    setRoleForm({
+      slug: selectedRole.slug,
+      label: selectedRole.label,
+      category: selectedRole.category,
+      purpose: selectedRole.purpose,
+      description: selectedRole.description ?? "",
+      accessLevel: String(selectedRole.accessLevel ?? 0),
+      sortOrder: String(selectedRole.sortOrder ?? 1000),
+      color: selectedRole.color ?? "#facc15",
+      icon: selectedRole.icon ?? "",
+      defaultWtfOsAccess: selectedRole.defaultWtfOsAccess,
+      isAssignable: selectedRole.isAssignable,
+    });
+  }
+
+  function saveRole() {
+    const slug = roleForm.slug.trim().toLowerCase().replace(/\s+/g, "_");
+    if (!slug || !roleForm.label.trim()) return;
+    setSelectedRoleSlug(slug);
+    upsertRoleMutation.mutate({
+      slug,
+      label: roleForm.label.trim(),
+      category: roleForm.category,
+      purpose: roleForm.purpose.trim(),
+      description: roleForm.description.trim() || null,
+      accessLevel: Number(roleForm.accessLevel || 0),
+      sortOrder: Number(roleForm.sortOrder || 1000),
+      color: roleForm.color || null,
+      icon: roleForm.icon.trim() || null,
+      defaultWtfOsAccess: roleForm.defaultWtfOsAccess,
+      isAssignable: roleForm.isAssignable,
+    });
+  }
+
+  if (!selectedRole) {
+    return <Hourglass size={32} />;
+  }
 
   return (
-    <>
-      <h3>Roles & Permissions</h3>
-      <p style={{ fontSize: 12, marginBottom: 8, color: "#444" }}>
-        Roles are additive access keys. Categories and access levels explain
-        intent; permissions and WTF OS access define what each key actually opens.
-      </p>
+    <RoleWorkspace>
+      <HeroPanel>
+        <HeroCopy>
+          <h3>
+            <RoleAccent $color={selectedRole.color} />
+            {selectedRole.label}
+          </h3>
+          <p>{selectedRole.purpose || "No role purpose recorded."}</p>
+          <HeroMeta>
+            <MetaChip $tone={selectedRoleLocked ? "dark" : "plain"}>
+              {selectedRoleLocked ? <Lock size={12} /> : <KeyRound size={12} />}
+              {selectedRole.slug}
+            </MetaChip>
+            <MetaChip $tone="plain">
+              <Gauge size={12} />
+              Level {selectedRole.accessLevel}
+            </MetaChip>
+            <MetaChip $tone={selectedRole.defaultWtfOsAccess ? "good" : "warn"}>
+              <Boxes size={12} />
+              {selectedRole.defaultWtfOsAccess ? "Default OS access" : "Manual OS access"}
+            </MetaChip>
+            <MetaChip $tone={selectedRole.isAssignable ? "good" : "warn"}>
+              <UserCog size={12} />
+              {selectedRole.isAssignable ? "Assignable" : "System locked"}
+            </MetaChip>
+          </HeroMeta>
+        </HeroCopy>
 
-      <h4 style={{ margin: "8px 0 6px" }}>Role Catalog</h4>
-      {!roles.length ? (
-        <Hourglass size={32} />
-      ) : (
-        <div style={{ overflowX: "auto", marginBottom: 10 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeadCell style={{ minWidth: 150 }}>Role</TableHeadCell>
-                <TableHeadCell style={{ minWidth: 100 }}>Category</TableHeadCell>
-                <TableHeadCell style={{ minWidth: 80 }}>Level</TableHeadCell>
-                <TableHeadCell style={{ minWidth: 360 }}>Purpose</TableHeadCell>
-                <TableHeadCell style={{ minWidth: 90 }}>Default OS</TableHeadCell>
-                <TableHeadCell style={{ minWidth: 90 }}>Assignable</TableHeadCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {roles.map((role) => (
-                <TableRow key={role.slug}>
-                  <TableDataCell>
-                    <strong>{role.label}</strong>
-                    <div style={{ fontSize: 9, color: "#666" }}>{role.slug}</div>
-                  </TableDataCell>
-                  <TableDataCell>{role.category}</TableDataCell>
-                  <TableDataCell>{role.accessLevel}</TableDataCell>
-                  <TableDataCell style={{ fontSize: 11 }}>{role.purpose}</TableDataCell>
-                  <TableDataCell>{role.defaultWtfOsAccess ? "Yes" : "No"}</TableDataCell>
-                  <TableDataCell>{role.isAssignable ? "Yes" : "No"}</TableDataCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+        <MetricGrid>
+          <MetricTile>
+            <strong>{rolePerms ? `${selectedPermissionCount}/${PERMISSIONS.length}` : "-"}</strong>
+            <span>Permissions</span>
+          </MetricTile>
+          <MetricTile>
+            <strong>{roleAccess ? `${selectedSurfaceCount}/${roleAccessSurfaces.length}` : "-"}</strong>
+            <span>Surfaces</span>
+          </MetricTile>
+          <MetricTile>
+            <strong>{roleAccess ? selectedDesktopAppCount : "-"}</strong>
+            <span>Desktop apps</span>
+          </MetricTile>
+          <MetricTile>
+            <strong>{roleAccess ? selectedRouteCount : "-"}</strong>
+            <span>Routes</span>
+          </MetricTile>
+          <MetricTile>
+            <strong>{roleAccess ? selectedNativeSettingsCount : "-"}</strong>
+            <span>Native settings</span>
+          </MetricTile>
+          <MetricTile>
+            <strong>{roleAccess ? selectedAutomationCount : "-"}</strong>
+            <span>Automation</span>
+          </MetricTile>
+          <MetricTile>
+            <strong>{roles.length}</strong>
+            <span>Role keys</span>
+          </MetricTile>
+          <MetricTile>
+            <strong>{selectedRole.category}</strong>
+            <span>Category</span>
+          </MetricTile>
+        </MetricGrid>
+      </HeroPanel>
 
-      <ActionRow style={{ marginBottom: 14 }}>
-        <input
-          value={roleForm.slug}
-          onChange={(e) =>
-            setRoleForm((prev) => ({
-              ...prev,
-              slug: e.target.value.toLowerCase().replace(/\s+/g, "_"),
-            }))
-          }
-          placeholder="role_slug"
-          style={{ width: 118 }}
-        />
-        <input
-          value={roleForm.label}
-          onChange={(e) => setRoleForm((prev) => ({ ...prev, label: e.target.value }))}
-          placeholder="Title"
-          style={{ width: 130 }}
-        />
-        <Select
-          value={roleForm.category}
-          onChange={(e: any) => setRoleForm((prev) => ({ ...prev, category: e.value }))}
-          options={ROLE_CATEGORIES.map((category) => ({ label: category, value: category }))}
-          width={128}
-        />
-        <input
-          value={roleForm.accessLevel}
-          onChange={(e) =>
-            setRoleForm((prev) => ({ ...prev, accessLevel: e.target.value }))
-          }
-          placeholder="Level"
-          type="number"
-          style={{ width: 58 }}
-        />
-        <input
-          value={roleForm.purpose}
-          onChange={(e) => setRoleForm((prev) => ({ ...prev, purpose: e.target.value }))}
-          placeholder="Purpose"
-          style={{ width: 300 }}
-        />
-        <Button
-          size="sm"
-          disabled={upsertRoleMutation.isPending}
-          onClick={() =>
-            upsertRoleMutation.mutate({
-              slug: roleForm.slug,
-              label: roleForm.label,
-              category: roleForm.category,
-              purpose: roleForm.purpose,
-              accessLevel: Number(roleForm.accessLevel || 0),
-              defaultWtfOsAccess: false,
-              isAssignable: true,
-            })
-          }
-        >
-          Save Role
-        </Button>
-      </ActionRow>
-
-      <ActionRow style={{ marginBottom: 10, flexWrap: "wrap" }}>
-        <Select
-          value={permCategoryFilter}
-          onChange={(e: any) => setPermCategoryFilter(e.value)}
-          options={[
-            { label: "All Categories", value: "" },
-            ...PERMISSION_CATEGORIES.map((c) => ({
-              label: CATEGORY_LABELS[c],
-              value: c,
-            })),
-          ]}
-          width={180}
-        />
-        <ConfirmButton
-          label="Reset All to Defaults"
-          confirmLabel="Yes, Reset All"
-          onConfirm={() => resetPermMutation.mutate({})}
-          disabled={resetPermMutation.isPending}
-        />
-        {roles.filter((r) => r.slug !== "admin").map((r) => (
-          <ConfirmButton
-            key={r.slug}
-            label={`Reset ${r.label}`}
-            confirmLabel={`Yes, Reset ${r.label}`}
-            onConfirm={() => resetPermMutation.mutate({ role: r.slug })}
-            disabled={resetPermMutation.isPending}
-          />
-        ))}
-      </ActionRow>
-
-      {!rolePerms ? (
-        <Hourglass size={32} />
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeadCell
-                  style={{
-                    minWidth: 200,
-                    position: "sticky",
-                    left: 0,
-                    background: "#c0c0c0",
-                    zIndex: 1,
-                  }}
-                >
-                  Permission
-                </TableHeadCell>
-                {roles.map((role) => (
-                  <TableHeadCell
+      <ControlGrid>
+        <div style={{ display: "grid", gap: 12 }}>
+          <Panel>
+            <PanelHeader>
+              <PanelLabel icon={ShieldCheck} color="#facc15" title="Role catalog" detail="Access keys in the environment" />
+            </PanelHeader>
+            <RoleCardGrid>
+              {roles.map((role) => {
+                const rolePermissionCount = countPermissionsForRole(role.slug, rolePerms);
+                const roleSurfaceCount = countSurfacesForRole(role.slug, roleAccess);
+                return (
+                  <RoleCard
                     key={role.slug}
-                    style={{ textAlign: "center", minWidth: 90 }}
+                    $active={role.slug === selectedRole.slug}
+                    $color={role.color}
+                    onClick={() => setSelectedRoleSlug(role.slug)}
+                    title={role.label}
                   >
-                    {role.label}
-                  </TableHeadCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {PERMISSION_CATEGORIES
-                .filter((cat) => !permCategoryFilter || cat === permCategoryFilter)
-                .map((cat) => {
-                  const catPerms = PERMISSIONS.filter((p) => p.category === cat);
-                  if (catPerms.length === 0) return null;
-                  return [
-                    <tr key={`cat-${cat}`}>
-                      <td
-                        colSpan={roles.length + 1}
-                        style={{
-                          background: "#000080",
-                          color: "#fff",
-                          fontWeight: "bold",
-                          fontSize: 12,
-                          padding: "4px 8px",
-                        }}
-                      >
-                        {CATEGORY_LABELS[cat]}
-                      </td>
-                    </tr>,
-                    ...catPerms.map((perm) => (
-                      <TableRow key={perm.key}>
-                        <TableDataCell
-                          style={{
-                            fontSize: 11,
-                            position: "sticky",
-                            left: 0,
-                            background: "#c0c0c0",
-                            zIndex: 1,
-                          }}
-                          title={perm.description}
-                        >
-                          <div>{perm.label}</div>
-                          <div style={{ fontSize: 9, color: "#666", marginTop: 1 }}>
-                            {perm.description}
-                          </div>
-                        </TableDataCell>
-                        {roles.map((role) => {
-                          const granted =
-                            rolePerms[role.slug]?.[perm.key as PermissionKey] ?? false;
-                          const isLocked = role.slug === "admin";
+                    <RoleCardTop>
+                      <div>
+                        <RoleName>{role.label}</RoleName>
+                        <RoleSlug>{role.slug}</RoleSlug>
+                      </div>
+                      <MetaChip $tone={role.category === "restriction" ? "warn" : "plain"}>
+                        {role.accessLevel}
+                      </MetaChip>
+                    </RoleCardTop>
+                    <RoleStatsLine>
+                      <TinyChip>{role.category}</TinyChip>
+                      <TinyChip>{rolePermissionCount}/{PERMISSIONS.length} perms</TinyChip>
+                      <TinyChip>{roleSurfaceCount} surfaces</TinyChip>
+                      {role.defaultWtfOsAccess ? <TinyChip>default OS</TinyChip> : null}
+                    </RoleStatsLine>
+                  </RoleCard>
+                );
+              })}
+            </RoleCardGrid>
+          </Panel>
 
+          <Panel>
+            <PanelHeader>
+              <PanelLabel icon={SlidersHorizontal} color="#bfdbfe" title="Role designer" detail="Catalog row and default access posture" />
+              <Button size="sm" onClick={loadSelectedRoleIntoForm}>
+                Load Selected
+              </Button>
+            </PanelHeader>
+
+            <FormGrid>
+              <FieldLabel>
+                Slug
+                <TextInput
+                  value={roleForm.slug}
+                  onChange={(event) =>
+                    setRoleForm((prev) => ({
+                      ...prev,
+                      slug: event.target.value.toLowerCase().replace(/\s+/g, "_"),
+                    }))
+                  }
+                  placeholder="role_slug"
+                />
+              </FieldLabel>
+              <FieldLabel>
+                Label
+                <TextInput
+                  value={roleForm.label}
+                  onChange={(event) => setRoleForm((prev) => ({ ...prev, label: event.target.value }))}
+                  placeholder="Display label"
+                />
+              </FieldLabel>
+              <FieldLabel>
+                Category
+                <Select
+                  value={roleForm.category}
+                  onChange={(event: any) => setRoleForm((prev) => ({ ...prev, category: event.value }))}
+                  options={ROLE_CATEGORIES.map((category) => ({ label: category, value: category }))}
+                  width="100%"
+                />
+              </FieldLabel>
+              <FieldLabel>
+                Access level
+                <TextInput
+                  value={roleForm.accessLevel}
+                  onChange={(event) => setRoleForm((prev) => ({ ...prev, accessLevel: event.target.value }))}
+                  type="number"
+                />
+              </FieldLabel>
+              <FieldLabel>
+                Sort order
+                <TextInput
+                  value={roleForm.sortOrder}
+                  onChange={(event) => setRoleForm((prev) => ({ ...prev, sortOrder: event.target.value }))}
+                  type="number"
+                />
+              </FieldLabel>
+              <FieldLabel>
+                Color
+                <TextInput
+                  value={roleForm.color}
+                  onChange={(event) => setRoleForm((prev) => ({ ...prev, color: event.target.value }))}
+                  type="color"
+                />
+              </FieldLabel>
+              <FieldLabel>
+                Icon key
+                <TextInput
+                  value={roleForm.icon}
+                  onChange={(event) => setRoleForm((prev) => ({ ...prev, icon: event.target.value }))}
+                  placeholder="shield"
+                />
+              </FieldLabel>
+              <FullSpan>
+                <FieldLabel>
+                  Purpose
+                  <TextInput
+                    value={roleForm.purpose}
+                    onChange={(event) => setRoleForm((prev) => ({ ...prev, purpose: event.target.value }))}
+                    placeholder="What this role is for"
+                  />
+                </FieldLabel>
+              </FullSpan>
+              <FullSpan>
+                <FieldLabel>
+                  Description
+                  <TextArea
+                    value={roleForm.description}
+                    onChange={(event) => setRoleForm((prev) => ({ ...prev, description: event.target.value }))}
+                    placeholder="Operator notes"
+                  />
+                </FieldLabel>
+              </FullSpan>
+              <FullSpan>
+                <ActionRow>
+                  <CheckboxLine>
+                    <input
+                      type="checkbox"
+                      checked={roleForm.defaultWtfOsAccess}
+                      onChange={(event) =>
+                        setRoleForm((prev) => ({ ...prev, defaultWtfOsAccess: event.target.checked }))
+                      }
+                    />
+                    Default WTF OS access
+                  </CheckboxLine>
+                  <CheckboxLine>
+                    <input
+                      type="checkbox"
+                      checked={roleForm.isAssignable}
+                      onChange={(event) =>
+                        setRoleForm((prev) => ({ ...prev, isAssignable: event.target.checked }))
+                      }
+                    />
+                    Assignable
+                  </CheckboxLine>
+                </ActionRow>
+              </FullSpan>
+              <FullSpan>
+                <ActionRow>
+                  <Button size="sm" disabled={upsertRoleMutation.isPending} onClick={saveRole}>
+                    <BadgeCheck size={13} /> Save Role
+                  </Button>
+                  <Button size="sm" onClick={() => setRoleForm(EMPTY_ROLE_FORM)}>
+                    Clear
+                  </Button>
+                </ActionRow>
+              </FullSpan>
+            </FormGrid>
+          </Panel>
+        </div>
+
+        <div style={{ display: "grid", gap: 12 }}>
+          <Panel>
+            <PanelHeader>
+              <PanelLabel icon={KeyRound} color="#bbf7d0" title="Permission levels" detail={`${selectedRole.label} capability toggles`} />
+              <ActionRow>
+                <ConfirmButton
+                  label="Reset selected"
+                  confirmLabel={`Reset ${selectedRole.label}`}
+                  onConfirm={() => resetPermMutation.mutate({ role: selectedRole.slug })}
+                  disabled={selectedRoleLocked || resetPermMutation.isPending}
+                />
+                <ConfirmButton
+                  label="Reset all"
+                  confirmLabel="Reset all permissions"
+                  onConfirm={() => resetPermMutation.mutate({})}
+                  disabled={resetPermMutation.isPending}
+                />
+              </ActionRow>
+            </PanelHeader>
+
+            <CategoryRail>
+              <SegmentButton $active={!permCategoryFilter} onClick={() => setPermCategoryFilter("")}>
+                All
+              </SegmentButton>
+              {PERMISSION_CATEGORIES.map((category) => {
+                const count = categoryPermissionCounts[category];
+                return (
+                  <SegmentButton
+                    key={category}
+                    $active={permCategoryFilter === category}
+                    onClick={() => setPermCategoryFilter(category)}
+                  >
+                    {PERMISSION_CATEGORY_LABELS[category]} {count.granted}/{count.total}
+                  </SegmentButton>
+                );
+              })}
+            </CategoryRail>
+
+            {!rolePerms ? (
+              <Hourglass size={32} />
+            ) : (
+              <PermissionGroups style={{ marginTop: 10 }}>
+                {visiblePermissionCategories.map((category) => {
+                  const categoryPerms = PERMISSIONS.filter((permission) => permission.category === category);
+                  const count = categoryPermissionCounts[category];
+                  return (
+                    <PermissionGroup key={category}>
+                      <PermissionGroupHeader>
+                        <span>{PERMISSION_CATEGORY_LABELS[category]}</span>
+                        <MetaChip $tone={count.granted === count.total ? "good" : count.granted > 0 ? "plain" : "warn"}>
+                          {count.granted}/{count.total}
+                        </MetaChip>
+                      </PermissionGroupHeader>
+                      <PermissionToggleGrid>
+                        {categoryPerms.map((permission) => {
+                          const granted = selectedRolePerms[permission.key as PermissionKey] ?? false;
                           return (
-                            <TableDataCell
-                              key={role.slug}
-                              style={{ textAlign: "center" }}
+                            <PermissionToggle
+                              key={permission.key}
+                              $active={granted}
+                              $locked={selectedRoleLocked}
+                              title={permission.description}
                             >
                               <input
                                 type="checkbox"
                                 checked={granted}
-                                disabled={isLocked || togglePermMutation.isPending}
+                                disabled={selectedRoleLocked || togglePermMutation.isPending}
                                 onChange={() =>
                                   togglePermMutation.mutate({
-                                    role: role.slug,
-                                    permissionKey: perm.key,
+                                    role: selectedRole.slug,
+                                    permissionKey: permission.key,
                                     granted: !granted,
                                   })
                                 }
-                                title={
-                                  isLocked
-                                    ? `${role.label} always has all permissions`
-                                    : `${granted ? "Revoke" : "Grant"} ${perm.label} for ${role.label}`
-                                }
-                                style={{
-                                  cursor: isLocked ? "not-allowed" : "pointer",
-                                }}
                               />
-                            </TableDataCell>
+                              <span>
+                                <strong>{permission.label}</strong>
+                                <span>{permission.description}</span>
+                              </span>
+                            </PermissionToggle>
                           );
                         })}
-                      </TableRow>
-                    )),
-                  ];
+                      </PermissionToggleGrid>
+                    </PermissionGroup>
+                  );
                 })}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+              </PermissionGroups>
+            )}
+          </Panel>
 
-      <h3 style={{ marginTop: 18 }}>WTF OS Access</h3>
-      <p style={{ fontSize: 12, marginBottom: 8, color: "#444" }}>
-        Grant registered apps, domains, tools, UI surfaces, routes, and
-        automation handles by role. The Test Subject role defaults to UX Lab.
-      </p>
-      <ActionRow style={{ marginBottom: 10, flexWrap: "wrap" }}>
-        <ConfirmButton
-          label="Reset Access Defaults"
-          confirmLabel="Yes, Reset Access"
-          onConfirm={() => resetRoleSurfaceAccessMutation.mutate({})}
-          disabled={resetRoleSurfaceAccessMutation.isPending}
-        />
-        {roles.filter((r) => r.slug !== "admin").map((r) => (
-          <ConfirmButton
-            key={r.slug}
-            label={`Reset ${r.label} Access`}
-            confirmLabel={`Yes, Reset ${r.label} Access`}
-            onConfirm={() => resetRoleSurfaceAccessMutation.mutate({ role: r.slug })}
-            disabled={resetRoleSurfaceAccessMutation.isPending}
-          />
-        ))}
-      </ActionRow>
-      {!roleAccess ? (
-        <Hourglass size={32} />
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeadCell
-                  style={{
-                    minWidth: 260,
-                    position: "sticky",
-                    left: 0,
-                    background: "#c0c0c0",
-                    zIndex: 1,
-                  }}
-                >
-                  Registered Surface
-                </TableHeadCell>
-                {roles.map((role) => (
-                  <TableHeadCell
-                    key={role.slug}
-                    style={{ textAlign: "center", minWidth: 90 }}
-                  >
-                    {role.label}
-                  </TableHeadCell>
+          <Panel>
+            <PanelHeader>
+              <PanelLabel icon={Network} color="#bae6fd" title="WTF OS access map" detail="Apps, routes, native panels, automation handles" />
+              <ActionRow>
+                <ConfirmButton
+                  label="Reset selected access"
+                  confirmLabel={`Reset ${selectedRole.label} access`}
+                  onConfirm={() => resetRoleSurfaceAccessMutation.mutate({ role: selectedRole.slug })}
+                  disabled={selectedRoleLocked || resetRoleSurfaceAccessMutation.isPending}
+                />
+                <ConfirmButton
+                  label="Reset all access"
+                  confirmLabel="Reset all role access"
+                  onConfirm={() => resetRoleSurfaceAccessMutation.mutate({})}
+                  disabled={resetRoleSurfaceAccessMutation.isPending}
+                />
+              </ActionRow>
+            </PanelHeader>
+
+            <SurfaceToolbar>
+              <TextInput
+                value={surfaceSearch}
+                onChange={(event) => setSurfaceSearch(event.target.value)}
+                placeholder="Search apps, routes, settings, handles"
+              />
+              <Select
+                value={surfaceDomainFilter}
+                onChange={(event: any) => setSurfaceDomainFilter(event.value)}
+                options={[
+                  { label: "All domains", value: "" },
+                  ...surfaceDomains.map((domain) => ({ label: domain, value: domain })),
+                ]}
+                width={150}
+              />
+              <Select
+                value={surfaceKindFilter}
+                onChange={(event: any) => setSurfaceKindFilter(event.value)}
+                options={[
+                  { label: "All kinds", value: "" },
+                  ...surfaceKinds.map((kind) => ({ label: SURFACE_KIND_LABELS[kind] ?? kind, value: kind })),
+                ]}
+                width={150}
+              />
+            </SurfaceToolbar>
+
+            {!roleAccess ? (
+              <Hourglass size={32} />
+            ) : filteredSurfaces.length === 0 ? (
+              <EmptyState>No registered surfaces match the current filters.</EmptyState>
+            ) : (
+              <SurfaceGroups>
+                {Object.entries(groupedSurfaces).map(([domain, surfaces]) => (
+                  <SurfaceDomain key={domain}>
+                    <SurfaceDomainTitle>
+                      <span>{domain}</span>
+                      <MetaChip $tone="plain">
+                        {surfaces.filter((surface) => selectedSurfaceMatrix[surface.id]).length}/{surfaces.length}
+                      </MetaChip>
+                    </SurfaceDomainTitle>
+                    <SurfaceGrid>
+                      {surfaces.map((surface) => {
+                        const granted = selectedSurfaceMatrix[surface.id] ?? false;
+                        return (
+                          <SurfaceCard key={surface.id} $active={granted}>
+                            <SurfaceCardHeader>
+                              <SurfaceName>
+                                <strong>{surface.label}</strong>
+                                <span>{surface.subdomain} / {SURFACE_KIND_LABELS[surface.kind] ?? surface.kind}</span>
+                              </SurfaceName>
+                              <CheckboxLine title={selectedRoleLocked ? "Admin always has all WTF OS access" : undefined}>
+                                <input
+                                  type="checkbox"
+                                  checked={granted}
+                                  disabled={selectedRoleLocked || toggleRoleSurfaceAccessMutation.isPending}
+                                  onChange={() =>
+                                    toggleRoleSurfaceAccessMutation.mutate({
+                                      role: selectedRole.slug,
+                                      surfaceId: surface.id,
+                                      granted: !granted,
+                                    })
+                                  }
+                                />
+                                {granted ? "Open" : "Closed"}
+                              </CheckboxLine>
+                            </SurfaceCardHeader>
+
+                            <RoleStatsLine>
+                              <TinyChip>{surface.id}</TinyChip>
+                              {surface.desktopAppKey ? <TinyChip>app:{surface.desktopAppKey}</TinyChip> : null}
+                              {surface.adminPanelTabs.length ? <TinyChip>{surface.adminPanelTabs.length} panels</TinyChip> : null}
+                            </RoleStatsLine>
+
+                            <SurfaceSignals>
+                              <SignalLine>
+                                <Route size={13} />
+                                <code>{summarizeList(surface.routePatterns, "No browser route")}</code>
+                              </SignalLine>
+                              <SignalLine>
+                                <Layers size={13} />
+                                <code>{summarizeList(surface.nativeSettings, "No native settings")}</code>
+                              </SignalLine>
+                              <SignalLine>
+                                <Workflow size={13} />
+                                <code>{summarizeList(surface.automationHandles, "No automation handles")}</code>
+                              </SignalLine>
+                              <SignalLine>
+                                {granted ? <Sparkles size={13} /> : <Ban size={13} />}
+                                <code>{granted ? "Visible to this role through the role surface matrix" : "Hidden unless another assigned role grants it"}</code>
+                              </SignalLine>
+                            </SurfaceSignals>
+                          </SurfaceCard>
+                        );
+                      })}
+                    </SurfaceGrid>
+                  </SurfaceDomain>
                 ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {Object.entries(
-                roleAccess.surfaces.reduce<Record<string, typeof roleAccess.surfaces>>(
-                  (acc, surface) => {
-                    acc[surface.domain] = [...(acc[surface.domain] ?? []), surface];
-                    return acc;
-                  },
-                  {}
-                )
-              ).flatMap(([domain, surfaces]) => [
-                <tr key={`domain-${domain}`}>
-                  <td
-                    colSpan={roles.length + 1}
-                    style={{
-                      background: "#000080",
-                      color: "#fff",
-                      fontWeight: "bold",
-                      fontSize: 12,
-                      padding: "4px 8px",
-                    }}
-                  >
-                    {domain}
-                  </td>
-                </tr>,
-                ...surfaces.map((surface) => (
-                  <TableRow key={surface.id}>
-                    <TableDataCell
-                      style={{
-                        fontSize: 11,
-                        position: "sticky",
-                        left: 0,
-                        background: "#c0c0c0",
-                        zIndex: 1,
-                      }}
-                      title={[
-                        ...surface.routePatterns,
-                        ...surface.nativeSettings,
-                        ...surface.automationHandles,
-                      ].join(" | ")}
-                    >
-                      <div>{surface.label}</div>
-                      <div style={{ fontSize: 9, color: "#666", marginTop: 1 }}>
-                        {surface.subdomain} · {surface.kind}
-                      </div>
-                      <div style={{ fontSize: 9, color: "#666", marginTop: 1 }}>
-                        {surface.routePatterns.join(", ")}
-                      </div>
-                    </TableDataCell>
-                    {roles.map((role) => {
-                      const granted =
-                        roleAccess.matrix[role.slug]?.[surface.id] ?? false;
-                      const isLocked = role.slug === "admin";
-                      return (
-                        <TableDataCell key={role.slug} style={{ textAlign: "center" }}>
-                          <input
-                            type="checkbox"
-                            checked={granted}
-                            disabled={isLocked || toggleRoleSurfaceAccessMutation.isPending}
-                            onChange={() =>
-                              toggleRoleSurfaceAccessMutation.mutate({
-                                role: role.slug,
-                                surfaceId: surface.id,
-                                granted: !granted,
-                              })
-                            }
-                            title={
-                              isLocked
-                                ? "Admin always has all WTF OS access"
-                                : `${granted ? "Revoke" : "Grant"} ${surface.label} for ${role.label}`
-                            }
-                          />
-                        </TableDataCell>
-                      );
-                    })}
-                  </TableRow>
-                )),
-              ])}
-            </TableBody>
-          </Table>
+              </SurfaceGroups>
+            )}
+          </Panel>
+
+          {selectedRoleLocked ? (
+            <EmptyState>
+              <Lock size={14} /> Admin is intentionally immutable: it always carries every permission and registered WTF OS surface.
+            </EmptyState>
+          ) : null}
+
+          <ActionRow>
+            <MetaChip $tone="dark">
+              <RotateCcw size={12} />
+              Changes refresh auth and role-access cache through the existing admin mutations.
+            </MetaChip>
+          </ActionRow>
         </div>
-      )}
-    </>
+      </ControlGrid>
+    </RoleWorkspace>
   );
 }

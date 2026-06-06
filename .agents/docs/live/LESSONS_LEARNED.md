@@ -3899,3 +3899,15 @@
 **Fix**: Renamed the WIM page and test modules, switched React Query keys to `wim`, removed the retired route alias from route registration, route fixtures, browser routes, app access, start-menu mapping, admin registry, and active inventory text, then added a focused regression that keeps the active WIM source and inventory free of the retired reference.
 
 **Rule**: Nostalgic inspiration may inform design, but active product code, routes, tests, inventory, admin metadata, and user-facing summaries must use the canonical product name only. If a reference name is retired, remove aliases unless the user explicitly asks for backwards compatibility.
+
+---
+
+## 2026-06-06 - Admin role panels must tolerate partial role-access payloads
+
+**What happened**: The redesigned admin Role Control panel rendered a richer role dossier, permission cockpit, and WTF OS surface map, but the browser smoke hit a render crash when the role-access query returned before a full `{ roles, surfaces, matrix }` payload was available. The harness also only had the generic `/api/admin/*` fallback, so `/api/admin/role-access` returned `{ ok: true }` instead of the production route shape.
+
+**Why it mattered**: Admin is the recovery surface for the platform. A role-management UI cannot assume every async registry payload is fully hydrated before render, and the inventory harness must represent the same role/app/route visibility contract the real environment uses.
+
+**Fix**: Role Control now owns its permission category labels locally, normalizes role-access roles, matrix, and surfaces to safe empty structures before reading them, and the Playwright harness has explicit role catalog plus role-surface fixtures for admin, host, and contestant flows.
+
+**Rule**: Any admin panel that renders registry-backed roles, app gates, surfaces, or permissions must normalize partial API responses before indexing or filtering them. Inventory harness routes for new admin control surfaces must return the real production response shape, not the generic admin fallback.

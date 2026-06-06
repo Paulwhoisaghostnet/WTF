@@ -560,6 +560,167 @@ function harnessMarketAdminPayload(extra = {}) {
   };
 }
 
+const harnessRoleCatalog = [
+  {
+    slug: "admin",
+    label: "Admin",
+    category: "access",
+    purpose: "Full platform operator role with all permissions and WTF OS access.",
+    description: "Harness strict-admin account.",
+    accessLevel: 100,
+    sortOrder: 10,
+    color: "#d10000",
+    icon: "shield",
+    defaultWtfOsAccess: true,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
+    slug: "host",
+    label: "Host",
+    category: "gameshow",
+    purpose: "Gameshow operator role for live rounds, challenge flow, and contestants.",
+    description: "Harness live-ops operator.",
+    accessLevel: 80,
+    sortOrder: 20,
+    color: "#005eb8",
+    icon: "mic",
+    defaultWtfOsAccess: true,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
+    slug: "contestant",
+    label: "Contestant",
+    category: "gameshow",
+    purpose: "Player role with public apps and challenge participation.",
+    description: "Harness participant role.",
+    accessLevel: 30,
+    sortOrder: 70,
+    color: "#84cc16",
+    icon: "gamepad",
+    defaultWtfOsAccess: true,
+    isSystem: true,
+    isAssignable: true,
+  },
+];
+
+const harnessRoleSurfaces = [
+  {
+    id: "admin-control-suite",
+    label: "Admin Control Suite",
+    domain: "Admin/ops",
+    subdomain: "Roles/permissions/app gates",
+    kind: "admin-tool",
+    routePatterns: ["/admin"],
+    desktopAppKey: "admin",
+    adminPanelTabs: ["users", "roles", "os-admin", "automation"],
+    nativeSettings: ["os.admin.roleManagement", "os.admin.appRegistry"],
+    automationHandles: ["admin.role_catalog.updated", "admin.permissions.updated", "admin.role_access.updated"],
+    adminRoutes: ["/api/admin/roles", "/api/admin/permissions", "/api/admin/role-access"],
+  },
+  {
+    id: "control-board",
+    label: "Control Board",
+    domain: "Gameshow Ops",
+    subdomain: "Host controls",
+    kind: "tool",
+    routePatterns: ["/control-board"],
+    desktopAppKey: "control-board",
+    adminPanelTabs: ["seasons", "rounds", "challenges"],
+    nativeSettings: ["os.controlBoard.enabled"],
+    automationHandles: ["control_board.action_applied"],
+    adminRoutes: ["/api/control-board/state"],
+  },
+  {
+    id: "desktop-app-gates",
+    label: "Desktop and Start Menu App Gates",
+    domain: "Admin/ops",
+    subdomain: "Desktop visibility",
+    kind: "desktop-item",
+    routePatterns: ["/desktop", "/api/admin/apps/desktop"],
+    desktopAppKey: "settings",
+    adminPanelTabs: ["desktop-apps", "os-admin"],
+    nativeSettings: ["desktop.apps.enabled", "startMenu.visible"],
+    automationHandles: ["admin.app_gate.updated", "desktop.app.disabled_by_admin"],
+    adminRoutes: ["/api/admin/apps/desktop"],
+  },
+  {
+    id: "market-admin",
+    label: "In-App Market Admin",
+    domain: "Economy",
+    subdomain: "Pricing and sales",
+    kind: "admin-tool",
+    routePatterns: ["/wtfiam", "/marketplace"],
+    desktopAppKey: "wtf-iam",
+    adminPanelTabs: ["in-app-market", "contract-ledger"],
+    nativeSettings: ["economy.market.repricing"],
+    automationHandles: ["wtfiam.admin.price_rebalanced", "wtfiam.admin.sale_updated"],
+    adminRoutes: ["/api/admin/in-app-market/items"],
+  },
+  {
+    id: "arcade-admin",
+    label: "Arcade Admin",
+    domain: "Arcade/console",
+    subdomain: "Game moderation",
+    kind: "app",
+    routePatterns: ["/arcade", "/console", "/game-studio"],
+    desktopAppKey: "arcade",
+    adminPanelTabs: ["arcade"],
+    nativeSettings: ["arcade.moderation.enabled"],
+    automationHandles: ["arcade.game.approved", "arcade.report.resolved"],
+    adminRoutes: ["/api/arcade/admin/games", "/api/arcade/admin/reports"],
+  },
+  {
+    id: "studio-admin",
+    label: "Studio Admin",
+    domain: "Platform Apps",
+    subdomain: "Creator storage",
+    kind: "app",
+    routePatterns: ["/studio", "/game-studio"],
+    desktopAppKey: "studio",
+    adminPanelTabs: ["studio"],
+    nativeSettings: ["studio.drive.root"],
+    automationHandles: ["studio.storage.updated"],
+    adminRoutes: ["/api/studio/admin/drive/status"],
+  },
+  {
+    id: "tv-admin",
+    label: "WTF TV Admin",
+    domain: "Platform Apps",
+    subdomain: "TV programming",
+    kind: "app",
+    routePatterns: ["/tv", "/wtf-tv"],
+    desktopAppKey: "wtf-tv",
+    adminPanelTabs: ["wtf-tv"],
+    nativeSettings: ["tv.sourceMode", "tv.bumpers.enabled"],
+    automationHandles: ["admin.tv.config_updated"],
+    adminRoutes: ["/api/admin/wtf-tv"],
+  },
+];
+
+function harnessRoleAccessPayload(extra = {}) {
+  const allSurfaceAccess = Object.fromEntries(harnessRoleSurfaces.map((surface) => [surface.id, true]));
+  return {
+    ...extra,
+    roles: harnessRoleCatalog,
+    surfaces: harnessRoleSurfaces,
+    matrix: {
+      admin: allSurfaceAccess,
+      host: {
+        "control-board": true,
+        "arcade-admin": true,
+        "studio-admin": true,
+        "tv-admin": true,
+      },
+      contestant: {
+        "arcade-admin": true,
+        "studio-admin": true,
+      },
+    },
+  };
+}
+
 function emptyPage(itemsKey = "items") {
   return { [itemsKey]: [], total: 0, limit: 20, offset: 0 };
 }
@@ -2842,6 +3003,9 @@ function apiMock(req, res) {
   if (pathName === "/api/admin/reward-ledger") return res.json([]);
   if (pathName === "/api/admin/contract-activity") return res.json([]);
   if (pathName === "/api/admin/wtf-subdomains") return res.json([]);
+  if (pathName === "/api/admin/roles") return res.json({ roles: harnessRoleCatalog });
+  if (pathName === "/api/admin/role-access") return res.json(harnessRoleAccessPayload());
+  if (pathName === "/api/admin/role-access/reset") return res.json(harnessRoleAccessPayload({ ok: true }));
   if (pathName === "/api/admin/permissions") {
     return res.json({
       admin: { access_admin_panel: true, manage_roles: true, manage_desktop_apps: true },
