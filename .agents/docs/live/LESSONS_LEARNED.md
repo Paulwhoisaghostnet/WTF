@@ -3863,3 +3863,15 @@
 **Fix**: The room WebSocket layer now exposes a lightweight in-memory presence snapshot per room. WTF LIVE room APIs include that snapshot, and the lobby renders active/quiet plus live user counts on each room card and in the public-room summary.
 
 **Rule**: Room directory activity indicators must be derived from the same transport state that powers guest presence. Tests should prove the lobby changes when a guest joins and returns to quiet when the guest leaves.
+
+---
+
+## 2026-06-06 - Persisted rate-limit buckets must be namespaced by limiter
+
+**What happened**: wtfOS password login could return "Too many authentication attempts" even when the password-login surface was not the only thing producing auth traffic. The Postgres rate-limit store persisted counters as `requesterKey:windowStart`, so every persisted limiter with the same requester key and window size shared one bucket. Password login, wallet auth, and OAuth all used a 15-minute window, and generic API throttling could also collide with endpoint buckets when window starts aligned.
+
+**Why it mattered**: Rate limits are supposed to isolate abuse budgets by surface. A shared persisted counter lets unrelated endpoints lock users out of password login, and old shared buckets keep hurting production until the window expires.
+
+**Fix**: Postgres-backed rate-limit keys now include a stable limiter name before the requester key and window start. The shared `createRateLimit` factory requires that name, app-level persisted limiters declare explicit names, and `getRateKeeper` uses its registry name as the persisted namespace.
+
+**Rule**: Any persisted or shared rate-limit store must include the limiter identity in its bucket key, not only the requester key and time window. New Postgres-backed limiters must have a stable name and a regression proving two limiters with the same requester and window cannot share a counter.

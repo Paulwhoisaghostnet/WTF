@@ -6,6 +6,31 @@ import type { InMemoryRateLimitMiddleware, InMemoryRateLimitOptions } from "./in
 const CLEANUP_INTERVAL_MS = 60_000;
 let lastCleanupAt = 0;
 
+export interface PostgresRateLimitBucketKeyOptions {
+  limiterName: string;
+  requesterKey: string;
+  windowMs: number;
+  now?: number;
+}
+
+export function postgresRateLimitBucketKey({
+  limiterName,
+  requesterKey,
+  windowMs,
+  now = Date.now(),
+}: PostgresRateLimitBucketKeyOptions): string {
+  const windowStart = Math.floor(now / windowMs) * windowMs;
+  return `${limiterName}:${requesterKey}:${windowStart}`;
+}
+
+function requireLimiterName(options: InMemoryRateLimitOptions): string {
+  const name = String(options.name || "").trim();
+  if (!name) {
+    throw new Error("[rate-limit] Postgres rate limiters require a stable name");
+  }
+  return name;
+}
+
 async function maybeCleanupExpiredBuckets(now: number): Promise<void> {
   if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) return;
   lastCleanupAt = now;
@@ -19,13 +44,18 @@ async function maybeCleanupExpiredBuckets(now: number): Promise<void> {
 }
 
 async function recordHit(
+  limiterName: string,
   bucketKey: string,
   windowMs: number
 ): Promise<number> {
   const now = Date.now();
-  const windowStart = Math.floor(now / windowMs) * windowMs;
-  const scopedKey = `${bucketKey}:${windowStart}`;
-  const expiresAt = new Date(windowStart + windowMs);
+  const scopedKey = postgresRateLimitBucketKey({
+    limiterName,
+    requesterKey: bucketKey,
+    windowMs,
+    now,
+  });
+  const expiresAt = new Date(Math.floor(now / windowMs) * windowMs + windowMs);
 
   const result = await db.execute<{ hit_count: number }>(sql`
     INSERT INTO rate_limit_buckets (bucket_key, hit_count, expires_at)
@@ -42,6 +72,8 @@ async function recordHit(
 export function createPostgresRateLimit(
   options: InMemoryRateLimitOptions
 ): InMemoryRateLimitMiddleware {
+  const limiterName = requireLimiterName(options);
+
   const middleware = ((req: Request, res: Response, next: NextFunction) => {
     if (options.skip?.(req)) {
       next();
@@ -57,7 +89,7 @@ export function createPostgresRateLimit(
     void (async () => {
       try {
         await maybeCleanupExpiredBuckets(Date.now());
-        const hitCount = await recordHit(key, options.windowMs);
+        const hitCount = await recordHit(limiterName, key, options.windowMs);
         if (hitCount > options.max) {
           res.status(429).json(options.message);
           return;

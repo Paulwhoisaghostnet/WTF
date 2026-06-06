@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-214 | Verified | Codex auth rate-limit bucket repair | 2026-06-06 | Auth / Postgres rate limits | P0 | 14 | 3 | 2 | 5 | 2 | Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login |
 | WTF-BB-207 | Fixed | Codex Skywire canonical-domain OAuth repair | 2026-06-04 | Platform domains / AT OAuth identity boundary | P0 | 16 | 1 | 3 | 5 | 5 | Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity |
 | WTF-BB-208 | Fixed | Codex Skywire chat OAuth session persistence repair | 2026-06-04 | Skywire / AT OAuth session persistence | P0 | 16 | 1 | 3 | 5 | 5 | Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect |
 | WTF-BB-210 | Verified | Codex Skywire post-OAuth settings bounce repair | 2026-06-04 | Skywire / AT OAuth tab lifecycle | P1 | 12 | 7 | 2 | 5 | 1 | Stale OAuth completion metadata can keep forcing Skywire back to Settings after chat permission is already enabled |
@@ -258,6 +259,30 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-214 - Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login
+
+- Category: Auth / Postgres rate limits
+- Status: Verified
+- Owner/Session: Codex auth rate-limit bucket repair
+- Score: C2 + F5 + S2 + P0(5) = 14
+- Evidence:
+  - User report on 2026-06-06: password login attempts to wtfOS return "Too many authentication attempts, please try again later."
+  - Code inspection found production defaults `RATE_LIMIT_STORE=postgres`, and `server/lib/postgres-rate-limit.ts` builds persisted bucket keys as `${bucketKey}:${windowStart}` without a limiter namespace.
+  - Multiple Postgres-backed limiters use the same requester key and 15-minute window (`/api/auth/login`/register, wallet auth, OAuth), so unrelated auth surfaces can increment the same persisted counter before the password-login limiter evaluates it.
+- Why it matters:
+  - Login throttling should slow abusive attempts on the same auth surface, not combine independent endpoints into one lockout bucket. A shared auth bucket can deny legitimate users and make recovery impossible until the 15-minute window rolls.
+- Correction:
+  - Postgres-backed rate-limit buckets now include a stable limiter namespace before the requester key and window start.
+  - The shared `createRateLimit` factory now requires a `name`, and every app-level persisted limiter has an explicit name (`auth-password`, `auth-wallet`, `auth-oauth`, `api-generic`, and media/CLI/client-log names).
+  - `getRateKeeper` passes its registry name into `createRateLimit`, keeping named registry limiters safe if the Postgres store is enabled.
+- Verification:
+  - Initially reproduced the missing namespace guard with `npx tsx --test server/lib/postgres-rate-limit.test.ts` failing because `postgresRateLimitBucketKey` did not exist.
+  - Passed `npx tsx --test server/lib/postgres-rate-limit.test.ts server/lib/in-memory-rate-limit.test.ts server/lib/create-rate-limit.test.ts`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `git diff --check`.
+  - Passed `npm run build`.
 
 ### WTF-BB-210 - Stale OAuth completion metadata can keep forcing Skywire back to Settings after chat permission is already enabled
 

@@ -39,6 +39,7 @@ export function getRateKeeper(
 
   const limiter = createRateLimit({
     ...options,
+    name,
     message: options.message ?? { error: "Rate limit exceeded" },
   });
 

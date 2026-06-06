@@ -275,6 +275,7 @@ export async function createApp() {
   app.use(
     "/api/system/logs/client",
     createRateLimit({
+      name: "client-logs",
       windowMs: 60 * 1000,
       max: 30,
       maxEntries: 2_000,
@@ -286,6 +287,7 @@ export async function createApp() {
   app.use(
     ["/api/cli/can-open", "/api/cli/routes"],
     createRateLimit({
+      name: "cli-routes",
       windowMs: 60 * 1000,
       max: 60,
       message: { error: "Too many CLI route probes, please try again later" },
@@ -296,6 +298,7 @@ export async function createApp() {
   app.use(
     "/api/",
     createRateLimit({
+      name: "api-generic",
       windowMs: 60 * 1000,
       max: 200,
       message: { error: "Too many requests, please try again later" },
@@ -306,6 +309,7 @@ export async function createApp() {
   app.use(
     ["/api/auth/login", "/api/auth/register"],
     createRateLimit({
+      name: "auth-password",
       windowMs: 15 * 60 * 1000,
       max: 20,
       message: { error: "Too many authentication attempts, please try again later" },
@@ -316,6 +320,7 @@ export async function createApp() {
   app.use(
     ["/api/auth/wallet/challenge", "/api/auth/wallet/verify", "/api/auth/wallet/register"],
     createRateLimit({
+      name: "auth-wallet",
       windowMs: 15 * 60 * 1000,
       max: 30,
       message: { error: "Too many wallet auth attempts, please try again later" },
@@ -332,6 +337,7 @@ export async function createApp() {
       "/api/auth/discord",
     ],
     createRateLimit({
+      name: "auth-oauth",
       windowMs: 15 * 60 * 1000,
       max: 15,
       message: { error: "Too many OAuth attempts, please try again later" },
@@ -343,6 +349,7 @@ export async function createApp() {
   app.use(
     "/api/tv/cache/prefetch",
     createRateLimit({
+      name: "tv-cache-prefetch",
       windowMs: 60 * 1000,
       max: 12,
       message: { error: "Too many TV cache warm requests, please try again later" },
@@ -351,6 +358,7 @@ export async function createApp() {
   app.use(
     /^\/api\/media\/\d+\/file$/,
     createRateLimit({
+      name: "media-file",
       windowMs: 60 * 1000,
       max: 600,
       keyGenerator: sessionOrIpRateLimitKey,
@@ -360,6 +368,7 @@ export async function createApp() {
   app.use(
     "/api/media/import-token",
     createRateLimit({
+      name: "media-import-token",
       windowMs: 15 * 60 * 1000,
       max: 60,
       keyGenerator: sessionOrIpRateLimitKey,
@@ -369,6 +378,7 @@ export async function createApp() {
   app.use(
     "/api/media/upload",
     createRateLimit({
+      name: "media-upload",
       windowMs: 15 * 60 * 1000,
       max: 20,
       keyGenerator: sessionOrIpRateLimitKey,

@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 
 export interface InMemoryRateLimitOptions {
+  name?: string;
   windowMs: number;
   max: number;
   message: { error: string };
