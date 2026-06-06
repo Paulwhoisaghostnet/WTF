@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-215 | Fixed | Codex Skywire new OAuth outage repair | 2026-06-06 | Skywire / AT OAuth new-session connect | P0 | 17 | 1 | 4 | 5 | 3 | New Skywire OAuth connections to Bluesky fail while existing sessions continue working; fixed locally with durable app+SDK OAuth state persistence and callback nonce translation, pending production deploy verification |
 | WTF-BB-214 | Verified | Codex auth rate-limit bucket repair | 2026-06-06 | Auth / Postgres rate limits | P0 | 14 | 3 | 2 | 5 | 2 | Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login |
 | WTF-BB-207 | Fixed | Codex Skywire canonical-domain OAuth repair | 2026-06-04 | Platform domains / AT OAuth identity boundary | P0 | 16 | 1 | 3 | 5 | 5 | Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity |
 | WTF-BB-208 | Fixed | Codex Skywire chat OAuth session persistence repair | 2026-06-04 | Skywire / AT OAuth session persistence | P0 | 16 | 1 | 3 | 5 | 5 | Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect |
@@ -259,6 +260,32 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-215 - New Skywire OAuth connections to Bluesky fail while existing sessions continue working
+
+- Category: Skywire / AT OAuth new-session connect
+- Status: Fixed
+- Owner/Session: Codex Skywire new OAuth outage repair
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Evidence:
+  - User report on 2026-06-06: existing Skywire sessions still work, but new OAuth can no longer connect to Bluesky.
+  - Production OAuth metadata and Bluesky PAR/authorize probes accepted the configured `https://wtfos.app` client metadata and scopes, which moved the suspected failure from provider metadata to Skywire callback state recovery.
+  - `server/routes/atproto.ts` stored app-owned pending metadata under a generated Skywire state token, but passed that value to `NodeOAuthClient.authorize` as `options.state`. The SDK stores it as `appState`; the callback query `state` is a different SDK-generated nonce.
+  - `atprotoOAuthStateForCallback` looked up pending Skywire metadata by the callback nonce before `client.callback(params)` could translate that nonce back to `appState`, so a lost/drifted browser session or process restart made new OAuth fail while already-persisted sessions continued to restore.
+- Why it matters:
+  - OAuth callback state binds the provider return to the signed-in WTF user, requested handle, requested scopes, chat permission intent, and starting origin. Losing it blocks new account connects and permission upgrades without invalidating old token rows.
+- Correction:
+  - Added the `atproto_oauth_states` table and migration for short-lived encrypted OAuth state rows.
+  - Persisted both app-owned Skywire pending metadata and SDK state-store records durably, with TTL pruning and encrypted payloads.
+  - Callback recovery now translates the provider callback nonce through the SDK state row to the original Skywire app state, then loads pending metadata from the session, memory, or database before finalizing the OAuth session.
+- Verification:
+  - Passed `npx tsx --test server/features/atproto/skywire-policy.test.ts`.
+  - Passed `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run security:deploy-migrations`.
+  - Passed `npm run build`.
+  - Production deploy and live new-OAuth smoke are still pending.
 
 ### WTF-BB-214 - Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login
 

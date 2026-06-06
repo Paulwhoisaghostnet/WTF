@@ -15,10 +15,15 @@ import {
   atprotoAccountSessionSummary,
   getAtprotoOAuthClient,
   isAtprotoEnabled,
+  atprotoOAuthAppStateKeyForCallback,
+  deleteAtprotoOAuthStateFamily,
+  loadAtprotoOAuthPendingState,
   persistCredentialSessionForDid,
   persistOAuthSessionForDid,
+  rememberAtprotoOAuthPendingState,
   resolveAtprotoOAuthGrantState,
   takePendingOAuthSessionForDid,
+  ATPROTO_OAUTH_STATE_TTL_MS,
   ATPROTO_SCOPE,
   ATPROTO_MAX_SCOPE,
 } from "../features/atproto/oauth";
@@ -115,7 +120,6 @@ type AtprotoOAuthPendingState = {
   startedAt: number;
 };
 
-const ATPROTO_OAUTH_STATE_TTL_MS = 15 * 60 * 1000;
 const pendingAtprotoOAuthStates = new Map<string, AtprotoOAuthPendingState>();
 
 function prunePendingAtprotoOAuthStates(now = Date.now()): void {
@@ -126,9 +130,10 @@ function prunePendingAtprotoOAuthStates(now = Date.now()): void {
   }
 }
 
-function rememberAtprotoOAuthState(value: AtprotoOAuthPendingState): void {
+async function rememberAtprotoOAuthState(value: AtprotoOAuthPendingState): Promise<void> {
   prunePendingAtprotoOAuthStates(value.startedAt);
   pendingAtprotoOAuthStates.set(value.state, value);
+  await rememberAtprotoOAuthPendingState(value.state, value, value.startedAt);
 }
 
 function requestAtprotoOAuthState(req: any): AtprotoOAuthPendingState | null {
@@ -137,22 +142,39 @@ function requestAtprotoOAuthState(req: any): AtprotoOAuthPendingState | null {
   return value as AtprotoOAuthPendingState;
 }
 
-function atprotoOAuthStateForCallback(req: any, callbackState: string | null): AtprotoOAuthPendingState | null {
+async function atprotoOAuthStateForCallback(req: any, callbackState: string | null): Promise<AtprotoOAuthPendingState | null> {
   prunePendingAtprotoOAuthStates();
   const sessionState = requestAtprotoOAuthState(req);
   if (sessionState?.state === callbackState) return sessionState;
   if (callbackState) {
     const pending = pendingAtprotoOAuthStates.get(callbackState);
     if (pending) return pending;
+    const appStateKey = await atprotoOAuthAppStateKeyForCallback(callbackState);
+    if (appStateKey) {
+      if (sessionState?.state === appStateKey) return sessionState;
+      const pendingByAppState = pendingAtprotoOAuthStates.get(appStateKey);
+      if (pendingByAppState) return pendingByAppState;
+      const durablePending = await loadAtprotoOAuthPendingState<AtprotoOAuthPendingState>(appStateKey);
+      if (durablePending) {
+        pendingAtprotoOAuthStates.set(durablePending.state, durablePending);
+        return durablePending;
+      }
+    }
+    const durablePending = await loadAtprotoOAuthPendingState<AtprotoOAuthPendingState>(callbackState);
+    if (durablePending) {
+      pendingAtprotoOAuthStates.set(durablePending.state, durablePending);
+      return durablePending;
+    }
   }
   return sessionState;
 }
 
-function clearAtprotoOAuthState(req: any, state: string): void {
+async function clearAtprotoOAuthState(req: any, state: string): Promise<void> {
   pendingAtprotoOAuthStates.delete(state);
   if (req.session?.atprotoOAuth?.state === state) {
     delete req.session.atprotoOAuth;
   }
+  await deleteAtprotoOAuthStateFamily(state);
 }
 
 function safeReturnPath(value: unknown): string {
@@ -887,8 +909,8 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     startedAt: Date.now(),
   };
   (req.session as any).atprotoOAuth = oauthState;
-  rememberAtprotoOAuthState(oauthState);
   try {
+    await rememberAtprotoOAuthState(oauthState);
     const client = await getAtprotoOAuthClient();
     const url = await client.authorize(handle, { scope: requestedScope, state });
     if (appName === "skywire") {
@@ -914,13 +936,13 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     }
     req.session.save((err) => {
       if (err) {
-        clearAtprotoOAuthState(req, state);
+        void clearAtprotoOAuthState(req, state);
         return res.status(500).json({ error: "Failed to persist OAuth state" });
       }
       res.redirect(url.toString());
     });
   } catch (err) {
-    clearAtprotoOAuthState(req, state);
+    await clearAtprotoOAuthState(req, state);
     console.warn("[skywire] atproto oauth start failed:", {
       handle,
       tier,
@@ -940,7 +962,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
 router.get("/api/atproto/oauth/callback", async (req, res) => {
   const params = new URLSearchParams(req.originalUrl.split("?")[1] || "");
   const callbackState = params.get("state");
-  const sessionState = atprotoOAuthStateForCallback(req, callbackState);
+  const sessionState = await atprotoOAuthStateForCallback(req, callbackState);
   if (!sessionState?.userId) {
     return res.redirect(originUrl(requestOrigin(req), "/skywire?error=atproto_session"));
   }
@@ -1122,7 +1144,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       },
     });
 
-    clearAtprotoOAuthState(req, sessionState.state);
+    await clearAtprotoOAuthState(req, sessionState.state);
     const verifiedParams = new URLSearchParams({
       verified: "atproto",
       handle: profile.data.handle,
@@ -1135,7 +1157,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     req.session.save(() => redirectWith(verifiedParams.toString()));
   } catch (err) {
     console.warn("[skywire] atproto oauth callback failed:", err);
-    clearAtprotoOAuthState(req, sessionState.state);
+    await clearAtprotoOAuthState(req, sessionState.state);
     redirectWith("error=atproto_oauth");
   }
 });

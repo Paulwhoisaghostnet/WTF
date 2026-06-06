@@ -3923,3 +3923,15 @@
 **Fix**: Role Control now stacks its heavy catalog/designer/permission/access sections inside the fixed admin window, uses smaller responsive grid minimums, wraps panel headers and access-map controls, removes viewport-scaled role/admin title text, and lets long labels break inside their own cards instead of expanding the surface.
 
 **Rule**: For admin UI changes inside the desktop OS shell, visual smoke must include at least one scrolled internal-window state and one narrow viewport state. Treat horizontal clipping in an internal panel as a release blocker, even when route smoke and full-page screenshots pass.
+
+---
+
+## 2026-06-06 - Skywire OAuth callback state is an SDK nonce, not app state
+
+**What happened**: New Skywire OAuth connections could fail while already-persisted sessions still worked. The OAuth start route generated a Skywire app state token and stored pending user, origin, scope, handle, and chat metadata under it, then passed that token to `NodeOAuthClient.authorize` as `options.state`. The AT OAuth SDK stores that value as `appState`, while the callback URL's `state` query parameter is a separate SDK-generated nonce. Skywire tried to look up pending metadata by the callback nonce before `client.callback(params)` translated it back to the app state.
+
+**Why it mattered**: A valid provider handoff could still fail whenever the browser session lost `req.session.atprotoOAuth` or the server process lost memory state during the OAuth round trip. Existing sessions survived because they restored from durable token rows; only new connects and permission upgrades depended on fragile pending callback state.
+
+**Fix**: Skywire now stores both SDK nonce records and app-owned pending OAuth metadata in short-lived encrypted database rows. Callback recovery translates the provider nonce through the SDK state record to the original app state, then resolves pending metadata from session, memory, or database before writing the durable account/session row.
+
+**Rule**: Treat the OAuth callback `state` query as provider/SDK nonce material. If app-owned metadata is needed after callback, persist it under the SDK `appState` and keep a durable nonce-to-app-state bridge; do not assume the callback query state is the app state token.

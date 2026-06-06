@@ -4,10 +4,10 @@ import {
   type NodeSavedSession,
   type NodeSavedState,
 } from "@atproto/oauth-client-node";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { db } from "../../db";
 import { encryptOAuthSecret, decryptOAuthSecret } from "../../auth/oauth-crypto";
-import { atprotoAccounts } from "@shared/schema";
+import { atprotoAccounts, atprotoOauthStates } from "@shared/schema";
 import {
   canonicalizePlatformUrl,
   resolveCanonicalPublicOrigin,
@@ -28,6 +28,7 @@ const stateStore = new Map<string, NodeSavedState>();
 const pendingOAuthSessions = new Map<string, NodeSavedSession>();
 let oauthClient: NodeOAuthClient | null = null;
 
+export const ATPROTO_OAUTH_STATE_TTL_MS = 15 * 60 * 1000;
 export const ATPROTO_SCOPE = buildSkywireAtprotoScope("be-bold", false);
 export const ATPROTO_MAX_SCOPE = buildSkywireAtprotoMaxScope();
 
@@ -162,6 +163,143 @@ function safeParseJson<T>(value: string | null | undefined): T | undefined {
   } catch {
     return undefined;
   }
+}
+
+function oauthStateExpiresAt(now = Date.now()): Date {
+  return new Date(now + ATPROTO_OAUTH_STATE_TTL_MS);
+}
+
+async function pruneExpiredAtprotoOAuthStates(now = new Date()): Promise<void> {
+  await db.delete(atprotoOauthStates).where(lt(atprotoOauthStates.expiresAt, now));
+}
+
+async function saveAtprotoOAuthStateRecord(params: {
+  stateKey: string;
+  stateKind: "sdk" | "app";
+  payload: unknown;
+  appStateKey?: string | null;
+  now?: number;
+}): Promise<void> {
+  const stateKey = params.stateKey.trim();
+  if (!stateKey) return;
+  const now = params.now ?? Date.now();
+  await pruneExpiredAtprotoOAuthStates(new Date(now));
+  const values = {
+    stateKey,
+    stateKind: params.stateKind,
+    appStateKey: params.appStateKey?.trim() || null,
+    encryptedPayload: encryptOAuthSecret(JSON.stringify(params.payload ?? null)),
+    expiresAt: oauthStateExpiresAt(now),
+    updatedAt: new Date(now),
+  };
+  await db
+    .insert(atprotoOauthStates)
+    .values(values)
+    .onConflictDoUpdate({
+      target: atprotoOauthStates.stateKey,
+      set: {
+        stateKind: values.stateKind,
+        appStateKey: values.appStateKey,
+        encryptedPayload: values.encryptedPayload,
+        expiresAt: values.expiresAt,
+        updatedAt: values.updatedAt,
+      },
+    });
+}
+
+async function loadAtprotoOAuthStatePayload<T>(
+  stateKind: "sdk" | "app",
+  stateKey: string | null | undefined
+): Promise<T | null> {
+  const key = String(stateKey || "").trim();
+  if (!key) return null;
+  const now = new Date();
+  const [row] = await db
+    .select({
+      stateKind: atprotoOauthStates.stateKind,
+      encryptedPayload: atprotoOauthStates.encryptedPayload,
+      expiresAt: atprotoOauthStates.expiresAt,
+    })
+    .from(atprotoOauthStates)
+    .where(and(eq(atprotoOauthStates.stateKey, key), eq(atprotoOauthStates.stateKind, stateKind)))
+    .limit(1);
+  if (!row) return null;
+  if (new Date(row.expiresAt).getTime() <= now.getTime()) {
+    await db.delete(atprotoOauthStates).where(eq(atprotoOauthStates.stateKey, key));
+    return null;
+  }
+  return safeParseJson<T>(decryptOAuthSecret(row.encryptedPayload)) ?? null;
+}
+
+async function deleteAtprotoOAuthStateRecord(stateKey: string | null | undefined): Promise<void> {
+  const key = String(stateKey || "").trim();
+  if (!key) return;
+  await db.delete(atprotoOauthStates).where(eq(atprotoOauthStates.stateKey, key));
+}
+
+export async function rememberAtprotoOAuthPendingState(
+  stateKey: string,
+  payload: unknown,
+  now = Date.now()
+): Promise<void> {
+  await saveAtprotoOAuthStateRecord({
+    stateKey,
+    stateKind: "app",
+    payload,
+    now,
+  });
+}
+
+export async function loadAtprotoOAuthPendingState<T>(
+  stateKey: string | null | undefined
+): Promise<T | null> {
+  return loadAtprotoOAuthStatePayload<T>("app", stateKey);
+}
+
+export async function deleteAtprotoOAuthStateFamily(appStateKey: string | null | undefined): Promise<void> {
+  const key = String(appStateKey || "").trim();
+  if (!key) return;
+  await db
+    .delete(atprotoOauthStates)
+    .where(or(eq(atprotoOauthStates.stateKey, key), eq(atprotoOauthStates.appStateKey, key)));
+}
+
+async function rememberAtprotoOAuthSdkState(key: string, value: NodeSavedState): Promise<void> {
+  stateStore.set(key, value);
+  const appStateKey = typeof (value as any)?.appState === "string" ? String((value as any).appState) : null;
+  await saveAtprotoOAuthStateRecord({
+    stateKey: key,
+    stateKind: "sdk",
+    appStateKey,
+    payload: value,
+  });
+}
+
+async function loadAtprotoOAuthSdkState(key: string): Promise<NodeSavedState | undefined> {
+  const fromMemory = stateStore.get(key);
+  if (fromMemory) return fromMemory;
+  const fromDb = await loadAtprotoOAuthStatePayload<NodeSavedState>("sdk", key);
+  if (fromDb) {
+    stateStore.set(key, fromDb);
+    return fromDb;
+  }
+  return undefined;
+}
+
+async function deleteAtprotoOAuthSdkState(key: string): Promise<void> {
+  stateStore.delete(key);
+  await deleteAtprotoOAuthStateRecord(key);
+}
+
+export async function atprotoOAuthAppStateKeyForCallback(
+  callbackState: string | null | undefined
+): Promise<string | null> {
+  const key = String(callbackState || "").trim();
+  if (!key) return null;
+  const sdkState = stateStore.get(key) ?? (await loadAtprotoOAuthStatePayload<NodeSavedState>("sdk", key));
+  if (sdkState) stateStore.set(key, sdkState);
+  const appState = typeof (sdkState as any)?.appState === "string" ? String((sdkState as any).appState) : "";
+  return appState || null;
 }
 
 export function assertPersistableOAuthSession(session: unknown): asserts session is NodeSavedSession {
@@ -371,13 +509,13 @@ export async function getAtprotoOAuthClient(): Promise<NodeOAuthClient> {
     responseMode: "query",
     stateStore: {
       async get(key: string) {
-        return stateStore.get(key);
+        return loadAtprotoOAuthSdkState(key);
       },
       async set(key: string, value: NodeSavedState) {
-        stateStore.set(key, value);
+        await rememberAtprotoOAuthSdkState(key, value);
       },
       async del(key: string) {
-        stateStore.delete(key);
+        await deleteAtprotoOAuthSdkState(key);
       },
     },
     sessionStore: {

@@ -299,6 +299,23 @@ export const atprotoAccounts = pgTable(
   ]
 );
 
+export const atprotoOauthStates = pgTable(
+  "atproto_oauth_states",
+  {
+    stateKey: varchar("state_key", { length: 128 }).primaryKey(),
+    stateKind: varchar("state_kind", { length: 16 }).notNull(),
+    appStateKey: varchar("app_state_key", { length: 128 }),
+    encryptedPayload: text("encrypted_payload").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("atproto_oauth_states_app_state_idx").on(table.appStateKey),
+    index("atproto_oauth_states_expires_idx").on(table.expiresAt),
+  ]
+);
+
 export const wtfosAtprotoIdentities = pgTable(
   "wtfos_atproto_identities",
   {
