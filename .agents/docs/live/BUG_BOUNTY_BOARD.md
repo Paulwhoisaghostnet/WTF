@@ -50,7 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-215 | Fixed | Codex Skywire new OAuth outage repair | 2026-06-06 | Skywire / AT OAuth new-session connect | P0 | 17 | 1 | 4 | 5 | 3 | New Skywire OAuth connections to Bluesky fail while existing sessions continue working; fixed locally with durable app+SDK OAuth state persistence and callback nonce translation, pending production deploy verification |
+| WTF-BB-215 | Verified | Codex Skywire new OAuth outage repair | 2026-06-06 | Skywire / AT OAuth new-session connect | P0 | 17 | 1 | 4 | 5 | 3 | New Skywire OAuth connections to Bluesky fail while existing sessions continue working; fixed with durable app+SDK OAuth state persistence and verified live on wtfos.app |
 | WTF-BB-214 | Verified | Codex auth rate-limit bucket repair | 2026-06-06 | Auth / Postgres rate limits | P0 | 14 | 3 | 2 | 5 | 2 | Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login |
 | WTF-BB-207 | Fixed | Codex Skywire canonical-domain OAuth repair | 2026-06-04 | Platform domains / AT OAuth identity boundary | P0 | 16 | 1 | 3 | 5 | 5 | Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity |
 | WTF-BB-208 | Fixed | Codex Skywire chat OAuth session persistence repair | 2026-06-04 | Skywire / AT OAuth session persistence | P0 | 16 | 1 | 3 | 5 | 5 | Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect |
@@ -264,7 +264,7 @@ Priority labels:
 ### WTF-BB-215 - New Skywire OAuth connections to Bluesky fail while existing sessions continue working
 
 - Category: Skywire / AT OAuth new-session connect
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Skywire new OAuth outage repair
 - Score: C4 + F5 + S3 + P0(5) = 17
 - Evidence:
@@ -285,7 +285,10 @@ Priority labels:
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed `npm run security:deploy-migrations`.
   - Passed `npm run build`.
-  - Production deploy and live new-OAuth smoke are still pending.
+  - Passed GitHub `Deploy to Hetzner` run `27069296205` for commit `f5bb22eb38874bc53f18394d35cc63a4312bf81b`.
+  - Passed GitHub `Quality Gates` run `27069296207`.
+  - Live `https://wtfos.app/api/health` returned `ok` with `commitRef: f5bb22e`, database `ok`, and jobs `ok`.
+  - Live `https://wtfos.app/.well-known/oauth-client-metadata.json` returned canonical `https://wtfos.app` client metadata and callback URL.
 
 ### WTF-BB-214 - Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login
 
