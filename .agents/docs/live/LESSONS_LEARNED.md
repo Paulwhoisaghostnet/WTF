@@ -3911,3 +3911,15 @@
 **Fix**: Role Control now owns its permission category labels locally, normalizes role-access roles, matrix, and surfaces to safe empty structures before reading them, and the Playwright harness has explicit role catalog plus role-surface fixtures for admin, host, and contestant flows.
 
 **Rule**: Any admin panel that renders registry-backed roles, app gates, surfaces, or permissions must normalize partial API responses before indexing or filtering them. Inventory harness routes for new admin control surfaces must return the real production response shape, not the generic admin fallback.
+
+---
+
+## 2026-06-06 - Admin suite screenshots must exercise internal OS-window scroll and width
+
+**What happened**: The first Role Control full-send screenshot pass showed the top cockpit rendered, but the deeper access-map frame exposed that the fixed admin OS window could clip toolbar controls and management grids horizontally. The local full-page screenshot did not reveal this by itself because the admin app has an internal scroll container.
+
+**Why it mattered**: Admin is supposed to reduce operator overwhelm. A role-management panel that looks correct at the top but clips lower controls makes permissions, app visibility, and automation handles harder to audit precisely where operators need confidence.
+
+**Fix**: Role Control now stacks its heavy catalog/designer/permission/access sections inside the fixed admin window, uses smaller responsive grid minimums, wraps panel headers and access-map controls, removes viewport-scaled role/admin title text, and lets long labels break inside their own cards instead of expanding the surface.
+
+**Rule**: For admin UI changes inside the desktop OS shell, visual smoke must include at least one scrolled internal-window state and one narrow viewport state. Treat horizontal clipping in an internal panel as a release blocker, even when route smoke and full-page screenshots pass.

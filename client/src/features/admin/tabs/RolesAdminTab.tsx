@@ -62,6 +62,12 @@ const ActionRow = styled.div`
 const RoleWorkspace = styled.div`
   display: grid;
   gap: 14px;
+  min-width: 0;
+
+  &,
+  * {
+    box-sizing: border-box;
+  }
 `;
 
 const HeroPanel = styled.section`
@@ -72,8 +78,9 @@ const HeroPanel = styled.section`
   box-shadow: 4px 4px 0 #15171a;
   padding: 14px;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(320px, 1.4fr);
+  grid-template-columns: minmax(180px, 1fr) minmax(260px, 1.15fr);
   gap: 14px;
+  min-width: 0;
 
   @media (max-width: 960px) {
     grid-template-columns: 1fr;
@@ -85,8 +92,9 @@ const HeroCopy = styled.div`
 
   h3 {
     margin: 0;
-    font-size: clamp(22px, 3vw, 34px);
-    line-height: 1;
+    font-size: 30px;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
   }
 
   p {
@@ -129,8 +137,9 @@ const MetaChip = styled.span<{ $tone?: "good" | "warn" | "dark" | "plain" }>`
 
 const MetricGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
   gap: 8px;
+  min-width: 0;
 
   @media (max-width: 720px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -145,8 +154,9 @@ const MetricTile = styled.div`
 
   strong {
     display: block;
-    font-size: 22px;
-    line-height: 1;
+    font-size: 20px;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
   }
 
   span {
@@ -154,20 +164,17 @@ const MetricTile = styled.div`
     margin-top: 4px;
     color: #4b5563;
     font-size: 10px;
-    letter-spacing: 0.05em;
+    letter-spacing: 0;
     text-transform: uppercase;
+    overflow-wrap: anywhere;
   }
 `;
 
 const ControlGrid = styled.div`
   display: grid;
-  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.4fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   align-items: start;
-
-  @media (max-width: 1060px) {
-    grid-template-columns: 1fr;
-  }
 `;
 
 const Panel = styled.section`
@@ -182,6 +189,7 @@ const PanelHeader = styled.div`
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
   border-bottom: 2px solid #15171a;
   padding-bottom: 8px;
@@ -192,10 +200,12 @@ const PanelTitle = styled.div`
   display: flex;
   align-items: center;
   gap: 7px;
+  min-width: 0;
 
   h4 {
     margin: 0;
     font-size: 15px;
+    overflow-wrap: anywhere;
   }
 
   span {
@@ -203,6 +213,7 @@ const PanelTitle = styled.div`
     margin-top: 2px;
     color: #5b626b;
     font-size: 11px;
+    overflow-wrap: anywhere;
   }
 `;
 
@@ -231,6 +242,7 @@ const RoleCard = styled.button<{ $active?: boolean; $color?: string | null }>`
   text-align: left;
   padding: 9px;
   cursor: pointer;
+  min-width: 0;
 
   &:hover {
     border-color: ${({ $color }) => $color || "#15171a"};
@@ -242,10 +254,12 @@ const RoleCardTop = styled.div`
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
 `;
 
 const RoleName = styled.strong`
   font-size: 13px;
+  overflow-wrap: anywhere;
 `;
 
 const RoleSlug = styled.span`
@@ -253,6 +267,7 @@ const RoleSlug = styled.span`
   display: block;
   font-size: 10px;
   margin-top: 1px;
+  overflow-wrap: anywhere;
 `;
 
 const RoleStatsLine = styled.div`
@@ -267,6 +282,8 @@ const TinyChip = styled.span`
   color: #30363d;
   padding: 2px 5px;
   font-size: 10px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 `;
 
 const FormGrid = styled.div`
@@ -296,6 +313,7 @@ const TextInput = styled.input`
   background: #ffffff;
   padding: 6px 7px;
   width: 100%;
+  min-width: 0;
 `;
 
 const TextArea = styled.textarea`
@@ -303,6 +321,7 @@ const TextArea = styled.textarea`
   background: #ffffff;
   padding: 6px 7px;
   width: 100%;
+  min-width: 0;
   min-height: 68px;
   resize: vertical;
 `;
@@ -354,9 +373,10 @@ const PermissionGroupHeader = styled.div`
 
 const PermissionToggleGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 7px;
   padding: 8px;
+  min-width: 0;
 `;
 
 const PermissionToggle = styled.label<{ $active?: boolean; $locked?: boolean }>`
@@ -383,14 +403,19 @@ const PermissionToggle = styled.label<{ $active?: boolean; $locked?: boolean }>`
 `;
 
 const SurfaceToolbar = styled.div`
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 7px;
   align-items: center;
   margin-bottom: 10px;
 
-  @media (max-width: 900px) {
-    grid-template-columns: 1fr;
+  > input {
+    flex: 1 1 190px;
+  }
+
+  > div {
+    flex: 1 1 136px;
+    min-width: 0;
   }
 `;
 
@@ -416,8 +441,9 @@ const SurfaceDomainTitle = styled.div`
 
 const SurfaceGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 8px;
+  min-width: 0;
 `;
 
 const SurfaceCard = styled.div<{ $active?: boolean }>`
@@ -426,19 +452,24 @@ const SurfaceCard = styled.div<{ $active?: boolean }>`
   display: grid;
   gap: 8px;
   padding: 9px;
+  min-width: 0;
 `;
 
 const SurfaceCardHeader = styled.div`
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
 `;
 
 const SurfaceName = styled.div`
+  min-width: 0;
+
   strong {
     display: block;
     font-size: 13px;
+    overflow-wrap: anywhere;
   }
 
   span {
@@ -446,6 +477,7 @@ const SurfaceName = styled.div`
     display: block;
     font-size: 10px;
     margin-top: 1px;
+    overflow-wrap: anywhere;
   }
 `;
 

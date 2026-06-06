@@ -109,15 +109,16 @@ const SuiteTitlePanel = styled.div`
 const SuiteKicker = styled.div`
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   color: #6f1d1b;
   font-weight: 700;
 `;
 
 const SuiteTitle = styled.h2`
   margin: 2px 0 0;
-  font-size: clamp(20px, 3vw, 32px);
-  line-height: 1;
+  font-size: 31px;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
 `;
 
 const SuiteSubtitle = styled.div`
@@ -155,7 +156,7 @@ const StatTile = styled.span`
     color: #4b5563;
     font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0;
   }
 `;
 
@@ -193,7 +194,7 @@ const NavGroupTitle = styled.div`
   color: #f4c542;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
   padding: 0 3px;
 `;
