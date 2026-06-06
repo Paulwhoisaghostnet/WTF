@@ -181,6 +181,23 @@ function freshnessLabel(freshness: NonNullable<RatRaceHotTokensResponse["diagnos
   return [state, lag, processed].filter(Boolean).join(", ");
 }
 
+function replayScanLabel(scan: NonNullable<RatRaceHotTokensResponse["diagnostics"]>["replayScan"]) {
+  if (!scan) return "n/a";
+  const covered = scan.completedWindow
+    ? `${scan.requestedWindowHours}h covered`
+    : `${scan.estimatedScannedHours}h of ${scan.requestedWindowHours}h`;
+  const cap = scan.pageCapHitCount > 0 ? `, ${scan.pageCapHitCount} capped page(s)` : "";
+  const errors = scan.pageErrorCount > 0 ? `, ${scan.pageErrorCount} page error(s)` : "";
+  return `${covered}, ${scan.pagesScanned}/${scan.maxPages} request(s), ${scan.collectRecordCount} collect(s), ${scan.listingSignalRecordCount} listing signal(s)${cap}${errors}`;
+}
+
+function supplementLabel(sources: NonNullable<RatRaceHotTokensResponse["diagnostics"]>["supplementSources"]) {
+  return sources
+    .filter((source) => source.used)
+    .map((source) => source.source)
+    .join(", ") || "none";
+}
+
 function tokenRef(item: RatRaceHotToken) {
   return `${item.tokenContract}:${item.tokenId}`;
 }
@@ -292,6 +309,45 @@ function sameFilters(a: RatRaceFilters, b: RatRaceFilters) {
   );
 }
 
+function DiagnosticsSummary({ diagnostics }: { diagnostics: NonNullable<RatRaceHotTokensResponse["diagnostics"]> }) {
+  return (
+    <DiagnosticGrid>
+      <Stat>
+        <StatLabel>Source</StatLabel>
+        <StatValue>{diagnostics.source}</StatValue>
+      </Stat>
+      <Stat>
+        <StatLabel>Local rows</StatLabel>
+        <StatValue>{diagnostics.localCandidateRows}</StatValue>
+      </Stat>
+      <Stat>
+        <StatLabel>tz2at rows</StatLabel>
+        <StatValue>{diagnostics.tz2atCandidateRows}</StatValue>
+      </Stat>
+      <Stat>
+        <StatLabel>tz2at freshness</StatLabel>
+        <StatValue>{freshnessLabel(diagnostics.sourceFreshness)}</StatValue>
+      </Stat>
+      <Stat>
+        <StatLabel>tz2at scan</StatLabel>
+        <StatValue>{replayScanLabel(diagnostics.replayScan)}</StatValue>
+      </Stat>
+      <Stat>
+        <StatLabel>Supplements</StatLabel>
+        <StatValue>{supplementLabel(diagnostics.supplementSources ?? [])}</StatValue>
+      </Stat>
+      <Stat>
+        <StatLabel>Rejected</StatLabel>
+        <StatValue>
+          {diagnostics.rejectedByUnknownSupply} supply / {diagnostics.rejectedByNoActiveListing} listing /{" "}
+          {diagnostics.rejectedByMintWindow} old / {diagnostics.rejectedByRecentSales} quiet /{" "}
+          {diagnostics.rejectedBySoldPercent} low
+        </StatValue>
+      </Stat>
+    </DiagnosticGrid>
+  );
+}
+
 export function RatRace() {
   const queryClient = useQueryClient();
   const { address } = useWallet();
@@ -301,7 +357,6 @@ export function RatRace() {
   const query = useQuery({
     queryKey: ["rat-race", "hot-tokens", filters],
     queryFn: () => api.get<RatRaceHotTokensResponse>(ratRaceQueryPath(filters)),
-    refetchInterval: (currentQuery) => (currentQuery.state.fetchStatus === "fetching" ? false : 45_000),
   });
 
   useEffect(() => {
@@ -460,41 +515,7 @@ export function RatRace() {
             <div>{diagnostics?.note || "No hot editions match the urgency filter yet."}</div>
             {diagnostics ? (
               <>
-                <DiagnosticGrid>
-                  <Stat>
-                    <StatLabel>Source</StatLabel>
-                    <StatValue>{diagnostics.source}</StatValue>
-                  </Stat>
-                  <Stat>
-                    <StatLabel>Local rows</StatLabel>
-                    <StatValue>{diagnostics.localCandidateRows}</StatValue>
-                  </Stat>
-                  <Stat>
-                    <StatLabel>tz2at rows</StatLabel>
-                    <StatValue>{diagnostics.tz2atCandidateRows}</StatValue>
-                  </Stat>
-                  <Stat>
-                    <StatLabel>tz2at freshness</StatLabel>
-                    <StatValue>{freshnessLabel(diagnostics.sourceFreshness)}</StatValue>
-                  </Stat>
-                  <Stat>
-                    <StatLabel>Supplements</StatLabel>
-                    <StatValue>
-                      {(diagnostics.supplementSources ?? [])
-                        .filter((source) => source.used)
-                        .map((source) => source.source)
-                        .join(", ") || "none"}
-                    </StatValue>
-                  </Stat>
-                  <Stat>
-                    <StatLabel>Rejected</StatLabel>
-                    <StatValue>
-                      {diagnostics.rejectedByUnknownSupply} supply / {diagnostics.rejectedByNoActiveListing} listing /{" "}
-                      {diagnostics.rejectedByMintWindow} old / {diagnostics.rejectedByRecentSales} quiet /{" "}
-                      {diagnostics.rejectedBySoldPercent} low
-                    </StatValue>
-                  </Stat>
-                </DiagnosticGrid>
+                <DiagnosticsSummary diagnostics={diagnostics} />
                 {diagnostics.nearMisses.length > 0 ? (
                   <NearMissList>
                     {diagnostics.nearMisses.map((miss) => (
@@ -512,55 +533,62 @@ export function RatRace() {
             ) : null}
           </GroupBox>
         ) : (
-          <Grid>
-            {items.map((item) => (
-              <Card key={tokenRef(item)}>
-                <ThumbFrame>
-                  {item.tokenThumbnail ? <Thumb src={item.tokenThumbnail} alt="" /> : <Placeholder>RR</Placeholder>}
-                </ThumbFrame>
-                <div>
-                  <CardTitle>{item.tokenName}</CardTitle>
-                  <Fine>{item.tokenContract} #{item.tokenId}</Fine>
-                </div>
-                <Meter>
-                  <MeterFill $pct={item.soldPercent} />
-                </Meter>
-                <MetaGrid>
-                  <Stat>
-                    <StatLabel>Sold</StatLabel>
-                    <StatValue>
-                      {item.soldEditions}/{item.totalEditions}
-                    </StatValue>
-                  </Stat>
-                  <Stat>
-                    <StatLabel>{activeFilters.windowHours}h sales</StatLabel>
-                    <StatValue>{item.recentSaleCount}</StatValue>
-                  </Stat>
-                  <Stat>
-                    <StatLabel>Sellout ETA</StatLabel>
-                    <StatValue>{selloutLabel(item)}</StatValue>
-                  </Stat>
-                  <Stat>
-                    <StatLabel>Floor</StatLabel>
-                    <StatValue>{formatMutez(item.floorMutez)}</StatValue>
-                  </Stat>
-                </MetaGrid>
-                <Fine>
-                  {item.activeListingCount} active listing(s) | {item.purchaseIntent.marketplaceName || "external market"}
-                </Fine>
-                <Actions>
-                  <Button onClick={() => openMarket(item)}>Open listing</Button>
-                  <Button
-                    onClick={() => buyMutation.mutate(item)}
-                    disabled={!address || !item.purchaseIntent.supported || buyMutation.isPending}
-                  >
-                    {buyMutation.isPending ? "Buying..." : "Buy direct"}
-                  </Button>
-                </Actions>
-                {!item.purchaseIntent.supported ? <Fine>{item.purchaseIntent.reason}</Fine> : null}
-              </Card>
-            ))}
-          </Grid>
+          <>
+            {diagnostics ? (
+              <GroupBox label="Scan diagnostics">
+                <DiagnosticsSummary diagnostics={diagnostics} />
+              </GroupBox>
+            ) : null}
+            <Grid>
+              {items.map((item) => (
+                <Card key={tokenRef(item)}>
+                  <ThumbFrame>
+                    {item.tokenThumbnail ? <Thumb src={item.tokenThumbnail} alt="" /> : <Placeholder>RR</Placeholder>}
+                  </ThumbFrame>
+                  <div>
+                    <CardTitle>{item.tokenName}</CardTitle>
+                    <Fine>{item.tokenContract} #{item.tokenId}</Fine>
+                  </div>
+                  <Meter>
+                    <MeterFill $pct={item.soldPercent} />
+                  </Meter>
+                  <MetaGrid>
+                    <Stat>
+                      <StatLabel>Sold</StatLabel>
+                      <StatValue>
+                        {item.soldEditions}/{item.totalEditions}
+                      </StatValue>
+                    </Stat>
+                    <Stat>
+                      <StatLabel>{activeFilters.windowHours}h sales</StatLabel>
+                      <StatValue>{item.recentSaleCount}</StatValue>
+                    </Stat>
+                    <Stat>
+                      <StatLabel>Sellout ETA</StatLabel>
+                      <StatValue>{selloutLabel(item)}</StatValue>
+                    </Stat>
+                    <Stat>
+                      <StatLabel>Floor</StatLabel>
+                      <StatValue>{formatMutez(item.floorMutez)}</StatValue>
+                    </Stat>
+                  </MetaGrid>
+                  <Fine>
+                    {item.activeListingCount} active listing(s) | {item.purchaseIntent.marketplaceName || "external market"}
+                  </Fine>
+                  <Actions>
+                    <Button onClick={() => openMarket(item)}>Open listing</Button>
+                    <Button
+                      onClick={() => buyMutation.mutate(item)}
+                      disabled={!address || !item.purchaseIntent.supported || buyMutation.isPending}
+                    >
+                      {buyMutation.isPending ? "Buying..." : "Buy direct"}
+                    </Button>
+                  </Actions>
+                  {!item.purchaseIntent.supported ? <Fine>{item.purchaseIntent.reason}</Fine> : null}
+                </Card>
+              ))}
+            </Grid>
+          </>
         )}
       </Shell>
     </AppWindow>

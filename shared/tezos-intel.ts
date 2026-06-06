@@ -117,6 +117,30 @@ export interface RatRaceSourceFreshness {
   maxStaleMs: number | null;
 }
 
+export interface RatRaceReplayScanCoverage {
+  requestedWindowHours: number;
+  requestedBlocks: number;
+  chunkBlocks: number;
+  maxPages: number;
+  pagesScanned: number;
+  fromLevel: number | null;
+  toLevel: number | null;
+  scannedFromLevel: number | null;
+  scannedToLevel: number | null;
+  estimatedScannedHours: number;
+  completedWindow: boolean;
+  stopReason: "window-covered" | "page-limit" | "page-error" | "stale-health" | "missing-head" | "no-ranges";
+  replayEventCount: number;
+  collectRecordCount: number;
+  listingSignalRecordCount: number;
+  transferRecordCount: number;
+  pageCapHitCount: number;
+  pageErrorCount: number;
+  oldestEventAt: string | null;
+  newestEventAt: string | null;
+  oldestCollectAt: string | null;
+}
+
 export interface RatRaceSupplementSource {
   source: "objkt" | "tzkt";
   used: boolean;
@@ -126,6 +150,7 @@ export interface RatRaceSupplementSource {
 export interface RatRaceFeedDiagnostics {
   source: "local-index" | "tz2at-replay" | "tz2at-atproto" | "none";
   sourceFreshness?: RatRaceSourceFreshness | null;
+  replayScan?: RatRaceReplayScanCoverage | null;
   supplementSources: RatRaceSupplementSource[];
   localCandidateRows: number;
   tz2atCandidateRows: number;

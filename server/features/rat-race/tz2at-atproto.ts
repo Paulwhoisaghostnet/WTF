@@ -1,5 +1,5 @@
 import { EXTERNAL_MARKETPLACE_CONTRACTS } from "@shared/external-marketplaces";
-import type { RatRaceSourceFreshness, RatRaceSupplementSource } from "@shared/tezos-intel";
+import type { RatRaceReplayScanCoverage, RatRaceSourceFreshness, RatRaceSupplementSource } from "@shared/tezos-intel";
 import { objkt, tz2atAtproto, tz2atRelay, type UpstreamClient } from "../../lib/upstream";
 import type { RatRaceCandidateRow, RatRaceFilter } from "./hot-tokens";
 
@@ -19,11 +19,13 @@ const DEFAULT_MAX_TRANSFER_RECORDS = 500;
 const MAX_OBJKT_REFS = 180;
 const TEZOS_BLOCKS_PER_HOUR_ESTIMATE = 600;
 const MAX_RAT_RACE_WINDOW_HOURS = 168;
-const DEFAULT_REPLAY_CHUNK_BLOCKS = 500;
+const DEFAULT_REPLAY_CHUNK_BLOCKS = 100;
 const MAX_REPLAY_CHUNK_BLOCKS = 1_000;
 const DEFAULT_MAX_REPLAY_BLOCKS = MAX_RAT_RACE_WINDOW_HOURS * TEZOS_BLOCKS_PER_HOUR_ESTIMATE;
-const DEFAULT_TARGET_COLLECT_RECORDS = 120;
-const DEFAULT_MAX_REPLAY_SCAN_PAGES = 10;
+const DEFAULT_MAX_REPLAY_SCAN_PAGES = 60;
+const REPLAY_EVENT_PAGE_CAP_HINT = 5_000;
+const REPLAY_FAILURE_SPLIT_BLOCKS = 25;
+const MAX_REPLAY_PAGE_ERRORS = 3;
 const REPLAY_PAGE_CONCURRENCY = 4;
 
 const MARKETPLACE_ADDRESSES = new Set(EXTERNAL_MARKETPLACE_CONTRACTS.map((contract) => contract.address));
@@ -202,6 +204,7 @@ type Tz2atReplayEvent<T> = {
 type Tz2atReplayRecordsResult<T> = {
   records: Tz2atRepoRecord<T>[];
   freshness: RatRaceSourceFreshness | null;
+  replayScan: RatRaceReplayScanCoverage | null;
 };
 
 type HydratedToken = {
@@ -213,6 +216,7 @@ export type Tz2atRatRaceRowsResult = {
   source: "tz2at-replay" | "tz2at-atproto";
   rows: RatRaceCandidateRow[];
   sourceFreshness?: RatRaceSourceFreshness | null;
+  replayScan?: RatRaceReplayScanCoverage | null;
   supplementSources?: RatRaceSupplementSource[];
 };
 
@@ -368,14 +372,6 @@ function replayChunkBlocks(): number {
   return DEFAULT_REPLAY_CHUNK_BLOCKS;
 }
 
-function targetCollectRecords(): number {
-  const requested = Number(process.env.RAT_RACE_TZ2AT_TARGET_COLLECTS);
-  if (Number.isFinite(requested) && requested > 0) {
-    return Math.max(20, Math.min(500, Math.floor(requested)));
-  }
-  return DEFAULT_TARGET_COLLECT_RECORDS;
-}
-
 function maxReplayScanPages(replayBlocks: number, chunkBlocks: number): number {
   const requested = Number(process.env.RAT_RACE_TZ2AT_MAX_REPLAY_PAGES);
   const windowPages = Math.ceil(replayBlocks / chunkBlocks);
@@ -478,43 +474,170 @@ function replayRecordKey(raw: Record<string, unknown>): string {
 function mergeReplayPage<T>(
   page: Array<Tz2atReplayEvent<T>> | null | undefined,
   records: Map<string, Tz2atRepoRecord<T>>
-): { collectCount: number; oldestCollectMs: number | null } {
+): {
+  eventCount: number;
+  collectCount: number;
+  listingSignalCount: number;
+  transferCount: number;
+  oldestEventMs: number | null;
+  newestEventMs: number | null;
+  oldestCollectMs: number | null;
+  hitPageCap: boolean;
+} {
+  const events = Array.isArray(page) ? page : [];
+  let eventCount = 0;
   let collectCount = 0;
+  let listingSignalCount = 0;
+  let transferCount = 0;
+  let oldestEventMs: number | null = null;
+  let newestEventMs: number | null = null;
   let oldestCollectMs: number | null = null;
-  for (const item of Array.isArray(page) ? page : []) {
+  for (const item of events) {
     const value = item.event;
     if (!value) continue;
+    eventCount += 1;
     const raw = value as Record<string, unknown>;
     records.set(replayRecordKey(raw), { value });
-    if (!isTz2atCollectRecord(trimString(raw.$type))) continue;
-    collectCount += 1;
+    const type = trimString(raw.$type);
+    const isCollect = isTz2atCollectRecord(type);
+    if (isCollect) collectCount += 1;
+    if (isTz2atListingSignalRecord(type)) listingSignalCount += 1;
+    if (isTz2atFa2TransferRecord(type)) transferCount += 1;
     const timestamp = trimString(raw.timestamp);
     if (!timestamp || !isValidIsoish(timestamp)) continue;
     const ts = new Date(timestamp).getTime();
-    oldestCollectMs = oldestCollectMs === null ? ts : Math.min(oldestCollectMs, ts);
+    oldestEventMs = oldestEventMs === null ? ts : Math.min(oldestEventMs, ts);
+    newestEventMs = newestEventMs === null ? ts : Math.max(newestEventMs, ts);
+    if (isCollect) oldestCollectMs = oldestCollectMs === null ? ts : Math.min(oldestCollectMs, ts);
   }
-  return { collectCount, oldestCollectMs };
+  return {
+    eventCount,
+    collectCount,
+    listingSignalCount,
+    transferCount,
+    oldestEventMs,
+    newestEventMs,
+    oldestCollectMs,
+    hitPageCap: events.length >= REPLAY_EVENT_PAGE_CAP_HINT,
+  };
 }
 
-function shouldStopReplayScan(options: {
+function isoFromMs(value: number | null): string | null {
+  return value === null ? null : new Date(value).toISOString();
+}
+
+function buildReplayScanCoverage(options: {
+  requestedWindowHours: number;
+  requestedBlocks: number;
+  chunkBlocks: number;
+  maxPages: number;
+  pagesScanned: number;
+  fromLevel: number | null;
+  toLevel: number | null;
+  scannedFromLevel: number | null;
+  scannedToLevel: number | null;
+  stopReason: RatRaceReplayScanCoverage["stopReason"];
+  replayEventCount: number;
+  collectRecordCount: number;
+  listingSignalRecordCount: number;
+  transferRecordCount: number;
+  pageCapHitCount: number;
+  pageErrorCount: number;
+  oldestEventMs: number | null;
+  newestEventMs: number | null;
+  oldestCollectMs: number | null;
+}): RatRaceReplayScanCoverage {
+  const scannedBlocks =
+    options.scannedFromLevel !== null && options.scannedToLevel !== null
+      ? Math.max(0, options.scannedToLevel - options.scannedFromLevel + 1)
+      : 0;
+  return {
+    requestedWindowHours: options.requestedWindowHours,
+    requestedBlocks: options.requestedBlocks,
+    chunkBlocks: options.chunkBlocks,
+    maxPages: options.maxPages,
+    pagesScanned: options.pagesScanned,
+    fromLevel: options.fromLevel,
+    toLevel: options.toLevel,
+    scannedFromLevel: options.scannedFromLevel,
+    scannedToLevel: options.scannedToLevel,
+    estimatedScannedHours: Number((scannedBlocks / TEZOS_BLOCKS_PER_HOUR_ESTIMATE).toFixed(2)),
+    completedWindow: options.stopReason === "window-covered",
+    stopReason: options.stopReason,
+    replayEventCount: options.replayEventCount,
+    collectRecordCount: options.collectRecordCount,
+    listingSignalRecordCount: options.listingSignalRecordCount,
+    transferRecordCount: options.transferRecordCount,
+    pageCapHitCount: options.pageCapHitCount,
+    pageErrorCount: options.pageErrorCount,
+    oldestEventAt: isoFromMs(options.oldestEventMs),
+    newestEventAt: isoFromMs(options.newestEventMs),
+    oldestCollectAt: isoFromMs(options.oldestCollectMs),
+  };
+}
+
+function emptyReplayScanCoverage(
+  filter: RatRaceFilter,
+  options: {
+    replayBlocks: number;
+    chunkBlocks: number;
+    maxPages: number;
+    fromLevel: number | null;
+    toLevel: number | null;
+    stopReason: RatRaceReplayScanCoverage["stopReason"];
+  }
+): RatRaceReplayScanCoverage {
+  return buildReplayScanCoverage({
+    requestedWindowHours: Math.max(1, filter.windowHours),
+    requestedBlocks: options.replayBlocks,
+    chunkBlocks: options.chunkBlocks,
+    maxPages: options.maxPages,
+    pagesScanned: 0,
+    fromLevel: options.fromLevel,
+    toLevel: options.toLevel,
+    scannedFromLevel: null,
+    scannedToLevel: null,
+    stopReason: options.stopReason,
+    replayEventCount: 0,
+    collectRecordCount: 0,
+    listingSignalRecordCount: 0,
+    transferRecordCount: 0,
+    pageCapHitCount: 0,
+    pageErrorCount: 0,
+    oldestEventMs: null,
+    newestEventMs: null,
+    oldestCollectMs: null,
+  });
+}
+
+function replayScanStopReason(options: {
+  rangesLength: number;
   pagesScanned: number;
   maxPages: number;
-  totalCollects: number;
-  targetCollects: number;
-  oldestCollectMs: number | null;
-  windowCutoffMs: number;
-}): boolean {
-  if (options.pagesScanned >= options.maxPages) return true;
-  if (options.totalCollects < Math.min(20, options.targetCollects)) return false;
-  if (options.totalCollects >= options.targetCollects && options.pagesScanned >= 2) return true;
-  if (
-    options.oldestCollectMs !== null &&
-    options.oldestCollectMs <= options.windowCutoffMs &&
-    options.totalCollects >= Math.min(40, options.targetCollects)
-  ) {
-    return true;
+  scannedFromLevel: number | null;
+  requestedFromLevel: number;
+  pageErrorCount: number;
+}): RatRaceReplayScanCoverage["stopReason"] {
+  if (options.pageErrorCount > 0) return "page-error";
+  if (options.rangesLength === 0) return "no-ranges";
+  if (options.scannedFromLevel !== null && options.scannedFromLevel <= options.requestedFromLevel) {
+    return "window-covered";
   }
-  return false;
+  if (options.pagesScanned >= options.maxPages) return "page-limit";
+  return "no-ranges";
+}
+
+function splitReplayRange(range: { fromLevel: number; toLevel: number }): Array<{ fromLevel: number; toLevel: number }> {
+  const width = range.toLevel - range.fromLevel + 1;
+  if (width <= REPLAY_FAILURE_SPLIT_BLOCKS) return [range];
+  const ranges: Array<{ fromLevel: number; toLevel: number }> = [];
+  for (let fromLevel = range.fromLevel; fromLevel <= range.toLevel; fromLevel += REPLAY_FAILURE_SPLIT_BLOCKS) {
+    ranges.push({
+      fromLevel,
+      toLevel: Math.min(range.toLevel, fromLevel + REPLAY_FAILURE_SPLIT_BLOCKS - 1),
+    });
+  }
+  return ranges;
 }
 
 async function listTz2atReplayEvents<T>(
@@ -524,33 +647,91 @@ async function listTz2atReplayEvents<T>(
   const health = await client.getJson<Tz2atHealthResponse>("/health");
   const freshness = replayFreshnessFromHealth(health);
   const headLevel = replayHeadLevelFromHealth(health);
-  if (!headLevel || replayFreshnessIsStale(freshness)) return { records: [], freshness };
-
   const replayBlocks = replayBlocksForFilter(filter);
   const chunkBlocks = replayChunkBlocks();
-  const fromLevel = Math.max(0, headLevel - replayBlocks);
+  const maxPages = maxReplayScanPages(replayBlocks, chunkBlocks);
+  if (!headLevel) {
+    return {
+      records: [],
+      freshness,
+      replayScan: emptyReplayScanCoverage(filter, {
+        replayBlocks,
+        chunkBlocks,
+        maxPages,
+        fromLevel: null,
+        toLevel: null,
+        stopReason: "missing-head",
+      }),
+    };
+  }
+
+  const fromLevel = Math.max(0, headLevel - replayBlocks + 1);
+  if (replayFreshnessIsStale(freshness)) {
+    return {
+      records: [],
+      freshness,
+      replayScan: emptyReplayScanCoverage(filter, {
+        replayBlocks,
+        chunkBlocks,
+        maxPages,
+        fromLevel,
+        toLevel: headLevel,
+        stopReason: "stale-health",
+      }),
+    };
+  }
+
   const ranges: Array<{ fromLevel: number; toLevel: number }> = [];
-  for (let toLevel = headLevel; toLevel > fromLevel; toLevel -= chunkBlocks) {
+  for (let toLevel = headLevel; toLevel >= fromLevel; toLevel -= chunkBlocks) {
     ranges.push({ fromLevel: Math.max(fromLevel, toLevel - chunkBlocks + 1), toLevel });
   }
 
   const records = new Map<string, Tz2atRepoRecord<T>>();
-  const targetCollects = targetCollectRecords();
-  const maxPages = maxReplayScanPages(replayBlocks, chunkBlocks);
-  const windowCutoffMs = filter.now.getTime() - Math.max(1, filter.windowHours) * 3_600_000;
   let pagesScanned = 0;
-  let totalCollects = 0;
+  let replayEventCount = 0;
+  let collectRecordCount = 0;
+  let listingSignalRecordCount = 0;
+  let transferRecordCount = 0;
+  let pageCapHitCount = 0;
+  let pageErrorCount = 0;
+  let oldestEventMs: number | null = null;
+  let newestEventMs: number | null = null;
   let oldestCollectMs: number | null = null;
+  let scannedFromLevel: number | null = null;
+  let scannedToLevel: number | null = null;
+  const mergeSuccessfulPage = (range: { fromLevel: number; toLevel: number }, page: Array<Tz2atReplayEvent<T>>) => {
+    pagesScanned += 1;
+    scannedFromLevel =
+      scannedFromLevel === null ? range.fromLevel : Math.min(scannedFromLevel, range.fromLevel);
+    scannedToLevel = scannedToLevel === null ? range.toLevel : Math.max(scannedToLevel, range.toLevel);
+    const merged = mergeReplayPage(page, records);
+    replayEventCount += merged.eventCount;
+    collectRecordCount += merged.collectCount;
+    listingSignalRecordCount += merged.listingSignalCount;
+    transferRecordCount += merged.transferCount;
+    pageCapHitCount += merged.hitPageCap ? 1 : 0;
+    if (merged.oldestEventMs !== null) {
+      oldestEventMs = oldestEventMs === null ? merged.oldestEventMs : Math.min(oldestEventMs, merged.oldestEventMs);
+    }
+    if (merged.newestEventMs !== null) {
+      newestEventMs = newestEventMs === null ? merged.newestEventMs : Math.max(newestEventMs, merged.newestEventMs);
+    }
+    if (merged.oldestCollectMs !== null) {
+      oldestCollectMs =
+        oldestCollectMs === null ? merged.oldestCollectMs : Math.min(oldestCollectMs, merged.oldestCollectMs);
+    }
+  };
+  const notePageError = (reasonValue: unknown) => {
+    pageErrorCount += 1;
+    const reason = reasonValue instanceof Error ? reasonValue.message : String(reasonValue ?? "unknown");
+    console.warn("[rat-race] tz2at replay page failed; returning partial replay scan:", reason);
+  };
 
   for (let i = 0; i < ranges.length; i += REPLAY_PAGE_CONCURRENCY) {
-    if (shouldStopReplayScan({ pagesScanned, maxPages, totalCollects, targetCollects, oldestCollectMs, windowCutoffMs })) {
-      break;
-    }
-
     const remainingPages = Math.max(0, maxPages - pagesScanned);
     const batch = ranges.slice(i, i + Math.min(REPLAY_PAGE_CONCURRENCY, remainingPages));
     if (batch.length === 0) break;
-    const pages = await Promise.all(
+    const pages = await Promise.allSettled(
       batch.map((range) =>
         client.getJson<Array<Tz2atReplayEvent<T>>>("/replay", {
           fromLevel: range.fromLevel,
@@ -558,19 +739,75 @@ async function listTz2atReplayEvents<T>(
         })
       )
     );
-    pagesScanned += batch.length;
 
-    for (const page of pages) {
-      const merged = mergeReplayPage(page, records);
-      totalCollects += merged.collectCount;
-      if (merged.oldestCollectMs !== null) {
-        oldestCollectMs =
-          oldestCollectMs === null ? merged.oldestCollectMs : Math.min(oldestCollectMs, merged.oldestCollectMs);
+    for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+      const result = pages[pageIndex];
+      const range = batch[pageIndex];
+      if (!result || !range) continue;
+      if (result.status === "rejected") {
+        const splitRanges = splitReplayRange(range);
+        if (splitRanges.length === 1) {
+          notePageError(result.reason);
+          continue;
+        }
+        const splitPages = await Promise.allSettled(
+          splitRanges.map((splitRange) =>
+            client.getJson<Array<Tz2atReplayEvent<T>>>("/replay", {
+              fromLevel: splitRange.fromLevel,
+              toLevel: splitRange.toLevel,
+            })
+          )
+        );
+        for (let splitIndex = 0; splitIndex < splitPages.length; splitIndex += 1) {
+          const splitResult = splitPages[splitIndex];
+          const splitRange = splitRanges[splitIndex];
+          if (!splitResult || !splitRange) continue;
+          if (splitResult.status === "rejected") {
+            notePageError(splitResult.reason);
+            continue;
+          }
+          mergeSuccessfulPage(splitRange, splitResult.value);
+        }
+        continue;
       }
+
+      mergeSuccessfulPage(range, result.value);
     }
+    if (pageErrorCount >= MAX_REPLAY_PAGE_ERRORS) break;
   }
 
-  return { records: Array.from(records.values()), freshness };
+  return {
+    records: Array.from(records.values()),
+    freshness,
+    replayScan: buildReplayScanCoverage({
+      requestedWindowHours: Math.max(1, filter.windowHours),
+      requestedBlocks: replayBlocks,
+      chunkBlocks,
+      maxPages,
+      pagesScanned,
+      fromLevel,
+      toLevel: headLevel,
+      scannedFromLevel,
+      scannedToLevel,
+      stopReason: replayScanStopReason({
+        rangesLength: ranges.length,
+        pagesScanned,
+        maxPages,
+        scannedFromLevel,
+        requestedFromLevel: fromLevel,
+        pageErrorCount,
+      }),
+      replayEventCount,
+      collectRecordCount,
+      listingSignalRecordCount,
+      transferRecordCount,
+      pageCapHitCount,
+      pageErrorCount,
+      oldestEventMs,
+      newestEventMs,
+      oldestCollectMs,
+    }),
+  };
 }
 
 function candidateRefsForCollect(
@@ -894,6 +1131,7 @@ export async function loadTz2atRatRaceRows(
       source: "tz2at-replay",
       rows: replayResult.rows,
       sourceFreshness: replayResult.sourceFreshness,
+      replayScan: replayResult.replayScan,
       supplementSources: replayResult.supplementSources,
     };
   } catch (err) {
@@ -945,6 +1183,7 @@ async function loadTz2atReplayRatRaceRowsWithFreshness(
 ): Promise<{
   rows: RatRaceCandidateRow[];
   sourceFreshness: RatRaceSourceFreshness | null;
+  replayScan: RatRaceReplayScanCoverage | null;
   supplementSources: RatRaceSupplementSource[];
 }> {
   const replayResult = await listTz2atReplayEvents<Tz2atCollectRecord | Tz2atMarketplaceSwapRecord | Tz2atFa2TransferRecord>(
@@ -965,11 +1204,14 @@ async function loadTz2atReplayRatRaceRowsWithFreshness(
     ...collects.flatMap((collect) => candidateRefsForCollect(collect, transferBySale)),
     ...listingSignals.map((listing) => ({ tokenContract: listing.tokenContract, tokenId: listing.tokenId })),
   ];
-  if (refs.length === 0) return { rows: [], sourceFreshness: replayResult.freshness, supplementSources: [] };
+  if (refs.length === 0) {
+    return { rows: [], sourceFreshness: replayResult.freshness, replayScan: replayResult.replayScan, supplementSources: [] };
+  }
   const hydrated = await hydrateObjktRefs(refs, deps.objktClient);
   return {
     rows: await buildTz2atAtprotoRatRaceRows(collects, transfers, filter, hydrated, listingSignals),
     sourceFreshness: replayResult.freshness,
+    replayScan: replayResult.replayScan,
     supplementSources: [OBJKT_SUPPLEMENT],
   };
 }

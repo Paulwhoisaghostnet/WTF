@@ -1,3 +1,13 @@
+## 2026-06-06 - Rat Race must report tz2at replay coverage, not imply complete 7-day market reads
+
+**What happened**: Rat Race still behaved like a small sample reader: the client auto-refreshed every 45 seconds, the server defaulted to a tiny replay page budget, and widening the default scan to a full 7-day mixed `/replay` walk exposed a different failure mode. Dense tz2at replay ranges can return 5,000 mixed events in as little as 5 blocks, `/replay` currently ignores collection/type filters, and some 100/500-block ranges can time out before Rat Race reaches older market records.
+
+**Why it mattered**: tz2at is still the intended canonical rolling source for sale/listing signals, but the current unfiltered replay endpoint cannot always serve a complete 7-day market-only slice in one operable app scan. If Rat Race hides scan coverage or falls through to Objkt as a sale source, users cannot tell whether a quiet feed means weak market activity, an incomplete replay window, event-cap truncation, or missing supplement metadata.
+
+**Rule**: Rat Race scans must be explicit user-triggered work, use tz2at replay as the canonical sale/listing source, and surface replay coverage, page caps, page errors, freshness, candidate counts, and supplement sources in diagnostics. Objkt may supplement metadata, supply, mint timestamp, listing purchase keys, and token-id normalization, but not replace tz2at as the sale source. Full 7-day confidence requires tz2at to provide filtered market replay or a market-specific endpoint; do not imply complete 7-day coverage from capped mixed replay pages.
+
+---
+
 ## 2026-06-06 - Skywire platform actor OAuth needs explicit intent, not silent handle bans
 
 **What happened**: The emergency identity-drift guard for `wtfgameshow.bsky.social` lived in the client click path before `window.location.assign`. When the user intentionally tried to reconnect the official WTF Gameshow Bluesky actor, the permission modal closed, the browser did not navigate, and the failure looked like the OAuth button did nothing.

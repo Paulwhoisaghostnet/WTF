@@ -51,6 +51,7 @@ Priority labels:
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-216 | Verified | Codex Skywire platform actor OAuth repair | 2026-06-06 | Skywire / AT OAuth platform actor intent | P0 | 16 | 1 | 3 | 5 | 3 | Skywire permission picker silently refused intentional `wtfgameshow.bsky.social` OAuth before browser navigation; fixed with explicit platform actor intent, callback identity checks, and verified by `npx tsx --test server/features/atproto/skywire-policy.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` |
+| WTF-BB-217 | Verified | Codex Rat Race tz2at capability pass | 2026-06-06 | Rat Race / tz2at rolling replay scan | P1 | 12 | 7 | 3 | 5 | 0 | Rat Race still auto-refreshes and default-scans only a tiny slice of tz2at replay, making the rolling stream look like it can only find the same few tokens; fixed with manual reload policy, smaller replay chunks, split retry recovery, scan coverage diagnostics, and verified by focused tests, TypeScript, inventory coverage/E2E, plus live tz2at replay probes |
 | WTF-BB-215 | Verified | Codex Skywire new OAuth outage repair | 2026-06-06 | Skywire / AT OAuth new-session connect | P0 | 17 | 1 | 4 | 5 | 3 | New Skywire OAuth connections to Bluesky fail while existing sessions continue working; fixed with durable app+SDK OAuth state persistence and verified live on wtfos.app |
 | WTF-BB-214 | Verified | Codex auth rate-limit bucket repair | 2026-06-06 | Auth / Postgres rate limits | P0 | 14 | 3 | 2 | 5 | 2 | Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login |
 | WTF-BB-207 | Fixed | Codex Skywire canonical-domain OAuth repair | 2026-06-04 | Platform domains / AT OAuth identity boundary | P0 | 16 | 1 | 3 | 5 | 5 | Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity |
@@ -261,6 +262,37 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-217 - Rat Race still auto-refreshes and default-scans only a tiny slice of tz2at replay
+
+- Category: Rat Race / tz2at rolling replay scan
+- Status: Verified
+- Owner/Session: Codex Rat Race tz2at capability pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report on 2026-06-06: Rat Race should not auto-reload and repeatedly finds the same small set of tokens even while tz2at is healthy and listing/sale signals are flowing.
+  - `client/src/pages/RatRace.tsx` still configures React Query with a 45 second `refetchInterval`, so the rolling stream is polled without explicit user intent.
+  - `server/features/rat-race/tz2at-atproto.ts` defaults `RAT_RACE_TZ2AT_MAX_REPLAY_PAGES` to 10, so a 7-day filter can scan only about 5,000 recent Tezos blocks unless operators override the environment.
+- Why it matters:
+  - Rat Race is supposed to test tz2at's rolling market stream as the canonical source. Under-scanning makes tz2at look sparse and pushes attention back toward Objkt as if Objkt were the canonical sales source.
+- Likely correction direction:
+  - Remove client auto-refresh; require filter changes or Scan to reload.
+  - Increase the default replay scan budget in a bounded, window-aware way and expose scan coverage in diagnostics so users can tell what tz2at supplied versus what Objkt/TzKT supplemented.
+- Verification idea:
+  - Unit-test the default multi-day scan budget and manual-refresh policy.
+  - Run focused Rat Race tests, TypeScript check, inventory coverage, and a live tz2at scan to identify remaining supplement needs.
+- Correction:
+  - Removed the Rat Race React Query `refetchInterval`; scans now happen on initial load, filter changes, or explicit Scan.
+  - Changed replay defaults from 500-block/10-page sample behavior to 100-block/60-request manual scans, with page-limit diagnostics when a requested multi-day window is only partially covered.
+  - Added per-page replay scan coverage diagnostics, page-cap/error counters, and split retry recovery that retries a failed 100-block replay page as 25-block subranges before falling back to partial diagnostics.
+  - Kept tz2at replay as the canonical sale/listing signal source; Objkt remains a supplement for token metadata, edition supply, mint timestamp, active public tez listing purchase keys, and Objkt pk-to-FA2 token id normalization. TzKT was not needed.
+- Verification:
+  - Passed `DATABASE_URL=postgres://localhost/wtf_test node --test --import tsx server/features/rat-race/tz2at-atproto.test.ts server/features/rat-race/hot-tokens.test.ts client/src/pages/RatRace.manual-refresh-policy.test.ts`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run test:e2e:inventory` with 291/291 tests.
+  - Live default Rat Race scan against `https://tz2at.xyz` on 2026-06-06 returned source `tz2at-replay`, fresh health, 297 tz2at candidate rows, 3 ranked rows, Objkt supplement only, 0 TzKT use, and diagnostics showing only about 9.5 hours of the requested 168-hour window were practically scanned because mixed `/replay` pages still hit the 5,000-event cap.
+  - Live probes confirmed `/replay` currently ignores `collection`, `type`, and `eventType` filters for market collect records, and dense 5-block replay ranges can still hit the 5,000-event cap; Rat Race therefore cannot truthfully claim complete 7-day market coverage from the current unfiltered replay endpoint.
 
 ### WTF-BB-215 - New Skywire OAuth connections to Bluesky fail while existing sessions continue working
 

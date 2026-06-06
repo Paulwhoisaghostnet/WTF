@@ -6,6 +6,7 @@ import type {
   RatRaceHotToken,
   RatRaceNearMiss,
   RatRacePurchaseIntent,
+  RatRaceReplayScanCoverage,
   RatRaceSourceFreshness,
   RatRaceSupplementSource,
 } from "@shared/tezos-intel";
@@ -177,6 +178,7 @@ function buildDiagnostics(
     tz2atCandidateRows: number;
     rankedItems: number;
     sourceFreshness?: RatRaceSourceFreshness | null;
+    replayScan?: RatRaceReplayScanCoverage | null;
     supplementSources?: RatRaceSupplementSource[];
   }
 ): RatRaceFeedDiagnostics {
@@ -205,6 +207,8 @@ function buildDiagnostics(
       ? "Rat Race found tokens matching the urgency filter."
       : counts.sourceFreshness?.ok === false
         ? "Rat Race did not rank tokens because the tz2at replay source is reporting stale indexer health."
+        : counts.replayScan && !counts.replayScan.completedWindow
+          ? `Rat Race scanned about ${counts.replayScan.estimatedScannedHours.toLocaleString()} hour(s) of the requested ${filter.windowHours} hour tz2at rolling window before hitting ${counts.replayScan.stopReason}.`
         : counts.localCandidateRows === 0 && counts.tz2atCandidateRows === 0
           ? "Rat Race did not find buyable sale candidates in the local index or tz2at replay stream."
           : rejectedByRecentSales > 0 &&
@@ -220,6 +224,7 @@ function buildDiagnostics(
   return {
     source,
     sourceFreshness: counts.sourceFreshness ?? null,
+    replayScan: counts.replayScan ?? null,
     supplementSources: counts.supplementSources ?? [],
     localCandidateRows: counts.localCandidateRows,
     tz2atCandidateRows: counts.tz2atCandidateRows,
@@ -510,6 +515,7 @@ export async function loadRatRaceHotTokenFeed(options: Partial<RatRaceFilter> = 
         tz2atCandidateRows: tz2atRows.length,
         rankedItems: tz2atItems.length,
         sourceFreshness: tz2atResult.sourceFreshness ?? null,
+        replayScan: tz2atResult.replayScan ?? null,
         supplementSources: tz2atResult.supplementSources ?? [],
       }),
     };

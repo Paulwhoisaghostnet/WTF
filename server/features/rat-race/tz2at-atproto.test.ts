@@ -570,7 +570,7 @@ test("caps replay scans at processed checkpoint instead of intake head", async (
   await loadTz2atRatRaceRows(filter, { tz2atClient, objktClient });
 
   assert.equal(Math.max(...replayRanges.map((range) => range.toLevel)), 150_000);
-  assert.equal(Math.min(...replayRanges.map((range) => range.fromLevel)), 135_600);
+  assert.equal(Math.min(...replayRanges.map((range) => range.fromLevel)), 135_601);
 });
 
 test("scans the full requested replay window for multi-day Rat Race filters", async () => {
@@ -610,8 +610,69 @@ test("scans the full requested replay window for multi-day Rat Race filters", as
   assert.equal(result.source, "tz2at-replay");
   assert.deepEqual(result.rows, []);
   assert.ok(replayRanges.length > 1);
-  assert.equal(Math.min(...replayRanges.map((range) => range.fromLevel)), 156_800);
+  assert.equal(Math.min(...replayRanges.map((range) => range.fromLevel)), 156_801);
   assert.equal(Math.max(...replayRanges.map((range) => range.toLevel)), 200_000);
+});
+
+test("default replay scan budget uses operable chunks and reports partial seven-day coverage", async () => {
+  const previousMaxPages = process.env.RAT_RACE_TZ2AT_MAX_REPLAY_PAGES;
+  const previousChunkBlocks = process.env.RAT_RACE_TZ2AT_REPLAY_CHUNK_BLOCKS;
+  delete process.env.RAT_RACE_TZ2AT_MAX_REPLAY_PAGES;
+  delete process.env.RAT_RACE_TZ2AT_REPLAY_CHUNK_BLOCKS;
+  try {
+    const replayRanges: Array<{ fromLevel: number; toLevel: number }> = [];
+    const sevenDayFilter: RatRaceFilter = {
+      ...filter,
+      windowHours: 168,
+    };
+    const tz2atClient = {
+      async getJson<T>(path: string, params?: Record<string, unknown>): Promise<T> {
+        if (path === "/health") return { rollingIndexer: { lastLevel: 200_000, headLevel: 200_000, ok: true } } as T;
+        if (path === "/replay") {
+          replayRanges.push({
+            fromLevel: Number(params?.fromLevel),
+            toLevel: Number(params?.toLevel),
+          });
+          return [] as T;
+        }
+        throw new Error(`legacy fallback should not be called: ${path}`);
+      },
+      async postJson<T>(): Promise<T> {
+        throw new Error("unexpected tz2at post");
+      },
+    };
+    const objktClient = {
+      async getJson<T>(): Promise<T> {
+        throw new Error("unexpected objkt get");
+      },
+      async postJson<T>(): Promise<T> {
+        throw new Error("empty replay should not hydrate Objkt");
+      },
+    };
+
+    const result = await loadTz2atRatRaceRows(sevenDayFilter, { tz2atClient, objktClient });
+
+    assert.equal(result.source, "tz2at-replay");
+    assert.equal(replayRanges.length, 60);
+    assert.equal(Math.min(...replayRanges.map((range) => range.fromLevel)), 194_001);
+    assert.equal(Math.max(...replayRanges.map((range) => range.toLevel)), 200_000);
+    assert.equal(result.replayScan?.chunkBlocks, 100);
+    assert.equal(result.replayScan?.completedWindow, false);
+    assert.equal(result.replayScan?.stopReason, "page-limit");
+    assert.equal(result.replayScan?.pagesScanned, 60);
+    assert.equal(result.replayScan?.estimatedScannedHours, 10);
+  } finally {
+    if (previousMaxPages === undefined) {
+      delete process.env.RAT_RACE_TZ2AT_MAX_REPLAY_PAGES;
+    } else {
+      process.env.RAT_RACE_TZ2AT_MAX_REPLAY_PAGES = previousMaxPages;
+    }
+    if (previousChunkBlocks === undefined) {
+      delete process.env.RAT_RACE_TZ2AT_REPLAY_CHUNK_BLOCKS;
+    } else {
+      process.env.RAT_RACE_TZ2AT_REPLAY_CHUNK_BLOCKS = previousChunkBlocks;
+    }
+  }
 });
 
 test("honors replay max pages within concurrent batches", async () => {
@@ -649,7 +710,52 @@ test("honors replay max pages within concurrent batches", async () => {
   await loadTz2atRatRaceRows(wideFilter, { tz2atClient, objktClient });
 
   assert.equal(replayRanges.length, 1);
-  assert.deepEqual(replayRanges[0], { fromLevel: 199_501, toLevel: 200_000 });
+  assert.deepEqual(replayRanges[0], { fromLevel: 199_901, toLevel: 200_000 });
+});
+
+test("splits a failed tz2at replay page before falling back to partial diagnostics", async () => {
+  process.env.RAT_RACE_TZ2AT_MAX_REPLAY_PAGES = "2";
+  const replayRanges: Array<{ fromLevel: number; toLevel: number }> = [];
+  const tz2atClient = {
+    async getJson<T>(path: string, params?: Record<string, unknown>): Promise<T> {
+      if (path === "/health") return { rollingIndexer: { lastLevel: 200_000, headLevel: 200_000, ok: true } } as T;
+      if (path === "/replay") {
+        const range = {
+          fromLevel: Number(params?.fromLevel),
+          toLevel: Number(params?.toLevel),
+        };
+        replayRanges.push(range);
+        if (range.toLevel === 199_900 && range.toLevel - range.fromLevel + 1 > 25) {
+          throw new Error("slow replay page");
+        }
+        return [] as T;
+      }
+      throw new Error(`legacy fallback should not be called: ${path}`);
+    },
+    async postJson<T>(): Promise<T> {
+      throw new Error("unexpected tz2at post");
+    },
+  };
+  const objktClient = {
+    async getJson<T>(): Promise<T> {
+      throw new Error("unexpected objkt get");
+    },
+    async postJson<T>(): Promise<T> {
+      throw new Error("empty replay should not hydrate Objkt");
+    },
+  };
+
+  const result = await loadTz2atRatRaceRows({ ...filter, windowHours: 72 }, { tz2atClient, objktClient });
+
+  assert.equal(result.source, "tz2at-replay");
+  assert.deepEqual(result.rows, []);
+  assert.equal(replayRanges.length, 6);
+  assert.equal(result.replayScan?.stopReason, "page-limit");
+  assert.equal(result.replayScan?.completedWindow, false);
+  assert.equal(result.replayScan?.pagesScanned, 5);
+  assert.equal(result.replayScan?.pageErrorCount, 0);
+  assert.equal(result.replayScan?.scannedFromLevel, 199_801);
+  assert.equal(result.replayScan?.scannedToLevel, 200_000);
 });
 
 test("fails closed on stale tz2at replay health without probing replay pages", async () => {
