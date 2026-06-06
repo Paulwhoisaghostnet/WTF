@@ -251,7 +251,11 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     const popupEvents = [];
     page.on("popup", (popup) => popupEvents.push(popup));
     await page.getByRole("button", { name: "Enable Chat Add-on" }).click();
-    await page.waitForURL(/\/api\/atproto\/oauth\/start/);
+    await expect(page.getByRole("dialog", { name: "Choose Skywire permissions" })).toBeVisible();
+    await Promise.all([
+      page.waitForURL(/\/api\/atproto\/oauth\/start/),
+      page.getByRole("button", { name: "Continue to Bluesky OAuth" }).click(),
+    ]);
     expect(popupEvents).toHaveLength(0);
     const current = new URL(page.url());
     expect(current.searchParams.get("popup")).toBeNull();
@@ -263,7 +267,7 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     expect(fatalErrors(errors)).toEqual([]);
   });
 
-  test("Chat add-on OAuth refuses the shared WTF Gameshow actor as the upgrade target", async ({
+  test("Chat add-on OAuth requires explicit platform actor confirmation before upgrading the shared WTF Gameshow actor", async ({
     page,
     request,
   }) => {
@@ -281,8 +285,23 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     await expect(page.getByText("@wtfgameshow.bsky.social").first()).toBeVisible();
     await page.getByRole("button", { name: "Enable Chat Add-on" }).click();
 
-    await expect(page.getByText("Skywire will not connect the shared WTF Gameshow Bluesky actor. Enter your own Bluesky handle.")).toBeVisible();
-    expect(page.url()).not.toContain("/api/atproto/oauth/start");
+    await expect(page.getByText("Platform actor confirmation")).toBeVisible();
+    await expect(page.getByText("This handle is the official shared WTF Gameshow Bluesky actor.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Continue to Bluesky OAuth" })).toBeDisabled();
+    await page
+      .getByLabel("I understand I am connecting @wtfgameshow.bsky.social as the platform actor.")
+      .check();
+    await Promise.all([
+      page.waitForURL(/\/api\/atproto\/oauth\/start/),
+      page.getByRole("button", { name: "Continue to Bluesky OAuth" }).click(),
+    ]);
+    const current = new URL(page.url());
+    expect(current.searchParams.get("popup")).toBeNull();
+    expect(current.searchParams.get("handle")).toBe("wtfgameshow.bsky.social");
+    expect(current.searchParams.get("returnTo")).toBe("/skywire?tab=account");
+    expect(current.searchParams.get("chat")).toBe("1");
+    expect(current.searchParams.get("platformActor")).toBe("1");
+    await expect(page.getByText(/Harness Skywire OAuth chat upgrade pending for @wtfgameshow\.bsky\.social/i)).toBeVisible();
     expect(fatalErrors(errors)).toEqual([]);
   });
 
@@ -303,6 +322,8 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     await page.goto("/skywire?tab=account", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("@missing.bsky.social").first()).toBeVisible();
     await page.getByRole("button", { name: "Enable Chat Add-on" }).click();
+    await expect(page.getByRole("dialog", { name: "Choose Skywire permissions" })).toBeVisible();
+    await page.getByRole("button", { name: "Continue to Bluesky OAuth" }).click();
 
     await expect(page.getByText("Bluesky could not find @missing.bsky.social. Check the spelling or connect a real Bluesky account.")).toBeVisible();
     await expect(page.getByText("Connection & permissions")).toBeVisible();

@@ -1,3 +1,13 @@
+## 2026-06-06 - Skywire platform actor OAuth needs explicit intent, not silent handle bans
+
+**What happened**: The emergency identity-drift guard for `wtfgameshow.bsky.social` lived in the client click path before `window.location.assign`. When the user intentionally tried to reconnect the official WTF Gameshow Bluesky actor, the permission modal closed, the browser did not navigate, and the failure looked like the OAuth button did nothing.
+
+**Why it mattered**: A reserved shared actor is an operator-risk boundary, not a reason to make OAuth feel broken. Blocking before provider handoff also bypasses the stronger place to enforce identity safety: the server-owned OAuth state and callback, where Skywire can compare the requested handle, returned handle, returned DID, and chat-upgrade account row before writing tokens.
+
+**Rule**: Reserved/platform actors must require explicit user/operator confirmation and carry that intent in durable OAuth state. Do not silently return from the frontend before OAuth navigation. Callback handling must still reject returned-handle drift and chat-upgrade DID drift before persisting account rows or encrypted OAuth material.
+
+---
+
 ## 2026-06-05 - Skywire OAuth callback broadcast is not the same thing as stale bounce cleanup
 
 **What happened**: The previous stale-settings-bounce repair stopped Skywire from broadcasting OAuth completion unless the callback looked like a popup/opener flow. That made a same-origin callback window update itself but left an already-open Skywire account/settings window unaware that OAuth had completed. At the same time, unresolved Bluesky handles such as `wtf-admin.bsky.social` could fail provider handoff in a way that felt like the permissions request simply stalled.

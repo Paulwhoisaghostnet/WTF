@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-216 | Verified | Codex Skywire platform actor OAuth repair | 2026-06-06 | Skywire / AT OAuth platform actor intent | P0 | 16 | 1 | 3 | 5 | 3 | Skywire permission picker silently refused intentional `wtfgameshow.bsky.social` OAuth before browser navigation; fixed with explicit platform actor intent, callback identity checks, and verified by `npx tsx --test server/features/atproto/skywire-policy.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` |
 | WTF-BB-215 | Verified | Codex Skywire new OAuth outage repair | 2026-06-06 | Skywire / AT OAuth new-session connect | P0 | 17 | 1 | 4 | 5 | 3 | New Skywire OAuth connections to Bluesky fail while existing sessions continue working; fixed with durable app+SDK OAuth state persistence and verified live on wtfos.app |
 | WTF-BB-214 | Verified | Codex auth rate-limit bucket repair | 2026-06-06 | Auth / Postgres rate limits | P0 | 14 | 3 | 2 | 5 | 2 | Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login |
 | WTF-BB-207 | Fixed | Codex Skywire canonical-domain OAuth repair | 2026-06-04 | Platform domains / AT OAuth identity boundary | P0 | 16 | 1 | 3 | 5 | 5 | Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity |

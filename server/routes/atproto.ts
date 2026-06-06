@@ -94,6 +94,7 @@ const oauthStartSchema = z.object({
   step: z.string().optional(),
   tier: z.string().optional(),
   chat: z.string().optional(),
+  platformActor: z.string().optional(),
 });
 
 const mutationLimiter = createInMemoryRateLimit({
@@ -114,6 +115,7 @@ type AtprotoOAuthPendingState = {
   tz2atStep: string;
   permissionTier: SkywirePermissionTier;
   chatEnabled: boolean;
+  platformActorIntent: boolean;
   requestedScope: string;
   requestedHandle: string;
   origin?: string;
@@ -839,6 +841,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
   const tz2atStep = normalizeTz2atPermissionStep(parsed.data.step);
   const tier = normalizeSkywirePermissionTier(parsed.data.tier);
   const chatEnabled = parsed.data.chat === "1" || parsed.data.chat === "true";
+  const platformActorIntent = parsed.data.platformActor === "1" || parsed.data.platformActor === "true";
   const requestedScope =
     appName === "tz2at"
       ? buildTz2atAtprotoScope(tz2atStep)
@@ -847,10 +850,10 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
   if (!isValidAtHandle(handle)) {
     return redirectAtprotoOAuthStartError(res, { popup, error: "atproto_handle", returnTo, appName, origin, handle });
   }
-  if (appName === "skywire" && isReservedSkywirePlatformHandle(handle)) {
+  if (appName === "skywire" && isReservedSkywirePlatformHandle(handle) && !platformActorIntent) {
     return redirectAtprotoOAuthStartError(res, {
       popup,
-      error: "atproto_platform_account_reserved",
+      error: "atproto_platform_actor_confirmation_required",
       returnTo,
       appName,
       origin,
@@ -903,6 +906,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     tz2atStep,
     permissionTier: tier,
     chatEnabled,
+    platformActorIntent: appName === "skywire" && platformActorIntent,
     requestedScope,
     requestedHandle: handle,
     origin,
@@ -922,7 +926,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
         handle,
         rawRefType: "atproto_oauth_start",
         rawRefId: state,
-        metadata: { permissionTier: tier, chatEnabled, requestedScope },
+        metadata: { permissionTier: tier, chatEnabled, platformActorIntent, requestedScope },
       });
       await emitAtprotoSystemEvent({
         eventType: "atproto.chat_permission.toggled",
@@ -931,7 +935,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
         handle,
         rawRefType: "atproto_oauth_start",
         rawRefId: `${state}:chat`,
-        metadata: { enabled: chatEnabled, permissionTier: tier, requestedScope },
+        metadata: { enabled: chatEnabled, permissionTier: tier, platformActorIntent, requestedScope },
       });
     }
     req.session.save((err) => {
@@ -1030,15 +1034,6 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     const resolvedChatEnabled = grants.chatEnabled;
     const requestedHandle = normalizeAtHandle(sessionState.requestedHandle || "");
     const returnedHandle = normalizeAtHandle(profile.data.handle || "");
-    if (appName === "skywire" && isReservedSkywirePlatformHandle(returnedHandle)) {
-      console.warn("[skywire] refused reserved platform actor OAuth binding", {
-        userId: sessionState.userId,
-        requestedHandle,
-        returnedHandle,
-        did: session.did,
-      });
-      return redirectWith("error=atproto_platform_account_reserved");
-    }
     if (appName === "skywire" && requestedHandle && returnedHandle && requestedHandle !== returnedHandle) {
       console.warn("[skywire] refused OAuth account mismatch", {
         userId: sessionState.userId,
@@ -1047,6 +1042,15 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
         did: session.did,
       });
       return redirectWith("error=atproto_account_mismatch");
+    }
+    if (appName === "skywire" && isReservedSkywirePlatformHandle(returnedHandle) && !sessionState.platformActorIntent) {
+      console.warn("[skywire] refused reserved platform actor OAuth binding without explicit intent", {
+        userId: sessionState.userId,
+        requestedHandle,
+        returnedHandle,
+        did: session.did,
+      });
+      return redirectWith("error=atproto_platform_actor_confirmation_required");
     }
     const existingForDid = await linkedAccountForUserDid(sessionState.userId, session.did);
     const existingForUser = await linkedAccountForUser(sessionState.userId);

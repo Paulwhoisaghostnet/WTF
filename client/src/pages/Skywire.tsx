@@ -137,6 +137,11 @@ const SKYWIRE_OAUTH_QUERY_KEYS = [
   "grantedScope",
   "popup",
 ];
+type PendingSkywireConnectRequest = {
+  handle: string;
+  initialTier: SkywirePermissionTier;
+  initialChatEnabled: boolean;
+};
 
 function normalizeSkywireHandle(value: string | null | undefined): string {
   return String(value || "").trim().replace(/^@+/, "").toLowerCase().replace(/\.$/, "");
@@ -3170,12 +3175,17 @@ function PermissionPickerDialog({
   initialTier: SkywirePermissionTier;
   initialChatEnabled: boolean;
   onCancel: () => void;
-  onConfirm: (tier: SkywirePermissionTier, chatEnabled: boolean) => void;
+  onConfirm: (tier: SkywirePermissionTier, chatEnabled: boolean, platformActorIntent: boolean) => void;
 }) {
   const [tier, setTier] = useState<SkywirePermissionTier>(initialTier);
   const [chatEnabled, setChatEnabled] = useState(initialChatEnabled);
+  const platformActor = isReservedSkywirePlatformHandle(handle);
+  const [platformActorConfirmed, setPlatformActorConfirmed] = useState(!platformActor);
   const selected = SKYWIRE_PERMISSION_TIER_OPTIONS.find((option) => option.key === tier) ?? SKYWIRE_PERMISSION_TIER_OPTIONS[1];
   const requestedScope = useMemo(() => buildSkywireAtprotoScope(tier, chatEnabled), [tier, chatEnabled]);
+  useEffect(() => {
+    setPlatformActorConfirmed(!isReservedSkywirePlatformHandle(handle));
+  }, [handle]);
   return (
     <ModalBackdrop role="presentation">
       <ModalPanel role="dialog" aria-modal="true" aria-label="Choose Skywire permissions">
@@ -3241,6 +3251,26 @@ function PermissionPickerDialog({
           </Stack>
         </GroupBox>
 
+        {platformActor ? (
+          <GroupBox label="Platform actor confirmation">
+            <Stack>
+              <FinePrint>
+                This handle is the official shared WTF Gameshow Bluesky actor. Continue only when this WTF OS
+                session is meant to control that platform account.
+              </FinePrint>
+              <RadioRow>
+                <input
+                  type="checkbox"
+                  name="skywire-platform-actor-confirmation"
+                  checked={platformActorConfirmed}
+                  onChange={(event) => setPlatformActorConfirmed(event.currentTarget.checked)}
+                />
+                <span>I understand I am connecting @{handle} as the platform actor.</span>
+              </RadioRow>
+            </Stack>
+          </GroupBox>
+        ) : null}
+
         <GroupBox label={`${selected.title} Agreement`}>
           <Stack>
             <strong>{selected.summary}</strong>
@@ -3257,7 +3287,10 @@ function PermissionPickerDialog({
         </GroupBox>
 
         <Row>
-          <Button onClick={() => onConfirm(tier, chatEnabled)}>
+          <Button
+            disabled={platformActor && !platformActorConfirmed}
+            onClick={() => onConfirm(tier, chatEnabled, platformActor && platformActorConfirmed)}
+          >
             Continue to Bluesky OAuth
           </Button>
           <Button onClick={onCancel}>Cancel</Button>
@@ -3281,7 +3314,7 @@ function AccountPanel({
   const handleClaims = me.handleClaims ?? [];
   const tezosIdentity = me.tezosIdentity ?? null;
   const [handle, setHandle] = useState(seedHandle);
-  const [pendingConnectHandle, setPendingConnectHandle] = useState("");
+  const [pendingConnectRequest, setPendingConnectRequest] = useState<PendingSkywireConnectRequest | null>(null);
   const [connectError, setConnectError] = useState("");
   const [displayName, setDisplayName] = useState(me.account?.displayName || "");
   const [description, setDescription] = useState(me.account?.description || "");
@@ -3317,16 +3350,28 @@ function AccountPanel({
     const trimmed = rawHandle.trim();
     return trimmed.includes(".") ? trimmed : `${trimmed}.${suffix}`;
   };
-  const openPermissionPicker = (rawHandle: string) => {
+  const openPermissionPicker = (
+    rawHandle: string,
+    options: { tier?: SkywirePermissionTier; chatEnabled?: boolean } = {},
+  ) => {
     const trimmed = rawHandle.trim();
     if (!trimmed) return;
     setConnectError("");
-    setPendingConnectHandle(normalizedConnectHandle(trimmed));
+    setPendingConnectRequest({
+      handle: normalizedConnectHandle(trimmed),
+      initialTier: options.tier ?? normalizeSkywirePermissionTier(me.account?.oauthPermissionTier || SKYWIRE_DEFAULT_PERMISSION_TIER),
+      initialChatEnabled: options.chatEnabled ?? Boolean(me.account?.oauthChatEnabled),
+    });
   };
-  const startOAuthConnect = (rawHandle: string, tier: SkywirePermissionTier, chatEnabled: boolean) => {
+  const startOAuthConnect = (
+    rawHandle: string,
+    tier: SkywirePermissionTier,
+    chatEnabled: boolean,
+    platformActorIntent = false,
+  ) => {
     const connectHandle = normalizedConnectHandle(rawHandle);
-    if (isReservedSkywirePlatformHandle(connectHandle)) {
-      setConnectError("Skywire will not connect the shared WTF Gameshow Bluesky actor. Enter your own Bluesky handle.");
+    if (isReservedSkywirePlatformHandle(connectHandle) && !platformActorIntent) {
+      setConnectError("Confirm the platform actor connection before continuing to Bluesky OAuth.");
       return;
     }
     if (chatEnabled && (!me.account || normalizeSkywireHandle(me.account.handle) !== normalizeSkywireHandle(connectHandle))) {
@@ -3340,11 +3385,12 @@ function AccountPanel({
       tier,
       chat: chatEnabled ? "1" : "0",
     });
+    if (platformActorIntent) params.set("platformActor", "1");
     const url = `/api/atproto/oauth/start?${params.toString()}`;
     try {
       window.localStorage.setItem(
         SKYWIRE_OAUTH_PENDING_KEY,
-        JSON.stringify({ handle: connectHandle, tier, chatEnabled, requestedScope, at: Date.now() }),
+        JSON.stringify({ handle: connectHandle, tier, chatEnabled, platformActorIntent, requestedScope, at: Date.now() }),
       );
     } catch {
       // Local pending marker is only a client hint.
@@ -3366,16 +3412,16 @@ function AccountPanel({
 
   return (
     <Stack>
-      {pendingConnectHandle ? (
+      {pendingConnectRequest ? (
         <PermissionPickerDialog
-          handle={pendingConnectHandle}
-          initialTier={normalizeSkywirePermissionTier(me.account?.oauthPermissionTier || SKYWIRE_DEFAULT_PERMISSION_TIER)}
-          initialChatEnabled={Boolean(me.account?.oauthChatEnabled)}
-          onCancel={() => setPendingConnectHandle("")}
-          onConfirm={(tier, chatEnabled) => {
-            const connectHandle = pendingConnectHandle;
-            setPendingConnectHandle("");
-            startOAuthConnect(connectHandle, tier, chatEnabled);
+          handle={pendingConnectRequest.handle}
+          initialTier={pendingConnectRequest.initialTier}
+          initialChatEnabled={pendingConnectRequest.initialChatEnabled}
+          onCancel={() => setPendingConnectRequest(null)}
+          onConfirm={(tier, chatEnabled, platformActorIntent) => {
+            const connectHandle = pendingConnectRequest.handle;
+            setPendingConnectRequest(null);
+            startOAuthConnect(connectHandle, tier, chatEnabled, platformActorIntent);
           }}
         />
       ) : null}
@@ -3426,7 +3472,7 @@ function AccountPanel({
                         <GroupBox label="Skywire Chat Add-on">
                           <Stack>
                             <span>Enable chat on top of Be Bold permissions with a fresh Bluesky OAuth consent.</span>
-                            <Button onClick={() => startOAuthConnect(me.account?.handle || "", "be-bold", true)}>
+                            <Button onClick={() => openPermissionPicker(me.account?.handle || "", { tier: "be-bold", chatEnabled: true })}>
                               Enable Chat Add-on
                             </Button>
                           </Stack>
@@ -4352,8 +4398,10 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
             ? "Enter a Bluesky handle like name.bsky.social, or just the username."
             : payload.error === "atproto_handle_not_found"
               ? `Bluesky could not find ${payload.handle ? `@${payload.handle}` : "that handle"}. Check the spelling or connect a real Bluesky account.`
-              : payload.error === "atproto_platform_account_reserved"
-                ? "Skywire will not connect the shared WTF Gameshow Bluesky actor. Enter your own Bluesky handle."
+              : payload.error === "atproto_platform_actor_confirmation_required"
+                ? "Confirm that you intend to connect the official WTF Gameshow Bluesky actor, then continue."
+                : payload.error === "atproto_platform_account_reserved"
+                  ? "Skywire blocked the platform actor because the OAuth request did not carry explicit confirmation."
                 : payload.error === "atproto_account_mismatch" || payload.error === "atproto_chat_account_mismatch"
                   ? "Bluesky returned a different account than the one Skywire was upgrading. Sign into the correct Bluesky account and try again."
                   : payload.error === "atproto_chat_account_required"
@@ -4432,7 +4480,10 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
     if (error === "atproto_session") setNotice("Sign in to WTF OS before connecting Bluesky.");
     if (error === "atproto_state") setNotice("Bluesky connection state expired. Try connecting again.");
     if (error === "atproto_platform_account_reserved") {
-      setNotice("Skywire will not connect the shared WTF Gameshow Bluesky actor. Enter your own Bluesky handle.");
+      setNotice("Skywire blocked the platform actor because the OAuth request did not carry explicit confirmation.");
+    }
+    if (error === "atproto_platform_actor_confirmation_required") {
+      setNotice("Confirm that you intend to connect the official WTF Gameshow Bluesky actor, then continue.");
     }
     if (error === "atproto_account_mismatch" || error === "atproto_chat_account_mismatch") {
       setNotice("Bluesky returned a different account than the one Skywire was upgrading. Sign into the correct Bluesky account and try again.");
