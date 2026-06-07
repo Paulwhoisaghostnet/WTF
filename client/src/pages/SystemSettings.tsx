@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { Button, GroupBox, Separator } from "react95";
+import { Separator } from "react95";
 import {
   Bell,
   Brush,
@@ -20,6 +20,7 @@ import {
 import styled from "styled-components";
 import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UiButton, UiPanel } from "../components/wtfos-ui";
 import {
   getInterfaceMode,
   setInterfaceMode,
@@ -39,14 +40,14 @@ type SettingCard = {
 
 const Shell = styled.div`
   display: grid;
-  gap: 8px;
+  gap: var(--wtf-space-3, 12px);
   min-width: 0;
 `;
 
 const StatusGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
 
   @media (max-width: 760px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -59,22 +60,22 @@ const StatusGrid = styled.div`
 
 const StatusCell = styled.div`
   min-height: 58px;
-  padding: 7px;
-  border: 1px solid #808080;
-  background: #eeeeee;
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
+  padding: var(--wtf-space-2, 8px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
 `;
 
 const StatusLabel = styled.div`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
-  text-transform: uppercase;
-  color: #404040;
+  color: var(--wtf-app-muted-text, #384352);
+  line-height: 1.25;
 `;
 
 const StatusValue = styled.div`
   margin-top: 4px;
-  font-size: 14px;
+  font-size: var(--wtf-type-body, 15px);
   font-weight: bold;
   overflow-wrap: anywhere;
 `;
@@ -82,7 +83,7 @@ const StatusValue = styled.div`
 const CardGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
 
   @media (max-width: 820px) {
     grid-template-columns: 1fr;
@@ -91,54 +92,60 @@ const CardGrid = styled.div`
 
 const Card = styled.div`
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  gap: 8px;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
-  min-height: 68px;
-  padding: 7px;
-  border: 1px solid #9a9a9a;
-  background: #f2f2f2;
+  min-height: 72px;
+  padding: var(--wtf-space-2, 8px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
+  min-width: 0;
 
   @media (max-width: 560px) {
-    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-columns: 32px minmax(0, 1fr);
   }
 `;
 
 const IconBox = styled.div`
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  border: 1px solid #808080;
-  background: #dfdfdf;
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-control-bg, #ffffff);
+  color: var(--wtf-app-text, #111);
 `;
 
 const CardTitle = styled.div`
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 15px);
   font-weight: bold;
   overflow-wrap: anywhere;
+  line-height: 1.25;
 `;
 
 const CardMeta = styled.div`
   margin-top: 2px;
-  font-size: 11px;
-  color: #404040;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #384352);
   overflow-wrap: anywhere;
+  line-height: 1.35;
 `;
 
-const OpenButton = styled(Button)`
-  min-width: 88px;
-  min-height: 30px;
+const OpenButton = styled(UiButton)`
+  min-width: 116px;
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
+  white-space: normal;
 
   @media (max-width: 560px) {
     grid-column: 1 / -1;
     width: 100%;
+    min-height: 44px;
   }
 `;
 
@@ -319,7 +326,7 @@ export function SystemSettings() {
 
         <Separator />
 
-        <GroupBox label="System Settings">
+        <UiPanel title="System settings" compact>
           <CardGrid>
             {visibleSettings.map((setting) => {
               const Icon = setting.icon;
@@ -336,15 +343,15 @@ export function SystemSettings() {
                   </div>
                   <OpenButton onClick={() => openSetting(setting)}>
                     <MonitorCog size={14} aria-hidden />
-                    Open
+                    Open {setting.label}
                   </OpenButton>
                 </Card>
               );
             })}
           </CardGrid>
-        </GroupBox>
+        </UiPanel>
 
-        <GroupBox label="Interface">
+        <UiPanel title="Interface" compact>
           <Card>
             <IconBox>
               <TerminalSquare size={17} aria-hidden />
@@ -361,19 +368,19 @@ export function SystemSettings() {
                 active={interfaceMode === "desktop"}
                 onClick={() => chooseInterfaceMode("desktop")}
               >
-                Desktop
+                Use desktop
               </OpenButton>
               <OpenButton
                 active={interfaceMode === "cli"}
                 onClick={() => chooseInterfaceMode("cli")}
               >
-                CLI
+                Use CLI
               </OpenButton>
             </div>
           </Card>
-        </GroupBox>
+        </UiPanel>
 
-        <GroupBox label="Boundary">
+        <UiPanel title="Boundary" compact tone="info">
           <Card>
             <IconBox>
               <ShieldCheck size={17} aria-hidden />
@@ -398,10 +405,10 @@ export function SystemSettings() {
               }
             >
               <Settings size={14} aria-hidden />
-              Status
+              Open Mission Control
             </OpenButton>
           </Card>
-        </GroupBox>
+        </UiPanel>
       </Shell>
     </AppWindow>
   );

@@ -1,5 +1,6 @@
-import { Button, GroupBox, Select, TextInput } from "react95";
+import { Select, TextInput } from "react95";
 import styled from "styled-components";
+import { UiButton, UiPanel } from "../../../components/wtfos-ui";
 import type {
   ChallengeAutomationRegistry,
   ChallengeBuilderState,
@@ -12,25 +13,28 @@ import { RewardActionBuilder } from "./RewardActionBuilder";
 const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
 `;
 
 const Field = styled.label`
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
+  gap: var(--wtf-space-1, 4px);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+  line-height: 1.3;
 `;
 
 const Stack = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--wtf-space-3, 12px);
 `;
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
 `;
@@ -60,7 +64,7 @@ export function ChallengeBuilder({
   };
 
   return (
-    <GroupBox label={state.id ? "Edit Automation Challenge" : "Create Automation Challenge"}>
+    <UiPanel title={state.id ? "Edit automation challenge" : "Create automation challenge"} compact>
       <Stack>
         <Grid>
           <Field>
@@ -153,36 +157,36 @@ export function ChallengeBuilder({
           />
         </Field>
 
-        <GroupBox label="Conditions">
+        <UiPanel title="Conditions" compact>
           <ConditionBuilder
             state={state}
             setState={setState}
             triggers={registry.triggers}
           />
-        </GroupBox>
+        </UiPanel>
 
-        <GroupBox label="Reward Actions">
+        <UiPanel title="Reward actions" compact>
           <RewardActionBuilder
             state={state}
             setState={setState}
             rewardActions={registry.rewardActions}
           />
-        </GroupBox>
+        </UiPanel>
 
         <ChallengePreview state={state} triggers={registry.triggers} />
 
         <ActionRow>
-          <Button onClick={() => save("draft")} disabled={isPending}>
-            Save Draft
-          </Button>
-          <Button onClick={() => save("active")} disabled={isPending}>
-            Activate
-          </Button>
-          <Button onClick={() => setState(emptyBuilderState())} disabled={isPending}>
-            Clear
-          </Button>
+          <UiButton onClick={() => save("draft")} disabled={isPending}>
+            Save challenge draft
+          </UiButton>
+          <UiButton uiVariant="primary" onClick={() => save("active")} disabled={isPending}>
+            Activate challenge
+          </UiButton>
+          <UiButton onClick={() => setState(emptyBuilderState())} disabled={isPending}>
+            Clear challenge form
+          </UiButton>
         </ActionRow>
       </Stack>
-    </GroupBox>
+    </UiPanel>
   );
 }

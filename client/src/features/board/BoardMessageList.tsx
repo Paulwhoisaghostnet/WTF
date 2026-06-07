@@ -193,6 +193,7 @@ export function BoardMessageList({
                       $active={
                         !!user && reaction.users.some((entry) => entry.id === user.id)
                       }
+                      aria-label={`React with ${reaction.emoji}`}
                       onClick={() => {
                         if (!user) return;
                         onReact(message.id, reaction.emoji);
@@ -208,7 +209,11 @@ export function BoardMessageList({
               <MsgActions>
                 {user && (
                   <div style={{ position: "relative" }}>
-                    <MsgActBtn onClick={() => onToggleEmojiPicker(message.id)}>
+                    <MsgActBtn
+                      aria-label={`Open reactions for message from ${authorName}`}
+                      aria-expanded={showEmojiFor === message.id}
+                      onClick={() => onToggleEmojiPicker(message.id)}
+                    >
                       React
                     </MsgActBtn>
                     {showEmojiFor === message.id && (
@@ -216,6 +221,8 @@ export function BoardMessageList({
                         {EMOJI_QUICK.map((emoji) => (
                           <button
                             key={emoji}
+                            type="button"
+                            aria-label={`React with ${emoji}`}
                             onClick={() => onReact(message.id, emoji)}
                           >
                             {emoji}
@@ -227,6 +234,8 @@ export function BoardMessageList({
                         {HAMSTER_REACTIONS.map((reaction) => (
                           <button
                             key={reaction.char}
+                            type="button"
+                            aria-label={`React with ${reaction.label}`}
                             title={reaction.label}
                             onClick={() => onReact(message.id, reaction.char)}
                           >
@@ -239,6 +248,7 @@ export function BoardMessageList({
                 )}
                 {user && channel.canPost && (
                   <MsgActBtn
+                    aria-label={`Reply to message from ${authorName}`}
                     onClick={() => {
                       onReplyTo({
                         id: message.id,
@@ -254,18 +264,25 @@ export function BoardMessageList({
                 )}
                 {canPin && (
                   <MsgActBtn
+                    aria-label={`${message.pinned ? "Unpin" : "Pin"} message from ${authorName}`}
                     onClick={() => onTogglePin(message.id, !message.pinned)}
                   >
                     {message.pinned ? "Unpin" : "Pin"}
                   </MsgActBtn>
                 )}
                 {canDelete && user && message.userId === user.id && (
-                  <MsgActBtn onClick={() => onEditMessage(message)}>
+                  <MsgActBtn
+                    aria-label={`Edit message from ${authorName}`}
+                    onClick={() => onEditMessage(message)}
+                  >
                     Edit
                   </MsgActBtn>
                 )}
                 {canDelete && (
-                  <MsgActBtn onClick={() => onDeleteMessage(message)}>
+                  <MsgActBtn
+                    aria-label={`Delete message from ${authorName}`}
+                    onClick={() => onDeleteMessage(message)}
+                  >
                     Delete
                   </MsgActBtn>
                 )}

@@ -74,22 +74,21 @@ const StatusGrid = styled.div`
 
 const StatusCell = styled.div`
   min-height: 62px;
-  padding: 7px;
-  border: 1px solid #808080;
-  background: #eeeeee;
+  padding: 8px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #eeeeee);
   box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
 `;
 
 const StatusLabel = styled.div`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
-  text-transform: uppercase;
-  color: #404040;
+  color: var(--wtf-app-muted, #4b5563);
 `;
 
 const StatusValue = styled.div`
   margin-top: 4px;
-  font-size: 14px;
+  font-size: var(--wtf-type-heading-sm, 18px);
   font-weight: bold;
   overflow-wrap: anywhere;
 `;
@@ -114,9 +113,9 @@ const Row = styled.div`
   grid-template-columns: 28px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  padding: 7px;
-  border: 1px solid #9a9a9a;
-  background: #f2f2f2;
+  padding: 8px;
+  border: 1px solid var(--wtf-app-border, #9a9a9a);
+  background: var(--wtf-app-surface, #f2f2f2);
 
   @media (max-width: 560px) {
     grid-template-columns: 28px minmax(0, 1fr);
@@ -134,15 +133,16 @@ const IconBox = styled.div`
 `;
 
 const RowTitle = styled.div`
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 14px);
   font-weight: bold;
   overflow-wrap: anywhere;
 `;
 
 const RowMeta = styled.div`
-  margin-top: 2px;
-  font-size: 11px;
-  color: #404040;
+  margin-top: 3px;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
+  line-height: 1.35;
   overflow-wrap: anywhere;
 `;
 
@@ -153,7 +153,7 @@ const OpenButton = styled(Button)`
   align-items: center;
   justify-content: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 
   @media (max-width: 560px) {
     grid-column: 1 / -1;
@@ -163,7 +163,7 @@ const OpenButton = styled(Button)`
 
 const Tag = styled.span<{ $mode: AccessMode }>`
   display: inline-block;
-  padding: 1px 5px;
+  padding: 3px 6px;
   border: 1px solid #808080;
   background: ${(p) =>
     p.$mode === "public"
@@ -173,15 +173,16 @@ const Tag = styled.span<{ $mode: AccessMode }>`
         : p.$mode === "paired-mcp-agent"
           ? "#f5df9a"
           : "#f5b5b5"};
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
 `;
 
 const EmptyState = styled.div`
   padding: 8px;
-  border: 1px solid #808080;
-  background: #ffffd6;
-  font-size: 12px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-warning-surface, #ffffd6);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
 function countByAccess(routes: ManifestRoute[], mode: AccessMode) {
@@ -370,7 +371,7 @@ export function BrowserBoundaries() {
                     onClick={() => openBoundaryAction("/recovery-mode", row.id)}
                   >
                     <ShieldCheck size={14} aria-hidden />
-                    Check
+                    Check boundary health
                   </OpenButton>
                 </Row>
               );
@@ -393,7 +394,7 @@ export function BrowserBoundaries() {
                   </div>
                   <OpenButton onClick={() => openBoundaryAction(row.path, row.id)}>
                     <Route size={14} aria-hidden />
-                    {row.action}
+                    Open {row.action}
                   </OpenButton>
                 </Row>
               );
@@ -457,7 +458,7 @@ export function BrowserBoundaries() {
               onClick={() => openBoundaryAction("/desktop-settings", "agent-tokens")}
             >
               <Bot size={14} aria-hidden />
-              Tokens
+              Open agent tokens
             </OpenButton>
           </Row>
         </GroupBox>

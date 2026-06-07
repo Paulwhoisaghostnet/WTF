@@ -40,13 +40,13 @@ const Intro = styled.div`
 
 const Title = styled.h1`
   margin: 0;
-  font-size: 18px;
+  font-size: var(--wtf-type-title, 18px);
   line-height: 1.15;
 `;
 
 const Copy = styled.p`
   margin: 0;
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 14px);
   line-height: 1.45;
 `;
 
@@ -58,7 +58,7 @@ const StatusStrip = styled.div`
   padding: 6px 8px;
   background: #efefef;
   border: 2px inset #fff;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const StatusLamp = styled.span<{ $active?: boolean }>`
@@ -78,7 +78,7 @@ const Field = styled.div`
 
 const ErrorMsg = styled.p`
   color: #8b0000;
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 14px);
   margin: 0;
   padding: 7px 8px;
   background: #fff4f4;
@@ -94,7 +94,7 @@ const ButtonRow = styled.div`
 `;
 
 const WalletInfo = styled.p`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.4;
   margin: 6px 0 0;
   color: #555;
@@ -147,11 +147,11 @@ export function Login() {
   };
 
   return (
-    <AuthScreenShell documentTitle={`Sign in — ${WTFOS_PLATFORM_NAME}`}>
+    <AuthScreenShell documentTitle={`Sign in - ${WTFOS_PLATFORM_NAME}`}>
       <CenterWrapper>
         <LoginWindow>
           <WindowHeader>
-            <span>{WTFOS_PLATFORM_NAME} — Sign In</span>
+            <span>{WTFOS_PLATFORM_NAME} - Sign In</span>
           </WindowHeader>
           <WindowContent>
             <Intro>

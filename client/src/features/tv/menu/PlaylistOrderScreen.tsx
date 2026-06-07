@@ -58,7 +58,7 @@ export function PlaylistOrderScreen({
           return (
             <MenuItem key={`${item.videoId}-${idx}`}>
               <MenuRow>
-                <span style={{ flex: 1, fontSize: 11 }}>
+                <span style={{ flex: 1, fontSize: "var(--wtf-type-caption, 13px)" }}>
                   {video?.title || `Video #${item.videoId}`}
                 </span>
                 <MenuInput
@@ -128,7 +128,7 @@ export function PlaylistOrderScreen({
         {availablePlaylistVideos.map((video) => (
           <MenuItem key={`available-${video.id}`}>
             <MenuRow>
-              <span style={{ flex: 1, fontSize: 11 }}>
+              <span style={{ flex: 1, fontSize: "var(--wtf-type-caption, 13px)" }}>
                 {video.title || `Video #${video.id}`}
               </span>
               <MenuLabel>{video.mimeType}</MenuLabel>

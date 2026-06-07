@@ -186,6 +186,8 @@ describe("WTF ecosystem wiring", () => {
     assert.match(leaderboardRoutes, /eventType: "leaderboard\.viewed"/);
     assert.match(leaderboardRoutes, /eventType: "leaderboard\.xp\.viewed"/);
     assert.match(leaderboardRoutes, /eventType: "leaderboard\.transfers\.viewed"/);
+    assert.match(leaderboardRoutes, /DEFAULT_LEADERBOARD_PROFILE_ALIAS_TIMEOUT_MS/);
+    assert.match(leaderboardRoutes, /resolveLeaderboardProfiles/);
   });
 
   it("classifies critical disk usage before warning disk usage", () => {

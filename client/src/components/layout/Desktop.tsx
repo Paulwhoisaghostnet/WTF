@@ -171,7 +171,7 @@ const DesktopContainer = styled.div<{
   background-color: var(--wtf-desktop-color);
   color: var(--wtf-text-color);
   font-family: var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
-  font-size: var(--wtf-shell-font-size, 13px);
+  font-size: var(--wtf-shell-font-size, 14px);
   cursor: ${(p) => (p.$cursorHidden ? "none" : "auto")};
   display: flex;
   flex-direction: column;
@@ -341,9 +341,9 @@ const SaverLogo = styled.div`
   font-size: 42px;
   letter-spacing: 8px;
   box-shadow: 4px 4px 0 #ff00ff;
-  animation: saver-bounce 9s linear infinite alternate;
+  animation: saver-drift 9s linear infinite alternate;
 
-  @keyframes saver-bounce {
+  @keyframes saver-drift {
     0% {
       transform: translate(0, 0);
     }
@@ -360,10 +360,22 @@ const SaverLogo = styled.div`
       transform: translate(4vw, 70vh);
     }
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
 
-export function Desktop({ children, showTaskbar = true }: { children: ReactNode; showTaskbar?: boolean }) {
+export function Desktop({
+  children,
+  showTaskbar = true,
+  suspendDesktopEffects = false,
+}: {
+  children: ReactNode;
+  showTaskbar?: boolean;
+  suspendDesktopEffects?: boolean;
+}) {
   const wm = useWindowManager();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -442,11 +454,12 @@ export function Desktop({ children, showTaskbar = true }: { children: ReactNode;
   const invertedMouseCursed = hasWtfCurse(activeCurses, "inverted_click_mouse");
   const customCursorStyle = blangsCursed ? "blang-side-eye" : appearance.cursorStyle;
   const customCursorEnabled =
-    customCursorStyle !== "system" || blangsCursed || invertedMouseCursed;
+    !suspendDesktopEffects &&
+    (customCursorStyle !== "system" || blangsCursed || invertedMouseCursed);
   const appAccessBlocked = !canOpenAppsForRole(user?.roles ?? user?.role ?? null);
-  const desktopPetEnabled = !!user && appearance.desktopPetEnabled;
+  const desktopPetEnabled = !suspendDesktopEffects && !!user && appearance.desktopPetEnabled;
   const desktopArtifacts = useDesktopArtifacts({
-    enabled: !!user,
+    enabled: !suspendDesktopEffects && !!user,
     userId: user?.id ?? null,
     bounds: surfaceSize,
   });
@@ -1326,85 +1339,89 @@ export function Desktop({ children, showTaskbar = true }: { children: ReactNode;
         data-wtf-desktop-content="true"
         ref={contentRef}
         $appearance={appearance}
-        onPointerMove={handlePointerMove}
-        onPointerLeave={resetHotCorner}
-        onPointerDown={handleDesktopPointerDown}
-        onContextMenu={openDesktopSurfaceContextMenu}
-        onDragOver={handleDesktopDragOver}
-        onDrop={handleDesktopDrop}
+        onPointerMove={suspendDesktopEffects ? undefined : handlePointerMove}
+        onPointerLeave={suspendDesktopEffects ? undefined : resetHotCorner}
+        onPointerDown={suspendDesktopEffects ? undefined : handleDesktopPointerDown}
+        onContextMenu={suspendDesktopEffects ? undefined : openDesktopSurfaceContextMenu}
+        onDragOver={suspendDesktopEffects ? undefined : handleDesktopDragOver}
+        onDrop={suspendDesktopEffects ? undefined : handleDesktopDrop}
       >
         <WallpaperCenter>
           {!appearance.backgroundImageUrl && <WtfLogo>W T F</WtfLogo>}
         </WallpaperCenter>
-        <DesktopSurface>
-          {renderedVisibleIcons.map((def) => (
-            <DraggableIcon
-              key={def.key}
-              def={def}
-              position={
-                iconPositions[def.key] ??
-                clampIconPosition({ x: def.defaultX, y: def.defaultY }, surfaceSize)
-              }
-              bounds={surfaceSize}
-              onDragStart={handleIconDragStart}
-              onDragEnd={handleIconDragEnd}
-              onMove={handleIconMove}
-              onRelease={handleIconRelease}
-              onOpen={() => handleDesktopIconOpen(def)}
-              onContextMenu={openNativeIconContextMenu}
-              onShiftClick={openNativeIconContextMenu}
-            />
-          ))}
-          {shortcutIconDefs.map((def) => {
-            const shortcut = desktopShortcuts.find((item) => shortcutIconKey(item) === def.key);
-            if (!shortcut) return null;
-            return (
-              <DraggableIcon
-                key={def.key}
-                def={def}
-                position={clampIconPosition({ x: shortcut.x, y: shortcut.y }, surfaceSize)}
+        {!suspendDesktopEffects ? (
+          <>
+            <DesktopSurface>
+              {renderedVisibleIcons.map((def) => (
+                <DraggableIcon
+                  key={def.key}
+                  def={def}
+                  position={
+                    iconPositions[def.key] ??
+                    clampIconPosition({ x: def.defaultX, y: def.defaultY }, surfaceSize)
+                  }
+                  bounds={surfaceSize}
+                  onDragStart={handleIconDragStart}
+                  onDragEnd={handleIconDragEnd}
+                  onMove={handleIconMove}
+                  onRelease={handleIconRelease}
+                  onOpen={() => handleDesktopIconOpen(def)}
+                  onContextMenu={openNativeIconContextMenu}
+                  onShiftClick={openNativeIconContextMenu}
+                />
+              ))}
+              {shortcutIconDefs.map((def) => {
+                const shortcut = desktopShortcuts.find((item) => shortcutIconKey(item) === def.key);
+                if (!shortcut) return null;
+                return (
+                  <DraggableIcon
+                    key={def.key}
+                    def={def}
+                    position={clampIconPosition({ x: shortcut.x, y: shortcut.y }, surfaceSize)}
+                    bounds={surfaceSize}
+                    onDragStart={() => undefined}
+                    onDragEnd={() => undefined}
+                    onMove={handleShortcutMove}
+                    onRelease={handleShortcutRelease}
+                    onOpen={() => handleShortcutOpen(shortcut)}
+                    onContextMenu={(event) => openShortcutContextMenu(event, shortcut)}
+                    onShiftClick={(event) => openShortcutContextMenu(event, shortcut)}
+                  />
+                );
+              })}
+              <DesktopItemActors
+                items={desktopArtifacts.items}
                 bounds={surfaceSize}
-                onDragStart={() => undefined}
-                onDragEnd={() => undefined}
-                onMove={handleShortcutMove}
-                onRelease={handleShortcutRelease}
-                onOpen={() => handleShortcutOpen(shortcut)}
-                onContextMenu={(event) => openShortcutContextMenu(event, shortcut)}
-                onShiftClick={(event) => openShortcutContextMenu(event, shortcut)}
+                now={desktopArtifactNow}
+                activeTool={activeDesktopTool}
+                onToolSelect={handleDesktopToolSelect}
+                onMove={desktopArtifacts.moveDesktopItem}
+                onToolMove={desktopArtifacts.moveDesktopItem}
+                onScaleItem={desktopArtifacts.scaleDesktopItem}
+                onCursorTrayToggle={desktopArtifacts.toggleCursorToolTray}
+                onTrainKitOpen={desktopArtifacts.unpackTrainKit}
+                onOpenJukebox={() => {
+                  if (!appAccessBlocked) wm.openPage("/tezamp");
+                }}
+                onInteract={handleDesktopItemInteract}
+                onPortalGunEquip={() => setPortalPaintColor("blue")}
+                onRemoveItem={desktopArtifacts.removeDesktopItem}
+                onFanRotate={desktopArtifacts.rotateFan}
+                onStickyText={desktopArtifacts.updateStickyNoteText}
+                onStickyStroke={desktopArtifacts.addStickyNoteStroke}
+                onContextMenu={openDesktopItemContextMenu}
+                splitAssemblyKeyDown={splitAssemblyKeyDown}
               />
-            );
-          })}
-          <DesktopItemActors
-            items={desktopArtifacts.items}
-            bounds={surfaceSize}
-            now={desktopArtifactNow}
-            activeTool={activeDesktopTool}
-            onToolSelect={handleDesktopToolSelect}
-            onMove={desktopArtifacts.moveDesktopItem}
-            onToolMove={desktopArtifacts.moveDesktopItem}
-            onScaleItem={desktopArtifacts.scaleDesktopItem}
-            onCursorTrayToggle={desktopArtifacts.toggleCursorToolTray}
-            onTrainKitOpen={desktopArtifacts.unpackTrainKit}
-            onOpenJukebox={() => {
-              if (!appAccessBlocked) wm.openPage("/tezamp");
-            }}
-            onInteract={handleDesktopItemInteract}
-            onPortalGunEquip={() => setPortalPaintColor("blue")}
-            onRemoveItem={desktopArtifacts.removeDesktopItem}
-            onFanRotate={desktopArtifacts.rotateFan}
-            onStickyText={desktopArtifacts.updateStickyNoteText}
-            onStickyStroke={desktopArtifacts.addStickyNoteStroke}
-            onContextMenu={openDesktopItemContextMenu}
-            splitAssemblyKeyDown={splitAssemblyKeyDown}
-          />
-          <PortalPlacementLayer
-            $active={activeDesktopTool === "portal-gun"}
-            $color={portalPaintColor}
-            onPointerDown={handlePortalPlace}
-          />
-        </DesktopSurface>
-        <DesktopWeatherCloud bounds={surfaceSize} rule={desktopWeatherRule} />
-        <SundayGrass userId={user?.id ?? null} bounds={surfaceSize} />
+              <PortalPlacementLayer
+                $active={activeDesktopTool === "portal-gun"}
+                $color={portalPaintColor}
+                onPointerDown={handlePortalPlace}
+              />
+            </DesktopSurface>
+            <DesktopWeatherCloud bounds={surfaceSize} rule={desktopWeatherRule} />
+            <SundayGrass userId={user?.id ?? null} bounds={surfaceSize} />
+          </>
+        ) : null}
         <RouteLayer data-route-layer="true">{children}</RouteLayer>
         <DesktopPet
           enabled={desktopPetEnabled}
@@ -1436,7 +1453,7 @@ export function Desktop({ children, showTaskbar = true }: { children: ReactNode;
       {customCursorEnabled && !(invertedMouseCursed && !blangsCursed) ? (
         <CustomCursor style={customCursorStyle} />
       ) : null}
-      <CursedDesktopEffects curses={activeCurses} />
+      {!suspendDesktopEffects ? <CursedDesktopEffects curses={activeCurses} /> : null}
       {contextMenu && (
         <Win95ContextMenu
           x={contextMenu.x}

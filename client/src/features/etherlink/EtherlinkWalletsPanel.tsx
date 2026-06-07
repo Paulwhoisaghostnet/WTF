@@ -58,6 +58,10 @@ interface EtherlinkAssetsResponse {
   };
 }
 
+const ETHERLINK_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
+const ETHERLINK_MONO_FONT =
+  'var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)';
+
 const ToolbarRow = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -67,15 +71,15 @@ const ToolbarRow = styled.div`
 `;
 
 const StatusLine = styled.p`
-  font-size: 11px;
-  color: #333;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #444);
   margin: 4px 0 8px;
 `;
 
 const ErrorLine = styled.p`
-  font-size: 11px;
-  background: #ffe8e8;
-  border: 1px solid #c00;
+  font-size: var(--wtf-type-caption, 13px);
+  background: var(--wtf-app-danger-bg, #ffe8e8);
+  border: 1px solid var(--wtf-app-danger, #c00);
   padding: 6px;
   margin: 6px 0;
 `;
@@ -98,7 +102,7 @@ const Thumbnail = styled.div`
 
   span {
     color: #c0c0c0;
-    font-size: 10px;
+    font-size: var(--wtf-type-caption, 13px);
   }
 `;
 
@@ -290,7 +294,7 @@ export function EtherlinkWalletsPanel() {
           <TableBody>
             {wallets.map((wallet) => (
               <TableRow key={wallet.id}>
-                <TableDataCell style={{ fontFamily: "monospace", fontSize: 10 }}>
+                <TableDataCell style={{ fontFamily: ETHERLINK_MONO_FONT, fontSize: ETHERLINK_CAPTION_TYPE }}>
                   {wallet.explorerUrl ? (
                     <Anchor href={wallet.explorerUrl} target="_blank" rel="noopener noreferrer">
                       {shortAddress(wallet.walletAddress)}
@@ -342,6 +346,7 @@ export function EtherlinkWalletsPanel() {
 
       <ToolbarRow>
         <TextInput
+          aria-label="Search Etherlink assets"
           value={search}
           onChange={(event: any) => {
             setSearch(event.target.value);
@@ -350,7 +355,7 @@ export function EtherlinkWalletsPanel() {
           placeholder="Search Etherlink assets"
           style={{ minWidth: 240 }}
         />
-        {assetsQuery.isFetching && <span style={{ fontSize: 11 }}>Loading...</span>}
+        {assetsQuery.isFetching && <span style={{ fontSize: ETHERLINK_CAPTION_TYPE }}>Loading...</span>}
       </ToolbarRow>
 
       {wallets.length === 0 ? null : assets.length > 0 ? (
@@ -382,7 +387,7 @@ export function EtherlinkWalletsPanel() {
                     </div>
                   </TableDataCell>
                   <TableDataCell>{asset.tokenStandard}</TableDataCell>
-                  <TableDataCell style={{ fontFamily: "monospace", fontSize: 10 }}>
+                  <TableDataCell style={{ fontFamily: ETHERLINK_MONO_FONT, fontSize: ETHERLINK_CAPTION_TYPE }}>
                     {asset.explorerUrl ? (
                       <Anchor href={asset.explorerUrl} target="_blank" rel="noopener noreferrer">
                         {shortAddress(asset.tokenContract)}
@@ -393,7 +398,7 @@ export function EtherlinkWalletsPanel() {
                   </TableDataCell>
                   <TableDataCell>{asset.tokenId}</TableDataCell>
                   <TableDataCell>{formatAssetBalance(asset)}</TableDataCell>
-                  <TableDataCell style={{ fontFamily: "monospace", fontSize: 10 }}>
+                  <TableDataCell style={{ fontFamily: ETHERLINK_MONO_FONT, fontSize: ETHERLINK_CAPTION_TYPE }}>
                     {shortAddress(asset.walletAddress)}
                   </TableDataCell>
                 </TableRow>
@@ -409,7 +414,7 @@ export function EtherlinkWalletsPanel() {
               >
                 Prev
               </Button>
-              <span style={{ fontSize: 11 }}>
+              <span style={{ fontSize: ETHERLINK_CAPTION_TYPE }}>
                 {offset + 1}-{offset + assets.length} of {pagination.total}
               </span>
               <Button

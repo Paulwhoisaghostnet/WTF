@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type Dispatch, type ReactElement, type SetStateAction } from "react";
-import { Button, Hourglass, Select } from "react95";
+import { Hourglass, Select } from "react95";
 import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
@@ -19,6 +19,7 @@ import {
   Workflow,
 } from "lucide-react";
 import styled from "styled-components";
+import { UiButton } from "../../../components/wtfos-ui";
 import {
   PERMISSIONS,
   PERMISSION_CATEGORIES,
@@ -50,7 +51,7 @@ const PERMISSION_CATEGORY_LABELS: Record<PermissionCategory, string> = {
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 7px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
 
@@ -61,7 +62,7 @@ const ActionRow = styled.div`
 
 const RoleWorkspace = styled.div`
   display: grid;
-  gap: 14px;
+  gap: var(--wtf-space-3, 12px);
   min-width: 0;
 
   &,
@@ -71,15 +72,12 @@ const RoleWorkspace = styled.div`
 `;
 
 const HeroPanel = styled.section`
-  border: 1px solid #15171a;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(236, 239, 243, 0.92)),
-    repeating-linear-gradient(135deg, rgba(21, 23, 26, 0.06) 0 1px, transparent 1px 13px);
-  box-shadow: 4px 4px 0 #15171a;
-  padding: 14px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface, #f4f4f4);
+  padding: var(--wtf-space-3, 12px);
   display: grid;
   grid-template-columns: minmax(180px, 1fr) minmax(260px, 1.15fr);
-  gap: 14px;
+  gap: var(--wtf-space-3, 12px);
   min-width: 0;
 
   @media (max-width: 960px) {
@@ -92,15 +90,17 @@ const HeroCopy = styled.div`
 
   h3 {
     margin: 0;
-    font-size: 30px;
-    line-height: 1.05;
+    color: var(--wtf-app-text, #111);
+    font-size: var(--wtf-type-title, 18px);
+    line-height: 1.2;
     overflow-wrap: anywhere;
   }
 
   p {
-    color: #3f464f;
-    font-size: 12px;
-    margin: 7px 0 0;
+    color: var(--wtf-app-muted-text, #444);
+    font-size: var(--wtf-type-caption, 13px);
+    line-height: 1.4;
+    margin: var(--wtf-space-2, 8px) 0 0;
   }
 `;
 
@@ -108,29 +108,29 @@ const RoleAccent = styled.span<{ $color?: string | null }>`
   display: inline-block;
   width: 12px;
   height: 12px;
-  border: 1px solid #15171a;
+  border: 1px solid var(--wtf-app-border, #808080);
   background: ${({ $color }) => $color || "#facc15"};
-  box-shadow: 2px 2px 0 #15171a;
   margin-right: 7px;
 `;
 
 const HeroMeta = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   flex-wrap: wrap;
-  margin-top: 10px;
+  margin-top: var(--wtf-space-2, 8px);
 `;
 
 const MetaChip = styled.span<{ $tone?: "good" | "warn" | "dark" | "plain" }>`
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 1px solid #15171a;
+  border: 1px solid var(--wtf-app-border, #808080);
   background: ${({ $tone }) =>
     $tone === "good" ? "#bbf7d0" : $tone === "warn" ? "#fde68a" : $tone === "dark" ? "#202326" : "#ffffff"};
   color: ${({ $tone }) => ($tone === "dark" ? "#ffffff" : "#15171a")};
-  padding: 4px 7px;
-  font-size: 11px;
+  min-height: 24px;
+  padding: 3px 8px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   white-space: nowrap;
 `;
@@ -138,7 +138,7 @@ const MetaChip = styled.span<{ $tone?: "good" | "warn" | "dark" | "plain" }>`
 const MetricGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
   min-width: 0;
 
   @media (max-width: 720px) {
@@ -147,25 +147,25 @@ const MetricGrid = styled.div`
 `;
 
 const MetricTile = styled.div`
-  border: 1px solid #15171a;
-  background: #ffffff;
-  padding: 9px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  padding: var(--wtf-space-2, 8px);
   min-width: 0;
 
   strong {
     display: block;
-    font-size: 20px;
-    line-height: 1.05;
+    font-size: var(--wtf-type-title, 18px);
+    line-height: 1;
     overflow-wrap: anywhere;
   }
 
   span {
     display: block;
     margin-top: 4px;
-    color: #4b5563;
-    font-size: 10px;
+    color: var(--wtf-app-muted-text, #444);
+    font-size: var(--wtf-type-caption, 13px);
     letter-spacing: 0;
-    text-transform: uppercase;
+    text-transform: none;
     overflow-wrap: anywhere;
   }
 `;
@@ -173,15 +173,14 @@ const MetricTile = styled.div`
 const ControlGrid = styled.div`
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+  gap: var(--wtf-space-3, 12px);
   align-items: start;
 `;
 
 const Panel = styled.section`
-  border: 1px solid #15171a;
-  background: #ffffff;
-  box-shadow: 4px 4px 0 #15171a;
-  padding: 12px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface, #f4f4f4);
+  padding: var(--wtf-space-3, 12px);
   min-width: 0;
 `;
 
@@ -191,9 +190,9 @@ const PanelHeader = styled.div`
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 10px;
-  border-bottom: 2px solid #15171a;
-  padding-bottom: 8px;
-  margin-bottom: 10px;
+  border-bottom: 1px solid var(--wtf-app-border, #808080);
+  padding-bottom: var(--wtf-space-2, 8px);
+  margin-bottom: var(--wtf-space-2, 8px);
 `;
 
 const PanelTitle = styled.div`
@@ -204,15 +203,15 @@ const PanelTitle = styled.div`
 
   h4 {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--wtf-type-body-strong, 15px);
     overflow-wrap: anywhere;
   }
 
   span {
     display: block;
     margin-top: 2px;
-    color: #5b626b;
-    font-size: 11px;
+    color: var(--wtf-app-muted-text, #444);
+    font-size: var(--wtf-type-caption, 13px);
     overflow-wrap: anywhere;
   }
 `;
@@ -222,30 +221,28 @@ const IconBadge = styled.span<{ $color?: string }>`
   height: 28px;
   display: grid;
   place-items: center;
-  border: 1px solid #15171a;
+  border: 1px solid var(--wtf-app-border, #808080);
   background: ${({ $color }) => $color || "#facc15"};
-  box-shadow: 2px 2px 0 #15171a;
   flex: 0 0 auto;
 `;
 
 const RoleCardGrid = styled.div`
   display: grid;
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
 `;
 
 const RoleCard = styled.button<{ $active?: boolean; $color?: string | null }>`
-  border: 1px solid ${({ $active, $color }) => ($active ? ($color || "#15171a") : "#b8bec6")};
-  background: ${({ $active }) => ($active ? "#f8fafc" : "#ffffff")};
-  box-shadow: ${({ $active, $color }) => ($active ? `3px 3px 0 ${$color || "#15171a"}` : "none")};
+  border: 1px solid ${({ $active, $color }) => ($active ? ($color || "var(--wtf-app-border, #808080)") : "var(--wtf-app-border, #808080)")};
+  background: ${({ $active }) => ($active ? "var(--wtf-app-surface, #f4f4f4)" : "var(--wtf-app-surface-raised, #ffffff)")};
   display: grid;
-  gap: 6px;
+  gap: var(--wtf-space-1, 4px);
   text-align: left;
-  padding: 9px;
+  padding: var(--wtf-space-2, 8px);
   cursor: pointer;
   min-width: 0;
 
   &:hover {
-    border-color: ${({ $color }) => $color || "#15171a"};
+    border-color: ${({ $color }) => $color || "var(--wtf-app-link, #000080)"};
   }
 `;
 
@@ -258,14 +255,14 @@ const RoleCardTop = styled.div`
 `;
 
 const RoleName = styled.strong`
-  font-size: 13px;
+  font-size: var(--wtf-type-caption, 13px);
   overflow-wrap: anywhere;
 `;
 
 const RoleSlug = styled.span`
-  color: #5b626b;
+  color: var(--wtf-app-muted-text, #444);
   display: block;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   margin-top: 1px;
   overflow-wrap: anywhere;
 `;
@@ -277,11 +274,11 @@ const RoleStatsLine = styled.div`
 `;
 
 const TinyChip = styled.span`
-  border: 1px solid #c7cdd4;
-  background: #f7f7f4;
-  color: #30363d;
-  padding: 2px 5px;
-  font-size: 10px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
+  padding: 3px 8px;
+  font-size: var(--wtf-type-caption, 13px);
   max-width: 100%;
   overflow-wrap: anywhere;
 `;
@@ -289,7 +286,7 @@ const TinyChip = styled.span`
 const FormGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
 
   @media (max-width: 760px) {
     grid-template-columns: 1fr;
@@ -302,10 +299,10 @@ const FullSpan = styled.div`
 
 const FieldLabel = styled.label`
   display: grid;
-  gap: 4px;
-  font-size: 11px;
+  gap: var(--wtf-space-1, 4px);
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
-  color: #30363d;
+  color: var(--wtf-app-text, #111);
 `;
 
 const TextInput = styled.input`
@@ -329,75 +326,77 @@ const TextArea = styled.textarea`
 const CheckboxLine = styled.label`
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: var(--wtf-space-1, 4px);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
 `;
 
 const CategoryRail = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-1, 4px);
   flex-wrap: wrap;
 `;
 
 const SegmentButton = styled.button<{ $active?: boolean }>`
-  border: 1px solid ${({ $active }) => ($active ? "#15171a" : "#a6adb6")};
-  background: ${({ $active }) => ($active ? "#15171a" : "#ffffff")};
-  color: ${({ $active }) => ($active ? "#ffffff" : "#15171a")};
+  border: 1px solid ${({ $active }) => ($active ? "var(--wtf-app-link, #000080)" : "var(--wtf-app-border, #808080)")};
+  background: ${({ $active }) => ($active ? "var(--wtf-app-link, #000080)" : "var(--wtf-app-control-bg, #ffffff)")};
+  color: ${({ $active }) => ($active ? "var(--wtf-app-accent-text, #ffffff)" : "var(--wtf-app-text, #111)")};
   padding: 6px 8px;
+  min-height: 32px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   cursor: pointer;
-  box-shadow: ${({ $active }) => ($active ? "2px 2px 0 #facc15" : "none")};
 `;
 
 const PermissionGroups = styled.div`
   display: grid;
-  gap: 10px;
+  gap: var(--wtf-space-3, 12px);
 `;
 
 const PermissionGroup = styled.div`
-  border: 1px solid #aeb5bd;
-  background: #f8fafc;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
 `;
 
 const PermissionGroupHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  border-bottom: 1px solid #aeb5bd;
-  background: #eef2f6;
-  padding: 7px 9px;
+  gap: var(--wtf-space-2, 8px);
+  border-bottom: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface, #f4f4f4);
+  padding: var(--wtf-space-2, 8px);
   font-weight: 700;
 `;
 
 const PermissionToggleGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 7px;
-  padding: 8px;
+  gap: var(--wtf-space-2, 8px);
+  padding: var(--wtf-space-2, 8px);
   min-width: 0;
 `;
 
 const PermissionToggle = styled.label<{ $active?: boolean; $locked?: boolean }>`
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr);
-  gap: 7px;
+  gap: var(--wtf-space-2, 8px);
   align-items: start;
-  border: 1px solid ${({ $active }) => ($active ? "#15803d" : "#c7cdd4")};
-  background: ${({ $active }) => ($active ? "#ecfdf3" : "#ffffff")};
+  border: 1px solid ${({ $active }) => ($active ? "var(--wtf-app-success, #176b38)" : "var(--wtf-app-border, #808080)")};
+  background: ${({ $active }) => ($active ? "var(--wtf-app-success-bg, #ecfdf3)" : "var(--wtf-app-surface-raised, #ffffff)")};
   opacity: ${({ $locked }) => ($locked ? 0.78 : 1)};
-  padding: 8px;
+  padding: var(--wtf-space-2, 8px);
 
   strong {
     display: block;
-    font-size: 12px;
+    font-size: var(--wtf-type-caption, 13px);
   }
 
   span {
     display: block;
-    color: #5b626b;
-    font-size: 10px;
+    color: var(--wtf-app-muted-text, #444);
+    font-size: var(--wtf-type-caption, 13px);
     margin-top: 2px;
   }
 `;
@@ -405,9 +404,9 @@ const PermissionToggle = styled.label<{ $active?: boolean; $locked?: boolean }>`
 const SurfaceToolbar = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: var(--wtf-space-2, 8px);
 
   > input {
     flex: 1 1 190px;
@@ -421,37 +420,37 @@ const SurfaceToolbar = styled.div`
 
 const SurfaceGroups = styled.div`
   display: grid;
-  gap: 12px;
+  gap: var(--wtf-space-3, 12px);
 `;
 
 const SurfaceDomain = styled.div`
   display: grid;
-  gap: 7px;
+  gap: var(--wtf-space-2, 8px);
 `;
 
 const SurfaceDomainTitle = styled.div`
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
-  border-bottom: 2px solid #15171a;
-  padding-bottom: 5px;
+  border-bottom: 1px solid var(--wtf-app-border, #808080);
+  padding-bottom: var(--wtf-space-1, 4px);
   font-weight: 800;
 `;
 
 const SurfaceGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
   min-width: 0;
 `;
 
 const SurfaceCard = styled.div<{ $active?: boolean }>`
-  border: 1px solid ${({ $active }) => ($active ? "#15803d" : "#aeb5bd")};
-  background: ${({ $active }) => ($active ? "#f0fdf4" : "#ffffff")};
+  border: 1px solid ${({ $active }) => ($active ? "var(--wtf-app-success, #176b38)" : "var(--wtf-app-border, #808080)")};
+  background: ${({ $active }) => ($active ? "var(--wtf-app-success-bg, #f0fdf4)" : "var(--wtf-app-surface-raised, #ffffff)")};
   display: grid;
-  gap: 8px;
-  padding: 9px;
+  gap: var(--wtf-space-2, 8px);
+  padding: var(--wtf-space-2, 8px);
   min-width: 0;
 `;
 
@@ -468,14 +467,14 @@ const SurfaceName = styled.div`
 
   strong {
     display: block;
-    font-size: 13px;
+    font-size: var(--wtf-type-caption, 13px);
     overflow-wrap: anywhere;
   }
 
   span {
-    color: #5b626b;
+    color: var(--wtf-app-muted-text, #444);
     display: block;
-    font-size: 10px;
+    font-size: var(--wtf-type-caption, 13px);
     margin-top: 1px;
     overflow-wrap: anywhere;
   }
@@ -483,16 +482,16 @@ const SurfaceName = styled.div`
 
 const SurfaceSignals = styled.div`
   display: grid;
-  gap: 5px;
+  gap: var(--wtf-space-1, 4px);
 `;
 
 const SignalLine = styled.div`
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
-  gap: 6px;
+  gap: var(--wtf-space-1, 4px);
   align-items: start;
-  font-size: 10px;
-  color: #3f464f;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #444);
 
   code {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
@@ -502,11 +501,11 @@ const SignalLine = styled.div`
 `;
 
 const EmptyState = styled.div`
-  border: 1px dashed #8d949e;
-  background: #f8fafc;
-  padding: 14px;
-  color: #4b5563;
-  font-size: 12px;
+  border: 1px dashed var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  padding: var(--wtf-space-3, 12px);
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 type AdminMutation<TPayload> = {
@@ -900,15 +899,16 @@ export function RolesAdminTab({
           <Panel>
             <PanelHeader>
               <PanelLabel icon={SlidersHorizontal} color="#bfdbfe" title="Role designer" detail="Catalog row and default access posture" />
-              <Button size="sm" onClick={loadSelectedRoleIntoForm}>
-                Load Selected
-              </Button>
+              <UiButton compact onClick={loadSelectedRoleIntoForm}>
+                Load selected role
+              </UiButton>
             </PanelHeader>
 
             <FormGrid>
               <FieldLabel>
                 Slug
                 <TextInput
+                  aria-label="Role slug"
                   value={roleForm.slug}
                   onChange={(event) =>
                     setRoleForm((prev) => ({
@@ -922,6 +922,7 @@ export function RolesAdminTab({
               <FieldLabel>
                 Label
                 <TextInput
+                  aria-label="Role label"
                   value={roleForm.label}
                   onChange={(event) => setRoleForm((prev) => ({ ...prev, label: event.target.value }))}
                   placeholder="Display label"
@@ -930,6 +931,7 @@ export function RolesAdminTab({
               <FieldLabel>
                 Category
                 <Select
+                  aria-label="Role category"
                   value={roleForm.category}
                   onChange={(event: any) => setRoleForm((prev) => ({ ...prev, category: event.value }))}
                   options={ROLE_CATEGORIES.map((category) => ({ label: category, value: category }))}
@@ -939,6 +941,7 @@ export function RolesAdminTab({
               <FieldLabel>
                 Access level
                 <TextInput
+                  aria-label="Role access level"
                   value={roleForm.accessLevel}
                   onChange={(event) => setRoleForm((prev) => ({ ...prev, accessLevel: event.target.value }))}
                   type="number"
@@ -947,6 +950,7 @@ export function RolesAdminTab({
               <FieldLabel>
                 Sort order
                 <TextInput
+                  aria-label="Role sort order"
                   value={roleForm.sortOrder}
                   onChange={(event) => setRoleForm((prev) => ({ ...prev, sortOrder: event.target.value }))}
                   type="number"
@@ -955,6 +959,7 @@ export function RolesAdminTab({
               <FieldLabel>
                 Color
                 <TextInput
+                  aria-label="Role color"
                   value={roleForm.color}
                   onChange={(event) => setRoleForm((prev) => ({ ...prev, color: event.target.value }))}
                   type="color"
@@ -963,6 +968,7 @@ export function RolesAdminTab({
               <FieldLabel>
                 Icon key
                 <TextInput
+                  aria-label="Role icon key"
                   value={roleForm.icon}
                   onChange={(event) => setRoleForm((prev) => ({ ...prev, icon: event.target.value }))}
                   placeholder="shield"
@@ -972,6 +978,7 @@ export function RolesAdminTab({
                 <FieldLabel>
                   Purpose
                   <TextInput
+                    aria-label="Role purpose"
                     value={roleForm.purpose}
                     onChange={(event) => setRoleForm((prev) => ({ ...prev, purpose: event.target.value }))}
                     placeholder="What this role is for"
@@ -982,6 +989,7 @@ export function RolesAdminTab({
                 <FieldLabel>
                   Description
                   <TextArea
+                    aria-label="Role description"
                     value={roleForm.description}
                     onChange={(event) => setRoleForm((prev) => ({ ...prev, description: event.target.value }))}
                     placeholder="Operator notes"
@@ -993,6 +1001,7 @@ export function RolesAdminTab({
                   <CheckboxLine>
                     <input
                       type="checkbox"
+                      aria-label="Role default WTF OS access"
                       checked={roleForm.defaultWtfOsAccess}
                       onChange={(event) =>
                         setRoleForm((prev) => ({ ...prev, defaultWtfOsAccess: event.target.checked }))
@@ -1003,6 +1012,7 @@ export function RolesAdminTab({
                   <CheckboxLine>
                     <input
                       type="checkbox"
+                      aria-label="Role is assignable"
                       checked={roleForm.isAssignable}
                       onChange={(event) =>
                         setRoleForm((prev) => ({ ...prev, isAssignable: event.target.checked }))
@@ -1014,12 +1024,12 @@ export function RolesAdminTab({
               </FullSpan>
               <FullSpan>
                 <ActionRow>
-                  <Button size="sm" disabled={upsertRoleMutation.isPending} onClick={saveRole}>
-                    <BadgeCheck size={13} /> Save Role
-                  </Button>
-                  <Button size="sm" onClick={() => setRoleForm(EMPTY_ROLE_FORM)}>
-                    Clear
-                  </Button>
+                  <UiButton compact disabled={upsertRoleMutation.isPending} onClick={saveRole}>
+                    <BadgeCheck size={13} aria-hidden="true" /> Save role
+                  </UiButton>
+                  <UiButton compact onClick={() => setRoleForm(EMPTY_ROLE_FORM)}>
+                    Clear role form
+                  </UiButton>
                 </ActionRow>
               </FullSpan>
             </FormGrid>
@@ -1091,6 +1101,7 @@ export function RolesAdminTab({
                             >
                               <input
                                 type="checkbox"
+                                aria-label={`${granted ? "Revoke" : "Grant"} ${permission.label} for ${selectedRole.label}`}
                                 checked={granted}
                                 disabled={selectedRoleLocked || togglePermMutation.isPending}
                                 onChange={() =>
@@ -1137,11 +1148,13 @@ export function RolesAdminTab({
 
             <SurfaceToolbar>
               <TextInput
+                aria-label="Search role access surfaces"
                 value={surfaceSearch}
                 onChange={(event) => setSurfaceSearch(event.target.value)}
                 placeholder="Search apps, routes, settings, handles"
               />
               <Select
+                aria-label="Filter role access surfaces by domain"
                 value={surfaceDomainFilter}
                 onChange={(event: any) => setSurfaceDomainFilter(event.value)}
                 options={[
@@ -1151,6 +1164,7 @@ export function RolesAdminTab({
                 width={150}
               />
               <Select
+                aria-label="Filter role access surfaces by kind"
                 value={surfaceKindFilter}
                 onChange={(event: any) => setSurfaceKindFilter(event.value)}
                 options={[
@@ -1188,6 +1202,7 @@ export function RolesAdminTab({
                               <CheckboxLine title={selectedRoleLocked ? "Admin always has all WTF OS access" : undefined}>
                                 <input
                                   type="checkbox"
+                                  aria-label={`${granted ? "Close" : "Open"} ${surface.label} access for ${selectedRole.label}`}
                                   checked={granted}
                                   disabled={selectedRoleLocked || toggleRoleSurfaceAccessMutation.isPending}
                                   onChange={() =>

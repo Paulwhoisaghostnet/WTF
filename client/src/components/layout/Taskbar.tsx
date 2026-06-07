@@ -18,10 +18,17 @@ import {
 const TaskbarContainer = styled.div`
   position: relative;
   z-index: 100;
+  height: var(--wtf-taskbar-height, 36px);
+  flex-shrink: 0;
+
+  ${MOBILE} {
+    height: var(--wtf-taskbar-mobile-height, 48px);
+  }
 `;
 
 const StyledAppBar = styled(AppBar)`
-  position: relative;
+  position: absolute;
+  inset: 0;
   padding: var(--wtf-taskbar-padding, 0);
   border-radius: var(--wtf-taskbar-radius, 0);
   box-shadow: var(--wtf-taskbar-shadow, none);
@@ -45,6 +52,7 @@ const TaskbarToolbar = styled(React95Toolbar)`
 `;
 
 const StartButton = styled(Button)`
+  font-family: var(--wtf-brand-font, var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif));
   font-weight: bold;
   display: flex;
   align-items: center;
@@ -68,7 +76,7 @@ const StartButton = styled(Button)`
 
   ${MOBILE} {
     padding: 0 8px;
-    font-size: 12px;
+    font-size: var(--wtf-type-caption, 13px);
     min-width: 0;
   }
 `;
@@ -86,7 +94,10 @@ const WindowButtons = styled.div`
 const WindowButton = styled(Button)<{ $active?: boolean }>`
   max-width: 200px;
   min-width: 60px;
-  font-size: 11px;
+  min-height: 32px;
+  height: 32px;
+  font-family: var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
+  font-size: var(--wtf-type-caption, 13px);
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -96,11 +107,13 @@ const WindowButton = styled(Button)<{ $active?: boolean }>`
   border-radius: var(--wtf-button-radius, 0);
 
   html[data-wtf-appearance-style="wtf-xp"] & {
-    min-height: 30px;
+    min-height: 32px;
+    height: 32px;
   }
 
   html[data-wtf-appearance-style="wtf-aqua"] & {
-    min-height: 30px;
+    min-height: 32px;
+    height: 32px;
     text-align: center;
   }
 
@@ -109,9 +122,11 @@ const WindowButton = styled(Button)<{ $active?: boolean }>`
   }
 
   ${MOBILE} {
-    min-width: 40px;
+    min-width: 44px;
+    min-height: 44px !important;
+    height: 44px !important;
     max-width: 120px;
-    font-size: 10px;
+    font-size: var(--wtf-type-caption, 13px);
     padding: 2px 4px;
   }
 `;
@@ -125,9 +140,9 @@ const SystemTray = styled.div`
 `;
 
 const ShowDesktopButton = styled(Button)`
-  min-width: 18px;
-  width: 18px;
-  height: 24px;
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   flex-shrink: 0;
   display: inline-flex;
@@ -136,34 +151,36 @@ const ShowDesktopButton = styled(Button)`
   border-radius: var(--wtf-control-radius, 0);
 
   svg {
-    width: 12px;
-    height: 12px;
+    width: 16px;
+    height: 16px;
   }
 
   ${MOBILE} {
-    width: 24px;
-    height: 26px;
+    min-width: 44px;
+    width: 44px;
+    height: 44px;
   }
 `;
 
 const Clock = styled(Panel).attrs({ variant: "well" })`
   padding: 0 8px;
-  font-size: 12px;
-  min-width: 70px;
+  font-family: var(--wtf-mono-font, var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif));
+  font-size: var(--wtf-type-caption, 13px);
+  min-width: 82px;
   text-align: center;
   border-radius: var(--wtf-control-radius, 0);
 
   ${MOBILE} {
-    min-width: 54px;
-    font-size: 11px;
+    min-width: 64px;
+    font-size: var(--wtf-type-caption, 13px);
     padding: 0 4px;
   }
 `;
 
 const WalletPanel = styled(Panel).attrs({ variant: "well" })`
   padding: 0 8px;
-  font-size: 11px;
-  max-width: 200px;
+  font-size: var(--wtf-type-caption, 13px);
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -174,9 +191,9 @@ const WalletPanel = styled(Panel).attrs({ variant: "well" })`
 `;
 
 const TrayIconButton = styled(Button)`
-  min-width: 28px;
-  width: 28px;
-  height: 24px;
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -185,25 +202,38 @@ const TrayIconButton = styled(Button)`
   border-radius: var(--wtf-control-radius, 0);
 
   svg {
-    width: 15px;
-    height: 15px;
+    width: 16px;
+    height: 16px;
   }
 
   ${MOBILE} {
-    width: 30px;
-    height: 26px;
+    min-width: 44px;
+    width: 44px;
+    height: 44px;
   }
 `;
 
-const WifiIcon = styled.div<{ $connected: boolean }>`
+const WifiIcon = styled.button<{ $connected: boolean }>`
   cursor: pointer;
   font-size: 14px;
-  padding: 0 4px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
   line-height: 1;
   opacity: ${(p) => (p.$connected ? 1 : 0.5)};
+  border: 0;
+  background: transparent;
+  color: var(--wtf-text-color, #111);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   &:hover { opacity: 1; }
 
-  ${MOBILE} { font-size: 16px; padding: 0 6px; }
+  ${MOBILE} {
+    min-width: 44px;
+    height: 44px;
+    font-size: 16px;
+  }
 `;
 
 const WalletPopup = styled(Window)`
@@ -242,10 +272,27 @@ const WeatherPopupContent = styled(WindowContent)`
 
 const WeatherOptionButton = styled(Button)<{ $active?: boolean }>`
   justify-content: flex-start;
-  min-height: 24px;
-  font-size: 11px;
+  min-height: 32px;
+  font-size: var(--wtf-type-caption, 13px);
   border-radius: var(--wtf-control-radius, 0);
   ${(p) => (p.$active ? "font-weight: bold;" : "")}
+
+  ${MOBILE} {
+    min-height: 44px;
+  }
+`;
+
+const TrayPopupCloseButton = styled(Button)`
+  padding: 0;
+  min-width: 32px;
+  height: 32px;
+  font-size: var(--wtf-type-caption, 13px);
+
+  ${MOBILE} {
+    min-width: 44px;
+    height: 44px;
+    font-size: 16px;
+  }
 `;
 
 type TaskbarProps = {
@@ -456,8 +503,11 @@ export function Taskbar({
               </TrayIconButton>
             )}
             <WifiIcon
+              type="button"
               data-wallet-tray-toggle="true"
               $connected={!!address}
+              aria-label={address ? "Open wallet tray" : "Open wallet connection tray"}
+              aria-expanded={walletPopupOpen}
               onClick={() => {
                 setWeatherPopupOpen(false);
                 setWalletPopupOpen((v) => !v);
@@ -479,22 +529,22 @@ export function Taskbar({
       {walletPopupOpen && (
         <WalletPopup ref={popupRef as any}>
           <WindowHeader style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 12 }}>Wallet</span>
-            <Button
+            <span style={{ fontSize: "var(--wtf-type-caption, 13px)" }}>Wallet</span>
+            <TrayPopupCloseButton
               size="sm"
-              style={{ padding: "0 4px", minWidth: 18, height: 18, fontSize: 10 }}
+              aria-label="Close wallet tray"
               onClick={() => setWalletPopupOpen(false)}
             >
               ✕
-            </Button>
+            </TrayPopupCloseButton>
           </WindowHeader>
           <WindowContent style={{ padding: 10 }}>
             {address ? (
               <>
-                <div style={{ fontSize: 11, marginBottom: 6, color: "#008000", fontWeight: "bold" }}>
+                <div style={{ fontSize: "var(--wtf-type-caption, 13px)", marginBottom: 6, color: "#008000", fontWeight: "bold" }}>
                   Connected
                 </div>
-                <div style={{ fontSize: 10, fontFamily: "monospace", wordBreak: "break-all", marginBottom: 8 }}>
+                <div style={{ fontSize: "var(--wtf-type-caption, 13px)", fontFamily: "monospace", wordBreak: "break-all", marginBottom: 8 }}>
                   {address}
                 </div>
                 <Button
@@ -510,7 +560,7 @@ export function Taskbar({
               </>
             ) : (
               <>
-                <div style={{ fontSize: 11, marginBottom: 6, color: "#808080" }}>
+                <div style={{ fontSize: "var(--wtf-type-caption, 13px)", marginBottom: 6, color: "#808080" }}>
                   No wallet connected
                 </div>
                 <Button
@@ -532,14 +582,14 @@ export function Taskbar({
       {weatherPopupOpen && onWeatherRuleChange && (
         <WeatherPopup ref={weatherPopupRef as any}>
           <WindowHeader style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 12 }}>WX</span>
-            <Button
+            <span style={{ fontSize: "var(--wtf-type-caption, 13px)" }}>WX</span>
+            <TrayPopupCloseButton
               size="sm"
-              style={{ padding: "0 4px", minWidth: 18, height: 18, fontSize: 10 }}
+              aria-label="Close desktop weather"
               onClick={() => setWeatherPopupOpen(false)}
             >
               ✕
-            </Button>
+            </TrayPopupCloseButton>
           </WindowHeader>
           <WeatherPopupContent>
             {DESKTOP_WEATHER_RULES.map((rule) => {
@@ -552,6 +602,7 @@ export function Taskbar({
                   size="sm"
                   $active={active}
                   active={active ? true : undefined}
+                  aria-label={`Set desktop weather to ${label}`}
                   onClick={() => onWeatherRuleChange(rule)}
                 >
                   {label}

@@ -39,14 +39,14 @@ const TabMark = styled.span<{ $accent: string; $shadow: string }>`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 900;
 `;
 
 const TabText = styled.span`
   min-width: 0;
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.15;
 `;
 

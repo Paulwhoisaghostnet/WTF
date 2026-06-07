@@ -121,6 +121,11 @@ export function BoardComposer({
               </ReplyingBar>
             )}
             <ComposeArea
+              aria-label={
+                replyTo
+                  ? `Reply text for ${replyTo.displayName || replyTo.username || "message"}`
+                  : `Message board composer for ${channel.title}`
+              }
               ref={composeRef}
               value={msgText}
               onChange={(event) => onMsgTextChange(event.target.value)}
@@ -143,12 +148,15 @@ export function BoardComposer({
           >
             <div style={{ display: "flex", gap: 3 }}>
               <TextInput
+                aria-label="Attachment URL"
                 value={attachUrl}
                 onChange={(event: any) => onAttachUrlChange(event.target.value)}
                 placeholder="Attach URL"
                 style={{ fontSize: 10, width: 90 }}
               />
               <Button
+                data-compact-control="true"
+                aria-label="Insert hamster emoji"
                 size="sm"
                 onClick={() => setShowComposeEmoji((previous) => !previous)}
                 title="Insert hamster emoji"
@@ -165,6 +173,8 @@ export function BoardComposer({
                 {HAMSTER_REACTIONS.map((reaction) => (
                   <button
                     key={reaction.char}
+                    type="button"
+                    aria-label={`Insert ${reaction.label}`}
                     title={reaction.label}
                     onClick={() => {
                       onMsgTextChange((previous) => previous + reaction.char);

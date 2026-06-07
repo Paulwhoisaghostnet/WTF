@@ -4,6 +4,10 @@ import { Button } from "react95";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
+const WALLET_DOSSIER_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
+const WALLET_DOSSIER_APP_FONT =
+  'var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif)';
+
 /* ─── Types matching server/lib/wallet-events.ts ────────── */
 
 export type WalletEventType =
@@ -161,8 +165,8 @@ const Wrapper = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
-  font-family: "MS Sans Serif", sans-serif;
-  font-size: 11px;
+  font-family: ${WALLET_DOSSIER_APP_FONT};
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const StatGrid = styled.div`
@@ -181,10 +185,10 @@ const StatCell = styled.div`
     font-size: 13px;
   }
   span {
-    font-size: 10px;
+    font-size: var(--wtf-type-caption, 13px);
     color: #555;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    text-transform: none;
+    letter-spacing: 0;
   }
 `;
 
@@ -197,7 +201,7 @@ const WalletHeader = styled.div`
   background: #000080;
   color: #fff;
   font-weight: 600;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const WalletBody = styled.div`
@@ -233,17 +237,17 @@ const EventRow = styled.div<{ $tint: string }>`
   }
   .kind {
     font-weight: 600;
-    font-size: 11px;
+    font-size: var(--wtf-type-caption, 13px);
   }
   .detail {
-    font-size: 10px;
+    font-size: var(--wtf-type-caption, 13px);
     color: #333;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .meta {
-    font-size: 10px;
+    font-size: var(--wtf-type-caption, 13px);
     color: #555;
     text-align: right;
     white-space: nowrap;
@@ -263,7 +267,7 @@ const SyncLine = styled.div`
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #444;
   padding: 4px 0;
   .status-ok {
@@ -299,7 +303,7 @@ const RelationRow = styled.div`
     border-bottom: none;
   }
   code {
-    font-size: 10px;
+    font-size: var(--wtf-type-caption, 13px);
   }
 `;
 
@@ -456,7 +460,7 @@ export function WalletRelationshipGraph() {
       </RelationList>
 
       {data.capped ? (
-        <span style={{ fontSize: 10, color: "#555" }}>
+        <span style={{ fontSize: WALLET_DOSSIER_CAPTION_TYPE, color: "#555" }}>
           Showing the most recent indexed token relationships.
         </span>
       ) : null}
@@ -567,7 +571,7 @@ export function WalletDossier({ mode, userId, limit = 100 }: WalletDossierProps)
           {isFetching ? "Refreshing…" : "Refresh"}
         </Button>
         {isFetching && (
-          <span style={{ fontSize: 10, color: "#555" }}>
+          <span style={{ fontSize: WALLET_DOSSIER_CAPTION_TYPE, color: "#555" }}>
             Auto-refreshing every 30s
           </span>
         )}
@@ -631,7 +635,7 @@ export function WalletDossier({ mode, userId, limit = 100 }: WalletDossierProps)
             <TypeBreakdown stats={w.stats} />
 
             {w.events.length === 0 ? (
-              <p style={{ fontSize: 10, color: "#555" }}>
+              <p style={{ fontSize: WALLET_DOSSIER_CAPTION_TYPE, color: "#555" }}>
                 No events on record. Try Resync to run a fresh backfill.
               </p>
             ) : (
@@ -660,7 +664,7 @@ function TypeBreakdown({ stats }: { stats: DossierStats }) {
         gap: 8,
         flexWrap: "wrap",
         margin: "6px 0",
-        fontSize: 10,
+        fontSize: WALLET_DOSSIER_CAPTION_TYPE,
       }}
     >
       {entries.map(([type, count]) => (

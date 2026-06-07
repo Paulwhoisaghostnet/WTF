@@ -22,6 +22,7 @@ import {
 } from "../lib/notifications";
 import { z } from "zod";
 import {
+  getLegacyMarketplaceAddressOrNull,
   getMarketplaceAddressOrNull,
   getTzktBase,
   requireMarketplaceAddress,
@@ -50,6 +51,13 @@ import {
 const router = Router();
 
 const listingStatuses = ["active", "sold", "cancelled", "expired"] as const;
+type MarketplaceContractVersion = "legacy" | "v2";
+
+const MARKETPLACE_ACCEPTANCE_POLICY = {
+  legacyAcceptsRequireTokenAmountOne: true,
+  acceptsBlockedWhenQuantityMissing: true,
+  expectedTermsRequired: true,
+};
 
 function contractNotConfiguredResponse(res: any) {
   return res.status(503).json({
@@ -119,6 +127,10 @@ interface OnChainStorage {
   listings: string | number;
   auctions: string | number;
   offers: string | number;
+  next_listing_id?: string | number;
+  next_offer_id?: string | number;
+  listing_index?: string | number;
+  offer_index?: string | number;
 }
 
 interface BigMapKeyRow {
@@ -146,10 +158,13 @@ interface OnChainListing {
   tokenContract: string;
   tokenId: string;
   tokenAmount: string;
+  remainingQuantity: string;
   priceWtf: string;
+  unitPriceWtf: string;
   royaltyRecipient: string | null;
   royaltyBps: string;
   active: boolean;
+  contractVersion: MarketplaceContractVersion;
 }
 
 interface OnChainAuctionShare {
@@ -162,30 +177,40 @@ interface OnChainAuction {
   creator: string;
   tokenContract: string;
   tokenId: string;
+  quantity: string;
   reserve: string;
+  reserveWtf: string;
   startTime: string;
   endTime: string;
   extensionTime: string;
   priceIncrement: string;
+  minIncrementWtf: string;
   currentPrice: string;
+  currentBidWtf: string;
   highestBidder: string;
   hasBid: boolean;
   shares: OnChainAuctionShare[];
   active: boolean;
+  contractVersion: MarketplaceContractVersion;
 }
 
 interface OnChainOffer {
+  offerId: number | null;
   tokenContract: string;
   tokenId: string;
   offerer: string;
   tokenAmount: string;
   amountWtf: string;
+  unitPriceWtf: string;
+  totalWtf: string;
   targetOwner: string;
+  contractVersion: MarketplaceContractVersion;
 }
 
 interface OnChainMarketSnapshot {
   admin: string;
   paused: boolean;
+  contractVersion: MarketplaceContractVersion;
   listings: OnChainListing[];
   auctions: OnChainAuction[];
   offers: OnChainOffer[];
@@ -234,8 +259,38 @@ function asAddress(value: unknown): string | null {
   return trimmed;
 }
 
+function asOptionalAddress(value: unknown): string | null {
+  if (!value) return null;
+  const direct = asAddress(value);
+  if (direct) return direct;
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return asAddress(record.Some ?? record.some ?? record.value);
+  }
+  return null;
+}
+
+function divideNatString(total: string, quantity: string): string {
+  try {
+    const totalNat = BigInt(total);
+    const quantityNat = BigInt(quantity);
+    if (quantityNat <= 0n) return "0";
+    return (totalNat / quantityNat).toString();
+  } catch {
+    return "0";
+  }
+}
+
+function detectMarketplaceVersion(storage: OnChainStorage): MarketplaceContractVersion {
+  return storage.next_offer_id !== undefined || storage.offer_index !== undefined ? "v2" : "legacy";
+}
+
 function tokenKey(tokenContract: string, tokenId: string): string {
   return `${tokenContract}:${tokenId}`;
+}
+
+function ownerTokenKey(owner: string, tokenContract: string, tokenId: string): string {
+  return `${owner}:${tokenContract}:${tokenId}`;
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -261,33 +316,49 @@ async function fetchBigMapRows(
   return fetchJson<BigMapKeyRow[]>(url);
 }
 
-function parseListingRow(row: BigMapKeyRow): OnChainListing | null {
+function parseListingRow(
+  row: BigMapKeyRow,
+  contractVersion: MarketplaceContractVersion
+): OnChainListing | null {
   const listingId = asNatNumber(row.key);
   const value = row.value ?? {};
   const seller = asAddress(value.seller);
   const tokenContract = asAddress(value.token_contract);
   if (listingId === null || !seller || !tokenContract) return null;
+  const quantity =
+    contractVersion === "v2"
+      ? asNatString(value.remaining_quantity)
+      : asNatString(value.token_amount);
+  const unitPrice =
+    contractVersion === "v2"
+      ? asNatString(value.unit_price_wtf)
+      : asNatString(value.price_wtf);
   return {
     id: listingId,
     seller,
     tokenContract,
     tokenId: asNatString(value.token_id),
-    tokenAmount: asNatString(value.token_amount),
-    priceWtf: asNatString(value.price_wtf),
-    royaltyRecipient: asAddress(value.royalty_recipient),
+    tokenAmount: quantity,
+    remainingQuantity: quantity,
+    priceWtf: unitPrice,
+    unitPriceWtf: unitPrice,
+    royaltyRecipient: asOptionalAddress(value.royalty_recipient),
     royaltyBps: asNatString(value.royalty_bps),
     active: Boolean(value.active),
+    contractVersion,
   };
 }
 
-function parseAuctionRow(row: BigMapKeyRow): OnChainAuction | null {
+function parseAuctionRow(
+  row: BigMapKeyRow,
+  contractVersion: MarketplaceContractVersion
+): OnChainAuction | null {
   const auctionId = asNatNumber(row.key);
   const value = row.value ?? {};
   const creator = asAddress(value.creator);
   const tokenContract = asAddress(value.token_contract);
-  const highestBidder = asAddress(value.highest_bidder);
-  if (auctionId === null || !creator || !tokenContract || !highestBidder)
-    return null;
+  const highestBidder = asOptionalAddress(value.highest_bidder) || "";
+  if (auctionId === null || !creator || !tokenContract) return null;
 
   const sharesRaw = Array.isArray(value.shares) ? value.shares : [];
   const shares: OnChainAuctionShare[] = sharesRaw
@@ -297,43 +368,99 @@ function parseAuctionRow(row: BigMapKeyRow): OnChainAuction | null {
     }))
     .filter((share: OnChainAuctionShare) => share.recipient.length > 0);
 
+  const quantity =
+    contractVersion === "v2" ? asNatString(value.quantity) : asNatString(value.token_amount);
+  const reserve =
+    contractVersion === "v2" ? asNatString(value.reserve_wtf) : asNatString(value.reserve);
+  const priceIncrement =
+    contractVersion === "v2"
+      ? asNatString(value.min_increment_wtf)
+      : asNatString(value.price_increment);
+  const currentPrice =
+    contractVersion === "v2"
+      ? asNatString(value.current_bid_wtf)
+      : asNatString(value.current_price);
+  const hasBid =
+    contractVersion === "v2"
+      ? highestBidder.length > 0 || currentPrice !== "0"
+      : Boolean(value.has_bid);
+
   return {
     id: auctionId,
     creator,
     tokenContract,
     tokenId: asNatString(value.token_id),
-    reserve: asNatString(value.reserve),
+    quantity,
+    reserve,
+    reserveWtf: reserve,
     startTime: String(value.start_time ?? ""),
     endTime: String(value.end_time ?? ""),
     extensionTime: asNatString(value.extension_time),
-    priceIncrement: asNatString(value.price_increment),
-    currentPrice: asNatString(value.current_price),
+    priceIncrement,
+    minIncrementWtf: priceIncrement,
+    currentPrice,
+    currentBidWtf: currentPrice,
     highestBidder,
-    hasBid: Boolean(value.has_bid),
+    hasBid,
     shares,
     active: Boolean(value.active),
+    contractVersion,
   };
 }
 
-function parseOfferRow(row: BigMapKeyRow): OnChainOffer | null {
+function parseOfferRow(
+  row: BigMapKeyRow,
+  contractVersion: MarketplaceContractVersion
+): OnChainOffer | null {
+  if (contractVersion === "v2") {
+    const offerId = asNatNumber(row.key);
+    const value = row.value ?? {};
+    const tokenContract = asAddress(value.token_contract);
+    const offerer = asAddress(value.offerer);
+    const targetOwner = asAddress(value.target_owner);
+    if (offerId === null || !tokenContract || !offerer || !targetOwner) return null;
+    const quantity = asNatString(value.quantity);
+    const unitPriceWtf = asNatString(value.unit_price_wtf);
+    const totalWtf = asNatString(value.total_wtf);
+    return {
+      offerId,
+      tokenContract,
+      tokenId: asNatString(value.token_id),
+      offerer,
+      tokenAmount: quantity,
+      amountWtf: totalWtf,
+      unitPriceWtf,
+      totalWtf,
+      targetOwner,
+      contractVersion,
+    };
+  }
+
   const key = row.key ?? {};
   const value = row.value ?? {};
   const tokenContract = asAddress(key.token_contract);
   const offerer = asAddress(value.offerer);
-  const targetOwner = asAddress(value.target_owner);
+  const targetOwner = asAddress(value.target_owner) || asAddress(key.owner);
   if (!tokenContract || !offerer || !targetOwner) return null;
+  const quantity = asNatString(value.token_amount);
+  const totalWtf = asNatString(value.amount_wtf);
   return {
+    offerId: null,
     tokenContract,
     tokenId: asNatString(key.token_id),
     offerer,
-    tokenAmount: asNatString(value.token_amount),
-    amountWtf: asNatString(value.amount_wtf),
+    tokenAmount: quantity,
+    amountWtf: totalWtf,
+    unitPriceWtf: divideNatString(totalWtf, quantity),
+    totalWtf,
     targetOwner,
+    contractVersion,
   };
 }
 
 async function fetchOnChainSnapshot(limit: number): Promise<OnChainMarketSnapshot> {
   const storage = await fetchOnChainStorage();
+  const contractVersion = detectMarketplaceVersion(storage);
   const [listingRows, auctionRows, offerRows] = await Promise.all([
     fetchBigMapRows(storage.listings, limit),
     fetchBigMapRows(storage.auctions, limit),
@@ -343,9 +470,16 @@ async function fetchOnChainSnapshot(limit: number): Promise<OnChainMarketSnapsho
   return {
     admin: storage.admin,
     paused: Boolean(storage.paused),
-    listings: listingRows.map(parseListingRow).filter(Boolean) as OnChainListing[],
-    auctions: auctionRows.map(parseAuctionRow).filter(Boolean) as OnChainAuction[],
-    offers: offerRows.map(parseOfferRow).filter(Boolean) as OnChainOffer[],
+    contractVersion,
+    listings: listingRows
+      .map((row) => parseListingRow(row, contractVersion))
+      .filter(Boolean) as OnChainListing[],
+    auctions: auctionRows
+      .map((row) => parseAuctionRow(row, contractVersion))
+      .filter(Boolean) as OnChainAuction[],
+    offers: offerRows
+      .map((row) => parseOfferRow(row, contractVersion))
+      .filter(Boolean) as OnChainOffer[],
   };
 }
 
@@ -515,6 +649,9 @@ router.get("/api/marketplace/onchain", async (req, res) => {
 
     res.json({
       contractAddress: getMarketplaceAddressOrNull(),
+      legacyContractAddress: getLegacyMarketplaceAddressOrNull(),
+      contractVersion: snapshot.contractVersion,
+      acceptancePolicy: MARKETPLACE_ACCEPTANCE_POLICY,
       admin: snapshot.admin,
       paused: snapshot.paused,
       listings,
@@ -548,15 +685,22 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
 
     const listedOrAuctioned = new Set<string>();
     for (const listing of snapshot.listings) {
-      listedOrAuctioned.add(tokenKey(listing.tokenContract, listing.tokenId));
+      listedOrAuctioned.add(
+        ownerTokenKey(listing.seller, listing.tokenContract, listing.tokenId)
+      );
     }
     for (const auction of snapshot.auctions) {
-      listedOrAuctioned.add(tokenKey(auction.tokenContract, auction.tokenId));
+      listedOrAuctioned.add(
+        ownerTokenKey(auction.creator, auction.tokenContract, auction.tokenId)
+      );
     }
 
     const offerByToken = new Map<string, OnChainOffer>();
     for (const offer of snapshot.offers) {
-      offerByToken.set(tokenKey(offer.tokenContract, offer.tokenId), offer);
+      offerByToken.set(
+        ownerTokenKey(offer.targetOwner, offer.tokenContract, offer.tokenId),
+        offer
+      );
     }
 
     const whereParts = [
@@ -650,16 +794,20 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
 
     const filtered = rows
       .filter(
-        (row) => !listedOrAuctioned.has(tokenKey(row.tokenContract, row.tokenId))
+        (row) =>
+          !listedOrAuctioned.has(
+            ownerTokenKey(row.walletAddress, row.tokenContract, row.tokenId)
+          )
       )
       .map((row) => {
-        const key = tokenKey(row.tokenContract, row.tokenId);
         const identity = tokenIdentities.get(
           tokenIdentityKey(row.tokenContract, row.tokenId)
         );
         const provenance =
           provenanceByToken.get(tokenIdentityKey(row.tokenContract, row.tokenId)) ?? null;
-        const offer = offerByToken.get(key);
+        const offer = offerByToken.get(
+          ownerTokenKey(row.walletAddress, row.tokenContract, row.tokenId)
+        );
         const walletBalance = Math.max(0, parseInt(row.balance || "0", 10) || 0);
         const tradeBoardQuantity = Math.max(0, Number(row.tradeBoardQuantity) || 0);
         const offerableQuantity = Math.min(walletBalance, tradeBoardQuantity);
@@ -703,6 +851,9 @@ router.get("/api/marketplace/trade-board", async (req, res) => {
 
     res.json({
       contractAddress: getMarketplaceAddressOrNull(),
+      legacyContractAddress: getLegacyMarketplaceAddressOrNull(),
+      contractVersion: snapshot.contractVersion,
+      acceptancePolicy: MARKETPLACE_ACCEPTANCE_POLICY,
       items: filtered,
       pagination: {
         limit,

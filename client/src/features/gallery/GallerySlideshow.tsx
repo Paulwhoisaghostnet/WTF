@@ -47,7 +47,7 @@ const CardWrapper = styled.div<{ $active?: boolean }>`
 const Thumb = styled.div`
   width: 100%;
   height: 130px;
-  background: linear-gradient(135deg, #001a1a 0%, #000a1a 100%);
+  background: #061821;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -63,7 +63,7 @@ const ThumbImg = styled.img`
 `;
 
 const TokenName = styled.p`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -72,8 +72,8 @@ const TokenName = styled.p`
 `;
 
 const TokenMeta = styled.p`
-  font-size: 10px;
-  color: #666;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -89,9 +89,14 @@ const Controls = styled.div`
 `;
 
 const SlideshowIndicator = styled.span`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #00ffcc;
   font-family: "Courier New", monospace;
+`;
+
+const EmptyText = styled.p`
+  font-size: var(--wtf-type-caption, 13px);
+  margin: 0;
 `;
 
 const Spotlight = styled.div`
@@ -145,7 +150,7 @@ export function GallerySlideshow({
   if (tokens.length === 0) {
     return (
       <GroupBox label="Gallery">
-        <p style={{ fontSize: 11 }}>No tokens to display.</p>
+        <EmptyText>No tokens to display.</EmptyText>
       </GroupBox>
     );
   }
@@ -155,6 +160,7 @@ export function GallerySlideshow({
       <Controls>
         <Button
           size="sm"
+          aria-label="Previous gallery token"
           onClick={retreat}
           disabled={tokens.length <= 1}
           title="Previous"
@@ -163,6 +169,7 @@ export function GallerySlideshow({
         </Button>
         <Button
           size="sm"
+          aria-label={isPlaying ? "Pause gallery slideshow" : "Start gallery slideshow"}
           onClick={() => setIsPlaying((p) => !p)}
           title={isPlaying ? "Pause slideshow" : "Start slideshow"}
         >
@@ -170,6 +177,7 @@ export function GallerySlideshow({
         </Button>
         <Button
           size="sm"
+          aria-label="Next gallery token"
           onClick={advance}
           disabled={tokens.length <= 1}
           title="Next"

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Button, GroupBox, Table, TableBody, TableDataCell, TableHead, TableHeadCell, TableRow } from "react95";
+import { Table, TableBody, TableDataCell, TableHead, TableHeadCell, TableRow } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UiButton, UiPanel } from "../components/wtfos-ui";
 import { useWindowManager } from "../lib/window-context";
 import { useAuth } from "../lib/auth-context";
 
@@ -22,40 +23,56 @@ const Header = styled.div`
 const StatusBar = styled.div`
   display: flex;
   gap: 12px;
-  font-size: 11px;
-  color: #333;
+  flex-wrap: wrap;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #384352);
   padding: 4px 0;
-  border-top: 1px solid #808080;
+  border-top: 1px solid var(--wtf-app-border, #808080);
   margin-top: 4px;
 `;
 
 const TabRow = styled.div`
   display: flex;
   gap: 2px;
-  border-bottom: 2px solid #808080;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--wtf-app-border, #808080);
   padding-bottom: 0;
 `;
 
 const Tab = styled.button<{ $active?: boolean }>`
+  min-height: 32px;
   padding: 4px 12px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: ${(p) => (p.$active ? "bold" : "normal")};
-  border: 1px solid #808080;
-  border-bottom: ${(p) => (p.$active ? "none" : "1px solid #808080")};
-  background: ${(p) => (p.$active ? "#c0c0c0" : "#dfdfdf")};
+  color: var(--wtf-app-text, #111);
+  border: 1px solid var(--wtf-app-border, #808080);
+  border-bottom: ${(p) => (p.$active ? "none" : "1px solid var(--wtf-app-border, #808080)")};
+  background: ${(p) => (p.$active ? "var(--wtf-app-surface, #f4f4f4)" : "var(--wtf-app-control-bg, #ffffff)")};
   margin-bottom: ${(p) => (p.$active ? "-2px" : "0")};
   cursor: pointer;
+
+  @media (max-width: 768px) {
+    min-height: 44px;
+  }
 `;
 
 const ProcessTable = styled.div`
   max-height: 320px;
   overflow: auto;
-  border: 2px inset #dfdfdf;
-  background: #ffffff;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-control-bg, #ffffff);
 `;
 
-const EndTaskButton = styled(Button)`
-  min-width: 80px;
+const TaskButton = styled(UiButton)`
+  min-width: 132px;
+  min-height: 32px;
+`;
+
+const TaskActions = styled.div`
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 `;
 
 type ProcessEntry = {
@@ -119,22 +136,37 @@ export function TaskManager() {
     <AppWindow title="WTF Task Manager">
       <Shell>
         <Header>
-          <span style={{ fontSize: 12, fontWeight: "bold" }}>
+          <span style={{ fontSize: "var(--wtf-type-body, 15px)", fontWeight: "bold" }}>
             WTF Task Manager
           </span>
-          <span style={{ fontSize: 10, color: "#666" }}>
+          <span style={{ fontSize: "var(--wtf-type-caption, 13px)", color: "var(--wtf-app-muted-text, #384352)" }}>
             Ctrl+W+T+F
           </span>
         </Header>
 
-        <TabRow>
-          <Tab $active={activeTab === "windows"} onClick={() => setActiveTab("windows")}>
+        <TabRow role="tablist" aria-label="Task Manager views">
+          <Tab
+            $active={activeTab === "windows"}
+            aria-selected={activeTab === "windows"}
+            role="tab"
+            onClick={() => setActiveTab("windows")}
+          >
             Windows
           </Tab>
-          <Tab $active={activeTab === "performance"} onClick={() => setActiveTab("performance")}>
+          <Tab
+            $active={activeTab === "performance"}
+            aria-selected={activeTab === "performance"}
+            role="tab"
+            onClick={() => setActiveTab("performance")}
+          >
             Performance
           </Tab>
-          <Tab $active={activeTab === "shortcuts"} onClick={() => setActiveTab("shortcuts")}>
+          <Tab
+            $active={activeTab === "shortcuts"}
+            aria-selected={activeTab === "shortcuts"}
+            role="tab"
+            onClick={() => setActiveTab("shortcuts")}
+          >
             Shortcuts
           </Tab>
         </TabRow>
@@ -153,7 +185,7 @@ export function TaskManager() {
                 <TableBody>
                   {processes.length === 0 ? (
                     <TableRow>
-                      <TableDataCell style={{ textAlign: "center", color: "#808080" }}>
+                      <TableDataCell style={{ textAlign: "center", color: "var(--wtf-app-muted-text, #384352)" }}>
                         No windows open
                       </TableDataCell>
                       <TableDataCell />
@@ -166,7 +198,7 @@ export function TaskManager() {
                         onClick={() => setSelectedPath(proc.path)}
                         style={{
                           background: selectedPath === proc.path ? "#000080" : undefined,
-                          color: selectedPath === proc.path ? "#ffffff" : undefined,
+                          color: selectedPath === proc.path ? "var(--wtf-app-accent-text, #ffffff)" : undefined,
                           cursor: "pointer",
                         }}
                       >
@@ -180,27 +212,27 @@ export function TaskManager() {
               </Table>
             </ProcessTable>
 
-            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-              <EndTaskButton
+            <TaskActions>
+              <TaskButton
                 size="sm"
                 disabled={!selectedPath || selectedPath === "/task-manager"}
                 onClick={handleEndTask}
               >
-                End Task
-              </EndTaskButton>
-              <Button size="sm" disabled={!selectedPath} onClick={handleSwitchTo}>
-                Switch To
-              </Button>
-              <Button size="sm" onClick={() => wm.minimizeAll()}>
-                Minimize All
-              </Button>
-            </div>
+                End selected task
+              </TaskButton>
+              <TaskButton size="sm" disabled={!selectedPath} onClick={handleSwitchTo}>
+                Switch to selected window
+              </TaskButton>
+              <TaskButton size="sm" onClick={() => wm.minimizeAll()}>
+                Minimize all windows
+              </TaskButton>
+            </TaskActions>
           </>
         )}
 
         {activeTab === "performance" && (
-          <GroupBox label="System Resources">
-            <div style={{ display: "grid", gap: 8, padding: 4, fontSize: 12 }}>
+          <UiPanel title="System resources" compact>
+            <div style={{ display: "grid", gap: 8, padding: 4, fontSize: "var(--wtf-type-caption, 13px)" }}>
               <div>
                 <strong>Open Windows:</strong> {processes.length}
               </div>
@@ -217,25 +249,25 @@ export function TaskManager() {
                 <strong>Focused Window:</strong>{" "}
                 {wm.focusedPath
                   ? wm.titles[wm.focusedPath] || wm.focusedPath
-                  : "None"}
+                  : "No focused window"}
               </div>
-              <div style={{ marginTop: 4, fontSize: 11, color: "#666" }}>
-                WTF OS v1.0 &mdash; all systems nominal
+              <div style={{ marginTop: 4, fontSize: "var(--wtf-type-caption, 13px)", color: "var(--wtf-app-muted-text, #384352)" }}>
+                WTF OS v1.0, all systems nominal
               </div>
             </div>
-          </GroupBox>
+          </UiPanel>
         )}
 
         {activeTab === "shortcuts" && (
-          <GroupBox label="Keyboard Shortcuts">
-            <div style={{ display: "grid", gap: 6, padding: 4, fontSize: 12 }}>
-              <div><strong>Ctrl+W+T+F</strong> &mdash; Open Task Manager</div>
-              <div><strong>Ctrl+K / Cmd+K</strong> &mdash; Command Palette</div>
-              <div><strong>Hot Corners</strong> &mdash; Screen Saver</div>
-              <div><strong>Shift+Click Desktop</strong> &mdash; Context Menu</div>
-              <div><strong>Middle-Click Taskbar</strong> &mdash; Close Window</div>
+          <UiPanel title="Keyboard shortcuts" compact>
+            <div style={{ display: "grid", gap: 6, padding: 4, fontSize: "var(--wtf-type-caption, 13px)" }}>
+              <div><strong>Ctrl+W+T+F</strong>: Open Task Manager</div>
+              <div><strong>Ctrl+K / Cmd+K</strong>: Command Palette</div>
+              <div><strong>Hot Corners</strong>: Screen Saver</div>
+              <div><strong>Shift+Click Desktop</strong>: Context Menu</div>
+              <div><strong>Middle-Click Taskbar</strong>: Close Window</div>
             </div>
-          </GroupBox>
+          </UiPanel>
         )}
 
         <StatusBar>

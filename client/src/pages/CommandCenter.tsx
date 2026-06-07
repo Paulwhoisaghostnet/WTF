@@ -48,7 +48,7 @@ const StatusCell = styled.div`
 `;
 
 const StatusLabel = styled.div`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   text-transform: uppercase;
   color: #404040;
@@ -117,31 +117,31 @@ const Glyph = styled.div`
   border: 1px solid #808080;
   background: #dfdfdf;
   box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
 `;
 
 const ResultTitle = styled.div`
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 14px);
   font-weight: bold;
   overflow-wrap: anywhere;
 `;
 
 const ResultMeta = styled.div`
   margin-top: 2px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #404040;
   overflow-wrap: anywhere;
 `;
 
 const OpenButton = styled(Button)`
   min-width: 84px;
-  min-height: 30px;
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 
   @media (max-width: 560px) {
     grid-column: 1 / -1;

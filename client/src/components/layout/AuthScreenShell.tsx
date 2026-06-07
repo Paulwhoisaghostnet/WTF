@@ -6,10 +6,37 @@ import {
 } from "@shared/platform-branding";
 
 const Shell = styled.div`
+  --wtf-auth-font: var(
+    --wtf-ui-font,
+    "MEK Mono", "MS Sans Serif", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif
+  );
+  --wtf-auth-title-font: var(--wtf-titlebar-font, var(--wtf-auth-font));
+
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  font-family: var(--wtf-auth-font);
+  font-size: var(--wtf-type-body, 14px);
+  line-height: 1.45;
+  font-synthesis: none;
+  -webkit-font-smoothing: none;
+  text-rendering: optimizeSpeed;
+
+  &&,
+  && * {
+    font-family: var(--wtf-auth-font);
+    font-synthesis: none;
+    letter-spacing: 0;
+  }
+
+  && input,
+  && textarea,
+  && button,
+  && select {
+    font-family: var(--wtf-auth-font);
+    font-size: inherit;
+  }
 `;
 
 const PlatformHeader = styled.header`
@@ -19,20 +46,23 @@ const PlatformHeader = styled.header`
   gap: 10px;
   padding: 14px 16px 10px;
   color: #ffffff;
-  text-shadow: 1px 1px 0 #000080;
+  text-shadow: none;
   user-select: none;
 `;
 
 const PlatformName = styled.div`
+  font-family: var(--wtf-auth-title-font);
   font-size: 28px;
   font-weight: 700;
-  letter-spacing: 3px;
+  line-height: 1;
+  white-space: nowrap;
 `;
 
 const PlatformDomain = styled.div`
-  font-size: 12px;
-  opacity: 0.82;
-  letter-spacing: 0.4px;
+  font-size: var(--wtf-type-caption, 13px);
+  color: #e7ffff;
+  line-height: 1.2;
+  white-space: nowrap;
 `;
 
 const Body = styled.div`

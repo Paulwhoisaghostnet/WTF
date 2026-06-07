@@ -193,7 +193,7 @@ export function ScheduleScreen({
           return (
             <MenuItem key={entry.id}>
               <MenuRow>
-                <span style={{ flex: 1, fontSize: 11 }}>
+                <span style={{ flex: 1, fontSize: "var(--wtf-type-caption, 13px)" }}>
                   {isLive && <span style={{ color: "#ff3333" }}>● LIVE </span>}
                   {entry.label ||
                     entry.playlistName ||

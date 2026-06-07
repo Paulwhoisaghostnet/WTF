@@ -1,6 +1,5 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
-  Button,
   TextInput,
   Select,
   Table,
@@ -13,6 +12,7 @@ import {
 import styled from "styled-components";
 import { UserLink } from "../../../components/UserLink";
 import { WalletDossier } from "../../../components/WalletDossier";
+import { UiButton, UiEmptyState, UiStatusPill } from "../../../components/wtfos-ui";
 import { formatRoleLabel, type RoleDefinition, type UserRole } from "@shared/types";
 import {
   WTF_CURSE_DEFINITIONS,
@@ -34,22 +34,88 @@ import type {
 const Field = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: var(--wtf-space-1, 4px);
+  margin-bottom: var(--wtf-space-2, 8px);
 `;
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
 `;
 
 const SubSection = styled.div`
-  margin-top: 12px;
-  padding: 8px;
-  border: 1px solid #888;
-  background: #fff;
+  margin-top: var(--wtf-space-3, 12px);
+  padding: var(--wtf-space-2, 8px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+`;
+
+const TableWrap = styled.div`
+  min-width: 0;
+  overflow-x: auto;
+`;
+
+const RoleToken = styled.span`
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  min-height: 24px;
+  padding: 3px 24px 3px 8px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+`;
+
+const RemoveTokenButton = styled.button`
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--wtf-app-danger, #b42318);
+  background: var(--wtf-app-danger, #b42318);
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+  line-height: 16px;
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+`;
+
+const MetaText = styled.p`
+  margin: 0 0 var(--wtf-space-2, 8px);
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
+`;
+
+const ResultNotice = styled.p`
+  margin: 0 0 var(--wtf-space-2, 8px);
+  padding: var(--wtf-space-2, 8px);
+  background: var(--wtf-app-success-bg, #e8ffe8);
+  border: 1px solid var(--wtf-app-success, #176b38);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
+  word-break: break-all;
+`;
+
+const SmallCode = styled.code`
+  background: var(--wtf-app-surface-raised, #ffffff);
+  padding: 1px 4px;
+  user-select: all;
+`;
+
+const ExpiryText = styled.span`
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 type AdminMutation<TPayload> = {
@@ -111,19 +177,19 @@ function ConfirmButton({
   if (confirming) {
     return (
       <ActionRow>
-        <Button size={size} onClick={onConfirm} disabled={disabled}>
+        <UiButton compact={size === "sm"} uiVariant="danger" onClick={onConfirm} disabled={disabled}>
           {confirmLabel || `Yes, ${label}`}
-        </Button>
-        <Button size={size} onClick={() => setConfirming(false)}>
-          Cancel
-        </Button>
+        </UiButton>
+        <UiButton compact={size === "sm"} onClick={() => setConfirming(false)}>
+          Cancel action
+        </UiButton>
       </ActionRow>
     );
   }
   return (
-    <Button size={size} onClick={() => setConfirming(true)} disabled={disabled}>
+    <UiButton compact={size === "sm"} onClick={() => setConfirming(true)} disabled={disabled}>
       {label}
-    </Button>
+    </UiButton>
   );
 }
 
@@ -176,12 +242,14 @@ export function UsersAdminTab({
       <h3>Manage Users</h3>
       <Field>
         <TextInput
+          aria-label="Search users by name or email"
           placeholder="Search users by name or email..."
           value={userSearch}
           onChange={(e: any) => setUserSearch(e.target.value)}
           fullWidth
         />
       </Field>
+      <TableWrap>
       <Table>
         <TableHead>
           <TableRow>
@@ -221,51 +289,28 @@ export function UsersAdminTab({
                   <div style={{ display: "grid", gap: 6, minWidth: 250 }}>
                     <ActionRow>
                       {userRoles.map((role) => (
-                        <span
+                        <RoleToken
                           key={role}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            position: "relative",
-                            padding: "3px 17px 3px 6px",
-                            border: "1px solid #777",
-                            background: "#fff",
-                            fontSize: 11,
-                            minHeight: 18,
-                          }}
                         >
                           {roleLabels.get(role) ?? formatRoleLabel(role)}
                           {userRoles.length > 1 ? (
-                            <button
+                            <RemoveTokenButton
                               type="button"
+                              aria-label={`Remove ${roleLabels.get(role) ?? formatRoleLabel(role)} role from ${u.username}`}
                               disabled={removeUserRoleMutation.isPending}
                               onClick={() =>
                                 removeUserRoleMutation.mutate({ id: u.id, role })
                               }
                               title={`Remove ${roleLabels.get(role) ?? formatRoleLabel(role)}`}
-                              style={{
-                                position: "absolute",
-                                top: -5,
-                                right: -5,
-                                width: 13,
-                                height: 13,
-                                border: "1px solid #7a0000",
-                                background: "#c00000",
-                                color: "#fff",
-                                cursor: "pointer",
-                                padding: 0,
-                                lineHeight: "10px",
-                                fontSize: 10,
-                                fontWeight: 700,
-                              }}
                             >
                               x
-                            </button>
+                            </RemoveTokenButton>
                           ) : null}
-                        </span>
+                        </RoleToken>
                       ))}
                     </ActionRow>
                     <Select
+                      aria-label={`Add role to ${u.username}`}
                       value=""
                       onChange={(e: any) => {
                         const role = e.value as UserRole;
@@ -281,29 +326,21 @@ export function UsersAdminTab({
                       width={180}
                     />
                     <SubSection style={{ marginTop: 2, padding: 6 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 5 }}>
+                      <strong>
                         Curses
-                      </div>
+                      </strong>
                       <ActionRow>
                         {activeCurses.length ? (
                           activeCurses.map((curse) => (
-                            <span
+                            <UiStatusPill
                               key={curse.key}
                               title={curse.effect}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                                padding: "2px 5px",
-                                border: "1px solid #3a3a3a",
-                                background: "#d6ffd6",
-                                color: "#053b05",
-                                fontSize: 11,
-                              }}
+                              $tone="success"
                             >
                               {curse.label}
                               <button
                                 type="button"
+                                aria-label={`Lift ${curse.label} curse from ${u.username}`}
                                 disabled={updateUserCurseMutation.isPending}
                                 onClick={() =>
                                   updateUserCurseMutation.mutate({
@@ -323,14 +360,15 @@ export function UsersAdminTab({
                               >
                                 x
                               </button>
-                            </span>
+                            </UiStatusPill>
                           ))
                         ) : (
-                          <span style={{ fontSize: 11, color: "#555" }}>None</span>
+                          <span>None</span>
                         )}
                       </ActionRow>
                       <ActionRow style={{ marginTop: 6 }}>
                         <Select
+                          aria-label={`Add curse to ${u.username}`}
                           value={curseInput.curseKey}
                           onChange={(e: any) =>
                             setCurseInputs((prev) => ({
@@ -353,6 +391,7 @@ export function UsersAdminTab({
                           width={150}
                         />
                         <TextInput
+                          aria-label={`Curse reason for ${u.username}`}
                           placeholder="reason"
                           value={curseInput.reason}
                           onChange={(e: any) =>
@@ -366,8 +405,8 @@ export function UsersAdminTab({
                           }
                           style={{ width: 118 }}
                         />
-                        <Button
-                          size="sm"
+                        <UiButton
+                          compact
                           disabled={!curseInput.curseKey || updateUserCurseMutation.isPending}
                           onClick={() => {
                             if (!curseInput.curseKey) return;
@@ -383,8 +422,8 @@ export function UsersAdminTab({
                             }));
                           }}
                         >
-                          Curse
-                        </Button>
+                          Apply user curse
+                        </UiButton>
                       </ActionRow>
                     </SubSection>
                   </div>
@@ -393,6 +432,7 @@ export function UsersAdminTab({
                 <TableDataCell>
                   <ActionRow>
                     <TextInput
+                      aria-label={`Username for ${u.username}`}
                       placeholder="username"
                       value={identityDraft.username}
                       onChange={(e: any) =>
@@ -409,6 +449,7 @@ export function UsersAdminTab({
                       style={{ width: 115 }}
                     />
                     <TextInput
+                      aria-label={`Display name for ${u.username}`}
                       placeholder="display name"
                       value={identityDraft.displayName}
                       onChange={(e: any) =>
@@ -422,8 +463,8 @@ export function UsersAdminTab({
                       }
                       style={{ width: 130 }}
                     />
-                    <Button
-                      size="sm"
+                    <UiButton
+                      compact
                       disabled={updateIdentityMutation.isPending}
                       onClick={() =>
                         updateIdentityMutation.mutate({
@@ -433,10 +474,10 @@ export function UsersAdminTab({
                         })
                       }
                     >
-                      Save Names
-                    </Button>
-                    <Button
-                      size="sm"
+                      Save user names
+                    </UiButton>
+                    <UiButton
+                      compact
                       disabled={
                         clearUserSocialMutation.isPending ||
                         (!u.twitterHandle && !u.twitterVerified)
@@ -448,10 +489,10 @@ export function UsersAdminTab({
                         })
                       }
                     >
-                      Clear X
-                    </Button>
-                    <Button
-                      size="sm"
+                      Clear X profile
+                    </UiButton>
+                    <UiButton
+                      compact
                       disabled={
                         clearUserSocialMutation.isPending ||
                         (!u.discordHandle && !u.discordVerified)
@@ -463,9 +504,10 @@ export function UsersAdminTab({
                         })
                       }
                     >
-                      Clear Discord
-                    </Button>
+                      Clear Discord profile
+                    </UiButton>
                     <TextInput
+                      aria-label={`XP amount for ${u.username}`}
                       placeholder="XP"
                       value={xpInput.amount}
                       onChange={(e: any) =>
@@ -477,6 +519,7 @@ export function UsersAdminTab({
                       style={{ width: 60 }}
                     />
                     <TextInput
+                      aria-label={`XP reason for ${u.username}`}
                       placeholder="Reason"
                       value={xpInput.reason}
                       onChange={(e: any) =>
@@ -487,8 +530,8 @@ export function UsersAdminTab({
                       }
                       style={{ width: 120 }}
                     />
-                    <Button
-                      size="sm"
+                    <UiButton
+                      compact
                       disabled={!xpInput.amount || awardXpMutation.isPending}
                       onClick={() => {
                         const amt = parseInt(xpInput.amount);
@@ -505,10 +548,10 @@ export function UsersAdminTab({
                         }));
                       }}
                     >
-                      Award XP
-                    </Button>
-                    <Button
-                      size="sm"
+                      Award user XP
+                    </UiButton>
+                    <UiButton
+                      compact
                       onClick={() =>
                         setTempPwPanels((prev) => ({
                           ...prev,
@@ -516,10 +559,10 @@ export function UsersAdminTab({
                         }))
                       }
                     >
-                      {tempPwPanel ? "▲ Temp PW" : "▼ Temp PW"}
-                    </Button>
-                    <Button
-                      size="sm"
+                      {tempPwPanel ? "Hide temp password panel" : "Show temp password panel"}
+                    </UiButton>
+                    <UiButton
+                      compact
                       onClick={() =>
                         setDossierPanels((prev) => ({
                           ...prev,
@@ -527,55 +570,39 @@ export function UsersAdminTab({
                         }))
                       }
                     >
-                      {dossierOpen ? "▲ Dossier" : "▼ Dossier"}
-                    </Button>
+                      {dossierOpen ? "Hide wallet dossier" : "Show wallet dossier"}
+                    </UiButton>
                     <ConfirmButton
-                      label="Delete"
-                      confirmLabel="Confirm Delete"
+                      label="Delete user"
+                      confirmLabel="Confirm delete user"
                       onConfirm={() => deleteUserMutation.mutate(u.id)}
                       disabled={deleteUserMutation.isPending}
                     />
                   </ActionRow>
 
                   {tempPwPanel && (
-                    <SubSection style={{ marginTop: 8 }}>
-                      <p style={{ fontSize: 11, marginBottom: 6 }}>
+                    <SubSection>
+                      <MetaText>
                         <strong>Temporary password for {u.username}</strong>
                         <br />
                         The user can log in with either their real password or
                         the temp password until it expires. Leave the password
                         field blank to auto-generate a secure one.
-                      </p>
+                      </MetaText>
                       {tempPwResult && (
-                        <p
-                          style={{
-                            fontSize: 11,
-                            padding: 6,
-                            background: "#e8ffe8",
-                            border: "1px solid #008000",
-                            marginBottom: 6,
-                            wordBreak: "break-all",
-                          }}
-                        >
+                        <ResultNotice>
                           <strong>Temp password (shown once):</strong>{" "}
-                          <code
-                            style={{
-                              background: "#fff",
-                              padding: "1px 4px",
-                              userSelect: "all",
-                            }}
-                          >
-                            {tempPwResult.password}
-                          </code>
+                          <SmallCode>{tempPwResult.password}</SmallCode>
                           <br />
-                          <span style={{ fontSize: 10, color: "#555" }}>
+                          <ExpiryText>
                             Expires:{" "}
                             {new Date(tempPwResult.expiresAt).toLocaleString()}
-                          </span>
-                        </p>
+                          </ExpiryText>
+                        </ResultNotice>
                       )}
                       <ActionRow style={{ flexWrap: "wrap" }}>
                         <TextInput
+                          aria-label={`Temporary password for ${u.username}`}
                           type="password"
                           placeholder="Custom temp password (optional)"
                           value={tempPwInput.password}
@@ -591,6 +618,7 @@ export function UsersAdminTab({
                           style={{ width: 220 }}
                         />
                         <Select
+                          aria-label={`Temporary password expiry for ${u.username}`}
                           value={tempPwInput.expiryHours}
                           onChange={(e: any) =>
                             setTempPwInputs((prev) => ({
@@ -610,8 +638,8 @@ export function UsersAdminTab({
                           ]}
                           width={120}
                         />
-                        <Button
-                          size="sm"
+                        <UiButton
+                          compact
                           disabled={setTempPasswordMutation.isPending}
                           onClick={() =>
                             setTempPasswordMutation.mutate({
@@ -623,32 +651,32 @@ export function UsersAdminTab({
                           }
                         >
                           {setTempPasswordMutation.isPending
-                            ? "Setting..."
-                            : "Set Temp PW"}
-                        </Button>
+                            ? "Setting temp password..."
+                            : "Set temp password"}
+                        </UiButton>
                         {tempPwResult && (
-                          <Button
-                            size="sm"
+                          <UiButton
+                            compact
                             disabled={clearTempPasswordMutation.isPending}
                             onClick={() =>
                               clearTempPasswordMutation.mutate(u.id)
                             }
                           >
-                            Revoke
-                          </Button>
+                            Revoke temp password
+                          </UiButton>
                         )}
                       </ActionRow>
                     </SubSection>
                   )}
 
                   {dossierOpen && (
-                    <SubSection style={{ marginTop: 8 }}>
-                      <p style={{ fontSize: 11, marginBottom: 6 }}>
+                    <SubSection>
+                      <MetaText>
                         <strong>On-Chain Dossier for {u.username}</strong>
                         <br />
-                        Live wallet surveillance — pulled from TzKT and synced
+                        Live wallet surveillance, pulled from TzKT and synced
                         every 5 minutes. Use Resync to force a fresh backfill.
-                      </p>
+                      </MetaText>
                       <WalletDossier mode="admin-user" userId={u.id} />
                     </SubSection>
                   )}
@@ -658,7 +686,12 @@ export function UsersAdminTab({
           })}
         </TableBody>
       </Table>
-      {filteredUsers.length === 0 && <p>No users found.</p>}
+      </TableWrap>
+      {filteredUsers.length === 0 && (
+        <UiEmptyState title="No users found">
+          Change the search text or clear the filter to inspect all users.
+        </UiEmptyState>
+      )}
     </>
   );
 }

@@ -1,5 +1,6 @@
-import { Button, Select, TextInput } from "react95";
+import { Select, TextInput } from "react95";
 import styled from "styled-components";
+import { UiButton } from "../../../components/wtfos-ui";
 import type { ChallengeBuilderState, ConditionDraft, TriggerDefinition } from "./types";
 import { newConditionDraft } from "./builder-utils";
 import { TriggerSelector } from "./TriggerSelector";
@@ -7,13 +8,13 @@ import { TriggerSelector } from "./TriggerSelector";
 const Stack = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
 `;
 
 const Row = styled.div`
   display: grid;
   grid-template-columns: minmax(230px, 1.4fr) minmax(130px, 0.8fr) repeat(3, minmax(100px, 0.7fr)) auto;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: end;
 
   @media (max-width: 980px) {
@@ -24,15 +25,24 @@ const Row = styled.div`
 const Field = styled.label`
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
+  gap: var(--wtf-space-1, 4px);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+  line-height: 1.3;
 `;
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
+`;
+
+const MatchLabel = styled.span`
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
 `;
 
 function updateCondition(
@@ -77,7 +87,7 @@ export function ConditionBuilder({
   return (
     <Stack>
       <ActionRow>
-        <span>Match</span>
+        <MatchLabel>Match</MatchLabel>
         <Select
           value={state.groupOperator}
           onChange={(event: any) =>
@@ -89,14 +99,14 @@ export function ConditionBuilder({
           ]}
           width={180}
         />
-        <Button
-          size="sm"
+        <UiButton
+          compact
           onClick={() =>
             setState({ ...state, conditions: [...state.conditions, newConditionDraft()] })
           }
         >
-          Add Condition
-        </Button>
+          Add condition
+        </UiButton>
       </ActionRow>
 
       {state.conditions.map((condition) => {
@@ -283,9 +293,10 @@ export function ConditionBuilder({
                 </Field>
               </>
             )}
-            <Button
-              size="sm"
+            <UiButton
+              compact
               disabled={state.conditions.length <= 1}
+              aria-label={`Remove condition ${condition.id}`}
               onClick={() =>
                 setState({
                   ...state,
@@ -293,8 +304,8 @@ export function ConditionBuilder({
                 })
               }
             >
-              Remove
-            </Button>
+              Remove condition
+            </UiButton>
           </Row>
         );
       })}

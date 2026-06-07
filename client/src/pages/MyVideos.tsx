@@ -34,7 +34,7 @@ import {
 } from "../features/media-library/MyVideoChannelBuckets";
 
 /**
- * Trimmed TV-channel type — only the fields My Videos needs to let
+ * Trimmed TV-channel type: only the fields My Videos needs to let
  * the user drop media into a channel.  The full TVChannel lives in
  * shared/types; we inline a minimal shape here to avoid pulling in
  * the whole TV page module.
@@ -131,7 +131,7 @@ const ToolBar = styled.div`
 `;
 
 const MediaCard = styled.div`
-  background: #c0c0c0;
+  background: var(--wtf-app-surface-raised, #c0c0c0);
   border: 2px outset #dfdfdf;
   display: flex;
   flex-direction: column;
@@ -152,21 +152,105 @@ const MediaThumb = styled.div`
 `;
 
 const MediaInfo = styled.div`
-  padding: 6px 8px;
-  font-size: 11px;
+  padding: 8px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const MediaTitle = styled.div`
   font-weight: bold;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
 
 const MediaMeta = styled.div`
-  font-size: 9px;
-  color: #555;
-  margin-top: 2px;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
+  line-height: 1.3;
+  margin-top: 3px;
+`;
+
+const CardActions = styled.div`
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+
+  button {
+    min-height: 32px;
+    font-size: var(--wtf-type-caption, 13px);
+  }
+`;
+
+const BumperWrap = styled.div`
+  margin-top: 8px;
+`;
+
+const InlinePanel = styled.div`
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--wtf-app-surface-raised, #e0e0e0);
+  border: 1px inset var(--wtf-app-border, #aaa);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const HintText = styled.p`
+  margin: 0;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
+  line-height: 1.35;
+`;
+
+const EmptyText = styled.p`
+  margin: 0;
+  padding: 8px;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
+  line-height: 1.35;
+`;
+
+const InlineMeta = styled.span`
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
+  white-space: nowrap;
+`;
+
+const ChannelUsageRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: space-between;
+`;
+
+const ChannelUsageLabel = styled.span`
+  flex: 1;
+  min-width: 0;
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.3;
+`;
+
+const UploadForm = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const UploadIcon = styled.div`
+  font-size: 24px;
+  margin-bottom: 6px;
+`;
+
+const StateText = styled.p<{ $tone?: "danger" | "success" }>`
+  margin: 4px 0 0;
+  font-size: var(--wtf-type-caption, 13px);
+  color: ${(p) =>
+    p.$tone === "success"
+      ? "var(--wtf-app-success, #166534)"
+      : "var(--wtf-app-danger, #b00020)"};
+  line-height: 1.35;
 `;
 
 const LibGrid = styled.div`
@@ -180,12 +264,21 @@ const LibGrid = styled.div`
 
 const UploadArea = styled.div`
   border: 2px dashed #808080;
-  background: #f0f0f0;
+  background: var(--wtf-app-surface, #f0f0f0);
   padding: 20px;
   text-align: center;
-  font-size: 12px;
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  font-size: var(--wtf-type-body, 14px);
+  line-height: 1.35;
   cursor: pointer;
-  &:hover { background: #e8e8e8; }
+
+  &:hover {
+    background: var(--wtf-app-surface-raised, #e8e8e8);
+  }
 `;
 
 const ScrollWrap = styled.div`
@@ -286,7 +379,7 @@ export function MyVideos() {
   });
 
   // List of channels the current user owns.  Used to populate the
-  // "Add to Channel" picker.  Always refreshed so a newly-created
+  // Channel picker. Always refreshed so a newly-created
   // channel shows up instantly.
   const myChannelsQuery = useQuery({
     queryKey: ["tv", "channels", "mine"],
@@ -554,9 +647,9 @@ export function MyVideos() {
                   <Hourglass size={32} />
                 </div>
               ) : mediaItems.length === 0 ? (
-                <p style={{ fontSize: 12, padding: 8 }}>
+                <EmptyText>
                   No videos in your library yet. Import from tokens or upload directly.
-                </p>
+                </EmptyText>
               ) : (
                 <LibGrid>
                   {mediaItems.map((item) => {
@@ -616,10 +709,9 @@ export function MyVideos() {
                               )}
                             </MediaMeta>
                           )}
-                          <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          <CardActions>
                             <Button
                               size="sm"
-                              style={{ fontSize: 9, padding: "1px 5px" }}
                               disabled={!canAdd}
                               title={
                                 !canAdd
@@ -640,34 +732,31 @@ export function MyVideos() {
                                 }
                               }}
                             >
-                              📺 {isAddOpen ? "Cancel" : "Add to Channel"}
+                              {isAddOpen ? "Cancel channel add" : "Add video to channel"}
                             </Button>
                             <Button
                               size="sm"
-                              style={{ fontSize: 9, padding: "1px 5px" }}
                               disabled={detachMediaFromChannel.isPending}
                               onClick={() => {
                                 setDeleteTargetId(null);
                                 setManageTargetId(isManageOpen ? null : item.id);
                               }}
                             >
-                              {isManageOpen ? "Done" : "Manage Channels"}
+                              {isManageOpen ? "Done managing channels" : "Manage video channels"}
                             </Button>
                             <Button
                               size="sm"
-                              style={{ fontSize: 9, padding: "1px 5px" }}
                               disabled={deleteMutation.isPending}
                               onClick={() => {
                                 setManageTargetId(null);
                                 setDeleteTargetId(item.id);
                               }}
                             >
-                              Delete Library Item
+                              Delete video from library
                             </Button>
                             {item.sourceType === "upload" && (
                               <Button
                                 size="sm"
-                                style={{ fontSize: 9, padding: "1px 5px" }}
                                 onClick={() => {
                                   if (isEditOpen) {
                                     setEditTargetId(null);
@@ -678,11 +767,11 @@ export function MyVideos() {
                                   setEditCreatorName(getOverlayCreatorName(item));
                                 }}
                               >
-                                {isEditOpen ? "Cancel Edit" : "Edit Credits"}
+                                {isEditOpen ? "Cancel credit edit" : "Edit video credits"}
                               </Button>
                             )}
-                          </div>
-                          <div style={{ marginTop: 6 }}>
+                          </CardActions>
+                          <BumperWrap>
                             <BumperAssignmentToggles
                               mediaItemId={item.id}
                               assignments={bumperAssignments}
@@ -693,40 +782,30 @@ export function MyVideos() {
                                 handleBumperToggle(item, category, enabled)
                               }
                             />
-                          </div>
+                          </BumperWrap>
                           {isEditOpen && (
-                            <div
-                              style={{
-                                marginTop: 6,
-                                padding: 6,
-                                background: "#e0e0e0",
-                                border: "1px inset #aaa",
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 4,
-                              }}
-                            >
+                            <InlinePanel>
                               <TextInput
+                                aria-label={`Title for ${item.title}`}
                                 value={editTitle}
                                 onChange={(e: any) =>
                                   setEditTitle(e.target?.value ?? "")
                                 }
                                 placeholder="Title"
-                                style={{ fontSize: 11 }}
                               />
                               <TextInput
+                                aria-label={`Creator credit for ${item.title}`}
                                 value={editCreatorName}
                                 onChange={(e: any) =>
                                   setEditCreatorName(e.target?.value ?? "")
                                 }
                                 placeholder="Creator credit"
-                                style={{ fontSize: 11 }}
                               />
-                              <p style={{ margin: 0, fontSize: 10, color: "#555" }}>
+                              <HintText>
                                 Leave creator blank and TV will say
                                 {" "}
                                 <strong>from your media</strong>.
-                              </p>
+                              </HintText>
                               <Button
                                 size="sm"
                                 disabled={updateMutation.isPending}
@@ -738,29 +817,22 @@ export function MyVideos() {
                                   })
                                 }
                               >
-                                {updateMutation.isPending ? "Saving..." : "Save"}
+                                {updateMutation.isPending
+                                  ? "Saving video credits..."
+                                  : "Save video credits"}
                               </Button>
                               {updateMutation.isError && (
-                                <p style={{ color: "red", fontSize: 9, margin: 0 }}>
+                                <StateText $tone="danger">
                                   {(updateMutation.error as Error)?.message ||
                                     "Failed to save"}
-                                </p>
+                                </StateText>
                               )}
-                            </div>
+                            </InlinePanel>
                           )}
                           {isAddOpen && (
-                            <div
-                              style={{
-                                marginTop: 6,
-                                padding: 6,
-                                background: "#e0e0e0",
-                                border: "1px inset #aaa",
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 4,
-                              }}
-                            >
+                            <InlinePanel>
                               <Select
+                                aria-label={`Channel for ${item.title}`}
                                 value={addChannelId ?? undefined}
                                 options={myChannels.map((c) => ({
                                   value: c.id,
@@ -773,11 +845,10 @@ export function MyVideos() {
                                 onChange={(sel: any) =>
                                   setAddChannelId(Number(sel.value))
                                 }
-                                width={180}
+                                width={220}
                               />
                               <Button
                                 size="sm"
-                                style={{ fontSize: 9, padding: "1px 5px" }}
                                 disabled={
                                   !addChannelId ||
                                   addMediaToChannel.isPending
@@ -791,65 +862,47 @@ export function MyVideos() {
                                 }
                               >
                                 {addMediaToChannel.isPending
-                                  ? "Adding..."
-                                  : "Add"}
+                                  ? "Adding video to channel..."
+                                  : "Add video to channel"}
                               </Button>
                               {addMediaToChannel.isError && (
-                                <p style={{ color: "red", fontSize: 9, margin: 0 }}>
+                                <StateText $tone="danger">
                                   {(addMediaToChannel.error as Error)?.message ||
                                     "Failed to add"}
-                                </p>
+                                </StateText>
                               )}
-                            </div>
+                            </InlinePanel>
                           )}
                           {isManageOpen && (
-                            <div
-                              style={{
-                                marginTop: 6,
-                                padding: 6,
-                                background: "#e0e0e0",
-                                border: "1px inset #aaa",
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 4,
-                              }}
-                            >
-                              <p style={{ margin: 0, fontSize: 10, color: "#555" }}>
+                            <InlinePanel>
+                              <HintText>
                                 Remove this item from a channel without deleting
                                 it from your library. This also removes it from
                                 that channel&apos;s playlists.
-                              </p>
+                              </HintText>
                               {manageUsageQuery.isLoading ? (
-                                <p style={{ margin: 0, fontSize: 10 }}>
+                                <HintText>
                                   Checking channel attachments...
-                                </p>
+                                </HintText>
                               ) : (manageUsageQuery.data?.channels || []).length === 0 ? (
-                                <p style={{ margin: 0, fontSize: 10 }}>
+                                <HintText>
                                   This item is not attached to any channels yet.
-                                </p>
+                                </HintText>
                               ) : (
                                 (manageUsageQuery.data?.channels || []).map((row) => (
-                                  <div
-                                    key={row.channel.id}
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 4,
-                                      justifyContent: "space-between",
-                                    }}
-                                  >
-                                    <span style={{ fontSize: 10, flex: 1 }}>
+                                  <ChannelUsageRow key={row.channel.id}>
+                                    <ChannelUsageLabel>
                                       CH{" "}
                                       {row.channel.dialNumber != null
                                         ? String(row.channel.dialNumber).padStart(2, "0")
                                         : "--"}{" "}
                                       · {row.channel.title}
                                       {row.playlists.length > 0
-                                        ? ` — ${row.playlists
+                                        ? `, ${row.playlists
                                             .map((playlist) => playlist.name)
                                             .join(", ")}`
                                         : ""}
-                                    </span>
+                                    </ChannelUsageLabel>
                                     <Button
                                       size="sm"
                                       disabled={detachMediaFromChannel.isPending}
@@ -860,18 +913,18 @@ export function MyVideos() {
                                         })
                                       }
                                     >
-                                      Remove
+                                      Remove video from channel
                                     </Button>
-                                  </div>
+                                  </ChannelUsageRow>
                                 ))
                               )}
                               {detachMediaFromChannel.isError && (
-                                <p style={{ color: "red", fontSize: 9, margin: 0 }}>
+                                <StateText $tone="danger">
                                   {(detachMediaFromChannel.error as Error)?.message ||
                                     "Failed to remove from channel"}
-                                </p>
+                                </StateText>
                               )}
-                            </div>
+                            </InlinePanel>
                           )}
                         </MediaInfo>
                       </MediaCard>
@@ -944,15 +997,16 @@ export function MyVideos() {
             <>
               <ToolBar>
                 <TextInput
+                  aria-label="Search video tokens"
                   value={search}
                   onChange={(e: any) => setSearch(e.target?.value ?? "")}
                   placeholder="Search by name, creator, tag..."
-                  style={{ flex: 1, minWidth: 160, fontSize: 11 }}
+                  style={{ flex: 1, minWidth: 180 }}
                 />
-                <span style={{ fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
+                <InlineMeta>
                   {filteredTokens.length} of {videoTokens.length} video token{videoTokens.length !== 1 ? "s" : ""} 
                   {tokens.length > 0 ? ` (${tokens.length} total)` : ""}
-                </span>
+                </InlineMeta>
               </ToolBar>
 
               {myTokensQuery.isLoading ? (
@@ -960,9 +1014,9 @@ export function MyVideos() {
                   <Hourglass size={32} />
                 </div>
               ) : filteredTokens.length === 0 ? (
-                <p style={{ fontSize: 12, padding: 8 }}>
+                <EmptyText>
                   No video tokens found in your wallets. Sync your wallet in Profile.
-                </p>
+                </EmptyText>
               ) : (
                 <ScrollWrap>
                   <TokenGrid $size="md">
@@ -983,32 +1037,42 @@ export function MyVideos() {
           {/* ─── Upload tab ─── */}
           {tab === 4 && (
             <GroupBox label="Upload Video">
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <UploadForm>
                 <TextInput
+                  aria-label="Video upload title"
                   value={uploadTitle}
                   onChange={(e: any) => setUploadTitle(e.target?.value ?? "")}
                   placeholder="Video title (optional)"
-                  style={{ fontSize: 11 }}
                 />
                 <TextInput
+                  aria-label="Video creator credit"
                   value={uploadCreatorName}
                   onChange={(e: any) =>
                     setUploadCreatorName(e.target?.value ?? "")
                   }
                   placeholder="Creator credit (optional)"
-                  style={{ fontSize: 11 }}
                 />
-                <p style={{ margin: 0, fontSize: 10, color: "#555" }}>
+                <HintText>
                   If left blank, TV credits the clip as
                   {" "}
                   <strong>from your media</strong>.
-                </p>
-                <UploadArea onClick={() => document.getElementById("video-upload-input")?.click()}>
+                </HintText>
+                <UploadArea
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => document.getElementById("video-upload-input")?.click()}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      document.getElementById("video-upload-input")?.click();
+                    }
+                  }}
+                >
                   {uploadMutation.isPending ? (
                     <Hourglass size={24} />
                   ) : (
                     <>
-                      <div style={{ fontSize: 24, marginBottom: 6 }}>📼</div>
+                      <UploadIcon>📼</UploadIcon>
                       Click to upload a video file (max {MAX_UPLOAD_MB}MB)
                     </>
                   )}
@@ -1021,12 +1085,12 @@ export function MyVideos() {
                   onChange={handleFileUpload}
                 />
                 {uploadMutation.isError && (
-                  <p style={{ color: "red", fontSize: 11 }}>Upload failed. Please try again.</p>
+                  <StateText $tone="danger">Upload failed. Please try again.</StateText>
                 )}
                 {uploadMutation.isSuccess && (
-                  <p style={{ color: "green", fontSize: 11 }}>Uploaded successfully!</p>
+                  <StateText $tone="success">Uploaded successfully.</StateText>
                 )}
-              </div>
+              </UploadForm>
             </GroupBox>
           )}
         </TabBody>
@@ -1046,8 +1110,7 @@ export function MyVideos() {
 /* ─── Delete cascade modal ─────────────────────────────────────────
  * Shown whenever the user clicks "Remove" on a library card.  The
  * server-side FK on tv_channel_videos.media_item_id is ON DELETE
- * CASCADE, which further cascades through tv_playlist_items — so a
- * single delete can sweep several channels/playlists at once.  This
+ * CASCADE, which further cascades through tv_playlist_items. This
  * modal previews that impact before the user commits, using the
  * cascade-preview endpoint the backend exposes at /api/media/:id/usage.
  */
@@ -1061,13 +1124,31 @@ const ModalBackdrop = styled.div`
   z-index: 99999;
 `;
 const ModalBox = styled.div`
-  background: #c0c0c0;
+  background: var(--wtf-app-surface-raised, #c0c0c0);
   border: 2px outset #dfdfdf;
   padding: 12px 14px;
   max-width: 520px;
   width: 90%;
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 14px);
+  line-height: 1.35;
   box-shadow: 2px 2px 0 #000;
+`;
+
+const ModalWarning = styled.p`
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
+`;
+
+const ModalActions = styled.div`
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+
+  button {
+    min-height: 32px;
+    font-size: var(--wtf-type-caption, 13px);
+  }
 `;
 
 interface DeleteCascadeModalProps {
@@ -1120,7 +1201,7 @@ function DeleteCascadeModal({
                     : "--"}{" "}
                   · {row.channel.title}
                   {row.playlists.length > 0
-                    ? ` — ${row.playlists.map((p) => p.name).join(", ")}`
+                    ? `, ${row.playlists.map((p) => p.name).join(", ")}`
                     : ""}
                 </li>
               ))}
@@ -1133,13 +1214,13 @@ function DeleteCascadeModal({
             </ul>
           </>
         )}
-        <p style={{ fontSize: 10, color: "#444" }}>
+        <ModalWarning>
           This cannot be undone.
-        </p>
+        </ModalWarning>
         {error && (
-          <p style={{ color: "red", fontSize: 11 }}>{error}</p>
+          <StateText $tone="danger">{error}</StateText>
         )}
-        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+        <ModalActions>
           <Button size="sm" onClick={onCancel} disabled={isDeleting}>
             Cancel
           </Button>
@@ -1149,9 +1230,9 @@ function DeleteCascadeModal({
             disabled={isDeleting}
             primary
           >
-            {isDeleting ? "Deleting..." : "Confirm Delete"}
+            {isDeleting ? "Deleting video..." : "Delete video from library"}
           </Button>
-        </div>
+        </ModalActions>
       </ModalBox>
     </ModalBackdrop>
   );

@@ -4,15 +4,15 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import {
-  Button,
-  GroupBox,
-  Separator,
-  TextInput,
-  Checkbox,
-} from "react95";
+import { Checkbox, Separator, TextInput } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import {
+  UiButton,
+  UiEmptyState,
+  UiNotice,
+  UiPanel,
+} from "../components/wtfos-ui";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 
@@ -31,40 +31,31 @@ import { useAuth } from "../lib/auth-context";
 const Stack = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--wtf-space-3, 12px);
+  min-width: 0;
 `;
 
 const Row = styled.div`
   display: flex;
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
+  min-width: 0;
 `;
 
 const Muted = styled.span`
-  color: #555;
-  font-size: 12px;
-`;
-
-const Alert = styled.div`
-  background: #fff2d9;
-  border: 2px solid #cc7a00;
-  padding: 8px 10px;
-  font-size: 12px;
-`;
-
-const Error = styled.div`
-  background: #ffdddd;
-  border: 2px solid #aa0000;
-  padding: 8px 10px;
-  font-size: 12px;
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 `;
 
 const Pre = styled.pre`
   background: #0b0b0b;
   color: #d6d6d6;
-  padding: 8px 10px;
-  font-size: 11px;
+  padding: var(--wtf-space-3, 12px);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
   max-height: 220px;
   overflow: auto;
 `;
@@ -72,14 +63,38 @@ const Pre = styled.pre`
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
   th,
   td {
-    padding: 4px 6px;
-    border-bottom: 1px solid #b0b0b0;
+    padding: var(--wtf-space-2, 8px);
+    border-bottom: 1px solid var(--wtf-app-border, #808080);
     text-align: left;
     vertical-align: top;
+    overflow-wrap: anywhere;
   }
+`;
+
+const TableWrap = styled.div`
+  overflow: auto;
+  min-width: 0;
+`;
+
+const ScrollArea = styled.div`
+  max-height: 260px;
+  overflow: auto;
+  min-width: 0;
+`;
+
+const ControlLabel = styled.span`
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+`;
+
+const InlineCode = styled.code`
+  font-size: var(--wtf-type-caption, 13px);
+  overflow-wrap: anywhere;
 `;
 
 interface BalanceRow {
@@ -287,7 +302,9 @@ export function OperatorWallet() {
   if (!user) {
     return (
       <AppWindow title="Operator Wallet">
-        <Muted>Sign in as an operator to use the Operator Wallet.</Muted>
+        <UiPanel title="Operator Wallet" compact>
+          <Muted>Sign in as an operator to use the Operator Wallet.</Muted>
+        </UiPanel>
       </AppWindow>
     );
   }
@@ -295,16 +312,16 @@ export function OperatorWallet() {
   return (
     <AppWindow title="Operator Wallet">
       <Stack>
-        {errorMsg ? <Error>{errorMsg}</Error> : null}
+        {errorMsg ? <UiNotice tone="danger">{errorMsg}</UiNotice> : null}
         {summary && !summary.signerConfigured ? (
-          <Alert>
+          <UiNotice tone="warning">
             The wtf-operator-signer service is not configured on this host.
-            Set <code>WTF_OPERATOR_SIGNER_AUTH_TOKEN</code> and restart. Until
+            Set <InlineCode>WTF_OPERATOR_SIGNER_AUTH_TOKEN</InlineCode> and restart. Until
             then, every signing action will return a 503.
-          </Alert>
+          </UiNotice>
         ) : null}
         {hasLow ? (
-          <Alert>
+          <UiNotice tone="warning">
             <strong>Low balance:</strong>{" "}
             {summary?.lowBalances
               .map(
@@ -321,23 +338,24 @@ export function OperatorWallet() {
             <br />
             Top up from the treasury wallet before running any more
             disbursements.
-          </Alert>
+          </UiNotice>
         ) : null}
 
-        <GroupBox label="1. Balances">
+        <UiPanel title="Balances" compact>
           <Stack>
             <Row>
               <strong>Operator wallet:</strong>{" "}
-              <code>{summary?.operatorWallet ?? "not configured"}</code>
-              <Button
-                size="sm"
+              <InlineCode>{summary?.operatorWallet ?? "not configured"}</InlineCode>
+              <UiButton
+                compact
                 onClick={() => refreshBalancesMutation.mutate()}
                 disabled={refreshBalancesMutation.isPending}
               >
-                Refresh via TzKT
-              </Button>
+                Refresh balances via TzKT
+              </UiButton>
             </Row>
-            <Table>
+            <TableWrap>
+              <Table>
               <thead>
                 <tr>
                   <th>Asset</th>
@@ -347,7 +365,8 @@ export function OperatorWallet() {
                 </tr>
               </thead>
               <tbody>
-                {summary?.balances.map((b, i) => (
+                {summary?.balances.length ? (
+                  summary.balances.map((b, i) => (
                   <tr key={i}>
                     <td>{assetLabel(b)}</td>
                     <td>
@@ -363,17 +382,27 @@ export function OperatorWallet() {
                     </td>
                     <td>{new Date(b.checkedAt).toLocaleString()}</td>
                   </tr>
-                ))}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4}>
+                      <UiEmptyState title="No balance rows">
+                        Refresh balances to pull the latest operator-wallet state from TzKT.
+                      </UiEmptyState>
+                    </td>
+                  </tr>
+                )}
               </tbody>
-            </Table>
+              </Table>
+            </TableWrap>
             <Muted>
               XTZ balance: {xtzBalance ? formatAmount(xtzBalance.balance, 6) : "—"} ·
               WTF balance: {wtfBalance ? formatAmount(wtfBalance.balance, 8) : "—"}
             </Muted>
           </Stack>
-        </GroupBox>
+        </UiPanel>
 
-        <GroupBox label="2. Pending reward ledger">
+        <UiPanel title="Pending reward ledger" compact>
           <Stack>
             <Row>
               <strong>{unpaidQuery.data?.uniqueUsers ?? 0}</strong> unique users ·{" "}
@@ -384,15 +413,15 @@ export function OperatorWallet() {
               WTF outstanding
             </Row>
             <Row>
-              <Button
+              <UiButton
                 onClick={() =>
                   previewMutation.mutate({ scope: "pending_ledger" })
                 }
                 disabled={previewMutation.isPending}
               >
                 Preview all pending rewards
-              </Button>
-              <Button
+              </UiButton>
+              <UiButton
                 onClick={() =>
                   previewMutation.mutate({
                     scope: "ledger_ids",
@@ -401,13 +430,13 @@ export function OperatorWallet() {
                 }
                 disabled={selectedLedgerIds.size === 0 || previewMutation.isPending}
               >
-                Preview selected ({selectedLedgerIds.size})
-              </Button>
+                Preview selected rewards ({selectedLedgerIds.size})
+              </UiButton>
               <Muted>
                 Selected total: {formatAmount(selectedLedgerTotal.toString(), 8)} WTF
               </Muted>
             </Row>
-            <div style={{ maxHeight: 260, overflow: "auto" }}>
+            <ScrollArea>
               <Table>
                 <thead>
                   <tr>
@@ -420,19 +449,21 @@ export function OperatorWallet() {
                   </tr>
                 </thead>
                 <tbody>
-                  {unpaidQuery.data?.rows.map((r) => (
+                  {unpaidQuery.data?.rows.length ? (
+                    unpaidQuery.data.rows.map((r) => (
                     <tr key={r.id}>
                       <td>
                         <Checkbox
                           checked={selectedLedgerIds.has(r.id)}
                           onChange={() => toggleLedgerId(r.id)}
                           label=""
+                          aria-label={`Select reward ledger row ${r.id}`}
                         />
                       </td>
                       <td>{r.username ?? `#${r.userId}`}</td>
                       <td>
                         {r.walletAddress ? (
-                          <code>{r.walletAddress.slice(0, 10)}…</code>
+                          <InlineCode>{r.walletAddress.slice(0, 10)}…</InlineCode>
                         ) : (
                           <Muted>no wallet linked</Muted>
                         )}
@@ -441,15 +472,24 @@ export function OperatorWallet() {
                       <td>{r.reason}</td>
                       <td>{new Date(r.createdAt).toLocaleDateString()}</td>
                     </tr>
-                  ))}
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6}>
+                        <UiEmptyState title="No pending rewards">
+                          Reward ledger rows will appear here when there are unpaid recipients.
+                        </UiEmptyState>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </Table>
-            </div>
+            </ScrollArea>
           </Stack>
-        </GroupBox>
+        </UiPanel>
 
         {preview ? (
-          <GroupBox label="3. Review & sign">
+          <UiPanel title="Review and sign" compact tone="warning">
             <Stack>
               <Row>
                 <strong>{preview.deliverableCount}</strong> recipients ·{" "}
@@ -461,7 +501,8 @@ export function OperatorWallet() {
                   </Muted>
                 ) : null}
               </Row>
-              <Table>
+              <TableWrap>
+                <Table>
                 <thead>
                   <tr>
                     <th>User</th>
@@ -476,7 +517,7 @@ export function OperatorWallet() {
                       <td>{r.username ?? `#${r.userId}`}</td>
                       <td>
                         {r.walletAddress ? (
-                          <code>{r.walletAddress.slice(0, 10)}…</code>
+                          <InlineCode>{r.walletAddress.slice(0, 10)}…</InlineCode>
                         ) : (
                           <Muted>—</Muted>
                         )}
@@ -486,9 +527,11 @@ export function OperatorWallet() {
                     </tr>
                   ))}
                 </tbody>
-              </Table>
+                </Table>
+              </TableWrap>
               <Row>
-                <Button
+                <UiButton
+                  uiVariant="primary"
                   onClick={() =>
                     runDisburseMutation.mutate({
                       scope: preview.scope === "manual" ? "pending_ledger" : preview.scope,
@@ -505,22 +548,23 @@ export function OperatorWallet() {
                 >
                   {runDisburseMutation.isPending
                     ? "Broadcasting…"
-                    : `Sign & broadcast (${preview.deliverableCount})`}
-                </Button>
-                <Button onClick={() => setPreview(null)}>Cancel</Button>
+                    : `Sign and broadcast rewards (${preview.deliverableCount})`}
+                </UiButton>
+                <UiButton onClick={() => setPreview(null)}>Cancel review</UiButton>
               </Row>
             </Stack>
-          </GroupBox>
+          </UiPanel>
         ) : null}
 
         <Separator />
 
-        <GroupBox label="4. Buyback controls">
+        <UiPanel title="Buyback controls" compact>
           <Stack>
             <Row>
-              <span>Buyback contract:</span>
+              <ControlLabel>Buyback contract</ControlLabel>
               <TextInput
                 value={buybackContract}
+                aria-label="Buyback contract address"
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setBuybackContract(e.target.value.trim())
                 }
@@ -529,16 +573,17 @@ export function OperatorWallet() {
               />
             </Row>
             <Row>
-              <span>Fund with (mutez):</span>
+              <ControlLabel>Fund with mutez</ControlLabel>
               <TextInput
                 value={buybackFundMutez}
+                aria-label="Buyback funding amount in mutez"
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setBuybackFundMutez(e.target.value.replace(/\D/g, ""))
                 }
                 placeholder="e.g. 100000000 = 100 XTZ"
                 style={{ width: 220 }}
               />
-              <Button
+              <UiButton
                 onClick={() =>
                   buybackMutation.mutate({
                     action: "fund",
@@ -555,19 +600,20 @@ export function OperatorWallet() {
                 }
               >
                 Fund buyback
-              </Button>
+              </UiButton>
             </Row>
             <Row>
-              <span>Withdraw WTF (nat):</span>
+              <ControlLabel>Withdraw WTF nat</ControlLabel>
               <TextInput
                 value={buybackWithdrawWtf}
+                aria-label="Buyback WTF withdrawal amount in nat"
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setBuybackWithdrawWtf(e.target.value.replace(/\D/g, ""))
                 }
                 placeholder="amount in nat"
                 style={{ width: 220 }}
               />
-              <Button
+              <UiButton
                 onClick={() =>
                   buybackMutation.mutate({
                     action: "withdraw-wtf",
@@ -584,8 +630,8 @@ export function OperatorWallet() {
                 }
               >
                 Withdraw accumulated WTF
-              </Button>
-              <Button
+              </UiButton>
+              <UiButton
                 onClick={() =>
                   buybackMutation.mutate({
                     action: "withdraw-xtz",
@@ -595,10 +641,10 @@ export function OperatorWallet() {
                 disabled={!buybackContract || buybackMutation.isPending}
               >
                 Withdraw leftover XTZ
-              </Button>
+              </UiButton>
             </Row>
             <Row>
-              <Button
+              <UiButton
                 onClick={() =>
                   buybackMutation.mutate({
                     action: "pause",
@@ -607,9 +653,9 @@ export function OperatorWallet() {
                 }
                 disabled={!buybackContract || buybackMutation.isPending}
               >
-                Pause
-              </Button>
-              <Button
+                Pause buyback
+              </UiButton>
+              <UiButton
                 onClick={() =>
                   buybackMutation.mutate({
                     action: "unpause",
@@ -618,8 +664,8 @@ export function OperatorWallet() {
                 }
                 disabled={!buybackContract || buybackMutation.isPending}
               >
-                Unpause
-              </Button>
+                Unpause buyback
+              </UiButton>
             </Row>
             <Muted>
               Fund = XTZ sent from operator wallet to the buyback contract.
@@ -628,10 +674,11 @@ export function OperatorWallet() {
               redistribution.
             </Muted>
           </Stack>
-        </GroupBox>
+        </UiPanel>
 
-        <GroupBox label="5. Recent runs">
-          <Table>
+        <UiPanel title="Recent signer runs" compact>
+          <TableWrap>
+            <Table>
             <thead>
               <tr>
                 <th>ID</th>
@@ -645,7 +692,8 @@ export function OperatorWallet() {
               </tr>
             </thead>
             <tbody>
-              {summary?.recentRuns.map((r) => (
+              {summary?.recentRuns.length ? (
+                summary.recentRuns.map((r) => (
                 <tr key={r.id}>
                   <td>{r.id}</td>
                   <td>{r.intent}</td>
@@ -671,24 +719,34 @@ export function OperatorWallet() {
                   </td>
                   <td>{new Date(r.startedAt).toLocaleString()}</td>
                   <td>
-                    <Button
-                      size="sm"
+                    <UiButton
+                      compact
                       onClick={() => reconcileMutation.mutate(r.id)}
                       disabled={reconcileMutation.isPending || !r.opHash}
                     >
-                      Reconcile
-                    </Button>
+                      Reconcile run
+                    </UiButton>
                   </td>
                 </tr>
-              ))}
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8}>
+                    <UiEmptyState title="No signer runs">
+                      Broadcasted reward and buyback actions will appear here after the signer accepts a run.
+                    </UiEmptyState>
+                  </td>
+                </tr>
+              )}
             </tbody>
-          </Table>
-        </GroupBox>
+            </Table>
+          </TableWrap>
+        </UiPanel>
 
         {runOutput ? (
-          <GroupBox label="Last signer response">
+          <UiPanel title="Last signer response" compact>
             <Pre>{JSON.stringify(runOutput, null, 2)}</Pre>
-          </GroupBox>
+          </UiPanel>
         ) : null}
       </Stack>
     </AppWindow>

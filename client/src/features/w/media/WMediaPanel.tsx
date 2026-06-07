@@ -9,7 +9,7 @@ type WMediaPanelProps = {
 };
 
 const Small = styled.span<{ $night?: boolean }>`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: ${({ $night }) => ($night ? "#b8c5da" : "#3c4956")};
 `;
 
@@ -55,7 +55,7 @@ const Meta = styled.div`
 `;
 
 const Title = styled.div`
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 14px);
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -123,7 +123,7 @@ export function WMediaPanel({ nightMode, posts }: WMediaPanelProps) {
                     @{card.post.author.twitterHandle} · {card.label}
                   </Small>
                   <Button size="sm" onClick={() => window.open(card.post.url, "_blank", "noopener,noreferrer")}>
-                    Open post
+                    Open source post
                   </Button>
                 </Meta>
               </MediaCard>

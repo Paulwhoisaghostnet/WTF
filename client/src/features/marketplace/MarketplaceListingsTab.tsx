@@ -49,7 +49,9 @@ export function MarketplaceListingsTab({
     <Grid>
       {listings.map((listing) => {
         const offerKey = `${listing.tokenContract}:${listing.tokenId}`;
-        const activeOffer = offersByToken.get(offerKey);
+        const activeOffer = offersByToken.get(
+          `${listing.seller}:${listing.tokenContract}:${listing.tokenId}`
+        );
         const isMine = address && address === listing.seller;
         const provenance = readEmbeddedProvenance(listing);
         const supportLink = provenanceSupportLinks(provenance)[0] || null;

@@ -29,6 +29,7 @@ export const PanelBody = styled(Panel).attrs({ variant: "well" })`
   min-height: 0;
   padding: 6px;
   overflow: auto;
+  font-size: var(--wtf-type-body, 14px);
 `;
 
 export const ToolBar = styled.div`
@@ -37,19 +38,19 @@ export const ToolBar = styled.div`
   align-items: center;
   gap: 4px;
   padding: 4px;
-  background: #c3c7cb;
-  border: 2px solid #fff;
-  border-right-color: #808080;
-  border-bottom-color: #808080;
+  background: var(--wtf-control-bg, #e9eaec);
+  border: 1px solid var(--wtf-app-border, #8b929a);
 `;
 
 export const ToolButton = styled(Button)<{ $active?: boolean }>`
-  min-width: 28px;
+  min-width: 32px;
+  min-height: var(--wtf-control-height, 32px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  ${(p) => p.$active && `font-weight: bold; background: #fffbcc !important;`}
+  font-size: var(--wtf-type-caption, 13px) !important;
+  ${(p) => p.$active && `font-weight: bold; background: var(--wtf-app-warning-bg, #fff4bf) !important;`}
 `;
 
 export const ProjectHeader = styled.div`
@@ -58,9 +59,9 @@ export const ProjectHeader = styled.div`
   justify-content: space-between;
   gap: 8px;
   padding: 4px 8px;
-  background: linear-gradient(90deg, #000080, #1084d0);
-  color: #fff;
-  font-size: 12px;
+  background: var(--wtf-active-title, #000080);
+  color: var(--wtf-active-title-text, #fff);
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
 `;
 
@@ -68,16 +69,16 @@ export const Breadcrumbs = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
-  color: #fff;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-active-title-text, #fff);
 `;
 
 export const HeaderMeta = styled.div`
   display: flex;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: normal;
-  color: #dce8ff;
+  color: var(--wtf-active-title-text, #fff);
 `;
 
 export const TreeNode = styled.div<{ $depth?: number; $active?: boolean }>`
@@ -85,13 +86,14 @@ export const TreeNode = styled.div<{ $depth?: number; $active?: boolean }>`
   align-items: center;
   gap: 4px;
   padding: 2px 4px 2px ${(p) => (p.$depth ?? 0) * 12 + 4}px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
+  min-height: 32px;
   cursor: pointer;
-  background: ${(p) => (p.$active ? "#000080" : "transparent")};
-  color: ${(p) => (p.$active ? "#fff" : "#000")};
+  background: ${(p) => (p.$active ? "var(--wtf-app-link, #000080)" : "transparent")};
+  color: ${(p) => (p.$active ? "#fff" : "var(--wtf-app-text, #111)")};
 
   &:hover {
-    background: ${(p) => (p.$active ? "#000080" : "#e4e4e4")};
+    background: ${(p) => (p.$active ? "var(--wtf-app-link, #000080)" : "var(--wtf-control-bg, #e4e4e4)")};
   }
 `;
 
@@ -102,7 +104,7 @@ export const FileThumb = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #fff;
   flex-shrink: 0;
   overflow: hidden;
@@ -119,13 +121,8 @@ export const PreviewStage = styled.div`
   flex: 1;
   min-height: 0;
   position: relative;
-  background: repeating-linear-gradient(
-    45deg,
-    #a9a9a9,
-    #a9a9a9 8px,
-    #b5b5b5 8px,
-    #b5b5b5 16px
-  );
+  background: var(--wtf-app-bg, #f3f4f6);
+  border: 1px solid var(--wtf-app-border, #8b929a);
   overflow: hidden;
 `;
 
@@ -179,11 +176,11 @@ export const PinMarker = styled.button<{ $resolved?: boolean; $selected?: boolea
   color: #fff;
   border: 2px solid #000;
   border-radius: 50% 50% 50% 0;
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   font-weight: bold;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -241,8 +238,8 @@ export const CursorLabel = styled.span`
   left: 10px;
   background: #000;
   color: #fff;
-  font-size: 9px;
-  padding: 1px 4px;
+  font-size: var(--wtf-type-caption, 13px);
+  padding: 2px 6px;
   white-space: nowrap;
   border-radius: 2px;
 `;
@@ -270,7 +267,7 @@ export const AnnotationPopover = styled.div<{ $x: number; $y: number }>`
     width: 100%;
     min-height: 60px;
     font-family: inherit;
-    font-size: 12px;
+    font-size: var(--wtf-type-body, 14px);
     padding: 4px;
     box-sizing: border-box;
     resize: vertical;
@@ -281,14 +278,13 @@ export const ChatMessageRow = styled.div<{ $system?: boolean }>`
   margin-bottom: 6px;
   padding: 4px 6px;
   background: ${(p) => (p.$system ? "#e9eef7" : "transparent")};
-  border-left: ${(p) =>
-    p.$system ? "3px solid #000080" : "3px solid transparent"};
-  font-size: 12px;
+  border: 1px solid ${(p) => (p.$system ? "var(--wtf-app-link, #000080)" : "transparent")};
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 export const ChatMeta = styled.div`
-  font-size: 10px;
-  color: #555;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
   display: flex;
   justify-content: space-between;
   gap: 6px;
@@ -303,7 +299,7 @@ export const PresenceChip = styled.span`
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   background: #c3f0c3;
   padding: 1px 6px;
   border: 1px solid #1a6a1a;
@@ -313,7 +309,7 @@ export const ErrorBanner = styled.div`
   background: #ffe2e2;
   border: 1px solid #c06060;
   padding: 6px 8px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #800;
   margin-bottom: 4px;
 `;
@@ -336,16 +332,18 @@ export const InviteSelectedChip = styled.div`
   padding: 2px 6px;
   background: #d4f0d4;
   border: 1px solid #1a6a1a;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 export const InviteChipClear = styled.button`
   border: 1px solid #1a6a1a;
   background: #fff;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1;
   padding: 0 5px;
+  min-width: 32px;
+  min-height: 32px;
 `;
 
 export const InviteDropdown = styled.div`
@@ -364,7 +362,7 @@ export const InviteDropdown = styled.div`
 
 export const InviteItem = styled.div<{ $active?: boolean }>`
   padding: 4px 6px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -381,12 +379,12 @@ export const InviteItemPrimary = styled.span`
 `;
 
 export const InviteItemHandle = styled.span`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   opacity: 0.85;
 `;
 
 export const InviteItemRole = styled.span`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   opacity: 0.85;
   text-transform: capitalize;
   white-space: nowrap;
@@ -394,7 +392,7 @@ export const InviteItemRole = styled.span`
 
 export const InviteEmpty = styled.div`
   padding: 6px 8px;
-  font-size: 11px;
-  color: #555;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
   font-style: italic;
 `;

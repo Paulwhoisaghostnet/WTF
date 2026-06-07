@@ -1,18 +1,15 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Button,
-  GroupBox,
-  Hourglass,
-  Select,
-  Separator,
-  Tab,
-  TabBody,
-  Tabs,
-  TextInput,
-} from "react95";
+import { Hourglass, Select, Separator, TextInput } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import {
+  UiButton,
+  UiEmptyState,
+  UiNotice,
+  UiPanel,
+  UiTabs,
+} from "../components/wtfos-ui";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { Fa2WizardPanel } from "../features/contract-factory/Fa2WizardPanel";
@@ -35,26 +32,31 @@ import { Fa2WizardPanel } from "../features/contract-factory/Fa2WizardPanel";
 const Stack = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--wtf-space-3, 12px);
+  min-width: 0;
 `;
 
 const Row = styled.div`
   display: flex;
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
+  min-width: 0;
 `;
 
 const Muted = styled.span`
-  color: #555;
-  font-size: 12px;
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 `;
 
 const Pre = styled.pre`
   background: #0b0b0b;
   color: #d6d6d6;
-  padding: 8px 10px;
-  font-size: 11px;
+  padding: var(--wtf-space-3, 12px);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
   max-height: 220px;
   overflow: auto;
 `;
@@ -62,14 +64,53 @@ const Pre = styled.pre`
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
   th,
   td {
-    padding: 4px 6px;
-    border-bottom: 1px solid #b0b0b0;
+    padding: var(--wtf-space-2, 8px);
+    border-bottom: 1px solid var(--wtf-app-border, #808080);
     text-align: left;
     vertical-align: top;
+    overflow-wrap: anywhere;
   }
+`;
+
+const TableWrap = styled.div`
+  overflow: auto;
+  min-width: 0;
+`;
+
+const ControlLabel = styled.label`
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+`;
+
+const TextArea = styled.textarea`
+  width: 100%;
+  min-width: 0;
+  padding: var(--wtf-space-2, 8px);
+  color: var(--wtf-app-text, #111);
+  background: var(--wtf-app-control-bg, #ffffff);
+  border: 1px solid var(--wtf-app-control-border, #808080);
+  font-family: var(--wtf-mono-font, monospace);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
+`;
+
+const StepCard = styled.div`
+  display: grid;
+  gap: var(--wtf-space-2, 8px);
+  padding: var(--wtf-space-3, 12px);
+  color: var(--wtf-app-text, #111);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  border: 1px solid var(--wtf-app-border, #808080);
+`;
+
+const InlineCode = styled.code`
+  font-size: var(--wtf-type-caption, 13px);
+  overflow-wrap: anywhere;
 `;
 
 type TemplateKind =
@@ -183,6 +224,7 @@ export function ContractFactory() {
   const [compileOutput, setCompileOutput] = useState<unknown>(null);
   const [deployOutput, setDeployOutput] = useState<unknown>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"deploy" | "wizard">("deploy");
 
   function buildSimulationSteps() {
     return simulationSteps
@@ -283,34 +325,39 @@ export function ContractFactory() {
   if (!user) {
     return (
       <AppWindow title="Contract Factory">
-        <Muted>Sign in to use the WTF Contract Factory.</Muted>
+        <UiPanel title="Contract Factory" compact>
+          <Muted>Sign in to use the WTF Contract Factory.</Muted>
+        </UiPanel>
       </AppWindow>
     );
   }
 
-  const [activeTab, setActiveTab] = useState(0);
-
   return (
     <AppWindow title="Contract Factory">
-      <Tabs value={activeTab} onChange={(v) => setActiveTab(v as number)}>
-        <Tab value={0}>Deploy</Tab>
-        <Tab value={1}>FA2 Wizard</Tab>
-      </Tabs>
-      <TabBody>
-
-      {activeTab === 0 && (
       <Stack>
+        <UiTabs
+          activeId={activeTab}
+          onChange={(id) => setActiveTab(id as "deploy" | "wizard")}
+          tabs={[
+            { id: "deploy", label: "Deploy contract" },
+            { id: "wizard", label: "FA2 Wizard" },
+          ]}
+        />
+
+      {activeTab === "deploy" && (
+      <>
         <Muted>
           Kiln endpoint:{" "}
-          <code>{templatesQuery.data?.kilnUrl ?? "(loading)"}</code>
+          <InlineCode>{templatesQuery.data?.kilnUrl ?? "(loading)"}</InlineCode>
         </Muted>
 
-        <GroupBox label="1. Template">
+        <UiPanel title="Template" compact>
           <Row>
-            <label style={{ fontSize: 12 }}>Kind</label>
+            <ControlLabel>Kind</ControlLabel>
             <Select
               options={TEMPLATE_KIND_OPTIONS}
               value={templateKind}
+              aria-label="Contract template kind"
               onChange={(opt) =>
                 setTemplateKind(opt.value as TemplateKind)
               }
@@ -321,39 +368,33 @@ export function ContractFactory() {
             <>
               <Muted>{currentTemplate.summary}</Muted>
               <Muted>
-                Source: <code>{currentTemplate.sourcePath}</code>
+                Source: <InlineCode>{currentTemplate.sourcePath}</InlineCode>
               </Muted>
             </>
           ) : null}
-        </GroupBox>
+        </UiPanel>
 
-        <GroupBox label="2. Origination storage">
-          <textarea
+        <UiPanel title="Origination storage" compact>
+          <TextArea
             value={initialStorage}
+            aria-label="Origination storage"
             onChange={(e) => setInitialStorage(e.target.value)}
             placeholder="Michelson or SmartPy initial-storage expression (Kiln parses it)"
             rows={8}
-            style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
           />
-        </GroupBox>
+        </UiPanel>
 
-        <GroupBox label="3. Browser Kiln test">
+        <UiPanel title="Browser Kiln test" compact>
           <Stack>
             {simulationSteps.map((step, index) => (
-              <div
-                key={step.id}
-                style={{
-                  border: "1px solid #b0b0b0",
-                  padding: 8,
-                  background: "#f2f2f2",
-                }}
-              >
+              <StepCard key={step.id}>
                 <Row>
                   <Muted>Step {index + 1}</Muted>
-                  <label style={{ fontSize: 12 }}>Wallet</label>
+                  <ControlLabel>Wallet</ControlLabel>
                   <Select
                     options={SIMULATION_WALLET_OPTIONS}
                     value={step.wallet}
+                    aria-label={`Simulation step ${index + 1} wallet`}
                     onChange={(opt) =>
                       updateSimulationStep(step.id, {
                         wallet: opt.value as SimulationWallet,
@@ -361,9 +402,10 @@ export function ContractFactory() {
                     }
                     width={170}
                   />
-                  <label style={{ fontSize: 12 }}>Entrypoint</label>
+                  <ControlLabel>Entrypoint</ControlLabel>
                   <TextInput
                     value={step.entrypoint}
+                    aria-label={`Simulation step ${index + 1} entrypoint`}
                     onChange={(e) =>
                       updateSimulationStep(step.id, {
                         entrypoint: (e.target as HTMLInputElement).value.slice(
@@ -375,15 +417,15 @@ export function ContractFactory() {
                     placeholder="mint"
                     style={{ width: 180 }}
                   />
-                  <Button
-                    size="sm"
+                  <UiButton
+                    compact
                     onClick={() => removeSimulationStep(step.id)}
                     disabled={simulationSteps.length < 2}
                   >
-                    Remove
-                  </Button>
+                    Remove step
+                  </UiButton>
                 </Row>
-                <textarea
+                <TextArea
                   value={step.argsJson}
                   onChange={(e) =>
                     updateSimulationStep(step.id, {
@@ -392,18 +434,12 @@ export function ContractFactory() {
                   }
                   aria-label={`Simulation step ${index + 1} JSON arguments`}
                   rows={3}
-                  style={{
-                    width: "100%",
-                    marginTop: 6,
-                    fontFamily: "monospace",
-                    fontSize: 12,
-                  }}
                 />
-              </div>
+              </StepCard>
             ))}
             <Row>
-              <Button onClick={addSimulationStep}>Add Step</Button>
-              <Button
+              <UiButton onClick={addSimulationStep}>Add simulation step</UiButton>
+              <UiButton
                 onClick={() => compileMutation.mutate()}
                 disabled={
                   compileMutation.isPending || initialStorage.trim().length < 3
@@ -411,21 +447,22 @@ export function ContractFactory() {
               >
                 {compileMutation.isPending
                   ? "Testing…"
-                  : "Compile & Test in Kiln"}
-              </Button>
+                  : "Compile and test in Kiln"}
+              </UiButton>
               {compileMutation.isPending ? <Hourglass size={16} /> : null}
             </Row>
             {compileOutput ? (
               <Pre>{JSON.stringify(compileOutput, null, 2)}</Pre>
             ) : null}
           </Stack>
-        </GroupBox>
+        </UiPanel>
 
-        <GroupBox label="4. Deploy">
+        <UiPanel title="Deploy" compact>
           <Row>
-            <label style={{ fontSize: 12 }}>Name</label>
+            <ControlLabel>Name</ControlLabel>
             <TextInput
               value={name}
+              aria-label="Contract name"
               onChange={(e) =>
                 setName((e.target as HTMLInputElement).value.slice(0, 140))
               }
@@ -434,20 +471,22 @@ export function ContractFactory() {
             />
           </Row>
           <Row>
-            <label style={{ fontSize: 12 }}>Network</label>
+            <ControlLabel>Network</ControlLabel>
             <Select
               options={NETWORK_OPTIONS}
               value={network}
+              aria-label="Deployment network"
               onChange={(opt) => setNetwork(opt.value as Network)}
               width={240}
             />
-            <label style={{ fontSize: 12 }}>Wallet</label>
+            <ControlLabel>Wallet</ControlLabel>
             <Select
               options={[
                 { value: "A", label: "Wallet A (bert)" },
                 { value: "B", label: "Wallet B (ernie)" },
               ]}
               value={wallet}
+              aria-label="Deployment wallet"
               onChange={(opt) => setWallet(opt.value as "A" | "B")}
               width={140}
             />
@@ -460,15 +499,15 @@ export function ContractFactory() {
                 checked={confirmMainnet}
                 onChange={(e) => setConfirmMainnet(e.target.checked)}
               />
-              <label htmlFor="confirm-mainnet" style={{ fontSize: 12 }}>
+              <ControlLabel htmlFor="confirm-mainnet">
                 I confirm this is a mainnet origination. Server must also set
-                <code> WTF_FACTORY_ALLOW_MAINNET=1</code>.
-              </label>
+                <InlineCode> WTF_FACTORY_ALLOW_MAINNET=1</InlineCode>.
+              </ControlLabel>
             </Row>
           ) : null}
           <Row>
-            <Button
-              primary
+            <UiButton
+              uiVariant="primary"
               onClick={() => deployMutation.mutate()}
               disabled={
                 deployMutation.isPending ||
@@ -477,27 +516,28 @@ export function ContractFactory() {
                 (network === "mainnet" && !confirmMainnet)
               }
             >
-              {deployMutation.isPending ? "Deploying…" : "Deploy"}
-            </Button>
+              {deployMutation.isPending ? "Deploying contract…" : "Deploy contract"}
+            </UiButton>
             {deployMutation.isPending ? <Hourglass size={16} /> : null}
           </Row>
           {errorMsg ? (
-            <Muted style={{ color: "#a00" }}>{errorMsg}</Muted>
+            <UiNotice tone="danger">{errorMsg}</UiNotice>
           ) : null}
           {deployOutput ? (
             <Pre>{JSON.stringify(deployOutput, null, 2)}</Pre>
           ) : null}
-        </GroupBox>
+        </UiPanel>
 
         <Separator />
 
-        <GroupBox label="5. Deployed WTF contracts">
+        <UiPanel title="Deployed WTF contracts" compact>
           {contractsQuery.isLoading ? (
             <Row>
               <Hourglass size={16} /> <Muted>Loading…</Muted>
             </Row>
           ) : (
-            <Table>
+            <TableWrap>
+              <Table>
               <thead>
                 <tr>
                   <th>Name</th>
@@ -518,7 +558,7 @@ export function ContractFactory() {
                     <td>{row.status}</td>
                     <td>
                       {row.address ? (
-                        <code style={{ fontSize: 11 }}>{row.address}</code>
+                        <InlineCode>{row.address}</InlineCode>
                       ) : (
                         <Muted>—</Muted>
                       )}
@@ -530,13 +570,13 @@ export function ContractFactory() {
                     </td>
                     <td>
                       {row.status === "live" ? (
-                        <Button
-                          size="sm"
+                        <UiButton
+                          compact
                           onClick={() => retireMutation.mutate(row.id)}
                           disabled={retireMutation.isPending}
                         >
-                          Retire
-                        </Button>
+                          Retire contract
+                        </UiButton>
                       ) : null}
                     </td>
                   </tr>
@@ -544,27 +584,26 @@ export function ContractFactory() {
                 {contractsQuery.data?.contracts.length === 0 ? (
                   <tr>
                     <td colSpan={7}>
-                      <Muted>
-                        No WTF contracts originated yet. Deploy one from step
-                        3.
-                      </Muted>
+                      <UiEmptyState title="No deployed contracts">
+                        Deploy a contract from this page to create the first factory registry row.
+                      </UiEmptyState>
                     </td>
                   </tr>
                 ) : null}
               </tbody>
-            </Table>
+              </Table>
+            </TableWrap>
           )}
-        </GroupBox>
-      </Stack>
+        </UiPanel>
+      </>
       )}
 
-      {activeTab === 1 && (
+      {activeTab === "wizard" && (
         <div style={{ padding: "8px 0" }}>
           <Fa2WizardPanel />
         </div>
       )}
-
-      </TabBody>
+      </Stack>
     </AppWindow>
   );
 }

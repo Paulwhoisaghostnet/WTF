@@ -1,6 +1,5 @@
 import type { ChangeEvent, Dispatch, SetStateAction } from "react";
 import {
-  Button,
   TextInput,
   Table,
   TableHead,
@@ -12,13 +11,55 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { UserLink } from "../../../components/UserLink";
+import { UiButton } from "../../../components/wtfos-ui";
 import type { ContractLogStatus } from "../types";
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
+`;
+
+const Intro = styled.p`
+  margin: 0 0 var(--wtf-space-2, 8px);
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
+`;
+
+const TableWrap = styled.div`
+  min-width: 0;
+  overflow-x: auto;
+`;
+
+const LedgerText = styled.span`
+  display: block;
+  min-width: 0;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+`;
+
+const MutedLedgerText = styled(LedgerText)`
+  color: var(--wtf-app-muted-text, #444);
+`;
+
+const DetailStack = styled.div`
+  display: grid;
+  gap: var(--wtf-space-1, 4px);
+  max-width: 340px;
+`;
+
+const ParamsBlock = styled.pre`
+  margin: var(--wtf-space-1, 4px) 0 0;
+  max-height: 120px;
+  overflow: auto;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+  white-space: pre-wrap;
 `;
 
 type ContractActivityLogRow = {
@@ -50,9 +91,9 @@ type ContractLedgerAdminTabProps = {
 };
 
 function contractStatusColor(status: ContractLogStatus): string {
-  if (status === "success") return "#0a6f0a";
-  if (status === "failure") return "#8a1f1f";
-  return "#444";
+  if (status === "success") return "var(--wtf-app-success, #176b38)";
+  if (status === "failure") return "var(--wtf-app-danger, #b42318)";
+  return "var(--wtf-app-muted-text, #444)";
 }
 
 function formatUtcTimestamp(value: string | Date): string {
@@ -80,35 +121,44 @@ export function ContractLedgerAdminTab({
   return (
     <>
       <h3>Contract Activity Ledger (UTC)</h3>
-      <p style={{ marginBottom: 8, fontSize: 12, color: "#444" }}>
+      <Intro>
         Includes both attempted and completed contract interactions from the UX.
-      </p>
+      </Intro>
       <ActionRow style={{ marginBottom: 12 }}>
-        <Button
+        <UiButton
+          compact
           active={contractLogStatus === "all"}
+          uiVariant={contractLogStatus === "all" ? "primary" : "quiet"}
           onClick={() => setContractLogStatus("all")}
         >
-          All
-        </Button>
-        <Button
+          Show all activity
+        </UiButton>
+        <UiButton
+          compact
           active={contractLogStatus === "attempt"}
+          uiVariant={contractLogStatus === "attempt" ? "primary" : "quiet"}
           onClick={() => setContractLogStatus("attempt")}
         >
-          Attempts
-        </Button>
-        <Button
+          Show attempts
+        </UiButton>
+        <UiButton
+          compact
           active={contractLogStatus === "success"}
+          uiVariant={contractLogStatus === "success" ? "primary" : "quiet"}
           onClick={() => setContractLogStatus("success")}
         >
-          Success
-        </Button>
-        <Button
+          Show successes
+        </UiButton>
+        <UiButton
+          compact
           active={contractLogStatus === "failure"}
+          uiVariant={contractLogStatus === "failure" ? "primary" : "quiet"}
           onClick={() => setContractLogStatus("failure")}
         >
-          Failure
-        </Button>
+          Show failures
+        </UiButton>
         <TextInput
+          aria-label="Search contract activity"
           placeholder="Search action, wallet, contract, op hash..."
           value={contractLogSearch}
           onChange={(e: ChangeEvent<HTMLInputElement>) =>
@@ -121,87 +171,84 @@ export function ContractLedgerAdminTab({
       {loadingContractActivityLog ? (
         <Hourglass size={32} />
       ) : (
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeadCell>UTC Time</TableHeadCell>
-              <TableHeadCell>Status</TableHeadCell>
-              <TableHeadCell>User</TableHeadCell>
-              <TableHeadCell>Wallet</TableHeadCell>
-              <TableHeadCell>Action</TableHeadCell>
-              <TableHeadCell>Contract</TableHeadCell>
-              <TableHeadCell>Op Hash</TableHeadCell>
-              <TableHeadCell>Details</TableHeadCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableDataCell style={{ fontSize: 11 }}>
-                  {formatUtcTimestamp(row.createdAt)}
-                </TableDataCell>
-                <TableDataCell
-                  style={{
-                    color: contractStatusColor(row.status),
-                    fontWeight: "bold",
-                  }}
-                >
-                  {row.status}
-                </TableDataCell>
-                <TableDataCell>
-                  <UserLink
-                    username={row.username}
-                    displayName={row.displayName}
-                    fallback={row.userId ? `user #${row.userId}` : "anon"}
-                  />
-                </TableDataCell>
-                <TableDataCell style={{ fontSize: 10 }}>
-                  {row.walletAddress || "---"}
-                </TableDataCell>
-                <TableDataCell style={{ fontSize: 11 }}>
-                  {formatAction(row)}
-                </TableDataCell>
-                <TableDataCell style={{ fontSize: 10 }}>
-                  {row.contractAddress || "---"}
-                </TableDataCell>
-                <TableDataCell style={{ fontSize: 10 }}>
-                  {formatOpHash(row.opHash)}
-                </TableDataCell>
-                <TableDataCell style={{ fontSize: 10, maxWidth: 320 }}>
-                  <div>interaction: {row.interactionId}</div>
-                  <div>network: {row.network || "---"}</div>
-                  {row.error ? (
-                    <div style={{ color: "#8a1f1f" }}>error: {row.error}</div>
-                  ) : null}
-                  {row.params ? (
-                    <pre
-                      style={{
-                        marginTop: 4,
-                        maxHeight: 120,
-                        overflow: "auto",
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {JSON.stringify(row.params, null, 2)}
-                    </pre>
-                  ) : null}
-                </TableDataCell>
-              </TableRow>
-            ))}
-            {rows.length === 0 && (
+        <TableWrap>
+          <Table>
+            <TableHead>
               <TableRow>
-                <TableDataCell>No contract activity found.</TableDataCell>
-                <TableDataCell>---</TableDataCell>
-                <TableDataCell>---</TableDataCell>
-                <TableDataCell>---</TableDataCell>
-                <TableDataCell>---</TableDataCell>
-                <TableDataCell>---</TableDataCell>
-                <TableDataCell>---</TableDataCell>
-                <TableDataCell>---</TableDataCell>
+                <TableHeadCell>UTC Time</TableHeadCell>
+                <TableHeadCell>Status</TableHeadCell>
+                <TableHeadCell>User</TableHeadCell>
+                <TableHeadCell>Wallet</TableHeadCell>
+                <TableHeadCell>Action</TableHeadCell>
+                <TableHeadCell>Contract</TableHeadCell>
+                <TableHeadCell>Op Hash</TableHeadCell>
+                <TableHeadCell>Details</TableHeadCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableDataCell>
+                    <MutedLedgerText>{formatUtcTimestamp(row.createdAt)}</MutedLedgerText>
+                  </TableDataCell>
+                  <TableDataCell
+                    style={{
+                      color: contractStatusColor(row.status),
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {row.status}
+                  </TableDataCell>
+                  <TableDataCell>
+                    <UserLink
+                      username={row.username}
+                      displayName={row.displayName}
+                      fallback={row.userId ? `user #${row.userId}` : "anon"}
+                    />
+                  </TableDataCell>
+                  <TableDataCell>
+                    <LedgerText>{row.walletAddress || "---"}</LedgerText>
+                  </TableDataCell>
+                  <TableDataCell>
+                    <LedgerText>{formatAction(row)}</LedgerText>
+                  </TableDataCell>
+                  <TableDataCell>
+                    <LedgerText>{row.contractAddress || "---"}</LedgerText>
+                  </TableDataCell>
+                  <TableDataCell>
+                    <LedgerText>{formatOpHash(row.opHash)}</LedgerText>
+                  </TableDataCell>
+                  <TableDataCell>
+                    <DetailStack>
+                      <MutedLedgerText>interaction: {row.interactionId || "---"}</MutedLedgerText>
+                      <MutedLedgerText>network: {row.network || "---"}</MutedLedgerText>
+                      {row.error ? (
+                        <LedgerText style={{ color: "var(--wtf-app-danger, #b42318)" }}>
+                          error: {row.error}
+                        </LedgerText>
+                      ) : null}
+                      {row.params ? (
+                        <ParamsBlock>{JSON.stringify(row.params, null, 2)}</ParamsBlock>
+                      ) : null}
+                    </DetailStack>
+                  </TableDataCell>
+                </TableRow>
+              ))}
+              {rows.length === 0 && (
+                <TableRow>
+                  <TableDataCell>No contract activity found for this filter.</TableDataCell>
+                  <TableDataCell>---</TableDataCell>
+                  <TableDataCell>---</TableDataCell>
+                  <TableDataCell>---</TableDataCell>
+                  <TableDataCell>---</TableDataCell>
+                  <TableDataCell>---</TableDataCell>
+                  <TableDataCell>---</TableDataCell>
+                  <TableDataCell>---</TableDataCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableWrap>
       )}
     </>
   );

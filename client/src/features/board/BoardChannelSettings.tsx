@@ -117,6 +117,7 @@ export function BoardChannelSettings({
               <FormRow>
                 <label>Name</label>
                 <TextInput
+                  aria-label="Channel name"
                   value={title}
                   onChange={(event: any) => setTitle(event.target.value)}
                   fullWidth
@@ -125,6 +126,7 @@ export function BoardChannelSettings({
               <FormRow>
                 <label>Topic</label>
                 <TextInput
+                  aria-label="Channel topic"
                   value={topic}
                   onChange={(event: any) => setTopic(event.target.value)}
                   fullWidth
@@ -133,6 +135,7 @@ export function BoardChannelSettings({
               <FormRow>
                 <label>Type</label>
                 <Select
+                  aria-label="Channel type"
                   value={chType}
                   onChange={(event: any) => setChType(event.value)}
                   options={[
@@ -146,6 +149,7 @@ export function BoardChannelSettings({
               <FormRow>
                 <label>Slow Mode</label>
                 <TextInput
+                  aria-label="Slow mode seconds"
                   type="number"
                   value={String(slowMode)}
                   onChange={(event: any) =>
@@ -160,6 +164,7 @@ export function BoardChannelSettings({
                   {roleOptions.map((role) => (
                     <Checkbox
                       key={role}
+                      aria-label={`Allow ${ROLE_LABELS[role]} to view channel`}
                       label={ROLE_LABELS[role]}
                       checked={vRoles.includes(role)}
                       onChange={() => setVRoles((previous) => toggleInList(previous, role))}
@@ -172,6 +177,7 @@ export function BoardChannelSettings({
                   {roleOptions.map((role) => (
                     <Checkbox
                       key={role}
+                      aria-label={`Allow ${ROLE_LABELS[role]} to post in channel`}
                       label={ROLE_LABELS[role]}
                       checked={rRoles.includes(role)}
                       onChange={() => setRRoles((previous) => toggleInList(previous, role))}
@@ -230,6 +236,11 @@ export function BoardChannelSettings({
                           (field) => (
                             <td key={field}>
                               <select
+                                aria-label={`Set ${field} permission for ${
+                                  perm.targetType === "role"
+                                    ? ROLE_LABELS[perm.targetRole as UserRole] ?? perm.targetRole
+                                    : perm.targetDisplayName || perm.targetUsername || perm.targetUserId
+                                }`}
                                 value={String(perm[field] ?? "null")}
                                 onChange={(event) => {
                                   const value = event.target.value;
@@ -248,7 +259,14 @@ export function BoardChannelSettings({
                           )
                         )}
                         <td>
-                          <MsgActBtn onClick={() => delPermMut.mutate(perm.id)}>
+                          <MsgActBtn
+                            aria-label={`Delete permission override for ${
+                              perm.targetType === "role"
+                                ? ROLE_LABELS[perm.targetRole as UserRole] ?? perm.targetRole
+                                : perm.targetDisplayName || perm.targetUsername || perm.targetUserId
+                            }`}
+                            onClick={() => delPermMut.mutate(perm.id)}
+                          >
                             ✕
                           </MsgActBtn>
                         </td>
@@ -260,6 +278,7 @@ export function BoardChannelSettings({
               <GroupBox label="Add Override">
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                   <Select
+                    aria-label="Permission override target type"
                     value={newPermType}
                     onChange={(event: any) => setNewPermType(event.value)}
                     options={[
@@ -270,6 +289,7 @@ export function BoardChannelSettings({
                   />
                   {newPermType === "role" ? (
                     <Select
+                      aria-label="Permission override role"
                       value={newPermRole}
                       onChange={(event: any) => setNewPermRole(event.value)}
                       options={roleOptions.map((role) => ({
@@ -280,6 +300,7 @@ export function BoardChannelSettings({
                     />
                   ) : (
                     <TextInput
+                      aria-label="Permission override user ID"
                       value={newPermUserId}
                       onChange={(event: any) => setNewPermUserId(event.target.value)}
                       placeholder="User ID"
@@ -327,6 +348,7 @@ export function BoardChannelSettings({
               <GroupBox label="New Webhook">
                 <div style={{ display: "flex", gap: 6 }}>
                   <TextInput
+                    aria-label="Webhook name"
                     value={whName}
                     onChange={(event: any) => setWhName(event.target.value)}
                     placeholder="Webhook name"

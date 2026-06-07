@@ -1,7 +1,5 @@
 import type { Dispatch, ReactElement, SetStateAction } from "react";
 import {
-  Button,
-  GroupBox,
   Hourglass,
   Select,
   Table,
@@ -14,6 +12,7 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { UserLink } from "../../../components/UserLink";
+import { UiButton, UiNotice, UiPanel } from "../../../components/wtfos-ui";
 import type {
   GrantWtfSubdomainPayload,
   UpdateWtfSubdomainStatusPayload,
@@ -22,9 +21,44 @@ import type { WtfDomainsRegistrarStatus } from "@shared/wtf-subdomains";
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
+`;
+
+const Intro = styled.p`
+  margin: 0 0 var(--wtf-space-2, 8px);
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
+`;
+
+const TableWrap = styled.div`
+  min-width: 0;
+  overflow-x: auto;
+`;
+
+const DomainSuffix = styled.span`
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+`;
+
+const MetaText = styled.div`
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+`;
+
+const TruncateText = styled.span`
+  display: block;
+  max-width: 160px;
+  overflow: hidden;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 type UserOption = {
@@ -98,12 +132,12 @@ export function WtfTezAdminTab({
   return (
     <>
       <h3>WTF.tez Subdomains</h3>
-      <p style={{ marginBottom: 8, fontSize: 12, color: "#444" }}>
+      <Intro>
         Reserve names for users under {parentDomain}, then mark them provisioned once the TED record is created.
         Challenge and side-quest rewards can also create reserved grants.
-      </p>
+      </Intro>
 
-      <GroupBox label="Grant Subdomain" style={{ marginBottom: 12 }}>
+      <UiPanel title="Grant wtf.tez subdomain" compact style={{ marginBottom: 12 }}>
         <ActionRow>
           <Select
             value={parseInt(subdomainGrantForm.userId) || undefined}
@@ -117,6 +151,7 @@ export function WtfTezAdminTab({
             width={240}
           />
           <TextInput
+            aria-label="Subdomain label"
             placeholder="label"
             value={subdomainGrantForm.label}
             onChange={(e: any) =>
@@ -127,8 +162,9 @@ export function WtfTezAdminTab({
             }
             style={{ width: 140 }}
           />
-          <span style={{ fontSize: 12 }}>.{parentDomain}</span>
+          <DomainSuffix>.{parentDomain}</DomainSuffix>
           <TextInput
+            aria-label="Subdomain grant notes"
             placeholder="notes"
             value={subdomainGrantForm.notes}
             onChange={(e: any) =>
@@ -136,8 +172,8 @@ export function WtfTezAdminTab({
             }
             style={{ width: 220 }}
           />
-          <Button
-            size="sm"
+          <UiButton
+            compact
             disabled={
               grantWtfSubdomainMutation.isPending ||
               !subdomainGrantForm.userId ||
@@ -151,105 +187,102 @@ export function WtfTezAdminTab({
               })
             }
           >
-            Grant
-          </Button>
+            Grant wtf.tez subdomain
+          </UiButton>
         </ActionRow>
         {grantErrorMessage && (
-          <p style={{ color: "#a00", fontSize: 11, marginTop: 6 }}>
+          <UiNotice tone="danger" style={{ marginTop: 8 }}>
             {grantErrorMessage}
-          </p>
+          </UiNotice>
         )}
-      </GroupBox>
+      </UiPanel>
 
       {!wtfSubdomainGrants ? (
         <Hourglass size={32} />
       ) : (
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeadCell>Name</TableHeadCell>
-              <TableHeadCell>User</TableHeadCell>
-              <TableHeadCell>Status</TableHeadCell>
-              <TableHeadCell>Source</TableHeadCell>
-              <TableHeadCell>Wallet</TableHeadCell>
-              <TableHeadCell>Actions</TableHeadCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {wtfSubdomainGrants.map((grant) => (
-              <TableRow key={grant.id}>
-                <TableDataCell>
-                  <strong>{grant.fullName}</strong>
-                  {grant.opHash && (
-                    <div style={{ fontSize: 10, color: "#555" }}>
-                      {grant.opHash.slice(0, 10)}...
-                    </div>
-                  )}
-                </TableDataCell>
-                <TableDataCell>
-                  <UserLink username={grant.username} displayName={grant.displayName} />
-                </TableDataCell>
-                <TableDataCell>{grant.status}</TableDataCell>
-                <TableDataCell>
-                  {grant.sourceType}
-                  {grant.sourceId ? ` #${grant.sourceId}` : ""}
-                </TableDataCell>
-                <TableDataCell
-                  style={{
-                    fontSize: 10,
-                    maxWidth: 120,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {grant.walletAddress || "---"}
-                </TableDataCell>
-                <TableDataCell>
-                  <ActionRow>
-                    <Button
-                      size="sm"
-                      disabled={updateWtfSubdomainStatusMutation.isPending}
-                      onClick={() =>
-                        updateWtfSubdomainStatusMutation.mutate({
-                          id: grant.id,
-                          status:
-                            grant.status === "provisioned"
-                              ? "reserved"
-                              : "provisioned",
-                        })
-                      }
-                    >
-                      {grant.status === "provisioned" ? "Unmark" : "Provisioned"}
-                    </Button>
-                    {grant.status !== "revoked" && (
-                      <ConfirmButton
-                        label="Revoke"
-                        confirmLabel="Confirm"
-                        onConfirm={() =>
+        <TableWrap>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeadCell>Name</TableHeadCell>
+                <TableHeadCell>User</TableHeadCell>
+                <TableHeadCell>Status</TableHeadCell>
+                <TableHeadCell>Source</TableHeadCell>
+                <TableHeadCell>Wallet</TableHeadCell>
+                <TableHeadCell>Actions</TableHeadCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {wtfSubdomainGrants.map((grant) => (
+                <TableRow key={grant.id}>
+                  <TableDataCell>
+                    <strong>{grant.fullName}</strong>
+                    {grant.opHash && (
+                      <MetaText>
+                        operation: {grant.opHash.slice(0, 10)}...
+                      </MetaText>
+                    )}
+                  </TableDataCell>
+                  <TableDataCell>
+                    <UserLink username={grant.username} displayName={grant.displayName} />
+                  </TableDataCell>
+                  <TableDataCell>{grant.status}</TableDataCell>
+                  <TableDataCell>
+                    {grant.sourceType}
+                    {grant.sourceId ? ` #${grant.sourceId}` : ""}
+                  </TableDataCell>
+                  <TableDataCell>
+                    <TruncateText>{grant.walletAddress || "---"}</TruncateText>
+                  </TableDataCell>
+                  <TableDataCell>
+                    <ActionRow>
+                      <UiButton
+                        compact
+                        disabled={updateWtfSubdomainStatusMutation.isPending}
+                        onClick={() =>
                           updateWtfSubdomainStatusMutation.mutate({
                             id: grant.id,
-                            status: "revoked",
+                            status:
+                              grant.status === "provisioned"
+                                ? "reserved"
+                                : "provisioned",
                           })
                         }
-                        disabled={updateWtfSubdomainStatusMutation.isPending}
-                      />
-                    )}
-                  </ActionRow>
-                </TableDataCell>
-              </TableRow>
-            ))}
-            {wtfSubdomainGrants.length === 0 && (
-              <TableRow>
-                <TableDataCell>No grants yet.</TableDataCell>
-                <TableDataCell>---</TableDataCell>
-                <TableDataCell>---</TableDataCell>
-                <TableDataCell>---</TableDataCell>
-                <TableDataCell>---</TableDataCell>
-                <TableDataCell>---</TableDataCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                      >
+                        {grant.status === "provisioned"
+                          ? "Mark subdomain reserved"
+                          : "Mark subdomain provisioned"}
+                      </UiButton>
+                      {grant.status !== "revoked" && (
+                        <ConfirmButton
+                          label="Revoke subdomain"
+                          confirmLabel="Confirm revoke"
+                          onConfirm={() =>
+                            updateWtfSubdomainStatusMutation.mutate({
+                              id: grant.id,
+                              status: "revoked",
+                            })
+                          }
+                          disabled={updateWtfSubdomainStatusMutation.isPending}
+                        />
+                      )}
+                    </ActionRow>
+                  </TableDataCell>
+                </TableRow>
+              ))}
+              {wtfSubdomainGrants.length === 0 && (
+                <TableRow>
+                  <TableDataCell>No subdomain grants yet.</TableDataCell>
+                  <TableDataCell>---</TableDataCell>
+                  <TableDataCell>---</TableDataCell>
+                  <TableDataCell>---</TableDataCell>
+                  <TableDataCell>---</TableDataCell>
+                  <TableDataCell>---</TableDataCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableWrap>
       )}
     </>
   );

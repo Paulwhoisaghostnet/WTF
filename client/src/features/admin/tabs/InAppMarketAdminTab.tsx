@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, GroupBox } from "react95";
 import styled from "styled-components";
+import { UiButton, UiPanel, UiToolbar } from "../../../components/wtfos-ui";
 import type {
   CreateInAppMarketItemPayload,
   InAppMarketAdminItem,
@@ -33,7 +33,7 @@ type InAppMarketAdminTabProps = {
 
 const Grid = styled.div`
   display: grid;
-  gap: 10px;
+  gap: var(--wtf-space-3, 12px);
 `;
 
 const Toolbar = styled.div`
@@ -65,10 +65,12 @@ const Bands = styled.div`
 `;
 
 const Band = styled.div`
-  border: 1px solid #808080;
-  background: #efecd4;
-  padding: 6px;
-  font-size: 11px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  padding: var(--wtf-space-2, 8px);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
 const FormGrid = styled.div`
@@ -79,8 +81,10 @@ const FormGrid = styled.div`
 
   label {
     display: grid;
-    gap: 2px;
-    font-size: 10px;
+    gap: var(--wtf-space-1, 4px);
+    color: var(--wtf-app-text, #111);
+    font-size: var(--wtf-type-caption, 13px);
+    font-weight: 700;
   }
 
   input,
@@ -97,18 +101,19 @@ const TableWrap = styled.div`
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
-  background: #f3f0d7;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  background: var(--wtf-app-surface-raised, #ffffff);
 
   th,
   td {
-    border: 1px solid #808080;
-    padding: 5px;
+    border: 1px solid var(--wtf-app-border, #808080);
+    padding: var(--wtf-space-2, 8px);
     vertical-align: top;
   }
 
   th {
-    background: #d7d2ba;
+    background: var(--wtf-app-surface, #f4f4f4);
     text-align: left;
   }
 
@@ -119,24 +124,29 @@ const Table = styled.table`
 
   label {
     display: inline-grid;
-    gap: 2px;
+    gap: var(--wtf-space-1, 4px);
     margin-right: 5px;
     margin-bottom: 4px;
-    font-size: 10px;
+    color: var(--wtf-app-text, #111);
+    font-size: var(--wtf-type-caption, 13px);
+    font-weight: 700;
   }
 `;
 
 const Muted = styled.span`
-  color: #555555;
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
 const Chip = styled.span<{ $tone?: "sale" | "locked" }>`
   display: inline-block;
-  border: 1px solid #101010;
+  min-height: 24px;
+  border: 1px solid var(--wtf-app-border, #101010);
   background: ${(p) => (p.$tone === "sale" ? "#ffbf6a" : p.$tone === "locked" ? "#fff06a" : "#dfdfdf")};
-  padding: 1px 4px;
+  padding: 3px 8px;
   margin: 2px 3px 2px 0;
-  font-size: 9px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
 `;
 
@@ -270,16 +280,16 @@ export function InAppMarketAdminTab({
 
   return (
     <Grid>
-      <GroupBox label="Pricing Scale">
+      <UiPanel title="Pricing scale" compact>
         <Toolbar>
           <Muted>Whole-WTF system pricing with locked anchors and score-based suggestions.</Muted>
-          <Button
-            size="sm"
+          <UiButton
+            compact
             disabled={repriceInAppMarketMutation.isPending}
             onClick={() => repriceInAppMarketMutation.mutate()}
           >
-            Rebalance
-          </Button>
+            Rebalance market pricing
+          </UiButton>
         </Toolbar>
         <Bands>
           {(pricing?.tiers ?? []).map((tier) => (
@@ -292,60 +302,65 @@ export function InAppMarketAdminTab({
             </Band>
           ))}
         </Bands>
-      </GroupBox>
+      </UiPanel>
 
-      <GroupBox label="Create Catalog Item">
+      <UiPanel title="Create catalog item" compact>
         <FormGrid>
-          <label>SKU<input value={createForm.sku} onChange={(e) => updateCreateField("sku", e.target.value)} /></label>
-          <label>Name<input value={createForm.name} onChange={(e) => updateCreateField("name", e.target.value)} /></label>
-          <label>Category<input value={createForm.category} onChange={(e) => updateCreateField("category", e.target.value)} /></label>
-          <label>Kind<input value={createForm.kind} onChange={(e) => updateCreateField("kind", e.target.value)} /></label>
-          <label>WTF<input type="number" min={0} value={createForm.priceWtfWhole} onChange={(e) => updateCreateField("priceWtfWhole", e.target.value)} placeholder="suggest" /></label>
-          <label>EXP<input type="number" min={0} value={createForm.priceExp} onChange={(e) => updateCreateField("priceExp", e.target.value)} placeholder="auto" /></label>
-          <label>Stock<input type="number" min={0} value={createForm.stockQuantity} onChange={(e) => updateCreateField("stockQuantity", e.target.value)} /></label>
-          <label>Tier<select value={createForm.rarityTier} onChange={(e) => updateCreateField("rarityTier", e.target.value)}>{tierOptions()}</select></label>
-          <label>Score<input type="number" min={1} max={10} value={createForm.priceScore} onChange={(e) => updateCreateField("priceScore", e.target.value)} /></label>
-          <label><span>Visible</span><input type="checkbox" checked={createForm.active} onChange={(e) => updateCreateField("active", e.target.checked)} /></label>
-          <label><span>Lock WTF</span><input type="checkbox" checked={createForm.priceWtfLocked} onChange={(e) => updateCreateField("priceWtfLocked", e.target.checked)} /></label>
-          <label><span>Lock Score</span><input type="checkbox" checked={createForm.priceScoreLocked} onChange={(e) => updateCreateField("priceScoreLocked", e.target.checked)} /></label>
-          <Button size="sm" disabled={createInAppMarketItemMutation.isPending} onClick={createItem}>
-            Create
-          </Button>
+          <label>SKU<input aria-label="New market item SKU" value={createForm.sku} onChange={(e) => updateCreateField("sku", e.target.value)} /></label>
+          <label>Name<input aria-label="New market item name" value={createForm.name} onChange={(e) => updateCreateField("name", e.target.value)} /></label>
+          <label>Category<input aria-label="New market item category" value={createForm.category} onChange={(e) => updateCreateField("category", e.target.value)} /></label>
+          <label>Kind<input aria-label="New market item kind" value={createForm.kind} onChange={(e) => updateCreateField("kind", e.target.value)} /></label>
+          <label>WTF<input aria-label="New market item WTF price" type="number" min={0} value={createForm.priceWtfWhole} onChange={(e) => updateCreateField("priceWtfWhole", e.target.value)} placeholder="suggest" /></label>
+          <label>EXP<input aria-label="New market item EXP price" type="number" min={0} value={createForm.priceExp} onChange={(e) => updateCreateField("priceExp", e.target.value)} placeholder="auto" /></label>
+          <label>Stock<input aria-label="New market item stock quantity" type="number" min={0} value={createForm.stockQuantity} onChange={(e) => updateCreateField("stockQuantity", e.target.value)} /></label>
+          <label>Tier<select aria-label="New market item rarity tier" value={createForm.rarityTier} onChange={(e) => updateCreateField("rarityTier", e.target.value)}>{tierOptions()}</select></label>
+          <label>Score<input aria-label="New market item price score" type="number" min={1} max={10} value={createForm.priceScore} onChange={(e) => updateCreateField("priceScore", e.target.value)} /></label>
+          <label><span>Visible</span><input aria-label="Make new market item visible" type="checkbox" checked={createForm.active} onChange={(e) => updateCreateField("active", e.target.checked)} /></label>
+          <label><span>Lock WTF</span><input aria-label="Lock new market item WTF price" type="checkbox" checked={createForm.priceWtfLocked} onChange={(e) => updateCreateField("priceWtfLocked", e.target.checked)} /></label>
+          <label><span>Lock Score</span><input aria-label="Lock new market item price score" type="checkbox" checked={createForm.priceScoreLocked} onChange={(e) => updateCreateField("priceScoreLocked", e.target.checked)} /></label>
+          <UiButton compact disabled={createInAppMarketItemMutation.isPending} onClick={createItem}>
+            Create market item
+          </UiButton>
         </FormGrid>
-      </GroupBox>
+      </UiPanel>
 
-      <GroupBox label="Sales">
+      <UiPanel title="Sales" compact>
         <FormGrid>
-          <label>Name<input value={saleForm.name} onChange={(e) => updateSaleField("name", e.target.value)} /></label>
-          <label>Discount %<input type="number" min={0} max={99} value={saleForm.discountPercent} onChange={(e) => updateSaleField("discountPercent", e.target.value)} /></label>
-          <label>Category<input value={saleForm.category} onChange={(e) => updateSaleField("category", e.target.value)} /></label>
-          <label>Specific SKU<input value={saleForm.sku} onChange={(e) => updateSaleField("sku", e.target.value)} /></label>
-          <label><span>Active</span><input type="checkbox" checked={saleForm.active} onChange={(e) => updateSaleField("active", e.target.checked)} /></label>
-          <Button size="sm" disabled={upsertInAppMarketSaleMutation.isPending} onClick={createSale}>
-            Add Sale
-          </Button>
+          <label>Name<input aria-label="New sale name" value={saleForm.name} onChange={(e) => updateSaleField("name", e.target.value)} /></label>
+          <label>Discount %<input aria-label="New sale discount percent" type="number" min={0} max={99} value={saleForm.discountPercent} onChange={(e) => updateSaleField("discountPercent", e.target.value)} /></label>
+          <label>Category<input aria-label="New sale category" value={saleForm.category} onChange={(e) => updateSaleField("category", e.target.value)} /></label>
+          <label>Specific SKU<input aria-label="New sale specific SKU" value={saleForm.sku} onChange={(e) => updateSaleField("sku", e.target.value)} /></label>
+          <label><span>Active</span><input aria-label="Activate new sale" type="checkbox" checked={saleForm.active} onChange={(e) => updateSaleField("active", e.target.checked)} /></label>
+          <UiButton compact disabled={upsertInAppMarketSaleMutation.isPending} onClick={createSale}>
+            Add sale
+          </UiButton>
         </FormGrid>
         <div style={{ marginTop: 8 }}>
           {(sales ?? []).map((sale) => (
             <Chip key={sale.id} $tone={sale.active ? "sale" : undefined}>
               {sale.name} -{sale.discountPercent}% {sale.sku || sale.category}
-              <Button
-                size="sm"
+              <UiButton
+                compact
+                iconOnlyLabel={`Delete sale ${sale.name}`}
                 disabled={deleteInAppMarketSaleMutation.isPending}
                 onClick={() => deleteInAppMarketSaleMutation.mutate(sale.id)}
               >
-                X
-              </Button>
+                x
+              </UiButton>
             </Chip>
           ))}
         </div>
-      </GroupBox>
+      </UiPanel>
 
-      <GroupBox label="In-App Market">
-        <Toolbar>
+      <UiPanel title="In-app market" compact>
+        <UiToolbar style={{ justifyContent: "space-between", marginBottom: 8 }}>
           <FilterRow>
             <span>Category</span>
-            <select value={category} onChange={(event) => setCategory(event.target.value)}>
+            <select
+              aria-label="Filter in-app market items by category"
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+            >
               {categories.map((entry) => (
                 <option key={entry} value={entry}>
                   {entry === "all" ? "All categories" : entry}
@@ -354,7 +369,7 @@ export function InAppMarketAdminTab({
             </select>
           </FilterRow>
           <Muted>{filteredItems.length} items</Muted>
-        </Toolbar>
+        </UiToolbar>
         <TableWrap>
           <Table>
             <thead>
@@ -378,21 +393,21 @@ export function InAppMarketAdminTab({
                     <Muted>{item.category} / {item.kind ?? "item"}</Muted>
                   </td>
                   <td>
-                    <label>Tier<select value={tierInputs[item.id] ?? item.rarityTier} onChange={(event) => setTierInputs((prev) => ({ ...prev, [item.id]: event.target.value }))}>{tierOptions()}</select></label>
-                    <label>Score<input type="number" min={1} max={10} value={scoreInputs[item.id] ?? item.priceScore} onChange={(event) => setScoreInputs((prev) => ({ ...prev, [item.id]: event.target.value }))} /></label>
+                    <label>Tier<select aria-label={`Rarity tier for ${item.name}`} value={tierInputs[item.id] ?? item.rarityTier} onChange={(event) => setTierInputs((prev) => ({ ...prev, [item.id]: event.target.value }))}>{tierOptions()}</select></label>
+                    <label>Score<input aria-label={`Price score for ${item.name}`} type="number" min={1} max={10} value={scoreInputs[item.id] ?? item.priceScore} onChange={(event) => setScoreInputs((prev) => ({ ...prev, [item.id]: event.target.value }))} /></label>
                     <br />
                     <Chip>{item.rarityLabel}</Chip>
                     {item.priceScoreLocked && <Chip $tone="locked">score locked</Chip>}
                   </td>
                   <td>
-                    <label>WTF<input type="number" min={0} value={priceInputs[item.id] ?? rawToWhole(item.priceWtfUnits)} onChange={(event) => setPriceInputs((prev) => ({ ...prev, [item.id]: event.target.value }))} /></label>
-                    <label>EXP<input type="number" min={0} value={expInputs[item.id] ?? item.priceExp} onChange={(event) => setExpInputs((prev) => ({ ...prev, [item.id]: event.target.value }))} /></label>
+                    <label>WTF<input aria-label={`WTF price for ${item.name}`} type="number" min={0} value={priceInputs[item.id] ?? rawToWhole(item.priceWtfUnits)} onChange={(event) => setPriceInputs((prev) => ({ ...prev, [item.id]: event.target.value }))} /></label>
+                    <label>EXP<input aria-label={`EXP price for ${item.name}`} type="number" min={0} value={expInputs[item.id] ?? item.priceExp} onChange={(event) => setExpInputs((prev) => ({ ...prev, [item.id]: event.target.value }))} /></label>
                     <br />
                     <Muted>Suggested: {item.suggestedPriceWtfFormatted} WTF</Muted>
                     {item.priceWtfLocked && <Chip $tone="locked">WTF locked</Chip>}
                   </td>
                   <td>
-                    <label>Stock<input type="number" min={0} max={999999} value={stockInputs[item.id] ?? item.stockQuantity} onChange={(event) => setStockInputs((prev) => ({ ...prev, [item.id]: event.target.value }))} /></label>
+                    <label>Stock<input aria-label={`Stock quantity for ${item.name}`} type="number" min={0} max={999999} value={stockInputs[item.id] ?? item.stockQuantity} onChange={(event) => setStockInputs((prev) => ({ ...prev, [item.id]: event.target.value }))} /></label>
                     <br />
                     <Chip>{item.active ? "visible" : "hidden"}</Chip>
                   </td>
@@ -408,18 +423,18 @@ export function InAppMarketAdminTab({
                     )}
                   </td>
                   <ActionCell>
-                    <Button size="sm" disabled={updateInAppMarketItemMutation.isPending} onClick={() => saveItem(item)}>
-                      Save
-                    </Button>
-                    <Button size="sm" disabled={updateInAppMarketItemMutation.isPending} onClick={() => saveItem(item, { priceWtfLocked: !item.priceWtfLocked })}>
-                      {item.priceWtfLocked ? "Unlock WTF" : "Lock WTF"}
-                    </Button>
-                    <Button size="sm" disabled={updateInAppMarketItemMutation.isPending} onClick={() => saveItem(item, { priceScoreLocked: !item.priceScoreLocked })}>
-                      {item.priceScoreLocked ? "Unlock Score" : "Lock Score"}
-                    </Button>
-                    <Button size="sm" disabled={updateInAppMarketItemMutation.isPending} onClick={() => updateInAppMarketItemMutation.mutate({ id: item.id, active: !item.active })}>
-                      {item.active ? "Hide" : "Show"}
-                    </Button>
+                    <UiButton compact disabled={updateInAppMarketItemMutation.isPending} onClick={() => saveItem(item)}>
+                      Save item pricing
+                    </UiButton>
+                    <UiButton compact disabled={updateInAppMarketItemMutation.isPending} onClick={() => saveItem(item, { priceWtfLocked: !item.priceWtfLocked })}>
+                      {item.priceWtfLocked ? "Unlock WTF price" : "Lock WTF price"}
+                    </UiButton>
+                    <UiButton compact disabled={updateInAppMarketItemMutation.isPending} onClick={() => saveItem(item, { priceScoreLocked: !item.priceScoreLocked })}>
+                      {item.priceScoreLocked ? "Unlock price score" : "Lock price score"}
+                    </UiButton>
+                    <UiButton compact disabled={updateInAppMarketItemMutation.isPending} onClick={() => updateInAppMarketItemMutation.mutate({ id: item.id, active: !item.active })}>
+                      {item.active ? "Hide market item" : "Show market item"}
+                    </UiButton>
                   </ActionCell>
                 </tr>
               ))}
@@ -433,7 +448,7 @@ export function InAppMarketAdminTab({
             </tbody>
           </Table>
         </TableWrap>
-      </GroupBox>
+      </UiPanel>
     </Grid>
   );
 }

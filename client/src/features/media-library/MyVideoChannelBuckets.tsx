@@ -87,7 +87,7 @@ const Grid = styled.div`
 `;
 
 const Card = styled.div`
-  background: #c0c0c0;
+  background: var(--wtf-app-surface-raised, #c0c0c0);
   border: 2px outset #dfdfdf;
   display: flex;
   flex-direction: column;
@@ -113,21 +113,54 @@ const Thumb = styled.div`
 `;
 
 const Info = styled.div`
-  padding: 6px 8px;
-  font-size: 11px;
+  padding: 8px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const Title = styled.div`
   font-weight: bold;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
 
 const Meta = styled.div`
-  font-size: 9px;
-  color: #555;
-  margin-top: 2px;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
+  line-height: 1.3;
+  margin-top: 3px;
+`;
+
+const EmptyText = styled.p`
+  margin: 0;
+  padding: 8px;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
+  line-height: 1.35;
+`;
+
+const BumperWrap = styled.div`
+  margin-top: 8px;
+`;
+
+const CardActions = styled.div`
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  button {
+    min-height: 32px;
+    font-size: var(--wtf-type-caption, 13px);
+  }
+`;
+
+const ErrorText = styled.p`
+  margin: 6px 0 0;
+  color: var(--wtf-app-danger, #b00020);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
 function mediaPlaybackUrl(item: MyVideoMediaItem): string {
@@ -213,7 +246,7 @@ function MediaCard(props: {
       <Info>
         <Title>{item.title}</Title>
         <Meta>{item.mimeType}</Meta>
-        <div style={{ marginTop: 6 }}>
+        <BumperWrap>
           <BumperControls
             item={item}
             assignments={bumperAssignments}
@@ -221,7 +254,7 @@ function MediaCard(props: {
             pending={bumperTogglePending}
             onToggle={onToggleBumper}
           />
-        </div>
+        </BumperWrap>
       </Info>
     </Card>
   );
@@ -244,9 +277,9 @@ export function ChannelBucketsPanel({
 }: ChannelBucketsPanelProps) {
   if (channels.length === 0) {
     return (
-      <p style={{ fontSize: 12, padding: 8 }}>
+      <EmptyText>
         You do not own any TV channels yet.
-      </p>
+      </EmptyText>
     );
   }
 
@@ -279,9 +312,9 @@ export function ChannelBucketsPanel({
         <ScrollWrap>
           <GroupBox label={`${selectedChannelDetail.channel.title} Media`}>
             {selectedChannelDetail.videos.length === 0 ? (
-              <p style={{ fontSize: 12, padding: 8 }}>
+              <EmptyText>
                 No media on this channel yet.
-              </p>
+              </EmptyText>
             ) : (
               <Grid style={{ maxHeight: 360 }}>
                 {selectedChannelDetail.videos.map((video) => {
@@ -310,7 +343,7 @@ export function ChannelBucketsPanel({
                         </Title>
                         <Meta>{video.mimeType}</Meta>
                         {mediaItem && (
-                          <div style={{ marginTop: 6 }}>
+                          <BumperWrap>
                             <BumperControls
                               item={mediaItem}
                               assignments={bumperAssignments}
@@ -318,17 +351,16 @@ export function ChannelBucketsPanel({
                               pending={bumperTogglePending}
                               onToggle={onToggleBumper}
                             />
-                          </div>
+                          </BumperWrap>
                         )}
                         {!mediaItem && (
                           <Meta>
                             Import this token into My Videos to use bumper toggles.
                           </Meta>
                         )}
-                        <div style={{ marginTop: 6 }}>
+                        <CardActions>
                           <Button
                             size="sm"
-                            style={{ fontSize: 9, padding: "1px 5px" }}
                             disabled={removeVideoPending}
                             onClick={() =>
                               onRemoveVideo(video.channelId, video.id)
@@ -336,17 +368,11 @@ export function ChannelBucketsPanel({
                           >
                             Remove from Channel
                           </Button>
-                        </div>
+                        </CardActions>
                         {removeVideoError && (
-                          <p
-                            style={{
-                              color: "red",
-                              fontSize: 9,
-                              margin: "4px 0 0",
-                            }}
-                          >
+                          <ErrorText>
                             {removeVideoError}
-                          </p>
+                          </ErrorText>
                         )}
                       </Info>
                     </Card>
@@ -358,9 +384,9 @@ export function ChannelBucketsPanel({
 
           <GroupBox label="Bumpers on This Channel">
             {uniqueBumperMedia.length === 0 ? (
-              <p style={{ fontSize: 12, padding: 8 }}>
+              <EmptyText>
                 No media-library videos are assigned as bumpers yet.
-              </p>
+              </EmptyText>
             ) : (
               <Grid style={{ maxHeight: 320 }}>
                 {uniqueBumperMedia.map((item) => (
@@ -378,9 +404,9 @@ export function ChannelBucketsPanel({
           </GroupBox>
         </ScrollWrap>
       ) : (
-        <p style={{ fontSize: 12, padding: 8 }}>
+        <EmptyText>
           Pick a channel tab to view its media.
-        </p>
+        </EmptyText>
       )}
     </>
   );
@@ -410,9 +436,9 @@ export function CommunityBumpersPanel({
 
   if (communityBumperMedia.length === 0) {
     return (
-      <p style={{ fontSize: 12, padding: 8 }}>
+      <EmptyText>
         No videos from your library are assigned to the community bumper bucket yet.
-      </p>
+      </EmptyText>
     );
   }
 

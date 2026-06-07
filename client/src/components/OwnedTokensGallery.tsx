@@ -90,6 +90,10 @@ export interface OwnedTokensGalleryProps {
 
 // ─── Styled ──────────────────────────────────────────────
 
+const OWNED_TOKENS_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
+const OWNED_TOKENS_MONO_FONT =
+  'var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)';
+
 const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
@@ -109,10 +113,16 @@ const TokenCard = styled.div<{ $selected?: boolean; $onBoard?: boolean }>`
 `;
 
 const CardTitleBar = styled.div<{ $selected?: boolean }>`
-  background: ${(p) => (p.$selected ? "#000080" : "linear-gradient(90deg, #000080, #1084d0)")};
-  color: #fff;
+  background: ${(p) =>
+    p.$selected
+      ? "var(--wtf-app-link, var(--wtf-highlight-color, #000080))"
+      : "var(--wtf-app-control-bg, #ffffff)"};
+  color: ${(p) =>
+    p.$selected
+      ? "#fff"
+      : "var(--wtf-app-text, #111)"};
   padding: 3px 6px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   display: flex;
   align-items: center;
@@ -124,7 +134,7 @@ const CardTitleBar = styled.div<{ $selected?: boolean }>`
 `;
 
 const CardTitleIcon = styled.span`
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   flex-shrink: 0;
 `;
 
@@ -149,16 +159,21 @@ const ThumbWrap = styled.div`
 
 const CardBody = styled.div`
   padding: 6px 8px 4px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const PropRow = styled.div`
   display: flex;
   gap: 4px;
   margin-bottom: 2px;
-  font-size: 10px;
-  strong { color: #444; min-width: 52px; flex-shrink: 0; }
-  span { font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  font-size: var(--wtf-type-caption, 13px);
+  strong { color: var(--wtf-app-muted-text, #444); min-width: 52px; flex-shrink: 0; }
+  span {
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 `;
 
 const CardActions = styled.div`
@@ -176,7 +191,7 @@ const PaginationBar = styled.div`
   align-items: center;
   gap: 6px;
   margin-top: 8px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const Controls = styled.div`
@@ -216,12 +231,12 @@ const BatchBar = styled.div`
   background: #ffffcc;
   border: 1px solid #808080;
   margin-bottom: 8px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const BoardBadge = styled.span`
   display: inline-block;
-  font-size: 8px;
+  font-size: var(--wtf-type-caption, 13px);
   padding: 1px 4px;
   background: #008000;
   color: #fff;
@@ -264,10 +279,10 @@ const DetailWindow = styled.div`
 `;
 
 const DetailTitleBar = styled.div`
-  background: linear-gradient(90deg, #000080, #1084d0);
+  background: var(--wtf-app-link, var(--wtf-highlight-color, #000080));
   color: #fff;
   font-weight: bold;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   padding: 4px 8px;
   display: flex;
   align-items: center;
@@ -293,7 +308,7 @@ const DetailImage = styled.div`
 const DetailRow = styled.div`
   display: flex;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   margin-bottom: 4px;
   strong { min-width: 80px; color: #444; }
 `;
@@ -389,7 +404,7 @@ export function TokenDetailModal({
           </DetailRow>
           <DetailRow>
             <strong>Contract:</strong>
-            <span style={{ fontFamily: "monospace", fontSize: 10 }}>{token.contract}</span>
+            <span style={{ fontFamily: OWNED_TOKENS_MONO_FONT, fontSize: OWNED_TOKENS_CAPTION_TYPE }}>{token.contract}</span>
           </DetailRow>
           <DetailRow>
             <strong>Token ID:</strong> <span>{token.tokenId}</span>
@@ -405,10 +420,10 @@ export function TokenDetailModal({
           {(creatorName || token.creatorAddress) && (
             <DetailRow>
               <strong>Creator:</strong>
-              <span style={{ fontSize: 10 }} title={token.creatorAddress}>
+              <span style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE }} title={token.creatorAddress}>
                 {creatorName || (token.creatorAddress ? shortAddr(token.creatorAddress) : "")}
                 {creatorName && token.creatorAddress ? (
-                  <span style={{ fontFamily: "monospace" }}>
+                  <span style={{ fontFamily: OWNED_TOKENS_MONO_FONT }}>
                     {" "}
                     ({shortAddr(token.creatorAddress)})
                   </span>
@@ -419,7 +434,7 @@ export function TokenDetailModal({
           {creators.length > 0 && !token.creatorAddress && !creatorName && (
             <DetailRow>
               <strong>Creator(s):</strong>
-              <span style={{ fontFamily: "monospace", fontSize: 10 }}>
+              <span style={{ fontFamily: OWNED_TOKENS_MONO_FONT, fontSize: OWNED_TOKENS_CAPTION_TYPE }}>
                 {displayCreators.join(", ")}
               </span>
             </DetailRow>
@@ -432,7 +447,7 @@ export function TokenDetailModal({
           )}
           <DetailRow>
             <strong>Wallet:</strong>
-            <span style={{ fontFamily: "monospace", fontSize: 10 }}>
+            <span style={{ fontFamily: OWNED_TOKENS_MONO_FONT, fontSize: OWNED_TOKENS_CAPTION_TYPE }}>
               {token.walletAddress}
             </span>
           </DetailRow>
@@ -659,10 +674,10 @@ export function OwnedTokensGallery({
       {isLoading ? (
         <div style={{ textAlign: "center", padding: 16 }}>
           <Hourglass size={32} />
-          <p style={{ fontSize: 11 }}>Loading tokens...</p>
+          <p style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE }}>Loading tokens...</p>
         </div>
       ) : items.length === 0 ? (
-        <p style={{ fontSize: 12, padding: 8 }}>
+        <p style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE, padding: 8 }}>
           {search || contractFilter || boardFilter
             ? "No tokens match your filters."
             : creatorTab === 0
@@ -687,7 +702,11 @@ export function OwnedTokensGallery({
                 <CardTitleBar $selected={isSelected}>
                   {selectMode && (
                     <span onClick={(e) => e.stopPropagation()} style={{ display: "flex" }}>
-                      <Checkbox checked={isSelected} readOnly />
+                      <Checkbox
+                        checked={isSelected}
+                        readOnly
+                        aria-label={`Select ${token.name || `token ${token.tokenId}`}`}
+                      />
                     </span>
                   )}
                   <CardTitleIcon>{token.onTradeBoard ? "📋" : "🖼️"}</CardTitleIcon>
@@ -767,17 +786,18 @@ export function OwnedTokensGallery({
                       <>
                         <input
                           type="number"
+                          aria-label={`Trade board quantity for ${token.name || `token ${token.tokenId}`}`}
                           min={0}
                           max={bal}
                           value={boardQtyInputs[token.id] ?? String(token.tradeBoardQuantity)}
                           onChange={(e) =>
                             setBoardQtyInputs((prev) => ({ ...prev, [token.id]: e.target.value }))
                           }
-                          style={{ width: 40, fontSize: 10, textAlign: "center", border: "1px solid #808080" }}
+                          style={{ width: 48, fontSize: OWNED_TOKENS_CAPTION_TYPE, textAlign: "center", border: "1px solid #808080" }}
                         />
                         <Button
                           size="sm"
-                          style={{ fontSize: 9, padding: "0 4px", minWidth: 0 }}
+                          style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE, padding: "0 6px", minWidth: 0 }}
                           disabled={tradeBoardMutation.isPending}
                           onClick={() => {
                             const raw = parseInt(boardQtyInputs[token.id] ?? String(token.tradeBoardQuantity), 10) || 0;
@@ -793,7 +813,7 @@ export function OwnedTokensGallery({
                         </Button>
                         <Button
                           size="sm"
-                          style={{ fontSize: 9, padding: "0 4px", minWidth: 0 }}
+                          style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE, padding: "0 6px", minWidth: 0 }}
                           onClick={() => tradeBoardMutation.mutate({ tokenIds: [token.id], add: false })}
                           disabled={tradeBoardMutation.isPending}
                         >
@@ -801,7 +821,7 @@ export function OwnedTokensGallery({
                         </Button>
                         <Button
                           size="sm"
-                          style={{ fontSize: 9, padding: "0 4px", minWidth: 0 }}
+                          style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE, padding: "0 6px", minWidth: 0 }}
                           onClick={() =>
                             setLocation(
                               `/marketplace?listToken=${token.id}&contract=${token.contract}&tokenId=${token.tokenId}&amount=1`
@@ -814,7 +834,7 @@ export function OwnedTokensGallery({
                     ) : (
                       <Button
                         size="sm"
-                        style={{ fontSize: 9, padding: "1px 6px" }}
+                        style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE, padding: "1px 6px" }}
                         disabled={tradeBoardMutation.isPending}
                         onClick={() =>
                           tradeBoardMutation.mutate({ tokenIds: [token.id], add: true, quantity: 1 })
@@ -829,7 +849,8 @@ export function OwnedTokensGallery({
                       return (
                         <Button
                           size="sm"
-                          style={{ fontSize: 9, padding: "1px 6px", minWidth: 0 }}
+                          aria-label={`Import ${isVideo ? "video" : "image"} media for ${token.name || `token ${token.tokenId}`}`}
+                          style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE, padding: "1px 6px", minWidth: 0 }}
                           disabled={importMediaMutation.isPending}
                           onClick={() =>
                             importMediaMutation.mutate({
@@ -861,6 +882,7 @@ export function OwnedTokensGallery({
                       if (items.every((t) => selected.has(t.id))) deselectAll();
                       else selectAll();
                     }}
+                    aria-label="Select all visible tokens"
                     label=""
                   />
                 </TableHeadCell>
@@ -905,7 +927,11 @@ export function OwnedTokensGallery({
                 >
                   {selectMode && (
                     <TableDataCell>
-                      <Checkbox checked={isSelected} readOnly />
+                      <Checkbox
+                        checked={isSelected}
+                        readOnly
+                        aria-label={`Select ${token.name || `token ${token.tokenId}`}`}
+                      />
                     </TableDataCell>
                   )}
                   <TableDataCell>
@@ -928,10 +954,10 @@ export function OwnedTokensGallery({
                       );
                     })()}
                   </TableDataCell>
-                  <TableDataCell style={{ fontSize: 11, fontWeight: "bold" }}>
+                  <TableDataCell style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE, fontWeight: "bold" }}>
                     {token.name || `Token #${token.tokenId}`}
                   </TableDataCell>
-                  <TableDataCell style={{ fontSize: 10 }}>
+                  <TableDataCell style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE }}>
                     {provenance ? (
                       <>
                         {supportLink ? (
@@ -953,20 +979,20 @@ export function OwnedTokensGallery({
                       <span style={{ opacity: 0.5 }}>—</span>
                     )}
                   </TableDataCell>
-                  <TableDataCell style={{ fontFamily: "monospace", fontSize: 10 }}>
+                  <TableDataCell style={{ fontFamily: OWNED_TOKENS_MONO_FONT, fontSize: OWNED_TOKENS_CAPTION_TYPE }}>
                     {token.contract.slice(0, 10)}...{token.contract.slice(-4)}
                   </TableDataCell>
-                  <TableDataCell style={{ fontSize: 11 }}>{token.tokenId}</TableDataCell>
-                  <TableDataCell style={{ fontSize: 11 }}>{token.balance}</TableDataCell>
+                  <TableDataCell style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE }}>{token.tokenId}</TableDataCell>
+                  <TableDataCell style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE }}>{token.balance}</TableDataCell>
                   <TableDataCell>
                     {token.onTradeBoard ? (
                       <BoardBadge>{token.tradeBoardQuantity}/{token.balance}</BoardBadge>
                     ) : (
-                      <span style={{ fontSize: 9, opacity: 0.5 }}>—</span>
+                      <span style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE, opacity: 0.5 }}>—</span>
                     )}
                   </TableDataCell>
                   {!walletFilter && (
-                    <TableDataCell style={{ fontFamily: "monospace", fontSize: 9 }}>
+                    <TableDataCell style={{ fontFamily: OWNED_TOKENS_MONO_FONT, fontSize: OWNED_TOKENS_CAPTION_TYPE }}>
                       {token.walletAddress.slice(0, 8)}...
                     </TableDataCell>
                   )}
@@ -1021,6 +1047,7 @@ export function OwnedTokensGallery({
       <Controls>
         {walletOptions && walletOptions.length > 1 && !walletFilter && (
           <Select
+            aria-label="Filter tokens by wallet"
             value={walletAddr}
             onChange={(e: any) => {
               setWalletAddr(e.value);
@@ -1031,6 +1058,7 @@ export function OwnedTokensGallery({
           />
         )}
         <TextInput
+          aria-label="Search owned tokens"
           value={search}
           onChange={handleSearch}
           placeholder="Search tokens..."
@@ -1052,6 +1080,7 @@ export function OwnedTokensGallery({
       <FilterRow>
         {contracts.length > 1 && (
           <Select
+            aria-label="Filter tokens by contract"
             value={contractFilter}
             onChange={(e: any) => {
               setContractFilter(e.value);
@@ -1069,6 +1098,7 @@ export function OwnedTokensGallery({
         )}
         {!tradeBoardOnly && (
           <Select
+            aria-label="Filter tokens by trade board state"
             value={boardFilter}
             onChange={(e: any) => {
               setBoardFilter(e.value);
@@ -1097,7 +1127,7 @@ export function OwnedTokensGallery({
           </Button>
         )}
         {view === "list" && (
-          <span style={{ fontSize: 10, opacity: 0.7 }}>
+          <span style={{ fontSize: OWNED_TOKENS_CAPTION_TYPE, opacity: 0.7 }}>
             Sort: {sortBy} {sortDir === "desc" ? "▼" : "▲"}
           </span>
         )}

@@ -83,27 +83,24 @@ export const BrandStrip = styled.div`
 `;
 
 export const BrandName = styled.div`
-  font-family: "Georgia", "Times New Roman", serif;
+  font-family: var(--wtf-display-font, "Georgia", "Times New Roman", serif);
   font-weight: bold;
   font-size: clamp(14px, 2.2vw, 22px);
-  letter-spacing: 8px;
-  color: #c8a04a;
+  letter-spacing: 0;
+  color: #d0a64f;
   text-shadow:
     0 1px 0 rgba(0, 0, 0, 0.7),
-    0 -1px 0 rgba(255, 220, 140, 0.15);
+    0 -1px 0 rgba(255, 220, 140, 0.2),
+    0 0 7px rgba(120, 74, 20, 0.35);
   text-transform: uppercase;
-  background: linear-gradient(180deg, #dab860 0%, #b08830 60%, #906820 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
 `;
 
 export const ModelLabel = styled.div`
-  font-family: "Courier New", monospace;
-  font-size: clamp(7px, 1vw, 10px);
+  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-size: var(--wtf-type-caption, 13px);
   color: #7a5a30;
-  letter-spacing: 1.5px;
+  letter-spacing: 0;
   opacity: 0.8;
 `;
 
@@ -230,7 +227,7 @@ export const CRTCurve = styled.div`
 `;
 
 /**
- * Off-screen sink for hidden preloader `<video>`/`<img>` elements.
+ * Off-screen sink for hidden preloader media elements.
  * Kept in the document (not display:none) so the browser actually
  * downloads the bytes and fills its media+HTTP caches — when the
  * visible <video> later mounts the same URL it should load from
@@ -316,11 +313,11 @@ export const OffScreen = styled.div`
 `;
 
 export const OffScreenLabel = styled.div`
-  font-family: "Courier New", monospace;
-  font-size: clamp(10px, 1.4vw, 16px);
+  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-size: clamp(13px, 1.4vw, 16px);
   color: #1a2a35;
   text-transform: uppercase;
-  letter-spacing: 3px;
+  letter-spacing: 0;
 `;
 
 export const PowerDot = styled.div<{ $on: boolean }>`
@@ -372,8 +369,8 @@ export const OSD = styled.div`
   left: clamp(8px, 2%, 20px);
   top: clamp(8px, 2%, 20px);
   z-index: 12;
-  font-family: "Courier New", "Lucida Console", monospace;
-  font-size: clamp(11px, 1.6vw, 16px);
+  font-family: var(--wtf-mono-font, "Courier New", "Lucida Console", monospace);
+  font-size: clamp(13px, 1.6vw, 16px);
   color: #88ddff;
   background: rgba(0, 15, 30, 0.75);
   border: 1px solid rgba(100, 180, 240, 0.3);
@@ -401,7 +398,7 @@ export const mtvOverlayCardCss = css<{ $visible: boolean }>`
   flex-direction: column;
   gap: 2px;
   padding: clamp(6px, 1vw, 12px) clamp(9px, 1.3vw, 16px) clamp(7px, 1.1vw, 14px);
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif);
   color: #fff;
   background: linear-gradient(
     120deg,
@@ -409,8 +406,10 @@ export const mtvOverlayCardCss = css<{ $visible: boolean }>`
     rgba(20, 20, 26, 0.66) 60%,
     rgba(10, 10, 14, 0.78) 100%
   );
-  border-left: 3px solid #ffdb4d;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 219, 77, 0.45);
+  box-shadow:
+    inset 0 3px 0 #ffdb4d,
+    0 6px 18px rgba(0, 0, 0, 0.55);
   opacity: ${({ $visible }) => ($visible ? 1 : 0)};
   transform: translateY(${({ $visible }) => ($visible ? "0" : "6px")});
   transition: opacity 420ms ease, transform 420ms ease;
@@ -428,15 +427,15 @@ export const MtvOverlayLink = styled.a<{ $visible: boolean }>`
   text-decoration: none;
 
   &:hover {
-    border-left-color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.72);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
   }
 `;
 
 export const MtvEyebrow = styled.div`
-  font-family: "Courier New", "Lucida Console", monospace;
-  font-size: clamp(9px, 1.1vw, 11px);
-  letter-spacing: 0.18em;
+  font-family: var(--wtf-mono-font, "Courier New", "Lucida Console", monospace);
+  font-size: var(--wtf-type-caption, 13px);
+  letter-spacing: 0;
   text-transform: uppercase;
   color: #ffdb4d;
   text-shadow: 0 0 4px rgba(255, 219, 77, 0.4);
@@ -464,9 +463,9 @@ export const MtvCreator = styled.div`
 `;
 
 export const MtvSubline = styled.div`
-  font-family: "Courier New", "Lucida Console", monospace;
-  font-size: clamp(10px, 1.3vw, 12px);
-  letter-spacing: 0.08em;
+  font-family: var(--wtf-mono-font, "Courier New", "Lucida Console", monospace);
+  font-size: var(--wtf-type-caption, 13px);
+  letter-spacing: 0;
   color: #c8c8c8;
   text-transform: uppercase;
   white-space: nowrap;
@@ -475,9 +474,9 @@ export const MtvSubline = styled.div`
 `;
 
 export const MtvWallet = styled.div`
-  font-family: "Courier New", "Lucida Console", monospace;
-  font-size: clamp(10px, 1.3vw, 12px);
-  letter-spacing: 0.04em;
+  font-family: var(--wtf-mono-font, "Courier New", "Lucida Console", monospace);
+  font-size: var(--wtf-type-caption, 13px);
+  letter-spacing: 0;
   color: #d8d8d8;
   white-space: nowrap;
   overflow: hidden;
@@ -497,7 +496,7 @@ export const MenuOverlay = styled.div`
   flex-direction: column;
   padding: clamp(12px, 3%, 28px) clamp(14px, 4%, 36px);
   overflow-y: auto;
-  font-family: "Courier New", "Lucida Console", monospace;
+  font-family: var(--wtf-mono-font, "Courier New", "Lucida Console", monospace);
   color: #88ffaa;
   animation: ${flicker} 8s infinite;
 
@@ -545,7 +544,7 @@ export const MenuRow = styled.div`
 `;
 
 export const MenuLabel = styled.span`
-  font-size: clamp(10px, 1.4vw, 15px);
+  font-size: clamp(13px, 1.4vw, 15px);
   color: #55aa77;
 `;
 
@@ -553,8 +552,8 @@ export const MenuInput = styled.input`
   background: rgba(0, 20, 10, 0.8);
   border: 1px solid #2a5a3a;
   color: #88ffaa;
-  font-family: "Courier New", monospace;
-  font-size: clamp(12px, 1.5vw, 16px);
+  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-size: clamp(13px, 1.5vw, 16px);
   padding: clamp(5px, 0.8vw, 10px) clamp(6px, 1vw, 12px);
   outline: none;
   width: 100%;
@@ -574,8 +573,8 @@ export const MenuSelect = styled.select`
   background: rgba(0, 20, 10, 0.9);
   border: 1px solid #2a5a3a;
   color: #88ffaa;
-  font-family: "Courier New", monospace;
-  font-size: clamp(11px, 1.35vw, 15px);
+  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-size: clamp(13px, 1.35vw, 15px);
   padding: clamp(5px, 0.8vw, 10px) clamp(6px, 1vw, 10px);
   border-radius: 2px;
   outline: none;
@@ -593,8 +592,9 @@ export const MenuBtn = styled.button<{ $accent?: boolean }>`
       : "rgba(30, 60, 40, 0.8)"};
   border: 1px solid ${({ $accent }) => ($accent ? "#55cc77" : "#2a5a3a")};
   color: ${({ $accent }) => ($accent ? "#ccffdd" : "#88ffaa")};
-  font-family: "Courier New", monospace;
-  font-size: clamp(11px, 1.4vw, 15px);
+  min-height: 32px;
+  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-size: clamp(13px, 1.4vw, 15px);
   padding: clamp(4px, 0.6vw, 8px) clamp(10px, 1.4vw, 18px);
   cursor: pointer;
   white-space: nowrap;
@@ -644,7 +644,7 @@ export const MenuTokenCard = styled.div`
   border: 1px solid #1a3a2a;
   border-radius: 4px;
   padding: 6px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #88ffaa;
   cursor: pointer;
   display: flex;
@@ -678,9 +678,9 @@ export const TokenPreviewMedia = styled.img`
 `;
 
 export const TokenPreviewFallback = styled.div`
-  font-family: "Courier New", monospace;
-  font-size: 10px;
-  letter-spacing: 0.5px;
+  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-size: var(--wtf-type-caption, 13px);
+  letter-spacing: 0;
   color: #3f7a54;
 `;
 
@@ -737,9 +737,9 @@ export const KnobGroup = styled.div`
 `;
 
 export const KnobLabel = styled.div`
-  font-family: "Courier New", monospace;
-  font-size: clamp(7px, 1vw, 10px);
-  letter-spacing: 2px;
+  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-size: var(--wtf-type-caption, 13px);
+  letter-spacing: 0;
   color: #a08050;
   text-transform: uppercase;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
@@ -815,8 +815,8 @@ export const KnobText = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: "Courier New", monospace;
-  font-size: 8px;
+  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   color: #2a2a2a;
   pointer-events: none;
@@ -829,8 +829,14 @@ export const VolumeSlider = styled.input`
   appearance: none;
   width: clamp(40px, 5vw, 60px);
   height: clamp(60px, 10vh, 100px);
+  min-height: 44px;
   background: transparent;
   cursor: pointer;
+
+  @media (max-width: 700px) {
+    width: 80px;
+    height: 44px;
+  }
 
   &::-webkit-slider-track {
     width: 4px;
@@ -939,7 +945,7 @@ export const Foot = styled.div`
 `;
 
 export const ChannelDisplay = styled.div`
-  font-family: "Courier New", monospace;
+  font-family: var(--wtf-mono-font, "Courier New", monospace);
   font-size: clamp(14px, 2vw, 20px);
   font-weight: bold;
   color: #ff4422;

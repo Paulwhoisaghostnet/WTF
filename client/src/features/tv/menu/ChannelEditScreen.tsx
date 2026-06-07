@@ -199,7 +199,7 @@ export function ChannelEditScreen({
               }
               style={{ width: "100%", accentColor: "#44cc66", marginTop: 4 }}
             />
-            <MenuLabel style={{ color: "#55aa77", fontSize: 10 }}>
+            <MenuLabel style={{ color: "#55aa77", fontSize: "var(--wtf-type-caption, 13px)" }}>
               Affects all viewers of this channel. Community bumpers (uploaded
               by contestants) always play alongside the channel owner&apos;s
               bumpers.

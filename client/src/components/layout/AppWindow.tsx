@@ -7,7 +7,7 @@ import {
   useContext,
 } from "react";
 import styled from "styled-components";
-import { Window, WindowHeader, WindowContent, Button, ScrollView } from "react95";
+import { Window, WindowHeader, WindowContent, Button } from "react95";
 import { useWindowManager, WindowPathContext } from "../../lib/window-context";
 import { useAuth } from "../../lib/auth-context";
 import { NativeAdminPanel } from "../../features/admin-os/NativeAdminPanel";
@@ -53,6 +53,7 @@ const FloatingWindow = styled(Window)<{
   box-shadow: var(--wtf-window-shadow, 1px 1px 0 #ffffff inset, -1px -1px 0 #808080 inset, 3px 3px 0 rgba(0, 0, 0, 0.48));
   outline: ${(p) => (p.$hidden ? "0" : "var(--wtf-window-outline, 1px solid rgba(0, 0, 0, 0.72))")};
   overflow: hidden;
+  isolation: isolate;
   transition: var(--wtf-chrome-transition, none);
 
   html[data-wtf-appearance-style="wtf-zine"] & {
@@ -86,6 +87,7 @@ const StyledHeader = styled(WindowHeader)<{ $focused: boolean }>`
     p.$focused
       ? "var(--wtf-active-title-text, #ffffff)"
       : "var(--wtf-inactive-title-text, #c0c0c0)"};
+  font-family: var(--wtf-titlebar-font, var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif));
   font-weight: var(--wtf-titlebar-font-weight, 700);
   transition: var(--wtf-chrome-transition, none);
 
@@ -109,8 +111,8 @@ const StyledHeader = styled(WindowHeader)<{ $focused: boolean }>`
     text-transform: uppercase;
     background: ${(p) =>
       p.$focused
-        ? "repeating-linear-gradient(-8deg, var(--wtf-active-title, #000080) 0 10px, color-mix(in srgb, var(--wtf-active-title, #000080) 76%, #ffffff) 10px 18px)"
-        : "repeating-linear-gradient(-8deg, var(--wtf-inactive-title, #808080) 0 10px, color-mix(in srgb, var(--wtf-inactive-title, #808080) 76%, #ffffff) 10px 18px)"};
+        ? "linear-gradient(90deg, var(--wtf-active-title, #000080), color-mix(in srgb, var(--wtf-active-title, #000080) 70%, #000000))"
+        : "linear-gradient(90deg, var(--wtf-inactive-title, #808080), color-mix(in srgb, var(--wtf-inactive-title, #808080) 72%, #000000))"};
   }
 
   &:active {
@@ -135,7 +137,7 @@ const TitleText = styled.span`
 
   &::before {
     content: var(--wtf-title-icon-content, "▣");
-    font-size: 11px;
+    font-size: 13px;
     line-height: 1;
     color: currentColor;
   }
@@ -160,21 +162,25 @@ const HeaderButtons = styled.div`
 `;
 
 const WinButton = styled(Button)`
-  padding: 0;
-  min-width: 20px;
-  height: 20px;
-  font-size: 10px;
-  font-weight: bold;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--wtf-control-radius, 0);
+  && {
+    padding: 0;
+    min-width: 32px;
+    width: 32px;
+    min-height: 32px;
+    height: 32px;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--wtf-control-radius, 0);
+  }
 
   html[data-wtf-appearance-style="wtf-aqua"] & {
-    min-width: 18px;
-    width: 18px;
-    height: 18px;
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     font-size: 0;
   }
@@ -197,44 +203,62 @@ const WinButton = styled(Button)`
   }
 
   ${MOBILE} {
-    min-width: 28px;
-    height: 28px;
-    font-size: 14px;
+    && {
+      min-width: 44px;
+      width: 44px;
+      min-height: 44px;
+      height: 44px;
+      font-size: 14px;
+    }
   }
 `;
 
 const StyledContent = styled(WindowContent)`
   flex: 1;
-  overflow: auto;
-  padding: var(--wtf-content-padding, 9px);
-  -webkit-overflow-scrolling: touch;
-  color: var(--wtf-text-color, #111);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 42px),
-    var(--wtf-window-color, #c0c0c0);
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  color: var(--wtf-app-text, var(--wtf-text-color, #111));
+  background: var(--wtf-app-bg, var(--wtf-window-color, #c0c0c0));
 
   html[data-wtf-appearance-style="wtf-xp"] & {
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.42), rgba(255,255,255,0) 64px),
-      color-mix(in srgb, var(--wtf-window-color, #c0c0c0) 92%, #ffffff);
+    background: var(--wtf-app-bg, color-mix(in srgb, var(--wtf-window-color, #c0c0c0) 92%, #ffffff));
   }
 
   html[data-wtf-appearance-style="wtf-aqua"] & {
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.08) 58px),
-      color-mix(in srgb, var(--wtf-window-color, #c0c0c0) 88%, #ffffff);
+    background: var(--wtf-app-bg, color-mix(in srgb, var(--wtf-window-color, #c0c0c0) 88%, #ffffff));
   }
 
   html[data-wtf-appearance-style="wtf-zine"] & {
-    background:
-      linear-gradient(90deg, rgba(0,0,0,0.06) 0 1px, transparent 1px),
-      linear-gradient(180deg, rgba(0,0,0,0.05) 0 1px, transparent 1px),
-      var(--wtf-window-color, #c0c0c0);
-    background-size: 18px 18px;
+    background: var(--wtf-app-bg, var(--wtf-window-color, #c0c0c0));
   }
 
   ${MOBILE} {
-    padding: 6px;
+    min-height: 0;
+  }
+`;
+
+const ContentScroll = styled.div`
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--wtf-content-padding, 12px);
+  color: var(--wtf-app-text, var(--wtf-text-color, #111));
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+  -webkit-overflow-scrolling: touch;
+
+  > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  ${MOBILE} {
+    padding: 10px;
   }
 `;
 
@@ -370,6 +394,7 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
             <WinButton
               size="sm"
               data-compact-control="true"
+              aria-label={`${adminSurface.label} admin settings`}
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
                 setAdminPanelOpen((open) => !open);
@@ -384,6 +409,8 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
               <WinButton
                 size="sm"
                 data-compact-control="true"
+                aria-label={`Minimize ${title}`}
+                title={`Minimize ${title}`}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   wm.minimize(windowKey);
@@ -394,6 +421,8 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
               <WinButton
                 size="sm"
                 data-compact-control="true"
+                aria-label={`${state.maximized ? "Restore" : "Maximize"} ${title}`}
+                title={`${state.maximized ? "Restore" : "Maximize"} ${title}`}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   wm.toggleMaximize(windowKey);
@@ -406,6 +435,8 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
           <WinButton
             size="sm"
             data-compact-control="true"
+            aria-label={`Close ${title}`}
+            title={`Close ${title}`}
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
               wm.close(windowKey);
@@ -416,8 +447,8 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
         </HeaderButtons>
       </StyledHeader>
       {toolbar}
-      <StyledContent>
-        <ScrollView style={{ height: "100%" }}>
+      <StyledContent data-wtf-app-surface="true">
+        <ContentScroll data-wtf-app-scroll="true">
           {adminPanelOpen && (
             <NativeAdminPanel
               path={pagePath}
@@ -425,7 +456,7 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
             />
           )}
           {children}
-        </ScrollView>
+        </ContentScroll>
       </StyledContent>
       {!effectiveMaximized && (
         <ResizeHandle onMouseDown={handleResizeStart} />

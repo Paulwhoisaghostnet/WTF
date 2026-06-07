@@ -2,6 +2,7 @@ import { useState } from "react";
 import { GroupBox } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UiButton, UiNotice } from "../components/wtfos-ui";
 import { GallerySlideshow } from "../features/gallery/GallerySlideshow";
 
 const Grid = styled.div`
@@ -17,14 +18,21 @@ const ArtCard = styled(GroupBox)`
 const Placeholder = styled.div`
   width: 100%;
   height: 160px;
-  background: linear-gradient(135deg, #008080 0%, #000080 50%, #800080 100%);
+  background: var(--wtf-app-surface-raised, #ffffff);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 14px;
-  border: 2px inset #c0c0c0;
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-body-strong, 15px);
+  border: 1px dashed var(--wtf-app-border, #808080);
   margin-bottom: 8px;
+`;
+
+const ActionRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wtf-space-2, 8px);
+  margin-bottom: var(--wtf-space-2, 8px);
 `;
 
 const survivalTokens = [
@@ -49,42 +57,36 @@ export function Gallery() {
             tokens={survivalTokens}
             intervalMs={4000}
           />
-          <p style={{ marginTop: 8, fontSize: 11, color: "#555" }}>
-            <button
-              onClick={() => setSlideshowMode(false)}
-              style={{ fontSize: 11, cursor: "pointer" }}
-            >
-              ← Back to grid view
-            </button>
-          </p>
+          <ActionRow style={{ marginTop: 8 }}>
+            <UiButton onClick={() => setSlideshowMode(false)}>
+              Back to grid view
+            </UiButton>
+          </ActionRow>
         </>
       ) : (
         <>
-          <div style={{ marginBottom: 8 }}>
-            <button
-              onClick={() => setSlideshowMode(true)}
-              style={{ fontSize: 11, cursor: "pointer", padding: "3px 8px" }}
-            >
-              ▶ Slideshow
-            </button>
-          </div>
+          <ActionRow>
+            <UiButton onClick={() => setSlideshowMode(true)} uiVariant="primary">
+              Slideshow
+            </UiButton>
+          </ActionRow>
 
           <h3 style={{ marginTop: 4, marginBottom: 12 }}>Survival Tokens</h3>
           <Grid>
             {survivalTokens.map((token) => (
               <ArtCard key={token.id} label={token.name}>
                 <Placeholder>NFT Preview</Placeholder>
-                <p style={{ fontSize: 11 }}>by {token.artist}</p>
+                <p className="wtf-caption">by {token.artist}</p>
               </ArtCard>
             ))}
           </Grid>
         </>
       )}
 
-      <p style={{ marginTop: 16, fontSize: 12, color: "#808080" }}>
+      <UiNotice tone="info" style={{ marginTop: 16 }}>
         Gallery will be populated with on-chain token data from survival
         rounds and art auctions.
-      </p>
+      </UiNotice>
     </AppWindow>
   );
 }

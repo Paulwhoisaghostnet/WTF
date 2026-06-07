@@ -244,8 +244,8 @@ export function BumpersScreen({
           type="file"
           accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-matroska,image/gif,image/webp,image/apng,image/png,image/jpeg"
           style={{
-            fontFamily: "'Courier New', monospace",
-            fontSize: "clamp(10px, 1.3vw, 14px)",
+            fontFamily: 'var(--wtf-mono-font, "Courier New", monospace)',
+            fontSize: "var(--wtf-type-caption, 13px)",
             color: "#88ffaa",
             background: "transparent",
             border: "none",

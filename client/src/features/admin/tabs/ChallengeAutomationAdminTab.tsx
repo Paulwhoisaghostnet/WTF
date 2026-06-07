@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, GroupBox, Hourglass } from "react95";
+import { Hourglass } from "react95";
 import styled from "styled-components";
+import { UiButton, UiPanel, UiStatusPill } from "../../../components/wtfos-ui";
 import { api } from "../../../lib/api";
 import { ChallengeBuilder } from "../challenges/ChallengeBuilder";
 import { ChallengeProgressView } from "../challenges/ChallengeProgressView";
@@ -18,36 +19,51 @@ import type {
 const Stack = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--wtf-space-3, 12px);
 `;
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
 `;
 
 const TableWrap = styled.div`
+  min-width: 0;
   overflow-x: auto;
 `;
 
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 
   th,
   td {
-    border: 1px solid #808080;
-    padding: 4px 6px;
+    border: 1px solid var(--wtf-app-border, #808080);
+    padding: var(--wtf-space-1, 4px) var(--wtf-space-2, 8px);
     text-align: left;
     vertical-align: top;
   }
 
   th {
-    background: #c0c0c0;
+    background: var(--wtf-app-surface-raised, #ffffff);
   }
+`;
+
+const SummaryCell = styled.td`
+  max-width: 360px;
+  overflow-wrap: anywhere;
+`;
+
+const DetailSummary = styled.p`
+  margin: 0;
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.45;
 `;
 
 const DEFAULT_REGISTRY: ChallengeAutomationRegistry = {
@@ -57,10 +73,10 @@ const DEFAULT_REGISTRY: ChallengeAutomationRegistry = {
 };
 
 function statusButtonLabel(status: string) {
-  if (status === "active") return "Pause";
-  if (status === "paused") return "Activate";
-  if (status === "draft") return "Activate";
-  return "Reopen";
+  if (status === "active") return "Pause challenge";
+  if (status === "paused") return "Activate challenge";
+  if (status === "draft") return "Activate challenge";
+  return "Reopen challenge";
 }
 
 export function ChallengeAutomationAdminTab() {
@@ -157,27 +173,27 @@ export function ChallengeAutomationAdminTab() {
 
   return (
     <Stack>
-      <GroupBox label="Challenge Automation Registry">
+      <UiPanel title="Challenge automation registry" compact>
         <ActionRow>
-          <span>{registry.triggers.length} triggers</span>
-          <span>{registry.predicates.length} predicates</span>
-          <span>{registry.rewardActions.length} reward actions</span>
-          <Button
-            size="sm"
+          <UiStatusPill>{registry.triggers.length} triggers</UiStatusPill>
+          <UiStatusPill>{registry.predicates.length} predicates</UiStatusPill>
+          <UiStatusPill>{registry.rewardActions.length} reward actions</UiStatusPill>
+          <UiButton
+            compact
             onClick={() => seedMutation.mutate()}
             disabled={seedMutation.isPending}
           >
-            Seed Examples
-          </Button>
-          <Button
-            size="sm"
+            Seed example challenges
+          </UiButton>
+          <UiButton
+            compact
             onClick={() => seedDailyLoopsMutation.mutate()}
             disabled={seedDailyLoopsMutation.isPending}
           >
-            Seed Side Quests
-          </Button>
+            Seed daily side quests
+          </UiButton>
         </ActionRow>
-      </GroupBox>
+      </UiPanel>
 
       <ChallengeBuilder
         state={builderState}
@@ -187,7 +203,7 @@ export function ChallengeAutomationAdminTab() {
         isPending={saveMutation.isPending}
       />
 
-      <GroupBox label="Automation Challenges">
+      <UiPanel title="Automation challenges" compact>
         <TableWrap>
           <Table>
             <thead>
@@ -211,25 +227,25 @@ export function ChallengeAutomationAdminTab() {
                       {challenge.progressCount || 0} users /{" "}
                       {challenge.completionCount || 0} complete
                     </td>
-                    <td style={{ maxWidth: 360 }}>{challenge.summary || "---"}</td>
+                    <SummaryCell>{challenge.summary || "---"}</SummaryCell>
                     <td>
                       <ActionRow>
-                        <Button
-                          size="sm"
+                        <UiButton
+                          compact
                           onClick={() => setSelectedId(challenge.id)}
                         >
-                          Inspect
-                        </Button>
-                        <Button
-                          size="sm"
+                          Inspect challenge
+                        </UiButton>
+                        <UiButton
+                          compact
                           onClick={() =>
                             setBuilderState(challengeToBuilderState(challenge))
                           }
                         >
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
+                          Edit challenge
+                        </UiButton>
+                        <UiButton
+                          compact
                           onClick={() =>
                             statusMutation.mutate({
                               id: challenge.id,
@@ -239,9 +255,10 @@ export function ChallengeAutomationAdminTab() {
                           disabled={statusMutation.isPending}
                         >
                           {statusButtonLabel(challenge.status)}
-                        </Button>
-                        <Button
-                          size="sm"
+                        </UiButton>
+                        <UiButton
+                          compact
+                          uiVariant="danger"
                           onClick={() =>
                             statusMutation.mutate({
                               id: challenge.id,
@@ -250,8 +267,8 @@ export function ChallengeAutomationAdminTab() {
                           }
                           disabled={statusMutation.isPending}
                         >
-                          Archive
-                        </Button>
+                          Archive challenge
+                        </UiButton>
                       </ActionRow>
                     </td>
                   </tr>
@@ -269,19 +286,21 @@ export function ChallengeAutomationAdminTab() {
             </tbody>
           </Table>
         </TableWrap>
-      </GroupBox>
+      </UiPanel>
 
       {selectedChallenge && (
-        <GroupBox label={`Challenge Detail: ${selectedChallenge.title}`}>
+        <UiPanel title={`Challenge detail: ${selectedChallenge.title}`} compact>
           <Stack>
-            <p>{detailQuery.data?.challenge?.summary || selectedChallenge.summary}</p>
+            <DetailSummary>
+              {detailQuery.data?.challenge?.summary || selectedChallenge.summary}
+            </DetailSummary>
             <ChallengeProgressView
               progress={progressQuery.data?.progress}
               events={eventsQuery.data?.events}
               audit={auditQuery.data?.audit}
             />
           </Stack>
-        </GroupBox>
+        </UiPanel>
       )}
     </Stack>
   );

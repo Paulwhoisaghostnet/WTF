@@ -46,6 +46,7 @@ const EXTERNAL_OAUTH_PATTERNS = [
   /\/api\/auth\/github/i,
   /\/api\/auth\/google/i,
 ];
+const API_PROBE_TIMEOUT_MS = Math.max(1_000, Number(process.env.WTF_E2E_API_PROBE_TIMEOUT_MS || 25_000) || 25_000);
 
 const actorFilter = (process.env.WTF_E2E_ACTOR_FILTER || "")
   .split(",")
@@ -165,7 +166,7 @@ async function actorPage(browser, baseURL, actor) {
 
 async function apiProbe(request, probe) {
   const method = probe.method.toLowerCase();
-  const options = probe.body ? { data: probe.body } : {};
+  const options = probe.body ? { data: probe.body, timeout: API_PROBE_TIMEOUT_MS } : { timeout: API_PROBE_TIMEOUT_MS };
   if (!["get", "head", "options"].includes(method)) {
     options.headers = await csrfHeaders(request);
   }

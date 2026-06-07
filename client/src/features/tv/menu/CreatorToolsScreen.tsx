@@ -116,7 +116,13 @@ export function CreatorToolsScreen({
       {selectedOwnChannelId && (
         <>
           <MenuDivider />
-          <MenuLabel style={{ color: "#ccff66", fontSize: 9, letterSpacing: 1 }}>
+          <MenuLabel
+            style={{
+              color: "#ccff66",
+              fontSize: "var(--wtf-type-caption, 13px)",
+              letterSpacing: 0,
+            }}
+          >
             STEP 1: CHANNEL
           </MenuLabel>
           <MenuItem
@@ -143,7 +149,13 @@ export function CreatorToolsScreen({
           </MenuItem>
 
           <MenuDivider />
-          <MenuLabel style={{ color: "#ccff66", fontSize: 9, letterSpacing: 1 }}>
+          <MenuLabel
+            style={{
+              color: "#ccff66",
+              fontSize: "var(--wtf-type-caption, 13px)",
+              letterSpacing: 0,
+            }}
+          >
             STEP 2: MEDIA
           </MenuLabel>
           <MenuItem onClick={() => setScreenView("add-tokens")}>
@@ -173,7 +185,13 @@ export function CreatorToolsScreen({
           </MenuItem>
 
           <MenuDivider />
-          <MenuLabel style={{ color: "#ccff66", fontSize: 9, letterSpacing: 1 }}>
+          <MenuLabel
+            style={{
+              color: "#ccff66",
+              fontSize: "var(--wtf-type-caption, 13px)",
+              letterSpacing: 0,
+            }}
+          >
             STEP 3: PLAYLIST
           </MenuLabel>
           <MenuItem onClick={() => setScreenView("playlists")}>PLAYLISTS</MenuItem>
@@ -183,7 +201,13 @@ export function CreatorToolsScreen({
           </MenuItem>
 
           <MenuDivider />
-          <MenuLabel style={{ color: "#ccff66", fontSize: 9, letterSpacing: 1 }}>
+          <MenuLabel
+            style={{
+              color: "#ccff66",
+              fontSize: "var(--wtf-type-caption, 13px)",
+              letterSpacing: 0,
+            }}
+          >
             STEP 4: SCHEDULE
           </MenuLabel>
           <MenuItem onClick={() => setScreenView("schedule")}>

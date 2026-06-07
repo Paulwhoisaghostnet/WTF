@@ -60,6 +60,9 @@ export function useMarketplaceData({
     const offers = raw.offers ?? [];
     return {
       contractAddress: raw.contractAddress ?? "",
+      legacyContractAddress: raw.legacyContractAddress ?? null,
+      contractVersion: raw.contractVersion ?? "legacy",
+      acceptancePolicy: raw.acceptancePolicy,
       admin: raw.admin ?? "",
       paused: Boolean(raw.paused),
       listings,
@@ -82,7 +85,7 @@ export function useMarketplaceData({
   const offersByToken = useMemo(() => {
     const map = new Map<string, OnChainOffer>();
     for (const offer of onchain?.offers ?? []) {
-      map.set(`${offer.tokenContract}:${offer.tokenId}`, offer);
+      map.set(`${offer.targetOwner}:${offer.tokenContract}:${offer.tokenId}`, offer);
     }
     return map;
   }, [onchain?.offers]);

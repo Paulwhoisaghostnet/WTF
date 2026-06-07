@@ -25,7 +25,7 @@ const LaunchRow = styled.div`
 const WalletList = styled.div`
   display: grid;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const WalletRow = styled.div`
@@ -53,8 +53,8 @@ const Frame = styled.iframe`
 
 const Muted = styled.p`
   margin: 0;
-  font-size: 11px;
-  color: #444;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #374151);
 `;
 
 function shortAddress(address: string) {
@@ -88,7 +88,7 @@ export function CollektBridge() {
               <span>{data?.wallets.length ?? 0} linked wallet(s)</span>
               {launchUrl && (
                 <Button onClick={() => window.open(launchUrl, "_blank", "noopener,noreferrer")}>
-                  Open colleKT
+                  Open colleKT module
                 </Button>
               )}
             </LaunchRow>

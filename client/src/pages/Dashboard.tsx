@@ -28,6 +28,8 @@ import { formatWtf } from "@shared/types";
 import { useLocation } from "wouter";
 import { DiscoveryCard } from "../features/discovery/DiscoveryCard";
 
+const DASHBOARD_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
+
 // ── Formatting helpers for the new analytics cards ─────────────────
 //
 // Mutez → XTZ with a compact decimal count that keeps big numbers
@@ -117,9 +119,9 @@ const QuickActionGrid = styled.div`
 
 const CompactAction = styled(Button)`
   width: 100%;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   padding: 2px 4px;
-  min-height: 26px;
+  min-height: var(--wtf-control-min-height, 32px);
 `;
 
 // ── Portfolio analytics card styling ───────────────────────────────
@@ -141,9 +143,9 @@ const PortfolioMetric = styled.div`
 `;
 
 const MetricLabel = styled.div`
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: var(--wtf-type-caption, 13px);
+  text-transform: none;
+  letter-spacing: 0;
   color: #404040;
 `;
 
@@ -156,7 +158,7 @@ const MetricValue = styled.div`
 `;
 
 const MetricSub = styled.div`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #404040;
 `;
 
@@ -170,7 +172,7 @@ const PnlBadge = styled.span<{ $positive?: boolean; $negative?: boolean }>`
     p.$positive ? "#d7f7d7" : p.$negative ? "#f7d7d7" : "#e0e0e0"};
   color: ${(p) =>
     p.$positive ? "#0d7b0d" : p.$negative ? "#a00" : "#404040"};
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
 `;
 
@@ -180,7 +182,7 @@ const WalletRow = styled.div`
   gap: 6px;
   padding: 4px 0;
   border-top: 1px dashed #a0a0a0;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   align-items: center;
   &:first-of-type {
     border-top: none;
@@ -190,8 +192,8 @@ const WalletRow = styled.div`
 const WalletRowHead = styled(WalletRow)`
   border-top: none;
   font-weight: bold;
-  font-size: 10px;
-  text-transform: uppercase;
+  font-size: var(--wtf-type-caption, 13px);
+  text-transform: none;
   color: #404040;
 `;
 
@@ -201,7 +203,7 @@ const ActivityRow = styled.div`
   gap: 6px;
   padding: 4px 0;
   border-top: 1px dashed #a0a0a0;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   align-items: center;
   &:first-of-type {
     border-top: none;
@@ -405,10 +407,10 @@ export function Dashboard() {
                     <div style={{ fontSize: 13, fontWeight: "bold" }}>
                       {user?.displayName || user?.username}
                     </div>
-                    <div style={{ fontSize: 11 }}>
+                    <div style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>
                       @{user?.username} · {user?.role}
                     </div>
-                    <div style={{ fontSize: 11 }}>
+                    <div style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>
                       Joined{" "}
                       {user?.createdAt
                         ? new Date(user.createdAt).toLocaleDateString()
@@ -439,12 +441,12 @@ export function Dashboard() {
                 </StatValue>
                 <WalletButton />
                 {wallets && wallets.length > 0 && (
-                  <p style={{ fontSize: 11, marginTop: 4 }}>
+                  <p style={{ fontSize: DASHBOARD_CAPTION_TYPE, marginTop: 4 }}>
                     {wallets.length} wallet(s) linked
                   </p>
                 )}
                 {portfolioSummary && (
-                  <p style={{ fontSize: 11, marginTop: 4 }}>
+                  <p style={{ fontSize: DASHBOARD_CAPTION_TYPE, marginTop: 4 }}>
                     {portfolioSummary.pagination.total} indexed token position(s)
                   </p>
                 )}
@@ -453,7 +455,7 @@ export function Dashboard() {
               <GroupBox label="Cockpit summary">
                 {overview ? (
                   <Fieldset label="Holdings">
-                    <div style={{ fontSize: 11 }}>
+                    <div style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>
                       Tokens:{" "}
                       <strong>{overview.holdings?.totalTokens ?? 0}</strong>
                       <br />
@@ -502,7 +504,7 @@ export function Dashboard() {
                 {!portfolio ? (
                   <Hourglass size={24} />
                 ) : portfolio.totals.wallets === 0 ? (
-                  <p style={{ fontSize: 11 }}>
+                  <p style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>
                     Link a wallet to see portfolio analytics.
                   </p>
                 ) : (
@@ -604,7 +606,7 @@ export function Dashboard() {
                     </PortfolioMetricGrid>
                     <p
                       style={{
-                        fontSize: 10,
+                        fontSize: DASHBOARD_CAPTION_TYPE,
                         marginTop: 6,
                         color: "#404040",
                       }}
@@ -638,7 +640,7 @@ export function Dashboard() {
                 {!portfolio ? (
                   <Hourglass size={24} />
                 ) : portfolio.perWallet.length === 0 ? (
-                  <p style={{ fontSize: 11 }}>No linked wallets yet.</p>
+                  <p style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>No linked wallets yet.</p>
                 ) : (
                   <div>
                     <WalletRowHead>
@@ -695,7 +697,7 @@ export function Dashboard() {
                 {!recentAcq ? (
                   <Hourglass size={24} />
                 ) : recentAcq.rows.length === 0 ? (
-                  <p style={{ fontSize: 11 }}>
+                  <p style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>
                     No acquisitions indexed yet.
                   </p>
                 ) : (
@@ -717,13 +719,13 @@ export function Dashboard() {
                         >
                           {r.tokenName ||
                             `${r.tokenContract.slice(0, 6)}…:${r.tokenId}`}
-                          <div style={{ fontSize: 10, color: "#404040" }}>
+                          <div style={{ fontSize: DASHBOARD_CAPTION_TYPE, color: "#404040" }}>
                             {r.acquisitionType === "mint" ? "Minted" : "Bought"} ·{" "}
                             {relTime(r.acquiredAt)}
                           </div>
                         </span>
                         <span
-                          style={{ fontSize: 10, color: "#404040" }}
+                          style={{ fontSize: DASHBOARD_CAPTION_TYPE, color: "#404040" }}
                           title={r.walletAddress}
                         >
                           {addrLabel(
@@ -745,7 +747,7 @@ export function Dashboard() {
                 {!recentSales ? (
                   <Hourglass size={24} />
                 ) : recentSales.rows.length === 0 ? (
-                  <p style={{ fontSize: 11 }}>No sales indexed yet.</p>
+                  <p style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>No sales indexed yet.</p>
                 ) : (
                   <div>
                     {recentSales.rows.slice(0, 6).map((r: any, idx: number) => {
@@ -772,12 +774,12 @@ export function Dashboard() {
                           >
                             {r.tokenName ||
                               `${r.tokenContract.slice(0, 6)}…:${r.tokenId}`}
-                            <div style={{ fontSize: 10, color: "#404040" }}>
+                            <div style={{ fontSize: DASHBOARD_CAPTION_TYPE, color: "#404040" }}>
                               Sold · {relTime(r.soldAt)}
                             </div>
                           </span>
                           <span
-                            style={{ fontSize: 10, color: "#404040" }}
+                            style={{ fontSize: DASHBOARD_CAPTION_TYPE, color: "#404040" }}
                             title={r.walletAddress}
                           >
                             {addrLabel(
@@ -848,7 +850,7 @@ export function Dashboard() {
         {activeTab === 1 && (
           <TabPanel>
             <GroupBox label="Indexed holdings">
-              <p style={{ fontSize: 11, marginBottom: 8 }}>
+              <p style={{ fontSize: DASHBOARD_CAPTION_TYPE, marginBottom: 8 }}>
                 Same data as Profile / Hoard — sourced from `wallet_holdings` + shared
                 metadata cache.
               </p>
@@ -867,7 +869,7 @@ export function Dashboard() {
               {!activity ? (
                 <Hourglass size={24} />
               ) : activity.items?.length === 0 ? (
-                <p style={{ fontSize: 11 }}>No events indexed yet.</p>
+                <p style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>No events indexed yet.</p>
               ) : (
                 <Table>
                   <TableHead>
@@ -886,11 +888,11 @@ export function Dashboard() {
                             ? new Date(ev.timestamp).toLocaleString()
                             : "—"}
                         </TableDataCell>
-                        <TableDataCell style={{ fontSize: 11 }}>
+                        <TableDataCell style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>
                           {String(ev.walletAddress || "").slice(0, 10)}…
                         </TableDataCell>
                         <TableDataCell>{ev.eventType}</TableDataCell>
-                        <TableDataCell style={{ fontSize: 11 }}>
+                        <TableDataCell style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>
                           {ev.tokenContract ? `${ev.tokenContract}:${ev.tokenId}` : "—"}
                           {ev.tokenName ? ` · ${ev.tokenName}` : ""}
                         </TableDataCell>
@@ -909,7 +911,7 @@ export function Dashboard() {
               {!cockpitCollections ? (
                 <Hourglass size={24} />
               ) : cockpitCollections.collections?.length === 0 ? (
-                <p style={{ fontSize: 11 }}>No collections yet.</p>
+                <p style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>No collections yet.</p>
               ) : (
                 <Table>
                   <TableHead>
@@ -926,7 +928,7 @@ export function Dashboard() {
                         <TableDataCell>{c.title}</TableDataCell>
                         <TableDataCell>{c.type}</TableDataCell>
                         <TableDataCell>{c.itemCount}</TableDataCell>
-                        <TableDataCell style={{ fontSize: 11 }}>
+                        <TableDataCell style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>
                           {c.updatedAt
                             ? new Date(c.updatedAt).toLocaleDateString()
                             : "—"}
@@ -964,7 +966,7 @@ export function Dashboard() {
                           {j.latest?.status ?? "—"}
                           {j.latest?.error ? ` (${j.latest.error})` : ""}
                         </TableDataCell>
-                        <TableDataCell style={{ fontSize: 11 }}>
+                        <TableDataCell style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>
                           {j.latest?.finishedAt
                             ? new Date(j.latest.finishedAt).toLocaleString()
                             : "—"}
@@ -1009,13 +1011,13 @@ export function Dashboard() {
                 <TableBody>
                   {wallets?.map((w) => (
                     <TableRow key={w.id}>
-                      <TableDataCell style={{ fontSize: 11 }}>
+                      <TableDataCell style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>
                         {w.walletAddress}
                       </TableDataCell>
-                      <TableDataCell style={{ fontSize: 11 }}>
+                      <TableDataCell style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>
                         {w.preferredTezosDomain || w.tezDomain || "---"}
                         {w.ownedTezosDomains?.length ? (
-                          <div style={{ fontSize: 10, color: "#555" }}>
+                          <div style={{ fontSize: DASHBOARD_CAPTION_TYPE, color: "#555" }}>
                             {w.ownedTezosDomains.length} detected
                           </div>
                         ) : null}
@@ -1048,7 +1050,7 @@ export function Dashboard() {
               </Table>
               <Separator />
               <Fieldset label="Add a wallet">
-                <p style={{ fontSize: 11, marginBottom: 6 }}>
+                <p style={{ fontSize: DASHBOARD_CAPTION_TYPE, marginBottom: 6 }}>
                   New wallets require a signed proof on the Profile page.
                 </p>
                 <Button size="sm" onClick={() => setLocation("/profile")}>

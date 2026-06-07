@@ -286,7 +286,7 @@ export function MyMediaScreen({
                   ) : (
                     (mediaManageUsageQuery.data?.channels || []).map((row) => (
                       <MenuRow key={row.channel.id}>
-                        <span style={{ flex: 1, fontSize: 11 }}>
+                        <span style={{ flex: 1, fontSize: "var(--wtf-type-caption, 13px)" }}>
                           CH{" "}
                           {row.channel.dialNumber != null
                             ? String(row.channel.dialNumber).padStart(2, "0")

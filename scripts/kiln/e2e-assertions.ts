@@ -25,6 +25,17 @@ export type InAppMarketAssertionParams = {
   purchaseStepLabel: string;
 };
 
+export type MarketplaceV2AssertionParams = {
+  dummyWtfAddress: string;
+  sampleFa2Address: string;
+  marketAddress: string;
+  walletAAddress: string;
+  walletBAddress: string;
+  finalStepLabel: string;
+  expectedBuyerWtfUnits: string;
+  expectedBuyerSampleFa2Units: string;
+};
+
 export const REQUIRED_KILN_ASSERTION_KINDS: KilnAssertionKind[] = [
   "storage",
   "balance",
@@ -139,6 +150,59 @@ export function buildInAppMarketAssertions(params: InAppMarketAssertionParams): 
   }
 
   return assertions;
+}
+
+export function buildMarketplaceV2Assertions(
+  params: MarketplaceV2AssertionParams,
+): KilnAssertion[] {
+  return [
+    {
+      id: "marketplace_v2_wtf_token_address_storage",
+      kind: "storage",
+      contractId: "marketplace_v2",
+      afterStep: params.finalStepLabel,
+      description: "Marketplace V2 storage keeps the shadownet WTF FA2 token contract.",
+      path: "wtf_token_address",
+      expected: params.dummyWtfAddress,
+    },
+    {
+      id: "marketplace_v2_unpaused_storage",
+      kind: "storage",
+      contractId: "marketplace_v2",
+      afterStep: params.finalStepLabel,
+      description: "Marketplace V2 is unpaused after the emergency pause/unpause exercise.",
+      path: "paused",
+      expected: false,
+    },
+    {
+      id: "marketplace_v2_zero_xtz_balance",
+      kind: "balance",
+      contractId: "marketplace_v2",
+      afterStep: params.finalStepLabel,
+      description: "Marketplace V2 must not retain XTZ after WTF-only flows.",
+      expectedMutez: "0",
+    },
+    {
+      id: "buyer_dummy_wtf_ledger_big_map",
+      kind: "big_map",
+      contractId: "dummy_wtf",
+      afterStep: params.finalStepLabel,
+      description: "Buyer balance reflects listing payment plus refunded cancelled offer.",
+      bigMap: "ledger",
+      key: params.walletBAddress,
+      expected: params.expectedBuyerWtfUnits,
+    },
+    {
+      id: "buyer_sample_fa2_ledger_big_map",
+      kind: "big_map",
+      contractId: "sample_fa2",
+      afterStep: params.finalStepLabel,
+      description: "Buyer owns exactly the bought and accepted sample FA2 editions.",
+      bigMap: "ledger",
+      key: params.walletBAddress,
+      expected: params.expectedBuyerSampleFa2Units,
+    },
+  ];
 }
 
 export function summarizeKilnAssertionResult(

@@ -53,6 +53,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The harness reads the live market/inventory APIs and asserts the required app-pass, play-card, and desktop item balances.",
   },
   {
+    id: "marketplace.offer-accept-explicit-terms",
+    domain: "Market, Exchange, Inventory, and Commerce",
+    ownerSurfaceIds: ["marketplace"],
+    ownerSpec:
+      "client/src/lib/tezos/marketplace.ts, client/src/features/marketplace/OfferAcceptanceDialog.tsx, server/routes/marketplace.ts",
+    verificationCommand:
+      "npm run check && npm run test:e2e:inventory:coverage",
+    userVisibleAssertion:
+      "Accepting a marketplace or trade-board offer shows quantity, unit WTF, total WTF, token contract/id, owner, offerer, and contract version before wallet signing.",
+    durableSideEffectAssertion:
+      "The wallet helper re-reads canonical /api/marketplace/onchain before signing, blocks legacy accepts unless tokenAmount is exactly 1, and sends V2 accepts with offer_id plus expected token, owner, quantity, and unit price.",
+  },
+  {
     id: "casino.access-game-apis",
     domain: "WTF Casino, Membership, and Wagered Games",
     ownerSurfaceIds: ["casino"],

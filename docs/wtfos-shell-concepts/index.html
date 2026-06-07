@@ -1,0 +1,1522 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>wtfOS Shell Concepts, Round 2</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #f6f2e8;
+        --muted: #b8b0a1;
+        --dark: #10100f;
+        --line: rgba(246, 242, 232, 0.18);
+        --mono: "MEK Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        --display: "GROUT Display", "Arial Black", Impact, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: #10100f;
+        color: var(--ink);
+        font-family: var(--mono);
+        font-size: 14px;
+        line-height: 1.42;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .page {
+        min-height: 100vh;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 270px),
+          #10100f;
+      }
+
+      .masthead {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: end;
+        padding: 18px clamp(16px, 4vw, 48px);
+        border-bottom: 1px solid var(--line);
+        background: rgba(16, 16, 15, 0.94);
+        backdrop-filter: blur(12px);
+      }
+
+      .masthead h1 {
+        margin: 0;
+        font-family: var(--display);
+        font-size: clamp(34px, 6vw, 74px);
+        line-height: 0.88;
+        letter-spacing: 0;
+      }
+
+      .masthead p {
+        max-width: 82ch;
+        margin: 7px 0 0;
+        color: var(--muted);
+      }
+
+      .nav {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .nav a,
+      .tag,
+      .control {
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.045);
+        color: var(--ink);
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      main {
+        display: grid;
+        gap: 42px;
+        padding: 26px clamp(16px, 4vw, 48px) 58px;
+      }
+
+      .brief {
+        display: grid;
+        grid-template-columns: minmax(280px, 1fr) minmax(280px, 0.8fr);
+        gap: 16px;
+      }
+
+      .brief-card {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.045);
+        padding: 16px;
+      }
+
+      .brief-card h2 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+
+      .brief-card p {
+        max-width: 82ch;
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+
+      .concept {
+        display: grid;
+        gap: 14px;
+        padding-top: 24px;
+        border-top: 1px solid var(--line);
+      }
+
+      .concept-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 16px;
+        align-items: end;
+      }
+
+      .concept-head h2 {
+        margin: 0;
+        font-family: var(--display);
+        font-size: clamp(38px, 6vw, 82px);
+        line-height: 0.88;
+        letter-spacing: 0;
+      }
+
+      .concept-head p {
+        max-width: 96ch;
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+
+      .tag-row,
+      .decision-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .decision-row {
+        justify-content: flex-end;
+      }
+
+      .stage {
+        position: relative;
+        overflow: hidden;
+        min-height: 680px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: #000;
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+      }
+
+      .stage * {
+        position: relative;
+      }
+
+      .stage-note {
+        position: absolute;
+        z-index: 20;
+        right: 18px;
+        bottom: 18px;
+        max-width: 440px;
+        padding: 10px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        background: rgba(0, 0, 0, 0.7);
+        color: rgba(255, 255, 255, 0.88);
+      }
+
+      .micro {
+        font-size: 11px;
+        line-height: 1.28;
+      }
+
+      .label {
+        font-weight: 800;
+      }
+
+      .meter {
+        display: grid;
+        grid-template-columns: 76px minmax(0, 1fr) 34px;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .meter i {
+        height: 8px;
+        border: 1px solid currentColor;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .meter i::before {
+        content: "";
+        display: block;
+        width: var(--v, 50%);
+        height: 100%;
+        background: currentColor;
+      }
+
+      .stack {
+        display: grid;
+        gap: 8px;
+      }
+
+      .data-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+      }
+
+      /* 01 Organ Field */
+      .organ-field {
+        color: #f1ffe8;
+        background:
+          radial-gradient(circle at 20% 30%, rgba(187, 255, 92, 0.18), transparent 22%),
+          radial-gradient(circle at 76% 64%, rgba(74, 221, 196, 0.16), transparent 28%),
+          linear-gradient(90deg, rgba(241, 255, 232, 0.06) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(241, 255, 232, 0.045) 1px, transparent 1px),
+          #071711;
+        background-size: auto, auto, 44px 44px, 44px 44px, auto;
+      }
+
+      .organ-field .membrane {
+        position: absolute;
+        inset: 34px;
+        border: 1px solid rgba(187, 255, 92, 0.28);
+        border-radius: 44% 56% 45% 55% / 50% 42% 58% 50%;
+        background:
+          linear-gradient(130deg, rgba(187, 255, 92, 0.06), rgba(74, 221, 196, 0.06)),
+          rgba(0, 0, 0, 0.24);
+      }
+
+      .organ-field .root-line {
+        position: absolute;
+        z-index: 1;
+        height: 2px;
+        transform-origin: left center;
+        background: rgba(187, 255, 92, 0.65);
+      }
+
+      .organ-field .root-line.a {
+        left: 21%;
+        top: 39%;
+        width: 43%;
+        transform: rotate(17deg);
+      }
+
+      .organ-field .root-line.b {
+        left: 42%;
+        top: 62%;
+        width: 34%;
+        transform: rotate(-28deg);
+        background: rgba(74, 221, 196, 0.66);
+      }
+
+      .organ-field .root-line.c {
+        left: 18%;
+        top: 66%;
+        width: 30%;
+        transform: rotate(-12deg);
+        background: rgba(255, 125, 80, 0.62);
+      }
+
+      .organ-field .organ-top {
+        position: absolute;
+        z-index: 6;
+        inset: 0 0 auto 0;
+        display: grid;
+        grid-template-columns: 210px 1fr 240px;
+        min-height: 58px;
+        border-bottom: 1px solid rgba(187, 255, 92, 0.38);
+        background: rgba(3, 12, 8, 0.92);
+      }
+
+      .organ-field .organ-top > div {
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        border-right: 1px solid rgba(187, 255, 92, 0.18);
+      }
+
+      .organ-field .organ-top .wordmark {
+        font-family: var(--display);
+        font-size: 30px;
+        color: #bbff5c;
+      }
+
+      .organ-field .pod {
+        position: absolute;
+        z-index: 4;
+        display: grid;
+        place-items: center;
+        width: 112px;
+        min-height: 82px;
+        padding: 12px;
+        border: 1px solid rgba(187, 255, 92, 0.5);
+        border-radius: 40% 60% 48% 52% / 52% 42% 58% 48%;
+        background: rgba(2, 26, 16, 0.94);
+        color: #bbff5c;
+        text-align: center;
+        box-shadow: 0 0 0 8px rgba(187, 255, 92, 0.05);
+      }
+
+      .organ-field .pod.one {
+        left: 12%;
+        top: 28%;
+      }
+
+      .organ-field .pod.two {
+        right: 14%;
+        top: 25%;
+        border-radius: 62% 38% 55% 45% / 48% 56% 44% 52%;
+        color: #4addc4;
+        border-color: rgba(74, 221, 196, 0.58);
+      }
+
+      .organ-field .pod.three {
+        left: 24%;
+        bottom: 18%;
+        color: #ff9f6b;
+        border-color: rgba(255, 159, 107, 0.58);
+      }
+
+      .organ-field .pod.four {
+        right: 26%;
+        bottom: 16%;
+      }
+
+      .organ-field .organ-panel {
+        position: absolute;
+        z-index: 5;
+        left: 34%;
+        top: 22%;
+        width: 34%;
+        min-height: 310px;
+        border: 1px solid rgba(241, 255, 232, 0.5);
+        border-radius: 34px 12px 38px 14px;
+        background:
+          linear-gradient(160deg, rgba(187, 255, 92, 0.12), rgba(74, 221, 196, 0.07)),
+          #07130e;
+        box-shadow: 18px 18px 0 rgba(0, 0, 0, 0.36);
+      }
+
+      .organ-field .organ-panel h3 {
+        margin: 0;
+        padding: 14px 16px;
+        border-bottom: 1px solid rgba(241, 255, 232, 0.18);
+        color: #bbff5c;
+      }
+
+      .organ-field .organ-panel .stack {
+        padding: 14px 16px;
+      }
+
+      .organ-field .proof-rail {
+        position: absolute;
+        z-index: 6;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        border-top: 1px solid rgba(187, 255, 92, 0.38);
+        background: rgba(3, 12, 8, 0.94);
+      }
+
+      .organ-field .proof-rail div {
+        min-height: 74px;
+        padding: 12px;
+        border-right: 1px solid rgba(187, 255, 92, 0.14);
+      }
+
+      /* 02 Evidence Desk */
+      .evidence-desk {
+        color: #1a1713;
+        background:
+          linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+          #332719;
+        background-size: 34px 34px;
+      }
+
+      .evidence-desk::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 12% 22%, rgba(255, 223, 156, 0.14), transparent 28%),
+          radial-gradient(circle at 82% 76%, rgba(33, 58, 82, 0.18), transparent 30%);
+        pointer-events: none;
+      }
+
+      .evidence-desk .desk-top {
+        position: absolute;
+        z-index: 8;
+        inset: 18px 18px auto 18px;
+        display: grid;
+        grid-template-columns: 190px 1fr 210px;
+        min-height: 52px;
+        border: 2px solid #1a1713;
+        background: #f0dfb7;
+      }
+
+      .evidence-desk .desk-top div {
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+        border-right: 2px solid #1a1713;
+      }
+
+      .evidence-desk .desk-top strong {
+        font-family: var(--display);
+        font-size: 24px;
+      }
+
+      .evidence-desk .string {
+        position: absolute;
+        z-index: 2;
+        height: 3px;
+        transform-origin: left center;
+        background: #c5242f;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+      }
+
+      .evidence-desk .string.a {
+        left: 18%;
+        top: 33%;
+        width: 52%;
+        transform: rotate(15deg);
+      }
+
+      .evidence-desk .string.b {
+        left: 34%;
+        top: 62%;
+        width: 38%;
+        transform: rotate(-28deg);
+      }
+
+      .evidence-desk .case-file {
+        position: absolute;
+        z-index: 4;
+        width: 290px;
+        min-height: 210px;
+        padding: 18px;
+        border: 2px solid #1a1713;
+        background: #f5eacb;
+        box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.32);
+      }
+
+      .evidence-desk .case-file::before {
+        content: attr(data-tab);
+        position: absolute;
+        left: -2px;
+        top: -30px;
+        min-width: 104px;
+        padding: 6px 10px;
+        border: 2px solid #1a1713;
+        border-bottom: 0;
+        background: #f5eacb;
+        font-weight: 800;
+      }
+
+      .evidence-desk .case-file.main {
+        left: 33%;
+        top: 25%;
+        width: 360px;
+        min-height: 286px;
+        transform: rotate(-1.5deg);
+      }
+
+      .evidence-desk .case-file.left {
+        left: 8%;
+        top: 29%;
+        transform: rotate(3.5deg);
+        background: #dce8ef;
+      }
+
+      .evidence-desk .case-file.right {
+        right: 8%;
+        top: 36%;
+        transform: rotate(-4deg);
+        background: #ffe5d7;
+      }
+
+      .evidence-desk .stamp {
+        display: inline-flex;
+        margin: 8px 0;
+        padding: 5px 8px;
+        border: 2px solid #c5242f;
+        color: #c5242f;
+        font-weight: 900;
+        transform: rotate(-4deg);
+      }
+
+      .evidence-desk .case-index {
+        position: absolute;
+        z-index: 6;
+        left: 18px;
+        bottom: 18px;
+        width: 260px;
+        border: 2px solid #1a1713;
+        background: #f0dfb7;
+      }
+
+      .evidence-desk .case-index div {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding: 10px;
+        border-bottom: 2px solid #1a1713;
+      }
+
+      .evidence-desk .evidence-actions {
+        position: absolute;
+        z-index: 7;
+        right: 18px;
+        bottom: 18px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        width: 430px;
+      }
+
+      .evidence-desk .evidence-actions span {
+        min-height: 58px;
+        padding: 10px;
+        border: 2px solid #1a1713;
+        background: #f5eacb;
+      }
+
+      /* 03 Transit Spine */
+      .transit-spine {
+        color: #eaf4ff;
+        background:
+          linear-gradient(90deg, rgba(234, 244, 255, 0.08) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(234, 244, 255, 0.055) 1px, transparent 1px),
+          #071322;
+        background-size: 38px 38px;
+      }
+
+      .transit-spine .departure {
+        position: absolute;
+        z-index: 7;
+        inset: 0 auto 0 0;
+        width: 310px;
+        display: grid;
+        grid-template-rows: 70px 1fr 120px;
+        border-right: 2px solid #eaf4ff;
+        background: #06101c;
+      }
+
+      .transit-spine .departure h3 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        border-bottom: 2px solid #eaf4ff;
+        font-size: 18px;
+      }
+
+      .transit-spine .departures {
+        display: grid;
+        align-content: start;
+      }
+
+      .transit-spine .departures div {
+        display: grid;
+        grid-template-columns: 46px 1fr auto;
+        gap: 10px;
+        padding: 12px;
+        border-bottom: 1px solid rgba(234, 244, 255, 0.18);
+      }
+
+      .transit-spine .departures b {
+        color: #ffcf33;
+      }
+
+      .transit-spine .route-map {
+        position: absolute;
+        z-index: 1;
+        inset: 34px 34px 34px 340px;
+      }
+
+      .transit-spine .line {
+        position: absolute;
+        height: 8px;
+        border-radius: 0;
+        transform-origin: left center;
+      }
+
+      .transit-spine .line.red {
+        left: 6%;
+        top: 28%;
+        width: 72%;
+        transform: rotate(8deg);
+        background: #ff4d6d;
+      }
+
+      .transit-spine .line.blue {
+        left: 12%;
+        top: 58%;
+        width: 68%;
+        transform: rotate(-19deg);
+        background: #45c6ff;
+      }
+
+      .transit-spine .line.yellow {
+        left: 24%;
+        top: 18%;
+        width: 54%;
+        transform: rotate(54deg);
+        background: #ffcf33;
+      }
+
+      .transit-spine .station {
+        position: absolute;
+        z-index: 4;
+        display: grid;
+        place-items: center;
+        width: 82px;
+        height: 82px;
+        border: 4px solid #eaf4ff;
+        border-radius: 50%;
+        background: #071322;
+        color: #eaf4ff;
+        font-weight: 900;
+      }
+
+      .transit-spine .station.a {
+        left: 38%;
+        top: 22%;
+      }
+
+      .transit-spine .station.b {
+        left: 66%;
+        top: 42%;
+      }
+
+      .transit-spine .station.c {
+        left: 28%;
+        top: 60%;
+      }
+
+      .transit-spine .station.d {
+        left: 78%;
+        top: 70%;
+      }
+
+      .transit-spine .route-card {
+        position: absolute;
+        z-index: 6;
+        right: 44px;
+        top: 72px;
+        width: 410px;
+        min-height: 250px;
+        border: 2px solid #eaf4ff;
+        background: #071322;
+        box-shadow: 14px 14px 0 rgba(0, 0, 0, 0.38);
+      }
+
+      .transit-spine .route-card h3 {
+        margin: 0;
+        padding: 12px;
+        background: #ffcf33;
+        color: #071322;
+      }
+
+      .transit-spine .route-card .stack {
+        padding: 12px;
+      }
+
+      .transit-spine .train-strip {
+        position: absolute;
+        z-index: 6;
+        right: 34px;
+        bottom: 34px;
+        left: 340px;
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 8px;
+      }
+
+      .transit-spine .train-strip div {
+        min-height: 74px;
+        padding: 10px;
+        border: 2px solid #eaf4ff;
+        background: #06101c;
+      }
+
+      .transit-spine .train-strip b {
+        color: #45c6ff;
+      }
+
+      /* 04 Vault Cabinet */
+      .vault-cabinet {
+        color: #f6f7ef;
+        background:
+          radial-gradient(circle at 50% 50%, rgba(255, 207, 51, 0.14), transparent 18%),
+          linear-gradient(90deg, rgba(246, 247, 239, 0.045) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(246, 247, 239, 0.04) 1px, transparent 1px),
+          #101315;
+        background-size: auto, 50px 50px, 50px 50px, auto;
+      }
+
+      .vault-cabinet .vault-door {
+        position: absolute;
+        z-index: 3;
+        left: 50%;
+        top: 50%;
+        display: grid;
+        place-items: center;
+        width: 360px;
+        height: 360px;
+        transform: translate(-50%, -50%);
+        border: 10px solid #808a8c;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle, #1b2022 0 24%, #808a8c 24% 27%, #20272a 27% 42%, #808a8c 42% 44%, #15191b 44% 100%);
+        box-shadow: 0 0 0 18px #0b0d0e, 0 24px 60px rgba(0, 0, 0, 0.54);
+      }
+
+      .vault-cabinet .vault-door strong {
+        display: grid;
+        place-items: center;
+        width: 132px;
+        height: 132px;
+        border: 2px solid #ffcf33;
+        border-radius: 50%;
+        color: #ffcf33;
+        text-align: center;
+      }
+
+      .vault-cabinet .drawer-wall {
+        position: absolute;
+        z-index: 4;
+        top: 34px;
+        bottom: 34px;
+        display: grid;
+        gap: 8px;
+        width: 260px;
+      }
+
+      .vault-cabinet .drawer-wall.left {
+        left: 34px;
+      }
+
+      .vault-cabinet .drawer-wall.right {
+        right: 34px;
+      }
+
+      .vault-cabinet .drawer {
+        display: grid;
+        grid-template-columns: 52px 1fr auto;
+        gap: 10px;
+        align-items: center;
+        min-height: 76px;
+        padding: 10px;
+        border: 1px solid rgba(246, 247, 239, 0.26);
+        background: #1b2022;
+        box-shadow: inset 0 -12px 0 rgba(0, 0, 0, 0.18);
+      }
+
+      .vault-cabinet .drawer b:first-child {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        border: 1px solid #ffcf33;
+        color: #ffcf33;
+      }
+
+      .vault-cabinet .ledger {
+        position: absolute;
+        z-index: 7;
+        left: 50%;
+        bottom: 36px;
+        width: 470px;
+        min-height: 156px;
+        transform: translateX(-50%);
+        border: 2px solid #ffcf33;
+        background: #111517;
+      }
+
+      .vault-cabinet .ledger h3 {
+        margin: 0;
+        padding: 11px 12px;
+        border-bottom: 1px solid rgba(255, 207, 51, 0.28);
+        color: #ffcf33;
+      }
+
+      .vault-cabinet .ledger .stack {
+        padding: 12px;
+      }
+
+      .vault-cabinet .vault-top {
+        position: absolute;
+        z-index: 8;
+        left: 34px;
+        right: 34px;
+        top: 34px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        min-height: 52px;
+      }
+
+      .vault-cabinet .vault-top div {
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+        border: 1px solid rgba(246, 247, 239, 0.26);
+        background: rgba(27, 32, 34, 0.92);
+      }
+
+      /* 05 Almanac Wheel */
+      .almanac-wheel {
+        color: #1f1a14;
+        background:
+          linear-gradient(90deg, rgba(31, 26, 20, 0.06) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(31, 26, 20, 0.05) 1px, transparent 1px),
+          #f2e2b8;
+        background-size: 40px 40px;
+      }
+
+      .almanac-wheel .sun-dial {
+        position: absolute;
+        z-index: 1;
+        left: 50%;
+        top: 50%;
+        width: 540px;
+        height: 540px;
+        transform: translate(-50%, -50%);
+        border: 2px solid #1f1a14;
+        border-radius: 50%;
+        background:
+          conic-gradient(from -20deg, #f2e2b8 0 8%, #d9a441 8% 10%, #f2e2b8 10% 22%, #c95d3e 22% 24%, #f2e2b8 24% 36%, #406c71 36% 38%, #f2e2b8 38% 58%, #8c5b8c 58% 60%, #f2e2b8 60% 100%);
+        box-shadow: inset 0 0 0 42px rgba(31, 26, 20, 0.06);
+      }
+
+      .almanac-wheel .sun-dial::after {
+        content: "NOW";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        display: grid;
+        place-items: center;
+        width: 164px;
+        height: 164px;
+        transform: translate(-50%, -50%);
+        border: 2px solid #1f1a14;
+        border-radius: 50%;
+        background: #1f1a14;
+        color: #f2e2b8;
+        font-weight: 900;
+      }
+
+      .almanac-wheel .almanac-top {
+        position: absolute;
+        z-index: 8;
+        left: 28px;
+        right: 28px;
+        top: 28px;
+        display: grid;
+        grid-template-columns: 240px 1fr 260px;
+        border: 2px solid #1f1a14;
+        background: #f9efcf;
+      }
+
+      .almanac-wheel .almanac-top div {
+        min-height: 54px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        border-right: 2px solid #1f1a14;
+      }
+
+      .almanac-wheel .almanac-top strong {
+        font-family: var(--display);
+        font-size: 25px;
+      }
+
+      .almanac-wheel .time-card {
+        position: absolute;
+        z-index: 5;
+        width: 276px;
+        min-height: 170px;
+        padding: 14px;
+        border: 2px solid #1f1a14;
+        background: #f9efcf;
+        box-shadow: 8px 8px 0 rgba(31, 26, 20, 0.22);
+      }
+
+      .almanac-wheel .time-card h3 {
+        margin: 0 0 8px;
+      }
+
+      .almanac-wheel .time-card.one {
+        left: 56px;
+        top: 154px;
+        background: #e4ecdd;
+      }
+
+      .almanac-wheel .time-card.two {
+        right: 72px;
+        top: 156px;
+        background: #efd9ce;
+      }
+
+      .almanac-wheel .time-card.three {
+        left: 110px;
+        bottom: 92px;
+        background: #dce9ef;
+      }
+
+      .almanac-wheel .time-card.four {
+        right: 112px;
+        bottom: 92px;
+        background: #e6dbef;
+      }
+
+      .almanac-wheel .tick {
+        display: grid;
+        grid-template-columns: 82px 1fr;
+        gap: 8px;
+        padding: 7px 0;
+        border-bottom: 1px solid rgba(31, 26, 20, 0.2);
+      }
+
+      .almanac-wheel .bottom-rule {
+        position: absolute;
+        z-index: 8;
+        left: 28px;
+        right: 28px;
+        bottom: 28px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        border: 2px solid #1f1a14;
+        background: #f9efcf;
+      }
+
+      .almanac-wheel .bottom-rule div {
+        min-height: 70px;
+        padding: 10px;
+        border-right: 2px solid #1f1a14;
+      }
+
+      @media (max-width: 1120px) {
+        .masthead,
+        .brief,
+        .concept-head {
+          grid-template-columns: 1fr;
+        }
+
+        .nav,
+        .decision-row {
+          justify-content: flex-start;
+        }
+
+        .stage {
+          min-height: 760px;
+        }
+
+        .organ-field .organ-top,
+        .evidence-desk .desk-top,
+        .almanac-wheel .almanac-top {
+          grid-template-columns: 1fr;
+        }
+
+        .transit-spine .departure {
+          width: 250px;
+        }
+
+        .transit-spine .route-map,
+        .transit-spine .train-strip {
+          left: 280px;
+        }
+
+        .vault-cabinet .drawer-wall {
+          width: 220px;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .masthead {
+          position: relative;
+        }
+
+        main {
+          gap: 30px;
+        }
+
+        .stage {
+          min-height: 900px;
+        }
+
+        .stage-note {
+          left: 12px;
+          right: 12px;
+          bottom: 12px;
+          max-width: none;
+        }
+
+        .organ-field .membrane,
+        .organ-field .root-line,
+        .evidence-desk .string,
+        .transit-spine .line,
+        .transit-spine .station,
+        .vault-cabinet .vault-door,
+        .almanac-wheel .sun-dial {
+          opacity: 0.32;
+        }
+
+        .organ-field .organ-top,
+        .evidence-desk .desk-top,
+        .almanac-wheel .almanac-top {
+          left: 12px;
+          right: 12px;
+          top: 12px;
+        }
+
+        .organ-field .pod,
+        .evidence-desk .case-file,
+        .transit-spine .route-card,
+        .vault-cabinet .ledger,
+        .almanac-wheel .time-card {
+          left: 18px !important;
+          right: 18px !important;
+          width: auto !important;
+          transform: none !important;
+        }
+
+        .organ-field .organ-panel {
+          left: 18px;
+          right: 18px;
+          top: 260px;
+          width: auto;
+        }
+
+        .organ-field .pod.one,
+        .organ-field .pod.two {
+          top: 116px;
+        }
+
+        .organ-field .pod.one {
+          left: 18px !important;
+          right: auto !important;
+        }
+
+        .organ-field .pod.two {
+          left: auto !important;
+          right: 18px !important;
+        }
+
+        .organ-field .pod.three,
+        .organ-field .pod.four {
+          display: none;
+        }
+
+        .organ-field .proof-rail,
+        .almanac-wheel .bottom-rule {
+          grid-template-columns: 1fr;
+        }
+
+        .evidence-desk .case-file.left {
+          top: 138px;
+        }
+
+        .evidence-desk .case-file.main {
+          top: 334px;
+        }
+
+        .evidence-desk .case-file.right {
+          top: 586px;
+        }
+
+        .evidence-desk .case-index,
+        .evidence-desk .evidence-actions {
+          display: none;
+        }
+
+        .transit-spine .departure {
+          inset: 0 0 auto 0;
+          width: auto;
+          height: 286px;
+          border-right: 0;
+          border-bottom: 2px solid #eaf4ff;
+        }
+
+        .transit-spine .route-map {
+          inset: 300px 12px 12px 12px;
+        }
+
+        .transit-spine .route-card {
+          top: 330px;
+        }
+
+        .transit-spine .train-strip {
+          left: 18px;
+          right: 18px;
+          bottom: 92px;
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .vault-cabinet .vault-top {
+          left: 12px;
+          right: 12px;
+          grid-template-columns: 1fr;
+        }
+
+        .vault-cabinet .drawer-wall {
+          width: auto;
+          left: 18px !important;
+          right: 18px !important;
+          top: 140px;
+          bottom: auto;
+        }
+
+        .vault-cabinet .drawer-wall.right {
+          top: 430px;
+        }
+
+        .vault-cabinet .ledger {
+          bottom: 92px;
+        }
+
+        .almanac-wheel .time-card.one {
+          top: 118px;
+        }
+
+        .almanac-wheel .time-card.two {
+          top: 306px;
+        }
+
+        .almanac-wheel .time-card.three {
+          top: 494px;
+        }
+
+        .almanac-wheel .time-card.four {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="masthead">
+        <div>
+          <h1>wtfOS shell concepts, round 2</h1>
+          <p>
+            Five replacement directions. The previous set leaned on the same board shape.
+            These are deliberately more separated: one organic, one forensic, one wayfinding,
+            one custody-first, one time-based. All are local concept designs only.
+          </p>
+        </div>
+        <nav class="nav" aria-label="Concept navigation">
+          <a href="#organ-field">Organ Field</a>
+          <a href="#evidence-desk">Evidence Desk</a>
+          <a href="#transit-spine">Transit Spine</a>
+          <a href="#vault-cabinet">Vault Cabinet</a>
+          <a href="#almanac-wheel">Almanac Wheel</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="brief">
+          <div class="brief-card">
+            <h2>Reset from the first pass</h2>
+            <p>
+              These are not skins, and they are not five screenshots with a window in the
+              middle. Each concept proposes a different operating model for launching,
+              switching, proving, orienting, and remembering inside wtfOS.
+            </p>
+          </div>
+          <div class="brief-card">
+            <h2>Approval lens</h2>
+            <p>
+              Approve, dismiss, or steal pieces. A strong answer can be one whole lane,
+              one shell mechanism, or one visual language that deserves a deeper pass.
+            </p>
+          </div>
+        </section>
+
+        <section class="concept" id="organ-field">
+          <div class="concept-head">
+            <div>
+              <div class="tag-row">
+                <span class="tag">01</span>
+                <span class="tag">Living system map</span>
+                <span class="tag">Apps as organs</span>
+              </div>
+              <h2>Organ Field</h2>
+              <p>
+                The desktop becomes a living system field. Apps are reachable organs,
+                active work grows into a membrane panel, and proof/status runs through
+                a bottom rail instead of hiding in a taskbar.
+              </p>
+            </div>
+            <div class="decision-row">
+              <span class="control">Approve</span>
+              <span class="control">Dismiss</span>
+              <span class="control">Steal parts</span>
+            </div>
+          </div>
+          <div class="stage organ-field">
+            <div class="membrane"></div>
+            <div class="root-line a"></div>
+            <div class="root-line b"></div>
+            <div class="root-line c"></div>
+            <div class="organ-top">
+              <div class="wordmark">wtfOS</div>
+              <div>system pulse: identity linked, wallet safe, live room active</div>
+              <div>now: 2 claimable rewards</div>
+            </div>
+            <div class="pod one"><b>MISSION</b><span class="micro">control organ</span></div>
+            <div class="pod two"><b>SKYWIRE</b><span class="micro">social organ</span></div>
+            <div class="pod three"><b>HOARD</b><span class="micro">inventory organ</span></div>
+            <div class="pod four"><b>LIVE</b><span class="micro">broadcast organ</span></div>
+            <div class="organ-panel">
+              <h3>Mission membrane</h3>
+              <div class="stack">
+                <div class="data-row"><span>Primary ask</span><b>claim reward</b></div>
+                <div class="data-row"><span>Proof attached</span><b>2 events</b></div>
+                <div class="data-row"><span>Wallet action</span><b>none</b></div>
+                <div class="meter" style="color: #bbff5c"><span>social</span><i style="--v: 78%"></i><b>78</b></div>
+                <div class="meter" style="color: #4addc4"><span>market</span><i style="--v: 42%"></i><b>42</b></div>
+                <div class="meter" style="color: #ff9f6b"><span>repair</span><i style="--v: 18%"></i><b>18</b></div>
+              </div>
+            </div>
+            <div class="proof-rail">
+              <div><b>identity</b><br /><span class="micro">linked account row visible</span></div>
+              <div><b>wallet</b><br /><span class="micro">no signing requested</span></div>
+              <div><b>reward</b><br /><span class="micro">side quest proof ready</span></div>
+              <div><b>social</b><br /><span class="micro">Skywire has fresh posts</span></div>
+              <div><b>repair</b><br /><span class="micro">no urgent blockers</span></div>
+            </div>
+            <div class="stage-note">
+              Fundamental difference: no taskbar, no desktop icons grid, no window chrome.
+              Navigation is biological topology plus a proof rail.
+            </div>
+          </div>
+        </section>
+
+        <section class="concept" id="evidence-desk">
+          <div class="concept-head">
+            <div>
+              <div class="tag-row">
+                <span class="tag">02</span>
+                <span class="tag">Forensic workspace</span>
+                <span class="tag">Proof first</span>
+              </div>
+              <h2>Evidence Desk</h2>
+              <p>
+                wtfOS becomes a case desk. Apps are case files, every meaningful action
+                has visible evidence, and wallet/reward/admin consequences are stamped
+                before the user commits.
+              </p>
+            </div>
+            <div class="decision-row">
+              <span class="control">Approve</span>
+              <span class="control">Dismiss</span>
+              <span class="control">Steal parts</span>
+            </div>
+          </div>
+          <div class="stage evidence-desk">
+            <div class="desk-top">
+              <div><strong>CASE OS</strong></div>
+              <div>active file: side quest reward, wallet not required</div>
+              <div>evidence count: 7</div>
+            </div>
+            <div class="string a"></div>
+            <div class="string b"></div>
+            <article class="case-file left" data-tab="SKYWIRE">
+              <h3>Social source</h3>
+              <p>Post and actor proof connected to the claim.</p>
+              <span class="stamp">SOURCE OK</span>
+              <div class="data-row"><span>handle</span><b>verified</b></div>
+              <div class="data-row"><span>scope</span><b>read</b></div>
+            </article>
+            <article class="case-file main" data-tab="MISSION">
+              <h3>Reward case file</h3>
+              <p>The shell opens work as a dossier. Every claim carries source, owner,
+                consequence, and rollback state in the same physical stack.</p>
+              <span class="stamp">READY TO CLAIM</span>
+              <div class="data-row"><span>owner</span><b>current user</b></div>
+              <div class="data-row"><span>inventory result</span><b>badge grant</b></div>
+              <div class="data-row"><span>wallet risk</span><b>none</b></div>
+            </article>
+            <article class="case-file right" data-tab="WALLET">
+              <h3>Custody note</h3>
+              <p>Any signing action would require a sealed preflight sheet.</p>
+              <span class="stamp">NO SIGN</span>
+              <div class="data-row"><span>network</span><b>Tezos</b></div>
+              <div class="data-row"><span>amount</span><b>0 tez</b></div>
+            </article>
+            <div class="case-index">
+              <div><span>Open cases</span><b>3</b></div>
+              <div><span>Needs proof</span><b>1</b></div>
+              <div><span>Rejected</span><b>0</b></div>
+            </div>
+            <div class="evidence-actions">
+              <span><b>Attach proof</b><br /><span class="micro">event, route, owner</span></span>
+              <span><b>Commit claim</b><br /><span class="micro">disabled until reviewed</span></span>
+              <span><b>Archive trail</b><br /><span class="micro">stored in activity</span></span>
+            </div>
+            <div class="stage-note">
+              Fundamental difference: the shell is an evidence system. Windows become
+              case files, not floating app rectangles.
+            </div>
+          </div>
+        </section>
+
+        <section class="concept" id="transit-spine">
+          <div class="concept-head">
+            <div>
+              <div class="tag-row">
+                <span class="tag">03</span>
+                <span class="tag">Route wayfinding</span>
+                <span class="tag">Apps as stations</span>
+              </div>
+              <h2>Transit Spine</h2>
+              <p>
+                The desktop becomes a route system. Apps are stations, workflows are
+                lines, active tasks are departures, and the user always sees the path
+                from identity to wallet to media to social.
+              </p>
+            </div>
+            <div class="decision-row">
+              <span class="control">Approve</span>
+              <span class="control">Dismiss</span>
+              <span class="control">Steal parts</span>
+            </div>
+          </div>
+          <div class="stage transit-spine">
+            <aside class="departure">
+              <h3>Departures</h3>
+              <div class="departures">
+                <div><b>A1</b><span>Mission Control</span><span>now</span></div>
+                <div><b>B4</b><span>Skywire Feed</span><span>2m</span></div>
+                <div><b>C2</b><span>Hoard Proof</span><span>hold</span></div>
+                <div><b>D7</b><span>WTF LIVE</span><span>open</span></div>
+                <div><b>E5</b><span>Theme Builder</span><span>idle</span></div>
+              </div>
+              <div style="padding: 14px">
+                <b>Route rule</b>
+                <p class="micro">Every action shows origin, destination, access, and consequence.</p>
+              </div>
+            </aside>
+            <div class="route-map">
+              <div class="line red"></div>
+              <div class="line blue"></div>
+              <div class="line yellow"></div>
+              <div class="station a">ID</div>
+              <div class="station b">WAL</div>
+              <div class="station c">TV</div>
+              <div class="station d">SKY</div>
+            </div>
+            <div class="route-card">
+              <h3>Current route: claim reward</h3>
+              <div class="stack">
+                <div class="data-row"><span>Start</span><b>Mission Control</b></div>
+                <div class="data-row"><span>Stop 1</span><b>Identity proof</b></div>
+                <div class="data-row"><span>Stop 2</span><b>Inventory grant</b></div>
+                <div class="data-row"><span>Blocked by</span><b>nothing</b></div>
+              </div>
+            </div>
+            <div class="train-strip">
+              <div><b>MC</b><br /><span class="micro">active</span></div>
+              <div><b>W</b><br /><span class="micro">read lane</span></div>
+              <div><b>HOARD</b><br /><span class="micro">destination</span></div>
+              <div><b>TV</b><br /><span class="micro">bypass</span></div>
+              <div><b>SKY</b><br /><span class="micro">source</span></div>
+              <div><b>SET</b><br /><span class="micro">tools</span></div>
+            </div>
+            <div class="stage-note">
+              Fundamental difference: spatial routing replaces desktop placement.
+              The taskbar becomes a timetable and active tasks become routes.
+            </div>
+          </div>
+        </section>
+
+        <section class="concept" id="vault-cabinet">
+          <div class="concept-head">
+            <div>
+              <div class="tag-row">
+                <span class="tag">04</span>
+                <span class="tag">Custody first</span>
+                <span class="tag">Drawers and locks</span>
+              </div>
+              <h2>Vault Cabinet</h2>
+              <p>
+                wtfOS becomes a custody cabinet. Apps are lockable drawers, wallet
+                actions gather around a central vault, and sensitive states require
+                a ledger panel before they can proceed.
+              </p>
+            </div>
+            <div class="decision-row">
+              <span class="control">Approve</span>
+              <span class="control">Dismiss</span>
+              <span class="control">Steal parts</span>
+            </div>
+          </div>
+          <div class="stage vault-cabinet">
+            <div class="vault-top">
+              <div><b>wtfOS custody mode</b></div>
+              <div>current signer: connected, no pending spend</div>
+            </div>
+            <div class="vault-door"><strong>VALUE<br />CHECK</strong></div>
+            <div class="drawer-wall left">
+              <div class="drawer"><b>ID</b><span>Identity drawer</span><b>open</b></div>
+              <div class="drawer"><b>W</b><span>Wallet drawer</span><b>safe</b></div>
+              <div class="drawer"><b>H</b><span>Hoard drawer</span><b>ready</b></div>
+              <div class="drawer"><b>M</b><span>Market drawer</span><b>locked</b></div>
+            </div>
+            <div class="drawer-wall right">
+              <div class="drawer"><b>TV</b><span>Media drawer</span><b>open</b></div>
+              <div class="drawer"><b>SK</b><span>Skywire drawer</span><b>live</b></div>
+              <div class="drawer"><b>AD</b><span>Admin drawer</span><b>gated</b></div>
+              <div class="drawer"><b>SET</b><span>Settings drawer</span><b>idle</b></div>
+            </div>
+            <div class="ledger">
+              <h3>Preflight ledger</h3>
+              <div class="stack">
+                <div class="data-row"><span>Provider</span><b>Beacon</b></div>
+                <div class="data-row"><span>Entrypoint</span><b>none requested</b></div>
+                <div class="data-row"><span>Risk</span><b>read-only route</b></div>
+              </div>
+            </div>
+            <div class="stage-note">
+              Fundamental difference: this shell is built around custody. It makes
+              signing, inventory, marketplace, and permissions visually dominant.
+            </div>
+          </div>
+        </section>
+
+        <section class="concept" id="almanac-wheel">
+          <div class="concept-head">
+            <div>
+              <div class="tag-row">
+                <span class="tag">05</span>
+                <span class="tag">Time based OS</span>
+                <span class="tag">Ritual schedule</span>
+              </div>
+              <h2>Almanac Wheel</h2>
+              <p>
+                wtfOS becomes an almanac. Instead of starting from apps, users start
+                from what is due now, what happened recently, what needs proof, and
+                what ritual comes next.
+              </p>
+            </div>
+            <div class="decision-row">
+              <span class="control">Approve</span>
+              <span class="control">Dismiss</span>
+              <span class="control">Steal parts</span>
+            </div>
+          </div>
+          <div class="stage almanac-wheel">
+            <div class="almanac-top">
+              <div><strong>wtfOS almanac</strong></div>
+              <div>today: claim, post, archive, watch, repair</div>
+              <div>cycle health: steady</div>
+            </div>
+            <div class="sun-dial"></div>
+            <article class="time-card one">
+              <h3>Due now</h3>
+              <div class="tick"><b>reward</b><span>claim proof-backed side quest</span></div>
+              <div class="tick"><b>wallet</b><span>no spend pending</span></div>
+              <div class="tick"><b>live</b><span>room has listeners</span></div>
+            </article>
+            <article class="time-card two">
+              <h3>Recently changed</h3>
+              <div class="tick"><b>Skywire</b><span>market feed has new token posts</span></div>
+              <div class="tick"><b>TV</b><span>queue updated</span></div>
+              <div class="tick"><b>Studio</b><span>export finished</span></div>
+            </article>
+            <article class="time-card three">
+              <h3>Needs proof</h3>
+              <div class="tick"><b>claim</b><span>review event path</span></div>
+              <div class="tick"><b>market</b><span>verify listing source</span></div>
+            </article>
+            <article class="time-card four">
+              <h3>Later</h3>
+              <div class="tick"><b>backup</b><span>next restore drill</span></div>
+              <div class="tick"><b>admin</b><span>repair review</span></div>
+            </article>
+            <div class="bottom-rule">
+              <div><b>Now</b><br /><span class="micro">task-first launcher</span></div>
+              <div><b>Recent</b><br /><span class="micro">state memory</span></div>
+              <div><b>Proof</b><br /><span class="micro">audit trail</span></div>
+              <div><b>Rituals</b><br /><span class="micro">repeatable acts</span></div>
+              <div><b>Archive</b><br /><span class="micro">what changed</span></div>
+            </div>
+            <div class="stage-note">
+              Fundamental difference: app launch is secondary. The OS is organized
+              by time, obligation, proof, and memory.
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

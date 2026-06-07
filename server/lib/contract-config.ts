@@ -20,12 +20,14 @@ type Network = "mainnet" | "ghostnet" | "shadownet" | "oxfordnet" | string;
 interface Resolved {
   network: Network;
   marketplace: string | null;
+  legacyMarketplace: string | null;
   barter: string | null;
   tzktBase: string;
 }
 
 const DEV_FALLBACK_MARKETPLACE = "KT1Jt6gU4fS5UYHdhsYyr2EfpBJtXZLrPPfj";
 const DEV_FALLBACK_BARTER = "KT1WupvcfcSsfp78JPCc6NwKdkdineGfGNdm";
+const KNOWN_LEGACY_MARKETPLACE = "KT1Jt6gU4fS5UYHdhsYyr2EfpBJtXZLrPPfj";
 
 function normaliseAddress(value: string | undefined | null): string | null {
   if (!value) return null;
@@ -51,6 +53,13 @@ function resolve(): Resolved {
   const marketplaceEnv =
     normaliseAddress(process.env.MARKETPLACE_CONTRACT_ADDRESS) ||
     normaliseAddress(process.env.VITE_MARKETPLACE_CONTRACT_ADDRESS);
+  const legacyMarketplaceEnv =
+    normaliseAddress(process.env.LEGACY_MARKETPLACE_CONTRACT_ADDRESS) ||
+    (marketplaceEnv === KNOWN_LEGACY_MARKETPLACE
+      ? marketplaceEnv
+      : network === "mainnet"
+      ? KNOWN_LEGACY_MARKETPLACE
+      : null);
   const barterEnv =
     normaliseAddress(process.env.BARTER_CONTRACT_ADDRESS) ||
     normaliseAddress(process.env.VITE_BARTER_CONTRACT_ADDRESS);
@@ -86,7 +95,7 @@ function resolve(): Resolved {
     }
   }
 
-  cached = { network, marketplace, barter, tzktBase };
+  cached = { network, marketplace, legacyMarketplace: legacyMarketplaceEnv, barter, tzktBase };
   return cached;
 }
 
@@ -104,6 +113,14 @@ export function getTzktBase(): string {
 
 export function getMarketplaceAddressOrNull(): string | null {
   return resolve().marketplace;
+}
+
+export function getLegacyMarketplaceAddressOrNull(): string | null {
+  return resolve().legacyMarketplace;
+}
+
+export function getKnownLegacyMarketplaceAddress(): string {
+  return KNOWN_LEGACY_MARKETPLACE;
 }
 
 export function getBarterAddressOrNull(): string | null {

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button, GroupBox, Hourglass, Separator } from "react95";
+import { Hourglass, Separator } from "react95";
 import styled from "styled-components";
 import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UiButton, UiPanel } from "../components/wtfos-ui";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { useEtherlinkWallet } from "../lib/etherlink";
@@ -23,7 +24,7 @@ const ETHERLINK_NETWORK_KEY = "wtf:etherlink-network";
 
 const Shell = styled.div`
   display: grid;
-  gap: 8px;
+  gap: var(--wtf-space-3, 12px);
   min-width: 0;
 `;
 
@@ -41,7 +42,7 @@ const HeaderGrid = styled.div`
 const StatusBadge = styled.div<{ $severity: string }>`
   min-width: 104px;
   padding: 8px;
-  border: 1px solid #808080;
+  border: 1px solid var(--wtf-app-border, #808080);
   background: ${(p) =>
     p.$severity === "critical"
       ? "#f5b5b5"
@@ -50,16 +51,17 @@ const StatusBadge = styled.div<{ $severity: string }>`
         : p.$severity === "notice"
           ? "#d7e7ff"
           : "#d8f0d0"};
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-body, 15px);
   font-weight: bold;
   text-align: center;
-  text-transform: uppercase;
+  text-transform: none;
 `;
 
 const Lead = styled.div`
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.45;
-  color: #202020;
+  color: var(--wtf-app-text, #202020);
 `;
 
 const Grid = styled.div`
@@ -82,9 +84,10 @@ const Row = styled.div`
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  padding: 6px;
-  border: 1px solid #9a9a9a;
-  background: #eeeeee;
+  padding: var(--wtf-space-2, 8px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
 
   @media (max-width: 560px) {
     grid-template-columns: 1fr;
@@ -92,16 +95,18 @@ const Row = styled.div`
 `;
 
 const Title = styled.div`
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 15px);
   font-weight: bold;
   overflow-wrap: anywhere;
+  line-height: 1.25;
 `;
 
 const Detail = styled.div`
   margin-top: 2px;
-  font-size: 11px;
-  color: #404040;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #384352);
   overflow-wrap: anywhere;
+  line-height: 1.35;
 `;
 
 const Actions = styled.div`
@@ -114,10 +119,14 @@ const Actions = styled.div`
   }
 `;
 
-const ActionButton = styled(Button)`
+const ActionButton = styled(UiButton)`
   width: 100%;
-  min-height: 30px;
-  font-size: 11px;
+  min-height: 32px;
+  font-size: var(--wtf-type-caption, 13px);
+
+  @media (max-width: 768px) {
+    min-height: 44px;
+  }
 `;
 
 const MetaGrid = styled.div`
@@ -136,31 +145,32 @@ const MetaGrid = styled.div`
 
 const Meta = styled.div`
   min-height: 64px;
-  padding: 7px;
-  border: 1px solid #9a9a9a;
-  background: #f2f2f2;
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #c0c0c0;
+  padding: var(--wtf-space-2, 8px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
 `;
 
 const MetaLabel = styled.div`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
-  text-transform: uppercase;
-  color: #404040;
+  color: var(--wtf-app-muted-text, #384352);
+  line-height: 1.25;
 `;
 
 const MetaValue = styled.div`
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 15px);
   font-weight: bold;
   overflow-wrap: anywhere;
 `;
 
 const Message = styled.div`
-  padding: 6px;
-  border: 1px solid #808080;
-  background: #ffffd6;
-  font-size: 11px;
+  padding: var(--wtf-space-2, 8px);
+  border: 1px solid var(--wtf-app-warning, #8a4b00);
+  background: var(--wtf-app-warning-bg, #fff4cc);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
   overflow-wrap: anywhere;
 `;
 
@@ -392,7 +402,7 @@ export function RecoveryMode() {
         </MetaGrid>
 
         <Grid>
-          <GroupBox label="Incidents">
+          <UiPanel title="Incidents" compact>
             <Rows>
               {status.incidents.length === 0 ? (
                 <Row>
@@ -412,18 +422,18 @@ export function RecoveryMode() {
                     </div>
                     <ActionButton onClick={() => runAction(incident.actionId)}>
                       {incident.actionId === "open-profile"
-                        ? "Profile"
+                        ? "Open profile"
                         : incident.actionId === "open-mission-control"
-                          ? "Mission"
-                          : "Repair"}
+                          ? "Open Mission Control"
+                          : "Run repair"}
                     </ActionButton>
                   </Row>
                 ))
               )}
             </Rows>
-          </GroupBox>
+          </UiPanel>
 
-          <GroupBox label="Local repairs">
+          <UiPanel title="Local repairs" compact>
             <Actions>
               {status.actions.map((action) => (
                 <ActionButton
@@ -441,26 +451,26 @@ export function RecoveryMode() {
               <ActionButton
                 onClick={() => openRecoveryRoute("/mission-control", "mission-control")}
               >
-                Mission Control
+                Open Mission Control
               </ActionButton>
               <ActionButton onClick={() => openRecoveryRoute("/profile", "profile")}>
-                Profile
+                Open profile
               </ActionButton>
               <ActionButton
                 onClick={() => openRecoveryRoute("/desktop-settings", "appearance")}
               >
-                Appearance
+                Open appearance settings
               </ActionButton>
               <ActionButton onClick={() => openRecoveryRoute("/terminal", "terminal")}>
-                Terminal
+                Open terminal
               </ActionButton>
             </Actions>
-          </GroupBox>
+          </UiPanel>
         </Grid>
 
         <Separator />
 
-        <GroupBox label="Operator-only repairs">
+        <UiPanel title="Operator-only repairs" compact tone="warning">
           <Rows>
             {status.operatorActions.map((action) => (
               <Row key={action.id}>
@@ -476,12 +486,12 @@ export function RecoveryMode() {
                     openRecoveryRoute(recoveryOperatorActionRoute(action.id), action.id)
                   }
                 >
-                  Open
+                  Open admin repair
                 </ActionButton>
               </Row>
             ))}
           </Rows>
-        </GroupBox>
+        </UiPanel>
       </Shell>
     </AppWindow>
   );

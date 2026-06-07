@@ -68,6 +68,7 @@ export function TVShellLayout({
               <Knob
                 $active={powerOn}
                 data-testid="tv-power-control"
+                aria-label={powerOn ? "Turn TV power off" : "Turn TV power on"}
                 onClick={handlePower}
               >
                 <KnobText />
@@ -77,7 +78,11 @@ export function TVShellLayout({
 
             <KnobGroup>
               <ChannelDisplay>{dialDisplay}</ChannelDisplay>
-              <Knob data-testid="tv-channel-control" onClick={cycleChannel}>
+              <Knob
+                data-testid="tv-channel-control"
+                aria-label="Cycle TV channel"
+                onClick={cycleChannel}
+              >
                 <KnobText />
               </Knob>
               <KnobLabel>CH</KnobLabel>
@@ -86,6 +91,7 @@ export function TVShellLayout({
             <KnobGroup>
               <VolumeSlider
                 type="range"
+                aria-label="TV volume"
                 min={0}
                 max={1}
                 step={0.05}
@@ -100,6 +106,7 @@ export function TVShellLayout({
                 $color={screenView !== "tv" ? "red" : undefined}
                 $active={screenView !== "tv"}
                 data-testid="tv-menu-control"
+                aria-label={screenView === "tv" ? "Open TV menu" : "Close TV menu"}
                 onClick={handleMenu}
               >
                 <KnobText />

@@ -148,6 +148,10 @@ type ProjectSubmitResponse = {
 
 type PreviewMode = "desktop" | "mobile";
 
+const GAME_STUDIO_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
+const GAME_STUDIO_MONO_FONT = 'var(--wtf-mono-font, "Courier New", monospace)';
+const GAME_STUDIO_APP_FONT = 'var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif)';
+
 const visualKinds = new Set(["sprite", "tileset", "background", "ui"]);
 const MODEL_MIME_TYPES = new Set([
   "model/gltf-binary",
@@ -734,6 +738,7 @@ export function GameStudio() {
             <ToolGroup>
               <Play size={16} />
               <ProjectTitleInput
+                aria-label="Project title"
                 value={projectTitle}
                 onChange={(event) => {
                   setProjectTitle(event.target.value);
@@ -744,10 +749,20 @@ export function GameStudio() {
               />
               <span>{selectedTemplate?.sdkHooks.join(", ")}</span>
             </ToolGroup>
-            <ToolbarButton disabled={savingProject} onClick={() => void saveProject()}>
+            <ToolbarButton
+              aria-label="Save project"
+              title="Save project"
+              disabled={savingProject}
+              onClick={() => void saveProject()}
+            >
               <Save size={15} />
             </ToolbarButton>
-            <ToolbarButton disabled={savingProject || buildingProject} onClick={buildProjectBundle}>
+            <ToolbarButton
+              aria-label="Build project"
+              title="Build project"
+              disabled={savingProject || buildingProject}
+              onClick={buildProjectBundle}
+            >
               <Hammer size={15} />
             </ToolbarButton>
             <AssetCounter>{totalAssets} assets</AssetCounter>
@@ -758,6 +773,7 @@ export function GameStudio() {
               <PreviewModeGroup>
                 <PreviewModeButton
                   type="button"
+                  aria-label="Desktop preview"
                   $active={previewMode === "desktop"}
                   onClick={() => setPreviewMode("desktop")}
                   title="Desktop preview"
@@ -766,6 +782,7 @@ export function GameStudio() {
                 </PreviewModeButton>
                 <PreviewModeButton
                   type="button"
+                  aria-label="Mobile preview"
                   $active={previewMode === "mobile"}
                   onClick={() => setPreviewMode("mobile")}
                   title="Mobile preview"
@@ -799,6 +816,7 @@ export function GameStudio() {
               </PanelTitle>
               <FileControls>
                 <FileNameInput
+                  aria-label="New project file name"
                   value={newFileName}
                   onChange={(event) => setNewFileName(event.target.value)}
                   onKeyDown={(event) => {
@@ -806,11 +824,17 @@ export function GameStudio() {
                   }}
                   placeholder="scripts/level.js"
                 />
-                <IconToolButton type="button" onClick={addProjectFile} title="Add file">
+                <IconToolButton
+                  type="button"
+                  aria-label="Add file"
+                  onClick={addProjectFile}
+                  title="Add file"
+                >
                   <FilePlus size={15} />
                 </IconToolButton>
                 <IconToolButton
                   type="button"
+                  aria-label="Remove file"
                   onClick={removeActiveFile}
                   disabled={!activeFilePath || activeFilePath === "index.html"}
                   title="Remove file"
@@ -835,6 +859,7 @@ export function GameStudio() {
                       <span title={localAssetBundlePath(file)}>{file.name}</span>
                       <LocalAssetAction
                         type="button"
+                        aria-label={`Insert code for ${file.name}`}
                         title="Insert asset code"
                         onClick={() => insertLocalAssetSnippet(file)}
                       >
@@ -846,6 +871,7 @@ export function GameStudio() {
                 <EditorColumn>
                   <EditorMeta>{activeFilePath || "No file selected"}</EditorMeta>
                   <SourceEditor
+                    aria-label="Project source editor"
                     value={activeFilePath ? activeFiles[activeFilePath] || "" : ""}
                     onChange={(event) => updateActiveFile(event.target.value)}
                     disabled={!activeFilePath}
@@ -861,11 +887,13 @@ export function GameStudio() {
                 <span>Ship Game</span>
               </PanelTitle>
               <input
+                aria-label="Game title"
                 value={publishTitle}
                 onChange={(event) => setPublishTitle(event.target.value)}
                 placeholder="Game title"
               />
               <select
+                aria-label="Arcade game destination"
                 value={updateSlug}
                 onChange={(event) => setUpdateSlug(event.target.value)}
               >
@@ -888,6 +916,7 @@ export function GameStudio() {
                 <Upload size={15} />
                 <span>{bundleFile ? bundleFile.name : "Choose ZIP"}</span>
                 <input
+                  aria-label="Choose ZIP bundle"
                   type="file"
                   accept=".zip,application/zip"
                   onChange={(event) => setBundleFile(event.currentTarget.files?.[0] || null)}
@@ -931,6 +960,7 @@ export function GameStudio() {
             ))}
           </FilterRow>
           <AssetSearchInput
+            aria-label="Search assets"
             value={assetSearch}
             onChange={(event) => setAssetSearch(event.target.value)}
             placeholder="Search assets"
@@ -941,6 +971,7 @@ export function GameStudio() {
               <span>Code recipes</span>
             </SnippetHeader>
             <SnippetSearchInput
+              aria-label="Search snippets"
               value={snippetSearch}
               onChange={(event) => setSnippetSearch(event.target.value)}
               placeholder="Search snippets"
@@ -966,6 +997,7 @@ export function GameStudio() {
             <Music size={16} />
             <span>Upload assets</span>
             <input
+              aria-label="Upload game assets"
               type="file"
               multiple
               accept={LOCAL_ASSET_ACCEPT.join(",")}
@@ -1355,6 +1387,7 @@ const StudioShell = styled.div`
   grid-template-columns: 220px minmax(360px, 1fr) 300px;
   background: #11141a;
   color: #f6f7fb;
+  font-family: ${GAME_STUDIO_APP_FONT};
   overflow: hidden;
 
   @media (max-width: 980px) {
@@ -1420,7 +1453,7 @@ const TemplateButton = styled.button<{ $active?: boolean }>`
 
   span {
     color: #9aa4b2;
-    font-size: 12px;
+    font-size: ${GAME_STUDIO_CAPTION_TYPE};
   }
 `;
 
@@ -1434,7 +1467,7 @@ const ProjectButton = styled(TemplateButton)`
 
 const RailNote = styled.div`
   color: #7f8997;
-  font-size: 12px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
   padding: 6px 2px;
 `;
 
@@ -1463,7 +1496,7 @@ const ToolGroup = styled.div`
 
   span {
     color: #9aa4b2;
-    font-size: 12px;
+    font-size: ${GAME_STUDIO_CAPTION_TYPE};
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1473,7 +1506,7 @@ const ToolGroup = styled.div`
 const ProjectTitleInput = styled.input`
   min-width: 120px;
   max-width: 260px;
-  height: 30px;
+  height: 32px;
   border: 1px solid #303845;
   background: #0d1118;
   color: #f6f7fb;
@@ -1503,7 +1536,7 @@ const ToolbarButton = styled.button`
 const AssetCounter = styled.div`
   margin-left: auto;
   color: #99ffe0;
-  font-size: 12px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
   font-weight: 700;
 `;
 
@@ -1531,8 +1564,8 @@ const PreviewModeGroup = styled.div`
 `;
 
 const PreviewModeButton = styled.button<{ $active?: boolean }>`
-  width: 30px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: 1px solid ${(p) => (p.$active ? "#57f0be" : "#303845")};
   background: ${(p) => (p.$active ? "#12352d" : "#10141b")};
   color: #99ffe0;
@@ -1544,7 +1577,7 @@ const PreviewModeButton = styled.button<{ $active?: boolean }>`
 
 const PreviewStat = styled.div`
   color: #9aa4b2;
-  font-size: 12px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
 `;
 
 const PreviewStage = styled.div<{ $mode: PreviewMode }>`
@@ -1683,7 +1716,7 @@ const FileList = styled.div`
 `;
 
 const FileButton = styled.button<{ $active?: boolean }>`
-  min-height: 28px;
+  min-height: 32px;
   border: 1px solid ${(p) => (p.$active ? "#57f0be" : "transparent")};
   background: ${(p) => (p.$active ? "#12352d" : "transparent")};
   color: #c8ced8;
@@ -1691,24 +1724,24 @@ const FileButton = styled.button<{ $active?: boolean }>`
   padding: 0 7px;
   text-align: left;
   cursor: pointer;
-  font-family: "Courier New", monospace;
-  font-size: 12px;
+  font-family: ${GAME_STUDIO_MONO_FONT};
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 `;
 
 const LocalAssetRow = styled.div`
-  min-height: 28px;
+  min-height: 32px;
   border-top: 1px dashed #303845;
   color: #8e98a7;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 22px;
+  grid-template-columns: minmax(0, 1fr) 32px;
   align-items: center;
   gap: 4px;
   padding: 0 7px;
-  font-family: "Courier New", monospace;
-  font-size: 12px;
+  font-family: ${GAME_STUDIO_MONO_FONT};
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
 
   span {
     overflow: hidden;
@@ -1718,8 +1751,8 @@ const LocalAssetRow = styled.div`
 `;
 
 const LocalAssetAction = styled.button`
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   border: 1px solid #303845;
   background: #10141b;
   color: #99ffe0;
@@ -1742,8 +1775,8 @@ const EditorMeta = styled.div`
   padding: 0 9px;
   border-bottom: 1px solid #303845;
   color: #9aa4b2;
-  font-size: 12px;
-  font-family: "Courier New", monospace;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
+  font-family: ${GAME_STUDIO_MONO_FONT};
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1760,8 +1793,8 @@ const SourceEditor = styled.textarea`
   background: #090b12;
   color: #f6f7fb;
   padding: 10px;
-  font-family: "Courier New", monospace;
-  font-size: 12px;
+  font-family: ${GAME_STUDIO_MONO_FONT};
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
   line-height: 1.45;
   outline: none;
 `;
@@ -1801,7 +1834,7 @@ const ActionButton = styled.button`
 
 const StatusText = styled.div`
   color: #ffcb5c;
-  font-size: 12px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
 `;
 
 const BuildList = styled.div`
@@ -1812,13 +1845,13 @@ const BuildList = styled.div`
 `;
 
 const BuildItem = styled.div`
-  min-height: 28px;
+  min-height: 32px;
   display: grid;
   grid-template-columns: 36px 1fr auto;
   align-items: center;
   gap: 8px;
   color: #c8ced8;
-  font-size: 12px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
 
   strong {
     color: #99ffe0;
@@ -1826,7 +1859,7 @@ const BuildItem = styled.div`
 
   code {
     color: #8e98a7;
-    font-family: "Courier New", monospace;
+    font-family: ${GAME_STUDIO_MONO_FONT};
   }
 `;
 
@@ -1838,12 +1871,14 @@ const FilterRow = styled.div`
 `;
 
 const FilterButton = styled.button<{ $active?: boolean }>`
+  min-width: 32px;
+  min-height: 32px;
   border: 1px solid ${(p) => (p.$active ? "#57f0be" : "#303845")};
   background: ${(p) => (p.$active ? "#12352d" : "#10141b")};
   color: #f6f7fb;
   border-radius: 999px;
   padding: 5px 8px;
-  font-size: 11px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
   cursor: pointer;
 `;
 
@@ -1851,14 +1886,14 @@ const AssetSearchInput = styled.input`
   display: block;
   width: calc(100% - 20px);
   margin: 0 10px 10px;
-  height: 30px;
+  height: 32px;
   box-sizing: border-box;
   border: 1px solid #303845;
   border-radius: 5px;
   background: #0d1118;
   color: #f6f7fb;
   padding: 0 9px;
-  font-size: 12px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
   outline: none;
 `;
 
@@ -1879,12 +1914,12 @@ const SnippetHeader = styled.div`
   color: #99ffe0;
   font-weight: 700;
   border-bottom: 1px solid #303845;
-  font-size: 12px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
 `;
 
 const SnippetSearchInput = styled.input`
   width: calc(100% - 16px);
-  height: 28px;
+  height: 32px;
   margin: 8px;
   box-sizing: border-box;
   border: 1px solid #303845;
@@ -1892,7 +1927,7 @@ const SnippetSearchInput = styled.input`
   background: #0d1118;
   color: #f6f7fb;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
 `;
 
 const SnippetList = styled.div`
@@ -1928,18 +1963,18 @@ const SnippetButton = styled.button`
 
   strong {
     color: #f6f7fb;
-    font-size: 12px;
+    font-size: ${GAME_STUDIO_CAPTION_TYPE};
   }
 
   span {
     color: #9aa4b2;
-    font-size: 11px;
+    font-size: ${GAME_STUDIO_CAPTION_TYPE};
   }
 `;
 
 const SnippetEmpty = styled.div`
   color: #7f8997;
-  font-size: 12px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
   padding: 2px 0 8px;
 `;
 
@@ -1971,14 +2006,14 @@ const LocalUploadList = styled.div`
 `;
 
 const LocalUploadItem = styled.div`
-  min-height: 28px;
+  min-height: 32px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 24px 24px 24px;
+  grid-template-columns: minmax(0, 1fr) auto 32px 32px 32px;
   align-items: center;
   gap: 8px;
   padding: 0 8px;
   color: #c8ced8;
-  font-size: 11px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
 
   span {
     overflow: hidden;
@@ -1988,13 +2023,13 @@ const LocalUploadItem = styled.div`
 
   code {
     color: #8e98a7;
-    font-family: "Courier New", monospace;
+    font-family: ${GAME_STUDIO_MONO_FONT};
   }
 `;
 
 const LocalUploadAction = styled.button`
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   border: 1px solid #303845;
   background: #0d1118;
   color: #99ffe0;
@@ -2036,12 +2071,12 @@ const AssetButton = styled.button<{ $active?: boolean; $focused?: boolean }>`
   }
 
   strong {
-    font-size: 12px;
+    font-size: ${GAME_STUDIO_CAPTION_TYPE};
   }
 
   span {
     color: #9aa4b2;
-    font-size: 11px;
+    font-size: ${GAME_STUDIO_CAPTION_TYPE};
   }
 `;
 
@@ -2054,7 +2089,7 @@ const AssetInspector = styled.div`
   display: grid;
   gap: 7px;
   color: #c8ced8;
-  font-size: 12px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
 
   strong {
     color: #f6f7fb;
@@ -2075,8 +2110,8 @@ const AssetTags = styled.div`
     border-radius: 4px;
     padding: 2px 5px;
     color: #99ffe0;
-    font-family: "Courier New", monospace;
-    font-size: 11px;
+    font-family: ${GAME_STUDIO_MONO_FONT};
+    font-size: ${GAME_STUDIO_CAPTION_TYPE};
   }
 `;
 
@@ -2086,8 +2121,8 @@ const AssetPath = styled.code`
   padding: 4px 6px;
   color: #ffcb5c;
   background: #0d1118;
-  font-family: "Courier New", monospace;
-  font-size: 11px;
+  font-family: ${GAME_STUDIO_MONO_FONT};
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
   overflow: hidden;
   text-overflow: ellipsis;
 `;
@@ -2099,8 +2134,8 @@ const AssetSnippet = styled.pre`
   padding: 7px;
   color: #c8ced8;
   background: #090b12;
-  font-family: "Courier New", monospace;
-  font-size: 11px;
+  font-family: ${GAME_STUDIO_MONO_FONT};
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
   line-height: 1.35;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -2114,7 +2149,7 @@ const AssetInspectorActions = styled.div`
 `;
 
 const AssetActionButton = styled.button`
-  min-height: 28px;
+  min-height: 32px;
   border: 1px solid #57f0be;
   border-radius: 5px;
   background: rgba(87, 240, 190, 0.1);
@@ -2124,10 +2159,11 @@ const AssetActionButton = styled.button`
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
 `;
 
 const AssetLink = styled.a`
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2152,5 +2188,5 @@ const SelectionBar = styled.div`
   padding: 8px;
   color: #99ffe0;
   background: #10141b;
-  font-size: 12px;
+  font-size: ${GAME_STUDIO_CAPTION_TYPE};
 `;

@@ -1,26 +1,34 @@
-import { GroupBox } from "react95";
 import styled from "styled-components";
+import { UiPanel } from "../../../components/wtfos-ui";
 
 const TableWrap = styled.div`
+  min-width: 0;
   overflow-x: auto;
 `;
 
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 
   th,
   td {
-    border: 1px solid #808080;
-    padding: 4px 6px;
+    border: 1px solid var(--wtf-app-border, #808080);
+    padding: var(--wtf-space-1, 4px) var(--wtf-space-2, 8px);
     text-align: left;
     vertical-align: top;
   }
 
   th {
-    background: #c0c0c0;
+    background: var(--wtf-app-surface-raised, #ffffff);
   }
+`;
+
+const PanelStack = styled.div`
+  display: grid;
+  gap: var(--wtf-space-3, 12px);
 `;
 
 function shortJson(value: unknown) {
@@ -38,8 +46,8 @@ export function ChallengeProgressView({
   audit: any[] | undefined;
 }) {
   return (
-    <>
-      <GroupBox label="User Progress">
+    <PanelStack>
+      <UiPanel title="User progress" compact>
         <TableWrap>
           <Table>
             <thead>
@@ -73,9 +81,9 @@ export function ChallengeProgressView({
             </tbody>
           </Table>
         </TableWrap>
-      </GroupBox>
+      </UiPanel>
 
-      <GroupBox label="Recent System Events">
+      <UiPanel title="Recent system events" compact>
         <TableWrap>
           <Table>
             <thead>
@@ -109,9 +117,9 @@ export function ChallengeProgressView({
             </tbody>
           </Table>
         </TableWrap>
-      </GroupBox>
+      </UiPanel>
 
-      <GroupBox label="Audit Log">
+      <UiPanel title="Audit log" compact>
         <TableWrap>
           <Table>
             <thead>
@@ -142,7 +150,7 @@ export function ChallengeProgressView({
             </tbody>
           </Table>
         </TableWrap>
-      </GroupBox>
-    </>
+      </UiPanel>
+    </PanelStack>
   );
 }

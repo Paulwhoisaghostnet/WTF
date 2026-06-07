@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Button,
-  GroupBox,
-  Hourglass,
-  Tab,
-  TabBody,
-  Tabs,
-} from "react95";
+import { Hourglass } from "react95";
 import styled from "styled-components";
 import { useLocation } from "wouter";
+import {
+  UiButton,
+  UiPanel,
+  UiTabs,
+} from "../../components/wtfos-ui";
 import { api } from "../../lib/api";
 import { resolveTokenThumbnail, shortAddr } from "../../lib/media-resolve";
 import { OwnedTokensGallery, type OwnedToken } from "../../components/OwnedTokensGallery";
@@ -83,71 +81,74 @@ interface TokensResponse {
 }
 
 const Lead = styled.p`
-  margin: 0 0 10px;
-  font-size: 11px;
-  color: #303030;
+  margin: 0 0 var(--wtf-space-3, 12px);
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
 `;
 
 const SummaryGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--wtf-space-2, 8px);
+  margin-bottom: var(--wtf-space-3, 12px);
 `;
 
 const SummaryCard = styled.div`
-  border: 2px inset #dfdfdf;
-  background: #c0c0c0;
-  padding: 8px 10px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  padding: var(--wtf-space-3, 12px);
+  color: var(--wtf-app-text, #111);
 `;
 
 const SummaryLabel = styled.div`
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #404040;
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+  line-height: 1.25;
 `;
 
 const SummaryValue = styled.div`
   margin-top: 4px;
   font-size: 20px;
   font-weight: 700;
-  color: #000080;
+  color: var(--wtf-app-link, #000080);
 `;
 
 const SummarySub = styled.div`
   margin-top: 2px;
-  font-size: 10px;
-  color: #333;
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: var(--wtf-space-3, 12px);
 `;
 
 const ViewRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: var(--wtf-space-3, 12px);
 `;
 
 const StageGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  gap: var(--wtf-space-3, 12px);
 `;
 
 const StageCard = styled.div<{ $hero?: boolean }>`
-  border: 2px outset #dfdfdf;
-  background: #c0c0c0;
-  box-shadow: 1px 1px 0 #000;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
   display: flex;
   flex-direction: column;
   min-height: ${({ $hero }) => ($hero ? "420px" : "360px")};
+  color: var(--wtf-app-text, #111);
 
   @media (min-width: 980px) {
     ${({ $hero }) => ($hero ? "grid-column: span 2;" : "")}
@@ -155,10 +156,10 @@ const StageCard = styled.div<{ $hero?: boolean }>`
 `;
 
 const StageHeader = styled.div`
-  background: linear-gradient(90deg, #000080, #1084d0);
-  color: #fff;
-  padding: 4px 8px;
-  font-size: 11px;
+  background: var(--wtf-app-primary, var(--wtf-app-link, #000080));
+  color: var(--wtf-app-accent-text, #ffffff);
+  padding: var(--wtf-space-2, 8px);
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -185,30 +186,30 @@ const StageMedia = styled.div<{ $hero?: boolean }>`
 `;
 
 const StageBody = styled.div`
-  padding: 10px;
+  padding: var(--wtf-space-3, 12px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  font-size: 11px;
+  gap: var(--wtf-space-2, 8px);
+  font-size: var(--wtf-type-caption, 13px);
   height: 100%;
 `;
 
 const StageEyebrow = styled.div`
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #404040;
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+  line-height: 1.25;
 `;
 
 const StageTitle = styled.div`
   font-size: 16px;
   font-weight: 700;
-  color: #000080;
+  color: var(--wtf-app-link, #000080);
 `;
 
 const StageText = styled.p`
   margin: 0;
-  color: #303030;
+  color: var(--wtf-app-text, #111);
   line-height: 1.35;
 `;
 
@@ -220,16 +221,17 @@ const StageMeta = styled.div`
 
 const StagePill = styled.span`
   display: inline-block;
-  border: 1px solid #808080;
-  background: #efefef;
-  padding: 2px 6px;
-  font-size: 10px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface, #f4f4f4);
+  padding: 3px 8px;
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.2;
 `;
 
 const StageFooter = styled.div`
   margin-top: auto;
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   flex-wrap: wrap;
 `;
 
@@ -253,29 +255,39 @@ const Rail = styled.div`
 const CollectionButton = styled.button<{ $active?: boolean }>`
   text-align: left;
   width: 100%;
-  border: 2px outset #dfdfdf;
-  background: ${({ $active }) => ($active ? "#000080" : "#c0c0c0")};
-  color: ${({ $active }) => ($active ? "#fff" : "#000")};
-  padding: 8px;
+  border: 1px solid ${({ $active }) => ($active ? "var(--wtf-app-primary, var(--wtf-app-link, #000080))" : "var(--wtf-app-border, #808080)")};
+  background: ${({ $active }) => ($active ? "var(--wtf-app-primary, var(--wtf-app-link, #000080))" : "var(--wtf-app-surface-raised, #ffffff)")};
+  color: ${({ $active }) => ($active ? "var(--wtf-app-accent-text, #ffffff)" : "var(--wtf-app-text, #111)")};
+  padding: var(--wtf-space-2, 8px);
   cursor: pointer;
 
   &:active {
-    border-style: inset;
+    filter: brightness(0.96);
   }
 `;
 
 const CollectionTitle = styled.div`
-  font-size: 12px;
+  font-size: var(--wtf-type-body-strong, 15px);
   font-weight: 700;
+  line-height: 1.25;
 `;
 
 const CollectionMeta = styled.div`
   margin-top: 4px;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   opacity: 0.85;
+  line-height: 1.35;
 `;
 
-const DetailPanel = styled(GroupBox)`
+const CollectionDescription = styled.div`
+  margin-top: var(--wtf-space-2, 8px);
+  color: inherit;
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+  opacity: 0.9;
+`;
+
+const DetailPanel = styled(UiPanel)`
   min-height: 360px;
 `;
 
@@ -290,8 +302,9 @@ const DetailLead = styled.div`
 
 const DetailDescription = styled.p`
   margin: 0;
-  font-size: 11px;
-  color: #333;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
 `;
 
 const DetailHero = styled.div`
@@ -324,10 +337,11 @@ const CoverFrame = styled.div`
 
 const DetailBadge = styled.span`
   display: inline-block;
-  border: 1px solid #808080;
-  background: #efefef;
-  padding: 2px 6px;
-  font-size: 10px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface, #f4f4f4);
+  padding: 3px 8px;
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.2;
   margin-right: 4px;
   margin-bottom: 4px;
 `;
@@ -339,11 +353,12 @@ const ItemGrid = styled.div`
 `;
 
 const ItemCard = styled.div`
-  border: 2px outset #dfdfdf;
-  background: #c0c0c0;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
   display: flex;
   flex-direction: column;
   min-height: 250px;
+  color: var(--wtf-app-text, #111);
 `;
 
 const ItemThumb = styled.div`
@@ -363,8 +378,8 @@ const ItemThumb = styled.div`
 `;
 
 const ItemBody = styled.div`
-  padding: 8px;
-  font-size: 11px;
+  padding: var(--wtf-space-2, 8px);
+  font-size: var(--wtf-type-caption, 13px);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -377,15 +392,23 @@ const ItemName = styled.div`
 
 const ItemNote = styled.div`
   margin-top: 6px;
-  font-size: 10px;
-  color: #404040;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #384352);
+  line-height: 1.35;
 `;
 
 const EmptyState = styled.div`
   padding: 24px 12px;
   text-align: center;
-  font-size: 11px;
-  color: #404040;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #384352);
+  line-height: 1.35;
+`;
+
+const ContractLine = styled.div`
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
 function collectionTypeLabel(type: string): string {
@@ -598,19 +621,19 @@ export function CollectionWorkspace({
                   ))}
                 </StageMeta>
                 <StageFooter>
-                  <Button
-                    size="sm"
+                  <UiButton
+                    compact
                     onClick={() =>
                       mode === "created"
                         ? setCreatedView("portfolio")
                         : setCollectedView("portfolio")
                     }
                   >
-                    Open Portfolio View
-                  </Button>
-                  <Button size="sm" onClick={() => setLocation("/marketplace")}>
-                    Open Market
-                  </Button>
+                    Show portfolio view
+                  </UiButton>
+                  <UiButton compact onClick={() => setLocation("/marketplace")}>
+                    Open marketplace
+                  </UiButton>
                 </StageFooter>
               </StageBody>
             </StageCard>
@@ -664,40 +687,44 @@ export function CollectionWorkspace({
         <ActionRow>
           {isGallerySurface ? (
             <>
-              <Button onClick={() => setLocation("/dashboard")}>Open Portfolio</Button>
-              <Button onClick={() => setLocation("/profile")}>Profile & Wallets</Button>
-              <Button onClick={() => setLocation("/messageboard")}>Message Board</Button>
+              <UiButton onClick={() => setLocation("/dashboard")}>Open dashboard portfolio</UiButton>
+              <UiButton onClick={() => setLocation("/profile")}>Open profile and wallets</UiButton>
+              <UiButton onClick={() => setLocation("/messageboard")}>Open message board</UiButton>
             </>
           ) : (
             <>
-              <Button onClick={() => setLocation("/my-gallery")}>Open Exhibition</Button>
-              <Button onClick={() => setLocation("/profile")}>Profile & Wallets</Button>
-              <Button onClick={() => setLocation("/marketplace")}>Marketplace</Button>
+              <UiButton onClick={() => setLocation("/my-gallery")}>Open exhibition</UiButton>
+              <UiButton onClick={() => setLocation("/profile")}>Open profile and wallets</UiButton>
+              <UiButton onClick={() => setLocation("/marketplace")}>Open marketplace</UiButton>
             </>
           )}
         </ActionRow>
       )}
 
-      <Tabs value={activeTab} onChange={(value: number) => setActiveTab(value as 0 | 1 | 2)}>
-        <Tab value={0}>Created</Tab>
-        <Tab value={1}>Collected</Tab>
-        <Tab value={2}>Curated</Tab>
-      </Tabs>
-      <TabBody>
+      <UiTabs
+        activeId={String(activeTab)}
+        onChange={(value) => setActiveTab(Number(value) as 0 | 1 | 2)}
+        tabs={[
+          { id: "0", label: "Created" },
+          { id: "1", label: "Collected" },
+          { id: "2", label: "Curated" },
+        ]}
+      />
+      <div>
         {activeTab === 0 && (
-          <GroupBox label={isGallerySurface ? "Created Exhibition" : "Created by linked wallets"}>
+          <UiPanel title={isGallerySurface ? "Created exhibition" : "Created by linked wallets"} compact>
             <Lead>
               {isGallerySurface
                 ? "Start with the authored read: image, sequence, and statement first. Drop to portfolio mode only when you need wallet or trading controls."
                 : "Authored work stays distinct from collected work so provenance and creator identity never collapse into the same bucket."}
             </Lead>
             <ViewRow>
-              <Button active={createdView === "room"} onClick={() => setCreatedView("room")}>
-                Room View
-              </Button>
-              <Button active={createdView === "portfolio"} onClick={() => setCreatedView("portfolio")}>
-                Portfolio View
-              </Button>
+              <UiButton active={createdView === "room"} onClick={() => setCreatedView("room")}>
+                Room view
+              </UiButton>
+              <UiButton active={createdView === "portfolio"} onClick={() => setCreatedView("portfolio")}>
+                Portfolio view
+              </UiButton>
             </ViewRow>
             {createdView === "room" ? renderStage(createdTokens?.items, createdLoading, "created") : (
               <OwnedTokensGallery
@@ -710,23 +737,23 @@ export function CollectionWorkspace({
                 userWallets={wallets?.map((wallet) => wallet.walletAddress) ?? []}
               />
             )}
-          </GroupBox>
+          </UiPanel>
         )}
 
         {activeTab === 1 && (
-          <GroupBox label={isGallerySurface ? "Collected Rooms" : "Collected across linked wallets"}>
+          <UiPanel title={isGallerySurface ? "Collected rooms" : "Collected across linked wallets"} compact>
             <Lead>
               {isGallerySurface
                 ? "Collected work should feel like living with art, not just counting positions. Provenance stays available, but the first read belongs to the piece and why it matters."
                 : "Collected work stays interoperable across every linked wallet while still preserving portfolio, trade-board, and media controls from the same holdings index."}
             </Lead>
             <ViewRow>
-              <Button active={collectedView === "room"} onClick={() => setCollectedView("room")}>
-                Room View
-              </Button>
-              <Button active={collectedView === "portfolio"} onClick={() => setCollectedView("portfolio")}>
-                Portfolio View
-              </Button>
+              <UiButton active={collectedView === "room"} onClick={() => setCollectedView("room")}>
+                Room view
+              </UiButton>
+              <UiButton active={collectedView === "portfolio"} onClick={() => setCollectedView("portfolio")}>
+                Portfolio view
+              </UiButton>
             </ViewRow>
             {collectedView === "room" ? renderStage(collectedTokens?.items, collectedLoading, "collected") : (
               <OwnedTokensGallery
@@ -739,13 +766,13 @@ export function CollectionWorkspace({
                 userWallets={wallets?.map((wallet) => wallet.walletAddress) ?? []}
               />
             )}
-          </GroupBox>
+          </UiPanel>
         )}
 
         {activeTab === 2 && (
           <CollectionsLayout>
             <Rail>
-              <GroupBox label={isGallerySurface ? "Curated Rooms" : "Collection Index"}>
+              <UiPanel title={isGallerySurface ? "Curated rooms" : "Collection index"} compact>
                 {collectionsLoading ? (
                   <EmptyState>
                     <Hourglass size={24} />
@@ -767,17 +794,17 @@ export function CollectionWorkspace({
                         {collectionTypeLabel(collection.type)}
                       </CollectionMeta>
                       {collection.description ? (
-                        <div style={{ marginTop: 6, fontSize: 10, opacity: 0.8 }}>
+                        <CollectionDescription>
                           {collection.description}
-                        </div>
+                        </CollectionDescription>
                       ) : null}
                     </CollectionButton>
                   ))
                 )}
-              </GroupBox>
+              </UiPanel>
             </Rail>
 
-            <DetailPanel label={selectedCollection?.title || "Collection Detail"}>
+            <DetailPanel title={selectedCollection?.title || "Collection detail"} compact>
               {!selectedCollectionId ? (
                 <EmptyState>Select a curated room to inspect its works.</EmptyState>
               ) : detailLoading ? (
@@ -831,7 +858,7 @@ export function CollectionWorkspace({
                             </DetailBadge>
                           </div>
                         </div>
-                        <Button onClick={() => setActiveTab(1)}>Browse collected works</Button>
+                        <UiButton onClick={() => setActiveTab(1)}>Browse collected works</UiButton>
                       </DetailLead>
                     </div>
                   </DetailHero>
@@ -877,9 +904,9 @@ export function CollectionWorkspace({
                               <StageEyebrow>Position {item.position + 1}</StageEyebrow>
                               <ItemName>{item.tokenName || `Token #${item.tokenId}`}</ItemName>
                               <div>{item.quantity} edition{item.quantity === 1 ? "" : "s"}</div>
-                              <div style={{ fontSize: 10, color: "#404040" }}>
+                              <ContractLine>
                                 Contract {shortAddr(item.tokenContract)} · token {item.tokenId}
-                              </div>
+                              </ContractLine>
                               {item.note ? <ItemNote>{item.note}</ItemNote> : null}
                             </ItemBody>
                           </ItemCard>
@@ -892,7 +919,7 @@ export function CollectionWorkspace({
             </DetailPanel>
           </CollectionsLayout>
         )}
-      </TabBody>
+      </div>
     </div>
   );
 }

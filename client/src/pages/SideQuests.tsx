@@ -84,7 +84,7 @@ const IntroPanel = styled.div`
   align-items: center;
   padding: 10px;
   border: 1px solid #808080;
-  background: #e7e1cb;
+  background: var(--wtf-app-warning-bg, #e7e1cb);
   box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
 
   @media (max-width: 720px) {
@@ -103,7 +103,7 @@ const PageTitle = styled.h2`
 
 const PageCopy = styled.p`
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: var(--wtf-type-body, 15px);
   line-height: 1.4;
 `;
 
@@ -115,7 +115,7 @@ const ProgressLabel = styled.div`
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
 `;
 
@@ -141,7 +141,7 @@ const AccountGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(5, minmax(92px, 1fr));
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 
   @media (max-width: 780px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -151,7 +151,7 @@ const AccountGrid = styled.div`
 const AccountMetric = styled.div`
   min-height: 52px;
   border: 2px inset #c0c0c0;
-  background: #f7f3dc;
+  background: var(--wtf-app-surface-raised, #f7f3dc);
   padding: 6px;
 
   strong {
@@ -168,7 +168,7 @@ const AccountActions = styled.div`
   gap: 8px;
   align-items: center;
   margin-top: 10px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const QuestGrid = styled.div`
@@ -200,7 +200,7 @@ const QuestTitle = styled.h3`
 
 const QuestDescription = styled.p`
   margin: 6px 0 0;
-  font-size: 13px;
+  font-size: var(--wtf-type-body, 15px);
   line-height: 1.35;
 `;
 
@@ -214,8 +214,8 @@ const QuestMeta = styled.div`
 const Chip = styled.span<{ $tone?: "green" | "blue" | "gold" | "gray" | "red" }>`
   display: inline-flex;
   align-items: center;
-  min-height: 19px;
-  padding: 2px 7px;
+  min-height: 24px;
+  padding: 3px 8px;
   border: 1px solid #5a5a5a;
   background: ${(p) =>
     p.$tone === "green"
@@ -227,7 +227,7 @@ const Chip = styled.span<{ $tone?: "green" | "blue" | "gold" | "gray" | "red" }>
           : p.$tone === "red"
             ? "#ffd7d7"
             : "#eeeeee"};
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   color: #202020;
 `;
@@ -241,9 +241,9 @@ const QuestFooter = styled.div`
 `;
 
 const SmallNote = styled.div`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.35;
-  color: #404040;
+  color: var(--wtf-app-muted-text, #404040);
   overflow-wrap: anywhere;
 `;
 
@@ -255,8 +255,8 @@ const MarketNudge = styled.div`
   margin-top: 8px;
   padding: 6px 8px;
   border: 1px solid #8a7b3a;
-  background: #fff8d6;
-  font-size: 12px;
+  background: var(--wtf-app-warning-bg, #fff8d6);
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.35;
 
   a {

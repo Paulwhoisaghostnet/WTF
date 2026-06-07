@@ -56,7 +56,7 @@ const Title = styled.h2`
 
 const Subtitle = styled.div`
   margin-top: 3px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -71,7 +71,7 @@ const Meter = styled.div`
   border: 2px inset #808080;
   background: #f3f0d7;
   padding: 7px 9px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.4;
 `;
 
@@ -104,7 +104,7 @@ const Empty = styled.div`
   align-items: center;
   justify-content: center;
   color: #555;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const Counts = styled.div`
@@ -112,7 +112,7 @@ const Counts = styled.div`
   flex-wrap: wrap;
   gap: 6px;
   margin: 8px 0 0;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const CountPill = styled.span<{ $tone?: "live" | "staged" }>`

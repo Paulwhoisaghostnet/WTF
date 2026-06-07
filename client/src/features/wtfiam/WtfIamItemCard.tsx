@@ -17,10 +17,10 @@ const Card = styled.article<{ $accent: string; $comingSoon?: boolean }>`
   &::before {
     content: "";
     position: absolute;
-    left: 0;
     top: 0;
-    bottom: 0;
-    width: 6px;
+    left: 0;
+    right: 0;
+    height: 4px;
     background: ${(p) => p.$accent};
   }
 `;
@@ -35,15 +35,15 @@ const TitleBar = styled.div<{ $accent: string }>`
   justify-content: space-between;
   gap: 8px;
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const Badge = styled.span<{ $live: boolean; $comingSoon?: boolean }>`
   border: 1px solid #101010;
   background: ${(p) => (p.$comingSoon ? "#ffcc44" : p.$live ? "#fff06a" : "#c8c8c8")};
   color: #101010;
-  padding: 1px 4px;
-  font-size: 9px;
+  padding: 2px 5px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 900;
 `;
 
@@ -51,8 +51,8 @@ const SaleBadge = styled.span`
   border: 1px solid #101010;
   background: #ff9f45;
   color: #101010;
-  padding: 1px 4px;
-  font-size: 9px;
+  padding: 2px 5px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 900;
 `;
 
@@ -83,7 +83,7 @@ const Detail = styled.div`
   display: flex;
   flex-direction: column;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const Description = styled.p`
@@ -93,7 +93,7 @@ const Description = styled.p`
 `;
 
 const Owned = styled.div`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #4a4a4a;
 `;
 
@@ -102,7 +102,7 @@ const PriceLine = styled.div`
   flex-wrap: wrap;
   gap: 8px;
   align-items: baseline;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const Price = styled.span`
@@ -138,19 +138,19 @@ const Qty = styled.span`
 `;
 
 const IconButton = styled(Button)`
-  min-width: 26px;
-  width: 26px;
-  height: 24px;
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
   padding: 0;
 
   svg {
-    width: 13px;
-    height: 13px;
+    width: 15px;
+    height: 15px;
   }
 `;
 
 const ComingSoonNotice = styled.span`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-style: italic;
   color: #666;
   padding: 2px 0;

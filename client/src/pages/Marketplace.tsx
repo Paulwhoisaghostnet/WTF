@@ -173,7 +173,9 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
     address,
     auctionBidInputs,
     createForm,
+    contractVersion: onchain?.contractVersion ?? "legacy",
     invalidateMarket,
+    legacyContractAddress: onchain?.legacyContractAddress ?? null,
     offerInputs,
     onchainListings: onchain?.listings,
     selectedToken,
@@ -196,12 +198,7 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
           onCancel={() => setPendingOfferAccept(null)}
           onConfirm={async (pending) => {
             try {
-              await runAcceptOfferForToken(
-                pending.tokenContract,
-                pending.tokenId,
-                pending.listed,
-                pending.quantity
-              );
+              await runAcceptOfferForToken(pending);
               setPendingOfferAccept(null);
             } catch (err: any) {
               setErrorMsg(err?.message || "Accept offer failed");

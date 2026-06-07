@@ -1,8 +1,8 @@
-import { GroupBox } from "react95";
 import type React from "react";
 import styled from "styled-components";
+import { UiPanel } from "./wtfos-ui";
 
-const Shell = styled(GroupBox)`
+const Shell = styled(UiPanel)`
   margin-bottom: 10px;
 `;
 
@@ -20,8 +20,8 @@ const Title = styled.div`
 `;
 
 const Muted = styled.span`
-  color: #555;
-  font-size: 12px;
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const MetaGrid = styled.div`
@@ -32,15 +32,16 @@ const MetaGrid = styled.div`
 `;
 
 const Meta = styled.div`
-  border-left: 3px solid #000080;
-  padding-left: 6px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  padding: 7px;
   min-height: 34px;
 `;
 
 const Label = styled.div`
-  color: #555;
-  font-size: 11px;
-  text-transform: uppercase;
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
 `;
 
 const Value = styled.div`
@@ -55,10 +56,10 @@ const PillRow = styled.div`
 `;
 
 const Pill = styled.span`
-  background: #000080;
-  color: #fff;
-  padding: 2px 6px;
-  font-size: 11px;
+  background: var(--wtf-app-primary, #000080);
+  color: var(--wtf-app-accent-text, #fff);
+  padding: 3px 7px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
 `;
 
@@ -72,12 +73,21 @@ const Columns = styled.div`
 const MiniList = styled.ol`
   margin: 4px 0 0 18px;
   padding: 0;
-  font-size: 12px;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
 const SectionTitle = styled.div`
   font-weight: 700;
   margin-bottom: 4px;
+`;
+
+const BodyText = styled.p`
+  margin: 6px 0;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
 `;
 
 function asArray(value: unknown): any[] {
@@ -130,7 +140,7 @@ export function RoundInfoCard({
   const schedule = round.calendarEvent ?? round;
 
   return (
-    <Shell label={`Round ${round.number}`}>
+    <Shell title={`Round ${round.number}`} compact>
       <Header>
         <div>
           <Title>{round.name}</Title>
@@ -161,13 +171,13 @@ export function RoundInfoCard({
         </Meta>
       </MetaGrid>
 
-      <p style={{ fontSize: 12, margin: "6px 0" }}>
+      <BodyText>
         {round.description || "No round summary yet."}
-      </p>
+      </BodyText>
       {round.rules && (
-        <p style={{ fontSize: 12, margin: "6px 0" }}>
+        <BodyText>
           <strong>Rules:</strong> {round.rules}
-        </p>
+        </BodyText>
       )}
 
       {platforms.length > 0 && (

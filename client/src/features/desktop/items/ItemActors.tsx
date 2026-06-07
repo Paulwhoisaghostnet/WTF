@@ -728,9 +728,10 @@ const MopIcon = styled.span<{ $dirty: number; $usesLeft: number }>`
 
   i {
     position: absolute;
-    right: -23px;
-    bottom: -8px;
-    font-size: 9px;
+    right: -28px;
+    bottom: -12px;
+    font-size: var(--wtf-type-caption, 13px);
+    line-height: 1;
     color: #111111;
   }
 
@@ -823,12 +824,12 @@ const CursorTrayPanel = styled.div`
 `;
 
 const CursorToolButton = styled.button<{ $active: boolean }>`
-  min-height: 18px;
-  padding: 1px 4px;
+  min-height: var(--wtf-control-height, 32px);
+  padding: 4px 6px;
   border: 2px ${(p) => (p.$active ? "inset" : "outset")} #dfdfdf;
   background: ${(p) => (p.$active ? "#9fd4d4" : "#c0c0c0")};
   color: #111111;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.1;
   text-align: left;
 `;
@@ -872,7 +873,8 @@ const TrainKitIcon = styled.span<{ $opened: boolean }>`
     position: absolute;
     right: 5px;
     bottom: 4px;
-    font-size: 8px;
+    font-size: var(--wtf-type-caption, 13px);
+    line-height: 1;
     color: #111111;
   }
 `;
@@ -1065,22 +1067,22 @@ const GenericArtifactIcon = styled.span`
 
   span {
     display: block;
-    min-width: 34px;
-    padding: 2px 3px;
+    min-width: 44px;
+    padding: 3px 5px;
     border: 1px solid rgba(17, 24, 39, 0.6);
     background: rgba(255, 255, 255, 0.74);
-    font-size: 11px;
-    line-height: 1;
+    font-size: var(--wtf-type-caption, 13px);
+    line-height: 1.12;
     font-weight: 700;
     text-align: center;
   }
 
   i {
     display: block;
-    width: 52px;
+    width: 68px;
     font-style: normal;
-    font-size: 8px;
-    line-height: 1;
+    font-size: var(--wtf-type-caption, 13px);
+    line-height: 1.12;
     text-align: center;
     overflow: hidden;
     text-overflow: ellipsis;

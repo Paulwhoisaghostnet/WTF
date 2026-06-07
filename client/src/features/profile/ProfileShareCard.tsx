@@ -1,13 +1,19 @@
-import { Button, GroupBox } from "react95";
+import { GroupBox } from "react95";
 import styled from "styled-components";
+import { UiButton } from "../../components/wtfos-ui";
+
+const SHARE_CARD_FONT =
+  'var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif)';
+const SHARE_CARD_MONO =
+  'var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)';
 
 const Card = styled.div`
   width: 320px;
   padding: 12px;
-  background: linear-gradient(135deg, #000080, #008080);
-  color: #fff;
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111111);
   border: 2px inset #c0c0c0;
-  font-family: Tahoma, sans-serif;
+  font-family: ${SHARE_CARD_FONT};
 `;
 
 type Props = {
@@ -30,19 +36,19 @@ export function ProfileShareCard({ username, displayName, tezosAddress }: Props)
     canvas.height = 360;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const grad = ctx.createLinearGradient(0, 0, 640, 360);
-    grad.addColorStop(0, "#000080");
-    grad.addColorStop(1, "#008080");
-    ctx.fillStyle = grad;
+    ctx.fillStyle = "#f7f7f7";
     ctx.fillRect(0, 0, 640, 360);
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 36px Tahoma";
+    ctx.strokeStyle = "#008080";
+    ctx.lineWidth = 8;
+    ctx.strokeRect(16, 16, 608, 328);
+    ctx.fillStyle = "#111";
+    ctx.font = 'bold 36px "MEK Mono", monospace';
     ctx.fillText(title, 32, 80);
-    ctx.font = "20px Tahoma";
+    ctx.font = '20px "MEK Mono", monospace';
     ctx.fillText(`@${username}`, 32, 120);
     if (tezosAddress) ctx.fillText(tezosAddress.slice(0, 20) + "…", 32, 160);
-    ctx.font = "16px Tahoma";
-    ctx.fillText("wtfOS — skllzrmy share card", 32, 320);
+    ctx.font = '16px "MEK Mono", monospace';
+    ctx.fillText("wtfOS / skllzrmy share card", 32, 320);
     const a = document.createElement("a");
     a.download = `${username}-wtf-card.png`;
     a.href = canvas.toDataURL("image/png");
@@ -53,14 +59,23 @@ export function ProfileShareCard({ username, displayName, tezosAddress }: Props)
     <GroupBox label="Share Card">
       <Card>
         <div style={{ fontSize: 16, fontWeight: "bold" }}>{title}</div>
-        <div style={{ fontSize: 12, opacity: 0.9 }}>@{username}</div>
+        <div style={{ fontSize: "var(--wtf-type-caption, 13px)", opacity: 0.9 }}>@{username}</div>
         {tezosAddress ? (
-          <div style={{ fontSize: 10, marginTop: 6, fontFamily: "monospace" }}>{tezosAddress}</div>
+          <div
+            style={{
+              fontSize: "var(--wtf-type-caption, 13px)",
+              marginTop: 6,
+              fontFamily: SHARE_CARD_MONO,
+              overflowWrap: "anywhere",
+            }}
+          >
+            {tezosAddress}
+          </div>
         ) : null}
       </Card>
       <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-        <Button size="sm" onClick={copyLink}>Copy profile link</Button>
-        <Button size="sm" onClick={downloadCard}>Download card</Button>
+        <UiButton size="sm" onClick={copyLink}>Copy profile link</UiButton>
+        <UiButton size="sm" onClick={downloadCard}>Download card</UiButton>
       </div>
     </GroupBox>
   );

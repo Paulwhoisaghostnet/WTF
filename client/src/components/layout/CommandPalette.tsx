@@ -57,7 +57,7 @@ const SearchGlyph = styled.span`
   justify-content: center;
   border: 1px solid #808080;
   background: #eeeeee;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
 `;
 
@@ -107,11 +107,11 @@ const Path = styled.div`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const Category = styled.span`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   text-transform: uppercase;
 `;
 

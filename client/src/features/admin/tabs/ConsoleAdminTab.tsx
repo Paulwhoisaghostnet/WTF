@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Button, GroupBox } from "react95";
 import styled from "styled-components";
+import { UiButton, UiPanel } from "../../../components/wtfos-ui";
 import type {
   ArcadeStatsResponse,
   ConsoleAuditEvent,
@@ -60,13 +60,13 @@ const HealthGrid = styled.div`
 `;
 
 const HealthTile = styled.div`
-  border: 1px solid #808080;
-  background: #f3f0d7;
-  padding: 8px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  padding: var(--wtf-space-2, 8px);
   min-height: 58px;
   display: grid;
   align-content: start;
-  gap: 4px;
+  gap: var(--wtf-space-1, 4px);
 
   strong,
   span {
@@ -77,11 +77,12 @@ const HealthTile = styled.div`
   }
 
   strong {
-    font-size: 14px;
+    font-size: var(--wtf-type-body-strong, 15px);
   }
 
   span {
-    font-size: 11px;
+    color: var(--wtf-app-muted-text, #444);
+    font-size: var(--wtf-type-caption, 13px);
   }
 `;
 
@@ -92,18 +93,19 @@ const TableWrap = styled.div`
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
-  background: #f3f0d7;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  background: var(--wtf-app-surface-raised, #ffffff);
 
   th,
   td {
-    border: 1px solid #808080;
-    padding: 5px;
+    border: 1px solid var(--wtf-app-border, #808080);
+    padding: var(--wtf-space-2, 8px);
     vertical-align: top;
   }
 
   th {
-    background: #d7d2ba;
+    background: var(--wtf-app-surface, #f4f4f4);
     text-align: left;
   }
 
@@ -113,13 +115,18 @@ const Table = styled.table`
 `;
 
 const Muted = styled.span`
-  color: #555555;
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
 const StatusPill = styled.span<{ $status: string }>`
   display: inline-block;
-  padding: 1px 5px;
-  border: 1px solid #808080;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
   background: ${(p) =>
     p.$status === "active"
       ? "#d6efd1"
@@ -132,8 +139,11 @@ const StatusPill = styled.span<{ $status: string }>`
 
 const PriorityPill = styled.span<{ $score: number }>`
   display: inline-block;
-  padding: 1px 5px;
-  border: 1px solid #808080;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
   background: ${(p) =>
     p.$score >= 80
       ? "#f1c4c4"
@@ -230,19 +240,19 @@ export function ConsoleAdminTab({
 
   return (
     <Stack>
-      <GroupBox label="Arcade Health">
+      <UiPanel title="Arcade health" compact>
         <Toolbar>
           <FilterRow>
             <span>Play tickets and source checks</span>
             <Muted>{sourceImportHealth(arcadeStats?.latestSourceArcadeImportAt)}</Muted>
           </FilterRow>
-          <Button
-            size="sm"
+          <UiButton
+            compact
             disabled={importSourceArcadeMutation.isPending}
             onClick={() => importSourceArcadeMutation.mutate()}
           >
-            Check Compatible Games
-          </Button>
+            Check compatible Arcade games
+          </UiButton>
         </Toolbar>
         <HealthGrid>
           <HealthTile>
@@ -270,12 +280,16 @@ export function ConsoleAdminTab({
             <span>latest source check</span>
           </HealthTile>
         </HealthGrid>
-      </GroupBox>
-      <GroupBox label="WTF Arcade">
+      </UiPanel>
+      <UiPanel title="WTF Arcade" compact>
       <Toolbar>
         <FilterRow>
           <span>Status</span>
-          <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <select
+            aria-label="Filter Arcade games by status"
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+          >
             <option value="pending">Pending / Updates</option>
             <option value="active">Active</option>
             <option value="rejected">Rejected</option>
@@ -350,6 +364,7 @@ export function ConsoleAdminTab({
                   </Muted>
                   <br />
                   <input
+                    aria-label={`Arcade credit price for ${game.title}`}
                     type="number"
                     min={0}
                     max={99}
@@ -363,13 +378,13 @@ export function ConsoleAdminTab({
                     }
                   />
                   <br />
-                  <Button
-                    size="sm"
+                  <UiButton
+                    compact
                     disabled={game.userSubmitted || updateArcadeCreditRuleMutation.isPending}
                     onClick={() => updateCreditRule(game)}
                   >
-                    Set Price
-                  </Button>
+                    Set credit price
+                  </UiButton>
                 </td>
                 <td>
                   Max {game.maxPossibleScore ?? "open"}
@@ -378,6 +393,7 @@ export function ConsoleAdminTab({
                 </td>
                 <ActionCell>
                   <input
+                    aria-label={`Moderation reason for ${game.title}`}
                     placeholder="Reason or note"
                     value={reasonInputs[game.slug] || ""}
                     onChange={(event) =>
@@ -388,34 +404,34 @@ export function ConsoleAdminTab({
                     }
                   />
                   <br />
-                  <Button
-                    size="sm"
+                  <UiButton
+                    compact
                     disabled={moderateConsoleGameMutation.isPending}
                     onClick={() => moderate(game, "approve")}
                   >
-                    Approve
-                  </Button>
-                  <Button
-                    size="sm"
+                    Approve game
+                  </UiButton>
+                  <UiButton
+                    compact
                     disabled={moderateConsoleGameMutation.isPending}
                     onClick={() => moderate(game, "reject")}
                   >
-                    Reject
-                  </Button>
-                  <Button
-                    size="sm"
+                    Reject game
+                  </UiButton>
+                  <UiButton
+                    compact
                     disabled={moderateConsoleGameMutation.isPending}
                     onClick={() => moderate(game, "remove")}
                   >
-                    Remove
-                  </Button>
-                  <Button
-                    size="sm"
+                    Remove game
+                  </UiButton>
+                  <UiButton
+                    compact
                     disabled={moderateConsoleGameMutation.isPending}
                     onClick={() => moderate(game, "restore")}
                   >
-                    Restore
-                  </Button>
+                    Restore game
+                  </UiButton>
                 </ActionCell>
               </tr>
             ))}
@@ -429,12 +445,13 @@ export function ConsoleAdminTab({
           </tbody>
         </Table>
       </TableWrap>
-      </GroupBox>
-      <GroupBox label="Arcade Reports">
+      </UiPanel>
+      <UiPanel title="Arcade reports" compact>
       <Toolbar>
         <FilterRow>
           <span>Status</span>
           <select
+            aria-label="Filter Arcade reports by status"
             value={reportStatus}
             onChange={(event) => setReportStatus(event.target.value)}
           >
@@ -503,6 +520,7 @@ export function ConsoleAdminTab({
                 </td>
                 <ActionCell>
                   <input
+                    aria-label={`Resolution note for report ${report.id}`}
                     placeholder="Resolution note"
                     value={reportNotes[report.id] || ""}
                     onChange={(event) =>
@@ -513,34 +531,34 @@ export function ConsoleAdminTab({
                     }
                   />
                   <br />
-                  <Button
-                    size="sm"
+                  <UiButton
+                    compact
                     disabled={moderateConsoleReportMutation.isPending}
                     onClick={() => moderateReport(report, "review")}
                   >
-                    Review
-                  </Button>
-                  <Button
-                    size="sm"
+                    Review report
+                  </UiButton>
+                  <UiButton
+                    compact
                     disabled={moderateConsoleReportMutation.isPending}
                     onClick={() => moderateReport(report, "resolve")}
                   >
-                    Resolve
-                  </Button>
-                  <Button
-                    size="sm"
+                    Resolve report
+                  </UiButton>
+                  <UiButton
+                    compact
                     disabled={moderateConsoleReportMutation.isPending}
                     onClick={() => moderateReport(report, "dismiss")}
                   >
-                    Dismiss
-                  </Button>
-                  <Button
-                    size="sm"
+                    Dismiss report
+                  </UiButton>
+                  <UiButton
+                    compact
                     disabled={moderateConsoleReportMutation.isPending}
                     onClick={() => moderateReport(report, "reopen")}
                   >
-                    Reopen
-                  </Button>
+                    Reopen report
+                  </UiButton>
                 </ActionCell>
               </tr>
             ))}
@@ -554,8 +572,8 @@ export function ConsoleAdminTab({
           </tbody>
         </Table>
       </TableWrap>
-      </GroupBox>
-      <GroupBox label="Arcade Audit">
+      </UiPanel>
+      <UiPanel title="Arcade audit" compact>
       <Toolbar>
         <FilterRow>
           <span>Recent events</span>
@@ -607,7 +625,7 @@ export function ConsoleAdminTab({
           </tbody>
         </Table>
       </TableWrap>
-      </GroupBox>
+      </UiPanel>
     </Stack>
   );
 }

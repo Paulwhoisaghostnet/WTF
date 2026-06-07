@@ -1,21 +1,57 @@
 import type { Dispatch, ReactElement, SetStateAction } from "react";
-import { Button, GroupBox, TextInput, Select } from "react95";
+import { TextInput, Select } from "react95";
 import styled from "styled-components";
 import { RoundInfoCard } from "../../../components/RoundInfoCard";
+import { UiButton, UiEmptyState, UiPanel } from "../../../components/wtfos-ui";
 import type { EntityUpdatePayload } from "../types";
 
 const Field = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: var(--wtf-space-1, 4px);
+  margin-bottom: var(--wtf-space-2, 8px);
+
+  label {
+    color: var(--wtf-app-text, #111);
+    font-size: var(--wtf-type-caption, 13px);
+    font-weight: 700;
+    line-height: 1.3;
+  }
 `;
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
+`;
+
+const Intro = styled.p`
+  margin: 0 0 var(--wtf-space-3, 12px);
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
+`;
+
+const FormGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--wtf-space-2, 8px);
+`;
+
+const PlatformGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--wtf-space-1, 4px);
+`;
+
+const CheckLabel = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wtf-space-1, 4px);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
 const ROUND_STATUS_OPTIONS = [
@@ -205,27 +241,29 @@ function PlatformChecklist({
   return (
     <Field>
       <label>Required platforms</label>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 4 }}>
+      <PlatformGrid>
         {ROUND_PLATFORM_OPTIONS.map((platform) => (
-          <label key={platform} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <CheckLabel key={platform}>
             <input
               type="checkbox"
+              aria-label={`Require ${platform} platform`}
               checked={value.includes(platform)}
               onChange={() => onToggle(platform)}
             />
             {platform}
-          </label>
+          </CheckLabel>
         ))}
-      </div>
+      </PlatformGrid>
       <ActionRow>
         <TextInput
+          aria-label="Custom required platform"
           value={customValue}
           onChange={(e: any) => onCustomChange(e.target.value)}
           placeholder="custom platform"
         />
-        <Button size="sm" onClick={onAddCustom}>
-          Add custom
-        </Button>
+        <UiButton compact onClick={onAddCustom}>
+          Add custom platform
+        </UiButton>
       </ActionRow>
     </Field>
   );
@@ -246,9 +284,9 @@ export function RoundsAdminTab({
   return (
     <>
       <h3>Round Library</h3>
-      <p style={{ fontSize: 12, marginTop: 0 }}>
+      <Intro>
         Create rounds as reusable production cards, then attach them to a season and schedule the round window when ready.
-      </p>
+      </Intro>
 
       {(allRounds || []).map((r: any) => {
         const season = (allSeasons || []).find((s: any) => s.id === r.seasonId);
@@ -259,16 +297,17 @@ export function RoundsAdminTab({
             seasonLabel={season ? `Season ${season.number}: ${season.name}` : undefined}
             action={
               <ActionRow>
-                <Button
-                  size="sm"
+                <UiButton
+                  compact
                   onClick={() =>
                     setEditingRound(editingRound?.id === r.id ? null : roundToFormState(r))
                   }
                 >
-                  {editingRound?.id === r.id ? "Cancel" : "Edit"}
-                </Button>
+                  {editingRound?.id === r.id ? "Cancel round edit" : "Edit round"}
+                </UiButton>
                 {!r.seasonId && (allSeasons || []).length > 0 && (
                   <Select
+                    aria-label={`Attach ${r.name} to a season`}
                     value={0}
                     onChange={(e: any) =>
                       e.value
@@ -289,8 +328,8 @@ export function RoundsAdminTab({
                   />
                 )}
                 <ConfirmButton
-                  label="Delete"
-                  confirmLabel="Confirm"
+                  label="Delete round"
+                  confirmLabel="Confirm delete"
                   onConfirm={() => deleteRoundMutation.mutate(r.id)}
                   disabled={deleteRoundMutation.isPending}
                 />
@@ -299,13 +338,18 @@ export function RoundsAdminTab({
           />
         );
       })}
-      {(!allRounds || allRounds.length === 0) && <p>No rounds yet.</p>}
+      {(!allRounds || allRounds.length === 0) && (
+        <UiEmptyState title="No rounds yet">
+          Create a library round, then attach it to a season when the schedule is ready.
+        </UiEmptyState>
+      )}
 
       {editingRound && (
-        <GroupBox label={`Edit Round: ${editingRound.name}`} style={{ marginTop: 12 }}>
+        <UiPanel title={`Edit round: ${editingRound.name}`} compact style={{ marginTop: 12 }}>
           <Field>
             <label>Season</label>
             <Select
+              aria-label="Edit round season"
               value={parseOptionalId(editingRound.seasonId) || 0}
               onChange={(e: any) => setEditingRound((p: any) => ({ ...p, seasonId: String(e.value) }))}
               options={[
@@ -320,51 +364,51 @@ export function RoundsAdminTab({
           </Field>
           <Field>
             <label>Name</label>
-            <TextInput value={editingRound.name} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, name: e.target.value }))} fullWidth />
+            <TextInput aria-label="Edit round name" value={editingRound.name} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, name: e.target.value }))} fullWidth />
           </Field>
           <Field>
             <label>Number</label>
-            <TextInput value={editingRound.number} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, number: e.target.value }))} fullWidth />
+            <TextInput aria-label="Edit round number" value={editingRound.number} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, number: e.target.value }))} fullWidth />
           </Field>
           <Field>
             <label>Status</label>
-            <Select value={editingRound.status} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, status: e.value }))} options={ROUND_STATUS_OPTIONS} width={200} />
+            <Select aria-label="Edit round status" value={editingRound.status} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, status: e.value }))} options={ROUND_STATUS_OPTIONS} width={200} />
           </Field>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+          <FormGrid>
             <Field>
               <label>Starts on calendar</label>
-              <TextInput type="datetime-local" value={editingRound.startDate} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, startDate: e.target.value }))} fullWidth />
+              <TextInput aria-label="Edit round start date" type="datetime-local" value={editingRound.startDate} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, startDate: e.target.value }))} fullWidth />
             </Field>
             <Field>
               <label>Ends on calendar</label>
-              <TextInput type="datetime-local" value={editingRound.endDate} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, endDate: e.target.value }))} fullWidth />
+              <TextInput aria-label="Edit round end date" type="datetime-local" value={editingRound.endDate} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, endDate: e.target.value }))} fullWidth />
             </Field>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+          </FormGrid>
+          <FormGrid>
             <Field>
               <label>Starting contestants</label>
-              <TextInput value={editingRound.startingContestants} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, startingContestants: e.target.value }))} fullWidth />
+              <TextInput aria-label="Edit round starting contestants" value={editingRound.startingContestants} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, startingContestants: e.target.value }))} fullWidth />
             </Field>
             <Field>
               <label>Eliminated at end</label>
-              <TextInput value={editingRound.eliminatedAtEnd} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, eliminatedAtEnd: e.target.value }))} fullWidth />
+              <TextInput aria-label="Edit round eliminated contestants count" value={editingRound.eliminatedAtEnd} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, eliminatedAtEnd: e.target.value }))} fullWidth />
             </Field>
-          </div>
+          </FormGrid>
           <Field>
             <label>XP Reward</label>
-            <TextInput value={editingRound.rewardXp} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, rewardXp: e.target.value }))} fullWidth />
+            <TextInput aria-label="Edit round XP reward" value={editingRound.rewardXp} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, rewardXp: e.target.value }))} fullWidth />
           </Field>
           <Field>
             <label>Escrow Slug (optional)</label>
-            <TextInput value={editingRound.rewardEscrowSlug} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, rewardEscrowSlug: e.target.value }))} fullWidth />
+            <TextInput aria-label="Edit round escrow slug" value={editingRound.rewardEscrowSlug} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, rewardEscrowSlug: e.target.value }))} fullWidth />
           </Field>
           <Field>
             <label>Description</label>
-            <TextInput value={editingRound.description} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, description: e.target.value }))} multiline fullWidth />
+            <TextInput aria-label="Edit round description" value={editingRound.description} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, description: e.target.value }))} multiline fullWidth />
           </Field>
           <Field>
             <label>Rules</label>
-            <TextInput value={editingRound.rules} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, rules: e.target.value }))} multiline fullWidth />
+            <TextInput aria-label="Edit round rules" value={editingRound.rules} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, rules: e.target.value }))} multiline fullWidth />
           </Field>
           <PlatformChecklist
             value={editingRound.requiredPlatforms}
@@ -388,21 +432,21 @@ export function RoundsAdminTab({
           />
           <Field>
             <label>Prizes JSON array</label>
-            <TextInput value={editingRound.prizesJson} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, prizesJson: e.target.value }))} multiline fullWidth />
+            <TextInput aria-label="Edit round prizes JSON array" value={editingRound.prizesJson} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, prizesJson: e.target.value }))} multiline fullWidth />
           </Field>
           <Field>
             <label>Previous winners JSON array</label>
-            <TextInput value={editingRound.previousWinnersJson} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, previousWinnersJson: e.target.value }))} multiline fullWidth />
+            <TextInput aria-label="Edit round previous winners JSON array" value={editingRound.previousWinnersJson} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, previousWinnersJson: e.target.value }))} multiline fullWidth />
           </Field>
           <Field>
             <label>Leaderboard JSON array (top 10 shown)</label>
-            <TextInput value={editingRound.leaderboardJson} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, leaderboardJson: e.target.value }))} multiline fullWidth />
+            <TextInput aria-label="Edit round leaderboard JSON array" value={editingRound.leaderboardJson} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, leaderboardJson: e.target.value }))} multiline fullWidth />
           </Field>
           <Field>
             <label>Eliminated contestants JSON array</label>
-            <TextInput value={editingRound.eliminatedContestantsJson} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, eliminatedContestantsJson: e.target.value }))} multiline fullWidth />
+            <TextInput aria-label="Edit round eliminated contestants JSON array" value={editingRound.eliminatedContestantsJson} onChange={(e: any) => setEditingRound((p: any) => ({ ...p, eliminatedContestantsJson: e.target.value }))} multiline fullWidth />
           </Field>
-          <Button
+          <UiButton
             onClick={() => {
               const payload = buildRoundPayload(editingRound);
               if (!payload) return;
@@ -416,15 +460,16 @@ export function RoundsAdminTab({
             }}
             disabled={updateRoundMutation.isPending}
           >
-            Save Changes
-          </Button>
-        </GroupBox>
+            Save round changes
+          </UiButton>
+        </UiPanel>
       )}
 
-      <GroupBox label="New Round" style={{ marginTop: 12 }}>
+      <UiPanel title="New round" compact style={{ marginTop: 12 }}>
         <Field>
           <label>Season</label>
           <Select
+            aria-label="New round season"
             value={parseOptionalId(roundForm.seasonId) || 0}
             onChange={(e: any) => setRoundForm((f) => ({ ...f, seasonId: String(e.value) }))}
             options={[
@@ -439,47 +484,47 @@ export function RoundsAdminTab({
         </Field>
         <Field>
           <label>Name</label>
-          <TextInput value={roundForm.name} onChange={(e: any) => setRoundForm((f) => ({ ...f, name: e.target.value }))} fullWidth />
+          <TextInput aria-label="New round name" value={roundForm.name} onChange={(e: any) => setRoundForm((f) => ({ ...f, name: e.target.value }))} fullWidth />
         </Field>
         <Field>
           <label>Number</label>
-          <TextInput value={roundForm.number} onChange={(e: any) => setRoundForm((f) => ({ ...f, number: e.target.value }))} fullWidth />
+          <TextInput aria-label="New round number" value={roundForm.number} onChange={(e: any) => setRoundForm((f) => ({ ...f, number: e.target.value }))} fullWidth />
         </Field>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+        <FormGrid>
           <Field>
             <label>Starts on calendar</label>
-            <TextInput type="datetime-local" value={roundForm.startDate} onChange={(e: any) => setRoundForm((f) => ({ ...f, startDate: e.target.value }))} fullWidth />
+            <TextInput aria-label="New round start date" type="datetime-local" value={roundForm.startDate} onChange={(e: any) => setRoundForm((f) => ({ ...f, startDate: e.target.value }))} fullWidth />
           </Field>
           <Field>
             <label>Ends on calendar</label>
-            <TextInput type="datetime-local" value={roundForm.endDate} onChange={(e: any) => setRoundForm((f) => ({ ...f, endDate: e.target.value }))} fullWidth />
+            <TextInput aria-label="New round end date" type="datetime-local" value={roundForm.endDate} onChange={(e: any) => setRoundForm((f) => ({ ...f, endDate: e.target.value }))} fullWidth />
           </Field>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+        </FormGrid>
+        <FormGrid>
           <Field>
             <label>Starting contestants</label>
-            <TextInput value={roundForm.startingContestants} onChange={(e: any) => setRoundForm((f) => ({ ...f, startingContestants: e.target.value }))} fullWidth />
+            <TextInput aria-label="New round starting contestants" value={roundForm.startingContestants} onChange={(e: any) => setRoundForm((f) => ({ ...f, startingContestants: e.target.value }))} fullWidth />
           </Field>
           <Field>
             <label>Eliminated at end</label>
-            <TextInput value={roundForm.eliminatedAtEnd} onChange={(e: any) => setRoundForm((f) => ({ ...f, eliminatedAtEnd: e.target.value }))} fullWidth />
+            <TextInput aria-label="New round eliminated contestants count" value={roundForm.eliminatedAtEnd} onChange={(e: any) => setRoundForm((f) => ({ ...f, eliminatedAtEnd: e.target.value }))} fullWidth />
           </Field>
-        </div>
+        </FormGrid>
         <Field>
           <label>XP Reward</label>
-          <TextInput value={roundForm.rewardXp} onChange={(e: any) => setRoundForm((f) => ({ ...f, rewardXp: e.target.value }))} fullWidth />
+          <TextInput aria-label="New round XP reward" value={roundForm.rewardXp} onChange={(e: any) => setRoundForm((f) => ({ ...f, rewardXp: e.target.value }))} fullWidth />
         </Field>
         <Field>
           <label>Escrow Slug (optional)</label>
-          <TextInput value={roundForm.rewardEscrowSlug} onChange={(e: any) => setRoundForm((f) => ({ ...f, rewardEscrowSlug: e.target.value }))} fullWidth />
+          <TextInput aria-label="New round escrow slug" value={roundForm.rewardEscrowSlug} onChange={(e: any) => setRoundForm((f) => ({ ...f, rewardEscrowSlug: e.target.value }))} fullWidth />
         </Field>
         <Field>
           <label>Description</label>
-          <TextInput value={roundForm.description} onChange={(e: any) => setRoundForm((f) => ({ ...f, description: e.target.value }))} multiline fullWidth />
+          <TextInput aria-label="New round description" value={roundForm.description} onChange={(e: any) => setRoundForm((f) => ({ ...f, description: e.target.value }))} multiline fullWidth />
         </Field>
         <Field>
           <label>Rules</label>
-          <TextInput value={roundForm.rules} onChange={(e: any) => setRoundForm((f) => ({ ...f, rules: e.target.value }))} multiline fullWidth />
+          <TextInput aria-label="New round rules" value={roundForm.rules} onChange={(e: any) => setRoundForm((f) => ({ ...f, rules: e.target.value }))} multiline fullWidth />
         </Field>
         <PlatformChecklist
           value={roundForm.requiredPlatforms}
@@ -503,30 +548,30 @@ export function RoundsAdminTab({
         />
         <Field>
           <label>Prizes JSON array</label>
-          <TextInput value={roundForm.prizesJson} onChange={(e: any) => setRoundForm((f) => ({ ...f, prizesJson: e.target.value }))} multiline fullWidth />
+          <TextInput aria-label="New round prizes JSON array" value={roundForm.prizesJson} onChange={(e: any) => setRoundForm((f) => ({ ...f, prizesJson: e.target.value }))} multiline fullWidth />
         </Field>
         <Field>
           <label>Previous winners JSON array</label>
-          <TextInput value={roundForm.previousWinnersJson} onChange={(e: any) => setRoundForm((f) => ({ ...f, previousWinnersJson: e.target.value }))} multiline fullWidth />
+          <TextInput aria-label="New round previous winners JSON array" value={roundForm.previousWinnersJson} onChange={(e: any) => setRoundForm((f) => ({ ...f, previousWinnersJson: e.target.value }))} multiline fullWidth />
         </Field>
         <Field>
           <label>Leaderboard JSON array (top 10 shown)</label>
-          <TextInput value={roundForm.leaderboardJson} onChange={(e: any) => setRoundForm((f) => ({ ...f, leaderboardJson: e.target.value }))} multiline fullWidth />
+          <TextInput aria-label="New round leaderboard JSON array" value={roundForm.leaderboardJson} onChange={(e: any) => setRoundForm((f) => ({ ...f, leaderboardJson: e.target.value }))} multiline fullWidth />
         </Field>
         <Field>
           <label>Eliminated contestants JSON array</label>
-          <TextInput value={roundForm.eliminatedContestantsJson} onChange={(e: any) => setRoundForm((f) => ({ ...f, eliminatedContestantsJson: e.target.value }))} multiline fullWidth />
+          <TextInput aria-label="New round eliminated contestants JSON array" value={roundForm.eliminatedContestantsJson} onChange={(e: any) => setRoundForm((f) => ({ ...f, eliminatedContestantsJson: e.target.value }))} multiline fullWidth />
         </Field>
-        <Button
+        <UiButton
           onClick={() => {
             const payload = buildRoundPayload(roundForm);
             if (payload) createRoundMutation.mutate(payload);
           }}
           disabled={createRoundMutation.isPending}
         >
-          Create Round
-        </Button>
-      </GroupBox>
+          Create round
+        </UiButton>
+      </UiPanel>
     </>
   );
 }

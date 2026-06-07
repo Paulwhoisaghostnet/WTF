@@ -79,6 +79,10 @@ export function useDesktopIconPhysics({
         const body = physics.bodies.get(key);
         physics.dragging = null;
         if (body) {
+          Matter.Body.setPosition(body, {
+            x: pos.x + ICON_W / 2,
+            y: pos.y + ICON_H / 2,
+          });
           const speed = Math.hypot(velocity.x, velocity.y);
           const flingScale = speed > 420 ? 1 / 55 : 1 / 160;
           Matter.Body.setVelocity(body, {

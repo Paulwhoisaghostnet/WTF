@@ -443,8 +443,9 @@ const defaultAnalyticsFilters: AnalyticsFilters = {
 
 const Shell = styled.div`
   min-height: 100%;
-  padding: 12px;
-  background: #c0c0c0;
+  padding: var(--wtf-space-3, 12px);
+  background: var(--wtf-app-bg, #c0c0c0);
+  color: var(--wtf-app-text, #111);
   display: grid;
   gap: 10px;
 `;
@@ -482,8 +483,8 @@ const Row = styled.div`
 `;
 
 const Step = styled.div<{ $active?: boolean }>`
-  border: 1px solid ${(p) => (p.$active ? "#000080" : "#808080")};
-  background: ${(p) => (p.$active ? "#fffff0" : "#f4f4f4")};
+  border: 1px solid ${(p) => (p.$active ? "var(--wtf-app-primary, #000080)" : "var(--wtf-app-border, #808080)")};
+  background: ${(p) => (p.$active ? "var(--wtf-app-info-bg, #fffff0)" : "var(--wtf-app-surface, #f4f4f4)")};
   padding: 8px;
   display: grid;
   gap: 6px;
@@ -495,13 +496,13 @@ const Label = styled.div`
 
 const Help = styled.p`
   margin: 0;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.35;
 `;
 
 const Mono = styled.code`
-  font-family: "MS Sans Serif", monospace;
-  font-size: 11px;
+  font-family: var(--wtf-mono-font, monospace);
+  font-size: var(--wtf-type-caption, 13px);
   overflow-wrap: anywhere;
 `;
 
@@ -511,9 +512,9 @@ const List = styled.div`
 `;
 
 const Item = styled.div`
-  border: 1px solid #808080;
-  background: #ffffff;
-  padding: 7px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  padding: var(--wtf-space-2, 8px);
   display: grid;
   gap: 5px;
 `;
@@ -526,6 +527,7 @@ const Tabs = styled.div`
 
 const TabButton = styled(Button)<{ $active?: boolean }>`
   font-weight: ${(p) => (p.$active ? 700 : 400)};
+  min-height: var(--wtf-control-min-height, 34px);
 `;
 
 const FieldGrid = styled.div`
@@ -541,26 +543,27 @@ const FieldGrid = styled.div`
 const Field = styled.label`
   display: grid;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
 `;
 
 const Select = styled.select`
-  min-height: 32px;
+  min-height: var(--wtf-control-min-height, 34px);
   border: 2px inset #ffffff;
-  background: #ffffff;
-  color: #000000;
-  font-family: "MS Sans Serif", sans-serif;
-  font-size: 12px;
+  background: var(--wtf-app-control-bg, #ffffff);
+  color: var(--wtf-app-text, #000000);
+  font-family: var(--wtf-ui-font, "MS Sans Serif", sans-serif);
+  font-size: var(--wtf-type-body, 15px);
   padding: 4px;
 `;
 
 const EventCard = styled(Item)`
-  border-left: 4px solid #000080;
+  border-color: var(--wtf-app-primary, #000080);
+  background: var(--wtf-app-info-bg, var(--wtf-app-surface-raised, #ffffff));
 `;
 
 const Details = styled.details`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 
   summary {
     cursor: pointer;
@@ -583,15 +586,15 @@ const MetricGrid = styled.div`
 `;
 
 const Metric = styled.div`
-  border: 1px solid #808080;
-  background: #ffffff;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
   padding: 8px;
   min-height: 58px;
 `;
 
 const ReadoutPanel = styled.div`
-  border: 2px solid #000080;
-  background: #f8fbff;
+  border: 2px solid var(--wtf-app-primary, #000080);
+  background: var(--wtf-app-info-bg, #f8fbff);
   padding: 12px;
   display: grid;
   gap: 10px;
@@ -614,10 +617,24 @@ const ReadoutGrid = styled.div`
 `;
 
 const InterpretationBox = styled.div<{ $tone?: "good" | "watch" | "risk" | "info" }>`
-  border: 1px solid #808080;
-  border-left: 6px solid
-    ${(p) => (p.$tone === "good" ? "#008000" : p.$tone === "risk" ? "#b00000" : p.$tone === "watch" ? "#b36b00" : "#000080")};
-  background: #ffffff;
+  border: 1px solid
+    ${(p) =>
+      p.$tone === "good"
+        ? "var(--wtf-app-success, #008000)"
+        : p.$tone === "risk"
+          ? "var(--wtf-app-danger, #b00000)"
+          : p.$tone === "watch"
+            ? "var(--wtf-app-warning, #b36b00)"
+            : "var(--wtf-app-info, #000080)"};
+  border-top-width: 3px;
+  background: ${(p) =>
+    p.$tone === "good"
+      ? "var(--wtf-app-success-bg, #ffffff)"
+      : p.$tone === "risk"
+        ? "var(--wtf-app-danger-bg, #ffffff)"
+        : p.$tone === "watch"
+          ? "var(--wtf-app-warning-bg, #ffffff)"
+          : "var(--wtf-app-info-bg, #ffffff)"};
   padding: 9px;
   display: grid;
   gap: 5px;
@@ -642,8 +659,8 @@ const ChartGrid = styled.div`
 `;
 
 const ChartPanel = styled.div`
-  border: 1px solid #808080;
-  background: #ffffff;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
   padding: 9px;
   display: grid;
   gap: 8px;
@@ -654,25 +671,32 @@ const BarRow = styled.div`
   grid-template-columns: minmax(90px, 130px) minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const BarTrack = styled.div`
   height: 13px;
-  border: 1px solid #808080;
-  background: #f2f2f2;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface, #f2f2f2);
   overflow: hidden;
 `;
 
 const BarFill = styled.div<{ $pct: number; $tone?: "good" | "watch" | "risk" | "info" }>`
   width: ${(p) => Math.max(2, Math.min(100, p.$pct))}%;
   height: 100%;
-  background: ${(p) => (p.$tone === "good" ? "#008000" : p.$tone === "risk" ? "#b00000" : p.$tone === "watch" ? "#b36b00" : "#000080")};
+  background: ${(p) =>
+    p.$tone === "good"
+      ? "var(--wtf-app-success, #008000)"
+      : p.$tone === "risk"
+        ? "var(--wtf-app-danger, #b00000)"
+        : p.$tone === "watch"
+          ? "var(--wtf-app-warning, #b36b00)"
+          : "var(--wtf-app-info, #000080)"};
 `;
 
 const FullReport = styled(Details)`
-  border: 1px solid #808080;
-  background: #efefef;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface, #efefef);
   padding: 8px;
 
   > summary {
@@ -682,13 +706,29 @@ const FullReport = styled(Details)`
 `;
 
 const InsightCard = styled(Metric)<{ $tone: Tz2atInsightCard["tone"] }>`
-  border-left: 5px solid
-    ${(p) => (p.$tone === "good" ? "#008000" : p.$tone === "watch" ? "#b36b00" : p.$tone === "risk" ? "#b00000" : "#000080")};
+  border-color: ${(p) =>
+    p.$tone === "good"
+      ? "var(--wtf-app-success, #008000)"
+      : p.$tone === "watch"
+        ? "var(--wtf-app-warning, #b36b00)"
+        : p.$tone === "risk"
+          ? "var(--wtf-app-danger, #b00000)"
+          : "var(--wtf-app-info, #000080)"};
+  border-top-width: 3px;
+  background: ${(p) =>
+    p.$tone === "good"
+      ? "var(--wtf-app-success-bg, var(--wtf-app-surface-raised, #ffffff))"
+      : p.$tone === "watch"
+        ? "var(--wtf-app-warning-bg, var(--wtf-app-surface-raised, #ffffff))"
+        : p.$tone === "risk"
+          ? "var(--wtf-app-danger-bg, var(--wtf-app-surface-raised, #ffffff))"
+          : "var(--wtf-app-info-bg, var(--wtf-app-surface-raised, #ffffff))"};
 `;
 
 const MetricLabel = styled.div`
-  font-size: 11px;
-  text-transform: uppercase;
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+  color: var(--wtf-app-muted-text, #444);
 `;
 
 const MetricValue = styled.div`

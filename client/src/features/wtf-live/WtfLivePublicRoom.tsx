@@ -208,7 +208,7 @@ const RoomTitleBlock = styled.div`
 
   span {
     color: #dff7ff;
-    font-size: 11px;
+    font-size: var(--wtf-type-caption, 13px);
     font-weight: 400;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -222,17 +222,22 @@ const HeaderStatus = styled.div`
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   text-align: right;
 `;
 
 const HeaderCloseButton = styled(Button)`
-  min-width: 28px;
-  min-height: 24px;
+  min-width: 32px;
+  min-height: 32px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+
+  @media (max-width: 520px) {
+    min-width: 44px;
+    min-height: 44px;
+  }
 `;
 
 const ControlRail = styled.aside`
@@ -315,7 +320,7 @@ const StageHeader = styled.div`
   justify-content: space-between;
   gap: 10px;
   min-height: 24px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #dff7ff;
 `;
 
@@ -403,11 +408,15 @@ const RoomActionGrid = styled(GuestGrid)`
   grid-template-columns: repeat(2, minmax(0, 1fr));
 
   button {
-    min-height: 32px;
+    min-height: 32px !important;
   }
 
   @media (max-width: 520px) {
     grid-template-columns: 1fr;
+
+    button {
+      min-height: 44px !important;
+    }
   }
 `;
 
@@ -449,7 +458,7 @@ const MicMeter = styled.div`
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const MicMeterTrack = styled.div`
@@ -460,15 +469,17 @@ const MicMeterTrack = styled.div`
 `;
 
 const MicMeterFill = styled.div<{ $level: number }>`
-  width: ${({ $level }) => `${Math.round(Math.max(0, Math.min(1, $level)) * 100)}%`};
+  width: 100%;
   height: 100%;
   background: ${({ $level }) => ($level > 0.18 ? "#06893d" : $level > 0.06 ? "#c8a600" : "#9aa0a6")};
-  transition: width 80ms linear;
+  transform: scaleX(${({ $level }) => Math.max(0, Math.min(1, $level))});
+  transform-origin: left center;
+  transition: transform 80ms linear;
 `;
 
 const StatusLine = styled.div`
   min-height: 20px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #14312e;
 `;
 
@@ -504,7 +515,7 @@ const LiveSectionHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
 
   > span {
@@ -524,7 +535,7 @@ const SharePicker = styled.div`
 `;
 
 const ShareStatus = styled.span`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #24423e;
 `;
 
@@ -590,7 +601,7 @@ const AvatarCircle = styled.div<{ $size?: "small" | "large" }>`
   place-items: center;
   overflow: hidden;
   font-weight: 700;
-  font-size: ${({ $size }) => ($size === "small" ? "12px" : "clamp(28px, 5vw, 58px)")};
+  font-size: ${({ $size }) => ($size === "small" ? "13px" : "clamp(28px, 5vw, 58px)")};
   text-transform: uppercase;
 
   img {
@@ -608,7 +619,7 @@ const StageMeta = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const StageOpenButton = styled.button`
@@ -618,8 +629,8 @@ const StageOpenButton = styled.button`
   border: 2px outset #fff;
   background: #e7e7e7;
   color: #050505;
-  min-width: 30px;
-  min-height: 28px;
+  min-width: 32px;
+  min-height: 32px;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -659,7 +670,7 @@ const AttendeeRow = styled.div<{ $active?: boolean }>`
   padding: 5px;
   border: 1px solid ${({ $active }) => ($active ? "#5fb879" : "#d4d4d4")};
   background: ${({ $active }) => ($active ? "#eefaf1" : "#f8f8f8")};
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 
   strong,
   span {
@@ -684,7 +695,7 @@ const HealthDot = styled.span<{ $health: PeerHealth }>`
   border: 1px solid #545454;
   padding: 2px 4px;
   text-align: center;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   background: ${({ $health }) => (
     $health === "good" ? "#dff7e8" :
       $health === "fair" ? "#fff2b8" :
@@ -704,7 +715,7 @@ const MediaPill = styled.span<{ $active?: boolean }>`
   background: ${({ $active }) => ($active ? "#123d28" : "#2b2b2b")};
   color: ${({ $active }) => ($active ? "#dfffe9" : "#cfcfcf")};
   padding: 2px 5px;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   text-transform: uppercase;
 `;
 
@@ -721,7 +732,7 @@ const MessageList = styled.div`
 
 const NewMessagesButton = styled(Button)`
   justify-self: end;
-  min-height: 28px;
+  min-height: 32px;
 `;
 
 const MessageItem = styled.article`
@@ -738,7 +749,7 @@ const MessageItem = styled.article`
 
 const MessageDivider = styled.div`
   color: #4f4f4f;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -775,7 +786,7 @@ const AttachmentPreview = styled.div`
   padding: 5px;
   display: grid;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   min-width: 0;
 
   img,
@@ -794,7 +805,7 @@ const DiagnosticsPanel = styled.div`
   padding: 5px;
   display: grid;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const DiagnosticRow = styled.div`
@@ -841,7 +852,7 @@ const FloatingTitleBar = styled.div`
   align-items: center;
   gap: 6px;
   padding: 3px 5px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   cursor: move;
 
@@ -857,8 +868,8 @@ const FloatingButtonRow = styled.div`
   gap: 4px;
 
   button {
-    min-width: 28px;
-    min-height: 24px;
+    min-width: 32px;
+    min-height: 32px;
     padding: 0;
     display: inline-flex;
     align-items: center;
@@ -2289,6 +2300,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	                <ShareStatus>{participantCount} in room</ShareStatus>
 	              </LiveSectionHeader>
 	              <TextField
+	                aria-label="Guest display name"
 	                value={guestName}
 	                placeholder="Display name"
 	                fullWidth
@@ -2607,6 +2619,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
               ) : null}
               <ChatComposer data-wtf-live-chat-composer="true">
                 <ChatTextArea
+                  aria-label="WTF LIVE room chat message"
                   data-wtf-live-chat-text
                   disabled={!joined || !socketReady}
                   value={chatText}

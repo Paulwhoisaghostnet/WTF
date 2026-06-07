@@ -115,6 +115,8 @@ const IMPORT_TARGETS: Record<
 
 /* ─── Styled ──────────────────────────────────────────── */
 
+const GALLERY_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
+
 const Layout = styled.div`
   display: grid;
   grid-template-columns: minmax(220px, 260px) 1fr;
@@ -144,7 +146,7 @@ const SidebarTitle = styled.h3`
   padding: 4px 6px;
   background: #000080;
   color: #fff;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 `;
 
 const FilterGroup = styled.fieldset`
@@ -157,7 +159,7 @@ const FilterGroup = styled.fieldset`
 `;
 
 const FilterLegend = styled.legend`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   padding: 0 4px;
   color: #222;
@@ -165,7 +167,7 @@ const FilterLegend = styled.legend`
 
 const Chip = styled.button<{ $active?: boolean }>`
   text-align: left;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   padding: 3px 6px;
   cursor: pointer;
   background: ${({ $active }) => ($active ? "#000080" : "transparent")};
@@ -182,13 +184,13 @@ const Chip = styled.button<{ $active?: boolean }>`
 `;
 
 const ChipCount = styled.span`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   opacity: 0.75;
 `;
 
 const TextField = styled.input`
-  font-family: "MS Sans Serif", "Courier New", monospace;
-  font-size: 12px;
+  font-family: var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif);
+  font-size: var(--wtf-type-caption, 13px);
   padding: 4px 6px;
   border: 2px inset #dfdfdf;
   background: #fff;
@@ -203,8 +205,8 @@ const DateRow = styled.div`
 `;
 
 const Button95 = styled.button<{ $accent?: boolean }>`
-  font-family: "MS Sans Serif", "Courier New", monospace;
-  font-size: 11px;
+  font-family: var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif);
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   padding: 5px 10px;
   cursor: pointer;
@@ -233,13 +235,13 @@ const Toolbar = styled.div`
 `;
 
 const ToolbarLabel = styled.label`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
 `;
 
 const Select95 = styled.select`
-  font-family: "MS Sans Serif", "Courier New", monospace;
-  font-size: 12px;
+  font-family: var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif);
+  font-size: var(--wtf-type-caption, 13px);
   padding: 3px 4px;
   border: 2px inset #dfdfdf;
   background: #fff;
@@ -247,7 +249,7 @@ const Select95 = styled.select`
 
 const ResultsCount = styled.div`
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #222;
 `;
 
@@ -297,11 +299,11 @@ const TileBadge = styled.span`
   right: 6px;
   background: rgba(0, 0, 0, 0.68);
   color: #88ff88;
-  font-family: "Courier New", monospace;
-  font-size: 9px;
+  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: var(--wtf-type-caption, 13px);
   padding: 2px 5px;
   border-radius: 2px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   pointer-events: none;
 `;
 
@@ -334,9 +336,9 @@ const TileTitle = styled.div`
 `;
 
 const TileSub = styled.div`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #ddd;
-  font-family: "Courier New", monospace;
+  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -346,8 +348,8 @@ const TileSub = styled.div`
 const TileLink = styled.a`
   color: #88ff88;
   display: inline-block;
-  font-family: "Courier New", monospace;
-  font-size: 10px;
+  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   margin-top: 4px;
   text-decoration: underline;
@@ -360,7 +362,7 @@ const EmptyState = styled.div`
   background: #e8e8e8;
   color: #333;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const spin = keyframes`
@@ -381,7 +383,7 @@ const LoadingRow = styled.div`
   align-items: center;
   gap: 8px;
   padding: 8px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #333;
 `;
 
@@ -391,7 +393,7 @@ const ImportNotice = styled.div<{ $error?: boolean }>`
   border: 2px inset #dfdfdf;
   background: ${({ $error }) => ($error ? "#ffd6d6" : "#e8ffe8")};
   color: ${({ $error }) => ($error ? "#6b0000" : "#004c00")};
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
 `;
 
@@ -691,6 +693,7 @@ export function MyGallery() {
           <FilterGroup>
             <FilterLegend>Search</FilterLegend>
             <TextField
+              aria-label="Search gallery tokens"
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -806,6 +809,7 @@ export function MyGallery() {
           <FilterGroup>
             <FilterLegend>Tag</FilterLegend>
             <TextField
+              aria-label="Filter gallery by tag"
               value={selectedTag}
               onChange={(e) => {
                 setSelectedTag(e.target.value);
@@ -820,6 +824,7 @@ export function MyGallery() {
             <DateRow>
               <TextField
                 type="date"
+                aria-label="Minted from date"
                 value={mintedFrom}
                 onChange={(e) => {
                   setMintedFrom(e.target.value);
@@ -828,6 +833,7 @@ export function MyGallery() {
               />
               <TextField
                 type="date"
+                aria-label="Minted to date"
                 value={mintedTo}
                 onChange={(e) => {
                   setMintedTo(e.target.value);
@@ -921,6 +927,7 @@ export function MyGallery() {
                       }
                     }}
                     data-testid={`gallery-tile-${t.id}`}
+                    aria-label={`Open ${t.title}`}
                     title={t.title}
                   >
                     {srcImg ? (
@@ -989,7 +996,7 @@ export function MyGallery() {
               >
                 ← PREV
               </Button95>
-              <span style={{ fontSize: 11 }}>
+              <span style={{ fontSize: GALLERY_CAPTION_TYPE }}>
                 Page {page + 1} of {Math.max(1, Math.ceil(total / pageSize))}
               </span>
               <Button95

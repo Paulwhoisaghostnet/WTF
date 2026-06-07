@@ -140,6 +140,7 @@ export function BoardSidebar({
       {isMod && showNewCh && (
         <div style={{ padding: 6, background: "#dfdfdf", borderBottom: "1px solid #888" }}>
           <TextInput
+            aria-label="New channel name"
             value={newChTitle}
             onChange={(event: any) => setNewChTitle(event.target.value)}
             placeholder="Channel name"
@@ -147,6 +148,7 @@ export function BoardSidebar({
           />
           <div style={{ display: "flex", gap: 4, marginTop: 4, alignItems: "center" }}>
             <Select
+              aria-label="New channel type"
               value={newChType}
               onChange={(event: any) => setNewChType(event.value)}
               options={[
@@ -157,6 +159,7 @@ export function BoardSidebar({
               width={120}
             />
             <Select
+              aria-label="New channel category"
               value={newChCatId ?? 0}
               onChange={(event: any) => setNewChCatId(event.value || null)}
               options={[
@@ -185,6 +188,7 @@ export function BoardSidebar({
         <div style={{ padding: 6, background: "#dfdfdf", borderBottom: "1px solid #888" }}>
           <div style={{ display: "flex", gap: 4 }}>
             <TextInput
+              aria-label="New category name"
               value={newCatName}
               onChange={(event: any) => setNewCatName(event.target.value)}
               placeholder="Category name"

@@ -22,6 +22,16 @@ const Toolbar = styled.div`
   display: flex;
   gap: 6px;
   align-items: center;
+  flex-wrap: wrap;
+
+  input {
+    min-width: 220px;
+  }
+
+  button {
+    min-height: 32px;
+    font-size: var(--wtf-type-caption, 13px);
+  }
 `;
 
 const Viewport = styled(Panel).attrs({ variant: "well" })`
@@ -43,6 +53,15 @@ const Notice = styled.div`
   min-height: 480px;
   text-align: center;
   padding: 24px;
+  font-size: var(--wtf-type-body, 14px);
+  line-height: 1.4;
+`;
+
+const AllowedHosts = styled.div`
+  margin-top: 6px;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
+  overflow-wrap: anywhere;
 `;
 
 function initialUrlFromLocation() {
@@ -70,6 +89,7 @@ export function Browser() {
     () => allowlistQuery.data?.hosts.slice(0, 12).join(", ") ?? "",
     [allowlistQuery.data?.hosts]
   );
+  const submitDraft = () => setSubmitted(draft.trim());
 
   return (
     <AppWindow title="Browser">
@@ -77,14 +97,18 @@ export function Browser() {
         <GroupBox label="Link Chamber">
           <Toolbar>
             <TextInput
+              aria-label="Approved browser URL"
               value={draft}
               placeholder="https://objkt.com/..."
               onChange={(event: any) => setDraft(event.target.value)}
+              onKeyDown={(event: any) => {
+                if (event.key === "Enter") submitDraft();
+              }}
               style={{ flex: 1 }}
             />
-            <Button onClick={() => setSubmitted(draft.trim())}>Open</Button>
+            <Button onClick={submitDraft}>Open approved link</Button>
           </Toolbar>
-          <div style={{ marginTop: 6, fontSize: 11 }}>Allowed: {hosts}</div>
+          <AllowedHosts>Allowed hosts: {hosts || "loading allowlist..."}</AllowedHosts>
         </GroupBox>
 
         <Viewport>
@@ -107,7 +131,7 @@ export function Browser() {
                 <p>{policy?.reason || "This link is not approved for WTFOS browsing."}</p>
                 {policy?.externalOpenAllowed ? (
                   <Button onClick={() => window.open(policy.url, "_blank", "noopener,noreferrer")}>
-                    Open Outside WTFOS
+                    Open link outside WTF OS
                   </Button>
                 ) : null}
               </div>

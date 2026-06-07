@@ -1,6 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
 import {
-  GroupBox,
   TextInput,
   Table,
   TableHead,
@@ -12,12 +11,24 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { UserLink } from "../../../components/UserLink";
+import { UiPanel } from "../../../components/wtfos-ui";
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
+`;
+
+const TableWrap = styled.div`
+  min-width: 0;
+  overflow-x: auto;
+`;
+
+const MetaText = styled.span`
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
 type AdminUser = {
@@ -66,11 +77,16 @@ export function XpLogAdminTab({
   xpLogUserFilter,
   setXpLogUserFilter,
 }: XpLogAdminTabProps) {
+  const filteredEvents = (xpLog || []).filter((ev: XpLogEvent) =>
+    matchesUserFilter(allUsers, ev, xpLogUserFilter)
+  );
+
   return (
     <>
-      <GroupBox label="XP Reward Log">
+      <UiPanel title="XP reward log" compact>
         <ActionRow style={{ marginBottom: 8 }}>
           <TextInput
+            aria-label="Filter XP log by user"
             placeholder="Filter by user..."
             value={xpLogUserFilter}
             onChange={(e: any) => setXpLogUserFilter(e.target.value)}
@@ -80,32 +96,29 @@ export function XpLogAdminTab({
         {!xpLog ? (
           <Hourglass size={32} />
         ) : (
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeadCell>Date</TableHeadCell>
-                <TableHeadCell>User</TableHeadCell>
-                <TableHeadCell>Reason</TableHeadCell>
-                <TableHeadCell style={{ textAlign: "right" }}>
-                  Amount
-                </TableHeadCell>
-                <TableHeadCell>Awarded By</TableHeadCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {xpLog
-                .filter((ev: XpLogEvent) =>
-                  matchesUserFilter(allUsers, ev, xpLogUserFilter)
-                )
-                .map((ev: XpLogEvent) => {
+          <TableWrap>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeadCell>Date</TableHeadCell>
+                  <TableHeadCell>User</TableHeadCell>
+                  <TableHeadCell>Reason</TableHeadCell>
+                  <TableHeadCell style={{ textAlign: "right" }}>
+                    Amount
+                  </TableHeadCell>
+                  <TableHeadCell>Awarded By</TableHeadCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredEvents.map((ev: XpLogEvent) => {
                   const user = findUserById(allUsers, ev.userId);
                   const awardedByUser = ev.awardedBy
                     ? findUserById(allUsers, ev.awardedBy)
                     : null;
                   return (
                     <TableRow key={ev.id}>
-                      <TableDataCell style={{ fontSize: 11 }}>
-                        {new Date(ev.createdAt).toLocaleString()}
+                      <TableDataCell>
+                        <MetaText>{new Date(ev.createdAt).toLocaleString()}</MetaText>
                       </TableDataCell>
                       <TableDataCell>
                         <UserLink
@@ -118,7 +131,7 @@ export function XpLogAdminTab({
                       <TableDataCell
                         style={{
                           textAlign: "right",
-                          color: ev.amount >= 0 ? "#008000" : "#800000",
+                          color: ev.amount >= 0 ? "var(--wtf-app-success, #176b38)" : "var(--wtf-app-danger, #b42318)",
                           fontWeight: "bold",
                         }}
                       >
@@ -138,10 +151,20 @@ export function XpLogAdminTab({
                     </TableRow>
                   );
                 })}
-            </TableBody>
-          </Table>
+                {filteredEvents.length === 0 && (
+                  <TableRow>
+                    <TableDataCell>No XP events match this filter.</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableWrap>
         )}
-      </GroupBox>
+      </UiPanel>
     </>
   );
 }

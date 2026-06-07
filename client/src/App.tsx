@@ -286,6 +286,8 @@ function FullScreenOverlay({ children }: { children: React.ReactNode }) {
         display: "flex",
         flexDirection: "column",
         background: "#008080",
+        contain: "layout paint style",
+        isolation: "isolate",
       }}
     >
       {children}
@@ -465,7 +467,10 @@ function AppContent() {
   return (
     <WindowManagerProvider navigate={setLocation} currentLocation={location}>
       <URLSync appAvailability={appAvailability} />
-      <Desktop showTaskbar={!authOverlayActive}>
+      <Desktop
+        showTaskbar={!authOverlayActive}
+        suspendDesktopEffects={authOverlayActive}
+      >
         <WindowRenderer
           appAvailability={appAvailability}
           appAvailabilityReady={appAvailabilityReady}

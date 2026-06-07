@@ -1,13 +1,53 @@
 import type { Dispatch, ReactElement, SetStateAction } from "react";
-import { Button, GroupBox, Hourglass, TextInput } from "react95";
+import { Hourglass, TextInput } from "react95";
 import styled from "styled-components";
+import { UiButton, UiEmptyState, UiNotice, UiPanel } from "../../../components/wtfos-ui";
 import type { StudioDriveStatus } from "../types";
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
+`;
+
+const Intro = styled.p`
+  margin: 0 0 var(--wtf-space-3, 12px);
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.45;
+`;
+
+const PanelStack = styled.div`
+  display: grid;
+  gap: var(--wtf-space-3, 12px);
+`;
+
+const StatusGrid = styled.div`
+  display: grid;
+  gap: var(--wtf-space-2, 8px);
+`;
+
+const StatusLine = styled.div`
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
+`;
+
+const MetaText = styled.div`
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
+`;
+
+const SuccessText = styled.span`
+  color: var(--wtf-app-success, #176b38);
+  font-weight: 700;
+`;
+
+const DangerText = styled.span`
+  color: var(--wtf-app-danger, #b42318);
+  font-weight: 700;
 `;
 
 type AdminVoidMutation = {
@@ -44,7 +84,7 @@ export function StudioAdminTab({
   return (
     <>
       <h3>Studio — Platform Drive (fallback pool)</h3>
-      <p style={{ marginBottom: 12, fontSize: 13, color: "#555" }}>
+      <Intro>
         Studio projects are backed by one of three stores, in this order:
         <br />
         <strong>1.</strong> the creating user's own Google Drive (if they
@@ -59,79 +99,80 @@ export function StudioAdminTab({
         New projects default to 5&nbsp;GB of Drive quota each. Against a
         2&nbsp;TB platform pool, ~400 projects fit before any admin
         intervention.
-      </p>
+      </Intro>
 
       {!studioDrive ? (
         <Hourglass size={32} />
       ) : (
-        <>
-          <GroupBox label="Connection Status">
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontSize: 12 }}>
+        <PanelStack>
+          <UiPanel title="Connection status" compact>
+            <StatusGrid>
+              <StatusLine>
                 <strong>Environment:</strong>{" "}
                 {studioDrive.envConfigured ? (
-                  <span style={{ color: "#0b5c12" }}>
+                  <SuccessText>
                     GOOGLE_CLIENT_ID / SECRET / REDIRECT configured
-                  </span>
+                  </SuccessText>
                 ) : (
-                  <span style={{ color: "#c03027" }}>
+                  <DangerText>
                     missing one of GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
                     GOOGLE_OAUTH_REDIRECT_URI
-                  </span>
+                  </DangerText>
                 )}
-              </div>
-              <div style={{ fontSize: 12 }}>
+              </StatusLine>
+              <StatusLine>
                 <strong>Encryption key:</strong>{" "}
                 {studioDrive.cryptoConfigured ? (
-                  <span style={{ color: "#0b5c12" }}>
+                  <SuccessText>
                     STUDIO_CRYPTO_KEY set
-                  </span>
+                  </SuccessText>
                 ) : (
-                  <span style={{ color: "#c03027" }}>
+                  <DangerText>
                     missing STUDIO_CRYPTO_KEY — refresh token cannot be sealed
-                  </span>
+                  </DangerText>
                 )}
-              </div>
-              <div style={{ fontSize: 12 }}>
+              </StatusLine>
+              <StatusLine>
                 <strong>Platform Drive:</strong>{" "}
                 {studioDrive.connected ? (
-                  <span style={{ color: "#0b5c12" }}>
+                  <SuccessText>
                     Connected as{" "}
                     <code>{studioDrive.accountEmail ?? "(unknown)"}</code>
-                  </span>
+                  </SuccessText>
                 ) : (
-                  <span style={{ color: "#c03027" }}>Not connected</span>
+                  <DangerText>Not connected</DangerText>
                 )}
-              </div>
+              </StatusLine>
               {studioDrive.connectedAt && (
-                <div style={{ fontSize: 11, color: "#555" }}>
+                <MetaText>
                   Connected at {new Date(studioDrive.connectedAt).toLocaleString()}
-                </div>
+                </MetaText>
               )}
               {studioDrive.lastRefreshedAt && (
-                <div style={{ fontSize: 11, color: "#555" }}>
+                <MetaText>
                   Last token refresh{" "}
                   {new Date(studioDrive.lastRefreshedAt).toLocaleString()}
-                </div>
+                </MetaText>
               )}
-            </div>
-          </GroupBox>
+            </StatusGrid>
+          </UiPanel>
 
-          <GroupBox label="Connect / Disconnect" style={{ marginTop: 12 }}>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <Button
-                primary={!studioDrive.connected}
+          <UiPanel title="Connect or disconnect Platform Drive" compact>
+            <ActionRow>
+              <UiButton
+                uiVariant={!studioDrive.connected ? "primary" : "default"}
                 disabled={
                   !studioDrive.canConnect || studioDriveConnectMutation.isPending
                 }
                 onClick={() => studioDriveConnectMutation.mutate()}
               >
                 {studioDrive.connected
-                  ? "Reconnect Drive"
+                  ? "Reconnect Platform Drive"
                   : "Connect Platform Drive"}
-              </Button>
+              </UiButton>
               {studioDrive.connected && (
-                <Button
+                <UiButton
+                  uiVariant="danger"
                   disabled={studioDriveDisconnectMutation.isPending}
                   onClick={() => {
                     if (
@@ -145,50 +186,47 @@ export function StudioAdminTab({
                 >
                   {studioDriveDisconnectMutation.isPending
                     ? "Disconnecting..."
-                    : "Disconnect"}
-                </Button>
+                    : "Disconnect Platform Drive"}
+                </UiButton>
               )}
-              <Button size="sm" onClick={() => refetchStudioDrive()}>
-                Reload status
-              </Button>
-            </div>
-            <div style={{ fontSize: 11, color: "#555", marginTop: 6 }}>
+              <UiButton compact onClick={() => refetchStudioDrive()}>
+                Reload Drive status
+              </UiButton>
+            </ActionRow>
+            <UiNotice tone="info" style={{ marginTop: 8 }}>
               Clicking "Connect" opens Google's consent screen in a new tab.  Sign
               in as the platform account (e.g.{" "}
               <code>wtfgameshowemail@gmail.com</code>), approve the requested
               scopes, and this page will refresh with the new connection on the
               next reload.
-            </div>
-          </GroupBox>
+            </UiNotice>
+          </UiPanel>
 
-          <GroupBox
-            label="Studio footprint (shared pool)"
-            style={{ marginTop: 12 }}
-          >
+          <UiPanel title="Studio footprint in shared pool" compact>
             {studioDrive.appUsage ? (
-              <div style={{ fontSize: 12, display: "grid", gap: 4 }}>
-                <div>
+              <StatusGrid>
+                <StatusLine>
                   <strong>Used by Studio:</strong>{" "}
                   {formatBytesAdmin(studioDrive.appUsage.bytes)}
-                </div>
-                <div>
+                </StatusLine>
+                <StatusLine>
                   <strong>Files:</strong> {studioDrive.appUsage.fileCount ?? 0}
-                </div>
+                </StatusLine>
                 {studioDrive.appUsage.refreshedAt && (
-                  <div style={{ fontSize: 11, color: "#555" }}>
+                  <MetaText>
                     Refreshed{" "}
                     {new Date(studioDrive.appUsage.refreshedAt).toLocaleString()}
-                  </div>
+                  </MetaText>
                 )}
-                <div style={{ fontSize: 11, color: "#777" }}>
+                <MetaText>
                   This is only what Studio has uploaded into this Drive. The
                   account's total Drive quota isn't shown — we request only{" "}
                   <code>drive.file</code>, which can't see the account-level
                   ceiling.
-                </div>
+                </MetaText>
                 <div>
-                  <Button
-                    size="sm"
+                  <UiButton
+                    compact
                     disabled={
                       studioDriveRefreshQuotaMutation.isPending ||
                       !studioDrive.connected
@@ -197,31 +235,32 @@ export function StudioAdminTab({
                   >
                     {studioDriveRefreshQuotaMutation.isPending
                       ? "Refreshing..."
-                      : "Refresh from Drive"}
-                  </Button>
+                      : "Refresh Studio footprint from Drive"}
+                  </UiButton>
                 </div>
-              </div>
+              </StatusGrid>
             ) : (
-              <span style={{ fontSize: 12, color: "#888" }}>
-                Not available — connect Drive first.
-              </span>
+              <UiEmptyState title="Drive footprint is not available">
+                Connect Platform Drive before checking the shared Studio pool.
+              </UiEmptyState>
             )}
-          </GroupBox>
+          </UiPanel>
 
-          <GroupBox label="Root Folder" style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 12, marginBottom: 6 }}>
+          <UiPanel title="Root folder" compact>
+            <MetaText style={{ marginBottom: 6 }}>
               Drive folder id where Studio creates per-project folders. Leave
               blank to upload into the account's "My Drive" root.
-            </div>
+            </MetaText>
             <ActionRow>
               <TextInput
+                aria-label="Studio root folder ID"
                 value={studioRootInput}
                 onChange={(e: any) => setStudioRootInput(e.target.value)}
                 placeholder="e.g. 1A2b3C..."
                 style={{ width: 320 }}
               />
-              <Button
-                size="sm"
+              <UiButton
+                compact
                 disabled={
                   studioDriveRootFolderMutation.isPending || !studioDrive.connected
                 }
@@ -233,11 +272,11 @@ export function StudioAdminTab({
               >
                 {studioDriveRootFolderMutation.isPending
                   ? "Saving..."
-                  : "Save root folder"}
-              </Button>
+                  : "Save Studio root folder"}
+              </UiButton>
             </ActionRow>
-          </GroupBox>
-        </>
+          </UiPanel>
+        </PanelStack>
       )}
     </>
   );

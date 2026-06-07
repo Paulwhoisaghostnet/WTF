@@ -25,15 +25,15 @@ const RoundCard = styled(GroupBox)`
 `;
 
 const StatusBadge = styled.span<{ $status: string }>`
-  padding: 2px 6px;
-  font-size: 11px;
+  padding: 3px 7px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   background: ${(p) =>
     p.$status === "active"
-      ? "#00aa00"
+      ? "var(--wtf-app-success, #176b38)"
       : p.$status === "completed"
-        ? "#808080"
-        : "#0000aa"};
+        ? "#4b5563"
+        : "var(--wtf-app-info, #175cd3)"};
   color: white;
 `;
 
@@ -63,18 +63,17 @@ const LaunchGrid = styled.div`
 `;
 
 const LaunchMetric = styled.div`
-  border: 1px solid #808080;
-  background: #dfdfdf;
-  padding: 6px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #dfdfdf);
+  padding: var(--wtf-space-2, 8px);
   min-height: 54px;
   box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
 `;
 
 const LaunchLabel = styled.div`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
-  text-transform: uppercase;
-  color: #404040;
+  color: var(--wtf-app-muted-text, #404040);
 `;
 
 const LaunchValue = styled.div`
@@ -96,8 +95,8 @@ const LaunchActions = styled.div`
 
 const LaunchButton = styled(Button)`
   width: 100%;
-  min-height: 28px;
-  font-size: 11px;
+  min-height: var(--wtf-control-min-height, 34px);
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 export function Rounds() {

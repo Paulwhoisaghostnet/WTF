@@ -1,5 +1,7 @@
 import type { Dispatch, ReactElement, SetStateAction } from "react";
-import { Button, GroupBox, Hourglass, Select, TextInput } from "react95";
+import { Hourglass, Select, TextInput } from "react95";
+import styled from "styled-components";
+import { UiButton, UiEmptyState, UiPanel, UiStatusPill, UiToolbar } from "../../../components/wtfos-ui";
 import type { WtfTvResponse } from "../types";
 
 export type WtfTvUpdatePayload = {
@@ -24,6 +26,83 @@ type AdminVoidMutation = {
   mutate: () => void;
   isPending: boolean;
 };
+
+const Stack = styled.div`
+  display: grid;
+  gap: var(--wtf-space-3, 12px);
+`;
+
+const Intro = styled.p`
+  margin: 0 0 var(--wtf-space-3, 12px);
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-body, 14px);
+  line-height: 1.4;
+`;
+
+const StatusGrid = styled.div`
+  display: flex;
+  gap: var(--wtf-space-2, 8px);
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+const CheckLabel = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wtf-space-1, 4px);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+`;
+
+const PickerList = styled.div`
+  max-height: 200px;
+  overflow: auto;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  padding: var(--wtf-space-1, 4px);
+  margin-bottom: var(--wtf-space-2, 8px);
+`;
+
+const PickerRow = styled.label`
+  display: flex;
+  align-items: center;
+  gap: var(--wtf-space-1, 4px);
+  padding: 3px var(--wtf-space-1, 4px);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+`;
+
+const WalletRow = styled.div`
+  display: flex;
+  gap: var(--wtf-space-1, 4px);
+  align-items: center;
+  padding: 3px 0;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+`;
+
+const MonoValue = styled.span`
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+`;
+
+const SettingsGrid = styled.div`
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: var(--wtf-space-2, 8px) var(--wtf-space-4, 16px);
+  max-width: 560px;
+  align-items: center;
+
+  label {
+    color: var(--wtf-app-text, #111);
+    font-size: var(--wtf-type-caption, 13px);
+    font-weight: 700;
+  }
+`;
 
 export type WtfTvAdminTabProps = {
   wtfTvData: WtfTvResponse | undefined;
@@ -81,96 +160,87 @@ export function WtfTvAdminTab({
   return (
     <>
       <h3>WTF TV Channel</h3>
-      <p style={{ marginBottom: 12, fontSize: 13, color: "#555" }}>
+      <Intro>
         The official community channel that auto-populates from user-owned tokens.
-      </p>
+      </Intro>
 
       {!wtfTvData ? (
         <Hourglass size={32} />
       ) : !wtfTvData.config?.channelId ? (
-        <GroupBox label="Initialize">
-          <p style={{ marginBottom: 8 }}>
-            No WTF TV channel exists yet. Create one to get started.
-          </p>
-          <Button
-            onClick={() => wtfInitMutation.mutate()}
-            disabled={wtfInitMutation.isPending}
-          >
-            {wtfInitMutation.isPending ? "Creating..." : "Create WTF TV Channel"}
-          </Button>
-        </GroupBox>
-      ) : (
-        <>
-          <GroupBox label="Status">
-            <div
-              style={{
-                display: "flex",
-                gap: 12,
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
+        <UiEmptyState
+          title="No WTF TV channel yet"
+          action={
+            <UiButton
+              onClick={() => wtfInitMutation.mutate()}
+              disabled={wtfInitMutation.isPending}
+              uiVariant="primary"
             >
+              {wtfInitMutation.isPending ? "Creating channel..." : "Create WTF TV channel"}
+            </UiButton>
+          }
+        >
+          Create the official channel before configuring token sources, bumpers, and refresh timing.
+        </UiEmptyState>
+      ) : (
+        <Stack>
+          <UiPanel title="Status" compact>
+            <StatusGrid>
               <span>
                 Channel: <strong>{wtfTvData.channelTitle || "WTF TV"}</strong>{" "}
                 (ID: {wtfTvData.config.channelId})
               </span>
-              <span>
-                Enabled:{" "}
+              <CheckLabel>
                 <input
                   type="checkbox"
+                  aria-label="Enable WTF TV channel"
                   checked={wtfTvData.config.enabled}
                   onChange={(e) =>
                     wtfUpdateMutation.mutate({ enabled: e.target.checked })
                   }
                 />
-              </span>
+                Enabled
+              </CheckLabel>
+              <UiStatusPill $tone={wtfTvData.config.enabled ? "success" : "warning"}>
+                {wtfTvData.config.enabled ? "Broadcast enabled" : "Broadcast paused"}
+              </UiStatusPill>
               <span>
                 Last refresh:{" "}
                 {wtfTvData.config.lastRefreshedAt
                   ? new Date(wtfTvData.config.lastRefreshedAt).toLocaleString()
                   : "Never"}
               </span>
-              <Button
+              <UiButton
+                compact
                 onClick={() => wtfRefreshMutation.mutate()}
                 disabled={wtfRefreshMutation.isPending}
-                size="sm"
               >
-                {wtfRefreshMutation.isPending ? "Refreshing..." : "Refresh Now"}
-              </Button>
-            </div>
-          </GroupBox>
+                {wtfRefreshMutation.isPending ? "Refreshing channel..." : "Refresh channel now"}
+              </UiButton>
+            </StatusGrid>
+          </UiPanel>
 
-          <GroupBox label="Token Source" style={{ marginTop: 12 }}>
-            <div style={{ marginBottom: 8 }}>
+          <UiPanel title="Token source" compact>
+            <UiToolbar style={{ marginBottom: 8 }}>
               <Select
+                aria-label="WTF TV token source mode"
                 value={wtfSourceMode}
                 onChange={(e: any) => setWtfSourceMode(e.value)}
                 options={[
-                  { value: "all_users", label: "All Users" },
-                  { value: "selected_users", label: "Selected Users" },
-                  { value: "specific_wallets", label: "Specific Wallets" },
+                  { value: "all_users", label: "All users" },
+                  { value: "selected_users", label: "Selected users" },
+                  { value: "specific_wallets", label: "Specific wallets" },
                 ]}
                 width={200}
               />
-            </div>
+            </UiToolbar>
 
             {wtfSourceMode === "selected_users" && (
-              <div
-                style={{
-                  maxHeight: 200,
-                  overflow: "auto",
-                  border: "1px solid #888",
-                  padding: 4,
-                  marginBottom: 8,
-                }}
-              >
+              <PickerList>
                 {(wtfTvData.users || []).map((u) => (
-                  <label
-                    key={u.id}
-                    style={{ display: "block", fontSize: 12, padding: "2px 4px" }}
-                  >
+                  <PickerRow key={u.id}>
                     <input
                       type="checkbox"
+                      aria-label={`Include ${u.displayName || u.username} in WTF TV source users`}
                       checked={wtfSelectedUsers.includes(u.id)}
                       onChange={(e) => {
                         setWtfSelectedUsers((prev) =>
@@ -179,24 +249,25 @@ export function WtfTvAdminTab({
                             : prev.filter((id) => id !== u.id)
                         );
                       }}
-                    />{" "}
+                    />
                     {u.displayName || u.username} (@{u.username})
-                  </label>
+                  </PickerRow>
                 ))}
-              </div>
+              </PickerList>
             )}
 
             {wtfSourceMode === "specific_wallets" && (
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+              <div>
+                <UiToolbar style={{ marginBottom: 8 }}>
                   <TextInput
+                    aria-label="WTF TV wallet address"
                     value={wtfWalletInput}
                     onChange={(e: any) => setWtfWalletInput(e.target.value)}
                     placeholder="tz1... wallet address"
                     style={{ flex: 1 }}
                   />
-                  <Button
-                    size="sm"
+                  <UiButton
+                    compact
                     onClick={() => {
                       const addr = wtfWalletInput.trim();
                       if (addr && !wtfWallets.includes(addr)) {
@@ -205,117 +276,97 @@ export function WtfTvAdminTab({
                       }
                     }}
                   >
-                    Add
-                  </Button>
-                </div>
+                    Add wallet
+                  </UiButton>
+                </UiToolbar>
                 {wtfWallets.map((w) => (
-                  <div
-                    key={w}
-                    style={{
-                      display: "flex",
-                      gap: 4,
-                      alignItems: "center",
-                      fontSize: 12,
-                      padding: "2px 0",
-                    }}
-                  >
-                    <span style={{ flex: 1, fontFamily: "monospace" }}>{w}</span>
-                    <Button
-                      size="sm"
+                  <WalletRow key={w}>
+                    <MonoValue>{w}</MonoValue>
+                    <UiButton
+                      compact
+                      iconOnlyLabel={`Remove wallet ${w}`}
                       onClick={() =>
                         setWtfWallets((prev) => prev.filter((x) => x !== w))
                       }
                     >
-                      ✕
-                    </Button>
-                  </div>
+                      x
+                    </UiButton>
+                  </WalletRow>
                 ))}
               </div>
             )}
-          </GroupBox>
+          </UiPanel>
 
-          <GroupBox label="Playlist Settings" style={{ marginTop: 12 }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "8px 16px",
-                maxWidth: 500,
-              }}
-            >
-              <label style={{ fontSize: 13 }}>Tokens per wallet/hour:</label>
+          <UiPanel title="Playlist settings" compact>
+            <SettingsGrid>
+              <label>Tokens per wallet/hour</label>
               <TextInput
+                aria-label="WTF TV tokens per wallet per hour"
                 type="number"
                 value={String(wtfTokensPerWallet)}
                 onChange={(e: any) =>
                   setWtfTokensPerWallet(Math.max(1, Number(e.target.value) || 1))
                 }
-                style={{ width: 80 }}
+                style={{ width: 96 }}
               />
 
-              <label style={{ fontSize: 13 }}>Default duration (seconds):</label>
+              <label>Default duration in seconds</label>
               <TextInput
+                aria-label="WTF TV default token duration"
                 type="number"
                 value={String(wtfDuration)}
                 onChange={(e: any) =>
                   setWtfDuration(Math.max(3, Number(e.target.value) || 15))
                 }
-                style={{ width: 80 }}
+                style={{ width: 96 }}
               />
 
-              <label style={{ fontSize: 13 }}>Playlist size (tokens):</label>
+              <label>Playlist size in tokens</label>
               <TextInput
+                aria-label="WTF TV playlist size"
                 type="number"
                 value={String(wtfPlaylistSize)}
                 onChange={(e: any) =>
                   setWtfPlaylistSize(Math.max(5, Number(e.target.value) || 100))
                 }
-                style={{ width: 80 }}
+                style={{ width: 96 }}
               />
 
-              <label style={{ fontSize: 13 }}>Auto-refresh interval (min):</label>
+              <label>Auto-refresh interval in minutes</label>
               <TextInput
+                aria-label="WTF TV auto refresh interval"
                 type="number"
                 value={String(wtfRefreshInterval)}
                 onChange={(e: any) =>
                   setWtfRefreshInterval(Math.max(5, Number(e.target.value) || 30))
                 }
-                style={{ width: 80 }}
+                style={{ width: 96 }}
               />
-            </div>
-          </GroupBox>
+            </SettingsGrid>
+          </UiPanel>
 
-          <GroupBox label="Bumper Settings" style={{ marginTop: 12 }}>
-            <div style={{ marginBottom: 8 }}>
+          <UiPanel title="Bumper settings" compact>
+            <UiToolbar style={{ marginBottom: 8 }}>
               <Select
+                aria-label="WTF TV bumper mode"
                 value={wtfBumperMode}
                 onChange={(e: any) => setWtfBumperMode(e.value)}
                 options={[
-                  { value: "community_pool", label: "Community Pool (all bumpers)" },
-                  { value: "selected", label: "Selected Bumpers Only" },
-                  { value: "none", label: "No Bumpers" },
+                  { value: "community_pool", label: "Community pool (all bumpers)" },
+                  { value: "selected", label: "Selected bumpers only" },
+                  { value: "none", label: "No bumpers" },
                 ]}
                 width={280}
               />
-            </div>
+            </UiToolbar>
 
             {wtfBumperMode === "selected" && (
-              <div
-                style={{
-                  maxHeight: 180,
-                  overflow: "auto",
-                  border: "1px solid #888",
-                  padding: 4,
-                  marginBottom: 8,
-                }}
-              >
+              <PickerList>
                 {(wtfTvData.bumpers || []).map((b) => (
-                  <label
-                    key={b.id}
-                    style={{ display: "block", fontSize: 12, padding: "2px 4px" }}
-                  >
+                  <PickerRow key={b.id}>
                     <input
                       type="checkbox"
+                      aria-label={`Use bumper ${b.title}`}
                       checked={wtfSelectedBumpers.includes(b.id)}
                       onChange={(e) => {
                         setWtfSelectedBumpers((prev) =>
@@ -324,22 +375,22 @@ export function WtfTvAdminTab({
                             : prev.filter((id) => id !== b.id)
                         );
                       }}
-                    />{" "}
+                    />
                     {b.title} ({(b.durationMs / 1000).toFixed(1)}s)
-                  </label>
+                  </PickerRow>
                 ))}
                 {(wtfTvData.bumpers || []).length === 0 && (
-                  <span style={{ fontSize: 12, color: "#888" }}>
-                    No bumpers uploaded yet
-                  </span>
+                  <UiEmptyState title="No bumpers uploaded">
+                    Upload bumper media before selecting a bumper-only channel rotation.
+                  </UiEmptyState>
                 )}
-              </div>
+              </PickerList>
             )}
-          </GroupBox>
+          </UiPanel>
 
-          <div style={{ marginTop: 16 }}>
-            <Button
-              primary
+          <div>
+            <UiButton
+              uiVariant="primary"
               onClick={() =>
                 wtfUpdateMutation.mutate({
                   sourceMode: wtfSourceMode,
@@ -355,10 +406,10 @@ export function WtfTvAdminTab({
               }
               disabled={wtfUpdateMutation.isPending}
             >
-              {wtfUpdateMutation.isPending ? "Saving..." : "Save Settings"}
-            </Button>
+              {wtfUpdateMutation.isPending ? "Saving channel settings..." : "Save WTF TV settings"}
+            </UiButton>
           </div>
-        </>
+        </Stack>
       )}
     </>
   );

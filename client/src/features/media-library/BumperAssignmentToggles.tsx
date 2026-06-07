@@ -21,33 +21,36 @@ type BumperAssignmentTogglesProps = {
 const ToggleWrap = styled.div<{ $tone: "light" | "dark" }>`
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 4px;
-  border: 1px inset ${(p) => (p.$tone === "dark" ? "#335544" : "#aaa")};
-  background: ${(p) => (p.$tone === "dark" ? "rgba(0, 20, 10, 0.45)" : "#e0e0e0")};
+  gap: 6px;
+  padding: 6px;
+  border: 1px inset ${(p) => (p.$tone === "dark" ? "#446655" : "var(--wtf-app-border, #aaa)")};
+  background: ${(p) =>
+    p.$tone === "dark"
+      ? "rgba(0, 20, 10, 0.45)"
+      : "var(--wtf-app-surface-raised, #e0e0e0)"};
 `;
 
 const ToggleRow = styled.label<{ $tone: "light" | "dark"; $disabled?: boolean }>`
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 20px;
-  font-size: 10px;
-  color: ${(p) => (p.$tone === "dark" ? "#ccffdd" : "#111")};
-  opacity: ${(p) => (p.$disabled ? 0.55 : 1)};
+  min-height: 32px;
+  font-size: var(--wtf-type-caption, 13px);
+  color: ${(p) => (p.$tone === "dark" ? "#d8ffe2" : "var(--wtf-app-text, #111)")};
+  opacity: ${(p) => (p.$disabled ? 0.72 : 1)};
   cursor: ${(p) => (p.$disabled ? "not-allowed" : "pointer")};
   user-select: none;
 
   input {
-    width: 24px;
-    height: 14px;
+    width: 28px;
+    height: 18px;
     accent-color: #22aa55;
   }
 `;
 
 const ErrorText = styled.div<{ $tone: "light" | "dark" }>`
   color: ${(p) => (p.$tone === "dark" ? "#ff8877" : "#c00000")};
-  font-size: 9px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.25;
 `;
 
@@ -89,6 +92,7 @@ export function BumperAssignmentToggles({
         <input
           type="checkbox"
           role="switch"
+          aria-label="Assign to personal bumper pool"
           checked={personal}
           disabled={isDisabled}
           onChange={() => onToggle("personal", !personal)}
@@ -99,6 +103,7 @@ export function BumperAssignmentToggles({
         <input
           type="checkbox"
           role="switch"
+          aria-label="Assign to community bumper pool"
           checked={community}
           disabled={isDisabled}
           onChange={() => onToggle("community", !community)}

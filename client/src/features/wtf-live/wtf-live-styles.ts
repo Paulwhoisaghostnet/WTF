@@ -35,7 +35,7 @@ export const NavButton = styled.button<{ $active?: boolean }>`
   }
   span {
     display: block;
-    font-size: 11px;
+    font-size: var(--wtf-type-caption, 13px);
     opacity: 0.8;
   }
 `;
@@ -89,7 +89,7 @@ export const FeedItem = styled.div`
   padding: 8px;
   display: grid;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 export const RoomDirectory = styled.div`
@@ -103,7 +103,7 @@ export const RoomCard = styled.div`
   padding: 8px;
   display: grid;
   gap: 7px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 export const RoomMetaRow = styled.div`
@@ -122,7 +122,7 @@ export const RoomPresenceBadge = styled.span<{ $active?: boolean }>`
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   text-transform: uppercase;
 
   svg {
@@ -138,7 +138,7 @@ export const RoomActivitySummary = styled.div<{ $active?: boolean }>`
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 
   strong {
     display: inline-flex;
@@ -190,13 +190,13 @@ export const ShareLink = styled.code`
   border: 2px inset #fff;
   background: #f7f7f7;
   padding: 5px;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   word-break: break-all;
 `;
 
 export const MutedText = styled.span`
   color: #4a4a4a;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 export const RoomBadge = styled.span<{ $closed?: boolean }>`
@@ -204,7 +204,7 @@ export const RoomBadge = styled.span<{ $closed?: boolean }>`
   border: 1px solid #222;
   background: ${({ $closed }) => ($closed ? "#ffd9d9" : "#dff7e8")};
   padding: 2px 5px;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   text-transform: uppercase;
 `;
 
@@ -229,7 +229,7 @@ export const QuoteCard = styled.div`
   border: 2px inset #fff;
   background: #f7f7f7;
   padding: 8px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 export const DialogOverlay = styled.div`

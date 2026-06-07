@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button, GroupBox, Hourglass, Separator } from "react95";
+import { Hourglass, Separator } from "react95";
 import {
   Archive,
   Boxes,
@@ -26,6 +26,7 @@ import {
 } from "@shared/wtf-media-service";
 import { buildWtfIpfsGatewayPolicy } from "@shared/ipfs-gateways";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UiButton, UiEmptyState, UiPanel } from "../components/wtfos-ui";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
 import {
@@ -69,14 +70,14 @@ type Dwelling = {
 
 const Shell = styled.div`
   display: grid;
-  gap: 8px;
+  gap: var(--wtf-space-3, 12px);
   min-width: 0;
 `;
 
 const StatusGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
 
   @media (max-width: 1160px) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -93,22 +94,22 @@ const StatusGrid = styled.div`
 
 const StatusCell = styled.div`
   min-height: 58px;
-  padding: 7px;
-  border: 1px solid #808080;
-  background: #eeeeee;
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
+  padding: var(--wtf-space-2, 8px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
 `;
 
 const StatusLabel = styled.div`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
-  text-transform: uppercase;
-  color: #404040;
+  color: var(--wtf-app-muted-text, #384352);
+  line-height: 1.25;
 `;
 
 const StatusValue = styled.div`
   margin-top: 4px;
-  font-size: 14px;
+  font-size: var(--wtf-type-body, 15px);
   font-weight: bold;
   overflow-wrap: anywhere;
 `;
@@ -125,54 +126,60 @@ const DwellingGrid = styled.div`
 
 const DwellingRow = styled.div`
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  gap: 8px;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
-  min-height: 68px;
-  padding: 7px;
-  border: 1px solid #9a9a9a;
-  background: #f2f2f2;
+  min-height: 72px;
+  padding: var(--wtf-space-2, 8px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
+  min-width: 0;
 
   @media (max-width: 560px) {
-    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-columns: 32px minmax(0, 1fr);
   }
 `;
 
 const IconBox = styled.div`
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  border: 1px solid #808080;
-  background: #dfdfdf;
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-control-bg, #ffffff);
+  color: var(--wtf-app-text, #111);
 `;
 
 const RowTitle = styled.div`
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 15px);
   font-weight: bold;
   overflow-wrap: anywhere;
+  line-height: 1.25;
 `;
 
 const RowMeta = styled.div`
   margin-top: 2px;
-  font-size: 11px;
-  color: #404040;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #384352);
   overflow-wrap: anywhere;
+  line-height: 1.35;
 `;
 
-const OpenButton = styled(Button)`
-  min-width: 88px;
-  min-height: 30px;
+const OpenButton = styled(UiButton)`
+  min-width: 116px;
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
+  white-space: normal;
 
   @media (max-width: 560px) {
     grid-column: 1 / -1;
     width: 100%;
+    min-height: 44px;
   }
 `;
 
@@ -185,10 +192,12 @@ const RecentRow = styled.div`
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
-  padding: 6px;
-  border: 1px solid #c0c0c0;
-  background: #ffffff;
-  font-size: 11px;
+  padding: var(--wtf-space-2, 8px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  min-width: 0;
 `;
 
 const BundleGrid = styled.div`
@@ -206,10 +215,12 @@ const BundleRow = styled.div`
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  padding: 6px;
-  border: 1px solid #c0c0c0;
-  background: #ffffff;
-  font-size: 11px;
+  padding: var(--wtf-space-2, 8px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  min-width: 0;
 
   @media (max-width: 560px) {
     grid-template-columns: 1fr;
@@ -218,8 +229,9 @@ const BundleRow = styled.div`
 
 const BundlePurpose = styled.div`
   margin-top: 2px;
-  color: #404040;
+  color: var(--wtf-app-muted-text, #384352);
   overflow-wrap: anywhere;
+  line-height: 1.35;
 `;
 
 const ServiceGrid = styled.div`
@@ -234,19 +246,21 @@ const ServiceGrid = styled.div`
 
 const ServiceRow = styled.div`
   min-height: 82px;
-  padding: 6px;
-  border: 1px solid #c0c0c0;
-  background: #ffffff;
-  font-size: 11px;
+  padding: var(--wtf-space-2, 8px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const PolicyBadge = styled.span`
   display: inline-block;
   margin-left: 5px;
   padding: 1px 4px;
-  border: 1px solid #808080;
-  background: #eeeeee;
-  font-size: 10px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-info-bg, var(--wtf-app-surface, #f4f4f4));
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 function itemBytes(item: MediaItem) {
@@ -460,11 +474,11 @@ export function FileManager() {
         <Separator />
 
         {loading ? (
-          <GroupBox label="WTF">
+          <UiPanel title="WTF dwellings" compact>
             <Hourglass size={30} />
-          </GroupBox>
+          </UiPanel>
         ) : (
-          <GroupBox label="WTF">
+          <UiPanel title="WTF dwellings" compact>
             <DwellingGrid>
               {dwellings.map((row) => {
                 const Icon = row.icon;
@@ -483,16 +497,16 @@ export function FileManager() {
                     </div>
                     <OpenButton onClick={() => openDwelling(row)}>
                       <FolderOpen size={14} aria-hidden />
-                      Open
+                      Open {row.label}
                     </OpenButton>
                   </DwellingRow>
                 );
               })}
             </DwellingGrid>
-          </GroupBox>
+          </UiPanel>
         )}
 
-        <GroupBox label={`Project Bundles · ${projectBundleManifest.rootPath}`}>
+        <UiPanel title={`Project bundles: ${projectBundleManifest.rootPath}`} compact>
           <BundleGrid>
             {projectBundleSections.map((section) => (
               <BundleRow key={section.key}>
@@ -505,14 +519,14 @@ export function FileManager() {
                 </div>
                 <OpenButton onClick={() => openBundleSection(section)}>
                   <FolderOpen size={14} aria-hidden />
-                  Open
+                  Open {section.label}
                 </OpenButton>
               </BundleRow>
             ))}
           </BundleGrid>
-        </GroupBox>
+        </UiPanel>
 
-        <GroupBox label="Media Service">
+        <UiPanel title="Media service" compact>
           <ServiceGrid>
             {mediaServiceCapabilities.map((capability) => (
               <ServiceRow key={capability.key}>
@@ -534,14 +548,14 @@ export function FileManager() {
                 )}
                 <OpenButton onClick={() => openMediaServiceCapability(capability)}>
                   <FolderOpen size={14} aria-hidden />
-                  Open
+                  Open {capability.label}
                 </OpenButton>
               </ServiceRow>
             ))}
           </ServiceGrid>
-        </GroupBox>
+        </UiPanel>
 
-        <GroupBox label="IPFS Rendering">
+        <UiPanel title="IPFS rendering" compact>
           <RecentList>
             <RecentRow>
               <span>Primary gateway</span>
@@ -556,15 +570,16 @@ export function FileManager() {
               <span>{ipfsGatewayPolicy.gateways.length}</span>
             </RecentRow>
           </RecentList>
-        </GroupBox>
+        </UiPanel>
 
-        <GroupBox label="Recent Media">
+        <UiPanel title="Recent media" compact>
           <RecentList>
             {recentMedia.length === 0 ? (
-              <RecentRow>
-                <span>No media rows available.</span>
-                <span>{mediaQuery.isError ? "unavailable" : "empty"}</span>
-              </RecentRow>
+              <UiEmptyState title="No recent media">
+                {mediaQuery.isError
+                  ? "Media rows are unavailable right now."
+                  : "Uploaded and imported media will appear here after your library syncs."}
+              </UiEmptyState>
             ) : (
               recentMedia.map((item) => (
                 <RecentRow key={item.id}>
@@ -576,7 +591,7 @@ export function FileManager() {
               ))
             )}
           </RecentList>
-        </GroupBox>
+        </UiPanel>
       </Shell>
     </AppWindow>
   );

@@ -24,3 +24,12 @@ test("WTFOS PDS route keeps canonical repo writes allowlisted", () => {
   assert.equal(canonicalRepoWrites.length, 1);
   assert.match(route, /collection:\s*TZ2AT_WALLET_LINK_COLLECTION/);
 });
+
+test("tz2at ecosystem analytics route has a total request budget", () => {
+  const route = readFileSync("server/routes/tz2at.ts", "utf8");
+
+  assert.match(route, /DEFAULT_TZ2AT_ECOSYSTEM_ANALYTICS_TIMEOUT_MS/);
+  assert.match(route, /withTz2atAnalyticsBudget/);
+  assert.match(route, /Tz2atEcosystemAnalyticsTimeoutError/);
+  assert.match(route, /res\.status\(504\)/);
+});

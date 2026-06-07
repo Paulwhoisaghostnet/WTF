@@ -18,6 +18,116 @@
 
 ---
 
+## 2026-06-06 - Admin suite screenshots must exercise internal OS-window scroll and width
+
+**What happened**: The first Role Control full-send screenshot pass showed the top cockpit rendered, but the deeper access-map frame exposed that the fixed admin OS window could clip toolbar controls and management grids horizontally. The local full-page screenshot did not reveal this by itself because the admin app has an internal scroll container.
+
+**Why it mattered**: Admin is supposed to reduce operator overwhelm. A role-management panel that looks correct at the top but clips lower controls makes permissions, app visibility, and automation handles harder to audit precisely where operators need confidence.
+
+**Rule**: For admin UI changes inside the desktop OS shell, visual smoke must include at least one scrolled internal-window state and one narrow viewport state. Treat horizontal clipping in an internal panel as a release blocker, even when route smoke and full-page screenshots pass.
+
+---
+
+## 2026-06-07 - Media and social chrome can hide Impeccable residue after source detection is clean
+
+**What happened**: The Studio workspace chrome, Message Board chrome, Gallery slideshow, My Photos, colleKT bridge, Porcupin dashboard, and W media/timeline panels were source-detector clean but still carried rendered-design residue: 9-11px local labels, tiny action chips, decorative preview stripes, side-stripe system accents, hard-coded muted gray copy, and terse actions such as "View", "Reply", "Re-check", and "Disconnect".
+
+**Why it mattered**: These are user-facing task surfaces, not decorative shell chrome. Media review, token import, external module launch, premium eligibility, timeline actions, and chat moderation need readable labels and verb-object actions so users can tell what will happen without decoding local styling.
+
+**Rule**: After an Impeccable detector-clean pass, scan the actual feature chrome for hard-coded local type, decorative task backgrounds, side-stripe accents, and short generic actions. Media/social task surfaces should use app caption/body tokens, 32px desktop targets, calmer preview backgrounds, and labels that name the destination or state being changed.
+
+---
+
+## 2026-06-07 - Admin trust surfaces need named matrix controls and calm data tables
+
+**What happened**: Roles, Users, WTF TV, Console, and In-App Market admin panes still carried several Impeccable sweep findings after the earlier CRUD pass: decorative role-matrix striping, tiny metric/status labels, legacy group boxes, placeholder-only inputs, generic moderation/market buttons, and unnamed matrix checkboxes.
+
+**Why it mattered**: These surfaces control permissions, identity recovery, broadcast programming, game moderation, and market pricing. Operators need to know exactly which user, game, report, role, surface, wallet, or item a compact control will change, and assistive tech needs programmatic names for every filter, checkbox, and price/state input.
+
+**Rule**: For admin trust surfaces, use shared app panels and readable caption sizing, strip decorative texture out of task panels, and make every matrix/table control carry object-specific accessible names. Moderation, pricing, role, and broadcast actions should say the object and outcome, not just "Save", "Add", "Approve", "Revoke", or "Refresh".
+
+---
+
+## 2026-06-07 - CRUD-heavy admin tables need named controls, not just visible labels
+
+**What happened**: The rounds, seasons, challenges, content, board moderation, XP log, and round info surfaces had already moved toward calmer typography, but the dense CRUD forms still depended on adjacent visible labels, generic row actions, legacy group-box framing, and tiny/muted data treatments in places.
+
+**Why it mattered**: Impeccable's non-font findings were about state clarity, cognitive load, target clarity, and accessibility. Operators need compact controls to say what object they affect, and assistive tech needs programmatic names for fields such as season status, round schedules, challenge grading, FAQ edits, and JSON admin editors.
+
+**Rule**: When repairing admin CRUD surfaces, pair every visible form label with an accessible control name, keep row actions verb-plus-object, use shared `UiPanel`/table wrappers for dense data, and keep timestamps/meta copy at readable caption size instead of shrinking or muting it into chrome.
+
+---
+
+## 2026-06-07 - Admin operation surfaces need explicit action grammar and calm task panels
+
+**What happened**: Backup Manager, Contract Factory, Operator Wallet, Admin, and Control Board still carried several Impeccable report patterns after the shared typography pass: legacy gray/yellow/red panels, tiny admin labels, generic confirmation buttons, decorative stripe backgrounds, and compact controls without clear accessible names.
+
+**Why it mattered**: These surfaces handle recovery proof, signer runs, contract deployment, buyback controls, user administration, and gameshow control actions. Users need to understand the destination, operation, and risk of each control without decoding old chrome or guessing what a short verb will do.
+
+**Rule**: Admin and operator surfaces should use shared app-content tokens, readable caption sizing, explicit verb-object labels, named form controls, and `UiNotice`/`UiEmptyState` for warnings and empty states. Keep expressive retro styling out of dense operational panes unless it directly helps state recognition.
+
+---
+
+## 2026-06-07 - OS trust surfaces need readable action consoles, not tiny status chrome
+
+**What happened**: Mission Control, Task Manager, Recovery Mode, and File Manager still used legacy gray inset panels, 11px uppercase/meta labels, and generic buttons like "Open", "Sync", "Inspect", and "Switch To" after the main token and identity-surface repairs.
+
+**Why it mattered**: These surfaces explain system state and recovery paths. When status, route, and repair actions are compressed into tiny chrome or ambiguous verbs, users cannot quickly understand what is safe, what failed, or where a button will take them.
+
+**Rule**: For OS trust surfaces, put metrics and rows on app-content tokens, keep captions at readable size, and make every route/repair button name the destination or operation: "Open Mission Control", "Refresh health", "Inspect job", "Open File Manager dwelling", etc.
+
+---
+
+## 2026-06-07 - Trust surfaces need explicit route actions and plain profile language
+
+**What happened**: Profile and System Settings still carried older UI habits after the broader font/token repairs: generic route buttons such as "Open", wallet actions like "Link" and "Unlink", PFP shorthand in user-facing avatar workflows, hard-coded gray meta text, and 11px uppercase status labels in the settings hub.
+
+**Why it mattered**: These surfaces anchor account identity and OS trust. If the labels stay generic or jargon-heavy, users have to infer the consequence of actions that affect passwords, connected identities, wallets, profile pictures, and route ownership. That keeps the Impeccable findings alive even when the typography is technically larger.
+
+**Rule**: For identity and OS trust repairs, make route buttons name the destination, make account/wallet/social buttons verb-plus-object, spell out profile-picture language in visible copy, and keep settings summaries on app-content tokens with readable caption sizing.
+
+---
+
+## 2026-06-07 - Comms polish needs shared states and explicit action language, not just cleaner typography
+
+**What happened**: The Impeccable repair program initially reduced tiny text and font instability, but the comms surfaces still had small throwaway empty-state lines, terse action labels like "Open" and "Send", hard-coded gray meta text, and WIM content panels carrying decorative texture inside task areas.
+
+**Why it mattered**: The sweep findings were about cognitive load, state clarity, contrast, target size, and accessible names as much as font size. If comms apps only get font repairs, they remain visually quieter but still fail the product-UI job: users cannot quickly tell what state they are in, what action will happen, or whether compact controls are reachable and named.
+
+**Rule**: For WTF OS comms repairs, replace ad hoc muted status text with shared `UiEmptyState`/`UiNotice`, make button labels verb-plus-object, give icon-only controls specific `aria-label`s, and keep decorative theme treatments in chrome or branding panels instead of message lists, inboxes, and active task panes.
+
+---
+
+## 2026-06-07 - Concept redesigns must change operating model, not only stage dressing
+
+**What happened**: The first wtfOS shell concept board presented four directions with different labels and palettes, but the actual compositions all shared the same left-copy/right-desktop layout and the same window-centered desktop grammar. That made them read as sibling skins instead of fundamentally different OS concepts, despite the user's explicit request not to remix existing elements.
+
+**Why it mattered**: A concept approval board is supposed to help the user approve or reject divergent futures. If every option keeps the same navigation, task-switching, window metaphor, and proof/status placement, the board wastes the user's review energy and hides the real design choices.
+
+**Rule**: When asked for original shell/UI concepts, vary the underlying operating model first: launcher topology, task switching, window metaphor, state/proof language, spatial organization, and interaction rhythm. Only then choose palette and surface treatment. Validate the concepts side by side and reject any set where the canvases still share the same skeleton.
+
+---
+
+## 2026-06-06 - Detector-clean source can still need rendered app-surface proof
+
+**What happened**: The Phase 4 Impeccable source detector returned clean results for Swap, Studio, and Gallery, but the sweep evidence still showed rendered tiny-text, low-contrast, and target-size risks on related app surfaces. The issues lived in local component choices, token fallbacks, and browser-computed presentation rather than obvious banned source patterns.
+
+**Why it mattered**: A clean static detector pass is not the same thing as a cleaned UI. The shared app-content tokens, accessible names, and control sizes must be verified in a browser because theme inheritance and local styled components can recreate Impeccable issues after the source detector has nothing left to flag.
+
+**Rule**: After app-surface design repairs, pair Impeccable source detection with a rendered browser proof for representative routes. Check computed app font, body size, sub-12px visible text, unnamed buttons, small targets, and horizontal overflow before calling the repair effective.
+
+---
+
+## 2026-06-06 — MEK.type primary means app-content tokens too
+
+**What happened**: The MEK.type font files were restored and shell/UI font tokens used MEK Mono first, but the app-content font token still put Segoe UI before MEK Mono. That made the desktop chrome look MEK-native while task surfaces could silently stay on the old system font stack.
+
+**Why it mattered**: Impeccable design repair is meant to create a coherent WTF OS typography system, not only a themed shell costume. App bodies, controls, dense lists, and task panels must inherit the same primary MEK identity while preserving readable fallbacks.
+
+**Rule**: When MEK.type is the system font, verify `--wtf-app-font` as well as shell, UI, mono, titlebar, brand, and symbol tokens. Shell chrome and app content must both put MEK Mono first unless a specific surface has a documented accessibility or domain reason to opt out.
+
+---
+
 ## 2026-06-05 - Skywire OAuth callback broadcast is not the same thing as stale bounce cleanup
 
 **What happened**: The previous stale-settings-bounce repair stopped Skywire from broadcasting OAuth completion unless the callback looked like a popup/opener flow. That made a same-origin callback window update itself but left an already-open Skywire account/settings window unaware that OAuth had completed. At the same time, unresolved Bluesky handles such as `wtf-admin.bsky.social` could fail provider handoff in a way that felt like the permissions request simply stalled.
@@ -3934,18 +4044,6 @@
 
 ---
 
-## 2026-06-06 - Admin suite screenshots must exercise internal OS-window scroll and width
-
-**What happened**: The first Role Control full-send screenshot pass showed the top cockpit rendered, but the deeper access-map frame exposed that the fixed admin OS window could clip toolbar controls and management grids horizontally. The local full-page screenshot did not reveal this by itself because the admin app has an internal scroll container.
-
-**Why it mattered**: Admin is supposed to reduce operator overwhelm. A role-management panel that looks correct at the top but clips lower controls makes permissions, app visibility, and automation handles harder to audit precisely where operators need confidence.
-
-**Fix**: Role Control now stacks its heavy catalog/designer/permission/access sections inside the fixed admin window, uses smaller responsive grid minimums, wraps panel headers and access-map controls, removes viewport-scaled role/admin title text, and lets long labels break inside their own cards instead of expanding the surface.
-
-**Rule**: For admin UI changes inside the desktop OS shell, visual smoke must include at least one scrolled internal-window state and one narrow viewport state. Treat horizontal clipping in an internal panel as a release blocker, even when route smoke and full-page screenshots pass.
-
----
-
 ## 2026-06-06 - Skywire OAuth callback state is an SDK nonce, not app state
 
 **What happened**: New Skywire OAuth connections could fail while already-persisted sessions still worked. The OAuth start route generated a Skywire app state token and stored pending user, origin, scope, handle, and chat metadata under it, then passed that token to `NodeOAuthClient.authorize` as `options.state`. The AT OAuth SDK stores that value as `appState`, while the callback URL's `state` query parameter is a separate SDK-generated nonce. Skywire tried to look up pending metadata by the callback nonce before `client.callback(params)` translated it back to the app state.
@@ -3955,3 +4053,235 @@
 **Fix**: Skywire now stores both SDK nonce records and app-owned pending OAuth metadata in short-lived encrypted database rows. Callback recovery translates the provider nonce through the SDK state record to the original app state, then resolves pending metadata from session, memory, or database before writing the durable account/session row.
 
 **Rule**: Treat the OAuth callback `state` query as provider/SDK nonce material. If app-owned metadata is needed after callback, persist it under the SDK `appState` and keep a durable nonce-to-app-state bridge; do not assume the callback query state is the app state token.
+
+---
+
+## 2026-06-06 - Contract emergency readiness is not the same as credentialed chain execution
+
+**What happened**: The Marketplace V2 emergency pass could compile locally, write Kiln deploy/E2E scripts, and prove UI/server quantity guards, but the live legacy pause and shadownet publish steps required missing credentials (`MARKETPLACE_ADMIN_SECRET_KEY`/`TEZOS_ADMIN_SECRET_KEY` and `KILN_API_TOKEN`). The first Kiln script run also assumed SmartPy always writes scenario-named output directories, while the V2 deploy artifact was emitted at the compile output root.
+
+**Why it mattered**: Saying a contract pass is done when only local readiness is complete would hide the riskiest parts: live pause state and chain deployment proof. Script fragility around SmartPy output layout can also turn a credential blocker into a misleading compile failure.
+
+**Fix**: The legacy pause command defaults to dry-run status and writes a report before any transaction; the Kiln V2 command compiles locally, probes Kiln auth, writes BLOCKED reports when token auth is required, and accepts both nested and root-level SmartPy artifact layouts.
+
+**Rule**: Separate local contract readiness from credentialed chain execution in reports, bounty status, and final answers. Never imply mainnet pause, shadownet deploy, or E2E chain proof happened unless the signed operation/deployment actually occurred and the report names the resulting op hash or KT1 address.
+
+---
+
+## 2026-06-06 - Kiln auth, signer authority, and RPC liveness are separate gates
+
+**What happened**: The WTF repo shell had no exported `KILN_API_TOKEN`, but the sibling Kiln service `.env` did contain `API_AUTH_TOKEN`. Bridging that value let the Marketplace V2 deploy script authenticate to Kiln. The first authenticated publish attempt was blocked when the public Shadownet RPC returned HTTP 503 and Kiln could not read puppet-wallet balances; after RPC recovery, the script published Marketplace V2 to Shadownet and passed Kiln puppet E2E. The same env search did not reveal `MARKETPLACE_ADMIN_SECRET_KEY` or `TEZOS_ADMIN_SECRET_KEY`, so mainnet pause authority was still absent.
+
+**Why it mattered**: Treating “credentials found” as one binary state collapses three different deployment gates: API auth for Kiln, signer authority for mainnet admin actions, and live RPC availability for shadownet origination/E2E. Mixing them can lead to false claims that a deployment or pause happened.
+
+**Fix**: The Marketplace V2 Kiln script now accepts `KILN_API_TOKEN` or `API_AUTH_TOKEN`, retries transient Kiln/RPC 429 and 5xx responses, uses Kiln's named shadownet FA2 token as the WTF currency to avoid injector drift, baselines shared-token balances before E2E assertions, and records shadownet-only direct deploy use separately from workflow clearance. The bounty board now records Kiln auth found, V2 shadownet proof passed, and mainnet admin signer still missing.
+
+**Rule**: When a deployment path spans sibling service env, signing keys, and public RPCs, report each gate separately. Never infer mainnet admin authority from Kiln API auth, and never infer shadownet deployment from successful Kiln authentication.
+
+---
+
+## 2026-06-06 - UI repair source cleanliness must be proven in the browser shell
+
+**What happened**: The Phase 1 WTF OS design repair made the new app-surface token layer and Profile pilot source detector-clean, but the first browser proof still showed small targets and unnamed focusables. The remaining failures came from rendered shell controls, React95 compact sizing, native checkbox hit boxes, and form controls whose visible labels did not become reliable accessible names.
+
+**Why it mattered**: Impeccable source detection can prove that a repair did not introduce banned static patterns, but it cannot prove rendered target size, taskbar containment, or accessible-name propagation through third-party controls. A clean source pass can still leave WCAG 2.2 AA interaction failures in the actual desktop shell.
+
+**Fix**: The repair added app-content tokens, a shared WTF OS UI kit, one primary AppWindow scroll region, taskbar height reservation, 32px desktop/44px mobile compact targets, app-surface checkbox target floors, and explicit accessible names for Profile controls. The focused Profile browser proof now reports 0 small targets, 0 unnamed focusables, and 0 horizontal overflow across desktop/mobile default and PFP picker stops.
+
+**Rule**: Every shared UI grammar repair must pair Impeccable source detection with a rendered browser proof on at least one representative app and one shell-adjacent control path. Do not call target-size, focus-name, or containment repairs complete from source detector results alone.
+
+---
+
+## 2026-06-06 - Comms UI proofs must include accumulated desktop windows
+
+**What happened**: The Phase 2 comms repair made Mail, Digest, Inbox, Notifications, and Message Board source detector-clean, but the first focused browser proof still showed target-size and accessible-name failures. The failures were not all inside the active app: accumulated taskbar window buttons stayed below mobile target height, and React95 form controls in earlier open windows remained focusable while the later Message Board route was being scored.
+
+**Why it mattered**: WTF OS users work with stacked windows, not isolated routes. A per-route proof can undercount shell regressions, while an accumulated-window proof exposes whether taskbar controls, previous-window fields, and current-window controls remain WCAG 2.2 AA resilient together.
+
+**Fix**: The repair made taskbar window buttons enforce 32px desktop and 44px mobile heights, made compact app-surface controls win the cascade against React95 skins, added labels to DM, Message Board composer, attachment, sidebar, and settings controls, and reran the accumulated comms proof. The final focused proof reports 0 small targets, 0 unnamed focusables, and 0 horizontal overflow across the five-route desktop/mobile tour.
+
+**Rule**: For WTF OS app-family repairs, run at least one browser proof that keeps prior app windows open while launching the next surface. Close-window proofs are useful for app isolation, but accumulated-window proofs are required before claiming shell-adjacent target sizing or accessible-name repairs are complete.
+
+---
+
+## 2026-06-06 - Public room proofs must be separate from desktop-window proofs
+
+**What happened**: The WIM, Skywire, and WTF LIVE repair slice had clean source detection after removing a Skywire side accent and a WTF LIVE width animation, but the browser proof still found unnamed controls and small targets. The accumulated authenticated desktop proof showed WIM inputs staying focusable across later app launches, while the public `/live/r/wtf-live` route exposed a separate full-screen room surface with its own display-name field, chat textarea, close button, and mobile action buttons.
+
+**Why it mattered**: WTF LIVE has two UI contracts: the authenticated desktop app at `/live` and the public room surface at `/live/r/:roomId`. Treating the public room like a normal AppWindow route hides target-size and accessible-name bugs because it does not inherit the app-content shell and mobile target rules the desktop windows use.
+
+**Fix**: WIM search and composer inputs now have explicit accessible names. The public WTF LIVE room display-name field and chat textarea are named, the room close button meets the desktop and mobile hit-area floors, and the room action grid enforces 44px mobile targets. The final live/social browser proof reports 0 small targets, 0 unnamed focusables, and 0 horizontal overflow across WIM, Skywire, `/live`, and `/live/r/wtf-live`.
+
+---
+
+## 2026-06-06 - OS trust proofs must separate app content debt from desktop chrome debt
+
+**What happened**: The OS trust repair slice made Mission Control, Settings, File Manager, Recovery Mode, Task Manager, and Backup Manager source-detector clean, but the first browser proof still reported tiny text on every app. Sampling showed the repeated failures came from desktop icon glyphs and taskbar/start-menu chrome that stayed visible behind accumulated app windows, not from the app content panels themselves.
+
+**Why it mattered**: A surface proof that accumulates desktop windows is useful because it catches real shell regressions, but the findings must be attributed correctly. Otherwise every app repair queue inherits the same desktop-icon and taskbar text bug, and teams waste time patching pages that are not the source of the issue.
+
+**Rule**: When a focused app proof reports repeated tiny text, unnamed controls, or clipped containers across unrelated apps, sample the DOM before assigning blame. Repair shared shell chrome when the same desktop icons, taskbar controls, Start Menu rows, or window controls appear in every finding. The proof should keep a dedicated General WTF OS shell stop so shared chrome debt has an owner.
+
+**Rule**: When a feature has both an authenticated desktop app and a public/fullscreen companion route, prove both surfaces separately. Desktop-window proofs should keep app windows accumulated; public/fullscreen proofs should run outside the AppWindow assumptions and explicitly check mobile target size, form names, and chat/composer reachability.
+
+---
+
+## 2026-06-06 - MEK.type font sourcing must follow OBJKT IPFS artifacts, not convenience download links
+
+**What happened**: A typography pass initially treated Google Drive links embedded in MEK.type PDF artifacts as acceptable platform font sources and briefly downloaded Drive-hosted WOFF2 files. The user clarified that WTF OS font sourcing should use the collection's IPFS artifact URIs.
+
+**Why it mattered**: The OBJKT collection artifact URI is the durable provenance boundary. A Drive link inside a PDF may be useful for humans, but wiring platform typography to Drive skips the on-chain/IPFS source of truth and can make future audits, licensing checks, and reproducibility ambiguous.
+
+**Rule**: For MEK.type and other token-sourced platform assets, record the OBJKT/IPFS artifact URI first. Only create `@font-face` rules when that artifact URI, or another explicitly approved IPFS URI, resolves directly to a font MIME such as `font/woff2`, `font/otf`, or `font/ttf`. Do not promote PDF wrapper links or embedded Drive folders into platform font sources.
+
+---
+
+## 2026-06-06 - MEK.type PDF artifacts can authorize linked font binaries when the user chooses that source path
+
+**What happened**: After the first MEK.type correction, the typography layer kept only IPFS PDF artifact provenance and avoided the downloadable Google Drive font files linked from those PDFs. The user clarified that the actual font files from the artifact-linked download folders are the intended platform source.
+
+**Why it mattered**: MEK.type's OBJKT artifact URI may be a PDF wrapper while the usable font binaries live in a linked download folder inside that artifact. Treating the wrapper itself as the only acceptable browser-loadable asset blocks the actual font integration the user wants.
+
+**Rule**: For MEK.type, keep OBJKT/IPFS artifact URIs as provenance, but use the actual downloadable font binaries linked from the artifact PDF when explicitly approved. Bundle those binaries locally, document their artifact provenance beside the files, and keep role-based font tokens so display faces do not take over dense app body copy.
+
+---
+
+## 2026-06-06 - Auth typography must not swap after first paint
+
+**What happened**: The login window appeared to fight its font whenever the mouse moved. Browser sampling showed the auth surface could reach first paint while `document.fonts` was still loading, then repaint into MEK Mono after pointer movement. The visible auth window titles also used an em dash, which can trigger glyph fallback when a compact platform font lacks that glyph.
+
+**Why it mattered**: Login and registration are the first platform trust surfaces. If the font swaps, falls back, or uses decorative tracking/text-shadow during pointer movement, the whole OS feels unstable before the user even signs in.
+
+**Fix**: The auth shell now owns a stable MEK font stack, disables auth-local font synthesis, tracking, and text-shadow, and applies the same stack to React95 inputs and buttons. MEK Mono is preloaded from the HTML shell and uses `font-display: block` so the browser does not paint one font and then swap to another. Auth window titles now use ASCII separators.
+
+**Rule**: Any fullscreen auth or entry surface must preload the primary UI font, avoid glyphs outside the primary font where practical, and prove first-paint plus pointer-move typography in the browser. Do not rely on the desktop app-content token layer alone for login/register screens.
+
+---
+
+## 2026-06-06 - Auth overlays must suspend desktop cursor/effect loops
+
+**What happened**: The login typography still appeared to twitch after the MEK font-load fix. The remaining movement came from the desktop shell around the auth surface: the default custom cursor was still enabled, native cursors were hidden, and desktop cursor/effect machinery could update on every pointer move while the login overlay was visible.
+
+**Why it mattered**: Fullscreen auth screens are trust surfaces, not ordinary desktop windows. If desktop toys, custom cursors, weather, artifacts, or cursed effects keep running under or over the login overlay, pointer movement can cause visual shimmer even when the auth text's computed font, size, and layout are stable.
+
+**Fix**: `Desktop` now accepts `suspendDesktopEffects`, and the app shell passes it while login, registration, or the unauthenticated landing overlay is active. That mode disables custom cursor rendering, cursed effects, desktop icons/items, weather, grass, pets, and desktop pointer handlers for the entry surface. The browser proof now shows zero custom cursor nodes, zero cursed effect nodes, zero desktop icons/items, normal cursor behavior, loaded fonts, and stable text metrics before and after mouse movement.
+
+**Rule**: Entry/auth overlays must silence desktop motion and pointer-tracking systems, not merely cover them visually. When diagnosing pointer-move shimmer, verify both computed typography and the absence of hidden moving shell layers.
+
+---
+
+## 2026-06-06 - MEK Mono needs a larger platform baseline across shell chrome
+
+**What happened**: The first global typography lift moved app-content and auth tokens to a 14px body / 13px caption baseline, but rendered proof still showed tiny text. The remaining samples were not in the app bodies: desktop artifact labels, taskbar window buttons, the user role well, and the clock were still hardcoded at 8-12px.
+
+**Why it mattered**: MEK Mono reads smaller than the previous system stack at the same nominal pixel size, and WTF OS keeps shell chrome visible behind app windows. If only app surfaces are tokenized, every app proof can inherit tiny shared chrome even when the app content itself is repaired.
+
+**Fix**: The repair lifted shell chrome to the same readable caption baseline, widened desktop artifact and taskbar wells enough for MEK text, raised the Swap external link hit area to 32px, and reran the rendered proof. Login, desktop, Swap, Studio, and Gallery now measure a 13px minimum readable font, 0 small readable text samples, 0 small targets, and no horizontal overflow.
+
+**Rule**: Typography repairs must verify rendered font size on auth, desktop shell, taskbar/window buttons, desktop artifacts, and at least one app surface. Treat hardcoded 8-12px shell text as shared UI debt even when app-content tokens are already compliant.
+
+---
+
+## 2026-06-07 - Surface sweeps must attribute shared-window debt before patching app rows
+
+**What happened**: The broad Impeccable typography sweep initially reported tiny text, small targets, and unnamed focusables across many app stops. Sampling the rendered text and controls showed that some repeated failures were carried forward from shared shell or previously opened window content, while source detection separately caught layout-risk patterns such as width-based progress animations.
+
+**Why it mattered**: Accumulated-window proofs are good at exposing real WTF OS conditions, but their rows can name the app being launched while the failing node belongs to shell chrome, an earlier shared panel, or a reusable component. Patching the row name first can scatter fixes and miss the common source.
+
+**Fix**: The repair pass sampled the failing DOM before assigning ownership, then fixed reusable sources: shell/app caption floors, MEK font tokens, compact control labels, shared wallet/gallery/dashboard panels, and the year-progress fill animation. The final typography census shows 0 readable text samples below 13px, 0 small targets, 0 unnamed focusables, and 0 horizontal overflow across all 28 proof stops.
+
+**Rule**: Before patching an app named by an Impeccable rendered row, inspect the sampled selector/text and decide whether it is app content, shared chrome, an accumulated prior window, or a reusable component. Prefer transform-based progress fills over `transition: width` so detector-clean visuals do not cause layout churn.
+
+---
+
+## 2026-06-07 - Desktop drag visuals must not stream through the whole React shell
+
+**What happened**: Dragging a desktop icon made all visible text blink out while movement was active, then return when movement stopped. The icon drag handler updated desktop icon state on every pointer movement, which made the parent desktop shell rerender repeatedly under direct manipulation.
+
+**Why it mattered**: The symptom looked like a font or text-rendering problem, but the root cause was drag-state churn. With MEK Mono and the full desktop shell visible, forcing the entire shell, route layer, taskbar, and icon text through rapid rerenders can show up as unstable text paint even when computed font styles are unchanged.
+
+**Fix**: Active icon dragging now moves only the grabbed icon with an imperative `translate3d(...)` transform and commits the final persisted position on release. The desktop icon physics body is synced to that release position before any fling velocity is applied.
+
+**Rule**: High-frequency pointer movement should update only the element being directly manipulated. Do not route per-frame desktop drag visuals through parent React state; persist the final state on release and verify with before/during/after browser sampling.
+
+---
+
+## 2026-06-07 - Impeccable repairs need loaded-data browser proof, not source cleanliness alone
+
+**What happened**: The shared WTF OS design repair pass cleaned source-level Impeccable patterns and improved tokens, contrast, spacing, target sizes, and containment. The source detector returned clean, but the full inventory suite exposed a Skywire vault failure: `/api/skywire/tezos-vault` returned valid created-token data while the rendered client froze in the refreshing/empty state. A payload bisect showed empty, wallet-only, and owned-token-only vaults rendered, while one created token inside the collection layout was enough to freeze the page.
+
+**Why it mattered**: The Impeccable report called out clipped containers, cramped grids, and state clarity, not only typography. Those failures can appear only after realistic data arrives. Treating a detector-clean source file as repaired would have missed a high-value app state that users depend on.
+
+**Fix**: The Skywire vault collection wrapper no longer nests a fragile auto-fill grid inside a grid section. Created-token groups use a flex column container, and vault token grids use `repeat(auto-fit, minmax(min(190px, 100%), 1fr))` so the card layout stays bounded inside nested app windows. The focused Skywire vault test and full inventory suite now pass.
+
+**Rule**: For Impeccable-driven UI repairs, verify at least one loaded-data state for each touched high-risk surface. When a browser freezes after a successful API response, bisect the payload before changing tests or API code. Prefer bounded responsive grid formulas and non-grid wrappers for nested collection groups inside scrollable app windows.
+
+---
+
+## 2026-06-07 - Nested admin builders need the same design grammar as top-level shells
+
+**What happened**: After the first admin trust-surface repairs, nested admin tabs and builder components still carried Impeccable findings: 10-12px metadata, React95 group boxes inside task panes, generic action verbs, unnamed search/checkbox controls, and dense tables that bypassed the shared WTF OS UI kit.
+
+**Why it mattered**: Operators spend most of their time in these nested rows and forms, not the overview shell. A polished admin landing page does not fix decision-heavy controls for reward payment, contract activity, Drive fallback, challenge automation, side quests, digest handles, or wtf.tez grants.
+
+**Rule**: When repairing admin UI, follow the workflow into nested tabs and shared builders. Use `UiPanel`/`UiButton` where practical, keep labels and metadata at caption size or above, give compact inputs and checkboxes accessible names, and make button labels state the object and result of the action.
+
+---
+
+## 2026-06-07 - Media-library repairs must include shared channel and bumper widgets
+
+**What happened**: My Videos still carried Impeccable residue after broader media and typography passes: 9-11px card metadata, tiny channel/delete/credit buttons, unlabeled edit and upload inputs, hard-coded red/green status copy, and bumper/channel widgets that reused the same compact patterns in other tabs.
+
+**Why it mattered**: The media library is a bridge between upload, token import, WTF TV channels, and community bumpers. Fixing only the top-level tab would leave the same accessibility and clarity failures in reusable widgets when users switch to channel buckets or bumper pools.
+
+**Fix**: The repair moved My Videos and the shared media-library channel/bumper components onto app type tokens, 32px desktop targets, explicit accessible names, clearer verb-object action labels, keyboard-accessible upload activation, and tokenized status/empty-state copy. The Impeccable source detector returned clean for the touched files, and the rendered `/my-videos` proof confirmed the repaired empty state without app-content tiny text.
+
+**Rule**: When repairing a media-library app, patch the reusable bucket/toggle components in the same pass as the page. Verify source cleanliness plus a rendered route proof, and treat background desktop/window findings separately from the active media app surface.
+
+---
+
+## 2026-06-07 - Controlled-browser trust copy needs product-sized labels and explicit actions
+
+**What happened**: The controlled browser and Browser Boundaries screens were source-detector clean, but still carried trust-surface issues: 10-11px route labels, compressed status badges, a placeholder-only URL field, and generic actions such as "Open", "Check", and "Tokens".
+
+**Why it mattered**: These screens explain where WTF OS allows browsing, framing, agent access, and route boundaries. If that copy is tiny or the actions are vague, users cannot quickly tell whether they are opening a link inside the sandbox, leaving WTF OS, checking recovery health, or managing agent credentials.
+
+**Fix**: The repair moved boundary labels, route metadata, tags, notices, and link-chamber helper copy onto app caption/body tokens; gave the URL field an accessible name and Enter-key submit; and rewrote buttons to name the destination or effect. The focused Impeccable detector returned clean, rendered browser proof showed zero small focus targets on `/browser` and `/browser-boundaries`, and the full inventory suite passed.
+
+**Rule**: Treat browser-boundary UI as a trust console. Keep labels at product caption size or above, name compact inputs programmatically, make every boundary action verb-object, and verify rendered target size because these surfaces sit inside the noisy desktop shell.
+
+---
+
+## 2026-06-07 - External analytics endpoints need a total route budget
+
+**What happened**: Full-send verification found one remaining live-puppet timeout: the `social post to reward automation loop` workflow stalled before route navigation. Manual timing showed the `/api/tz2at/ecosystem/analytics` probes could each exceed 15 seconds while the rest of the workflow probes returned normally. The route bounded individual ATProto fetches, but the full analytics request still fanned out across inventory, replay, hydration, and entity-repo sampling without a total request budget.
+
+**Why it mattered**: The user sees the same symptom as the test: a blank or stuck state while external ecosystem analytics keep working in the background. Per-fetch timeouts do not protect a route that performs many sequential or batched upstream calls.
+
+**Fix**: The route now wraps ecosystem analytics in a total request budget, aborts upstream work when the budget expires, and returns a concrete `504` timeout payload. The live puppet API probe layer also has a per-probe timeout so future upstream stalls name the failing probe instead of consuming the whole workflow budget.
+
+**Rule**: Any route that fans out to external networks must have both per-fetch and total-route budgets. Inventory/live-puppet probes may accept an explicit `504` for optional upstream analytics, but they should never rely on a whole-test timeout to identify a slow external dependency.
+
+---
+
+## 2026-06-07 - Time-window analytics tests need relative fixture timestamps
+
+**What happened**: While verifying the tz2at timeout fix, the ecosystem analytics unit tests returned zero scanned records. The fixture records used fixed `2026-05-28` and `2026-05-30` timestamps, which were valid when written but fell outside the default 72-hour market window by June 7, 2026.
+
+**Why it mattered**: Date-window logic can look like a product regression when the only drift is the calendar. Fixed "recent" timestamps silently become stale and make default-window assertions fail long after the code path still works.
+
+**Fix**: The records that are meant to be inside the market window now use generated timestamps relative to `Date.now()`, while intentionally stale records stay fixed.
+
+**Rule**: Tests for rolling analytics, freshness windows, and recency filters must generate in-window fixture timestamps relative to the test clock, or freeze the clock explicitly. Do not hard-code "recent" dates unless the test also controls current time.
+
+---
+
+## 2026-06-07 - Public leaderboards must not wait on optional profile enrichment
+
+**What happened**: After the tz2at route budget fix, the full live puppet suite advanced past the old failure and then timed out in `public data APIs and MCP agent token lifecycle stay bounded`. The logs showed TzKT and TzProfiles retries while the test was reading `/api/leaderboard?limit=100`. The route treated profile alias hydration as best-effort, but still let it run across every unresolved holder without a route-local cap or timeout.
+
+**Why it mattered**: Best-effort enrichment is only best-effort if the primary payload can return without it. Public leaderboard rows already have token holder data, app wallet links, and Tezos domains; profile aliases are decorative compared with keeping the public data path bounded.
+
+**Fix**: Public leaderboard profile alias hydration now samples a capped number of unresolved addresses and has a short timeout. When providers are slow or rate-limited, the route returns the leaderboard without those optional aliases instead of consuming the live-puppet or user-facing request budget.
+
+**Rule**: For public data routes, isolate optional external enrichment from primary data. Cap fanout, timebox the enrichment, and return the core payload when upstream providers miss the budget.

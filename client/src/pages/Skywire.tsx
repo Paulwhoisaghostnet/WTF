@@ -1138,19 +1138,23 @@ const VaultWalletCard = styled.div`
 
 const VaultGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 12px;
+  min-width: 0;
 `;
 
 const VaultCollectionStack = styled.div`
   display: grid;
-  gap: 14px;
+  gap: 16px;
+  min-width: 0;
 `;
 
 const VaultCollectionGroup = styled.section`
-  display: grid;
-  gap: 8px;
-  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  min-width: 0;
 
   & + & {
     border-top: 1px solid var(--sky-border);
@@ -1179,9 +1183,9 @@ const VaultTokenCard = styled.div`
   background:
     linear-gradient(180deg, rgba(20, 46, 58, 0.96), rgba(10, 26, 36, 0.96));
   color: var(--sky-text);
-  padding: 8px;
+  padding: 10px;
   display: grid;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 `;
 
@@ -1192,7 +1196,8 @@ const VaultTokenActions = styled.div`
   flex-wrap: wrap;
 
   button {
-    min-height: 28px;
+    min-height: 34px;
+    font-size: var(--wtf-type-caption, 13px);
   }
 `;
 
@@ -1228,12 +1233,12 @@ const VaultTokenText = styled.div`
 
 const VaultTokenFact = styled.div`
   display: grid;
-  gap: 2px;
+  gap: 3px;
 
   small {
     color: var(--sky-muted);
-    font-size: 10px;
-    text-transform: uppercase;
+    font-size: var(--wtf-type-caption, 13px);
+    font-weight: 700;
   }
 
   span,
@@ -1299,8 +1304,9 @@ const QuoteSupertext = styled.div`
   display: grid;
   gap: 3px;
   padding: 8px 10px;
-  border-left: 3px solid var(--sky-rose);
+  border: 1px solid rgba(251, 113, 133, 0.34);
   background: rgba(251, 113, 133, 0.1);
+  box-shadow: inset 0 2px 0 rgba(251, 113, 133, 0.55);
   color: #ffe3e8;
   font-size: 12px;
   line-height: 1.35;
@@ -4339,18 +4345,32 @@ function ChatPanel({
   );
 }
 
+function resolveInitialSkywireTab(explicitTab?: SkywireTab) {
+  if (explicitTab) {
+    return { didChoose: true, tab: explicitTab };
+  }
+  if (typeof window !== "undefined") {
+    const tabParam = new URLSearchParams(window.location.search).get("tab");
+    if (tabParam && isSkywireTab(tabParam)) {
+      return { didChoose: true, tab: tabParam as SkywireTab };
+    }
+  }
+  return { didChoose: false, tab: "home" as SkywireTab };
+}
 
 export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<SkywireTab>(initialTab ?? "home");
+  const [tab, setTab] = useState<SkywireTab>(() => resolveInitialSkywireTab(initialTab).tab);
   const [selectedActor, setSelectedActor] = useState<SkywireActor | null>(null);
   const [selectedThreadPost, setSelectedThreadPost] = useState<SkywirePost | null>(null);
   const [selectedPipelinePost, setSelectedPipelinePost] = useState<SkywirePost | null>(null);
   const [pendingChatQuote, setPendingChatQuote] = useState<SkywireQuotePost | null>(null);
   const [pendingChatMembers, setPendingChatMembers] = useState<string[]>([]);
   const [welcomeHandle, setWelcomeHandle] = useState("");
-  const [didChooseInitialTab, setDidChooseInitialTab] = useState(false);
+  const [didChooseInitialTab, setDidChooseInitialTab] = useState(
+    () => resolveInitialSkywireTab(initialTab).didChoose
+  );
   const [notice, setNotice] = useState("");
   const durableOAuthCompletionKeysRef = useRef<Set<string>>(new Set());
   const selectTab = useCallback((nextTab: SkywireTab, options: { syncUrl?: boolean } = {}) => {

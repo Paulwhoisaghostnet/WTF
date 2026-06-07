@@ -1,7 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 import {
-  Button,
-  GroupBox,
   TextInput,
   Select,
   Table,
@@ -12,20 +10,50 @@ import {
   TableBody,
 } from "react95";
 import styled from "styled-components";
+import { UiButton, UiPanel } from "../../../components/wtfos-ui";
 import type { EntityUpdatePayload } from "../types";
 
 const Field = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: var(--wtf-space-1, 4px);
+  margin-bottom: var(--wtf-space-2, 8px);
+
+  label {
+    color: var(--wtf-app-text, #111);
+    font-size: var(--wtf-type-caption, 13px);
+    font-weight: 700;
+    line-height: 1.3;
+  }
 `;
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
+`;
+
+const TableWrap = styled.div`
+  min-width: 0;
+  overflow-x: auto;
+`;
+
+const TruncateText = styled.span`
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const Hint = styled.small`
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
 const SEASON_STATUS_OPTIONS = [
@@ -109,19 +137,19 @@ function ConfirmButton({
   if (confirming) {
     return (
       <ActionRow>
-        <Button size={size} onClick={onConfirm} disabled={disabled}>
+        <UiButton compact={size === "sm"} uiVariant="danger" onClick={onConfirm} disabled={disabled}>
           {confirmLabel || `Yes, ${label}`}
-        </Button>
-        <Button size={size} onClick={() => setConfirming(false)}>
-          Cancel
-        </Button>
+        </UiButton>
+        <UiButton compact={size === "sm"} onClick={() => setConfirming(false)}>
+          Cancel action
+        </UiButton>
       </ActionRow>
     );
   }
   return (
-    <Button size={size} onClick={() => setConfirming(true)} disabled={disabled}>
+    <UiButton compact={size === "sm"} onClick={() => setConfirming(true)} disabled={disabled}>
       {label}
-    </Button>
+    </UiButton>
   );
 }
 
@@ -139,88 +167,85 @@ export function SeasonsAdminTab({
     <>
       <h3>Seasons</h3>
 
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableHeadCell>#</TableHeadCell>
-            <TableHeadCell>Name</TableHeadCell>
-            <TableHeadCell>Status</TableHeadCell>
-            <TableHeadCell>Description</TableHeadCell>
-            <TableHeadCell>Media</TableHeadCell>
-            <TableHeadCell>Actions</TableHeadCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {(allSeasons || []).map((s: any) => (
-            <TableRow key={s.id}>
-              <TableDataCell>{s.number}</TableDataCell>
-              <TableDataCell>{s.name}</TableDataCell>
-              <TableDataCell>{s.status}</TableDataCell>
-              <TableDataCell
-                style={{
-                  maxWidth: 200,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {s.description || "---"}
-              </TableDataCell>
-              <TableDataCell>
-                {Object.keys(s.mediaAssets || {}).length} assets
-              </TableDataCell>
-              <TableDataCell>
-                <ActionRow>
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      setEditingSeason(
-                        editingSeason?.id === s.id
-                          ? null
-                          : {
-                              ...s,
-                              name: s.name,
-                              number: String(s.number),
-                              description: s.description || "",
-                              status: s.status,
-                              mediaAssets: formatJsonObject(s.mediaAssets),
-                            }
-                      )
-                    }
-                  >
-                    {editingSeason?.id === s.id ? "Cancel" : "Edit"}
-                  </Button>
-                  <ConfirmButton
-                    label="Delete"
-                    confirmLabel="Confirm"
-                    onConfirm={() => deleteSeasonMutation.mutate(s.id)}
-                    disabled={deleteSeasonMutation.isPending}
-                  />
-                </ActionRow>
-              </TableDataCell>
-            </TableRow>
-          ))}
-          {(!allSeasons || allSeasons.length === 0) && (
+      <TableWrap>
+        <Table>
+          <TableHead>
             <TableRow>
-              <TableDataCell>---</TableDataCell>
-              <TableDataCell>No seasons yet.</TableDataCell>
-              <TableDataCell>---</TableDataCell>
-              <TableDataCell>---</TableDataCell>
-              <TableDataCell>---</TableDataCell>
-              <TableDataCell>---</TableDataCell>
+              <TableHeadCell>#</TableHeadCell>
+              <TableHeadCell>Name</TableHeadCell>
+              <TableHeadCell>Status</TableHeadCell>
+              <TableHeadCell>Description</TableHeadCell>
+              <TableHeadCell>Media</TableHeadCell>
+              <TableHeadCell>Actions</TableHeadCell>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {(allSeasons || []).map((s: any) => (
+              <TableRow key={s.id}>
+                <TableDataCell>{s.number}</TableDataCell>
+                <TableDataCell>{s.name}</TableDataCell>
+                <TableDataCell>{s.status}</TableDataCell>
+                <TableDataCell>
+                  <TruncateText>{s.description || "---"}</TruncateText>
+                </TableDataCell>
+                <TableDataCell>
+                  {Object.keys(s.mediaAssets || {}).length} assets
+                </TableDataCell>
+                <TableDataCell>
+                  <ActionRow>
+                    <UiButton
+                      compact
+                      onClick={() =>
+                        setEditingSeason(
+                          editingSeason?.id === s.id
+                            ? null
+                            : {
+                                ...s,
+                                name: s.name,
+                                number: String(s.number),
+                                description: s.description || "",
+                                status: s.status,
+                                mediaAssets: formatJsonObject(s.mediaAssets),
+                              }
+                        )
+                      }
+                    >
+                      {editingSeason?.id === s.id ? "Cancel season edit" : "Edit season"}
+                    </UiButton>
+                    <ConfirmButton
+                      label="Delete season"
+                      confirmLabel="Confirm delete"
+                      onConfirm={() => deleteSeasonMutation.mutate(s.id)}
+                      disabled={deleteSeasonMutation.isPending}
+                    />
+                  </ActionRow>
+                </TableDataCell>
+              </TableRow>
+            ))}
+            {(!allSeasons || allSeasons.length === 0) && (
+              <TableRow>
+                <TableDataCell>---</TableDataCell>
+                <TableDataCell>No seasons yet.</TableDataCell>
+                <TableDataCell>---</TableDataCell>
+                <TableDataCell>---</TableDataCell>
+                <TableDataCell>---</TableDataCell>
+                <TableDataCell>---</TableDataCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableWrap>
 
       {editingSeason && (
-        <GroupBox
-          label={`Edit Season #${editingSeason.number}`}
+        <UiPanel
+          title={`Edit season #${editingSeason.number}`}
+          compact
           style={{ marginTop: 12 }}
         >
           <Field>
             <label>Name</label>
             <TextInput
+              aria-label="Edit season name"
               value={editingSeason.name}
               onChange={(e: any) =>
                 setEditingSeason((p: any) => ({ ...p, name: e.target.value }))
@@ -231,6 +256,7 @@ export function SeasonsAdminTab({
           <Field>
             <label>Number</label>
             <TextInput
+              aria-label="Edit season number"
               value={editingSeason.number}
               onChange={(e: any) =>
                 setEditingSeason((p: any) => ({
@@ -244,6 +270,7 @@ export function SeasonsAdminTab({
           <Field>
             <label>Status</label>
             <Select
+              aria-label="Edit season status"
               value={editingSeason.status}
               onChange={(e: any) =>
                 setEditingSeason((p: any) => ({ ...p, status: e.value }))
@@ -255,6 +282,7 @@ export function SeasonsAdminTab({
           <Field>
             <label>Description</label>
             <TextInput
+              aria-label="Edit season description"
               value={editingSeason.description}
               onChange={(e: any) =>
                 setEditingSeason((p: any) => ({
@@ -269,6 +297,7 @@ export function SeasonsAdminTab({
           <Field>
             <label>Media Assets JSON</label>
             <TextInput
+              aria-label="Edit season media assets JSON"
               value={editingSeason.mediaAssets}
               onChange={(e: any) =>
                 setEditingSeason((p: any) => ({
@@ -279,12 +308,12 @@ export function SeasonsAdminTab({
               multiline
               fullWidth
             />
-            <small>
+            <Hint>
               Use keys like adminPfp, banner, iconSet, introVideo, and
               sponsorLogos with HTTPS, IPFS, or same-origin URLs.
-            </small>
+            </Hint>
           </Field>
-          <Button
+          <UiButton
             onClick={() => {
               const mediaAssets = parseJsonObjectInput(
                 editingSeason.mediaAssets,
@@ -304,15 +333,16 @@ export function SeasonsAdminTab({
             }}
             disabled={updateSeasonMutation.isPending}
           >
-            Save Changes
-          </Button>
-        </GroupBox>
+            Save season changes
+          </UiButton>
+        </UiPanel>
       )}
 
-      <GroupBox label="New Season" style={{ marginTop: 12 }}>
+      <UiPanel title="New season" compact style={{ marginTop: 12 }}>
         <Field>
           <label>Name</label>
           <TextInput
+            aria-label="New season name"
             value={seasonForm.name}
             onChange={(e: any) =>
               setSeasonForm((f) => ({ ...f, name: e.target.value }))
@@ -323,6 +353,7 @@ export function SeasonsAdminTab({
         <Field>
           <label>Number</label>
           <TextInput
+            aria-label="New season number"
             value={seasonForm.number}
             onChange={(e: any) =>
               setSeasonForm((f) => ({ ...f, number: e.target.value }))
@@ -333,6 +364,7 @@ export function SeasonsAdminTab({
         <Field>
           <label>Description</label>
           <TextInput
+            aria-label="New season description"
             value={seasonForm.description}
             onChange={(e: any) =>
               setSeasonForm((f) => ({ ...f, description: e.target.value }))
@@ -344,6 +376,7 @@ export function SeasonsAdminTab({
         <Field>
           <label>Media Assets JSON</label>
           <TextInput
+            aria-label="New season media assets JSON"
             value={seasonForm.mediaAssets}
             onChange={(e: any) =>
               setSeasonForm((f) => ({ ...f, mediaAssets: e.target.value }))
@@ -351,11 +384,11 @@ export function SeasonsAdminTab({
             multiline
             fullWidth
           />
-          <small>
+          <Hint>
             Example keys: adminPfp, banner, iconSet, introVideo, sponsorLogos.
-          </small>
+          </Hint>
         </Field>
-        <Button
+        <UiButton
           onClick={() => {
             const mediaAssets = parseJsonObjectInput(
               seasonForm.mediaAssets,
@@ -371,9 +404,9 @@ export function SeasonsAdminTab({
           }}
           disabled={createSeasonMutation.isPending}
         >
-          Create Season
-        </Button>
-      </GroupBox>
+          Create season
+        </UiButton>
+      </UiPanel>
     </>
   );
 }

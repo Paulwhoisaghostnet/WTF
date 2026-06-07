@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Button,
   GroupBox,
   TextInput,
   Select,
@@ -10,6 +9,7 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UiButton, UiNotice } from "../components/wtfos-ui";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
 import { executeSwap, type SwapParams } from "../lib/tezos/dex";
@@ -26,6 +26,8 @@ import {
 const SwapContainer = styled.div`
   max-width: 420px;
   margin: 0 auto;
+  display: grid;
+  gap: var(--wtf-space-2, 8px);
 `;
 
 const TokenRow = styled.div`
@@ -46,49 +48,65 @@ const TokenIcon = styled.img`
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 1px solid #808080;
+  border: 1px solid var(--wtf-app-border, #808080);
 `;
 
 const InfoRow = styled.div`
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
-  padding: 2px 0;
-`;
+  gap: var(--wtf-space-2, 8px);
+  font-size: var(--wtf-type-caption, 13px);
+  padding: 3px 0;
+  color: var(--wtf-app-text, #111);
 
-const StatusText = styled.p<{ $error?: boolean }>`
-  font-size: 12px;
-  color: ${(p) => (p.$error ? "red" : "#000080")};
-  margin: 6px 0;
-`;
-
-const SwapArrow = styled.div`
-  display: flex;
-  justify-content: center;
-  padding: 4px 0;
-  font-size: 18px;
-  cursor: pointer;
-  user-select: none;
-
-  &:hover {
-    color: #000080;
+  span:last-child {
+    font-weight: 700;
+    text-align: right;
   }
 `;
 
-const HealthBanner = styled.div<{ $ok: boolean }>`
-  font-size: 10px;
-  padding: 4px 8px;
-  margin-bottom: 8px;
-  background: ${(p) => (p.$ok ? "#e8ffe8" : "#ffe8e8")};
-  border: 1px solid ${(p) => (p.$ok ? "#008000" : "#cc0000")};
+const StatusText = styled.p<{ $error?: boolean }>`
+  font-size: var(--wtf-type-body, 14px);
+  line-height: 1.4;
+  color: ${(p) =>
+    p.$error ? "var(--wtf-app-danger, #b42318)" : "var(--wtf-app-info, #175cd3)"};
+  margin: 6px 0;
+`;
+
+const SwapArrow = styled.button`
+  display: inline-flex;
+  justify-self: center;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  color: var(--wtf-app-text, #111);
+  background: var(--wtf-app-control-bg, #ffffff);
+  border: 1px solid var(--wtf-app-control-border, #808080);
+
+  &:hover {
+    color: var(--wtf-app-link, #000080);
+    border-color: var(--wtf-app-link, #000080);
+  }
 `;
 
 const RouteLink = styled.a`
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: stretch;
+  min-height: 32px;
+  padding: 4px 6px;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   margin-top: 6px;
-  color: #000080;
+  color: var(--wtf-app-link, #000080);
   text-decoration: underline;
 `;
 
@@ -313,17 +331,17 @@ export function Swap() {
     <AppWindow title="Token Swap">
       <SwapContainer>
         {health && (
-          <HealthBanner $ok={health.spicyswap}>
+          <UiNotice tone={health.spicyswap ? "success" : "danger"}>
             {health.spicyswap
               ? `SpicySwap online — ${health.activePools} active pools, ${health.activeTokens} tokens`
               : "SpicySwap API unreachable — swap may not work"}
-          </HealthBanner>
+          </UiNotice>
         )}
 
         {loading ? (
           <div style={{ textAlign: "center", padding: 40 }}>
             <Hourglass size={32} />
-            <p style={{ fontSize: 12, marginTop: 8 }}>Loading pools...</p>
+            <p style={{ fontSize: "var(--wtf-type-body, 14px)", marginTop: 8 }}>Loading pools...</p>
           </div>
         ) : (
           <>
@@ -351,11 +369,11 @@ export function Swap() {
                     }}
                   />
                 )}
-                <span style={{ fontWeight: "bold", fontSize: 12 }}>
+                <span style={{ fontWeight: "bold", fontSize: "var(--wtf-type-body, 14px)" }}>
                   {fromToken.symbol}
                 </span>
                 {fromToken.totalLiquidityXtz > 0 && (
-                  <span style={{ fontSize: 10, color: "#666" }}>
+                  <span data-wtf-caption="true">
                     Liq: {fromToken.totalLiquidityXtz.toFixed(0)} XTZ
                   </span>
                 )}
@@ -369,7 +387,13 @@ export function Swap() {
               />
             </GroupBox>
 
-            <SwapArrow onClick={flipTokens} title="Swap direction">
+            <SwapArrow
+              type="button"
+              onClick={flipTokens}
+              title="Swap direction"
+              aria-label="Swap from and to tokens"
+              data-compact-control="true"
+            >
               &#8597;
             </SwapArrow>
 
@@ -397,11 +421,11 @@ export function Swap() {
                     }}
                   />
                 )}
-                <span style={{ fontWeight: "bold", fontSize: 12 }}>
+                <span style={{ fontWeight: "bold", fontSize: "var(--wtf-type-body, 14px)" }}>
                   {toToken.symbol}
                 </span>
                 {toToken.totalLiquidityXtz > 0 && (
-                  <span style={{ fontSize: 10, color: "#666" }}>
+                  <span data-wtf-caption="true">
                     Liq: {toToken.totalLiquidityXtz.toFixed(0)} XTZ
                   </span>
                 )}
@@ -426,14 +450,15 @@ export function Swap() {
             <GroupBox label="Slippage Tolerance">
               <div style={{ display: "flex", gap: 4 }}>
                 {[0.5, 1, 2, 5].map((s) => (
-                  <Button
+                  <UiButton
                     key={s}
                     size="sm"
                     active={slippage === s}
+                    uiVariant={slippage === s ? "primary" : "default"}
                     onClick={() => setSlippage(s)}
                   >
                     {s}%
-                  </Button>
+                  </UiButton>
                 ))}
               </div>
             </GroupBox>
@@ -451,7 +476,10 @@ export function Swap() {
                   <span>Price Impact</span>
                   <span
                     style={{
-                      color: swapCalc.impact > 5 ? "red" : "inherit",
+                      color:
+                        swapCalc.impact > 5
+                          ? "var(--wtf-app-danger, #b42318)"
+                          : "inherit",
                     }}
                   >
                     {swapCalc.impact.toFixed(2)}%
@@ -500,8 +528,9 @@ export function Swap() {
             {error && <StatusText $error>{error}</StatusText>}
             {status && <StatusText>{status}</StatusText>}
 
-            <Button
+            <UiButton
               fullWidth
+              uiVariant="primary"
               style={{ marginTop: 8 }}
               disabled={swapping || (!!address && (fromAmountNum <= 0 || !currentPool))}
               onClick={handleSwap}
@@ -517,7 +546,7 @@ export function Swap() {
               ) : (
                 "Swap via SpicySwap"
               )}
-            </Button>
+            </UiButton>
 
             <RouteLink
               href={build3RouteUrl(fromToken, toToken, fromAmountNum || undefined)}
@@ -529,12 +558,8 @@ export function Swap() {
             </RouteLink>
 
             <p
-              style={{
-                fontSize: 10,
-                color: "#808080",
-                marginTop: 8,
-                textAlign: "center",
-              }}
+              className="wtf-caption"
+              style={{ marginTop: 8, textAlign: "center" }}
             >
               Direct swap via SpicySwap. For larger trades, 3Route aggregates
               across SpicySwap, QuipuSwap, Plenty, Vortex, Sirius, and more

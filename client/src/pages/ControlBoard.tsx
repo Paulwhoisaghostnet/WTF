@@ -25,19 +25,23 @@ import { UserLink } from "../components/UserLink";
 const Stack = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--wtf-space-3, 12px);
+  min-width: 0;
 `;
 
 const Row = styled.div`
   display: flex;
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
+  min-width: 0;
 `;
 
 const Muted = styled.span`
-  color: #555;
-  font-size: 12px;
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 `;
 
 const ModalBackdrop = styled.div`
@@ -47,14 +51,15 @@ const ModalBackdrop = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: var(--wtf-z-modal, 1000);
 `;
 
 const ModalBody = styled.div`
-  background: #c3c3c3;
-  border: 2px solid #000;
-  box-shadow: 4px 4px 0 #000;
-  padding: 16px;
+  color: var(--wtf-app-text, #111);
+  background: var(--wtf-app-surface, #f4f4f4);
+  border: 1px solid var(--wtf-app-border, #808080);
+  box-shadow: 4px 4px 0 var(--wtf-app-border, #808080);
+  padding: var(--wtf-space-4, 16px);
   max-width: 420px;
   width: 92%;
 `;
@@ -316,6 +321,7 @@ export function ControlBoard() {
               }))
             }
             value={activeSeasonId ?? undefined}
+            aria-label="Control Board season"
             onChange={(opt) =>
               setSelectedSeasonId((opt as { value: number }).value)
             }
@@ -428,7 +434,7 @@ function CohortTab(props: {
               disabled={!props.canAct}
               onClick={() => props.onEliminate(c)}
             >
-              Eliminate
+              Eliminate contestant
             </Button>
           )}
         />
@@ -444,7 +450,7 @@ function CohortTab(props: {
               disabled={!props.canAct}
               onClick={() => props.onPromote(c.id)}
             >
-              Promote
+              Promote contestant
             </Button>
           )}
         />
@@ -543,6 +549,7 @@ function RoundTab(props: {
             label: `R${r.number} — ${r.name} (${r.status})`,
           }))}
           value={round?.id}
+          aria-label="Control Board round"
           onChange={(opt) =>
             props.setSelectedRoundId((opt as { value: number }).value)
           }
@@ -562,6 +569,7 @@ function RoundTab(props: {
                   label: k.label,
                 }))}
                 value={ruleKind}
+                aria-label="Elimination rule kind"
                 onChange={(opt) =>
                   setRuleKind((opt as { value: RuleKind }).value)
                 }
@@ -573,6 +581,7 @@ function RoundTab(props: {
                   <Muted>N:</Muted>
                   <TextInput
                     value={ruleN}
+                    aria-label="Elimination rule N"
                     onChange={(e) => setRuleN(e.target.value)}
                     style={{ width: 80 }}
                   />
@@ -594,13 +603,13 @@ function RoundTab(props: {
                 Save rule
               </Button>
               <Button onClick={() => props.onRunRule(round.id)}>
-                Run rule
+                Run elimination rule
               </Button>
             </Row>
             <Muted>
               "Save rule" persists the rule for this round.
               {" "}
-              "Run rule" drafts eliminations based on current data.
+              "Run elimination rule" drafts eliminations based on current data.
               {" "}
               Nothing is final until you confirm each row below.
             </Muted>
@@ -636,7 +645,7 @@ function RoundTab(props: {
                       <TableDataCell>{d.reason ?? "—"}</TableDataCell>
                       <TableDataCell>
                         <Button size="sm" onClick={() => props.onEliminate(d)}>
-                          Confirm…
+                          Confirm elimination
                         </Button>
                       </TableDataCell>
                     </TableRow>
@@ -698,7 +707,7 @@ function AuditTab(props: { feed: OperatorAction[] }) {
             <TableDataCell>
               <pre
                 style={{
-                  fontSize: 11,
+                  fontSize: 13,
                   margin: 0,
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-all",
@@ -789,6 +798,7 @@ function TicketsTab() {
             { value: "cancelled", label: "Cancelled" },
           ]}
           value={statusFilter}
+          aria-label="Calendar ticket queue status"
           onChange={(opt: any) => setStatusFilter(opt.value)}
           width={220}
         />
@@ -796,7 +806,7 @@ function TicketsTab() {
           onClick={() => syncMutation.mutate()}
           disabled={syncMutation.isPending}
         >
-          {syncMutation.isPending ? "Syncing…" : "Re-materialize calendar"}
+          {syncMutation.isPending ? "Syncing…" : "Re-materialize calendar queue"}
         </Button>
       </Row>
 
@@ -830,6 +840,7 @@ function TicketsTab() {
                 <div style={{ height: 6 }} />
                 <TextInput
                   value={reasonFor[t.id] ?? ""}
+                  aria-label={`Reviewer note for calendar ticket ${t.id}`}
                   onChange={(e: any) =>
                     setReasonFor((prev) => ({
                       ...prev,
@@ -851,7 +862,7 @@ function TicketsTab() {
                       })
                     }
                   >
-                    Approve & publish
+                    Approve and publish ticket
                   </Button>
                   <Button
                     onClick={() =>
@@ -862,7 +873,7 @@ function TicketsTab() {
                       })
                     }
                   >
-                    Request changes
+                    Request ticket changes
                   </Button>
                   <Button
                     onClick={() =>
@@ -873,7 +884,7 @@ function TicketsTab() {
                       })
                     }
                   >
-                    Reject
+                    Reject ticket
                   </Button>
                   <Button
                     onClick={() =>
@@ -884,7 +895,7 @@ function TicketsTab() {
                       })
                     }
                   >
-                    Cancel
+                    Cancel ticket
                   </Button>
                 </Row>
               </>
@@ -941,6 +952,7 @@ function EliminateModal(props: {
         </p>
         <TextInput
           value={typed}
+          aria-label="Contestant username confirmation"
           onChange={(e) => setTyped(e.target.value)}
           placeholder="Username…"
           autoFocus
@@ -951,6 +963,7 @@ function EliminateModal(props: {
           <Muted>Reason (optional)</Muted>
           <TextInput
             value={reason}
+            aria-label="Elimination reason"
             onChange={(e) => setReason(e.target.value)}
             placeholder="e.g. bottom of WTF standings"
             fullWidth
@@ -964,6 +977,7 @@ function EliminateModal(props: {
           </Muted>
           <TextInput
             value={overrideReason}
+            aria-label="Elimination override reason"
             onChange={(e) => setOverrideReason(e.target.value)}
             placeholder="Why override?"
             fullWidth
@@ -975,7 +989,7 @@ function EliminateModal(props: {
               marginTop: 8,
               color: "#900",
               fontWeight: "bold",
-              fontSize: 12,
+              fontSize: 13,
             }}
           >
             {props.error}
@@ -990,7 +1004,7 @@ function EliminateModal(props: {
           }}
         >
           <Button onClick={props.onCancel} disabled={props.submitting}>
-            Cancel
+            Cancel elimination
           </Button>
           <Button
             primary
@@ -1004,7 +1018,7 @@ function EliminateModal(props: {
               })
             }
           >
-            {props.submitting ? "Eliminating…" : "Confirm eliminate"}
+            {props.submitting ? "Eliminating…" : "Confirm elimination"}
           </Button>
         </div>
       </ModalBody>
@@ -1070,7 +1084,9 @@ function TestGameshowTab() {
                   ? "Re-run seeder (idempotent)"
                   : "Seed test gameshow"}
             </Button>
-            <Button onClick={() => statusQuery.refetch()}>Refresh</Button>
+            <Button onClick={() => statusQuery.refetch()}>
+              Refresh test gameshow status
+            </Button>
           </Row>
           {seedMutation.isError ? (
             <Muted>Seed failed: {String((seedMutation.error as Error).message)}</Muted>
@@ -1253,7 +1269,9 @@ function Season3Tab() {
                   ? "Re-run scaffold (idempotent)"
                   : "Scaffold Season 3"}
             </Button>
-            <Button onClick={() => statusQuery.refetch()}>Refresh</Button>
+            <Button onClick={() => statusQuery.refetch()}>
+              Refresh Season 3 status
+            </Button>
           </Row>
           {scaffoldMutation.isError ? (
             <Muted>

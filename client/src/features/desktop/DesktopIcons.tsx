@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useRef } from "react";
+import { type ReactNode, useCallback, useLayoutEffect, useRef } from "react";
 import { styled } from "styled-components";
 import {
   DESKTOP_APPS,
@@ -6,8 +6,8 @@ import {
   type DesktopAppKey,
 } from "@shared/types";
 
-export const ICON_W = 68;
-export const ICON_H = 66;
+export const ICON_W = 78;
+export const ICON_H = 76;
 
 const DESKTOP_APP_KEY_SET = new Set<string>(DESKTOP_APPS);
 const EXPERIMENTAL_DESKTOP_APP_SET = new Set<string>(EXPERIMENTAL_DESKTOP_APPS);
@@ -46,7 +46,7 @@ const WimDeskIcon = styled.div`
   background: linear-gradient(180deg, #fff4a2 0%, #ffc239 48%, #f15a3b 100%);
   color: #ffffff;
   font-weight: 900;
-  font-size: 8px;
+  font-size: 13px;
   line-height: 1;
   text-align: center;
   font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
@@ -82,14 +82,14 @@ const WimDeskIcon = styled.div`
 `;
 
 const ConsoleDeskIcon = styled.div`
-  width: 30px;
-  height: 22px;
+  width: 36px;
+  height: 26px;
   border: 2px solid #101010;
   background: linear-gradient(180deg, #2a2a50 0%, #1a1a3a 100%);
   color: #7b8fff;
   font-weight: 700;
-  font-size: 9px;
-  line-height: 18px;
+  font-size: 13px;
+  line-height: 22px;
   text-align: center;
   font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
   margin-bottom: 4px;
@@ -115,7 +115,7 @@ const ConsoleDeskIcon = styled.div`
 const MissionControlDeskIcon = styled(ConsoleDeskIcon)`
   background: linear-gradient(180deg, #f0f0f0 0%, #9fb7c8 100%);
   color: #101010;
-  font-size: 9px;
+  font-size: 13px;
 
   &::after {
     background: #f0f0f0;
@@ -125,7 +125,7 @@ const MissionControlDeskIcon = styled(ConsoleDeskIcon)`
 const CommandPaletteDeskIcon = styled(ConsoleDeskIcon)`
   background: linear-gradient(180deg, #fffff0 0%, #d0c38a 100%);
   color: #000080;
-  font-size: 8px;
+  font-size: 13px;
 
   &::after {
     background: #fffff0;
@@ -135,7 +135,7 @@ const CommandPaletteDeskIcon = styled(ConsoleDeskIcon)`
 const GameStudioDeskIcon = styled(ConsoleDeskIcon)`
   background: linear-gradient(180deg, #12352d 0%, #10141b 100%);
   color: #99ffe0;
-  font-size: 8px;
+  font-size: 13px;
 
   &::after {
     background: #12352d;
@@ -155,7 +155,7 @@ const CasinoDeskIcon = styled(ConsoleDeskIcon)`
   background:
     linear-gradient(180deg, #161616 0%, #06180f 100%);
   color: #ffd66b;
-  font-size: 11px;
+  font-size: 13px;
 
   &::after {
     background: #161616;
@@ -165,7 +165,7 @@ const CasinoDeskIcon = styled(ConsoleDeskIcon)`
 const DuesDeskIcon = styled(ConsoleDeskIcon)`
   background: linear-gradient(180deg, #e9f6ff 0%, #7bbbd1 100%);
   color: #10242c;
-  font-size: 9px;
+  font-size: 13px;
 
   &::after {
     background: #e9f6ff;
@@ -173,14 +173,14 @@ const DuesDeskIcon = styled(ConsoleDeskIcon)`
 `;
 
 const TVDeskIcon = styled.div`
-  width: 30px;
-  height: 24px;
+  width: 36px;
+  height: 26px;
   border: 2px solid #101010;
   background: linear-gradient(180deg, #c8d0d8 0%, #9aa7b3 100%);
   color: #101010;
   font-weight: 700;
-  font-size: 8px;
-  line-height: 20px;
+  font-size: 13px;
+  line-height: 22px;
   text-align: center;
   font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
   margin-bottom: 4px;
@@ -217,7 +217,7 @@ const WtfIamDeskIcon = styled.div`
     linear-gradient(180deg, #ffef8a 0%, #f0b43c 52%, #d85f3d 53%, #b73428 100%);
   color: #101010;
   font-weight: 900;
-  font-size: 9px;
+  font-size: 13px;
   line-height: 26px;
   text-align: center;
   font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
@@ -259,7 +259,7 @@ const DickswordDeskIcon = styled.div`
   font-size: 27px;
   line-height: 32px;
   text-align: center;
-  font-family: "Arial Black", "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  font-family: var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
   margin-bottom: 0;
   position: relative;
   text-shadow: 1px 1px 0 #ffffff, -1px -1px 0 #7289da;
@@ -303,7 +303,7 @@ const DickswordDeskIcon = styled.div`
 const TelegramDeskIcon = styled(ConsoleDeskIcon)`
   background: linear-gradient(180deg, #ffffff 0%, #77c9f7 100%);
   color: #0a3250;
-  font-size: 9px;
+  font-size: 13px;
 
   &::after {
     background: #ffffff;
@@ -413,17 +413,17 @@ const IconGlyph = styled.div`
 `;
 
 const IconLabel = styled.div`
-  font-size: 11px;
+  font-size: var(--wtf-shell-font-size, 14px);
   color: #fff;
   text-align: center;
   line-height: 1.2;
   word-break: break-word;
-  max-width: 66px;
+  max-width: 76px;
   border-radius: var(--wtf-control-radius, 0);
   padding: 1px 2px;
 
   html[data-wtf-appearance-style="wtf-xp"] & {
-    font-size: 12px;
+    font-size: var(--wtf-shell-font-size, 14px);
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.72);
   }
 
@@ -494,6 +494,7 @@ export function DraggableIcon({
   onDragStart,
   onDragEnd,
 }: DraggableIconProps) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef({
     dragging: false,
     moved: false,
@@ -507,6 +508,18 @@ export function DraggableIcon({
     currentX: position.x,
     currentY: position.y,
   });
+
+  const clearDragTransform = useCallback(() => {
+    const node = rootRef.current;
+    if (!node) return;
+    node.style.transform = "";
+    node.style.willChange = "";
+    node.style.zIndex = "";
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!dragRef.current.dragging) clearDragTransform();
+  }, [clearDragTransform, position.x, position.y]);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -530,6 +543,11 @@ export function DraggableIcon({
       dr.vy = 0;
       dr.currentX = position.x;
       dr.currentY = position.y;
+      const node = rootRef.current;
+      if (node) {
+        node.style.willChange = "transform";
+        node.style.zIndex = "50";
+      }
       onDragStart(def.key);
     },
     [def, onDragStart, onShiftClick, position.x, position.y]
@@ -556,9 +574,14 @@ export function DraggableIcon({
       );
       dr.currentX = nextPosition.x;
       dr.currentY = nextPosition.y;
-      onMove(def.key, nextPosition);
+      const node = rootRef.current;
+      if (node) {
+        const dx = nextPosition.x - position.x;
+        const dy = nextPosition.y - position.y;
+        node.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+      }
     },
-    [bounds, def.key, onMove]
+    [bounds, position.x, position.y]
   );
 
   const handlePointerUp = useCallback(
@@ -569,11 +592,12 @@ export function DraggableIcon({
       if (dr.moved) {
         onRelease(def.key, { x: dr.currentX, y: dr.currentY }, { x: dr.vx, y: dr.vy });
       } else {
+        clearDragTransform();
         onOpen?.();
       }
       onDragEnd(def.key);
     },
-    [def.key, onDragEnd, onOpen, onRelease]
+    [clearDragTransform, def.key, onDragEnd, onOpen, onRelease]
   );
 
   const handleDblClick = useCallback(
@@ -586,6 +610,7 @@ export function DraggableIcon({
 
   return (
     <DesktopIconRoot
+      ref={rootRef}
       data-desktop-icon-root="true"
       data-desktop-icon-key={def.key}
       data-desktop-icon-experimental={def.experimental ? "true" : undefined}

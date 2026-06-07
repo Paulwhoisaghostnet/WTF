@@ -50,9 +50,14 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-215 | Verified | Codex Skywire new OAuth outage repair | 2026-06-06 | Skywire / AT OAuth new-session connect | P0 | 17 | 1 | 4 | 5 | 3 | New Skywire OAuth connections to Bluesky fail while existing sessions continue working; fixed with durable app+SDK OAuth state persistence and verified live on wtfos.app |
 | WTF-BB-216 | Verified | Codex Skywire platform actor OAuth repair | 2026-06-06 | Skywire / AT OAuth platform actor intent | P0 | 16 | 1 | 3 | 5 | 3 | Skywire permission picker silently refused intentional `wtfgameshow.bsky.social` OAuth before browser navigation; fixed with explicit platform actor intent, callback identity checks, and verified by `npx tsx --test server/features/atproto/skywire-policy.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` |
 | WTF-BB-217 | Verified | Codex Rat Race tz2at capability pass | 2026-06-06 | Rat Race / tz2at rolling replay scan | P1 | 12 | 7 | 3 | 5 | 0 | Rat Race still auto-refreshes and default-scans only a tiny slice of tz2at replay, making the rolling stream look like it can only find the same few tokens; fixed with manual reload policy, smaller replay chunks, split retry recovery, scan coverage diagnostics, and verified by focused tests, TypeScript, inventory coverage/E2E, plus live tz2at replay probes |
-| WTF-BB-215 | Verified | Codex Skywire new OAuth outage repair | 2026-06-06 | Skywire / AT OAuth new-session connect | P0 | 17 | 1 | 4 | 5 | 3 | New Skywire OAuth connections to Bluesky fail while existing sessions continue working; fixed with durable app+SDK OAuth state persistence and verified live on wtfos.app |
+| WTF-BB-218 | Blocked | Codex Tezos marketplace V2 pass | 2026-06-06 | Tezos / WTF marketplace contract | P0 | 19 | 1 | 4 | 5 | 5 | Mainnet WTF marketplace accepted a hidden multi-edition offer quantity that the accept flow can fail to surface; local V2/app guardrails are ready and V2 is Kiln-shadownet proven, but mainnet legacy pause still needs the admin signer |
+| WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
+| WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
+| WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
+| WTF-BB-222 | Verified | Codex full-send verification repair | 2026-06-07 | Public leaderboard / profile alias hydration | P1 | 10 | 10 | 2 | 4 | 0 | Public leaderboard profile alias hydration could spend the live-puppet public data budget during TzKT/TzProfiles retries; fixed by capping/timeboxing optional enrichment and verified by the full live puppet suite |
 | WTF-BB-214 | Verified | Codex auth rate-limit bucket repair | 2026-06-06 | Auth / Postgres rate limits | P0 | 14 | 3 | 2 | 5 | 2 | Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login |
 | WTF-BB-207 | Fixed | Codex Skywire canonical-domain OAuth repair | 2026-06-04 | Platform domains / AT OAuth identity boundary | P0 | 16 | 1 | 3 | 5 | 5 | Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity |
 | WTF-BB-208 | Fixed | Codex Skywire chat OAuth session persistence repair | 2026-06-04 | Skywire / AT OAuth session persistence | P0 | 16 | 1 | 3 | 5 | 5 | Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect |
@@ -263,37 +268,6 @@ Priority labels:
 
 ## Issue Details
 
-### WTF-BB-217 - Rat Race still auto-refreshes and default-scans only a tiny slice of tz2at replay
-
-- Category: Rat Race / tz2at rolling replay scan
-- Status: Verified
-- Owner/Session: Codex Rat Race tz2at capability pass
-- Score: C3 + F5 + S0 + P1(4) = 12
-- Evidence:
-  - User report on 2026-06-06: Rat Race should not auto-reload and repeatedly finds the same small set of tokens even while tz2at is healthy and listing/sale signals are flowing.
-  - `client/src/pages/RatRace.tsx` still configures React Query with a 45 second `refetchInterval`, so the rolling stream is polled without explicit user intent.
-  - `server/features/rat-race/tz2at-atproto.ts` defaults `RAT_RACE_TZ2AT_MAX_REPLAY_PAGES` to 10, so a 7-day filter can scan only about 5,000 recent Tezos blocks unless operators override the environment.
-- Why it matters:
-  - Rat Race is supposed to test tz2at's rolling market stream as the canonical source. Under-scanning makes tz2at look sparse and pushes attention back toward Objkt as if Objkt were the canonical sales source.
-- Likely correction direction:
-  - Remove client auto-refresh; require filter changes or Scan to reload.
-  - Increase the default replay scan budget in a bounded, window-aware way and expose scan coverage in diagnostics so users can tell what tz2at supplied versus what Objkt/TzKT supplemented.
-- Verification idea:
-  - Unit-test the default multi-day scan budget and manual-refresh policy.
-  - Run focused Rat Race tests, TypeScript check, inventory coverage, and a live tz2at scan to identify remaining supplement needs.
-- Correction:
-  - Removed the Rat Race React Query `refetchInterval`; scans now happen on initial load, filter changes, or explicit Scan.
-  - Changed replay defaults from 500-block/10-page sample behavior to 100-block/60-request manual scans, with page-limit diagnostics when a requested multi-day window is only partially covered.
-  - Added per-page replay scan coverage diagnostics, page-cap/error counters, and split retry recovery that retries a failed 100-block replay page as 25-block subranges before falling back to partial diagnostics.
-  - Kept tz2at replay as the canonical sale/listing signal source; Objkt remains a supplement for token metadata, edition supply, mint timestamp, active public tez listing purchase keys, and Objkt pk-to-FA2 token id normalization. TzKT was not needed.
-- Verification:
-  - Passed `DATABASE_URL=postgres://localhost/wtf_test node --test --import tsx server/features/rat-race/tz2at-atproto.test.ts server/features/rat-race/hot-tokens.test.ts client/src/pages/RatRace.manual-refresh-policy.test.ts`.
-  - Passed `npm run check -- --pretty false`.
-  - Passed `npm run test:e2e:inventory:coverage`.
-  - Passed `npm run test:e2e:inventory` with 291/291 tests.
-  - Live default Rat Race scan against `https://tz2at.xyz` on 2026-06-06 returned source `tz2at-replay`, fresh health, 297 tz2at candidate rows, 3 ranked rows, Objkt supplement only, 0 TzKT use, and diagnostics showing only about 9.5 hours of the requested 168-hour window were practically scanned because mixed `/replay` pages still hit the 5,000-event cap.
-  - Live probes confirmed `/replay` currently ignores `collection`, `type`, and `eventType` filters for market collect records, and dense 5-block replay ranges can still hit the 5,000-event cap; Rat Race therefore cannot truthfully claim complete 7-day market coverage from the current unfiltered replay endpoint.
-
 ### WTF-BB-215 - New Skywire OAuth connections to Bluesky fail while existing sessions continue working
 
 - Category: Skywire / AT OAuth new-session connect
@@ -322,6 +296,72 @@ Priority labels:
   - Passed GitHub `Quality Gates` run `27069296207`.
   - Live `https://wtfos.app/api/health` returned `ok` with `commitRef: f5bb22e`, database `ok`, and jobs `ok`.
   - Live `https://wtfos.app/.well-known/oauth-client-metadata.json` returned canonical `https://wtfos.app` client metadata and callback URL.
+
+### WTF-BB-216 - Skywire permission picker silently refused intentional platform actor OAuth
+
+- Category: Skywire / AT OAuth platform actor intent
+- Status: Verified
+- Owner/Session: Codex Skywire platform actor OAuth repair
+- Score: C3 + F5 + S3 + P0(5) = 16
+- Evidence:
+  - User report on 2026-06-06: intentionally reconnecting the official WTF Gameshow Bluesky actor closed the Skywire permission modal but did not navigate to OAuth.
+  - The frontend blocked `wtfgameshow.bsky.social` before `window.location.assign`, so the failure felt like a dead control instead of a guarded identity boundary.
+- Correction:
+  - Reserved/platform actor OAuth now requires explicit confirmation and records that intent in durable OAuth state.
+  - Callback handling still rejects returned-handle drift and chat-upgrade DID drift before persisting account rows or encrypted token material.
+- Verification:
+  - Passed `npx tsx --test server/features/atproto/skywire-policy.test.ts`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run test:e2e:inventory`.
+
+### WTF-BB-217 - Rat Race still auto-refreshes and default-scans only a tiny slice of tz2at replay
+
+- Category: Rat Race / tz2at rolling replay scan
+- Status: Verified
+- Owner/Session: Codex Rat Race tz2at capability pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report on 2026-06-06: Rat Race should not auto-reload and repeatedly found the same small set of tokens even while tz2at was healthy and listing/sale signals were flowing.
+  - `client/src/pages/RatRace.tsx` had a 45 second React Query `refetchInterval`.
+  - `server/features/rat-race/tz2at-atproto.ts` defaulted `RAT_RACE_TZ2AT_MAX_REPLAY_PAGES` to 10, so a 7-day filter could scan only about 5,000 recent Tezos blocks unless operators overrode the environment.
+- Correction:
+  - Removed the Rat Race React Query `refetchInterval`; scans now happen on initial load, filter changes, or explicit Scan.
+  - Changed replay defaults from broad 500-block/10-page samples to smaller bounded manual scans, with page-limit diagnostics when the requested multi-day window is only partially covered.
+  - Added per-page replay scan coverage diagnostics, page-cap/error counters, and split retry recovery that retries failed replay pages as smaller subranges before falling back to partial diagnostics.
+  - Kept tz2at replay as the canonical sale/listing signal source. Objkt remains a supplement for metadata, supply, mint timestamp, active public tez listing purchase keys, and pk-to-FA2 token id normalization.
+- Verification:
+  - Passed `DATABASE_URL=postgres://localhost/wtf_test node --test --import tsx server/features/rat-race/tz2at-atproto.test.ts server/features/rat-race/hot-tokens.test.ts client/src/pages/RatRace.manual-refresh-policy.test.ts`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run test:e2e:inventory` with 291/291 tests.
+  - Live default Rat Race scan against `https://tz2at.xyz` on 2026-06-06 returned source `tz2at-replay`, fresh health, 297 tz2at candidate rows, 3 ranked rows, Objkt supplement only, 0 TzKT use, and diagnostics showing only about 9.5 hours of the requested 168-hour window were practically scanned because mixed `/replay` pages still hit the 5,000-event cap.
+
+### WTF-BB-218 - Mainnet WTF marketplace accepted a hidden multi-edition offer quantity that the accept flow can fail to surface
+
+- Category: Tezos / WTF marketplace contract
+- Status: Blocked
+- Owner/Session: Codex Tezos marketplace V2 pass
+- Score: C4 + F5 + S5 + P0(5) = 19
+- Evidence:
+  - Mainnet marketplace `KT1Jt6gU4fS5UYHdhsYyr2EfpBJtXZLrPPfj` is unpaused and has an active offer for token `KT1HErfW6XogrdKHrHFhXn3HWC1nFhiYivch:2` with `token_amount = 9990000` and `amount_wtf = 110000000`.
+  - TzKT operation `ootk9zeKhYdDgyTyo9crU97sVfnXtJ86ek9PUtZM42KwwyYYJVJ` shows the deployed contract accepted `place_offer` params with `token_amount: "9990000"`.
+  - The deployed entrypoint set exposes old-generation marketplace controls (`set_admin` and no `propose_admin`/`accept_admin`/admin offer cancel), while source `WTFMarketplaceV1_2.py` contains the later single-edition guard and admin-cancel improvements that are not deployed at this address.
+- Why it matters:
+  - The accept-offer transaction can transfer the stored FA2 quantity from the target owner to the offerer. If UI or backend copy only shows the token identity and WTF consideration, a holder can be asked to accept an offer whose hidden quantity is much larger than expected.
+  - The current stored offer would fail if the target owner does not own the recorded quantity, but the live contract accepted and preserved the dangerous state, and the same issue can reappear with a holder that does own enough editions.
+- Correction direction:
+  - Pause the live marketplace if operationally acceptable, deploy a fresh WTF-only Marketplace V2 through Kiln shadownet first, then only prepare mainnet rollout artifacts after the shadownet E2E passes.
+  - Until replacement is live, all accept-offer UI and server verification must fetch and display the stored `token_amount`, block dangerous quantities, and avoid implying that token identity alone is the accepted consideration.
+  - Local pass added Marketplace V2 SmartPy source/tests, Kiln shadownet deploy/E2E script using puppet wallets, legacy pause/status script, explicit quantity/term client/server guards, owner-scoped on-chain parsing, and inventory behavior registry updates.
+- Verification idea:
+  - Confirm the live contract storage/big-map row, verify the accept-offer preview renders and enforces quantity, and repeat with a test contract where the target owner owns enough editions to prove the guard blocks multi-edition offers before wallet signing.
+  - 2026-06-06 local verification: `npm run contract:test` passed; `npm run check -- --pretty false` passed; `npm run test:e2e:inventory:coverage` passed; `npm run test:e2e:inventory` passed 291/291; `npx tsx --test scripts/kiln/e2e-assertions.test.ts` passed; `git diff --check` passed.
+  - 2026-06-06 live status: `npm run contract:marketplace:legacy-status` confirmed `paused=false` and one active `token_amount > 1` offer, but no transaction was sent because the status script defaults to dry run and no admin secret key was provided.
+  - 2026-06-06 Kiln auth follow-up: the WTF repo shell had no exported `KILN_API_TOKEN`, but the sibling Kiln service env contained `API_AUTH_TOKEN`; the deploy script now accepts either env name. With that token bridged, Kiln authenticated successfully.
+  - 2026-06-06 Kiln shadownet status: after Shadownet RPC recovered, authenticated `npm run contract:deploy:marketplace-v2:kiln` passed with Kiln WTF FA2 `KT1L5m2ohNDhbzSbRcitn1LaMmGf7jhDbVGj`, sample FA2 `KT1RoZavK1g2suSAMinjZ2Dnto1efkRApR2V`, and Marketplace V2 `KT1U9cZBQAZwTTnSrwdgBso5W25LqjgeSsYy`.
+  - 2026-06-06 Kiln E2E proof: `.agents/docs/archive/contracts/wtf-marketplace-v2/shadownet-e2e-report.md` records `PASSED`, 17/17 steps passed, 15/15 entrypoints covered, and storage/balance/big-map assertion kinds passed. The script now retries transient 429/5xx responses, uses Kiln's named shadownet FA2 token for WTF currency to avoid injector drift, and records shadownet-only direct deploy use when single-contract workflow clearance cannot prove the dependent FA2 marketplace path.
+  - 2026-06-06 final legacy recheck: `npm run contract:marketplace:legacy-status` still exits with dry-run warning `legacy marketplace is not paused`; no transaction was sent.
 
 ### WTF-BB-214 - Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login
 
@@ -4770,6 +4810,90 @@ Priority labels:
   - `Caddyfile` now serves `wtfos.app` on the same app proxy block as `wtfgameshow.app` and redirects `www.wtfos.app` to the canonical apex.
   - Live Hetzner origin probe now succeeds directly: `curl -Ivk --resolve wtfos.app:443:5.78.202.50 https://wtfos.app` returned `HTTP/2 200` with a Let's Encrypt origin cert for `wtfos.app`.
   - Public Cloudflare edge now succeeds: `curl -Ivs https://wtfos.app` returned `HTTP/2 200`, `curl -Ivs https://www.wtfos.app` returned `HTTP/2 301` to `https://wtfos.app/`, and `curl -fsS https://wtfos.app/api/health` returned `status:\"ok\"`.
+
+### WTF-BB-219 - Desktop icon dragging blinked all on-screen text during movement
+
+- Category: Desktop OS / icon drag rendering
+- Status: Verified
+- Owner/Session: Codex desktop icon drag paint repair
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - User reported that grabbing and moving a desktop icon caused all on-screen text to blink out until movement stopped.
+  - The drag path in `DraggableIcon` called `onMove` on every pointer movement, which updated parent desktop state and forced the desktop shell, route layer, taskbar, icons, and windows through rapid React rerenders while the icon was being dragged.
+- Why it matters:
+  - The desktop shell must feel stable under direct manipulation. If all text disappears during icon movement, WTF OS feels visually broken even when the layout data eventually persists correctly.
+- Likely correction direction:
+  - Fixed locally by moving the active drag visual into an imperative `translate3d(...)` transform on the dragged icon only, committing the final persisted position on release, and syncing the Matter physics body to the release position before fling velocity is applied.
+- Verification idea:
+  - Verify with a signed-in browser drag proof that visible text counts and computed text styles remain constant before, during, and after a held icon drag, then run the desktop interaction inventory coverage and smoke suites.
+- Verification notes (2026-06-07):
+  - Local Playwright drag proof captured before/during/after screenshots under `.impeccable/critique/repair-proofs/2026-06-07T01-15-30-467Z__desktop-icon-drag-text/` and reported visible text count `159` before, during, and after drag; only the dragged icon had a temporary transform during movement.
+  - `node .agents/skills/impeccable/scripts/detect.mjs --json client/src/features/desktop/DesktopIcons.tsx client/src/features/desktop/useDesktopPhysics.ts` returned `[]`.
+  - `npm run check`, `npm run build`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` passed.
+
+### WTF-BB-220 - Skywire vault created-token collections froze after successful data load
+
+- Category: Skywire / vault created-token layout
+- Status: Verified
+- Owner/Session: Codex Impeccable shared UI repair pass
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - The Impeccable repair pass widened app-content tokens and removed banned decorative patterns, but the full inventory suite then failed the Skywire vault behavior test at `tests/playwright/inventory/skywire-feed.spec.mjs`.
+  - Browser trace and direct `curl` confirmed `/api/skywire/tezos-vault?limit=24` returned a valid payload, while the UI stayed in the initial refreshing/empty state.
+  - A bounded Playwright probe showed the page stopped answering browser commands immediately after a populated created-token response. Empty vaults, wallet-only data, and owned-token-only data rendered; one created token was enough to reproduce the freeze.
+- Why it matters:
+  - A source-clean design pass is not enough if a high-value app freezes when real collection data arrives. Users need the vault to clearly distinguish empty, loaded, and grouped collection states.
+- Likely correction direction:
+  - Fixed locally by replacing the nested created-token `auto-fill` grid wrapper with a flex column group and changing vault token grids to `repeat(auto-fit, minmax(min(190px, 100%), 1fr))`, which keeps the responsive card layout bounded in nested containers.
+- Verification idea:
+  - Keep the Skywire vault behavior spec as the regression guard for owned tokens, created collection groups, and Bluesky share draft side effects.
+- Verification notes (2026-06-07):
+  - One-created-token Playwright probe now reports one rendered created group and one rendered created tile.
+  - Focused `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "vault separates owned tokens"` passed.
+  - `node .agents/skills/impeccable/scripts/detect.mjs --json` against the repaired design files returned `[]`.
+  - `npm run check`, `npm run build`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` passed; the full inventory suite reported `291 passed`.
+
+### WTF-BB-221 - tz2at ecosystem analytics outlived live-puppet workflow budget
+
+- Category: tz2at / ecosystem analytics reliability
+- Status: In Progress
+- Owner/Session: Codex full-send verification repair
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - `npm run test:e2e:live:puppets` passed 125 checks but timed out the `social post to reward automation loop` workflow after 180 seconds before route navigation.
+  - Manual API-probe timing on the local dev server showed the three `/api/tz2at/ecosystem/analytics` probes each exceeding a 15-second guard while neighboring probes returned quickly.
+  - The endpoint had per-fetch ATProto timeouts but no total request budget, so PDS inventory, replay, hydration, and entity-repo sampling could fan out long enough to block verification and the UI request.
+- Why it matters:
+  - External analytics should degrade into a clear timed-out state. A slow ATProto/PDS upstream must not make the social workflow or Tz2at UI look like the whole app froze.
+- Likely correction direction:
+  - Add an Express-level request budget for ecosystem analytics, pass an abort signal into upstream fetches and hydration, return `504` with the timeout budget when the total request expires, and let live inventory accept that bounded upstream state.
+- Verification idea:
+  - Rerun the focused ecosystem analytics probes, the `social post to reward automation loop` live puppet workflow, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and the full live puppet suite before full-send deploy.
+- Verification notes (2026-06-07):
+  - Local authenticated probes for the three ecosystem analytics URLs now return explicit `504` timeout payloads in roughly 12 seconds when ATProto sampling misses the route budget.
+  - Focused live puppet workflow `domain workflow with puppet: social post to reward automation loop` passed in 1.1 minutes.
+  - `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, `npm run test:e2e:inventory`, and `npm run test:e2e:live:puppets` passed after the fix; the full live suite reported `126 passed`.
+
+### WTF-BB-222 - public leaderboard profile alias hydration spent the public-data budget
+
+- Category: Public leaderboard / profile alias hydration
+- Status: In Progress
+- Owner/Session: Codex full-send verification repair
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - The rerun full live puppet suite fixed the prior `social post to reward automation loop`, but the `public data APIs and MCP agent token lifecycle stay bounded` check then timed out after 90 seconds.
+  - Server logs during the failure showed repeated TzKT/TzProfiles retries while the public-data test was reading `/api/leaderboard?limit=100`.
+  - `/api/leaderboard` loaded token holders, then tried best-effort profile alias hydration for every unresolved holder without capping or timeboxing that optional enrichment.
+- Why it matters:
+  - The public leaderboard should remain available even when profile providers are slow or rate-limited. Alias enrichment is useful, but it must not block public data, MCP token verification, or the OS route sweep.
+- Likely correction direction:
+  - Cap the number of unresolved addresses sent through profile alias hydration, add a short route-local timeout for that optional pass, and return the leaderboard with holder aliases, Tezos domains, or app wallet links when profile aliases miss the budget.
+- Verification idea:
+  - Run the leaderboard wiring test, directly time `/api/leaderboard?limit=100` under the local server, rerun the focused `public data APIs and MCP agent token lifecycle stay bounded` live puppet check, then rerun the full live puppet suite.
+- Verification notes (2026-06-07):
+  - Focused live puppet check `public data APIs and MCP agent token lifecycle stay bounded` passed in 40.5 seconds with TzProfiles retry noise still present.
+  - Focused leaderboard wiring test passed: `node --test --import tsx --test-name-pattern "keeps leaderboard views" server/routes-wiring.test.ts`.
+  - `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, `npm run test:e2e:inventory`, and `npm run test:e2e:live:puppets` passed after the fix; the full live suite reported `126 passed`.
 
 ## Backlog Intake Template
 

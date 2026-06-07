@@ -1,6 +1,8 @@
 import type { OwnedToken } from "../../components/OwnedTokensGallery";
 import type { ConsoleTokenProvenance } from "@shared/console-provenance";
 
+export type MarketplaceContractVersion = "legacy" | "v2";
+
 export interface LinkedWallet {
   id: number;
   walletAddress: string;
@@ -33,14 +35,17 @@ export interface OnChainListing {
   tokenContract: string;
   tokenId: string;
   tokenAmount: string;
+  remainingQuantity: string;
   tokenName: string | null;
   tokenThumbnail: string | null;
   metadata?: Record<string, any> | null;
   provenance?: ConsoleTokenProvenance | null;
   priceWtf: string;
+  unitPriceWtf: string;
   royaltyRecipient: string | null;
   royaltyBps: string;
   active: boolean;
+  contractVersion: MarketplaceContractVersion;
 }
 
 export interface OnChainAuctionShare {
@@ -56,25 +61,31 @@ export interface OnChainAuction {
   creatorDisplayName: string | null;
   tokenContract: string;
   tokenId: string;
+  quantity: string;
   tokenName: string | null;
   tokenThumbnail: string | null;
   metadata?: Record<string, any> | null;
   provenance?: ConsoleTokenProvenance | null;
   reserve: string;
+  reserveWtf: string;
   startTime: string;
   endTime: string;
   extensionTime: string;
   priceIncrement: string;
+  minIncrementWtf: string;
   currentPrice: string;
+  currentBidWtf: string;
   highestBidder: string;
   highestBidderUsername: string | null;
   highestBidderDisplayName: string | null;
   hasBid: boolean;
   shares: OnChainAuctionShare[];
   active: boolean;
+  contractVersion: MarketplaceContractVersion;
 }
 
 export interface OnChainOffer {
+  offerId: number | null;
   tokenContract: string;
   tokenId: string;
   tokenName: string | null;
@@ -91,10 +102,20 @@ export interface OnChainOffer {
   targetOwnerDisplayName: string | null;
   tokenAmount: string;
   amountWtf: string;
+  unitPriceWtf: string;
+  totalWtf: string;
+  contractVersion: MarketplaceContractVersion;
 }
 
 export interface OnChainState {
   contractAddress: string;
+  legacyContractAddress: string | null;
+  contractVersion: MarketplaceContractVersion;
+  acceptancePolicy?: {
+    legacyAcceptsRequireTokenAmountOne?: boolean;
+    acceptsBlockedWhenQuantityMissing?: boolean;
+    expectedTermsRequired?: boolean;
+  };
   admin: string;
   paused: boolean;
   listings: OnChainListing[];
@@ -125,16 +146,24 @@ export interface TradeBoardItem {
   collectionName?: string | null;
   provenance?: ConsoleTokenProvenance | null;
   activeOffer: {
+    offerId: number | null;
     tokenContract: string;
     tokenId: string;
     offerer: string;
     tokenAmount: string;
     amountWtf: string;
+    unitPriceWtf: string;
+    totalWtf: string;
     targetOwner: string;
+    contractVersion: MarketplaceContractVersion;
   } | null;
 }
 
 export interface TradeBoardResponse {
+  contractAddress?: string;
+  legacyContractAddress?: string | null;
+  contractVersion?: MarketplaceContractVersion;
+  acceptancePolicy?: OnChainState["acceptancePolicy"];
   items: TradeBoardItem[];
   pagination: {
     limit: number;
@@ -188,10 +217,18 @@ export type CreateFormState = {
 };
 
 export type PendingOfferAccept = {
+  offerId: number | null;
   tokenContract: string;
   tokenId: string;
   listed: boolean;
   quantity: number;
+  unitPriceWtf: string;
+  totalWtf: string;
+  targetOwner: string;
+  offerer: string;
+  contractVersion: MarketplaceContractVersion;
+  legacyContractAddress?: string | null;
+  tokenName?: string | null;
 } | null;
 
 export type DetailToken = OwnedToken | null;

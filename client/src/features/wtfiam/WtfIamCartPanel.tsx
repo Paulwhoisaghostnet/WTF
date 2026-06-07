@@ -27,7 +27,7 @@ const CartRows = styled.div`
   flex-direction: column;
   gap: 6px;
   min-height: 78px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const CartRow = styled.div`
@@ -55,14 +55,14 @@ const Totals = styled.div`
   border-top: 1px solid #808080;
   display: grid;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const StatusLine = styled.div<{ $error?: boolean }>`
   margin-top: 8px;
   min-height: 18px;
   color: ${(p) => (p.$error ? "#8a1a1a" : "#1f4d22")};
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.25;
 `;
 

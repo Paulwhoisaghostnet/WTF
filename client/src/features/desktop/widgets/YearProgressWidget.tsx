@@ -11,7 +11,7 @@ const BarWrap = styled.div`
 const BarLabel = styled.div`
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   margin-bottom: 2px;
   color: #444;
 `;
@@ -30,9 +30,11 @@ const BarTrack = styled.div`
 
 const BarFill = styled.div<{ $pct: number; $color: string }>`
   height: 100%;
-  width: ${({ $pct }) => `${$pct}%`};
+  width: 100%;
   background: ${({ $color }) => $color};
-  transition: width 0.6s ease;
+  transform: scaleX(${({ $pct }) => Math.max(0, Math.min(100, $pct)) / 100});
+  transform-origin: left center;
+  transition: transform 0.6s ease;
 `;
 
 const SeasonEmoji = styled.span`
@@ -43,7 +45,7 @@ const SeasonEmoji = styled.span`
 const CountdownRow = styled.div`
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #555;
   margin-top: 3px;
 `;

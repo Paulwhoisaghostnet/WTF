@@ -95,6 +95,7 @@ const SideBar = styled.div`
 
 const SideBarText = styled.span`
   color: white;
+  font-family: var(--wtf-brand-font, var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif));
   font-weight: bold;
   font-size: 16px;
   writing-mode: vertical-rl;
@@ -138,17 +139,23 @@ const SearchPanel = styled.div`
 
 const SearchInput = styled.input`
   width: 100%;
-  height: 28px;
-  min-height: 28px !important;
+  height: 32px;
+  min-height: 32px !important;
   padding: 3px 7px;
   border: 2px inset #ffffff;
   background: #ffffff;
   color: #111111;
+  font-family: var(--wtf-ui-font, var(--wtf-shell-font, inherit));
   font-size: 12px;
   border-radius: var(--wtf-control-radius, 0);
 
   &::placeholder {
     color: #606060;
+  }
+
+  ${MOBILE} {
+    height: 44px;
+    min-height: 44px !important;
   }
 `;
 
@@ -163,7 +170,7 @@ const MenuHint = styled.div`
   border-top: 1px solid #808080;
   box-shadow: inset 0 1px 0 #ffffff;
   color: #404040;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.25;
 
   html[data-wtf-appearance-style="wtf-zine"] & {
@@ -180,6 +187,7 @@ const ItemRow = styled(MenuListItem)<{ $disabled?: boolean }>`
   align-items: center;
   gap: 6px;
   position: relative;
+  font-family: var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
   color: ${(p) => (p.$disabled ? "#808080" : "inherit")};
   text-shadow: ${(p) => (p.$disabled ? "1px 1px 0 #ffffff" : "inherit")};
   cursor: ${(p) => (p.$disabled ? "default" : "pointer")};
@@ -221,7 +229,7 @@ const ItemRow = styled(MenuListItem)<{ $disabled?: boolean }>`
       : ""}
 
   ${MOBILE} {
-    min-height: 40px;
+    min-height: 44px;
     font-size: 14px;
     padding: 8px 12px;
   }
@@ -264,7 +272,7 @@ const ItemLabel = styled.span`
 `;
 
 const SubArrow = styled.span`
-  font-size: 10px;
+  font-size: 11px;
   color: #000;
   margin-left: auto;
   flex-shrink: 0;
@@ -297,7 +305,8 @@ const SubMenuFlyout = styled(MenuList)`
   ${MOBILE} {
     position: static;
     box-shadow: none;
-    border-left: 3px solid #000080;
+    border: 1px solid var(--wtf-app-border, #000080);
+    box-shadow: inset 0 2px 0 var(--wtf-highlight-color, #000080);
     margin-left: 8px;
     margin-bottom: 2px;
     min-width: 0;

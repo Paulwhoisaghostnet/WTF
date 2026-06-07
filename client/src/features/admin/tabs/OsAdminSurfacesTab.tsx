@@ -1,7 +1,8 @@
-import { Button, GroupBox, Table, TableBody, TableDataCell, TableHead, TableHeadCell, TableRow } from "react95";
+import { Table, TableBody, TableDataCell, TableHead, TableHeadCell, TableRow } from "react95";
 import styled from "styled-components";
 import { DESKTOP_APP_LABELS } from "@shared/types";
 import type { DesktopAppKey } from "@shared/types";
+import { UiButton, UiPanel } from "../../../components/wtfos-ui";
 import { useWindowManager } from "../../../lib/window-context";
 import {
   ALL_ADMIN_SURFACES,
@@ -22,7 +23,7 @@ type OsAdminSurfacesTabProps = {
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
 `;
@@ -35,9 +36,23 @@ const SurfaceSummary = styled.div`
 `;
 
 const SummaryCell = styled.div`
-  border: 2px inset #fff;
-  background: #efefef;
-  padding: 8px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  padding: var(--wtf-space-2, 8px);
+`;
+
+const Intro = styled.p`
+  margin: 0 0 var(--wtf-space-2, 8px);
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
+`;
+
+const MetaLine = styled.div`
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 `;
 
 function surfaceRoute(surface: (typeof ALL_ADMIN_SURFACES)[number]) {
@@ -59,11 +74,11 @@ export function OsAdminSurfacesTab({
   return (
     <>
       <h3>WTF OS Admin Surfaces</h3>
-      <p style={{ marginBottom: 8, fontSize: 12, color: "#444" }}>
+      <Intro>
         Strict-admin registry for every WTF OS app, tool, public surface, desktop item,
         and operator screen. Native app windows use this same registry for their local
         Admin settings panel.
-      </p>
+      </Intro>
 
       <SurfaceSummary>
         {Object.entries(domains).map(([domain, surfaces]) => (
@@ -74,7 +89,7 @@ export function OsAdminSurfacesTab({
         ))}
       </SurfaceSummary>
 
-      <GroupBox label="Surface Coverage">
+      <UiPanel title="Surface coverage" compact>
         <Table>
           <TableHead>
             <TableRow>
@@ -96,13 +111,13 @@ export function OsAdminSurfacesTab({
                 <TableRow key={surface.id}>
                   <TableDataCell>
                     <strong>{surface.label}</strong>
-                    <div style={{ fontSize: 11 }}>{surface.kind}</div>
-                    <div style={{ fontSize: 11 }}>{surface.routePatterns.join(", ")}</div>
+                    <MetaLine>{surface.kind}</MetaLine>
+                    <MetaLine>{surface.routePatterns.join(", ")}</MetaLine>
                   </TableDataCell>
                   <TableDataCell>
                     {surface.domain}
-                    <div style={{ fontSize: 11 }}>{surface.subdomain}</div>
-                    <div style={{ fontSize: 11 }}>{doctrine.label}</div>
+                    <MetaLine>{surface.subdomain}</MetaLine>
+                    <MetaLine>{doctrine.label}</MetaLine>
                   </TableDataCell>
                   <TableDataCell style={{ maxWidth: 260 }}>
                     {surface.nativeSettings.join(", ")}
@@ -113,16 +128,16 @@ export function OsAdminSurfacesTab({
                   <TableDataCell>
                     <ActionRow>
                       {route && (
-                        <Button size="sm" onClick={() => wm.openPage(route)}>
-                          Open
-                        </Button>
+                        <UiButton compact onClick={() => wm.openPage(route)}>
+                          Open {surface.label}
+                        </UiButton>
                       )}
-                      <Button size="sm" onClick={() => wm.openPage("/admin")}>
-                        Admin
-                      </Button>
+                      <UiButton compact onClick={() => wm.openPage("/admin")}>
+                        Open Admin Panel
+                      </UiButton>
                       {surface.desktopAppKey && enabled !== undefined && (
-                        <Button
-                          size="sm"
+                        <UiButton
+                          compact
                           title={`${DESKTOP_APP_LABELS[surface.desktopAppKey]} launchers are ${enabled ? "shown" : "hidden"}`}
                           disabled={updateDesktopAppMutation.isPending}
                           onClick={() =>
@@ -132,8 +147,8 @@ export function OsAdminSurfacesTab({
                             })
                           }
                         >
-                          {enabled ? "Hide" : "Show"} launchers
-                        </Button>
+                          {enabled ? "Hide launchers" : "Show launchers"}
+                        </UiButton>
                       )}
                     </ActionRow>
                   </TableDataCell>
@@ -142,7 +157,7 @@ export function OsAdminSurfacesTab({
             })}
           </TableBody>
         </Table>
-      </GroupBox>
+      </UiPanel>
     </>
   );
 }

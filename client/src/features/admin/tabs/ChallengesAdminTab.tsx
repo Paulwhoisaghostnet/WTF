@@ -1,7 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
 import {
-  Button,
-  GroupBox,
   TextInput,
   Select,
   Table,
@@ -13,6 +11,7 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { UserLink } from "../../../components/UserLink";
+import { UiButton, UiPanel } from "../../../components/wtfos-ui";
 import type {
   EntityUpdatePayload,
   GradeSubmissionPayload,
@@ -22,22 +21,50 @@ import type {
 const Field = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: var(--wtf-space-1, 4px);
+  margin-bottom: var(--wtf-space-2, 8px);
+
+  label {
+    color: var(--wtf-app-text, #111);
+    font-size: var(--wtf-type-caption, 13px);
+    font-weight: 700;
+    line-height: 1.3;
+  }
 `;
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
 `;
 
-const SubSection = styled.div`
-  margin-top: 12px;
-  padding: 8px;
-  border: 1px solid #888;
-  background: #fff;
+const PanelStack = styled.div`
+  display: grid;
+  gap: var(--wtf-space-3, 12px);
+  margin-top: var(--wtf-space-3, 12px);
+`;
+
+const TableWrap = styled.div`
+  min-width: 0;
+  overflow-x: auto;
+`;
+
+const TruncateText = styled.span`
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const Hint = styled.small`
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
 const CHALLENGE_STATUS_OPTIONS = [
@@ -127,81 +154,83 @@ export function ChallengesAdminTab({
     <>
       <h3>Challenges</h3>
 
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableHeadCell>Title</TableHeadCell>
-            <TableHeadCell>Round</TableHeadCell>
-            <TableHeadCell>Status</TableHeadCell>
-            <TableHeadCell>WTF / XP</TableHeadCell>
-            <TableHeadCell>Actions</TableHeadCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {(allChallenges || []).map((c: any) => {
-            const round = (allRounds || []).find((r: any) => r.id === c.roundId);
-            return (
-              <TableRow key={c.id}>
-                <TableDataCell style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {c.title}
-                </TableDataCell>
-                <TableDataCell>{round ? `R${round.number}` : "---"}</TableDataCell>
-                <TableDataCell>{c.status}</TableDataCell>
-                <TableDataCell>{c.rewardAmountWtf || 0} / {c.rewardXp || 0}</TableDataCell>
-                <TableDataCell>
-                  <ActionRow>
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        setEditingChallenge(
-                          editingChallenge?.id === c.id
-                            ? null
-                            : {
-                                ...c,
-                                roundId: String(c.roundId || ""),
-                                rewardAmountWtf: String(c.rewardAmountWtf || 0),
-                                rewardXp: String(c.rewardXp || 0),
-                                criteria: c.criteria || "",
-                                rules: c.rules || "",
-                                rewardEscrowSlug: c.rewardEscrowSlug || "",
-                                submissionContract: c.submissionContract || "",
-                                submissionTag: c.submissionTag || "",
-                                submissionCuration: c.submissionCuration || "",
-                                rewardWtfSubdomain: !!c.rewardWtfSubdomain,
-                                rewardWtfSubdomainLabelTemplate: c.rewardWtfSubdomainLabelTemplate || "",
-                              }
-                        )
-                      }
-                    >
-                      {editingChallenge?.id === c.id ? "Cancel" : "Edit"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => setExpandedChallenge(expandedChallenge === c.id ? null : c.id)}
-                    >
-                      {expandedChallenge === c.id ? "Hide Subs" : "Submissions"}
-                    </Button>
-                  </ActionRow>
-                </TableDataCell>
-              </TableRow>
-            );
-          })}
-          {(!allChallenges || allChallenges.length === 0) && (
+      <TableWrap>
+        <Table>
+          <TableHead>
             <TableRow>
-              <TableDataCell>No challenges yet.</TableDataCell>
-              <TableDataCell>---</TableDataCell>
-              <TableDataCell>---</TableDataCell>
-              <TableDataCell>---</TableDataCell>
-              <TableDataCell>---</TableDataCell>
+              <TableHeadCell>Title</TableHeadCell>
+              <TableHeadCell>Round</TableHeadCell>
+              <TableHeadCell>Status</TableHeadCell>
+              <TableHeadCell>WTF / XP</TableHeadCell>
+              <TableHeadCell>Actions</TableHeadCell>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {(allChallenges || []).map((c: any) => {
+              const round = (allRounds || []).find((r: any) => r.id === c.roundId);
+              return (
+                <TableRow key={c.id}>
+                  <TableDataCell>
+                    <TruncateText>{c.title}</TruncateText>
+                  </TableDataCell>
+                  <TableDataCell>{round ? `R${round.number}` : "---"}</TableDataCell>
+                  <TableDataCell>{c.status}</TableDataCell>
+                  <TableDataCell>{c.rewardAmountWtf || 0} / {c.rewardXp || 0}</TableDataCell>
+                  <TableDataCell>
+                    <ActionRow>
+                      <UiButton
+                        compact
+                        onClick={() =>
+                          setEditingChallenge(
+                            editingChallenge?.id === c.id
+                              ? null
+                              : {
+                                  ...c,
+                                  roundId: String(c.roundId || ""),
+                                  rewardAmountWtf: String(c.rewardAmountWtf || 0),
+                                  rewardXp: String(c.rewardXp || 0),
+                                  criteria: c.criteria || "",
+                                  rules: c.rules || "",
+                                  rewardEscrowSlug: c.rewardEscrowSlug || "",
+                                  submissionContract: c.submissionContract || "",
+                                  submissionTag: c.submissionTag || "",
+                                  submissionCuration: c.submissionCuration || "",
+                                  rewardWtfSubdomain: !!c.rewardWtfSubdomain,
+                                  rewardWtfSubdomainLabelTemplate: c.rewardWtfSubdomainLabelTemplate || "",
+                                }
+                          )
+                        }
+                      >
+                        {editingChallenge?.id === c.id ? "Cancel challenge edit" : "Edit challenge"}
+                      </UiButton>
+                      <UiButton
+                        compact
+                        onClick={() => setExpandedChallenge(expandedChallenge === c.id ? null : c.id)}
+                      >
+                        {expandedChallenge === c.id ? "Hide submissions" : "Review submissions"}
+                      </UiButton>
+                    </ActionRow>
+                  </TableDataCell>
+                </TableRow>
+              );
+            })}
+            {(!allChallenges || allChallenges.length === 0) && (
+              <TableRow>
+                <TableDataCell>No challenges yet.</TableDataCell>
+                <TableDataCell>---</TableDataCell>
+                <TableDataCell>---</TableDataCell>
+                <TableDataCell>---</TableDataCell>
+                <TableDataCell>---</TableDataCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableWrap>
 
       {expandedChallenge !== null && expandedChallengeData?.submissions && (
-        <SubSection>
-          <h4>Submissions for: {expandedChallengeData.title}</h4>
-          <Table>
+        <UiPanel title={`Submissions for ${expandedChallengeData.title}`} compact style={{ marginTop: 12 }}>
+          <TableWrap>
+            <Table>
             <TableHead>
               <TableRow>
                 <TableHeadCell>User</TableHeadCell>
@@ -217,11 +246,12 @@ export function ChallengesAdminTab({
                 return (
                   <TableRow key={sub.id}>
                     <TableDataCell><UserLink username={sub.username} displayName={sub.displayName} /></TableDataCell>
-                    <TableDataCell style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {sub.contentText || sub.contentUrl || "---"}
+                    <TableDataCell>
+                      <TruncateText>{sub.contentText || sub.contentUrl || "---"}</TruncateText>
                     </TableDataCell>
                     <TableDataCell>
                       <Select
+                        aria-label={`Grade submission ${sub.id}`}
                         value={gf.grade}
                         onChange={(e: any) =>
                           setGradeForms((prev) => ({
@@ -237,6 +267,7 @@ export function ChallengesAdminTab({
                     <TableDataCell>
                       <ActionRow>
                         <TextInput
+                          aria-label={`Feedback for submission ${sub.id}`}
                           placeholder="Feedback"
                           value={gf.feedback}
                           onChange={(e: any) =>
@@ -247,8 +278,8 @@ export function ChallengesAdminTab({
                           }
                           style={{ width: 100 }}
                         />
-                        <Button
-                          size="sm"
+                        <UiButton
+                          compact
                           onClick={() =>
                             gradeSubmissionMutation.mutate({
                               id: sub.id,
@@ -258,16 +289,16 @@ export function ChallengesAdminTab({
                           }
                           disabled={gradeSubmissionMutation.isPending}
                         >
-                          Grade
-                        </Button>
+                          Save submission grade
+                        </UiButton>
                         {!sub.rewardDistributed && (sub.grade === "pass" || sub.grade === "bonus") && (
-                          <Button
-                            size="sm"
+                          <UiButton
+                            compact
                             onClick={() => markRewardMutation.mutate({ id: sub.id })}
                             disabled={markRewardMutation.isPending}
                           >
-                            Mark Rewarded
-                          </Button>
+                            Mark submission rewarded
+                          </UiButton>
                         )}
                       </ActionRow>
                     </TableDataCell>
@@ -284,19 +315,22 @@ export function ChallengesAdminTab({
                 </TableRow>
               )}
             </TableBody>
-          </Table>
-        </SubSection>
+            </Table>
+          </TableWrap>
+        </UiPanel>
       )}
 
+      <PanelStack>
       {editingChallenge && (
-        <GroupBox label={`Edit: ${editingChallenge.title}`} style={{ marginTop: 12 }}>
+        <UiPanel title={`Edit challenge: ${editingChallenge.title}`} compact>
           <Field>
             <label>Title</label>
-            <TextInput value={editingChallenge.title} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, title: e.target.value }))} fullWidth />
+            <TextInput aria-label="Edit challenge title" value={editingChallenge.title} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, title: e.target.value }))} fullWidth />
           </Field>
           <Field>
             <label>Round</label>
             <Select
+              aria-label="Edit challenge round"
               value={parseInt(editingChallenge.roundId) || undefined}
               onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, roundId: String(e.value) }))}
               options={[
@@ -311,45 +345,46 @@ export function ChallengesAdminTab({
           </Field>
           <Field>
             <label>Status</label>
-            <Select value={editingChallenge.status} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, status: e.value }))} options={CHALLENGE_STATUS_OPTIONS} width={200} />
+            <Select aria-label="Edit challenge status" value={editingChallenge.status} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, status: e.value }))} options={CHALLENGE_STATUS_OPTIONS} width={200} />
           </Field>
           <Field>
             <label>Description</label>
-            <TextInput value={editingChallenge.description} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, description: e.target.value }))} multiline fullWidth />
+            <TextInput aria-label="Edit challenge description" value={editingChallenge.description} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, description: e.target.value }))} multiline fullWidth />
           </Field>
           <Field>
             <label>Criteria</label>
-            <TextInput value={editingChallenge.criteria} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, criteria: e.target.value }))} multiline fullWidth />
+            <TextInput aria-label="Edit challenge criteria" value={editingChallenge.criteria} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, criteria: e.target.value }))} multiline fullWidth />
           </Field>
           <Field>
             <label>Rules</label>
-            <TextInput value={editingChallenge.rules} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rules: e.target.value }))} multiline fullWidth />
+            <TextInput aria-label="Edit challenge rules" value={editingChallenge.rules} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rules: e.target.value }))} multiline fullWidth />
           </Field>
           <Field>
             <label>Reward WTF</label>
-            <TextInput value={editingChallenge.rewardAmountWtf} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rewardAmountWtf: e.target.value }))} fullWidth />
+            <TextInput aria-label="Edit challenge WTF reward" value={editingChallenge.rewardAmountWtf} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rewardAmountWtf: e.target.value }))} fullWidth />
           </Field>
           <Field>
             <label>Reward XP</label>
-            <TextInput value={editingChallenge.rewardXp} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rewardXp: e.target.value }))} fullWidth />
+            <TextInput aria-label="Edit challenge XP reward" value={editingChallenge.rewardXp} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rewardXp: e.target.value }))} fullWidth />
           </Field>
           <Field>
             <label>Submission Contract (optional)</label>
-            <TextInput value={editingChallenge.submissionContract} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, submissionContract: e.target.value }))} fullWidth />
+            <TextInput aria-label="Edit challenge submission contract" value={editingChallenge.submissionContract} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, submissionContract: e.target.value }))} fullWidth />
           </Field>
           <Field>
             <label>Submission Tag (optional)</label>
-            <TextInput value={editingChallenge.submissionTag} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, submissionTag: e.target.value }))} fullWidth />
+            <TextInput aria-label="Edit challenge submission tag" value={editingChallenge.submissionTag} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, submissionTag: e.target.value }))} fullWidth />
           </Field>
           <Field>
             <label>Submission Curation (optional)</label>
-            <TextInput value={editingChallenge.submissionCuration} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, submissionCuration: e.target.value }))} fullWidth />
-            <small>These fields drive wallet/mint matching for tagged Tezos submissions.</small>
+            <TextInput aria-label="Edit challenge submission curation" value={editingChallenge.submissionCuration} onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, submissionCuration: e.target.value }))} fullWidth />
+            <Hint>These fields drive wallet/mint matching for tagged Tezos submissions.</Hint>
           </Field>
           <Field>
             <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <input
                 type="checkbox"
+                aria-label="Edit challenge wtf.tez subdomain reward"
                 checked={!!editingChallenge.rewardWtfSubdomain}
                 onChange={(e) => setEditingChallenge((p: any) => ({ ...p, rewardWtfSubdomain: e.target.checked }))}
               />
@@ -360,6 +395,7 @@ export function ChallengesAdminTab({
             <Field>
               <label>Subdomain label template</label>
               <TextInput
+                aria-label="Edit challenge subdomain label template"
                 value={editingChallenge.rewardWtfSubdomainLabelTemplate}
                 onChange={(e: any) => setEditingChallenge((p: any) => ({ ...p, rewardWtfSubdomainLabelTemplate: e.target.value }))}
                 placeholder="{username}"
@@ -367,7 +403,7 @@ export function ChallengesAdminTab({
               />
             </Field>
           )}
-          <Button
+          <UiButton
             onClick={() =>
               updateChallengeMutation.mutate({
                 id: editingChallenge.id,
@@ -391,15 +427,16 @@ export function ChallengesAdminTab({
             }
             disabled={updateChallengeMutation.isPending}
           >
-            Save Changes
-          </Button>
-        </GroupBox>
+            Save challenge changes
+          </UiButton>
+        </UiPanel>
       )}
 
-      <GroupBox label="New Challenge" style={{ marginTop: 12 }}>
+      <UiPanel title="New challenge" compact>
         <Field>
           <label>Round (optional)</label>
           <Select
+            aria-label="New challenge round"
             value={parseInt(challengeForm.roundId) || undefined}
             onChange={(e: any) => setChallengeForm((f) => ({ ...f, roundId: String(e.value) }))}
             options={[
@@ -414,32 +451,33 @@ export function ChallengesAdminTab({
         </Field>
         <Field>
           <label>Title</label>
-          <TextInput value={challengeForm.title} onChange={(e: any) => setChallengeForm((f) => ({ ...f, title: e.target.value }))} fullWidth />
+          <TextInput aria-label="New challenge title" value={challengeForm.title} onChange={(e: any) => setChallengeForm((f) => ({ ...f, title: e.target.value }))} fullWidth />
         </Field>
         <Field>
           <label>Description</label>
-          <TextInput value={challengeForm.description} onChange={(e: any) => setChallengeForm((f) => ({ ...f, description: e.target.value }))} multiline fullWidth />
+          <TextInput aria-label="New challenge description" value={challengeForm.description} onChange={(e: any) => setChallengeForm((f) => ({ ...f, description: e.target.value }))} multiline fullWidth />
         </Field>
         <Field>
           <label>Criteria</label>
-          <TextInput value={challengeForm.criteria} onChange={(e: any) => setChallengeForm((f) => ({ ...f, criteria: e.target.value }))} multiline fullWidth />
+          <TextInput aria-label="New challenge criteria" value={challengeForm.criteria} onChange={(e: any) => setChallengeForm((f) => ({ ...f, criteria: e.target.value }))} multiline fullWidth />
         </Field>
         <Field>
           <label>Rules</label>
-          <TextInput value={challengeForm.rules} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rules: e.target.value }))} multiline fullWidth />
+          <TextInput aria-label="New challenge rules" value={challengeForm.rules} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rules: e.target.value }))} multiline fullWidth />
         </Field>
         <Field>
           <label>Reward WTF</label>
-          <TextInput value={challengeForm.rewardAmountWtf} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardAmountWtf: e.target.value }))} fullWidth />
+          <TextInput aria-label="New challenge WTF reward" value={challengeForm.rewardAmountWtf} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardAmountWtf: e.target.value }))} fullWidth />
         </Field>
         <Field>
           <label>Reward XP</label>
-          <TextInput value={challengeForm.rewardXp} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardXp: e.target.value }))} fullWidth />
+          <TextInput aria-label="New challenge XP reward" value={challengeForm.rewardXp} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardXp: e.target.value }))} fullWidth />
         </Field>
         <Field>
           <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <input
               type="checkbox"
+              aria-label="New challenge wtf.tez subdomain reward"
               checked={challengeForm.rewardWtfSubdomain}
               onChange={(e) => setChallengeForm((f) => ({ ...f, rewardWtfSubdomain: e.target.checked }))}
             />
@@ -450,6 +488,7 @@ export function ChallengesAdminTab({
           <Field>
             <label>Subdomain label template</label>
             <TextInput
+              aria-label="New challenge subdomain label template"
               value={challengeForm.rewardWtfSubdomainLabelTemplate}
               onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardWtfSubdomainLabelTemplate: e.target.value }))}
               placeholder="{username}"
@@ -459,26 +498,26 @@ export function ChallengesAdminTab({
         )}
         <Field>
           <label>Escrow Slug (optional)</label>
-          <TextInput value={challengeForm.rewardEscrowSlug} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardEscrowSlug: e.target.value }))} fullWidth />
+          <TextInput aria-label="New challenge escrow slug" value={challengeForm.rewardEscrowSlug} onChange={(e: any) => setChallengeForm((f) => ({ ...f, rewardEscrowSlug: e.target.value }))} fullWidth />
         </Field>
         <Field>
           <label>Submission Contract (optional)</label>
-          <TextInput value={challengeForm.submissionContract} onChange={(e: any) => setChallengeForm((f) => ({ ...f, submissionContract: e.target.value }))} fullWidth />
+          <TextInput aria-label="New challenge submission contract" value={challengeForm.submissionContract} onChange={(e: any) => setChallengeForm((f) => ({ ...f, submissionContract: e.target.value }))} fullWidth />
         </Field>
         <Field>
           <label>Submission Tag (optional)</label>
-          <TextInput value={challengeForm.submissionTag} onChange={(e: any) => setChallengeForm((f) => ({ ...f, submissionTag: e.target.value }))} fullWidth />
+          <TextInput aria-label="New challenge submission tag" value={challengeForm.submissionTag} onChange={(e: any) => setChallengeForm((f) => ({ ...f, submissionTag: e.target.value }))} fullWidth />
         </Field>
         <Field>
           <label>Submission Curation (optional)</label>
-          <TextInput value={challengeForm.submissionCuration} onChange={(e: any) => setChallengeForm((f) => ({ ...f, submissionCuration: e.target.value }))} fullWidth />
-          <small>Use these to pre-test wallet tracking for mint/tag/curation challenge formats.</small>
+          <TextInput aria-label="New challenge submission curation" value={challengeForm.submissionCuration} onChange={(e: any) => setChallengeForm((f) => ({ ...f, submissionCuration: e.target.value }))} fullWidth />
+          <Hint>Use these to pre-test wallet tracking for mint/tag/curation challenge formats.</Hint>
         </Field>
         <Field>
           <label>Status</label>
-          <Select value={challengeForm.status} onChange={(e: any) => setChallengeForm((f) => ({ ...f, status: e.value }))} options={CHALLENGE_STATUS_OPTIONS.slice(0, 2)} width={200} />
+          <Select aria-label="New challenge status" value={challengeForm.status} onChange={(e: any) => setChallengeForm((f) => ({ ...f, status: e.value }))} options={CHALLENGE_STATUS_OPTIONS.slice(0, 2)} width={200} />
         </Field>
-        <Button
+        <UiButton
           onClick={() =>
             createChallengeMutation.mutate({
               roundId: parseInt(challengeForm.roundId) || null,
@@ -499,9 +538,10 @@ export function ChallengesAdminTab({
           }
           disabled={createChallengeMutation.isPending}
         >
-          Create Challenge
-        </Button>
-      </GroupBox>
+          Create challenge
+        </UiButton>
+      </UiPanel>
+      </PanelStack>
     </>
   );
 }

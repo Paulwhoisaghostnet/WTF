@@ -1,14 +1,18 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Button,
-  GroupBox,
   Hourglass,
-  Panel,
   TextInput,
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import {
+  UiButton,
+  UiEmptyState,
+  UiNotice,
+  UiPanel,
+  UiStatusPill,
+} from "../components/wtfos-ui";
 import { api } from "../lib/api";
 
 type Mailbox = {
@@ -47,43 +51,58 @@ type MailMessage = {
 const Shell = styled.div`
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
-  gap: 8px;
+  gap: var(--wtf-space-3, 12px);
   min-height: 520px;
+  min-width: 0;
 
   @media (max-width: 820px) {
     grid-template-columns: 1fr;
+    min-height: 0;
   }
 `;
 
 const Stack = styled.div`
   display: grid;
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
   align-content: start;
+  min-width: 0;
 `;
 
-const MessageButton = styled(Button)<{ $active?: boolean }>`
+const MessageButton = styled(UiButton)<{ $active?: boolean }>`
   width: 100%;
   min-height: 48px;
   text-align: left;
   font-weight: ${(p) => (p.$active ? "bold" : "normal")};
   overflow: hidden;
+  justify-content: flex-start;
 `;
 
-const MessagePanel = styled(Panel).attrs({ variant: "well" })`
-  padding: 10px;
+const MessagePanel = styled.div`
   min-height: 260px;
+  max-height: min(420px, 60vh);
   overflow: auto;
+  min-width: 0;
 `;
 
 const Meta = styled.div`
-  font-size: 11px;
-  color: #444;
+  font-size: var(--wtf-type-caption, 11px);
+  color: var(--wtf-app-muted-text, #384352);
   overflow-wrap: anywhere;
+  line-height: 1.35;
 `;
 
 const Body = styled.div`
   margin-top: 10px;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+`;
+
+const MessageTitle = styled.h3`
+  margin: 0 0 var(--wtf-space-2, 8px);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-title, 20px);
+  line-height: 1.25;
   overflow-wrap: anywhere;
 `;
 
@@ -92,9 +111,9 @@ const ComposeBody = styled.textarea`
   resize: vertical;
   padding: 8px;
   font: inherit;
-  background: white;
-  color: black;
-  border: 2px inset #dfdfdf;
+  background: var(--wtf-app-control-bg, #ffffff);
+  color: var(--wtf-app-text, #111);
+  border: 2px inset var(--wtf-app-control-border, #808080);
   box-sizing: border-box;
 `;
 
@@ -152,11 +171,11 @@ export function Mail() {
     <AppWindow title="WTF Mail">
       <Shell>
         <Stack>
-          <GroupBox label="Mailbox">
+          <UiPanel title="Mailbox">
             {statusQuery.isLoading ? (
               <Hourglass size={24} />
             ) : statusQuery.isError ? (
-              <Meta>{(statusQuery.error as Error).message}</Meta>
+              <UiNotice tone="danger">{(statusQuery.error as Error).message}</UiNotice>
             ) : (
               <Stack>
                 <strong>{mailboxAddress}</strong>
@@ -170,9 +189,9 @@ export function Mail() {
                 </Meta>
               </Stack>
             )}
-          </GroupBox>
+          </UiPanel>
 
-          <GroupBox label="Messages">
+          <UiPanel title="Messages">
             {!messagesQuery.data ? (
               <Hourglass size={24} />
             ) : (
@@ -181,6 +200,7 @@ export function Mail() {
                   <MessageButton
                     key={message.id}
                     $active={selected?.id === message.id}
+                    aria-label={`Open mail: ${message.subject}`}
                     onClick={() => setSelectedId(message.id)}
                   >
                     <div>{message.subject}</div>
@@ -191,33 +211,41 @@ export function Mail() {
                     </Meta>
                   </MessageButton>
                 ))}
-                {messages.length === 0 ? <Meta>No mail yet.</Meta> : null}
+                {messages.length === 0 ? (
+                  <UiEmptyState title="No mail yet">
+                    Incoming and sent messages will appear here.
+                  </UiEmptyState>
+                ) : null}
               </Stack>
             )}
-          </GroupBox>
+          </UiPanel>
         </Stack>
 
         <Stack>
-          <GroupBox label="Compose">
+          <UiPanel title="Compose">
             <Stack>
               <TextInput
+                aria-label="Mail recipients"
                 value={to}
                 placeholder="to@example.com"
                 onChange={(event: any) => setTo(event.target.value)}
               />
               <TextInput
+                aria-label="Mail subject"
                 value={subject}
                 placeholder="Subject"
                 onChange={(event: any) => setSubject(event.target.value)}
               />
               <ComposeBody
+                aria-label="Mail message"
                 value={textBody}
                 placeholder="Message"
                 rows={5}
                 onChange={(event: any) => setTextBody(event.target.value)}
               />
-              {sendError ? <Meta style={{ color: "#a00" }}>{sendError}</Meta> : null}
-              <Button
+              {sendError ? <UiNotice tone="danger">{sendError}</UiNotice> : null}
+              <UiButton
+                uiVariant="primary"
                 disabled={
                   sendMutation.isPending ||
                   !to.trim() ||
@@ -226,16 +254,19 @@ export function Mail() {
                 }
                 onClick={() => sendMutation.mutate()}
               >
-                Send
-              </Button>
+                Send mail
+              </UiButton>
             </Stack>
-          </GroupBox>
+          </UiPanel>
 
-          <GroupBox label="Selected Message">
+          <UiPanel title="Selected Message">
             <MessagePanel>
               {selected ? (
                 <>
-                  <h3 style={{ marginTop: 0 }}>{selected.subject}</h3>
+                  <MessageTitle>{selected.subject}</MessageTitle>
+                  <UiStatusPill $tone={selected.direction === "inbound" ? "info" : "neutral"}>
+                    {selected.direction}
+                  </UiStatusPill>
                   <Meta>From: {selected.fromAddress}</Meta>
                   <Meta>To: {(selected.toAddresses ?? []).join(", ") || "none"}</Meta>
                   <Meta>
@@ -245,10 +276,12 @@ export function Mail() {
                   <Body>{selected.textBody || "(empty message)"}</Body>
                 </>
               ) : (
-                <Meta>Select a message.</Meta>
+                <UiEmptyState title="Select a message">
+                  Choose a message from the list to read it here.
+                </UiEmptyState>
               )}
             </MessagePanel>
-          </GroupBox>
+          </UiPanel>
         </Stack>
       </Shell>
     </AppWindow>

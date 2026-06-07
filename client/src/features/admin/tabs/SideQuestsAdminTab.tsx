@@ -1,7 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
 import {
-  Button,
-  GroupBox,
   TextInput,
   Select,
   Table,
@@ -13,27 +11,47 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { UserLink } from "../../../components/UserLink";
+import { UiButton, UiPanel } from "../../../components/wtfos-ui";
 import type { ApproveCompletionPayload, EntityUpdatePayload } from "../types";
 
 const Field = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: var(--wtf-space-1, 4px);
+  margin-bottom: var(--wtf-space-2, 8px);
+
+  label {
+    color: var(--wtf-app-text, #111);
+    font-size: var(--wtf-type-caption, 13px);
+    font-weight: 700;
+    line-height: 1.3;
+  }
 `;
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
 `;
 
-const SubSection = styled.div`
-  margin-top: 12px;
-  padding: 8px;
-  border: 1px solid #888;
-  background: #fff;
+const PanelStack = styled.div`
+  display: grid;
+  gap: var(--wtf-space-3, 12px);
+  margin-top: var(--wtf-space-3, 12px);
+`;
+
+const TableWrap = styled.div`
+  min-width: 0;
+  overflow-x: auto;
+`;
+
+const TruncateText = styled.span`
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const QUEST_STATUS_OPTIONS = [
@@ -109,142 +127,149 @@ export function SideQuestsAdminTab({
     <>
       <h3>Side Quests</h3>
 
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableHeadCell>Title</TableHeadCell>
-            <TableHeadCell>Status</TableHeadCell>
-            <TableHeadCell>Reward</TableHeadCell>
-            <TableHeadCell>Max</TableHeadCell>
-            <TableHeadCell>Actions</TableHeadCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {(allSideQuests || []).map((sq: any) => (
-            <TableRow key={sq.id}>
-              <TableDataCell style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {sq.title}
-              </TableDataCell>
-              <TableDataCell>{sq.status}</TableDataCell>
-              <TableDataCell>{sq.rewardAmountWtf || 0} WTF / {sq.rewardXp || 0} XP</TableDataCell>
-              <TableDataCell>
-                {sq.maxCompletions ?? "∞"}
-                {sq.persistent && " [P]"}
-                {sq.autoVerifyType !== "manual" && ` [${sq.autoVerifyType}]`}
-              </TableDataCell>
-              <TableDataCell>
-                <ActionRow>
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      setEditingQuest(
-                        editingQuest?.id === sq.id
-                          ? null
-                          : {
-                              ...sq,
-                              rewardAmountWtf: String(sq.rewardAmountWtf || 0),
-                              rewardXp: String(sq.rewardXp || 0),
-                              rewardWtfSubdomain: !!sq.rewardWtfSubdomain,
-                              rewardWtfSubdomainLabelTemplate: sq.rewardWtfSubdomainLabelTemplate || "",
-                              maxCompletions: String(sq.maxCompletions || ""),
-                              criteria: sq.criteria || "",
-                              deadline: sq.deadline || "",
-                              persistent: !!sq.persistent,
-                              autoVerifyType: sq.autoVerifyType || "manual",
-                            }
-                      )
-                    }
-                  >
-                    {editingQuest?.id === sq.id ? "Cancel" : "Edit"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => setExpandedQuest(expandedQuest === sq.id ? null : sq.id)}
-                  >
-                    {expandedQuest === sq.id ? "Hide" : "Completions"}
-                  </Button>
-                </ActionRow>
-              </TableDataCell>
-            </TableRow>
-          ))}
-          {(!allSideQuests || allSideQuests.length === 0) && (
+      <TableWrap>
+        <Table>
+          <TableHead>
             <TableRow>
-              <TableDataCell>No side quests yet.</TableDataCell>
-              <TableDataCell>---</TableDataCell>
-              <TableDataCell>---</TableDataCell>
-              <TableDataCell>---</TableDataCell>
-              <TableDataCell>---</TableDataCell>
+              <TableHeadCell>Title</TableHeadCell>
+              <TableHeadCell>Status</TableHeadCell>
+              <TableHeadCell>Reward</TableHeadCell>
+              <TableHeadCell>Max</TableHeadCell>
+              <TableHeadCell>Actions</TableHeadCell>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {(allSideQuests || []).map((sq: any) => (
+              <TableRow key={sq.id}>
+                <TableDataCell>
+                  <TruncateText>{sq.title}</TruncateText>
+                </TableDataCell>
+                <TableDataCell>{sq.status}</TableDataCell>
+                <TableDataCell>
+                  {sq.rewardAmountWtf || 0} WTF / {sq.rewardXp || 0} XP
+                </TableDataCell>
+                <TableDataCell>
+                  {sq.maxCompletions ?? "∞"}
+                  {sq.persistent && " [P]"}
+                  {sq.autoVerifyType !== "manual" && ` [${sq.autoVerifyType}]`}
+                </TableDataCell>
+                <TableDataCell>
+                  <ActionRow>
+                    <UiButton
+                      compact
+                      onClick={() =>
+                        setEditingQuest(
+                          editingQuest?.id === sq.id
+                            ? null
+                            : {
+                                ...sq,
+                                rewardAmountWtf: String(sq.rewardAmountWtf || 0),
+                                rewardXp: String(sq.rewardXp || 0),
+                                rewardWtfSubdomain: !!sq.rewardWtfSubdomain,
+                                rewardWtfSubdomainLabelTemplate: sq.rewardWtfSubdomainLabelTemplate || "",
+                                maxCompletions: String(sq.maxCompletions || ""),
+                                criteria: sq.criteria || "",
+                                deadline: sq.deadline || "",
+                                persistent: !!sq.persistent,
+                                autoVerifyType: sq.autoVerifyType || "manual",
+                              }
+                        )
+                      }
+                    >
+                      {editingQuest?.id === sq.id ? "Cancel side quest edit" : "Edit side quest"}
+                    </UiButton>
+                    <UiButton
+                      compact
+                      onClick={() => setExpandedQuest(expandedQuest === sq.id ? null : sq.id)}
+                    >
+                      {expandedQuest === sq.id ? "Hide completions" : "Review completions"}
+                    </UiButton>
+                  </ActionRow>
+                </TableDataCell>
+              </TableRow>
+            ))}
+            {(!allSideQuests || allSideQuests.length === 0) && (
+              <TableRow>
+                <TableDataCell>No side quests yet.</TableDataCell>
+                <TableDataCell>---</TableDataCell>
+                <TableDataCell>---</TableDataCell>
+                <TableDataCell>---</TableDataCell>
+                <TableDataCell>---</TableDataCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableWrap>
 
       {/* Completions sub-panel */}
       {expandedQuest !== null && expandedQuestData?.completions && (
-        <SubSection>
-          <h4>Completions for: {expandedQuestData.title}</h4>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeadCell>User</TableHeadCell>
-                <TableHeadCell>Proof</TableHeadCell>
-                <TableHeadCell>Date</TableHeadCell>
-                <TableHeadCell>Approved</TableHeadCell>
-                <TableHeadCell>Actions</TableHeadCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {expandedQuestData.completions.map((comp: any) => (
-                <TableRow key={comp.id}>
-                  <TableDataCell><UserLink username={comp.username} displayName={comp.displayName} /></TableDataCell>
-                  <TableDataCell style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {comp.proofText || comp.proofUrl || "---"}
-                  </TableDataCell>
-                  <TableDataCell>{new Date(comp.completedAt).toLocaleDateString()}</TableDataCell>
-                  <TableDataCell>
-                    {comp.approved === true ? "Approved" : comp.approved === false ? "Rejected" : "Pending"}
-                    {comp.xpAwarded > 0 && ` (+${comp.xpAwarded} XP)`}
-                  </TableDataCell>
-                  <TableDataCell>
-                    {comp.approved === null && (
-                      <ActionRow>
-                        <Button
-                          size="sm"
-                          onClick={() => approveCompletionMutation.mutate({ id: comp.id, approved: true })}
-                          disabled={approveCompletionMutation.isPending}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => approveCompletionMutation.mutate({ id: comp.id, approved: false })}
-                          disabled={approveCompletionMutation.isPending}
-                        >
-                          Reject
-                        </Button>
-                      </ActionRow>
-                    )}
-                    {comp.approved !== null && <span>---</span>}
-                  </TableDataCell>
-                </TableRow>
-              ))}
-              {expandedQuestData.completions.length === 0 && (
+        <UiPanel title={`Completions for ${expandedQuestData.title}`} compact style={{ marginTop: 12 }}>
+          <TableWrap>
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableDataCell>No completions.</TableDataCell>
-                  <TableDataCell>---</TableDataCell>
-                  <TableDataCell>---</TableDataCell>
-                  <TableDataCell>---</TableDataCell>
-                  <TableDataCell>---</TableDataCell>
+                  <TableHeadCell>User</TableHeadCell>
+                  <TableHeadCell>Proof</TableHeadCell>
+                  <TableHeadCell>Date</TableHeadCell>
+                  <TableHeadCell>Approved</TableHeadCell>
+                  <TableHeadCell>Actions</TableHeadCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </SubSection>
+              </TableHead>
+              <TableBody>
+                {expandedQuestData.completions.map((comp: any) => (
+                  <TableRow key={comp.id}>
+                    <TableDataCell><UserLink username={comp.username} displayName={comp.displayName} /></TableDataCell>
+                    <TableDataCell>
+                      <TruncateText>{comp.proofText || comp.proofUrl || "---"}</TruncateText>
+                    </TableDataCell>
+                    <TableDataCell>{new Date(comp.completedAt).toLocaleDateString()}</TableDataCell>
+                    <TableDataCell>
+                      {comp.approved === true ? "Approved" : comp.approved === false ? "Rejected" : "Pending"}
+                      {comp.xpAwarded > 0 && ` (+${comp.xpAwarded} XP)`}
+                    </TableDataCell>
+                    <TableDataCell>
+                      {comp.approved === null && (
+                        <ActionRow>
+                          <UiButton
+                            compact
+                            onClick={() => approveCompletionMutation.mutate({ id: comp.id, approved: true })}
+                            disabled={approveCompletionMutation.isPending}
+                          >
+                            Approve completion
+                          </UiButton>
+                          <UiButton
+                            compact
+                            uiVariant="danger"
+                            onClick={() => approveCompletionMutation.mutate({ id: comp.id, approved: false })}
+                            disabled={approveCompletionMutation.isPending}
+                          >
+                            Reject completion
+                          </UiButton>
+                        </ActionRow>
+                      )}
+                      {comp.approved !== null && <span>---</span>}
+                    </TableDataCell>
+                  </TableRow>
+                ))}
+                {expandedQuestData.completions.length === 0 && (
+                  <TableRow>
+                    <TableDataCell>No completions.</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableWrap>
+        </UiPanel>
       )}
 
-      {/* Edit quest */}
-      {editingQuest && (
-        <GroupBox label={`Edit: ${editingQuest.title}`} style={{ marginTop: 12 }}>
+      <PanelStack>
+        {/* Edit quest */}
+        {editingQuest && (
+          <UiPanel title={`Edit side quest: ${editingQuest.title}`} compact>
           <Field>
             <label>Title</label>
             <TextInput value={editingQuest.title} onChange={(e: any) => setEditingQuest((p: any) => ({ ...p, title: e.target.value }))} fullWidth />
@@ -313,7 +338,7 @@ export function SideQuestsAdminTab({
               Persistent (always available, completable once per user)
             </label>
           </Field>
-          <Button
+          <UiButton
             onClick={() =>
               updateQuestMutation.mutate({
                 id: editingQuest.id,
@@ -334,13 +359,13 @@ export function SideQuestsAdminTab({
             }
             disabled={updateQuestMutation.isPending}
           >
-            Save Changes
-          </Button>
-        </GroupBox>
-      )}
+            Save side quest changes
+          </UiButton>
+          </UiPanel>
+        )}
 
-      {/* Create quest */}
-      <GroupBox label="New Side Quest" style={{ marginTop: 12 }}>
+        {/* Create quest */}
+        <UiPanel title="New side quest" compact>
         <Field>
           <label>Title</label>
           <TextInput value={questForm.title} onChange={(e: any) => setQuestForm((f) => ({ ...f, title: e.target.value }))} fullWidth />
@@ -409,7 +434,7 @@ export function SideQuestsAdminTab({
           <label>Status</label>
           <Select value={questForm.status} onChange={(e: any) => setQuestForm((f) => ({ ...f, status: e.value }))} options={QUEST_STATUS_OPTIONS.slice(0, 2)} width={200} />
         </Field>
-        <Button
+        <UiButton
           onClick={() =>
             createQuestMutation.mutate({
               title: questForm.title,
@@ -428,8 +453,9 @@ export function SideQuestsAdminTab({
           disabled={createQuestMutation.isPending}
         >
           Create Side Quest
-        </Button>
-      </GroupBox>
+        </UiButton>
+        </UiPanel>
+      </PanelStack>
     </>
   );
 }

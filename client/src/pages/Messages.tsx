@@ -14,6 +14,7 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UiEmptyState } from "../components/wtfos-ui";
 import { UserLink } from "../components/UserLink";
 import { useAuth } from "../lib/auth-context";
 import { useWindowManager } from "../lib/window-context";
@@ -25,9 +26,10 @@ import { HAMSTER_REACTIONS, HAMSTER_SECTION_LABEL } from "../lib/hamster-emoji";
 
 const Layout = styled.div`
   display: flex;
-  gap: 8px;
+  gap: var(--wtf-space-3, 12px);
   height: 100%;
   min-height: 460px;
+  min-width: 0;
 
   ${MOBILE} {
     flex-direction: column;
@@ -40,7 +42,8 @@ const Side = styled.div<{ $mobileHidden?: boolean }>`
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
+  min-width: 0;
 
   ${MOBILE} {
     width: 100%;
@@ -53,7 +56,7 @@ const Main = styled.div<{ $mobileHidden?: boolean }>`
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
 
   ${MOBILE} {
     display: ${(p) => (p.$mobileHidden ? "none" : "flex")};
@@ -63,22 +66,32 @@ const Main = styled.div<{ $mobileHidden?: boolean }>`
 const ListPanel = styled(Panel).attrs({ variant: "well" })`
   flex: 1;
   overflow-y: auto;
-  padding: 6px;
+  padding: var(--wtf-space-3, 12px);
   min-height: 220px;
+  min-width: 0;
+  color: var(--wtf-app-text, #111);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  border-color: var(--wtf-app-border, #808080);
 `;
 
 const ItemButton = styled(Button)<{ $active?: boolean }>`
   width: 100%;
+  min-height: 36px;
   text-align: left;
-  margin-bottom: 4px;
+  margin-bottom: var(--wtf-space-1, 4px);
+  color: var(--wtf-app-text, #111);
   ${(p) => p.$active && "font-weight: bold;"}
 `;
 
 const MessageList = styled(Panel).attrs({ variant: "well" })`
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: var(--wtf-space-3, 12px);
   min-height: 220px;
+  min-width: 0;
+  color: var(--wtf-app-text, #111);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  border-color: var(--wtf-app-border, #808080);
 `;
 
 const MessageRow = styled.div`
@@ -86,14 +99,17 @@ const MessageRow = styled.div`
 `;
 
 const Meta = styled.div`
-  font-size: 11px;
-  color: #555;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #384352);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 `;
 
 const Body = styled.div`
-  font-size: 13px;
+  font-size: var(--wtf-type-body, 15px);
+  line-height: 1.45;
   margin-top: 2px;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 `;
 
 const InputRow = styled.div`
@@ -113,58 +129,65 @@ const MobileBackButton = styled(Button)`
 
 const NotificationRow = styled.div<{ $unread?: boolean; $clickable?: boolean }>`
   margin-bottom: 8px;
-  padding: 6px 8px;
-  border: 1px solid #9a9a9a;
-  background: ${(p) => (p.$unread ? "#fff8d5" : "#f3f3f3")};
+  min-height: 44px;
+  padding: var(--wtf-space-3, 12px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: ${(p) =>
+    p.$unread
+      ? "var(--wtf-app-warning-bg, var(--wtf-app-surface-raised, #ffffff))"
+      : "var(--wtf-app-surface-raised, #ffffff)"};
+  color: var(--wtf-app-text, #111);
   ${(p) =>
     p.$clickable
-      ? "cursor: pointer; &:hover { background: #fef3a1; }"
+      ? "cursor: pointer; &:hover { background: var(--wtf-app-info-bg, var(--wtf-app-surface-raised, #ffffff)); }"
       : ""}
 `;
 
 const StudioBadge = styled.span`
   display: inline-block;
-  font-size: 9px;
-  background: #000080;
-  color: #fff;
-  padding: 1px 4px;
+  font-size: var(--wtf-type-caption, 13px);
+  background: var(--wtf-app-primary, var(--wtf-highlight-color, #000080));
+  color: var(--wtf-app-accent-text, #fff);
+  padding: 2px 6px;
   margin-left: 4px;
-  letter-spacing: 0.4px;
+  letter-spacing: 0;
+  min-height: 22px;
+  line-height: 1.2;
 `;
 
 const SectionHeader = styled.div`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
-  color: #444;
+  color: var(--wtf-app-muted-text, #384352);
   padding: 4px 2px 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  text-transform: none;
+  letter-spacing: 0;
 `;
 
 const SystemMessageRow = styled.div`
   margin-bottom: 8px;
-  padding: 4px 8px;
-  background: #e6edf7;
-  border-left: 3px solid #000080;
-  font-size: 11px;
-  color: #222;
+  padding: var(--wtf-space-2, 8px) var(--wtf-space-3, 12px);
+  background: var(--wtf-app-info-bg, var(--wtf-app-surface-raised, #ffffff));
+  border: 1px solid var(--wtf-app-border, #808080);
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-text, #111);
   font-style: italic;
 `;
 
 const NotificationTitle = styled.div`
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
 `;
 
 const NotificationBody = styled.div`
   margin-top: 3px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const NotificationMeta = styled.div`
   margin-top: 4px;
-  font-size: 10px;
-  color: #555;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #384352);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -173,9 +196,10 @@ const NotificationMeta = styled.div`
 
 const PreferenceRow = styled.div`
   margin-bottom: 8px;
-  padding: 6px;
-  border: 1px solid #9a9a9a;
-  background: #efefef;
+  padding: var(--wtf-space-3, 12px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
 `;
 
 const DmEmojiPicker = styled.div`
@@ -187,22 +211,23 @@ const DmEmojiPicker = styled.div`
   flex-wrap: wrap;
   gap: 2px;
   padding: 6px;
-  background: #dfdfdf;
-  border: 2px outset #fff;
-  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.25);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  border: 1px solid var(--wtf-app-border, #808080);
   z-index: 20;
   max-width: 260px;
 
   button {
-    background: none;
+    min-width: 32px;
+    min-height: 32px;
+    background: var(--wtf-app-control-bg, #ffffff);
     border: 1px solid transparent;
     font-size: 18px;
     cursor: pointer;
     padding: 2px 4px;
     border-radius: 2px;
     &:hover {
-      border-color: #888;
-      background: #c0c0c0;
+      border-color: var(--wtf-app-control-border, #808080);
+      background: var(--wtf-app-info-bg, var(--wtf-app-surface, #f4f4f4));
     }
   }
 `;
@@ -599,6 +624,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                   }}
                 >
                   <Select
+                    aria-label="Select user to start a direct message"
                     width={190}
                     value={targetUserId ?? undefined}
                     options={dmOptions}
@@ -610,7 +636,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                     disabled={!targetUserId || createDmMutation.isPending}
                     onClick={() => targetUserId && createDmMutation.mutate(targetUserId)}
                   >
-                    Open
+                    Open DM
                   </Button>
                 </div>
               </GroupBox>
@@ -636,7 +662,9 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                   ) : null}
 
                   {(!dmConversations || dmConversations.length === 0) && (
-                    <Meta>No direct messages yet.</Meta>
+                    <UiEmptyState title="No direct messages yet">
+                      Start a DM with a WTF user. New project rooms and direct chats will appear here.
+                    </UiEmptyState>
                   )}
                 </ListPanel>
               </GroupBox>
@@ -702,7 +730,10 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                     return (
                       <SystemMessageRow key={message.id}>
                         <strong>Studio ·</strong> {message.content}
-                        <div style={{ fontSize: 9, color: "#555", marginTop: 2 }}>
+                        <div
+                          data-wtf-caption="true"
+                          style={{ color: "var(--wtf-app-muted-text, #384352)", marginTop: 2 }}
+                        >
                           {new Date(message.createdAt).toLocaleString()}
                         </div>
                       </SystemMessageRow>
@@ -724,13 +755,26 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                     </MessageRow>
                   );
                 })}
-                {activeConversationId && (!dmMessages || dmMessages.length === 0) && (
-                  <Meta>No messages yet.</Meta>
+                {activeConversationId && !dmMessages ? <Hourglass size={24} /> : null}
+                {activeConversationId && dmMessages && dmMessages.length === 0 && (
+                  <UiEmptyState title="No messages yet">
+                    Send the first message to start this conversation.
+                  </UiEmptyState>
                 )}
+                {!activeConversationId ? (
+                  <UiEmptyState title="Select a conversation">
+                    Pick a conversation or start a DM to read and send messages.
+                  </UiEmptyState>
+                ) : null}
               </MessageList>
 
               <InputRow>
                 <TextInput
+                  aria-label={
+                    activeConversationId
+                      ? "Direct message text"
+                      : "Direct message text disabled until a conversation is selected"
+                  }
                   fullWidth
                   value={dmInput}
                   onChange={(e: any) => setDmInput(e.target.value)}
@@ -748,6 +792,8 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                 />
                 <div style={{ position: "relative" }}>
                   <Button
+                    data-compact-control="true"
+                    aria-label="Insert hamster emoji"
                     size="sm"
                     onClick={() => setShowDmEmoji((p) => !p)}
                     disabled={!activeConversationId}
@@ -758,12 +804,16 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                   </Button>
                   {showDmEmoji && (
                     <DmEmojiPicker>
-                      <div style={{ width: "100%", fontSize: 9, textAlign: "center", color: "#555", marginBottom: 2 }}>
+                      <div
+                        data-wtf-caption="true"
+                        style={{ width: "100%", textAlign: "center", color: "var(--wtf-app-muted-text, #384352)", marginBottom: 2 }}
+                      >
                         {HAMSTER_SECTION_LABEL}
                       </div>
                       {HAMSTER_REACTIONS.map((h) => (
                         <button
                           key={h.char}
+                          aria-label={`Insert ${h.label}`}
                           title={h.label}
                           onClick={() => {
                             setDmInput((prev) => prev + h.char);
@@ -784,7 +834,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                   }
                   onClick={() => sendDmMutation.mutate(dmInput.trim())}
                 >
-                  Send
+                  Send message
                 </Button>
               </InputRow>
             </Main>
@@ -797,6 +847,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
               {(notificationPrefs?.definitions ?? []).map((def) => (
                 <PreferenceRow key={def.key}>
                   <Checkbox
+                    aria-label={`Enable ${def.label} notifications`}
                     checked={Boolean(notificationDraftPrefs[def.key])}
                     label={def.label}
                     onChange={() => {
@@ -927,7 +978,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                                 markNotificationReadMutation.mutate(item.id);
                               }}
                             >
-                              Mark Read
+                              Mark read
                             </Button>
                           )}
                         </NotificationMeta>
@@ -935,7 +986,9 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                     );
                   })}
                   {((notifications?.items ?? []).length || 0) === 0 && (
-                    <Meta>No notifications to show.</Meta>
+                    <UiEmptyState title="No notifications to show">
+                      System, message, Studio, and reward notices will appear here.
+                    </UiEmptyState>
                   )}
                 </ListPanel>
               )}

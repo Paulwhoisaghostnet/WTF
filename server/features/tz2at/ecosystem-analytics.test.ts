@@ -35,6 +35,10 @@ function withAnalyticsRelayStubs(impl: AnalyticsFetchJson): AnalyticsFetchJson {
   };
 }
 
+function recentIso(minutesAgo: number): string {
+  return new Date(Date.now() - minutesAgo * 60 * 1000).toISOString();
+}
+
 test("tz2at ecosystem analytics aggregates repo records into usage, liquidity, and CEX flow", async () => {
   const responses = new Map<string, unknown>();
   responses.set("/xrpc/com.atproto.server.describeServer", { did: "did:web:test.tz2at.store" });
@@ -60,7 +64,7 @@ test("tz2at ecosystem analytics aggregates repo records into usage, liquidity, a
           source: "tz1Seller",
           destination: "tz1Buyer",
           amountMutez: "3000000",
-          timestamp: "2026-05-28T09:00:00Z",
+          timestamp: recentIso(240),
           blockLevel: 10,
         },
       },
@@ -78,7 +82,7 @@ test("tz2at ecosystem analytics aggregates repo records into usage, liquidity, a
           to: "tz1Buyer",
           amountMutez: "7000000",
           operationHash: "ooWithdraw",
-          timestamp: "2026-05-28T09:01:00Z",
+          timestamp: recentIso(239),
           blockLevel: 11,
         },
       },
@@ -92,7 +96,7 @@ test("tz2at ecosystem analytics aggregates repo records into usage, liquidity, a
           to: "tz1Cex",
           amountMutez: "2000000",
           operationHash: "ooDeposit",
-          timestamp: "2026-05-28T09:02:00Z",
+          timestamp: recentIso(238),
           blockLevel: 12,
         },
       },
@@ -111,7 +115,7 @@ test("tz2at ecosystem analytics aggregates repo records into usage, liquidity, a
           marketplace: "KT1Market",
           priceMutez: "5000000",
           tokenRef: "tezos:mainnet:KT1Token:token:42",
-          timestamp: "2026-05-28T09:03:00Z",
+          timestamp: recentIso(237),
           blockLevel: 13,
         },
       },
@@ -192,7 +196,7 @@ test("tz2at ecosystem analytics filters records before building operator segment
                 from: "tz1Cex",
                 to: "tz1Buyer",
                 amountMutez: "7000000",
-                timestamp: "2026-05-28T09:01:00Z",
+                timestamp: recentIso(180),
                 blockLevel: 11,
               },
             },
@@ -205,7 +209,7 @@ test("tz2at ecosystem analytics filters records before building operator segment
                 from: "tz1Other",
                 to: "tz1Small",
                 amountMutez: "1000000",
-                timestamp: "2026-05-28T09:02:00Z",
+                timestamp: recentIso(179),
                 blockLevel: 12,
               },
             },
@@ -241,7 +245,7 @@ test("tz2at ecosystem analytics pages past the Etherlink head to classify Tezos 
         to: `0x${index}aBcDeF0123456789aBcDeF0123456789aBcDeF01`,
         amountMutez: "2000000000000000",
         operationHash: `evm-${index}`,
-        timestamp: `2026-05-28T18:0${index}:00Z`,
+        timestamp: recentIso(120 - index),
         blockLevel: 44066000 + index,
       },
     })),
@@ -260,7 +264,7 @@ test("tz2at ecosystem analytics pages past the Etherlink head to classify Tezos 
           to: "tz1Buyer",
           amountMutez: "7000000",
           operationHash: "ooWithdraw",
-          timestamp: "2026-05-28T09:01:00Z",
+          timestamp: recentIso(90),
           blockLevel: 5050,
         },
       },
@@ -275,7 +279,7 @@ test("tz2at ecosystem analytics pages past the Etherlink head to classify Tezos 
           to: "tz1Cex",
           amountMutez: "2000000",
           operationHash: "ooDeposit",
-          timestamp: "2026-05-28T09:02:00Z",
+          timestamp: recentIso(89),
           blockLevel: 5051,
         },
       },
@@ -350,7 +354,7 @@ test("tz2at ecosystem analytics resolves CEX flow from per-entity wallet repos, 
       amountMutez: "7000000",
       operationHash: "ooWithdraw",
       eventIndex: 1,
-      timestamp: "2026-05-30T09:01:00Z",
+      timestamp: recentIso(60),
       blockLevel: 5050,
     },
   };
@@ -373,7 +377,7 @@ test("tz2at ecosystem analytics resolves CEX flow from per-entity wallet repos, 
       amountMutez: "2000000",
       operationHash: "ooDeposit",
       eventIndex: 2,
-      timestamp: "2026-05-30T09:02:00Z",
+      timestamp: recentIso(59),
       blockLevel: 5051,
     },
   };
@@ -389,7 +393,7 @@ test("tz2at ecosystem analytics resolves CEX flow from per-entity wallet repos, 
       amountMutez: "1500",
       operationHash: "ooWithdraw",
       eventIndex: 9,
-      timestamp: "2026-05-30T09:01:00Z",
+      timestamp: recentIso(58),
       blockLevel: 5050,
     },
   };

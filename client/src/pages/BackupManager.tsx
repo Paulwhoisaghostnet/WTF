@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button, GroupBox, Hourglass, Separator } from "react95";
+import { Hourglass, Separator } from "react95";
 import {
   ArchiveRestore,
   CheckCircle2,
@@ -13,6 +13,13 @@ import {
 import styled from "styled-components";
 import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
+import {
+  UiButton,
+  UiEmptyState,
+  UiNotice,
+  UiPanel,
+  UiStatusPill,
+} from "../components/wtfos-ui";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
 
@@ -74,14 +81,14 @@ type BackupRestoreProofResponse = {
 
 const Shell = styled.div`
   display: grid;
-  gap: 8px;
+  gap: var(--wtf-space-3, 12px);
   min-width: 0;
 `;
 
 const StatusGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
 
   @media (max-width: 760px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -93,25 +100,37 @@ const StatusGrid = styled.div`
 `;
 
 const StatusCell = styled.div<{ $tone?: "ok" | "warn" | "error" }>`
-  min-height: 66px;
-  padding: 7px;
-  border: 1px solid #808080;
+  min-height: 72px;
+  padding: var(--wtf-space-3, 12px);
+  border: 1px solid var(--wtf-app-border, #808080);
   background: ${(p) =>
-    p.$tone === "ok" ? "#d8f0d0" : p.$tone === "error" ? "#f5b5b5" : "#f5df9a"};
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
+    p.$tone === "ok"
+      ? "var(--wtf-app-success-bg, #e7f6ec)"
+      : p.$tone === "error"
+        ? "var(--wtf-app-danger-bg, #fde8e6)"
+        : "var(--wtf-app-warning-bg, #fff3d6)"};
+  box-shadow: inset 0 2px 0
+    ${(p) =>
+      p.$tone === "ok"
+        ? "var(--wtf-app-success, #176b38)"
+        : p.$tone === "error"
+          ? "var(--wtf-app-danger, #b42318)"
+          : "var(--wtf-app-warning, #8a4b00)"};
+  color: var(--wtf-app-text, #111);
 `;
 
 const StatusLabel = styled.div`
-  font-size: 10px;
-  font-weight: bold;
-  text-transform: uppercase;
-  color: #404040;
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+  line-height: 1.25;
 `;
 
 const StatusValue = styled.div`
   margin-top: 4px;
-  font-size: 14px;
-  font-weight: bold;
+  font-size: var(--wtf-type-body-strong, 15px);
+  font-weight: 700;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 `;
 
@@ -127,45 +146,46 @@ const DetailGrid = styled.div`
 
 const Rows = styled.div`
   display: grid;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
 `;
 
 const Row = styled.div`
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
-  gap: 8px;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
-  padding: 6px;
-  border: 1px solid #9a9a9a;
-  background: #f2f2f2;
+  padding: var(--wtf-space-2, 8px);
+  color: var(--wtf-app-text, #111);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  border: 1px solid var(--wtf-app-border, #808080);
 
   @media (max-width: 560px) {
-    grid-template-columns: 22px minmax(0, 1fr);
+    grid-template-columns: 24px minmax(0, 1fr);
   }
 `;
 
 const RowTitle = styled.div`
-  font-size: 12px;
-  font-weight: bold;
+  font-size: var(--wtf-type-body-strong, 15px);
+  font-weight: 700;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 `;
 
 const RowMeta = styled.div`
   margin-top: 2px;
-  font-size: 11px;
-  color: #404040;
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
   overflow-wrap: anywhere;
 `;
 
-const Badge = styled.div<{ $ok?: boolean }>`
-  min-width: 72px;
-  padding: 4px 6px;
-  border: 1px solid #808080;
-  background: ${(p) => (p.$ok ? "#d8f0d0" : "#f5df9a")};
+const Badge = styled(UiStatusPill).attrs<{ $ok?: boolean }>((p) => ({
+  $tone: p.$ok ? "success" : "warning",
+}))<{ $ok?: boolean }>`
+  min-width: 78px;
+  justify-content: center;
   text-align: center;
-  font-size: 10px;
-  font-weight: bold;
-  text-transform: uppercase;
+  text-transform: none;
 
   @media (max-width: 560px) {
     grid-column: 1 / -1;
@@ -175,20 +195,25 @@ const Badge = styled.div<{ $ok?: boolean }>`
 const Actions = styled.div`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
 
   @media (max-width: 680px) {
     grid-template-columns: 1fr;
   }
 `;
 
-const ActionButton = styled(Button)`
-  min-height: 30px;
+const ActionButton = styled(UiButton)`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  font-size: 11px;
+  gap: var(--wtf-space-1, 4px);
+  min-height: var(--wtf-control-min-height, 32px);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+
+  @media (max-width: 768px) {
+    min-height: 44px;
+  }
 `;
 
 function formatBytes(bytes: number | null | undefined) {
@@ -255,9 +280,9 @@ export function BackupManager() {
     return (
       <AppWindow title="Backup Manager">
         <Shell data-testid="backup-manager">
-          <GroupBox label="Restore Proof">
+          <UiPanel title="Restore proof" compact>
             <Hourglass size={30} />
-          </GroupBox>
+          </UiPanel>
         </Shell>
       </AppWindow>
     );
@@ -288,23 +313,23 @@ export function BackupManager() {
         <Actions>
           <ActionButton onClick={() => open("/recovery-mode", "recovery-mode")}>
             <ArchiveRestore size={14} aria-hidden />
-            Recovery Mode
+            Open Recovery Mode
           </ActionButton>
           <ActionButton onClick={() => open("/admin", "admin")}>
             <FileCheck2 size={14} aria-hidden />
-            Admin Logs
+            Open Admin logs
           </ActionButton>
           <ActionButton onClick={() => proofQuery.refetch()}>
             <HardDriveDownload size={14} aria-hidden />
-            Refresh
+            Refresh restore proof
           </ActionButton>
         </Actions>
 
         <Separator />
 
         {proofQuery.isError ? (
-          <GroupBox label="Error">
-            <Row>
+          <UiPanel title="Restore proof error" compact tone="danger">
+            <UiNotice tone="danger">
               <ShieldAlert size={16} aria-hidden />
               <div>
                 <RowTitle>Restore proof unavailable</RowTitle>
@@ -314,12 +339,11 @@ export function BackupManager() {
                     : "Backup proof request failed"}
                 </RowMeta>
               </div>
-              <Badge>error</Badge>
-            </Row>
-          </GroupBox>
+            </UiNotice>
+          </UiPanel>
         ) : (
           <DetailGrid>
-            <GroupBox label="Requirements">
+            <UiPanel title="Requirements" compact>
               <Rows>
                 {(proof?.requirements ?? []).map((requirement) => (
                   <Row key={requirement.key}>
@@ -336,9 +360,9 @@ export function BackupManager() {
                   </Row>
                 ))}
               </Rows>
-            </GroupBox>
+            </UiPanel>
 
-            <GroupBox label="Artifact">
+            <UiPanel title="Artifact" compact>
               <Rows>
                 <Row>
                   <DatabaseBackup size={16} aria-hidden />
@@ -371,23 +395,18 @@ export function BackupManager() {
                   <Badge $ok={latestRun?.status === "success"}>{latestRun?.status ?? "none"}</Badge>
                 </Row>
               </Rows>
-            </GroupBox>
+            </UiPanel>
           </DetailGrid>
         )}
 
-        <GroupBox label="Targets">
-          <Rows>
-            {(proof?.targets ?? []).length === 0 ? (
-              <Row>
-                <ShieldAlert size={16} aria-hidden />
-                <div>
-                  <RowTitle>No target proof</RowTitle>
-                  <RowMeta>No successful local or off-host retention target was returned.</RowMeta>
-                </div>
-                <Badge>open</Badge>
-              </Row>
-            ) : (
-              proof!.targets.map((target) => (
+        <UiPanel title="Targets" compact>
+          {(proof?.targets ?? []).length === 0 ? (
+            <UiEmptyState title="No target proof">
+              No successful local or off-host retention target was returned.
+            </UiEmptyState>
+          ) : (
+            <Rows>
+              {proof!.targets.map((target) => (
                 <Row key={target.name}>
                   <HardDriveDownload size={16} aria-hidden />
                   <div>
@@ -401,10 +420,10 @@ export function BackupManager() {
                     {target.status}
                   </Badge>
                 </Row>
-              ))
-            )}
-          </Rows>
-        </GroupBox>
+              ))}
+            </Rows>
+          )}
+        </UiPanel>
       </Shell>
     </AppWindow>
   );

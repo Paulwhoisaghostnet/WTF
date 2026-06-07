@@ -217,7 +217,7 @@ const StyleName = styled.span`
 `;
 
 const StyleSummary = styled.span`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.18;
 `;
 
@@ -258,7 +258,7 @@ const FieldGrid = styled.div`
 const Field = styled.label`
   display: grid;
   gap: 3px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 
   input,
   select {
@@ -281,7 +281,7 @@ const SegmentGrid = styled.div`
   button {
     min-width: 0;
     min-height: 32px;
-    font-size: 11px;
+    font-size: var(--wtf-type-caption, 13px);
     line-height: 1.1;
     white-space: normal;
   }
@@ -328,7 +328,7 @@ const StatRows = styled.div`
   grid-template-columns: 54px 1fr 30px;
   gap: 4px 6px;
   align-items: center;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const StatBar = styled.div<{ $value: number }>`
@@ -353,7 +353,7 @@ const GenePanel = styled.div`
   padding: 6px;
   border: 1px solid #808080;
   background: rgba(255, 255, 255, 0.32);
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const TraitRow = styled.div`
@@ -381,7 +381,7 @@ const EventList = styled.div`
   margin-top: 8px;
   max-height: 110px;
   overflow: auto;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const TokenRow = styled.div`
@@ -391,15 +391,15 @@ const TokenRow = styled.div`
   align-items: center;
   padding: 6px 0;
   border-top: 1px solid rgba(64, 64, 64, 0.45);
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const SecretBox = styled.textarea`
   width: 100%;
   min-height: 54px;
   resize: vertical;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
+  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const SourceList = styled.div`
@@ -435,7 +435,7 @@ const Thumb = styled.div<{ $src?: string | null }>`
 
 const SourceLabel = styled.div`
   min-width: 0;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.15;
   overflow: hidden;
   display: -webkit-box;
@@ -445,7 +445,7 @@ const SourceLabel = styled.div`
 
 const HelpText = styled.div`
   margin-top: 5px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: color-mix(in srgb, var(--wtf-text-color, #111) 70%, #ffffff);
 `;
 
@@ -480,7 +480,12 @@ function ColorField({
   return (
     <Field>
       <span>{label}</span>
-      <input type="color" value={value} onChange={(e) => onChange(e.target.value)} />
+      <input
+        aria-label={`${label} color`}
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </Field>
   );
 }
@@ -880,6 +885,7 @@ export function DesktopSettings() {
           <Field>
             <span>Background image URL</span>
             <input
+              aria-label="Background image URL"
               value={draft.backgroundImageUrl ?? ""}
               onChange={(e) => patchDraft({ backgroundImageUrl: e.target.value || null })}
               placeholder="https://..."
@@ -887,6 +893,7 @@ export function DesktopSettings() {
           </Field>
           <Inline style={{ marginTop: 7 }}>
             <input
+              aria-label="Upload background image"
               ref={fileRef}
               type="file"
               accept="image/*"
@@ -905,6 +912,7 @@ export function DesktopSettings() {
             <Field style={{ minWidth: 112 }}>
               <span>Fit</span>
               <select
+                aria-label="Background image fit"
                 value={draft.backgroundFit}
                 onChange={(e) => patchDraft({ backgroundFit: e.target.value as DesktopAppearance["backgroundFit"] })}
               >
@@ -919,7 +927,11 @@ export function DesktopSettings() {
             {formatBytes(DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES)}.
             {uploadMutation.isPending ? " Uploading..." : ""}
           </HelpText>
-          {fileError && <div style={{ color: "#b00000", fontSize: 11, marginTop: 4 }}>{fileError}</div>}
+          {fileError && (
+            <div style={{ color: "#b00000", fontSize: "var(--wtf-type-caption, 13px)", marginTop: 4 }}>
+              {fileError}
+            </div>
+          )}
 
           <Separator style={{ margin: "10px 0" }} />
           <GroupTitle>Saved images</GroupTitle>
@@ -997,6 +1009,7 @@ export function DesktopSettings() {
           <Inline>
             <label>
               <input
+                aria-label="Desktop physics"
                 type="checkbox"
                 checked={draft.desktopPhysicsEnabled}
                 onChange={(e) => {
@@ -1012,6 +1025,7 @@ export function DesktopSettings() {
             <Field style={{ minWidth: 120 }}>
               <span>Gravity</span>
               <select
+                aria-label="Desktop gravity"
                 value={draft.desktopGravityMode}
                 disabled={!draft.desktopPhysicsEnabled}
                 onChange={(e) => {
@@ -1054,6 +1068,7 @@ export function DesktopSettings() {
           <Inline style={{ marginBottom: 8 }}>
             <label>
               <input
+                aria-label="Desktop pet enabled"
                 type="checkbox"
                 checked={draft.desktopPetEnabled}
                 onChange={(e) => patchDraft({ desktopPetEnabled: e.target.checked })}
@@ -1073,7 +1088,7 @@ export function DesktopSettings() {
                   />
                 </PetPreview>
                 <div style={{ textAlign: "center", fontWeight: "bold" }}>{pet.name}</div>
-                <div style={{ textAlign: "center", fontSize: 11 }}>
+                <div style={{ textAlign: "center", fontSize: "var(--wtf-type-caption, 13px)" }}>
                   Lv {pet.level} · {pet.xpEarned} XP · {pet.carePoints} care
                 </div>
               </div>
@@ -1082,6 +1097,7 @@ export function DesktopSettings() {
                   <Field>
                     <span>Name</span>
                     <input
+                      aria-label="Pet name"
                       value={petDraft.name}
                       maxLength={40}
                       onChange={(e) =>
@@ -1092,6 +1108,7 @@ export function DesktopSettings() {
                   <Field>
                     <span>Coat</span>
                     <select
+                      aria-label="Pet coat"
                       value={petDraft.colorSchemeKey}
                       onChange={(e) =>
                         setPetDraft((prev) => ({
@@ -1153,11 +1170,16 @@ export function DesktopSettings() {
           <FieldGrid>
             <Field>
               <span>MCP endpoint</span>
-              <input readOnly value={mcpTokensQuery.data?.endpoint ?? `${window.location.origin}/mcp`} />
+              <input
+                aria-label="MCP endpoint"
+                readOnly
+                value={mcpTokensQuery.data?.endpoint ?? `${window.location.origin}/mcp`}
+              />
             </Field>
             <Field>
               <span>Token name</span>
               <input
+                aria-label="Token name"
                 value={mcpTokenName}
                 maxLength={100}
                 onChange={(e) => setMcpTokenName(e.target.value)}
@@ -1177,7 +1199,7 @@ export function DesktopSettings() {
             <div style={{ marginTop: 8 }}>
               <Field>
                 <span>New token</span>
-                <SecretBox readOnly value={generatedMcpToken} />
+                <SecretBox aria-label="New token" readOnly value={generatedMcpToken} />
               </Field>
               <Inline style={{ marginTop: 6 }}>
                 <IconButton

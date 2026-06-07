@@ -1,7 +1,5 @@
 import type { Dispatch, ReactElement, SetStateAction } from "react";
 import {
-  Button,
-  GroupBox,
   TextInput,
   Table,
   TableHead,
@@ -11,20 +9,50 @@ import {
   TableBody,
 } from "react95";
 import styled from "styled-components";
+import { UiButton, UiPanel } from "../../../components/wtfos-ui";
 import type { EntityUpdatePayload } from "../types";
 
 const Field = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: var(--wtf-space-1, 4px);
+  margin-bottom: var(--wtf-space-2, 8px);
+
+  label {
+    color: var(--wtf-app-text, #111);
+    font-size: var(--wtf-type-caption, 13px);
+    font-weight: 700;
+    line-height: 1.3;
+  }
 `;
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
+`;
+
+const TableWrap = styled.div`
+  min-width: 0;
+  overflow-x: auto;
+`;
+
+const PanelStack = styled.div`
+  display: grid;
+  gap: var(--wtf-space-3, 12px);
+  margin-top: var(--wtf-space-3, 12px);
+`;
+
+const TruncateText = styled.span`
+  display: block;
+  max-width: 240px;
+  overflow: hidden;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 type ContentSubTab = "links" | "faq";
@@ -102,94 +130,105 @@ export function ContentAdminTab({
     <>
       <h3>Content Management</h3>
       <ActionRow style={{ marginBottom: 12 }}>
-        <Button onClick={() => setContentSubTab("links")} active={contentSubTab === "links"}>
-          Links
-        </Button>
-        <Button onClick={() => setContentSubTab("faq")} active={contentSubTab === "faq"}>
-          FAQ
-        </Button>
+        <UiButton
+          onClick={() => setContentSubTab("links")}
+          active={contentSubTab === "links"}
+          uiVariant={contentSubTab === "links" ? "primary" : "quiet"}
+        >
+          Manage links
+        </UiButton>
+        <UiButton
+          onClick={() => setContentSubTab("faq")}
+          active={contentSubTab === "faq"}
+          uiVariant={contentSubTab === "faq" ? "primary" : "quiet"}
+        >
+          Manage FAQ
+        </UiButton>
       </ActionRow>
 
       {contentSubTab === "links" && (
         <>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeadCell>Order</TableHeadCell>
-                <TableHeadCell>Title</TableHeadCell>
-                <TableHeadCell>URL</TableHeadCell>
-                <TableHeadCell>Category</TableHeadCell>
-                <TableHeadCell>Actions</TableHeadCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {(allLinks || []).map((lnk: any) => (
-                <TableRow key={lnk.id}>
-                  <TableDataCell>{lnk.displayOrder}</TableDataCell>
-                  <TableDataCell>{lnk.title}</TableDataCell>
-                  <TableDataCell style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {lnk.url}
-                  </TableDataCell>
-                  <TableDataCell>{lnk.category || "---"}</TableDataCell>
-                  <TableDataCell>
-                    <ActionRow>
-                      <Button
-                        size="sm"
-                        onClick={() =>
-                          setEditingLink(
-                            editingLink?.id === lnk.id
-                              ? null
-                              : { ...lnk, displayOrder: String(lnk.displayOrder || 0), description: lnk.description || "", category: lnk.category || "" }
-                          )
-                        }
-                      >
-                        {editingLink?.id === lnk.id ? "Cancel" : "Edit"}
-                      </Button>
-                      <ConfirmButton
-                        label="Delete"
-                        confirmLabel="Confirm"
-                        onConfirm={() => deleteLinkMutation.mutate(lnk.id)}
-                        disabled={deleteLinkMutation.isPending}
-                      />
-                    </ActionRow>
-                  </TableDataCell>
-                </TableRow>
-              ))}
-              {(!allLinks || allLinks.length === 0) && (
+          <TableWrap>
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableDataCell>---</TableDataCell>
-                  <TableDataCell>No links yet.</TableDataCell>
-                  <TableDataCell>---</TableDataCell>
-                  <TableDataCell>---</TableDataCell>
-                  <TableDataCell>---</TableDataCell>
+                  <TableHeadCell>Order</TableHeadCell>
+                  <TableHeadCell>Title</TableHeadCell>
+                  <TableHeadCell>URL</TableHeadCell>
+                  <TableHeadCell>Category</TableHeadCell>
+                  <TableHeadCell>Actions</TableHeadCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {(allLinks || []).map((lnk: any) => (
+                  <TableRow key={lnk.id}>
+                    <TableDataCell>{lnk.displayOrder}</TableDataCell>
+                    <TableDataCell>{lnk.title}</TableDataCell>
+                    <TableDataCell>
+                      <TruncateText>{lnk.url}</TruncateText>
+                    </TableDataCell>
+                    <TableDataCell>{lnk.category || "---"}</TableDataCell>
+                    <TableDataCell>
+                      <ActionRow>
+                        <UiButton
+                          compact
+                          onClick={() =>
+                            setEditingLink(
+                              editingLink?.id === lnk.id
+                                ? null
+                                : { ...lnk, displayOrder: String(lnk.displayOrder || 0), description: lnk.description || "", category: lnk.category || "" }
+                            )
+                          }
+                        >
+                          {editingLink?.id === lnk.id ? "Cancel link edit" : "Edit link"}
+                        </UiButton>
+                        <ConfirmButton
+                          label="Delete link"
+                          confirmLabel="Confirm delete"
+                          onConfirm={() => deleteLinkMutation.mutate(lnk.id)}
+                          disabled={deleteLinkMutation.isPending}
+                        />
+                      </ActionRow>
+                    </TableDataCell>
+                  </TableRow>
+                ))}
+                {(!allLinks || allLinks.length === 0) && (
+                  <TableRow>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>No links yet.</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                    <TableDataCell>---</TableDataCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableWrap>
 
+          <PanelStack>
           {editingLink && (
-            <GroupBox label={`Edit: ${editingLink.title}`} style={{ marginTop: 12 }}>
+            <UiPanel title={`Edit link: ${editingLink.title}`} compact>
               <Field>
                 <label>Title</label>
-                <TextInput value={editingLink.title} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, title: e.target.value }))} fullWidth />
+                <TextInput aria-label="Edit link title" value={editingLink.title} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, title: e.target.value }))} fullWidth />
               </Field>
               <Field>
                 <label>URL</label>
-                <TextInput value={editingLink.url} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, url: e.target.value }))} fullWidth />
+                <TextInput aria-label="Edit link URL" value={editingLink.url} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, url: e.target.value }))} fullWidth />
               </Field>
               <Field>
                 <label>Description</label>
-                <TextInput value={editingLink.description} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, description: e.target.value }))} multiline fullWidth />
+                <TextInput aria-label="Edit link description" value={editingLink.description} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, description: e.target.value }))} multiline fullWidth />
               </Field>
               <Field>
                 <label>Category</label>
-                <TextInput value={editingLink.category} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, category: e.target.value }))} fullWidth />
+                <TextInput aria-label="Edit link category" value={editingLink.category} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, category: e.target.value }))} fullWidth />
               </Field>
               <Field>
                 <label>Display Order</label>
-                <TextInput value={editingLink.displayOrder} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, displayOrder: e.target.value }))} fullWidth />
+                <TextInput aria-label="Edit link display order" value={editingLink.displayOrder} onChange={(e: any) => setEditingLink((p: any) => ({ ...p, displayOrder: e.target.value }))} fullWidth />
               </Field>
-              <Button
+              <UiButton
                 onClick={() =>
                   updateLinkMutation.mutate({
                     id: editingLink.id,
@@ -204,33 +243,33 @@ export function ContentAdminTab({
                 }
                 disabled={updateLinkMutation.isPending}
               >
-                Save Changes
-              </Button>
-            </GroupBox>
+                Save link changes
+              </UiButton>
+            </UiPanel>
           )}
 
-          <GroupBox label="New Link" style={{ marginTop: 12 }}>
+          <UiPanel title="New link" compact>
             <Field>
               <label>Title</label>
-              <TextInput value={linkForm.title} onChange={(e: any) => setLinkForm((f) => ({ ...f, title: e.target.value }))} fullWidth />
+              <TextInput aria-label="New link title" value={linkForm.title} onChange={(e: any) => setLinkForm((f) => ({ ...f, title: e.target.value }))} fullWidth />
             </Field>
             <Field>
               <label>URL</label>
-              <TextInput value={linkForm.url} onChange={(e: any) => setLinkForm((f) => ({ ...f, url: e.target.value }))} fullWidth />
+              <TextInput aria-label="New link URL" value={linkForm.url} onChange={(e: any) => setLinkForm((f) => ({ ...f, url: e.target.value }))} fullWidth />
             </Field>
             <Field>
               <label>Description</label>
-              <TextInput value={linkForm.description} onChange={(e: any) => setLinkForm((f) => ({ ...f, description: e.target.value }))} multiline fullWidth />
+              <TextInput aria-label="New link description" value={linkForm.description} onChange={(e: any) => setLinkForm((f) => ({ ...f, description: e.target.value }))} multiline fullWidth />
             </Field>
             <Field>
               <label>Category</label>
-              <TextInput value={linkForm.category} onChange={(e: any) => setLinkForm((f) => ({ ...f, category: e.target.value }))} fullWidth />
+              <TextInput aria-label="New link category" value={linkForm.category} onChange={(e: any) => setLinkForm((f) => ({ ...f, category: e.target.value }))} fullWidth />
             </Field>
             <Field>
               <label>Display Order</label>
-              <TextInput value={linkForm.displayOrder} onChange={(e: any) => setLinkForm((f) => ({ ...f, displayOrder: e.target.value }))} fullWidth />
+              <TextInput aria-label="New link display order" value={linkForm.displayOrder} onChange={(e: any) => setLinkForm((f) => ({ ...f, displayOrder: e.target.value }))} fullWidth />
             </Field>
-            <Button
+            <UiButton
               onClick={() =>
                 createLinkMutation.mutate({
                   title: linkForm.title,
@@ -242,14 +281,16 @@ export function ContentAdminTab({
               }
               disabled={createLinkMutation.isPending}
             >
-              Create Link
-            </Button>
-          </GroupBox>
+              Create link
+            </UiButton>
+          </UiPanel>
+          </PanelStack>
         </>
       )}
 
       {contentSubTab === "faq" && (
         <>
+          <TableWrap>
           <Table>
             <TableHead>
               <TableRow>
@@ -263,14 +304,14 @@ export function ContentAdminTab({
               {(allFaq || []).map((faq: any) => (
                 <TableRow key={faq.id}>
                   <TableDataCell>{faq.displayOrder}</TableDataCell>
-                  <TableDataCell style={{ maxWidth: 250, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {faq.question}
+                  <TableDataCell>
+                    <TruncateText>{faq.question}</TruncateText>
                   </TableDataCell>
                   <TableDataCell>{faq.category || "---"}</TableDataCell>
                   <TableDataCell>
                     <ActionRow>
-                      <Button
-                        size="sm"
+                      <UiButton
+                        compact
                         onClick={() =>
                           setEditingFaq(
                             editingFaq?.id === faq.id
@@ -279,11 +320,11 @@ export function ContentAdminTab({
                           )
                         }
                       >
-                        {editingFaq?.id === faq.id ? "Cancel" : "Edit"}
-                      </Button>
+                        {editingFaq?.id === faq.id ? "Cancel FAQ edit" : "Edit FAQ"}
+                      </UiButton>
                       <ConfirmButton
-                        label="Delete"
-                        confirmLabel="Confirm"
+                        label="Delete FAQ"
+                        confirmLabel="Confirm delete"
                         onConfirm={() => deleteFaqMutation.mutate(faq.id)}
                         disabled={deleteFaqMutation.isPending}
                       />
@@ -301,26 +342,28 @@ export function ContentAdminTab({
               )}
             </TableBody>
           </Table>
+          </TableWrap>
 
+          <PanelStack>
           {editingFaq && (
-            <GroupBox label="Edit FAQ" style={{ marginTop: 12 }}>
+            <UiPanel title="Edit FAQ" compact>
               <Field>
                 <label>Question</label>
-                <TextInput value={editingFaq.question} onChange={(e: any) => setEditingFaq((p: any) => ({ ...p, question: e.target.value }))} multiline fullWidth />
+                <TextInput aria-label="Edit FAQ question" value={editingFaq.question} onChange={(e: any) => setEditingFaq((p: any) => ({ ...p, question: e.target.value }))} multiline fullWidth />
               </Field>
               <Field>
                 <label>Answer</label>
-                <TextInput value={editingFaq.answer} onChange={(e: any) => setEditingFaq((p: any) => ({ ...p, answer: e.target.value }))} multiline fullWidth />
+                <TextInput aria-label="Edit FAQ answer" value={editingFaq.answer} onChange={(e: any) => setEditingFaq((p: any) => ({ ...p, answer: e.target.value }))} multiline fullWidth />
               </Field>
               <Field>
                 <label>Category</label>
-                <TextInput value={editingFaq.category} onChange={(e: any) => setEditingFaq((p: any) => ({ ...p, category: e.target.value }))} fullWidth />
+                <TextInput aria-label="Edit FAQ category" value={editingFaq.category} onChange={(e: any) => setEditingFaq((p: any) => ({ ...p, category: e.target.value }))} fullWidth />
               </Field>
               <Field>
                 <label>Display Order</label>
-                <TextInput value={editingFaq.displayOrder} onChange={(e: any) => setEditingFaq((p: any) => ({ ...p, displayOrder: e.target.value }))} fullWidth />
+                <TextInput aria-label="Edit FAQ display order" value={editingFaq.displayOrder} onChange={(e: any) => setEditingFaq((p: any) => ({ ...p, displayOrder: e.target.value }))} fullWidth />
               </Field>
-              <Button
+              <UiButton
                 onClick={() =>
                   updateFaqMutation.mutate({
                     id: editingFaq.id,
@@ -334,29 +377,29 @@ export function ContentAdminTab({
                 }
                 disabled={updateFaqMutation.isPending}
               >
-                Save Changes
-              </Button>
-            </GroupBox>
+                Save FAQ changes
+              </UiButton>
+            </UiPanel>
           )}
 
-          <GroupBox label="New FAQ Item" style={{ marginTop: 12 }}>
+          <UiPanel title="New FAQ item" compact>
             <Field>
               <label>Question</label>
-              <TextInput value={faqForm.question} onChange={(e: any) => setFaqForm((f) => ({ ...f, question: e.target.value }))} multiline fullWidth />
+              <TextInput aria-label="New FAQ question" value={faqForm.question} onChange={(e: any) => setFaqForm((f) => ({ ...f, question: e.target.value }))} multiline fullWidth />
             </Field>
             <Field>
               <label>Answer</label>
-              <TextInput value={faqForm.answer} onChange={(e: any) => setFaqForm((f) => ({ ...f, answer: e.target.value }))} multiline fullWidth />
+              <TextInput aria-label="New FAQ answer" value={faqForm.answer} onChange={(e: any) => setFaqForm((f) => ({ ...f, answer: e.target.value }))} multiline fullWidth />
             </Field>
             <Field>
               <label>Category</label>
-              <TextInput value={faqForm.category} onChange={(e: any) => setFaqForm((f) => ({ ...f, category: e.target.value }))} fullWidth />
+              <TextInput aria-label="New FAQ category" value={faqForm.category} onChange={(e: any) => setFaqForm((f) => ({ ...f, category: e.target.value }))} fullWidth />
             </Field>
             <Field>
               <label>Display Order</label>
-              <TextInput value={faqForm.displayOrder} onChange={(e: any) => setFaqForm((f) => ({ ...f, displayOrder: e.target.value }))} fullWidth />
+              <TextInput aria-label="New FAQ display order" value={faqForm.displayOrder} onChange={(e: any) => setFaqForm((f) => ({ ...f, displayOrder: e.target.value }))} fullWidth />
             </Field>
-            <Button
+            <UiButton
               onClick={() =>
                 createFaqMutation.mutate({
                   question: faqForm.question,
@@ -367,9 +410,10 @@ export function ContentAdminTab({
               }
               disabled={createFaqMutation.isPending}
             >
-              Create FAQ Item
-            </Button>
-          </GroupBox>
+              Create FAQ item
+            </UiButton>
+          </UiPanel>
+          </PanelStack>
         </>
       )}
     </>

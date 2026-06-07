@@ -23,6 +23,7 @@ import type {
   OnChainListing,
   OnChainOffer,
   ExternalMarketplaceListing,
+  MarketplaceContractVersion,
   PendingOfferAccept,
   SelectedToken,
   TradeBoardItem,
@@ -33,7 +34,9 @@ interface UseMarketplaceActionsArgs {
   address?: string | null;
   auctionBidInputs: Record<string, string>;
   createForm: CreateFormState;
+  contractVersion?: MarketplaceContractVersion;
   invalidateMarket: () => void;
+  legacyContractAddress?: string | null;
   offerInputs: Record<string, string>;
   onchainListings?: OnChainListing[];
   selectedToken: SelectedToken | null;
@@ -82,7 +85,9 @@ export function useMarketplaceActions({
   address,
   auctionBidInputs,
   createForm,
+  contractVersion = "legacy",
   invalidateMarket,
+  legacyContractAddress,
   offerInputs,
   onchainListings,
   selectedToken,
@@ -146,6 +151,7 @@ export function useMarketplaceActions({
           priceWtf,
           royaltyRecipient: royalty.recipient,
           royaltyBps: royalty.bps,
+          contractVersion,
         });
 
         createMutation.mutate({
@@ -188,17 +194,22 @@ export function useMarketplaceActions({
       }
 
       const shares = parseSharesCsv(createForm.sharesCsv);
+      if (contractVersion === "legacy" && amount !== 1) {
+        throw new Error("Legacy marketplace auctions are single-edition only");
+      }
 
       const result = await createMarketplaceAuction({
         walletAddress: address,
         tokenContract: selectedToken.contract,
         tokenId: selectedToken.tokenId,
+        amount,
         reserveWtf,
         startTimeIso: start.toISOString(),
         endTimeIso: end.toISOString(),
         extensionTimeSeconds,
         priceIncrementWtf,
         shares,
+        contractVersion,
       });
 
       createMutation.mutate({
@@ -206,7 +217,7 @@ export function useMarketplaceActions({
         tokenId: selectedToken.tokenId,
         tokenName: selectedToken.name || null,
         tokenThumbnail: selectedToken.thumbnail || null,
-        amount: 1,
+        amount,
         listingType: "auction",
         priceWtf: reserveWtf,
         minBidWtf: reserveWtf,
@@ -239,47 +250,64 @@ export function useMarketplaceActions({
       tokenContract,
       tokenId,
       tokenAmount: 1,
+      quantity: 1,
       amountWtf,
+      unitPriceWtf: amountWtf,
       targetOwner,
+      contractVersion,
     });
     setOfferInputs((prev) => ({ ...prev, [key]: "" }));
     invalidateMarket();
   };
 
   const runAcceptOfferForToken = async (
-    tokenContract: string,
-    tokenId: string,
-    listed: boolean,
-    quantity = 1
+    pending: Exclude<PendingOfferAccept, null>
   ) => {
     if (!address) throw new Error("Connect wallet before accepting offers");
-    if (Number.isInteger(quantity) && quantity <= 0) {
+    if (Number.isInteger(pending.quantity) && pending.quantity <= 0) {
       throw new Error("Offer quantity must be a positive integer");
     }
-    if (!listed) {
-      await approveMarketplaceForToken(address, tokenContract, tokenId);
+    if (!pending.listed) {
+      await approveMarketplaceForToken(address, pending.tokenContract, pending.tokenId);
     }
-    await acceptMarketplaceOffer(tokenContract, tokenId, address);
+    await acceptMarketplaceOffer({
+      offerId: pending.offerId,
+      expectedToken: {
+        tokenContract: pending.tokenContract,
+        tokenId: pending.tokenId,
+      },
+      expectedTargetOwner: pending.targetOwner,
+      expectedQuantity: pending.quantity,
+      expectedUnitPriceWtf: pending.unitPriceWtf,
+      totalWtf: pending.totalWtf,
+      offerer: pending.offerer,
+      walletAddress: address,
+      contractVersion: pending.contractVersion,
+      legacyContractAddress: pending.legacyContractAddress ?? null,
+      listed: pending.listed,
+    });
     invalidateMarket();
   };
 
-  const acceptOfferForToken = async (
-    tokenContract: string,
-    tokenId: string,
-    listed: boolean,
-    offerTokenAmount?: string
-  ) => {
-    const qty = Number(offerTokenAmount || "1");
-    if (Number.isInteger(qty) && qty > 1) {
-      setPendingOfferAccept({
-        tokenContract,
-        tokenId,
-        listed,
-        quantity: qty,
-      });
-      return;
+  const acceptOfferForToken = async (offer: OnChainOffer, listed: boolean) => {
+    const qty = Number(offer.tokenAmount || "0");
+    if (!Number.isInteger(qty) || qty <= 0) {
+      throw new Error("Offer quantity is missing or invalid");
     }
-    await runAcceptOfferForToken(tokenContract, tokenId, listed, Math.max(1, qty || 1));
+    setPendingOfferAccept({
+      offerId: offer.offerId,
+      tokenContract: offer.tokenContract,
+      tokenId: offer.tokenId,
+      listed,
+      quantity: qty,
+      unitPriceWtf: offer.unitPriceWtf,
+      totalWtf: offer.totalWtf || offer.amountWtf,
+      targetOwner: offer.targetOwner,
+      offerer: offer.offerer,
+      contractVersion: offer.contractVersion,
+      legacyContractAddress,
+      tokenName: offer.tokenName,
+    });
   };
 
   const handleCancelListing = async (listingId: number) => {
@@ -296,7 +324,18 @@ export function useMarketplaceActions({
     try {
       if (!address) throw new Error("Connect wallet before buying");
       await approveMarketplaceForWtf(address);
-      await buyMarketplaceListing(listing.id, address);
+      await buyMarketplaceListing({
+        listingId: listing.id,
+        quantity: listing.tokenAmount,
+        expectedToken: {
+          tokenContract: listing.tokenContract,
+          tokenId: listing.tokenId,
+        },
+        expectedOwner: listing.seller,
+        expectedUnitPriceWtf: listing.unitPriceWtf || listing.priceWtf,
+        walletAddress: address,
+        contractVersion: listing.contractVersion,
+      });
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Buy failed");
@@ -323,12 +362,7 @@ export function useMarketplaceActions({
     offer: OnChainOffer
   ) => {
     try {
-      await acceptOfferForToken(
-        listing.tokenContract,
-        listing.tokenId,
-        true,
-        offer.tokenAmount
-      );
+      await acceptOfferForToken(offer, true);
     } catch (err: any) {
       setErrorMsg(err?.message || "Accept offer failed");
     }
@@ -358,7 +392,7 @@ export function useMarketplaceActions({
       const raw = parseWtfInputToRaw(auctionBidInputs[bidKey] || "");
       if (!raw) throw new Error("Bid amount is required");
       await approveMarketplaceForWtf(address);
-      await bidMarketplaceAuction(auction.id, raw, address);
+      await bidMarketplaceAuction(auction.id, raw, address, auction.contractVersion);
       setAuctionBidInputs((prev) => ({ ...prev, [bidKey]: "" }));
       invalidateMarket();
     } catch (err: any) {
@@ -376,10 +410,17 @@ export function useMarketplaceActions({
     }
   };
 
-  const handleCancelOffer = async (tokenContract: string, tokenId: string) => {
+  const handleCancelOffer = async (offer: OnChainOffer) => {
     try {
       if (!address) throw new Error("Connect wallet before cancelling offers");
-      await cancelMarketplaceOffer(tokenContract, tokenId, address);
+      await cancelMarketplaceOffer({
+        offerId: offer.offerId,
+        tokenContract: offer.tokenContract,
+        tokenId: offer.tokenId,
+        targetOwner: offer.targetOwner,
+        walletAddress: address,
+        contractVersion: offer.contractVersion,
+      });
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Cancel offer failed");
@@ -404,10 +445,17 @@ export function useMarketplaceActions({
     }
   };
 
-  const handleRejectOffer = async (tokenContract: string, tokenId: string) => {
+  const handleRejectOffer = async (offer: OnChainOffer) => {
     try {
       if (!address) throw new Error("Connect wallet before rejecting offers");
-      await cancelMarketplaceOffer(tokenContract, tokenId, address);
+      await cancelMarketplaceOffer({
+        offerId: offer.offerId,
+        tokenContract: offer.tokenContract,
+        tokenId: offer.tokenId,
+        targetOwner: offer.targetOwner,
+        walletAddress: address,
+        contractVersion: offer.contractVersion,
+      });
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Reject failed");
@@ -422,7 +470,7 @@ export function useMarketplaceActions({
           listing.tokenId === offer.tokenId &&
           listing.seller === address
       );
-      await acceptOfferForToken(offer.tokenContract, offer.tokenId, listed);
+      await acceptOfferForToken(offer, listed);
     } catch (err: any) {
       setErrorMsg(err?.message || "Accept failed");
     }
@@ -439,7 +487,14 @@ export function useMarketplaceActions({
   const handleCancelTradeBoardOffer = async (item: TradeBoardItem) => {
     try {
       if (!address) throw new Error("Connect wallet before cancelling offers");
-      await cancelMarketplaceOffer(item.tokenContract, item.tokenId, address);
+      await cancelMarketplaceOffer({
+        offerId: item.activeOffer?.offerId ?? null,
+        tokenContract: item.tokenContract,
+        tokenId: item.tokenId,
+        targetOwner: item.activeOffer?.targetOwner ?? item.ownerWallet,
+        walletAddress: address,
+        contractVersion: item.activeOffer?.contractVersion ?? contractVersion,
+      });
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Cancel offer failed");
@@ -448,11 +503,22 @@ export function useMarketplaceActions({
 
   const handleAcceptTradeBoardOffer = async (item: TradeBoardItem) => {
     try {
+      if (!item.activeOffer) throw new Error("No active offer to accept");
       await acceptOfferForToken(
-        item.tokenContract,
-        item.tokenId,
-        false,
-        item.activeOffer?.tokenAmount
+        {
+          ...item.activeOffer,
+          tokenName: item.tokenName,
+          tokenThumbnail: item.tokenThumbnail,
+          metadata: item.metadata,
+          provenance: item.provenance,
+          offererUserId: null,
+          offererUsername: null,
+          offererDisplayName: null,
+          targetOwnerUserId: item.ownerUserId,
+          targetOwnerUsername: item.ownerUsername,
+          targetOwnerDisplayName: item.ownerDisplayName,
+        },
+        false
       );
     } catch (err: any) {
       setErrorMsg(err?.message || "Accept offer failed");
@@ -462,7 +528,14 @@ export function useMarketplaceActions({
   const handleRejectTradeBoardOffer = async (item: TradeBoardItem) => {
     try {
       if (!address) throw new Error("Connect wallet before rejecting offers");
-      await cancelMarketplaceOffer(item.tokenContract, item.tokenId, address);
+      await cancelMarketplaceOffer({
+        offerId: item.activeOffer?.offerId ?? null,
+        tokenContract: item.tokenContract,
+        tokenId: item.tokenId,
+        targetOwner: item.activeOffer?.targetOwner ?? item.ownerWallet,
+        walletAddress: address,
+        contractVersion: item.activeOffer?.contractVersion ?? contractVersion,
+      });
       invalidateMarket();
     } catch (err: any) {
       setErrorMsg(err?.message || "Reject failed");

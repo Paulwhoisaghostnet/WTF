@@ -1,8 +1,4 @@
 import { useState, useEffect } from "react";
-import {
-  Button,
-  GroupBox,
-} from "react95";
 import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
@@ -28,6 +24,7 @@ import {
 } from "lucide-react";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UiButton, UiPanel } from "../components/wtfos-ui";
 import { BoardAdminTab } from "../features/admin/tabs/BoardAdminTab";
 import { ChallengeAutomationAdminTab } from "../features/admin/tabs/ChallengeAutomationAdminTab";
 import {
@@ -68,7 +65,7 @@ import { type PermissionCategory } from "@shared/types";
 
 const ActionRow = styled.div`
   display: flex;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: center;
   flex-wrap: wrap;
 `;
@@ -78,13 +75,11 @@ const AdminFrame = styled.div`
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--wtf-space-3, 12px);
   overflow: hidden;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(238, 241, 244, 0.88)),
-    repeating-linear-gradient(90deg, rgba(17, 24, 39, 0.05) 0 1px, transparent 1px 24px);
-  padding: 10px;
-  color: #15171a;
+  background: var(--wtf-app-task-bg, var(--wtf-app-bg, #e8edf2));
+  padding: var(--wtf-space-3, 12px);
+  color: var(--wtf-app-text, #111);
 `;
 
 const SuiteHeader = styled.header`
@@ -99,64 +94,65 @@ const SuiteHeader = styled.header`
 `;
 
 const SuiteTitlePanel = styled.div`
-  border: 1px solid #15171a;
-  background: #f7f7f4;
-  box-shadow: 4px 4px 0 #15171a;
-  padding: 12px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface, #f4f4f4);
+  box-shadow: inset 0 2px 0 var(--wtf-app-primary, var(--wtf-app-link, #000080));
+  padding: var(--wtf-space-4, 16px);
   min-width: 0;
 `;
 
 const SuiteKicker = styled.div`
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0;
-  color: #6f1d1b;
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
+  line-height: 1.25;
 `;
 
 const SuiteTitle = styled.h2`
-  margin: 2px 0 0;
-  font-size: 31px;
-  line-height: 1.05;
+  margin: var(--wtf-space-1, 4px) 0 0;
+  font-size: 22px;
+  line-height: 1.15;
   overflow-wrap: anywhere;
 `;
 
 const SuiteSubtitle = styled.div`
-  margin-top: 6px;
-  font-size: 12px;
-  color: #3b3f45;
+  margin-top: var(--wtf-space-2, 8px);
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.35;
 `;
 
-const OverviewBox = styled(GroupBox)`
+const OverviewBox = styled(UiPanel)`
   margin-bottom: 0;
   min-width: 0;
 `;
 
 const OverviewStats = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-  gap: 7px;
-  font-size: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  gap: var(--wtf-space-2, 8px);
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const StatTile = styled.span`
   display: grid;
-  gap: 1px;
-  border: 1px solid #9ea5ad;
-  background: #ffffff;
-  padding: 7px 8px;
+  gap: var(--wtf-space-1, 4px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  padding: var(--wtf-space-2, 8px);
   min-width: 0;
 
   strong {
     font-size: 18px;
     line-height: 1;
+    overflow-wrap: anywhere;
   }
 
   span {
-    color: #4b5563;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0;
+    color: var(--wtf-app-muted-text, #384352);
+    font-size: var(--wtf-type-caption, 13px);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
   }
 `;
 
@@ -192,10 +188,8 @@ const NavGroup = styled.div`
 
 const NavGroupTitle = styled.div`
   color: #f4c542;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
-  letter-spacing: 0;
-  text-transform: uppercase;
   padding: 0 3px;
 `;
 
@@ -238,7 +232,7 @@ const NavCopy = styled.span`
 
 const NavLabel = styled.span`
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -247,7 +241,7 @@ const NavLabel = styled.span`
 const NavDescription = styled.span`
   color: inherit;
   opacity: 0.7;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -257,10 +251,9 @@ const AdminTabBody = styled.section`
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  border: 1px solid #15171a;
-  background: #f5f5f2;
-  box-shadow: 4px 4px 0 #15171a;
-  padding: 12px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface, #f4f4f4);
+  padding: var(--wtf-space-4, 16px);
   scrollbar-gutter: stable;
 `;
 
@@ -270,7 +263,7 @@ const ActivePanelHeader = styled.div`
   align-items: flex-start;
   gap: 10px;
   margin-bottom: 12px;
-  border-bottom: 2px solid #15171a;
+  border-bottom: 1px solid var(--wtf-app-border, #808080);
   padding-bottom: 8px;
 `;
 
@@ -282,13 +275,14 @@ const ActivePanelTitle = styled.div`
 
   h3 {
     margin: 0;
-    font-size: 20px;
+    font-size: var(--wtf-type-title, 18px);
   }
 
   p {
     margin: 2px 0 0;
-    color: #505862;
-    font-size: 12px;
+    color: var(--wtf-app-muted-text, #384352);
+    font-size: var(--wtf-type-caption, 13px);
+    line-height: 1.35;
   }
 `;
 
@@ -297,21 +291,19 @@ const ActivePanelIcon = styled.span<{ $accent: string }>`
   height: 34px;
   display: grid;
   place-items: center;
-  border: 1px solid #15171a;
+  border: 1px solid var(--wtf-app-border, #808080);
   background: ${({ $accent }) => $accent};
   color: #111111;
-  box-shadow: 2px 2px 0 #15171a;
   flex: 0 0 auto;
 `;
 
 const ActivePanelBadge = styled.div<{ $accent: string }>`
-  border: 1px solid #15171a;
+  border: 1px solid var(--wtf-app-border, #808080);
   background: ${({ $accent }) => $accent};
   color: #111111;
   padding: 5px 8px;
   font-weight: 700;
-  font-size: 11px;
-  text-transform: uppercase;
+  font-size: var(--wtf-type-caption, 13px);
   white-space: nowrap;
 `;
 
@@ -367,19 +359,19 @@ function ConfirmButton({
   if (confirming) {
     return (
       <ActionRow>
-        <Button size={size} onClick={onConfirm} disabled={disabled}>
+        <UiButton size={size} onClick={onConfirm} disabled={disabled}>
           {confirmLabel || `Yes, ${label}`}
-        </Button>
-        <Button size={size} onClick={() => setConfirming(false)}>
-          Cancel
-        </Button>
+        </UiButton>
+        <UiButton size={size} onClick={() => setConfirming(false)}>
+          Cancel confirmation
+        </UiButton>
       </ActionRow>
     );
   }
   return (
-    <Button size={size} onClick={() => setConfirming(true)} disabled={disabled}>
+    <UiButton size={size} onClick={() => setConfirming(true)} disabled={disabled}>
       {label}
-    </Button>
+    </UiButton>
   );
 }
 
@@ -682,7 +674,7 @@ export function Admin() {
             <SuiteSubtitle>{activeSection.group} / {activeSection.label}</SuiteSubtitle>
           </SuiteTitlePanel>
 
-          <OverviewBox label="Live inventory">
+          <OverviewBox title="Live inventory" compact>
             <OverviewStats>
               <StatTile><strong>{stats?.users ?? "-"}</strong><span>Users</span></StatTile>
               <StatTile><strong>{stats?.seasons ?? "-"}</strong><span>Seasons</span></StatTile>

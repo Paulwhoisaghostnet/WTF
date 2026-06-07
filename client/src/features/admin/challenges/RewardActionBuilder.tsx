@@ -1,5 +1,6 @@
-import { Button, Select, TextInput } from "react95";
+import { Select, TextInput } from "react95";
 import styled from "styled-components";
+import { UiButton } from "../../../components/wtfos-ui";
 import type {
   ChallengeBuilderState,
   RewardActionDefinition,
@@ -10,13 +11,13 @@ import { newRewardActionDraft } from "./builder-utils";
 const Stack = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--wtf-space-2, 8px);
 `;
 
 const Row = styled.div`
   display: grid;
   grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(110px, 0.7fr)) auto;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   align-items: end;
 
   @media (max-width: 900px) {
@@ -27,8 +28,11 @@ const Row = styled.div`
 const Field = styled.label`
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
+  gap: var(--wtf-space-1, 4px);
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+  line-height: 1.3;
 `;
 
 function updateAction(
@@ -56,8 +60,8 @@ export function RewardActionBuilder({
   return (
     <Stack>
       <div>
-        <Button
-          size="sm"
+        <UiButton
+          compact
           onClick={() =>
             setState({
               ...state,
@@ -65,8 +69,8 @@ export function RewardActionBuilder({
             })
           }
         >
-          Add Reward Action
-        </Button>
+          Add reward action
+        </UiButton>
       </div>
       {state.rewardActions.map((action) => (
         <Row key={action.id}>
@@ -180,9 +184,10 @@ export function RewardActionBuilder({
               </Field>
             </>
           )}
-          <Button
-            size="sm"
+          <UiButton
+            compact
             disabled={state.rewardActions.length <= 1}
+            aria-label={`Remove reward action ${action.id}`}
             onClick={() =>
               setState({
                 ...state,
@@ -190,8 +195,8 @@ export function RewardActionBuilder({
               })
             }
           >
-            Remove
-          </Button>
+            Remove reward action
+          </UiButton>
         </Row>
       ))}
     </Stack>

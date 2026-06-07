@@ -42,7 +42,7 @@ const IntroPanel = styled.div`
   align-items: center;
   padding: 10px;
   border: 1px solid #808080;
-  background: #dce7e2;
+  background: var(--wtf-app-info-bg, #dce7e2);
   box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
 
   @media (max-width: 720px) {
@@ -57,7 +57,7 @@ const PageTitle = styled.h2`
 
 const PageCopy = styled.p`
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: var(--wtf-type-body, 15px);
   line-height: 1.4;
 `;
 
@@ -75,9 +75,9 @@ const StatStrip = styled.div`
 const Stat = styled.div`
   min-height: 48px;
   border: 2px inset #c0c0c0;
-  background: #f5f5f5;
+  background: var(--wtf-app-surface-raised, #f5f5f5);
   padding: 6px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 
   strong {
     display: block;
@@ -115,7 +115,7 @@ const ChallengeTitle = styled.h3`
 
 const ChallengeCopy = styled.p`
   margin: 6px 0 0;
-  font-size: 13px;
+  font-size: var(--wtf-type-body, 15px);
   line-height: 1.35;
 `;
 
@@ -129,8 +129,8 @@ const ChipRow = styled.div`
 const Chip = styled.span<{ $tone?: "green" | "blue" | "gold" | "gray" | "red" }>`
   display: inline-flex;
   align-items: center;
-  min-height: 19px;
-  padding: 2px 7px;
+  min-height: 24px;
+  padding: 3px 8px;
   border: 1px solid #5a5a5a;
   background: ${(p) =>
     p.$tone === "green"
@@ -142,16 +142,16 @@ const Chip = styled.span<{ $tone?: "green" | "blue" | "gold" | "gray" | "red" }>
           : p.$tone === "red"
             ? "#ffd7d7"
             : "#eeeeee"};
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   color: #202020;
 `;
 
 const DetailNote = styled.div`
   margin-top: 8px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.4;
-  color: #303030;
+  color: var(--wtf-app-muted-text, #303030);
 `;
 
 const Field = styled.div`
@@ -170,9 +170,9 @@ const SubmissionBox = styled.div`
 
 const EmptyState = styled.div`
   padding: 14px;
-  border: 1px dashed #777777;
-  background: #f6f6f6;
-  font-size: 13px;
+  border: 1px dashed var(--wtf-app-border, #777777);
+  background: var(--wtf-app-surface, #f6f6f6);
+  font-size: var(--wtf-type-body, 15px);
 `;
 
 function statusLabel(status: string | null | undefined) {

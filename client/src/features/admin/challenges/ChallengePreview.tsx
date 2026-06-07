@@ -1,10 +1,12 @@
-import { GroupBox } from "react95";
 import styled from "styled-components";
+import { UiPanel } from "../../../components/wtfos-ui";
 import type { ChallengeBuilderState, TriggerDefinition } from "./types";
 import { buildConditionTree, buildRewardActions } from "./builder-utils";
 
 const PreviewText = styled.p`
   margin: 0;
+  color: var(--wtf-app-text, #111);
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.45;
 `;
 
@@ -47,11 +49,11 @@ export function ChallengePreview({
   const conditionText = tree.children.map((condition) => describeCondition(condition, triggers)).join(joiner);
   const rewards = buildRewardActions(state).map(describeAction).join(" and ");
   return (
-    <GroupBox label="Rule Preview">
+    <UiPanel title="Rule preview" compact>
       <PreviewText>
         Complete this challenge by {conditionText || "satisfying the configured rule"}.
         {" "}Reward: {rewards || "configured reward"}.
       </PreviewText>
-    </GroupBox>
+    </UiPanel>
   );
 }

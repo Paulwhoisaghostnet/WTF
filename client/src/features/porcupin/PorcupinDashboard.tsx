@@ -20,7 +20,7 @@ export function PorcupinDashboard() {
         <WelcomeArt>🦔</WelcomeArt>
         <p>No Porcupin instance connected.</p>
         <Button onClick={() => wm.openPage("/apps/porcupin-setup")}>
-          Run Setup Wizard
+          Open Porcupin setup wizard
         </Button>
         <Credit>Porcupin · by skllzrmy / FAFOlab</Credit>
       </EmptyWrap>
@@ -55,7 +55,7 @@ export function PorcupinDashboard() {
               onClick={() => statusQ.refetch()}
               disabled={statusQ.isFetching}
             >
-              {statusQ.isFetching ? "Checking…" : "Refresh Status"}
+              {statusQ.isFetching ? "Checking status..." : "Refresh Porcupin status"}
             </Button>
             <Button
               size="sm"
@@ -63,16 +63,16 @@ export function PorcupinDashboard() {
               disabled={disconnectMut.isPending}
               style={{ background: "#ffcccc" }}
             >
-              Disconnect
+              Disconnect Porcupin
             </Button>
           </ButtonRow>
         </GroupBox>
 
         {status?.remote && (
           <GroupBox label="Remote Status">
-            <pre style={{ fontSize: 10, maxHeight: 120, overflow: "auto", margin: 0 }}>
+            <RemoteStatus>
               {JSON.stringify(status.remote, null, 2)}
-            </pre>
+            </RemoteStatus>
           </GroupBox>
         )}
       </Row>
@@ -98,7 +98,7 @@ export function PorcupinDashboard() {
             </NotesList>
           )}
           <Button size="sm" onClick={() => eligQ.refetch()} style={{ marginTop: 6 }}>
-            Re-check
+            Re-check premium eligibility
           </Button>
         </GroupBox>
       )}
@@ -123,7 +123,7 @@ const EmptyWrap = styled.div`
   gap: 10px;
   padding: 20px;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 14px);
 `;
 
 const WelcomeArt = styled.div`
@@ -151,7 +151,7 @@ const InfoGrid = styled.dl`
   display: grid;
   grid-template-columns: 100px 1fr;
   gap: 2px 8px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   margin: 0 0 8px;
 
   dt { font-weight: bold; color: #555; }
@@ -160,8 +160,8 @@ const InfoGrid = styled.dl`
 
 const StatusPill = styled.span<{ $status: string }>`
   display: inline-block;
-  padding: 1px 6px;
-  font-size: 10px;
+  padding: 2px 8px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   background: ${(p) =>
     p.$status === "connected" ? "#c8ecc8" :
@@ -176,6 +176,7 @@ const StatusPill = styled.span<{ $status: string }>`
 
 const ButtonRow = styled.div`
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 `;
 
@@ -190,35 +191,47 @@ const GateItem = styled.div<{ $ok: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   color: ${(p) => (p.$ok ? "#006600" : "#aa0000")};
   padding: 6px;
   border: 1px solid ${(p) => (p.$ok ? "#008800" : "#cc0000")};
   background: ${(p) => (p.$ok ? "#e8fce8" : "#fce8e8")};
 
-  small { font-weight: normal; font-size: 10px; color: #555; }
+  small {
+    font-weight: normal;
+    font-size: var(--wtf-type-caption, 13px);
+    color: var(--wtf-app-muted, #4b5563);
+  }
 `;
 
 const EligibleBadge = styled.div`
   background: #c8ecc8;
   border: 1px solid #008000;
   padding: 4px 10px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   color: #006600;
   margin-bottom: 6px;
 `;
 
 const NotesList = styled.ul`
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #880000;
   padding-left: 16px;
   margin: 0 0 6px;
 `;
 
 const Credit = styled.div`
-  font-size: 9px;
-  color: #888;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
   text-align: right;
+`;
+
+const RemoteStatus = styled.pre`
+  font-size: var(--wtf-type-caption, 13px);
+  max-height: 160px;
+  overflow: auto;
+  margin: 0;
+  white-space: pre-wrap;
 `;

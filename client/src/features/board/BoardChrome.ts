@@ -1,3 +1,4 @@
+import type { ButtonHTMLAttributes } from "react";
 import { Button, Panel } from "react95";
 import styled from "styled-components";
 
@@ -34,7 +35,7 @@ export const SideHeader = styled.div`
   background: linear-gradient(90deg, #000080, #1084d0);
   color: #fff;
   font-weight: bold;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 export const SideScroll = styled.div`
@@ -48,11 +49,11 @@ export const CatHeader = styled.div<{ $collapsed?: boolean }>`
   align-items: center;
   gap: 4px;
   padding: 5px 8px 3px;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #444;
+  letter-spacing: 0;
+  color: var(--wtf-app-muted, #374151);
   cursor: pointer;
   user-select: none;
   &:hover {
@@ -60,7 +61,7 @@ export const CatHeader = styled.div<{ $collapsed?: boolean }>`
   }
   &::before {
     content: "${(p) => (p.$collapsed ? "▸" : "▾")}";
-    font-size: 9px;
+    font-size: var(--wtf-type-caption, 13px);
     width: 10px;
   }
 `;
@@ -70,7 +71,8 @@ export const ChanItem = styled.div<{ $active?: boolean; $locked?: boolean }>`
   align-items: center;
   gap: 4px;
   padding: 3px 8px 3px 20px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
+  min-height: 32px;
   cursor: pointer;
   background: ${(p) => (p.$active ? "#000080" : "transparent")};
   color: ${(p) =>
@@ -95,7 +97,7 @@ export const ChanName = styled.span`
 `;
 
 export const ChanBadge = styled.span`
-  font-size: 9px;
+  font-size: var(--wtf-type-caption, 13px);
   background: #a00;
   color: #fff;
   border-radius: 6px;
@@ -142,8 +144,8 @@ export const ChanTitleBig = styled.span`
 `;
 
 export const TopicText = styled.span`
-  font-size: 11px;
-  color: #555;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -198,24 +200,37 @@ export const MsgAuthorLine = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 export const MsgAuthor = styled.span`
   font-weight: bold;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding-inline: 2px;
+  }
+
+  @media (max-width: 768px) {
+    a {
+      min-height: 44px;
+    }
+  }
 `;
 
 export const RolePill = styled.span`
-  font-size: 9px;
+  font-size: var(--wtf-type-caption, 13px);
   padding: 0 4px;
   background: #c3c7cb;
   font-weight: bold;
 `;
 
 export const MsgTime = styled.span`
-  color: #888;
-  font-size: 10px;
+  color: var(--wtf-app-muted, #4b5563);
+  font-size: var(--wtf-type-caption, 13px);
   margin-left: auto;
 `;
 
@@ -227,17 +242,17 @@ export const MsgContent = styled.div`
   line-height: 1.4;
 `;
 
-export const ReplyQuote = styled.button`
+export const ReplyQuote = styled.button.attrs({ type: "button" })`
   margin-top: 3px;
   margin-bottom: 4px;
   padding: 4px 6px;
   width: 100%;
   text-align: left;
   border: 1px solid #9ea8b8;
-  border-left: 3px solid #6d84b3;
   background: #f3f6fb;
   color: #1d3f75;
-  font-size: 11px;
+  box-shadow: inset 0 2px 0 #6d84b3;
+  font-size: var(--wtf-type-caption, 13px);
   cursor: pointer;
   &:hover {
     background: #eaf0fb;
@@ -272,7 +287,7 @@ export const AttachFile = styled.a`
   border: 2px solid;
   border-color: #dfdfdf #888c8f #888c8f #dfdfdf;
   background: #c3c7cb;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #000080;
   text-decoration: none;
   &:hover {
@@ -287,12 +302,14 @@ export const ReactionBar = styled.div`
   margin-top: 4px;
 `;
 
-export const ReactionChip = styled.button<{ $active?: boolean }>`
+export const ReactionChip = styled.button.attrs({ type: "button" })<{ $active?: boolean }>`
   display: flex;
   align-items: center;
   gap: 3px;
   padding: 1px 6px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
+  min-width: 32px;
+  min-height: 32px;
   border: 1px solid ${(p) => (p.$active ? "#000080" : "#888c8f")};
   background: ${(p) => (p.$active ? "#d0d8ff" : "#dfdfdf")};
   border-radius: 3px;
@@ -308,16 +325,26 @@ export const MsgActions = styled.div`
   margin-top: 3px;
 `;
 
-export const MsgActBtn = styled.button`
+export const MsgActBtn = styled.button.attrs({
+  type: "button",
+  "data-compact-control": "true",
+} as ButtonHTMLAttributes<HTMLButtonElement> & { "data-compact-control": string })`
   background: none;
   border: none;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #000080;
   cursor: pointer;
   text-decoration: underline;
-  padding: 0;
+  padding: 0 4px;
+  min-width: 32px;
+  min-height: 32px;
   &:hover {
     color: #0000cc;
+  }
+
+  @media (max-width: 768px) {
+    min-width: 44px;
+    min-height: 44px;
   }
 `;
 
@@ -339,9 +366,18 @@ export const EmojiPicker = styled.div`
     border: none;
     cursor: pointer;
     padding: 2px 4px;
+    min-width: 32px;
+    min-height: 32px;
     border-radius: 2px;
     &:hover {
       background: #c3c7cb;
+    }
+  }
+
+  @media (max-width: 768px) {
+    button {
+      min-width: 44px;
+      min-height: 44px;
     }
   }
 `;
@@ -375,8 +411,8 @@ export const ComposeArea = styled.textarea`
 `;
 
 export const StatusText = styled.div`
-  font-size: 11px;
-  color: #555;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
   padding: 4px 10px;
 `;
 
@@ -385,10 +421,10 @@ export const ReplyingBar = styled.div`
   align-items: center;
   gap: 6px;
   border: 1px solid #a1a8b3;
-  border-left: 3px solid #6d84b3;
   background: #eef3fb;
+  box-shadow: inset 0 2px 0 #6d84b3;
   padding: 4px 6px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #1f3556;
 `;
 
@@ -417,7 +453,7 @@ export const SettingsTitleBar = styled.div`
   background: linear-gradient(90deg, #000080, #1084d0);
   color: #fff;
   font-weight: bold;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   padding: 3px 6px;
   display: flex;
   align-items: center;
@@ -444,7 +480,7 @@ export const FormRow = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   label {
     min-width: 100px;
     font-weight: bold;
@@ -460,7 +496,7 @@ export const RoleGrid = styled.div`
 export const PermTable = styled.table`
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   th,
   td {
     border: 1px solid #888c8f;

@@ -71,6 +71,12 @@ const ToolBar = styled.div`
   gap: 6px;
 `;
 
+const InlineMeta = styled.span`
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
+  white-space: nowrap;
+`;
+
 const LibGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(clamp(140px, 16vw, 190px), 1fr));
@@ -109,7 +115,7 @@ const PhotoThumb = styled.div`
 
 const PhotoInfo = styled.div`
   padding: 6px 8px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const PhotoTitle = styled.div`
@@ -120,9 +126,15 @@ const PhotoTitle = styled.div`
 `;
 
 const PhotoMeta = styled.div`
-  font-size: 9px;
-  color: #555;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #4b5563);
   margin-top: 2px;
+`;
+
+const CardActions = styled.div`
+  margin-top: 6px;
+  display: flex;
+  gap: 4px;
 `;
 
 const UploadArea = styled.div`
@@ -130,9 +142,36 @@ const UploadArea = styled.div`
   background: #f0f0f0;
   padding: 20px;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 14px);
   cursor: pointer;
   &:hover { background: #e8e8e8; }
+`;
+
+const UploadForm = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const UploadIcon = styled.div`
+  font-size: 24px;
+  margin-bottom: 6px;
+`;
+
+const EmptyText = styled.p`
+  font-size: var(--wtf-type-caption, 13px);
+  padding: 8px;
+  margin: 0;
+  color: var(--wtf-app-muted, #4b5563);
+`;
+
+const StateText = styled.p<{ $tone?: "success" | "danger" }>`
+  color: ${({ $tone }) =>
+    $tone === "success"
+      ? "var(--wtf-app-success-text, #14532d)"
+      : "var(--wtf-app-danger-text, #7f1d1d)"};
+  font-size: var(--wtf-type-caption, 13px);
+  margin: 0;
 `;
 
 const MAX_UPLOAD_MB = 25;
@@ -279,9 +318,9 @@ export function MyPhotos() {
                   <Hourglass size={32} />
                 </div>
               ) : mediaItems.length === 0 ? (
-                <p style={{ fontSize: 12, padding: 8 }}>
+                <EmptyText>
                   No photos in your library yet. Import from tokens or upload directly.
-                </p>
+                </EmptyText>
               ) : (
                 <LibGrid>
                   {mediaItems.map((item) => {
@@ -325,18 +364,17 @@ export function MyPhotos() {
                               )}
                             </PhotoMeta>
                           )}
-                          <div style={{ marginTop: 4, display: "flex", gap: 4 }}>
+                          <CardActions>
                             <Button
                               size="sm"
-                              style={{ fontSize: 9, padding: "1px 5px" }}
                               disabled={deleteMutation.isPending}
                               onClick={() => {
                                 if (confirm("Remove from library?")) deleteMutation.mutate(item.id);
                               }}
                             >
-                              Remove
+                              Remove photo
                             </Button>
-                          </div>
+                          </CardActions>
                         </PhotoInfo>
                       </PhotoCard>
                     );
@@ -351,15 +389,16 @@ export function MyPhotos() {
             <>
               <ToolBar>
                 <TextInput
+                  aria-label="Search image tokens"
                   value={search}
                   onChange={(e: any) => setSearch(e.target?.value ?? "")}
                   placeholder="Search by name, creator, tag..."
-                  style={{ flex: 1, minWidth: 160, fontSize: 11 }}
+                  style={{ flex: 1, minWidth: 160 }}
                 />
-                <span style={{ fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
+                <InlineMeta>
                   {filteredTokens.length} of {imageTokens.length} image token{imageTokens.length !== 1 ? "s" : ""}
                   {tokens.length > 0 ? ` (${tokens.length} total)` : ""}
-                </span>
+                </InlineMeta>
               </ToolBar>
 
               {myTokensQuery.isLoading ? (
@@ -367,9 +406,9 @@ export function MyPhotos() {
                   <Hourglass size={32} />
                 </div>
               ) : filteredTokens.length === 0 ? (
-                <p style={{ fontSize: 12, padding: 8 }}>
+                <EmptyText>
                   No image tokens found in your wallets. Sync your wallet in Profile.
-                </p>
+                </EmptyText>
               ) : (
                 <ScrollWrap>
                   <TokenGrid $size="md">
@@ -390,19 +429,19 @@ export function MyPhotos() {
           {/* ─── Upload tab ─── */}
           {tab === 2 && (
             <GroupBox label="Upload Image">
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <UploadForm>
                 <TextInput
+                  aria-label="Image upload title"
                   value={uploadTitle}
                   onChange={(e: any) => setUploadTitle(e.target?.value ?? "")}
                   placeholder="Image title (optional)"
-                  style={{ fontSize: 11 }}
                 />
                 <UploadArea onClick={() => document.getElementById("photo-upload-input")?.click()}>
                   {uploadMutation.isPending ? (
                     <Hourglass size={24} />
                   ) : (
                     <>
-                      <div style={{ fontSize: 24, marginBottom: 6 }}>🖼️</div>
+                      <UploadIcon>🖼️</UploadIcon>
                       Click to upload an image file (max {MAX_UPLOAD_MB}MB)
                     </>
                   )}
@@ -415,12 +454,12 @@ export function MyPhotos() {
                   onChange={handleFileUpload}
                 />
                 {uploadMutation.isError && (
-                  <p style={{ color: "red", fontSize: 11 }}>Upload failed. Please try again.</p>
+                  <StateText $tone="danger">Upload failed. Please try again.</StateText>
                 )}
                 {uploadMutation.isSuccess && (
-                  <p style={{ color: "green", fontSize: 11 }}>Uploaded successfully!</p>
+                  <StateText $tone="success">Uploaded successfully.</StateText>
                 )}
-              </div>
+              </UploadForm>
             </GroupBox>
           )}
         </TabBody>

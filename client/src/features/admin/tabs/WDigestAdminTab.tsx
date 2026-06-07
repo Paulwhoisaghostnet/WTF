@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, GroupBox } from "react95";
 import styled from "styled-components";
+import { UiButton, UiPanel, UiStatusPill } from "../../../components/wtfos-ui";
 import { api } from "../../../lib/api";
 
 type DigestHandleRow = {
@@ -20,8 +20,27 @@ type DigestHandlesResponse = {
 const HandleList = styled.textarea`
   width: 100%;
   min-height: 160px;
-  font-family: monospace;
-  font-size: 12px;
+  padding: var(--wtf-space-2, 8px);
+  color: var(--wtf-app-text, #111);
+  background: var(--wtf-app-control-bg, #ffffff);
+  border: 1px solid var(--wtf-app-control-border, #808080);
+  font-family: var(--wtf-mono-font, monospace);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
+`;
+
+const Intro = styled.p`
+  margin: 0 0 var(--wtf-space-2, 8px);
+  color: var(--wtf-app-muted-text, #444);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
+`;
+
+const ActionRow = styled.div`
+  display: flex;
+  gap: var(--wtf-space-2, 8px);
+  flex-wrap: wrap;
+  margin-top: var(--wtf-space-2, 8px);
 `;
 
 export function WDigestAdminTab() {
@@ -54,27 +73,38 @@ export function WDigestAdminTab() {
       .filter(Boolean);
 
   return (
-    <GroupBox label="W Tezos digest handles">
-      <p style={{ fontSize: 12, marginBottom: 8 }}>
+    <UiPanel
+      title="W Tezos digest handles"
+      actions={
+        <UiStatusPill $tone={data?.scraperConfigured ? "success" : "warning"}>
+          Scraper {data?.scraperConfigured ? "configured" : "not configured"}
+        </UiStatusPill>
+      }
+      compact
+    >
+      <Intro>
         Curated X handles for the read-only W app. Profile scraper records post URLs only (no X API).
-        Scraper status: <strong>{data?.scraperConfigured ? "configured" : "not configured"}</strong>.
-      </p>
+      </Intro>
       {isLoading ? (
-        <p>Loading…</p>
+        <Intro>Loading digest handles...</Intro>
       ) : (
         <>
-          <HandleList value={value} onChange={(e) => setDraft(e.target.value)} />
-          <div style={{ marginTop: 8 }}>
-            <Button
-              size="sm"
+          <HandleList
+            aria-label="W Tezos digest handle list"
+            value={value}
+            onChange={(e) => setDraft(e.target.value)}
+          />
+          <ActionRow>
+            <UiButton
+              compact
               disabled={saveMutation.isPending}
               onClick={() => saveMutation.mutate(parseHandles(value))}
             >
               Save handle list
-            </Button>
-          </div>
+            </UiButton>
+          </ActionRow>
         </>
       )}
-    </GroupBox>
+    </UiPanel>
   );
 }

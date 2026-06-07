@@ -386,12 +386,15 @@ type HostInventory = {
   error: string | null;
 };
 
+type AnalyticsFetchJson = <T>(url: string) => Promise<T>;
+
 type BuildOptions = {
   limitPerCollection?: number;
   sampleReposPerHost?: number;
   cexAddresses?: Tz2atCexAddress[];
   filters?: Tz2atAnalyticsFilters;
-  fetchJson?: typeof defaultFetchJson;
+  fetchJson?: AnalyticsFetchJson;
+  abortSignal?: AbortSignal;
   flowDeepMaxPages?: number;
   flowDeepTezosTarget?: number;
   cexWalletNetworks?: string[];
@@ -590,7 +593,7 @@ export function buildTz2atCexAddressBook(input: {
 }
 
 export async function buildTz2atEcosystemAnalytics(options: BuildOptions = {}): Promise<Tz2atEcosystemAnalytics> {
-  const fetchJson = options.fetchJson ?? defaultFetchJson;
+  const fetchJson: AnalyticsFetchJson = options.fetchJson ?? ((url) => defaultFetchJson(url, options.abortSignal));
   const limitPerCollection = clampInteger(options.limitPerCollection, 1, 100, DEFAULT_LIMIT_PER_COLLECTION);
   const sampleReposPerHost = clampInteger(options.sampleReposPerHost, 1, 25, DEFAULT_SAMPLE_REPOS_PER_HOST);
   const cexAddresses = normalizeCexAddressBook(options.cexAddresses ?? []);
@@ -617,7 +620,7 @@ export async function buildTz2atEcosystemAnalytics(options: BuildOptions = {}): 
   const relayBaseUrl = (options.tz2atRelayBaseUrl ?? tz2atRelayBaseUrl()).replace(/\/+$/, "");
 
   const hydration = hydrateCex
-    ? await requestCexWalletHydration(cexAddresses, windowHours, relayBaseUrl, fetchJson)
+    ? await requestCexWalletHydration(cexAddresses, windowHours, relayBaseUrl, fetchJson, options.abortSignal)
     : { requested: false, wallets: 0, queued: 0, failed: 0, maxPagesPerWallet: 0 };
 
   const inventories = await Promise.all(TZ2AT_ATPROTO_HOSTS.map((host) => loadHostInventory(host, fetchJson, errors)));
@@ -763,7 +766,7 @@ export async function buildTz2atEcosystemAnalytics(options: BuildOptions = {}): 
 
 async function loadHostInventory(
   host: Tz2atAtprotoHost,
-  fetchJson: typeof defaultFetchJson,
+  fetchJson: AnalyticsFetchJson,
   errors: Tz2atEcosystemAnalytics["records"]["errors"]
 ): Promise<HostInventory> {
   const collections = new Set<string>();
@@ -787,7 +790,7 @@ async function loadHostInventory(
   }
 }
 
-async function listRepos(host: Tz2atAtprotoHost, fetchJson: typeof defaultFetchJson): Promise<Tz2atRepoRef[]> {
+async function listRepos(host: Tz2atAtprotoHost, fetchJson: AnalyticsFetchJson): Promise<Tz2atRepoRef[]> {
   const repos: Tz2atRepoRef[] = [];
   let cursor: string | undefined;
   let pages = 0;
@@ -814,7 +817,7 @@ async function listRepos(host: Tz2atAtprotoHost, fetchJson: typeof defaultFetchJ
 async function loadAnalyticsRecords(
   inventories: HostInventory[],
   options: {
-    fetchJson: typeof defaultFetchJson;
+    fetchJson: AnalyticsFetchJson;
     limitPerCollection: number;
     sampleReposPerHost: number;
     flowDeepMaxPages: number;
@@ -872,7 +875,7 @@ async function loadAnalyticsRecords(
 async function describeRepoCollections(
   inventory: HostInventory,
   repo: Tz2atRepoRef,
-  fetchJson: typeof defaultFetchJson,
+  fetchJson: AnalyticsFetchJson,
   errors: Tz2atEcosystemAnalytics["records"]["errors"]
 ): Promise<string[]> {
   try {
@@ -901,7 +904,7 @@ async function listRecordsPage(
   collection: string,
   limit: number,
   cursor: string | null,
-  fetchJson: typeof defaultFetchJson
+  fetchJson: AnalyticsFetchJson
 ): Promise<{ records: Tz2atRepoRecord[]; cursor: string | null }> {
   const url = new URL(xrpc(host.service, "com.atproto.repo.listRecords"));
   url.searchParams.set("repo", repo);
@@ -927,7 +930,7 @@ async function listRecords(
   repo: string,
   collection: string,
   limit: number,
-  fetchJson: typeof defaultFetchJson
+  fetchJson: AnalyticsFetchJson
 ): Promise<Tz2atRepoRecord[]> {
   const { records } = await listRecordsPage(host, repo, collection, limit, null, fetchJson);
   return records;
@@ -944,7 +947,7 @@ async function listFlowRecordsDeep(
   repo: string,
   collection: string,
   options: { maxPages: number; tezosTarget: number },
-  fetchJson: typeof defaultFetchJson
+  fetchJson: AnalyticsFetchJson
 ): Promise<Tz2atRepoRecord[]> {
   const maxPages = clampInteger(options.maxPages, 1, 25, DEFAULT_FLOW_DEEP_MAX_PAGES);
   const tezosTarget = clampInteger(options.tezosTarget, 0, 5000, DEFAULT_FLOW_DEEP_TEZOS_TARGET);
@@ -1008,7 +1011,7 @@ function recordIsTezosNative(value: Record<string, unknown>): boolean {
 async function loadCexWalletFlowRecords(
   cexAddresses: Tz2atCexAddress[],
   options: { networks: string[]; maxPages: number },
-  fetchJson: typeof defaultFetchJson,
+  fetchJson: AnalyticsFetchJson,
   errors: Tz2atEcosystemAnalytics["records"]["errors"]
 ): Promise<Tz2atRepoRecord[]> {
   if (cexAddresses.length === 0) return [];
@@ -1067,7 +1070,7 @@ async function loadCexWalletFlowRecords(
 async function resolveNounDid(
   service: string,
   handle: string,
-  fetchJson: typeof defaultFetchJson
+  fetchJson: AnalyticsFetchJson
 ): Promise<string | null> {
   try {
     const url = new URL(xrpc(service, "com.atproto.identity.resolveHandle"));
@@ -1219,7 +1222,8 @@ async function requestCexWalletHydration(
   cexAddresses: Tz2atCexAddress[],
   windowHours: number,
   relayBaseUrl: string,
-  fetchJson: typeof defaultFetchJson
+  fetchJson: AnalyticsFetchJson,
+  abortSignal?: AbortSignal
 ): Promise<Tz2atMarketHealthSnapshot["hydration"]> {
   const wallets = cexAddresses.filter((entry) => cexEntityCategory(entry.address) === "wallets");
   const maxPagesPerWallet = hydrationPagesForWindow(windowHours);
@@ -1238,7 +1242,7 @@ async function requestCexWalletHydration(
             method: "POST",
             headers: { accept: "application/json", "content-type": "application/json" },
             body: JSON.stringify({ walletAddress: entry.address, maxPages: maxPagesPerWallet }),
-            signal: AbortSignal.timeout(12_000),
+            signal: abortSignalWithTimeout(12_000, abortSignal),
           });
           if (!response.ok) {
             failed += 1;
@@ -1303,7 +1307,7 @@ async function loadReplayWindowRecords(
   windowHours: number,
   network: string,
   relayBaseUrl: string,
-  fetchJson: typeof defaultFetchJson,
+  fetchJson: AnalyticsFetchJson,
   errors: Tz2atEcosystemAnalytics["records"]["errors"]
 ): Promise<Tz2atRepoRecord[]> {
   if (!isReplayNetwork(network)) {
@@ -2408,10 +2412,16 @@ function xrpc(service: string, method: string): string {
   return `${service.replace(/\/+$/, "")}/xrpc/${method}`;
 }
 
-async function defaultFetchJson<T>(url: string): Promise<T> {
+function abortSignalWithTimeout(timeoutMs: number, parentSignal?: AbortSignal): AbortSignal {
+  if (!parentSignal) return AbortSignal.timeout(timeoutMs);
+  if (parentSignal.aborted) return parentSignal;
+  return AbortSignal.any([parentSignal, AbortSignal.timeout(timeoutMs)]);
+}
+
+async function defaultFetchJson<T>(url: string, abortSignal?: AbortSignal): Promise<T> {
   const response = await fetch(url, {
     headers: { accept: "application/json" },
-    signal: AbortSignal.timeout(12_000),
+    signal: abortSignalWithTimeout(12_000, abortSignal),
   });
   if (!response.ok) {
     const body = await response.text().catch(() => "");

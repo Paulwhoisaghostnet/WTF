@@ -41,11 +41,11 @@ const HeaderRow = styled.div`
 
 const Intro = styled.div`
   max-width: 520px;
-  font-size: 12px;
-  color: #1a1a1a;
+  font-size: var(--wtf-type-body, 14px);
+  color: var(--wtf-app-text, #111);
 
   strong {
-    color: #000080;
+    color: var(--wtf-app-link, #000080);
   }
 `;
 
@@ -79,20 +79,19 @@ const Grid = styled.div`
 
 const ProjectCard = styled.button`
   text-align: left;
-  background: #fff;
-  border: 2px solid #8c8c8c;
-  padding: 10px;
+  background: var(--wtf-app-surface-raised, #ffffff);
+  border: 1px solid var(--wtf-app-border, #808080);
+  padding: var(--wtf-space-3, 12px);
   cursor: pointer;
-  box-shadow: 2px 2px 0 #000;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--wtf-space-2, 8px);
   font-family: inherit;
-  color: #000;
+  color: var(--wtf-app-text, #111);
 
   &:hover {
-    background: #f7f3dc;
-    border-color: #000080;
+    background: var(--wtf-app-surface, #f4f4f4);
+    border-color: var(--wtf-app-link, #000080);
   }
 `;
 
@@ -108,50 +107,52 @@ const CardMeta = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  font-size: 11px;
-  color: #333;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #444);
 `;
 
 const Badge = styled.span<{ $kind?: "role" | "warn" | "info" }>`
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 1px 6px;
-  font-size: 10px;
-  border: 1px solid #000;
+  min-height: 22px;
+  padding: 2px 7px;
+  font-size: var(--wtf-type-caption, 13px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  color: var(--wtf-app-text, #111);
   background: ${(p) =>
     p.$kind === "warn"
-      ? "#ffd48a"
+      ? "color-mix(in srgb, var(--wtf-app-warning, #8a4b00) 18%, #ffffff)"
       : p.$kind === "info"
-      ? "#bcd6ff"
-      : "#e4e4e4"};
+      ? "color-mix(in srgb, var(--wtf-app-info, #175cd3) 16%, #ffffff)"
+      : "var(--wtf-app-surface-raised, #ffffff)"};
 `;
 
 const QuotaWrap = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
-  color: #333;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #444);
 `;
 
 const EmptyState = styled.div`
   padding: 40px 20px;
   text-align: center;
-  color: #555;
+  color: var(--wtf-app-muted-text, #444);
 
   h3 {
     margin: 0 0 6px;
-    font-size: 14px;
+    font-size: var(--wtf-type-body-strong, 15px);
   }
 `;
 
 const ErrorBanner = styled.div`
-  background: #ffe2e2;
-  border: 1px solid #c06060;
+  background: color-mix(in srgb, var(--wtf-app-danger, #b42318) 14%, #ffffff);
+  border: 1px solid var(--wtf-app-danger, #b42318);
   padding: 6px 8px;
-  font-size: 12px;
-  color: #800;
+  font-size: var(--wtf-type-body, 14px);
+  color: var(--wtf-app-text, #111);
 `;
 
 const DrivePanel = styled(Panel).attrs({ variant: "well" })`
@@ -170,8 +171,8 @@ const DriveHeader = styled.div`
 `;
 
 const DriveStat = styled.div`
-  font-size: 11px;
-  color: #333;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #444);
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -184,7 +185,7 @@ const DriveUsageWrap = styled.div`
   gap: 6px;
   min-width: 200px;
   flex: 1;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 /* ─── Component ──────────────────────────────────────── */
@@ -443,7 +444,13 @@ export function Studio() {
                 </Button>
               </CreateRow>
               {createError ? <ErrorBanner>{createError}</ErrorBanner> : null}
-              <div style={{ marginTop: 6, fontSize: 11, color: "#333" }}>
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: "var(--wtf-type-caption, 13px)",
+                  color: "var(--wtf-app-muted-text, #444)",
+                }}
+              >
                 {driveStatusQuery.data?.connected
                   ? `New projects will use your connected Google Drive (${driveStatusQuery.data.accountEmail ?? "signed in"}).`
                   : driveStatusQuery.data?.canConnect
@@ -455,7 +462,7 @@ export function Studio() {
         ) : (
           <GroupBox label="New project">
             <CreatePanel>
-              <div style={{ fontSize: 12 }}>
+              <div style={{ fontSize: "var(--wtf-type-body, 14px)" }}>
                 You can view projects you’ve been invited to, but project
                 creation is unlocked at the Contestant role.
               </div>
@@ -466,11 +473,11 @@ export function Studio() {
         <GroupBox label="Your Drive">
           <DrivePanel>
             {driveStatusQuery.isLoading ? (
-              <div style={{ fontSize: 12, color: "#555" }}>
+              <div style={{ fontSize: "var(--wtf-type-body, 14px)", color: "var(--wtf-app-muted-text, #444)" }}>
                 Checking Drive connection…
               </div>
             ) : !driveStatusQuery.data?.canConnect ? (
-              <div style={{ fontSize: 12, color: "#555" }}>
+              <div style={{ fontSize: "var(--wtf-type-body, 14px)", color: "var(--wtf-app-muted-text, #444)" }}>
                 Google Drive integration hasn't been configured on this
                 deployment yet. Projects you create will use platform
                 storage only.
@@ -479,7 +486,7 @@ export function Studio() {
               <>
                 <DriveHeader>
                   <DriveStat>
-                    <strong style={{ color: "#0a5c1b" }}>
+                    <strong style={{ color: "var(--wtf-app-success, #176b38)" }}>
                       Connected
                     </strong>
                     <span>
@@ -539,7 +546,12 @@ export function Studio() {
                     </span>
                   </DriveUsageWrap>
                 ) : (
-                  <div style={{ fontSize: 11, color: "#777" }}>
+                  <div
+                    style={{
+                      fontSize: "var(--wtf-type-caption, 13px)",
+                      color: "var(--wtf-app-muted-text, #444)",
+                    }}
+                  >
                     Usage will populate after the first refresh.
                   </div>
                 )}
@@ -549,12 +561,22 @@ export function Studio() {
                       "Failed to refresh Studio usage."}
                   </ErrorBanner>
                 ) : null}
-                <div style={{ fontSize: 11, color: "#555" }}>
+                <div
+                  style={{
+                    fontSize: "var(--wtf-type-caption, 13px)",
+                    color: "var(--wtf-app-muted-text, #444)",
+                  }}
+                >
                   New projects default to your Drive. Files stay in
                   your account — disconnecting revokes access until you
                   reconnect the same Google account.
                 </div>
-                <div style={{ fontSize: 11, color: "#777" }}>
+                <div
+                  style={{
+                    fontSize: "var(--wtf-type-caption, 13px)",
+                    color: "var(--wtf-app-muted-text, #444)",
+                  }}
+                >
                   We request only the <code>drive.file</code> scope, so
                   Studio can't see your total Drive quota — the number
                   above is just Studio's own footprint in your Drive.
@@ -565,7 +587,7 @@ export function Studio() {
                 <DriveHeader>
                   <DriveStat>
                     <strong>Not connected</strong>
-                    <span style={{ color: "#555" }}>
+                    <span style={{ color: "var(--wtf-app-muted-text, #444)" }}>
                       New projects use platform storage until you connect.
                     </span>
                   </DriveStat>
@@ -578,7 +600,12 @@ export function Studio() {
                       : "Connect Google Drive"}
                   </Button>
                 </DriveHeader>
-                <div style={{ fontSize: 11, color: "#555" }}>
+                <div
+                  style={{
+                    fontSize: "var(--wtf-type-caption, 13px)",
+                    color: "var(--wtf-app-muted-text, #444)",
+                  }}
+                >
                   We request the minimum Drive scope —{" "}
                   <code>drive.file</code> — which only gives Studio access
                   to files it creates in your Drive. You can revoke at any
@@ -639,6 +666,7 @@ export function Studio() {
                   return (
                     <ProjectCard
                       key={project.id}
+                      aria-label={`Open project ${project.name}`}
                       onClick={() => wm.openPage(`/studio/${project.id}`)}
                     >
                       <CardTitle>
@@ -648,7 +676,7 @@ export function Studio() {
                         ) : null}
                       </CardTitle>
                       {project.description ? (
-                        <div style={{ fontSize: 12, color: "#333" }}>
+                        <div style={{ fontSize: "var(--wtf-type-body, 14px)", color: "var(--wtf-app-text, #111)" }}>
                           {project.description.length > 140
                             ? `${project.description.slice(0, 137)}…`
                             : project.description}
@@ -665,7 +693,7 @@ export function Studio() {
                             {project.unresolvedAnnotations} open notes
                           </Badge>
                         ) : null}
-                        <span style={{ color: "#777" }}>
+                        <span style={{ color: "var(--wtf-app-muted-text, #444)" }}>
                           {formatRelative(project.updatedAt)}
                         </span>
                       </CardMeta>
@@ -677,7 +705,7 @@ export function Studio() {
                         <div style={{ flex: 1, minWidth: 60 }}>
                           <ProgressBar value={usedPct} hideValue />
                         </div>
-                        <span style={{ color: "#555" }}>
+                        <span style={{ color: "var(--wtf-app-muted-text, #444)" }}>
                           {
                             STUDIO_STORAGE_BACKEND_LABELS[
                               project.storageBackend

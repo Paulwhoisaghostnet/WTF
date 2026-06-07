@@ -86,7 +86,7 @@ export function AddTokensScreen({
             setTokenPage(0);
           }}
           placeholder="Search tokens..."
-          style={{ fontSize: 11, flex: "1 1 120px" }}
+          style={{ fontSize: "var(--wtf-type-caption, 13px)", flex: "1 1 120px" }}
         />
         <MenuSelect
           value={playableSort}
@@ -94,7 +94,11 @@ export function AddTokensScreen({
             setPlayableSort(e.target.value as TokenSortMode);
             setTokenPage(0);
           }}
-          style={{ minWidth: 80, maxWidth: 120, fontSize: 11 }}
+          style={{
+            minWidth: 80,
+            maxWidth: 120,
+            fontSize: "var(--wtf-type-caption, 13px)",
+          }}
         >
           <option value="recent">Newest</option>
           <option value="name-asc">A-Z</option>
@@ -102,7 +106,7 @@ export function AddTokensScreen({
           <option value="contract">Contract</option>
           <option value="mime">Type</option>
         </MenuSelect>
-        <MenuLabel style={{ whiteSpace: "nowrap", fontSize: 11 }}>
+        <MenuLabel style={{ whiteSpace: "nowrap", fontSize: "var(--wtf-type-caption, 13px)" }}>
           {playableTokens.length} tokens
         </MenuLabel>
       </MenuRow>
@@ -119,18 +123,18 @@ export function AddTokensScreen({
           <MenuBtn
             disabled={tokenPage === 0}
             onClick={() => setTokenPage((p) => Math.max(0, p - 1))}
-            style={{ padding: "2px 8px", fontSize: 11 }}
+            style={{ padding: "3px 8px", fontSize: "var(--wtf-type-caption, 13px)" }}
           >
             ◀ PREV
           </MenuBtn>
-          <MenuLabel style={{ fontSize: 11, whiteSpace: "nowrap" }}>
+          <MenuLabel style={{ fontSize: "var(--wtf-type-caption, 13px)", whiteSpace: "nowrap" }}>
             {pageStart}-{pageEnd} of {playableTokens.length} · page{" "}
             {tokenPage + 1}/{totalPages}
           </MenuLabel>
           <MenuBtn
             disabled={tokenPage >= totalPages - 1}
             onClick={() => setTokenPage((p) => Math.min(totalPages - 1, p + 1))}
-            style={{ padding: "2px 8px", fontSize: 11 }}
+            style={{ padding: "3px 8px", fontSize: "var(--wtf-type-caption, 13px)" }}
           >
             NEXT ▶
           </MenuBtn>
@@ -180,7 +184,7 @@ export function AddTokensScreen({
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
-                  fontSize: 11,
+                  fontSize: "var(--wtf-type-caption, 13px)",
                 }}
               >
                 {token.tokenName}
@@ -191,7 +195,7 @@ export function AddTokensScreen({
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
-                    fontSize: 9,
+                    fontSize: "var(--wtf-type-caption, 13px)",
                     color: "#404040",
                   }}
                 >
@@ -205,7 +209,7 @@ export function AddTokensScreen({
                   marginTop: "auto",
                   width: "100%",
                   padding: "3px 6px",
-                  fontSize: 10,
+                  fontSize: "var(--wtf-type-caption, 13px)",
                 }}
               >
                 {addVideoMutation.isPending ? "..." : "+ ADD"}
@@ -227,17 +231,17 @@ export function AddTokensScreen({
           <MenuBtn
             disabled={tokenPage === 0}
             onClick={() => setTokenPage((p) => Math.max(0, p - 1))}
-            style={{ padding: "2px 8px", fontSize: 11 }}
+            style={{ padding: "3px 8px", fontSize: "var(--wtf-type-caption, 13px)" }}
           >
             ◀ PREV
           </MenuBtn>
-          <MenuLabel style={{ fontSize: 11, whiteSpace: "nowrap" }}>
+          <MenuLabel style={{ fontSize: "var(--wtf-type-caption, 13px)", whiteSpace: "nowrap" }}>
             Page {tokenPage + 1}/{totalPages}
           </MenuLabel>
           <MenuBtn
             disabled={tokenPage >= totalPages - 1}
             onClick={() => setTokenPage((p) => Math.min(totalPages - 1, p + 1))}
-            style={{ padding: "2px 8px", fontSize: 11 }}
+            style={{ padding: "3px 8px", fontSize: "var(--wtf-type-caption, 13px)" }}
           >
             NEXT ▶
           </MenuBtn>

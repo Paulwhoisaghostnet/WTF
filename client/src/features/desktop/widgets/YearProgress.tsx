@@ -11,7 +11,7 @@ const BarTrack = styled.div`
 const BarFill = styled.div<{ $pct: number }>`
   height: 100%;
   width: ${(p) => p.$pct}%;
-  background: linear-gradient(90deg, #008080, #000080);
+  background: var(--wtf-app-link, #000080);
 `;
 
 function yearProgressPercent(date = new Date()) {
@@ -37,7 +37,7 @@ export function YearProgressWidget() {
 
   return (
     <GroupBox label={`${now.getFullYear()} Progress — skllzrmy widget`}>
-      <div style={{ fontSize: 11 }}>
+      <div style={{ fontSize: "var(--wtf-type-caption, 13px)" }}>
         <div>Year: {yearPct.toFixed(1)}%</div>
         <BarTrack>
           <BarFill $pct={yearPct} />

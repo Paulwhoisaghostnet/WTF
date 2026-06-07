@@ -107,6 +107,71 @@ const ecosystemAnalyticsSchema = z.object({
   toLevel: z.coerce.number().int().min(0).optional(),
 });
 
+const DEFAULT_TZ2AT_ECOSYSTEM_ANALYTICS_TIMEOUT_MS = 12_000;
+
+class Tz2atEcosystemAnalyticsTimeoutError extends Error {
+  timeoutMs: number;
+
+  constructor(timeoutMs: number) {
+    super(`tz2at ecosystem analytics exceeded ${timeoutMs}ms request budget`);
+    this.name = "Tz2atEcosystemAnalyticsTimeoutError";
+    this.timeoutMs = timeoutMs;
+  }
+}
+
+function boundedPositiveInteger(value: string | undefined, fallback: number, min: number, max: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, Math.trunc(parsed)));
+}
+
+function tz2atEcosystemAnalyticsTimeoutMs(): number {
+  return boundedPositiveInteger(
+    process.env.TZ2AT_ECOSYSTEM_ANALYTICS_TIMEOUT_MS,
+    DEFAULT_TZ2AT_ECOSYSTEM_ANALYTICS_TIMEOUT_MS,
+    3_000,
+    60_000
+  );
+}
+
+function abortSignalWithTimeout(timeoutMs: number, parentSignal?: AbortSignal): AbortSignal {
+  if (!parentSignal) return AbortSignal.timeout(timeoutMs);
+  if (parentSignal.aborted) return parentSignal;
+  return AbortSignal.any([parentSignal, AbortSignal.timeout(timeoutMs)]);
+}
+
+async function fetchTz2atAnalyticsJson<T>(url: string, abortSignal: AbortSignal): Promise<T> {
+  const response = await fetch(url, {
+    headers: { accept: "application/json" },
+    signal: abortSignalWithTimeout(12_000, abortSignal),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`AT Protocol request failed ${response.status}: ${body.slice(0, 180)}`);
+  }
+  return response.json() as Promise<T>;
+}
+
+async function withTz2atAnalyticsBudget<T>(
+  timeoutMs: number,
+  work: (abortSignal: AbortSignal) => Promise<T>
+): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<T>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Tz2atEcosystemAnalyticsTimeoutError(timeoutMs));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([work(controller.signal), timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 function tz2atBaseUrl(): string {
   return (process.env.TZ2AT_API_BASE_URL || "https://tz2at.xyz").replace(/\/$/, "");
 }
@@ -886,29 +951,37 @@ router.get("/api/tz2at/ecosystem/analytics", isAuthenticated, async (req, res) =
     disableDefault: process.env.TZ2AT_DISABLE_DEFAULT_CEX_ADDRESS_BOOK === "true",
   });
   try {
-    const analytics = await buildTz2atEcosystemAnalytics({
-      limitPerCollection: parsed.data.limit,
-      sampleReposPerHost: parsed.data.sampleRepos,
-      windowHours: parsed.data.windowHours,
-      hydrateCex: parsed.data.hydrateCex,
-      marketNetwork: parsed.data.marketNetwork ?? parsed.data.network ?? "mainnet",
-      cexAddresses: cexAddressBook,
-      filters: {
-        host: parsed.data.host,
-        network: parsed.data.network,
-        collection: parsed.data.collection,
-        address: parsed.data.address,
-        contract: parsed.data.contract,
-        marketplace: parsed.data.marketplace,
-        token: parsed.data.token,
-        q: parsed.data.q,
-        minAmountMutez: parsed.data.minAmountMutez,
-        fromLevel: parsed.data.fromLevel,
-        toLevel: parsed.data.toLevel,
-      },
-    });
+    const timeoutMs = tz2atEcosystemAnalyticsTimeoutMs();
+    const analytics = await withTz2atAnalyticsBudget(timeoutMs, (abortSignal) =>
+      buildTz2atEcosystemAnalytics({
+        limitPerCollection: parsed.data.limit,
+        sampleReposPerHost: parsed.data.sampleRepos,
+        windowHours: parsed.data.windowHours,
+        hydrateCex: parsed.data.hydrateCex,
+        marketNetwork: parsed.data.marketNetwork ?? parsed.data.network ?? "mainnet",
+        cexAddresses: cexAddressBook,
+        fetchJson: (url) => fetchTz2atAnalyticsJson(url, abortSignal),
+        abortSignal,
+        filters: {
+          host: parsed.data.host,
+          network: parsed.data.network,
+          collection: parsed.data.collection,
+          address: parsed.data.address,
+          contract: parsed.data.contract,
+          marketplace: parsed.data.marketplace,
+          token: parsed.data.token,
+          q: parsed.data.q,
+          minAmountMutez: parsed.data.minAmountMutez,
+          fromLevel: parsed.data.fromLevel,
+          toLevel: parsed.data.toLevel,
+        },
+      })
+    );
     res.json(analytics);
   } catch (err) {
+    if (err instanceof Tz2atEcosystemAnalyticsTimeoutError) {
+      return res.status(504).json({ error: err.message, timeoutMs: err.timeoutMs });
+    }
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });

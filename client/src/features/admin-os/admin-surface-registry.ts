@@ -647,6 +647,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Contract Ledger", "Rewards", "Automation"],
     nativeSettings: ["listing policy", "auction moderation", "trade-board reward triggers"],
     automationHandles: ["marketplace.listing_created", "trade_board.updated", "wallet.provider.preflight.failed"],
+    behaviorAssertionIds: ["marketplace.offer-accept-explicit-terms"],
   },
   {
     id: "club-dues",

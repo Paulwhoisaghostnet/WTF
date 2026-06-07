@@ -40,13 +40,13 @@ const Intro = styled.div`
 
 const Title = styled.h1`
   margin: 0;
-  font-size: 18px;
+  font-size: var(--wtf-type-title, 18px);
   line-height: 1.15;
 `;
 
 const Copy = styled.p`
   margin: 0;
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 14px);
   line-height: 1.45;
 `;
 
@@ -57,7 +57,7 @@ const StatusStrip = styled.div`
   padding: 6px 8px;
   background: #efefef;
   border: 2px inset #fff;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 const Field = styled.div`
@@ -68,7 +68,7 @@ const Field = styled.div`
 
 const ErrorMsg = styled.p`
   color: #8b0000;
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 14px);
   margin: 0;
   padding: 7px 8px;
   background: #fff4f4;
@@ -84,7 +84,7 @@ const ButtonRow = styled.div`
 `;
 
 const WalletBadge = styled.div`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   background: #e8e8e8;
   border: 2px inset #fff;
   padding: 6px 8px;
@@ -93,7 +93,7 @@ const WalletBadge = styled.div`
 `;
 
 const Hint = styled.p`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.4;
   margin: 8px 0 0 0;
   color: #555;
@@ -192,11 +192,11 @@ export function Register() {
   };
 
   return (
-    <AuthScreenShell documentTitle={`Create account — ${WTFOS_PLATFORM_NAME}`}>
+    <AuthScreenShell documentTitle={`Create account - ${WTFOS_PLATFORM_NAME}`}>
       <CenterWrapper>
         <RegWindow>
           <WindowHeader>
-            <span>{WTFOS_PLATFORM_NAME} — Create Account</span>
+            <span>{WTFOS_PLATFORM_NAME} - Create Account</span>
           </WindowHeader>
           <WindowContent>
             <Intro>

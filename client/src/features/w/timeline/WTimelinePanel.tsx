@@ -19,8 +19,20 @@ const Row = styled.div`
 `;
 
 const Small = styled.span<{ $night?: boolean }>`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: ${({ $night }) => ($night ? "#b8c5da" : "#3c4956")};
+`;
+
+const SummaryText = styled.div`
+  margin-bottom: 8px;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted, #374151);
+`;
+
+const ActionRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 `;
 
 const PostCard = styled.div<{ $night: boolean }>`
@@ -64,13 +76,13 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
 
   return (
     <GroupBox label="Tezos digest">
-      <div style={{ marginBottom: 8, fontSize: 11, opacity: 0.85 }}>
+      <SummaryText>
         Chronological feed from {handleCount} curated handle{handleCount === 1 ? "" : "s"}. Read-only in
-        WTF — open X to reply or repost.
+        WTF, open X to reply or repost.
         {diagnostics?.cachedAt
           ? ` · Updated ${new Date(diagnostics.cachedAt).toLocaleTimeString()}`
           : null}
-      </div>
+      </SummaryText>
       {posts.length === 0 ? (
         <Small $night={nightMode}>
           {diagnostics?.message ||
@@ -85,29 +97,29 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
                 {" · "}
                 {new Date(post.createdAt).toLocaleString()}
               </Small>
-              <div style={{ display: "flex", gap: 6 }}>
+              <ActionRow>
                 <Button
                   size="sm"
                   onClick={() => window.open(post.url, "_blank", "noopener,noreferrer")}
                   title="View on X"
                 >
-                  <ExternalLink size={14} aria-hidden="true" /> View
+                  <ExternalLink size={14} aria-hidden="true" /> View post on X
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => window.open(xIntentRepost(post.id), "_blank", "noopener,noreferrer")}
                   title="Open X repost composer"
                 >
-                  <Repeat2 size={14} aria-hidden="true" /> Repost
+                  <Repeat2 size={14} aria-hidden="true" /> Repost on X
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => window.open(xIntentReply(post.id), "_blank", "noopener,noreferrer")}
                   title="Open X reply composer"
                 >
-                  <MessageCircle size={14} aria-hidden="true" /> Reply
+                  <MessageCircle size={14} aria-hidden="true" /> Reply on X
                 </Button>
-              </div>
+              </ActionRow>
             </PostHead>
             <EmbedFrame
               $night={nightMode}

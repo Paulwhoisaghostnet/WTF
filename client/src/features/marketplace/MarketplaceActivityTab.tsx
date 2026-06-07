@@ -28,8 +28,8 @@ interface MarketplaceActivityTabProps {
   onAcceptOffer: (offer: OnChainOffer) => void | Promise<void>;
   onCancelExternalListing: (listing: ExternalMarketplaceListing) => void | Promise<void>;
   onCancelListing: (listingId: number) => void | Promise<void>;
-  onCancelOffer: (tokenContract: string, tokenId: string) => void | Promise<void>;
-  onRejectOffer: (tokenContract: string, tokenId: string) => void | Promise<void>;
+  onCancelOffer: (offer: OnChainOffer) => void | Promise<void>;
+  onRejectOffer: (offer: OnChainOffer) => void | Promise<void>;
   onSettleAuction: (auctionId: number) => void | Promise<void>;
 }
 
@@ -133,7 +133,7 @@ export function MarketplaceActivityTab({
               <Button
                 size="sm"
                 fullWidth
-                onClick={() => onCancelOffer(offer.tokenContract, offer.tokenId)}
+              onClick={() => onCancelOffer(offer)}
               >
                 Cancel Offer
               </Button>
@@ -166,7 +166,7 @@ export function MarketplaceActivityTab({
                 size="sm"
                 fullWidth
                 style={{ marginTop: 4 }}
-                onClick={() => onRejectOffer(offer.tokenContract, offer.tokenId)}
+                onClick={() => onRejectOffer(offer)}
               >
                 Reject Offer
               </Button>

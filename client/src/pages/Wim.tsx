@@ -5,6 +5,7 @@ import { Button, GroupBox, Hourglass, Panel, TextInput } from "react95";
 import { ChevronDown, ChevronRight, MessageCircle, UserPlus, Users, X } from "lucide-react";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { UiEmptyState, UiNotice } from "../components/wtfos-ui";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 
@@ -57,18 +58,18 @@ const Shell = styled.div`
   --wim-blue: #1237a7;
   --wim-cyan: #84f0ff;
   --wim-yellow: #fff19a;
-  --wim-paper: #f7f3dd;
-  --wim-ink: #060b24;
-  --wim-panel: #fffdf2;
-  --wim-row: rgba(255, 255, 255, 0.68);
-  --wim-row-active: #dcecff;
-  --wim-divider: #050b24;
+  --wim-ink: var(--wtf-app-text, #060b24);
+  --wim-panel: var(--wtf-app-surface-raised, #fffdf2);
+  --wim-row: var(--wtf-app-surface-raised, #ffffff);
+  --wim-row-active: var(--wtf-app-info-bg, #dcecff);
+  --wim-divider: var(--wtf-app-border, #050b24);
   --wim-soft-shadow: 2px 2px 0 rgba(6, 19, 95, 0.18);
 
   display: grid;
   grid-template-columns: minmax(230px, 310px) minmax(0, 1fr);
   gap: 10px;
   min-height: 520px;
+  min-width: 0;
   color: var(--wim-ink);
 
   html[data-wtf-appearance-style="wtf-xp"] & {
@@ -106,13 +107,14 @@ const Stack = styled.div`
   display: grid;
   gap: 8px;
   align-content: start;
+  min-width: 0;
 `;
 
 const BrandPanel = styled(Panel).attrs({ variant: "well" })`
-  padding: 10px;
-  background:
-    linear-gradient(180deg, #ffffff 0%, #d7edff 52%, #93bdf5 100%),
-    repeating-linear-gradient(0deg, rgba(6, 19, 95, 0.08) 0 1px, transparent 1px 4px);
+  padding: var(--wtf-space-3, 12px);
+  color: var(--wim-ink);
+  background: linear-gradient(180deg, var(--wtf-app-surface-raised, #ffffff), var(--wtf-app-info-bg, #d7edff));
+  border-color: var(--wtf-app-border, #808080);
 
   html[data-wtf-appearance-style="wtf-xp"] &,
   html[data-wtf-appearance-style="wtf-aqua"] & {
@@ -121,9 +123,7 @@ const BrandPanel = styled(Panel).attrs({ variant: "well" })`
 
   html[data-wtf-appearance-style="wtf-zine"] & {
     border: 3px solid #000000;
-    background:
-      linear-gradient(135deg, #fff36d 0 34%, #ffffff 34% 68%, #8ff5ff 68%),
-      repeating-linear-gradient(-8deg, rgba(0, 0, 0, 0.12) 0 2px, transparent 2px 12px);
+    background: linear-gradient(135deg, #fff36d 0 34%, #ffffff 34% 68%, #8ff5ff 68%);
     box-shadow: 4px 4px 0 #000000;
   }
 `;
@@ -154,7 +154,7 @@ const WimMark = styled.div`
     border-radius: 50%;
     background: var(--wim-navy);
     color: #ffffff;
-    font-size: 8px;
+    font-size: var(--wtf-type-caption, 13px);
     line-height: 15px;
     text-align: center;
     font-weight: 900;
@@ -186,19 +186,21 @@ const BrandTitle = styled.div`
 
 const BrandSub = styled.div`
   margin-top: 3px;
-  font-size: 11px;
-  color: #26315f;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #26315f);
 `;
 
 const ScreenNamePanel = styled(Panel).attrs({ variant: "well" })`
-  padding: 7px 8px;
+  padding: var(--wtf-space-3, 12px);
   background: var(--wim-panel);
+  color: var(--wim-ink);
+  border-color: var(--wtf-app-border, #808080);
   display: grid;
   gap: 3px;
 `;
 
 const ScreenName = styled.div`
-  font-size: 13px;
+  font-size: var(--wtf-type-body-strong, 16px);
   font-weight: 900;
   overflow-wrap: anywhere;
 `;
@@ -210,15 +212,17 @@ const StatStrip = styled.div`
 `;
 
 const Stat = styled(Panel).attrs({ variant: "well" })`
-  padding: 6px;
-  min-height: 42px;
+  padding: var(--wtf-space-2, 8px);
+  min-height: 48px;
   background: var(--wim-panel);
+  color: var(--wim-ink);
+  border-color: var(--wtf-app-border, #808080);
 `;
 
 const StatLabel = styled.div`
-  font-size: 10px;
-  color: #4b557b;
-  text-transform: uppercase;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #4b557b);
+  text-transform: none;
 `;
 
 const StatValue = styled.div`
@@ -233,30 +237,27 @@ const ChatLog = styled(Panel).attrs({ variant: "well" })`
   box-sizing: border-box;
   min-height: 364px;
   max-height: 52vh;
-  padding: 12px;
+  padding: var(--wtf-space-3, 12px);
   overflow: auto;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(244, 241, 223, 0.95)),
-    repeating-linear-gradient(90deg, rgba(6, 19, 95, 0.05) 0 1px, transparent 1px 16px);
+  color: var(--wim-ink);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  border-color: var(--wtf-app-border, #808080);
 
   html[data-wtf-appearance-style="wtf-zine"] & {
     border: 3px solid #000000;
-    background:
-      linear-gradient(90deg, rgba(0,0,0,0.08) 0 1px, transparent 1px),
-      linear-gradient(180deg, #ffffff 0%, #fff8a8 100%);
-    background-size: 18px 18px, auto;
+    background: linear-gradient(180deg, #ffffff 0%, #fff8a8 100%);
   }
 `;
 
 const SectionToggle = styled(Button)`
   width: 100%;
-  min-height: 25px;
+  min-height: 34px;
   text-align: left;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 3px 6px;
+  padding: 4px 8px;
   font-weight: 900;
   color: #ffffff;
   background: linear-gradient(180deg, #264fc4 0%, #07156f 100%);
@@ -281,17 +282,18 @@ const CountBadge = styled.span`
   color: #06135f;
   border: 1px solid #050b24;
   text-align: center;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 900;
 `;
 
 const DirectoryPanel = styled(Panel).attrs({ variant: "well" })`
-  padding: 6px;
+  padding: var(--wtf-space-2, 8px);
   max-height: 310px;
   overflow: auto;
-  background:
-    linear-gradient(180deg, rgba(255, 253, 242, 0.96), rgba(234, 245, 255, 0.96)),
-    repeating-linear-gradient(0deg, rgba(7, 21, 111, 0.06) 0 1px, transparent 1px 18px);
+  min-width: 0;
+  color: var(--wim-ink);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  border-color: var(--wtf-app-border, #808080);
 
   html[data-wtf-appearance-style="wtf-zine"] & {
     border: 2px solid #000000;
@@ -302,10 +304,10 @@ const DirectoryPanel = styled(Panel).attrs({ variant: "well" })`
 const UserRow = styled.div<{ $active?: boolean }>`
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr) auto;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  min-height: 36px;
-  padding: 4px 5px;
+  min-height: 44px;
+  padding: var(--wtf-space-2, 8px);
   margin-bottom: 4px;
   border: 1px solid ${(p) => (p.$active ? "var(--wim-navy)" : "transparent")};
   background: ${(p) => (p.$active ? "var(--wim-row-active)" : "var(--wim-row)")};
@@ -342,7 +344,7 @@ const PresenceDot = styled.span<{ $status: PresenceStatus }>`
 `;
 
 const UserName = styled.div`
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 900;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -350,8 +352,8 @@ const UserName = styled.div`
 `;
 
 const UserHandle = styled.div`
-  font-size: 10px;
-  color: #4b557b;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #4b557b);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -359,7 +361,7 @@ const UserHandle = styled.div`
 
 const UserPresence = styled.div<{ $status: PresenceStatus }>`
   margin-top: 1px;
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   color: ${(p) =>
     p.$status === "active"
       ? "#0c6e27"
@@ -375,16 +377,16 @@ const UserActions = styled.div`
 `;
 
 const IconButton = styled.button`
-  width: 24px;
-  min-width: 24px;
-  height: 23px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 2px outset #ffffff;
-  background: #d6d6d6;
-  color: #050b24;
+  background: var(--wtf-app-control-bg, #ffffff);
+  color: var(--wtf-app-text, #050b24);
   box-shadow: 1px 1px 0 #000000;
   cursor: pointer;
 
@@ -394,9 +396,10 @@ const IconButton = styled.button`
   }
 
   &:disabled {
-    color: #808080;
+    color: var(--wtf-app-disabled-text, #808080);
+    background: var(--wtf-app-disabled-bg, #d8d8d8);
     cursor: default;
-    opacity: 0.7;
+    opacity: 1;
   }
 `;
 
@@ -438,8 +441,10 @@ const Bubble = styled.div<{ $mine?: boolean }>`
 `;
 
 const Meta = styled.div`
-  font-size: 11px;
-  color: #4b557b;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #4b557b);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 `;
 
 const BuddyName = styled.div`
@@ -448,7 +453,7 @@ const BuddyName = styled.div`
 
 const BuddyPreview = styled.div`
   margin-top: 2px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 400;
   opacity: 0.78;
   overflow: hidden;
@@ -461,11 +466,13 @@ const ChatHeader = styled(Panel).attrs({ variant: "well" })`
   justify-content: space-between;
   gap: 8px;
   align-items: center;
-  background: linear-gradient(90deg, #fffdf2, #dff7ff);
+  color: var(--wim-ink);
+  background: var(--wtf-app-surface-raised, #ffffff);
+  border-color: var(--wtf-app-border, #808080);
 `;
 
 const ChatTitle = styled.div`
-  font-size: 16px;
+  font-size: var(--wtf-type-title, 20px);
   font-weight: 900;
   overflow-wrap: anywhere;
 `;
@@ -506,9 +513,7 @@ const PopupCard = styled(Panel).attrs({ variant: "well" })`
   padding: 8px;
   pointer-events: auto;
   color: var(--wim-ink, #060b24);
-  background:
-    linear-gradient(180deg, #fffef2 0%, #dff7ff 100%),
-    repeating-linear-gradient(0deg, rgba(7, 21, 111, 0.08) 0 1px, transparent 1px 6px);
+  background: linear-gradient(180deg, #fffef2 0%, #dff7ff 100%);
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.36);
 
   html[data-wtf-appearance-style="wtf-xp"] &,
@@ -985,10 +990,15 @@ export function Wim() {
       <UserRow
         key={item.id}
         $active={active}
+        role="button"
+        aria-label={`Open WIM chat with ${userLabel(item)}`}
         tabIndex={0}
-        onDoubleClickCapture={() => openDirectChat(item)}
+        onClick={() => openDirectChat(item)}
         onKeyDown={(event) => {
-          if (event.key === "Enter") openDirectChat(item);
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openDirectChat(item);
+          }
         }}
       >
         <PresenceDot $status={status} title={presenceLabel(status)} />
@@ -1001,6 +1011,7 @@ export function Wim() {
           {!isFriend ? (
             <IconButton
               type="button"
+              aria-label={`Add ${userLabel(item)} as a WIM friend`}
               title="Add friend"
               data-compact-control="true"
               onClickCapture={(event) => {
@@ -1013,6 +1024,7 @@ export function Wim() {
           ) : null}
           <IconButton
             type="button"
+            aria-label={`Open WIM chat with ${userLabel(item)}`}
             title="Open chat"
             data-compact-control="true"
             disabled={openChatMutation.isPending && active}
@@ -1066,34 +1078,58 @@ export function Wim() {
               {!usersQuery.data ? (
                 <Hourglass size={24} />
               ) : usersQuery.isError ? (
-                <Meta>Buddy list failed to load.</Meta>
+                <UiNotice tone="danger">Buddy list failed to load. Try refreshing WIM.</UiNotice>
               ) : (
                 <Stack>
                   {renderSectionToggle("friends", "My Friends", friends.length)}
                   {sections.friends ? (
                     <DirectoryPanel>
-                      {friends.length ? friends.map(renderUserRow) : <Meta>No friends saved.</Meta>}
+                      {friends.length ? (
+                        friends.map(renderUserRow)
+                      ) : (
+                        <UiEmptyState title="No friends saved">
+                          Add people from Active Now or All WTF Users to keep them pinned here.
+                        </UiEmptyState>
+                      )}
                     </DirectoryPanel>
                   ) : null}
 
                   {renderSectionToggle("active", "Active Now", activeUsers.length)}
                   {sections.active ? (
                     <DirectoryPanel>
-                      {activeUsers.length ? activeUsers.map(renderUserRow) : <Meta>No one else is active.</Meta>}
+                      {activeUsers.length ? (
+                        activeUsers.map(renderUserRow)
+                      ) : (
+                        <UiEmptyState title="No one else is active">
+                          Online WTF users will appear here when their sessions are active.
+                        </UiEmptyState>
+                      )}
                     </DirectoryPanel>
                   ) : null}
 
                   {renderSectionToggle("inactive", "Inactive / Away", inactiveUsers.length)}
                   {sections.inactive ? (
                     <DirectoryPanel>
-                      {inactiveUsers.length ? inactiveUsers.map(renderUserRow) : <Meta>No idle sessions.</Meta>}
+                      {inactiveUsers.length ? (
+                        inactiveUsers.map(renderUserRow)
+                      ) : (
+                        <UiEmptyState title="No idle sessions">
+                          Away WTF users will appear here after WIM sees recent inactive presence.
+                        </UiEmptyState>
+                      )}
                     </DirectoryPanel>
                   ) : null}
 
                   {renderSectionToggle("offline", "Offline", offlineUsers.length)}
                   {sections.offline ? (
                     <DirectoryPanel>
-                      {offlineUsers.length ? offlineUsers.map(renderUserRow) : <Meta>No offline users in this slice.</Meta>}
+                      {offlineUsers.length ? (
+                        offlineUsers.map(renderUserRow)
+                      ) : (
+                        <UiEmptyState title="No offline users in this slice">
+                          Offline WTF users will appear here when WIM has recent presence data.
+                        </UiEmptyState>
+                      )}
                     </DirectoryPanel>
                   ) : null}
 
@@ -1101,11 +1137,18 @@ export function Wim() {
                   {sections.all ? (
                     <DirectoryPanel>
                       <MiniInput
+                        aria-label="Find WIM user"
                         value={search}
                         placeholder="Find user"
                         onChange={(event: any) => setSearch(event.target.value)}
                       />
-                      {filteredUsers.length ? filteredUsers.map(renderUserRow) : <Meta>No matching users.</Meta>}
+                      {filteredUsers.length ? (
+                        filteredUsers.map(renderUserRow)
+                      ) : (
+                        <UiEmptyState title="No matching users">
+                          Try a different username or display name.
+                        </UiEmptyState>
+                      )}
                     </DirectoryPanel>
                   ) : null}
 
@@ -1130,7 +1173,11 @@ export function Wim() {
                           </RecentButton>
                         );
                       })}
-                      {conversations.length === 0 ? <Meta>No direct chats yet.</Meta> : null}
+                      {conversations.length === 0 ? (
+                        <UiEmptyState title="No direct chats yet">
+                          Open a buddy from the list to start a WIM conversation.
+                        </UiEmptyState>
+                      ) : null}
                     </DirectoryPanel>
                   ) : null}
                 </Stack>
@@ -1167,9 +1214,19 @@ export function Wim() {
                   );
                 })}
                 {activeConversationId && messagesQuery.isLoading ? <Hourglass size={20} /> : null}
-                {activeConversationId && messagesQuery.isError ? <Meta>Messages failed to load.</Meta> : null}
-                {activeConversationId && messagesQuery.data?.length === 0 ? <Meta>No messages in this chat yet.</Meta> : null}
-                {!activeConversationId ? <Meta>Select a buddy.</Meta> : null}
+                {activeConversationId && messagesQuery.isError ? (
+                  <UiNotice tone="danger">Messages failed to load. Try this chat again.</UiNotice>
+                ) : null}
+                {activeConversationId && messagesQuery.data?.length === 0 ? (
+                  <UiEmptyState title="No messages in this chat yet">
+                    Send the first WIM message when you are ready.
+                  </UiEmptyState>
+                ) : null}
+                {!activeConversationId ? (
+                  <UiEmptyState title="Select a buddy">
+                    Pick a WTF user or recent chat to open the conversation.
+                  </UiEmptyState>
+                ) : null}
               </ChatLog>
             </GroupBox>
             <Composer
@@ -1179,6 +1236,11 @@ export function Wim() {
               }}
             >
               <TextInput
+                aria-label={
+                  activeConversationId
+                    ? "WIM message text"
+                    : "WIM message text disabled until a chat is selected"
+                }
                 value={content}
                 placeholder="Message"
                 onChange={(event: any) => setContent(event.target.value)}
@@ -1189,10 +1251,12 @@ export function Wim() {
                 disabled={!activeConversationId || !content.trim() || sendMutation.isPending}
                 type="submit"
               >
-                {sendMutation.isPending ? "Sending..." : "Send"}
+                {sendMutation.isPending ? "Sending..." : "Send WIM"}
               </Button>
             </Composer>
-            {sendMutation.isError ? <Meta>Message failed to send.</Meta> : null}
+            {sendMutation.isError ? (
+              <UiNotice tone="danger">Message failed to send. Check the chat and try again.</UiNotice>
+            ) : null}
           </Stack>
         </Shell>
       </AppWindow>
@@ -1205,6 +1269,7 @@ export function Wim() {
                     <PopupTitle>Instant Message from {popup.title}</PopupTitle>
                     <PopupCloseButton
                       type="button"
+                      aria-label={`Dismiss WIM message from ${popup.title}`}
                       title="Dismiss"
                       data-compact-control="true"
                       onClick={() => dismissPopup(popup)}
@@ -1214,6 +1279,7 @@ export function Wim() {
                   </PopupHeader>
                   <PopupBody
                     type="button"
+                    aria-label={`Open WIM message from ${popup.title}`}
                     data-compact-control="true"
                     onClick={() => openPopupConversation(popup)}
                   >

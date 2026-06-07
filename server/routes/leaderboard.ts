@@ -17,6 +17,59 @@ import { ingestSystemEvent } from "../challenges/events/ingest";
 import type { SystemEventType } from "../challenges/events/types";
 
 const router = Router();
+const DEFAULT_LEADERBOARD_PROFILE_ALIAS_LIMIT = 20;
+const DEFAULT_LEADERBOARD_PROFILE_ALIAS_TIMEOUT_MS = 5_000;
+
+function boundedPositiveInteger(value: string | undefined, fallback: number, min: number, max: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, Math.trunc(parsed)));
+}
+
+function leaderboardProfileAliasLimit(): number {
+  return boundedPositiveInteger(
+    process.env.LEADERBOARD_PROFILE_ALIAS_LIMIT,
+    DEFAULT_LEADERBOARD_PROFILE_ALIAS_LIMIT,
+    0,
+    100
+  );
+}
+
+function leaderboardProfileAliasTimeoutMs(): number {
+  return boundedPositiveInteger(
+    process.env.LEADERBOARD_PROFILE_ALIAS_TIMEOUT_MS,
+    DEFAULT_LEADERBOARD_PROFILE_ALIAS_TIMEOUT_MS,
+    250,
+    20_000
+  );
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function resolveLeaderboardProfiles(addresses: string[]): Promise<Map<string, string | null>> {
+  const aliasLimit = leaderboardProfileAliasLimit();
+  const sampled = aliasLimit > 0 ? addresses.slice(0, aliasLimit) : [];
+  if (sampled.length === 0) return new Map();
+  try {
+    return await withTimeout(
+      resolveMultipleProfiles(sampled),
+      leaderboardProfileAliasTimeoutMs(),
+      new Map<string, string | null>()
+    );
+  } catch {
+    return new Map();
+  }
+}
 
 function emitLeaderboardViewed(input: {
   eventType: SystemEventType;
@@ -257,11 +310,7 @@ router.get("/api/leaderboard", async (req, res) => {
 
     let profileAliases = new Map<string, string | null>();
     if (unresolvedAddresses.length > 0) {
-      try {
-        profileAliases = await resolveMultipleProfiles(unresolvedAddresses);
-      } catch {
-        // best-effort
-      }
+      profileAliases = await resolveLeaderboardProfiles(unresolvedAddresses);
     }
 
     const leaderboard: LeaderboardEntry[] = holders.map((h, i) => ({

@@ -62,14 +62,19 @@ interface TokenCardProps {
 /* ─── Card Styled Components ─────────────────────────── */
 
 const Card = styled.div<{ $selected?: boolean }>`
-  background: #c0c0c0;
-  border: 2px outset #dfdfdf;
+  background: var(--wtf-app-surface, #c0c0c0);
+  border: 2px outset var(--wtf-app-border, #dfdfdf);
   display: flex;
   flex-direction: column;
   cursor: pointer;
   position: relative;
-  box-shadow: 1px 1px 0 #000;
+  box-shadow: ${(p) =>
+    p.$selected
+      ? "0 0 0 2px var(--wtf-app-primary, #000080)"
+      : "1px 1px 0 rgba(0, 0, 0, 0.45)"};
   overflow: hidden;
+  color: var(--wtf-app-text, #111);
+  min-width: 0;
   &:hover .card-hover-overlay { opacity: 1; }
 `;
 
@@ -96,15 +101,15 @@ const HoverOverlay = styled.div`
   flex-direction: column;
   justify-content: flex-end;
   padding: 8px;
-  color: #eee;
-  font-size: 10px;
+  color: #ffffff;
+  font-size: var(--wtf-type-caption, 13px);
   line-height: 1.4;
   pointer-events: none;
 `;
 
 const OverlayName = styled.div`
   font-weight: bold;
-  font-size: 12px;
+  font-size: var(--wtf-type-body, 15px);
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -112,15 +117,16 @@ const OverlayName = styled.div`
 `;
 
 const OverlayMeta = styled.div`
-  color: #aaa;
-  font-family: monospace;
-  font-size: 9px;
+  color: #f1f5f9;
+  font-family: var(--wtf-mono-font, monospace);
+  font-size: var(--wtf-type-caption, 13px);
+  overflow-wrap: anywhere;
 `;
 
 const MimeBadge = styled.span`
   display: inline-block;
-  font-size: 8px;
-  padding: 1px 4px;
+  font-size: var(--wtf-type-caption, 13px);
+  padding: 2px 6px;
   background: #333;
   color: #88ff88;
   border-radius: 2px;
@@ -129,8 +135,8 @@ const MimeBadge = styled.span`
 
 const ProvenanceBadge = styled.span`
   display: inline-block;
-  font-size: 8px;
-  padding: 1px 4px;
+  font-size: var(--wtf-type-caption, 13px);
+  padding: 2px 6px;
   background: #1f2a56;
   color: #ffe08a;
   border-radius: 2px;
@@ -152,7 +158,7 @@ const AudioCue = styled.div`
   background: rgba(0, 0, 0, 0.68);
   color: #e8f7ff;
   border: 1px solid rgba(255, 255, 255, 0.32);
-  font-size: 10px;
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   text-align: center;
   pointer-events: none;
@@ -160,11 +166,19 @@ const AudioCue = styled.div`
 
 const ActionBar = styled.div`
   display: flex;
-  gap: 3px;
-  padding: 4px 6px;
+  gap: 4px;
+  padding: 6px;
   flex-wrap: wrap;
-  border-top: 1px solid #808080;
-  background: #c0c0c0;
+  border-top: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #c0c0c0);
+`;
+
+const ActionButton = styled(Button)`
+  min-height: var(--wtf-control-min-height, 34px);
+  min-width: var(--wtf-control-min-height, 34px);
+  padding: 3px 8px;
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.2;
 `;
 
 /* ─── Detail Modal Styled Components ─────────────────── */
@@ -194,7 +208,7 @@ const ModalTitleBar = styled.div`
   background: linear-gradient(90deg, #000080, #1084d0);
   color: #fff;
   font-weight: bold;
-  font-size: 12px;
+  font-size: var(--wtf-type-caption, 13px);
   padding: 4px 8px;
   display: flex;
   align-items: center;
@@ -222,9 +236,10 @@ const MediaPreview = styled.div`
 const DetailRow = styled.div`
   display: flex;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   margin-bottom: 4px;
-  strong { min-width: 80px; color: #444; flex-shrink: 0; }
+  strong { min-width: 80px; color: var(--wtf-app-muted-text, #444); flex-shrink: 0; }
+  span { overflow-wrap: anywhere; }
 `;
 
 const LinkRow = styled.div`
@@ -240,13 +255,13 @@ const ExternalLinkButton = styled.a`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 24px;
-  padding: 3px 9px;
+  min-height: 32px;
+  padding: 4px 10px;
   border: 2px outset #dfdfdf;
-  background: #c0c0c0;
-  color: #000;
-  font-family: "MS Sans Serif", "Courier New", monospace;
-  font-size: 10px;
+  background: var(--wtf-app-control-bg, #c0c0c0);
+  color: var(--wtf-app-text, #000);
+  font-family: var(--wtf-ui-font, "MS Sans Serif", "Courier New", monospace);
+  font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   line-height: 1;
   text-decoration: none;
@@ -273,9 +288,9 @@ const ModalActions = styled.div`
 
 const BoardBadge = styled.span`
   display: inline-block;
-  font-size: 8px;
-  padding: 1px 4px;
-  background: #008000;
+  font-size: var(--wtf-type-caption, 13px);
+  padding: 2px 6px;
+  background: var(--wtf-app-success, #008000);
   color: #fff;
   border-radius: 2px;
 `;
@@ -330,15 +345,14 @@ export function TokenCard({ token, actions, onClick, selected, size = "md" }: To
       {visibleActions.length > 0 && (
         <ActionBar onClick={(e) => e.stopPropagation()}>
           {visibleActions.map((action) => (
-            <Button
+            <ActionButton
               key={action.label}
               size="sm"
-              style={{ fontSize: 9, padding: "1px 5px", minWidth: 0 }}
               disabled={action.disabled}
               onClick={() => action.onClick(token)}
             >
               {action.icon ? `${action.icon} ` : ""}{action.label}
-            </Button>
+            </ActionButton>
           ))}
         </ActionBar>
       )}
@@ -407,7 +421,7 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
       <ModalWindow onClick={(e: any) => e.stopPropagation()}>
         <ModalTitleBar>
           <span>{audio ? "♪" : playable ? "🎬" : "🖼️"}</span>
-          {displayName} — Properties
+          Properties: {displayName}
         </ModalTitleBar>
         <ModalBody>
           <MediaPreview>
@@ -470,7 +484,7 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
           </DetailRow>
           <DetailRow>
             <strong>Contract:</strong>
-            <span style={{ fontFamily: "monospace", fontSize: 10 }}>{token.contract}</span>
+            <span style={{ fontFamily: "var(--wtf-mono-font, monospace)", fontSize: "var(--wtf-type-caption, 13px)" }}>{token.contract}</span>
           </DetailRow>
           <DetailRow>
             <strong>Token ID:</strong> <span>{token.tokenId}</span>
@@ -488,10 +502,10 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
           {(creatorName || token.creatorAddress) && (
             <DetailRow>
               <strong>Creator:</strong>
-              <span style={{ fontSize: 10 }} title={token.creatorAddress || undefined}>
+              <span style={{ fontSize: "var(--wtf-type-caption, 13px)" }} title={token.creatorAddress || undefined}>
                 {creatorName || (token.creatorAddress ? shortAddr(token.creatorAddress) : "")}
                 {creatorName && token.creatorAddress ? (
-                  <span style={{ fontFamily: "monospace" }}>
+                  <span style={{ fontFamily: "var(--wtf-mono-font, monospace)" }}>
                     {" "}
                     ({shortAddr(token.creatorAddress)})
                   </span>
@@ -502,7 +516,7 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
           {provenance && (
             <DetailRow>
               <strong>Provenance:</strong>
-              <span style={{ fontSize: 10 }}>
+              <span style={{ fontSize: "var(--wtf-type-caption, 13px)" }}>
                 Made by {provenanceCreatorLabel(provenance)}
                 {provenanceXLabel(provenance)
                   ? ` / ${provenanceXLabel(provenance)}`
@@ -513,7 +527,7 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
           {creators.length > 0 && !token.creatorAddress && !creatorName && (
             <DetailRow>
               <strong>Creator(s):</strong>
-              <span style={{ fontFamily: "monospace", fontSize: 10 }}>
+              <span style={{ fontFamily: "var(--wtf-mono-font, monospace)", fontSize: "var(--wtf-type-caption, 13px)" }}>
                 {displayCreatorList.join(", ")}
               </span>
             </DetailRow>
@@ -528,7 +542,7 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
             <DetailRow>
               <strong>Wallet:</strong>
               <span
-                style={{ fontFamily: "monospace", fontSize: 10 }}
+                style={{ fontFamily: "var(--wtf-mono-font, monospace)", fontSize: "var(--wtf-type-caption, 13px)" }}
                 title={token.walletAddress}
               >
                 {shortAddr(token.walletAddress)}
@@ -587,15 +601,14 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
           {visibleActions.length > 0 && (
             <ModalActions>
               {visibleActions.map((action) => (
-                <Button
+                <ActionButton
                   key={action.label}
                   size="sm"
-                  style={{ fontSize: 10, padding: "2px 8px" }}
                   disabled={action.disabled}
                   onClick={() => action.onClick(token)}
                 >
                   {action.icon ? `${action.icon} ` : ""}{action.label}
-                </Button>
+                </ActionButton>
               ))}
             </ModalActions>
           )}

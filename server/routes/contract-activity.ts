@@ -127,10 +127,44 @@ function parseListingId(params: Record<string, unknown>): number | null {
 }
 
 function parseAmountWtf(params: Record<string, unknown>): string | null {
-  const raw = params.amountWtf ?? params.amount_wtf;
+  const raw = params.amountWtf ?? params.amount_wtf ?? params.totalWtf ?? params.total_wtf;
   if (raw == null) return null;
   const v = String(raw).trim();
   return /^[0-9]+$/.test(v) ? v : null;
+}
+
+function parseQuantity(params: Record<string, unknown>): string | null {
+  const raw =
+    params.quantity ??
+    params.expectedQuantity ??
+    params.expected_quantity ??
+    params.tokenAmount ??
+    params.token_amount;
+  if (raw == null) return null;
+  const v = String(raw).trim();
+  return /^[1-9][0-9]*$/.test(v) ? v : null;
+}
+
+function parseUnitPriceWtf(params: Record<string, unknown>): string | null {
+  const raw =
+    params.unitPriceWtf ??
+    params.unit_price_wtf ??
+    params.expectedUnitPriceWtf ??
+    params.expected_unit_price_wtf;
+  if (raw == null) return null;
+  const v = String(raw).trim();
+  return /^[0-9]+$/.test(v) ? v : null;
+}
+
+function parseContractVersion(params: Record<string, unknown>): string | null {
+  const raw = params.contractVersion ?? params.contract_version;
+  const v = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return v === "legacy" || v === "v2" ? v : null;
+}
+
+function parseLegacyContractAddress(params: Record<string, unknown>): string | null {
+  const raw = params.legacyContractAddress ?? params.legacy_contract_address;
+  return typeof raw === "string" && raw.trim().startsWith("KT1") ? raw.trim() : null;
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -250,6 +284,11 @@ async function dispatchSuccessNotifications(args: {
     const targetOwner =
       typeof targetOwnerRaw === "string" ? targetOwnerRaw.trim() : null;
     const amountWtf = parseAmountWtf(params);
+    const quantity = parseQuantity(params);
+    const unitPriceWtf = parseUnitPriceWtf(params);
+    const totalWtf = amountWtf;
+    const contractVersion = parseContractVersion(params);
+    const legacyContractAddress = parseLegacyContractAddress(params);
 
     if (targetOwner) {
       const ownerUserId = await getUserIdByWalletAddress(targetOwner);
@@ -260,11 +299,16 @@ async function dispatchSuccessNotifications(args: {
           eventKey: "market.offer.received",
           preferenceKey: "market_offer_received",
           title: "New offer on your token",
-          body: `${actorName} offered ${amountWtf ? formatWtf(amountWtf) : "?"} WTF on ${tokenContract || "token"}#${tokenId || "?"}.`,
+          body: `${actorName} offered ${totalWtf ? formatWtf(totalWtf) : "?"} WTF for ${quantity || "?"} edition(s) of ${tokenContract || "token"}#${tokenId || "?"}.`,
           metadata: {
             tokenContract,
             tokenId,
-            amountWtf,
+            quantity,
+            amountWtf: totalWtf,
+            unitPriceWtf,
+            totalWtf,
+            contractVersion,
+            legacyContractAddress,
             offererWallet: walletAddress,
             targetOwner,
             opHash,
@@ -278,6 +322,11 @@ async function dispatchSuccessNotifications(args: {
   if (action === "accept_offer") {
     const { tokenContract, tokenId } = parseTokenContext(params);
     if (!tokenContract || !tokenId) return;
+    const quantity = parseQuantity(params);
+    const amountWtf = parseAmountWtf(params);
+    const unitPriceWtf = parseUnitPriceWtf(params);
+    const contractVersion = parseContractVersion(params);
+    const legacyContractAddress = parseLegacyContractAddress(params);
 
     const offerer = await findLikelyActiveOfferer(activityId, tokenContract, tokenId);
     if (offerer?.userId && offerer.userId !== actorUserId) {
@@ -287,10 +336,16 @@ async function dispatchSuccessNotifications(args: {
         eventKey: "market.offer.accepted",
         preferenceKey: "market_offer_accepted",
         title: "Your offer was accepted",
-        body: `${actorName} accepted your offer for ${tokenContract}#${tokenId}.`,
+        body: `${actorName} accepted your offer for ${quantity || "?"} edition(s) of ${tokenContract}#${tokenId}.`,
         metadata: {
           tokenContract,
           tokenId,
+          quantity,
+          amountWtf,
+          unitPriceWtf,
+          totalWtf: amountWtf,
+          contractVersion,
+          legacyContractAddress,
           offererWallet: offerer.walletAddress,
           opHash,
         },
@@ -373,6 +428,8 @@ async function dispatchSuccessNotifications(args: {
   if (action === "buy_listing") {
     const listingId = parseListingId(params);
     if (listingId == null) return;
+    const quantity = parseQuantity(params);
+    const unitPriceWtf = parseUnitPriceWtf(params);
 
     const [listing] = await db
       .select({
@@ -412,6 +469,8 @@ async function dispatchSuccessNotifications(args: {
           tokenContract: listing.tokenContract,
           tokenId: listing.tokenId,
           priceWtf: String(listing.priceWtf || 0),
+          quantity,
+          unitPriceWtf,
           opHash,
         },
       });

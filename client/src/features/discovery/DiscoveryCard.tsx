@@ -20,7 +20,7 @@ const Thumb = styled.div`
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   margin-bottom: 6px;
   overflow: hidden;
 `;
@@ -32,7 +32,7 @@ const ThumbImg = styled.img`
 `;
 
 const Meta = styled.p`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #444;
   margin: 2px 0;
   overflow: hidden;
@@ -42,7 +42,7 @@ const Meta = styled.p`
 
 const Label = styled.span`
   font-weight: bold;
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 interface RandomArtistResult {
@@ -115,7 +115,7 @@ export function DiscoveryCard() {
           )}
           <Button
             size="sm"
-            style={{ marginTop: 6, fontSize: 11 }}
+            style={{ marginTop: 6, fontSize: "var(--wtf-type-caption, 13px)" }}
             onClick={() => { void refetchArtist(); }}
           >
             Shuffle
@@ -152,7 +152,7 @@ export function DiscoveryCard() {
           )}
           <Button
             size="sm"
-            style={{ marginTop: 6, fontSize: 11 }}
+            style={{ marginTop: 6, fontSize: "var(--wtf-type-caption, 13px)" }}
             onClick={() => { void refetchNft(); }}
           >
             Shuffle

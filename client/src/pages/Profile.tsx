@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Button,
-  GroupBox,
   TextInput,
   Separator,
   Table,
@@ -15,10 +13,18 @@ import {
   Window,
   WindowHeader,
   WindowContent,
-  Toolbar,
 } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import {
+  UiButton,
+  UiEmptyState,
+  UiField,
+  UiNotice,
+  UiPanel,
+  UiStatusPill,
+  UiToolbar,
+} from "../components/wtfos-ui";
 import { WalletButton } from "../components/WalletButton";
 import { OwnedTokensGallery } from "../components/OwnedTokensGallery";
 import {
@@ -34,22 +40,19 @@ import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 
 /* ── styled helpers ──────────────────────────────────────────────────────── */
 
-const Section = styled(GroupBox)`
-  margin-bottom: 12px;
+const PROFILE_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
+const PROFILE_MONO_FONT =
+  'var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)';
+
+const Section = styled(UiPanel)`
+  margin-bottom: var(--wtf-space-3, 12px);
 `;
 
-const Field = styled.div`
-  margin-bottom: 8px;
+const Field = styled(UiField)`
+  margin-bottom: var(--wtf-space-2, 8px);
 `;
 
-const TokenCountBadge = styled.span`
-  background: #000080;
-  color: #fff;
-  padding: 1px 6px;
-  font-size: 10px;
-  font-weight: bold;
-  border-radius: 2px;
-`;
+const TokenCountBadge = styled(UiStatusPill).attrs({ $tone: "info" as const })``;
 
 const SocialRow = styled.div`
   display: flex;
@@ -58,13 +61,7 @@ const SocialRow = styled.div`
   margin-bottom: 8px;
 `;
 
-const VerifiedBadge = styled.span`
-  background: #008000;
-  color: #fff;
-  font-size: 9px;
-  padding: 1px 5px;
-  border-radius: 2px;
-`;
+const VerifiedBadge = styled(UiStatusPill).attrs({ $tone: "success" as const })``;
 
 const PfpContainer = styled.div`
   display: flex;
@@ -73,21 +70,28 @@ const PfpContainer = styled.div`
   margin-bottom: 12px;
 `;
 
-const PfpCircle = styled.div<{ $hasImage: boolean }>`
+const PfpCircle = styled.button<{ $hasImage: boolean }>`
   width: 96px;
   height: 96px;
   border-radius: 50%;
-  border: 3px solid #808080;
-  background: ${(p) => (p.$hasImage ? "none" : "#c0c0c0")};
+  border: 3px solid var(--wtf-app-border, #808080);
+  background: ${(p) => (p.$hasImage ? "transparent" : "var(--wtf-app-surface-raised, #ffffff)")};
+  color: var(--wtf-app-muted-text, #384352);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   overflow: hidden;
   flex-shrink: 0;
+  padding: 0;
 
   &:hover {
-    border-color: #000080;
+    border-color: var(--wtf-app-link, var(--wtf-highlight-color, #000080));
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--wtf-app-focus, var(--wtf-highlight-color, #005fcc));
+    outline-offset: 3px;
   }
 
   img {
@@ -98,13 +102,21 @@ const PfpCircle = styled.div<{ $hasImage: boolean }>`
 `;
 
 const AvatarUploadLabel = styled.label<{ $disabled?: boolean }>`
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--wtf-control-min-height, 32px);
   margin-top: 6px;
   padding: 4px 10px;
-  border: 2px outset #fff;
-  background: ${(p) => (p.$disabled ? "#b8b8b8" : "#c0c0c0")};
-  color: ${(p) => (p.$disabled ? "#666" : "#000")};
-  font-size: 11px;
+  border: 2px outset var(--wtf-app-border, #808080);
+  background: ${(p) =>
+    p.$disabled
+      ? "var(--wtf-app-disabled-bg, #d8d8d8)"
+      : "var(--wtf-app-control-bg, #ffffff)"};
+  color: ${(p) =>
+    p.$disabled
+      ? "var(--wtf-app-disabled-text, #555)"
+      : "var(--wtf-app-text, #111)"};
+  font-size: var(--wtf-type-caption, 13px);
   cursor: ${(p) => (p.$disabled ? "default" : "pointer")};
 
   input {
@@ -114,8 +126,8 @@ const AvatarUploadLabel = styled.label<{ $disabled?: boolean }>`
 
 const AvatarUploadStatus = styled.div`
   margin-top: 4px;
-  font-size: 11px;
-  color: #333;
+  font-size: var(--wtf-type-caption, 13px);
+  color: var(--wtf-app-muted-text, #384352);
   max-width: 260px;
 `;
 
@@ -138,17 +150,29 @@ const PfpGrid = styled.div`
   padding: 4px;
 `;
 
-const PfpCandidate = styled.div<{ $isPfp: boolean }>`
+const PfpCandidate = styled.button<{ $isPfp: boolean }>`
   width: 80px;
   height: 80px;
-  border: 2px solid ${(p) => (p.$isPfp ? "#008000" : "#808080")};
-  background: #c0c0c0;
+  border: 2px solid
+    ${(p) =>
+      p.$isPfp
+        ? "var(--wtf-app-success, #176b38)"
+        : "var(--wtf-app-border, #808080)"};
+  background: var(--wtf-app-surface-raised, #ffffff);
+  color: var(--wtf-app-text, #111);
   cursor: pointer;
   overflow: hidden;
   position: relative;
+  padding: 0;
+  text-align: left;
 
   &:hover {
-    border-color: #000080;
+    border-color: var(--wtf-app-link, var(--wtf-highlight-color, #000080));
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--wtf-app-focus, var(--wtf-highlight-color, #005fcc));
+    outline-offset: 2px;
   }
 
   img {
@@ -162,16 +186,26 @@ const PfpBadge = styled.span`
   position: absolute;
   top: 2px;
   left: 2px;
-  background: #008000;
+  background: var(--wtf-app-success, #176b38);
   color: #fff;
-  font-size: 8px;
+  font-size: var(--wtf-type-caption, 13px);
   padding: 0 3px;
 `;
 
 const EditorCanvas = styled.canvas`
-  border: 1px solid #808080;
+  border: 1px solid var(--wtf-app-border, #808080);
   cursor: crosshair;
   max-width: 100%;
+`;
+
+const HelperText = styled.p`
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.4;
+`;
+
+const InlineCode = styled.code`
+  font-size: var(--wtf-type-caption, 13px);
 `;
 
 /* ── types ───────────────────────────────────────────────────────────────── */
@@ -694,7 +728,7 @@ export function Profile() {
       setAvatarUploadStatus("Uploading avatar...");
     },
     onSuccess: () => {
-      setAvatarUploadStatus("Uploaded avatar is now your game avatar");
+      setAvatarUploadStatus("Uploaded image is now your profile avatar.");
       setShowPfpPicker(false);
       qc.invalidateQueries({ queryKey: ["profile-social"] });
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
@@ -842,25 +876,27 @@ export function Profile() {
 
   return (
     <AppWindow title="My Profile">
-      {/* ── PFP + Account Info ── */}
-      <Section label="Account Info">
+      {/* ── Profile picture + Account Info ── */}
+      <Section title="Account profile">
         <PfpContainer>
           <PfpCircle
             $hasImage={!!pfpUrl}
+            type="button"
+            aria-label="Choose profile picture"
             onClick={() => setShowPfpPicker(true)}
-            title="Click to change PFP"
+            title="Choose profile picture"
           >
             {pfpUrl ? (
-              <img src={pfpUrl} alt="pfp" />
+              <img src={pfpUrl} alt="Profile avatar" />
             ) : (
-              <span style={{ fontSize: 11, textAlign: "center", color: "#555" }}>
-                Add PFP
+              <span style={{ fontSize: PROFILE_CAPTION_TYPE, textAlign: "center" }}>
+                Add profile picture
               </span>
             )}
           </PfpCircle>
           <div>
             <AvatarUploadLabel $disabled={uploadAvatarMutation.isPending}>
-              {uploadAvatarMutation.isPending ? "Uploading..." : "Upload Avatar"}
+              {uploadAvatarMutation.isPending ? "Uploading avatar..." : "Upload avatar image"}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
@@ -883,6 +919,8 @@ export function Profile() {
             </Field>
             <Field>
               <TextInput
+                id="profile-display-name"
+                aria-label="Display name"
                 value={displayNameInput}
                 onChange={(e: any) => {
                   setDisplayNameInput(e.target.value);
@@ -892,13 +930,13 @@ export function Profile() {
                 style={{ width: 220 }}
               />
               <div style={{ marginTop: 4 }}>
-                <Button
+                <UiButton
                   size="sm"
                   onClick={handleSaveAccount}
                   disabled={!accountDirty || saveAccountMutation.isPending}
                 >
-                  {saveAccountMutation.isPending ? "Saving..." : "Save Display Name"}
-                </Button>
+                  {saveAccountMutation.isPending ? "Saving display name..." : "Save display name"}
+                </UiButton>
               </div>
             </Field>
             <Field>
@@ -909,7 +947,7 @@ export function Profile() {
               {user?.xpTier ? (
                 <>
                   {" "}
-                  <span style={{ color: "#444" }}>
+                  <span style={{ color: "var(--wtf-app-muted-text, #384352)" }}>
                     ({user.xpTier.label}
                     {user.xpTier.nextTierMinXp != null
                       ? ` → next band at ${user.xpTier.nextTierMinXp.toLocaleString()} XP`
@@ -926,48 +964,42 @@ export function Profile() {
                 : "---"}
             </Field>
             {pfpUrl && (
-              <Button
+              <UiButton
                 size="sm"
                 onClick={() => removePfpMutation.mutate()}
                 disabled={removePfpMutation.isPending}
                 style={{ marginTop: 4 }}
               >
-                Remove PFP
-              </Button>
+                Remove profile picture
+              </UiButton>
             )}
           </div>
         </PfpContainer>
       </Section>
 
       {/* ── Password ── */}
-      <Section label={user?.hasPassword ? "Change Password" : "Set Password"}>
-        <p style={{ fontSize: 10, color: "#444", marginBottom: 8 }}>
+      <Section title={user?.hasPassword ? "Change Password" : "Set Password"}>
+        <HelperText style={{ marginBottom: 8 }}>
           {user?.hasPassword
             ? "Update the password used to sign in with your username. If you signed in with a temporary password, enter it as your current password. For your safety, changing your password will log you out of any other devices."
             : "You don't have a password yet — you sign in with a linked wallet or social account. Set one here to enable username + password login."}
-        </p>
+        </HelperText>
 
         {passwordFlash && (
-          <p
-            style={{
-              fontSize: 11,
-              marginBottom: 8,
-              padding: 6,
-              background: passwordFlash.kind === "ok" ? "#e8ffe8" : "#ffe8e8",
-              border: `1px solid ${
-                passwordFlash.kind === "ok" ? "#008000" : "#c00"
-              }`,
-            }}
+          <UiNotice
+            tone={passwordFlash.kind === "ok" ? "success" : "danger"}
+            style={{ marginBottom: 8 }}
           >
             {passwordFlash.message}
-            <Button
+            <UiButton
+              compact
               size="sm"
               style={{ marginLeft: 8 }}
               onClick={() => setPasswordFlash(null)}
             >
-              Dismiss
-            </Button>
-          </p>
+              Dismiss notice
+            </UiButton>
+          </UiNotice>
         )}
 
         <form
@@ -980,12 +1012,13 @@ export function Profile() {
             <Field>
               <label
                 htmlFor="current-password"
-                style={{ display: "block", fontSize: 11, marginBottom: 2 }}
+                style={{ display: "block", fontSize: PROFILE_CAPTION_TYPE, marginBottom: 2 }}
               >
                 <strong>Current or temporary password</strong>
               </label>
               <TextInput
                 id="current-password"
+                aria-label="Current or temporary password"
                 type="password"
                 autoComplete="current-password"
                 value={currentPassword}
@@ -999,13 +1032,16 @@ export function Profile() {
           <Field>
             <label
               htmlFor="new-password"
-              style={{ display: "block", fontSize: 11, marginBottom: 2 }}
+              style={{ display: "block", fontSize: PROFILE_CAPTION_TYPE, marginBottom: 2 }}
             >
               <strong>New password</strong>{" "}
-              <span style={{ fontSize: 10, color: "#666" }}>(min 8 chars)</span>
+              <span style={{ fontSize: PROFILE_CAPTION_TYPE, color: "var(--wtf-app-muted-text, #384352)" }}>
+                (min 8 chars)
+              </span>
             </label>
             <TextInput
               id="new-password"
+              aria-label="New password"
               type="password"
               autoComplete="new-password"
               value={newPassword}
@@ -1018,12 +1054,13 @@ export function Profile() {
           <Field>
             <label
               htmlFor="confirm-password"
-              style={{ display: "block", fontSize: 11, marginBottom: 2 }}
+              style={{ display: "block", fontSize: PROFILE_CAPTION_TYPE, marginBottom: 2 }}
             >
               <strong>Confirm new password</strong>
             </label>
             <TextInput
               id="confirm-password"
+              aria-label="Confirm new password"
               type="password"
               autoComplete="new-password"
               value={confirmPassword}
@@ -1034,8 +1071,9 @@ export function Profile() {
           </Field>
 
           <Field>
-            <Button
+            <UiButton
               type="submit"
+              uiVariant="primary"
               disabled={
                 changePasswordMutation.isPending ||
                 !newPassword ||
@@ -1044,51 +1082,48 @@ export function Profile() {
               }
             >
               {changePasswordMutation.isPending
-                ? "Saving..."
+                ? "Saving password..."
                 : user?.hasPassword
-                  ? "Change Password"
-                  : "Set Password"}
-            </Button>
+                  ? "Change password"
+                  : "Set password"}
+            </UiButton>
           </Field>
         </form>
       </Section>
 
       {/* ── Social & Contact ── */}
-      <Section label="Social & Contact">
+      <Section title="Social & Contact">
         {oauthFlash && (
-          <p
-            style={{
-              fontSize: 11,
-              marginBottom: 8,
-              padding: 6,
-              background: oauthFlash.kind === "ok" ? "#e8ffe8" : "#ffe8e8",
-              border: `1px solid ${oauthFlash.kind === "ok" ? "#008000" : "#c00"}`,
-            }}
+          <UiNotice
+            tone={oauthFlash.kind === "ok" ? "success" : "danger"}
+            style={{ marginBottom: 8 }}
           >
             {oauthFlash.message}
-            <Button
+            <UiButton
+              compact
               size="sm"
               style={{ marginLeft: 8 }}
               onClick={() => setOauthFlash(null)}
             >
-              Dismiss
-            </Button>
-          </p>
+              Dismiss notice
+            </UiButton>
+          </UiNotice>
         )}
-        <p style={{ fontSize: 10, color: "#444", marginBottom: 8 }}>
+        <HelperText style={{ marginBottom: 8 }}>
           <strong>Verify with X / Discord:</strong> you stay logged into WTF; we
           open X or Discord so you can authorize linking. Requires{" "}
-          <code style={{ fontSize: 9 }}>PUBLIC_SITE_URL</code> on the server to
-          match this site (e.g. <code style={{ fontSize: 9 }}>https://wtfos.app</code>
+          <InlineCode>PUBLIC_SITE_URL</InlineCode> on the server to
+          match this site (e.g. <InlineCode>https://wtfos.app</InlineCode>
           ).
-        </p>
+        </HelperText>
         <SocialRow>
           <strong style={{ width: 70 }}>Email:</strong>
-          <span style={{ flex: 1, fontSize: 12 }}>
+          <span style={{ flex: 1, fontSize: PROFILE_CAPTION_TYPE }}>
             {user?.email || "Not set"}
           </span>
           <Checkbox
             label="Public"
+            aria-label="Make email public"
             checked={emailPublic}
             onChange={() => {
               setEmailPublic(!emailPublic);
@@ -1099,7 +1134,7 @@ export function Profile() {
 
         <SocialRow>
           <strong style={{ width: 70 }}>Skywire:</strong>
-          <span style={{ flex: 1, fontSize: 12, overflowWrap: "anywhere" }}>
+          <span style={{ flex: 1, fontSize: PROFILE_CAPTION_TYPE, overflowWrap: "anywhere" }}>
             {social?.atprotoHandle ? (
               <>
                 @{social.atprotoHandle}
@@ -1110,17 +1145,18 @@ export function Profile() {
             )}
           </span>
           {social?.atprotoHandle ? <VerifiedBadge>Connected</VerifiedBadge> : null}
-          <Button
+          <UiButton
             size="sm"
             onClick={() => {
               window.location.assign("/skywire");
             }}
           >
             {social?.atprotoHandle ? "Open Skywire" : "Connect Skywire"}
-          </Button>
+          </UiButton>
           {social?.atprotoHandle ? (
-            <Button
+            <UiButton
               size="sm"
+              uiVariant="danger"
               disabled={disconnectSkywireMutation.isPending}
               onClick={() => {
                 if (confirm("Disconnect this Skywire AT Protocol identity from your WTF account?")) {
@@ -1128,14 +1164,15 @@ export function Profile() {
                 }
               }}
             >
-              {disconnectSkywireMutation.isPending ? "..." : "Disconnect"}
-            </Button>
+              {disconnectSkywireMutation.isPending ? "Disconnecting Skywire..." : "Disconnect Skywire"}
+            </UiButton>
           ) : null}
         </SocialRow>
 
         <SocialRow>
           <strong style={{ width: 70 }}>Twitter:</strong>
           <TextInput
+            aria-label="Twitter handle"
             value={twitterHandle}
             onChange={(e: any) => {
               setTwitterHandle(e.target.value);
@@ -1146,7 +1183,7 @@ export function Profile() {
           />
           {social?.twitterVerified && <VerifiedBadge>Verified</VerifiedBadge>}
           {oauthConfig?.twitterOauth2 ? (
-            <Button
+            <UiButton
               size="sm"
               disabled={disconnectSocialMutation.isPending}
               onClick={() => {
@@ -1158,23 +1195,28 @@ export function Profile() {
               }}
             >
               {social?.twitterVerified ? "Reconnect X" : "Connect X"}
-            </Button>
+            </UiButton>
           ) : (
-            <span style={{ fontSize: 9, color: "#888", maxWidth: 140 }}>
+            <span
+              data-wtf-caption="true"
+              style={{ maxWidth: 140 }}
+            >
               Minimal X OAuth2 not configured
             </span>
           )}
           {social?.twitterHandle || social?.twitterVerified ? (
-            <Button
+            <UiButton
               size="sm"
+              uiVariant="danger"
               disabled={disconnectSocialMutation.isPending}
               onClick={() => disconnectSocialMutation.mutate("twitter")}
             >
-              {disconnectSocialMutation.isPending ? "..." : "Disconnect"}
-            </Button>
+              {disconnectSocialMutation.isPending ? "Disconnecting X..." : "Disconnect X"}
+            </UiButton>
           ) : null}
           <Checkbox
             label="Public"
+            aria-label="Make Twitter public"
             checked={twitterPublic}
             onChange={() => {
               setTwitterPublic(!twitterPublic);
@@ -1186,6 +1228,7 @@ export function Profile() {
         <SocialRow>
           <strong style={{ width: 70 }}>Discord:</strong>
           <TextInput
+            aria-label="Discord handle"
             value={discordHandle}
             onChange={(e: any) => {
               setDiscordHandle(e.target.value);
@@ -1196,7 +1239,7 @@ export function Profile() {
           />
           {social?.discordVerified && <VerifiedBadge>Verified</VerifiedBadge>}
           {oauthConfig?.discord ? (
-            <Button
+            <UiButton
               size="sm"
               disabled={disconnectSocialMutation.isPending}
               onClick={() => {
@@ -1204,23 +1247,28 @@ export function Profile() {
               }}
             >
               {social?.discordVerified ? "Reconnect Discord" : "Connect Discord"}
-            </Button>
+            </UiButton>
           ) : !oauthConfig?.discord ? (
-            <span style={{ fontSize: 9, color: "#888", maxWidth: 140 }}>
+            <span
+              data-wtf-caption="true"
+              style={{ maxWidth: 140 }}
+            >
               Discord not configured
             </span>
           ) : null}
           {social?.discordHandle || social?.discordVerified ? (
-            <Button
+            <UiButton
               size="sm"
+              uiVariant="danger"
               disabled={disconnectSocialMutation.isPending}
               onClick={() => disconnectSocialMutation.mutate("discord")}
             >
-              {disconnectSocialMutation.isPending ? "..." : "Disconnect"}
-            </Button>
+              {disconnectSocialMutation.isPending ? "Disconnecting Discord..." : "Disconnect Discord"}
+            </UiButton>
           ) : null}
           <Checkbox
             label="Public"
+            aria-label="Make Discord public"
             checked={discordPublic}
             onChange={() => {
               setDiscordPublic(!discordPublic);
@@ -1230,21 +1278,22 @@ export function Profile() {
         </SocialRow>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
-          <Button
+          <UiButton
+            uiVariant="primary"
             onClick={handleSaveSocial}
             disabled={!socialDirty || saveSocialMutation.isPending}
           >
-            {saveSocialMutation.isPending ? "Saving..." : "Save Social Info"}
-          </Button>
+            {saveSocialMutation.isPending ? "Saving social info..." : "Save social info"}
+          </UiButton>
         </div>
 
-        <p style={{ fontSize: 10, color: "#666", marginTop: 4 }}>
+        <HelperText style={{ marginTop: 4 }}>
           Uncheck "Public" to hide a field from other users. Admins can always
           see all info.
-        </p>
-        <p style={{ fontSize: 10, color: "#666", marginTop: 4 }}>
+        </HelperText>
+        <HelperText style={{ marginTop: 4 }}>
           Changing a social handle clears verification until you reconnect that provider.
-        </p>
+        </HelperText>
       </Section>
 
       {user ? (
@@ -1256,23 +1305,23 @@ export function Profile() {
       ) : null}
 
       {/* ── Connected Wallet ── */}
-      <Section label="Connected Wallet">
+      <Section title="Connected Wallet">
         <WalletButton />
         {address && (
-          <p style={{ fontSize: 11, marginTop: 4, fontFamily: "monospace" }}>
+          <p style={{ fontSize: PROFILE_CAPTION_TYPE, marginTop: 4, fontFamily: PROFILE_MONO_FONT }}>
             {address}
           </p>
         )}
       </Section>
 
       {/* ── Linked Wallets ── */}
-      <Section label="Linked Wallets">
-        <p style={{ fontSize: 12, marginBottom: 8 }}>
+      <Section title="Linked Wallets">
+        <HelperText style={{ fontSize: PROFILE_CAPTION_TYPE, marginBottom: 8 }}>
           Link your Tezos wallets to track your WTF balance and participate in
           the leaderboard.
-        </p>
+        </HelperText>
 
-        {wallets && wallets.length > 0 && (
+        {wallets && wallets.length > 0 ? (
           <Table>
             <TableHead>
               <TableRow>
@@ -1287,7 +1336,7 @@ export function Profile() {
               {wallets.map((w) => (
                 <TableRow key={w.id}>
                   <TableDataCell
-                    style={{ fontFamily: "monospace", fontSize: 10 }}
+                    style={{ fontFamily: PROFILE_MONO_FONT, fontSize: PROFILE_CAPTION_TYPE }}
                   >
                     {w.walletAddress.slice(0, 10)}...
                     {w.walletAddress.slice(-6)}
@@ -1301,26 +1350,32 @@ export function Profile() {
                   >
                     {w.preferredTezosDomain || w.tezDomain || "---"}
                     {w.reverseTezosDomain ? (
-                      <div style={{ fontSize: 10, color: "#555" }}>
+                      <div
+                        data-wtf-caption="true"
+                        style={{ color: "var(--wtf-app-muted-text, #384352)" }}
+                      >
                         reverse: {w.reverseTezosDomain}
                       </div>
                     ) : null}
                     {w.ownedTezosDomains?.length ? (
-                      <div style={{ fontSize: 10, color: "#555" }}>
+                      <div
+                        data-wtf-caption="true"
+                        style={{ color: "var(--wtf-app-muted-text, #384352)" }}
+                      >
                         {w.ownedTezosDomains.length} owned
                       </div>
                     ) : null}
                     {w.ownedTezosDomains?.length ? (
                       <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
                         {w.ownedTezosDomains.slice(0, 4).map((domain) => (
-                          <Button
+                          <UiButton
                             key={domain}
                             size="sm"
                             disabled={setTezosDomainMutation.isPending || domain === (w.selectedTezosDomain || w.tezDomain)}
                             onClick={() => setTezosDomainMutation.mutate({ id: w.id, tezosDomain: domain })}
                           >
-                            Use {domain}
-                          </Button>
+                            Use {domain} as profile domain
+                          </UiButton>
                         ))}
                       </div>
                     ) : null}
@@ -1332,104 +1387,111 @@ export function Profile() {
                   <TableDataCell>
                     <div style={{ display: "flex", gap: 4 }}>
                       {!w.isPrimary && (
-                        <Button
+                        <UiButton
                           size="sm"
                           onClick={() => setPrimaryMutation.mutate(w.id)}
                         >
-                          Set Primary
-                        </Button>
+                          Set primary wallet
+                        </UiButton>
                       )}
-                      <Button
+                      <UiButton
                         size="sm"
+                        uiVariant="danger"
                         onClick={() => unlinkMutation.mutate(w.id)}
                       >
-                        Unlink
-                      </Button>
+                        Unlink wallet
+                      </UiButton>
                     </div>
                   </TableDataCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        ) : (
+          <UiEmptyState title="No linked wallets yet">
+            Link a Tezos wallet to connect tokens, domains, and on-chain activity to your profile.
+          </UiEmptyState>
         )}
 
         <Separator style={{ margin: "8px 0" }} />
 
         <div style={{ display: "flex", gap: 4 }}>
           <TextInput
+            aria-label="Wallet address to link"
             value={linkAddress}
             onChange={(e: any) => setLinkAddress(e.target.value)}
             placeholder={address || "tz1... wallet address"}
             fullWidth
           />
-          <Button
+          <UiButton
+            uiVariant="primary"
             onClick={handleLinkWallet}
             disabled={linkMutation.isPending}
           >
-            Link
-          </Button>
+            Link wallet
+          </UiButton>
           {address && !linkAddress && (
-            <Button onClick={() => setLinkAddress(address)}>
-              Use Connected
-            </Button>
+            <UiButton onClick={() => setLinkAddress(address)}>
+              Use connected wallet
+            </UiButton>
           )}
         </div>
       </Section>
 
       {/* ── Etherlink Wallets ── */}
-      <Section label="Etherlink Wallets">
+      <Section title="Etherlink Wallets">
         <EtherlinkWalletsPanel />
       </Section>
 
       {/* ── Owned Tokens ── */}
       <Section
-        label={`Owned Tokens${totalTokens > 0 ? ` (${totalTokens})` : ""}`}
+        title={`Owned Tokens${totalTokens > 0 ? ` (${totalTokens})` : ""}`}
       >
-        <p style={{ fontSize: 11, marginBottom: 8, color: "#333" }}>
+        <HelperText style={{ marginBottom: 8 }}>
           Select tokens and click <strong>+ Trade Board</strong> to make them
           available for marketplace listings, auctions, and barter offers.
-        </p>
+        </HelperText>
         {wallets && wallets.length > 0 ? (
           <OwnedTokensGallery
             walletOptions={walletOptions}
             userWallets={wallets.map((w) => w.walletAddress)}
           />
         ) : (
-          <p style={{ fontSize: 12 }}>
+          <UiEmptyState title="No linked wallet">
             Link a wallet above to view your owned tokens.
-          </p>
+          </UiEmptyState>
         )}
       </Section>
 
       {/* ── On-Chain Activity ── */}
-      <Section label="Wallet Relationship Graph">
+      <Section title="Wallet Relationship Graph">
         {wallets && wallets.length > 0 ? (
           <WalletRelationshipGraph />
         ) : (
-          <p style={{ fontSize: 12 }}>
+          <UiEmptyState title="No linked wallet">
             Link a wallet above to map account, domain, token, and creator
             relationships.
-          </p>
+          </UiEmptyState>
         )}
       </Section>
 
       {/* ── On-Chain Activity ── */}
-      <Section label="On-Chain Activity">
-        <p style={{ fontSize: 11, marginBottom: 8, color: "#333" }}>
+      <Section title="On-Chain Activity">
+        <HelperText style={{ marginBottom: 8 }}>
           Live timeline of what your linked wallets have done on Tezos —
           token transfers, XTZ movements, contract calls, delegations, and
           originations. Synced from TzKT every few minutes.
-        </p>
+        </HelperText>
         {wallets && wallets.length > 0 ? (
           <WalletDossier mode="self" />
         ) : (
-          <p style={{ fontSize: 12 }}>
+          <UiEmptyState title="No linked wallet">
             Link a wallet above to start tracking your on-chain activity.
-          </p>
+          </UiEmptyState>
         )}
       </Section>
 
-      {/* ── PFP Picker Modal ── */}
+      {/* ── Profile picture picker modal ── */}
       {showPfpPicker && !pfpEditorToken && (
         <Overlay onClick={() => { setShowPfpPicker(false); setPfpSearch(""); setPfpPage(0); }}>
           <Window
@@ -1437,15 +1499,17 @@ export function Profile() {
             onClick={(e: any) => e.stopPropagation()}
           >
             <WindowHeader>
-              <span>Choose Token as PFP ({pfpTotal} total)</span>
+              <span>Choose profile picture token ({pfpTotal} total)</span>
             </WindowHeader>
             <WindowContent>
-              <p style={{ fontSize: 11, marginBottom: 6 }}>
-                Tokens tagged "pfp" appear first. Search by name, artist,
-                collection, or tags. Click a token to edit and set as PFP.
-              </p>
+              <HelperText style={{ marginBottom: 6 }}>
+                Tokens tagged "profile picture" appear first. Search by name,
+                artist, collection, or tags. Choose a token to edit and use as
+                your profile picture.
+              </HelperText>
 
               <TextInput
+                aria-label="Search profile picture tokens"
                 value={pfpSearch}
                 onChange={(e: any) => {
                   setPfpSearch(e.target.value);
@@ -1457,8 +1521,8 @@ export function Profile() {
               />
 
               {pfpLoading && (
-                <p style={{ fontSize: 11, textAlign: "center", padding: 8 }}>
-                  Loading...
+                <p style={{ fontSize: PROFILE_CAPTION_TYPE, textAlign: "center", padding: 8 }}>
+                  Loading profile picture tokens...
                 </p>
               )}
 
@@ -1470,10 +1534,12 @@ export function Profile() {
                     <PfpCandidate
                       key={`${token.tokenContract}-${token.tokenId}`}
                       $isPfp={isPfp}
+                      type="button"
+                      aria-label={`Edit ${token.tokenName || `token ${token.tokenId}`} as profile picture`}
                       onClick={() => openEditor(token)}
                       title={token.tokenName || `#${token.tokenId}`}
                     >
-                      {isPfp && <PfpBadge>PFP</PfpBadge>}
+                      {isPfp && <PfpBadge>Profile</PfpBadge>}
                       {src ? (
                         <img
                           src={src}
@@ -1481,7 +1547,7 @@ export function Profile() {
                           loading="lazy"
                         />
                       ) : (
-                        <span style={{ fontSize: 10, padding: 4 }}>
+                        <span style={{ fontSize: PROFILE_CAPTION_TYPE, padding: 4 }}>
                           {token.tokenName || `#${token.tokenId}`}
                         </span>
                       )}
@@ -1489,11 +1555,14 @@ export function Profile() {
                   );
                 })}
                 {!pfpLoading && pfpCandidates?.items.length === 0 && (
-                  <p style={{ fontSize: 12, gridColumn: "1 / -1" }}>
+                  <UiEmptyState
+                    title="No matching tokens"
+                    style={{ gridColumn: "1 / -1" }}
+                  >
                     {pfpSearch
                       ? `No tokens matching "${pfpSearch}".`
                       : "No tokens found in your wallets."}
-                  </p>
+                  </UiEmptyState>
                 )}
               </PfpGrid>
 
@@ -1508,37 +1577,37 @@ export function Profile() {
                     marginTop: 8,
                   }}
                 >
-                  <Button
+                  <UiButton
                     size="sm"
                     disabled={pfpPage === 0}
                     onClick={() => setPfpPage(0)}
                   >
-                    First
-                  </Button>
-                  <Button
+                    First page
+                  </UiButton>
+                  <UiButton
                     size="sm"
                     disabled={pfpPage === 0}
                     onClick={() => setPfpPage(Math.max(0, pfpPage - 1))}
                   >
-                    Prev
-                  </Button>
-                  <span style={{ fontSize: 11 }}>
+                    Previous page
+                  </UiButton>
+                  <span style={{ fontSize: PROFILE_CAPTION_TYPE }}>
                     Page {pfpPage + 1} of {pfpMaxPage + 1} ({Math.min(pfpTotal, 3000)} tokens)
                   </span>
-                  <Button
+                  <UiButton
                     size="sm"
                     disabled={pfpPage >= pfpMaxPage}
                     onClick={() => setPfpPage(Math.min(pfpMaxPage, pfpPage + 1))}
                   >
-                    Next
-                  </Button>
-                  <Button
+                    Next page
+                  </UiButton>
+                  <UiButton
                     size="sm"
                     disabled={pfpPage >= pfpMaxPage}
                     onClick={() => setPfpPage(pfpMaxPage)}
                   >
-                    Last
-                  </Button>
+                    Last page
+                  </UiButton>
                 </div>
               )}
 
@@ -1549,16 +1618,16 @@ export function Profile() {
                   marginTop: 8,
                 }}
               >
-                <Button onClick={() => { setShowPfpPicker(false); setPfpSearch(""); setPfpPage(0); }}>
-                  Cancel
-                </Button>
+                <UiButton onClick={() => { setShowPfpPicker(false); setPfpSearch(""); setPfpPage(0); }}>
+                  Close profile picture picker
+                </UiButton>
               </div>
             </WindowContent>
           </Window>
         </Overlay>
       )}
 
-      {/* ── PFP Editor Modal ── */}
+      {/* ── Profile picture editor modal ── */}
       {pfpEditorToken && (
         <Overlay onClick={() => setPfpEditorToken(null)}>
           <Window
@@ -1567,54 +1636,56 @@ export function Profile() {
           >
             <WindowHeader>
               <span>
-                Edit PFP — {pfpEditorToken.tokenName || `#${pfpEditorToken.tokenId}`}
+                Edit profile picture - {pfpEditorToken.tokenName || `#${pfpEditorToken.tokenId}`}
               </span>
             </WindowHeader>
             <WindowContent>
-              <Toolbar style={{ marginBottom: 6, flexWrap: "wrap", gap: 4 }}>
-                <Button
+              <UiToolbar style={{ marginBottom: 6 }}>
+                <UiButton
                   size="sm"
                   active={editorTool === "draw"}
                   onClick={() => setEditorTool("draw")}
                 >
                   Draw
-                </Button>
-                <Button
+                </UiButton>
+                <UiButton
                   size="sm"
                   active={editorTool === "text"}
                   onClick={() => setEditorTool("text")}
                 >
                   Text
-                </Button>
-                <Button
+                </UiButton>
+                <UiButton
                   size="sm"
                   active={editorTool === "sticker"}
                   onClick={() => setEditorTool("sticker")}
                 >
                   Sticker
-                </Button>
+                </UiButton>
                 <input
                   type="color"
                   value={drawColor}
                   onChange={(e) => setDrawColor(e.target.value)}
                   style={{ width: 28, height: 24, border: "none", padding: 0 }}
+                  aria-label="Pick drawing color"
                   title="Pick color"
                 />
                 <select
                   value={drawSize}
                   onChange={(e) => setDrawSize(Number(e.target.value))}
-                  style={{ fontSize: 11 }}
+                  style={{ fontSize: PROFILE_CAPTION_TYPE }}
                 >
                   <option value={1}>1px</option>
                   <option value={3}>3px</option>
                   <option value={6}>6px</option>
                   <option value={10}>10px</option>
                 </select>
-              </Toolbar>
+              </UiToolbar>
 
               {editorTool === "text" && (
                 <div style={{ marginBottom: 6 }}>
                   <TextInput
+                    aria-label="Profile picture editor text"
                     value={textInput}
                     onChange={(e: any) => setTextInput(e.target.value)}
                     placeholder="Type text, then click canvas to place"
@@ -1634,18 +1705,25 @@ export function Profile() {
                     }}
                   >
                     {STICKERS_CLASSIC.map((s) => (
-                      <Button
+                      <UiButton
                         key={s}
+                        compact
                         size="sm"
                         active={stickerChar === s}
+                        aria-label={`Use ${s} sticker`}
                         onClick={() => setStickerChar(s)}
                         style={{ fontSize: 16, padding: "2px 6px" }}
                       >
                         {s}
-                      </Button>
+                      </UiButton>
                     ))}
                   </div>
-                  <div style={{ fontSize: 10, color: "#555", margin: "2px 0" }}>{HAMSTER_SECTION_LABEL}</div>
+                  <div
+                    data-wtf-caption="true"
+                    style={{ color: "var(--wtf-app-muted-text, #384352)", margin: "2px 0" }}
+                  >
+                    {HAMSTER_SECTION_LABEL}
+                  </div>
                   <div
                     style={{
                       display: "flex",
@@ -1654,16 +1732,18 @@ export function Profile() {
                     }}
                   >
                     {HAMSTER_STICKERS.map((h) => (
-                      <Button
+                      <UiButton
                         key={h.char}
+                        compact
                         size="sm"
                         active={stickerChar === h.char}
+                        aria-label={`Use ${h.label} sticker`}
                         onClick={() => setStickerChar(h.char)}
                         title={h.label}
                         style={{ fontSize: 16, padding: "2px 6px" }}
                       >
                         {h.char}
-                      </Button>
+                      </UiButton>
                     ))}
                   </div>
                 </div>
@@ -1686,22 +1766,23 @@ export function Profile() {
                 }}
               >
                 <div style={{ display: "flex", gap: 4 }}>
-                  <Button size="sm" onClick={handleResetEditor}>
-                    Reset
-                  </Button>
-                  <Button
+                  <UiButton size="sm" onClick={handleResetEditor}>
+                    Reset editor
+                  </UiButton>
+                  <UiButton
                     size="sm"
                     onClick={() => setPfpEditorToken(null)}
                   >
-                    Cancel
-                  </Button>
+                    Close editor
+                  </UiButton>
                 </div>
-                <Button
+                <UiButton
+                  uiVariant="primary"
                   onClick={handleSavePfp}
                   disabled={savePfpMutation.isPending}
                 >
-                  {savePfpMutation.isPending ? "Saving..." : "Save as PFP"}
-                </Button>
+                  {savePfpMutation.isPending ? "Saving profile picture..." : "Save profile picture"}
+                </UiButton>
               </div>
             </WindowContent>
           </Window>
