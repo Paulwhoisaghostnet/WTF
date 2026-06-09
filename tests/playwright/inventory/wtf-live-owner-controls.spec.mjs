@@ -141,7 +141,134 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     expect(fatalErrors(errors)).toEqual([]);
   });
 
-  test("public room guests receive each other's media streams and room chat attachments", async ({
+  test("private WTF-user rooms have access-list controls and no public guest envelope", async ({
+    page,
+    request,
+  }) => {
+    await setAdmin(request);
+    const errors = [];
+    capturePageErrors(page, errors, "private-room");
+
+    await page.goto("/live", { waitUntil: "domcontentloaded" });
+    await page.locator("[data-wtf-live-create-room-access]").selectOption("private");
+    await page.getByPlaceholder("Room title").fill("Private Focus Room");
+    await page.locator("[data-wtf-live-create-private-access-list]").fill("wtf-user");
+    await page.getByRole("button", { name: "Create Private Room" }).click();
+
+    await expect(page.getByText("Private Focus Room created as a private WTF-user room.")).toBeVisible();
+    const selectedPrivateRoom = page.locator("[data-wtf-live-room-card='private-room'][data-wtf-live-room-surface='selected']");
+    await expect(selectedPrivateRoom).toBeVisible();
+    await expect(selectedPrivateRoom.locator("[data-wtf-live-private-room='private-room']")).toContainText("WTF users only");
+    await expect(selectedPrivateRoom.getByText("Private room · no public guest URL")).toBeVisible();
+    await expect(selectedPrivateRoom.getByRole("button", { name: "Copy URL" })).toHaveCount(0);
+    await expect(selectedPrivateRoom.locator("[data-wtf-live-private-access-editor='private-room']")).toBeVisible();
+
+    await selectedPrivateRoom.locator("[data-wtf-live-private-access-list='private-room']").fill("wtf-user\nwtf-admin");
+    await selectedPrivateRoom.locator("[data-wtf-live-private-access-save='private-room']").click();
+    await expect(page.getByText("Private Focus Room private access list saved.")).toBeVisible();
+
+    const privateList = await (await request.get("/api/wtf-live/rooms/private")).json();
+    expect(privateList.rooms.some((room) => room.id === "private-room")).toBeTruthy();
+    const privateAccess = await (await request.get("/api/wtf-live/rooms/private-room/access")).json();
+    expect(privateAccess.members.map((member) => member.username)).toEqual(["wtf-user", "wtf-admin"]);
+    const publicEnvelope = await request.get("/api/wtf-live/public/rooms/private-room");
+    expect(publicEnvelope.status()).toBe(404);
+    const privateEnvelope = await request.get("/api/wtf-live/rooms/private-room/join");
+    expect(privateEnvelope.ok()).toBeTruthy();
+    const privateMessages = await (await request.get("/api/wtf-live/rooms/private-room/messages")).json();
+    expect(privateMessages.source).toBe("wtf-live.privateRealtimeOnly");
+
+    const popupPromise = page.waitForEvent("popup");
+    await selectedPrivateRoom.getByRole("button", { name: "Join Private Room" }).click();
+    const roomPage = await popupPromise;
+    await roomPage.waitForLoadState("domcontentloaded");
+    expect(new URL(roomPage.url()).pathname).toBe("/live/r/private-room");
+    await expect(roomPage.getByText("Private room")).toBeVisible();
+    await roomPage.close();
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("mobile room setup controls are first and desktop chat plus attendance pop out", async ({
+    page,
+    request,
+  }) => {
+    await setAdmin(request);
+    const errors = [];
+    capturePageErrors(page, errors, "mobile-popouts");
+
+    await page.setViewportSize({ width: 390, height: 780 });
+    await page.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+    await expect(page.getByPlaceholder("Display name")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Join Room" })).toBeVisible();
+    await expect(page.locator("[data-wtf-live-toggle-mic]")).toBeVisible();
+    await expect(page.locator("[data-wtf-live-toggle-camera]")).toBeVisible();
+    await expect(page.locator("[data-wtf-live-toggle-screen]")).toBeVisible();
+    const mobileOrder = await page.evaluate(() => {
+      const controls = document.querySelector("[data-wtf-live-control-rail]")?.getBoundingClientRect();
+      const stage = document.querySelector("[data-wtf-live-stage-area]")?.getBoundingClientRect();
+      return controls && stage ? { controlsTop: controls.top, stageTop: stage.top } : null;
+    });
+    expect(mobileOrder).not.toBeNull();
+    expect(mobileOrder.controlsTop).toBeLessThan(mobileOrder.stageTop);
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByPlaceholder("Display name").fill("Panel Alice");
+    await page.getByRole("button", { name: "Join Room" }).click();
+    await expect(page.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+    await page.locator("[data-wtf-live-attendance-toggle]").click();
+    const before = await page.evaluate(() => {
+      const stage = document.querySelector("[data-wtf-live-stage-area]")?.getBoundingClientRect();
+      const sidebar = document.querySelector("[data-wtf-live-sidebar]")?.getBoundingClientRect();
+      return stage && sidebar ? { stageWidth: stage.width, sidebarWidth: sidebar.width } : null;
+    });
+    expect(before).not.toBeNull();
+
+    await page.locator("[data-wtf-live-popout-attendance]").click();
+    await expect(page.locator("[data-wtf-live-panel-popout='attendance']")).toBeVisible();
+    await expect(page.locator("[data-wtf-live-attendance-detached]")).toBeVisible();
+    await page.locator("[data-wtf-live-popout-chat]").click();
+    await expect(page.locator("[data-wtf-live-panel-popout='chat']")).toBeVisible();
+    await expect(page.locator("[data-wtf-live-sidebar]")).toHaveCount(0);
+    const after = await page.evaluate(() => {
+      const stage = document.querySelector("[data-wtf-live-stage-area]")?.getBoundingClientRect();
+      return stage ? { stageWidth: stage.width } : null;
+    });
+    expect(after).not.toBeNull();
+    expect(after.stageWidth).toBeGreaterThan(before.stageWidth + before.sidebarWidth * 0.5);
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("owned stages expose close reopen and delete controls", async ({
+    page,
+    request,
+  }) => {
+    await setAdmin(request);
+    const errors = [];
+    capturePageErrors(page, errors, "stage-controls");
+
+    await page.goto("/live?tab=stages", { waitUntil: "domcontentloaded" });
+    await page.locator("select").first().selectOption("my-stage");
+    const stageCard = page.locator("[data-wtf-live-stage-card='my-stage']");
+    await expect(stageCard).toBeVisible();
+    await expect(stageCard).toHaveAttribute("data-wtf-live-owned-stage", "true");
+    await stageCard.getByRole("button", { name: "Close Stage" }).click();
+    await expect(page.getByText("My Stage is closed for stage broadcasts.")).toBeVisible();
+    await expect(stageCard.getByRole("button", { name: "Reopen Stage" })).toBeVisible();
+    await stageCard.getByRole("button", { name: "Reopen Stage" }).click();
+    await expect(page.getByText("My Stage is open for stage broadcasts.")).toBeVisible();
+
+    page.once("dialog", async (dialog) => {
+      expect(dialog.message()).toContain("Delete My Stage?");
+      await dialog.accept();
+    });
+    await stageCard.getByRole("button", { name: "Delete Stage" }).click();
+    await expect(page.getByText("My Stage deleted.")).toBeVisible();
+    await expect(page.locator("[data-wtf-live-stage-card='my-stage']")).toHaveCount(0);
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("public room guests receive each other's media streams, keyboard chat, and room chat attachments", async ({
     browser,
     request,
   }) => {
@@ -229,6 +356,22 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
         .poll(async () => remoteVideo.evaluate((video) => video.srcObject?.getVideoTracks().length ?? 0))
         .toBeGreaterThan(0);
 
+      const aliceChatInput = alice.locator("[data-wtf-live-chat-text]");
+      const bobChatLog = bob.locator("[data-wtf-live-chat-log]");
+      await aliceChatInput.fill("enter submits live chat");
+      await aliceChatInput.press("Enter");
+      await expect(aliceChatInput).toHaveValue("");
+      await expect(bobChatLog.getByText("enter submits live chat")).toBeVisible();
+
+      await aliceChatInput.fill("keyboard line one");
+      await aliceChatInput.press("Shift+Enter");
+      await aliceChatInput.type("keyboard line two");
+      await expect(aliceChatInput).toHaveValue("keyboard line one\nkeyboard line two");
+      await expect(bobChatLog.getByText("keyboard line one")).toHaveCount(0);
+      await aliceChatInput.press("Enter");
+      await expect(aliceChatInput).toHaveValue("");
+      await expect(bobChatLog.getByText("keyboard line one keyboard line two")).toBeVisible();
+
       await alice.locator("[data-wtf-live-chat-file]").setInputFiles({
         name: "tiny.gif",
         mimeType: "image/gif",
@@ -237,7 +380,6 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       await alice.locator("[data-wtf-live-chat-text]").fill("hello Bob, media is live");
       await alice.locator("[data-wtf-live-chat-send]").click();
 
-	      const bobChatLog = bob.locator("[data-wtf-live-chat-log]");
 	      await expect(bobChatLog.getByText("hello Bob, media is live")).toBeVisible();
 	      await expect(bobChatLog.getByText(/tiny\.gif/)).toBeVisible();
 	      const bobChatImage = bobChatLog.locator("img[alt='tiny.gif']");

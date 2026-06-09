@@ -138,7 +138,7 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
   studio: ["studio_projects", "studio_files", "media_items"],
   gallery: ["media_items", "token media cache", "user media libraries"],
   skywire: ["atproto_accounts", "oauth_sessions", "users.tezos_identity"],
-  "wtf-live": ["wtf_live_rooms", "wtf_live_stages", "atproto_accounts", "challenge_system_events"],
+  "wtf-live": ["wtf_live_rooms", "wtf_live_room_access_members", "wtf_live_stages", "atproto_accounts", "challenge_system_events"],
   tz2at: ["atproto_accounts", "wtfos_atproto_identities", "wtfos_atproto_outbox", "tz2at_identity_links", "user_wallets", "user_etherlink_wallets"],
   "crp-nominations": [
     "wtfos_atproto_outbox",

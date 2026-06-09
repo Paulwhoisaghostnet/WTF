@@ -25,7 +25,10 @@ const state = {
   skywireFollowPayloads: [],
   skywireChatEnabled: true,
   skywireHandle: "wtf-admin.bsky.social",
-  wtfLiveOwnedRoom: { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, isPublic: true },
+  wtfLiveOwnedRoom: { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, accessMode: "public", isPublic: true },
+  wtfLivePrivateRoom: null,
+  wtfLivePrivateMembers: [],
+  wtfLiveOwnedStage: { id: "my-stage", title: "My Stage", kind: "stage", description: "Owned stage", liveUrl: "/live", source: "user", ownerUserId: 1, isPublic: true },
 };
 
 function nowIso() {
@@ -56,7 +59,10 @@ app.post("/__test/state", (req, res) => {
   state.skywireFollowPayloads = [];
   state.skywireChatEnabled = req.body?.skywireChatEnabled !== false;
   state.skywireHandle = String(req.body?.skywireHandle || "wtf-admin.bsky.social");
-  state.wtfLiveOwnedRoom = { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, isPublic: true };
+  state.wtfLiveOwnedRoom = { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, accessMode: "public", isPublic: true };
+  state.wtfLivePrivateRoom = null;
+  state.wtfLivePrivateMembers = [];
+  state.wtfLiveOwnedStage = { id: "my-stage", title: "My Stage", kind: "stage", description: "Owned stage", liveUrl: "/live", source: "user", ownerUserId: 1, isPublic: true };
   resetHarnessMarketState();
   res.json({ ok: true, state: { mode: state.mode, userRole: state.userRole, skywireChatEnabled: state.skywireChatEnabled, skywireHandle: state.skywireHandle } });
 });
@@ -942,20 +948,18 @@ function apiMock(req, res) {
       publishesThrough: "Skywire AT Protocol identity",
     });
   }
-  if (pathName === "/api/wtf-live/public/rooms/wtf-live" && req.method === "GET") {
+  if (/^\/api\/wtf-live\/public\/rooms\/[^/]+$/.test(pathName) && req.method === "GET") {
+    const roomId = pathName.split("/")[5];
+    const publicRooms = [
+      { id: "wtf-live", title: "WTF LIVE", kind: "room", description: "Official show room", source: "system", ownerUserId: null, accessMode: "public", isPublic: true },
+      ...(state.wtfLiveOwnedRoom?.isPublic && state.wtfLiveOwnedRoom.accessMode !== "private" ? [state.wtfLiveOwnedRoom] : []),
+    ];
+    const room = publicRooms.find((candidate) => candidate.id === roomId);
+    if (!room) return res.status(404).json({ error: "Room not found" });
     return res.json({
-      room: {
-        id: "wtf-live",
-        title: "WTF LIVE",
-        kind: "room",
-        description: "Official show room",
-        source: "system",
-        ownerUserId: null,
-        isPublic: true,
-        presence: liveRoomPresence("wtf-live"),
-      },
+      room: { ...room, presence: liveRoomPresence(room.id) },
       joinMode: "guest_room_only",
-      roomPath: "/live/r/wtf-live",
+      roomPath: `/live/r/${room.id}`,
       capabilities: {
         audio: true,
         camera: true,
@@ -965,15 +969,30 @@ function apiMock(req, res) {
       },
     });
   }
-  if (pathName === "/api/wtf-live/public/rooms/wtf-live/messages" && req.method === "GET") {
-    return res.json({ roomId: "wtf-live", collection: "app.wtfgameshow.skywire.room.message", messages: [], cursor: null, source: "harness" });
+  if (/^\/api\/wtf-live\/public\/rooms\/[^/]+\/messages$/.test(pathName) && req.method === "GET") {
+    const roomId = pathName.split("/")[5];
+    return res.json({ roomId, collection: "app.wtfgameshow.skywire.room.message", messages: [], cursor: null, source: "harness" });
+  }
+  if (/^\/api\/wtf-live\/rooms\/[^/]+\/messages$/.test(pathName) && req.method === "GET") {
+    const roomId = pathName.split("/")[4];
+    if (state.wtfLivePrivateRoom?.id === roomId) {
+      return res.json({
+        roomId,
+        collection: null,
+        messages: [],
+        cursor: null,
+        source: "wtf-live.privateRealtimeOnly",
+        upstreamAvailable: true,
+      });
+    }
+    return res.json({ roomId, collection: "app.wtfgameshow.skywire.room.message", messages: [], cursor: null, source: "harness" });
   }
   if (pathName === "/api/wtf-live/rooms" && req.method === "GET") {
     const ownedRoom = state.wtfLiveOwnedRoom?.isPublic ? state.wtfLiveOwnedRoom : null;
     return res.json({
       rooms: [
-        { id: "wtf-live", title: "WTF LIVE", kind: "room", description: "Official show room", source: "system", ownerUserId: null, isPublic: true },
-        ...(ownedRoom ? [ownedRoom] : []),
+        { id: "wtf-live", title: "WTF LIVE", kind: "room", description: "Official show room", source: "system", ownerUserId: null, accessMode: "public", isPublic: true },
+        ...(ownedRoom && ownedRoom.accessMode !== "private" ? [ownedRoom] : []),
       ].map((room) => ({ ...room, presence: liveRoomPresence(room.id) })),
       collection: "app.wtfgameshow.skywire.room.message",
       storage: "public_atproto_repo_records",
@@ -982,31 +1001,91 @@ function apiMock(req, res) {
   }
   if (pathName === "/api/wtf-live/rooms/mine" && req.method === "GET") {
     return res.json({
-      rooms: state.wtfLiveOwnedRoom ? [{ ...state.wtfLiveOwnedRoom, presence: liveRoomPresence(state.wtfLiveOwnedRoom.id) }] : [],
+      rooms: [state.wtfLiveOwnedRoom, state.wtfLivePrivateRoom]
+        .filter(Boolean)
+        .map((room) => ({ ...room, presence: liveRoomPresence(room.id) })),
       collection: "app.wtfgameshow.skywire.room.message",
       storage: "wtf_live_rooms",
     });
   }
+  if (pathName === "/api/wtf-live/rooms/private" && req.method === "GET") {
+    return res.json({
+      rooms: state.wtfLivePrivateRoom ? [{ ...state.wtfLivePrivateRoom, presence: liveRoomPresence(state.wtfLivePrivateRoom.id) }] : [],
+      collection: "app.wtfgameshow.skywire.room.message",
+      storage: "wtf_live_room_access_members",
+      accessMode: "private",
+    });
+  }
   if (pathName === "/api/wtf-live/rooms" && req.method === "POST") {
     const title = String(req.body?.title || "New Room").trim();
-    state.wtfLiveOwnedRoom = { id: "my-room", title, kind: "room", description: req.body?.description || "", source: "user", ownerUserId: 1, isPublic: true };
+    const accessMode = req.body?.accessMode === "private" ? "private" : "public";
+    const room = { id: accessMode === "private" ? "private-room" : "my-room", title, kind: "room", description: req.body?.description || "", source: "user", ownerUserId: 1, accessMode, isPublic: true };
+    if (accessMode === "private") {
+      state.wtfLivePrivateRoom = room;
+      state.wtfLivePrivateMembers = Array.isArray(req.body?.accessUsernames)
+        ? req.body.accessUsernames.map((username, index) => ({ userId: index + 2, username: String(username).replace(/^@/, ""), displayName: null }))
+        : [];
+    } else {
+      state.wtfLiveOwnedRoom = room;
+    }
     return res.status(201).json({
-      room: { ...state.wtfLiveOwnedRoom, presence: liveRoomPresence(state.wtfLiveOwnedRoom.id) },
+      room: { ...room, presence: liveRoomPresence(room.id) },
+      members: accessMode === "private" ? state.wtfLivePrivateMembers : [],
+      missingUsernames: [],
     });
+  }
+  if (/^\/api\/wtf-live\/rooms\/[^/]+\/join$/.test(pathName) && req.method === "GET") {
+    const roomId = pathName.split("/")[4];
+    const candidates = [
+      { id: "wtf-live", title: "WTF LIVE", kind: "room", description: "Official show room", source: "system", ownerUserId: null, accessMode: "public", isPublic: true },
+      state.wtfLiveOwnedRoom,
+      state.wtfLivePrivateRoom,
+    ].filter(Boolean);
+    const room = candidates.find((candidate) => candidate.id === roomId);
+    if (!room) return res.status(404).json({ error: "Room not found" });
+    return res.json({
+      room: { ...room, presence: liveRoomPresence(room.id) },
+      joinMode: room.accessMode === "private" ? "wtf_user_private_room" : "guest_room_only",
+      roomPath: `/live/r/${room.id}`,
+      capabilities: { audio: true, camera: true, screen: true, media: true, transport: "webrtc_mesh_via_wtf_live_signaling", privateRoom: room.accessMode === "private" },
+    });
+  }
+  if (/^\/api\/wtf-live\/rooms\/[^/]+\/access$/.test(pathName) && req.method === "GET") {
+    const roomId = pathName.split("/")[4];
+    if (!state.wtfLivePrivateRoom || state.wtfLivePrivateRoom.id !== roomId) {
+      return res.status(404).json({ error: "Owned private room not found" });
+    }
+    return res.json({ roomId, members: state.wtfLivePrivateMembers });
+  }
+  if (/^\/api\/wtf-live\/rooms\/[^/]+\/access$/.test(pathName) && req.method === "PATCH") {
+    const roomId = pathName.split("/")[4];
+    if (!state.wtfLivePrivateRoom || state.wtfLivePrivateRoom.id !== roomId) {
+      return res.status(404).json({ error: "Owned private room not found" });
+    }
+    state.wtfLivePrivateMembers = Array.isArray(req.body?.usernames)
+      ? req.body.usernames.map((username, index) => ({ userId: index + 2, username: String(username).replace(/^@/, ""), displayName: null }))
+      : [];
+    return res.json({ room: { ...state.wtfLivePrivateRoom, presence: liveRoomPresence(roomId) }, members: state.wtfLivePrivateMembers, missingUsernames: [] });
   }
   if (/^\/api\/wtf-live\/rooms\/[^/]+$/.test(pathName) && req.method === "PATCH") {
     const roomId = pathName.split("/")[4];
-    if (!state.wtfLiveOwnedRoom || state.wtfLiveOwnedRoom.id !== roomId) {
+    const targetKey = state.wtfLiveOwnedRoom?.id === roomId ? "wtfLiveOwnedRoom" : state.wtfLivePrivateRoom?.id === roomId ? "wtfLivePrivateRoom" : null;
+    if (!targetKey) {
       return res.status(404).json({ error: "Owned room not found" });
     }
-    state.wtfLiveOwnedRoom = {
-      ...state.wtfLiveOwnedRoom,
+    state[targetKey] = {
+      ...state[targetKey],
       isPublic: Boolean(req.body?.isPublic),
     };
-    return res.json({ room: { ...state.wtfLiveOwnedRoom, presence: liveRoomPresence(state.wtfLiveOwnedRoom.id) } });
+    return res.json({ room: { ...state[targetKey], presence: liveRoomPresence(state[targetKey].id) } });
   }
   if (/^\/api\/wtf-live\/rooms\/[^/]+$/.test(pathName) && req.method === "DELETE") {
     const roomId = pathName.split("/")[4];
+    if (state.wtfLivePrivateRoom?.id === roomId) {
+      state.wtfLivePrivateRoom = null;
+      state.wtfLivePrivateMembers = [];
+      return res.json({ ok: true, roomId });
+    }
     if (!state.wtfLiveOwnedRoom || state.wtfLiveOwnedRoom.id !== roomId) {
       return res.status(404).json({ error: "Owned room not found" });
     }
@@ -1015,18 +1094,45 @@ function apiMock(req, res) {
   }
   if (pathName === "/api/wtf-live/stages" && req.method === "GET") {
     return res.json({
-      stages: [{ id: "wtf-stage", title: "WTF Stage", kind: "stage", description: "Official stage", liveUrl: "/live", source: "system" }],
+      stages: [
+        { id: "wtf-stage", title: "WTF Stage", kind: "stage", description: "Official stage", liveUrl: "/live", source: "system", isPublic: true },
+        ...(state.wtfLiveOwnedStage?.isPublic ? [state.wtfLiveOwnedStage] : []),
+      ],
       collection: "app.wtfgameshow.skywire.stage.broadcast",
       storage: "public_atproto_repo_records",
       mode: "one_way_broadcast",
       skywirePath: "/skywire?tab=account",
     });
   }
+  if (pathName === "/api/wtf-live/stages/mine" && req.method === "GET") {
+    return res.json({
+      stages: state.wtfLiveOwnedStage ? [state.wtfLiveOwnedStage] : [],
+      collection: "app.wtfgameshow.skywire.stage.broadcast",
+      storage: "wtf_live_stages",
+    });
+  }
   if (pathName === "/api/wtf-live/stages" && req.method === "POST") {
     const title = String(req.body?.title || "New Stage").trim();
+    state.wtfLiveOwnedStage = { id: "my-stage", title, kind: "stage", description: req.body?.description || "", liveUrl: req.body?.liveUrl || null, source: "user", ownerUserId: 1, isPublic: true };
     return res.status(201).json({
-      stage: { id: "my-stage", title, kind: "stage", description: req.body?.description || "", liveUrl: req.body?.liveUrl || null, source: "user" },
+      stage: state.wtfLiveOwnedStage,
     });
+  }
+  if (/^\/api\/wtf-live\/stages\/[^/]+$/.test(pathName) && req.method === "PATCH") {
+    const stageId = pathName.split("/")[4];
+    if (!state.wtfLiveOwnedStage || state.wtfLiveOwnedStage.id !== stageId) {
+      return res.status(404).json({ error: "Owned stage not found" });
+    }
+    state.wtfLiveOwnedStage = { ...state.wtfLiveOwnedStage, isPublic: Boolean(req.body?.isPublic) };
+    return res.json({ stage: state.wtfLiveOwnedStage });
+  }
+  if (/^\/api\/wtf-live\/stages\/[^/]+$/.test(pathName) && req.method === "DELETE") {
+    const stageId = pathName.split("/")[4];
+    if (!state.wtfLiveOwnedStage || state.wtfLiveOwnedStage.id !== stageId) {
+      return res.status(404).json({ error: "Owned stage not found" });
+    }
+    state.wtfLiveOwnedStage = null;
+    return res.json({ ok: true, stageId });
   }
   if (/^\/api\/wtf-live\/rooms\/[^/]+\/messages$/.test(pathName) && req.method === "GET") {
     return res.json({ roomId: pathName.split("/")[4], collection: "app.wtfgameshow.skywire.room.message", messages: [], cursor: null, source: "harness" });

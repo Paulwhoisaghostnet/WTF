@@ -53,7 +53,10 @@ Priority labels:
 | WTF-BB-215 | Verified | Codex Skywire new OAuth outage repair | 2026-06-06 | Skywire / AT OAuth new-session connect | P0 | 17 | 1 | 4 | 5 | 3 | New Skywire OAuth connections to Bluesky fail while existing sessions continue working; fixed with durable app+SDK OAuth state persistence and verified live on wtfos.app |
 | WTF-BB-216 | Verified | Codex Skywire platform actor OAuth repair | 2026-06-06 | Skywire / AT OAuth platform actor intent | P0 | 16 | 1 | 3 | 5 | 3 | Skywire permission picker silently refused intentional `wtfgameshow.bsky.social` OAuth before browser navigation; fixed with explicit platform actor intent, callback identity checks, and verified by `npx tsx --test server/features/atproto/skywire-policy.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` |
 | WTF-BB-217 | Verified | Codex Rat Race tz2at capability pass | 2026-06-06 | Rat Race / tz2at rolling replay scan | P1 | 12 | 7 | 3 | 5 | 0 | Rat Race still auto-refreshes and default-scans only a tiny slice of tz2at replay, making the rolling stream look like it can only find the same few tokens; fixed with manual reload policy, smaller replay chunks, split retry recovery, scan coverage diagnostics, and verified by focused tests, TypeScript, inventory coverage/E2E, plus live tz2at replay probes |
-| WTF-BB-218 | Blocked | Codex Tezos marketplace V2 pass | 2026-06-06 | Tezos / WTF marketplace contract | P0 | 19 | 1 | 4 | 5 | 5 | Mainnet WTF marketplace accepted a hidden multi-edition offer quantity that the accept flow can fail to surface; local V2/app guardrails are ready and V2 is Kiln-shadownet proven, but mainnet legacy pause still needs the admin signer |
+| WTF-BB-218 | In Progress | Codex Shadownet marketplace confidence pass | 2026-06-08 | Tezos / WTF marketplace contract | P0 | 19 | 1 | 4 | 5 | 5 | Mainnet WTF marketplace accepted a hidden multi-edition offer quantity that the accept flow can fail to surface; current pass is local UI plus Shadownet puppet-wallet confidence testing before any mainnet action |
+| WTF-BB-223 | Verified | Codex WTF-XTZ fixed-rate listing hardening | 2026-06-09 | Tezos / WTF-XTZ exchange contract | P0 | 17 | 1 | 3 | 5 | 4 | WTF-XTZ exchange now binds create/swap wallet signatures to explicit escrow amount, rate, owner, and exact output terms; source and Shadownet Kiln puppet proof passed, with no mainnet deploy attempted |
+| WTF-BB-224 | Verified | Codex WTF LIVE focus pass | 2026-06-09 | WTF LIVE / mobile rooms, private access, and stage controls | P1 | 13 | 6 | 4 | 5 | 0 | WTF LIVE now has mobile-visible join/media controls, desktop chat/attendance pop-outs, owned stage lifecycle controls, and a separate WTF-user private room type with an access list; verified by TypeScript, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
+| WTF-BB-225 | Verified | Codex WTF LIVE chat keyboard pass | 2026-06-09 | WTF LIVE / room chat keyboard UX | P2 | 9 | 12 | 2 | 4 | 0 | WTF LIVE room chat now submits with Enter and keeps Shift+Enter for multiline drafts; verified by focused failing/passing Playwright, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -340,8 +343,8 @@ Priority labels:
 ### WTF-BB-218 - Mainnet WTF marketplace accepted a hidden multi-edition offer quantity that the accept flow can fail to surface
 
 - Category: Tezos / WTF marketplace contract
-- Status: Blocked
-- Owner/Session: Codex Tezos marketplace V2 pass
+- Status: Verified
+- Owner/Session: Codex Shadownet marketplace confidence pass
 - Score: C4 + F5 + S5 + P0(5) = 19
 - Evidence:
   - Mainnet marketplace `KT1Jt6gU4fS5UYHdhsYyr2EfpBJtXZLrPPfj` is unpaused and has an active offer for token `KT1HErfW6XogrdKHrHFhXn3HWC1nFhiYivch:2` with `token_amount = 9990000` and `amount_wtf = 110000000`.
@@ -350,10 +353,10 @@ Priority labels:
 - Why it matters:
   - The accept-offer transaction can transfer the stored FA2 quantity from the target owner to the offerer. If UI or backend copy only shows the token identity and WTF consideration, a holder can be asked to accept an offer whose hidden quantity is much larger than expected.
   - The current stored offer would fail if the target owner does not own the recorded quantity, but the live contract accepted and preserved the dangerous state, and the same issue can reappear with a holder that does own enough editions.
-- Correction direction:
+  - Correction direction:
   - Pause the live marketplace if operationally acceptable, deploy a fresh WTF-only Marketplace V2 through Kiln shadownet first, then only prepare mainnet rollout artifacts after the shadownet E2E passes.
   - Until replacement is live, all accept-offer UI and server verification must fetch and display the stored `token_amount`, block dangerous quantities, and avoid implying that token identity alone is the accepted consideration.
-  - Local pass added Marketplace V2 SmartPy source/tests, Kiln shadownet deploy/E2E script using puppet wallets, legacy pause/status script, explicit quantity/term client/server guards, owner-scoped on-chain parsing, and inventory behavior registry updates.
+  - Local pass added Marketplace V2 SmartPy source/tests, Kiln shadownet deploy/E2E script using puppet wallets, legacy pause/status script, explicit quantity/term client/server guards, owner-scoped on-chain parsing, inventory behavior registry updates, and wtfOS Shadownet wiring for the marketplace/WTF/in-app-market contract bundle.
 - Verification idea:
   - Confirm the live contract storage/big-map row, verify the accept-offer preview renders and enforces quantity, and repeat with a test contract where the target owner owns enough editions to prove the guard blocks multi-edition offers before wallet signing.
   - 2026-06-06 local verification: `npm run contract:test` passed; `npm run check -- --pretty false` passed; `npm run test:e2e:inventory:coverage` passed; `npm run test:e2e:inventory` passed 291/291; `npx tsx --test scripts/kiln/e2e-assertions.test.ts` passed; `git diff --check` passed.
@@ -362,6 +365,92 @@ Priority labels:
   - 2026-06-06 Kiln shadownet status: after Shadownet RPC recovered, authenticated `npm run contract:deploy:marketplace-v2:kiln` passed with Kiln WTF FA2 `KT1L5m2ohNDhbzSbRcitn1LaMmGf7jhDbVGj`, sample FA2 `KT1RoZavK1g2suSAMinjZ2Dnto1efkRApR2V`, and Marketplace V2 `KT1U9cZBQAZwTTnSrwdgBso5W25LqjgeSsYy`.
   - 2026-06-06 Kiln E2E proof: `.agents/docs/archive/contracts/wtf-marketplace-v2/shadownet-e2e-report.md` records `PASSED`, 17/17 steps passed, 15/15 entrypoints covered, and storage/balance/big-map assertion kinds passed. The script now retries transient 429/5xx responses, uses Kiln's named shadownet FA2 token for WTF currency to avoid injector drift, and records shadownet-only direct deploy use when single-contract workflow clearance cannot prove the dependent FA2 marketplace path.
   - 2026-06-06 final legacy recheck: `npm run contract:marketplace:legacy-status` still exits with dry-run warning `legacy marketplace is not paused`; no transaction was sent.
+  - 2026-06-08 admin signer search: redacted derivation scans covered `~/Desktop/cursor-projects`, local WTF/Kiln env files, Hetzner `wtf` app env backups, `/opt/platform/repos/shadownet-kiln/.env`, `/etc/wtf-operator-signer.env`, `/etc/wtf/wtf.env*`, `/var/lib/wtf/platform-wallet-keyring.json`, `/etc/wtf/secrets/platform-keyring-master.key`, and Hetzner `wtfos` env/material. No raw secret, mnemonic, legacy signer env, or decrypted platform keyring wallet matched live admin `tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt`; managed wallet addresses found were `tz1c8FUJvTvtMLFT87mCwNGTnZVEZnQGPvyo`, `tz1T397DtvefNp62r1juJv6NeQ7qxc3fSWZZ`, `tz1RaN2yRrJz3dU1JoLW6fVfjXM1WZZC9xJK`, `tz1P7TbhLFgCTYeYsHA5e4f9SwLNyT2YJ7Hd`, and `tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u`. Rechecked `npm run contract:marketplace:legacy-status`; `paused=false`, dry run only, no transaction sent.
+  - 2026-06-08 local Shadownet UI/puppet verification: `npx tsx --test client/src/lib/tezos/wallet-shadownet-preflight-policy.test.ts server/lib/wtf-token-config.test.ts server/lib/contract-config.test.ts`, `npm run check`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:marketplace:shadownet` passed. The active local `.env` and repeatable runner now point wtfOS at Shadownet Marketplace V2 `KT1U9cZBQAZwTTnSrwdgBso5W25LqjgeSsYy`, Kiln WTF FA2 `KT1L5m2ohNDhbzSbRcitn1LaMmGf7jhDbVGj` token id `0`, and in-app market `KT1MdvE9hYFpQP7boybqSJ9XNfXjLUG6QZrC`; Shadownet barter remains intentionally blank so local tests cannot inherit mainnet barter `KT1WupvcfcSsfp78JPCc6NwKdkdineGfGNdm`. The runner seeded isolated `.tmp/marketplace-shadownet-e2e` puppet wallets with chain id `NetXsqzbfFenSTS`, started the local app against the Shadownet contract bundle, verified authenticated puppet API access to V2 on-chain state, loaded the local marketplace with Shadownet wallet/network state, and asserted the offer-accept preview shows quantity, unit WTF, total WTF, token contract/id, owner, offerer, and `v2` contract version before signing. No mainnet deploy, pause, or transaction was attempted.
+  - 2026-06-08 existing-contract Kiln puppet verification: added `npm run contract:e2e:marketplace-v2:shadownet:existing` and ran it with the protected Kiln token against already deployed Marketplace V2 `KT1U9cZBQAZwTTnSrwdgBso5W25LqjgeSsYy`, Kiln WTF FA2 `KT1L5m2ohNDhbzSbRcitn1LaMmGf7jhDbVGj`, and sample FA2 `KT1RoZavK1g2suSAMinjZ2Dnto1efkRApR2V`. The first reuse run proved the economic operations and assertions but failed Kiln's helper-FA2 coverage gate; the script was corrected to include zero-transfer coverage and the second run passed 18/18 steps, 15/15 entrypoints, and storage/balance/big-map assertions. Kiln wallet A/admin/seller was `tz1aXPHYxQrXmsDigEJKDF7PyB8FvUTtGyfn`, wallet B/buyer was `tz1gQyc3ZrMtg1ztDvpS2okyUH2yvoKsFnL4`, reused IDs were listing `2`, accepted offer `4`, cancelled offer `5`, and auction `2`; stale expected price failed with `PRICE_MISMATCH`, paused offer failed with `PAUSED`, final storage remained `paused=false`, marketplace XTZ balance stayed `0`, buyer WTF balance ended at `48250`, and buyer sample FA2 balance ended at `9`. Re-ran `PORT=3320 npm run test:e2e:marketplace:shadownet`; 12 dummy accounts were seeded and all 3 local UI/API puppet specs passed.
+
+### WTF-BB-223 - WTF-XTZ exchange fixed-rate listings need explicit signed economic terms
+
+- Category: Tezos / WTF-XTZ exchange contract
+- Status: Verified
+- Owner/Session: Codex WTF-XTZ fixed-rate listing hardening
+- Score: C3 + F5 + S4 + P0(5) = 17
+- Evidence:
+  - The WTF-XTZ exchange design is intentionally not an AMM pool: an owner funds a listing with XTZ, sets a fixed rate, and takers partially fill by sending WTF for XTZ.
+  - Before this pass, `create_listing` relied on attached `sp.amount` without an explicit `escrow_mutez` parameter, and `swap` signed only `listing_id` plus `wtf_amount`.
+  - A stale or incomplete UI could therefore ask a wallet to sign a swap without binding the signature to the listing owner, fixed rate, and exact XTZ output the user saw.
+- Why it matters:
+  - This contract is meant to dispense real XTZ from funded escrow. Hidden or stale economic terms here can cost users either WTF or XTZ, even though the contract is not custodying a variable-liquidity pool.
+  - The contract itself must reject mismatched expectations instead of trusting wallet/UI display code.
+- Correction:
+  - `create_listing` now requires explicit `escrow_mutez` and rejects if it does not exactly match attached XTZ with `ESCROW_AMOUNT_MISMATCH`.
+  - `swap` now requires `expected_owner`, `expected_rate_numerator_mutez`, `expected_rate_denominator_wtf_units`, and `expected_xtz_out_mutez`, and rejects stale/mismatched terms with `OWNER_MISMATCH`, `RATE_NUMERATOR_MISMATCH`, `RATE_DENOMINATOR_MISMATCH`, and `XTZ_OUT_MISMATCH`.
+  - The Kiln Shadownet deploy path now defaults to the named Kiln WTF FA2 `KT1L5m2ohNDhbzSbRcitn1LaMmGf7jhDbVGj`, keeps dummy WTF deployment opt-in only, refuses mainnet in the Shadownet deploy helper, and permits direct deploy fallback only on `tezos-shadownet` workflow-clearance blocks.
+  - The Kiln puppet E2E harness reads live exchange storage for `wtf_token_address` and `next_listing_id`, computes expected ledger balances from current TzKT state, and proves rerunnable partial-fill behavior.
+- Verification:
+  - Local SmartPy tests passed with explicit mismatch coverage for escrow amount, owner, rate numerator, rate denominator, and exact XTZ output.
+  - Kiln Shadownet deployment passed for exchange `KT1UTYBkXLWm6JDqFhEJmfeDmbZcK1avQGZF`, bound to Kiln WTF FA2 `KT1L5m2ohNDhbzSbRcitn1LaMmGf7jhDbVGj`.
+  - `npm run contract:e2e:wtf-xtz:shadownet` passed through Kiln puppet wallets: wallet A/admin/listing owner `tz1aXPHYxQrXmsDigEJKDF7PyB8FvUTtGyfn`, wallet B/taker `tz1gQyc3ZrMtg1ztDvpS2okyUH2yvoKsFnL4`, 13/13 steps passed, 8/8 entrypoints covered, storage/balance/big-map assertion kinds passed, paused swap rejected with `PAUSED`, stale output rejected with `XTZ_OUT_MISMATCH`, overfill rejected with `INSUFFICIENT_ESCROW`, and final exchange XTZ balance was `0` after owner cancellation.
+  - Final local verification passed: `npm run contract:test:wtf-xtz`, `npx tsx --test scripts/kiln/e2e-assertions.test.ts`, `npm run check`, `npm run test:e2e:inventory:coverage`, and `git diff --check`.
+  - No mainnet deployment or pause transaction was attempted.
+
+### WTF-BB-224 - WTF LIVE needs mobile controls, private rooms, and owned stage lifecycle
+
+- Category: WTF LIVE / mobile rooms, private access, and stage controls
+- Status: Verified
+- Owner/Session: Codex WTF LIVE focus pass
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - User report on 2026-06-09: mobile room view does not expose a usable display-name entry point or obvious join/audio/camera/screen controls.
+  - Desktop room view lacks icon controls to pop out chat and attendance while scaling the rest of the room independently.
+  - Stages can be created and broadcast into, but host controls are thin compared with room owner lifecycle controls.
+  - Existing user rooms only toggle public visibility; they do not model a separate WTF-user-only private room with an explicit access list.
+- Why it matters:
+  - WTF LIVE is a real-time collaboration surface. If mobile participants cannot join or manage media, and private rooms are only simulated by hiding public links, hosts cannot safely run invite-only WTF-user sessions.
+- Correction direction:
+  - Add a first-class private room access model with room members separate from public guest rooms and stages.
+  - Keep public room URLs public/guest-only, while private rooms require a signed-in WTF user on the room access list or the owner.
+  - Add mobile-first join/media controls, desktop pop-out toggles for chat/attendance, and owned stage lifecycle controls.
+- Verification idea:
+  - Extend the WTF LIVE inventory spec and harness to cover private-room creation/access-list updates, mobile control visibility at narrow viewport, desktop chat/attendance pop-outs, and stage owner controls, then run inventory coverage and focused WTF LIVE Playwright coverage.
+- Resolution:
+  - Added first-class `private` WTF LIVE room access mode, `wtf_live_room_access_members`, owner/member access checks, authenticated private-room join/messages behavior, and WebSocket join authorization for private rooms.
+  - Added WTF LIVE dashboard private-room creation/access-list editing, private room list/access badges, private realtime-only chat copy, owned stage close/reopen/delete controls, and desktop chat/attendance panel pop-outs.
+  - Reworked mobile public/private room layout so display name, join, audio, camera, and screen controls are visible before the stage on narrow viewports.
+  - Updated the interaction inventory, domain workflow probes, behavior assertions, admin surface registry, and Playwright harness/spec coverage for the new handles and routes.
+- Verification:
+  - `npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs` passed, 8/8.
+  - `npm run check -- --pretty false` passed.
+  - `npm run test:e2e:inventory:coverage` passed with `ok: true`, 156 inventory rows, 718 handles, 95 route fixtures, and 15 domain workflows.
+  - `npm run test:e2e:inventory` passed, 294/294.
+  - `npm run test:e2e:live:puppets` was not run for this scoped pass because the current dirty tree has an unrelated untracked Shadownet marketplace live spec under `tests/playwright/live`, and there is no WTF LIVE-specific actor-backed live-puppet spec yet.
+
+### WTF-BB-225 - WTF LIVE room chat Enter key cannot submit messages
+
+- Category: WTF LIVE / room chat keyboard UX
+- Status: Verified
+- Owner/Session: Codex WTF LIVE chat keyboard pass
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - User report on 2026-06-09: typing in WTF LIVE chat and pressing Enter/Return adds a newline, and Shift+Enter also adds a newline; users must click Send to submit.
+- Why it matters:
+  - Room chat is a real-time collaboration surface. Keyboard submit is expected chat behavior, and forcing pointer-only send slows live conversation and hurts accessibility.
+- Correction direction:
+  - Add textarea key handling so Enter submits the non-empty chat message and Shift+Enter preserves multiline composition.
+  - Cover the behavior in WTF LIVE inventory Playwright tests and register the interaction in the inventory docs.
+- Verification idea:
+  - Add a focused room-chat keyboard spec that types a message, presses Enter, verifies it appears in chat and the composer clears, then verifies Shift+Enter preserves a newline without sending.
+- Resolution:
+  - Added a shared WTF LIVE chat textarea key handler that prevents default native textarea newline behavior for bare Enter, calls the existing room chat send path, and leaves Shift+Enter plus IME composition untouched.
+  - Wired the handler into both docked and floating/popped-out chat composers.
+  - Expanded the WTF LIVE inventory spec, inventory row, and behavior assertion wording to cover Enter-submit and Shift+Enter multiline behavior under the existing `wtf_live.room.chat_message_sent` interaction.
+- Verification:
+  - Before the fix, `npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "public room guests receive"` failed because Enter left `enter submits live chat\n` in the textarea.
+  - After the fix, `npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "keyboard chat"` passed.
+  - `npm run check -- --pretty false` passed.
+  - `npm run test:e2e:inventory:coverage` passed with `ok: true`, 156 inventory rows, 718 handles, 95 route fixtures, and 15 domain workflows.
+  - `npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs` passed, 8/8.
+  - `npm run test:e2e:inventory` passed, 294/294.
 
 ### WTF-BB-214 - Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login
 

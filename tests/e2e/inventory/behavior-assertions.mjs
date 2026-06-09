@@ -57,13 +57,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSurfaceIds: ["marketplace"],
     ownerSpec:
-      "client/src/lib/tezos/marketplace.ts, client/src/features/marketplace/OfferAcceptanceDialog.tsx, server/routes/marketplace.ts",
+      "client/src/lib/tezos/marketplace.ts, client/src/features/marketplace/OfferAcceptanceDialog.tsx, server/routes/marketplace.ts, tests/playwright/live/marketplace-shadownet.spec.mjs",
     verificationCommand:
-      "npm run check && npm run test:e2e:inventory:coverage",
+      "npm run check && npm run test:e2e:inventory:coverage && npm run contract:e2e:marketplace-v2:shadownet:existing && npm run test:e2e:marketplace:shadownet",
     userVisibleAssertion:
       "Accepting a marketplace or trade-board offer shows quantity, unit WTF, total WTF, token contract/id, owner, offerer, and contract version before wallet signing.",
     durableSideEffectAssertion:
-      "The wallet helper re-reads canonical /api/marketplace/onchain before signing, blocks legacy accepts unless tokenAmount is exactly 1, and sends V2 accepts with offer_id plus expected token, owner, quantity, and unit price.",
+      "The wallet helper re-reads canonical /api/marketplace/onchain before signing, blocks legacy accepts unless tokenAmount is exactly 1, sends V2 accepts with offer_id plus expected token, owner, quantity, and unit price, and the local Shadownet runner binds the marketplace, WTF FA2, and in-app market contracts as one explicit test bundle.",
   },
   {
     id: "casino.access-game-apis",
@@ -308,9 +308,45 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     userVisibleAssertion:
-      "WTF LIVE public-room guests see each other in collapsible attendance; camera/screen shares take visual priority in the bulk stage, mic-only guests stay out of the stage with lit mic indicators in attendance, chat remains reachable, and shared media can open in pop-out frames/lightboxes.",
+      "WTF LIVE public-room guests see each other in collapsible attendance; camera/screen shares take visual priority in the bulk stage, mic-only guests stay out of the stage with lit mic indicators in attendance, chat remains reachable, Enter submits room chat while Shift+Enter composes multiline text, and shared media can open in pop-out frames/lightboxes.",
     durableSideEffectAssertion:
-      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, activeVideo/avatar/audioOpen media-state events, and room chat, verifies push-to-talk changes another guest's attendance mic state without creating a stage tile, verifies camera-first then screen-share switching remains visible to another guest after camera stops, verifies stage pop-outs and chat media lightboxes open/close, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests remain attendance-only without pushing the chat composer offscreen.",
+      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, activeVideo/avatar/audioOpen media-state events, and room chat, verifies push-to-talk changes another guest's attendance mic state without creating a stage tile, verifies camera-first then screen-share switching remains visible to another guest after camera stops, verifies stage pop-outs and chat media lightboxes open/close, verifies Enter sends and clears a chat message while Shift+Enter keeps a multiline draft until the next Enter, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests remain attendance-only without pushing the chat composer offscreen.",
+  },
+  {
+    id: "wtf-live.private-room-access-list",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    userVisibleAssertion:
+      "A signed-in WTF LIVE host can create a private WTF-user room, sees it labeled as private with no public guest URL, edits the allowed username list from the selected room view, and joins it through the signed-in room entry path.",
+    durableSideEffectAssertion:
+      "The inventory harness stores the private-room fixture separately from public rooms, verifies /api/wtf-live/rooms/private and /api/wtf-live/rooms/:roomId/access reflect the access list, verifies the public guest endpoint does not expose the private room, and verifies private room dashboard messages remain realtime-only instead of public Skywire records.",
+  },
+  {
+    id: "wtf-live.mobile-and-panel-popout-controls",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    userVisibleAssertion:
+      "On mobile, WTF LIVE shows display-name, Join, mic, camera, and screen controls before the stage; on desktop, chat and attendance have icon pop-out controls and the stage expands when both side panels are detached.",
+    durableSideEffectAssertion:
+      "The inventory harness checks narrow-viewport element order/visibility, opens chat and attendance panel pop-outs, verifies floating panel frames render, verifies both dock notices appear, and verifies the stage/sidebar layout changes while the panels are popped out.",
+  },
+  {
+    id: "wtf-live.stage-owner-lifecycle-controls",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    userVisibleAssertion:
+      "A WTF LIVE stage owner sees owned-stage details plus Close/Reopen/Delete controls in the Stages tab.",
+    durableSideEffectAssertion:
+      "The inventory harness toggles the owned-stage fixture through the WTF LIVE stage PATCH API and deletes it through the DELETE API, then verifies the selected stage card reflects the lifecycle change.",
   },
   {
     id: "w.groupchat-readonly-config-source",

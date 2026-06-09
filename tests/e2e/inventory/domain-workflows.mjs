@@ -285,7 +285,9 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/wtf-live/public/rooms/wtf-live/messages" },
       { method: "GET", path: "/api/wtf-live/rooms" },
       { method: "GET", path: "/api/wtf-live/rooms/mine" },
+      { method: "GET", path: "/api/wtf-live/rooms/private" },
       { method: "GET", path: "/api/wtf-live/rooms/wtf-live/messages" },
+      { method: "GET", path: "/api/wtf-live/rooms/wtf-live/join" },
       {
         method: "POST",
         path: "/api/wtf-live/rooms/wtf-live/messages",
@@ -299,6 +301,20 @@ export const DOMAIN_WORKFLOWS = [
         expectedStatuses: [201, 400, 401, 403, 409, 500],
       },
       {
+        method: "POST",
+        path: "/api/wtf-live/rooms",
+        body: { title: "E2E Private Room", description: "inventory private probe", accessMode: "private", accessUsernames: ["wtf-admin"] },
+        expectedStatuses: [201, 400, 401, 403, 409, 500],
+      },
+      { method: "GET", path: "/api/wtf-live/rooms/e2e-private-room/join", expectedStatuses: [200, 400, 401, 403, 404, 409, 500] },
+      { method: "GET", path: "/api/wtf-live/rooms/e2e-private-room/access", expectedStatuses: [200, 400, 401, 403, 404, 409, 500] },
+      {
+        method: "PATCH",
+        path: "/api/wtf-live/rooms/e2e-private-room/access",
+        body: { usernames: ["wtf-admin"] },
+        expectedStatuses: [200, 400, 401, 403, 404, 409, 500],
+      },
+      {
         method: "PATCH",
         path: "/api/wtf-live/rooms/e2e-room",
         body: { isPublic: false },
@@ -309,7 +325,13 @@ export const DOMAIN_WORKFLOWS = [
         path: "/api/wtf-live/rooms/e2e-room",
         expectedStatuses: [200, 400, 401, 403, 404, 409, 500],
       },
+      {
+        method: "DELETE",
+        path: "/api/wtf-live/rooms/e2e-private-room",
+        expectedStatuses: [200, 400, 401, 403, 404, 409, 500],
+      },
       { method: "GET", path: "/api/wtf-live/stages" },
+      { method: "GET", path: "/api/wtf-live/stages/mine" },
       { method: "GET", path: "/api/wtf-live/stages/wtf-stage/broadcasts" },
       {
         method: "POST",
@@ -322,6 +344,17 @@ export const DOMAIN_WORKFLOWS = [
         path: "/api/wtf-live/stages",
         body: { title: "E2E Stage", description: "inventory probe" },
         expectedStatuses: [201, 400, 401, 403, 409, 500],
+      },
+      {
+        method: "PATCH",
+        path: "/api/wtf-live/stages/e2e-stage",
+        body: { isPublic: false },
+        expectedStatuses: [200, 400, 401, 403, 404, 409, 500],
+      },
+      {
+        method: "DELETE",
+        path: "/api/wtf-live/stages/e2e-stage",
+        expectedStatuses: [200, 400, 401, 403, 404, 409, 500],
       },
       { method: "GET", path: "/api/skywire/pipelines" },
       { method: "GET", path: "/api/skywire/pipelines/history", expectedStatuses: [200, 400, 401, 500] },

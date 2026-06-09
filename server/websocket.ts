@@ -16,7 +16,7 @@ import {
 } from "./lib/board-channel-permissions";
 import { resolveStudioAccess } from "./lib/studio/access";
 import { getSessionSecret } from "./auth/session-secret";
-import { getPublicWtfLiveRoom } from "./features/wtf-live/registry";
+import { canAccessWtfLiveRoom } from "./features/wtf-live/registry";
 
 const MAX_CHAT_CONTENT_LENGTH = 10_000;
 const MAX_WTF_LIVE_CHAT_TEXT_LENGTH = 1_200;
@@ -325,14 +325,15 @@ export function setupWebSocket(server: Server) {
   wss.on("connection", async (ws: WebSocket, req: IncomingMessage) => {
     const pathname = pathnameForRequest(req);
     if (pathname === "/ws/wtf-live") {
+      const auth = await resolveSessionUser(req).catch(() => null);
       const client: WsClient = {
         ws,
-        userId: 0,
-        username: "guest",
-        role: "public",
+        userId: auth?.userId ?? 0,
+        username: auth?.username ?? "guest",
+        role: auth?.role ?? "public",
         publicSocket: "wtf-live",
         wtfLivePeerId: `peer_${randomUUID().replace(/-/g, "").slice(0, 18)}`,
-        wtfLiveGuestName: "guest",
+        wtfLiveGuestName: auth?.username ?? "guest",
         wtfLiveMediaState: { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null },
       };
       clients.add(client);
@@ -425,9 +426,9 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         sendJson(client.ws, { type: "error", message: "Invalid WTF LIVE room id" });
         return;
       }
-      const room = await getPublicWtfLiveRoom(roomId);
+      const room = await canAccessWtfLiveRoom(roomId, client.userId > 0 ? client.userId : null);
       if (!room) {
-        sendJson(client.ws, { type: "error", message: "WTF LIVE room is not open" });
+        sendJson(client.ws, { type: "error", message: "WTF LIVE room is not open to this session" });
         return;
       }
       if (client.wtfLiveRoomId && client.wtfLiveRoomId !== roomId) {

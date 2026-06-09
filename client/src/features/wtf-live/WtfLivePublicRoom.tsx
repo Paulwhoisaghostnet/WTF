@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, Camera, ChevronDown, ChevronRight, Copy, Gauge, Image as ImageIcon, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Paperclip, Radio, Send, Square, Users, Wifi, WifiOff, X } from "lucide-react";
+import { Activity, Camera, ChevronDown, ChevronRight, Copy, ExternalLink, Gauge, Image as ImageIcon, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Paperclip, Radio, Send, Square, Users, Wifi, WifiOff, X } from "lucide-react";
 import styled from "styled-components";
 import { Button, Hourglass, TextField } from "react95";
 import { api } from "../../lib/api";
@@ -12,12 +12,13 @@ type PublicRoom = {
   description?: string;
   source?: "system" | "user";
   ownerUserId?: number | null;
+  accessMode?: "public" | "private";
   isPublic?: boolean;
 };
 
 type PublicRoomResponse = {
   room: PublicRoom;
-  joinMode: "guest_room_only";
+  joinMode: "guest_room_only" | "wtf_user_private_room";
   roomPath: string;
   capabilities?: {
     audio?: boolean;
@@ -87,6 +88,17 @@ type PopoutFrame =
       title: string;
       kind: "attachment";
       attachment: LiveChatAttachment;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      maximized: boolean;
+    }
+  | {
+      id: string;
+      title: string;
+      kind: "panel";
+      panel: "attendance" | "chat";
       x: number;
       y: number;
       width: number;
@@ -255,6 +267,12 @@ const ControlRail = styled.aside`
     order: 3;
     max-height: 360px;
   }
+
+  @media (max-width: 820px) {
+    order: 1;
+    max-height: none;
+    overflow: visible;
+  }
 `;
 
 const SettingsGroup = styled.div`
@@ -266,9 +284,12 @@ const SettingsGroup = styled.div`
   min-width: 0;
 `;
 
-const RoomBody = styled.div`
+const RoomBody = styled.div<{ $sidebarDetached?: boolean }>`
   display: grid;
-  grid-template-columns: clamp(170px, 15vw, 235px) minmax(0, 1fr) clamp(285px, 22vw, 360px);
+  grid-template-columns: ${({ $sidebarDetached }) =>
+    $sidebarDetached
+      ? "clamp(170px, 15vw, 235px) minmax(0, 1fr)"
+      : "clamp(170px, 15vw, 235px) minmax(0, 1fr) clamp(285px, 22vw, 360px)"};
   gap: 8px;
   padding: 8px;
   min-height: 0;
@@ -284,6 +305,12 @@ const RoomBody = styled.div`
 
   @media (max-width: 820px) {
     overflow: visible;
+
+    ${ControlRail} {
+      order: 1;
+      max-height: none;
+      overflow: visible;
+    }
   }
 `;
 
@@ -311,6 +338,11 @@ const StagePanel = styled.section`
   @media (max-width: 980px) {
     order: 1;
     min-height: min(72vh, 620px);
+  }
+
+  @media (max-width: 820px) {
+    order: 2;
+    min-height: min(58vh, 520px);
   }
 `;
 
@@ -349,6 +381,10 @@ const RoomSidebar = styled.aside`
   @media (max-width: 980px) {
     order: 2;
     min-height: 480px;
+  }
+
+  @media (max-width: 820px) {
+    order: 3;
   }
 `;
 
@@ -425,6 +461,10 @@ const MediaButtonGrid = styled(GuestGrid)`
 
   @media (max-width: 520px) {
     grid-template-columns: 1fr;
+
+    button {
+      min-height: 44px !important;
+    }
   }
 `;
 
@@ -893,6 +933,30 @@ const FloatingContent = styled.div`
   }
 `;
 
+const FloatingPanelContent = styled.div`
+  min-height: 0;
+  background: #e9e9e9;
+  color: #07120f;
+  padding: 8px;
+  display: grid;
+  overflow: auto;
+
+  ${AttendancePanel},
+  ${ChatColumn} {
+    min-height: 0;
+    height: 100%;
+  }
+`;
+
+const DetachedPanelNotice = styled.div`
+  border: 2px inset #fff;
+  background: #f8f8f8;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  font-size: var(--wtf-type-caption, 13px);
+`;
+
 const FloatingVideo = styled.video`
   width: 100%;
   height: 100%;
@@ -1330,14 +1394,61 @@ function FloatingAttachmentWindow({
   );
 }
 
+function FloatingPanelWindow({
+  frame,
+  children,
+  onClose,
+  onToggleMaximize,
+  onCycleSize,
+  onDragStart,
+}: {
+  frame: Extract<PopoutFrame, { kind: "panel" }>;
+  children: ReactNode;
+  onClose: (id: string) => void;
+  onToggleMaximize: (id: string) => void;
+  onCycleSize: (id: string) => void;
+  onDragStart: (event: ReactPointerEvent<HTMLElement>, frame: PopoutFrame) => void;
+}) {
+  return (
+    <FloatingWindow
+      $maximized={frame.maximized}
+      $x={frame.x}
+      $y={frame.y}
+      $width={frame.width}
+      $height={frame.height}
+      data-wtf-live-popout-frame={frame.id}
+      data-wtf-live-panel-popout={frame.panel}
+    >
+      <FloatingTitleBar onPointerDown={(event) => onDragStart(event, frame)}>
+        <Move size={14} aria-hidden />
+        <span>{frame.title}</span>
+        <FloatingButtonRow onPointerDown={(event) => event.stopPropagation()}>
+          <Button aria-label="Resize popout" onClick={() => onCycleSize(frame.id)}>
+            <Gauge size={14} aria-hidden />
+          </Button>
+          <Button aria-label="Maximize popout" onClick={() => onToggleMaximize(frame.id)} data-wtf-live-popout-maximize={frame.id}>
+            <Maximize2 size={14} aria-hidden />
+          </Button>
+          <Button aria-label="Close popout" onClick={() => onClose(frame.id)} data-wtf-live-popout-close={frame.id}>
+            <X size={14} aria-hidden />
+          </Button>
+        </FloatingButtonRow>
+      </FloatingTitleBar>
+      <FloatingPanelContent>{children}</FloatingPanelContent>
+    </FloatingWindow>
+  );
+}
+
 export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const roomQuery = useQuery<PublicRoomResponse>({
     queryKey: ["wtf-live", "public-room", roomId],
-    queryFn: () => api.get(`/api/wtf-live/public/rooms/${encodeURIComponent(roomId)}`),
-  });
-  const messagesQuery = useQuery<{ messages: RoomMessage[] }>({
-    queryKey: ["wtf-live", "public-room", roomId, "messages"],
-    queryFn: () => api.get(`/api/wtf-live/public/rooms/${encodeURIComponent(roomId)}/messages`),
+    queryFn: async () => {
+      try {
+        return await api.get<PublicRoomResponse>(`/api/wtf-live/public/rooms/${encodeURIComponent(roomId)}`);
+      } catch {
+        return api.get<PublicRoomResponse>(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/join`);
+      }
+    },
   });
 
   const [guestName, setGuestName] = useState(() => localStorage.getItem("wtf-live:guest-name") || "");
@@ -1385,6 +1496,15 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     avatarUrl: null as string | null,
   });
   const room = roomQuery.data?.room;
+  const joinMode = roomQuery.data?.joinMode ?? "guest_room_only";
+  const messagesQuery = useQuery<{ messages: RoomMessage[] }>({
+    queryKey: ["wtf-live", "room", joinMode, roomId, "messages"],
+    enabled: Boolean(room),
+    queryFn: () =>
+      joinMode === "wtf_user_private_room"
+        ? api.get(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/messages`)
+        : api.get(`/api/wtf-live/public/rooms/${encodeURIComponent(roomId)}/messages`),
+  });
   const roomUrl = useMemo(() => {
     if (typeof window === "undefined") return `/live/r/${roomId}`;
     return `${window.location.origin}/live/r/${roomId}`;
@@ -2089,6 +2209,12 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    setChatAttachments([]);
 	  }
 
+  function handleChatKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    sendLiveChat();
+  }
+
 	  function scrollChatToBottom() {
 	    const node = chatLogRef.current;
 	    if (!node) return;
@@ -2174,6 +2300,19 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	      kind: "attachment",
 	      attachment,
 	      ...frameBasePosition(),
+	    });
+	  }
+
+	  function openPanelPopout(panel: "attendance" | "chat") {
+	    const base = frameBasePosition(panel === "chat" ? 1 : 0);
+	    upsertPopoutFrame({
+	      id: `panel-${panel}`,
+	      title: panel === "chat" ? "Room chat" : "Attendance",
+	      kind: "panel",
+	      panel,
+	      ...base,
+	      width: panel === "chat" ? Math.min(window.innerWidth - 24, 520) : Math.min(window.innerWidth - 24, 420),
+	      height: Math.min(window.innerHeight - 24, 640),
 	    });
 	  }
 
@@ -2273,6 +2412,164 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    : activeVideoSource === "camera"
 	      ? "Sharing camera"
       : "No video shared";
+  const attendanceDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "attendance");
+  const chatDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "chat");
+  const sidebarDetached = attendanceDetached && chatDetached;
+
+  function renderAttendancePanel(floating = false) {
+    return (
+      <AttendancePanel
+        open
+        data-wtf-live-attendance-panel={floating ? "popout" : undefined}
+      >
+        <summary data-wtf-live-attendance-toggle={floating ? undefined : ""}>
+          <LiveSectionHeader>
+            <span><Users size={15} aria-hidden /> Attendance</span>
+            <span>{participantCount} · {openMicCount} mic</span>
+          </LiveSectionHeader>
+        </summary>
+        <AttendanceList data-wtf-live-attendance-list={floating ? "popout" : undefined}>
+          {joined ? (
+            <AttendeeRow
+              $active={Boolean(localMediaState.activeVideo || localMediaState.audioOpen)}
+              data-wtf-live-attendee="self"
+              data-wtf-live-attendee-state={labelForMediaState(localMediaState).toLowerCase()}
+            >
+              <AvatarMark name={guestName || "guest"} avatarUrl={avatarUrl} size="small" />
+              <strong>{guestName || "guest"} (you)</strong>
+              <MicDot $active={localMediaState.audioOpen} $ready={localMediaState.mic} title={localMediaState.audioOpen ? "Mic live" : localMediaState.mic ? "Mic ready" : "Mic off"}>
+                <Mic size={13} aria-hidden />
+              </MicDot>
+              <span>{labelForMediaState(localMediaState)}</span>
+            </AttendeeRow>
+          ) : null}
+          {remotePeers.map((peer) => {
+            const diagnostic = peerDiagnostics[peer.peerId];
+            return (
+              <AttendeeRow
+                key={peer.peerId}
+                $active={Boolean(peer.mediaState.activeVideo || peer.mediaState.audioOpen)}
+                data-wtf-live-attendee={peer.peerId}
+                data-wtf-live-attendee-state={labelForMediaState(peer.mediaState, peer.connected).toLowerCase()}
+              >
+                <AvatarMark name={peer.guestName} avatarUrl={peer.mediaState.avatarUrl} size="small" />
+                <strong>{peer.guestName}</strong>
+                <MicDot $active={peer.mediaState.audioOpen} $ready={peer.mediaState.mic} title={peer.mediaState.audioOpen ? "Mic live" : peer.mediaState.mic ? "Mic ready" : "Mic off"}>
+                  <Mic size={13} aria-hidden />
+                </MicDot>
+                <HealthDot $health={diagnostic?.health ?? (peer.connected ? "good" : "connecting")} title={diagnosticSummary(diagnostic)}>
+                  {healthLabel(diagnostic?.health ?? (peer.connected ? "good" : "connecting"))}
+                </HealthDot>
+              </AttendeeRow>
+            );
+          })}
+          {!joined && !remotePeers.length ? <span>Join to appear here.</span> : null}
+        </AttendanceList>
+      </AttendancePanel>
+    );
+  }
+
+  function renderChatPanel(floating = false) {
+    return (
+      <ChatColumn data-wtf-live-chat-column={floating ? "popout" : "true"}>
+        <LiveSectionHeader>
+          <span><MessageSquare size={15} aria-hidden /> Room chat</span>
+          <span>{liveMessages.length + messages.length} messages</span>
+        </LiveSectionHeader>
+        <MessageList
+          ref={floating || !chatDetached ? chatLogRef : undefined}
+          onScroll={handleChatScroll}
+          aria-label="WTF LIVE room chat"
+          data-wtf-live-chat-log
+        >
+          {messagesQuery.isLoading ? <Hourglass size={24} /> : null}
+          {liveMessages.map((message) => (
+            <MessageItem key={message.id} data-wtf-live-chat-message={message.id}>
+              <strong>{message.guestName}</strong>
+              <span>{formatDate(message.createdAt)}</span>
+              {message.text ? <div>{message.text}</div> : null}
+              {message.attachments.length ? (
+                <AttachmentStrip>
+                  {message.attachments.map((attachment) => (
+                    <AttachmentPreview key={attachment.id} data-wtf-live-chat-attachment={attachment.id}>
+                      {attachment.kind === "video" ? (
+                        <video src={attachment.dataUrl} controls playsInline onClick={() => openAttachmentPopout(attachment)} />
+                      ) : (
+                        <img src={attachment.dataUrl} alt={attachment.name} onClick={() => openAttachmentPopout(attachment)} />
+                      )}
+                      <span>{attachment.name} {formatFileSize(attachment.sizeBytes)}</span>
+                    </AttachmentPreview>
+                  ))}
+                </AttachmentStrip>
+              ) : null}
+            </MessageItem>
+          ))}
+          {messages.length ? <MessageDivider>Public AT room notes</MessageDivider> : null}
+          {messages.length ? (
+            [...messages].reverse().map((message) => (
+              <MessageItem key={message.uri}>
+                <strong>{message.author?.displayName || message.author?.handle || "host"}</strong>
+                {formatDate(message.createdAt) ? <span>{formatDate(message.createdAt)}</span> : null}
+                <div>{message.text}</div>
+              </MessageItem>
+            ))
+          ) : null}
+          {!liveMessages.length && !messages.length ? <span>No room chat yet.</span> : null}
+        </MessageList>
+        {newMessageCount ? (
+          <NewMessagesButton onClick={scrollChatToBottom} data-wtf-live-new-messages>
+            {newMessageCount} new
+          </NewMessagesButton>
+        ) : null}
+        <ChatComposer data-wtf-live-chat-composer="true">
+          <ChatTextArea
+            aria-label="WTF LIVE room chat message"
+            data-wtf-live-chat-text
+            disabled={!joined || !socketReady}
+            value={chatText}
+            maxLength={1200}
+            placeholder={socketReady ? "Type in the room" : "Join the room to chat"}
+            onChange={(event) => setChatText(event.target.value)}
+            onKeyDown={handleChatKeyDown}
+          />
+          {chatAttachments.length ? (
+            <AttachmentStrip>
+              {chatAttachments.map((attachment) => (
+                <AttachmentPreview key={attachment.id} data-wtf-live-chat-attachment={attachment.id}>
+                  {attachment.kind === "video" ? (
+                    <video src={attachment.dataUrl} controls playsInline onClick={() => openAttachmentPopout(attachment)} />
+                  ) : (
+                    <img src={attachment.dataUrl} alt={attachment.name} onClick={() => openAttachmentPopout(attachment)} />
+                  )}
+                  <span>{attachment.name} {formatFileSize(attachment.sizeBytes)}</span>
+                  <Button onClick={() => removeAttachment(attachment.id)}>Remove</Button>
+                </AttachmentPreview>
+              ))}
+            </AttachmentStrip>
+          ) : null}
+          <HiddenFileInput
+            ref={fileInputRef}
+            data-wtf-live-chat-file
+            type="file"
+            multiple
+            accept="image/png,image/jpeg,image/gif,video/mp4"
+            onChange={handleAttachmentInput}
+          />
+          <GuestGrid>
+            <Button
+              disabled={!joined || !socketReady || chatAttachments.length >= MAX_LIVE_CHAT_ATTACHMENTS}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <ButtonLabel><Paperclip size={16} aria-hidden /> Media</ButtonLabel>
+            </Button>
+            <Button primary disabled={!canSendChat} onClick={sendLiveChat} data-wtf-live-chat-send>
+              <ButtonLabel><Send size={16} aria-hidden /> Send</ButtonLabel>
+            </Button>
+          </GuestGrid>
+        </ChatComposer>
+      </ChatColumn>
+    );
+  }
 
   return (
     <GuestShell>
@@ -2284,7 +2581,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
           </RoomTitleBlock>
 	          <HeaderStatus>
 	            {socketReady ? <Wifi size={15} aria-hidden /> : <WifiOff size={15} aria-hidden />}{" "}
-	            <span>{joined ? (socketReady ? "Connected" : "Connecting") : "Public room"}</span>
+	            <span>{joined ? (socketReady ? "Connected" : "Connecting") : joinMode === "wtf_user_private_room" ? "Private room" : "Public room"}</span>
 	            <span>{joined ? guestName : "Guest setup"}</span>
 	            <span>{peerId ? peerId.slice(0, 12) : "not joined"}</span>
 	            <HeaderCloseButton aria-label="Close Window" onClick={closeRoomWindow} data-wtf-live-close-window>
@@ -2292,7 +2589,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	            </HeaderCloseButton>
 	          </HeaderStatus>
         </TitleBar>
-	        <RoomBody>
+	        <RoomBody $sidebarDetached={sidebarDetached}>
 	          <ControlRail data-wtf-live-control-rail>
 	            <SettingsGroup>
 	              <LiveSectionHeader>
@@ -2519,7 +2816,14 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 		            ))}
 		          </StagePanel>
 
+	          {!sidebarDetached ? (
 	          <RoomSidebar data-wtf-live-sidebar>
+	            {attendanceDetached ? (
+	              <DetachedPanelNotice data-wtf-live-attendance-detached>
+	                <strong>Attendance is popped out</strong>
+	                <span>Close the floating attendance window to dock it here again.</span>
+	              </DetachedPanelNotice>
+	            ) : (
 	            <AttendancePanel
 	              open={attendanceOpen}
 	              onToggle={(event) => setAttendanceOpen(event.currentTarget.open)}
@@ -2531,7 +2835,21 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	                    {attendanceOpen ? <ChevronDown size={15} aria-hidden /> : <ChevronRight size={15} aria-hidden />}
 	                    <Users size={15} aria-hidden /> Attendance
 	                  </span>
-	                  <span>{participantCount} · {openMicCount} mic</span>
+	                  <span>
+	                    {participantCount} · {openMicCount} mic
+	                    <Button
+	                      aria-label="Pop out attendance"
+	                      title="Pop out attendance"
+	                      onClick={(event) => {
+	                        event.preventDefault();
+	                        event.stopPropagation();
+	                        openPanelPopout("attendance");
+	                      }}
+	                      data-wtf-live-popout-attendance
+	                    >
+	                      <ExternalLink size={13} aria-hidden />
+	                    </Button>
+	                  </span>
 	                </LiveSectionHeader>
 	              </summary>
 	              <AttendanceList data-wtf-live-attendance-list>
@@ -2572,10 +2890,27 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	                {!joined && !remotePeers.length ? <span>Join to appear here.</span> : null}
 	              </AttendanceList>
 	            </AttendancePanel>
+	            )}
+	            {chatDetached ? (
+	              <DetachedPanelNotice data-wtf-live-chat-detached>
+	                <strong>Chat is popped out</strong>
+	                <span>Close the floating chat window to dock it here again.</span>
+	              </DetachedPanelNotice>
+	            ) : (
 	            <ChatColumn data-wtf-live-chat-column="true">
 	              <LiveSectionHeader>
 	                <span><MessageSquare size={15} aria-hidden /> Room chat</span>
-	                <span>{liveMessages.length + messages.length} messages</span>
+	                <span>
+	                  {liveMessages.length + messages.length} messages
+	                  <Button
+	                    aria-label="Pop out chat"
+	                    title="Pop out chat"
+	                    onClick={() => openPanelPopout("chat")}
+	                    data-wtf-live-popout-chat
+	                  >
+	                    <ExternalLink size={13} aria-hidden />
+	                  </Button>
+	                </span>
 	              </LiveSectionHeader>
 	              <MessageList ref={chatLogRef} onScroll={handleChatScroll} aria-label="WTF LIVE room chat" data-wtf-live-chat-log>
                 {messagesQuery.isLoading ? <Hourglass size={24} /> : null}
@@ -2626,6 +2961,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
                   maxLength={1200}
                   placeholder={socketReady ? "Type in the room" : "Join the room to chat"}
                   onChange={(event) => setChatText(event.target.value)}
+                  onKeyDown={handleChatKeyDown}
                 />
                 {chatAttachments.length ? (
                   <AttachmentStrip>
@@ -2663,12 +2999,28 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
                 </GuestGrid>
               </ChatComposer>
             </ChatColumn>
+	            )}
           </RoomSidebar>
+	          ) : null}
 	        </RoomBody>
 	      </RoomFrame>
 	      {popoutFrames.length ? (
 	        <FloatingLayer data-wtf-live-popout-layer>
 	          {popoutFrames.map((frame) => {
+	            if (frame.kind === "panel") {
+	              return (
+	                <FloatingPanelWindow
+	                  key={frame.id}
+	                  frame={frame}
+	                  onClose={closePopoutFrame}
+	                  onToggleMaximize={togglePopoutMaximize}
+	                  onCycleSize={cyclePopoutSize}
+	                  onDragStart={handlePopoutDragStart}
+	                >
+	                  {frame.panel === "chat" ? renderChatPanel(true) : renderAttendancePanel(true)}
+	                </FloatingPanelWindow>
+	              );
+	            }
 	            if (frame.kind === "attachment") {
 	              return (
 	                <FloatingAttachmentWindow

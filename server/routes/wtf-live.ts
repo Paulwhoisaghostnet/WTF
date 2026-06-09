@@ -22,14 +22,20 @@ import { emitAtprotoSystemEvent } from "../features/atproto/events";
 import { requireWtfLiveRollout, skywireRolloutStatusForRole } from "../lib/skywire-access";
 import {
   archiveOwnedWtfLiveRoom,
+  archiveOwnedWtfLiveStage,
+  canAccessWtfLiveRoom,
   createWtfLiveRoom,
   createWtfLiveStage,
   getPublicWtfLiveRoom,
+  listAccessiblePrivateWtfLiveRooms,
+  listOwnedWtfLiveRoomAccessMembers,
   listOwnedWtfLiveRooms,
+  listOwnedWtfLiveStages,
   listWtfLiveRooms,
   listWtfLiveStages,
+  replaceOwnedWtfLiveRoomAccessMembers,
+  updateOwnedWtfLiveStageVisibility,
   updateOwnedWtfLiveRoomVisibility,
-  wtfLiveRoomExists,
   wtfLiveStageExists,
 } from "../features/wtf-live/registry";
 import { getWtfLiveRoomPresence } from "../websocket";
@@ -62,10 +68,16 @@ const quotedPostSnapshotSchema = z
 const createRoomSchema = z.object({
   title: z.string().trim().min(2).max(120),
   description: z.string().trim().max(500).optional().default(""),
+  accessMode: z.enum(["public", "private"]).optional().default("public"),
+  accessUsernames: z.array(z.string().trim().min(1).max(50)).max(50).optional().default([]),
 });
 
 const updateRoomSchema = z.object({
   isPublic: z.boolean(),
+});
+
+const updateRoomAccessSchema = z.object({
+  usernames: z.array(z.string().trim().min(1).max(50)).max(50).default([]),
 });
 
 const createStageSchema = z.object({
@@ -78,6 +90,10 @@ const createStageSchema = z.object({
     .refine((value) => !value || value.startsWith("/") || /^https?:\/\//i.test(value), "Live URL must be absolute or a WTF path")
     .optional()
     .nullable(),
+});
+
+const updateStageSchema = z.object({
+  isPublic: z.boolean(),
 });
 
 const roomMessageSchema = z.object({
@@ -350,6 +366,38 @@ router.get("/api/wtf-live/rooms/mine", async (req, res) => {
   });
 });
 
+router.get("/api/wtf-live/rooms/private", async (req, res) => {
+  const user = req.user as any;
+  const rooms = await listAccessiblePrivateWtfLiveRooms(user.id);
+  res.json({
+    rooms: rooms.map(withWtfLivePresence),
+    collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
+    storage: "wtf_live_room_access_members",
+    accessMode: "private",
+  });
+});
+
+router.get("/api/wtf-live/rooms/:roomId/join", async (req, res) => {
+  const user = req.user as any;
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  if (!roomId.success) return res.status(400).json({ error: "Invalid room" });
+  const room = await canAccessWtfLiveRoom(roomId.data, user.id);
+  if (!room) return res.status(404).json({ error: "Room not found or not available to this WTF user" });
+  res.json({
+    room: withWtfLivePresence(room),
+    joinMode: room.accessMode === "private" ? "wtf_user_private_room" : "guest_room_only",
+    roomPath: `/live/r/${encodeURIComponent(room.id)}`,
+    capabilities: {
+      audio: true,
+      camera: true,
+      screen: true,
+      media: true,
+      transport: "webrtc_mesh_via_wtf_live_signaling",
+      privateRoom: room.accessMode === "private",
+    },
+  });
+});
+
 router.post("/api/wtf-live/rooms", actionLimiter, async (req, res) => {
   const user = req.user as any;
   const parsed = createRoomSchema.safeParse(req.body);
@@ -359,11 +407,52 @@ router.post("/api/wtf-live/rooms", actionLimiter, async (req, res) => {
       ownerUserId: user.id,
       title: parsed.data.title,
       description: parsed.data.description,
+      accessMode: parsed.data.accessMode,
     });
-    res.status(201).json({ room: withWtfLivePresence(room) });
+    if (parsed.data.accessMode === "private") {
+      const access = await replaceOwnedWtfLiveRoomAccessMembers({
+        ownerUserId: user.id,
+        roomId: room.id,
+        usernames: parsed.data.accessUsernames,
+      });
+      return res.status(201).json({
+        room: withWtfLivePresence(access?.room ?? room),
+        members: access?.members ?? [],
+        missingUsernames: access?.missingUsernames ?? [],
+      });
+    }
+    res.status(201).json({ room: withWtfLivePresence(room), members: [], missingUsernames: [] });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message || "Could not create room" });
   }
+});
+
+router.get("/api/wtf-live/rooms/:roomId/access", async (req, res) => {
+  const user = req.user as any;
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  if (!roomId.success) return res.status(400).json({ error: "Invalid room" });
+  const members = await listOwnedWtfLiveRoomAccessMembers({
+    ownerUserId: user.id,
+    roomId: roomId.data,
+  });
+  if (!members) return res.status(404).json({ error: "Owned private room not found" });
+  res.json({ roomId: roomId.data, members });
+});
+
+router.patch("/api/wtf-live/rooms/:roomId/access", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  const parsed = updateRoomAccessSchema.safeParse(req.body);
+  if (!roomId.success || !parsed.success) {
+    return res.status(400).json({ error: "Invalid room access list", details: parsed.success ? undefined : parsed.error.flatten() });
+  }
+  const updated = await replaceOwnedWtfLiveRoomAccessMembers({
+    ownerUserId: user.id,
+    roomId: roomId.data,
+    usernames: parsed.data.usernames,
+  });
+  if (!updated) return res.status(404).json({ error: "Owned private room not found" });
+  res.json({ room: withWtfLivePresence(updated.room), members: updated.members, missingUsernames: updated.missingUsernames });
 });
 
 router.patch("/api/wtf-live/rooms/:roomId", actionLimiter, async (req, res) => {
@@ -403,10 +492,22 @@ router.delete("/api/wtf-live/rooms/:roomId", actionLimiter, async (req, res) => 
 });
 
 router.get("/api/wtf-live/rooms/:roomId/messages", async (req, res) => {
+  const user = req.user as any;
   const roomId = roomIdSchema.safeParse(req.params.roomId);
   const parsed = roomMessagesQuerySchema.safeParse(req.query);
   if (!roomId.success || !parsed.success) return res.status(400).json({ error: "Invalid room query" });
-  if (!(await wtfLiveRoomExists(roomId.data))) return res.status(404).json({ error: "Room not found" });
+  const room = await canAccessWtfLiveRoom(roomId.data, user.id);
+  if (!room) return res.status(404).json({ error: "Room not found" });
+  if (room.accessMode === "private") {
+    return res.json({
+      roomId: roomId.data,
+      collection: null,
+      messages: [],
+      cursor: null,
+      source: "wtf-live.privateRealtimeOnly",
+      upstreamAvailable: true,
+    });
+  }
 
   const { messages, upstreamAvailable } = await readPublicRoomMessages(roomId.data, parsed.data.limit);
   res.json({
@@ -424,7 +525,11 @@ router.post("/api/wtf-live/rooms/:roomId/messages", actionLimiter, async (req, r
   const roomId = roomIdSchema.safeParse(req.params.roomId);
   const parsed = roomMessageSchema.safeParse(req.body);
   if (!roomId.success || !parsed.success) return res.status(400).json({ error: "Invalid room message" });
-  if (!(await wtfLiveRoomExists(roomId.data))) return res.status(404).json({ error: "Room not found" });
+  const room = await canAccessWtfLiveRoom(roomId.data, user.id);
+  if (!room) return res.status(404).json({ error: "Room not found" });
+  if (room.accessMode === "private") {
+    return res.status(400).json({ error: "Private WTF LIVE rooms use realtime room chat instead of public Skywire records." });
+  }
   try {
     const account = await requireLinkedAccount(user.id);
     requireAtprotoCapability(account, "rooms", "be-heard");
@@ -501,6 +606,16 @@ router.get("/api/wtf-live/stages", async (_req, res) => {
   });
 });
 
+router.get("/api/wtf-live/stages/mine", async (req, res) => {
+  const user = req.user as any;
+  const stages = await listOwnedWtfLiveStages(user.id);
+  res.json({
+    stages,
+    collection: SKYWIRE_STAGE_BROADCAST_COLLECTION,
+    storage: "wtf_live_stages",
+  });
+});
+
 router.post("/api/wtf-live/stages", actionLimiter, async (req, res) => {
   const user = req.user as any;
   const parsed = createStageSchema.safeParse(req.body);
@@ -515,6 +630,42 @@ router.post("/api/wtf-live/stages", actionLimiter, async (req, res) => {
     res.status(201).json({ stage });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message || "Could not create stage" });
+  }
+});
+
+router.patch("/api/wtf-live/stages/:stageId", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const stageId = stageIdSchema.safeParse(req.params.stageId);
+  const parsed = updateStageSchema.safeParse(req.body);
+  if (!stageId.success || !parsed.success) {
+    return res.status(400).json({ error: "Invalid stage update", details: parsed.success ? undefined : parsed.error.flatten() });
+  }
+  try {
+    const stage = await updateOwnedWtfLiveStageVisibility({
+      ownerUserId: user.id,
+      stageId: stageId.data,
+      isPublic: parsed.data.isPublic,
+    });
+    if (!stage) return res.status(404).json({ error: "Owned stage not found" });
+    res.json({ stage });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message || "Could not update stage" });
+  }
+});
+
+router.delete("/api/wtf-live/stages/:stageId", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const stageId = stageIdSchema.safeParse(req.params.stageId);
+  if (!stageId.success) return res.status(400).json({ error: "Invalid stage" });
+  try {
+    const archived = await archiveOwnedWtfLiveStage({
+      ownerUserId: user.id,
+      stageId: stageId.data,
+    });
+    if (!archived) return res.status(404).json({ error: "Owned stage not found" });
+    res.json({ ok: true, stageId: stageId.data });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message || "Could not delete stage" });
   }
 });
 

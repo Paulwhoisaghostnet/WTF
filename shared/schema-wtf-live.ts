@@ -21,6 +21,7 @@ export const wtfLiveRooms = pgTable(
     ownerUserId: integer("owner_user_id")
       .references(() => users.id, { onDelete: "cascade" })
       .notNull(),
+    accessMode: varchar("access_mode", { length: 24 }).default("public").notNull(),
     isPublic: boolean("is_public").default(true).notNull(),
     archivedAt: timestamp("archived_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -29,6 +30,28 @@ export const wtfLiveRooms = pgTable(
   (table) => [
     uniqueIndex("wtf_live_rooms_slug_idx").on(table.slug),
     index("wtf_live_rooms_owner_idx").on(table.ownerUserId),
+    index("wtf_live_rooms_access_mode_idx").on(table.accessMode),
+  ],
+);
+
+export const wtfLiveRoomAccessMembers = pgTable(
+  "wtf_live_room_access_members",
+  {
+    id: serial("id").primaryKey(),
+    roomId: integer("room_id")
+      .references(() => wtfLiveRooms.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    addedByUserId: integer("added_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("wtf_live_room_access_members_room_user_idx").on(table.roomId, table.userId),
+    index("wtf_live_room_access_members_user_idx").on(table.userId),
   ],
 );
 

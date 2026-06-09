@@ -1,3 +1,33 @@
+## 2026-06-08 - Existing Shadownet contract E2E must read live IDs and satisfy coverage gates
+
+**What happened**: The first existing-contract Marketplace V2 Kiln rerun successfully executed the Shadownet listing, buy, offer, accept, cancel, auction, pause, and unpause operations, and all storage/balance/big-map assertions passed. It still exited nonzero because the Kiln coverage gate counted helper FA2 entrypoints too, and the reuse runner had not included the harmless zero-transfer coverage calls from the fresh-deploy runner.
+
+**Why it mattered**: Reusing an already-deployed contract is the right confidence step before mainnet, but it is not the same as replaying a fresh-deploy script. Contract IDs advance, indexes can collide, and a partially copied payload can leave the operator with "the important operations passed" while CI still fails. That ambiguity is exactly what a pre-mainnet rehearsal should remove.
+
+**Rule**: Existing-contract Shadownet runners must read `next_listing_id`, `next_offer_id`, and `next_auction_id` from live storage before submitting operations, and must keep the same full coverage contract list as the original Kiln proof unless the coverage expectation is deliberately narrowed and documented.
+
+---
+
+## 2026-06-08 - Shadownet contract rehearsals must wire the whole economic bundle
+
+**What happened**: After the Marketplace V2 Kiln deploy, wtfOS still had local paths that could read or write through hardcoded mainnet WTF token settings, legacy marketplace env names, or inherited barter addresses. The first live Playwright attempt also waited on `/api/health`, which can correctly report degraded when a missing Shadownet barter contract is intentionally blank.
+
+**Why it mattered**: A marketplace confidence pass is only meaningful if the UI, server, TzKT readers, wallet preflight, and puppet harness all point at the same Shadownet marketplace, WTF FA2, in-app market, RPC, and chain id. Waiting on aggregate health for an intentionally incomplete testnet contract set can block the exact local rehearsal that is supposed to prove the value-bearing path.
+
+**Rule**: For pre-mainnet Tezos rehearsals, configure the full contract bundle as a unit and force absent contracts blank instead of inheriting mainnet fallbacks. Use a neutral readiness endpoint for local test startup when `/api/health` includes optional or intentionally missing integrations, while still asserting health payload fields inside the test.
+
+---
+
+## 2026-06-08 - Shadownet value flows need first-class RPC and chain-id guards
+
+**What happened**: The Marketplace V2 Shadownet confidence pass found that the client shared RPC map only listed mainnet and ghostnet, and wallet send preflight only mapped mainnet/ghostnet chain ids. A local Shadownet marketplace run could therefore fall back toward mainnet RPC defaults in some paths or skip the authoritative chain-id check because `shadownet` looked like an unconfigured custom alias.
+
+**Why it mattered**: Marketplace accept/buy/listing paths are value-transfer flows. A testnet rehearsal is only meaningful if the browser, server, wallet preflight, TzKT reader, and puppet wallet metadata agree on the same chain before signing. Skipping Shadownet chain verification can hide a network mismatch until a wallet or RPC fails later, or worse, train the UI around false confidence.
+
+**Rule**: Any Tezos network used by a live contract rehearsal must be first-class in shared RPC config and wallet preflight chain-id maps. Custom-network escape hatches are only for exploratory dev RPCs, not for Shadownet/Kiln acceptance gates. Add a policy test whenever a value-signing flow depends on a non-mainnet network.
+
+---
+
 ## 2026-06-06 - Rat Race must report tz2at replay coverage, not imply complete 7-day market reads
 
 **What happened**: Rat Race still behaved like a small sample reader: the client auto-refreshed every 45 seconds, the server defaulted to a tiny replay page budget, and widening the default scan to a full 7-day mixed `/replay` walk exposed a different failure mode. Dense tz2at replay ranges can return 5,000 mixed events in as little as 5 blocks, `/replay` currently ignores collection/type filters, and some 100/500-block ranges can time out before Rat Race reaches older market records.
@@ -4285,3 +4315,35 @@
 **Fix**: Public leaderboard profile alias hydration now samples a capped number of unresolved addresses and has a short timeout. When providers are slow or rate-limited, the route returns the leaderboard without those optional aliases instead of consuming the live-puppet or user-facing request budget.
 
 **Rule**: For public data routes, isolate optional external enrichment from primary data. Cap fanout, timebox the enrichment, and return the core payload when upstream providers miss the budget.
+
+---
+
+## 2026-06-09 - Fixed-rate swap contracts must bind every visible economic term
+
+**What happened**: The WTF-XTZ exchange was already an escrow/listing contract rather than an AMM pool, but the create and swap signatures were still too thin. Listing creation relied on attached XTZ without an explicit `escrow_mutez` parameter, and swap calls did not bind the signature to expected listing owner, rate fraction, or exact XTZ output. The first Kiln E2E also assumed token/listing ids instead of reading the deployed exchange storage, so it approved the wrong WTF token and hit `FA2_NOT_OPERATOR`.
+
+**Why it mattered**: A fixed-rate escrow is only safe if the wallet signature includes the same terms the user saw. Otherwise stale UI, bad indexing, or a reused listing id can become a value-loss bug even without AMM pricing complexity.
+
+**Fix**: `create_listing` now requires `escrow_mutez` and rejects mismatched attached XTZ. `swap` now requires expected owner, rate numerator, rate denominator, and exact floor-computed XTZ output. The Kiln harness reads `wtf_token_address` and `next_listing_id` from Shadownet storage before acting, computes expected token balances from current TzKT state, and proved partial fills, pause rejection, stale-output rejection, overfill rejection, and cancellation/refund with puppet wallets.
+
+**Rule**: Any contract entrypoint that spends or receives user value must carry explicit expected terms for the wallet signature, not just an id and amount. Shadownet E2E harnesses must read live storage for token references and ids before signing transactions, especially after a failed or repeated run.
+
+---
+
+## 2026-06-09 - WTF LIVE harnesses must model private-room access contracts exactly
+
+**What happened**: The WTF LIVE private-room pass initially had the product behavior in place, but focused Playwright caught three integration mismatches: create-room status vanished when the UI switched tabs, a second status node made strict locators ambiguous, and the harness returned public-message history semantics for authenticated private-room messages.
+
+**Why it mattered**: Private rooms are a distinct access contract, not a public-room skin. If browser tests accept a loose harness or transient dashboard status, the UI can look complete while owners cannot confirm access-list mutations, and private-room chat can quietly drift back toward public record behavior.
+
+**Rule**: When adding a new room/access mode, update the persistent UI status surface and the harness contract together. Tests should assert the exact private/public API distinction, including realtime-only private messages, owned-room list parity, and single unambiguous status nodes after mutations that navigate or refresh dashboard panels.
+
+---
+
+## 2026-06-09 - Chat textareas need explicit keyboard contracts
+
+**What happened**: WTF LIVE room chat used a native textarea plus a Send button, but no key handler. Enter and Shift+Enter therefore both followed the browser's multiline textarea default, so live chat users had to click Send instead of using the expected Enter-to-send flow.
+
+**Why it mattered**: In a live room, chat speed and accessibility matter. A textarea can be the right control for multiline drafts, but it must still encode the product's chat contract instead of relying on browser defaults.
+
+**Rule**: For chat composers backed by textareas, add tests for Enter submit, Shift+Enter newline, composer clearing, and message relay. Use one shared handler for docked and floating composer copies so pop-out UI cannot drift from the main chat surface.
