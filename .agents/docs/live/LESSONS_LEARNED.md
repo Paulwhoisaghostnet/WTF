@@ -1,3 +1,13 @@
+## 2026-06-09 - Modular in-app windows need default-geometry visual proof
+
+**What happened**: The WIM modular-window redesign compiled and passed inventory route smoke, but the first focused screenshot showed the default chat window extending beyond the initial WIM app viewport. The user could resize or move it, but the first-open state still clipped the chat controls before any interaction.
+
+**Why it mattered**: Windowed UI work can satisfy functional route checks while still feeling broken on first contact. If the first buddy list plus first conversation do not fit inside the host app window, the resize/maximize affordances look like recovery tools instead of normal controls.
+
+**Rule**: For desktop-style subwindow changes, verify the default first-open geometry in a browser screenshot after build. Keep initial child windows inside the host app viewport, and only rely on resize/drag after the default state is already usable.
+
+---
+
 ## 2026-06-08 - Existing Shadownet contract E2E must read live IDs and satisfy coverage gates
 
 **What happened**: The first existing-contract Marketplace V2 Kiln rerun successfully executed the Shadownet listing, buy, offer, accept, cancel, auction, pause, and unpause operations, and all storage/balance/big-map assertions passed. It still exited nonzero because the Kiln coverage gate counted helper FA2 entrypoints too, and the reuse runner had not included the harmless zero-transfer coverage calls from the fresh-deploy runner.

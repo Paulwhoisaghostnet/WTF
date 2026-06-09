@@ -8,6 +8,10 @@ const inventory = readFileSync(
   "utf8"
 );
 const workflows = readFileSync("tests/e2e/inventory/domain-workflows.mjs", "utf8");
+const behaviorAssertions = readFileSync(
+  "tests/e2e/inventory/behavior-assertions.mjs",
+  "utf8"
+);
 const retiredMessengerNamePattern = new RegExp(`\\bA${"im"}\\b|\\ba${"im"}\\b|/a${"im"}`);
 const retiredMessengerInventoryPattern = new RegExp(`/a${"im"}|A${"IM"}`);
 
@@ -31,13 +35,18 @@ test("WIM roster is user-driven and keeps Studio rooms out of buddies", () => {
   assert.match(wimSource, /onDoubleClickCapture=\{\(\) => openDirectChat\(item\)\}/);
   assert.match(wimSource, /presenceStatus/);
   assert.match(wimSource, /presenceStatusFor/);
+  assert.match(wimSource, /data-wim-window-kind=\{windowState\.kind\}/);
+  assert.match(wimSource, /WIM_CONVERSATION_DRAG_TYPE/);
+  assert.match(wimSource, /detachConversationToWindow/);
   assert.doesNotMatch(wimSource, retiredMessengerNamePattern);
 });
 
 test("WIM friend list and unread popups are browser-local and covered by inventory", () => {
   assert.match(wimSource, /friendStorageKey/);
+  assert.match(wimSource, /customListsStorageKey/);
   assert.match(wimSource, /friendsReady/);
   assert.match(wimSource, /window\.localStorage\.setItem\(key, JSON\.stringify\(friendIds\)\)/);
+  assert.match(wimSource, /window\.localStorage\.setItem\(key, JSON\.stringify\(customLists\)\)/);
   assert.match(wimSource, /eventType: "wim\.friend\.added"/);
   assert.match(wimSource, /popupDismissalStorageKey/);
   assert.match(wimSource, /data-wim-offline-popup="true"/);
@@ -47,6 +56,10 @@ test("WIM friend list and unread popups are browser-local and covered by invento
 
   assert.match(inventory, /`wim\.friend\.added`/);
   assert.match(inventory, /active, inactive\/away, or offline/);
+  assert.match(inventory, /modular buddy-list window/);
+  assert.match(inventory, /in-place popup/);
+  assert.match(inventory, /custom buddy lists/);
+  assert.match(inventory, /combine multiple conversations as tabs/);
   assert.match(inventory, /dismissible WIM desktop popups/);
   assert.match(inventory, /`wim\.offline_popup\.opened`/);
   assert.match(inventory, /`wim\.offline_popup\.dismissed`/);
@@ -56,6 +69,8 @@ test("WIM friend list and unread popups are browser-local and covered by invento
   assert.match(workflows, /"wim\.offline_popup\.opened"/);
   assert.match(workflows, /"wim\.offline_popup\.dismissed"/);
   assert.match(workflows, /\/api\/messages\/users\?limit=100&excludeSelf=1/);
+  assert.match(behaviorAssertions, /wim\.modular-window-roster-tabs/);
+  assert.match(behaviorAssertions, /custom lists\/popup dismissals browser-local/);
 });
 
 test("WIM interior chrome follows desktop appearance styles", () => {

@@ -313,6 +313,17 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, activeVideo/avatar/audioOpen media-state events, and room chat, verifies push-to-talk changes another guest's attendance mic state without creating a stage tile, verifies camera-first then screen-share switching remains visible to another guest after camera stops, verifies stage pop-outs and chat media lightboxes open/close, verifies Enter sends and clears a chat message while Shift+Enter keeps a multiline draft until the next Enter, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests remain attendance-only without pushing the chat composer offscreen.",
   },
   {
+    id: "wim.modular-window-roster-tabs",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wim"],
+    ownerSpec: "client/src/pages/Wim.test.ts",
+    verificationCommand: "node --test client/src/pages/Wim.test.ts && npm run check -- --pretty false",
+    userVisibleAssertion:
+      "WIM opens as a movable/resizable buddy-list window; conversation windows stay closed until a user or recent direct chat is opened by double-click, then conversations can live as tabs, move between conversation windows, detach into isolated windows, and use minimize/maximize/close controls.",
+    durableSideEffectAssertion:
+      "The source policy test verifies WIM still uses the canonical direct-DM/user roster endpoints, keeps friends/custom lists/popup dismissals browser-local, filters out Studio rooms, and exposes the settings popover for custom buddy lists.",
+  },
+  {
     id: "wtf-live.private-room-access-list",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["wtf-live"],

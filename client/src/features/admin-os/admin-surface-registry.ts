@@ -459,7 +459,13 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     routePatterns: ["/wim"],
     desktopAppKey: "wim",
     adminPanelTabs: ["Users", "System Logs", "Automation"],
-    nativeSettings: ["DM-backed buddy list", "presence surface", "notification templates"],
+    nativeSettings: [
+      "DM-backed buddy list",
+      "presence surface",
+      "notification templates",
+      "browser-local custom lists",
+      "modular conversation windows",
+    ],
     automationHandles: [
       "wim.chat.opened",
       "wim.friend.added",
@@ -469,6 +475,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "dm.message.sent",
       "app.interaction.tracked",
     ],
+    behaviorAssertionIds: ["wim.modular-window-roster-tabs"],
   },
   {
     id: "browser",
