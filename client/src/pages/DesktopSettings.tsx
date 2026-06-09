@@ -48,6 +48,7 @@ import {
   type HamsterState,
 } from "@shared/desktop";
 import { getTokenMimeType, isImageMime } from "../lib/media-resolve";
+import { FONT_PACKS } from "../features/appearance/font-packs";
 
 type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
@@ -219,6 +220,49 @@ const StyleName = styled.span`
 const StyleSummary = styled.span`
   font-size: var(--wtf-type-caption, 13px);
   line-height: 1.18;
+`;
+
+const FontPackGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 8px;
+`;
+
+const FontPackButton = styled.button<{ $active: boolean }>`
+  min-height: 108px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 8px;
+  border: 2px solid;
+  border-color: ${(p) => (p.$active ? "#000 #fff #fff #000" : "#fff #404040 #404040 #fff")};
+  background: var(--wtf-button-face, #c0c0c0);
+  color: var(--wtf-text-color, #111);
+  text-align: left;
+`;
+
+const FontPackLabel = styled.span<{ $fontFamily: string }>`
+  font-family: ${(p) => p.$fontFamily};
+  font-weight: 700;
+  font-size: var(--wtf-type-body-strong, 16px);
+`;
+
+const FontPackPreview = styled.div<{ $uiFont: string; $monoFont: string; $displayFont: string }>`
+  display: grid;
+  gap: 2px;
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.2;
+
+  span:nth-child(1) {
+    font-family: ${(p) => p.$uiFont};
+  }
+  span:nth-child(2) {
+    font-family: ${(p) => p.$monoFont};
+  }
+  span:nth-child(3) {
+    font-family: ${(p) => p.$displayFont};
+    font-weight: 700;
+  }
 `;
 
 const PresetButton = styled.button<{ $active: boolean }>`
@@ -639,6 +683,7 @@ export function DesktopSettings() {
       reportThemeBuilderEvent("desktop.appearance.updated", "save", {
         appearanceStyleKey: result.appearance.appearanceStyleKey,
         colorSchemeKey: result.appearance.colorSchemeKey,
+        fontPackKey: result.appearance.fontPackKey,
         cursorStyle: result.appearance.cursorStyle,
         backgroundFit: result.appearance.backgroundFit,
         wallpaperSet: Boolean(result.appearance.backgroundImageUrl),
@@ -842,6 +887,42 @@ export function DesktopSettings() {
               </StyleButton>
             ))}
           </StyleGrid>
+          <Separator style={{ margin: "10px 0" }} />
+          <GroupTitle>Typography</GroupTitle>
+          <HelpText style={{ marginBottom: 8 }}>
+            Font packs apply instantly across the desktop shell and app windows.
+          </HelpText>
+          <FontPackGrid>
+            {FONT_PACKS.map((pack) => (
+              <FontPackButton
+                key={pack.key}
+                type="button"
+                $active={draft.fontPackKey === pack.key}
+                aria-label={`Font pack ${pack.label}`}
+                data-testid={`font-pack-${pack.key}`}
+                onClick={() => {
+                  patchDraft({ fontPackKey: pack.key });
+                  reportThemeBuilderEvent("desktop.font_pack.updated", "select", {
+                    fontPackKey: pack.key,
+                  });
+                }}
+              >
+                <FontPackLabel $fontFamily={pack.roles.display}>{pack.label}</FontPackLabel>
+                <span style={{ fontSize: "var(--wtf-type-caption, 13px)", lineHeight: 1.18 }}>
+                  {pack.description}
+                </span>
+                <FontPackPreview
+                  $uiFont={pack.roles.ui}
+                  $monoFont={pack.roles.mono}
+                  $displayFont={pack.roles.display}
+                >
+                  <span>UI sample line</span>
+                  <span>mono://0xabc123</span>
+                  <span>DISPLAY</span>
+                </FontPackPreview>
+              </FontPackButton>
+            ))}
+          </FontPackGrid>
           <Separator style={{ margin: "10px 0" }} />
           <GroupTitle>Color schemes</GroupTitle>
           <PresetGrid>

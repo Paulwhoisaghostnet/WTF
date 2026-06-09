@@ -149,8 +149,8 @@ type ProjectSubmitResponse = {
 type PreviewMode = "desktop" | "mobile";
 
 const GAME_STUDIO_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
-const GAME_STUDIO_MONO_FONT = 'var(--wtf-mono-font, "Courier New", monospace)';
-const GAME_STUDIO_APP_FONT = 'var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif)';
+const GAME_STUDIO_MONO_FONT = "var(--wtf-mono-font)";
+const GAME_STUDIO_APP_FONT = "var(--wtf-app-font)";
 
 const visualKinds = new Set(["sprite", "tileset", "background", "ui"]);
 const MODEL_MIME_TYPES = new Set([

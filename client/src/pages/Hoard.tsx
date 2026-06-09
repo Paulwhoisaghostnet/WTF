@@ -4,6 +4,7 @@ import { Hourglass } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
+import { getCanvasFont } from "../features/appearance/get-canvas-font";
 
 interface TokenSummary {
   name: string;
@@ -682,7 +683,7 @@ function runScene(
 
     // Name label
     ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.font = "bold 8px monospace";
+    ctx.font = getCanvasFont("mono", 8, { weight: "bold" });
     ctx.textAlign = "center";
     ctx.fillText("Reggie", 0, -16);
     ctx.textAlign = "start";
@@ -784,10 +785,10 @@ function runScene(
     ctx.lineWidth = 1;
     ctx.strokeRect(4, 4, 200, 38);
     ctx.fillStyle = "#ffd700";
-    ctx.font = "bold 11px monospace";
+    ctx.font = getCanvasFont("mono", 11, { weight: "bold" });
     ctx.fillText(`Hoard: ${dropped} / ${totalCoins} coins`, 10, 18);
     ctx.fillStyle = "#aaa";
-    ctx.font = "10px monospace";
+    ctx.font = getCanvasFont("mono", 10);
     ctx.fillText(`${tokens.length} unique tokens`, 10, 34);
   }
 

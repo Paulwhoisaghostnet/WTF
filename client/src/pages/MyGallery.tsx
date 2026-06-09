@@ -189,7 +189,7 @@ const ChipCount = styled.span`
 `;
 
 const TextField = styled.input`
-  font-family: var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif);
+  font-family: var(--wtf-app-font);
   font-size: var(--wtf-type-caption, 13px);
   padding: 4px 6px;
   border: 2px inset #dfdfdf;
@@ -205,7 +205,7 @@ const DateRow = styled.div`
 `;
 
 const Button95 = styled.button<{ $accent?: boolean }>`
-  font-family: var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif);
+  font-family: var(--wtf-app-font);
   font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   padding: 5px 10px;
@@ -240,7 +240,7 @@ const ToolbarLabel = styled.label`
 `;
 
 const Select95 = styled.select`
-  font-family: var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif);
+  font-family: var(--wtf-app-font);
   font-size: var(--wtf-type-caption, 13px);
   padding: 3px 4px;
   border: 2px inset #dfdfdf;
@@ -299,7 +299,7 @@ const TileBadge = styled.span`
   right: 6px;
   background: rgba(0, 0, 0, 0.68);
   color: #88ff88;
-  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   padding: 2px 5px;
   border-radius: 2px;
@@ -338,7 +338,7 @@ const TileTitle = styled.div`
 const TileSub = styled.div`
   font-size: var(--wtf-type-caption, 13px);
   color: #ddd;
-  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-family: var(--wtf-mono-font);
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -348,7 +348,7 @@ const TileSub = styled.div`
 const TileLink = styled.a`
   color: #88ff88;
   display: inline-block;
-  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   margin-top: 4px;

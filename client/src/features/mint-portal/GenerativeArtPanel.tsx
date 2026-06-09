@@ -33,7 +33,7 @@ const Row = styled.div`
 
 const EditorTextarea = styled.textarea`
   width: 100%;
-  font-family: "Courier New", monospace;
+  font-family: var(--wtf-mono-font);
   font-size: 12px;
   background: #0b0b0b;
   color: #d6d6d6;
@@ -282,7 +282,7 @@ export function GenerativeArtPanel() {
             onChange={(e) => setTitle(e.target.value)}
             style={{
               flex: 1,
-              fontFamily: "monospace",
+              fontFamily: "var(--wtf-mono-font)",
               fontSize: 12,
               padding: "2px 6px",
               border: "2px inset #808080",

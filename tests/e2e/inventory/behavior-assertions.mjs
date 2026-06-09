@@ -96,6 +96,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The harness writes desktop settings, reloads them through a fresh read, records a desktop event with an event id, and confirms the pet action appears in live pet event history.",
   },
   {
+    id: "desktop.font-pack.updated",
+    domain: "Desktop OS, Navigation, and Personal Environment",
+    ownerSurfaceIds: ["desktop-appearance"],
+    ownerSpec:
+      "client/src/features/appearance/font-packs.test.ts, client/src/features/appearance/get-canvas-font.test.ts, shared/desktop.test.ts",
+    verificationCommand:
+      "npx tsx --test client/src/features/appearance/font-packs.test.ts client/src/features/appearance/get-canvas-font.test.ts shared/desktop.test.ts",
+    userVisibleAssertion:
+      "Theme Builder can select a font pack and the desktop shell immediately applies the matching --wtf-app-font CSS variable.",
+    durableSideEffectAssertion:
+      "DesktopAppearance.fontPackKey normalizes to a known pack, persists through /api/desktop/settings, and canvas helpers read the same CSS variable roles.",
+  },
+  {
     id: "desktop.app-gates-runtime-policy",
     domain: "Desktop OS, Navigation, and Personal Environment",
     ownerSurfaceIds: ["admin-panel", "command-palette", "desktop-icons"],
@@ -308,9 +321,32 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     userVisibleAssertion:
-      "WTF LIVE public-room guests see each other in collapsible attendance; camera/screen shares take visual priority in the bulk stage, mic-only guests stay out of the stage with lit mic indicators in attendance, chat remains reachable, Enter submits room chat while Shift+Enter composes multiline text, and shared media can open in pop-out frames/lightboxes.",
+      "WTF LIVE public-room guests see each other in collapsible attendance; camera/screen shares take visual priority in the bulk stage, mic-only guests stay out of the stage with lit mic indicators in attendance, chat remains reachable, the chat toolbox changes font/color/readable 8-14 size/basic emphasis in one row, Enter submits room chat while Shift+Enter composes multiline text, and shared media can open in pop-out frames/lightboxes.",
     durableSideEffectAssertion:
-      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, activeVideo/avatar/audioOpen media-state events, and room chat, verifies push-to-talk changes another guest's attendance mic state without creating a stage tile, verifies camera-first then screen-share switching remains visible to another guest after camera stops, verifies stage pop-outs and chat media lightboxes open/close, verifies Enter sends and clears a chat message while Shift+Enter keeps a multiline draft until the next Enter, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests remain attendance-only without pushing the chat composer offscreen.",
+      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, activeVideo/avatar/audioOpen media-state events, and room chat, verifies push-to-talk changes another guest's attendance mic state without creating a stage tile, verifies camera-first then screen-share switching remains visible to another guest after camera stops, verifies stage pop-outs and chat media lightboxes open/close, verifies Enter sends and clears a chat message while Shift+Enter keeps a multiline draft until the next Enter, verifies the toolbar exposes only 8-14 font-size options and relays a sanitized styled chat message to another guest, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests remain attendance-only without pushing the chat composer offscreen.",
+  },
+  {
+    id: "wtf-live.wim-attendance-identity",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live", "wim"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    userVisibleAssertion:
+      "Signed-in WTF LIVE users join rooms as their wtfOS usernames, attendance renders as compact single-line registry rows, and signed-in viewers can add account-backed attendees to WIM buddies from the roster while anonymous viewers cannot see that option.",
+    durableSideEffectAssertion:
+      "The harness emits WTF LIVE peer userId/username/isWtfUser metadata, verifies the roster stores the selected attendee id in WIM's browser-local `wtf:wim:friends:<viewerUserId>` list, and keeps guest-only peers out of WIM buddy actions.",
+  },
+  {
+    id: "wim.modular-window-roster-tabs",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wim"],
+    ownerSpec: "client/src/pages/Wim.test.ts",
+    verificationCommand: "node --test client/src/pages/Wim.test.ts && npm run check -- --pretty false",
+    userVisibleAssertion:
+      "WIM opens as a movable/resizable buddy-list window; conversation windows stay closed until a user or recent direct chat is opened by double-click, then conversations can live as tabs, move between conversation windows, detach into isolated windows, and use minimize/maximize/close controls.",
+    durableSideEffectAssertion:
+      "The source policy test verifies WIM still uses the canonical direct-DM/user roster endpoints, keeps friends/custom lists/popup dismissals browser-local, filters out Studio rooms, and exposes the settings popover for custom buddy lists.",
   },
   {
     id: "wim.modular-window-roster-tabs",

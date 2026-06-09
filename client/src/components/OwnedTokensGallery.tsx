@@ -91,8 +91,7 @@ export interface OwnedTokensGalleryProps {
 // ─── Styled ──────────────────────────────────────────────
 
 const OWNED_TOKENS_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
-const OWNED_TOKENS_MONO_FONT =
-  'var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)';
+const OWNED_TOKENS_MONO_FONT = "var(--wtf-mono-font)";
 
 const Grid = styled.div`
   display: grid;
@@ -169,7 +168,7 @@ const PropRow = styled.div`
   font-size: var(--wtf-type-caption, 13px);
   strong { color: var(--wtf-app-muted-text, #444); min-width: 52px; flex-shrink: 0; }
   span {
-    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-family: var(--wtf-mono-font);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

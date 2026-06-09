@@ -5,8 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
 const WALLET_DOSSIER_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
-const WALLET_DOSSIER_APP_FONT =
-  'var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif)';
+const WALLET_DOSSIER_APP_FONT = "var(--wtf-app-font)";
 
 /* ─── Types matching server/lib/wallet-events.ts ────────── */
 

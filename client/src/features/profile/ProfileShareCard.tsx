@@ -1,11 +1,10 @@
 import { GroupBox } from "react95";
 import styled from "styled-components";
 import { UiButton } from "../../components/wtfos-ui";
+import { getCanvasFont } from "../appearance/get-canvas-font";
 
-const SHARE_CARD_FONT =
-  'var(--wtf-app-font, "MEK Mono", "Segoe UI", sans-serif)';
-const SHARE_CARD_MONO =
-  'var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)';
+const SHARE_CARD_FONT = "var(--wtf-app-font)";
+const SHARE_CARD_MONO = "var(--wtf-mono-font)";
 
 const Card = styled.div`
   width: 320px;
@@ -42,12 +41,12 @@ export function ProfileShareCard({ username, displayName, tezosAddress }: Props)
     ctx.lineWidth = 8;
     ctx.strokeRect(16, 16, 608, 328);
     ctx.fillStyle = "#111";
-    ctx.font = 'bold 36px "MEK Mono", monospace';
+    ctx.font = getCanvasFont("display", 36, { weight: "bold" });
     ctx.fillText(title, 32, 80);
-    ctx.font = '20px "MEK Mono", monospace';
+    ctx.font = getCanvasFont("mono", 20);
     ctx.fillText(`@${username}`, 32, 120);
     if (tezosAddress) ctx.fillText(tezosAddress.slice(0, 20) + "…", 32, 160);
-    ctx.font = '16px "MEK Mono", monospace';
+    ctx.font = getCanvasFont("mono", 16);
     ctx.fillText("wtfOS / skllzrmy share card", 32, 320);
     const a = document.createElement("a");
     a.download = `${username}-wtf-card.png`;

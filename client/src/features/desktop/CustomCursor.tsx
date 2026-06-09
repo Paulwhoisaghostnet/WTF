@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { type DesktopAppearance } from "@shared/desktop";
+import { getPrimaryFontFamily } from "../appearance/get-canvas-font";
 
 const CustomCursorRoot = styled.div<{
   $x: number;
@@ -583,7 +584,14 @@ function CursorGlyph({ style, pressed, direction, speed }: CursorGlyphProps) {
         <path d="M17 20h12M17 29h12" stroke="#111111" strokeWidth="1.4" />
         <path d="M17 33 8 44l9-2zM29 33l9 11-9-2z" fill="#d7d7d7" stroke="#111111" strokeWidth="2" />
         <path d="M20 11h6v23h-6z" fill="#111111" opacity="0.12" />
-        <text x="23" y="27" textAnchor="middle" fontFamily="Arial Black, sans-serif" fontSize="7" fill="#111111">
+        <text
+          x="23"
+          y="27"
+          textAnchor="middle"
+          fontFamily={getPrimaryFontFamily("display")}
+          fontSize="7"
+          fill="#111111"
+        >
           A11
         </text>
         <path

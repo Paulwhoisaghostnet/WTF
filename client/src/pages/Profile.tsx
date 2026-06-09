@@ -37,12 +37,12 @@ import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
+import { getCanvasFont } from "../features/appearance/get-canvas-font";
 
 /* ── styled helpers ──────────────────────────────────────────────────────── */
 
 const PROFILE_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
-const PROFILE_MONO_FONT =
-  'var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)';
+const PROFILE_MONO_FONT = "var(--wtf-mono-font)";
 
 const Section = styled(UiPanel)`
   margin-bottom: var(--wtf-space-3, 12px);
@@ -824,11 +824,11 @@ export function Profile() {
       ctx.lineWidth = drawSize;
       ctx.lineCap = "round";
     } else if (editorTool === "text" && textInput) {
-      ctx.font = "bold 20px sans-serif";
+      ctx.font = getCanvasFont("app", 20, { weight: "bold" });
       ctx.fillStyle = drawColor;
       ctx.fillText(textInput, x, y);
     } else if (editorTool === "sticker") {
-      ctx.font = "32px serif";
+      ctx.font = getCanvasFont("display", 32);
       ctx.fillText(stickerChar, x - 16, y + 12);
     }
   };

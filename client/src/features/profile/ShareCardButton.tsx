@@ -10,6 +10,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { Button } from "react95";
+import { getCanvasFont } from "../appearance/get-canvas-font";
 
 export interface ShareCardData {
   displayName: string;
@@ -64,9 +65,9 @@ async function drawShareCard(
 
   // WTF branding
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 28px 'Courier New', monospace";
+  ctx.font = getCanvasFont("mono", 28, { weight: "bold" });
   ctx.fillText("WTFOS", 40, 56);
-  ctx.font = "12px 'Courier New', monospace";
+  ctx.font = getCanvasFont("mono", 12);
   ctx.fillStyle = "#888";
   ctx.fillText("wtf.wtf", CARD_W - 80, 48);
 
@@ -104,7 +105,7 @@ async function drawShareCard(
 
   // Display name
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 32px 'Arial', sans-serif";
+  ctx.font = getCanvasFont("app", 32, { weight: "bold" });
   ctx.fillText(
     truncate(data.displayName, 22),
     avatarX + avatarR * 2 + 20,
@@ -114,11 +115,11 @@ async function drawShareCard(
   // Domain / address
   if (data.domain) {
     ctx.fillStyle = "#00ffcc";
-    ctx.font = "16px 'Courier New', monospace";
+    ctx.font = getCanvasFont("mono", 16);
     ctx.fillText(data.domain, avatarX + avatarR * 2 + 20, avatarY + 60);
   }
   ctx.fillStyle = "#666";
-  ctx.font = "12px 'Courier New', monospace";
+  ctx.font = getCanvasFont("mono", 12);
   ctx.fillText(
     `${data.address.slice(0, 14)}…${data.address.slice(-6)}`,
     avatarX + avatarR * 2 + 20,
@@ -145,17 +146,17 @@ async function drawShareCard(
     ctx.fillStyle = "#333";
     ctx.fillRect(sx, statsY, 160, 70);
     ctx.fillStyle = stat.color;
-    ctx.font = "bold 28px 'Arial', sans-serif";
+    ctx.font = getCanvasFont("display", 28, { weight: "bold" });
     ctx.fillText(stat.value, sx + 12, statsY + 40);
     ctx.fillStyle = "#888";
-    ctx.font = "11px 'Courier New', monospace";
+    ctx.font = getCanvasFont("mono", 11);
     ctx.fillText(stat.label, sx + 12, statsY + 58);
   });
 
   // Tagline
   if (data.tagline) {
     ctx.fillStyle = "#aaa";
-    ctx.font = "italic 14px 'Arial', sans-serif";
+    ctx.font = getCanvasFont("app", 14, { style: "italic" });
     ctx.fillText(truncate(data.tagline, 60), 40, CARD_H - 24);
   }
 
@@ -180,7 +181,7 @@ function drawAvatarFallback(
   ctx.fillStyle = grad;
   ctx.fill();
   ctx.fillStyle = "#fff";
-  ctx.font = `bold ${r}px Arial, sans-serif`;
+  ctx.font = getCanvasFont("display", r, { weight: "bold" });
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText((name[0] ?? "?").toUpperCase(), x + r, y + r);

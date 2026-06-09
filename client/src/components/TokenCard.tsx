@@ -118,7 +118,7 @@ const OverlayName = styled.div`
 
 const OverlayMeta = styled.div`
   color: #f1f5f9;
-  font-family: var(--wtf-mono-font, monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   overflow-wrap: anywhere;
 `;
@@ -260,7 +260,7 @@ const ExternalLinkButton = styled.a`
   border: 2px outset #dfdfdf;
   background: var(--wtf-app-control-bg, #c0c0c0);
   color: var(--wtf-app-text, #000);
-  font-family: var(--wtf-ui-font, "MS Sans Serif", "Courier New", monospace);
+  font-family: var(--wtf-ui-font);
   font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   line-height: 1;

@@ -450,7 +450,7 @@ function AppContent() {
             placeItems: "center",
             background: "#050505",
             color: "#d8ffd0",
-            fontFamily: "monospace",
+            fontFamily: "var(--wtf-mono-font)",
           }}
         >
           Loading wtfOS CLI…

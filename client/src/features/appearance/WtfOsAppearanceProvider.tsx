@@ -14,6 +14,13 @@ import {
 } from "@shared/desktop";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
+import {
+  cssVarsForFontPack,
+  ensureFontPackLoaded,
+  getFontPack,
+  shellFontForAppearanceStyle,
+  titlebarFontForAppearanceStyle,
+} from "./font-packs";
 
 type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
@@ -24,58 +31,11 @@ type AppearanceRuleSet = {
   vars: Record<string, string>;
 };
 
-const MEK_TYPE_FONTS = {
-  ui: `"MEK Mono", "MS Sans Serif", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif`,
-  app: `"MEK Mono", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif`,
-  mono: `"MEK Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace`,
-  shell: `"MEK Mono", "MS Sans Serif", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif`,
-  display: `"GROUT Display", "Arial Black", Impact, "MEK Mono", "Segoe UI", sans-serif`,
-  symbol: `"MEK Dings", "MEK Mono", "Segoe UI Symbol", "Apple Color Emoji", "Noto Color Emoji", sans-serif`,
-} as const;
-
-// Canonical MEK.type token sources. The loaded font binaries come from the
-// download folders linked inside these OBJKT/IPFS PDF artifacts.
-const MEK_TYPE_ARTIFACTS = {
-  collection: "https://objkt.com/collections/KT1WfQkAv9HZCin7bgUD1xQnUreXR6HKEhYK",
-  monoMekV12: "ipfs://QmSWnMqZgW7M2jZJA9RyD7RYXokZsS6N7ppE6UWTSTPXcr",
-  monoMekV11: "ipfs://QmajkoehU9t6L2286SAPyKEfsqxdhz3EN3zrpydcnNq982",
-  monoMekV10: "ipfs://Qme4Kk1jEYj48sK7i9nM2nwVnrR8jHhsR26FHd5iMJrMpA",
-  groutAlphaV2: "ipfs://Qmf1NMGgFx2LhHPXh1z51x7riCR5spHndZxRArxoWsiE3m",
-  mekSansAlphaV3: "ipfs://QmPCEHkAjKQCv5cgjuEcRmx3qjFEsw3YDFfEKJ9TYCfmL3",
-} as const;
-
-function cssString(value: string) {
-  return `"${value}"`;
-}
-
-const MEK_TYPE_VARS = {
-  "--wtf-ui-font": MEK_TYPE_FONTS.ui,
-  "--wtf-app-font": MEK_TYPE_FONTS.app,
-  "--wtf-app-heading-font": MEK_TYPE_FONTS.mono,
-  "--wtf-mono-font": MEK_TYPE_FONTS.mono,
-  "--wtf-shell-font": MEK_TYPE_FONTS.shell,
-  "--wtf-brand-font": MEK_TYPE_FONTS.display,
-  "--wtf-display-font": MEK_TYPE_FONTS.display,
-  "--wtf-symbol-font": MEK_TYPE_FONTS.symbol,
-  "--wtf-titlebar-font": MEK_TYPE_FONTS.mono,
-  "--wtf-mek-type-monomek-font-url": cssString("/fonts/mek-type/MEK-Mono.woff2"),
-  "--wtf-mek-type-dings-font-url": cssString("/fonts/mek-type/MEK-Dings.woff2"),
-  "--wtf-mek-type-grout-font-url": cssString("/fonts/mek-type/GROUT-Display.woff2"),
-  "--wtf-mek-type-collection-url": cssString(MEK_TYPE_ARTIFACTS.collection),
-  "--wtf-mek-type-monomek-v12-artifact-uri": cssString(MEK_TYPE_ARTIFACTS.monoMekV12),
-  "--wtf-mek-type-monomek-v11-artifact-uri": cssString(MEK_TYPE_ARTIFACTS.monoMekV11),
-  "--wtf-mek-type-monomek-v10-artifact-uri": cssString(MEK_TYPE_ARTIFACTS.monoMekV10),
-  "--wtf-mek-type-grout-alpha-v2-artifact-uri": cssString(MEK_TYPE_ARTIFACTS.groutAlphaV2),
-  "--wtf-mek-type-meksans-alpha-v3-artifact-uri": cssString(MEK_TYPE_ARTIFACTS.mekSansAlphaV3),
-} satisfies Record<string, string>;
-
 const APPEARANCE_RULES: Record<DesktopAppearanceStyleKey, AppearanceRuleSet> = {
   "classic-95": {
     react95Theme: original,
     vars: {
-      "--wtf-shell-font": MEK_TYPE_FONTS.shell,
       "--wtf-shell-font-size": "14px",
-      "--wtf-titlebar-font": MEK_TYPE_FONTS.mono,
       "--wtf-window-radius": "0px",
       "--wtf-panel-radius": "0px",
       "--wtf-control-radius": "0px",
@@ -106,9 +66,7 @@ const APPEARANCE_RULES: Record<DesktopAppearanceStyleKey, AppearanceRuleSet> = {
   "wtf-xp": {
     react95Theme: water,
     vars: {
-      "--wtf-shell-font": `"MEK Mono", "Trebuchet MS", "Segoe UI", Tahoma, sans-serif`,
       "--wtf-shell-font-size": "14px",
-      "--wtf-titlebar-font": MEK_TYPE_FONTS.mono,
       "--wtf-window-radius": "9px",
       "--wtf-panel-radius": "8px",
       "--wtf-control-radius": "6px",
@@ -139,9 +97,7 @@ const APPEARANCE_RULES: Record<DesktopAppearanceStyleKey, AppearanceRuleSet> = {
   "wtf-aqua": {
     react95Theme: white,
     vars: {
-      "--wtf-shell-font": `"MEK Mono", "Lucida Grande", "Segoe UI", Tahoma, sans-serif`,
       "--wtf-shell-font-size": "14px",
-      "--wtf-titlebar-font": `"MEK Mono", "Lucida Grande", "Segoe UI", Tahoma, sans-serif`,
       "--wtf-window-radius": "14px",
       "--wtf-panel-radius": "12px",
       "--wtf-control-radius": "999px",
@@ -172,9 +128,7 @@ const APPEARANCE_RULES: Record<DesktopAppearanceStyleKey, AppearanceRuleSet> = {
   "wtf-zine": {
     react95Theme: toner,
     vars: {
-      "--wtf-shell-font": `"MEK Mono", "Arial Black", Impact, "Segoe UI", sans-serif`,
       "--wtf-shell-font-size": "14px",
-      "--wtf-titlebar-font": MEK_TYPE_FONTS.display,
       "--wtf-window-radius": "2px",
       "--wtf-panel-radius": "2px",
       "--wtf-control-radius": "2px",
@@ -422,9 +376,15 @@ function cssVarsForAppearance(appearance: DesktopAppearance) {
   const style = getDesktopAppearanceStyle(appearance.appearanceStyleKey).key;
   const rules = APPEARANCE_RULES[style] ?? APPEARANCE_RULES["classic-95"];
   const app = appSurfacePalette(appearance);
+  const pack = getFontPack(appearance.fontPackKey);
+  const fontVars = cssVarsForFontPack(appearance.fontPackKey);
+  const shellFont = shellFontForAppearanceStyle(style, pack);
+  const titlebarFont = titlebarFontForAppearanceStyle(style, pack);
 
   return {
-    ...MEK_TYPE_VARS,
+    ...fontVars,
+    ...(shellFont ? { "--wtf-shell-font": shellFont } : {}),
+    ...(titlebarFont ? { "--wtf-titlebar-font": titlebarFont } : {}),
     ...rules.vars,
     "--wtf-desktop-color": appearance.desktopColor,
     "--wtf-window-color": appearance.windowColor,
@@ -485,9 +445,11 @@ export function WtfOsAppearanceProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     const styleKey = getDesktopAppearanceStyle(appearance.appearanceStyleKey).key;
     root.dataset.wtfAppearanceStyle = styleKey;
+    root.dataset.wtfFontPack = appearance.fontPackKey;
     for (const [key, value] of Object.entries(cssVarsForAppearance(appearance))) {
       root.style.setProperty(key, value);
     }
+    void ensureFontPackLoaded(appearance.fontPackKey);
   }, [appearance]);
 
   return <ThemeProvider theme={theme}>{children}</ThemeProvider>;

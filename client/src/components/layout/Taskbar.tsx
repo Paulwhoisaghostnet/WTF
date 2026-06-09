@@ -52,7 +52,7 @@ const TaskbarToolbar = styled(React95Toolbar)`
 `;
 
 const StartButton = styled(Button)`
-  font-family: var(--wtf-brand-font, var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif));
+  font-family: var(--wtf-brand-font, var(--wtf-shell-font));
   font-weight: bold;
   display: flex;
   align-items: center;
@@ -96,7 +96,7 @@ const WindowButton = styled(Button)<{ $active?: boolean }>`
   min-width: 60px;
   min-height: 32px;
   height: 32px;
-  font-family: var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
+  font-family: var(--wtf-shell-font);
   font-size: var(--wtf-type-caption, 13px);
   text-align: left;
   overflow: hidden;
@@ -164,7 +164,7 @@ const ShowDesktopButton = styled(Button)`
 
 const Clock = styled(Panel).attrs({ variant: "well" })`
   padding: 0 8px;
-  font-family: var(--wtf-mono-font, var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif));
+  font-family: var(--wtf-mono-font, var(--wtf-shell-font));
   font-size: var(--wtf-type-caption, 13px);
   min-width: 82px;
   text-align: center;
@@ -544,7 +544,7 @@ export function Taskbar({
                 <div style={{ fontSize: "var(--wtf-type-caption, 13px)", marginBottom: 6, color: "#008000", fontWeight: "bold" }}>
                   Connected
                 </div>
-                <div style={{ fontSize: "var(--wtf-type-caption, 13px)", fontFamily: "monospace", wordBreak: "break-all", marginBottom: 8 }}>
+                <div style={{ fontSize: "var(--wtf-type-caption, 13px)", fontFamily: "var(--wtf-mono-font)", wordBreak: "break-all", marginBottom: 8 }}>
                   {address}
                 </div>
                 <Button

@@ -91,7 +91,7 @@ const Controls = styled.div`
 const SlideshowIndicator = styled.span`
   font-size: var(--wtf-type-caption, 13px);
   color: #00ffcc;
-  font-family: "Courier New", monospace;
+  font-family: var(--wtf-mono-font);
 `;
 
 const EmptyText = styled.p`

@@ -326,7 +326,7 @@ const TopStrip = styled.div`
 `;
 
 const ConsoleName = styled.span`
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-weight: bold;
   font-size: 14px;
   color: #7b8fff;
@@ -386,7 +386,7 @@ const RuntimeHud = styled.div`
   align-items: center;
   gap: 8px;
   pointer-events: none;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   color: #dfe6ff;
 `;
@@ -415,7 +415,7 @@ const LoadingScreen = styled.div`
   justify-content: center;
   background: #08081a;
   color: #7b8fff;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   z-index: 5;
 `;
 
@@ -445,7 +445,7 @@ const LibHeader = styled.div`
 `;
 
 const LibTitle = styled.h2`
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: 16px;
   color: #7b8fff;
   letter-spacing: 0;
@@ -463,7 +463,7 @@ const LibrarySearchInput = styled.input`
   color: #dfe6ff;
   border-radius: 3px;
   padding: 0 8px;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   outline: none;
 `;
@@ -475,7 +475,7 @@ const LibrarySortSelect = styled.select`
   color: #dfe6ff;
   border-radius: 3px;
   padding: 0 6px;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   outline: none;
 `;
@@ -501,7 +501,7 @@ const ConsoleStatChip = styled.div`
   background: #10102a;
   border-radius: 4px;
   padding: 5px 7px;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   overflow: hidden;
 
   strong,
@@ -525,7 +525,7 @@ const ConsoleStatChip = styled.div`
 
 const TabBtn = styled.button<{ $active?: boolean }>`
   min-height: 32px;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   padding: 5px 10px;
   border: 1px solid ${(p) => (p.$active ? "#7b8fff" : "#2a2a50")};
@@ -592,7 +592,7 @@ const ArcadeRailSection = styled.section`
 `;
 
 const ArcadeRailHeader = styled.div<{ $tone?: "gold" | "green" | "orange" | "blue" }>`
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   letter-spacing: 0;
   color: ${(p) =>
@@ -631,7 +631,7 @@ const ChampionsStrip = styled.div`
 
 const ChampionsLabel = styled.div`
   flex: 0 0 auto;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   letter-spacing: 0;
   color: #ffcb5c;
@@ -662,20 +662,20 @@ const ChampionChip = styled.button`
   }
 
   strong {
-    font-family: var(--wtf-mono-font, "Courier New", monospace);
+    font-family: var(--wtf-mono-font);
     font-size: var(--wtf-type-caption, 13px);
     color: #aabbff;
   }
 
   span {
-    font-family: var(--wtf-mono-font, "Courier New", monospace);
+    font-family: var(--wtf-mono-font);
     font-size: var(--wtf-type-caption, 13px);
     color: #7777aa;
   }
 `;
 
 const ChampionScore = styled.div`
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   color: #ffcb5c;
 `;
@@ -701,7 +701,7 @@ const DiscoveryChip = styled.button`
   gap: 3px;
   text-align: left;
   cursor: pointer;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
 
   &:hover {
     border-color: #88d7ff;
@@ -765,7 +765,7 @@ const PlayerLeaderboardChip = styled.button`
   gap: 3px 7px;
   text-align: left;
   cursor: pointer;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
 
   &:hover {
     border-color: #57f0be;
@@ -825,7 +825,7 @@ const RecentScoreChip = styled.button`
   gap: 3px;
   text-align: left;
   cursor: pointer;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
 
   &:hover {
     border-color: #ff8d5c;
@@ -873,7 +873,7 @@ const PlayerInput = styled.input`
   color: #dfe6ff;
   border-radius: 3px;
   padding: 0 8px;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
 `;
 
@@ -884,7 +884,7 @@ const MiniButton = styled.button`
   color: #aabbff;
   border-radius: 3px;
   padding: 0 10px;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   cursor: pointer;
 
@@ -909,7 +909,7 @@ const PlayerStat = styled.div`
   background: #10102a;
   border-radius: 3px;
   padding: 5px 7px;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
 
   strong {
     display: block;
@@ -937,7 +937,7 @@ const PlayerGameChip = styled.button`
   border-radius: 3px;
   padding: 5px 7px;
   text-align: left;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   cursor: pointer;
 
   strong,
@@ -1004,7 +1004,7 @@ const CartArtFallback = styled.div`
 `;
 
 const CartTitle = styled.div`
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   color: #aabbff;
@@ -1014,7 +1014,7 @@ const CartTitle = styled.div`
 `;
 
 const CartDesc = styled.div`
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   color: #555580;
   overflow: hidden;
@@ -1026,7 +1026,7 @@ const SourceLine = styled.a`
   min-height: 32px;
   display: inline-flex;
   align-items: center;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   color: #88d7ff;
   text-decoration: none;
@@ -1044,7 +1044,7 @@ const ProvenanceCardLine = styled.div`
   display: grid;
   gap: 2px;
   min-height: 24px;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   color: #b8c2ff;
 
@@ -1065,7 +1065,7 @@ const ProvenanceCardLine = styled.div`
 `;
 
 const DemoBadge = styled.span`
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   color: #44ff88;
   letter-spacing: 0;
@@ -1089,7 +1089,7 @@ const CreditBadge = styled(DemoBadge)`
 
 const PlaysBadge = styled.span`
   margin-left: auto;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   color: #6f84ff;
 `;
@@ -1101,7 +1101,7 @@ const ReportButton = styled.button`
   border-radius: 3px;
   min-height: 32px;
   padding: 3px 7px;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   cursor: pointer;
 `;
@@ -1124,7 +1124,7 @@ const ReportDialog = styled.div`
   padding: 12px;
   display: grid;
   gap: 9px;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   color: #dfe6ff;
 
   strong {
@@ -1141,7 +1141,7 @@ const ReportDialog = styled.div`
     color: #dfe6ff;
     border-radius: 3px;
     padding: 7px;
-    font-family: var(--wtf-mono-font, "Courier New", monospace);
+    font-family: var(--wtf-mono-font);
     font-size: var(--wtf-type-caption, 13px);
   }
 
@@ -1158,7 +1158,7 @@ const ReportActions = styled.div`
 `;
 
 const EmptyMsg = styled.div`
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: 13px;
   color: #555580;
   text-align: center;
@@ -1175,7 +1175,7 @@ const ProvenancePane = styled.div`
   gap: 14px;
   background: radial-gradient(circle at 50% 0%, #1b1b42 0%, #08081a 62%);
   color: #dfe6ff;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
 `;
 
 const ProvenanceEyebrow = styled.div`
@@ -1238,7 +1238,7 @@ const ArcadeErrorDesktop = styled.div`
   place-items: center;
   padding: 18px;
   background: #008080;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
 `;
 
 const ArcadeErrorWindow = styled.div`
@@ -1299,7 +1299,7 @@ const CtrlBtn = styled.button<{ $color?: string; $size?: string }>`
   border: 2px solid #0a0a18;
   background: ${(p) => p.$color || "#2a2a50"};
   color: #fff;
-  font-family: var(--wtf-mono-font, "Courier New", monospace);
+  font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   cursor: pointer;
@@ -2288,7 +2288,7 @@ export function Console({ surface = "console" }: { surface?: ConsoleSurface } = 
             ) : (
               <div
                 style={{
-                  fontFamily: 'var(--wtf-mono-font, "Courier New", monospace)',
+                  fontFamily: 'var(--wtf-mono-font)',
                   fontSize: "var(--wtf-type-caption, 13px)",
                   color: "#555580",
                   letterSpacing: 0,

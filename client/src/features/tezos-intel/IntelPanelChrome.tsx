@@ -57,14 +57,14 @@ export const MetricValue = styled.div`
 `;
 
 export const TextInput = styled.input`
-  font-family: "MS Sans Serif", "Courier New", monospace;
+  font-family: var(--wtf-ui-font);
   font-size: 12px;
   padding: 5px 6px;
   border: 2px inset #dfdfdf;
 `;
 
 export const TextArea = styled.textarea`
-  font-family: "MS Sans Serif", "Courier New", monospace;
+  font-family: var(--wtf-ui-font);
   font-size: 12px;
   padding: 5px 6px;
   border: 2px inset #dfdfdf;

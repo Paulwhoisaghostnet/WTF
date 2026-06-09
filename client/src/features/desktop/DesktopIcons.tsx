@@ -35,7 +35,7 @@ const WDeskIcon = styled.div`
   font-size: 18px;
   line-height: 28px;
   text-align: center;
-  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  font-family: var(--wtf-shell-font);
   margin-bottom: 2px;
 `;
 
@@ -49,7 +49,7 @@ const WimDeskIcon = styled.div`
   font-size: 13px;
   line-height: 1;
   text-align: center;
-  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  font-family: var(--wtf-shell-font);
   margin-bottom: 2px;
   position: relative;
   box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.7), 2px 2px 0 rgba(0, 0, 0, 0.22);
@@ -91,7 +91,7 @@ const ConsoleDeskIcon = styled.div`
   font-size: 13px;
   line-height: 22px;
   text-align: center;
-  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  font-family: var(--wtf-shell-font);
   margin-bottom: 4px;
   border-radius: 4px 4px 2px 2px;
   position: relative;
@@ -182,7 +182,7 @@ const TVDeskIcon = styled.div`
   font-size: 13px;
   line-height: 22px;
   text-align: center;
-  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  font-family: var(--wtf-shell-font);
   margin-bottom: 4px;
   border-radius: 2px;
   position: relative;
@@ -220,7 +220,7 @@ const WtfIamDeskIcon = styled.div`
   font-size: 13px;
   line-height: 26px;
   text-align: center;
-  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  font-family: var(--wtf-shell-font);
   margin-bottom: 2px;
   position: relative;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55), 2px 2px 0 rgba(0, 0, 0, 0.2);
@@ -259,7 +259,7 @@ const DickswordDeskIcon = styled.div`
   font-size: 27px;
   line-height: 32px;
   text-align: center;
-  font-family: var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
+  font-family: var(--wtf-shell-font);
   margin-bottom: 0;
   position: relative;
   text-shadow: 1px 1px 0 #ffffff, -1px -1px 0 #7289da;
@@ -378,7 +378,7 @@ const DesktopIconRoot = styled.div<{ $experimental?: boolean }>`
   touch-action: none;
   color: #fff;
   text-shadow: 1px 1px 1px #000;
-  font-family: var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
+  font-family: var(--wtf-shell-font);
   box-sizing: border-box;
 
   ${(p) =>

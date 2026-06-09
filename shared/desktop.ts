@@ -245,9 +245,28 @@ export const DESKTOP_COLOR_SCHEMES = [
 
 export type DesktopColorSchemeKey = (typeof DESKTOP_COLOR_SCHEMES)[number]["key"];
 
+export const DESKTOP_FONT_PACK_KEYS = [
+  "mek-type",
+  "classic-95",
+  "terminal",
+  "serif-press",
+] as const;
+
+export type DesktopFontPackKey = (typeof DESKTOP_FONT_PACK_KEYS)[number];
+
+export const DESKTOP_FONT_PACK_LABELS: Record<DesktopFontPackKey, string> = {
+  "mek-type": "MEK Type",
+  "classic-95": "Classic 95",
+  terminal: "Terminal",
+  "serif-press": "Serif Press",
+};
+
+export const DEFAULT_DESKTOP_FONT_PACK_KEY: DesktopFontPackKey = "mek-type";
+
 export interface DesktopAppearance {
   appearanceStyleKey: DesktopAppearanceStyleKey;
   colorSchemeKey: DesktopColorSchemeKey;
+  fontPackKey: DesktopFontPackKey;
   desktopColor: string;
   windowColor: string;
   activeTitleColor: string;
@@ -271,6 +290,7 @@ const DEFAULT_APPEARANCE_STYLE = DESKTOP_APPEARANCE_STYLES[0];
 export const DEFAULT_DESKTOP_APPEARANCE: DesktopAppearance = {
   appearanceStyleKey: DEFAULT_APPEARANCE_STYLE.key,
   colorSchemeKey: DEFAULT_SCHEME.key,
+  fontPackKey: DEFAULT_DESKTOP_FONT_PACK_KEY,
   desktopColor: DEFAULT_SCHEME.desktopColor,
   windowColor: DEFAULT_SCHEME.windowColor,
   activeTitleColor: DEFAULT_SCHEME.activeTitleColor,
@@ -543,10 +563,14 @@ export function normalizeDesktopAppearance(input: unknown): DesktopAppearance {
   const backgroundFit = DESKTOP_BACKGROUND_FITS.includes(input.backgroundFit as DesktopBackgroundFit)
     ? (input.backgroundFit as DesktopBackgroundFit)
     : DEFAULT_DESKTOP_APPEARANCE.backgroundFit;
+  const fontPackKey = DESKTOP_FONT_PACK_KEYS.includes(input.fontPackKey as DesktopFontPackKey)
+    ? (input.fontPackKey as DesktopFontPackKey)
+    : DEFAULT_DESKTOP_APPEARANCE.fontPackKey;
 
   return {
     appearanceStyleKey: appearanceStyle.key,
     colorSchemeKey: scheme.key,
+    fontPackKey,
     desktopColor: normalizeColor(input.desktopColor, scheme.desktopColor),
     windowColor: normalizeColor(input.windowColor, scheme.windowColor),
     activeTitleColor: normalizeColor(input.activeTitleColor, scheme.activeTitleColor),
