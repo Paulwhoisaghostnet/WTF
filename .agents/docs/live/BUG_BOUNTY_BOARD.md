@@ -62,6 +62,7 @@ Priority labels:
 | WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 7 | 15 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
 | WTF-BB-231 | Verified | Codex WTF LIVE mobile layout repair | 2026-06-10 | WTF LIVE / mobile Chrome room layout | P1 | 12 | 7 | 3 | 5 | 0 | WTF LIVE public room mobile breakpoint now uses a deliberate mobile scroll shell and stacked rail/stage/sidebar layout; verified by 390/375/360px Chrome-style probes, in-app Browser 375px metrics, focused WTF LIVE Playwright, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-232 | Verified | Codex in-app market V2 full-send fallback repair | 2026-06-10 | Tezos / in-app market contract rollout | P0 | 15 | 2 | 3 | 5 | 2 | Mainnet production had no in-app market env override, so the app could fall back to the V2 KT1 address while still defaulting the payload contract version to V1; fixed by coupling shared address and version defaults and verified by TypeScript, focused policy tests, inventory coverage, and full inventory E2E |
+| WTF-BB-233 | Verified | Codex WTF LIVE tip seed deploy blocker repair | 2026-06-10 | Deploy / in-app market seed migration | P0 | 13 | 5 | 3 | 5 | 0 | Production deploy failed after app stop because the WTF LIVE tip item seed violated the existing `price_score BETWEEN 1 AND 10` constraint; fixed by clamping seed scores and adding a migration policy test |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -319,6 +320,27 @@ Priority labels:
   - Passed `npx tsx --test server/features/tv/media-urls.test.ts server/features/wtf-sites/policy.test.ts server/lib/tv-boot-backfill-roger-policy.test.ts server/lib/contract-config.test.ts server/lib/wtf-token-config.test.ts server/lib/in-app-market-policy.test.ts server/lib/tzkt-ops.test.ts client/src/lib/tezos/wallet-shadownet-preflight-policy.test.ts scripts/kiln/e2e-assertions.test.ts`, including the new mainnet V2 fallback-version assertion.
   - Passed `node --test scripts/kiln/e2e-assertion-policy.test.mjs client/src/pages/Wim.test.ts`.
   - Passed `npm run test:e2e:inventory`, 300/300.
+
+### WTF-BB-233 - WTF LIVE tip seed violates production in-app market price-score constraints
+
+- Category: Deploy / in-app market seed migration
+- Status: Verified
+- Owner/Session: Codex WTF LIVE tip seed deploy blocker repair
+- Score: C3 + F5 + S0 + P0(5) = 13
+- Evidence:
+  - GitHub Deploy to Hetzner run `27267703077` failed in `scripts/apply-production-migrations.sh` on `drizzle/0100_wtf_live_tip_items.sql`.
+  - Postgres rejected `wtf-live-flaming-heart` because the seed inserted `price_score=25` while production has `in_app_market_items_price_score_range CHECK (price_score BETWEEN 1 AND 10)`.
+  - The same migration also seeded `wtf-live-pauls-panties` with `price_score=69`, which would have hit the same constraint.
+- Why it matters:
+  - Deploy stops the app before migrations. A seed-only row violation can leave the production app down until the migration is corrected or the container is manually restarted.
+- Correction:
+  - Clamped the high-value WTF LIVE tip item `price_score` fields to the existing 1-10 production range while keeping `price_wtf_units`, `price_exp`, and metadata `redeemWtf` values intact.
+  - Added a production-migration policy test that parses the WTF LIVE tip seed and fails if any seeded `price_score` is outside 1-10.
+- Verification:
+  - Passed `node --test scripts/production-migrations-policy.test.mjs`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `git diff --check`.
+  - Public health was restored after manually restarting the app container; deploy retry still required for normal full-send completion.
 
 ### WTF-BB-215 - New Skywire OAuth connections to Bluesky fail while existing sessions continue working
 

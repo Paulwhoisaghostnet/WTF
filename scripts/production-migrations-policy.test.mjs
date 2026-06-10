@@ -5,6 +5,7 @@ import test from "node:test";
 const migrations = readFileSync("scripts/apply-production-migrations.sh", "utf8");
 const deploy = readFileSync("scripts/server-deploy.sh", "utf8");
 const wtfLiveMigration = readFileSync("drizzle/0097_wtf_live_rooms.sql", "utf8");
+const wtfLiveTipMigration = readFileSync("drizzle/0100_wtf_live_tip_items.sql", "utf8");
 
 test("LAW.TT1/10 production migrations fail closed on SQL errors", () => {
   assert.match(migrations, /set -euo pipefail/);
@@ -59,4 +60,17 @@ test("WTF LIVE persistent room tables have a numbered production migration", () 
   assert.match(wtfLiveMigration, /owner_user_id integer NOT NULL REFERENCES users\(id\) ON DELETE CASCADE/);
   assert.match(wtfLiveMigration, /CREATE UNIQUE INDEX IF NOT EXISTS wtf_live_rooms_slug_idx/);
   assert.match(wtfLiveMigration, /CREATE UNIQUE INDEX IF NOT EXISTS wtf_live_stages_slug_idx/);
+});
+
+test("WTF LIVE tip seed respects production in-app market score constraints", () => {
+  const scores = [
+    ...wtfLiveTipMigration.matchAll(
+      /^\s+(\d+),\n\s+true,\n\s+true,\n\s+'\{"kind":"live-tip"/gm
+    ),
+  ].map((match) => Number(match[1]));
+
+  assert.equal(scores.length, 6);
+  for (const score of scores) {
+    assert.ok(score >= 1 && score <= 10, `price_score ${score} is outside 1..10`);
+  }
 });

@@ -1,3 +1,13 @@
+## 2026-06-10 - Seed migrations must satisfy existing production constraints
+
+**What happened**: Full-send deploy failed after stopping the app because `0100_wtf_live_tip_items.sql` inserted WTF LIVE tip rows with `price_score` values of `25` and `69`, while production already had `in_app_market_items_price_score_range CHECK (price_score BETWEEN 1 AND 10)` from migration `0067`.
+
+**Why it mattered**: Idempotent seed migrations still run against the full historical schema. Local UI and inventory tests can pass while the production migration path fails at the first row that violates an older constraint, leaving deploy stopped between migration and app restart.
+
+**Rule**: Any migration that upserts rows into an existing constrained table must include a policy test that checks seeded values against the production constraints already attached to that table.
+
+---
+
 ## 2026-06-10 - Contract address and payload-version defaults must rotate together
 
 **What happened**: The mainnet in-app market V2 KT1 was rotated into the shared source fallback, but production had no in-app market env vars set on the host. That meant the client/server could resolve the V2 contract address from source while still defaulting the mainnet contract version to `v1`, producing the wrong wallet payload for the active KT1 unless the host env happened to override it.
