@@ -1,3 +1,13 @@
+## 2026-06-10 - Messenger widgets must not be trapped inside an app window
+
+**What happened**: The first WIM makeover added AIM-like buddy and conversation modules, but kept them inside a single WIM `AppWindow`. That made the modular controls technically work while still feeling unlike classic AIM, where the buddy list is the app surface and conversations are peer desktop popups.
+
+**Why it mattered**: A desktop-messenger interaction model is defined by where the windows live, not only by their titlebars and resize handles. If the modules are bounded by an outer app viewport, users experience a nested app instead of desktop widgets.
+
+**Rule**: For WIM/AIM-style work, verify the source and screenshot both prove there is no containing WIM `AppWindow`. The WIM route may stay registered for taskbar/session state, but the visible buddy and conversation modules must render as desktop-level widgets.
+
+---
+
 ## 2026-06-10 - Raw SQL seed metadata parameters need explicit casts
 
 **What happened**: The Roger Radio production boot backfill created the public channel and active playlist, then stopped before inserting the playlist item. The app log showed Postgres could not determine the data type of parameter `$2` because the same embed URL parameter was passed into `jsonb_build_object` without an explicit cast.

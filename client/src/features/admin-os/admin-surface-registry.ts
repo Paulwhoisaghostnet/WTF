@@ -467,7 +467,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "presence surface",
       "notification templates",
       "browser-local custom lists",
-      "modular conversation windows",
+      "desktop-level buddy and conversation widgets",
     ],
     automationHandles: [
       "wim.chat.opened",

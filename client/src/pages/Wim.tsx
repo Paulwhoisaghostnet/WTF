@@ -2,6 +2,7 @@ import {
   type CSSProperties,
   type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -29,10 +30,10 @@ import {
   X,
 } from "lucide-react";
 import styled from "styled-components";
-import { AppWindow } from "../components/layout/AppWindow";
 import { UiEmptyState, UiNotice } from "../components/wtfos-ui";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { useWindowManager, WindowPathContext } from "../lib/window-context";
 
 type MessageUser = {
   id: number;
@@ -135,7 +136,7 @@ const INITIAL_WINDOWS: WimWindowState[] = [
   },
 ];
 
-const Shell = styled.div`
+const Shell = styled.div<{ $hidden: boolean }>`
   --wim-navy: #07156f;
   --wim-blue: #1237a7;
   --wim-cyan: #85f2ff;
@@ -152,20 +153,19 @@ const Shell = styled.div`
   --wim-titlebar: linear-gradient(180deg, #fafafa 0%, #c9c9c9 52%, #a8a8a8 100%);
   --wim-titlebar-active: linear-gradient(180deg, #ffffff 0%, #d8ecff 42%, #9fbfdc 100%);
 
-  position: relative;
-  height: clamp(520px, calc(100vh - 260px), 620px);
-  min-height: 520px;
+  position: absolute;
+  inset: 0;
+  display: ${(p) => (p.$hidden ? "none" : "block")};
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
+  pointer-events: none !important;
   color: var(--wim-ink);
-  background:
-    linear-gradient(90deg, rgba(7, 21, 111, 0.08) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(7, 21, 111, 0.06) 1px, transparent 1px),
-    radial-gradient(circle at 14% 18%, rgba(255, 241, 154, 0.72), transparent 24%),
-    radial-gradient(circle at 92% 82%, rgba(132, 240, 255, 0.48), transparent 28%),
-    linear-gradient(135deg, #eef7ff 0%, #fffef2 42%, #e8ffe8 100%);
-  background-size: 22px 22px, 22px 22px, auto, auto, auto;
-  border: 1px solid var(--wtf-app-border, #808080);
+  background: transparent;
+  border: 0;
+  isolation: isolate;
 
   html[data-wtf-appearance-style="wtf-xp"] & {
     --wim-panel: #f5fbff;
@@ -174,7 +174,6 @@ const Shell = styled.div`
     --wim-soft-shadow: 0 3px 7px rgba(20, 52, 116, 0.18);
     --wim-titlebar: linear-gradient(180deg, #eff8ff 0%, #b6cde8 48%, #7fa6ce 100%);
     --wim-titlebar-active: linear-gradient(180deg, #ffffff 0%, #6aa2db 48%, #245edb 100%);
-    border-radius: var(--wtf-panel-radius, 8px);
   }
 
   html[data-wtf-appearance-style="wtf-aqua"] & {
@@ -186,7 +185,6 @@ const Shell = styled.div`
       linear-gradient(180deg, #f8fbff 0%, #a4c3dc 100%);
     --wim-titlebar-active: radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.95), transparent 40%),
       linear-gradient(180deg, #dff7ff 0%, #66a9d5 100%);
-    border-radius: var(--wtf-panel-radius, 8px);
   }
 
   html[data-wtf-appearance-style="wtf-zine"] & {
@@ -197,16 +195,11 @@ const Shell = styled.div`
     --wim-soft-shadow: 4px 4px 0 #000000;
     --wim-titlebar: #dedede;
     --wim-titlebar-active: #8ff5ff;
-    border: 3px solid #000000;
-    background:
-      linear-gradient(90deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px),
-      #fffef2;
-    background-size: 20px 20px;
+    background: transparent;
   }
 
   @media (max-width: 760px) {
-    min-height: 820px;
+    min-height: 0;
   }
 `;
 
@@ -226,6 +219,7 @@ const WimWindowFrame = styled.div<{ $maximized: boolean; $kind: WimWindowState["
     6px 10px 22px rgba(0, 0, 0, 0.28);
   overflow: hidden;
   isolation: isolate;
+  pointer-events: auto;
 
   ${(p) =>
     p.$maximized
@@ -916,6 +910,14 @@ const Dock = styled.div`
   border: 1px solid rgba(0, 0, 0, 0.28);
   background: rgba(216, 216, 216, 0.84);
   backdrop-filter: blur(4px);
+  pointer-events: auto;
+`;
+
+const DesktopConversationDropLayer = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: auto;
 `;
 
 const DockButton = styled(Button)`
@@ -1286,6 +1288,10 @@ function ChatWindowPane({
 
 export function Wim() {
   const { user } = useAuth();
+  const wm = useWindowManager();
+  const routePath = useContext(WindowPathContext) || "/wim";
+  const routeWindowState = wm.getWindow(routePath);
+  const routeMinimized = wm.isMinimized(routePath);
   const qc = useQueryClient();
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const nextZRef = useRef(8);
@@ -1293,6 +1299,7 @@ export function Wim() {
   const [windows, setWindows] = useState<WimWindowState[]>(INITIAL_WINDOWS);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [resizeState, setResizeState] = useState<ResizeState | null>(null);
+  const [conversationDragActive, setConversationDragActive] = useState(false);
   const [selectedBuddyId, setSelectedBuddyId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [friendIds, setFriendIds] = useState<number[]>([]);
@@ -1428,12 +1435,23 @@ export function Wim() {
     return nextZRef.current;
   };
 
+  const focusWimRoute = () => {
+    if (wm.focusedPath !== routePath || routeMinimized) {
+      wm.focus(routePath);
+    }
+  };
+
   const bringToFront = (windowId: string) => {
+    focusWimRoute();
     const z = nextZ();
     setWindows((current) =>
       current.map((windowState) => (windowState.id === windowId ? { ...windowState, z } : windowState))
     );
   };
+
+  useEffect(() => {
+    wm.setTitle(routePath, "WIM");
+  }, [routePath, wm.setTitle]);
 
   const labelForConversation = (conversationId: number): string => {
     const conversation = conversationById.get(conversationId);
@@ -1450,6 +1468,7 @@ export function Wim() {
   };
 
   const showConversation = (conversationId: number, targetPeerId?: number | null) => {
+    focusWimRoute();
     if (targetPeerId) {
       setConversationPeerHints((current) => ({ ...current, [conversationId]: targetPeerId }));
     }
@@ -1498,14 +1517,23 @@ export function Wim() {
         );
       }
 
+      const surfaceBounds = surfaceRef.current?.getBoundingClientRect();
+      const surfaceWidth = surfaceBounds?.width ?? 960;
+      const surfaceHeight = surfaceBounds?.height ?? 640;
+      const preferredWidth = Math.min(560, Math.max(356, surfaceWidth - 24));
+      const preferredHeight = Math.min(470, Math.max(328, surfaceHeight - 56));
+      const buddyWindow = current.find((windowState) => windowState.id === "buddy-list");
+      const preferredX = buddyWindow ? buddyWindow.x + buddyWindow.width + 12 : 342;
+      const maxX = Math.max(8, surfaceWidth - preferredWidth - 10);
+      const maxY = Math.max(8, surfaceHeight - preferredHeight - 10);
       const newWindow: WimWindowState = {
         id: `chat-${nextWindowRef.current++}`,
         kind: "chat",
         title: "Conversation",
-        x: 342,
-        y: 46,
-        width: 560,
-        height: 470,
+        x: Math.min(Math.max(8, preferredX), maxX),
+        y: Math.min(46, maxY),
+        width: preferredWidth,
+        height: preferredHeight,
         z,
         minimized: false,
         maximized: false,
@@ -1624,14 +1652,25 @@ export function Wim() {
       if (resizeState) {
         const dx = event.clientX - resizeState.startX;
         const dy = event.clientY - resizeState.startY;
+        const bounds = surfaceRef.current?.getBoundingClientRect();
         setWindows((current) =>
           current.map((windowState) =>
             windowState.id === resizeState.id
-              ? {
-                  ...windowState,
-                  width: Math.max(windowState.kind === "buddy" ? 258 : 356, resizeState.originWidth + dx),
-                  height: Math.max(windowState.kind === "buddy" ? 330 : 328, resizeState.originHeight + dy),
-                }
+              ? (() => {
+                  const minWidth = windowState.kind === "buddy" ? 258 : 356;
+                  const minHeight = windowState.kind === "buddy" ? 330 : 328;
+                  const maxWidth = bounds
+                    ? Math.max(minWidth, bounds.width - windowState.x - 8)
+                    : Number.POSITIVE_INFINITY;
+                  const maxHeight = bounds
+                    ? Math.max(minHeight, bounds.height - windowState.y - 8)
+                    : Number.POSITIVE_INFINITY;
+                  return {
+                    ...windowState,
+                    width: Math.min(maxWidth, Math.max(minWidth, resizeState.originWidth + dx)),
+                    height: Math.min(maxHeight, Math.max(minHeight, resizeState.originHeight + dy)),
+                  };
+                })()
               : windowState
           )
         );
@@ -1786,6 +1825,7 @@ export function Wim() {
   };
 
   const restoreWindow = (windowId: string) => {
+    focusWimRoute();
     const z = nextZ();
     setWindows((current) =>
       current.map((windowState) =>
@@ -1797,6 +1837,7 @@ export function Wim() {
   };
 
   const toggleMaximizeWindow = (windowId: string) => {
+    focusWimRoute();
     const z = nextZ();
     setWindows((current) =>
       current.map((windowState) =>
@@ -1914,14 +1955,21 @@ export function Wim() {
     if (!conversationId) return;
     reportWimEvent("wim.chat.opened", conversationId, { tabDetached: true });
     const z = nextZ();
+    const surfaceBounds = surfaceRef.current?.getBoundingClientRect();
+    const surfaceWidth = surfaceBounds?.width ?? 960;
+    const surfaceHeight = surfaceBounds?.height ?? 640;
+    const width = Math.min(540, Math.max(356, surfaceWidth - 16));
+    const height = Math.min(460, Math.max(328, surfaceHeight - 48));
+    const maxX = Math.max(8, surfaceWidth - width - 8);
+    const maxY = Math.max(8, surfaceHeight - height - 8);
     const newWindow: WimWindowState = {
       id: `chat-${nextWindowRef.current++}`,
       kind: "chat",
       title: "Conversation",
-      x: Math.max(8, x - 170),
-      y: Math.max(8, y - 18),
-      width: 540,
-      height: 460,
+      x: Math.min(maxX, Math.max(8, x - 170)),
+      y: Math.min(maxY, Math.max(8, y - 18)),
+      width,
+      height,
       z,
       minimized: false,
       maximized: false,
@@ -2322,6 +2370,7 @@ export function Wim() {
             if (!hasDraggedConversation(event)) return;
             event.preventDefault();
             event.stopPropagation();
+            setConversationDragActive(false);
             const dropped = readDraggedConversation(event);
             if (!dropped.conversationId) return;
             moveConversationToWindow(dropped.conversationId, dropped.sourceWindowId, windowState.id);
@@ -2337,10 +2386,12 @@ export function Wim() {
               draggable
               onClick={() => activateConversationTab(windowState.id, conversationId)}
               onDragStart={(event) => {
+                setConversationDragActive(true);
                 event.dataTransfer.setData(WIM_CONVERSATION_DRAG_TYPE, String(conversationId));
                 event.dataTransfer.setData(WIM_SOURCE_WINDOW_DRAG_TYPE, windowState.id);
                 event.dataTransfer.effectAllowed = "move";
               }}
+              onDragEnd={() => setConversationDragActive(false)}
             >
               <MessageCircle size={13} aria-hidden />
               <TabLabel>{labelForConversation(conversationId)}</TabLabel>
@@ -2372,15 +2423,21 @@ export function Wim() {
 
   const renderWindow = (windowState: WimWindowState) => {
     if (windowState.closed || windowState.minimized) return null;
-    const frameStyle: CSSProperties = {
-      left: windowState.x,
-      top: windowState.y,
-      width: windowState.width,
-      height: windowState.height,
-      zIndex: windowState.z,
-    };
+    const frameStyle: CSSProperties = windowState.maximized
+      ? { zIndex: windowState.z }
+      : {
+          left: windowState.x,
+          top: windowState.y,
+          width: windowState.width,
+          height: windowState.height,
+          zIndex: windowState.z,
+        };
     const title =
       windowState.kind === "chat" ? chatWindowTitle(windowState, labelForConversation) : windowState.title;
+    const visibleTopZ = Math.max(
+      0,
+      ...windows.filter((item) => !item.closed && !item.minimized).map((item) => item.z)
+    );
     return (
       <WimWindowFrame
         key={windowState.id}
@@ -2393,7 +2450,7 @@ export function Wim() {
         onPointerDown={() => bringToFront(windowState.id)}
       >
         <WindowTitlebar
-          $focused={windowState.z === Math.max(...windows.filter((item) => !item.closed && !item.minimized).map((item) => item.z))}
+          $focused={windowState.z === visibleTopZ}
           onPointerDown={(event) => startWindowDrag(event, windowState)}
         >
           <TrafficLights aria-hidden>
@@ -2448,61 +2505,70 @@ export function Wim() {
 
   const dockWindows = windows.filter((windowState) => windowState.minimized || windowState.closed);
   const showBuddyLauncher = windows.some((windowState) => windowState.id === "buddy-list" && windowState.closed);
+  const routeZ = routeWindowState.zIndex || 1;
 
   return (
     <>
-      <AppWindow title="WIM">
-        <Shell
-          ref={surfaceRef}
-          onDragOver={(event) => {
-            if (!hasDraggedConversation(event)) return;
-            event.preventDefault();
-          }}
-          onDrop={(event) => {
-            if (!hasDraggedConversation(event)) return;
-            event.preventDefault();
-            const dropped = readDraggedConversation(event);
-            if (!dropped.conversationId) return;
-            const bounds = surfaceRef.current?.getBoundingClientRect();
-            detachConversationToWindow(
-              dropped.conversationId,
-              dropped.sourceWindowId,
-              bounds ? event.clientX - bounds.left : event.clientX,
-              bounds ? event.clientY - bounds.top : event.clientY
-            );
-          }}
-        >
-          {windows.map(renderWindow)}
-          {dockWindows.length ? (
-            <Dock aria-label="WIM minimized windows">
-              {showBuddyLauncher ? (
-                <DockButton type="button" onClick={() => restoreWindow("buddy-list")}>
-                  <Users size={14} aria-hidden />
-                  Buddy List
+      <Shell
+        ref={surfaceRef}
+        $hidden={routeMinimized}
+        data-wim-desktop-surface="true"
+        style={{ zIndex: routeZ }}
+      >
+        {conversationDragActive ? (
+          <DesktopConversationDropLayer
+            aria-hidden="true"
+            data-wim-drop-layer="conversation"
+            onDragOver={(event) => {
+              if (!hasDraggedConversation(event)) return;
+              event.preventDefault();
+            }}
+            onDrop={(event) => {
+              if (!hasDraggedConversation(event)) return;
+              event.preventDefault();
+              setConversationDragActive(false);
+              const dropped = readDraggedConversation(event);
+              if (!dropped.conversationId) return;
+              const bounds = surfaceRef.current?.getBoundingClientRect();
+              detachConversationToWindow(
+                dropped.conversationId,
+                dropped.sourceWindowId,
+                bounds ? event.clientX - bounds.left : event.clientX,
+                bounds ? event.clientY - bounds.top : event.clientY
+              );
+            }}
+          />
+        ) : null}
+        {windows.map(renderWindow)}
+        {dockWindows.length ? (
+          <Dock aria-label="WIM minimized windows">
+            {showBuddyLauncher ? (
+              <DockButton type="button" onClick={() => restoreWindow("buddy-list")}>
+                <Users size={14} aria-hidden />
+                Buddy List
+              </DockButton>
+            ) : null}
+            {dockWindows
+              .filter((windowState) => windowState.minimized)
+              .map((windowState) => (
+                <DockButton
+                  key={windowState.id}
+                  type="button"
+                  onClick={() => restoreWindow(windowState.id)}
+                >
+                  {windowState.kind === "buddy" ? (
+                    <Users size={14} aria-hidden />
+                  ) : (
+                    <MessageCircle size={14} aria-hidden />
+                  )}
+                  {windowState.kind === "chat"
+                    ? chatWindowTitle(windowState, labelForConversation)
+                    : windowState.title}
                 </DockButton>
-              ) : null}
-              {dockWindows
-                .filter((windowState) => windowState.minimized)
-                .map((windowState) => (
-                  <DockButton
-                    key={windowState.id}
-                    type="button"
-                    onClick={() => restoreWindow(windowState.id)}
-                  >
-                    {windowState.kind === "buddy" ? (
-                      <Users size={14} aria-hidden />
-                    ) : (
-                      <MessageCircle size={14} aria-hidden />
-                    )}
-                    {windowState.kind === "chat"
-                      ? chatWindowTitle(windowState, labelForConversation)
-                      : windowState.title}
-                  </DockButton>
-                ))}
-            </Dock>
-          ) : null}
-        </Shell>
-      </AppWindow>
+              ))}
+          </Dock>
+        ) : null}
+      </Shell>
       {typeof document !== "undefined" && unreadPopups.length
         ? createPortal(
             <PopupStack aria-live="polite">

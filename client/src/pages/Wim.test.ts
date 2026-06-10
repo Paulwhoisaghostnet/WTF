@@ -38,6 +38,12 @@ test("WIM roster is user-driven and keeps Studio rooms out of buddies", () => {
   assert.match(wimSource, /data-wim-window-kind=\{windowState\.kind\}/);
   assert.match(wimSource, /WIM_CONVERSATION_DRAG_TYPE/);
   assert.match(wimSource, /detachConversationToWindow/);
+  assert.doesNotMatch(wimSource, /components\/layout\/AppWindow/);
+  assert.doesNotMatch(wimSource, /<AppWindow\b/);
+  assert.match(wimSource, /data-wim-desktop-surface="true"/);
+  assert.match(wimSource, /pointer-events: none !important/);
+  assert.match(wimSource, /DesktopConversationDropLayer/);
+  assert.match(wimSource, /data-wim-drop-layer="conversation"/);
   assert.doesNotMatch(wimSource, retiredMessengerNamePattern);
 });
 
@@ -56,7 +62,8 @@ test("WIM friend list and unread popups are browser-local and covered by invento
 
   assert.match(inventory, /`wim\.friend\.added`/);
   assert.match(inventory, /active, inactive\/away, or offline/);
-  assert.match(inventory, /modular buddy-list window/);
+  assert.match(inventory, /desktop-level buddy-list widget/);
+  assert.match(inventory, /without a containing WIM AppWindow/);
   assert.match(inventory, /in-place popup/);
   assert.match(inventory, /custom buddy lists/);
   assert.match(inventory, /combine multiple conversations as tabs/);
@@ -70,6 +77,7 @@ test("WIM friend list and unread popups are browser-local and covered by invento
   assert.match(workflows, /"wim\.offline_popup\.dismissed"/);
   assert.match(workflows, /\/api\/messages\/users\?limit=100&excludeSelf=1/);
   assert.match(behaviorAssertions, /wim\.modular-window-roster-tabs/);
+  assert.match(behaviorAssertions, /does not render a containing AppWindow/);
   assert.match(behaviorAssertions, /custom lists\/popup dismissals browser-local/);
 });
 
