@@ -63,7 +63,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion:
       "Accepting a marketplace or trade-board offer shows quantity, unit WTF, total WTF, token contract/id, owner, offerer, and contract version before wallet signing.",
     durableSideEffectAssertion:
-      "The wallet helper re-reads canonical /api/marketplace/onchain before signing, blocks legacy accepts unless tokenAmount is exactly 1, sends V2 accepts with offer_id plus expected token, owner, quantity, and unit price, and the local Shadownet runner binds the marketplace, WTF FA2, and in-app market contracts as one explicit test bundle.",
+      "The wallet helper re-reads canonical /api/marketplace/onchain before signing, blocks legacy accepts unless tokenAmount is exactly 1, sends V2 accepts with offer_id plus expected token, owner, quantity, and unit price, the in-app market V2 checkout signs only after receiving expected WTF token, treasury, amount, purchase reference, and cart hash, and the local Shadownet runner binds the marketplace, WTF FA2, and in-app market contracts as one explicit test bundle.",
   },
   {
     id: "casino.access-game-apis",
@@ -338,15 +338,27 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The harness emits WTF LIVE peer userId/username/isWtfUser metadata, verifies the roster stores the selected attendee id in WIM's browser-local `wtf:wim:friends:<viewerUserId>` list, and keeps guest-only peers out of WIM buddy actions.",
   },
   {
+    id: "wtf-live.tip-items-transfer-redeem",
+    domain: "Market, Exchange, Inventory, and Commerce",
+    ownerSurfaceIds: ["wtf-live", "wtfiam"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"WTF LIVE tip\"",
+    userVisibleAssertion:
+      "A signed-in WTF LIVE room user can open the tip tray from attendance, select an owned WTF LIVE tip item, send it to another signed-in room user, and redeem received tips from the WTFIAM WTF LIVE Tips ledger.",
+    durableSideEffectAssertion:
+      "The inventory harness decrements sender inventory, inserts an in-app inventory transfer, increments receiver inventory, marks redeemed transfers, and creates earned-WTF reward ledger balance when the receiver redeems the tip.",
+  },
+  {
     id: "wim.modular-window-roster-tabs",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["wim"],
     ownerSpec: "client/src/pages/Wim.test.ts",
     verificationCommand: "node --test client/src/pages/Wim.test.ts && npm run check -- --pretty false",
     userVisibleAssertion:
-      "WIM opens directly on the desktop as a movable/resizable buddy-list widget, not inside a containing WIM app window; conversation widgets stay closed until a user or recent direct chat is opened by double-click, then conversations can live as tabs, move between conversation widgets, detach into isolated desktop widgets, and use minimize/maximize/close controls.",
+      "WIM opens directly on the desktop as a movable/resizable buddy-list widget, not inside a containing WIM app window; conversation widgets stay closed until a user or recent direct chat is opened by double-click, then conversations can live as tabs, move between conversation widgets, detach into isolated desktop widgets, use system appearance-owned minimize/maximize/close controls instead of app-drawn traffic lights, and expose a rich WIM composer with font, size, color, bold, italic, underline, GIPHY/Tenor GIF, My Media, and owned-token link controls.",
     durableSideEffectAssertion:
-      "The source policy test verifies WIM does not render a containing AppWindow, still uses the canonical direct-DM/user roster endpoints, keeps friends/custom lists/popup dismissals browser-local, filters out Studio rooms, and exposes the settings popover for custom buddy lists.",
+      "The source policy test verifies WIM does not render a containing AppWindow, still uses the canonical direct-DM/user roster endpoints, keeps friends/custom lists/popup dismissals browser-local, filters out Studio rooms, exposes the settings popover for custom buddy lists, and sends rich composer style/attachment data through existing DM message metadata.",
   },
   {
     id: "wtf-live.private-room-access-list",
@@ -368,9 +380,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     userVisibleAssertion:
-      "On mobile, WTF LIVE shows display-name, Join, mic, camera, and screen controls before the stage; on desktop, chat and attendance have icon pop-out controls and the stage expands when both side panels are detached.",
+      "On mobile, WTF LIVE stacks and scales the display-name, Join, mic, camera, and screen controls before the stage without horizontal overflow or tap-target overlap; on desktop, chat and attendance have icon pop-out controls and the stage expands when both side panels are detached.",
     durableSideEffectAssertion:
-      "The inventory harness checks narrow-viewport element order/visibility, opens chat and attendance panel pop-outs, verifies floating panel frames render, verifies both dock notices appear, and verifies the stage/sidebar layout changes while the panels are popped out.",
+      "The inventory harness checks narrow-viewport element order/visibility, proves the mobile rail expands to its controls, stage/sidebar/chat stack vertically, the room remains vertically scrollable, and the attendance toggle is not intercepted by push-to-talk; it also opens chat and attendance panel pop-outs, verifies floating panel frames render, verifies both dock notices appear, and verifies the stage/sidebar layout changes while the panels are popped out.",
   },
   {
     id: "wtf-live.stage-owner-lifecycle-controls",

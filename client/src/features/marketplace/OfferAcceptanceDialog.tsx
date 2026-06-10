@@ -24,7 +24,11 @@ export function OfferAcceptanceDialog({
   ];
 
   return (
-    <GroupBox label="Confirm Offer Acceptance" style={{ marginBottom: 8 }}>
+    <GroupBox
+      label="Confirm Offer Acceptance"
+      style={{ marginBottom: 8 }}
+      data-testid="marketplace-offer-acceptance-dialog"
+    >
       <div style={{ fontSize: 12, marginBottom: 8 }}>
         Accepting this offer will transfer{" "}
         <strong>{pendingOfferAccept.quantity}</strong> edition(s)
@@ -39,6 +43,9 @@ export function OfferAcceptanceDialog({
         {rows.map(([label, value]) => (
           <div
             key={label}
+            data-testid={`marketplace-offer-accept-${label
+              .toLowerCase()
+              .replace(/\s+/g, "-")}`}
             style={{
               display: "grid",
               gridTemplateColumns: "76px minmax(0, 1fr)",
@@ -53,8 +60,15 @@ export function OfferAcceptanceDialog({
         ))}
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <Button onClick={() => onConfirm(pendingOfferAccept)}>Continue</Button>
-        <Button onClick={onCancel}>Cancel</Button>
+        <Button
+          data-testid="marketplace-offer-acceptance-continue"
+          onClick={() => onConfirm(pendingOfferAccept)}
+        >
+          Continue
+        </Button>
+        <Button data-testid="marketplace-offer-acceptance-cancel" onClick={onCancel}>
+          Cancel
+        </Button>
       </div>
     </GroupBox>
   );

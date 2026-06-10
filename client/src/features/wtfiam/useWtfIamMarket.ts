@@ -103,6 +103,7 @@ export function useWtfIamMarket(categoryKey: WtfIamCategoryKey) {
     liveCount,
     setCurrency,
     stagedCount,
+    tipLedger: marketQuery.data?.tipLedger ?? { received: [], sent: [] },
   };
 }
 

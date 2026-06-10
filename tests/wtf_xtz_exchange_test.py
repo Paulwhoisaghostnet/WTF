@@ -53,6 +53,38 @@ def add_exchange_operator(token, owner, exchange_address):
     )
 
 
+def listing_params(escrow_mutez, rate_numerator_mutez, rate_denominator_wtf_units):
+    return sp.record(
+        escrow_mutez=escrow_mutez,
+        rate_numerator_mutez=rate_numerator_mutez,
+        rate_denominator_wtf_units=rate_denominator_wtf_units,
+    )
+
+
+def swap_params(
+    listing_id,
+    wtf_amount,
+    owner,
+    rate_numerator_mutez,
+    rate_denominator_wtf_units,
+    expected_xtz_out_mutez=None,
+):
+    owner_address = owner.address if hasattr(owner, "address") else owner
+    expected_xtz_out = (
+        (wtf_amount * rate_numerator_mutez) // rate_denominator_wtf_units
+        if expected_xtz_out_mutez is None
+        else expected_xtz_out_mutez
+    )
+    return sp.record(
+        listing_id=listing_id,
+        wtf_amount=wtf_amount,
+        expected_owner=owner_address,
+        expected_rate_numerator_mutez=rate_numerator_mutez,
+        expected_rate_denominator_wtf_units=rate_denominator_wtf_units,
+        expected_xtz_out_mutez=expected_xtz_out,
+    )
+
+
 def new_fixture():
     admin = sp.test_account("Admin")
     owner = sp.test_account("ListingOwner")
@@ -103,7 +135,7 @@ def test_create_listing_and_bad_inputs():
     )
 
     market.create_listing(
-        sp.record(rate_numerator_mutez=3, rate_denominator_wtf_units=2),
+        listing_params(10_000, 3, 2),
         _sender=accounts.owner,
         _amount=sp.mutez(10_000),
         _now=sp.timestamp(100),
@@ -124,25 +156,32 @@ def test_create_listing_and_bad_inputs():
     scenario.verify(market.data.next_listing_id == 1)
 
     market.create_listing(
-        sp.record(rate_numerator_mutez=1, rate_denominator_wtf_units=1),
+        listing_params(1, 1, 1),
         _sender=accounts.owner,
         _amount=sp.mutez(0),
         _valid=False,
         _exception="ZERO_ESCROW",
     )
     market.create_listing(
-        sp.record(rate_numerator_mutez=0, rate_denominator_wtf_units=1),
+        listing_params(1, 0, 1),
         _sender=accounts.owner,
         _amount=sp.mutez(1),
         _valid=False,
         _exception="ZERO_RATE_NUMERATOR",
     )
     market.create_listing(
-        sp.record(rate_numerator_mutez=1, rate_denominator_wtf_units=0),
+        listing_params(1, 1, 0),
         _sender=accounts.owner,
         _amount=sp.mutez(1),
         _valid=False,
         _exception="ZERO_RATE_DENOMINATOR",
+    )
+    market.create_listing(
+        listing_params(2, 1, 1),
+        _sender=accounts.owner,
+        _amount=sp.mutez(1),
+        _valid=False,
+        _exception="ESCROW_AMOUNT_MISMATCH",
     )
 
 
@@ -156,21 +195,46 @@ def test_swap_partial_fill_rounding_and_exhaustion():
     add_exchange_operator(token, accounts.taker, market.address)
 
     market.create_listing(
-        sp.record(rate_numerator_mutez=3, rate_denominator_wtf_units=2),
+        listing_params(10_000, 3, 2),
         _sender=accounts.owner,
         _amount=sp.mutez(10_000),
     )
     scenario.verify(market.balance == sp.mutez(10_000))
 
     market.swap(
-        sp.record(listing_id=0, wtf_amount=1),
+        swap_params(0, 1, accounts.owner, 3, 2),
         _sender=accounts.taker,
         _amount=sp.mutez(1),
         _valid=False,
         _exception="NO_XTZ_IN",
     )
 
-    market.swap(sp.record(listing_id=0, wtf_amount=1_000), _sender=accounts.taker)
+    market.swap(
+        swap_params(0, 1_000, accounts.attacker, 3, 2),
+        _sender=accounts.taker,
+        _valid=False,
+        _exception="OWNER_MISMATCH",
+    )
+    market.swap(
+        swap_params(0, 1_000, accounts.owner, 4, 2),
+        _sender=accounts.taker,
+        _valid=False,
+        _exception="RATE_NUMERATOR_MISMATCH",
+    )
+    market.swap(
+        swap_params(0, 1_000, accounts.owner, 3, 4),
+        _sender=accounts.taker,
+        _valid=False,
+        _exception="RATE_DENOMINATOR_MISMATCH",
+    )
+    market.swap(
+        swap_params(0, 1_000, accounts.owner, 3, 2, expected_xtz_out_mutez=1_499),
+        _sender=accounts.taker,
+        _valid=False,
+        _exception="XTZ_OUT_MISMATCH",
+    )
+
+    market.swap(swap_params(0, 1_000, accounts.owner, 3, 2), _sender=accounts.taker)
     scenario.verify(ledger_balance(token, accounts.owner.address) == 1_000)
     scenario.verify(ledger_balance(token, accounts.taker.address) == 9_000)
     scenario.verify(market.data.listings[0].remaining_escrow_mutez == sp.mutez(8_500))
@@ -179,7 +243,7 @@ def test_swap_partial_fill_rounding_and_exhaustion():
     scenario.verify(market.data.listings[0].active)
     scenario.verify(market.balance == sp.mutez(8_500))
 
-    market.swap(sp.record(listing_id=0, wtf_amount=2_001), _sender=accounts.taker)
+    market.swap(swap_params(0, 2_001, accounts.owner, 3, 2), _sender=accounts.taker)
     scenario.verify(market.data.listings[0].remaining_escrow_mutez == sp.mutez(5_499))
     scenario.verify(market.data.listings[0].total_wtf_filled == 3_001)
     scenario.verify(market.data.listings[0].total_xtz_paid_out_mutez == sp.mutez(4_501))
@@ -187,48 +251,48 @@ def test_swap_partial_fill_rounding_and_exhaustion():
     scenario.verify(ledger_balance(token, accounts.taker.address) == 6_999)
 
     market.swap(
-        sp.record(listing_id=0, wtf_amount=3_667),
+        swap_params(0, 3_667, accounts.owner, 3, 2),
         _sender=accounts.taker,
         _valid=False,
         _exception="INSUFFICIENT_ESCROW",
     )
     market.swap(
-        sp.record(listing_id=0, wtf_amount=0),
+        swap_params(0, 0, accounts.owner, 3, 2),
         _sender=accounts.taker,
         _valid=False,
         _exception="ZERO_WTF_AMOUNT",
     )
     market.swap(
-        sp.record(listing_id=99, wtf_amount=1),
+        swap_params(99, 1, accounts.owner, 3, 2),
         _sender=accounts.taker,
         _valid=False,
         _exception="NO_LISTING",
     )
 
     market.create_listing(
-        sp.record(rate_numerator_mutez=1, rate_denominator_wtf_units=3),
+        listing_params(10, 1, 3),
         _sender=accounts.owner,
         _amount=sp.mutez(10),
     )
     market.swap(
-        sp.record(listing_id=1, wtf_amount=2),
+        swap_params(1, 2, accounts.owner, 1, 3),
         _sender=accounts.taker,
         _valid=False,
         _exception="ROUND_TO_ZERO",
     )
 
     market.create_listing(
-        sp.record(rate_numerator_mutez=5, rate_denominator_wtf_units=1),
+        listing_params(10_000, 5, 1),
         _sender=accounts.owner,
         _amount=sp.mutez(10_000),
     )
-    market.swap(sp.record(listing_id=2, wtf_amount=2_000), _sender=accounts.taker)
+    market.swap(swap_params(2, 2_000, accounts.owner, 5, 1), _sender=accounts.taker)
     scenario.verify(market.data.listings[2].remaining_escrow_mutez == sp.mutez(0))
     scenario.verify(market.data.listings[2].active == False)
     scenario.verify(market.data.listings[2].status_code == 1)
     scenario.verify(market.data.listings[2].closed_at.is_some())
     market.swap(
-        sp.record(listing_id=2, wtf_amount=1),
+        swap_params(2, 1, accounts.owner, 5, 1),
         _sender=accounts.taker,
         _valid=False,
         _exception="LISTING_INACTIVE",
@@ -244,12 +308,12 @@ def test_operator_balance_and_cancel_paths():
     token.mint([sp.record(to_=accounts.taker.address, amount=500)], _sender=accounts.admin)
 
     market.create_listing(
-        sp.record(rate_numerator_mutez=10, rate_denominator_wtf_units=1),
+        listing_params(5_000, 10, 1),
         _sender=accounts.owner,
         _amount=sp.mutez(5_000),
     )
     market.swap(
-        sp.record(listing_id=0, wtf_amount=100),
+        swap_params(0, 100, accounts.owner, 10, 1),
         _sender=accounts.taker,
         _valid=False,
     )
@@ -258,14 +322,14 @@ def test_operator_balance_and_cancel_paths():
 
     add_exchange_operator(token, accounts.taker, market.address)
     market.swap(
-        sp.record(listing_id=0, wtf_amount=600),
+        swap_params(0, 600, accounts.owner, 10, 1),
         _sender=accounts.taker,
         _valid=False,
     )
     scenario.verify(market.data.listings[0].remaining_escrow_mutez == sp.mutez(5_000))
     scenario.verify(ledger_balance(token, accounts.owner.address) == 0)
 
-    market.swap(sp.record(listing_id=0, wtf_amount=100), _sender=accounts.taker)
+    market.swap(swap_params(0, 100, accounts.owner, 10, 1), _sender=accounts.taker)
     scenario.verify(market.data.listings[0].remaining_escrow_mutez == sp.mutez(4_000))
     scenario.verify(ledger_balance(token, accounts.owner.address) == 100)
 
@@ -294,7 +358,7 @@ def test_pause_and_two_step_admin():
     add_exchange_operator(token, accounts.taker, market.address)
 
     market.create_listing(
-        sp.record(rate_numerator_mutez=1, rate_denominator_wtf_units=1),
+        listing_params(100, 1, 1),
         _sender=accounts.owner,
         _amount=sp.mutez(100),
     )
@@ -304,14 +368,14 @@ def test_pause_and_two_step_admin():
     scenario.verify(market.data.paused)
 
     market.create_listing(
-        sp.record(rate_numerator_mutez=1, rate_denominator_wtf_units=1),
+        listing_params(1, 1, 1),
         _sender=accounts.owner,
         _amount=sp.mutez(1),
         _valid=False,
         _exception="PAUSED",
     )
     market.swap(
-        sp.record(listing_id=0, wtf_amount=1),
+        swap_params(0, 1, accounts.owner, 1, 1),
         _sender=accounts.taker,
         _valid=False,
         _exception="PAUSED",
@@ -349,18 +413,18 @@ def test_multiple_listings_and_owners_are_isolated():
     add_exchange_operator(token, accounts.taker2, market.address)
 
     market.create_listing(
-        sp.record(rate_numerator_mutez=2, rate_denominator_wtf_units=1),
+        listing_params(1_000, 2, 1),
         _sender=accounts.owner,
         _amount=sp.mutez(1_000),
     )
     market.create_listing(
-        sp.record(rate_numerator_mutez=7, rate_denominator_wtf_units=2),
+        listing_params(2_000, 7, 2),
         _sender=accounts.owner2,
         _amount=sp.mutez(2_000),
     )
 
-    market.swap(sp.record(listing_id=0, wtf_amount=100), _sender=accounts.taker)
-    market.swap(sp.record(listing_id=1, wtf_amount=100), _sender=accounts.taker2)
+    market.swap(swap_params(0, 100, accounts.owner, 2, 1), _sender=accounts.taker)
+    market.swap(swap_params(1, 100, accounts.owner2, 7, 2), _sender=accounts.taker2)
 
     scenario.verify(market.data.listings[0].owner == accounts.owner.address)
     scenario.verify(market.data.listings[0].remaining_escrow_mutez == sp.mutez(800))

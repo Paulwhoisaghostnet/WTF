@@ -12,19 +12,21 @@ import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Hourglass, Panel, TextInput } from "react95";
 import {
+  Bold,
   Check,
   ChevronDown,
   ChevronRight,
   Folder,
-  Maximize2,
+  Image,
+  Italic,
+  Link2,
   MessageCircle,
-  Minimize2,
-  Minus,
   Plus,
   Search,
   Send,
   Settings,
   Trash2,
+  Underline,
   UserPlus,
   Users,
   X,
@@ -33,6 +35,7 @@ import styled from "styled-components";
 import { UiEmptyState, UiNotice } from "../components/wtfos-ui";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { resolveTokenThumbnail } from "../lib/media-resolve";
 import { useWindowManager, WindowPathContext } from "../lib/window-context";
 
 type MessageUser = {
@@ -76,7 +79,57 @@ type DmMessage = {
   username?: string;
   displayName?: string;
   content: string;
+  metadata?: Record<string, unknown> | null;
   createdAt: string;
+};
+
+type WimMessageStyle = {
+  fontFamily: string;
+  fontSize: number;
+  color: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+};
+
+type WimRichAttachment = {
+  id: string;
+  kind: "gif" | "media" | "token";
+  title: string;
+  url: string;
+  previewUrl?: string | null;
+  provider?: "giphy" | "tenor" | "url" | "wtfos";
+  mimeType?: string | null;
+  mediaId?: number;
+  tokenContract?: string;
+  tokenId?: string;
+};
+
+type WimRichMetadata = {
+  version: 1;
+  style: WimMessageStyle;
+  attachments: WimRichAttachment[];
+};
+
+type WimMediaItem = {
+  id: number;
+  title?: string | null;
+  originalFilename?: string | null;
+  sourceType?: string | null;
+  sourceUrl?: string | null;
+  storageUrl?: string | null;
+  mimeType?: string | null;
+  mediaCategory?: string | null;
+};
+
+type WimProfileToken = {
+  id?: number;
+  tokenContract: string;
+  tokenId: string;
+  tokenName?: string | null;
+  name?: string | null;
+  thumbnail?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 type WimCustomList = {
@@ -119,6 +172,26 @@ type ResizeState = {
 
 const WIM_CONVERSATION_DRAG_TYPE = "application/x-wim-conversation-id";
 const WIM_SOURCE_WINDOW_DRAG_TYPE = "application/x-wim-source-window-id";
+const WIM_FONT_CHOICES = [
+  "Helvetica",
+  "Arial",
+  "Verdana",
+  "Times New Roman",
+  "Georgia",
+  "Courier New",
+  "Comic Sans MS",
+  "MEK Mono",
+] as const;
+const WIM_FONT_SIZES = [10, 12, 14, 18, 24] as const;
+const DEFAULT_WIM_MESSAGE_STYLE: WimMessageStyle = {
+  fontFamily: "Helvetica",
+  fontSize: 12,
+  color: "#06135f",
+  bold: false,
+  italic: false,
+  underline: false,
+};
+const WIM_MAX_ATTACHMENTS = 4;
 
 const INITIAL_WINDOWS: WimWindowState[] = [
   {
@@ -210,13 +283,16 @@ const WimWindowFrame = styled.div<{ $maximized: boolean; $kind: WimWindowState["
   min-width: ${(p) => (p.$kind === "buddy" ? "258px" : "356px")};
   min-height: ${(p) => (p.$kind === "buddy" ? "330px" : "328px")};
   color: var(--wim-ink);
-  background: var(--wim-silver);
-  border: 1px solid #4b4b4b;
-  border-radius: ${(p) => (p.$kind === "buddy" ? "7px" : "6px")};
-  box-shadow:
+  background: var(--wtf-window-color, var(--wim-silver));
+  border: var(--wtf-window-border, 1px solid #4b4b4b);
+  border-radius: var(--wtf-window-radius, ${(p) => (p.$kind === "buddy" ? "7px" : "6px")});
+  box-shadow: var(
+    --wtf-window-shadow,
     inset 1px 1px 0 rgba(255, 255, 255, 0.9),
     inset -1px -1px 0 rgba(0, 0, 0, 0.26),
-    6px 10px 22px rgba(0, 0, 0, 0.28);
+    6px 10px 22px rgba(0, 0, 0, 0.28)
+  );
+  outline: var(--wtf-window-outline, 0);
   overflow: hidden;
   isolation: isolate;
   pointer-events: auto;
@@ -243,79 +319,135 @@ const WimWindowFrame = styled.div<{ $maximized: boolean; $kind: WimWindowState["
 `;
 
 const WindowTitlebar = styled.div<{ $focused?: boolean }>`
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 8px;
+  position: relative;
+  display: flex;
   align-items: center;
-  min-height: 28px;
-  padding: 3px 5px;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: var(--wtf-titlebar-height, 28px);
+  padding: var(--wtf-titlebar-padding, 3px 5px);
   user-select: none;
   cursor: grab;
-  color: #07112d;
-  background: ${(p) => (p.$focused ? "var(--wim-titlebar-active)" : "var(--wim-titlebar)")};
+  color: ${(p) =>
+    p.$focused
+      ? "var(--wtf-active-title-text, #ffffff)"
+      : "var(--wtf-inactive-title-text, #c0c0c0)"};
+  background: ${(p) =>
+    p.$focused
+      ? "linear-gradient(90deg, var(--wtf-active-title, #000080), color-mix(in srgb, var(--wtf-active-title, #000080) 72%, #ffffff))"
+      : "linear-gradient(90deg, var(--wtf-inactive-title, #808080), color-mix(in srgb, var(--wtf-inactive-title, #808080) 65%, #ffffff))"};
   border-bottom: 1px solid rgba(0, 0, 0, 0.32);
+  font-family: var(--wtf-titlebar-font, var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif));
+  font-weight: var(--wtf-titlebar-font-weight, 700);
+  transition: var(--wtf-chrome-transition, none);
+
+  html[data-wtf-appearance-style="wtf-xp"] & {
+    background: ${(p) =>
+      p.$focused
+        ? "linear-gradient(180deg, color-mix(in srgb, var(--wtf-active-title, #245edb) 54%, #ffffff) 0%, var(--wtf-active-title, #245edb) 48%, color-mix(in srgb, var(--wtf-active-title, #245edb) 74%, #000000) 100%)"
+        : "linear-gradient(180deg, color-mix(in srgb, var(--wtf-inactive-title, #7a8aa4) 58%, #ffffff) 0%, var(--wtf-inactive-title, #7a8aa4) 100%)"};
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    justify-content: center;
+    background: ${(p) =>
+      p.$focused
+        ? "radial-gradient(circle at 50% 8%, rgba(255,255,255,0.88), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--wtf-active-title, #6aa2db) 34%, #ffffff), color-mix(in srgb, var(--wtf-active-title, #6aa2db) 72%, #000000))"
+        : "radial-gradient(circle at 50% 8%, rgba(255,255,255,0.62), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--wtf-inactive-title, #9a9a9a) 44%, #ffffff), var(--wtf-inactive-title, #9a9a9a))"};
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    border-bottom: 3px solid #000000;
+    text-transform: uppercase;
+    background: ${(p) =>
+      p.$focused
+        ? "linear-gradient(90deg, var(--wtf-active-title, #000080), color-mix(in srgb, var(--wtf-active-title, #000080) 70%, #000000))"
+        : "linear-gradient(90deg, var(--wtf-inactive-title, #808080), color-mix(in srgb, var(--wtf-inactive-title, #808080) 72%, #000000))"};
+  }
 
   &:active {
     cursor: grabbing;
   }
 `;
 
-const TrafficLights = styled.div`
+const WindowTitle = styled.div`
+  flex: 1;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-`;
-
-const TrafficLight = styled.span<{ $tone: "close" | "min" | "max" }>`
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.58);
-  background: ${(p) =>
-    p.$tone === "close"
-      ? "linear-gradient(180deg, #ff897c, #e23b31)"
-      : p.$tone === "min"
-        ? "linear-gradient(180deg, #ffe98d, #d9a51e)"
-        : "linear-gradient(180deg, #9df29c, #24a53d)"};
-  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.7);
-`;
-
-const WindowTitle = styled.div`
+  gap: 6px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--wtf-type-caption, 13px);
-  font-weight: 900;
-  text-align: center;
+  font-weight: inherit;
+
+  &::before {
+    content: var(--wtf-title-icon-content, "▣");
+    font-size: 13px;
+    line-height: 1;
+    color: currentColor;
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    position: absolute;
+    left: 50%;
+    max-width: calc(100% - 150px);
+    transform: translateX(-50%);
+    justify-content: center;
+
+    &::before {
+      display: none;
+    }
+  }
 `;
 
 const WindowControls = styled.div`
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  flex-shrink: 0;
   gap: 2px;
 `;
 
-const WindowControlButton = styled.button`
-  width: 24px;
-  min-width: 24px;
-  height: 22px;
-  border: 1px solid rgba(0, 0, 0, 0.55);
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.72);
-  color: #06135f;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  cursor: pointer;
-
-  &:hover {
-    background: #ffffff;
+const WindowControlButton = styled(Button)`
+  && {
+    padding: 0;
+    min-width: 32px;
+    width: 32px;
+    min-height: 32px;
+    height: 32px;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--wtf-control-radius, 0);
   }
 
-  &:active {
-    transform: translateY(1px);
+  html[data-wtf-appearance-style="wtf-aqua"] & {
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 0;
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] &:nth-child(1) {
+    background: #ff5f57;
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] &:nth-child(2) {
+    background: #ffbd2e;
+  }
+
+  html[data-wtf-appearance-style="wtf-aqua"] &:nth-child(3) {
+    background: #28c840;
+  }
+
+  html[data-wtf-appearance-style="wtf-zine"] & {
+    border: 2px solid #000000;
+    box-shadow: 2px 2px 0 #000000;
   }
 `;
 
@@ -883,12 +1015,214 @@ const Bubble = styled.div<{ $mine?: boolean }>`
   overflow-wrap: anywhere;
 `;
 
+const AttachmentGrid = styled.div`
+  display: grid;
+  gap: 6px;
+  margin-top: 7px;
+`;
+
+const AttachmentCard = styled.a`
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  max-width: 260px;
+  padding: 5px;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: rgba(255, 255, 255, 0.78);
+
+  &:hover {
+    background: #fff8c9;
+  }
+`;
+
+const AttachmentPreview = styled.div`
+  width: 54px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.36);
+  background: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+
+  img,
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const AttachmentTitle = styled.div`
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 900;
+`;
+
+const AttachmentMeta = styled.div`
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--wtf-app-muted-text, #4b557b);
+`;
+
+const ComposerShell = styled.div`
+  position: relative;
+  display: grid;
+  gap: 5px;
+  padding: 0 8px 8px;
+`;
+
+const FormatToolbar = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  padding: 5px;
+  border: 1px inset #ffffff;
+  background: linear-gradient(180deg, #f7f7f7, #d8d8d8);
+`;
+
+const FormatSelect = styled.select`
+  min-height: 30px;
+  max-width: 132px;
+  font: inherit;
+  color: var(--wim-ink);
+  background: #ffffff;
+  border: 2px inset #ffffff;
+`;
+
+const ColorSwatchInput = styled.input`
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 2px;
+  border: 2px outset #ffffff;
+  background: #ffffff;
+  cursor: pointer;
+`;
+
+const ToolbarButton = styled(IconButton)<{ $active?: boolean }>`
+  background: ${(p) => (p.$active ? "#dff7ff" : "var(--wtf-app-control-bg, #ffffff)")};
+  border-style: ${(p) => (p.$active ? "inset" : "outset")};
+`;
+
+const GifButtonText = styled.span`
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+`;
+
+const ComposerAttachmentTray = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+`;
+
+const AttachmentChip = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 3px 6px;
+  border: 1px solid #7498ae;
+  background: #dff7ff;
+  color: var(--wim-ink);
+  font: inherit;
+  font-size: var(--wtf-type-caption, 13px);
+  cursor: pointer;
+`;
+
+const ToolPicker = styled(Panel).attrs({ variant: "well" })`
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% - 6px);
+  z-index: 20;
+  display: grid;
+  gap: 7px;
+  max-height: 270px;
+  overflow: auto;
+  padding: 8px;
+  color: var(--wim-ink);
+  background: #fffef2;
+  box-shadow: 4px -4px 18px rgba(0, 0, 0, 0.22);
+`;
+
+const PickerRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+`;
+
+const PickerGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 6px;
+`;
+
+const PickerItem = styled.button`
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  min-height: 48px;
+  padding: 4px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--wim-ink);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: #fff8c9;
+  }
+`;
+
+const PickerPreview = styled.div`
+  width: 42px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.32);
+  background: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const ComposerTextArea = styled.textarea`
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  resize: vertical;
+  padding: 7px;
+  color: var(--wim-ink);
+  background: #ffffff;
+  border: 2px inset #ffffff;
+  font: inherit;
+`;
+
 const Composer = styled.form`
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px;
   align-items: center;
-  padding: 0 8px 8px;
+  padding: 0;
 
   @media (max-width: 520px) {
     grid-template-columns: 1fr;
@@ -1177,6 +1511,156 @@ function readDraggedConversation(event: ReactDragEvent<HTMLElement>): {
   };
 }
 
+function stringField(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function safeUrl(value: unknown): string | null {
+  const raw = stringField(value);
+  if (!raw) return null;
+  if (raw.startsWith("/")) return raw;
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" || url.protocol === "http:" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function safeHexColor(value: unknown, fallback = DEFAULT_WIM_MESSAGE_STYLE.color): string {
+  const raw = stringField(value);
+  return /^#[0-9a-f]{6}$/i.test(raw) ? raw : fallback;
+}
+
+function normalizeWimMessageStyle(value: unknown): WimMessageStyle {
+  const input = value && typeof value === "object" ? (value as Partial<WimMessageStyle>) : {};
+  const fontFamily = WIM_FONT_CHOICES.includes(input.fontFamily as (typeof WIM_FONT_CHOICES)[number])
+    ? String(input.fontFamily)
+    : DEFAULT_WIM_MESSAGE_STYLE.fontFamily;
+  const fontSize = WIM_FONT_SIZES.includes(Number(input.fontSize) as (typeof WIM_FONT_SIZES)[number])
+    ? Number(input.fontSize)
+    : DEFAULT_WIM_MESSAGE_STYLE.fontSize;
+  return {
+    fontFamily,
+    fontSize,
+    color: safeHexColor(input.color),
+    bold: Boolean(input.bold),
+    italic: Boolean(input.italic),
+    underline: Boolean(input.underline),
+  };
+}
+
+function normalizeWimAttachment(value: unknown): WimRichAttachment | null {
+  if (!value || typeof value !== "object") return null;
+  const input = value as Partial<WimRichAttachment>;
+  const kind = input.kind === "gif" || input.kind === "media" || input.kind === "token" ? input.kind : null;
+  const url = safeUrl(input.url);
+  if (!kind || !url) return null;
+  const previewUrl = safeUrl(input.previewUrl) ?? null;
+  return {
+    id: stringField(input.id) || `${kind}-${url}`,
+    kind,
+    title: stringField(input.title) || (kind === "gif" ? "GIF" : kind === "token" ? "Token" : "Media"),
+    url,
+    previewUrl,
+    provider:
+      input.provider === "giphy" || input.provider === "tenor" || input.provider === "wtfos"
+        ? input.provider
+        : "url",
+    mimeType: stringField(input.mimeType) || null,
+    mediaId: Number.isInteger(Number(input.mediaId)) ? Number(input.mediaId) : undefined,
+    tokenContract: stringField(input.tokenContract) || undefined,
+    tokenId: stringField(input.tokenId) || undefined,
+  };
+}
+
+function wimRichMetadataFromMessage(message: DmMessage): WimRichMetadata {
+  const raw = message.metadata?.wimRich;
+  const rich = raw && typeof raw === "object" ? (raw as Partial<WimRichMetadata>) : {};
+  return {
+    version: 1,
+    style: normalizeWimMessageStyle(rich.style),
+    attachments: Array.isArray(rich.attachments)
+      ? rich.attachments.map(normalizeWimAttachment).filter((item): item is WimRichAttachment => Boolean(item))
+      : [],
+  };
+}
+
+function cssPropertiesForWimStyle(style: WimMessageStyle): CSSProperties {
+  return {
+    fontFamily: style.fontFamily,
+    fontSize: `${style.fontSize}px`,
+    color: style.color,
+    fontWeight: style.bold ? 900 : 400,
+    fontStyle: style.italic ? "italic" : "normal",
+    textDecoration: style.underline ? "underline" : "none",
+  };
+}
+
+function mediaItemUrl(item: WimMediaItem): string | null {
+  if (item.sourceType === "upload") return `/api/media/${item.id}/file`;
+  return safeUrl(item.sourceUrl) ?? safeUrl(item.storageUrl);
+}
+
+function mediaItemTitle(item: WimMediaItem): string {
+  return stringField(item.title) || stringField(item.originalFilename) || `WTF media ${item.id}`;
+}
+
+function attachmentFromMediaItem(item: WimMediaItem): WimRichAttachment | null {
+  const url = mediaItemUrl(item);
+  if (!url) return null;
+  return {
+    id: `media-${item.id}`,
+    kind: "media",
+    title: mediaItemTitle(item),
+    url,
+    previewUrl: url,
+    provider: "wtfos",
+    mimeType: item.mimeType ?? null,
+    mediaId: item.id,
+  };
+}
+
+function tokenName(item: WimProfileToken): string {
+  return stringField(item.tokenName) || stringField(item.name) || `Token ${item.tokenId}`;
+}
+
+function tokenLink(item: WimProfileToken): string {
+  return `/token/${encodeURIComponent(item.tokenContract)}/${encodeURIComponent(item.tokenId)}`;
+}
+
+function attachmentFromToken(item: WimProfileToken): WimRichAttachment {
+  const preview = resolveTokenThumbnail({
+    thumbnail: item.thumbnail ?? undefined,
+    metadata: item.metadata as Record<string, any> | undefined,
+  });
+  return {
+    id: `token-${item.tokenContract}-${item.tokenId}`,
+    kind: "token",
+    title: tokenName(item),
+    url: tokenLink(item),
+    previewUrl: preview?.src ?? null,
+    provider: "wtfos",
+    tokenContract: item.tokenContract,
+    tokenId: item.tokenId,
+  };
+}
+
+function gifProviderFromUrl(url: string): WimRichAttachment["provider"] {
+  if (/giphy\.com|giphy\.gif/i.test(url)) return "giphy";
+  if (/tenor\.com|tenor\.co/i.test(url)) return "tenor";
+  return "url";
+}
+
+function openExternalGifSearch(provider: "giphy" | "tenor", search: string) {
+  const query = encodeURIComponent(search.trim() || "reaction");
+  const url =
+    provider === "giphy"
+      ? `https://giphy.com/search/${query}`
+      : `https://tenor.com/search/${query}-gifs`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 type ChatWindowPaneProps = {
   conversationId: number;
   conversation: DmConversation | null;
@@ -1193,17 +1677,54 @@ function ChatWindowPane({
   const qc = useQueryClient();
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const [content, setContent] = useState("");
+  const [messageStyle, setMessageStyle] = useState<WimMessageStyle>(DEFAULT_WIM_MESSAGE_STYLE);
+  const [attachments, setAttachments] = useState<WimRichAttachment[]>([]);
+  const [activePicker, setActivePicker] = useState<"gif" | "media" | "token" | null>(null);
+  const [gifSearch, setGifSearch] = useState("");
+  const [gifUrl, setGifUrl] = useState("");
   const messagesQuery = useQuery({
     queryKey: ["wim", "messages", conversationId],
     enabled: !!conversationId,
     queryFn: () => api.get<DmMessage[]>(`/api/messages/dms/${conversationId}/messages?limit=100`),
   });
+  const mediaQuery = useQuery({
+    queryKey: ["wim", "media-picker"],
+    enabled: activePicker === "media",
+    queryFn: () => api.get<WimMediaItem[]>("/api/media/mine"),
+  });
+  const tokenQuery = useQuery({
+    queryKey: ["wim", "token-picker"],
+    enabled: activePicker === "token",
+    queryFn: () =>
+      api.get<{ items: WimProfileToken[] }>("/api/profile/tokens?limit=36&sortBy=lastSeenAt&sortDir=desc"),
+  });
+  const plainMessageContent =
+    content.trim() ||
+    attachments
+      .map((attachment) => attachment.title)
+      .filter(Boolean)
+      .join(" ");
   const sendMutation = useMutation({
     mutationFn: () =>
-      api.post(`/api/messages/dms/${conversationId}/messages`, { content: content.trim() }),
+      api.post(`/api/messages/dms/${conversationId}/messages`, {
+        content: plainMessageContent,
+        messageType: "text",
+        metadata: {
+          wimRich: {
+            version: 1,
+            style: messageStyle,
+            attachments,
+          } satisfies WimRichMetadata,
+        },
+      }),
     onSuccess: () => {
-      reportWimEvent("wim.message.sent", conversationId, { messageLength: content.trim().length });
+      reportWimEvent("wim.message.sent", conversationId, {
+        messageLength: plainMessageContent.length,
+        richAttachmentCount: attachments.length,
+      });
       setContent("");
+      setAttachments([]);
+      setActivePicker(null);
       qc.invalidateQueries({ queryKey: ["wim", "messages", conversationId] });
       qc.invalidateQueries({ queryKey: ["wim", "conversations", "direct"] });
     },
@@ -1226,9 +1747,34 @@ function ChatWindowPane({
       : `Chat ${conversationId}`;
   const presence = peerUser ? presenceLabel(presenceStatusFor(peerUser)) : null;
   const submitMessage = () => {
-    if (!content.trim() || sendMutation.isPending) return;
+    if (!plainMessageContent || sendMutation.isPending) return;
     sendMutation.mutate();
   };
+  const addAttachment = (attachment: WimRichAttachment | null) => {
+    if (!attachment) return;
+    setAttachments((current) => {
+      if (current.some((item) => item.id === attachment.id)) return current;
+      return [...current, attachment].slice(-WIM_MAX_ATTACHMENTS);
+    });
+    setActivePicker(null);
+  };
+  const addGifUrl = () => {
+    const url = safeUrl(gifUrl);
+    if (!url) return;
+    addAttachment({
+      id: `gif-${Date.now()}`,
+      kind: "gif",
+      title: gifSearch.trim() || "GIF",
+      url,
+      previewUrl: url,
+      provider: gifProviderFromUrl(url),
+    });
+    setGifUrl("");
+  };
+  const toggleStyle = (key: "bold" | "italic" | "underline") => {
+    setMessageStyle((current) => ({ ...current, [key]: !current[key] }));
+  };
+  const composerTextStyle = cssPropertiesForWimStyle(messageStyle);
 
   return (
     <ChatPane>
@@ -1242,13 +1788,45 @@ function ChatWindowPane({
       <ChatLog ref={chatLogRef}>
         {(messagesQuery.data ?? []).map((message) => {
           const mine = message.senderId === currentUserId;
+          const rich = wimRichMetadataFromMessage(message);
+          const richStyle = cssPropertiesForWimStyle(rich.style);
           return (
             <Message key={message.id} $mine={mine}>
               <Meta>
                 {message.displayName || message.username || "WTF user"}
                 {shortTime(message.createdAt) ? ` at ${shortTime(message.createdAt)}` : ""}
               </Meta>
-              <Bubble $mine={mine}>{message.content}</Bubble>
+              <Bubble $mine={mine} style={richStyle}>
+                {message.content}
+                {rich.attachments.length ? (
+                  <AttachmentGrid>
+                    {rich.attachments.map((attachment) => (
+                      <AttachmentCard
+                        key={attachment.id}
+                        href={attachment.url}
+                        target={attachment.url.startsWith("/") ? undefined : "_blank"}
+                        rel={attachment.url.startsWith("/") ? undefined : "noreferrer"}
+                      >
+                        <AttachmentPreview>
+                          {attachment.previewUrl ? (
+                            attachment.mimeType?.startsWith("video/") ? (
+                              <video src={attachment.previewUrl} muted playsInline />
+                            ) : (
+                              <img src={attachment.previewUrl} alt="" loading="lazy" />
+                            )
+                          ) : (
+                            attachment.kind.toUpperCase()
+                          )}
+                        </AttachmentPreview>
+                        <div>
+                          <AttachmentTitle>{attachment.title}</AttachmentTitle>
+                          <AttachmentMeta>{attachment.kind === "gif" ? attachment.provider : attachment.kind}</AttachmentMeta>
+                        </div>
+                      </AttachmentCard>
+                    ))}
+                  </AttachmentGrid>
+                ) : null}
+              </Bubble>
             </Message>
           );
         })}
@@ -1260,25 +1838,219 @@ function ChatWindowPane({
           <UiEmptyState title="No messages in this chat yet">Ready for the first WIM message.</UiEmptyState>
         ) : null}
       </ChatLog>
-      <Composer
-        onSubmit={(event) => {
-          event.preventDefault();
-          submitMessage();
-        }}
-      >
-        <TextInput
-          aria-label="WIM message text"
-          value={content}
-          placeholder="Message"
-          onChange={(event: any) => setContent(event.target.value)}
-          disabled={sendMutation.isPending}
-          style={{ width: "100%" }}
-        />
-        <Button disabled={!content.trim() || sendMutation.isPending} type="submit">
-          <Send size={14} aria-hidden />
-          {sendMutation.isPending ? "Sending" : "Send WIM"}
-        </Button>
-      </Composer>
+      <ComposerShell>
+        <FormatToolbar aria-label="WIM message formatting toolbar">
+          <FormatSelect
+            aria-label="WIM font"
+            value={messageStyle.fontFamily}
+            onChange={(event) =>
+              setMessageStyle((current) => ({ ...current, fontFamily: event.target.value }))
+            }
+          >
+            {WIM_FONT_CHOICES.map((font) => (
+              <option key={font} value={font}>
+                {font}
+              </option>
+            ))}
+          </FormatSelect>
+          <FormatSelect
+            aria-label="WIM font size"
+            value={messageStyle.fontSize}
+            onChange={(event) =>
+              setMessageStyle((current) => ({ ...current, fontSize: Number(event.target.value) }))
+            }
+          >
+            {WIM_FONT_SIZES.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </FormatSelect>
+          <ColorSwatchInput
+            aria-label="WIM text color"
+            type="color"
+            value={messageStyle.color}
+            onChange={(event) =>
+              setMessageStyle((current) => ({ ...current, color: safeHexColor(event.target.value) }))
+            }
+          />
+          <ToolbarButton
+            type="button"
+            aria-label="Bold WIM text"
+            title="Bold"
+            data-compact-control="true"
+            $active={messageStyle.bold}
+            onClick={() => toggleStyle("bold")}
+          >
+            <Bold size={14} aria-hidden />
+          </ToolbarButton>
+          <ToolbarButton
+            type="button"
+            aria-label="Italic WIM text"
+            title="Italic"
+            data-compact-control="true"
+            $active={messageStyle.italic}
+            onClick={() => toggleStyle("italic")}
+          >
+            <Italic size={14} aria-hidden />
+          </ToolbarButton>
+          <ToolbarButton
+            type="button"
+            aria-label="Underline WIM text"
+            title="Underline"
+            data-compact-control="true"
+            $active={messageStyle.underline}
+            onClick={() => toggleStyle("underline")}
+          >
+            <Underline size={14} aria-hidden />
+          </ToolbarButton>
+          <ToolbarButton
+            type="button"
+            aria-label="Insert GIF"
+            title="GIF"
+            data-compact-control="true"
+            $active={activePicker === "gif"}
+            onClick={() => setActivePicker((current) => (current === "gif" ? null : "gif"))}
+          >
+            <GifButtonText>GIF</GifButtonText>
+          </ToolbarButton>
+          <ToolbarButton
+            type="button"
+            aria-label="Insert wtfOS media"
+            title="My media"
+            data-compact-control="true"
+            $active={activePicker === "media"}
+            onClick={() => setActivePicker((current) => (current === "media" ? null : "media"))}
+          >
+            <Image size={14} aria-hidden />
+          </ToolbarButton>
+          <ToolbarButton
+            type="button"
+            aria-label="Insert owned token link"
+            title="Token link"
+            data-compact-control="true"
+            $active={activePicker === "token"}
+            onClick={() => setActivePicker((current) => (current === "token" ? null : "token"))}
+          >
+            <Link2 size={14} aria-hidden />
+          </ToolbarButton>
+        </FormatToolbar>
+        {attachments.length ? (
+          <ComposerAttachmentTray>
+            {attachments.map((attachment) => (
+              <AttachmentChip
+                key={attachment.id}
+                type="button"
+                onClick={() => setAttachments((current) => current.filter((item) => item.id !== attachment.id))}
+                title="Remove attachment"
+              >
+                {attachment.kind.toUpperCase()} {attachment.title}
+                <X size={11} aria-hidden />
+              </AttachmentChip>
+            ))}
+          </ComposerAttachmentTray>
+        ) : null}
+        {activePicker === "gif" ? (
+          <ToolPicker aria-label="WIM GIF picker">
+            <PickerRow>
+              <TextInput
+                aria-label="GIF search"
+                value={gifSearch}
+                placeholder="Search GIFs"
+                onChange={(event: any) => setGifSearch(event.target.value)}
+                style={{ width: "100%" }}
+              />
+              <Button type="button" onClick={() => openExternalGifSearch("giphy", gifSearch)}>
+                GIPHY
+              </Button>
+            </PickerRow>
+            <PickerRow>
+              <TextInput
+                aria-label="GIF URL"
+                value={gifUrl}
+                placeholder="Paste GIPHY or Tenor GIF URL"
+                onChange={(event: any) => setGifUrl(event.target.value)}
+                style={{ width: "100%" }}
+              />
+              <Button type="button" onClick={addGifUrl} disabled={!safeUrl(gifUrl)}>
+                Insert
+              </Button>
+            </PickerRow>
+            <Button type="button" onClick={() => openExternalGifSearch("tenor", gifSearch)}>
+              Tenor
+            </Button>
+          </ToolPicker>
+        ) : null}
+        {activePicker === "media" ? (
+          <ToolPicker aria-label="WIM media picker">
+            {mediaQuery.isLoading ? <Hourglass size={18} /> : null}
+            {mediaQuery.isError ? <UiNotice tone="danger">Media failed to load.</UiNotice> : null}
+            <PickerGrid>
+              {(mediaQuery.data ?? []).slice(0, 18).map((item) => {
+                const attachment = attachmentFromMediaItem(item);
+                if (!attachment) return null;
+                return (
+                  <PickerItem key={item.id} type="button" onClick={() => addAttachment(attachment)}>
+                    <PickerPreview>
+                      {attachment.previewUrl ? <img src={attachment.previewUrl} alt="" loading="lazy" /> : "MEDIA"}
+                    </PickerPreview>
+                    <div>
+                      <AttachmentTitle>{attachment.title}</AttachmentTitle>
+                      <AttachmentMeta>{item.mediaCategory || "media"}</AttachmentMeta>
+                    </div>
+                  </PickerItem>
+                );
+              })}
+            </PickerGrid>
+          </ToolPicker>
+        ) : null}
+        {activePicker === "token" ? (
+          <ToolPicker aria-label="WIM token picker">
+            {tokenQuery.isLoading ? <Hourglass size={18} /> : null}
+            {tokenQuery.isError ? <UiNotice tone="danger">Tokens failed to load.</UiNotice> : null}
+            <PickerGrid>
+              {(tokenQuery.data?.items ?? []).slice(0, 18).map((item) => {
+                const attachment = attachmentFromToken(item);
+                return (
+                  <PickerItem
+                    key={`${item.tokenContract}-${item.tokenId}`}
+                    type="button"
+                    onClick={() => addAttachment(attachment)}
+                  >
+                    <PickerPreview>
+                      {attachment.previewUrl ? <img src={attachment.previewUrl} alt="" loading="lazy" /> : "KT"}
+                    </PickerPreview>
+                    <div>
+                      <AttachmentTitle>{attachment.title}</AttachmentTitle>
+                      <AttachmentMeta>{item.tokenId}</AttachmentMeta>
+                    </div>
+                  </PickerItem>
+                );
+              })}
+            </PickerGrid>
+          </ToolPicker>
+        ) : null}
+        <Composer
+          onSubmit={(event) => {
+            event.preventDefault();
+            submitMessage();
+          }}
+        >
+          <ComposerTextArea
+            aria-label="WIM message text"
+            value={content}
+            placeholder="Message"
+            onChange={(event) => setContent(event.target.value)}
+            disabled={sendMutation.isPending}
+            style={composerTextStyle}
+            rows={2}
+          />
+          <Button disabled={!plainMessageContent || sendMutation.isPending} type="submit">
+            <Send size={14} aria-hidden />
+            {sendMutation.isPending ? "Sending" : "Send WIM"}
+          </Button>
+        </Composer>
+      </ComposerShell>
       {sendMutation.isError ? (
         <UiNotice tone="danger">Message failed to send. Check the chat and try again.</UiNotice>
       ) : null}
@@ -2453,39 +3225,40 @@ export function Wim() {
           $focused={windowState.z === visibleTopZ}
           onPointerDown={(event) => startWindowDrag(event, windowState)}
         >
-          <TrafficLights aria-hidden>
-            <TrafficLight $tone="close" />
-            <TrafficLight $tone="min" />
-            <TrafficLight $tone="max" />
-          </TrafficLights>
           <WindowTitle>{title}</WindowTitle>
           <WindowControls>
             <WindowControlButton
+              size="sm"
               type="button"
               aria-label={`Minimize WIM ${title}`}
               title="Minimize"
+              data-compact-control="true"
               data-window-control="true"
               onClick={() => minimizeWindow(windowState.id)}
             >
-              <Minus size={13} aria-hidden />
+              _
             </WindowControlButton>
             <WindowControlButton
+              size="sm"
               type="button"
               aria-label={`${windowState.maximized ? "Restore" : "Maximize"} WIM ${title}`}
               title={windowState.maximized ? "Restore" : "Maximize"}
+              data-compact-control="true"
               data-window-control="true"
               onClick={() => toggleMaximizeWindow(windowState.id)}
             >
-              {windowState.maximized ? <Minimize2 size={13} aria-hidden /> : <Maximize2 size={13} aria-hidden />}
+              {windowState.maximized ? "❐" : "□"}
             </WindowControlButton>
             <WindowControlButton
+              size="sm"
               type="button"
               aria-label={`Close WIM ${title}`}
               title="Close"
+              data-compact-control="true"
               data-window-control="true"
               onClick={() => closeWindow(windowState.id)}
             >
-              <X size={13} aria-hidden />
+              ✕
             </WindowControlButton>
           </WindowControls>
         </WindowTitlebar>

@@ -21,6 +21,7 @@ const state = {
   groupchatRequestCount: 0,
   groupchatLog: [],
   interactionLog: [],
+  authUser: { id: 1, username: "wtf-admin", displayName: "WTF Admin" },
   skywirePostPayloads: [],
   skywireFollowPayloads: [],
   skywireChatEnabled: true,
@@ -33,6 +34,17 @@ const state = {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function defaultAuthUserForRole(role) {
+  if (role === "anonymous") return null;
+  if (role === "admin") return { id: 1, username: "wtf-admin", displayName: "WTF Admin" };
+  return { id: 2, username: "wtf-user", displayName: "WTF User" };
+}
+
+function currentAuthUser() {
+  if (state.userRole === "anonymous") return null;
+  return state.authUser || defaultAuthUserForRole(state.userRole);
 }
 
 function logRequest(req) {
@@ -55,6 +67,15 @@ app.post("/__test/state", (req, res) => {
   state.groupchatRequestCount = 0;
   state.groupchatLog = [];
   state.interactionLog = [];
+  const defaultAuthUser = defaultAuthUserForRole(state.userRole);
+  state.authUser = defaultAuthUser
+    ? {
+        ...defaultAuthUser,
+        id: Number.isInteger(Number(req.body?.userId)) ? Number(req.body.userId) : defaultAuthUser.id,
+        username: String(req.body?.username || defaultAuthUser.username),
+        displayName: String(req.body?.displayName || defaultAuthUser.displayName),
+      }
+    : null;
   state.skywirePostPayloads = [];
   state.skywireFollowPayloads = [];
   state.skywireChatEnabled = req.body?.skywireChatEnabled !== false;
@@ -64,7 +85,7 @@ app.post("/__test/state", (req, res) => {
   state.wtfLivePrivateMembers = [];
   state.wtfLiveOwnedStage = { id: "my-stage", title: "My Stage", kind: "stage", description: "Owned stage", liveUrl: "/live", source: "user", ownerUserId: 1, isPublic: true };
   resetHarnessMarketState();
-  res.json({ ok: true, state: { mode: state.mode, userRole: state.userRole, skywireChatEnabled: state.skywireChatEnabled, skywireHandle: state.skywireHandle } });
+  res.json({ ok: true, state: { mode: state.mode, userRole: state.userRole, authUser: state.authUser, skywireChatEnabled: state.skywireChatEnabled, skywireHandle: state.skywireHandle } });
 });
 
 app.get("/__test/state", (_req, res) => {
@@ -74,6 +95,7 @@ app.get("/__test/state", (_req, res) => {
     groupchatRequestCount: state.groupchatRequestCount,
     groupchatLog: state.groupchatLog,
     interactionLog: state.interactionLog,
+    authUser: state.authUser,
     skywirePostPayloads: state.skywirePostPayloads,
     skywireFollowPayloads: state.skywireFollowPayloads,
     skywireChatEnabled: state.skywireChatEnabled,
@@ -99,19 +121,37 @@ app.post("/__test/e2e/interaction", (req, res) => {
   res.json({ ok: Boolean(eventType), event });
 });
 
+app.post("/api/desktop/events", (req, res) => {
+  const eventType = String(req.body?.eventType || "desktop.object.clicked");
+  const authUser = currentAuthUser() || { id: 1 };
+  const event = {
+    id: `desktop_evt_${Date.now()}_${state.interactionLog.length}`,
+    eventType,
+    userId: authUser.id,
+    objectId: String(req.body?.objectId || "desktop"),
+    objectKind: String(req.body?.objectKind || "object"),
+    action: String(req.body?.action || "interact"),
+    metadata: req.body?.metadata || {},
+    timestamp: nowIso(),
+  };
+  state.interactionLog.push(event);
+  res.json({ ok: true, eventId: event.id });
+});
+
 // ── Auth ────────────────────────────────────────────────────────
 app.get("/api/auth/csrf-token", (_req, res) => {
   res.json({ csrfToken: "test-csrf-token" });
 });
 
 app.get("/api/auth/user", (_req, res) => {
-  if (state.userRole === "anonymous") {
+  const authUser = currentAuthUser();
+  if (!authUser) {
     return res.status(401).json({ error: "Not authenticated" });
   }
   res.json({
-    id: 1,
-    username: state.userRole === "admin" ? "wtf-admin" : "wtf-user",
-    displayName: state.userRole === "admin" ? "WTF Admin" : "WTF User",
+    id: authUser.id,
+    username: authUser.username,
+    displayName: authUser.displayName,
     role: state.userRole,
     twitterHandle: "wtf_admin",
     twitterVerified: true,
@@ -136,10 +176,11 @@ app.get("/api/auth/user", (_req, res) => {
 });
 
 app.post("/api/auth/welcome/complete", (_req, res) => {
+  const authUser = currentAuthUser() || defaultAuthUserForRole("admin");
   res.json({
-    id: 1,
-    username: state.userRole === "admin" ? "wtf-admin" : "wtf-user",
-    displayName: state.userRole === "admin" ? "WTF Admin" : "WTF User",
+    id: authUser.id,
+    username: authUser.username,
+    displayName: authUser.displayName,
     role: state.userRole,
     welcomedToWtfOs: true,
     welcomedToWtfOsAt: nowIso(),
@@ -152,10 +193,11 @@ app.post("/api/auth/welcome/complete", (_req, res) => {
 });
 
 app.post("/api/auth/gm-welcome/complete", (_req, res) => {
+  const authUser = currentAuthUser() || defaultAuthUserForRole("admin");
   res.json({
-    id: 1,
-    username: state.userRole === "admin" ? "wtf-admin" : "wtf-user",
-    displayName: state.userRole === "admin" ? "WTF Admin" : "WTF User",
+    id: authUser.id,
+    username: authUser.username,
+    displayName: authUser.displayName,
     role: state.userRole,
     welcomedToWtfOs: true,
     welcomedToWtfOsAt: "2026-01-01T00:00:00Z",
@@ -420,6 +462,33 @@ function makeHarnessMarketState() {
   return {
     sales: [],
     nextSaleId: 1,
+    nextTransferId: 2,
+    rewardWtfByUserId: { 1: 0, 2: 0 },
+    inventoryByUserId: {
+      1: {
+        "wtf-live-rose": 2,
+        "wtf-live-rubber-chicken": 1,
+      },
+      2: {},
+    },
+    tipTransfers: [
+      {
+        id: 1,
+        senderUserId: 2,
+        receiverUserId: 1,
+        sku: "wtf-live-rubber-chicken",
+        quantity: 1,
+        source: "wtf_live_tip",
+        sourceRoomId: "wtf-live",
+        note: null,
+        status: "completed",
+        metadata: { itemName: "Rubber Chicken", redeemWtf: 5 },
+        redeemedAt: null,
+        rewardLedgerId: null,
+        createdAt: "2026-06-09T00:00:00.000Z",
+        updatedAt: "2026-06-09T00:00:00.000Z",
+      },
+    ],
     items: [
       makeHarnessMarketItem({
         id: 1,
@@ -494,6 +563,102 @@ function makeHarnessMarketState() {
         priceScoreLocked: true,
         metadata: { kind: "desktop-vacuum", pricingRole: "rare-cleanup-tool" },
       }),
+      makeHarnessMarketItem({
+        id: 6,
+        sku: "wtf-live-rose",
+        name: "WTF LIVE Rose",
+        description: "A classic rose to throw on stage in WTF LIVE rooms.",
+        category: "wtf_live",
+        kind: "live-tip",
+        priceWtfWhole: 1,
+        priceExp: 10,
+        rarityTier: 1,
+        priceScore: 1,
+        priceWtfLocked: true,
+        priceScoreLocked: true,
+        stockQuantity: 999999,
+        metadata: { kind: "live-tip", surface: "wtf-live", tipItem: true, physicalItem: true, redeemWtf: 1, throwLabel: "Rose", animation: "toss-rose" },
+      }),
+      makeHarnessMarketItem({
+        id: 7,
+        sku: "wtf-live-pocket-change",
+        name: "Pocket Change",
+        description: "A handful of coins to drop into a busker guitar case.",
+        category: "wtf_live",
+        kind: "live-tip",
+        priceWtfWhole: 2,
+        priceExp: 20,
+        rarityTier: 1,
+        priceScore: 2,
+        priceWtfLocked: true,
+        priceScoreLocked: true,
+        stockQuantity: 999999,
+        metadata: { kind: "live-tip", surface: "wtf-live", tipItem: true, physicalItem: true, redeemWtf: 2, throwLabel: "Pocket Change", animation: "drop-coins" },
+      }),
+      makeHarnessMarketItem({
+        id: 8,
+        sku: "wtf-live-rubber-chicken",
+        name: "Rubber Chicken",
+        description: "A ridiculous rubber chicken to fling onto the stage.",
+        category: "wtf_live",
+        kind: "live-tip",
+        priceWtfWhole: 5,
+        priceExp: 50,
+        rarityTier: 1,
+        priceScore: 5,
+        priceWtfLocked: true,
+        priceScoreLocked: true,
+        stockQuantity: 999999,
+        metadata: { kind: "live-tip", surface: "wtf-live", tipItem: true, physicalItem: true, redeemWtf: 5, throwLabel: "Rubber Chicken", animation: "fling-rubber-chicken" },
+      }),
+      makeHarnessMarketItem({
+        id: 9,
+        sku: "wtf-live-jalapeno",
+        name: "Jalapeno",
+        description: "A spicy pepper to toss on stage when the set gets hot.",
+        category: "wtf_live",
+        kind: "live-tip",
+        priceWtfWhole: 10,
+        priceExp: 100,
+        rarityTier: 1,
+        priceScore: 10,
+        priceWtfLocked: true,
+        priceScoreLocked: true,
+        stockQuantity: 999999,
+        metadata: { kind: "live-tip", surface: "wtf-live", tipItem: true, physicalItem: true, redeemWtf: 10, throwLabel: "Jalapeno", animation: "toss-jalapeno" },
+      }),
+      makeHarnessMarketItem({
+        id: 10,
+        sku: "wtf-live-flaming-heart",
+        name: "Flaming Heart",
+        description: "A blazing heart to toss when a performer sets the room on fire.",
+        category: "wtf_live",
+        kind: "live-tip",
+        priceWtfWhole: 25,
+        priceExp: 250,
+        rarityTier: 1,
+        priceScore: 25,
+        priceWtfLocked: true,
+        priceScoreLocked: true,
+        stockQuantity: 999999,
+        metadata: { kind: "live-tip", surface: "wtf-live", tipItem: true, physicalItem: true, redeemWtf: 25, throwLabel: "Flaming Heart", animation: "throw-flaming-heart" },
+      }),
+      makeHarnessMarketItem({
+        id: 11,
+        sku: "wtf-live-pauls-panties",
+        name: "Paul's Panties",
+        description: "A cursed laundry drop to fling onto the stage when the room gets weird.",
+        category: "wtf_live",
+        kind: "live-tip",
+        priceWtfWhole: 69,
+        priceExp: 690,
+        rarityTier: 1,
+        priceScore: 69,
+        priceWtfLocked: true,
+        priceScoreLocked: true,
+        stockQuantity: 999999,
+        metadata: { kind: "live-tip", surface: "wtf-live", tipItem: true, physicalItem: true, redeemWtf: 69, throwLabel: "Paul's Panties", animation: "fling-pauls-panties" },
+      }),
     ],
   };
 }
@@ -540,6 +705,31 @@ function serializeHarnessMarketItem(item, { admin = false } = {}) {
     suggestedPriceWtfUnits: item.priceWtfUnits,
     suggestedPriceWtfFormatted: item.priceWtfFormatted,
     pricingDriftWholeWtf: 0,
+  };
+}
+
+function harnessUserById(userId) {
+  if (Number(userId) === 1) return { id: 1, username: "wtf-admin", displayName: "WTF Admin" };
+  if (Number(userId) === 2) return { id: 2, username: "wim-online", displayName: "WIM Online" };
+  if (Number(userId) === 3) return { id: 3, username: "wim-away", displayName: "WIM Away" };
+  return null;
+}
+
+function harnessInventoryQuantity(userId, sku) {
+  return Number(marketState.inventoryByUserId?.[userId]?.[sku] ?? 0);
+}
+
+function setHarnessInventoryQuantity(userId, sku, quantity) {
+  marketState.inventoryByUserId[userId] = marketState.inventoryByUserId[userId] ?? {};
+  marketState.inventoryByUserId[userId][sku] = Math.max(0, Number(quantity) || 0);
+}
+
+function serializeHarnessTipTransfer(transfer) {
+  const item = marketState.items.find((candidate) => candidate.sku === transfer.sku);
+  return {
+    ...transfer,
+    name: item?.name ?? transfer.sku,
+    redeemWtf: Number(item?.metadata?.redeemWtf ?? transfer.metadata?.redeemWtf ?? 0),
   };
 }
 
@@ -1711,10 +1901,28 @@ function apiMock(req, res) {
     return res.json({ visitors: [], activity: { activeNeighborCount: 0 } });
   }
   if (pathName === "/api/in-app-market" && req.method === "GET") {
+    const authUser = currentAuthUser() || { id: 1 };
     const category = url.searchParams.get("category");
     const items = marketState.items
       .filter((item) => item.active && (!category || item.category === category))
-      .map((item) => serializeHarnessMarketItem(item));
+      .map((item) => ({
+        ...serializeHarnessMarketItem(item),
+        quantityOwned: harnessInventoryQuantity(authUser.id, item.sku),
+      }));
+    const inventory = Object.entries(marketState.inventoryByUserId?.[authUser.id] ?? {})
+      .filter(([_sku, quantity]) => Number(quantity) > 0)
+      .map(([sku, quantity]) => ({
+        sku,
+        quantity,
+        metadata: { source: "harness" },
+        updatedAt: nowIso(),
+      }));
+    const tipTransfers =
+      category === "wtf_live"
+        ? marketState.tipTransfers
+            .filter((transfer) => transfer.receiverUserId === authUser.id || transfer.senderUserId === authUser.id)
+            .map(serializeHarnessTipTransfer)
+        : [];
     return res.json({
       config: {
         configured: true,
@@ -1723,9 +1931,16 @@ function apiMock(req, res) {
         network: "inventory-harness",
       },
       items,
-      inventory: [],
-      balances: { exp: 1000, wtf: 100 },
+      inventory,
+      balances: { exp: 1000, rewardWtf: marketState.rewardWtfByUserId?.[authUser.id] ?? 0 },
       purchases: [],
+      tipLedger:
+        category === "wtf_live"
+          ? {
+              received: tipTransfers.filter((transfer) => transfer.receiverUserId === authUser.id),
+              sent: tipTransfers.filter((transfer) => transfer.senderUserId === authUser.id),
+            }
+          : undefined,
     });
   }
   if (pathName === "/api/in-app-market/intents" && req.method === "POST") {
@@ -1757,6 +1972,85 @@ function apiMock(req, res) {
         routerListingId: 0,
         expiresAt: "2026-05-08T00:30:00.000Z",
       },
+    });
+  }
+  if (pathName === "/api/in-app-market/tips" && req.method === "POST") {
+    const sender = currentAuthUser();
+    if (!sender) return res.status(401).json({ error: "Not authenticated" });
+    const receiver = harnessUserById(req.body?.receiverUserId);
+    if (!receiver || receiver.id === sender.id) {
+      return res.status(400).json({ error: "Choose another WTF LIVE user to tip" });
+    }
+    const sku = String(req.body?.sku || "");
+    const item = marketState.items.find((candidate) => candidate.sku === sku && candidate.category === "wtf_live");
+    if (!item) return res.status(404).json({ error: "That item cannot be used as a WTF LIVE tip" });
+    const quantity = Math.max(1, Math.min(10, Number(req.body?.quantity) || 1));
+    const owned = harnessInventoryQuantity(sender.id, sku);
+    if (owned < quantity) {
+      return res.status(409).json({ error: "You do not own that WTF LIVE tip item", reason: "not_owned" });
+    }
+    setHarnessInventoryQuantity(sender.id, sku, owned - quantity);
+    setHarnessInventoryQuantity(receiver.id, sku, harnessInventoryQuantity(receiver.id, sku) + quantity);
+    const now = nowIso();
+    const transfer = {
+      id: marketState.nextTransferId++,
+      senderUserId: sender.id,
+      receiverUserId: receiver.id,
+      sku,
+      quantity,
+      source: "wtf_live_tip",
+      sourceRoomId: req.body?.roomId ? String(req.body.roomId) : null,
+      note: req.body?.note ? String(req.body.note) : null,
+      status: "completed",
+      metadata: {
+        itemName: item.name,
+        redeemWtf: Number(item.metadata?.redeemWtf ?? 0),
+        senderUsername: sender.username,
+        receiverUsername: receiver.username,
+      },
+      redeemedAt: null,
+      rewardLedgerId: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    marketState.tipTransfers.push(transfer);
+    return res.status(201).json({
+      ok: true,
+      transfer: serializeHarnessTipTransfer(transfer),
+      item: { sku: item.sku, name: item.name, redeemWtf: Number(item.metadata?.redeemWtf ?? 0) },
+      receiver,
+      senderRemainingQuantity: harnessInventoryQuantity(sender.id, sku),
+    });
+  }
+  if (pathName === "/api/in-app-market/tips/redeem" && req.method === "POST") {
+    const user = currentAuthUser();
+    if (!user) return res.status(401).json({ error: "Not authenticated" });
+    const transferId = Number(req.body?.transferId);
+    const transfer = marketState.tipTransfers.find((candidate) => candidate.id === transferId && candidate.receiverUserId === user.id);
+    if (!transfer) return res.status(404).json({ error: "Tip transfer was not found", reason: "transfer_not_found" });
+    if (transfer.redeemedAt || transfer.status === "redeemed") {
+      return res.status(409).json({ error: "That WTF LIVE tip was already redeemed", reason: "already_redeemed" });
+    }
+    const item = marketState.items.find((candidate) => candidate.sku === transfer.sku);
+    const owned = harnessInventoryQuantity(user.id, transfer.sku);
+    if (owned < transfer.quantity) {
+      return res.status(409).json({ error: "You no longer have that WTF LIVE tip item in inventory", reason: "not_owned" });
+    }
+    const amountWtf = Number(item?.metadata?.redeemWtf ?? 0) * transfer.quantity;
+    const rewardLedgerId = 9000 + transfer.id;
+    setHarnessInventoryQuantity(user.id, transfer.sku, owned - transfer.quantity);
+    marketState.rewardWtfByUserId[user.id] = (marketState.rewardWtfByUserId[user.id] ?? 0) + amountWtf;
+    transfer.status = "redeemed";
+    transfer.redeemedAt = nowIso();
+    transfer.rewardLedgerId = rewardLedgerId;
+    transfer.updatedAt = transfer.redeemedAt;
+    transfer.metadata = { ...transfer.metadata, rewardLedgerId, amountWtf };
+    return res.json({
+      ok: true,
+      transfer: serializeHarnessTipTransfer(transfer),
+      rewardLedgerId,
+      amountWtf,
+      remainingQuantity: harnessInventoryQuantity(user.id, transfer.sku),
     });
   }
   if (pathName === "/api/seasons") return res.json([sampleSeason]);
@@ -3378,6 +3672,8 @@ const server = app.listen(PORT, () => {
 const livePeers = new Map();
 const liveWss = new WebSocketServer({ server, path: "/ws/wtf-live" });
 const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(512 * 1024 * 1.4);
+const LIVE_CHAT_FONTS = new Set(["system", "serif", "mono", "pixel"]);
+const LIVE_CHAT_COLORS = new Set(["ink", "blue", "green", "red", "purple", "amber"]);
 
 function liveSend(ws, payload) {
   if (ws.readyState !== WebSocket.OPEN) return;
@@ -3391,14 +3687,43 @@ function liveBroadcast(roomId, payload, excludeWs = null) {
   }
 }
 
+function liveIdentityForGuestName(displayName) {
+  const normalized = String(displayName || "").trim().replace(/^@/, "").toLowerCase();
+  const authUser = currentAuthUser();
+  if (
+    authUser &&
+    [authUser.username, authUser.displayName].some((value) =>
+      String(value || "").trim().replace(/^@/, "").toLowerCase() === normalized
+    )
+  ) {
+    return { userId: authUser.id, username: authUser.username, isWtfUser: true };
+  }
+  const knownUsers = new Map([
+    ["wtf-admin", { userId: 1, username: "wtf-admin", isWtfUser: true }],
+    ["wtf admin", { userId: 1, username: "wtf-admin", isWtfUser: true }],
+    ["wim-online", { userId: 2, username: "wim-online", isWtfUser: true }],
+    ["wim online", { userId: 2, username: "wim-online", isWtfUser: true }],
+    ["wim-away", { userId: 3, username: "wim-away", isWtfUser: true }],
+    ["wim away", { userId: 3, username: "wim-away", isWtfUser: true }],
+  ]);
+  return knownUsers.get(normalized) || { userId: null, username: null, isWtfUser: false };
+}
+
+function livePeerPayload(client) {
+  return {
+    peerId: client.peerId,
+    guestName: client.guestName,
+    userId: client.userId,
+    username: client.username,
+    isWtfUser: client.isWtfUser,
+    mediaState: client.mediaState,
+  };
+}
+
 function liveSnapshot(roomId, excludeWs) {
   return [...livePeers]
     .filter(([ws, client]) => ws !== excludeWs && client.roomId === roomId)
-    .map(([_ws, client]) => ({
-      peerId: client.peerId,
-      guestName: client.guestName,
-      mediaState: client.mediaState,
-    }));
+    .map(([_ws, client]) => livePeerPayload(client));
 }
 
 function liveRoomPresence(roomId) {
@@ -3438,12 +3763,30 @@ function liveNormalizeMediaState(value) {
   };
 }
 
+function liveNormalizeChatStyle(value) {
+  const style = value && typeof value === "object" ? value : {};
+  const rawSize = Number(style.size);
+  const size = Number.isFinite(rawSize) ? Math.min(14, Math.max(8, Math.round(rawSize))) : 12;
+  const font = String(style.font || "");
+  const color = String(style.color || "");
+  return {
+    font: LIVE_CHAT_FONTS.has(font) ? font : "system",
+    color: LIVE_CHAT_COLORS.has(color) ? color : "ink",
+    size,
+    bold: Boolean(style.bold),
+    italic: Boolean(style.italic),
+  };
+}
+
 liveWss.on("connection", (ws) => {
   const client = {
     ws,
     peerId: `peer_${randomUUID().replace(/-/g, "").slice(0, 18)}`,
     roomId: null,
     guestName: "guest",
+    userId: null,
+    username: null,
+    isWtfUser: false,
 	    mediaState: { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null },
   };
   livePeers.set(ws, client);
@@ -3460,8 +3803,13 @@ liveWss.on("connection", (ws) => {
 
     if (message.type === "wtf_live_join_room") {
       const roomId = String(message.roomId || "wtf-live").trim() || "wtf-live";
+      const requestedName = String(message.guestName || "guest").trim() || "guest";
+      const identity = liveIdentityForGuestName(requestedName);
       client.roomId = roomId;
-      client.guestName = String(message.guestName || "guest").trim() || "guest";
+      client.userId = identity.userId;
+      client.username = identity.username;
+      client.isWtfUser = identity.isWtfUser;
+      client.guestName = identity.username || requestedName;
       client.mediaState = liveNormalizeMediaState(message.mediaState);
       liveSend(ws, {
         type: "wtf_live_room_snapshot",
@@ -3474,11 +3822,7 @@ liveWss.on("connection", (ws) => {
         {
           type: "wtf_live_peer_joined",
           roomId,
-          peer: {
-            peerId: client.peerId,
-            guestName: client.guestName,
-            mediaState: client.mediaState,
-          },
+          peer: livePeerPayload(client),
         },
         ws,
       );
@@ -3492,6 +3836,9 @@ liveWss.on("connection", (ws) => {
         roomId: client.roomId,
         peerId: client.peerId,
         guestName: client.guestName,
+        userId: client.userId,
+        username: client.username,
+        isWtfUser: client.isWtfUser,
         mediaState: client.mediaState,
       });
       return;
@@ -3515,6 +3862,7 @@ liveWss.on("connection", (ws) => {
     if (message.type === "wtf_live_chat_message" && client.roomId) {
       const text = String(message.text || "").trim().slice(0, 1200);
       const attachments = Array.isArray(message.attachments) ? message.attachments.slice(0, 4) : [];
+      const style = liveNormalizeChatStyle(message.style);
       liveBroadcast(client.roomId, {
         type: "wtf_live_chat_message",
         roomId: client.roomId,
@@ -3523,6 +3871,7 @@ liveWss.on("connection", (ws) => {
           peerId: client.peerId,
           guestName: client.guestName,
           text,
+          style,
           attachments,
           createdAt: new Date().toISOString(),
         },

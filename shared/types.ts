@@ -10,7 +10,8 @@ export const WTF_TOKEN = {
 } as const;
 
 export const WTF_IN_APP_MARKET_CONTRACT =
-  "KT1JYEAg9FSC6mY9KHNR7Z7kpHpwsDnjKkKE";
+  "KT1FN2bwYAffC2VgmSNs76DiPkSwZurbBoHR";
+export const WTF_IN_APP_MARKET_CONTRACT_VERSION = "v2";
 
 export const WTF_CASINO_MEMBERSHIP = {
   feeMutez: 1_000_000,
@@ -800,6 +801,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
 export const RPC_URLS: Record<string, string> = {
   mainnet: "https://rpc.tzkt.io/mainnet",
   ghostnet: "https://rpc.ghostnet.teztnets.com",
+  shadownet: "https://rpc.shadownet.teztnets.com",
 };
 
 // ---------------------------------------------------------------------------

@@ -58,6 +58,10 @@ Priority labels:
 | WTF-BB-224 | Verified | Codex WTF LIVE focus pass | 2026-06-09 | WTF LIVE / mobile rooms, private access, and stage controls | P1 | 13 | 6 | 4 | 5 | 0 | WTF LIVE now has mobile-visible join/media controls, desktop chat/attendance pop-outs, owned stage lifecycle controls, and a separate WTF-user private room type with an access list; verified by TypeScript, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-225 | Verified | Codex WTF LIVE chat keyboard pass | 2026-06-09 | WTF LIVE / room chat keyboard UX | P2 | 9 | 12 | 2 | 4 | 0 | WTF LIVE room chat now submits with Enter and keeps Shift+Enter for multiline drafts; verified by focused failing/passing Playwright, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-226 | Fixed | Codex Roger Radio full-send repair | 2026-06-10 | WTF TV / boot backfill external embed seed | P1 | 9 | 12 | 1 | 4 | 0 | Roger Radio live channel was created in production but the Odysee playlist item stayed empty because the boot backfill fed an uncast embed URL parameter into `jsonb_build_object`; fixed with explicit text casts plus a policy guard, pending production redeploy verification |
+| WTF-BB-229 | Verified | Codex WTF LIVE WIM identity pass | 2026-06-09 | WTF LIVE / wtfOS identity and WIM buddies | P2 | 10 | 10 | 3 | 4 | 0 | WTF LIVE now binds signed-in room joins to wtfOS usernames, emits account-backed attendance metadata, and lets signed-in viewers add WTF users to WIM buddies from compact roster rows |
+| WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 7 | 15 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
+| WTF-BB-231 | Verified | Codex WTF LIVE mobile layout repair | 2026-06-10 | WTF LIVE / mobile Chrome room layout | P1 | 12 | 7 | 3 | 5 | 0 | WTF LIVE public room mobile breakpoint now uses a deliberate mobile scroll shell and stacked rail/stage/sidebar layout; verified by 390/375/360px Chrome-style probes, in-app Browser 375px metrics, focused WTF LIVE Playwright, TypeScript, inventory coverage, and full inventory E2E |
+| WTF-BB-232 | Verified | Codex in-app market V2 full-send fallback repair | 2026-06-10 | Tezos / in-app market contract rollout | P0 | 15 | 2 | 3 | 5 | 2 | Mainnet production had no in-app market env override, so the app could fall back to the V2 KT1 address while still defaulting the payload contract version to V1; fixed by coupling shared address and version defaults and verified by TypeScript, focused policy tests, inventory coverage, and full inventory E2E |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -293,6 +297,29 @@ Priority labels:
   - Passed `npm run test:e2e:inventory:coverage`.
   - `npm run test:e2e:inventory` was attempted after the repair; all WTF TV route/workflow/subdomain checks passed, while unrelated social/reward automation timed out and `/swap` had a transient resource-block console error. Targeted `/swap` rerun passed; the social/reward timeout is outside this TV channel repair.
 
+### WTF-BB-232 - Mainnet in-app market V2 address fallback can still use V1 payloads
+
+- Category: Tezos / in-app market contract rollout
+- Status: Verified
+- Owner/Session: Codex in-app market V2 full-send fallback repair
+- Score: C3 + F5 + S2 + P0(5) = 15
+- Evidence:
+  - Host production `.env` and `/etc/wtf/wtf.env` did not define `IN_APP_MARKET_CONTRACT_ADDRESS`, `VITE_IN_APP_MARKET_CONTRACT_ADDRESS`, `IN_APP_MARKET_CONTRACT_VERSION`, or `VITE_IN_APP_MARKET_CONTRACT_VERSION`.
+  - Source fallback had already rotated `WTF_IN_APP_MARKET_CONTRACT` to mainnet V2 `KT1FN2bwYAffC2VgmSNs76DiPkSwZurbBoHR`.
+  - The client and server still defaulted the mainnet in-app market contract version to `v1` when env omitted version overrides.
+- Why it matters:
+  - A wallet purchase can point at the correct KT1 while building the wrong entrypoint payload shape. For economic contract calls, address and ABI/version are one rollout unit.
+- Correction:
+  - Added `WTF_IN_APP_MARKET_CONTRACT_VERSION = "v2"` beside the shared KT1 fallback.
+  - Updated client purchase signing and server TzKT verification config to default to V2 whenever the active fallback address is the mainnet V2 KT1, while preserving explicit env overrides and old-contract V1 fallback behavior for non-V2 addresses.
+  - Added a source policy test proving the mainnet V2 fallback carries V2 payload version on both client and server paths.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npx tsx --test server/features/tv/media-urls.test.ts server/features/wtf-sites/policy.test.ts server/lib/tv-boot-backfill-roger-policy.test.ts server/lib/contract-config.test.ts server/lib/wtf-token-config.test.ts server/lib/in-app-market-policy.test.ts server/lib/tzkt-ops.test.ts client/src/lib/tezos/wallet-shadownet-preflight-policy.test.ts scripts/kiln/e2e-assertions.test.ts`, including the new mainnet V2 fallback-version assertion.
+  - Passed `node --test scripts/kiln/e2e-assertion-policy.test.mjs client/src/pages/Wim.test.ts`.
+  - Passed `npm run test:e2e:inventory`, 300/300.
+
 ### WTF-BB-215 - New Skywire OAuth connections to Bluesky fail while existing sessions continue working
 
 - Category: Skywire / AT OAuth new-session connect
@@ -414,6 +441,7 @@ Priority labels:
   - Kiln Shadownet deployment passed for exchange `KT1UTYBkXLWm6JDqFhEJmfeDmbZcK1avQGZF`, bound to Kiln WTF FA2 `KT1L5m2ohNDhbzSbRcitn1LaMmGf7jhDbVGj`.
   - `npm run contract:e2e:wtf-xtz:shadownet` passed through Kiln puppet wallets: wallet A/admin/listing owner `tz1aXPHYxQrXmsDigEJKDF7PyB8FvUTtGyfn`, wallet B/taker `tz1gQyc3ZrMtg1ztDvpS2okyUH2yvoKsFnL4`, 13/13 steps passed, 8/8 entrypoints covered, storage/balance/big-map assertion kinds passed, paused swap rejected with `PAUSED`, stale output rejected with `XTZ_OUT_MISMATCH`, overfill rejected with `INSUFFICIENT_ESCROW`, and final exchange XTZ balance was `0` after owner cancellation.
   - Final local verification passed: `npm run contract:test:wtf-xtz`, `npx tsx --test scripts/kiln/e2e-assertions.test.ts`, `npm run check`, `npm run test:e2e:inventory:coverage`, and `git diff --check`.
+  - 2026-06-09 mainnet reconfiguration pass: `npm run contract:prepare:wtf-xtz:mainnet` now verifies real mainnet WTF FA2 `KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD` token id `0` through TzKT (`symbol=WTF`, `decimals=8`) and writes `.agents/docs/archive/contracts/wtf-xtz-exchange/mainnet-readiness-report.md`; the run correctly blocked with `MAINNET_ADMIN_ADDRESS is required for final mainnet storage generation`.
   - No mainnet deployment or pause transaction was attempted.
 
 ### WTF-BB-224 - WTF LIVE needs mobile controls, private rooms, and owned stage lifecycle
@@ -473,6 +501,66 @@ Priority labels:
   - `npm run test:e2e:inventory:coverage` passed with `ok: true`, 156 inventory rows, 718 handles, 95 route fixtures, and 15 domain workflows.
   - `npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs` passed, 8/8.
   - `npm run test:e2e:inventory` passed, 294/294.
+
+### WTF-BB-229 - WTF LIVE signed-in attendance lacks wtfOS identity and WIM buddy actions
+
+- Category: WTF LIVE / wtfOS identity and WIM buddies
+- Status: Verified
+- Owner/Session: Codex WTF LIVE WIM identity pass
+- Score: C3 + F4 + S0 + P2(3) = 10
+- Evidence:
+  - User report on 2026-06-09: logged-in WTF LIVE participants should join rooms as their wtfOS account, attendance should show their WTF username, and signed-in viewers should be able to add other WTF users to WIM buddies from attendance.
+  - Current WTF LIVE WebSocket join handling accepts the client-provided `guestName` and stores it as the active socket username, even when the socket was authenticated.
+  - Attendance rows currently use multi-line card-like entries, making the roster inefficient as a live registry.
+- Why it matters:
+  - WTF LIVE identity should be bound to the authenticated wtfOS session so room attendance cannot silently drift away from account identity.
+  - WIM is the platform buddy layer; live rooms should make account-to-account follow-up simple without exposing buddy controls to guests.
+- Likely correction direction:
+  - Preserve authenticated socket identity on room join, emit user metadata in WTF LIVE peer payloads, and keep guest display names only for unauthenticated visitors.
+  - Add a compact single-line attendance row that shows WTF usernames for account-backed peers and conditionally offers a WIM add-buddy action only to signed-in viewers.
+- Verification idea:
+  - Extend the focused WTF LIVE inventory Playwright spec and harness to cover account-backed attendance names, compact row height, signed-in-only WIM buddy actions, and the WIM friend localStorage contract; rerun TypeScript plus inventory coverage.
+- Resolution:
+  - WTF LIVE WebSocket joins now preserve authenticated session identity instead of overwriting the socket username with client-provided display names.
+  - Room peer snapshots, join events, and media-state events now include `userId`, `username`, and `isWtfUser` metadata for account-backed attendees.
+  - The room UI shows signed-in users as their wtfOS username, keeps guest display-name entry for anonymous public links, renders attendance as compact single-line registry rows, and exposes WIM add-buddy controls only to signed-in viewers for other account-backed attendees.
+  - The WIM shortcut writes to the existing `wtf:wim:friends:<viewerUserId>` browser-local friend list and emits best-effort `wim.friend.added` desktop telemetry.
+  - Updated the Playwright harness, interaction inventory, domain workflow registry, behavior assertions, and admin surface registry for the cross-app WTF LIVE/WIM behavior.
+- Verification:
+  - `npm run check -- --pretty false` passed.
+  - `npm run test:e2e:inventory:coverage` passed with `ok: true`, 156 inventory rows, 718 handles, 95 route fixtures, 15 domain workflows, and 35 core behavior assertions.
+  - `npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs` initially exposed expected anonymous-auth 401 console noise in guest-mode tests after the auth-aware change; the test filter now treats that deliberate `/api/auth/user` probe as non-fatal.
+  - `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs` passed, 9/9.
+  - `npm run test:e2e:inventory` passed, 295/295.
+
+### WTF-BB-230 - WTF LIVE chat needs a compact style toolbox
+
+- Category: WTF LIVE / room chat style controls
+- Status: Verified
+- Owner/Session: Codex WTF LIVE chat toolbox pass
+- Score: C2 + F2 + S0 + P3(3) = 7
+- Evidence:
+  - User report on 2026-06-09: room chat should have a small single-row toolbox for changing font, color, and basic settings, with font size locked to readable 8-14 values.
+  - Current room chat sends only plain text and attachments; users cannot set a readable chat style without external formatting.
+- Why it matters:
+  - Live chat should support light expressive formatting without taking over the room layout or letting arbitrary client-supplied CSS into the realtime message stream.
+- Likely correction direction:
+  - Add a compact one-row chat toolbox with a small font menu, 8-14 font-size choices, color swatches, and basic emphasis toggles.
+  - Normalize style payloads on both the client and WTF LIVE WebSocket path so relayed messages only contain known fonts, known colors, bounded sizes, and boolean emphasis flags.
+- Verification idea:
+  - Extend the focused WTF LIVE inventory Playwright spec to set chat style, submit a message through realtime transport, and verify another participant receives styled text while the size control exposes only 8-14 options.
+- Resolution:
+  - Added a compact single-row WTF LIVE chat toolbox with font, 8-14 size, color swatches, bold, italic, and reset controls.
+  - Added client-side chat style persistence and preview rendering in the composer, plus styled rendering for relayed live chat messages in docked and popped-out chat panels.
+  - Added server and Playwright harness style normalization so realtime chat messages only relay known font/color keys, clamped 8-14 sizes, and boolean emphasis flags.
+  - Updated interaction inventory docs, the domain workflow registry, behavior assertions, and the admin surface registry for `wtf_live.room.chat_style_changed`.
+- Verification:
+  - `npm run check -- --pretty false` passed.
+  - `npm run test:e2e:inventory:coverage` passed with `ok: true`, 156 inventory rows, 719 handles, 95 route fixtures, 15 domain workflows, and 36 core behavior assertions.
+  - `npm run build` passed.
+  - `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs` passed, 9/9, after shrinking the themed toolbar from 46px to a capped 36px row.
+  - `npm run test:e2e:inventory` ran after the fix; WTF LIVE passed inside the full suite and the suite ended 294/295 because `/trade-boards` hit a transient `dist/public/index.html` 404 resource read unrelated to WTF LIVE. The exact failed route then passed with `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Trade boards/barter"`.
+  - `git diff --check` passed.
 
 ### WTF-BB-214 - Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login
 
@@ -2541,6 +2629,7 @@ Priority labels:
   - `bash scripts/test-in-app-market-contract.sh` passes and reports `Compiled in-app market Michelson size: 1048 bytes`.
   - `npm run check`; `npm run build`; `git diff --check`.
   - `npm run contract:deploy:in-app-market:kiln` still blocks without `KILN_API_TOKEN`, but the report now records the compact local artifact size in `docs/wtf-in-app-market/shadownet-kiln-run.md`.
+  - 2026-06-10 V2 mainnet rotation: wallet-originated in-app market V2 `KT1FN2bwYAffC2VgmSNs76DiPkSwZurbBoHR`; TzKT storage confirms `version=wtf-in-app-market-v2`, treasury `tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt`, WTF FA2 `KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD`, token id `0`. Local `.env`, `.env.example`, shared fallback, inventory docs, and behavior assertions were updated to V2.
 - Verification idea:
   - With a Kiln token, rerun the Shadownet workflow and confirm Shadowbox no longer raises the 200 KB source limit warning.
 

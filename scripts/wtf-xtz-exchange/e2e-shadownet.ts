@@ -155,6 +155,7 @@ async function main(): Promise<void> {
       "create_listing",
       await exchangeAsOwner.methodsObject
         .create_listing({
+          escrow_mutez: escrowMutez.toString(),
           rate_numerator_mutez: rateNumeratorMutez.toString(),
           rate_denominator_wtf_units: rateDenominatorWtfUnits.toString(),
         })
@@ -167,14 +168,21 @@ async function main(): Promise<void> {
     assertEq(toBigIntValue(listing.remaining_escrow_mutez), escrowMutez, "remaining escrow after create");
 
     const takerBalanceBeforeSwap = await taker.tezos.tz.getBalance(taker.address);
+    const firstXtzOut = (firstFillWtf * rateNumeratorMutez) / rateDenominatorWtfUnits;
     await confirm(
       "first_swap",
       await exchangeAsTaker.methodsObject
-        .swap({ listing_id: 0, wtf_amount: firstFillWtf.toString() })
+        .swap({
+          listing_id: 0,
+          wtf_amount: firstFillWtf.toString(),
+          expected_owner: owner.address,
+          expected_rate_numerator_mutez: rateNumeratorMutez.toString(),
+          expected_rate_denominator_wtf_units: rateDenominatorWtfUnits.toString(),
+          expected_xtz_out_mutez: firstXtzOut.toString(),
+        })
         .send(),
       hashes,
     );
-    const firstXtzOut = (firstFillWtf * rateNumeratorMutez) / rateDenominatorWtfUnits;
     listing = await getListing(exchangeAsOwner, 0);
     assertEq(
       toBigIntValue(listing.remaining_escrow_mutez),
@@ -190,14 +198,21 @@ async function main(): Promise<void> {
       );
     }
 
+    const secondXtzOut = (secondFillWtf * rateNumeratorMutez) / rateDenominatorWtfUnits;
     await confirm(
       "second_swap_partial_fill",
       await exchangeAsTaker.methodsObject
-        .swap({ listing_id: 0, wtf_amount: secondFillWtf.toString() })
+        .swap({
+          listing_id: 0,
+          wtf_amount: secondFillWtf.toString(),
+          expected_owner: owner.address,
+          expected_rate_numerator_mutez: rateNumeratorMutez.toString(),
+          expected_rate_denominator_wtf_units: rateDenominatorWtfUnits.toString(),
+          expected_xtz_out_mutez: secondXtzOut.toString(),
+        })
         .send(),
       hashes,
     );
-    const secondXtzOut = (secondFillWtf * rateNumeratorMutez) / rateDenominatorWtfUnits;
     listing = await getListing(exchangeAsOwner, 0);
     assertEq(
       toBigIntValue(listing.remaining_escrow_mutez),

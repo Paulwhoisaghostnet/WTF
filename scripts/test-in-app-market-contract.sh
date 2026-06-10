@@ -35,11 +35,13 @@ find "$BUILD_DIR/dummy-wtf-fa2" -name '*.tz' -print0 | while IFS= read -r -d '' 
   LC_ALL=C perl -0pi -e 's/[ \t]*#.*//g; s/^[ \t]+//mg; s/[ \t]+$//mg; s/\n{2,}/\n/g' "$file"
 done
 
-MARKET_CODE="$(find "$BUILD_DIR/market" -name '*_contract.tz' -print | sort | tail -n 1)"
-if [[ -n "$MARKET_CODE" ]]; then
-  MARKET_BYTES="$(wc -c < "$MARKET_CODE" | tr -d ' ')"
-  echo "Compiled in-app market Michelson size: ${MARKET_BYTES} bytes"
-fi
+for SCENARIO in deploy_wtf_in_app_market_v2_template deploy_wtf_in_app_redemption_escrow_template; do
+  CODE_FILE="$(find "$BUILD_DIR/market/$SCENARIO" -name '*_contract.tz' -print | sort | tail -n 1)"
+  if [[ -n "$CODE_FILE" ]]; then
+    CODE_BYTES="$(wc -c < "$CODE_FILE" | tr -d ' ')"
+    echo "Compiled ${SCENARIO} Michelson size: ${CODE_BYTES} bytes"
+  fi
+done
 
 echo
 echo "WTF in-app market tests and compile completed."

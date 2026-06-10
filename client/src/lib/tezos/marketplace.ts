@@ -1,8 +1,8 @@
 import { getTezos } from "./wallet";
-import { WTF_TOKEN } from "@shared/types";
 import { trackContractActivity } from "./activity-ledger";
 import { toNatString, type NatInput } from "./nat";
 import { assertNetworkReadyForSend } from "./preflight";
+import { getClientWtfToken } from "./wtf-token";
 
 const MARKETPLACE_CONTRACT = (
   import.meta.env.VITE_MARKETPLACE_CONTRACT_ADDRESS || ""
@@ -180,26 +180,27 @@ export async function approveMarketplaceForToken(
 
 export async function approveMarketplaceForWtf(owner: string) {
   const contractAddress = requireMarketplaceContract();
+  const wtfToken = getClientWtfToken();
   return trackContractActivity(
     {
       module: "marketplace",
       action: "approve_marketplace_for_wtf",
-      contractAddress: WTF_TOKEN.contract,
+      contractAddress: wtfToken.contract,
       entrypoint: "update_operators",
       walletAddress: owner,
       params: {
         owner,
         operator: contractAddress,
-        tokenContract: WTF_TOKEN.contract,
-        tokenId: WTF_TOKEN.tokenId,
+        tokenContract: wtfToken.contract,
+        tokenId: wtfToken.tokenId,
       },
     },
     () =>
       setFa2Operator(
-        WTF_TOKEN.contract,
+        wtfToken.contract,
         owner,
         contractAddress,
-        WTF_TOKEN.tokenId
+        wtfToken.tokenId
       )
   );
 }

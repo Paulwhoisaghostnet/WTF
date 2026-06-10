@@ -5,7 +5,7 @@
 
 import { sql } from "drizzle-orm";
 import { db } from "../db";
-import { WTF_TOKEN } from "@shared/types";
+import { getServerWtfToken } from "./wtf-token-config";
 
 export type GameLayerStats = {
   /** Rows in wallet_holdings with numeric balance &gt; 0. */
@@ -25,8 +25,9 @@ function firstCount(result: unknown): number {
 }
 
 export async function getUserGameLayerStats(userId: number): Promise<GameLayerStats> {
-  const wtfContract = WTF_TOKEN.contract;
-  const wtfTokenId = String(WTF_TOKEN.tokenId);
+  const wtfToken = getServerWtfToken();
+  const wtfContract = wtfToken.contract;
+  const wtfTokenId = String(wtfToken.tokenId);
 
   const hold = await db.execute(sql`
     SELECT COUNT(*)::int AS c

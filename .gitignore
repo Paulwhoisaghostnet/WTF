@@ -31,6 +31,7 @@ Screenshot *.png
 .npm-cache/
 build/
 .cache/
+.tmp/
 .cursor/
 .continue/
 .agents/*

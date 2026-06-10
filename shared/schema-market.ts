@@ -262,6 +262,46 @@ export const inAppInventoryItems = pgTable(
   ]
 );
 
+export const inAppInventoryTransfers = pgTable(
+  "in_app_inventory_transfers",
+  {
+    id: serial("id").primaryKey(),
+    senderUserId: integer("sender_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    receiverUserId: integer("receiver_user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    sku: varchar("sku", { length: 80 }).notNull(),
+    quantity: integer("quantity").default(1).notNull(),
+    source: varchar("source", { length: 40 }).default("wtf_live_tip").notNull(),
+    sourceRoomId: varchar("source_room_id", { length: 80 }),
+    note: text("note"),
+    status: varchar("status", { length: 24 }).default("completed").notNull(),
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`).notNull(),
+    redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
+    rewardLedgerId: integer("reward_ledger_id"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("in_app_inventory_transfers_receiver_idx").on(
+      table.receiverUserId,
+      table.createdAt
+    ),
+    index("in_app_inventory_transfers_sender_idx").on(
+      table.senderUserId,
+      table.createdAt
+    ),
+    index("in_app_inventory_transfers_redeem_idx").on(
+      table.receiverUserId,
+      table.status,
+      table.redeemedAt
+    ),
+    index("in_app_inventory_transfers_sku_idx").on(table.sku),
+  ]
+);
+
 export const inAppMarketSyncState = pgTable("in_app_market_sync_state", {
   key: varchar("key", { length: 80 }).primaryKey(),
   lastTransferId: bigint("last_transfer_id", { mode: "number" })

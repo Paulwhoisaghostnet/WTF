@@ -12,6 +12,10 @@ const behaviorAssertions = readFileSync(
   "tests/e2e/inventory/behavior-assertions.mjs",
   "utf8"
 );
+const adminSurfaceRegistry = readFileSync(
+  "client/src/features/admin-os/admin-surface-registry.ts",
+  "utf8"
+);
 const retiredMessengerNamePattern = new RegExp(`\\bA${"im"}\\b|\\ba${"im"}\\b|/a${"im"}`);
 const retiredMessengerInventoryPattern = new RegExp(`/a${"im"}|A${"IM"}`);
 
@@ -44,6 +48,11 @@ test("WIM roster is user-driven and keeps Studio rooms out of buddies", () => {
   assert.match(wimSource, /pointer-events: none !important/);
   assert.match(wimSource, /DesktopConversationDropLayer/);
   assert.match(wimSource, /data-wim-drop-layer="conversation"/);
+  assert.doesNotMatch(wimSource, /TrafficLights|TrafficLight/);
+  assert.match(wimSource, /const WindowControlButton = styled\(Button\)/);
+  assert.match(wimSource, /--wtf-window-color/);
+  assert.match(wimSource, /--wtf-titlebar-height/);
+  assert.match(wimSource, /data-compact-control="true"/);
   assert.doesNotMatch(wimSource, retiredMessengerNamePattern);
 });
 
@@ -64,6 +73,7 @@ test("WIM friend list and unread popups are browser-local and covered by invento
   assert.match(inventory, /active, inactive\/away, or offline/);
   assert.match(inventory, /desktop-level buddy-list widget/);
   assert.match(inventory, /without a containing WIM AppWindow/);
+  assert.match(inventory, /system appearance-owned window controls/);
   assert.match(inventory, /in-place popup/);
   assert.match(inventory, /custom buddy lists/);
   assert.match(inventory, /combine multiple conversations as tabs/);
@@ -85,4 +95,49 @@ test("WIM interior chrome follows desktop appearance styles", () => {
   for (const style of ["wtf-xp", "wtf-aqua", "wtf-zine"]) {
     assert.match(wimSource, new RegExp(`data-wtf-appearance-style="${style}"`));
   }
+});
+
+test("WIM conversations carry classic rich composer metadata and inserts", () => {
+  for (const expected of [
+    "WIM_FONT_CHOICES",
+    "Helvetica",
+    "Times New Roman",
+    "Comic Sans MS",
+    "WIM_FONT_SIZES",
+    "DEFAULT_WIM_MESSAGE_STYLE",
+    "WIM_MAX_ATTACHMENTS",
+    "WimRichMetadata",
+    "cssPropertiesForWimStyle",
+    "normalizeWimMessageStyle",
+    "wimRich",
+    "metadata",
+    "Bold WIM text",
+    "Italic WIM text",
+    "Underline WIM text",
+    "Insert GIF",
+    "Insert wtfOS media",
+    "Insert owned token link",
+    "WIM message formatting toolbar",
+    "WIM GIF picker",
+    "WIM media picker",
+    "WIM token picker",
+    "GIPHY",
+    "Tenor",
+    "giphy.com/search",
+    "tenor.com/search",
+    "/api/media/mine",
+    "/api/profile/tokens?limit=36&sortBy=lastSeenAt&sortDir=desc",
+    "/token/",
+    "resolveTokenThumbnail",
+  ]) {
+    assert.match(wimSource, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+
+  assert.match(inventory, /font family, font size, text color, bold, italic, and underline/);
+  assert.match(inventory, /GIPHY\/Tenor GIF/);
+  assert.match(inventory, /wtfOS My Media/);
+  assert.match(inventory, /owned\/created token links/);
+  assert.match(adminSurfaceRegistry, /classic IM-style rich text composer/);
+  assert.match(adminSurfaceRegistry, /GIPHY\/Tenor GIF insert handoff/);
+  assert.match(behaviorAssertions, /rich WIM composer/);
 });

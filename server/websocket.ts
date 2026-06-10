@@ -27,6 +27,24 @@ const MAX_WTF_LIVE_AVATAR_BYTES = 512 * 1024;
 const MAX_WTF_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_AVATAR_BYTES * 1.4);
 const MAX_WTF_LIVE_SIGNAL_LENGTH = 256 * 1024;
 const WTF_LIVE_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "video/mp4"]);
+const WTF_LIVE_CHAT_FONTS = new Set(["system", "serif", "mono", "pixel"]);
+const WTF_LIVE_CHAT_COLORS = new Set(["ink", "blue", "green", "red", "purple", "amber"]);
+
+type WtfLiveChatStyle = {
+  font: string;
+  color: string;
+  size: number;
+  bold: boolean;
+  italic: boolean;
+};
+
+const DEFAULT_WTF_LIVE_CHAT_STYLE: WtfLiveChatStyle = {
+  font: "system",
+  color: "ink",
+  size: 12,
+  bold: false,
+  italic: false,
+};
 
 type WtfLiveMediaState = {
   mic: boolean;
@@ -35,6 +53,15 @@ type WtfLiveMediaState = {
   screen: boolean;
   activeVideo: "camera" | "screen" | null;
   avatarUrl: string | null;
+};
+
+type WtfLivePeerPayload = {
+  peerId: string | undefined;
+  guestName: string;
+  userId: number | null;
+  username: string | null;
+  isWtfUser: boolean;
+  mediaState: WtfLiveMediaState;
 };
 
 export type WtfLiveRoomPresence = {
@@ -300,14 +327,43 @@ function normalizeWtfLiveChatAttachments(value: unknown) {
   });
 }
 
+function normalizeWtfLiveChatStyle(value: unknown): WtfLiveChatStyle {
+  const style = typeof value === "object" && value ? value as Record<string, unknown> : {};
+  const rawSize = Number(style.size);
+  const size = Number.isFinite(rawSize)
+    ? Math.min(14, Math.max(8, Math.round(rawSize)))
+    : DEFAULT_WTF_LIVE_CHAT_STYLE.size;
+  const font = String(style.font || "");
+  const color = String(style.color || "");
+  return {
+    font: WTF_LIVE_CHAT_FONTS.has(font) ? font : DEFAULT_WTF_LIVE_CHAT_STYLE.font,
+    color: WTF_LIVE_CHAT_COLORS.has(color) ? color : DEFAULT_WTF_LIVE_CHAT_STYLE.color,
+    size,
+    bold: Boolean(style.bold),
+    italic: Boolean(style.italic),
+  };
+}
+
+function wtfLivePeerDisplayName(client: WsClient): string {
+  return client.wtfLiveGuestName || (client.userId > 0 ? client.username : "guest") || "guest";
+}
+
+function wtfLivePeerPayload(client: WsClient): WtfLivePeerPayload {
+  const isWtfUser = client.userId > 0;
+  return {
+    peerId: client.wtfLivePeerId,
+    guestName: wtfLivePeerDisplayName(client),
+    userId: isWtfUser ? client.userId : null,
+    username: isWtfUser ? client.username : null,
+    isWtfUser,
+    mediaState: client.wtfLiveMediaState || { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null },
+  };
+}
+
 function snapshotWtfLivePeers(roomId: string, exclude?: WsClient) {
   return [...clients]
     .filter((client) => client.wtfLiveRoomId === roomId && client !== exclude && client.wtfLivePeerId)
-    .map((client) => ({
-      peerId: client.wtfLivePeerId,
-      guestName: client.wtfLiveGuestName || client.username || "guest",
-      mediaState: client.wtfLiveMediaState || { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null },
-    }));
+    .map((client) => wtfLivePeerPayload(client));
 }
 
 export function setupWebSocket(server: Server) {
@@ -434,8 +490,9 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
       if (client.wtfLiveRoomId && client.wtfLiveRoomId !== roomId) {
         leaveWtfLiveRoom(client);
       }
-      const guestName = normalizeWtfLiveGuestName(msg.guestName);
-      client.username = guestName;
+      const guestName = client.userId > 0
+        ? client.username
+        : normalizeWtfLiveGuestName(msg.guestName);
       client.wtfLiveGuestName = guestName;
       client.wtfLiveRoomId = roomId;
       client.wtfLiveMediaState = normalizeWtfLiveMediaState(msg.mediaState);
@@ -451,11 +508,7 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         {
           type: "wtf_live_peer_joined",
           roomId,
-          peer: {
-            peerId: client.wtfLivePeerId,
-            guestName,
-            mediaState: client.wtfLiveMediaState,
-          },
+          peer: wtfLivePeerPayload(client),
         },
         client
       );
@@ -474,7 +527,10 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         type: "wtf_live_media_state",
         roomId: client.wtfLiveRoomId,
         peerId: client.wtfLivePeerId,
-        guestName: client.wtfLiveGuestName || client.username,
+        guestName: wtfLivePeerDisplayName(client),
+        userId: client.userId > 0 ? client.userId : null,
+        username: client.userId > 0 ? client.username : null,
+        isWtfUser: client.userId > 0,
         mediaState: client.wtfLiveMediaState,
       });
       break;
@@ -506,6 +562,7 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
       if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
       const text = String(msg.text || "").trim().slice(0, MAX_WTF_LIVE_CHAT_TEXT_LENGTH);
       const attachments = normalizeWtfLiveChatAttachments(msg.attachments);
+      const style = normalizeWtfLiveChatStyle(msg.style);
       if (!text && attachments.length === 0) {
         sendJson(client.ws, { type: "error", message: "Message text or media is required" });
         return;
@@ -516,8 +573,9 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         message: {
           id: `live_${Date.now()}_${randomUUID().replace(/-/g, "").slice(0, 10)}`,
           peerId: client.wtfLivePeerId,
-          guestName: client.wtfLiveGuestName || client.username || "guest",
+          guestName: wtfLivePeerDisplayName(client),
           text,
+          style,
           attachments,
           createdAt: new Date().toISOString(),
         },
@@ -854,7 +912,7 @@ function leaveWtfLiveRoom(client: WsClient) {
   if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
   const roomId = client.wtfLiveRoomId;
   const peerId = client.wtfLivePeerId;
-  const guestName = client.wtfLiveGuestName || client.username || "guest";
+  const guestName = wtfLivePeerDisplayName(client);
   client.wtfLiveRoomId = undefined;
   client.wtfLiveMediaState = { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null };
   broadcastToWtfLiveRoom(

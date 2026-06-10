@@ -16,6 +16,12 @@ interface ImportMetaEnv {
   // section 2 (build context warning) and section 10 (Plan D).
   readonly VITE_MARKETPLACE_CONTRACT_ADDRESS: string;
   readonly VITE_BARTER_CONTRACT_ADDRESS: string;
+  readonly VITE_TEZOS_NETWORK?: string;
+  readonly VITE_WTF_TOKEN_CONTRACT?: string;
+  readonly VITE_WTF_TOKEN_ID?: string;
+  readonly VITE_IN_APP_MARKET_CONTRACT_ADDRESS?: string;
+  readonly VITE_IN_APP_MARKET_CONTRACT_VERSION?: string;
+  readonly VITE_IN_APP_REDEMPTION_CONTRACT_ADDRESS?: string;
   readonly VITE_ETHERLINK_NETWORK?: string;
 }
 

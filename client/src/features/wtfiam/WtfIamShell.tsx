@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { GroupBox, Hourglass } from "react95";
+import { Button, GroupBox, Hourglass } from "react95";
 import styled from "styled-components";
 import { api } from "../../lib/api";
 import {
@@ -14,7 +14,7 @@ import { WtfIamCartPanel } from "./WtfIamCartPanel";
 import { WtfIamItemCard } from "./WtfIamItemCard";
 import { WtfIamTabs } from "./WtfIamTabs";
 import { useWtfIamMarket } from "./useWtfIamMarket";
-import type { InAppMarketIntentResponse, WtfIamCategoryKey } from "./types";
+import type { InAppMarketIntentResponse, InAppMarketTipTransfer, WtfIamCategoryKey } from "./types";
 
 const Shell = styled.div`
   min-height: 100%;
@@ -122,6 +122,48 @@ const CountPill = styled.span<{ $tone?: "live" | "staged" }>`
   font-weight: 700;
 `;
 
+const TipLedgerBox = styled.div`
+  margin-top: 12px;
+  border: 2px inset #808080;
+  background: #eee7ce;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+  font-size: var(--wtf-type-caption, 13px);
+`;
+
+const TipLedgerHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 900;
+`;
+
+const TipLedgerRows = styled.div`
+  display: grid;
+  gap: 6px;
+`;
+
+const TipLedgerRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #91866a;
+  background: #f8f2d9;
+  padding: 6px;
+
+  strong,
+  span {
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 620px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
 export function WtfIamShell() {
   const [activeCategory, setActiveCategory] =
     useState<WtfIamCategoryKey>(initialCategoryFromUrl);
@@ -189,6 +231,11 @@ export function WtfIamShell() {
         listingId: intentResponse.intent.routerListingId,
         amountWtfUnits: intentResponse.intent.subtotalWtfUnits,
         purchaseRef: intentResponse.intent.purchaseRef,
+        contractVersion: intentResponse.intent.contractVersion,
+        cartHash: intentResponse.intent.cartHash,
+        expectedTreasuryAddress: intentResponse.intent.expectedTreasuryAddress,
+        expectedWtfTokenContract: intentResponse.intent.expectedWtfTokenContract,
+        expectedWtfTokenId: intentResponse.intent.expectedWtfTokenId,
       });
       setCheckoutMessage("Verifying purchase...");
       await api.post("/api/in-app-market/verify", { opHash });
@@ -206,6 +253,24 @@ export function WtfIamShell() {
     },
     onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : "Checkout failed.";
+      setCheckoutMessage("");
+      setCheckoutError(message);
+    },
+  });
+  const redeemTipMutation = useMutation({
+    mutationFn: (transferId: number) =>
+      api.post<{ ok: true; amountWtf: number }>("/api/in-app-market/tips/redeem", {
+        transferId,
+      }),
+    onSuccess: (result) => {
+      setCheckoutError("");
+      setCheckoutMessage(`Tip redeemed for ${result.amountWtf} earned WTF.`);
+      qc.invalidateQueries({ queryKey: ["wtfiam", "wtf_live"] });
+      qc.invalidateQueries({ queryKey: ["rewards-account"] });
+      qc.invalidateQueries({ queryKey: ["in-app-market"] });
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : "Tip redemption failed.";
       setCheckoutMessage("");
       setCheckoutError(message);
     },
@@ -247,16 +312,29 @@ export function WtfIamShell() {
           ) : market.listings.length === 0 ? (
             <Empty>No listings</Empty>
           ) : (
-            <ListingGrid>
-              {market.listings.map((item) => (
-                <WtfIamItemCard
-                  key={item.sku}
-                  item={item}
-                  quantity={market.cart[item.sku] ?? 0}
-                  onChangeTicket={market.changeTicket}
+            <>
+              <ListingGrid>
+                {market.listings.map((item) => (
+                  <WtfIamItemCard
+                    key={item.sku}
+                    item={item}
+                    quantity={market.cart[item.sku] ?? 0}
+                    onChangeTicket={market.changeTicket}
+                  />
+                ))}
+              </ListingGrid>
+              {activeCategory === "wtf_live" ? (
+                <TipLedger
+                  transfers={market.tipLedger.received}
+                  busyTransferId={
+                    redeemTipMutation.isPending
+                      ? Number(redeemTipMutation.variables ?? 0)
+                      : null
+                  }
+                  onRedeem={(transferId) => redeemTipMutation.mutate(transferId)}
                 />
-              ))}
-            </ListingGrid>
+              ) : null}
+            </>
           )}
         </ListingsBox>
 
@@ -277,6 +355,60 @@ export function WtfIamShell() {
         />
       </Layout>
     </Shell>
+  );
+}
+
+function TipLedger({
+  transfers,
+  busyTransferId,
+  onRedeem,
+}: {
+  transfers: InAppMarketTipTransfer[];
+  busyTransferId: number | null;
+  onRedeem: (transferId: number) => void;
+}) {
+  const received = transfers.slice(0, 12);
+  return (
+    <TipLedgerBox data-wtfiam-tip-ledger>
+      <TipLedgerHeader>
+        <span>Received WTF LIVE tips</span>
+        <span>{received.length}</span>
+      </TipLedgerHeader>
+      {!received.length ? (
+        <span>No received tips yet.</span>
+      ) : (
+        <TipLedgerRows>
+          {received.map((transfer) => {
+            const alreadyRedeemed = Boolean(transfer.redeemedAt || transfer.rewardLedgerId);
+            const amountWtf = Math.max(0, Number(transfer.redeemWtf || 0) * transfer.quantity);
+            return (
+              <TipLedgerRow
+                key={transfer.id}
+                data-wtfiam-tip-transfer={transfer.id}
+                data-wtfiam-tip-status={alreadyRedeemed ? "redeemed" : "available"}
+              >
+                <div>
+                  <strong>{transfer.quantity} x {transfer.name}</strong>
+                  <span>
+                    {" "}from user {transfer.senderUserId ?? "unknown"}
+                    {transfer.sourceRoomId ? ` in ${transfer.sourceRoomId}` : ""}
+                    {amountWtf > 0 ? ` · ${amountWtf} WTF` : ""}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  disabled={alreadyRedeemed || busyTransferId === transfer.id}
+                  onClick={() => onRedeem(transfer.id)}
+                  data-wtfiam-tip-redeem={transfer.id}
+                >
+                  {alreadyRedeemed ? "Redeemed" : busyTransferId === transfer.id ? "Redeeming" : "Redeem Tip"}
+                </Button>
+              </TipLedgerRow>
+            );
+          })}
+        </TipLedgerRows>
+      )}
+    </TipLedgerBox>
   );
 }
 

@@ -13,10 +13,11 @@ const root = path.resolve(__dirname, "..", "..");
 const docsDir = path.join(root, ".agents", "docs", "archive", "contracts", "wtf-in-app-market");
 const apiBase = (process.env.KILN_API_URL ?? "https://kiln.wtfgameshow.app").replace(/\/$/, "");
 const networkId = process.env.KILN_NETWORK_ID ?? "tezos-shadownet";
-const kilnToken = process.env.KILN_API_TOKEN;
+const kilnToken = process.env.KILN_API_TOKEN ?? process.env.API_AUTH_TOKEN;
 const mintAmountWtfUnits = "100000000000";
 const purchaseAmountWtfUnits = "2500000000";
 const purchaseStepLabel = "Buyer purchases pet medicine";
+const purchaseCartHash = "3".repeat(64);
 
 type ApiResult = {
   status: number;
@@ -96,11 +97,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const health = await api("GET", "/api/health", undefined, undefined);
-  const paymentTokenAddress =
-    typeof health.json?.tokens?.bronze === "string"
-      ? health.json.tokens.bronze
-      : dummyWtfAddress;
+  const paymentTokenAddress = dummyWtfAddress;
 
   const balances = await api("GET", `/api/kiln/balances?networkId=${networkId}`);
   if (!balances.ok) {
@@ -143,6 +140,7 @@ async function main(): Promise<void> {
     mintAmountWtfUnits,
     purchaseAmountWtfUnits,
     purchaseStepLabel,
+    expectedVersion: "wtf-in-app-market-v2",
   });
   const payload = {
     networkId,
@@ -193,6 +191,10 @@ async function main(): Promise<void> {
             listing_id: 1,
             amount_wtf_units: purchaseAmountWtfUnits,
             purchase_ref: purchaseRef,
+            cart_hash: purchaseCartHash,
+            expected_treasury: walletAAddress,
+            expected_wtf_token_address: dummyWtfAddress,
+            expected_wtf_token_id: "0",
           },
         ],
         assertions,
@@ -227,9 +229,31 @@ async function main(): Promise<void> {
             listing_id: 1,
             amount_wtf_units: "2500000000",
             purchase_ref: `${purchaseRef}-xtz`,
+            cart_hash: purchaseCartHash,
+            expected_treasury: walletAAddress,
+            expected_wtf_token_address: dummyWtfAddress,
+            expected_wtf_token_id: "0",
           },
         ],
         amountMutez: 1,
+        expectFailure: true,
+      },
+      {
+        label: "Reject purchase with wrong expected token",
+        wallet: "B",
+        targetContractId: "in_app_market",
+        entrypoint: "purchase",
+        args: [
+          {
+            listing_id: 1,
+            amount_wtf_units: "2500000000",
+            purchase_ref: `${purchaseRef}-wrong-token`,
+            cart_hash: "4".repeat(64),
+            expected_treasury: walletAAddress,
+            expected_wtf_token_address: marketAddress,
+            expected_wtf_token_id: "0",
+          },
+        ],
         expectFailure: true,
       },
     ],

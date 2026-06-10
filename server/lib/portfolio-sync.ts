@@ -9,7 +9,7 @@ import { tokenMetadata, userWallets, walletHoldings } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getOwnedFa2TokensPage, getTokenBalance } from "../tzkt";
 import type { OwnedFa2Token } from "../tzkt";
-import { WTF_TOKEN } from "@shared/types";
+import { getServerWtfToken } from "./wtf-token-config";
 
 function upsertMetadataFromToken(token: OwnedFa2Token): Record<string, unknown> {
   const meta = (token.metadata && typeof token.metadata === "object")
@@ -156,9 +156,9 @@ export async function syncWalletPortfolioFromTzkt(
   // Belt-and-suspenders: some wallets hold WTF but the TzKT /tokens/balances
   // FA2 page may not include it on every request (caching or sort window).
   // We top up the holding row using the real KT1 contract address + token_id
-  // so downstream analytics always have a row keyed to the authoritative
-  // Tezos FA2 contract (KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD:0) — never a
-  // synthetic string like "WTF".
+  // so downstream analytics always have a row keyed to the configured
+  // Tezos FA2 contract/token id — never a synthetic string like "WTF".
+  const wtfToken = getServerWtfToken();
   const wtf = await getTokenBalance(walletAddress);
   const wtfBalance = String(wtf?.balance ?? "0");
   await db
@@ -166,8 +166,8 @@ export async function syncWalletPortfolioFromTzkt(
     .values({
       userId,
       walletAddress,
-      tokenContract: WTF_TOKEN.contract,
-      tokenId: String(WTF_TOKEN.tokenId),
+      tokenContract: wtfToken.contract,
+      tokenId: String(wtfToken.tokenId),
       balance: wtfBalance,
       firstAcquiredAt: null,
       lastActivityAt: null,
@@ -190,14 +190,14 @@ export async function syncWalletPortfolioFromTzkt(
   await db
     .insert(tokenMetadata)
     .values({
-      tokenContract: WTF_TOKEN.contract,
-      tokenId: String(WTF_TOKEN.tokenId),
-      name: WTF_TOKEN.name,
-      symbol: WTF_TOKEN.symbol,
-      thumbnail: WTF_TOKEN.thumbnailUri,
+      tokenContract: wtfToken.contract,
+      tokenId: String(wtfToken.tokenId),
+      name: wtfToken.name,
+      symbol: wtfToken.symbol,
+      thumbnail: wtfToken.thumbnailUri,
       raw: {
         source: "tzkt_wtf_balance",
-        description: WTF_TOKEN.description,
+        description: wtfToken.description,
       } as any,
       fetchedAt: now,
       updatedAt: now,

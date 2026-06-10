@@ -6,9 +6,11 @@ import { isAuthenticated } from "../auth/passport";
 import { db } from "../db";
 import {
   inAppInventoryItems,
+  inAppInventoryTransfers,
   inAppMarketItems,
   inAppMarketPaymentIntents,
   inAppMarketPurchases,
+  rewardLedger,
   users,
   xpEvents,
 } from "@shared/schema";
@@ -35,12 +37,19 @@ import {
   selectBestSaleForItem,
   serializeSaleForItem,
 } from "../features/in-app-market/pricing";
-import { buildInAppInventoryTraceMetadata } from "../lib/in-app-inventory-trace";
+import {
+  buildInAppInventoryTraceMetadata,
+  buildInAppInventoryTipMetadata,
+  buildInAppInventoryTipRedemptionMetadata,
+} from "../lib/in-app-inventory-trace";
 import {
   allocateWtfRewardLedger,
   ceilRawUnitsToWholeWtfNumber,
   getRewardAccountSummary,
 } from "../lib/reward-account";
+import { hasActiveUserCurse } from "../lib/user-curses";
+import { logSystemEvent } from "../lib/system-log";
+import { buildInAppMarketCartHash } from "../lib/in-app-market-cart-hash";
 
 const router = Router();
 const CART_ROUTER_LISTING_ID = 0;
@@ -69,6 +78,24 @@ const checkoutExpPayload = z.object({
 
 const usePayload = z.object({
   sku: z.string().trim().min(1).max(80),
+});
+
+const tipPayload = z.object({
+  receiverUserId: z.coerce.number().int().positive(),
+  sku: z.string().trim().min(1).max(80),
+  quantity: z.coerce.number().int().min(1).max(10).default(1),
+  roomId: z
+    .string()
+    .trim()
+    .max(80)
+    .regex(/^[a-z0-9][a-z0-9._-]*$/i)
+    .optional()
+    .nullable(),
+  note: z.string().trim().max(240).optional().nullable(),
+});
+
+const redeemTipPayload = z.object({
+  transferId: z.coerce.number().int().positive(),
 });
 
 const creatorItemPayload = z.object({
@@ -283,6 +310,8 @@ async function reserveMarketStock(
 }
 
 function serializeIntent(intent: typeof inAppMarketPaymentIntents.$inferSelect) {
+  const config = getInAppMarketConfig();
+  const subtotalWtfUnits = String(intent.subtotalWtfUnits);
   return {
     id: intent.id,
     purchaseRef: intent.purchaseRef,
@@ -290,14 +319,70 @@ function serializeIntent(intent: typeof inAppMarketPaymentIntents.$inferSelect) 
     status: intent.status,
     walletAddress: intent.walletAddress,
     items: intent.items,
-    subtotalWtfUnits: String(intent.subtotalWtfUnits),
-    subtotalWtfFormatted: formatWtf(String(intent.subtotalWtfUnits)),
+    subtotalWtfUnits,
+    subtotalWtfFormatted: formatWtf(subtotalWtfUnits),
     subtotalExp: intent.subtotalExp,
     estimatedFeeMutez: intent.estimatedFeeMutez,
     estimatedFeeTez: formatMutez(intent.estimatedFeeMutez),
     contractAddress: intent.contractAddress,
+    contractVersion: config.contractVersion,
+    cartHash: buildInAppMarketCartHash({
+      purchaseRef: intent.purchaseRef,
+      routerListingId: intent.routerListingId,
+      subtotalWtfUnits,
+      items: intent.items,
+    }),
+    expectedTreasuryAddress: config.treasuryAddress,
+    expectedWtfTokenContract: config.wtfToken.contract,
+    expectedWtfTokenId: config.wtfToken.tokenId,
     routerListingId: intent.routerListingId,
     expiresAt: intent.expiresAt,
+  };
+}
+
+function isWtfLiveTipItem(item: Pick<typeof inAppMarketItems.$inferSelect, "category" | "metadata">): boolean {
+  const metadata = item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+    ? (item.metadata as Record<string, unknown>)
+    : {};
+  return (
+    item.category === "wtf_live" &&
+    (metadata.tipItem === true || metadata.kind === "live-tip" || metadata.surface === "wtf-live")
+  );
+}
+
+function tipRedeemWtf(item: Pick<typeof inAppMarketItems.$inferSelect, "metadata" | "priceWtfUnits">): number {
+  const metadata = item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+    ? (item.metadata as Record<string, unknown>)
+    : {};
+  const raw = Number(metadata.redeemWtf ?? 0);
+  if (Number.isSafeInteger(raw) && raw > 0) return Math.min(raw, 1_000_000);
+  return Math.max(1, ceilRawUnitsToWholeWtfNumber(String(item.priceWtfUnits ?? "0")));
+}
+
+function serializeTipTransfer(row: typeof inAppInventoryTransfers.$inferSelect & {
+  itemName?: string | null;
+  itemMetadata?: unknown;
+}) {
+  const itemMetadata =
+    row.itemMetadata && typeof row.itemMetadata === "object" && !Array.isArray(row.itemMetadata)
+      ? (row.itemMetadata as Record<string, unknown>)
+      : {};
+  return {
+    id: row.id,
+    senderUserId: row.senderUserId,
+    receiverUserId: row.receiverUserId,
+    sku: row.sku,
+    name: row.itemName ?? row.sku,
+    quantity: row.quantity,
+    source: row.source,
+    sourceRoomId: row.sourceRoomId,
+    note: row.note,
+    status: row.status,
+    redeemWtf: Number(itemMetadata.redeemWtf ?? 0),
+    metadata: row.metadata,
+    redeemedAt: row.redeemedAt,
+    rewardLedgerId: row.rewardLedgerId,
+    createdAt: row.createdAt,
   };
 }
 
@@ -352,7 +437,7 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
       await ensureCasinoAppPassItem();
     }
 
-    const [items, inventory, purchases, activeSales, rewardAccount] = await Promise.all([
+    const [items, inventory, purchases, activeSales, rewardAccount, tipTransfers] = await Promise.all([
       db
         .select()
         .from(inAppMarketItems)
@@ -370,6 +455,32 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
         .limit(12),
       listActiveMarketSales(),
       getRewardAccountSummary(user.id),
+      category === "wtf_live"
+        ? db
+            .select({
+              id: inAppInventoryTransfers.id,
+              senderUserId: inAppInventoryTransfers.senderUserId,
+              receiverUserId: inAppInventoryTransfers.receiverUserId,
+              sku: inAppInventoryTransfers.sku,
+              quantity: inAppInventoryTransfers.quantity,
+              source: inAppInventoryTransfers.source,
+              sourceRoomId: inAppInventoryTransfers.sourceRoomId,
+              note: inAppInventoryTransfers.note,
+              status: inAppInventoryTransfers.status,
+              metadata: inAppInventoryTransfers.metadata,
+              redeemedAt: inAppInventoryTransfers.redeemedAt,
+              rewardLedgerId: inAppInventoryTransfers.rewardLedgerId,
+              createdAt: inAppInventoryTransfers.createdAt,
+              updatedAt: inAppInventoryTransfers.updatedAt,
+              itemName: inAppMarketItems.name,
+              itemMetadata: inAppMarketItems.metadata,
+            })
+            .from(inAppInventoryTransfers)
+            .leftJoin(inAppMarketItems, eq(inAppMarketItems.sku, inAppInventoryTransfers.sku))
+            .where(sql`${inAppInventoryTransfers.receiverUserId} = ${user.id} OR ${inAppInventoryTransfers.senderUserId} = ${user.id}`)
+            .orderBy(desc(inAppInventoryTransfers.createdAt), desc(inAppInventoryTransfers.id))
+            .limit(40)
+        : Promise.resolve([]),
     ]);
 
     const inventoryBySku = new Map(inventory.map((row) => [row.sku, row]));
@@ -416,6 +527,17 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
         observedAt: purchase.observedAt,
         createdAt: purchase.createdAt,
       })),
+      tipLedger:
+        category === "wtf_live"
+          ? {
+              received: tipTransfers
+                .filter((transfer) => transfer.receiverUserId === user.id)
+                .map(serializeTipTransfer),
+              sent: tipTransfers
+                .filter((transfer) => transfer.senderUserId === user.id)
+                .map(serializeTipTransfer),
+            }
+          : undefined,
     });
   } catch (err) {
     console.error("GET /api/in-app-market error:", err);
@@ -929,6 +1051,355 @@ router.post("/api/in-app-market/checkout-reward-wtf", isAuthenticated, async (re
     }
     console.error("POST /api/in-app-market/checkout-reward-wtf error:", err);
     res.status(500).json({ error: "Failed to redeem earned WTF cart" });
+  }
+});
+
+router.post("/api/in-app-market/tips", isAuthenticated, async (req, res) => {
+  try {
+    const parsed = tipPayload.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid tip request" });
+    }
+    const user = req.user as any;
+    const senderUserId = Number(user.id);
+    if (parsed.data.receiverUserId === senderUserId) {
+      return res.status(400).json({ error: "Choose another WTF LIVE user to tip" });
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const now = new Date();
+      const [receiver] = await tx
+        .select({
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+        })
+        .from(users)
+        .where(eq(users.id, parsed.data.receiverUserId))
+        .limit(1);
+      if (!receiver) {
+        return { ok: false as const, reason: "receiver_not_found" as const };
+      }
+
+      const [item] = await tx
+        .select()
+        .from(inAppMarketItems)
+        .where(and(eq(inAppMarketItems.sku, parsed.data.sku), eq(inAppMarketItems.active, true)))
+        .limit(1);
+      if (!item || !isWtfLiveTipItem(item)) {
+        return { ok: false as const, reason: "item_not_tippable" as const };
+      }
+
+      const [senderInventory] = await tx
+        .update(inAppInventoryItems)
+        .set({
+          quantity: sql`${inAppInventoryItems.quantity} - ${parsed.data.quantity}`,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(inAppInventoryItems.userId, senderUserId),
+            eq(inAppInventoryItems.sku, parsed.data.sku),
+            sql`${inAppInventoryItems.quantity} >= ${parsed.data.quantity}`
+          )
+        )
+        .returning({ quantity: inAppInventoryItems.quantity });
+      if (!senderInventory) {
+        return { ok: false as const, reason: "not_owned" as const };
+      }
+
+      const [transfer] = await tx
+        .insert(inAppInventoryTransfers)
+        .values({
+          senderUserId,
+          receiverUserId: receiver.id,
+          sku: item.sku,
+          quantity: parsed.data.quantity,
+          source: "wtf_live_tip",
+          sourceRoomId: parsed.data.roomId || null,
+          note: parsed.data.note || null,
+          status: "completed",
+          metadata: {
+            itemName: item.name,
+            itemKind: itemMetadataKind(item.metadata),
+            redeemWtf: tipRedeemWtf(item),
+            senderUsername: user.username ?? null,
+            receiverUsername: receiver.username,
+            source: "wtf-live",
+          },
+          updatedAt: now,
+        })
+        .returning();
+
+      const inventoryMetadata = buildInAppInventoryTipMetadata({
+        transferId: transfer.id,
+        sku: item.sku,
+        quantity: parsed.data.quantity,
+        senderUserId,
+        receiverUserId: receiver.id,
+        roomId: parsed.data.roomId || null,
+        note: parsed.data.note || null,
+        createdAt: now,
+      });
+      await tx
+        .insert(inAppInventoryItems)
+        .values({
+          userId: receiver.id,
+          sku: item.sku,
+          quantity: parsed.data.quantity,
+          metadata: inventoryMetadata,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [inAppInventoryItems.userId, inAppInventoryItems.sku],
+          set: {
+            quantity: sql`${inAppInventoryItems.quantity} + ${parsed.data.quantity}`,
+            metadata: sql`COALESCE(${inAppInventoryItems.metadata}, '{}'::jsonb) || ${JSON.stringify(inventoryMetadata)}::jsonb`,
+            updatedAt: now,
+          },
+        });
+
+      return {
+        ok: true as const,
+        transfer,
+        item,
+        receiver,
+        senderRemainingQuantity: senderInventory.quantity,
+      };
+    });
+
+    if (!result.ok) {
+      return res.status(result.reason === "not_owned" ? 409 : 404).json({
+        error:
+          result.reason === "not_owned"
+            ? "You do not own that WTF LIVE tip item"
+            : result.reason === "item_not_tippable"
+              ? "That item cannot be used as a WTF LIVE tip"
+              : "Tip receiver was not found",
+        reason: result.reason,
+      });
+    }
+
+    logSystemEvent({
+      source: "in-app-market",
+      eventType: "wtf_live.tip.sent",
+      severity: "info",
+      userId: senderUserId,
+      message: "WTF LIVE tip item transferred",
+      metadata: {
+        transferId: result.transfer.id,
+        senderUserId,
+        receiverUserId: result.receiver.id,
+        sku: result.item.sku,
+        quantity: result.transfer.quantity,
+        roomId: result.transfer.sourceRoomId,
+      },
+    });
+
+    res.status(201).json({
+      ok: true,
+      transfer: serializeTipTransfer({
+        ...result.transfer,
+        itemName: result.item.name,
+        itemMetadata: result.item.metadata,
+      }),
+      item: {
+        sku: result.item.sku,
+        name: result.item.name,
+        redeemWtf: tipRedeemWtf(result.item),
+      },
+      receiver: {
+        id: result.receiver.id,
+        username: result.receiver.username,
+        displayName: result.receiver.displayName,
+      },
+      senderRemainingQuantity: result.senderRemainingQuantity,
+    });
+  } catch (err) {
+    console.error("POST /api/in-app-market/tips error:", err);
+    res.status(500).json({ error: "Failed to send WTF LIVE tip" });
+  }
+});
+
+router.post("/api/in-app-market/tips/redeem", isAuthenticated, async (req, res) => {
+  try {
+    const parsed = redeemTipPayload.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid tip redemption" });
+    }
+    const user = req.user as any;
+    const userId = Number(user.id);
+    if (await hasActiveUserCurse(userId, "wtf_reward_embargo")) {
+      return res.status(403).json({
+        error: "A WTF OS curse prevents this account from redeeming WTF tips.",
+        reason: "wtf_reward_embargo",
+      });
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const now = new Date();
+      const [transferSnapshot] = await tx
+        .select()
+        .from(inAppInventoryTransfers)
+        .where(
+          and(
+            eq(inAppInventoryTransfers.id, parsed.data.transferId),
+            eq(inAppInventoryTransfers.receiverUserId, userId)
+          )
+        )
+        .limit(1);
+      if (!transferSnapshot) {
+        return { ok: false as const, reason: "transfer_not_found" as const };
+      }
+      if (transferSnapshot.redeemedAt || transferSnapshot.status === "redeemed") {
+        return { ok: false as const, reason: "already_redeemed" as const };
+      }
+
+      const [transfer] = await tx
+        .update(inAppInventoryTransfers)
+        .set({ status: "redeeming", updatedAt: now })
+        .where(
+          and(
+            eq(inAppInventoryTransfers.id, parsed.data.transferId),
+            eq(inAppInventoryTransfers.receiverUserId, userId),
+            eq(inAppInventoryTransfers.status, "completed"),
+            sql`${inAppInventoryTransfers.redeemedAt} IS NULL`
+          )
+        )
+        .returning();
+      if (!transfer) {
+        return { ok: false as const, reason: "already_redeemed" as const };
+      }
+
+      const [item] = await tx
+        .select()
+        .from(inAppMarketItems)
+        .where(eq(inAppMarketItems.sku, transfer.sku))
+        .limit(1);
+      if (!item || !isWtfLiveTipItem(item)) {
+        throw new Error("tip_transfer_item_not_redeemable");
+      }
+
+      const quantity = Number(transfer.quantity ?? 0);
+      const amountWtf = tipRedeemWtf(item) * quantity;
+      if (!Number.isSafeInteger(quantity) || quantity <= 0 || amountWtf <= 0) {
+        throw new Error("tip_transfer_invalid_amount");
+      }
+
+      const [inventory] = await tx
+        .update(inAppInventoryItems)
+        .set({
+          quantity: sql`${inAppInventoryItems.quantity} - ${quantity}`,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(inAppInventoryItems.userId, userId),
+            eq(inAppInventoryItems.sku, transfer.sku),
+            sql`${inAppInventoryItems.quantity} >= ${quantity}`
+          )
+        )
+        .returning({ quantity: inAppInventoryItems.quantity });
+      if (!inventory) {
+        throw new Error("tip_transfer_inventory_missing");
+      }
+
+      const [ledger] = await tx
+        .insert(rewardLedger)
+        .values({
+          userId,
+          amountWtf,
+          reason: `WTF LIVE tip: ${item.name}`,
+          sourceType: "wtf_live_tip",
+          sourceId: transfer.id,
+          paid: false,
+          settlementStatus: "available",
+        })
+        .returning({ id: rewardLedger.id });
+
+      const redemptionMetadata = buildInAppInventoryTipRedemptionMetadata({
+        transferId: transfer.id,
+        rewardLedgerId: ledger.id,
+        sku: transfer.sku,
+        quantity,
+        amountWtf,
+        roomId: transfer.sourceRoomId,
+        redeemedAt: now,
+      });
+      const [redeemedTransfer] = await tx
+        .update(inAppInventoryTransfers)
+        .set({
+          status: "redeemed",
+          redeemedAt: now,
+          rewardLedgerId: ledger.id,
+          metadata: sql`COALESCE(${inAppInventoryTransfers.metadata}, '{}'::jsonb) || ${JSON.stringify(redemptionMetadata)}::jsonb`,
+          updatedAt: now,
+        })
+        .where(eq(inAppInventoryTransfers.id, transfer.id))
+        .returning();
+
+      return {
+        ok: true as const,
+        transfer: redeemedTransfer,
+        item,
+        rewardLedgerId: ledger.id,
+        amountWtf,
+        remainingQuantity: inventory.quantity,
+      };
+    });
+
+    if (!result.ok) {
+      return res.status(result.reason === "transfer_not_found" ? 404 : 409).json({
+        error:
+          result.reason === "transfer_not_found"
+            ? "Tip transfer was not found"
+            : "That WTF LIVE tip was already redeemed",
+        reason: result.reason,
+      });
+    }
+
+    logSystemEvent({
+      source: "in-app-market",
+      eventType: "wtf_live.tip.redeemed",
+      severity: "info",
+      userId,
+      message: "WTF LIVE tip item redeemed into reward ledger",
+      metadata: {
+        transferId: result.transfer.id,
+        rewardLedgerId: result.rewardLedgerId,
+        sku: result.item.sku,
+        amountWtf: result.amountWtf,
+        roomId: result.transfer.sourceRoomId,
+      },
+    });
+
+    res.json({
+      ok: true,
+      transfer: serializeTipTransfer({
+        ...result.transfer,
+        itemName: result.item.name,
+        itemMetadata: result.item.metadata,
+      }),
+      rewardLedgerId: result.rewardLedgerId,
+      amountWtf: result.amountWtf,
+      remainingQuantity: result.remainingQuantity,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (message === "tip_transfer_inventory_missing") {
+      return res.status(409).json({
+        error: "You no longer have that WTF LIVE tip item in inventory",
+        reason: "not_owned",
+      });
+    }
+    if (message === "tip_transfer_item_not_redeemable") {
+      return res.status(409).json({
+        error: "That tip item cannot be redeemed",
+        reason: "item_not_redeemable",
+      });
+    }
+    console.error("POST /api/in-app-market/tips/redeem error:", err);
+    res.status(500).json({ error: "Failed to redeem WTF LIVE tip" });
   }
 });
 

@@ -82,6 +82,8 @@ import porcupinRoutes from "./routes/porcupin";
 import { buildHealthSnapshot } from "./lib/health";
 import { WTF_IN_APP_MARKET_CONTRACT } from "@shared/types";
 
+const SHADOWNET_IN_APP_MARKET_CONTRACT = "KT1MdvE9hYFpQP7boybqSJ9XNfXjLUG6QZrC";
+
 export function registerRoutes(app: Express) {
   app.get("/api/health", async (_req, res) => {
     try {
@@ -108,6 +110,9 @@ export function registerRoutes(app: Express) {
             process.env.IN_APP_MARKET_CONTRACT_ADDRESS ||
             process.env.WTF_IN_APP_MARKET_CONTRACT_ADDRESS ||
             process.env.VITE_IN_APP_MARKET_CONTRACT_ADDRESS ||
+            (String(contractConfig.getNetwork()) === "shadownet"
+              ? SHADOWNET_IN_APP_MARKET_CONTRACT
+              : null) ||
             WTF_IN_APP_MARKET_CONTRACT ||
             null,
         }),

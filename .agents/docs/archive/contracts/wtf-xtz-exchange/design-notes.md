@@ -20,6 +20,7 @@
 - SmartPy `sp.split_tokens` rounds to nearest mutez. This exchange uses nat multiplication, `sp.ediv`, floor quotient, and `utils.nat_to_mutez` instead.
 - WTF metadata reports `decimals = 8`; human WTF display is a UI concern. Contract amounts are FA2 base units.
 - Tezos internal operations are atomic with the parent operation: if the FA2 transfer fails, XTZ payout and listing storage changes roll back.
+- Wallet signatures should bind the terms users see. Listing creation therefore includes explicit `escrow_mutez` in addition to attached XTZ, and swaps include expected owner/rate/output terms.
 
 ## Patterns Rejected
 
@@ -62,8 +63,8 @@ Listing state:
 
 Entrypoints:
 
-- `create_listing(rate_numerator_mutez, rate_denominator_wtf_units)`: payable; initializes escrow.
-- `swap(listing_id, wtf_amount)`: non-payable; pulls WTF from taker to owner and pays XTZ to taker.
+- `create_listing(escrow_mutez, rate_numerator_mutez, rate_denominator_wtf_units)`: payable; initializes escrow and rejects if `escrow_mutez` does not exactly match attached XTZ.
+- `swap(listing_id, wtf_amount, expected_owner, expected_rate_numerator_mutez, expected_rate_denominator_wtf_units, expected_xtz_out_mutez)`: non-payable; pulls WTF from taker to owner and pays XTZ to taker only if the live listing still matches the expected terms.
 - `cancel_listing(listing_id)`: owner-only; allowed while paused; refunds exact remaining escrow.
 - `pause`, `unpause`
 - `propose_admin`, `accept_admin`, `cancel_pending_admin`
@@ -87,8 +88,8 @@ Views:
 ## Security Notes
 
 - No admin entrypoint can transfer listing escrow.
-- Swaps fail on inactive listings, zero WTF amount, zero-output rounding, insufficient escrow, missing FA2 operator approval, and insufficient taker WTF balance.
+- Swaps fail on inactive listings, zero WTF amount, zero-output rounding, stale expected owner/rate/output terms, insufficient escrow, missing FA2 operator approval, and insufficient taker WTF balance.
 - Cancellation is owner-only and refunds exactly the live remaining escrow.
 - Listing accounting is updated only after computing and checking the floor-rounded XTZ payout.
 - Exhaustion is `remaining_escrow_mutez == 0`. With this rate design, any positive remaining escrow can satisfy at least a 1 mutez valid swap if the taker provides enough WTF units, so the minimum valid XTZ payout threshold is 1 mutez.
-
+- The Shadownet proof uses Kiln WTF FA2 `KT1L5m2ohNDhbzSbRcitn1LaMmGf7jhDbVGj` and exchange `KT1UTYBkXLWm6JDqFhEJmfeDmbZcK1avQGZF`. Mainnet deployment has not been attempted.

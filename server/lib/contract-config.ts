@@ -26,6 +26,7 @@ interface Resolved {
 }
 
 const DEV_FALLBACK_MARKETPLACE = "KT1Jt6gU4fS5UYHdhsYyr2EfpBJtXZLrPPfj";
+const SHADOWNET_FALLBACK_MARKETPLACE = "KT1U9cZBQAZwTTnSrwdgBso5W25LqjgeSsYy";
 const DEV_FALLBACK_BARTER = "KT1WupvcfcSsfp78JPCc6NwKdkdineGfGNdm";
 const KNOWN_LEGACY_MARKETPLACE = "KT1Jt6gU4fS5UYHdhsYyr2EfpBJtXZLrPPfj";
 
@@ -66,10 +67,14 @@ function resolve(): Resolved {
 
   const marketplace =
     marketplaceEnv ??
-    (isProd ? null : DEV_FALLBACK_MARKETPLACE);
+    (isProd
+      ? null
+      : network === "shadownet"
+      ? SHADOWNET_FALLBACK_MARKETPLACE
+      : DEV_FALLBACK_MARKETPLACE);
   const barter =
     barterEnv ??
-    (isProd ? null : DEV_FALLBACK_BARTER);
+    (isProd || network === "shadownet" ? null : DEV_FALLBACK_BARTER);
 
   const tzktBase = (
     process.env.TZKT_API_URL ||

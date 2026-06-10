@@ -1,12 +1,53 @@
 import { test, expect } from "@playwright/test";
 
-async function setAdmin(request) {
-  const res = await request.post("/__test/state", { data: { userRole: "admin" } });
+async function setRole(request, data) {
+  const payload = typeof data === "string" ? { userRole: data } : data;
+  const res = await request.post("/__test/state", { data: payload });
   expect(res.ok()).toBeTruthy();
 }
 
+async function setAdmin(request) {
+  await setRole(request, { userRole: "admin" });
+}
+
+async function setAnonymous(request) {
+  await setRole(request, { userRole: "anonymous" });
+}
+
 function fatalErrors(errors) {
-  return errors.filter((error) => !/(favicon|ResizeObserver|WebGL|wallet|beacon|taquito)/i.test(error));
+  return errors.filter((error) => !/(favicon|ResizeObserver|WebGL|wallet|beacon|taquito|status of 401 \(Unauthorized\))/i.test(error));
+}
+
+async function mockAuthUser(context, user) {
+  await context.route("**/api/auth/user", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        role: user.role ?? "user",
+        welcomedToWtfOs: true,
+        welcomedToWtfOsAt: "2026-01-01T00:00:00Z",
+        gmWelcomeUtcDay: "2026-06-09",
+        gmWelcomeLastSeenAt: "2026-06-09T00:00:00Z",
+        gmWelcome: null,
+        createdAt: "2026-01-01T00:00:00Z",
+        effectivePermissions: {},
+      }),
+    });
+  });
+}
+
+async function mockAnonymousUser(context) {
+  await context.route("**/api/auth/user", async (route) => {
+    await route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Not authenticated" }),
+    });
+  });
 }
 
 async function installMediaMocks(page, fillStyle) {
@@ -192,7 +233,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     page,
     request,
   }) => {
-    await setAdmin(request);
+    await setAnonymous(request);
     const errors = [];
     capturePageErrors(page, errors, "mobile-popouts");
 
@@ -210,6 +251,58 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     });
     expect(mobileOrder).not.toBeNull();
     expect(mobileOrder.controlsTop).toBeLessThan(mobileOrder.stageTop);
+    await page.getByPlaceholder("Display name").fill("Mobile Alice");
+    await page.getByRole("button", { name: "Join Room" }).click();
+    await expect(page.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+    const mobileStack = await page.evaluate(() => {
+      const box = (selector) => {
+        const node = document.querySelector(selector);
+        if (!node) return null;
+        const rect = node.getBoundingClientRect();
+        return { top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
+      };
+      const shellNode = document.querySelector("main");
+      const railNode = document.querySelector("[data-wtf-live-control-rail]");
+      return {
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        documentScrollWidth: document.documentElement.scrollWidth,
+        documentScrollHeight: document.documentElement.scrollHeight,
+        shellScrollWidth: shellNode?.scrollWidth ?? 0,
+        shellScrollHeight: shellNode?.scrollHeight ?? 0,
+        shellClientHeight: shellNode?.clientHeight ?? 0,
+        rail: box("[data-wtf-live-control-rail]"),
+        railScrollHeight: railNode?.scrollHeight ?? 0,
+        stage: box("[data-wtf-live-stage-area]"),
+        sidebar: box("[data-wtf-live-sidebar]"),
+        composer: box("[data-wtf-live-chat-composer]"),
+      };
+    });
+    expect(mobileStack.documentScrollWidth).toBeLessThanOrEqual(mobileStack.viewportWidth);
+    expect(mobileStack.shellScrollWidth).toBeLessThanOrEqual(mobileStack.viewportWidth);
+    expect(Math.max(mobileStack.documentScrollHeight, mobileStack.shellScrollHeight)).toBeGreaterThan(mobileStack.viewportHeight);
+    expect(mobileStack.rail).not.toBeNull();
+    expect(mobileStack.stage).not.toBeNull();
+    expect(mobileStack.sidebar).not.toBeNull();
+    expect(mobileStack.composer).not.toBeNull();
+    expect(mobileStack.rail.height).toBeGreaterThanOrEqual(mobileStack.railScrollHeight - 2);
+    expect(mobileStack.rail.bottom).toBeLessThanOrEqual(mobileStack.stage.top);
+    expect(mobileStack.stage.bottom).toBeLessThanOrEqual(mobileStack.sidebar.top);
+    expect(Math.max(mobileStack.documentScrollHeight, mobileStack.shellScrollHeight)).toBeGreaterThanOrEqual(mobileStack.composer.bottom - 2);
+    await page.locator("[data-wtf-live-attendance-toggle]").scrollIntoViewIfNeeded();
+    const attendanceTapHandle = await page.evaluate(() => {
+      const attendanceSummary = document.querySelector("[data-wtf-live-attendance-toggle]");
+      const attendanceBox = attendanceSummary?.getBoundingClientRect();
+      const tapTarget = attendanceBox
+        ? document.elementFromPoint(attendanceBox.left + attendanceBox.width / 2, attendanceBox.top + attendanceBox.height / 2)
+        : null;
+      return tapTarget?.closest("[data-wtf-live-attendance-toggle]") ? "attendance" : tapTarget?.getAttribute("data-wtf-live-push-to-talk-toggle") ? "ptt" : tapTarget?.tagName ?? null;
+    });
+    expect(attendanceTapHandle).toBe("attendance");
+    await page.locator("[data-wtf-live-attendance-toggle]").click();
+    await expect
+      .poll(() => page.locator("[data-wtf-live-attendance-panel]").evaluate((node) => Boolean(node.open)))
+      .toBe(true);
 
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.reload({ waitUntil: "domcontentloaded" });
@@ -236,6 +329,147 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     });
     expect(after).not.toBeNull();
     expect(after.stageWidth).toBeGreaterThan(before.stageWidth + before.sidebarWidth * 0.5);
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("signed-in room attendance uses wtfOS names and WIM buddy actions", async ({
+    browser,
+    request,
+  }) => {
+    await setAdmin(request);
+    const adminContext = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const wimContext = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const guestContext = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const admin = await adminContext.newPage();
+    const wimUser = await wimContext.newPage();
+    const guest = await guestContext.newPage();
+    const errors = [];
+    capturePageErrors(admin, errors, "admin-attendance");
+    capturePageErrors(wimUser, errors, "wim-user-attendance");
+    capturePageErrors(guest, errors, "guest-attendance");
+    await mockAuthUser(wimContext, { id: 2, username: "wim-online", displayName: "WIM Online" });
+    await mockAnonymousUser(guestContext);
+
+    try {
+      await admin.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+      await expect(admin.locator("[data-wtf-live-account-identity]")).toContainText("wtf-admin");
+      await expect(admin.getByPlaceholder("Display name")).toHaveCount(0);
+      await admin.getByRole("button", { name: "Join Room" }).click();
+      await expect(admin.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+      await admin.locator("[data-wtf-live-attendance-toggle]").click();
+
+      const selfRow = admin.locator("[data-wtf-live-attendee='self']");
+      await expect(selfRow).toContainText("wtf-admin");
+      await expect(selfRow).toHaveAttribute("data-wtf-live-attendee-user-id", "1");
+      await expect(admin.locator("[data-wtf-live-wim-add]")).toHaveCount(0);
+
+      await wimUser.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+      await expect(wimUser.locator("[data-wtf-live-account-identity]")).toContainText("wim-online");
+      await wimUser.getByRole("button", { name: "Join Room" }).click();
+      await expect(wimUser.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+
+      const remoteRow = admin.locator("[data-wtf-live-attendee][data-wtf-live-attendee-user-id='2']");
+      await expect(remoteRow).toContainText("wim-online");
+      await expect(remoteRow).toHaveAttribute("data-wtf-live-attendee-wtf-user", "true");
+      const rowHeights = await admin.locator("[data-wtf-live-attendee]").evaluateAll((nodes) =>
+        nodes.map((node) => Math.round(node.getBoundingClientRect().height)),
+      );
+      expect(rowHeights.every((height) => height <= 42)).toBeTruthy();
+
+      const addButton = remoteRow.locator("[data-wtf-live-wim-add='2']");
+      await expect(addButton).toBeVisible();
+      await addButton.click();
+      await expect(addButton).toHaveAttribute("data-wtf-live-wim-state", "buddy");
+      await expect(addButton).toContainText("Buddy");
+      await expect
+        .poll(() =>
+          admin.evaluate(() => JSON.parse(localStorage.getItem("wtf:wim:friends:1") || "[]")),
+        )
+        .toEqual([2]);
+
+      await guest.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+      await guest.getByPlaceholder("Display name").fill("Guest Viewer");
+      await guest.getByRole("button", { name: "Join Room" }).click();
+      await expect(guest.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+      await guest.locator("[data-wtf-live-attendance-toggle]").click();
+      await expect(guest.locator("[data-wtf-live-attendee]").filter({ hasText: "wim-online" })).toBeVisible();
+      await expect(guest.locator("[data-wtf-live-wim-add]")).toHaveCount(0);
+      expect(fatalErrors(errors)).toEqual([]);
+    } finally {
+      await Promise.all([adminContext.close(), wimContext.close(), guestContext.close()]);
+    }
+  });
+
+  test("signed-in room users can send owned WTF LIVE tip items", async ({
+    browser,
+    request,
+  }) => {
+    await setAdmin(request);
+    const adminContext = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const wimContext = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const admin = await adminContext.newPage();
+    const wimUser = await wimContext.newPage();
+    const errors = [];
+    capturePageErrors(admin, errors, "admin-tip");
+    capturePageErrors(wimUser, errors, "wim-user-tip");
+    await mockAuthUser(wimContext, { id: 2, username: "wim-online", displayName: "WIM Online" });
+
+    try {
+      await admin.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+      await admin.getByRole("button", { name: "Join Room" }).click();
+      await expect(admin.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+      await admin.locator("[data-wtf-live-attendance-toggle]").click();
+
+      await wimUser.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+      await wimUser.getByRole("button", { name: "Join Room" }).click();
+      await expect(wimUser.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+
+      const remoteRow = admin.locator("[data-wtf-live-attendee][data-wtf-live-attendee-user-id='2']");
+      await expect(remoteRow).toContainText("wim-online");
+      await remoteRow.locator("[data-wtf-live-tip-open='2']").click();
+      await expect(admin.locator("[data-wtf-live-tip-tray]")).toBeVisible();
+      await admin.locator("[data-wtf-live-tip-item]").selectOption("wtf-live-rose");
+      await admin.locator("[data-wtf-live-tip-send]").click();
+      await expect(admin.locator("[data-wtf-live-tip-status]")).toContainText("WTF LIVE Rose sent to WIM Online");
+      await expect(wimUser.locator("[data-wtf-live-chat-log]")).toContainText("tipped WIM Online with WTF LIVE Rose");
+
+      const market = await (await request.get("/api/in-app-market?category=wtf_live")).json();
+      const marketSkus = market.items.map((item) => item.sku);
+      expect(marketSkus).toEqual(
+        expect.arrayContaining([
+          "wtf-live-jalapeno",
+          "wtf-live-flaming-heart",
+          "wtf-live-pauls-panties",
+        ]),
+      );
+      expect(marketSkus).not.toContain("wtf-live-golden-kazoo");
+      expect(market.items.find((item) => item.sku === "wtf-live-rose").quantityOwned).toBe(1);
+      expect(market.tipLedger.sent.some((transfer) => transfer.receiverUserId === 2 && transfer.sku === "wtf-live-rose")).toBeTruthy();
+      expect(fatalErrors(errors)).toEqual([]);
+    } finally {
+      await Promise.all([adminContext.close(), wimContext.close()]);
+    }
+  });
+
+  test("received WTF LIVE tips redeem through WTFIAM into earned WTF", async ({
+    page,
+    request,
+  }) => {
+    await setAdmin(request);
+    const errors = [];
+    capturePageErrors(page, errors, "wtfiam-tip-redeem");
+
+    await page.goto("/wtfiam?category=wtf_live", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-wtfiam-tip-ledger]")).toBeVisible();
+    const transferRow = page.locator("[data-wtfiam-tip-transfer='1']");
+    await expect(transferRow).toContainText("Rubber Chicken");
+    await transferRow.locator("[data-wtfiam-tip-redeem='1']").click();
+    await expect(page.getByText("Tip redeemed for 5 earned WTF.")).toBeVisible();
+    await expect(transferRow.locator("[data-wtfiam-tip-redeem='1']")).toContainText("Redeemed");
+
+    const market = await (await request.get("/api/in-app-market?category=wtf_live")).json();
+    expect(market.balances.rewardWtf).toBe(5);
+    expect(market.tipLedger.received.find((transfer) => transfer.id === 1).status).toBe("redeemed");
     expect(fatalErrors(errors)).toEqual([]);
   });
 
@@ -272,7 +506,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     browser,
     request,
   }) => {
-    await setAdmin(request);
+    await setAnonymous(request);
     const aliceContext = await browser.newContext();
     const bobContext = await browser.newContext();
     const alice = await aliceContext.newPage();
@@ -372,6 +606,43 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       await expect(aliceChatInput).toHaveValue("");
       await expect(bobChatLog.getByText("keyboard line one keyboard line two")).toBeVisible();
 
+      const aliceToolbox = alice.locator("[data-wtf-live-chat-tools]");
+      await expect(aliceToolbox).toBeVisible();
+      const toolboxSize = await aliceToolbox.boundingBox();
+      expect(toolboxSize?.height ?? 0).toBeLessThanOrEqual(40);
+      const sizeOptions = await alice.locator("[data-wtf-live-chat-font-size] option").evaluateAll((options) =>
+        options.map((option) => option.getAttribute("value")),
+      );
+      expect(sizeOptions).toEqual(["8", "9", "10", "11", "12", "13", "14"]);
+      await alice.locator("[data-wtf-live-chat-font]").selectOption("mono");
+      await alice.locator("[data-wtf-live-chat-font-size]").selectOption("14");
+      await alice.locator("[data-wtf-live-chat-color='red']").click();
+      await alice.locator("[data-wtf-live-chat-bold]").click();
+      await alice.locator("[data-wtf-live-chat-italic]").click();
+      await expect(aliceChatInput).toHaveCSS("font-size", "14px");
+      await aliceChatInput.fill("styled chat arrives");
+      await aliceChatInput.press("Enter");
+      const styledMessage = bobChatLog
+        .locator("[data-wtf-live-chat-message-text]")
+        .filter({ hasText: "styled chat arrives" });
+      await expect(styledMessage).toBeVisible();
+      const renderedStyle = await styledMessage.evaluate((node) => {
+        const style = getComputedStyle(node);
+        return {
+          color: style.color,
+          fontFamily: style.fontFamily,
+          fontSize: style.fontSize,
+          fontStyle: style.fontStyle,
+          fontWeight: style.fontWeight,
+        };
+      });
+      expect(renderedStyle.fontSize).toBe("14px");
+      expect(renderedStyle.fontStyle).toBe("italic");
+      expect(renderedStyle.color).toBe("rgb(143, 29, 44)");
+      expect(renderedStyle.fontFamily.toLowerCase()).toContain("courier");
+      const renderedWeight = renderedStyle.fontWeight === "bold" ? 700 : Number(renderedStyle.fontWeight);
+      expect(renderedWeight).toBeGreaterThanOrEqual(600);
+
       await alice.locator("[data-wtf-live-chat-file]").setInputFiles({
         name: "tiny.gif",
         mimeType: "image/gif",
@@ -399,7 +670,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     page,
     request,
   }) => {
-    await setAdmin(request);
+    await setAnonymous(request);
     const errors = [];
     capturePageErrors(page, errors, "public-room-exit");
 
@@ -437,7 +708,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     browser,
     request,
   }) => {
-    await setAdmin(request);
+    await setAnonymous(request);
     const contexts = [];
     const errors = [];
 

@@ -1,5 +1,11 @@
 # Kiln Gap Report
 
+## 2026-06-09 Update
+
+This gap report is superseded for the WTF-XTZ exchange path. Kiln protected routes are reachable with the local `API_AUTH_TOKEN` bridged as `KILN_API_TOKEN`, `/api/kiln/e2e/run` supports payable Tezos steps with `amountMutez`, and the hardened exchange passed Shadownet puppet-wallet E2E at `KT1UTYBkXLWm6JDqFhEJmfeDmbZcK1avQGZF`.
+
+The historical notes below remain for context only.
+
 This is not a fake deployment success report.
 
 ## Current Confirmed Kiln Facts
@@ -27,4 +33,3 @@ Neither schema includes a tez/mutez amount field. The runtime implementation cal
 - Missing `KILN_API_TOKEN`.
 - Missing deployed Shadownet contract addresses.
 - Missing funded Shadownet secret keys for listing owner/admin and taker.
-

@@ -1,3 +1,13 @@
+## 2026-06-10 - Contract address and payload-version defaults must rotate together
+
+**What happened**: The mainnet in-app market V2 KT1 was rotated into the shared source fallback, but production had no in-app market env vars set on the host. That meant the client/server could resolve the V2 contract address from source while still defaulting the mainnet contract version to `v1`, producing the wrong wallet payload for the active KT1 unless the host env happened to override it.
+
+**Why it mattered**: Contract version is part of the signing contract, not cosmetic metadata. A live app can be pointed at the right address and still fail or mis-sign if ABI/payload-version defaults are left behind.
+
+**Rule**: Any contract address fallback rotation must include the matching ABI/payload-version fallback in shared source, plus a policy test proving the active default address and active default version cannot drift apart.
+
+---
+
 ## 2026-06-10 - Messenger widgets must not be trapped inside an app window
 
 **What happened**: The first WIM makeover added AIM-like buddy and conversation modules, but kept them inside a single WIM `AppWindow`. That made the modular controls technically work while still feeling unlike classic AIM, where the buddy list is the app surface and conversations are peer desktop popups.
@@ -4360,6 +4370,18 @@
 
 ---
 
+## 2026-06-09 - Mainnet contract artifacts need verified token identity and explicit admin
+
+**What happened**: The WTF-XTZ mainnet artifact generator defaulted to the correct WTF token address, but final storage generation still depended on an unset `MAINNET_ADMIN_ADDRESS`. Treating "mainnet reconfigured" as only a token-address change would have left the most sensitive storage field to a later guess.
+
+**Why it mattered**: A deployable mainnet artifact is not just code plus token address. The admin controls pause/unpause and two-step admin handoff, so using a placeholder or inherited treasury address would create avoidable governance risk before origination.
+
+**Fix**: The mainnet prep script now verifies the WTF FA2 token through TzKT (`KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD`, token id `0`, FA2, symbol `WTF`, decimals `8`), records native payout as XTZ/mutez, writes a readiness report, and blocks final storage generation until `MAINNET_ADMIN_ADDRESS` is explicitly supplied.
+
+**Rule**: Mainnet artifact prep must verify token identity against an indexer/RPC and fail closed on missing governance addresses. Never generate "mainnet-ready" storage with a guessed admin, even when the token address is known.
+
+---
+
 ## 2026-06-09 - WTF LIVE harnesses must model private-room access contracts exactly
 
 **What happened**: The WTF LIVE private-room pass initially had the product behavior in place, but focused Playwright caught three integration mismatches: create-room status vanished when the UI switched tabs, a second status node made strict locators ambiguous, and the harness returned public-message history semantics for authenticated private-room messages.
@@ -4380,13 +4402,87 @@
 
 ---
 
+## 2026-06-09 - Realtime room identity must come from the session, not the join payload
+
+**What happened**: WTF LIVE accepted a `guestName` in the public room join message and assigned it to the socket username even when the WebSocket had resolved an authenticated wtfOS user. That made signed-in room attendance look like a guest display-name surface, and the roster did not carry enough account metadata to add attendees to WIM buddies.
+
+**Why it mattered**: Public room links still need anonymous guest names, but signed-in WTF users need account-bound identity for trust, private-room continuity, and cross-app social actions. A client-supplied display name cannot be the source of truth for WIM buddy shortcuts.
+
+**Fix**: The WTF LIVE socket now preserves authenticated `userId`/`username`, sends account metadata in peer snapshot/join/media-state events, and only uses `guestName` for unauthenticated visitors. Attendance is rendered as compact single-line registry rows, with WIM add-buddy controls shown only to signed-in viewers for other account-backed attendees and stored in WIM's existing browser-local friend list.
+
+**Rule**: For realtime rooms that allow both guests and signed-in users, keep display names and account identity separate. Server events should mark account-backed peers explicitly, and tests should include an anonymous viewer plus two distinct signed-in accounts before claiming cross-app identity actions work.
+
+---
+
+## 2026-06-09 - Realtime chat styling needs a bounded wire format
+
+**What happened**: Adding WTF LIVE chat font/color controls would have been easy to treat as local presentation state, but room chat is relayed through public WebSocket messages and rendered by every participant. A first pass also showed the themed toolbar controls could look like one row while still measuring too tall for the requested compact toolbox.
+
+**Why it mattered**: Arbitrary client styling in a realtime message payload can become unreadable UI or unsafe rendering debt. Even harmless-looking font-size controls need a server-side contract so every client receives the same bounded, readable message shape.
+
+**Fix**: The chat toolbox now uses fixed font and color choices, clamps font size to 8-14 on the client, server, and Playwright harness, and relays only boolean bold/italic flags. The focused WTF LIVE spec verifies the one-row toolbar, exact size options, composer preview, and styled message rendering on another participant.
+
+**Rule**: Realtime UI preferences that cross the socket must use a tiny allowlisted payload and be normalized at every boundary. Tests should assert both the control bounds and the remote rendered result, not just that a local control changes state.
+
+---
+
+## 2026-06-09 - Inventory behavior assertion ids must stay unique
+
+**What happened**: The inventory coverage gate failed before it could evaluate new WTF LIVE tip coverage because `wim.modular-window-roster-tabs` was registered twice in `CORE_BEHAVIOR_ASSERTIONS`.
+
+**Why it mattered**: Duplicate assertion ids make the registry ambiguous and block coverage verification for unrelated feature work. A new interaction can look broken even when the actual gap is stale registry metadata.
+
+**Fix**: Removed the duplicate WIM assertion and kept one canonical behavior assertion owned by the WIM admin surface.
+
+**Rule**: Before adding new behavior assertions, run the coverage gate and keep assertion ids globally unique. If the gate reports a duplicate id, remove the duplicate entry rather than adding exceptions or renaming one copy.
+
+---
+
+## 2026-06-09 - WTF LIVE tip catalog items must be tangible props
+
+**What happened**: The first WTF LIVE tip catalog included abstract entries like Spotlight Tip and Encore Boost. Those read like effects or status states, not items a user can throw on stage or drop into a busker case.
+
+**Why it mattered**: The WTF LIVE tip loop is meant to become an on-screen gifting mechanic. If catalog SKUs do not map to visible props, later animation, moderation, and user expectation work has to reinterpret the economy instead of rendering the item the user bought.
+
+**Fix**: Replaced the abstract items with tangible props and drops: Pocket Change, Rubber Chicken, and Golden Kazoo alongside the existing Rose. Tip metadata now marks them as physical items with animation-oriented labels.
+
+**Rule**: Live tip items should be concrete visual nouns before they enter the market. Use props, thrown objects, case drops, or stage gifts, and reserve abstract ideas like spotlight/encore for animation effects triggered by tangible items.
+
+---
+
+## 2026-06-09 - WTF LIVE tip props should match the room's bit, not just be physical
+
+**What happened**: The corrected WTF LIVE tip catalog still included Golden Kazoo, which was tangible but did not land with the specific stage/busker/live-room humor the feature needs.
+
+**Why it mattered**: A virtual tipping item is both an economic object and an on-screen gag. If the noun is merely renderable but not funny or situationally useful, the later animation work will still feel generic.
+
+**Fix**: Replaced Golden Kazoo with Jalapeno and added Flaming Heart plus Paul's Panties as higher-value tangible live-tip props. The seed catalog, staged frontend catalog, harness data, and interaction inventory now use the same item set.
+
+**Rule**: Treat WTF LIVE tip items like visible room props first. Prefer items that users can imagine throwing on stage, dropping in a case, or using as a shared joke before considering abstract boosts or bland novelty objects.
+
+---
+
+## 2026-06-10 - Mobile room layout tests must prove geometry, not just order
+
+**What happened**: WTF LIVE mobile checks proved the setup controls appeared before the stage, but the fullscreen room still used a fixed grid path. On narrow Chrome-style viewports the control rail collapsed, its children visibly overflowed into later panels, and the push-to-talk button intercepted the Attendance tap target.
+
+**Why it mattered**: Mobile friendliness is a rendered-geometry contract. A test that only checks visibility or DOM order can pass while users still see overlapping controls, unreachable panels, horizontal overflow, or blocked tap targets.
+
+**Fix**: The room shell now owns the mobile vertical scroll inside the fullscreen overlay, and the 820px breakpoint switches the body to a real stacked flex layout with a full-height control rail, fixed-format stage height, bounded attendance/chat rows, and no horizontal overflow. The WTF LIVE inventory spec now measures rail height versus scroll height, vertical rail/stage/sidebar order, scroll reachability, and the Attendance hit target.
+
+**Rule**: For mobile fullscreen routes, test the actual scroll container, rendered boxes, horizontal overflow, and hit target at phone widths. Do not claim a mobile layout is fixed from element order alone.
+
+---
+
 ## 2026-06-10 - External livestreams are iframe sources, not cached media files
 
-**What happened**: Adding the Roger Radio Odysee stream to WTF TV first looked like a channel-video seed, but the Odysee playback URL is an embeddable HTML player rather than a direct video file. Sending that URL through the TV media cache would make the cache fetch HTML where the client expects playable media.
+**What happened**: Adding an Odysee live channel to WTF TV exposed that the playback stack only understood GIFs and video files. Treating the Odysee URL as a normal channel video would have sent an HTML player page through the TV media cache and the `<video>` renderer.
 
-**Why it mattered**: WTF TV's existing cache path is intentionally constrained to direct media. Treating every source URI as a cacheable video would either fail playback or tempt a broader cache allowlist than the media proxy should carry.
+**Why it mattered**: External livestream providers often expose embeddable HTML players, not raw media assets. Sending those pages through a progressive media cache breaks playback and can weaken the URL safety model because iframe trust and media-fetch trust are different boundaries.
 
-**Rule**: External livestream providers need an explicit trusted-iframe path: allowlist the provider host in CSP, normalize the iframe URL server-side, mark the queue item as `embed`, and skip media-cache prefetch/fallback behavior for that item.
+**Fix**: WTF TV now normalizes allowlisted Odysee watch/embed URLs into direct iframe queue items, bypasses media prefetch/cache for `kind: "embed"`, and opens production CSP frame sources only for the Odysee player host.
+
+**Rule**: For TV livestream providers, model iframe players as a separate queue kind with an explicit frame allowlist. Do not force HTML embeds through media cache, preload, or video-buffer timing paths.
 
 ---
 
@@ -4399,3 +4495,27 @@
 **Fix**: `isHostRegisteredForTls` now treats missing user-site tables as unregistered and returns `false`, so `/internal/tls/allow` denies with the normal non-2xx path until migrations are applied.
 
 **Rule**: Any TLS, DNS, or public host admission check backed by application tables must handle missing relations as deny, not error. Migration order should never turn a public admission endpoint into a 500 path.
+
+---
+
+## 2026-06-10 - Messenger chrome and rich text are cross-boundary contracts
+
+**What happened**: WIM's desktop widgets looked like app-owned windows because the titlebars carried hard-coded traffic-light decoration, even though the desktop appearance system already owns window controls. The conversation composer also needed classic instant-message font controls and inserts, but those choices have to be visible to recipients rather than staying as local draft state.
+
+**Why it mattered**: Desktop widget chrome must follow the global appearance contract or it visually contradicts the OS settings. Message styling, GIFs, media picks, and token links cross the DM boundary, so they need a bounded metadata shape that existing readers can normalize instead of a parallel messaging backend.
+
+**Fix**: WIM widget frames now use system appearance variables and system-owned compact window controls instead of app-drawn traffic lights. Conversation sends include normalized `metadata.wimRich` style and attachment payloads for font family, size, color, bold, italic, underline, GIF URLs, My Media items, and owned-token links while still posting through the existing DM route.
+
+**Rule**: Do not hard-code OS chrome inside desktop widgets. When a message composer adds visible recipient-facing customization, persist it through the canonical message metadata contract and test the rendered controls plus the outbound payload.
+
+---
+
+## 2026-06-10 - Wallet-originated contracts still need immediate app-default rotation
+
+**What happened**: The local wallet deploy console successfully produced the mainnet in-app market V2 address, but the WTF app still had three independent fallback/config surfaces that could keep sending users to the old V1 contract: local `.env`, `.env.example`, and the shared `WTF_IN_APP_MARKET_CONTRACT` constant.
+
+**Why it mattered**: A mainnet origination is not a rollout by itself. If app defaults, docs, and inventory assertions stay on the previous contract, local testing and future deploys can silently exercise the wrong economic path even though the new KT1 is live and correct on-chain.
+
+**Fix**: Rotated the local env, example env, shared fallback, in-app market docs, interaction inventory, and behavior assertion text to mainnet V2 `KT1FN2bwYAffC2VgmSNs76DiPkSwZurbBoHR`; TzKT storage confirmed `wtf-in-app-market-v2`, treasury, WTF FA2, and token id before verification.
+
+**Rule**: After any wallet-originated contract deployment, immediately update every app contract-default surface and verify live storage through TzKT before treating the contract as the active app target.

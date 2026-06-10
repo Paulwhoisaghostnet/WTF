@@ -6,7 +6,8 @@ export type WtfIamCategoryKey =
   | "arcade"
   | "casino"
   | "studio"
-  | "preservation";
+  | "preservation"
+  | "wtf_live";
 
 export type WtfIamListingSource = "live" | "staged";
 
@@ -68,6 +69,28 @@ export type InAppMarketResponse = {
     observedAt: string;
     createdAt: string;
   }>;
+  tipLedger?: {
+    received: InAppMarketTipTransfer[];
+    sent: InAppMarketTipTransfer[];
+  };
+};
+
+export type InAppMarketTipTransfer = {
+  id: number;
+  senderUserId: number | null;
+  receiverUserId: number;
+  sku: string;
+  name: string;
+  quantity: number;
+  source: string;
+  sourceRoomId: string | null;
+  note: string | null;
+  status: string;
+  redeemWtf: number;
+  metadata: Record<string, unknown>;
+  redeemedAt: string | null;
+  rewardLedgerId: number | null;
+  createdAt: string;
 };
 
 export type InAppMarketIntentResponse = {
@@ -85,6 +108,11 @@ export type InAppMarketIntentResponse = {
     estimatedFeeMutez: number;
     estimatedFeeTez: string;
     contractAddress: string | null;
+    contractVersion: "v1" | "v2" | string;
+    cartHash: string;
+    expectedTreasuryAddress: string;
+    expectedWtfTokenContract: string;
+    expectedWtfTokenId: number;
     routerListingId: number;
     expiresAt: string;
   };

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Activity, Camera, ChevronDown, ChevronRight, Copy, ExternalLink, Gauge, Image as ImageIcon, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Paperclip, Radio, Send, Square, Users, Wifi, WifiOff, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Activity, Bold, Camera, Check, ChevronDown, ChevronRight, Copy, ExternalLink, Gauge, Gift, Image as ImageIcon, Italic, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Paperclip, Radio, RotateCcw, Send, Square, UserPlus, Users, Wifi, WifiOff, X } from "lucide-react";
 import styled from "styled-components";
 import { Button, Hourglass, TextField } from "react95";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth-context";
 
 type PublicRoom = {
   id: string;
@@ -29,6 +30,37 @@ type PublicRoomResponse = {
   };
 };
 
+type LiveTipItem = {
+  sku: string;
+  name: string;
+  quantityOwned: number;
+  metadata?: Record<string, unknown>;
+};
+
+type LiveTipMarketResponse = {
+  items: LiveTipItem[];
+};
+
+type LiveTipResponse = {
+  ok: true;
+  transfer: {
+    id: number;
+    sku: string;
+    quantity: number;
+  };
+  item: {
+    sku: string;
+    name: string;
+    redeemWtf: number;
+  };
+  receiver: {
+    id: number;
+    username: string;
+    displayName?: string | null;
+  };
+  senderRemainingQuantity: number;
+};
+
 type RoomMessage = {
   uri: string;
   text: string;
@@ -50,6 +82,9 @@ type LiveMediaState = {
 type LivePeer = {
   peerId: string;
   guestName: string;
+  userId?: number | null;
+  username?: string | null;
+  isWtfUser?: boolean;
   mediaState: LiveMediaState;
   stream: MediaStream;
   connected: boolean;
@@ -115,11 +150,23 @@ type LiveChatAttachment = {
   sizeBytes: number;
 };
 
+type LiveChatFont = "system" | "serif" | "mono" | "pixel";
+type LiveChatColor = "ink" | "blue" | "green" | "red" | "purple" | "amber";
+
+type LiveChatStyle = {
+  font: LiveChatFont;
+  color: LiveChatColor;
+  size: number;
+  bold: boolean;
+  italic: boolean;
+};
+
 type LiveChatMessage = {
   id: string;
   peerId: string;
   guestName: string;
   text: string;
+  style?: LiveChatStyle;
   attachments: LiveChatAttachment[];
   createdAt: string;
 };
@@ -129,9 +176,12 @@ type WtfLiveSocketEvent = {
   peerId?: string;
   fromPeerId?: string;
   guestName?: string;
+  userId?: number | null;
+  username?: string | null;
+  isWtfUser?: boolean;
   roomId?: string;
-  peers?: Array<{ peerId?: string; guestName?: string; mediaState?: Partial<LiveMediaState> }>;
-  peer?: { peerId?: string; guestName?: string; mediaState?: Partial<LiveMediaState> };
+  peers?: Array<{ peerId?: string; guestName?: string; userId?: number | null; username?: string | null; isWtfUser?: boolean; mediaState?: Partial<LiveMediaState> }>;
+  peer?: { peerId?: string; guestName?: string; userId?: number | null; username?: string | null; isWtfUser?: boolean; mediaState?: Partial<LiveMediaState> };
   mediaState?: Partial<LiveMediaState>;
   signal?: {
     kind?: "description" | "candidate";
@@ -149,6 +199,28 @@ const MAX_LIVE_CHAT_ATTACHMENTS = 4;
 const MAX_LIVE_CHAT_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const MAX_LIVE_AVATAR_BYTES = 512 * 1024;
 const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(MAX_LIVE_AVATAR_BYTES * 1.4);
+const LIVE_CHAT_FONT_SIZES = [8, 9, 10, 11, 12, 13, 14] as const;
+const LIVE_CHAT_FONT_OPTIONS: Array<{ id: LiveChatFont; label: string; family: string }> = [
+  { id: "system", label: "Sans", family: "system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif" },
+  { id: "serif", label: "Serif", family: "Georgia, \"Times New Roman\", serif" },
+  { id: "mono", label: "Mono", family: "\"Courier New\", Courier, monospace" },
+  { id: "pixel", label: "Win", family: "\"MS Sans Serif\", Tahoma, Geneva, sans-serif" },
+];
+const LIVE_CHAT_COLOR_OPTIONS: Array<{ id: LiveChatColor; label: string; value: string }> = [
+  { id: "ink", label: "Ink", value: "#07120f" },
+  { id: "blue", label: "Blue", value: "#0b4d8f" },
+  { id: "green", label: "Green", value: "#087c39" },
+  { id: "red", label: "Red", value: "#8f1d2c" },
+  { id: "purple", label: "Purple", value: "#5b2c83" },
+  { id: "amber", label: "Amber", value: "#8a4b00" },
+];
+const DEFAULT_LIVE_CHAT_STYLE: LiveChatStyle = {
+  font: "system",
+  color: "ink",
+  size: 12,
+  bold: false,
+  italic: false,
+};
 const PEER_CONNECTION_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
@@ -157,7 +229,10 @@ const PEER_CONNECTION_CONFIG: RTCConfiguration = {
 };
 
 const GuestShell = styled.main`
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
+  min-height: 100dvh;
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px),
     linear-gradient(180deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px),
@@ -168,6 +243,16 @@ const GuestShell = styled.main`
   place-items: stretch;
   padding: clamp(6px, 1vw, 14px);
   box-sizing: border-box;
+  overflow: hidden;
+
+  @media (max-width: 820px) {
+    display: block;
+    padding: 6px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
 `;
 
 const RoomFrame = styled.section`
@@ -183,8 +268,10 @@ const RoomFrame = styled.section`
   overflow: hidden;
 
   @media (max-width: 820px) {
+    display: block;
     height: auto;
-    min-height: calc(100vh - clamp(12px, 2vw, 28px));
+    min-height: calc(100vh - 12px);
+    min-height: calc(100dvh - 12px);
     overflow: visible;
   }
 `;
@@ -270,6 +357,8 @@ const ControlRail = styled.aside`
 
   @media (max-width: 820px) {
     order: 1;
+    height: auto;
+    min-height: auto;
     max-height: none;
     overflow: visible;
   }
@@ -304,10 +393,17 @@ const RoomBody = styled.div<{ $sidebarDetached?: boolean }>`
   }
 
   @media (max-width: 820px) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-height: auto;
     overflow: visible;
+    padding: 6px;
 
     ${ControlRail} {
       order: 1;
+      height: auto;
+      min-height: auto;
       max-height: none;
       overflow: visible;
     }
@@ -342,7 +438,8 @@ const StagePanel = styled.section`
 
   @media (max-width: 820px) {
     order: 2;
-    min-height: min(58vh, 520px);
+    height: clamp(280px, 48dvh, 430px);
+    min-height: 0;
   }
 `;
 
@@ -367,7 +464,7 @@ const StageGrid = styled.div<{ $count: number }>`
 
   @media (max-width: 640px) {
     grid-template-columns: 1fr;
-    grid-auto-rows: minmax(240px, 58vh);
+    grid-auto-rows: minmax(220px, 1fr);
   }
 `;
 
@@ -385,6 +482,8 @@ const RoomSidebar = styled.aside`
 
   @media (max-width: 820px) {
     order: 3;
+    grid-template-rows: auto auto;
+    min-height: 0;
   }
 `;
 
@@ -420,6 +519,12 @@ const AttendancePanel = styled.details`
   summary::-webkit-details-marker {
     display: none;
   }
+
+  @media (max-width: 820px) {
+    &[open] {
+      grid-template-rows: auto minmax(0, 168px);
+    }
+  }
 `;
 
 const ChatColumn = styled(SidebarPanel)`
@@ -427,6 +532,11 @@ const ChatColumn = styled(SidebarPanel)`
 
   @media (max-width: 980px) {
     min-height: 420px;
+  }
+
+  @media (max-width: 820px) {
+    min-height: 0;
+    grid-template-rows: auto minmax(160px, min(34dvh, 260px)) auto;
   }
 `;
 
@@ -586,6 +696,30 @@ const AvatarSettings = styled.div`
   gap: 8px;
 `;
 
+const AccountJoinIdentity = styled.div`
+  border: 2px inset #fff;
+  background: #f8f8f8;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 5px;
+  font-size: var(--wtf-type-caption, 13px);
+
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  > span {
+    display: grid;
+    gap: 2px;
+  }
+`;
+
 const LocalPreviewDock = styled.div`
   display: grid;
   gap: 5px;
@@ -630,18 +764,18 @@ const AvatarStage = styled.div`
   background-size: 16px 16px;
 `;
 
-const AvatarCircle = styled.div<{ $size?: "small" | "large" }>`
-  width: ${({ $size }) => ($size === "small" ? "34px" : "clamp(96px, 15vw, 180px)")};
-  height: ${({ $size }) => ($size === "small" ? "34px" : "clamp(96px, 15vw, 180px)")};
+const AvatarCircle = styled.div<{ $size?: "mini" | "small" | "large" }>`
+  width: ${({ $size }) => ($size === "mini" ? "22px" : $size === "small" ? "34px" : "clamp(96px, 15vw, 180px)")};
+  height: ${({ $size }) => ($size === "mini" ? "22px" : $size === "small" ? "34px" : "clamp(96px, 15vw, 180px)")};
   border-radius: 50%;
-  border: ${({ $size }) => ($size === "small" ? "1px solid #668" : "3px solid #dfffe9")};
+  border: ${({ $size }) => ($size === "mini" || $size === "small" ? "1px solid #668" : "3px solid #dfffe9")};
   background: #0b5f59;
   color: #fff;
   display: grid;
   place-items: center;
   overflow: hidden;
   font-weight: 700;
-  font-size: ${({ $size }) => ($size === "small" ? "13px" : "clamp(28px, 5vw, 58px)")};
+  font-size: ${({ $size }) => ($size === "mini" ? "10px" : $size === "small" ? "13px" : "clamp(28px, 5vw, 58px)")};
   text-transform: uppercase;
 
   img {
@@ -685,6 +819,10 @@ const EmptyStage = styled.div`
   place-items: center;
   min-height: 320px;
   font-weight: 700;
+
+  @media (max-width: 820px) {
+    min-height: 220px;
+  }
 `;
 
 const RemoteAudio = styled.audio`
@@ -696,21 +834,24 @@ const AttendanceList = styled.div`
   background: #fff;
   display: grid;
   align-content: start;
-  gap: 5px;
-  padding: 6px;
+  gap: 3px;
+  padding: 4px;
   overflow: auto;
   min-height: 0;
 `;
 
 const AttendeeRow = styled.div<{ $active?: boolean }>`
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
   align-items: center;
-  gap: 6px;
-  padding: 5px;
+  gap: 5px;
+  min-height: 30px;
+  padding: 2px 4px;
   border: 1px solid ${({ $active }) => ($active ? "#5fb879" : "#d4d4d4")};
   background: ${({ $active }) => ($active ? "#eefaf1" : "#f8f8f8")};
   font-size: var(--wtf-type-caption, 13px);
+  line-height: 1;
+  min-width: 0;
 
   strong,
   span {
@@ -718,6 +859,26 @@ const AttendeeRow = styled.div<{ $active?: boolean }>`
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+`;
+
+const AttendeeName = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+
+  strong {
+    min-width: 0;
+  }
+`;
+
+const AttendeeBadge = styled.span`
+  border: 1px solid #9a9a9a;
+  background: #ececec;
+  color: #24423e;
+  padding: 1px 3px;
+  font-size: 11px;
+  line-height: 1.1;
 `;
 
 const MicDot = styled.span<{ $active?: boolean; $ready?: boolean }>`
@@ -731,17 +892,73 @@ const MicDot = styled.span<{ $active?: boolean; $ready?: boolean }>`
 `;
 
 const HealthDot = styled.span<{ $health: PeerHealth }>`
-  min-width: 44px;
+  min-width: 38px;
   border: 1px solid #545454;
-  padding: 2px 4px;
+  padding: 2px 3px;
   text-align: center;
-  font-size: var(--wtf-type-caption, 13px);
+  font-size: 11px;
   background: ${({ $health }) => (
     $health === "good" ? "#dff7e8" :
       $health === "fair" ? "#fff2b8" :
         $health === "poor" ? "#ffd9d9" :
           $health === "offline" ? "#d7d7d7" : "#e8eefb"
   )};
+`;
+
+const WimBuddyButton = styled(Button)`
+  min-width: 48px;
+  min-height: 24px;
+  padding: 0 5px;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+`;
+
+const TipAttendeeButton = styled(WimBuddyButton)`
+  min-width: 42px;
+`;
+
+const TipTray = styled.div`
+  border: 2px inset #fff;
+  background: #f8f0d7;
+  padding: 7px;
+  display: grid;
+  gap: 7px;
+  font-size: var(--wtf-type-caption, 13px);
+`;
+
+const TipTrayHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 900;
+`;
+
+const TipTrayGrid = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const TipTraySelect = styled.select`
+  min-height: 30px;
+  border: 2px inset #fff;
+  background: #fff;
+  color: #07120f;
+  font-size: var(--wtf-type-caption, 13px);
+  min-width: 0;
+`;
+
+const TipStatus = styled.span<{ $tone?: "warn" | "good" }>`
+  color: ${({ $tone }) => ($tone === "warn" ? "#7a1a1a" : $tone === "good" ? "#075f2a" : "#333")};
+  overflow-wrap: anywhere;
 `;
 
 const PillRow = styled.div`
@@ -787,6 +1004,12 @@ const MessageItem = styled.article`
   }
 `;
 
+const ChatMessageText = styled.div`
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+`;
+
 const MessageDivider = styled.div`
   color: #4f4f4f;
   font-size: var(--wtf-type-caption, 13px);
@@ -802,6 +1025,69 @@ const ChatComposer = styled.div`
   display: grid;
   gap: 7px;
   min-width: 0;
+`;
+
+const ChatToolbox = styled.div`
+  border: 2px inset #fff;
+  background: #d8d8d8;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 3px;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: thin;
+`;
+
+const ChatToolSelect = styled.select`
+  height: 22px;
+  min-height: 22px;
+  max-height: 22px;
+  min-width: 58px;
+  border: 2px inset #fff;
+  background: #fff;
+  color: #07120f;
+  font-size: 11px;
+  line-height: 18px;
+  padding: 0 18px 0 4px;
+  box-sizing: border-box;
+`;
+
+const ChatColorStrip = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+`;
+
+const ChatColorSwatch = styled.button<{ $color: string; $active?: boolean }>`
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border: 2px ${({ $active }) => ($active ? "inset" : "outset")} #fff;
+  background: ${({ $color }) => $color};
+  box-shadow: ${({ $active }) => ($active ? "0 0 0 1px #090980" : "none")};
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid #090980;
+    outline-offset: 1px;
+  }
+`;
+
+const ChatToolIconButton = styled(Button)<{ $active?: boolean }>`
+  min-width: 26px;
+  min-height: 22px;
+  height: 22px;
+  max-height: 22px;
+  padding: 0;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: ${({ $active }) => ($active ? "#c4dbff" : undefined)};
 `;
 
 const ChatTextArea = styled.textarea`
@@ -1007,6 +1293,50 @@ function storedAvatarUrl(): string | null {
   }
 }
 
+function isLiveChatFont(value: unknown): value is LiveChatFont {
+  return LIVE_CHAT_FONT_OPTIONS.some((option) => option.id === value);
+}
+
+function isLiveChatColor(value: unknown): value is LiveChatColor {
+  return LIVE_CHAT_COLOR_OPTIONS.some((option) => option.id === value);
+}
+
+function normalizeLiveChatStyle(value: unknown): LiveChatStyle {
+  const style = typeof value === "object" && value ? value as Record<string, unknown> : {};
+  const rawSize = Number(style.size);
+  const size = Number.isFinite(rawSize)
+    ? Math.min(14, Math.max(8, Math.round(rawSize)))
+    : DEFAULT_LIVE_CHAT_STYLE.size;
+  return {
+    font: isLiveChatFont(style.font) ? style.font : DEFAULT_LIVE_CHAT_STYLE.font,
+    color: isLiveChatColor(style.color) ? style.color : DEFAULT_LIVE_CHAT_STYLE.color,
+    size,
+    bold: Boolean(style.bold),
+    italic: Boolean(style.italic),
+  };
+}
+
+function storedLiveChatStyle(): LiveChatStyle {
+  try {
+    return normalizeLiveChatStyle(JSON.parse(localStorage.getItem("wtf-live:chat-style") || "null"));
+  } catch {
+    return DEFAULT_LIVE_CHAT_STYLE;
+  }
+}
+
+function liveChatTextStyle(value: unknown): CSSProperties {
+  const style = normalizeLiveChatStyle(value);
+  const font = LIVE_CHAT_FONT_OPTIONS.find((option) => option.id === style.font) ?? LIVE_CHAT_FONT_OPTIONS[0];
+  const color = LIVE_CHAT_COLOR_OPTIONS.find((option) => option.id === style.color) ?? LIVE_CHAT_COLOR_OPTIONS[0];
+  return {
+    color: color.value,
+    fontFamily: font.family,
+    fontSize: `${style.size}px`,
+    fontStyle: style.italic ? "italic" : "normal",
+    fontWeight: style.bold ? 700 : 400,
+  };
+}
+
 function emptyPeerDiagnostic(): PeerDiagnostic {
   return {
     connectionState: "new",
@@ -1115,6 +1445,43 @@ function normalizeMediaState(value: Partial<LiveMediaState> | undefined): LiveMe
   };
 }
 
+function livePeerName(peer: Pick<LivePeer, "guestName" | "username">): string {
+  return peer.username?.trim() || peer.guestName?.trim() || "guest";
+}
+
+function normalizeLiveUserId(value: unknown): number | null {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function wimFriendStorageKey(userId: number | null | undefined): string | null {
+  return userId ? `wtf:wim:friends:${userId}` : null;
+}
+
+function readWimFriendIds(userId: number | null | undefined): number[] {
+  const key = wimFriendStorageKey(userId);
+  if (!key) return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((value) => normalizeLiveUserId(value))
+      .filter((value): value is number => Boolean(value));
+  } catch {
+    return [];
+  }
+}
+
+function writeWimFriendIds(userId: number | null | undefined, friendIds: number[]) {
+  const key = wimFriendStorageKey(userId);
+  if (!key) return;
+  try {
+    localStorage.setItem(key, JSON.stringify([...new Set(friendIds)].sort((a, b) => a - b)));
+  } catch {
+    // WIM remains usable if browser storage is unavailable.
+  }
+}
+
 function initialsForName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
   if (!parts.length) return "?";
@@ -1199,7 +1566,7 @@ function readAvatarImage(file: File): Promise<string> {
   });
 }
 
-function AvatarMark({ name, avatarUrl, size = "large" }: { name: string; avatarUrl?: string | null; size?: "small" | "large" }) {
+function AvatarMark({ name, avatarUrl, size = "large" }: { name: string; avatarUrl?: string | null; size?: "mini" | "small" | "large" }) {
   return (
     <AvatarCircle $size={size}>
       {avatarUrl ? <img src={avatarUrl} alt={`${name} avatar`} data-wtf-live-avatar-image /> : initialsForName(name)}
@@ -1440,6 +1807,8 @@ function FloatingPanelWindow({
 }
 
 export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
+  const qc = useQueryClient();
+  const { user, isLoading: authLoading } = useAuth();
   const roomQuery = useQuery<PublicRoomResponse>({
     queryKey: ["wtf-live", "public-room", roomId],
     queryFn: async () => {
@@ -1469,7 +1838,13 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const [peerDiagnostics, setPeerDiagnostics] = useState<Record<string, PeerDiagnostic>>({});
   const [liveMessages, setLiveMessages] = useState<LiveChatMessage[]>([]);
   const [chatText, setChatText] = useState("");
+  const [chatStyle, setChatStyle] = useState<LiveChatStyle>(() => storedLiveChatStyle());
   const [chatAttachments, setChatAttachments] = useState<LiveChatAttachment[]>([]);
+  const [wimFriendIds, setWimFriendIds] = useState<number[]>([]);
+  const [tipTrayOpen, setTipTrayOpen] = useState(false);
+  const [tipTargetUserId, setTipTargetUserId] = useState<number | null>(null);
+  const [tipSku, setTipSku] = useState("");
+  const [tipStatus, setTipStatus] = useState("");
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [popoutFrames, setPopoutFrames] = useState<PopoutFrame[]>([]);
   const cameraRef = useRef<HTMLVideoElement | null>(null);
@@ -1497,6 +1872,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   });
   const room = roomQuery.data?.room;
   const joinMode = roomQuery.data?.joinMode ?? "guest_room_only";
+  const viewerUserId = normalizeLiveUserId(user?.id);
+  const signedInUsername = user?.username?.trim() || "";
+  const signedInDisplayName = signedInUsername || user?.displayName?.trim() || "";
+  const attendeeDisplayName = signedInDisplayName || guestName.trim() || "guest";
   const messagesQuery = useQuery<{ messages: RoomMessage[] }>({
     queryKey: ["wtf-live", "room", joinMode, roomId, "messages"],
     enabled: Boolean(room),
@@ -1505,18 +1884,97 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
         ? api.get(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/messages`)
         : api.get(`/api/wtf-live/public/rooms/${encodeURIComponent(roomId)}/messages`),
   });
+  const tipItemsQuery = useQuery<LiveTipMarketResponse>({
+    queryKey: ["wtfiam", "wtf_live", "tips", viewerUserId],
+    enabled: Boolean(viewerUserId),
+    queryFn: () => api.get("/api/in-app-market?category=wtf_live"),
+    staleTime: 10_000,
+  });
   const roomUrl = useMemo(() => {
     if (typeof window === "undefined") return `/live/r/${roomId}`;
     return `${window.location.origin}/live/r/${roomId}`;
   }, [roomId]);
   const localAudioOpen = Boolean(micStream && (!pushToTalk || pushHeld));
+  const ownedTipItems = useMemo(
+    () =>
+      (tipItemsQuery.data?.items ?? [])
+        .filter((item) => item.quantityOwned > 0)
+        .filter((item) => item.metadata?.tipItem === true || item.metadata?.kind === "live-tip"),
+    [tipItemsQuery.data?.items],
+  );
+  const tipTargets = useMemo(
+    () =>
+      remotePeers
+        .map((peer) => ({
+          userId: normalizeLiveUserId(peer.userId),
+          label: peer.username || peer.guestName || `user-${peer.userId}`,
+          peer,
+        }))
+        .filter((target): target is { userId: number; label: string; peer: LivePeer } =>
+          Boolean(target.userId && target.userId !== viewerUserId && target.peer.isWtfUser),
+        ),
+    [remotePeers, viewerUserId],
+  );
+  const selectedTipItem = ownedTipItems.find((item) => item.sku === tipSku) ?? ownedTipItems[0] ?? null;
+  const selectedTipTarget = tipTargets.find((target) => target.userId === tipTargetUserId) ?? tipTargets[0] ?? null;
+  const sendTipMutation = useMutation({
+    mutationFn: (input: { receiverUserId: number; sku: string }) =>
+      api.post<LiveTipResponse>("/api/in-app-market/tips", {
+        receiverUserId: input.receiverUserId,
+        sku: input.sku,
+        quantity: 1,
+        roomId,
+      }),
+    onSuccess: (result) => {
+      const receiverName = result.receiver.displayName || result.receiver.username;
+      setTipStatus(`${result.item.name} sent to ${receiverName}.`);
+      setStatus(`${result.item.name} sent to ${receiverName}.`);
+      qc.invalidateQueries({ queryKey: ["wtfiam", "wtf_live"] });
+      qc.invalidateQueries({ queryKey: ["in-app-market"] });
+      sendRoomSocket({
+        type: "wtf_live_chat_message",
+        text: `${attendeeDisplayName} tipped ${receiverName} with ${result.item.name}.`,
+        attachments: [],
+        style: {
+          ...DEFAULT_LIVE_CHAT_STYLE,
+          color: "amber",
+          bold: true,
+        },
+      });
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : "Tip failed.";
+      setTipStatus(message);
+      setStatus(message);
+    },
+  });
 
   useMediaStream(cameraRef, cameraStream);
   useMediaStream(screenRef, screenStream);
 
   useEffect(() => {
+    if (!tipSku && ownedTipItems[0]) setTipSku(ownedTipItems[0].sku);
+  }, [ownedTipItems, tipSku]);
+
+  useEffect(() => {
+    if (!tipTargetUserId && tipTargets[0]) setTipTargetUserId(tipTargets[0].userId);
+  }, [tipTargetUserId, tipTargets]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("wtf-live:chat-style", JSON.stringify(chatStyle));
+    } catch {
+      // Preference persistence is best-effort only.
+    }
+  }, [chatStyle]);
+
+  useEffect(() => {
     localStreamsRef.current = { micStream, cameraStream, screenStream, activeVideoSource, audioEnabled: localAudioOpen, avatarUrl };
   }, [activeVideoSource, avatarUrl, cameraStream, localAudioOpen, micStream, screenStream]);
+
+  useEffect(() => {
+    setWimFriendIds(readWimFriendIds(viewerUserId));
+  }, [viewerUserId]);
 
   useEffect(() => {
     micStream?.getAudioTracks().forEach((track) => {
@@ -1631,6 +2089,9 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   function upsertRemotePeer(next: {
     peerId: string;
     guestName?: string;
+    userId?: number | null;
+    username?: string | null;
+    isWtfUser?: boolean;
     mediaState?: Partial<LiveMediaState>;
     stream?: MediaStream;
     connected?: boolean;
@@ -1640,15 +2101,21 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     remoteStreamsRef.current.set(next.peerId, stream);
     setRemotePeers((current) => {
       const existing = current.find((peer) => peer.peerId === next.peerId);
+      const nextUserId = normalizeLiveUserId(next.userId) ?? existing?.userId ?? null;
+      const nextUsername = next.username?.trim() || existing?.username || null;
+      const nextIsWtfUser = Boolean(next.isWtfUser ?? existing?.isWtfUser ?? nextUserId);
       const updated: LivePeer = {
         peerId: next.peerId,
-        guestName: next.guestName || existing?.guestName || "guest",
+        guestName: next.guestName?.trim() || nextUsername || existing?.guestName || "guest",
+        userId: nextUserId,
+        username: nextUsername,
+        isWtfUser: nextIsWtfUser,
         mediaState: normalizeMediaState(next.mediaState ?? existing?.mediaState),
         stream,
         connected: next.connected ?? existing?.connected ?? false,
       };
       const others = current.filter((peer) => peer.peerId !== next.peerId);
-      return [...others, updated].sort((a, b) => a.guestName.localeCompare(b.guestName));
+      return [...others, updated].sort((a, b) => livePeerName(a).localeCompare(livePeerName(b), undefined, { sensitivity: "base" }));
     });
   }
 
@@ -1874,8 +2341,11 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
         upsertRemotePeer({
           peerId: peer.peerId,
           guestName: peer.guestName,
-        mediaState: peer.mediaState,
-      });
+          userId: peer.userId,
+          username: peer.username,
+          isWtfUser: peer.isWtfUser,
+          mediaState: peer.mediaState,
+        });
         if (hasAnyMedia(currentMediaState())) void createOfferForPeer(peer.peerId);
       });
       setSocketReady(true);
@@ -1889,6 +2359,9 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       upsertRemotePeer({
         peerId: event.peer.peerId,
         guestName: event.peer.guestName,
+        userId: event.peer.userId,
+        username: event.peer.username,
+        isWtfUser: event.peer.isWtfUser,
         mediaState: event.peer.mediaState,
       });
       if (hasAnyMedia(currentMediaState())) void createOfferForPeer(event.peer.peerId);
@@ -1904,6 +2377,9 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       upsertRemotePeer({
         peerId: event.peerId,
         guestName: event.guestName,
+        userId: event.userId,
+        username: event.username,
+        isWtfUser: event.isWtfUser,
         mediaState: event.mediaState,
       });
       return;
@@ -1915,7 +2391,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     }
 
     if (event.type === "wtf_live_chat_message" && typeof event.message === "object" && event.message) {
-      const liveMessage = event.message as LiveChatMessage;
+      const liveMessage = {
+        ...(event.message as LiveChatMessage),
+        style: normalizeLiveChatStyle((event.message as LiveChatMessage).style),
+      };
       setLiveMessages((current) => {
         if (current.some((message) => message.id === liveMessage.id)) return current;
         return [...current, liveMessage].slice(-120);
@@ -2054,10 +2533,87 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     setStatus("Room URL copied.");
   }
 
+  function addWimBuddy(peer: LivePeer) {
+    const targetUserId = normalizeLiveUserId(peer.userId);
+    if (!viewerUserId || !targetUserId || targetUserId === viewerUserId) return;
+    const targetName = peer.username || peer.guestName || `user-${targetUserId}`;
+    setWimFriendIds((current) => {
+      if (current.includes(targetUserId)) return current;
+      const next = [...current, targetUserId].sort((a, b) => a - b);
+      writeWimFriendIds(viewerUserId, next);
+      return next;
+    });
+    setStatus(`Added @${targetName} to WIM buddies.`);
+    void api
+      .post<{ ok: true }>("/api/desktop/events", {
+        eventType: "wim.friend.added",
+        objectId: `wim-user:${targetUserId}`,
+        objectKind: "messenger_friend",
+        action: "added",
+        metadata: {
+          userId: targetUserId,
+          username: targetName,
+          source: "wtf-live-attendance",
+          roomId,
+        },
+      })
+      .catch(() => {
+        // Buddy shortcuts are local-first; telemetry should not block the room.
+      });
+  }
+
+  function openTipTrayForPeer(peer?: LivePeer) {
+    if (!viewerUserId) {
+      setStatus("Sign in to send WTF LIVE tip items.");
+      return;
+    }
+    if (peer) {
+      const targetUserId = normalizeLiveUserId(peer.userId);
+      if (targetUserId && targetUserId !== viewerUserId) {
+        setTipTargetUserId(targetUserId);
+      }
+    }
+    if (!ownedTipItems.length) {
+      setTipStatus("Buy WTF LIVE tip items in WTFIAM before tipping.");
+    } else {
+      setTipStatus("");
+    }
+    setAttendanceOpen(true);
+    setTipTrayOpen(true);
+  }
+
+  function openTipTrayFromCommand(commandText: string) {
+    const [, rawTarget] = commandText.trim().split(/\s+/, 2);
+    if (rawTarget) {
+      const normalizedTarget = rawTarget.replace(/^@/, "").toLowerCase();
+      const target = tipTargets.find(
+        (candidate) =>
+          candidate.label.replace(/^@/, "").toLowerCase() === normalizedTarget ||
+          candidate.peer.guestName.replace(/^@/, "").toLowerCase() === normalizedTarget,
+      );
+      if (target) setTipTargetUserId(target.userId);
+    }
+    setChatText("");
+    openTipTrayForPeer();
+  }
+
+  function sendSelectedTip() {
+    if (!selectedTipTarget || !selectedTipItem) {
+      setTipStatus("Select a WTF user and an owned tip item.");
+      return;
+    }
+    sendTipMutation.mutate({
+      receiverUserId: selectedTipTarget.userId,
+      sku: selectedTipItem.sku,
+    });
+  }
+
   function joinRoom() {
-    const name = guestName.trim() || "guest";
-    localStorage.setItem("wtf-live:guest-name", name);
-    setGuestName(name);
+    const name = signedInUsername || guestName.trim() || "guest";
+    if (!signedInUsername) {
+      localStorage.setItem("wtf-live:guest-name", name);
+      setGuestName(name);
+    }
     setJoined(true);
     setStatus(`Connecting as ${name}...`);
     connectRoomSocket(name);
@@ -2195,13 +2751,21 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     setChatAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId));
   }
 
+  function updateChatStyle(next: Partial<LiveChatStyle>) {
+    setChatStyle((current) => normalizeLiveChatStyle({ ...current, ...next }));
+  }
+
 	  function sendLiveChat() {
 	    const text = chatText.trim();
 	    if (!text && chatAttachments.length === 0) {
 	      setStatus("Type a message or attach media first.");
       return;
     }
-    if (!socketReady || !sendRoomSocket({ type: "wtf_live_chat_message", text, attachments: chatAttachments })) {
+    if (text.toLowerCase().startsWith("/tip")) {
+      openTipTrayFromCommand(text);
+      return;
+    }
+    if (!socketReady || !sendRoomSocket({ type: "wtf_live_chat_message", text, attachments: chatAttachments, style: normalizeLiveChatStyle(chatStyle) })) {
       setStatus("Room chat is not connected.");
       return;
     }
@@ -2416,6 +2980,92 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const chatDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "chat");
   const sidebarDetached = attendanceDetached && chatDetached;
 
+  function renderAttendeeRow(entry: {
+    id: string;
+    name: string;
+    userId?: number | null;
+    username?: string | null;
+    isWtfUser?: boolean;
+    avatarUrl?: string | null;
+    mediaState: LiveMediaState;
+    connected?: boolean;
+    diagnostic?: PeerDiagnostic;
+    self?: boolean;
+    peer?: LivePeer;
+  }) {
+    const attendeeUserId = normalizeLiveUserId(entry.userId);
+    const entryName = entry.username || entry.name || "guest";
+    const stateLabel = labelForMediaState(entry.mediaState, entry.connected ?? true);
+    const health = entry.diagnostic?.health ?? (entry.connected ? "good" : "connecting");
+    const canAddWimBuddy = Boolean(
+      viewerUserId &&
+        attendeeUserId &&
+        attendeeUserId !== viewerUserId &&
+        entry.isWtfUser &&
+        entry.peer,
+    );
+    const canTip = Boolean(
+      viewerUserId &&
+        attendeeUserId &&
+        attendeeUserId !== viewerUserId &&
+        entry.isWtfUser &&
+        entry.peer,
+    );
+    const alreadyBuddy = Boolean(attendeeUserId && wimFriendIds.includes(attendeeUserId));
+
+    return (
+      <AttendeeRow
+        key={entry.id}
+        $active={Boolean(entry.mediaState.activeVideo || entry.mediaState.audioOpen)}
+        data-wtf-live-attendee={entry.id}
+        data-wtf-live-attendee-state={stateLabel.toLowerCase()}
+        data-wtf-live-attendee-user-id={attendeeUserId ?? undefined}
+        data-wtf-live-attendee-wtf-user={entry.isWtfUser ? "true" : "false"}
+      >
+        <AvatarMark name={entryName} avatarUrl={entry.avatarUrl} size="mini" />
+        <AttendeeName title={entryName}>
+          <strong>{entryName}</strong>
+          {entry.self ? <AttendeeBadge>you</AttendeeBadge> : null}
+          {entry.isWtfUser ? <AttendeeBadge>WTF</AttendeeBadge> : null}
+        </AttendeeName>
+        <MicDot $active={entry.mediaState.audioOpen} $ready={entry.mediaState.mic} title={entry.mediaState.audioOpen ? "Mic live" : entry.mediaState.mic ? "Mic ready" : "Mic off"}>
+          <Mic size={12} aria-hidden />
+        </MicDot>
+        {entry.self ? (
+          <span>{stateLabel}</span>
+        ) : (
+          <HealthDot $health={health} title={diagnosticSummary(entry.diagnostic)}>
+            {healthLabel(health)}
+          </HealthDot>
+        )}
+        {canTip ? (
+          <TipAttendeeButton
+            title={`Tip ${entryName}`}
+            aria-label={`Tip ${entryName}`}
+            onClick={() => entry.peer && openTipTrayForPeer(entry.peer)}
+            data-wtf-live-tip-open={attendeeUserId ?? undefined}
+          >
+            <Gift size={12} aria-hidden />
+            Tip
+          </TipAttendeeButton>
+        ) : null}
+        {canAddWimBuddy ? (
+          <WimBuddyButton
+            disabled={alreadyBuddy}
+            title={alreadyBuddy ? `${entryName} is in WIM buddies` : `Add ${entryName} to WIM buddies`}
+            aria-label={alreadyBuddy ? `${entryName} is in WIM buddies` : `Add ${entryName} to WIM buddies`}
+            onClick={() => entry.peer && addWimBuddy(entry.peer)}
+            data-wtf-live-wim-add={attendeeUserId ?? undefined}
+            data-wtf-live-wim-state={alreadyBuddy ? "buddy" : "available"}
+          >
+            {alreadyBuddy ? <Check size={12} aria-hidden /> : <UserPlus size={12} aria-hidden />}
+            {alreadyBuddy ? "Buddy" : "Add"}
+          </WimBuddyButton>
+        ) : null}
+      </AttendeeRow>
+    );
+  }
+
   function renderAttendancePanel(floating = false) {
     return (
       <AttendancePanel
@@ -2430,42 +3080,240 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
         </summary>
         <AttendanceList data-wtf-live-attendance-list={floating ? "popout" : undefined}>
           {joined ? (
-            <AttendeeRow
-              $active={Boolean(localMediaState.activeVideo || localMediaState.audioOpen)}
-              data-wtf-live-attendee="self"
-              data-wtf-live-attendee-state={labelForMediaState(localMediaState).toLowerCase()}
-            >
-              <AvatarMark name={guestName || "guest"} avatarUrl={avatarUrl} size="small" />
-              <strong>{guestName || "guest"} (you)</strong>
-              <MicDot $active={localMediaState.audioOpen} $ready={localMediaState.mic} title={localMediaState.audioOpen ? "Mic live" : localMediaState.mic ? "Mic ready" : "Mic off"}>
-                <Mic size={13} aria-hidden />
-              </MicDot>
-              <span>{labelForMediaState(localMediaState)}</span>
-            </AttendeeRow>
+            renderAttendeeRow({
+              id: "self",
+              name: attendeeDisplayName,
+              userId: viewerUserId,
+              username: signedInUsername || null,
+              isWtfUser: Boolean(viewerUserId && signedInUsername),
+              avatarUrl,
+              mediaState: localMediaState,
+              self: true,
+            })
           ) : null}
           {remotePeers.map((peer) => {
             const diagnostic = peerDiagnostics[peer.peerId];
-            return (
-              <AttendeeRow
-                key={peer.peerId}
-                $active={Boolean(peer.mediaState.activeVideo || peer.mediaState.audioOpen)}
-                data-wtf-live-attendee={peer.peerId}
-                data-wtf-live-attendee-state={labelForMediaState(peer.mediaState, peer.connected).toLowerCase()}
-              >
-                <AvatarMark name={peer.guestName} avatarUrl={peer.mediaState.avatarUrl} size="small" />
-                <strong>{peer.guestName}</strong>
-                <MicDot $active={peer.mediaState.audioOpen} $ready={peer.mediaState.mic} title={peer.mediaState.audioOpen ? "Mic live" : peer.mediaState.mic ? "Mic ready" : "Mic off"}>
-                  <Mic size={13} aria-hidden />
-                </MicDot>
-                <HealthDot $health={diagnostic?.health ?? (peer.connected ? "good" : "connecting")} title={diagnosticSummary(diagnostic)}>
-                  {healthLabel(diagnostic?.health ?? (peer.connected ? "good" : "connecting"))}
-                </HealthDot>
-              </AttendeeRow>
-            );
+            return renderAttendeeRow({
+              id: peer.peerId,
+              name: livePeerName(peer),
+              userId: peer.userId,
+              username: peer.username,
+              isWtfUser: peer.isWtfUser,
+              avatarUrl: peer.mediaState.avatarUrl,
+              mediaState: peer.mediaState,
+              connected: peer.connected,
+              diagnostic,
+              peer,
+            });
           })}
           {!joined && !remotePeers.length ? <span>Join to appear here.</span> : null}
         </AttendanceList>
       </AttendancePanel>
+    );
+  }
+
+  function renderChatAttachments(attachments: LiveChatAttachment[], editable = false) {
+    if (!attachments.length) return null;
+    return (
+      <AttachmentStrip>
+        {attachments.map((attachment) => (
+          <AttachmentPreview key={attachment.id} data-wtf-live-chat-attachment={attachment.id}>
+            {attachment.kind === "video" ? (
+              <video src={attachment.dataUrl} controls playsInline onClick={() => openAttachmentPopout(attachment)} />
+            ) : (
+              <img src={attachment.dataUrl} alt={attachment.name} onClick={() => openAttachmentPopout(attachment)} />
+            )}
+            <span>{attachment.name} {formatFileSize(attachment.sizeBytes)}</span>
+            {editable ? <Button onClick={() => removeAttachment(attachment.id)}>Remove</Button> : null}
+          </AttachmentPreview>
+        ))}
+      </AttachmentStrip>
+    );
+  }
+
+  function renderLiveChatMessage(message: LiveChatMessage) {
+    return (
+      <MessageItem key={message.id} data-wtf-live-chat-message={message.id}>
+        <strong>{message.guestName}</strong>
+        <span>{formatDate(message.createdAt)}</span>
+        {message.text ? (
+          <ChatMessageText style={liveChatTextStyle(message.style)} data-wtf-live-chat-message-text>
+            {message.text}
+          </ChatMessageText>
+        ) : null}
+        {renderChatAttachments(message.attachments)}
+      </MessageItem>
+    );
+  }
+
+  function renderChatToolbox() {
+    return (
+      <ChatToolbox role="toolbar" aria-label="Chat text style" data-wtf-live-chat-tools>
+        <ChatToolSelect
+          aria-label="Chat font"
+          value={chatStyle.font}
+          onChange={(event) => updateChatStyle({ font: event.target.value as LiveChatFont })}
+          data-wtf-live-chat-font
+        >
+          {LIVE_CHAT_FONT_OPTIONS.map((option) => (
+            <option key={option.id} value={option.id}>{option.label}</option>
+          ))}
+        </ChatToolSelect>
+        <ChatToolSelect
+          aria-label="Chat font size"
+          value={chatStyle.size}
+          onChange={(event) => updateChatStyle({ size: Number(event.target.value) })}
+          data-wtf-live-chat-font-size
+        >
+          {LIVE_CHAT_FONT_SIZES.map((size) => (
+            <option key={size} value={size}>{size}px</option>
+          ))}
+        </ChatToolSelect>
+        <ChatColorStrip aria-label="Chat text color">
+          {LIVE_CHAT_COLOR_OPTIONS.map((option) => (
+            <ChatColorSwatch
+              key={option.id}
+              type="button"
+              $color={option.value}
+              $active={chatStyle.color === option.id}
+              title={`Text color ${option.label}`}
+              aria-label={`Text color ${option.label}`}
+              aria-pressed={chatStyle.color === option.id}
+              onClick={() => updateChatStyle({ color: option.id })}
+              data-wtf-live-chat-color={option.id}
+            />
+          ))}
+        </ChatColorStrip>
+        <ChatToolIconButton
+          $active={chatStyle.bold}
+          aria-label="Bold chat text"
+          aria-pressed={chatStyle.bold}
+          title="Bold"
+          onClick={() => updateChatStyle({ bold: !chatStyle.bold })}
+          data-wtf-live-chat-bold
+        >
+          <Bold size={14} aria-hidden />
+        </ChatToolIconButton>
+        <ChatToolIconButton
+          $active={chatStyle.italic}
+          aria-label="Italic chat text"
+          aria-pressed={chatStyle.italic}
+          title="Italic"
+          onClick={() => updateChatStyle({ italic: !chatStyle.italic })}
+          data-wtf-live-chat-italic
+        >
+          <Italic size={14} aria-hidden />
+        </ChatToolIconButton>
+        <ChatToolIconButton
+          aria-label="Reset chat style"
+          title="Reset"
+          onClick={() => setChatStyle(DEFAULT_LIVE_CHAT_STYLE)}
+          data-wtf-live-chat-style-reset
+        >
+          <RotateCcw size={14} aria-hidden />
+        </ChatToolIconButton>
+      </ChatToolbox>
+    );
+  }
+
+  function renderTipTray() {
+    if (!tipTrayOpen) return null;
+    const targetValue = selectedTipTarget?.userId ? String(selectedTipTarget.userId) : "";
+    const itemValue = selectedTipItem?.sku ?? "";
+    return (
+      <TipTray data-wtf-live-tip-tray>
+        <TipTrayHeader>
+          <span><Gift size={14} aria-hidden /> WTF LIVE tip</span>
+          <Button size="sm" onClick={() => setTipTrayOpen(false)} data-wtf-live-tip-close>
+            Close
+          </Button>
+        </TipTrayHeader>
+        <TipTrayGrid>
+          <TipTraySelect
+            aria-label="Tip receiver"
+            value={targetValue}
+            onChange={(event) => setTipTargetUserId(Number(event.target.value) || null)}
+            data-wtf-live-tip-target
+          >
+            {!tipTargets.length ? <option value="">No WTF users</option> : null}
+            {tipTargets.map((target) => (
+              <option key={target.userId} value={target.userId}>
+                {target.label}
+              </option>
+            ))}
+          </TipTraySelect>
+          <TipTraySelect
+            aria-label="Tip item"
+            value={itemValue}
+            onChange={(event) => setTipSku(event.target.value)}
+            data-wtf-live-tip-item
+          >
+            {!ownedTipItems.length ? <option value="">No tip items</option> : null}
+            {ownedTipItems.map((item) => (
+              <option key={item.sku} value={item.sku}>
+                {item.name} ({item.quantityOwned})
+              </option>
+            ))}
+          </TipTraySelect>
+        </TipTrayGrid>
+        <GuestGrid>
+          <Button
+            disabled={sendTipMutation.isPending || !selectedTipTarget || !selectedTipItem}
+            onClick={sendSelectedTip}
+            data-wtf-live-tip-send
+          >
+            <ButtonLabel><Gift size={16} aria-hidden /> Send Tip</ButtonLabel>
+          </Button>
+          <Button onClick={() => window.open("/wtfiam?category=wtf_live", "_blank", "noopener,noreferrer")}>
+            Buy Tips
+          </Button>
+        </GuestGrid>
+        {tipStatus ? (
+          <TipStatus $tone={/failed|not|no tip|select|sign in/i.test(tipStatus) ? "warn" : "good"} data-wtf-live-tip-status>
+            {tipStatus}
+          </TipStatus>
+        ) : null}
+      </TipTray>
+    );
+  }
+
+  function renderChatComposer() {
+    return (
+      <ChatComposer data-wtf-live-chat-composer="true">
+        {renderChatToolbox()}
+        {renderTipTray()}
+        <ChatTextArea
+          aria-label="WTF LIVE room chat message"
+          data-wtf-live-chat-text
+          disabled={!joined || !socketReady}
+          value={chatText}
+          maxLength={1200}
+          placeholder={socketReady ? "Type in the room" : "Join the room to chat"}
+          style={liveChatTextStyle(chatStyle)}
+          onChange={(event) => setChatText(event.target.value)}
+          onKeyDown={handleChatKeyDown}
+        />
+        {renderChatAttachments(chatAttachments, true)}
+        <HiddenFileInput
+          ref={fileInputRef}
+          data-wtf-live-chat-file
+          type="file"
+          multiple
+          accept="image/png,image/jpeg,image/gif,video/mp4"
+          onChange={handleAttachmentInput}
+        />
+        <GuestGrid>
+          <Button
+            disabled={!joined || !socketReady || chatAttachments.length >= MAX_LIVE_CHAT_ATTACHMENTS}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <ButtonLabel><Paperclip size={16} aria-hidden /> Media</ButtonLabel>
+          </Button>
+          <Button primary disabled={!canSendChat} onClick={sendLiveChat} data-wtf-live-chat-send>
+            <ButtonLabel><Send size={16} aria-hidden /> Send</ButtonLabel>
+          </Button>
+        </GuestGrid>
+      </ChatComposer>
     );
   }
 
@@ -2474,7 +3322,19 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       <ChatColumn data-wtf-live-chat-column={floating ? "popout" : "true"}>
         <LiveSectionHeader>
           <span><MessageSquare size={15} aria-hidden /> Room chat</span>
-          <span>{liveMessages.length + messages.length} messages</span>
+          <span>
+            {liveMessages.length + messages.length} messages
+            {!floating ? (
+              <Button
+                aria-label="Pop out chat"
+                title="Pop out chat"
+                onClick={() => openPanelPopout("chat")}
+                data-wtf-live-popout-chat
+              >
+                <ExternalLink size={13} aria-hidden />
+              </Button>
+            ) : null}
+          </span>
         </LiveSectionHeader>
         <MessageList
           ref={floating || !chatDetached ? chatLogRef : undefined}
@@ -2483,34 +3343,14 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
           data-wtf-live-chat-log
         >
           {messagesQuery.isLoading ? <Hourglass size={24} /> : null}
-          {liveMessages.map((message) => (
-            <MessageItem key={message.id} data-wtf-live-chat-message={message.id}>
-              <strong>{message.guestName}</strong>
-              <span>{formatDate(message.createdAt)}</span>
-              {message.text ? <div>{message.text}</div> : null}
-              {message.attachments.length ? (
-                <AttachmentStrip>
-                  {message.attachments.map((attachment) => (
-                    <AttachmentPreview key={attachment.id} data-wtf-live-chat-attachment={attachment.id}>
-                      {attachment.kind === "video" ? (
-                        <video src={attachment.dataUrl} controls playsInline onClick={() => openAttachmentPopout(attachment)} />
-                      ) : (
-                        <img src={attachment.dataUrl} alt={attachment.name} onClick={() => openAttachmentPopout(attachment)} />
-                      )}
-                      <span>{attachment.name} {formatFileSize(attachment.sizeBytes)}</span>
-                    </AttachmentPreview>
-                  ))}
-                </AttachmentStrip>
-              ) : null}
-            </MessageItem>
-          ))}
+          {liveMessages.map((message) => renderLiveChatMessage(message))}
           {messages.length ? <MessageDivider>Public AT room notes</MessageDivider> : null}
           {messages.length ? (
             [...messages].reverse().map((message) => (
               <MessageItem key={message.uri}>
                 <strong>{message.author?.displayName || message.author?.handle || "host"}</strong>
                 {formatDate(message.createdAt) ? <span>{formatDate(message.createdAt)}</span> : null}
-                <div>{message.text}</div>
+                <ChatMessageText>{message.text}</ChatMessageText>
               </MessageItem>
             ))
           ) : null}
@@ -2521,52 +3361,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
             {newMessageCount} new
           </NewMessagesButton>
         ) : null}
-        <ChatComposer data-wtf-live-chat-composer="true">
-          <ChatTextArea
-            aria-label="WTF LIVE room chat message"
-            data-wtf-live-chat-text
-            disabled={!joined || !socketReady}
-            value={chatText}
-            maxLength={1200}
-            placeholder={socketReady ? "Type in the room" : "Join the room to chat"}
-            onChange={(event) => setChatText(event.target.value)}
-            onKeyDown={handleChatKeyDown}
-          />
-          {chatAttachments.length ? (
-            <AttachmentStrip>
-              {chatAttachments.map((attachment) => (
-                <AttachmentPreview key={attachment.id} data-wtf-live-chat-attachment={attachment.id}>
-                  {attachment.kind === "video" ? (
-                    <video src={attachment.dataUrl} controls playsInline onClick={() => openAttachmentPopout(attachment)} />
-                  ) : (
-                    <img src={attachment.dataUrl} alt={attachment.name} onClick={() => openAttachmentPopout(attachment)} />
-                  )}
-                  <span>{attachment.name} {formatFileSize(attachment.sizeBytes)}</span>
-                  <Button onClick={() => removeAttachment(attachment.id)}>Remove</Button>
-                </AttachmentPreview>
-              ))}
-            </AttachmentStrip>
-          ) : null}
-          <HiddenFileInput
-            ref={fileInputRef}
-            data-wtf-live-chat-file
-            type="file"
-            multiple
-            accept="image/png,image/jpeg,image/gif,video/mp4"
-            onChange={handleAttachmentInput}
-          />
-          <GuestGrid>
-            <Button
-              disabled={!joined || !socketReady || chatAttachments.length >= MAX_LIVE_CHAT_ATTACHMENTS}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <ButtonLabel><Paperclip size={16} aria-hidden /> Media</ButtonLabel>
-            </Button>
-            <Button primary disabled={!canSendChat} onClick={sendLiveChat} data-wtf-live-chat-send>
-              <ButtonLabel><Send size={16} aria-hidden /> Send</ButtonLabel>
-            </Button>
-          </GuestGrid>
-        </ChatComposer>
+        {renderChatComposer()}
       </ChatColumn>
     );
   }
@@ -2582,7 +3377,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	          <HeaderStatus>
 	            {socketReady ? <Wifi size={15} aria-hidden /> : <WifiOff size={15} aria-hidden />}{" "}
 	            <span>{joined ? (socketReady ? "Connected" : "Connecting") : joinMode === "wtf_user_private_room" ? "Private room" : "Public room"}</span>
-	            <span>{joined ? guestName : "Guest setup"}</span>
+	            <span>{joined ? attendeeDisplayName : signedInUsername ? signedInUsername : authLoading ? "Checking account" : "Guest setup"}</span>
 	            <span>{peerId ? peerId.slice(0, 12) : "not joined"}</span>
 	            <HeaderCloseButton aria-label="Close Window" onClick={closeRoomWindow} data-wtf-live-close-window>
 	              <X size={15} aria-hidden />
@@ -2596,16 +3391,26 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	                <span><Radio size={15} aria-hidden /> Room</span>
 	                <ShareStatus>{participantCount} in room</ShareStatus>
 	              </LiveSectionHeader>
-	              <TextField
-	                aria-label="Guest display name"
-	                value={guestName}
-	                placeholder="Display name"
-	                fullWidth
-	                disabled={joined}
-	                onChange={(event: ChangeEvent<HTMLInputElement>) => setGuestName(event.target.value)}
-	              />
+	              {signedInUsername ? (
+	                <AccountJoinIdentity data-wtf-live-account-identity>
+	                  <AvatarMark name={attendeeDisplayName} avatarUrl={avatarUrl} size="small" />
+	                  <span>
+	                    <strong>{signedInUsername}</strong>
+	                    <span>wtfOS account</span>
+	                  </span>
+	                </AccountJoinIdentity>
+	              ) : (
+	                <TextField
+	                  aria-label="Guest display name"
+	                  value={guestName}
+	                  placeholder="Display name"
+	                  fullWidth
+	                  disabled={joined || authLoading}
+	                  onChange={(event: ChangeEvent<HTMLInputElement>) => setGuestName(event.target.value)}
+	                />
+	              )}
 	              <RoomActionGrid>
-	                <Button primary aria-label="Join Room" disabled={joined} onClick={joinRoom} data-wtf-live-join-room>
+	                <Button primary aria-label="Join Room" disabled={joined || authLoading} onClick={joinRoom} data-wtf-live-join-room>
 	                  {joined ? "Joined" : "Join"}
 	                </Button>
 	                <Button aria-label="Copy URL" onClick={copyRoomUrl}>
@@ -2710,7 +3515,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	                <ShareStatus>{labelForMediaState(localMediaState)}</ShareStatus>
 	              </LiveSectionHeader>
 	              <AvatarSettings>
-	                <AvatarMark name={guestName || "guest"} avatarUrl={avatarUrl} size="small" />
+	                <AvatarMark name={attendeeDisplayName} avatarUrl={avatarUrl} size="small" />
 	                <GuestGrid>
 	                  <Button onClick={() => avatarInputRef.current?.click()} data-wtf-live-avatar-button>
 	                    <ButtonLabel><ImageIcon size={16} aria-hidden /> Avatar</ButtonLabel>
@@ -2770,7 +3575,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	                  const diagnostic = peerDiagnostics[peer.peerId];
 	                  return (
 	                    <DiagnosticRow key={peer.peerId} data-wtf-live-peer-diagnostic={peer.peerId}>
-	                      <span>{peer.guestName}</span>
+	                      <span>{livePeerName(peer)}</span>
 	                      <HealthDot $health={diagnostic?.health ?? "connecting"} title={diagnosticSummary(diagnostic)}>
 	                        {healthLabel(diagnostic?.health ?? "connecting")}
 	                      </HealthDot>
@@ -2790,19 +3595,19 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	              {joined && localMediaState.activeVideo ? (
 	                <StageParticipantTile
 	                  id="self"
-	                  name={guestName || "guest"}
+	                  name={attendeeDisplayName}
 	                  mediaState={localMediaState}
 	                  stream={localStageStream}
 	                  connected={socketReady}
 	                  isSelf
-	                  onOpen={() => openStagePopout({ peerId: "self", guestName: guestName || "guest", mediaState: localMediaState })}
+	                  onOpen={() => openStagePopout({ peerId: "self", guestName: attendeeDisplayName, mediaState: localMediaState })}
 	                />
 	              ) : null}
               {remoteStagePeers.map((peer) => (
                 <StageParticipantTile
                   key={peer.peerId}
                   id={peer.peerId}
-                  name={peer.guestName}
+                  name={livePeerName(peer)}
 	                  mediaState={peer.mediaState}
 	                  stream={peer.stream}
 	                  connected={peer.connected}
@@ -2854,38 +3659,31 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	              </summary>
 	              <AttendanceList data-wtf-live-attendance-list>
 	                {joined ? (
-	                  <AttendeeRow
-	                    $active={Boolean(localMediaState.activeVideo || localMediaState.audioOpen)}
-	                    data-wtf-live-attendee="self"
-	                    data-wtf-live-attendee-state={labelForMediaState(localMediaState).toLowerCase()}
-	                  >
-	                    <AvatarMark name={guestName || "guest"} avatarUrl={avatarUrl} size="small" />
-	                    <strong>{guestName || "guest"} (you)</strong>
-	                    <MicDot $active={localMediaState.audioOpen} $ready={localMediaState.mic} title={localMediaState.audioOpen ? "Mic live" : localMediaState.mic ? "Mic ready" : "Mic off"}>
-	                      <Mic size={13} aria-hidden />
-	                    </MicDot>
-	                    <span>{labelForMediaState(localMediaState)}</span>
-	                  </AttendeeRow>
+	                  renderAttendeeRow({
+	                    id: "self",
+	                    name: attendeeDisplayName,
+	                    userId: viewerUserId,
+	                    username: signedInUsername || null,
+	                    isWtfUser: Boolean(viewerUserId && signedInUsername),
+	                    avatarUrl,
+	                    mediaState: localMediaState,
+	                    self: true,
+	                  })
 	                ) : null}
 	                {remotePeers.map((peer) => {
 	                  const diagnostic = peerDiagnostics[peer.peerId];
-	                  return (
-	                    <AttendeeRow
-	                      key={peer.peerId}
-	                      $active={Boolean(peer.mediaState.activeVideo || peer.mediaState.audioOpen)}
-	                      data-wtf-live-attendee={peer.peerId}
-	                      data-wtf-live-attendee-state={labelForMediaState(peer.mediaState, peer.connected).toLowerCase()}
-	                    >
-	                      <AvatarMark name={peer.guestName} avatarUrl={peer.mediaState.avatarUrl} size="small" />
-	                      <strong>{peer.guestName}</strong>
-	                      <MicDot $active={peer.mediaState.audioOpen} $ready={peer.mediaState.mic} title={peer.mediaState.audioOpen ? "Mic live" : peer.mediaState.mic ? "Mic ready" : "Mic off"}>
-	                        <Mic size={13} aria-hidden />
-	                      </MicDot>
-	                      <HealthDot $health={diagnostic?.health ?? (peer.connected ? "good" : "connecting")} title={diagnosticSummary(diagnostic)}>
-	                        {healthLabel(diagnostic?.health ?? (peer.connected ? "good" : "connecting"))}
-	                      </HealthDot>
-	                    </AttendeeRow>
-	                  );
+	                  return renderAttendeeRow({
+	                    id: peer.peerId,
+	                    name: livePeerName(peer),
+	                    userId: peer.userId,
+	                    username: peer.username,
+	                    isWtfUser: peer.isWtfUser,
+	                    avatarUrl: peer.mediaState.avatarUrl,
+	                    mediaState: peer.mediaState,
+	                    connected: peer.connected,
+	                    diagnostic,
+	                    peer,
+	                  });
 	                })}
 	                {!joined && !remotePeers.length ? <span>Join to appear here.</span> : null}
 	              </AttendanceList>
@@ -2897,108 +3695,9 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	                <span>Close the floating chat window to dock it here again.</span>
 	              </DetachedPanelNotice>
 	            ) : (
-	            <ChatColumn data-wtf-live-chat-column="true">
-	              <LiveSectionHeader>
-	                <span><MessageSquare size={15} aria-hidden /> Room chat</span>
-	                <span>
-	                  {liveMessages.length + messages.length} messages
-	                  <Button
-	                    aria-label="Pop out chat"
-	                    title="Pop out chat"
-	                    onClick={() => openPanelPopout("chat")}
-	                    data-wtf-live-popout-chat
-	                  >
-	                    <ExternalLink size={13} aria-hidden />
-	                  </Button>
-	                </span>
-	              </LiveSectionHeader>
-	              <MessageList ref={chatLogRef} onScroll={handleChatScroll} aria-label="WTF LIVE room chat" data-wtf-live-chat-log>
-                {messagesQuery.isLoading ? <Hourglass size={24} /> : null}
-                {liveMessages.map((message) => (
-                  <MessageItem key={message.id} data-wtf-live-chat-message={message.id}>
-                    <strong>{message.guestName}</strong>
-                    <span>{formatDate(message.createdAt)}</span>
-                    {message.text ? <div>{message.text}</div> : null}
-                    {message.attachments.length ? (
-                      <AttachmentStrip>
-                        {message.attachments.map((attachment) => (
-	                          <AttachmentPreview key={attachment.id} data-wtf-live-chat-attachment={attachment.id}>
-	                            {attachment.kind === "video" ? (
-	                              <video src={attachment.dataUrl} controls playsInline onClick={() => openAttachmentPopout(attachment)} />
-	                            ) : (
-	                              <img src={attachment.dataUrl} alt={attachment.name} onClick={() => openAttachmentPopout(attachment)} />
-	                            )}
-                            <span>{attachment.name} {formatFileSize(attachment.sizeBytes)}</span>
-                          </AttachmentPreview>
-                        ))}
-                      </AttachmentStrip>
-                    ) : null}
-                  </MessageItem>
-                ))}
-                {messages.length ? <MessageDivider>Public AT room notes</MessageDivider> : null}
-                {messages.length ? (
-                  [...messages].reverse().map((message) => (
-                    <MessageItem key={message.uri}>
-                      <strong>{message.author?.displayName || message.author?.handle || "host"}</strong>
-                      {formatDate(message.createdAt) ? <span>{formatDate(message.createdAt)}</span> : null}
-                      <div>{message.text}</div>
-                    </MessageItem>
-                  ))
-                ) : null}
-                {!liveMessages.length && !messages.length ? <span>No room chat yet.</span> : null}
-              </MessageList>
-              {newMessageCount ? (
-                <NewMessagesButton onClick={scrollChatToBottom} data-wtf-live-new-messages>
-                  {newMessageCount} new
-                </NewMessagesButton>
-              ) : null}
-              <ChatComposer data-wtf-live-chat-composer="true">
-                <ChatTextArea
-                  aria-label="WTF LIVE room chat message"
-                  data-wtf-live-chat-text
-                  disabled={!joined || !socketReady}
-                  value={chatText}
-                  maxLength={1200}
-                  placeholder={socketReady ? "Type in the room" : "Join the room to chat"}
-                  onChange={(event) => setChatText(event.target.value)}
-                  onKeyDown={handleChatKeyDown}
-                />
-                {chatAttachments.length ? (
-                  <AttachmentStrip>
-                    {chatAttachments.map((attachment) => (
-                      <AttachmentPreview key={attachment.id} data-wtf-live-chat-attachment={attachment.id}>
-                        {attachment.kind === "video" ? (
-                          <video src={attachment.dataUrl} controls playsInline onClick={() => openAttachmentPopout(attachment)} />
-                        ) : (
-                          <img src={attachment.dataUrl} alt={attachment.name} onClick={() => openAttachmentPopout(attachment)} />
-                        )}
-                        <span>{attachment.name} {formatFileSize(attachment.sizeBytes)}</span>
-                        <Button onClick={() => removeAttachment(attachment.id)}>Remove</Button>
-                      </AttachmentPreview>
-                    ))}
-                  </AttachmentStrip>
-                ) : null}
-                <HiddenFileInput
-                  ref={fileInputRef}
-                  data-wtf-live-chat-file
-                  type="file"
-                  multiple
-                  accept="image/png,image/jpeg,image/gif,video/mp4"
-                  onChange={handleAttachmentInput}
-                />
-                <GuestGrid>
-                  <Button
-                    disabled={!joined || !socketReady || chatAttachments.length >= MAX_LIVE_CHAT_ATTACHMENTS}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <ButtonLabel><Paperclip size={16} aria-hidden /> Media</ButtonLabel>
-                  </Button>
-                  <Button primary disabled={!canSendChat} onClick={sendLiveChat} data-wtf-live-chat-send>
-                    <ButtonLabel><Send size={16} aria-hidden /> Send</ButtonLabel>
-                  </Button>
-                </GuestGrid>
-              </ChatComposer>
-            </ChatColumn>
+	            <>
+	              {renderChatPanel(false)}
+	            </>
 	            )}
           </RoomSidebar>
 	          ) : null}

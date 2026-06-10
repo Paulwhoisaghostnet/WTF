@@ -4,16 +4,19 @@
  * there is only one place to change when a new contract/token is
  * deployed or the operator wallet rotates.
  *
- * The WTF FA2 contract/token-id mirrors `shared/types.ts` WTF_TOKEN.
+ * The WTF FA2 contract/token-id mirrors `shared/types.ts` WTF_TOKEN by
+ * default, with env overrides for Shadownet rehearsals.
  * The operator wallet address is driven by the environment variable
  * `WTF_OPERATOR_WALLET_ADDRESS` so ops can rotate keys without a
  * code change.
  */
 
-import { WTF_TOKEN } from "../../shared/types";
+import { getServerWtfToken } from "./wtf-token-config";
 
-export const WTF_FA2_CONTRACT: string = WTF_TOKEN.contract;
-export const WTF_FA2_TOKEN_ID: string = String(WTF_TOKEN.tokenId);
+const wtfToken = getServerWtfToken();
+
+export const WTF_FA2_CONTRACT: string = wtfToken.contract;
+export const WTF_FA2_TOKEN_ID: string = String(wtfToken.tokenId);
 
 /**
  * The gameshow operator wallet, set via env var. Undefined on dev

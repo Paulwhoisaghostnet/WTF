@@ -32,11 +32,14 @@ const CHAIN_ID_TO_NETWORK: Record<string, string> = {
   NetXdQprcVkpaWU: "mainnet",
   // Ghostnet chain id
   NetXnHfVqm9iesp: "ghostnet",
+  // Shadownet chain id
+  NetXsqzbfFenSTS: "shadownet",
 };
 
 const NETWORK_TO_CHAIN_ID: Record<string, string> = {
   mainnet: "NetXdQprcVkpaWU",
   ghostnet: "NetXnHfVqm9iesp",
+  shadownet: "NetXsqzbfFenSTS",
 };
 
 function labelForChainId(chainId: string): string {

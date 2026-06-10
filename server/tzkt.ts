@@ -1,4 +1,3 @@
-import { WTF_TOKEN } from "@shared/types";
 import type {
   TzKTTokenBalance,
   TzKTTokenTransfer,
@@ -6,6 +5,7 @@ import type {
 import { createBoundedExpiringCache } from "./lib/bounded-expiring-cache";
 import { tzkt } from "./lib/upstream";
 import { normalizeIpfsUri as normalizeIpfsUriShared } from "@shared/ipfs-gateways";
+import { getServerWtfToken } from "./lib/wtf-token-config";
 
 const CACHE_TTL = 5 * 60 * 1000;
 const cache = createBoundedExpiringCache<unknown>({
@@ -149,15 +149,16 @@ export async function getTokenHolders(
   limit = 100,
   offset = 0
 ): Promise<TzKTTokenBalance[]> {
-  const cacheKey = `holders:${limit}:${offset}`;
+  const wtfToken = getServerWtfToken();
+  const cacheKey = `holders:${wtfToken.contract}:${wtfToken.tokenId}:${limit}:${offset}`;
   const cached = getCached<TzKTTokenBalance[]>(cacheKey);
   if (cached) return cached;
   const persisted = await readPersistentCached<TzKTTokenBalance[]>(cacheKey);
   if (persisted) return persisted;
 
   const data = await tzkt.getJson<TzKTTokenBalance[]>("/tokens/balances", {
-    "token.contract": WTF_TOKEN.contract,
-    "token.tokenId": WTF_TOKEN.tokenId,
+    "token.contract": wtfToken.contract,
+    "token.tokenId": wtfToken.tokenId,
     "balance.gt": 0,
     "sort.desc": "balance",
     limit,
@@ -172,7 +173,8 @@ export async function getTokenBalance(
   address: string,
   options: CacheOptions = {}
 ): Promise<TzKTTokenBalance | null> {
-  const cacheKey = `balance:${address}`;
+  const wtfToken = getServerWtfToken();
+  const cacheKey = `balance:${wtfToken.contract}:${wtfToken.tokenId}:${address}`;
   if (!options.forceFresh) {
     const cached = getCached<TzKTTokenBalance | null>(cacheKey);
     if (cached !== null) return cached;
@@ -181,8 +183,8 @@ export async function getTokenBalance(
   }
 
   const data = await tzkt.getJson<TzKTTokenBalance[]>("/tokens/balances", {
-    "token.contract": WTF_TOKEN.contract,
-    "token.tokenId": WTF_TOKEN.tokenId,
+    "token.contract": wtfToken.contract,
+    "token.tokenId": wtfToken.tokenId,
     account: address,
   });
   const result = data[0] ?? null;
@@ -195,15 +197,16 @@ export async function getTokenTransfers(
   limit = 100,
   offset = 0
 ): Promise<TzKTTokenTransfer[]> {
-  const cacheKey = `transfers:${limit}:${offset}`;
+  const wtfToken = getServerWtfToken();
+  const cacheKey = `transfers:${wtfToken.contract}:${wtfToken.tokenId}:${limit}:${offset}`;
   const cached = getCached<TzKTTokenTransfer[]>(cacheKey);
   if (cached) return cached;
   const persisted = await readPersistentCached<TzKTTokenTransfer[]>(cacheKey);
   if (persisted) return persisted;
 
   const data = await tzkt.getJson<TzKTTokenTransfer[]>("/tokens/transfers", {
-    "token.contract": WTF_TOKEN.contract,
-    "token.tokenId": WTF_TOKEN.tokenId,
+    "token.contract": wtfToken.contract,
+    "token.tokenId": wtfToken.tokenId,
     "sort.desc": "id",
     limit,
     offset,
@@ -217,15 +220,16 @@ export async function getWalletTokenTransfers(
   address: string,
   limit = 50
 ): Promise<TzKTTokenTransfer[]> {
-  const cacheKey = `wallet-transfers:${address}:${limit}`;
+  const wtfToken = getServerWtfToken();
+  const cacheKey = `wallet-transfers:${wtfToken.contract}:${wtfToken.tokenId}:${address}:${limit}`;
   const cached = getCached<TzKTTokenTransfer[]>(cacheKey);
   if (cached) return cached;
   const persisted = await readPersistentCached<TzKTTokenTransfer[]>(cacheKey);
   if (persisted) return persisted;
 
   const data = await tzkt.getJson<TzKTTokenTransfer[]>("/tokens/transfers", {
-    "token.contract": WTF_TOKEN.contract,
-    "token.tokenId": WTF_TOKEN.tokenId,
+    "token.contract": wtfToken.contract,
+    "token.tokenId": wtfToken.tokenId,
     "anyof.from.to": address,
     "sort.desc": "id",
     limit,

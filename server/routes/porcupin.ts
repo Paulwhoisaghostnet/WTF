@@ -6,6 +6,7 @@ import { db } from "../db";
 import { porcupinConnections, porcupinPremiumEligibility } from "@shared/schema";
 import { checkPorcupinPremiumEligibility } from "../features/porcupin/eligibility";
 import { getTzktBase } from "../lib/contract-config";
+import { getServerWtfToken } from "../lib/wtf-token-config";
 import { encryptToken, decryptToken } from "../lib/token-encryption";
 import { logSystemEvent } from "../lib/system-log";
 import {
@@ -32,11 +33,10 @@ function userId(req: any): number {
 
 async function fetchWtfBalance(walletAddress: string): Promise<number> {
   const tzktBase = getTzktBase();
-  const wtfContract = process.env.WTF_TOKEN_CONTRACT ?? process.env.VITE_WTF_TOKEN_CONTRACT;
-  if (!wtfContract) return 0;
+  const wtfToken = getServerWtfToken();
 
   try {
-    const url = `${tzktBase}/v1/tokens/balances?account=${walletAddress}&token.contract.address=${wtfContract}&limit=1`;
+    const url = `${tzktBase}/tokens/balances?account=${walletAddress}&token.contract.address=${wtfToken.contract}&token.tokenId=${wtfToken.tokenId}&limit=1`;
     const resp = await fetch(url);
     if (!resp.ok) return 0;
     const data: any[] = await resp.json();

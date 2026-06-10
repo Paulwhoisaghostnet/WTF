@@ -17,8 +17,13 @@ import {
   inAppMarketSyncState,
   userWallets,
 } from "@shared/schema";
-import { WTF_IN_APP_MARKET_CONTRACT, WTF_TOKEN } from "@shared/types";
+import {
+  WTF_IN_APP_MARKET_CONTRACT,
+  WTF_IN_APP_MARKET_CONTRACT_VERSION,
+} from "@shared/types";
 import { coerceClientNetwork, getNetwork } from "./contract-config";
+import { buildInAppMarketCartHash } from "./in-app-market-cart-hash";
+import { getServerWtfToken, type WtfTokenConfig } from "./wtf-token-config";
 import { selectDirectListingItem } from "./in-app-market-policy";
 import {
   extractCallArg,
@@ -37,6 +42,7 @@ import {
 import { buildInAppInventoryTraceMetadata } from "./in-app-inventory-trace";
 
 const DEFAULT_GAMESHOW_TREASURY = "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt";
+const SHADOWNET_IN_APP_MARKET_CONTRACT = "KT1MdvE9hYFpQP7boybqSJ9XNfXjLUG6QZrC";
 const SYNC_KEY = "wtf-in-app-market";
 const ADDRESS_RE = /^(tz1|tz2|tz3|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
 const KT1_RE = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
@@ -58,8 +64,9 @@ const INDEXER_RETRY_DELAY_MS = 1500;
 export type InAppMarketConfig = {
   network: string;
   contractAddress: string | null;
+  contractVersion: "v1" | "v2";
   treasuryAddress: string;
-  wtfToken: typeof WTF_TOKEN;
+  wtfToken: WtfTokenConfig;
   configured: boolean;
 };
 
@@ -107,6 +114,13 @@ function normalizeKt1(value: string | undefined | null): string | null {
   return KT1_RE.test(trimmed) ? trimmed : null;
 }
 
+function normalizeContractVersion(value: string | undefined | null): "v1" | "v2" | null {
+  const raw = (value ?? "").trim().toLowerCase();
+  if (raw === "v1" || raw === "1") return "v1";
+  if (raw === "v2" || raw === "2") return "v2";
+  return null;
+}
+
 async function countOwnedPetBalls(queryDb: typeof db, userId: number): Promise<number> {
   const itemRows = await queryDb.select().from(inAppMarketItems);
   const ballSkus = new Set(
@@ -145,6 +159,7 @@ export function getInAppMarketConfig(): InAppMarketConfig {
     process.env.IN_APP_MARKET_CONTRACT_ADDRESS ||
       process.env.WTF_IN_APP_MARKET_CONTRACT_ADDRESS ||
       process.env.VITE_IN_APP_MARKET_CONTRACT_ADDRESS ||
+      (network === "shadownet" ? SHADOWNET_IN_APP_MARKET_CONTRACT : null) ||
       WTF_IN_APP_MARKET_CONTRACT
   );
   const treasuryAddress =
@@ -157,8 +172,16 @@ export function getInAppMarketConfig(): InAppMarketConfig {
   return {
     network,
     contractAddress,
+    contractVersion:
+      normalizeContractVersion(
+        process.env.IN_APP_MARKET_CONTRACT_VERSION ||
+          process.env.VITE_IN_APP_MARKET_CONTRACT_VERSION
+      ) ??
+      (network === "shadownet" || contractAddress === WTF_IN_APP_MARKET_CONTRACT
+        ? WTF_IN_APP_MARKET_CONTRACT_VERSION
+        : "v1"),
     treasuryAddress,
-    wtfToken: WTF_TOKEN,
+    wtfToken: getServerWtfToken(),
     configured: Boolean(contractAddress && treasuryAddress),
   };
 }
@@ -304,9 +327,10 @@ async function fetchTreasuryTransfersSince(
   sinceId: number,
   limit: number
 ): Promise<TzktTransfer[]> {
+  const wtfToken = getServerWtfToken();
   const rows = await tzkt.getJson<TzktTransfer[]>("/tokens/transfers", {
-    "token.contract": WTF_TOKEN.contract,
-    "token.tokenId": WTF_TOKEN.tokenId,
+    "token.contract": wtfToken.contract,
+    "token.tokenId": wtfToken.tokenId,
     to: treasury,
     "id.gt": sinceId,
     "sort.asc": "id",
@@ -321,6 +345,10 @@ function extractPurchaseArgs(op: TzktTransactionOp): {
   quantity: number | null;
   amountWtfUnits: string | null;
   purchaseRef: string | null;
+  cartHash: string | null;
+  expectedTreasury: string | null;
+  expectedWtfTokenAddress: string | null;
+  expectedWtfTokenId: string | null;
 } {
   const listingId = parseNonNegativeInt(
     extractCallArg(op, [["listing_id"], ["listingId"]])
@@ -332,12 +360,55 @@ function extractPurchaseArgs(op: TzktTransactionOp): {
     extractCallArg(op, [["amount_wtf_units"], ["amountWtfUnits"]])
   );
   const ref = extractCallArg(op, [["purchase_ref"], ["purchaseRef"]]);
+  const cartHash = extractCallArg(op, [["cart_hash"], ["cartHash"]]);
+  const expectedTreasury = extractCallArg(op, [["expected_treasury"], ["expectedTreasury"]]);
+  const expectedWtfTokenAddress = extractCallArg(op, [
+    ["expected_wtf_token_address"],
+    ["expectedWtfTokenAddress"],
+  ]);
+  const expectedWtfTokenId = parseNatString(
+    extractCallArg(op, [["expected_wtf_token_id"], ["expectedWtfTokenId"]])
+  );
   return {
     listingId,
     quantity,
     amountWtfUnits,
     purchaseRef: typeof ref === "string" ? ref : null,
+    cartHash: typeof cartHash === "string" ? cartHash : null,
+    expectedTreasury: typeof expectedTreasury === "string" ? expectedTreasury : null,
+    expectedWtfTokenAddress:
+      typeof expectedWtfTokenAddress === "string" ? expectedWtfTokenAddress : null,
+    expectedWtfTokenId,
   };
+}
+
+function purchaseArgsMatchConfig(
+  parsed: ReturnType<typeof extractPurchaseArgs>,
+  config: InAppMarketConfig
+): boolean {
+  if (parsed.expectedTreasury && parsed.expectedTreasury !== config.treasuryAddress) {
+    return false;
+  }
+  if (
+    parsed.expectedWtfTokenAddress &&
+    parsed.expectedWtfTokenAddress !== config.wtfToken.contract
+  ) {
+    return false;
+  }
+  if (
+    parsed.expectedWtfTokenId &&
+    parsed.expectedWtfTokenId !== String(config.wtfToken.tokenId)
+  ) {
+    return false;
+  }
+  if (config.contractVersion === "v1") return true;
+  return (
+    parsed.cartHash != null &&
+    parsed.cartHash.length === 64 &&
+    parsed.expectedTreasury === config.treasuryAddress &&
+    parsed.expectedWtfTokenAddress === config.wtfToken.contract &&
+    parsed.expectedWtfTokenId === String(config.wtfToken.tokenId)
+  );
 }
 
 function normalizeIntentLines(value: unknown): MatchedPurchase["lines"] | null {
@@ -388,8 +459,8 @@ async function matchPurchaseFromEvidence(
   if (!amount || amount === "0" || !from || to !== config.treasuryAddress) {
     return null;
   }
-  if (tokenContractOf(transfer) !== WTF_TOKEN.contract) return null;
-  if (tokenIdOf(transfer) !== String(WTF_TOKEN.tokenId)) return null;
+  if (tokenContractOf(transfer) !== config.wtfToken.contract) return null;
+  if (tokenIdOf(transfer) !== String(config.wtfToken.tokenId)) return null;
 
   let senderOneOf = [from];
   if (args.requesterUserId) {
@@ -408,6 +479,7 @@ async function matchPurchaseFromEvidence(
 
   const parsed = extractPurchaseArgs(call.op);
   if (parsed.amountWtfUnits != null && parsed.amountWtfUnits !== amount) return null;
+  if (!purchaseArgsMatchConfig(parsed, config)) return null;
   if (parsed.purchaseRef) {
     const [intent] = await db
       .select()
@@ -426,6 +498,15 @@ async function matchPurchaseFromEvidence(
         0n
       );
       if (lineTotal !== BigInt(amount)) return null;
+      if (config.contractVersion === "v2") {
+        const expectedCartHash = buildInAppMarketCartHash({
+          purchaseRef: intent.purchaseRef,
+          routerListingId: intent.routerListingId,
+          subtotalWtfUnits: String(intent.subtotalWtfUnits),
+          items: intent.items,
+        });
+        if (parsed.cartHash !== expectedCartHash) return null;
+      }
 
       const observedAt = transfer.timestamp
         ? new Date(transfer.timestamp)
@@ -455,6 +536,7 @@ async function matchPurchaseFromEvidence(
     }
   }
 
+  if (config.contractVersion === "v2") return null;
   if (parsed.listingId == null || parsed.listingId <= 0) return null;
   const item = await itemForListing(config.contractAddress, parsed.listingId);
   if (!item) return null;

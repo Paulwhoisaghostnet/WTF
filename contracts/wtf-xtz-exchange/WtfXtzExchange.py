@@ -39,13 +39,35 @@ def wtf_xtz_exchange_main():
     )
 
     CreateListingType: type = sp.record(
+        escrow_mutez=sp.nat,
         rate_numerator_mutez=sp.nat,
         rate_denominator_wtf_units=sp.nat,
-    )
+    ).layout(("escrow_mutez", ("rate_numerator_mutez", "rate_denominator_wtf_units")))
 
     SwapType: type = sp.record(
         listing_id=sp.nat,
         wtf_amount=sp.nat,
+        expected_owner=sp.address,
+        expected_rate_numerator_mutez=sp.nat,
+        expected_rate_denominator_wtf_units=sp.nat,
+        expected_xtz_out_mutez=sp.nat,
+    ).layout(
+        (
+            "listing_id",
+            (
+                "wtf_amount",
+                (
+                    "expected_owner",
+                    (
+                        "expected_rate_numerator_mutez",
+                        (
+                            "expected_rate_denominator_wtf_units",
+                            "expected_xtz_out_mutez",
+                        ),
+                    ),
+                ),
+            ),
+        )
     )
 
     class WtfXtzExchange(sp.Contract):
@@ -74,6 +96,10 @@ def wtf_xtz_exchange_main():
             sp.cast(params, CreateListingType)
             assert not self.data.paused, "PAUSED"
             assert sp.amount > sp.mutez(0), "ZERO_ESCROW"
+            assert params.escrow_mutez > sp.nat(0), "ZERO_ESCROW"
+            assert sp.amount == utils.nat_to_mutez(
+                params.escrow_mutez
+            ), "ESCROW_AMOUNT_MISMATCH"
             assert params.rate_numerator_mutez > sp.nat(0), "ZERO_RATE_NUMERATOR"
             assert params.rate_denominator_wtf_units > sp.nat(0), "ZERO_RATE_DENOMINATOR"
 
@@ -117,6 +143,14 @@ def wtf_xtz_exchange_main():
             listing = self.data.listings[params.listing_id]
             assert listing.active, "LISTING_INACTIVE"
             assert listing.status_code == sp.nat(0), "LISTING_NOT_ACTIVE"
+            assert params.expected_owner == listing.owner, "OWNER_MISMATCH"
+            assert (
+                params.expected_rate_numerator_mutez == listing.rate_numerator_mutez
+            ), "RATE_NUMERATOR_MISMATCH"
+            assert (
+                params.expected_rate_denominator_wtf_units
+                == listing.rate_denominator_wtf_units
+            ), "RATE_DENOMINATOR_MISMATCH"
 
             numerator_product = params.wtf_amount * listing.rate_numerator_mutez
             quotient = sp.fst(
@@ -125,6 +159,7 @@ def wtf_xtz_exchange_main():
                 )
             )
             assert quotient > sp.nat(0), "ROUND_TO_ZERO"
+            assert params.expected_xtz_out_mutez == quotient, "XTZ_OUT_MISMATCH"
             xtz_out = utils.nat_to_mutez(quotient)
             assert listing.remaining_escrow_mutez >= xtz_out, "INSUFFICIENT_ESCROW"
 
