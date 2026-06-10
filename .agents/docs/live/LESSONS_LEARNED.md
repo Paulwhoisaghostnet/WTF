@@ -1,3 +1,13 @@
+## 2026-06-10 - Raw SQL seed metadata parameters need explicit casts
+
+**What happened**: The Roger Radio production boot backfill created the public channel and active playlist, then stopped before inserting the playlist item. The app log showed Postgres could not determine the data type of parameter `$2` because the same embed URL parameter was passed into `jsonb_build_object` without an explicit cast.
+
+**Why it mattered**: A partially successful boot seed can make a channel look present while the public stream remains offline. TypeScript, route smoke, and mocked playback tests will not catch a raw SQL polymorphic-parameter failure unless the seed SQL itself is covered or exercised against Postgres.
+
+**Rule**: When raw SQL passes bind parameters into polymorphic Postgres helpers such as `jsonb_build_object`, cast the parameters at the call site, for example `$2::text`. Boot seeds that create multi-row features must also be idempotent enough to repair a channel/playlist created by an earlier failed pass.
+
+---
+
 ## 2026-06-09 - Modular in-app windows need default-geometry visual proof
 
 **What happened**: The WIM modular-window redesign compiled and passed inventory route smoke, but the first focused screenshot showed the default chat window extending beyond the initial WIM app viewport. The user could resize or move it, but the first-open state still clipped the chat controls before any interaction.

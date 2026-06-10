@@ -488,16 +488,16 @@ export async function runTvBootBackfill(): Promise<void> {
           $1,
           'external:odysee',
           'roger-radio-live',
-          $2,
+          $2::text,
           'text/html',
-          $3,
-          $4,
+          $3::text,
+          $4::text,
           jsonb_build_object(
             'provider', 'Odysee',
             'authorName', 'ROGERradio',
             'authorUrl', 'https://odysee.com/@RogerRadio:f',
-            'pageUrl', $5,
-            'embedUrl', $2
+            'pageUrl', $5::text,
+            'embedUrl', $2::text
           ),
           'ROGERradio',
           NULL,

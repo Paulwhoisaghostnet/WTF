@@ -57,6 +57,7 @@ Priority labels:
 | WTF-BB-223 | Verified | Codex WTF-XTZ fixed-rate listing hardening | 2026-06-09 | Tezos / WTF-XTZ exchange contract | P0 | 17 | 1 | 3 | 5 | 4 | WTF-XTZ exchange now binds create/swap wallet signatures to explicit escrow amount, rate, owner, and exact output terms; source and Shadownet Kiln puppet proof passed, with no mainnet deploy attempted |
 | WTF-BB-224 | Verified | Codex WTF LIVE focus pass | 2026-06-09 | WTF LIVE / mobile rooms, private access, and stage controls | P1 | 13 | 6 | 4 | 5 | 0 | WTF LIVE now has mobile-visible join/media controls, desktop chat/attendance pop-outs, owned stage lifecycle controls, and a separate WTF-user private room type with an access list; verified by TypeScript, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-225 | Verified | Codex WTF LIVE chat keyboard pass | 2026-06-09 | WTF LIVE / room chat keyboard UX | P2 | 9 | 12 | 2 | 4 | 0 | WTF LIVE room chat now submits with Enter and keeps Shift+Enter for multiline drafts; verified by focused failing/passing Playwright, TypeScript, inventory coverage, and full inventory E2E |
+| WTF-BB-226 | Fixed | Codex Roger Radio full-send repair | 2026-06-10 | WTF TV / boot backfill external embed seed | P1 | 9 | 12 | 1 | 4 | 0 | Roger Radio live channel was created in production but the Odysee playlist item stayed empty because the boot backfill fed an uncast embed URL parameter into `jsonb_build_object`; fixed with explicit text casts plus a policy guard, pending production redeploy verification |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -270,6 +271,27 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-226 - Roger Radio live channel seed created an empty playlist in production
+
+- Category: WTF TV / boot backfill external embed seed
+- Status: Fixed
+- Owner/Session: Codex Roger Radio full-send repair
+- Score: C1 + F4 + S0 + P1(4) = 9
+- Evidence:
+  - After commit `3bb59d9` deployed, `https://wtfos.app/api/tv/channels` showed public channel `roger-radio-live`, but `/api/tv/channels/6/stream` returned `offline: true` with `Playlist has no videos`.
+  - The dispatchable app-log workflow showed `[tv-backfill] non-fatal boot backfill error: error: could not determine data type of parameter $2`.
+  - The Roger seed used `$2` in `jsonb_build_object` without an explicit cast, so Postgres could not infer the polymorphic metadata argument type after creating the channel and playlist.
+- Why it matters:
+  - A boot seed can partially succeed and leave a public channel visible but unplayable. That is especially easy to miss when UI tests mock the stream payload instead of exercising the production seed SQL.
+- Correction:
+  - Cast Roger seed parameters used in `jsonb_build_object` and adjacent text values as `::text`.
+  - Added a focused policy test proving the Roger seed keeps those casts and repairs an existing channel/playlist before dial assignment.
+- Verification:
+  - Passed `npx tsx --test server/features/tv/media-urls.test.ts server/app-csp-policy.test.ts server/lib/tv-boot-backfill-lock-policy.test.ts server/lib/tv-boot-backfill-roger-policy.test.ts`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - `npm run test:e2e:inventory` was attempted after the repair; all WTF TV route/workflow/subdomain checks passed, while unrelated social/reward automation timed out and `/swap` had a transient resource-block console error. Targeted `/swap` rerun passed; the social/reward timeout is outside this TV channel repair.
 
 ### WTF-BB-215 - New Skywire OAuth connections to Bluesky fail while existing sessions continue working
 
