@@ -94,6 +94,7 @@ export * from "./schema-mastodon";
 export * from "./schema-porcupin";
 export * from "./schema-atproto-appview";
 export * from "./schema-app-registry";
+export * from "./schema-wtf-sites";
 
 // TODO(schema modularization): keep the cross-domain user relation fan-out
 // in the compatibility barrel until the relation graph has domain-owned edges.

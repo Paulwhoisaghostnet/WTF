@@ -17,6 +17,7 @@ import {
 import { csrfProtection } from "./lib/csrf";
 import { createAdminMutationAuditMiddleware } from "./lib/admin-mutation-audit";
 import { canonicalDomainRedirectMiddleware } from "./lib/canonical-domain";
+import { userSiteHostRouter } from "./features/wtf-sites/host-router";
 
 /**
  * Read-heavy playback routes exempted from the generic `/api/*` rate
@@ -272,6 +273,7 @@ export async function createApp() {
   }));
   app.use(express.urlencoded({ extended: true, limit: jsonBodyLimit }));
   app.use(createSystemLogMiddleware());
+  app.use(userSiteHostRouter);
 
   app.use(
     "/api/system/logs/client",

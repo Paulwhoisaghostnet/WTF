@@ -1,9 +1,130 @@
+# User-site hosts use on-demand TLS guarded by the app's registration endpoint.
+# Only claimed, non-suspended `<username>.wtfos.me` hosts can trigger cert issue.
+{
+	on_demand_tls {
+		ask http://app:3000/internal/tls/allow
+	}
+}
+
 # wtfOS AT Protocol vhosts (S1.4) are staged in ./Caddyfile.wtfos-atproto and are
-# NOT active. To activate after DNS (docs/atproto/02-dns-tls.md) points here and
-# the `wtfos-atproto` compose profile is up, uncomment the import below. The
-# `*.wtfos.me` wildcard + on-demand-TLS global block stays disabled until S2.3
-# (see the bottom of Caddyfile.wtfos-atproto for exact instructions).
+# NOT active as a full import because this production Caddyfile owns the current
+# wtfos.app blocks below. The `*.wtfos.me` user-site wildcard is active here.
 # import Caddyfile.wtfos-atproto
+
+(wtfos_pds_site) {
+	encode gzip zstd
+
+	@ws {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @ws {args[0]}:3000
+
+	reverse_proxy {args[0]}:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
+
+wtfos.me {
+	encode gzip zstd
+	reverse_proxy app:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
+
+pds.wtfos.me {
+	import wtfos_pds_site wtfos-pds
+}
+
+social.wtfos.me {
+	import wtfos_pds_site wtfos-pds-social
+}
+
+commerce.wtfos.me {
+	import wtfos_pds_site wtfos-pds-commerce
+}
+
+media.wtfos.me {
+	import wtfos_pds_site wtfos-pds-media
+}
+
+arcade.wtfos.me {
+	import wtfos_pds_site wtfos-pds-arcade
+}
+
+tezos.wtfos.me {
+	import wtfos_pds_site wtfos-pds-tezos
+}
+
+ops.wtfos.me {
+	import wtfos_pds_site wtfos-pds-ops
+}
+
+os.wtfos.me {
+	import wtfos_pds_site wtfos-pds-os
+}
+
+users.wtfos.me {
+	import wtfos_pds_site wtfos-pds-users
+}
+
+private.wtfos.me {
+	import wtfos_pds_site wtfos-pds-private
+}
+
+relay.wtfos.me {
+	encode gzip zstd
+	@ws {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @ws host.docker.internal:2470
+	reverse_proxy host.docker.internal:2470 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}
+
+plc.wtfos.me {
+	encode gzip zstd
+	reverse_proxy wtfos-plc:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
+
+mod.wtfos.me {
+	encode gzip zstd
+	reverse_proxy wtfos-labeler:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
+
+*.wtfos.me {
+	tls {
+		on_demand
+	}
+	encode gzip zstd
+
+	reverse_proxy app:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
 
 www.wtfos.app, wtfgameshow.app, www.wtfgameshow.app, new.wtfgameshow.app {
 	redir https://wtfos.app{uri} permanent

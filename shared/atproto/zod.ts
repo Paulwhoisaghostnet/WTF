@@ -74,6 +74,22 @@ export const identityWalletLinkSchema = z.object({
   createdAt: datetime,
 });
 
+export const identitySiteSchema = z.object({
+  $type: z.literal("app.wtfos.identity.site"),
+  schemaVersion: $version,
+  host: z.string(),
+  url: z.string(),
+  versionDigest: z.string(),
+  pageSlugs: z.array(z.string()).max(6),
+  assetMediaIds: z.array(z.number().int()).max(200).optional(),
+  didTarget: z.object({
+    did: z.string(),
+    source: z.enum(["wtf", "bsky"]),
+    handle: z.string().optional(),
+  }),
+  publishedAt: datetime,
+});
+
 export const boardChannelSchema = z.object({
   $type: z.literal("app.wtfos.social.board.channel"),
   schemaVersion: $version,
@@ -164,6 +180,7 @@ export const lexiconSchemas = {
   "app.wtfos.media.echo": mediaEchoSchema,
   "app.wtfos.identity.profile": identityProfileSchema,
   "app.wtfos.identity.walletLink": identityWalletLinkSchema,
+  "app.wtfos.identity.site": identitySiteSchema,
   "app.wtfos.social.board.channel": boardChannelSchema,
   "app.wtfos.social.board.post": boardPostSchema,
   "app.wtfos.social.board.reaction": boardReactionSchema,
@@ -178,6 +195,7 @@ export type IndexRef = z.infer<typeof indexRefSchema>;
 export type MediaEcho = z.infer<typeof mediaEchoSchema>;
 export type IdentityProfile = z.infer<typeof identityProfileSchema>;
 export type IdentityWalletLink = z.infer<typeof identityWalletLinkSchema>;
+export type IdentitySite = z.infer<typeof identitySiteSchema>;
 export type BoardChannel = z.infer<typeof boardChannelSchema>;
 export type BoardPost = z.infer<typeof boardPostSchema>;
 export type BoardReaction = z.infer<typeof boardReactionSchema>;

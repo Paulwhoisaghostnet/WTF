@@ -1,0 +1,53 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.identity.site",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "Public provenance record for a wtfOS-hosted user site. Full HTML and assets remain in wtfOS storage.",
+      "record": {
+        "type": "object",
+        "required": [
+          "$type",
+          "schemaVersion",
+          "host",
+          "url",
+          "versionDigest",
+          "pageSlugs",
+          "didTarget",
+          "publishedAt"
+        ],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.identity.site" },
+          "schemaVersion": { "type": "integer" },
+          "host": { "type": "string", "description": "Canonical username host, e.g. ernie.wtfos.me." },
+          "url": { "type": "string", "description": "Canonical public URL for the site root." },
+          "versionDigest": { "type": "string", "description": "SHA-256 digest of the published manifest." },
+          "pageSlugs": {
+            "type": "array",
+            "items": { "type": "string" },
+            "maxLength": 6,
+            "description": "Published page slugs. The root page is represented by home."
+          },
+          "assetMediaIds": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "maxLength": 200,
+            "description": "wtfOS media-library ids referenced by this version."
+          },
+          "didTarget": {
+            "type": "object",
+            "required": ["did", "source"],
+            "properties": {
+              "did": { "type": "string" },
+              "source": { "type": "string", "knownValues": ["wtf", "bsky"] },
+              "handle": { "type": "string" }
+            }
+          },
+          "publishedAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

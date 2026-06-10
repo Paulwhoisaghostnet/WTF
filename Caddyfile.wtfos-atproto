@@ -127,11 +127,10 @@ mod.wtfos.me {
 }
 
 # =============================================================================
-# WILDCARD USER HANDLES (*.wtfos.me) WITH ON-DEMAND TLS — DO NOT ENABLE YET.
-# On-demand TLS requires the handle ask-gate (S2.3) so that only registered
-# handles + known infra hosts can trigger certificate issuance. When S2.3 ships,
-# add the following GLOBAL OPTIONS block to the TOP of the main ./Caddyfile
-# (global options must be the first block in the file):
+# WILDCARD USER HANDLES (*.wtfos.me) WITH ON-DEMAND TLS.
+# The active production wildcard now lives in the main ./Caddyfile. If this
+# staged file is later promoted into the main import path, keep the same shape:
+# on-demand TLS must ask the app so only registered handles can trigger certs.
 #
 #   {
 #       on_demand_tls {
@@ -143,7 +142,7 @@ mod.wtfos.me {
 #
 #   *.wtfos.me {
 #       tls { on_demand }
-#       import wtfos_pds_site wtfos-pds        # handles resolve via the master PDS
+#       reverse_proxy app:3000                 # user sites and /.well-known/atproto-did
 #   }
 #
 # The ask endpoint is served by the kernel via createTlsAllowHandler

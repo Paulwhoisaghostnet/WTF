@@ -4387,3 +4387,15 @@
 **Why it mattered**: WTF TV's existing cache path is intentionally constrained to direct media. Treating every source URI as a cacheable video would either fail playback or tempt a broader cache allowlist than the media proxy should carry.
 
 **Rule**: External livestream providers need an explicit trusted-iframe path: allowlist the provider host in CSP, normalize the iframe URL server-side, mark the queue item as `embed`, and skip media-cache prefetch/fallback behavior for that item.
+
+---
+
+## 2026-06-10 - TLS ask gates must fail closed before migrations land
+
+**What happened**: The first `*.wtfos.me` TLS allow route queried `wtf_user_sites` directly. In a local live-puppet probe before the new migration was applied, the missing table raised a 500/503 instead of returning a clean deny response.
+
+**Why it mattered**: Caddy on-demand TLS ask endpoints are infrastructure safety gates. A schema rollout gap should not create noisy app errors or ambiguous certificate behavior; unregistered or currently unreadable hosts must fail closed.
+
+**Fix**: `isHostRegisteredForTls` now treats missing user-site tables as unregistered and returns `false`, so `/internal/tls/allow` denies with the normal non-2xx path until migrations are applied.
+
+**Rule**: Any TLS, DNS, or public host admission check backed by application tables must handle missing relations as deny, not error. Migration order should never turn a public admission endpoint into a 500 path.
