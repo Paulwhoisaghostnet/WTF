@@ -62,9 +62,11 @@ export function useTVPlaybackViewModel({
 }: UseTVPlaybackViewModelArgs) {
   const currentItem = activeItem;
   const currentMediaUrl = currentItem
-    ? currentMediaUseDirect
+    ? currentItem.kind === "embed"
       ? currentItem.sourceUri
-      : currentItem.cacheUrl
+      : currentMediaUseDirect
+        ? currentItem.sourceUri
+        : currentItem.cacheUrl
     : null;
   const isOffline = streamMatchesSelectedChannel && streamOffline === true;
   const hasNoContent =

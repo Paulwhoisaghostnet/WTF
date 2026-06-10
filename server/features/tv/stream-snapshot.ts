@@ -23,9 +23,8 @@ import {
   probePlaylistItemAsync,
 } from "./cache-runtime";
 import {
-  isSameOriginMediaPath,
   normalizeMediaUri,
-  resolveCacheUrl,
+  resolveTvPlayableMedia,
 } from "./media-urls";
 
 // ─── Seeded shuffle ────────────────────────────────────────
@@ -122,7 +121,7 @@ export type TvStreamQueueItem = {
   durationSeconds: number;
   assetDurationSeconds: number;
   offsetSeconds: number;
-  kind: "video" | "gif" | "bumper";
+  kind: "video" | "gif" | "embed" | "bumper";
   bumperCategory?: string | null;
   creatorName: string | null;
   creatorAddress: string | null;
@@ -470,8 +469,7 @@ export async function buildTvStreamSnapshot(params: {
       sourceUri: row.sourceUri,
       playbackUrl: row.mediaPlaybackUrl,
     });
-    const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
-    const cacheUrl = resolveCacheUrl(sourceUri);
+    const playable = resolveTvPlayableMedia(playbackSource, row.mimeType);
     const assetDurationSeconds = Math.max(1, Number(row.durationSeconds || 1));
     const labelEntry = creatorLabels.get(
       resolveTvOverlayMetadata({
@@ -508,12 +506,12 @@ export async function buildTvStreamSnapshot(params: {
       title: row.title || `Video ${row.videoId}`,
       mimeType: row.mimeType,
       thumbnailUri: row.thumbnailUri,
-      sourceUri,
-      cacheUrl,
+      sourceUri: playable.sourceUri,
+      cacheUrl: playable.cacheUrl,
       durationSeconds: assetDurationSeconds,
       assetDurationSeconds,
       offsetSeconds: 0,
-      kind: row.mimeType === "image/gif" ? "gif" : "video",
+      kind: playable.kind,
       creatorName: overlay.creatorName,
       creatorAddress: overlay.creatorAddress,
       collectionName: overlay.collectionName,

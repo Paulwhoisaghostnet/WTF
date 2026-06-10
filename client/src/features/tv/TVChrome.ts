@@ -364,6 +364,17 @@ export const GifFrame = styled.img`
   animation: ${flicker} 8s infinite;
 `;
 
+export const ExternalEmbedFrame = styled.iframe`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  z-index: 6;
+  background: #000;
+  animation: ${flicker} 8s infinite;
+`;
+
 export const OSD = styled.div`
   position: absolute;
   left: clamp(8px, 2%, 20px);

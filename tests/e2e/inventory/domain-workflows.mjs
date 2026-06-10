@@ -570,6 +570,7 @@ export const DOMAIN_WORKFLOWS = [
     ],
     apiProbes: [
       { method: "GET", path: "/api/tv/channels" },
+      { method: "GET", path: "/api/tv/channels/roger-radio-live/embed", expectedStatuses: [404] },
       { method: "GET", path: "/api/tv/channels?mine=1" },
       { method: "GET", path: "/api/tv/bumpers/community" },
       { method: "GET", path: "/api/admin/wtf-tv" },

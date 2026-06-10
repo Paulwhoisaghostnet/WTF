@@ -7,6 +7,7 @@ type CurrentItemMeta = {
   storedDurationSec: number;
   realDurationSec: number;
   isGif: boolean;
+  isEmbed?: boolean;
 };
 
 type UseTVMtvOverlayVisibilityArgs = {
@@ -86,6 +87,8 @@ export function useTVMtvOverlayVisibility({
         } else {
           visible = localElapsedSec < 5;
         }
+      } else if (meta.isEmbed || activeItem.kind === "embed") {
+        visible = localElapsedSec < 10;
       } else {
         const el = videoRef.current;
         if (el) {

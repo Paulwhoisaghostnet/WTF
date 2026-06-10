@@ -22,7 +22,7 @@ import {
   lockTvChannelRow,
   type TvAuthUser as AuthUser,
 } from "./channel-service";
-import { normalizeMediaUri, resolveCacheUrl } from "./media-urls";
+import { resolveTvPlayableMedia } from "./media-urls";
 import { maybeAutoRefreshWtfChannel } from "./wtf-refresh";
 import { resolveTvPlaylistForChannel } from "./playlist-selection";
 
@@ -105,8 +105,10 @@ export function registerTvLiveStateRoutes(router: Router): void {
           sourceUri: currentScheduled.mediaSourceUrl,
           playbackUrl: currentScheduled.mediaPlaybackUrl,
         });
-        const sourceUrl = normalizeMediaUri(playbackSource) || playbackSource;
-        const cacheUrl = resolveCacheUrl(sourceUrl);
+        const playable = resolveTvPlayableMedia(
+          playbackSource,
+          currentScheduled.mediaMimeType
+        );
         const elapsedSec = currentScheduled.startsAt ? Math.floor((nowMs - new Date(currentScheduled.startsAt).getTime()) / 1000) : 0;
   
         return res.json({
@@ -114,10 +116,10 @@ export function registerTvLiveStateRoutes(router: Router): void {
           mode: "schedule",
           current: {
             ...currentScheduled,
-            sourceUrl,
-            cacheUrl,
+            sourceUrl: playable.sourceUri,
+            cacheUrl: playable.cacheUrl,
             offsetSeconds: elapsedSec,
-            kind: currentScheduled.mediaMimeType === "image/gif" ? "gif" : "video",
+            kind: playable.kind,
           },
           upcoming,
           offline: false,
@@ -209,8 +211,7 @@ export function registerTvLiveStateRoutes(router: Router): void {
           sourceUri: row.sourceUri,
           playbackUrl: row.mediaPlaybackUrl,
         });
-        const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
-        const cacheUrl = resolveCacheUrl(sourceUri);
+        const playable = resolveTvPlayableMedia(playbackSource, row.mimeType);
         const creatorAddress = resolveTvOverlayMetadata({
           metadata: row.metadata,
           tokenContract: row.tokenContract,
@@ -243,11 +244,11 @@ export function registerTvLiveStateRoutes(router: Router): void {
           title: row.title || `Video ${row.videoId}`,
           mimeType: row.mimeType,
           thumbnailUri: row.thumbnailUri,
-          sourceUri,
-          cacheUrl,
+          sourceUri: playable.sourceUri,
+          cacheUrl: playable.cacheUrl,
           durationSeconds: Math.max(1, Number(row.durationSeconds || 1)),
           offsetSeconds: 0,
-          kind: row.mimeType === "image/gif" ? "gif" : "video",
+          kind: playable.kind,
           creatorName: overlay.creatorName,
           creatorAddress: overlay.creatorAddress,
           collectionName: overlay.collectionName,
@@ -528,8 +529,10 @@ export function registerTvLiveStateRoutes(router: Router): void {
           sourceUri: currentEntry.mediaSourceUrl,
           playbackUrl: currentEntry.mediaPlaybackUrl,
         });
-        const sourceUrl = normalizeMediaUri(playbackSource) || playbackSource;
-        const cacheUrl = resolveCacheUrl(sourceUrl);
+        const playable = resolveTvPlayableMedia(
+          playbackSource,
+          currentEntry.mediaMimeType
+        );
         const elapsedSec = currentEntry.startsAt ? Math.floor((nowMs - new Date(currentEntry.startsAt).getTime()) / 1000) : 0;
   
         return res.json({
@@ -537,10 +540,10 @@ export function registerTvLiveStateRoutes(router: Router): void {
           mode: "schedule",
           current: {
             ...currentEntry,
-            sourceUrl,
-            cacheUrl,
+            sourceUrl: playable.sourceUri,
+            cacheUrl: playable.cacheUrl,
             offsetSeconds: elapsedSec,
-            kind: currentEntry.mediaMimeType === "image/gif" ? "gif" : "video",
+            kind: playable.kind,
           },
           upcoming,
           offline: false,
@@ -605,8 +608,7 @@ export function registerTvLiveStateRoutes(router: Router): void {
           sourceUri: row.sourceUri,
           playbackUrl: row.mediaPlaybackUrl,
         });
-        const sourceUri = normalizeMediaUri(playbackSource) || playbackSource;
-        const cacheUrl = resolveCacheUrl(sourceUri);
+        const playable = resolveTvPlayableMedia(playbackSource, row.mimeType);
         return {
           queueIndex: index,
           playlistIndex: index,
@@ -615,11 +617,11 @@ export function registerTvLiveStateRoutes(router: Router): void {
           title: row.title || `Video ${row.videoId}`,
           mimeType: row.mimeType,
           thumbnailUri: row.thumbnailUri,
-          sourceUri,
-          cacheUrl,
+          sourceUri: playable.sourceUri,
+          cacheUrl: playable.cacheUrl,
           durationSeconds: Math.max(1, Number(row.durationSeconds || 1)),
           offsetSeconds: 0,
-          kind: row.mimeType === "image/gif" ? "gif" : "video",
+          kind: playable.kind,
         };
       });
       const broadcast = resolveTvBroadcastQueue(queue, nowMs);

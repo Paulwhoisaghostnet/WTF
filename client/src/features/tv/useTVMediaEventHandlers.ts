@@ -100,7 +100,7 @@ export function useTVMediaEventHandlers({
   const handleCurrentMediaError = useCallback(() => {
     const directSource = streamCurrent?.sourceUri || "";
     const start = currentItemStartRef.current;
-    if (!currentMediaUseDirect && directSource) {
+    if (streamCurrent?.kind !== "embed" && !currentMediaUseDirect && directSource) {
       tvLog("item.error.fallback", {
         key: currentKeyRef.current,
         elapsedMs: start > 0 ? Date.now() - start : null,

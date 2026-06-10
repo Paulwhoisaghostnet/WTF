@@ -26,6 +26,15 @@ const PLATFORM_CHANNEL_SLUG = "wtf-platform";
 const PLATFORM_CHANNEL_TITLE = "WTF Platform";
 const PLATFORM_CHANNEL_DESCRIPTION =
   "Admin-owned platform channel featuring every video on WTF TV.";
+const ROGER_RADIO_CHANNEL_SLUG = "roger-radio-live";
+const ROGER_RADIO_CHANNEL_TITLE = "ROGERvision LIVE";
+const ROGER_RADIO_CHANNEL_DESCRIPTION =
+  "24/7 GLITCHCULT BOUTIQUE from Roger Radio on Odysee.";
+const ROGER_RADIO_PAGE_URL = "https://odysee.com/@RogerRadio:f/LIVE:922";
+const ROGER_RADIO_EMBED_URL =
+  "https://odysee.com/$/embed/@RogerRadio:f/LIVE:922?autoplay=true";
+const ROGER_RADIO_THUMBNAIL_URL =
+  "https://thumbnails.odycdn.com/card/s:1280:720/quality:85/plain/https://thumbs.odycdn.com/ce810d3ed8fb6b33b10963e1d6165902.webp";
 const PLATFORM_DIAL = 69;
 const WTF_TV_DIAL = 3;
 const YOESHI_DIAL = 2;
@@ -397,7 +406,143 @@ export async function runTvBootBackfill(): Promise<void> {
     );
     results["platform_playlist.items_added"] = Number(syncItems.rows[0]?.count || 0);
 
-    // 6) Dial-number pins.  Executed in this order so a re-claim is
+    // 6) Roger Radio live Odysee channel. This is a platform-owned,
+    //    public external embed channel, not a cached media file. The
+    //    player marks text/html rows as safe if they resolve to the
+    //    allowlisted Odysee embed URL.
+    let rogerChannelId: number;
+    const existingRoger = await client.query<{ id: number }>(
+      `SELECT id FROM tv_channels
+        WHERE slug = $1
+        ORDER BY id ASC LIMIT 1`,
+      [ROGER_RADIO_CHANNEL_SLUG]
+    );
+    if (existingRoger.rows.length > 0) {
+      rogerChannelId = existingRoger.rows[0]!.id;
+      await client.query(
+        `UPDATE tv_channels
+            SET owner_user_id = $1,
+                title = $2,
+                description = $3,
+                is_public = TRUE,
+                is_active = TRUE,
+                videos_per_bumper = 0,
+                updated_at = NOW()
+          WHERE id = $4`,
+        [
+          adminUserId,
+          ROGER_RADIO_CHANNEL_TITLE,
+          ROGER_RADIO_CHANNEL_DESCRIPTION,
+          rogerChannelId,
+        ]
+      );
+      results["roger_channel.existing"] = 1;
+    } else {
+      const created = await client.query<{ id: number }>(
+        `INSERT INTO tv_channels
+           (owner_user_id, slug, title, description,
+            is_public, is_active, sort_order, dial_number,
+            videos_per_bumper, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, TRUE, TRUE, 0, NULL, 0, NOW(), NOW())
+         RETURNING id`,
+        [
+          adminUserId,
+          ROGER_RADIO_CHANNEL_SLUG,
+          ROGER_RADIO_CHANNEL_TITLE,
+          ROGER_RADIO_CHANNEL_DESCRIPTION,
+        ]
+      );
+      rogerChannelId = created.rows[0]!.id;
+      results["roger_channel.created"] = 1;
+    }
+
+    const rogerPlaylistRes = await client.query<{ id: number }>(
+      `SELECT id FROM tv_playlists
+        WHERE channel_id = $1 AND is_active = TRUE
+        ORDER BY id ASC LIMIT 1`,
+      [rogerChannelId]
+    );
+    let rogerPlaylistId: number;
+    if (rogerPlaylistRes.rows.length > 0) {
+      rogerPlaylistId = rogerPlaylistRes.rows[0]!.id;
+      results["roger_playlist.existing"] = 1;
+    } else {
+      const created = await client.query<{ id: number }>(
+        `INSERT INTO tv_playlists
+           (channel_id, name, is_active, transition_seconds, created_at, updated_at)
+         VALUES ($1, 'LIVE Odysee Feed', TRUE, 1, NOW(), NOW())
+         RETURNING id`,
+        [rogerChannelId]
+      );
+      rogerPlaylistId = created.rows[0]!.id;
+      results["roger_playlist.created"] = 1;
+    }
+
+    const rogerVideo = await client.query<{ id: number }>(
+      `INSERT INTO tv_channel_videos
+         (channel_id, token_contract, token_id, source_uri, mime_type,
+          title, thumbnail_uri, metadata,
+          creator_name, creator_address, collection_name, minted_at,
+          created_at, updated_at)
+       VALUES (
+          $1,
+          'external:odysee',
+          'roger-radio-live',
+          $2,
+          'text/html',
+          $3,
+          $4,
+          jsonb_build_object(
+            'provider', 'Odysee',
+            'authorName', 'ROGERradio',
+            'authorUrl', 'https://odysee.com/@RogerRadio:f',
+            'pageUrl', $5,
+            'embedUrl', $2
+          ),
+          'ROGERradio',
+          NULL,
+          'Odysee',
+          NULL,
+          NOW(),
+          NOW()
+        )
+       ON CONFLICT (channel_id, token_contract, token_id)
+       DO UPDATE SET
+          source_uri = EXCLUDED.source_uri,
+          mime_type = EXCLUDED.mime_type,
+          title = EXCLUDED.title,
+          thumbnail_uri = EXCLUDED.thumbnail_uri,
+          metadata = EXCLUDED.metadata,
+          creator_name = EXCLUDED.creator_name,
+          collection_name = EXCLUDED.collection_name,
+          updated_at = NOW()
+       RETURNING id`,
+      [
+        rogerChannelId,
+        ROGER_RADIO_EMBED_URL,
+        ROGER_RADIO_CHANNEL_TITLE,
+        ROGER_RADIO_THUMBNAIL_URL,
+        ROGER_RADIO_PAGE_URL,
+      ]
+    );
+    const rogerVideoId = rogerVideo.rows[0]!.id;
+    results["roger_video.synced"] = 1;
+
+    await client.query(
+      `INSERT INTO tv_playlist_items
+         (playlist_id, video_id, media_item_id, sort_order,
+          duration_seconds, created_at, updated_at)
+       VALUES ($1, $2, NULL, 0, 86400, NOW(), NOW())
+       ON CONFLICT (playlist_id, video_id)
+       DO UPDATE SET
+          sort_order = EXCLUDED.sort_order,
+          duration_seconds = EXCLUDED.duration_seconds,
+          updated_at = NOW()`,
+      [rogerPlaylistId, rogerVideoId]
+    );
+    results["roger_playlist.item_synced"] = 1;
+
+    // 7) Dial-number pins.  Executed in this order so a re-claim is
     //    a no-op: we only update when dial_number IS NULL.
     const pinDial = async (dial: number, channelId: number) => {
       // First clear the dial from any other channel (except the
@@ -517,7 +662,7 @@ export async function runTvBootBackfill(): Promise<void> {
     await pinDial(PLATFORM_DIAL, platformChannelId);
     results[`dial.${PLATFORM_DIAL}`] = platformChannelId;
 
-    // 7) Auto-assign dial numbers to brand-new channels only.  Dials
+    // 8) Auto-assign dial numbers to brand-new channels only.  Dials
     //    are sticky: once a channel owns a slot it keeps it forever,
     //    and a deleted channel's dial is never recycled to anyone
     //    else.  A small monotonic counter (`tv_dial_counter`) records
@@ -599,7 +744,7 @@ export async function runTvBootBackfill(): Promise<void> {
       results["dial.auto_assigned"] = assigned;
     }
 
-    // 8) Defensive orphan sweep.  Drops playlist items whose video
+    // 9) Defensive orphan sweep.  Drops playlist items whose video
     //    pointer still references a channel-video that got orphaned
     //    before the FK cascade existed.  The migration runs the same
     //    sweep; we repeat here so a re-boot after manual surgery also

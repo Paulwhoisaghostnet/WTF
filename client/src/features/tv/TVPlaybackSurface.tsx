@@ -18,6 +18,7 @@ import {
   OffScreenLabel,
   MediaVideo,
   GifFrame,
+  ExternalEmbedFrame,
   OSD,
   MtvOverlay,
   MtvOverlayLink,
@@ -127,6 +128,7 @@ export function TVPlaybackSurface(props: TVPlaybackSurfaceProps) {
         screenView === "tv" &&
         currentItem &&
         isGif(currentItem.mimeType) &&
+        currentItem.kind !== "embed" &&
         !showBumper &&
         currentMediaUrl && (
           <GifFrame
@@ -140,6 +142,23 @@ export function TVPlaybackSurface(props: TVPlaybackSurfaceProps) {
       {powerOn &&
         screenView === "tv" &&
         currentItem &&
+        currentItem.kind === "embed" &&
+        !showBumper &&
+        currentMediaUrl && (
+          <ExternalEmbedFrame
+            src={currentMediaUrl}
+            title={currentItem.title || "WTF TV external live stream"}
+            allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+            allowFullScreen
+            style={{ opacity: currentMediaReady ? 1 : 0 }}
+            onLoad={handleCurrentMediaReady}
+            onError={handleCurrentMediaError}
+          />
+        )}
+      {powerOn &&
+        screenView === "tv" &&
+        currentItem &&
+        currentItem.kind !== "embed" &&
         !isGif(currentItem.mimeType) &&
         currentMediaUrl && (
           <MediaVideo
@@ -422,6 +441,7 @@ export function TVPlaybackSurface(props: TVPlaybackSurfaceProps) {
             {upcomingItems.map((it) => {
               const key = queueItemKey(it);
               const src = it.cacheUrl || it.sourceUri;
+              if (it.kind === "embed") return null;
               if (isGif(it.mimeType)) {
                 return (
                   <img

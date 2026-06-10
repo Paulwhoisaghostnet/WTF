@@ -7,6 +7,15 @@ export function isGif(mimeType: string): boolean {
   return String(mimeType || "").toLowerCase() === "image/gif";
 }
 
+export function isEmbedMimeType(mimeType: string): boolean {
+  const value = String(mimeType || "").toLowerCase().split(";")[0]!.trim();
+  return (
+    value === "text/html" ||
+    value === "application/x-iframe" ||
+    value === "application/vnd.wtf.external-embed"
+  );
+}
+
 export function buildTvCacheUrl(uri: string | null | undefined): string | null {
   const value = String(uri || "").trim();
   if (!value) return null;

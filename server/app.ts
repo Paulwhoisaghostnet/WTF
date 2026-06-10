@@ -166,6 +166,7 @@ export async function createApp() {
     ...walletConnectFrameSources,
   ];
   const trustedCalendarFrameSources = ["https://thetezos.com"];
+  const trustedTvFrameSources = ["https://odysee.com"];
   const strictProductionScripts =
     process.env.NODE_ENV === "production" &&
     String(process.env.CSP_STRICT_SCRIPTS || "").toLowerCase() === "1";
@@ -190,8 +191,8 @@ export async function createApp() {
     "connect-src": ["'self'", "https:", "wss:", "ws:", ...walletConnectNetworkSources],
     "style-src": ["'self'", "'unsafe-inline'"],
     "script-src": baseScriptSrc,
-    "frame-src": ["'self'", ...walletFrameSources, ...trustedCalendarFrameSources],
-    "child-src": ["'self'", ...walletFrameSources, ...trustedCalendarFrameSources],
+    "frame-src": ["'self'", ...walletFrameSources, ...trustedCalendarFrameSources, ...trustedTvFrameSources],
+    "child-src": ["'self'", ...walletFrameSources, ...trustedCalendarFrameSources, ...trustedTvFrameSources],
     "frame-ancestors": ["'self'"],
   };
 

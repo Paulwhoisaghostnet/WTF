@@ -4,7 +4,7 @@ import test from "node:test";
 
 const appSource = readFileSync("server/app.ts", "utf8");
 
-test("production CSP keeps WalletConnect/Reown, Beacon, and trusted calendar embeds as explicit frame sources", () => {
+test("production CSP keeps WalletConnect/Reown, Beacon, trusted calendar, and WTF TV embeds as explicit frame sources", () => {
   for (const source of [
     "https://walletbeacon.io",
     "https://*.walletbeacon.io",
@@ -15,6 +15,7 @@ test("production CSP keeps WalletConnect/Reown, Beacon, and trusted calendar emb
     "https://*.walletconnect.org",
     "https://*.reown.com",
     "https://thetezos.com",
+    "https://odysee.com",
   ]) {
     assert.match(appSource, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
@@ -22,8 +23,9 @@ test("production CSP keeps WalletConnect/Reown, Beacon, and trusted calendar emb
   assert.match(appSource, /const walletConnectFrameSources = \[/);
   assert.match(appSource, /const walletFrameSources = \[/);
   assert.match(appSource, /const trustedCalendarFrameSources = \[/);
-  assert.match(appSource, /"frame-src": \["'self'", \.\.\.walletFrameSources, \.\.\.trustedCalendarFrameSources\]/);
-  assert.match(appSource, /"child-src": \["'self'", \.\.\.walletFrameSources, \.\.\.trustedCalendarFrameSources\]/);
+  assert.match(appSource, /const trustedTvFrameSources = \[/);
+  assert.match(appSource, /"frame-src": \["'self'", \.\.\.walletFrameSources, \.\.\.trustedCalendarFrameSources, \.\.\.trustedTvFrameSources\]/);
+  assert.match(appSource, /"child-src": \["'self'", \.\.\.walletFrameSources, \.\.\.trustedCalendarFrameSources, \.\.\.trustedTvFrameSources\]/);
   assert.doesNotMatch(appSource, /"frame-src": \["'self'"\]/);
 });
 

@@ -21,7 +21,7 @@ export function useTVStreamPrefetch({
   useEffect(() => {
     const queue = streamMatchesSelectedChannel ? queueInput || [] : [];
     if (!powerOn || queue.length === 0) return;
-    const upcoming = queue.slice(1);
+    const upcoming = queue.slice(1).filter((item) => item.kind !== "embed");
     if (upcoming.length === 0) return;
 
     const key = upcoming.map((item) => item.videoId).join(",");

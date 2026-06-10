@@ -98,7 +98,7 @@ export type StreamQueueItem = {
   durationSeconds: number;
   assetDurationSeconds: number;
   offsetSeconds: number;
-  kind: "video" | "gif" | "bumper";
+  kind: "video" | "gif" | "embed" | "bumper";
   /** Set by the server when the queue item is a bumper; the client
    * renders these via the normal <video> element with a tighter
    * load-cap.  Bumpers are interleaved by the server based on the
@@ -125,6 +125,7 @@ export type TVCurrentItemMeta = {
   offsetSeconds: number;
   realDurationSec: number;
   isGif: boolean;
+  isEmbed: boolean;
   gifPlannedMs: number;
   channelId: number | null;
 };

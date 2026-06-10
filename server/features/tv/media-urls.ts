@@ -41,6 +41,47 @@ export const TV_CACHE_ALLOWED_HOSTS = Array.from(
   ])
 );
 
+export type TvPlayableQueueKind = "video" | "gif" | "embed";
+
+const TV_EXTERNAL_EMBED_HOSTS = ["odysee.com"];
+
+export function isExternalTvEmbedMimeType(mimeType: string | null | undefined): boolean {
+  const value = String(mimeType || "").toLowerCase().split(";")[0]!.trim();
+  return (
+    value === "text/html" ||
+    value === "application/x-iframe" ||
+    value === "application/vnd.wtf.external-embed"
+  );
+}
+
+export function normalizeExternalTvEmbedUrl(uri: string): string | null {
+  const value = String(uri || "").trim();
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:") return null;
+    const safeUrl = normalizePublicHttpUrl(parsed.toString(), TV_EXTERNAL_EMBED_HOSTS);
+    if (!safeUrl) return null;
+
+    const decodedPath = decodeURIComponent(parsed.pathname);
+    let embedPath = "";
+    if (decodedPath.startsWith("/$/embed/")) {
+      embedPath = decodedPath;
+    } else if (/^\/@[^/]+\/[^/]+/.test(decodedPath)) {
+      embedPath = `/$/embed${decodedPath}`;
+    } else {
+      return null;
+    }
+
+    const normalized = new URL("https://odysee.com");
+    normalized.pathname = embedPath;
+    normalized.search = parsed.search;
+    return normalized.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function isAllowedMediaCacheContentType(
   contentType: string,
   options: { allowImages?: boolean } = {}
@@ -74,6 +115,33 @@ export function isSameOriginMediaPath(uri: string): boolean {
 export function resolveCacheUrl(sourceUri: string): string {
   if (isSameOriginMediaPath(sourceUri)) return sourceUri;
   return `/api/tv/cache/media?url=${encodeURIComponent(sourceUri)}`;
+}
+
+export function resolveTvPlayableMedia(
+  sourceUri: string,
+  mimeType: string
+): {
+  sourceUri: string;
+  cacheUrl: string;
+  kind: TvPlayableQueueKind;
+} {
+  if (isExternalTvEmbedMimeType(mimeType)) {
+    const embedUrl = normalizeExternalTvEmbedUrl(sourceUri);
+    if (embedUrl) {
+      return {
+        sourceUri: embedUrl,
+        cacheUrl: embedUrl,
+        kind: "embed",
+      };
+    }
+  }
+
+  const playableSourceUri = normalizeMediaUri(sourceUri) || sourceUri;
+  return {
+    sourceUri: playableSourceUri,
+    cacheUrl: resolveCacheUrl(playableSourceUri),
+    kind: String(mimeType || "").toLowerCase() === "image/gif" ? "gif" : "video",
+  };
 }
 
 export function buildMediaFetchCandidates(uri: string): string[] {

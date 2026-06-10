@@ -1,6 +1,6 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { useEffect } from "react";
-import { isGif } from "./utils";
+import { isEmbedMimeType, isGif } from "./utils";
 import { tvLog } from "./telemetry";
 import type { StreamQueueItem, TVCurrentItemMeta } from "./types";
 
@@ -120,6 +120,8 @@ export function useTVCurrentItemLifecycle({
     currentItemVisibleStartRef.current = 0;
 
     const isGifItem = isGif(activeItem.mimeType);
+    const isEmbedItem =
+      activeItem.kind === "embed" || isEmbedMimeType(activeItem.mimeType);
     const storedDur = Math.max(0, Number(activeItem.durationSeconds) || 0);
     const assetDurationSec = Math.max(
       0,
@@ -142,6 +144,7 @@ export function useTVCurrentItemLifecycle({
       offsetSeconds: startOffsetSec,
       realDurationSec: 0,
       isGif: isGifItem,
+      isEmbed: isEmbedItem,
       gifPlannedMs,
       channelId: selectedChannelId,
     };
@@ -156,6 +159,7 @@ export function useTVCurrentItemLifecycle({
       storedDurationSec: storedDur,
       offsetSeconds: startOffsetSec,
       isGif: isGifItem,
+      isEmbed: isEmbedItem,
       gifPlannedMs: isGifItem ? gifPlannedMs : null,
       clientQueueIdx: playbackCursorIdx,
       activeSource: activePlaybackSource,
@@ -192,15 +196,17 @@ export function useTVCurrentItemLifecycle({
       }, plannedMs);
     }
 
-    safetyCapRef.current = window.setTimeout(() => {
-      const start = currentItemStartRef.current;
-      tvLog("item.end.safety", {
-        key: activeKey,
-        elapsedMs: start > 0 ? Date.now() - start : null,
-        capMs: hardItemCapMs,
-      });
-      stepStreamRef.current();
-    }, hardItemCapMs);
+    if (!isEmbedItem) {
+      safetyCapRef.current = window.setTimeout(() => {
+        const start = currentItemStartRef.current;
+        tvLog("item.end.safety", {
+          key: activeKey,
+          elapsedMs: start > 0 ? Date.now() - start : null,
+          capMs: hardItemCapMs,
+        });
+        stepStreamRef.current();
+      }, hardItemCapMs);
+    }
 
     clearLoadCapRef.current();
     loadCapRef.current = window.setTimeout(() => {

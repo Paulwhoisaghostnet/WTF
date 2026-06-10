@@ -4357,3 +4357,13 @@
 **Why it mattered**: In a live room, chat speed and accessibility matter. A textarea can be the right control for multiline drafts, but it must still encode the product's chat contract instead of relying on browser defaults.
 
 **Rule**: For chat composers backed by textareas, add tests for Enter submit, Shift+Enter newline, composer clearing, and message relay. Use one shared handler for docked and floating composer copies so pop-out UI cannot drift from the main chat surface.
+
+---
+
+## 2026-06-10 - External livestreams are iframe sources, not cached media files
+
+**What happened**: Adding the Roger Radio Odysee stream to WTF TV first looked like a channel-video seed, but the Odysee playback URL is an embeddable HTML player rather than a direct video file. Sending that URL through the TV media cache would make the cache fetch HTML where the client expects playable media.
+
+**Why it mattered**: WTF TV's existing cache path is intentionally constrained to direct media. Treating every source URI as a cacheable video would either fail playback or tempt a broader cache allowlist than the media proxy should carry.
+
+**Rule**: External livestream providers need an explicit trusted-iframe path: allowlist the provider host in CSP, normalize the iframe URL server-side, mark the queue item as `embed`, and skip media-cache prefetch/fallback behavior for that item.
