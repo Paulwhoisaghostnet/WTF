@@ -65,6 +65,7 @@ Priority labels:
 | WTF-BB-233 | Verified | Codex WTF LIVE tip seed deploy blocker repair | 2026-06-10 | Deploy / in-app market seed migration | P0 | 13 | 5 | 3 | 5 | 0 | Production deploy failed after app stop because the WTF LIVE tip item seed violated the existing `price_score BETWEEN 1 AND 10` constraint; fixed by clamping seed scores and adding a migration policy test |
 | WTF-BB-234 | Verified | Codex Macaroni user-site handle alignment | 2026-06-11 | Macaroni / wtfOS user-site subdomain issuance | P1 | 12 | 7 | 3 | 5 | 0 | Macaroni drop publishing depends on `username.wtfos.me`, but the WTFOS PDS request path could derive the issued handle from the linked AT handle instead; fixed with username-first handle derivation and verified by focused policy tests, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-235 | Verified | Codex Macaroni subdomain setup applet | 2026-06-11 | Macaroni / wtfOS subdomain setup UX | P1 | 11 | 8 | 3 | 5 | 0 | Macaroni users can still reach publish before clearly claiming/configuring `username.wtfos.me` and `label.wtf.tez`; fixed with a focused Settings applet, behavior inventory, harnessed claim/registrar mocks, and verified by focused Playwright, TypeScript, inventory coverage, and full inventory E2E |
+| WTF-BB-236 | Verified | Codex Macaroni domains registry hotfix | 2026-06-11 | Macaroni / app registry feature gate | P1 | 10 | 10 | 2 | 5 | 0 | WTF Domains route existed without a `desktop:wtf-subdomains` app-registry seed/admin surface binding; fixed by promoting WTF Domains to a canonical app key and verified by focused registry/gate tests, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5118,6 +5119,27 @@ Priority labels:
   - Focused live puppet check `public data APIs and MCP agent token lifecycle stay bounded` passed in 40.5 seconds with TzProfiles retry noise still present.
   - Focused leaderboard wiring test passed: `node --test --import tsx --test-name-pattern "keeps leaderboard views" server/routes-wiring.test.ts`.
   - `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, `npm run test:e2e:inventory`, and `npm run test:e2e:live:puppets` passed after the fix; the full live suite reported `126 passed`.
+
+### WTF-BB-236 - WTF Domains cannot be enabled from the app registry
+
+- Category: Macaroni / app registry feature gate
+- Status: Verified
+- Owner/Session: Codex Macaroni domains registry hotfix
+- Score: C2 + F5 + S0 + P1(4) = 10
+- Evidence:
+  - The live `/wtf-subdomains` route and Settings subdomain applet shipped, but `WTF Domains` was not present as a canonical `DesktopAppKey`.
+  - `client/src/features/admin-os/admin-surface-registry.ts` grouped `/wtf-subdomains` under the `hoard` desktop app surface, so route observability existed without an independent `desktop:wtf-subdomains` registry seed.
+  - `server/features/app-registry/backfill-policy.ts` seeds from `WTF_APP_PACKAGE_ACCEPTANCE`, which is generated from `DESKTOP_APPS`; absent `wtf-subdomains`, registry-on environments cannot enable the feature as its own app.
+- Why it matters:
+  - Macaroni depends on users being able to claim/configure `username.wtfos.me` and `label.wtf.tez` before publishing. If operators cannot enable the Domains owner surface, the applet is installed but administratively blocked.
+- Likely correction direction:
+  - Promote WTF Domains to a canonical desktop app key, give it its own admin surface and app-registry package seed, gate `/wtf-subdomains` through that key, and add regression coverage proving the seed exists.
+- Verification idea:
+  - Run app-registry backfill policy tests, shared package acceptance tests, admin surface registry tests, start-menu gate tests, TypeScript, and inventory coverage.
+- Verification notes (2026-06-11):
+  - Fixed by promoting WTF Domains to canonical desktop app key `wtf-subdomains`, adding default gate config, Tezos Platform docs/package metadata, a dedicated `wtf-domains` admin surface, and `/wtf-subdomains` Start Menu/direct-route gating.
+  - Focused registry/gate tests passed: `npx tsx --test shared/wtf-app-packages.test.ts server/features/app-registry/backfill-policy.test.ts client/src/features/admin-os/admin-surface-registry.test.ts client/src/components/layout/start-menu-app-gates.test.ts`.
+  - App-gate behavior assertion command passed, `npm run check -- --pretty false` passed, `npm run test:e2e:inventory:coverage` passed, and `npm run test:e2e:inventory` passed with `302 passed`.
 
 ## Backlog Intake Template
 

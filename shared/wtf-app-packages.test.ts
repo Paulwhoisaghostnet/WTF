@@ -81,6 +81,20 @@ test("every canonical desktop app has package acceptance and admin observability
   }
 });
 
+test("WTF Domains is a first-class desktop app package for registry enablement", () => {
+  const entry = WTF_DESKTOP_APP_PACKAGE_ACCEPTANCE.find(
+    (candidate) => candidate.id === "desktop:wtf-subdomains"
+  );
+  assert(entry, "WTF Domains needs a desktop package acceptance entry");
+  assert.equal(entry?.appKey, "wtf-subdomains");
+  assert.equal(entry?.label, "WTF Domains");
+  assert.deepEqual(entry?.domain, {
+    label: "Tezos Platform",
+    guide: "docs/domains/tezos-platform.md",
+  });
+  assert(entry?.routeEvidence.includes("shared/types.ts#DESKTOP_APPS"));
+});
+
 test("every creation tool route has package acceptance and static asset provenance", () => {
   assert.deepEqual(
     WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE.map((entry) => entry.toolId),

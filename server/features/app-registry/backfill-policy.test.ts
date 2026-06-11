@@ -16,13 +16,23 @@ test("every current app maps to a registration seed", () => {
   assert.equal(new Set(seeds.map((s) => s.appId)).size, seeds.length);
 });
 
-test("all 20 desktop apps are present with desktop:<key> ids", () => {
+test("all desktop apps are present with desktop:<key> ids", () => {
   const seeds = buildRegistrationSeeds();
   for (const appKey of DESKTOP_APPS) {
     const seed = seeds.find((s) => s.appId === `desktop:${appKey}`);
     assert(seed, `${appKey} must have a registration seed`);
     assert.equal(seed?.kind, "desktop-app");
   }
+});
+
+test("WTF Domains has its own enableable app registry seed", () => {
+  const seed = buildRegistrationSeeds().find((candidate) => candidate.appId === "desktop:wtf-subdomains");
+  assert(seed, "WTF Domains must be seedable in the app registry");
+  assert.equal(seed?.appKey, "wtf-subdomains");
+  assert.equal(seed?.label, "WTF Domains");
+  assert.equal(seed?.enabled, true);
+  assert.equal(seed?.lifecycleState, "published");
+  assert.equal(seed?.domainLabel, "Tezos Platform");
 });
 
 test("enabled defaults are preserved from DEFAULT_DESKTOP_APP_CONFIG", () => {

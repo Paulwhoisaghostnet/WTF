@@ -24,6 +24,7 @@ test("Start Menu app gates hide disabled WTF OS launchers", () => {
   assert.equal(isStartMenuItemEnabled("/arcade", apps), true);
   assert.equal(isStartMenuItemEnabled("/console", apps), false);
   assert.equal(isStartMenuItemEnabled("/my-gallery", apps), false);
+  assert.equal(isStartMenuItemEnabled("/wtf-subdomains", { "wtf-subdomains": false }), false);
   assert.equal(isStartMenuItemEnabled("/links", apps), true);
 });
 
@@ -96,13 +97,16 @@ test("Start Menu model houses registered creation apps under CREATE!", () => {
   const myMedia = byKey.get("my-media")!;
   const createPaths = create.items.map((item) => item.path);
   const myMediaPaths = myMedia.items.map((item) => item.path);
+  const contestantVisibleTools = CREATION_TOOLS.filter(
+    (tool) => !("roles" in tool) || (tool.roles as readonly string[]).includes("contestant")
+  );
 
   assert.deepEqual(create.items.slice(0, 3).map((item) => item.label), [
     "Studio",
     "Game Studio",
     "Mint Portal",
   ]);
-  for (const tool of CREATION_TOOLS) {
+  for (const tool of contestantVisibleTools) {
     assert(
       createPaths.includes(tool.routePath),
       `${tool.title} should be listed in CREATE!`
@@ -112,6 +116,19 @@ test("Start Menu model houses registered creation apps under CREATE!", () => {
       `${tool.title} should not stay buried in My Media`
     );
   }
+  assert(!createPaths.includes("/tools/macaroni"), "Macaroni should stay hidden from contestant CREATE!");
+});
+
+test("Start Menu shows Macaroni to trusted creators under CREATE!", () => {
+  const groups = buildStartMenuGroups(PAGE_DEFS, {}, "trusted_creator", {
+    casinoMembershipActive: false,
+  });
+  const create = new Map(groups.map((group) => [group.key, group])).get("create")!;
+
+  assert(
+    create.items.some((item) => item.path === "/tools/macaroni" && item.label === "Macaroni"),
+    "Macaroni should be listed in CREATE! for trusted creators"
+  );
 });
 
 test("Start Menu model keeps Casino in Gaming and My Games in My Media", () => {
@@ -144,6 +161,7 @@ test("Start Menu model respects auth roles and desktop app gates", () => {
       arcade: false,
       console: false,
       gallery: false,
+      "wtf-subdomains": false,
     },
     "contestant"
   );
@@ -154,6 +172,7 @@ test("Start Menu model respects auth roles and desktop app gates", () => {
   assert(!userPaths.includes("/arcade"));
   assert(!userPaths.includes("/console"));
   assert(!userPaths.includes("/my-gallery"));
+  assert(!userPaths.includes("/wtf-subdomains"));
   assert(!userPaths.includes("/admin"));
 });
 

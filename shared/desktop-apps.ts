@@ -55,6 +55,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   "wtf-live": true,
   tz2at: true,
   "crp-nominations": true,
+  "wtf-subdomains": true,
   "rat-race": false,
   "map-lab": true,
   mail: true,

@@ -9,7 +9,7 @@ import type { LifecycleState } from "./lifecycle";
 /**
  * Backfill mapping (Req1 backfill). Pure + DB-free.
  *
- * Maps EVERY current app — the 20 desktop apps AND the static creation tools /
+ * Maps EVERY current app — desktop apps AND the static creation tools /
  * packages / integration plugins — onto a registration seed so the DB backfill
  * (backfill.ts) can register them idempotently with NO behaviour regression:
  *   - currently-enabled builtins land in `published`

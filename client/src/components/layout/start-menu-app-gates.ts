@@ -34,6 +34,7 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/live": "wtf-live",
   "/tz2at": "tz2at",
   "/crp-nominate": "crp-nominations",
+  "/wtf-subdomains": "wtf-subdomains",
   "/rat-race": "rat-race",
   "/map-lab": "map-lab",
   "/mail": "mail",

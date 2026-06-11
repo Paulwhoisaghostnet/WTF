@@ -127,6 +127,7 @@ const DESKTOP_APP_DOMAIN_KEYS: Partial<Record<DesktopAppKey, keyof typeof WTF_DO
   skywire: "identityAndSocial",
   tz2at: "identityAndSocial",
   "crp-nominations": "identityAndSocial",
+  "wtf-subdomains": "tezosPlatform",
   "rat-race": "commerceAndWallets",
   "map-lab": "wtfOs",
   mail: "identityAndSocial",

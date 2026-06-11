@@ -45,7 +45,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "settings.subdomain-setup-applet",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    ownerSurfaceIds: ["system-settings", "hoard"],
+    ownerSurfaceIds: ["system-settings", "wtf-domains"],
     ownerSpec: "tests/playwright/inventory/settings-subdomain-setup.spec.mjs",
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/settings-subdomain-setup.spec.mjs",
@@ -125,13 +125,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Desktop OS, Navigation, and Personal Environment",
     ownerSurfaceIds: ["admin-panel", "command-palette", "desktop-icons"],
     ownerSpec:
-      "client/src/features/command-palette/command-palette-model.test.ts, client/src/components/layout/start-menu-app-gates.test.ts, shared/role-system.test.ts",
+      "client/src/features/command-palette/command-palette-model.test.ts, client/src/components/layout/start-menu-app-gates.test.ts, client/src/features/admin-os/admin-surface-registry.test.ts, server/features/app-registry/backfill-policy.test.ts, shared/role-system.test.ts",
     verificationCommand:
-      "npx tsx --test client/src/features/command-palette/command-palette-model.test.ts client/src/components/layout/start-menu-app-gates.test.ts shared/role-system.test.ts",
+      "npx tsx --test client/src/features/command-palette/command-palette-model.test.ts client/src/components/layout/start-menu-app-gates.test.ts client/src/features/admin-os/admin-surface-registry.test.ts server/features/app-registry/backfill-policy.test.ts shared/role-system.test.ts",
     userVisibleAssertion:
-      "Apps disabled by admin are hidden from Start Menu and Command Palette launch surfaces, creation apps are grouped under Stuffs > CREATE!, and time-out accounts receive no app launch entries.",
+      "Apps disabled by admin are hidden from Start Menu and Command Palette launch surfaces, independently registered owner surfaces such as WTF Domains can be enabled from the app registry, creation apps are grouped under Stuffs > CREATE!, and time-out accounts receive no app launch entries.",
     durableSideEffectAssertion:
-      "Shared page-access policy denies disabled app routes from the same app gate map used by launcher models while leaving ungated OS/admin routes reachable.",
+      "Shared page-access policy denies disabled app routes from the same app gate map used by launcher models, and app-registry backfill seeds every canonical app key including WTF Domains while leaving ungated OS/admin routes reachable.",
   },
   {
     id: "auth.time-out-app-lockdown",

@@ -1,3 +1,13 @@
+## 2026-06-11 - Enableable owner surfaces need app-registry seeds, not only routes
+
+**What happened**: WTF Domains had a live `/wtf-subdomains` route, Start Menu entry, Settings applet handoff, and admin observability under Hoard, but it was not a canonical `DesktopAppKey`. In app-registry-enabled environments there was no `desktop:wtf-subdomains` registration seed, so operators could not enable the feature that Macaroni needs before publishing.
+
+**Why it mattered**: Grouping a route under a neighboring admin surface can make tests and route smoke pass while the operational enablement path is missing. Feature gates are keyed by app registry identity, not by whether a route happens to render.
+
+**Rule**: Any route or owner surface that operators must enable independently needs a canonical desktop app key, default config entry, package acceptance manifest, doc-registry mapping, admin surface binding, route/start-menu gate, and regression test proving its app-registry seed exists.
+
+---
+
 ## 2026-06-11 - Exact text assertions matter when action labels include state
 
 **What happened**: The focused Settings subdomain applet Playwright test initially asserted `macaroni.wtfos.me` with a non-exact text locator. The same host also appeared inside the `Claim macaroni.wtfos.me` button label, so Playwright strict mode failed even though the UI rendered correctly.
