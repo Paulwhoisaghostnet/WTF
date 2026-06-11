@@ -1229,37 +1229,11 @@ const Composer = styled.form`
   }
 `;
 
-const Dock = styled.div`
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
-  z-index: 2000;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  min-height: 38px;
-  padding: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.28);
-  background: rgba(216, 216, 216, 0.84);
-  backdrop-filter: blur(4px);
-  pointer-events: auto;
-`;
-
 const DesktopConversationDropLayer = styled.div`
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: auto;
-`;
-
-const DockButton = styled(Button)`
-  min-height: 30px;
-  height: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 `;
 
 const PopupStack = styled.div`
@@ -2588,24 +2562,8 @@ export function Wim() {
     });
   };
 
-  const minimizeWindow = (windowId: string) => {
-    setWindows((current) =>
-      current.map((windowState) =>
-        windowState.id === windowId ? { ...windowState, minimized: true } : windowState
-      )
-    );
-  };
-
-  const restoreWindow = (windowId: string) => {
-    focusWimRoute();
-    const z = nextZ();
-    setWindows((current) =>
-      current.map((windowState) =>
-        windowState.id === windowId
-          ? { ...windowState, minimized: false, closed: false, z }
-          : windowState
-      )
-    );
+  const minimizeWindow = () => {
+    wm.minimize(routePath);
   };
 
   const toggleMaximizeWindow = (windowId: string) => {
@@ -2621,6 +2579,10 @@ export function Wim() {
   };
 
   const closeWindow = (windowId: string) => {
+    if (windowId === "buddy-list") {
+      wm.close(routePath);
+      return;
+    }
     setWindows((current) =>
       current.map((windowState) =>
         windowState.id === windowId
@@ -3234,7 +3196,7 @@ export function Wim() {
               title="Minimize"
               data-compact-control="true"
               data-window-control="true"
-              onClick={() => minimizeWindow(windowState.id)}
+              onClick={() => minimizeWindow()}
             >
               _
             </WindowControlButton>
@@ -3276,8 +3238,6 @@ export function Wim() {
     );
   };
 
-  const dockWindows = windows.filter((windowState) => windowState.minimized || windowState.closed);
-  const showBuddyLauncher = windows.some((windowState) => windowState.id === "buddy-list" && windowState.closed);
   const routeZ = routeWindowState.zIndex || 1;
 
   return (
@@ -3313,34 +3273,6 @@ export function Wim() {
           />
         ) : null}
         {windows.map(renderWindow)}
-        {dockWindows.length ? (
-          <Dock aria-label="WIM minimized windows">
-            {showBuddyLauncher ? (
-              <DockButton type="button" onClick={() => restoreWindow("buddy-list")}>
-                <Users size={14} aria-hidden />
-                Buddy List
-              </DockButton>
-            ) : null}
-            {dockWindows
-              .filter((windowState) => windowState.minimized)
-              .map((windowState) => (
-                <DockButton
-                  key={windowState.id}
-                  type="button"
-                  onClick={() => restoreWindow(windowState.id)}
-                >
-                  {windowState.kind === "buddy" ? (
-                    <Users size={14} aria-hidden />
-                  ) : (
-                    <MessageCircle size={14} aria-hidden />
-                  )}
-                  {windowState.kind === "chat"
-                    ? chatWindowTitle(windowState, labelForConversation)
-                    : windowState.title}
-                </DockButton>
-              ))}
-          </Dock>
-        ) : null}
       </Shell>
       {typeof document !== "undefined" && unreadPopups.length
         ? createPortal(

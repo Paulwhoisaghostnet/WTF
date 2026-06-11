@@ -471,6 +471,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "browser-local custom lists",
       "desktop-level buddy and conversation widgets",
       "system appearance-owned widget controls",
+      "shared OS taskbar minimize/restore",
       "classic IM-style rich text composer",
       "GIPHY/Tenor GIF insert handoff",
       "My Media and owned token inserts",

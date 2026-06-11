@@ -4581,3 +4581,15 @@
 **Fix**: Moved the page HTML cap into a shared constant, raised named pages and asset budgets, increased the default JSON body limit, and kept Macaroni's published pages lean by loading stable static assets from the main app origin instead of inlining the large wallet bundle.
 
 **Rule**: Before designing around a user-site cap, check whether the cap is a product policy that can be adjusted. Prefer raising the shared limit and documenting it over building a side channel, while still keeping generated pages efficient and external credentials server-side.
+
+---
+
+## 2026-06-11 - Messenger widgets should minimize through the shared taskbar
+
+**What happened**: WIM rendered a local minimized-window dock for buddy and conversation widgets, which created a second taskbar above the shared desktop taskbar when the buddy list was minimized.
+
+**Why it mattered**: WIM is meant to behave like desktop-level AIM widgets. A local app dock breaks that window model because restore/minimize behavior belongs to the OS window manager and its shared taskbar, not to an app-specific surface.
+
+**Fix**: Removed the WIM-local dock and wired buddy-list minimize/close behavior through the shared window manager, then updated the interaction inventory, admin surface registry, behavior assertions, and WIM tests to reject a WIM-owned dock.
+
+**Rule**: Do not add app-local taskbars or docks for desktop widgets. Minimize, restore, focus, and close should flow through the shared OS window manager unless the feature is explicitly a nested document workspace.
