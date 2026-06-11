@@ -1,3 +1,23 @@
+## 2026-06-11 - Cross-domain E2E failures need artifact checks before feature blame
+
+**What happened**: A full inventory run for the WTF Domains windowing pass failed in unrelated Skywire and WTF LIVE specs, while the same log stream also showed missing `dist/public/index.html` stats and missing Playwright trace network artifact copies. A later full inventory run and a focused fresh-harness rerun of the three named Skywire/WTF LIVE tests passed.
+
+**Why it mattered**: When an E2E run loses build or trace artifacts, the visible spec names can point at healthy features. Treating those names as the root cause risks patching stable app code while leaving the runner instability untouched.
+
+**Rule**: For cross-domain E2E failures that appear alongside missing build, server, or trace artifacts, first verify the served `dist/public` tree, rerun the failing specs with a fresh harness (`CI=1` or equivalent no-reuse mode), and only blame the feature if the focused rerun reproduces against stable artifacts.
+
+---
+
+## 2026-06-11 - Settings tools must launch windowed owner surfaces
+
+**What happened**: The Macaroni subdomain setup flow shipped as an inline Settings panel, and the newly enableable `/wtf-subdomains` owner route rendered raw page content instead of the shared `AppWindow` shell.
+
+**Why it mattered**: A route can be registered, gateable, and functional while still bypassing the OS contract users expect: titlebar, taskbar focus/minimize, resize behavior, crash containment, and native `ADM` admin affordances.
+
+**Rule**: When adding an OS applet or owner surface, verify both the Settings handoff and the direct owner route render through the shared window path. Focused setup tools should have their own route/window, and owner app routes should wrap content in `AppWindow` unless they are explicitly documented desktop-level widgets.
+
+---
+
 ## 2026-06-11 - Imported creation tools need upstream-brand residue scans
 
 **What happened**: The Macaroni app package was functionally integrated and renamed, but one instructional line still referenced `shadownet.drop.art`, leaving upstream competitor copy inside the wtfOS creation-tool experience.

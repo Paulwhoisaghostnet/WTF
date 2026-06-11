@@ -66,6 +66,8 @@ Priority labels:
 | WTF-BB-234 | Verified | Codex Macaroni user-site handle alignment | 2026-06-11 | Macaroni / wtfOS user-site subdomain issuance | P1 | 12 | 7 | 3 | 5 | 0 | Macaroni drop publishing depends on `username.wtfos.me`, but the WTFOS PDS request path could derive the issued handle from the linked AT handle instead; fixed with username-first handle derivation and verified by focused policy tests, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-235 | Verified | Codex Macaroni subdomain setup applet | 2026-06-11 | Macaroni / wtfOS subdomain setup UX | P1 | 11 | 8 | 3 | 5 | 0 | Macaroni users can still reach publish before clearly claiming/configuring `username.wtfos.me` and `label.wtf.tez`; fixed with a focused Settings applet, behavior inventory, harnessed claim/registrar mocks, and verified by focused Playwright, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-236 | Verified | Codex Macaroni domains registry hotfix | 2026-06-11 | Macaroni / app registry feature gate | P1 | 10 | 10 | 2 | 5 | 0 | WTF Domains route existed without a `desktop:wtf-subdomains` app-registry seed/admin surface binding; fixed by promoting WTF Domains to a canonical app key and verified by focused registry/gate tests, TypeScript, inventory coverage, and full inventory E2E |
+| WTF-BB-237 | Verified | Codex WTF Domains window conformance pass | 2026-06-11 | Macaroni / WTF Domains app windowing | P1 | 10 | 10 | 2 | 5 | 0 | Subdomain setup now opens from Settings as `/wtf-subdomains/setup` in a normal `AppWindow`, `/wtf-subdomains` is wrapped in the shared OS window shell, and both routes resolve to the WTF Domains native admin surface; verified with TypeScript, admin registry tests, inventory coverage, direct setup route smoke, focused Settings-to-window Playwright, full inventory E2E, and a focused fresh-harness Skywire/WTF LIVE rerun |
+| WTF-BB-238 | Open | - | 2026-06-11 | E2E / Playwright harness artifact stability | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory can report unrelated Skywire/WTF LIVE failures when build or trace artifacts disappear mid-run; current focused fresh-harness rerun passes, so hardening should isolate build output and trace artifacts per run |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5140,6 +5142,23 @@ Priority labels:
   - Fixed by promoting WTF Domains to canonical desktop app key `wtf-subdomains`, adding default gate config, Tezos Platform docs/package metadata, a dedicated `wtf-domains` admin surface, and `/wtf-subdomains` Start Menu/direct-route gating.
   - Focused registry/gate tests passed: `npx tsx --test shared/wtf-app-packages.test.ts server/features/app-registry/backfill-policy.test.ts client/src/features/admin-os/admin-surface-registry.test.ts client/src/components/layout/start-menu-app-gates.test.ts`.
   - App-gate behavior assertion command passed, `npm run check -- --pretty false` passed, `npm run test:e2e:inventory:coverage` passed, and `npm run test:e2e:inventory` passed with `302 passed`.
+
+### WTF-BB-238 - Inventory harness artifact instability can masquerade as Skywire/WTF LIVE regressions
+
+- Category: E2E / Playwright harness artifact stability
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - A full inventory attempt during the WTF Domains windowing pass failed in three unrelated specs: the Skywire unresolved-handle OAuth notice, WTF LIVE private-room popup, and WTF LIVE crowded idle-room layout.
+  - The same failing run also emitted missing build/trace artifact signals, including `ENOENT` while statting `dist/public/index.html` and missing Playwright `recording*.network` files during trace artifact copy.
+  - The current `test-results/.last-run.json` reports `passed`, and a fresh-harness targeted rerun passed all three affected tests: `CI=1 npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "unresolved Bluesky|private WTF-user|public room keeps chat reachable"`.
+- Why it matters:
+  - Cross-domain failures make healthy Skywire and WTF LIVE surfaces look suspect, and the retained failure traces can disappear before analysis. That wastes debugging time and can lead to risky product patches instead of test-runner hardening.
+- Likely correction direction:
+  - Make inventory runs use an isolated built artifact directory or guarantee no concurrent rebuild removes `dist/public` while the harness is serving it; prefer no-reuse harness mode for full inventory verification; isolate trace output per run; and preserve enough server/build logs to explain artifact failures.
+- Verification idea:
+  - Reproduce by running full inventory while intentionally rebuilding or removing `dist/public`, then harden the harness/build lifecycle and prove the same interruption fails early with an artifact-health error instead of unrelated app-spec names. Rerun full inventory plus the focused Skywire/WTF LIVE command above.
 
 ## Backlog Intake Template
 

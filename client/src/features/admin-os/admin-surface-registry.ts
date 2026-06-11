@@ -728,7 +728,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     domain: "Wallet",
     subdomain: "Subdomains and user sites",
     kind: "app",
-    routePatterns: ["/wtf-subdomains"],
+    routePatterns: ["/wtf-subdomains", "/wtf-subdomains/setup"],
     desktopAppKey: "wtf-subdomains",
     adminPanelTabs: ["WTF Tez", "OS Admin", "Automation"],
     nativeSettings: [
@@ -1201,7 +1201,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     nativeSettings: [
       "settings routes",
       "account settings links",
-      "subdomain setup applet",
+      "subdomain setup window handoff",
       "admin route gates",
       "owner app boundaries",
     ],

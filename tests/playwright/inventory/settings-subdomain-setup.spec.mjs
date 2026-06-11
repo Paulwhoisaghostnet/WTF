@@ -15,7 +15,7 @@ async function seedHarness(request) {
 }
 
 test.describe("interaction inventory - settings subdomain setup", () => {
-  test("settings applet claims wtfos.me and builds wtf.tez setup plans", async ({
+  test("settings opens a windowed setup applet that claims wtfos.me and builds wtf.tez plans", async ({
     page,
     request,
   }) => {
@@ -28,6 +28,12 @@ test.describe("interaction inventory - settings subdomain setup", () => {
     }, HARNESS_WALLET);
 
     await page.goto("/settings", { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("system-settings")).toBeVisible();
+    await expect(page.getByTestId("subdomain-setup-applet")).toHaveCount(0);
+    await page.getByRole("button", { name: "Open Subdomain Setup" }).click();
+    await expect(page).toHaveURL(/\/wtf-subdomains\/setup$/);
+    await expect(page.getByText("Subdomain Setup", { exact: true }).first()).toBeVisible();
+
     const applet = page.getByTestId("subdomain-setup-applet");
     await expect(applet).toBeVisible();
     await expect(applet.getByText("macaroni.wtfos.me", { exact: true })).toBeVisible();

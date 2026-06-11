@@ -81,6 +81,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/my-gallery", path: "/my-gallery", title: "My Gallery", domain: "media", subdomain: "My Gallery", auth: true },
   { pattern: "/collekt", path: "/collekt", title: "colleKT", domain: "media", subdomain: "colleKT bridge", auth: true },
   { pattern: "/tezos-intel", path: "/tezos-intel", title: "Tezos Intel", domain: "wallet", subdomain: "Tezos Intel", auth: true },
+  { pattern: "/wtf-subdomains/setup", path: "/wtf-subdomains/setup", title: "Subdomain Setup", domain: "wallet", subdomain: "WTF Domains setup", auth: true },
   { pattern: "/wtf-subdomains", path: "/wtf-subdomains", title: "WTF Domains", domain: "wallet", subdomain: "WTF Domains", auth: true },
   { pattern: "/links", path: "/links", title: "Links", domain: "public", subdomain: "Public entry", auth: false },
   { pattern: "/faq", path: "/faq", title: "FAQ", domain: "public", subdomain: "Public entry", auth: false },

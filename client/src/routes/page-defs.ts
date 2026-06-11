@@ -206,6 +206,11 @@ const TezosIntelPage = lazy(() =>
 const WtfSubdomainsPage = lazy(() =>
   import("../pages/WtfSubdomains").then((m) => ({ default: m.WtfSubdomains }))
 );
+const WtfSubdomainSetupPage = lazy(() =>
+  import("../pages/WtfSubdomainSetup").then((m) => ({
+    default: m.WtfSubdomainSetup,
+  }))
+);
 const TaskManagerPage = lazy(() =>
   import("../pages/TaskManager").then((m) => ({ default: m.TaskManager }))
 );
@@ -474,6 +479,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/my-gallery", component: MyGalleryPage, auth: true, title: "My Gallery", group: "media", startMenu: true, desktopIcon: true },
   { pattern: "/collekt", component: CollektPage, auth: true, title: "colleKT", group: "media", startMenu: true, desktopIcon: true },
   { pattern: "/tezos-intel", component: TezosIntelPage, auth: true, title: "Tezos Intel", group: "market", startMenu: true, desktopIcon: true },
+  { pattern: "/wtf-subdomains/setup", component: WtfSubdomainSetupPage, auth: true, title: "Subdomain Setup", group: "social" },
   { pattern: "/wtf-subdomains", component: WtfSubdomainsPage, auth: true, title: "WTF Domains", group: "social", startMenu: true },
   { pattern: "/links", component: LinksPage, auth: false, title: "Links", group: "public", startMenu: true },
   { pattern: "/faq", component: FaqPage, auth: false, title: "FAQ", group: "public", startMenu: true },

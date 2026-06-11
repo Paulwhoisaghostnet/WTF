@@ -450,7 +450,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "wallet portfolio to commerce loop",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    routes: ["/dashboard", "/hoard", "/my-gallery", "/marketplace", "/rat-race", "/trade-boards", "/swap", "/wtf-subdomains", "/settings"],
+    routes: ["/dashboard", "/hoard", "/my-gallery", "/marketplace", "/rat-race", "/trade-boards", "/swap", "/wtf-subdomains", "/wtf-subdomains/setup", "/settings"],
     eventHandles: [
       "wallet.linked",
       "wallet.primary_set",

@@ -38,6 +38,7 @@ test("admin registry resolves Mission Control and Recovery Mode routes", () => {
   assert.equal(findAdminSurfaceForPath("/browser-boundaries")?.id, "browser-boundaries");
   assert.equal(findAdminSurfaceForPath("/digest")?.id, "digest");
   assert.equal(findAdminSurfaceForPath("/wtf-subdomains")?.id, "wtf-domains");
+  assert.equal(findAdminSurfaceForPath("/wtf-subdomains/setup")?.id, "wtf-domains");
 });
 
 test("admin registry tracks current shell event handles", () => {
@@ -75,7 +76,7 @@ test("WTF Domains owns the subdomain route and desktop app gate", () => {
   const surface = surfaceById("wtf-domains");
   assert(surface, "WTF Domains should be registered for admin observability");
   assert.equal(surface?.desktopAppKey, "wtf-subdomains");
-  assert.deepEqual(surface?.routePatterns, ["/wtf-subdomains"]);
+  assert.deepEqual(surface?.routePatterns, ["/wtf-subdomains", "/wtf-subdomains/setup"]);
   assert.equal(getAdminSurfaceDoctrineDomain(surface!), DOCTRINE_DOMAIN_GUIDES.tezosPlatform);
 });
 

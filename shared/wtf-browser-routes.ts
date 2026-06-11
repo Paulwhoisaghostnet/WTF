@@ -73,6 +73,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/my-gallery", auth: true, title: "My Gallery" },
   { pattern: "/collekt", auth: true, title: "colleKT" },
   { pattern: "/tezos-intel", auth: true, title: "Tezos Intel" },
+  { pattern: "/wtf-subdomains/setup", auth: true, title: "Subdomain Setup" },
   { pattern: "/wtf-subdomains", auth: true, title: "WTF Domains" },
   { pattern: "/links", auth: false, title: "Links" },
   { pattern: "/faq", auth: false, title: "FAQ" },

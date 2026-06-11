@@ -50,9 +50,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/settings-subdomain-setup.spec.mjs",
     userVisibleAssertion:
-      "Settings exposes a focused Subdomain setup applet where a signed-in wtfOS user can claim their username.wtfos.me host, see Macaroni readiness, and build wtf.tez commit/register setup plans with their connected wallet address.",
+      "Settings opens a focused Subdomain Setup window where a signed-in wtfOS user can claim their username.wtfos.me host, see Macaroni readiness, and build wtf.tez commit/register setup plans with their connected wallet address.",
     durableSideEffectAssertion:
-      "The inventory harness mutates the mocked /api/wtf-sites/claim state to a claimed site, verifies the applet reflects the claimed host, and exercises the WTF Domains registrar commit and register plan endpoints with the same target wallet.",
+      "The inventory harness mutates the mocked /api/wtf-sites/claim state to a claimed site, verifies the windowed applet reflects the claimed host, and exercises the WTF Domains registrar commit and register plan endpoints with the same target wallet.",
   },
   {
     id: "inventory.temporary-grants-unlock-apps",
