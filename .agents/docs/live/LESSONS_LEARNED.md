@@ -1,3 +1,13 @@
+## 2026-06-11 - Imported creation tools need upstream-brand residue scans
+
+**What happened**: The Macaroni app package was functionally integrated and renamed, but one instructional line still referenced `shadownet.drop.art`, leaving upstream competitor copy inside the wtfOS creation-tool experience.
+
+**Why it mattered**: A copied app can be technically correct while still carrying product/brand residue from the source workflow. That undermines the wtfOS-owned creator flow and can imply dependency on a third-party product the integration is meant to replace.
+
+**Rule**: When importing or renaming a creation tool, run targeted source-copy scans for the original app name, competitor domains, and old workflow labels across the copied static package before deploy. Keep legitimate network/faucet names only when they are still part of the intended user setup.
+
+---
+
 ## 2026-06-11 - Enableable owner surfaces need app-registry seeds, not only routes
 
 **What happened**: WTF Domains had a live `/wtf-subdomains` route, Start Menu entry, Settings applet handoff, and admin observability under Hoard, but it was not a canonical `DesktopAppKey`. In app-registry-enabled environments there was no `desktop:wtf-subdomains` registration seed, so operators could not enable the feature that Macaroni needs before publishing.
