@@ -60,6 +60,7 @@ test("wtf subdomain deploy and UI paths do not hardcode legacy hack parents", ()
     "server/features/wtf-subdomains/registrar.ts",
     "server/features/wtf-subdomains/chat.ts",
     "client/src/features/wtf-subdomains/RegistrarPanel.tsx",
+    "client/src/features/wtf-subdomains/SubdomainSetupApplet.tsx",
     "client/src/features/admin/tabs/WtfTezAdminTab.tsx",
   ];
 

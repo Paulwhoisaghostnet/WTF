@@ -43,6 +43,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "Only explicit connect/link or participation flows can enable signature-backed wallet linking; passive rehydration remains read/sync-only.",
   },
   {
+    id: "settings.subdomain-setup-applet",
+    domain: "Wallets, Tokens, Portfolio, and On-Chain State",
+    ownerSurfaceIds: ["system-settings", "hoard"],
+    ownerSpec: "tests/playwright/inventory/settings-subdomain-setup.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/settings-subdomain-setup.spec.mjs",
+    userVisibleAssertion:
+      "Settings exposes a focused Subdomain setup applet where a signed-in wtfOS user can claim their username.wtfos.me host, see Macaroni readiness, and build wtf.tez commit/register setup plans with their connected wallet address.",
+    durableSideEffectAssertion:
+      "The inventory harness mutates the mocked /api/wtf-sites/claim state to a claimed site, verifies the applet reflects the claimed host, and exercises the WTF Domains registrar commit and register plan endpoints with the same target wallet.",
+  },
+  {
     id: "inventory.temporary-grants-unlock-apps",
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSurfaceIds: ["arcade", "casino", "wtfiam"],

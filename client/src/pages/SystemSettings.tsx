@@ -7,6 +7,7 @@ import {
   DatabaseBackup,
   FolderCog,
   Gauge,
+  Globe2,
   IdCard,
   LifeBuoy,
   LockKeyhole,
@@ -25,6 +26,7 @@ import {
   getInterfaceMode,
   setInterfaceMode,
 } from "../features/wtfos-cli/interface-mode";
+import { SubdomainSetupApplet } from "../features/wtf-subdomains/SubdomainSetupApplet";
 import { useAuth } from "../lib/auth-context";
 import { logClientSystemEvent } from "../lib/system-log";
 
@@ -205,6 +207,14 @@ export function SystemSettings() {
         icon: WalletCards,
       },
       {
+        id: "subdomains",
+        label: "Subdomain Setup",
+        route: "/wtf-subdomains",
+        owner: "WTF Domains",
+        detail: "wtfos.me publishing host and wtf.tez domain setup",
+        icon: Globe2,
+      },
+      {
         id: "w",
         label: "W Social",
         route: "/w",
@@ -349,6 +359,21 @@ export function SystemSettings() {
               );
             })}
           </CardGrid>
+        </UiPanel>
+
+        <UiPanel title="Subdomain setup" compact tone="info">
+          <SubdomainSetupApplet
+            onOpenDomains={() =>
+              openSetting({
+                id: "subdomains",
+                label: "WTF Domains",
+                route: "/wtf-subdomains",
+                owner: "WTF Domains",
+                detail: "",
+                icon: Globe2,
+              })
+            }
+          />
         </UiPanel>
 
         <UiPanel title="Interface" compact>

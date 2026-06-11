@@ -713,12 +713,13 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     routePatterns: ["/hoard", "/tezos-intel", "/collekt", "/wtf-subdomains"],
     desktopAppKey: "hoard",
     adminPanelTabs: ["WTF Tez", "Contract Ledger", "Automation"],
-    nativeSettings: ["wallet sync", "token ownership predicates", "domain grants"],
+    nativeSettings: ["wallet sync", "token ownership predicates", "domain grants", "subdomain setup"],
     automationHandles: ["user.wallet.connected", "token.contract.owned", "token.id.owned"],
     behaviorAssertionIds: [
       "auth.wallet-challenge-login",
       "wallet.checkout-intent-bound-to-signed-session",
       "wallet.passive-refresh-no-signature",
+      "settings.subdomain-setup-applet",
     ],
   },
   {
@@ -1176,6 +1177,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     nativeSettings: [
       "settings routes",
       "account settings links",
+      "subdomain setup applet",
       "admin route gates",
       "owner app boundaries",
     ],
@@ -1184,6 +1186,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "system_settings.opened",
       "app.interaction.tracked",
     ],
+    behaviorAssertionIds: ["settings.subdomain-setup-applet"],
   },
   {
     id: "browser-boundaries",

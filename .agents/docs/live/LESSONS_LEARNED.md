@@ -1,3 +1,23 @@
+## 2026-06-11 - Exact text assertions matter when action labels include state
+
+**What happened**: The focused Settings subdomain applet Playwright test initially asserted `macaroni.wtfos.me` with a non-exact text locator. The same host also appeared inside the `Claim macaroni.wtfos.me` button label, so Playwright strict mode failed even though the UI rendered correctly.
+
+**Why it mattered**: Domain setup surfaces often repeat the same host in status, labels, and actions. Loose selectors can make a valid accessibility pattern look like a UI failure and slow down verification.
+
+**Rule**: For applets that repeat domain/handle values across status and action text, use exact locators, roles, labels, or scoped test ids that match the intended UI element. Keep the visible action labels descriptive, but make the test selectors precise.
+
+---
+
+## 2026-06-11 - User-site PDS handles must match the published host
+
+**What happened**: Macaroni's drop-page publisher depended on the wtfOS user-site host (`username.wtfos.me`), but the existing WTFOS PDS request flow derived the suggested repo handle from the linked AT/Bluesky handle. That could provision a valid WTFOS DID while still leaving the creator's actual user-site host unaligned with the identity/subdomain path Macaroni publishes to.
+
+**Why it mattered**: A creator can have a provisioned WTFOS repo and still fail the drop-page mental model if the issued handle is not the same host that Caddy TLS, user-site publishing, and public drop URLs use.
+
+**Rule**: Any user-facing WTFOS PDS/subdomain issuance path that supports user-site publishing must prefer the signed-in wtfOS username host and only fall back to the canonical AT handle when the username cannot produce a site-safe label. Add a policy test when changing handle derivation.
+
+---
+
 ## 2026-06-10 - Seed migrations must satisfy existing production constraints
 
 **What happened**: Full-send deploy failed after stopping the app because `0100_wtf_live_tip_items.sql` inserted WTF LIVE tip rows with `price_score` values of `25` and `69`, while production already had `in_app_market_items_price_score_range CHECK (price_score BETWEEN 1 AND 10)` from migration `0067`.

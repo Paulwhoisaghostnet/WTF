@@ -13,6 +13,7 @@ import {
   atprotoAccounts,
   tz2atIdentityLinks,
   userEtherlinkWallets,
+  users,
   userWallets,
   wtfosAtprotoIdentities,
 } from "@shared/schema";
@@ -37,6 +38,7 @@ import {
   publishQueuedWtfosOutbox,
   wtfosOutboxStatusForUser,
 } from "../features/tz2at/wtfos-outbox";
+import { suggestWtfosPdsHandle } from "../features/tz2at/wtfos-pds-handle";
 import {
   normalizeTz2atWalletAddress,
   parseTzbskyCryptoAddressRecord,
@@ -208,22 +210,11 @@ function wtfosPdsHealthUrl(): string | null {
 }
 
 function wtfosHandleDomain(): string {
-  return (process.env.WTFOS_ATPROTO_HANDLE_DOMAIN || process.env.ATPROTO_WTF_HANDLE_DOMAIN || WTFOS_IDENTITY_DOMAIN)
+  return (process.env.WTFOS_ATPROTO_HANDLE_DOMAIN || process.env.WTFOS_ATPROTO_NETWORK_DOMAIN || process.env.ATPROTO_WTF_HANDLE_DOMAIN || WTFOS_IDENTITY_DOMAIN)
     .replace(/^@/, "")
     .replace(/^https?:\/\//, "")
     .replace(/\/.*$/, "")
     .toLowerCase();
-}
-
-function suggestedWtfosHandle(handle?: string | null): string | null {
-  const label = String(handle || "")
-    .split(".")[0]
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48);
-  if (!label) return null;
-  return `${label}.${wtfosHandleDomain()}`;
 }
 
 function wtfosAccountEmail(userId: number): string {
@@ -238,16 +229,35 @@ function randomRepoPassword(): string {
   return randomBytes(32).toString("base64url");
 }
 
-function pdsOfferingConfig(account?: { handle?: string | null } | null) {
+function pdsOfferingConfig(
+  account?: { handle?: string | null } | null,
+  username?: string | null
+) {
+  const handleSuggestion = suggestWtfosPdsHandle({
+    username,
+    canonicalHandle: account?.handle,
+    handleDomain: wtfosHandleDomain(),
+  });
   return {
     pdsUrl: wtfosPdsUrl(),
     handleDomain: wtfosHandleDomain(),
     identityLinkCollection: "app.wtfos.identity.link",
     gameLexiconPrefix: "app.wtfos",
-    suggestedHandle: suggestedWtfosHandle(account?.handle),
+    suggestedHandle: handleSuggestion.handle,
+    suggestedHandleSource: handleSuggestion.source,
+    invalidUsernameReason: handleSuggestion.invalidUsernameReason,
     configured: wtfosPdsConfigured(),
     provisioningEnabled: wtfosPdsProvisioningEnabled(),
   };
+}
+
+async function usernameForUserId(userId: number): Promise<string | null> {
+  const [user] = await db
+    .select({ username: users.username })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return user?.username ?? null;
 }
 
 async function provisionWtfosRepo(input: {
@@ -464,13 +474,14 @@ async function fetchTzbskyRecord(did: string, pdsUrl?: string | null) {
 }
 
 async function statusForUser(userId: number) {
-  const [account, links, tezosWallets, etherlinkWallets, relay, pdsHealth] = await Promise.all([
+  const [account, links, tezosWallets, etherlinkWallets, relay, pdsHealth, username] = await Promise.all([
     linkedAccountForUser(userId),
     db.select().from(tz2atIdentityLinks).where(eq(tz2atIdentityLinks.userId, userId)).orderBy(asc(tz2atIdentityLinks.id)),
     db.select().from(userWallets).where(eq(userWallets.userId, userId)).orderBy(asc(userWallets.id)),
     db.select().from(userEtherlinkWallets).where(eq(userEtherlinkWallets.userId, userId)).orderBy(asc(userEtherlinkWallets.id)),
     fetchRelayHealth(),
     fetchWtfosPdsHealth(),
+    usernameForUserId(userId),
   ]);
   const wtfosIdentity = await wtfosIdentityForAccount(userId, account);
   return buildTz2atStatusPayload({
@@ -480,7 +491,7 @@ async function statusForUser(userId: number) {
     etherlinkWallets,
     relay,
     wtfosIdentity: wtfosIdentity ?? null,
-    pdsOffering: { ...pdsOfferingConfig(account), serviceHealth: pdsHealth },
+    pdsOffering: { ...pdsOfferingConfig(account, username), serviceHealth: pdsHealth },
   });
 }
 
@@ -491,6 +502,7 @@ router.get("/api/tz2at/status", isAuthenticated, async (req, res) => {
 router.get("/api/tz2at/pds-offering", isAuthenticated, async (req, res) => {
   const user = req.user as any;
   const account = await linkedAccountForUser(user.id);
+  const username = typeof user?.username === "string" ? user.username : await usernameForUserId(user.id);
   const identity = await wtfosIdentityForAccount(user.id, account);
   res.json({
     account: account
@@ -503,7 +515,7 @@ router.get("/api/tz2at/pds-offering", isAuthenticated, async (req, res) => {
       etherlinkWallets: [],
       relay: await fetchRelayHealth(),
       wtfosIdentity: identity,
-      pdsOffering: { ...pdsOfferingConfig(account), serviceHealth: await fetchWtfosPdsHealth() },
+      pdsOffering: { ...pdsOfferingConfig(account, username), serviceHealth: await fetchWtfosPdsHealth() },
     }).pdsOffering,
   });
 });
@@ -549,7 +561,8 @@ router.post("/api/tz2at/pds-offering/request", isAuthenticated, mutationLimiter,
   if (!account) return res.status(409).json({ error: "Connect an AT Protocol DID before requesting a WTFOS PDS identity" });
   if (!wtfosPdsConfigured()) return res.status(503).json({ error: "WTFOS PDS is not configured yet" });
   const now = new Date();
-  const config = pdsOfferingConfig(account);
+  const username = typeof user?.username === "string" ? user.username : await usernameForUserId(user.id);
+  const config = pdsOfferingConfig(account, username);
   let identity;
   try {
     [identity] = await db
@@ -566,6 +579,9 @@ router.post("/api/tz2at/pds-offering/request", isAuthenticated, mutationLimiter,
           source: "tz2at",
           identityLinkCollection: config.identityLinkCollection,
           gameLexiconPrefix: config.gameLexiconPrefix,
+          handleSource: config.suggestedHandleSource,
+          userSiteUsername: username,
+          invalidUsernameReason: config.invalidUsernameReason,
         },
         requestedAt: now,
         updatedAt: now,
@@ -582,6 +598,9 @@ router.post("/api/tz2at/pds-offering/request", isAuthenticated, mutationLimiter,
             source: "tz2at",
             identityLinkCollection: config.identityLinkCollection,
             gameLexiconPrefix: config.gameLexiconPrefix,
+            handleSource: config.suggestedHandleSource,
+            userSiteUsername: username,
+            invalidUsernameReason: config.invalidUsernameReason,
           },
           requestedAt: sql`coalesce(${wtfosAtprotoIdentities.requestedAt}, ${now})`,
           updatedAt: now,

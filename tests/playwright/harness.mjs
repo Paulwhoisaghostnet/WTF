@@ -26,6 +26,7 @@ const state = {
   skywireFollowPayloads: [],
   skywireChatEnabled: true,
   skywireHandle: "wtf-admin.bsky.social",
+  wtfUserSiteClaimed: false,
   wtfLiveOwnedRoom: { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, accessMode: "public", isPublic: true },
   wtfLivePrivateRoom: null,
   wtfLivePrivateMembers: [],
@@ -45,6 +46,104 @@ function defaultAuthUserForRole(role) {
 function currentAuthUser() {
   if (state.userRole === "anonymous") return null;
   return state.authUser || defaultAuthUserForRole(state.userRole);
+}
+
+function siteSafeLabelForUser(user = currentAuthUser()) {
+  const raw = String(user?.username || "wtf-admin").toLowerCase();
+  return raw.replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "wtf-admin";
+}
+
+function mockWtfUserSiteState() {
+  const user = currentAuthUser();
+  const label = siteSafeLabelForUser(user);
+  const host = `${label}.wtfos.me`;
+  const eligibility = {
+    canClaim: true,
+    label,
+    host,
+    reasons: [],
+    hasWallet: true,
+    hasOAuthSocial: true,
+    hasLinkedBluesky: true,
+    hasActiveWtfDid: true,
+    canIssueWtfDid: true,
+    didTarget: {
+      did: `did:web:${host}`,
+      source: "wtf",
+      handle: host,
+      pdsUrl: "https://pds.wtfos.me",
+      wtfosIdentityId: 1,
+    },
+  };
+  if (!state.wtfUserSiteClaimed) return { eligibility, site: null };
+  return {
+    eligibility,
+    site: {
+      id: 1,
+      label,
+      host,
+      url: `https://${host}/`,
+      status: "draft",
+      activeDid: eligibility.didTarget.did,
+      activeDidSource: "wtf",
+      proofGraceUntil: null,
+      suspendedAt: null,
+      suspendedReason: null,
+      publishedAt: null,
+      pages: [
+        {
+          id: 1,
+          slug: "home",
+          title: "Home",
+          draftHtml: "<main><h1>Harness Home</h1></main>",
+          sortOrder: 0,
+          updatedAt: nowIso(),
+        },
+      ],
+      versions: [],
+      assets: [],
+      assetBytes: 0,
+      maxAssetBytes: 500 * 1024 * 1024,
+      maxNamedPages: 25,
+    },
+  };
+}
+
+function mockWtfDomainPlan(labelInput, targetAddress, includeSalt = false) {
+  const label = String(labelInput || siteSafeLabelForUser()).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "wtf-admin";
+  const target = String(targetAddress || "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY");
+  const body = {
+    enabled: true,
+    network: "ghostnet",
+    parentDomain: "wtf.tez",
+    registrarAddress: "KT1HarnessRegistrar11111111111111111111",
+    label,
+    fullName: `${label}.wtf.tez`,
+    targetAddress: target,
+    labelHex: Buffer.from(label, "utf8").toString("hex"),
+    minCommitAgeSec: 1,
+    operations: [
+      {
+        phase: "commit",
+        destination: "KT1HarnessRegistrar11111111111111111111",
+        entrypoint: "commit",
+        value: { commitmentHash: "client-computed harness hash" },
+      },
+      {
+        phase: "register",
+        destination: "KT1HarnessRegistrar11111111111111111111",
+        entrypoint: "register",
+        value: { label, targetAddress: target, salt: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+      },
+    ],
+  };
+  return includeSalt
+    ? {
+        ...body,
+        salt: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        hashFormula: "blake2b(pack(label_bytes, sender_address, target_address, salt_bytes))",
+      }
+    : body;
 }
 
 function logRequest(req) {
@@ -80,6 +179,7 @@ app.post("/__test/state", (req, res) => {
   state.skywireFollowPayloads = [];
   state.skywireChatEnabled = req.body?.skywireChatEnabled !== false;
   state.skywireHandle = String(req.body?.skywireHandle || "wtf-admin.bsky.social");
+  state.wtfUserSiteClaimed = Boolean(req.body?.wtfUserSiteClaimed);
   state.wtfLiveOwnedRoom = { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, accessMode: "public", isPublic: true };
   state.wtfLivePrivateRoom = null;
   state.wtfLivePrivateMembers = [];
@@ -2400,25 +2500,62 @@ function apiMock(req, res) {
   }
   if (pathName.startsWith("/api/collekt/")) return res.json({ wallets: [], tokens: [], items: [] });
   if (pathName.startsWith("/api/tezos-intel/")) return res.json({ sources: [], creators: [], items: [], marketPulse: [] });
+  if (pathName === "/api/wtf-sites/my") return res.json(mockWtfUserSiteState());
+  if (pathName === "/api/wtf-sites/claim" && req.method === "POST") {
+    state.wtfUserSiteClaimed = true;
+    return res.status(201).json(mockWtfUserSiteState());
+  }
   if (pathName === "/api/wtf-subdomains/my") return res.json([]);
   if (pathName === "/api/wtf-subdomains/registrar/config") {
     return res.json({
       config: {
-        enabled: false,
+        enabled: true,
         network: "ghostnet",
         parentDomain: "wtf.tez",
-        registrarAddress: null,
-        rpcUrl: "",
-        tzktApi: "",
-        domainsGraphql: "",
-        tedAppUrl: "",
-        tedCheckAddress: "",
-        tedSetChildRecord: "",
-        tedUpdateRecord: "",
+        registrarAddress: "KT1HarnessRegistrar11111111111111111111",
+        rpcUrl: "https://rpc.ghostnet.teztnets.com",
+        tzktApi: "https://api.ghostnet.tzkt.io",
+        domainsGraphql: "https://api.tezos.domains/graphql",
+        tedAppUrl: "https://app.tezos.domains",
+        tedCheckAddress: "KT1TedCheck1111111111111111111111111",
+        tedSetChildRecord: "KT1TedChild1111111111111111111111111",
+        tedUpdateRecord: "KT1TedUpdate11111111111111111111111",
         missingEnv: [],
       },
-      storage: null,
+      storage: {
+        minCommitAgeSec: 1,
+        maxCommitAgeSec: 86400,
+        maxPerWallet: 1,
+        paused: false,
+        whitelistEnabled: false,
+        nameRegistry: "KT1HarnessRegistry11111111111111111111",
+      },
     });
+  }
+  if (pathName.startsWith("/api/wtf-subdomains/registrar/status/")) {
+    const address = decodeURIComponent(pathName.split("/").pop() || "");
+    return res.json({
+      address,
+      reverseDomain: null,
+      wtfDomains: [],
+      hackDomains: [],
+      registrar: {
+        enabled: true,
+        parentDomain: "wtf.tez",
+        registrarAddress: "KT1HarnessRegistrar11111111111111111111",
+        pendingCommitHash: null,
+        registrationCount: 0,
+        minCommitAgeSec: 1,
+        paused: false,
+        canRegister: true,
+      },
+    });
+  }
+  if (pathName === "/api/wtf-subdomains/registrar/commit" && req.method === "POST") {
+    return res.json(mockWtfDomainPlan(req.body?.label, req.body?.targetAddress, true));
+  }
+  if (pathName === "/api/wtf-subdomains/registrar/prepare" && req.method === "POST") {
+    return res.json(mockWtfDomainPlan(req.body?.label, req.body?.targetAddress, false));
   }
   if (pathName === "/api/wtf-subdomains/chat/config") {
     return res.json({
