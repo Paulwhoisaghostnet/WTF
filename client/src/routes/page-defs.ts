@@ -288,6 +288,7 @@ const CREATION_TOOL_PAGE_DEFS: PageDef[] = CREATION_TOOLS.map((tool) => ({
   component: CreationToolPage,
   mapProps: () => ({ toolId: tool.id }),
   auth: true,
+  roles: "roles" in tool ? [...tool.roles] : undefined,
   title: tool.title,
   group: "create",
   startMenu: true,

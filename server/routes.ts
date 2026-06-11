@@ -56,6 +56,7 @@ import telegramDigestRoutes from "./routes/telegram-digest";
 import systemLogRoutes from "./routes/system-logs";
 import wtfSubdomainRoutes from "./routes/wtf-subdomains";
 import wtfSitesRoutes from "./routes/wtf-sites";
+import macaroniRoutes from "./routes/macaroni";
 import atprotoRoutes from "./routes/atproto";
 import skywireRoutes from "./routes/skywire";
 import wtfLiveRoutes from "./routes/wtf-live";
@@ -246,6 +247,7 @@ export function registerRoutes(app: Express) {
   app.use(telegramDigestRoutes);
   app.use(wtfSubdomainRoutes);
   app.use(wtfSitesRoutes);
+  app.use(macaroniRoutes);
   app.use(collektRoutes);
   app.use(attendanceRoutes);
   app.use(calendarRoutes);

@@ -566,7 +566,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "media creation to arcade publishing loop",
     domain: "Media, Creation, Gallery, and Preservation",
-    routes: ["/my-videos", "/my-photos", "/my-music", "/studio", "/game-studio", "/arcade"],
+    routes: ["/my-videos", "/my-photos", "/my-music", "/studio", "/game-studio", "/tools/macaroni", "/arcade"],
     eventHandles: [
       "media.uploaded",
       "studio.project.created",
@@ -575,6 +575,7 @@ export const DOMAIN_WORKFLOWS = [
       "game_studio.asset_pack.checked",
       "game_studio.build.succeeded",
       "game_studio.submitted_to_arcade",
+      "macaroni.drop_published",
       "arcade.game.submitted",
     ],
     apiProbes: [
@@ -585,6 +586,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/studio/projects" },
       { method: "GET", path: "/api/game-studio/projects" },
       { method: "GET", path: "/api/game-studio/templates" },
+      { method: "POST", path: "/api/macaroni/publish", body: { config: { title: "E2E Macaroni Drop", network: "shadownet", contract: "" } }, expectedStatuses: [201, 400, 401, 403, 404, 423, 500, 503] },
       { method: "GET", path: "/api/arcade/my-games" },
     ],
   },

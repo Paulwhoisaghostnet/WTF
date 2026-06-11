@@ -129,7 +129,7 @@ function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0]
 export async function createApp() {
   const app = express();
   const allowedOrigins = allowedOriginsForRuntime();
-  const jsonBodyLimit = process.env.JSON_BODY_LIMIT || "5mb";
+  const jsonBodyLimit = process.env.JSON_BODY_LIMIT || "10mb";
 
   if (process.env.NODE_ENV === "production" || process.env.TRUST_PROXY === "1") {
     app.set("trust proxy", 1);

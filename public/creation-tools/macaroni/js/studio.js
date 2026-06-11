@@ -1,0 +1,1197 @@
+/* Macaroni Studio — creator flow:
+   network → drop details → tokens (CSV + media) → IPFS pinning →
+   stages/allowlists → deploy & sync → page design & export. */
+
+"use strict";
+
+const $ = (id) => document.getElementById(id);
+const logEl = $("log");
+function log(msg, cls) {
+  const time = new Date().toLocaleTimeString();
+  logEl.textContent += `\n[${time}] ${msg}`;
+  logEl.scrollTop = logEl.scrollHeight;
+  if (cls === "err") console.error(msg);
+}
+
+const STORE_KEY = "macaroni.studio.v1";
+
+const state = {
+  network: "shadownet",
+  rpc: "",
+  drop: {
+    title: "",
+    symbol: "",
+    description: "",
+    royaltyPct: 10,
+    royaltyAddr: "",
+    treasuryAddr: "",
+    coverCid: "",
+    coverMime: "",
+    contractMetaCid: "",
+    revealMode: "instant", // instant | delayed
+    revealDelayDays: 7, // auto-reveal window (delayed mode), 0–30
+    placeholderCid: "", // pinned pre-reveal metadata (delayed mode)
+  },
+  pin: { kind: "wtfos", jwt: "", url: "", gateway: "" },
+  tokens: [], // {id, name, description, attributes, tags, fileName, mediaCid, mediaMime, metadataCid}
+  stages: [], // {start, price, useAllowlist, maxPerWallet, allowlist:[{address,capacity}]}
+  contract: "",
+  page: { theme: "dark", accent: "", font: "", blocks: "", css: "", code: "" },
+};
+
+// Files can't be persisted; kept in-memory keyed by base name (id).
+const mediaFiles = new Map();
+let coverFile = null;
+
+// ---------- persistence ----------
+function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) Object.assign(state, JSON.parse(raw));
+    // Drafts saved before a network was retired (e.g. ghostnet) fall back
+    // to the current testnet instead of crashing the toolkit setup.
+    if (!MD.getNetworks()[state.network]) state.network = "shadownet";
+  } catch (e) {
+    console.warn("could not restore draft", e);
+  }
+}
+
+// ---------- network / wallet ----------
+function applyNetwork() {
+  state.network = $("network").value;
+  state.rpc = $("rpc").value.trim();
+  MD.setupToolkit(state.network, state.rpc || undefined);
+  $("netLabel").textContent =
+    state.network + " · " + (state.rpc || MD.getNetworks()[state.network].rpc);
+  save();
+  // A session paired on another network must not survive a network switch.
+  MD.ensureSessionNetwork().then((addr) => {
+    $("walletAddr").value = addr || "";
+    $("btnConnect").textContent = addr ? MD.short(addr) : "Connect wallet";
+    if (!addr && state.network === "mainnet")
+      log("network set to mainnet — connect your wallet to continue");
+  }).catch(() => {});
+}
+
+async function connect() {
+  try {
+    applyNetwork();
+    const addr = await MD.connectWallet("Macaroni Studio");
+    $("walletAddr").value = addr;
+    $("btnConnect").textContent = MD.short(addr);
+    log("wallet connected: " + addr);
+  } catch (e) {
+    log("wallet connect failed: " + e.message, "err");
+  }
+}
+
+// ---------- tokens ----------
+const RESERVED_COLS = new Set(["id", "name", "description", "tags"]);
+
+async function onCsv(file) {
+  try {
+    const rows = await MD.parseCsv(file);
+    const tokens = [];
+    for (const r of rows) {
+      if (!r.id) continue;
+      const id = parseInt(r.id, 10);
+      if (!Number.isInteger(id) || id < 1) throw new Error(`bad id "${r.id}" — ids must be positive integers`);
+      const attributes = [];
+      for (const k of Object.keys(r)) {
+        if (!RESERVED_COLS.has(k) && r[k] !== "") attributes.push({ name: k, value: r[k] });
+      }
+      tokens.push({
+        id,
+        name: r.name || `#${id}`,
+        description: r.description || "",
+        tags: r.tags ? r.tags.split(/[;,]\s*/) : [],
+        attributes,
+        fileName: "",
+        mediaCid: "",
+        mediaMime: "",
+        metadataCid: "",
+      });
+    }
+    tokens.sort((a, b) => a.id - b.id);
+    const seen = new Set();
+    for (const t of tokens) {
+      if (seen.has(t.id)) throw new Error("duplicate id " + t.id);
+      seen.add(t.id);
+    }
+    // keep already-pinned CIDs when re-uploading the same ids
+    const prev = new Map(state.tokens.map((t) => [t.id, t]));
+    for (const t of tokens) {
+      const old = prev.get(t.id);
+      if (old) Object.assign(t, {
+        mediaCid: old.mediaCid, mediaMime: old.mediaMime,
+        metadataCid: "", // metadata depends on sheet content → re-pin
+        fileName: old.fileName,
+      });
+    }
+    state.tokens = tokens;
+    matchMedia_();
+    renderTokens();
+    save();
+    log(`token sheet loaded: ${tokens.length} tokens`);
+  } catch (e) {
+    log("CSV error: " + e.message, "err");
+    alert("Token sheet error: " + e.message);
+  }
+}
+
+function onMedia(files) {
+  for (const f of files) {
+    const base = f.name.replace(/\.[^.]+$/, "");
+    mediaFiles.set(base, f);
+  }
+  matchMedia_();
+  renderTokens();
+  log(`${files.length} artwork file(s) added (${mediaFiles.size} total)`);
+}
+
+function matchMedia_() {
+  for (const t of state.tokens) {
+    const f = mediaFiles.get(String(t.id));
+    if (f) {
+      if (t.fileName !== f.name) {
+        t.mediaCid = "";
+        t.metadataCid = "";
+      }
+      t.fileName = f.name;
+      t.mediaMime = f.type || "application/octet-stream";
+    }
+  }
+}
+
+function renderTokens() {
+  const total = state.tokens.length;
+  const withArt = state.tokens.filter((t) => t.fileName).length;
+  const pinned = state.tokens.filter((t) => t.metadataCid).length;
+  $("tokenSummary").innerHTML =
+    `<span class="pill ${total ? "ok" : ""}">${total} tokens</span>` +
+    `<span class="pill ${withArt === total && total ? "ok" : "warn"}">${withArt}/${total} artworks matched</span>` +
+    `<span class="pill ${pinned === total && total ? "ok" : ""}">${pinned}/${total} pinned</span>`;
+
+  const tbl = $("tokenTable");
+  if (!total) { tbl.innerHTML = ""; return; }
+  let html = "<tr><th></th><th>id</th><th>name</th><th>traits</th><th>artifact</th><th>IPFS</th></tr>";
+  for (const t of state.tokens) {
+    const f = mediaFiles.get(String(t.id));
+    const img = f && f.type.startsWith("image/")
+      ? `<img src="${URL.createObjectURL(f)}" alt="" />`
+      : t.mediaCid
+        ? `<img src="${MD.ipfsToHttp("ipfs://" + t.mediaCid, state.pin.gateway)}" alt="" />`
+        : "·";
+    const art = t.fileName
+      ? `<span class="pill ok">${t.fileName}</span>`
+      : `<span class="pill bad">missing artifact</span>`;
+    const pin = t.metadataCid
+      ? `<span class="pill ok">pinned</span>`
+      : t.mediaCid
+        ? `<span class="pill warn">media only</span>`
+        : `<span class="pill">—</span>`;
+    html += `<tr><td>${img}</td><td class="mono">${t.id}</td><td>${esc(t.name)}</td><td class="muted">${t.attributes.length}</td><td>${art}</td><td>${pin}</td></tr>`;
+  }
+  tbl.innerHTML = html;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+// ---------- IPFS pinning ----------
+function pinProvider() {
+  if (state.pin.kind === "wtfos") return { kind: "wtfos" };
+  return state.pin.kind === "pinata"
+    ? { kind: "pinata", jwt: state.pin.jwt }
+    : { kind: "node", url: state.pin.url };
+}
+
+function royaltyShares() {
+  const pct = Number(state.drop.royaltyPct || 0);
+  const addr = state.drop.royaltyAddr || MD.getAccount();
+  if (!pct || !addr) return null;
+  // objkt-compatible: decimals 4 → 10% = 1000
+  return { decimals: 4, shares: { [addr]: Math.round(pct * 100) } };
+}
+
+function buildTokenMetadata(t) {
+  const creator = MD.getAccount() || state.drop.royaltyAddr || "";
+  const artifact = "ipfs://" + t.mediaCid;
+  const meta = {
+    name: t.name,
+    description: t.description || state.drop.description,
+    decimals: 0,
+    isBooleanAmount: true,
+    symbol: state.drop.symbol || undefined,
+    artifactUri: artifact,
+    displayUri: artifact,
+    thumbnailUri: artifact,
+    minter: creator || undefined,
+    creators: creator ? [creator] : undefined,
+    formats: [{ uri: artifact, mimeType: t.mediaMime }],
+    tags: t.tags && t.tags.length ? t.tags : undefined,
+    attributes: t.attributes.length ? t.attributes : undefined,
+  };
+  const roy = royaltyShares();
+  if (roy) meta.royalties = roy;
+  Object.keys(meta).forEach((k) => meta[k] === undefined && delete meta[k]);
+  return meta;
+}
+
+async function pinAll() {
+  readForm();
+  const provider = pinProvider();
+  if (provider.kind === "pinata" && !provider.jwt) return alert("Enter your Pinata JWT first.");
+  if (provider.kind === "node" && !provider.url) return alert("Enter your IPFS node API URL first.");
+  if (!state.tokens.length) return alert("Upload your token sheet first.");
+  const missing = state.tokens.filter((t) => !t.fileName && !t.mediaCid);
+  if (missing.length) return alert(`${missing.length} token(s) have no artwork file. Every row needs an artifact.`);
+  // Royalties are baked into the pinned metadata — a missing receiver here
+  // would silently ship 0% royalties forever.
+  if (state.drop.royaltyAddr && !MD.isAddress(state.drop.royaltyAddr))
+    return alert("Royalty receiver is not a valid Tezos address (tz1…/tz2…/tz3…/tz4…/KT1…).");
+  if (Number(state.drop.royaltyPct) > 0 && !state.drop.royaltyAddr && !MD.getAccount())
+    return alert(
+      `Royalties are set to ${state.drop.royaltyPct}% but there is no receiver: ` +
+      "connect your wallet or fill in the royalty receiver before pinning, " +
+      "otherwise the metadata is pinned without royalties — permanently."
+    );
+
+  const btn = $("btnPin");
+  btn.disabled = true;
+  try {
+    // cover image first
+    if (coverFile && !state.drop.coverCid) {
+      $("pinStatus").textContent = "pinning cover…";
+      state.drop.coverCid = await MD.pinBlob(provider, coverFile, coverFile.name);
+      state.drop.coverMime = coverFile.type;
+      save();
+      log("cover pinned: " + state.drop.coverCid);
+    }
+    // delayed reveal: the cover doubles as the pre-reveal placeholder artwork
+    if (state.drop.revealMode === "delayed" && !state.drop.placeholderCid) {
+      if (!state.drop.coverCid)
+        throw new Error("delayed reveal needs a cover image — it is shown on unrevealed tokens");
+      $("pinStatus").textContent = "pinning placeholder…";
+      const cover = "ipfs://" + state.drop.coverCid;
+      const ph = {
+        name: (state.drop.title || "Drop") + " — unrevealed",
+        description:
+          "This token has not been revealed yet. A random artwork from the collection will be assigned at reveal.",
+        decimals: 0,
+        isBooleanAmount: true,
+        symbol: state.drop.symbol || undefined,
+        artifactUri: cover,
+        displayUri: cover,
+        thumbnailUri: cover,
+        formats: [{ uri: cover, mimeType: state.drop.coverMime || "image/png" }],
+      };
+      const roy = royaltyShares();
+      if (roy) ph.royalties = roy;
+      Object.keys(ph).forEach((k) => ph[k] === undefined && delete ph[k]);
+      state.drop.placeholderCid = await MD.pinJson(provider, ph, "placeholder.json");
+      save();
+      log("placeholder pinned: " + state.drop.placeholderCid);
+    }
+    const todo = state.tokens.filter((t) => !t.metadataCid);
+    let done = 0;
+    for (const t of todo) {
+      if (!t.mediaCid) {
+        const f = mediaFiles.get(String(t.id));
+        if (!f) throw new Error(`artwork file for token ${t.id} is not loaded (re-select your files)`);
+        $("pinStatus").textContent = `pinning media ${t.id} (${done + 1}/${todo.length})…`;
+        t.mediaCid = await MD.pinBlob(provider, f, f.name);
+        save();
+      }
+      $("pinStatus").textContent = `pinning metadata ${t.id} (${done + 1}/${todo.length})…`;
+      t.metadataCid = await MD.pinJson(provider, buildTokenMetadata(t), `${t.id}.json`);
+      save();
+      done++;
+      $("pinBar").style.width = Math.round((done / todo.length) * 100) + "%";
+      if (done % 10 === 0) renderTokens();
+    }
+    $("pinBar").style.width = "100%";
+    $("pinStatus").textContent = "all pinned ✓";
+    renderTokens();
+    log(`pinning complete: ${state.tokens.length} tokens`);
+  } catch (e) {
+    $("pinStatus").textContent = "error — see log";
+    log("pinning failed: " + e.message, "err");
+    alert("Pinning failed: " + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---------- stages ----------
+function renderStages() {
+  const host = $("stagesEditor");
+  host.innerHTML = "";
+  state.stages.forEach((s, i) => {
+    const div = document.createElement("div");
+    div.className = "panel";
+    div.style.margin = "10px 0";
+    div.innerHTML = `
+      <div class="spread"><h3 style="margin:0">Stage ${i + 1}</h3>
+        <button class="btn danger small" data-del="${i}">remove</button></div>
+      <div class="grid3">
+        <div><label>Start (your local time)</label>
+          <input type="datetime-local" data-f="start" data-i="${i}" value="${s.start || ""}" /></div>
+        <div><label>Price (ꜩ, up to 6 decimals)</label>
+          <input type="number" min="0" step="0.000001" data-f="price" data-i="${i}" value="${s.price ?? ""}" /></div>
+        <div><label>Max per wallet (blank = unlimited)</label>
+          <input type="number" min="1" step="1" data-f="maxPerWallet" data-i="${i}" value="${s.maxPerWallet ?? ""}" /></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label style="margin:0"><input type="checkbox" data-f="useAllowlist" data-i="${i}" ${s.useAllowlist ? "checked" : ""}/> allowlist only</label>
+        <input type="file" accept=".csv" data-allow="${i}" style="width:auto" />
+        <span class="pill ${s.allowlist?.length ? "ok" : ""}">${s.allowlist?.length || 0} addresses</span>
+      </div>`;
+    host.appendChild(div);
+  });
+  host.querySelectorAll("[data-f]").forEach((el) => {
+    el.addEventListener("change", () => {
+      const i = +el.dataset.i;
+      const f = el.dataset.f;
+      state.stages[i][f] = el.type === "checkbox" ? el.checked : el.value;
+      save();
+    });
+  });
+  host.querySelectorAll("[data-del]").forEach((el) =>
+    el.addEventListener("click", () => {
+      state.stages.splice(+el.dataset.del, 1);
+      save();
+      renderStages();
+    })
+  );
+  host.querySelectorAll("[data-allow]").forEach((el) =>
+    el.addEventListener("change", async () => {
+      const i = +el.dataset.allow;
+      const file = el.files[0];
+      if (!file) return;
+      try {
+        state.stages[i].allowlist = await parseAllowlist(file);
+        state.stages[i].useAllowlist = true;
+        save();
+        renderStages();
+        log(`stage ${i + 1}: allowlist with ${state.stages[i].allowlist.length} addresses`);
+      } catch (e) {
+        alert("Allowlist error: " + e.message);
+      }
+    })
+  );
+}
+
+async function parseAllowlist(file) {
+  const rows = await MD.parseCsvRows(file);
+  const out = [];
+  for (const r of rows) {
+    const addr = String(r[0] || "").replace(/^\ufeff/, "").trim();
+    if (!addr || addr.toLowerCase() === "address") continue;
+    if (!/^(tz1|tz2|tz3|tz4|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/.test(addr))
+      throw new Error("invalid address: " + addr);
+    const cap = parseInt(r[1], 10);
+    out.push({ address: addr, capacity: Number.isInteger(cap) && cap > 0 ? cap : 1 });
+  }
+  if (!out.length) throw new Error("no valid rows found");
+  return out;
+}
+
+// ---------- deploy & sync ----------
+const CHUNK = 40;
+
+function tezToMutez(t) {
+  return Math.round(parseFloat(t || "0") * 1_000_000);
+}
+
+function stageRecords() {
+  const sorted = [...state.stages].sort((a, b) => new Date(a.start) - new Date(b.start));
+  return sorted.map((s, i) => {
+    if (!s.start) throw new Error(`stage ${i + 1}: missing start time`);
+    if (s.price === "" || s.price == null) throw new Error(`stage ${i + 1}: missing price`);
+    return {
+      key: i,
+      value: {
+        start: new Date(s.start).toISOString(),
+        price: tezToMutez(s.price),
+        use_allowlist: !!s.useAllowlist,
+        max_per_wallet: s.maxPerWallet ? Number(s.maxPerWallet) : null,
+      },
+      allowlist: s.allowlist || [],
+    };
+  });
+}
+
+function tokenInfoUri(tokenInfo) {
+  if (!tokenInfo) return "";
+  const hex = typeof tokenInfo.get === "function" ? tokenInfo.get("") : tokenInfo[""];
+  if (!hex) return "";
+  try {
+    return MD.hexToUtf8(hex);
+  } catch (_) {
+    return "";
+  }
+}
+
+async function buildContractMetadataCid() {
+  const provider = pinProvider();
+  const meta = {
+    name: state.drop.title,
+    description: state.drop.description,
+    version: "1.0.0",
+    authors: [MD.getAccount() || ""],
+    homepage: "",
+    interfaces: ["TZIP-012", "TZIP-016", "TZIP-021"],
+    imageUri: state.drop.coverCid ? "ipfs://" + state.drop.coverCid : undefined,
+  };
+  Object.keys(meta).forEach((k) => meta[k] === undefined && delete meta[k]);
+  return MD.pinJson(provider, meta, "contract_metadata.json");
+}
+
+async function deploy() {
+  try {
+    readForm();
+    if (!MD.getAccount()) return alert("Connect your wallet first.");
+    if (!state.drop.title || !state.drop.description) return alert("Title and description are required.");
+    if (!state.tokens.length) return alert("Upload tokens first.");
+    if (state.tokens.some((t) => !t.metadataCid)) return alert("Pin all media + metadata first (step 4).");
+    if (!state.stages.length) return alert("Configure at least one sale stage (step 5).");
+    if (state.drop.treasuryAddr && !MD.isAddress(state.drop.treasuryAddr))
+      return alert("Treasury is not a valid Tezos address (tz1…/tz2…/tz3…/tz4…/KT1…).");
+    const delayed = state.drop.revealMode === "delayed";
+    const delayDays = Number(state.drop.revealDelayDays);
+    if (delayed && (!Number.isFinite(delayDays) || delayDays < 0 || delayDays > 30))
+      return alert("Auto-reveal window must be between 0 and 30 days.");
+    if (delayed && !state.drop.placeholderCid)
+      return alert("Pin all media + metadata first (step 4) — delayed reveal also pins the placeholder.");
+    const stages = stageRecords(); // validates
+
+    // Hard guard: RPC chain id + wallet session must both match the selected
+    // network before anything signs.
+    $("deployStatus").textContent = "verifying network…";
+    await MD.assertOperationSafety();
+
+    if (state.network === "mainnet") {
+      const treasury = state.drop.treasuryAddr || MD.getAccount();
+      const summary =
+        `Network:   MAINNET (real tez)\n` +
+        `Tokens:    ${state.tokens.length}\n` +
+        `Stages:    ${stages.map((s) => `${MD.fmtTez(s.value.price)} @ ${s.value.start}`).join(" | ")}\n` +
+        `Royalties: ${state.drop.royaltyPct}% → ${state.drop.royaltyAddr || MD.getAccount()}\n` +
+        `Treasury:  ${treasury}\n` +
+        `Reveal:    ${delayed ? `delayed (auto-reveal opens after ${delayDays} day(s))` : "instant at mint"}`;
+      if (!confirm(
+        "You are about to deploy to Tezos MAINNET.\n\n" + summary +
+        "\n\nThe FIRST MINT permanently locks tokens, stages, allowlists and royalties." +
+        "\nRehearse the full flow on Shadownet first if you haven't.\n\nDeploy now?"
+      )) {
+        $("deployStatus").textContent = "cancelled";
+        return;
+      }
+    }
+
+    const btn = $("btnDeploy");
+    btn.disabled = true;
+    $("deployStatus").textContent = "pinning contract metadata…";
+    if (!state.drop.contractMetaCid) {
+      state.drop.contractMetaCid = await buildContractMetadataCid();
+      save();
+      log("contract metadata pinned: " + state.drop.contractMetaCid);
+    }
+
+    $("deployStatus").textContent = "loading contract code…";
+    const code = await (await fetch("contract/mydrop.contract.json")).json();
+
+    const me = MD.getAccount();
+    const M = TZ.MichelsonMap;
+    const metadataMap = new M();
+    metadataMap.set("", MD.utf8ToHex("ipfs://" + state.drop.contractMetaCid));
+    const placeholderMap = new M();
+    if (delayed)
+      placeholderMap.set("", MD.utf8ToHex("ipfs://" + state.drop.placeholderCid));
+
+    const storage = {
+      administrator: me,
+      pending_administrator: null,
+      treasury: state.drop.treasuryAddr || me,
+      metadata: metadataMap,
+      ledger: new M(),
+      operators: new M(),
+      token_metadata: new M(),
+      pending_tokens: new M(),
+      slots: new M(),
+      supply: 0,
+      minted: 0,
+      seed_salt: "00",
+      stages: new M(),
+      allowlist: new M(),
+      stage_minted: new M(),
+      locked: false,
+      paused: false,
+      delayed_reveal: delayed,
+      placeholder: placeholderMap,
+      reveal_delay: delayed ? Math.round(delayDays * 86400) : 604800,
+      unrevealed_since: null,
+      revealed: 0,
+      entropy: "00",
+    };
+
+    $("deployStatus").textContent = "waiting for wallet signature…";
+    log("originating contract…");
+    const tezos = MD.getToolkit();
+    const op = await tezos.wallet.originate({ code, storage }).send();
+    $("deployStatus").textContent = "waiting for confirmation…";
+    const contract = await op.contract();
+    state.contract = contract.address;
+    $("contractAddr").value = contract.address;
+    save();
+    $("deployStatus").textContent = "deployed ✓";
+    $("btnSync").disabled = false;
+    log("contract deployed at " + contract.address);
+    log("explorer: " + MD.explorerUrl(state.network, contract.address));
+  } catch (e) {
+    $("deployStatus").textContent = "deploy failed";
+    log("deploy failed: " + (e.message || JSON.stringify(e)), "err");
+    alert("Deploy failed: " + (e.message || e));
+  } finally {
+    $("btnDeploy").disabled = false;
+  }
+}
+
+async function sync() {
+  try {
+    readForm();
+    const kt = $("contractAddr").value.trim() || state.contract;
+    if (!kt) return alert("Deploy first, or paste an existing contract address.");
+    if (!/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(kt))
+      return alert("Contract address must be a KT1… address.");
+    state.contract = kt;
+    save();
+    if (state.tokens.length && state.tokens.some((t) => !t.metadataCid))
+      return alert("Pin all local token metadata before syncing token changes.");
+
+    await MD.assertOperationSafety();
+    const tezos = MD.getToolkit();
+    const c = await tezos.wallet.at(kt);
+    const st = await (await tezos.contract.at(kt)).storage();
+    const already = Number(st.supply);
+    log(`sync: contract has ${already}/${state.tokens.length} tokens loaded`);
+
+    const M = TZ.MichelsonMap;
+    const batchify = (t) => {
+      const info = new M();
+      info.set("", MD.utf8ToHex("ipfs://" + t.metadataCid));
+      return { token_id: t.id - 1, token_info: info };
+    };
+
+    if (state.tokens.length && already > state.tokens.length)
+      return alert(
+        `This contract already has ${already} token(s) loaded, but your CSV has ` +
+        `${state.tokens.length}. Re-import the full CSV before syncing token changes.`
+      );
+
+    const replaceTodo = [];
+    if (state.tokens.length && !st.locked) {
+      const existing = state.tokens.filter((t) => t.id - 1 < already);
+      for (const t of existing) {
+        const desired = "ipfs://" + t.metadataCid;
+        const current = tokenInfoUri(await st.pending_tokens.get(t.id - 1));
+        if (current !== desired) replaceTodo.push(t);
+      }
+    } else if (state.tokens.length && st.locked) {
+      log("sync: sale is locked; existing token metadata cannot be replaced");
+    }
+
+    const todo = state.tokens.filter((t) => t.id - 1 >= already);
+    const stages = stageRecords();
+    const entries = [];
+    for (const s of stages)
+      for (const a of s.allowlist)
+        entries.push({ stage: s.key, holder: a.address, capacity: a.capacity });
+
+    const totalSteps = Math.max(
+      1,
+      Math.ceil(replaceTodo.length / CHUNK) +
+        Math.ceil(todo.length / CHUNK) +
+        1 +
+        (entries.length ? Math.ceil(entries.length / 200) : 1)
+    );
+    let step = 0;
+    const bump = () => { $("syncBar").style.width = Math.round((++step / totalSteps) * 100) + "%"; };
+
+    for (let i = 0; i < replaceTodo.length; i += CHUNK) {
+      const chunk = replaceTodo.slice(i, i + CHUNK).map(batchify);
+      log(`replace_tokens ${chunk[0].token_id}…${chunk[chunk.length - 1].token_id} (${chunk.length}) — approve in wallet`);
+      const op = await MD.sendWalletOp(c.methodsObject.replace_tokens(chunk), {}, { gasPerUnit: 180_000, units: chunk.length });
+      await op.confirmation(1);
+      bump();
+    }
+
+    for (let i = 0; i < todo.length; i += CHUNK) {
+      const chunk = todo.slice(i, i + CHUNK).map(batchify);
+      log(`add_tokens ${chunk[0].token_id}…${chunk[chunk.length - 1].token_id} (${chunk.length}) — approve in wallet`);
+      const op = await MD.sendWalletOp(c.methodsObject.add_tokens(chunk), {}, { gasPerUnit: 180_000, units: chunk.length });
+      await op.confirmation(1);
+      bump();
+    }
+
+    const sm = new M();
+    for (const s of stages) sm.set(s.key, s.value);
+    log("set_stages (" + stages.length + ")");
+    const opS = await MD.sendWalletOp(c.methodsObject.set_stages(sm), {}, { gasPerUnit: 120_000, units: stages.length });
+    await opS.confirmation(1);
+    bump();
+
+    if (entries.length) {
+      for (let i = 0; i < entries.length; i += 200) {
+        const chunk = entries.slice(i, i + 200);
+        log(`set_allowlist ${i}…${i + chunk.length - 1}`);
+        const op = await MD.sendWalletOp(c.methodsObject.set_allowlist(chunk), {}, { gasPerUnit: 80_000, units: chunk.length });
+        await op.confirmation(1);
+        bump();
+      }
+    } else {
+      bump();
+    }
+    $("syncBar").style.width = "100%";
+    $("deployStatus").textContent = "in sync ✓";
+    log("sync complete — your drop is live on-chain.");
+    log("objkt collection (mainnet only): " + MD.objktUrl(state.network, kt));
+    log("tip: Save studio backup (Resume panel) so you can restore this draft later.");
+  } catch (e) {
+    log("sync failed: " + (e.message || JSON.stringify(e)), "err");
+    alert("Sync failed: " + (e.message || e) + "\nClick Sync again to resume.");
+  }
+}
+
+// Admin reveal: assign artworks to all unrevealed blanks, in 50-token batches.
+async function revealMinted() {
+  const btn = $("btnReveal");
+  try {
+    readForm();
+    const kt = $("contractAddr").value.trim() || state.contract;
+    if (!kt) return alert("Deploy first, or paste your contract address.");
+    await MD.assertOperationSafety();
+    btn.disabled = true;
+    const tezos = MD.getToolkit();
+    const c = await tezos.wallet.at(kt);
+    for (;;) {
+      const st = await (await tezos.contract.at(kt)).storage();
+      const pending = Number(st.minted) - Number(st.revealed);
+      if (pending <= 0) break;
+      const n = Math.min(50, pending);
+      $("deployStatus").textContent = `revealing ${n} of ${pending} pending…`;
+      log(`reveal(${n}) — ${pending} unrevealed`);
+      const op = await MD.sendWalletOp(c.methodsObject.reveal(n), {}, { gasPerUnit: 420_000, units: n });
+      await op.confirmation(1);
+    }
+    $("deployStatus").textContent = "all revealed ✓";
+    log("reveal complete — every minted token has its artwork.");
+  } catch (e) {
+    log("reveal failed: " + (e.message || JSON.stringify(e)), "err");
+    alert("Reveal failed: " + (e.message || e));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---------- page design / export ----------
+function buildConfig() {
+  readForm();
+  return {
+    network: state.network,
+    rpc: state.rpc || MD.getNetworks()[state.network].rpc,
+    contract: $("contractAddr").value.trim() || state.contract,
+    title: state.drop.title,
+    description: state.drop.description,
+    cover: state.drop.coverCid ? "ipfs://" + state.drop.coverCid : "",
+    gateway: state.pin.gateway || MD.DEFAULT_GATEWAY,
+    theme: {
+      name: state.page.theme,
+      accent: state.page.accent,
+      font: state.page.font,
+      customCss: state.page.css,
+    },
+    blocks: state.page.blocks
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => {
+        const m = l.match(/^(h|p|img):\s*(.*)$/i);
+        return m ? { type: m[1].toLowerCase(), value: m[2] } : { type: "p", value: l };
+      }),
+  };
+}
+
+// ---------- code editor (drop.config.js) ----------
+const CODE_PREFIX = "window.DROP_CONFIG = ";
+
+function parseCode(text) {
+  let body = text.trim();
+  const eq = body.indexOf("=");
+  if (body.startsWith("window.DROP_CONFIG") && eq !== -1) body = body.slice(eq + 1);
+  body = body.trim().replace(/;\s*$/, "");
+  const cfg = JSON.parse(body);
+  if (!cfg || typeof cfg !== "object") throw new Error("config must be an object");
+  return cfg;
+}
+
+/* The code box overrides the visual controls when it holds a valid edit;
+   touching the controls regenerates it. */
+function currentConfig() {
+  if (state.page.code) {
+    try {
+      return parseCode(state.page.code);
+    } catch (e) { /* stale override — fall back to controls */ }
+  }
+  return buildConfig();
+}
+
+function syncCodeFromForm() {
+  state.page.code = "";
+  $("pageCode").value = CODE_PREFIX + JSON.stringify(buildConfig(), null, 2) + ";\n";
+  $("codeStatus").textContent = "generated from controls";
+  save();
+}
+
+function onCodeEdit() {
+  const text = $("pageCode").value;
+  try {
+    parseCode(text);
+    state.page.code = text;
+    $("codeStatus").textContent = "✓ valid — overriding controls (preview & export use this)";
+    save();
+    refreshPreview();
+  } catch (e) {
+    $("codeStatus").textContent = "✗ " + e.message;
+  }
+}
+
+// ---------- live preview ----------
+let previewTimer = null;
+function refreshPreview(immediate) {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    localStorage.setItem("macaroni.preview", JSON.stringify(currentConfig()));
+    const frame = $("previewFrame");
+    if (!frame.src) frame.src = frame.dataset.src;
+    else frame.contentWindow.location.reload();
+  }, immediate ? 0 : 400);
+}
+
+function showView(view) {
+  const page = view === "page";
+  $("viewDrop").style.display = page ? "none" : "";
+  $("viewPage").style.display = page ? "" : "none";
+  $("tabDrop").classList.toggle("active", !page);
+  $("tabPage").classList.toggle("active", page);
+  if (page) {
+    $("pageCode").value = state.page.code || CODE_PREFIX + JSON.stringify(buildConfig(), null, 2) + ";\n";
+    $("codeStatus").textContent = state.page.code ? "✓ custom code active" : "generated from controls";
+    refreshPreview(true);
+  }
+}
+
+// ---------- export ----------
+function configJs() {
+  const cfg = currentConfig();
+  if (!cfg.contract) {
+    if (!confirm("No contract address set — export anyway?")) return null;
+  }
+  return CODE_PREFIX + JSON.stringify(cfg, null, 2) + ";\n";
+}
+
+function setExportStatus(msg, ok) {
+  const el = $("exportStatus");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = ok ? "ok" : "err";
+}
+
+async function exportSite() {
+  const body = configJs();
+  if (body === null) return;
+  setExportStatus("Exporting…", true);
+  $("btnExport").disabled = true;
+  let wroteFolder = false;
+  try {
+    const r = await fetch("/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config: body }),
+    });
+    let j;
+    try {
+      j = await r.json();
+    } catch (_) {
+      throw new Error("server did not return JSON — run the app via serve.py / serve.command");
+    }
+    if (!j.ok) throw new Error(j.error || "export failed");
+    wroteFolder = true;
+    log("Website written to " + j.path);
+  } catch (e) {
+    log("folder export: " + e.message + " — downloading zip instead", wroteFolder ? "err" : "");
+  }
+  try {
+    await MDSiteBundle.downloadSiteZip(body, "macaroni-site.zip");
+    const msg = wroteFolder
+      ? "Exported to site/ folder and macaroni-site.zip downloaded (includes wallet connect)."
+      : "Downloaded macaroni-site.zip — unzip and upload; includes index.html, drop.config.js, and wallet stack.";
+    setExportStatus(msg, true);
+    log(msg);
+  } catch (e) {
+    setExportStatus("Export failed: " + e.message, false);
+    log("export failed: " + e.message, "err");
+    alert("Export failed: " + e.message);
+  } finally {
+    $("btnExport").disabled = false;
+  }
+}
+
+async function publishWtfOSSite() {
+  const body = configJs();
+  if (body === null) return;
+  setExportStatus("Publishing to wtfOS…", true);
+  $("btnPublishWtfOS").disabled = true;
+  try {
+    const cfg = currentConfig();
+    const r = await MD.apiFetch("/api/macaroni/publish", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config: cfg }),
+    });
+    let j;
+    try {
+      j = await r.json();
+    } catch (_) {
+      throw new Error("server did not return JSON");
+    }
+    if (!r.ok || !j.ok) throw new Error(j.error || "publish failed");
+    const msg = `Published to ${j.url}`;
+    setExportStatus(msg, true);
+    log(msg);
+  } catch (e) {
+    setExportStatus("wtfOS publish failed: " + e.message, false);
+    log("wtfOS publish failed: " + e.message, "err");
+    alert("wtfOS publish failed: " + e.message);
+  } finally {
+    $("btnPublishWtfOS").disabled = false;
+  }
+}
+
+async function downloadSitePackage(body) {
+  body = body ?? configJs();
+  if (body === null) return;
+  setExportStatus("Building site package…", true);
+  try {
+    await MDSiteBundle.downloadSiteZip(body, "macaroni-site.zip");
+    const blob = new Blob([body], { type: "text/javascript" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "drop.config.js";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    const msg =
+      "Downloaded macaroni-site.zip (full mint site + wallet connect) and drop.config.js.";
+    setExportStatus(msg, true);
+    log(msg);
+  } catch (e) {
+    setExportStatus("Package download failed: " + e.message, false);
+    log("package download failed: " + e.message, "err");
+    alert("Package download failed: " + e.message);
+  }
+}
+
+function previewPage() {
+  localStorage.setItem("macaroni.preview", JSON.stringify(currentConfig()));
+  window.open("drop.html?preview=1", "_blank");
+}
+
+// ---------- form <-> state ----------
+function readForm() {
+  state.drop.title = $("dropTitle").value.trim();
+  state.drop.symbol = $("dropSymbol").value.trim();
+  state.drop.description = $("dropDesc").value.trim();
+  state.drop.royaltyPct = Number($("royaltyPct").value);
+  state.drop.royaltyAddr = $("royaltyAddr").value.trim();
+  state.drop.treasuryAddr = $("treasuryAddr").value.trim();
+  state.drop.revealMode = $("revealMode").value;
+  state.drop.revealDelayDays = Number($("revealDelay").value || 7);
+  state.pin.kind = $("pinKind").value;
+  state.pin.jwt = $("pinJwt").value.trim();
+  state.pin.url = $("pinUrl").value.trim();
+  state.pin.gateway = $("gateway").value.trim();
+  state.page.theme = $("pageTheme").value;
+  state.page.accent = $("pageAccent").value.trim();
+  state.page.font = $("pageFont").value;
+  state.page.blocks = $("pageBlocks").value;
+  state.page.css = $("pageCss").value;
+  save();
+  toggleRevealFields();
+}
+
+function toggleRevealFields() {
+  const delayed = state.drop.revealMode === "delayed";
+  $("revealDelayWrap").style.display = delayed ? "" : "none";
+  $("revealHint").style.display = delayed ? "" : "none";
+  $("btnReveal").style.display = delayed ? "" : "none";
+}
+
+function fillForm() {
+  if (!["wtfos", "pinata", "node"].includes(state.pin.kind)) state.pin.kind = "wtfos";
+  $("network").value = state.network;
+  $("rpc").value = state.rpc;
+  $("dropTitle").value = state.drop.title;
+  $("dropSymbol").value = state.drop.symbol;
+  $("dropDesc").value = state.drop.description;
+  $("royaltyPct").value = String(state.drop.royaltyPct);
+  $("royaltyAddr").value = state.drop.royaltyAddr;
+  $("treasuryAddr").value = state.drop.treasuryAddr;
+  $("revealMode").value = state.drop.revealMode || "instant";
+  $("revealDelay").value = String(state.drop.revealDelayDays ?? 7);
+  toggleRevealFields();
+  $("pinKind").value = state.pin.kind;
+  $("pinJwt").value = state.pin.jwt;
+  $("pinUrl").value = state.pin.url;
+  $("gateway").value = state.pin.gateway;
+  $("contractAddr").value = state.contract;
+  $("pageTheme").value = state.page.theme;
+  $("pageAccent").value = state.page.accent;
+  $("pageFont").value = state.page.font;
+  $("pageBlocks").value = state.page.blocks;
+  $("pageCss").value = state.page.css;
+  if (state.contract) $("btnSync").disabled = false;
+  togglePinFields();
+  if (state.drop.coverCid)
+    $("coverPreview").innerHTML =
+      `<img src="${MD.ipfsToHttp("ipfs://" + state.drop.coverCid, state.pin.gateway)}" style="max-width:160px;border-radius:8px" />`;
+}
+
+function togglePinFields() {
+  const pinata = $("pinKind").value === "pinata";
+  const node = $("pinKind").value === "node";
+  $("pinJwtWrap").style.display = pinata ? "" : "none";
+  $("pinUrlWrap").style.display = node ? "" : "none";
+}
+
+// ---------- resume existing drop ----------
+function setResumeStatus(msg, ok) {
+  const el = $("resumeStatus");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = ok ? "ok" : "muted";
+}
+
+function applyImportedConfig(cfg) {
+  if (cfg.network) state.network = cfg.network;
+  if (cfg.rpc) state.rpc = cfg.rpc;
+  if (cfg.contract) state.contract = cfg.contract;
+  if (cfg.title) state.drop.title = cfg.title;
+  if (cfg.description) state.drop.description = cfg.description;
+  if (cfg.gateway) state.pin.gateway = cfg.gateway;
+  if (cfg.theme) {
+    state.page.theme = cfg.theme.name || state.page.theme;
+    state.page.accent = cfg.theme.accent || "";
+    state.page.font = cfg.theme.font || "";
+    state.page.css = cfg.theme.customCss || "";
+  }
+  if (Array.isArray(cfg.blocks))
+    state.page.blocks = cfg.blocks
+      .map((b) => (b.type && b.value != null ? `${b.type}: ${b.value}` : ""))
+      .filter(Boolean)
+      .join("\n");
+}
+
+function parseDropConfigText(text) {
+  const trimmed = text.trim();
+  const m = trimmed.match(/DROP_CONFIG\s*=\s*([\s\S]+?);?\s*$/);
+  return JSON.parse(m ? m[1] : trimmed);
+}
+
+async function loadFromChain(kt) {
+  kt = (kt || $("resumeAddr").value.trim() || $("contractAddr").value.trim()).trim();
+  if (!/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(kt))
+    return alert("Enter a valid KT1… contract address.");
+  readForm();
+  applyNetwork();
+  setResumeStatus("Loading on-chain status…", true);
+  try {
+    const { storage, metadata } = await MD.fetchContractStatus(state.network, kt);
+    state.contract = kt;
+    $("contractAddr").value = kt;
+    $("resumeAddr").value = kt;
+    if (metadata?.name) state.drop.title = metadata.name;
+    if (metadata?.description) state.drop.description = metadata.description;
+    state.drop.revealMode = storage.delayed_reveal ? "delayed" : "instant";
+    if (storage.reveal_delay != null)
+      state.drop.revealDelayDays = Math.round(Number(storage.reveal_delay) / 86400);
+    const loaded = Number(storage.supply || 0);
+    const sold = Number(storage.minted || 0);
+    const locked = !!storage.locked;
+    $("btnSync").disabled = false;
+    save();
+    fillForm();
+    syncCodeFromForm();
+    const localNote = state.tokens.length
+      ? `${state.tokens.length} token row(s) in this draft.`
+      : "Re-import CSV + artwork if you need to edit token metadata or stages.";
+    const msg =
+      `Resumed ${kt}: ${loaded} token(s) loaded on-chain, ${sold} minted` +
+      (locked ? ", sale locked" : "") +
+      `. ${localNote} Connect wallet → Sync to push stages/allowlists, or export your mint site.`;
+    setResumeStatus(msg, true);
+    log(msg);
+    return { loaded, sold, locked };
+  } catch (e) {
+    setResumeStatus("Could not load contract: " + e.message, false);
+    log("resume failed: " + e.message, "err");
+    alert("Could not load contract: " + e.message);
+    return null;
+  }
+}
+
+async function importConfigFile(file) {
+  try {
+    const cfg = parseDropConfigText(await file.text());
+    applyImportedConfig(cfg);
+    $("network").value = state.network;
+    save();
+    fillForm();
+    applyNetwork();
+    syncCodeFromForm();
+    log("Imported " + file.name);
+    if (state.contract) await loadFromChain(state.contract);
+    else setResumeStatus("Imported config — paste or deploy a contract address to continue.", true);
+  } catch (e) {
+    alert("Could not read drop.config.js: " + e.message);
+  }
+}
+
+async function importStudioBackup(file) {
+  try {
+    const data = JSON.parse(await file.text());
+    const draft = data.state || data;
+    if (!draft || typeof draft !== "object") throw new Error("missing state object");
+    Object.assign(state, draft);
+    if (!MD.getNetworks()[state.network]) state.network = "shadownet";
+    save();
+    fillForm();
+    applyNetwork();
+    renderTokens();
+    renderStages();
+    syncCodeFromForm();
+    if (state.contract) await loadFromChain(state.contract);
+    else setResumeStatus("Studio backup restored.", true);
+    log("Imported studio backup " + file.name);
+  } catch (e) {
+    alert("Could not read backup: " + e.message);
+  }
+}
+
+function saveStudioBackup() {
+  readForm();
+  const blob = new Blob(
+    [JSON.stringify({ version: 1, saved: new Date().toISOString(), state }, null, 2)],
+    { type: "application/json" }
+  );
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "macaroni-studio-backup.json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  log("Studio backup saved — store this alongside your CSV and artwork.");
+}
+
+async function refreshResumeStatusIfNeeded() {
+  if (!state.contract) return;
+  $("resumeAddr").value = state.contract;
+  try {
+    const { storage } = await MD.fetchContractStatus(state.network, state.contract);
+    const loaded = Number(storage.supply || 0);
+    const sold = Number(storage.minted || 0);
+    setResumeStatus(
+      `Draft has ${state.contract}: ${loaded} on-chain / ${sold} minted. Use Load from chain after network changes.`,
+      true
+    );
+  } catch (_) {
+    /* tzkt may lag or network offline */
+  }
+}
+
+// ---------- wire up ----------
+load();
+fillForm();
+applyNetwork();
+renderTokens();
+renderStages();
+refreshResumeStatusIfNeeded();
+MD.restoreWallet("Macaroni Studio").then((addr) => {
+  if (addr) {
+    $("walletAddr").value = addr;
+    $("btnConnect").textContent = MD.short(addr);
+  }
+});
+
+$("network").addEventListener("change", applyNetwork);
+$("rpc").addEventListener("change", applyNetwork);
+$("btnConnect").addEventListener("click", connect);
+$("csvFile").addEventListener("change", (e) => e.target.files[0] && onCsv(e.target.files[0]));
+$("mediaFiles").addEventListener("change", (e) => onMedia([...e.target.files]));
+$("coverFile").addEventListener("change", (e) => {
+  coverFile = e.target.files[0] || null;
+  state.drop.coverCid = "";
+  state.drop.placeholderCid = ""; // placeholder shows the cover → re-pin
+  if (coverFile) {
+    if (coverFile.size > 5 * 1024 * 1024) { alert("Cover must be ≤ 5MB"); coverFile = null; return; }
+    $("coverPreview").innerHTML = `<img src="${URL.createObjectURL(coverFile)}" style="max-width:160px;border-radius:8px" />`;
+  }
+});
+$("pinKind").addEventListener("change", () => { togglePinFields(); readForm(); });
+["pinJwt", "pinUrl", "gateway", "dropTitle", "dropSymbol", "dropDesc", "royaltyPct",
+ "royaltyAddr", "treasuryAddr", "revealMode", "revealDelay"]
+  .forEach((id) => $(id).addEventListener("change", readForm));
+
+// Designer controls: regenerate code + live preview as you type.
+["pageTheme", "pageAccent", "pageFont", "pageBlocks", "pageCss"].forEach((id) => {
+  for (const evt of ["change", "input"]) {
+    $(id).addEventListener(evt, () => {
+      readForm();
+      syncCodeFromForm();
+      refreshPreview();
+    });
+  }
+});
+$("pageCode").addEventListener("input", onCodeEdit);
+$("tabDrop").addEventListener("click", () => showView("drop"));
+$("tabPage").addEventListener("click", () => showView("page"));
+$("btnRefreshPreview").addEventListener("click", () => refreshPreview(true));
+$("btnPin").addEventListener("click", pinAll);
+$("btnAddStage").addEventListener("click", () => {
+  state.stages.push({ start: "", price: "", useAllowlist: false, maxPerWallet: "", allowlist: [] });
+  save();
+  renderStages();
+});
+$("btnResume").addEventListener("click", () => loadFromChain());
+$("importConfig").addEventListener("change", (e) => e.target.files[0] && importConfigFile(e.target.files[0]));
+$("importBackup").addEventListener("change", (e) => e.target.files[0] && importStudioBackup(e.target.files[0]));
+$("btnSaveBackup").addEventListener("click", saveStudioBackup);
+$("contractAddr").addEventListener("change", () => {
+  const kt = $("contractAddr").value.trim();
+  if (/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(kt)) {
+    state.contract = kt;
+    $("resumeAddr").value = kt;
+    $("btnSync").disabled = false;
+    save();
+  }
+});
+$("btnDeploy").addEventListener("click", deploy);
+$("btnSync").addEventListener("click", sync);
+$("btnReveal").addEventListener("click", revealMinted);
+$("btnExport").addEventListener("click", exportSite);
+$("btnPublishWtfOS").addEventListener("click", publishWtfOSSite);
+$("btnConfigOnly").addEventListener("click", () => downloadSitePackage());
+$("btnPreview").addEventListener("click", previewPage);

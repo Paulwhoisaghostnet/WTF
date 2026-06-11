@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { tlsAllowHandler } from "../features/wtf-sites/host-router";
+import { WTF_USER_SITE_MAX_PAGE_HTML_BYTES } from "@shared/wtf-user-sites";
 import {
   claimUserSite,
   deleteUserSitePage,
@@ -21,7 +22,7 @@ const router = Router();
 const pageSchema = z.object({
   slug: z.string().trim().min(1).max(80).optional(),
   title: z.string().trim().min(1).max(200),
-  html: z.string().max(1_000_000),
+  html: z.string().max(WTF_USER_SITE_MAX_PAGE_HTML_BYTES),
 });
 
 const assetsSchema = z.object({

@@ -417,6 +417,50 @@ export const WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE = [
       evidence: ["client/src/features/creation-tools/tool-registry.ts"],
     },
   },
+  {
+    id: "creation-tool:macaroni",
+    key: "macaroni",
+    label: "Macaroni",
+    kind: "creation-tool",
+    state: "active",
+    domain: domainGuides.tezosPlatform,
+    toolId: "macaroni",
+    routeEvidence: ["/tools/macaroni", "/creation-tools/macaroni/index.html"],
+    provenance: {
+      owner: "WTF OS / MyDrop",
+      source: "MyDrop blind-mint app package integrated as the Macaroni creation tool",
+      evidence: [
+        "client/src/features/creation-tools/tool-registry.ts",
+        "public/creation-tools/macaroni",
+        "server/routes/macaroni.ts",
+      ],
+    },
+    permissionSummary: {
+      userAccess:
+        "Authenticated trusted creator/staff route; IPFS pinning and wtfOS drop publishing require the trusted_market_creator permission server-side.",
+      adminAccess:
+        "Creation Tools admin surface observes availability, contract origination role policy, IPFS pinning, and drop publishing.",
+      dataTouched: [
+        "Macaroni localStorage drafts",
+        "wtf_user_site_pages",
+        "wtf_user_site_versions",
+        "wtf_user_site_audit_events",
+        "IPFS pinned token media and metadata",
+        "creator-originated Tezos blind-mint contracts",
+      ],
+      externalSystems: ["Tezos wallets", "Tezos RPC", "TzKT", "Pinata/IPFS", "wtfOS user-site subdomains"],
+    },
+    rollback: {
+      method: "Remove the Macaroni tool registry entry, Macaroni routes, and static asset package; preserve already-published user-site pages and on-chain contracts.",
+      evidence: ["scripts/check-creation-tool-assets.ts", "server/routes/macaroni.ts"],
+    },
+    uninstall: {
+      method:
+        "Disable the route and server pin/publish endpoints only after preserving user-site versions, IPFS CIDs, and creator contract addresses.",
+      preservesUserData: true,
+      evidence: ["client/src/features/creation-tools/tool-registry.ts", "server/features/wtf-sites/service.ts"],
+    },
+  },
 ] as const satisfies readonly WtfAppPackageAcceptance[];
 
 export const WTF_SYSTEM_PACKAGE_ACCEPTANCE = [

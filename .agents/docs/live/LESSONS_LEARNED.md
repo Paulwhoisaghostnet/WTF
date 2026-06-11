@@ -4529,3 +4529,15 @@
 **Fix**: Rotated the local env, example env, shared fallback, in-app market docs, interaction inventory, and behavior assertion text to mainnet V2 `KT1FN2bwYAffC2VgmSNs76DiPkSwZurbBoHR`; TzKT storage confirmed `wtf-in-app-market-v2`, treasury, WTF FA2, and token id before verification.
 
 **Rule**: After any wallet-originated contract deployment, immediately update every app contract-default surface and verify live storage through TzKT before treating the contract as the active app target.
+
+---
+
+## 2026-06-11 - User-site limits are product policy, not hard infrastructure walls
+
+**What happened**: Integrating Macaroni exposed that wtfOS user sites still had conservative page and asset limits from the first site editor pass. Treating those numbers as fixed would have forced the drop publisher to contort around an arbitrary cap instead of using the existing `username.wtfos.me/drop-title` publishing path.
+
+**Why it mattered**: Creator tools need room for real drop pages, generated config, and future richer page exports. If arbitrary policy limits are mistaken for infrastructure constraints, integrations drift into workarounds, parallel hosting paths, or oversized inline bundles that are harder to secure and maintain.
+
+**Fix**: Moved the page HTML cap into a shared constant, raised named pages and asset budgets, increased the default JSON body limit, and kept Macaroni's published pages lean by loading stable static assets from the main app origin instead of inlining the large wallet bundle.
+
+**Rule**: Before designing around a user-site cap, check whether the cap is a product policy that can be adjusted. Prefer raising the shared limit and documenting it over building a side channel, while still keeping generated pages efficient and external credentials server-side.

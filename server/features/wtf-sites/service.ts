@@ -130,6 +130,10 @@ function mediaBytes(item: MediaRow): number {
   return Number.isFinite(explicit) && explicit > 0 ? explicit : 0;
 }
 
+function assetCapLabel(): string {
+  return `${Math.round(WTF_USER_SITE_MAX_ASSET_BYTES / 1024 / 1024)} MB`;
+}
+
 function mediaUrl(host: string, id: number): string {
   return `https://${host}/_media/${id}`;
 }
@@ -565,7 +569,7 @@ export async function updateUserSiteAssets(userId: number, mediaIds: number[]): 
   }
   const total = rows.reduce((sum, item) => sum + mediaBytes(item), 0);
   if (total > WTF_USER_SITE_MAX_ASSET_BYTES) {
-    throw new WtfUserSiteError(400, "Attached site assets exceed the 100 MB site cap");
+    throw new WtfUserSiteError(400, `Attached site assets exceed the ${assetCapLabel()} site cap`);
   }
 
   await db.delete(wtfUserSiteAssetRefs).where(eq(wtfUserSiteAssetRefs.siteId, site.id));
@@ -612,7 +616,7 @@ export async function publishUserSite(userId: number): Promise<WtfUserSiteStateD
   const assetMediaIds = assets.map((item) => item.id);
   const assetBytes = assets.reduce((sum, item) => sum + mediaBytes(item), 0);
   if (assetBytes > WTF_USER_SITE_MAX_ASSET_BYTES) {
-    throw new WtfUserSiteError(400, "Attached site assets exceed the 100 MB site cap");
+    throw new WtfUserSiteError(400, `Attached site assets exceed the ${assetCapLabel()} site cap`);
   }
 
   const claim = await ensureVerifiedHandleClaim({

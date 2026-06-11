@@ -1,7 +1,8 @@
 export const WTF_USER_SITE_PARENT_DOMAIN = "wtfos.me";
-export const WTF_USER_SITE_MAX_NAMED_PAGES = 5;
+export const WTF_USER_SITE_MAX_NAMED_PAGES = 25;
 export const WTF_USER_SITE_MAX_TOTAL_PAGES = WTF_USER_SITE_MAX_NAMED_PAGES + 1;
-export const WTF_USER_SITE_MAX_ASSET_BYTES = 100 * 1024 * 1024;
+export const WTF_USER_SITE_MAX_ASSET_BYTES = 500 * 1024 * 1024;
+export const WTF_USER_SITE_MAX_PAGE_HTML_BYTES = 5 * 1024 * 1024;
 export const WTF_USER_SITE_HOME_SLUG = "home";
 
 export type WtfUserSiteStatus = "draft" | "published" | "suspended";

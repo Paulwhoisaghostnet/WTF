@@ -1,4 +1,6 @@
-export type CreationToolDomain = "visual-art" | "particle-art" | "pattern-art";
+import type { UserRole } from "@shared/types";
+
+export type CreationToolDomain = "visual-art" | "particle-art" | "pattern-art" | "drop-studio";
 
 export type CreationToolProvenance = {
   creatorName: string;
@@ -18,6 +20,7 @@ export type CreationToolDefinition = {
   routePath: string;
   src: string;
   requiredAssets: readonly string[];
+  roles?: readonly UserRole[];
   provenance?: CreationToolProvenance;
 };
 
@@ -136,6 +139,30 @@ export const CREATION_TOOLS = [
       tezosIdentity: "skllzrmy",
       xHandle: "skllzrmy",
       xUrl: "https://x.com/skllzrmy",
+    },
+  },
+  {
+    id: "macaroni",
+    title: "Macaroni",
+    subtitle: "Blind-mint drop studio for originating creator-owned Tezos token factories.",
+    domain: "drop-studio",
+    routePath: "/tools/macaroni",
+    src: "/creation-tools/macaroni/index.html",
+    requiredAssets: [
+      "/creation-tools/macaroni/index.html",
+      "/creation-tools/macaroni/studio.html",
+      "/creation-tools/macaroni/drop.html",
+      "/creation-tools/macaroni/css/theme.css",
+      "/creation-tools/macaroni/js/common.js",
+      "/creation-tools/macaroni/js/studio.js",
+      "/creation-tools/macaroni/js/drop.js",
+      "/creation-tools/macaroni/js/site-bundle.js",
+      "/creation-tools/macaroni/vendor/tezos.js",
+      "/creation-tools/macaroni/contract/mydrop.contract.json",
+    ],
+    roles: ["admin", "host", "cohost", "trusted_creator"],
+    provenance: {
+      creatorName: "WTF OS",
     },
   },
 ] as const satisfies readonly CreationToolDefinition[];

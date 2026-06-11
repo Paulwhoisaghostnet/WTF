@@ -55,6 +55,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/tools/pauls-particles-v1", path: "/tools/pauls-particles-v1", title: "Paul's Particles V1.0", domain: "media", subdomain: "Creation tools", auth: true },
   { pattern: "/tools/nikshumika-paint", path: "/tools/nikshumika-paint", title: "Nikshumika Paint", domain: "media", subdomain: "Creation tools", auth: true },
   { pattern: "/tools/kandinsky-composer", path: "/tools/kandinsky-composer", title: "Kandinsky Composer", domain: "media", subdomain: "Creation tools", auth: true },
+  { pattern: "/tools/macaroni", path: "/tools/macaroni", title: "Macaroni", domain: "media", subdomain: "Creation tools", auth: true },
   { pattern: "/swap", path: "/swap", title: "Swap", domain: "commerce", subdomain: "Swap/DEX", auth: true },
   { pattern: "/profile", path: "/profile", title: "Profile", domain: "identity", subdomain: "Profile identity", auth: true },
   { pattern: "/desktop-settings", path: "/desktop-settings", title: "System Appearance", domain: "desktop-os", subdomain: "Desktop appearance", auth: true },

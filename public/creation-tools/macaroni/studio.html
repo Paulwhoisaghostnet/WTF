@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Macaroni Studio — create your drop</title>
+<link rel="stylesheet" href="css/theme.css" />
+</head>
+<body>
+
+<div class="topbar">
+  <a class="brand" href="index.html">⬤ Macaroni <span class="muted">Studio</span></a>
+  <div class="row">
+    <span class="net" id="netLabel"></span>
+    <button class="btn small" id="btnConnect">Connect wallet</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" id="tabDrop">Drop &amp; Contract</button>
+  <button class="tab" id="tabPage">Page Designer</button>
+</div>
+
+<div class="wrap" id="viewDrop">
+
+  <!-- 1. Network -->
+  <section class="panel" id="secNetwork">
+    <h2>1 · Network</h2>
+    <div class="grid3">
+      <div>
+        <label>Network</label>
+        <select id="network">
+          <option value="shadownet">Shadownet (test)</option>
+          <option value="mainnet">Mainnet</option>
+        </select>
+      </div>
+      <div>
+        <label>RPC endpoint (optional override)</label>
+        <input type="url" id="rpc" placeholder="https://…" />
+      </div>
+      <div>
+        <label>Connected wallet</label>
+        <input type="text" id="walletAddr" readonly placeholder="not connected" />
+      </div>
+    </div>
+    <p class="muted">Test your full drop on Shadownet first, exactly like you would on shadownet.drop.art. Free test tez: <a href="https://faucet.shadownet.teztnets.com" target="_blank" rel="noopener">shadownet faucet</a>.</p>
+  </section>
+
+  <!-- 2. Drop details -->
+  <section class="panel" id="secDrop">
+    <h2>2 · Drop details</h2>
+    <div class="grid2">
+      <div>
+        <label>Title *</label>
+        <input type="text" id="dropTitle" placeholder="Your drop title" />
+        <label>Symbol (3–8 chars, shows on explorers)</label>
+        <input type="text" id="dropSymbol" placeholder="DROP" maxlength="8" />
+        <label>Description *</label>
+        <textarea id="dropDesc" placeholder="What is this collection about?"></textarea>
+      </div>
+      <div>
+        <label>Thumbnail / cover image (≤5 MB, jpg/png) *</label>
+        <input type="file" id="coverFile" accept="image/png,image/jpeg,image/gif,image/webp" />
+        <div id="coverPreview" style="margin-top:8px"></div>
+        <div class="grid2">
+          <div>
+            <label>Royalties</label>
+            <select id="royaltyPct">
+              <option value="0">0%</option>
+              <option value="5">5%</option>
+              <option value="10" selected>10%</option>
+              <option value="15">15%</option>
+              <option value="20">20%</option>
+            </select>
+          </div>
+          <div>
+            <label>Royalty receiver (defaults to your wallet)</label>
+            <input type="text" id="royaltyAddr" placeholder="tz1…" />
+          </div>
+        </div>
+        <label>Treasury — receives 100% of mint payments (defaults to your wallet)</label>
+        <input type="text" id="treasuryAddr" placeholder="tz1…" />
+        <div class="grid2">
+          <div>
+            <label>Reveal mode</label>
+            <select id="revealMode">
+              <option value="instant">Instant — reveal at mint</option>
+              <option value="delayed">Delayed — with auto-reveal fallback</option>
+            </select>
+          </div>
+          <div id="revealDelayWrap" style="display:none">
+            <label>Auto-reveal window (days, 0–30)</label>
+            <input type="number" id="revealDelay" min="0" max="30" step="1" value="7" />
+          </div>
+        </div>
+        <p class="muted" id="revealHint" style="display:none">Delayed: collectors mint blanks showing your cover image. You can reveal at any time from step 6 — and once the oldest unrevealed mint is older than the window, <strong>anyone</strong> can trigger the reveal from the mint page, so collectors are never stuck. The window can be changed later but never above 30 days.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Tokens -->
+  <section class="panel" id="secTokens">
+    <h2>3 · Tokens</h2>
+    <p class="muted">Upload a CSV with columns <code>id</code>, <code>name</code>, <code>description</code> (extra columns become traits). Then upload your artwork files named by token id (<code>1.png</code>, <code>2.jpg</code>, …). <a href="sample/tokens.csv" download>Download CSV template</a>.</p>
+    <div class="grid2">
+      <div>
+        <label>Token sheet (.csv)</label>
+        <input type="file" id="csvFile" accept=".csv" />
+      </div>
+      <div>
+        <label>Artwork files (images, audio, video — named by id)</label>
+        <input type="file" id="mediaFiles" multiple />
+      </div>
+    </div>
+    <div id="tokenSummary" class="row" style="margin-top:12px"></div>
+    <div style="max-height:340px;overflow:auto;margin-top:10px">
+      <table class="tokens" id="tokenTable"></table>
+    </div>
+  </section>
+
+  <!-- 4. IPFS -->
+  <section class="panel" id="secIpfs">
+    <h2>4 · Media storage (IPFS)</h2>
+    <p class="muted">Your art and metadata are pinned to IPFS. wtfOS can pin with the platform key, or you can use your own Pinata JWT / IPFS node.</p>
+    <div class="grid3">
+      <div>
+        <label>Provider</label>
+        <select id="pinKind">
+          <option value="wtfos">wtfOS IPFS pinning</option>
+          <option value="pinata">Pinata (JWT)</option>
+          <option value="node">Own IPFS node (HTTP API)</option>
+        </select>
+      </div>
+      <div id="pinJwtWrap">
+        <label>Pinata JWT</label>
+        <input type="password" id="pinJwt" placeholder="eyJ…" />
+      </div>
+      <div id="pinUrlWrap" style="display:none">
+        <label>IPFS API URL</label>
+        <input type="url" id="pinUrl" placeholder="http://127.0.0.1:5001" />
+      </div>
+      <div>
+        <label>Preferred gateway (for previews + drop page)</label>
+        <input type="url" id="gateway" placeholder="https://ipfs.io/ipfs/" />
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="btnPin">Pin all media + metadata</button>
+      <span id="pinStatus" class="muted"></span>
+    </div>
+    <div class="progress" style="margin-top:10px"><div id="pinBar"></div></div>
+  </section>
+
+  <!-- 5. Sale stages -->
+  <section class="panel" id="secStages">
+    <h2>5 · Sale stages</h2>
+    <p class="muted">At least one stage is required. Stages must start in chronological order. Allowlist CSV format: one <code>tz1…address,capacity</code> per line.</p>
+    <div id="stagesEditor"></div>
+    <button class="btn ghost small" id="btnAddStage">+ Add stage</button>
+  </section>
+
+  <!-- Resume existing drop -->
+  <section class="panel" id="secResume">
+    <h2>Resume an existing drop</h2>
+    <p class="muted">Already deployed? Paste your contract address or import a saved file to continue sync, design, and export. If this browser lost your draft, re-import the same CSV + artwork to change stages — on-chain token metadata stays loaded once sync completed.</p>
+    <div class="grid2">
+      <div>
+        <label>Contract address</label>
+        <input type="text" id="resumeAddr" placeholder="KT1…" class="mono" />
+      </div>
+      <div class="row" style="align-items:flex-end;flex-wrap:wrap;gap:8px">
+        <button class="btn" id="btnResume">Load from chain</button>
+        <label class="btn ghost" style="cursor:pointer;margin:0">Import drop.config.js<input type="file" id="importConfig" accept=".js,.json,text/javascript,application/json" hidden /></label>
+        <label class="btn ghost" style="cursor:pointer;margin:0">Import backup<input type="file" id="importBackup" accept=".json,application/json" hidden /></label>
+        <button class="btn ghost small" id="btnSaveBackup" type="button">Save studio backup</button>
+      </div>
+    </div>
+    <div id="resumeStatus" class="muted" style="margin-top:8px"></div>
+  </section>
+
+  <!-- 6. Deploy -->
+  <section class="panel" id="secDeploy">
+    <h2>6 · Deploy & sync on-chain</h2>
+    <p class="muted">Deploys your own FA2 contract (it appears as a standalone collection on objkt), then loads token metadata, stages and allowlists in batched transactions. You pay only network fees — there is <strong>no platform fee</strong>.</p>
+    <div class="row">
+      <button class="btn" id="btnDeploy">Deploy contract</button>
+      <button class="btn ghost" id="btnSync" disabled>Sync drop</button>
+      <button class="btn ghost" id="btnReveal" style="display:none">Reveal minted</button>
+      <span id="deployStatus" class="muted"></span>
+    </div>
+    <div class="grid2" style="margin-top:10px">
+      <div>
+        <label>Contract address</label>
+        <input type="text" id="contractAddr" placeholder="KT1… (filled after deploy, or paste an existing one)" class="mono" />
+      </div>
+      <div>
+        <label>Sync progress</label>
+        <div class="progress" style="margin-top:14px"><div id="syncBar"></div></div>
+      </div>
+    </div>
+    <div class="log" id="log" style="margin-top:14px">ready.</div>
+    <p class="muted" style="margin-top:10px">Done here? Switch to the <strong>Page Designer</strong> tab to style your mint page and export your website.</p>
+  </section>
+</div>
+
+<!-- Page Designer view -->
+<div class="wrap wide" id="viewPage" style="display:none">
+  <div class="designer">
+
+    <div class="designer-left">
+      <section class="panel">
+        <h2>Design controls</h2>
+        <div class="grid3">
+          <div>
+            <label>Theme</label>
+            <select id="pageTheme">
+              <option value="dark">Dark</option>
+              <option value="gallery">Gallery white</option>
+              <option value="paper">Paper</option>
+              <option value="neon">Neon</option>
+            </select>
+          </div>
+          <div>
+            <label>Accent color</label>
+            <input type="text" id="pageAccent" placeholder="#5bf1b2" />
+          </div>
+          <div>
+            <label>Font stack</label>
+            <select id="pageFont">
+              <option value="">Default (Helvetica)</option>
+              <option value="Georgia, 'Times New Roman', serif">Serif (Georgia)</option>
+              <option value="'Courier New', monospace">Mono (Courier)</option>
+              <option value="Futura, 'Trebuchet MS', sans-serif">Geometric (Futura)</option>
+            </select>
+          </div>
+        </div>
+        <label>Page content blocks — one per line: <code>h: Heading</code>, <code>p: paragraph text</code>, <code>img: ipfs://… or https://…</code></label>
+        <textarea id="pageBlocks" placeholder="h: About this drop&#10;p: 500 unique works, randomly assigned at mint.&#10;img: ipfs://…"></textarea>
+        <label>Custom CSS (applied to the drop page — style anything)</label>
+        <textarea id="pageCss" class="code-editor" spellcheck="false" placeholder=".hero h1 { letter-spacing: 0.2em; }&#10;.mint-box { border-width: 2px; }"></textarea>
+      </section>
+
+      <section class="panel">
+        <h2>drop.config.js <span class="muted" style="font-size:0.8rem">— the code behind the page</span></h2>
+        <p class="muted">Generated from the controls above — or paste/edit your own config here instead of writing by hand. Valid edits override the controls and are what preview &amp; export use. Touching the controls regenerates this code.</p>
+        <textarea id="pageCode" class="code-editor tall" spellcheck="false"></textarea>
+        <div id="codeStatus" class="muted" style="margin-top:6px"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn" id="btnExport">Export website</button>
+          <button class="btn ghost" id="btnPublishWtfOS">Publish to wtfOS</button>
+          <button class="btn ghost" id="btnConfigOnly">Download site package</button>
+        </div>
+        <div id="exportStatus" class="muted" style="margin-top:8px"></div>
+        <p class="muted"><strong>Export website</strong> downloads <code>macaroni-site.zip</code> — <code>index.html</code>, <code>drop.config.js</code>, <code>vendor/tezos.js</code>, and wallet connect. <strong>Publish to wtfOS</strong> saves the mint page to your <code>username.wtfos.me/drop-title</code> site path. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.</p>
+      </section>
+    </div>
+
+    <div class="designer-right">
+      <div class="spread" style="margin-bottom:10px">
+        <strong>Live preview</strong>
+        <span class="row">
+          <button class="btn ghost small" id="btnRefreshPreview">Refresh</button>
+          <button class="btn ghost small" id="btnPreview">Open in new tab</button>
+        </span>
+      </div>
+      <iframe id="previewFrame" class="preview-frame" data-src="drop.html?preview=1" title="Drop page preview"></iframe>
+    </div>
+
+  </div>
+</div>
+
+<footer class="credits">Macaroni — open-source blind mints on Tezos · 0% platform fee · your contract, your keys</footer>
+
+<script src="vendor/tezos.js"></script>
+<script src="js/common.js"></script>
+<script src="js/site-bundle.js"></script>
+<script src="js/studio.js"></script>
+</body>
+</html>

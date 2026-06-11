@@ -53,6 +53,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/tools/kandinsky-composer", auth: true, title: "Kandinsky Composer" },
   { pattern: "/tools/pixel-patterns", auth: true, title: "PixelPatterns" },
   { pattern: "/tools/penrose-backgrounds", auth: true, title: "PenRose Backgrounds" },
+  { pattern: "/tools/macaroni", auth: true, roles: ["admin", "host", "cohost", "trusted_creator"], title: "Macaroni" },
   { pattern: "/swap", auth: true, title: "Swap" },
   { pattern: "/profile", auth: true, title: "Profile" },
   { pattern: "/theme-builder", auth: true, title: "Theme Builder" },

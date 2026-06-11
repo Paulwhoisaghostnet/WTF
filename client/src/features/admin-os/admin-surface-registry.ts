@@ -802,7 +802,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     id: "creation-tools",
     label: "Creation Tools",
     domain: "Creation",
-    subdomain: "Particle and art tools",
+    subdomain: "Particle, art, and drop tools",
     kind: "tool",
     routePatterns: [
       "/tools/particle-painter",
@@ -812,10 +812,11 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "/tools/kandinsky-composer",
       "/tools/pixel-patterns",
       "/tools/penrose-backgrounds",
+      "/tools/macaroni",
     ],
     adminPanelTabs: ["Content", "Automation"],
-    nativeSettings: ["tool availability", "export rules", "mint challenge triggers"],
-    automationHandles: ["creation_tool.opened", "mint_submission.created", "app.interaction.tracked"],
+    nativeSettings: ["tool availability", "export rules", "contract origination roles", "IPFS pinning", "drop page publishing", "mint challenge triggers"],
+    automationHandles: ["creation_tool.opened", "macaroni.drop_published", "mint_submission.created", "app.interaction.tracked"],
     behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
   },
   {

@@ -112,6 +112,7 @@ const ICONS: Record<string, string> = {
   "/tools/kandinsky-composer": "🖼️",
   "/tools/pixel-patterns": "PX",
   "/tools/penrose-backgrounds": "PR",
+  "/tools/macaroni": "MC",
   "/mint-portal": "🌀",
   "/wtf-subdomains": "DNS",
   "/leaderboard": "🏆",
@@ -137,7 +138,7 @@ const LABEL_OVERRIDES: Record<string, string> = {
 const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
   apps: [],
   gameshow: ["/rounds", "/challenges", "/side-quests", "/wtf-recapture", "/calendar", "/mint-portal"],
-  create: ["/studio", "/game-studio", "/mint-portal"],
+  create: ["/studio", "/game-studio", "/mint-portal", "/tools/macaroni"],
   social: ["/messages", "/wim", "/skywire", "/live", "/tz2at", "/crp-nominate", "/dear-diary", "/messageboard", "/w", "/tv", "/dicksword", "/i-hate-telegram", "/mail", "/digest", "/wtf-subdomains"],
   "on-chain": ["/wtfiam", "/marketplace", "/rat-race", "/trade-boards", "/dues", "/swap", "/hoard", "/tezos-intel"],
   gaming: ["/casino", "/arcade", "/console", "/game-studio"],

@@ -1,0 +1,463 @@
+/* Macaroni — public mint page. Reads drop.config.js (or studio preview),
+   shows live contract state, mints, and reveals the randomly assigned tokens. */
+
+"use strict";
+
+const $ = (id) => document.getElementById(id);
+
+// ---------- config ----------
+let CFG = window.DROP_CONFIG || null;
+if (new URLSearchParams(location.search).get("preview")) {
+  try {
+    const draft = localStorage.getItem("macaroni.preview");
+    if (draft) CFG = JSON.parse(draft);
+  } catch (e) { /* fall back to file config */ }
+}
+if (!CFG) {
+  document.body.innerHTML =
+    '<div class="wrap narrow"><div class="panel"><h2>No drop configured</h2>' +
+    "<p>Export <code>drop.config.js</code> from the Studio and place it in this folder.</p>" +
+    '<p><a class="btn" href="studio.html">Open Studio</a></p></div></div>';
+  throw new Error("missing drop.config.js");
+}
+
+// ---------- theming ----------
+const root = document.documentElement;
+if (CFG.theme?.name) root.dataset.theme = CFG.theme.name;
+if (CFG.theme?.accent) root.style.setProperty("--accent", CFG.theme.accent);
+if (CFG.theme?.font) {
+  root.style.setProperty("--font-body", CFG.theme.font);
+  root.style.setProperty("--font-display", CFG.theme.font);
+}
+if (CFG.theme?.customCss) $("customCss").textContent = CFG.theme.customCss;
+
+// ---------- static content ----------
+document.title = CFG.title || "Macaroni";
+$("brand").textContent = "⬤ " + (CFG.title || "Macaroni");
+$("title").textContent = CFG.title || "";
+$("desc").textContent = CFG.description || "";
+$("netLabel").textContent = CFG.network;
+if (CFG.cover) {
+  const img = $("cover");
+  img.src = MD.ipfsToHttp(CFG.cover, CFG.gateway);
+  img.style.display = "";
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function safeHttpUrl(raw) {
+  try {
+    const url = new URL(String(raw || ""), location.href);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
+  } catch (_) {
+    return "";
+  }
+}
+
+function setCardStatus(card, text) {
+  const cap = document.createElement("div");
+  cap.className = "cap";
+  cap.textContent = text;
+  card.replaceChildren(cap);
+}
+
+function renderTokenCard(card, meta, id, sealed) {
+  const imageUrl = safeHttpUrl(MD.ipfsToHttp(meta.displayUri || meta.artifactUri || "", CFG.gateway));
+  const cap = document.createElement("div");
+  cap.className = "cap";
+  cap.textContent = `${meta.name || "#" + (id + 1)}${sealed ? " · sealed" : ""}`;
+  if (!imageUrl) {
+    card.replaceChildren(cap);
+    return;
+  }
+  const img = document.createElement("img");
+  img.src = imageUrl;
+  img.alt = "";
+  card.replaceChildren(img, cap);
+}
+$("contentBlocks").innerHTML = (CFG.blocks || [])
+  .map((b) => {
+    if (b.type === "h") return `<h2>${esc(b.value)}</h2>`;
+    if (b.type === "img")
+      return `<p style="text-align:center"><img src="${esc(MD.ipfsToHttp(b.value, CFG.gateway))}" style="max-width:100%;border-radius:var(--radius)" /></p>`;
+    return `<p>${esc(b.value)}</p>`;
+  })
+  .join("");
+if (CFG.contract)
+  $("contractLink").innerHTML =
+    `contract <a class="mono" target="_blank" rel="noopener" href="${MD.explorerUrl(CFG.network, CFG.contract)}">${CFG.contract}</a>`;
+
+// ---------- chain state ----------
+MD.setupToolkit(CFG.network || "mainnet", CFG.rpc);
+let storage = null;
+let stages = []; // [{id, start:Date, priceMutez, useAllowlist, maxPerWallet}]
+let qty = 1;
+let sessionIds = []; // token ids minted in this browser session
+let lastRevealed = -1;
+
+function revealState() {
+  if (!storage) return null;
+  return {
+    delayed: !!storage.delayed_reveal,
+    pending: Number(storage.minted) - Number(storage.revealed),
+    since: storage.unrevealed_since ? new Date(storage.unrevealed_since) : null,
+    delayMs: Number(storage.reveal_delay) * 1000,
+  };
+}
+
+function activeStageId(now) {
+  let act = -1;
+  for (const s of stages) if (s.start <= now) act = Math.max(act, s.id);
+  return act;
+}
+
+async function refresh() {
+  if (!CFG.contract) {
+    $("supplyText").textContent = "drop not deployed yet — check back soon";
+    $("stagesList").innerHTML = '<div class="muted">no stages configured</div>';
+    return;
+  }
+  try {
+    const tezos = MD.getToolkit();
+    const c = await tezos.contract.at(CFG.contract);
+    storage = await c.storage();
+    stages = [];
+    const sm = storage.stages;
+    const push = (k, v) =>
+      stages.push({
+        id: Number(k),
+        start: new Date(v.start),
+        priceMutez: Number(v.price),
+        useAllowlist: !!v.use_allowlist,
+        maxPerWallet: v.max_per_wallet != null ? Number(v.max_per_wallet) : null,
+      });
+    if (sm && typeof sm.forEach === "function") sm.forEach((v, k) => push(k, v));
+    stages.sort((a, b) => a.id - b.id);
+    render();
+    // flip this session's cards when a reveal lands while the page is open
+    const revealedNow = Number(storage.revealed);
+    if (revealedNow !== lastRevealed && sessionIds.length) reveal(sessionIds);
+    lastRevealed = revealedNow;
+  } catch (e) {
+    $("supplyText").textContent = "could not load contract: " + (e.message || e);
+  }
+}
+
+function render() {
+  if (!storage) return;
+  const supply = Number(storage.supply);
+  const minted = Number(storage.minted);
+  const left = supply - minted;
+  const rs = revealState();
+  $("supplyBar").style.width = supply ? Math.round((minted / supply) * 100) + "%" : "0%";
+  $("supplyText").textContent =
+    `${minted} / ${supply} minted · ${left} remaining` +
+    (rs && rs.delayed && rs.pending > 0 ? ` · ${rs.pending} sealed` : "");
+
+  // Collectors should know the reveal mechanics BEFORE they mint.
+  const note = $("modeNote");
+  if (rs && rs.delayed) {
+    note.style.display = "";
+    const days = Math.round((rs.delayMs / 86400000) * 10) / 10;
+    note.textContent =
+      "Sealed drop — every mint starts sealed and is assigned a random artwork at reveal." +
+      (days > 0
+        ? ` If the creator hasn't revealed within ${days} day(s), anyone can trigger the reveal right here.`
+        : " Anyone can trigger the reveal at any time.");
+  } else {
+    note.style.display = "none";
+  }
+
+  const now = new Date();
+  const act = activeStageId(now);
+
+  // schedule list
+  $("stagesList").innerHTML = stages
+    .map((s) => {
+      const isActive = s.id === act;
+      const when = s.start.toLocaleString();
+      const tags =
+        (s.useAllowlist ? '<span class="pill warn">allowlist</span> ' : "") +
+        (s.maxPerWallet ? `<span class="pill">max ${s.maxPerWallet}/wallet</span>` : "");
+      return `<div class="stage-row ${isActive ? "active" : ""}">
+        <div><strong>Stage ${s.id + 1}</strong> · ${when}</div>
+        <div>${tags} <strong>${MD.fmtTez(s.priceMutez)}</strong></div>
+      </div>`;
+    })
+    .join("") || '<div class="muted">no stages configured</div>';
+
+  renderRevealPanel(now);
+
+  // mint box
+  if (storage.paused) {
+    $("stageInfo").textContent = "Minting is paused by the creator.";
+    $("price").textContent = "";
+    $("btnMint").disabled = true;
+    return;
+  }
+  if (left <= 0 && supply > 0) {
+    $("stageInfo").textContent = "Sold out — thank you!";
+    $("price").textContent = "";
+    $("btnMint").disabled = true;
+    return;
+  }
+  if (act < 0) {
+    const next = stages.find((s) => s.start > now);
+    if (next) {
+      const dt = next.start - now;
+      const d = Math.floor(dt / 86400000),
+        h = Math.floor((dt % 86400000) / 3600000),
+        m = Math.floor((dt % 3600000) / 60000),
+        s = Math.floor((dt % 60000) / 1000);
+      $("stageInfo").textContent = `Starts in ${d ? d + "d " : ""}${h}h ${m}m ${s}s`;
+    } else {
+      $("stageInfo").textContent = "Sale not scheduled yet.";
+    }
+    $("price").textContent = "";
+    $("btnMint").disabled = true;
+    return;
+  }
+  const stage = stages.find((s) => s.id === act);
+  $("stageInfo").textContent =
+    `Stage ${act + 1} live` + (stage.useAllowlist ? " · allowlist only" : "");
+  $("price").textContent = MD.fmtTez(stage.priceMutez * qty);
+  $("btnMint").disabled = !MD.getAccount();
+  updateAllowStatus(stage);
+}
+
+// Delayed-reveal status: countdown to the public window, then a permissionless
+// "Reveal now" crank — this is the auto-reveal fallback in action.
+function renderRevealPanel(now) {
+  const rs = revealState();
+  const panel = $("revealPending");
+  if (!rs || !rs.delayed || rs.pending <= 0) {
+    panel.style.display = "none";
+    return;
+  }
+  panel.style.display = "";
+  const openAt = rs.since ? new Date(rs.since.getTime() + rs.delayMs) : null;
+  const open = openAt && now >= openAt;
+  if (open) {
+    $("revealInfo").innerHTML =
+      `<span class="countdown">${rs.pending}</span> sealed mint(s) — ` +
+      "the auto-reveal window is open: <strong>anyone</strong> can trigger the reveal.";
+  } else if (openAt) {
+    // render() runs every second, so this ticks like the stage countdown.
+    const dt = openAt - now;
+    const d = Math.floor(dt / 86400000),
+      h = Math.floor((dt % 86400000) / 3600000),
+      m = Math.floor((dt % 3600000) / 60000),
+      s = Math.floor((dt % 60000) / 1000);
+    $("revealInfo").innerHTML =
+      `${rs.pending} sealed mint(s) awaiting reveal — public auto-reveal opens in ` +
+      `<span class="countdown">${d ? d + "d " : ""}${h}h ${m}m ${s}s</span>` +
+      " · the creator can reveal sooner.";
+  } else {
+    $("revealInfo").textContent = `${rs.pending} sealed mint(s) awaiting reveal.`;
+  }
+  $("btnReveal").style.display = open ? "" : "none";
+  $("btnReveal").disabled = !MD.getAccount();
+}
+
+async function publicReveal() {
+  const rs = revealState();
+  if (!rs || rs.pending <= 0) return;
+  const btn = $("btnReveal");
+  btn.disabled = true;
+  $("revealOpStatus").textContent = "verifying network…";
+  try {
+    await MD.assertOperationSafety();
+    $("revealOpStatus").textContent = "waiting for wallet…";
+    const tezos = MD.getToolkit();
+    const c = await tezos.wallet.at(CFG.contract);
+    const op = await MD.sendWalletOp(
+      c.methodsObject.reveal(Math.min(50, rs.pending)),
+      {},
+      { gasPerUnit: 420_000, units: Math.min(50, rs.pending) }
+    );
+    $("revealOpStatus").textContent = "revealing… waiting for confirmation";
+    await op.confirmation(1);
+    $("revealOpStatus").textContent = "revealed ✓";
+    await refresh();
+    if (sessionIds.length) await reveal(sessionIds); // refresh this session's cards
+  } catch (e) {
+    const msg = e?.data?.[0]?.with?.string || e.message || String(e);
+    $("revealOpStatus").textContent = "reveal failed: " + msg;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function updateAllowStatus(stage) {
+  const me = MD.getAccount();
+  const el = $("allowStatus");
+  if (!me) { el.textContent = "connect a wallet to mint"; return; }
+  if (!stage.useAllowlist) { el.textContent = ""; return; }
+  try {
+    const cap = await storage.allowlist.get({ stage: stage.id, holder: me });
+    el.textContent = cap && Number(cap) > 0
+      ? `you are allowlisted — ${cap} mint(s) available`
+      : "this wallet is not on the allowlist for this stage";
+  } catch (e) {
+    el.textContent = "this wallet is not on the allowlist for this stage";
+  }
+}
+
+// ---------- mint ----------
+async function mintOnce(c, priceMutez) {
+  const op = await MD.sendWalletOp(
+    c.methodsObject.mint(1),
+    { amount: priceMutez, mutez: true },
+    { gasPerUnit: 480_000, units: 1 }
+  );
+  $("mintStatus").textContent = "minting… waiting for confirmation";
+  await op.confirmation(1);
+  return extractMintedIds(op);
+}
+
+async function mintBatch(c, priceMutez, amount) {
+  if (amount <= 1) {
+    $("mintStatus").textContent = "approve in your wallet (Temple / Kukai / Umami)…";
+    return mintOnce(c, priceMutez);
+  }
+  $("mintStatus").textContent = "approve in your wallet (Temple / Kukai / Umami)…";
+  try {
+    const total = priceMutez * amount;
+    const op = await MD.sendWalletOp(
+      c.methodsObject.mint(amount),
+      { amount: total, mutez: true },
+      { gasPerUnit: 480_000, units: amount }
+    );
+    $("mintStatus").textContent = "minting… waiting for confirmation";
+    await op.confirmation(1);
+    const ids = await extractMintedIds(op);
+    if (ids.length) return ids;
+    return mintBatchSingles(c, priceMutez, amount);
+  } catch (e) {
+    const msg = e?.data?.[0]?.with?.string || e.message || String(e);
+    if (!/more time than the operation|gas|exceeded/i.test(msg)) throw e;
+    $("mintStatus").textContent = "batch gas tight — minting one at a time…";
+    return mintBatchSingles(c, priceMutez, amount);
+  }
+}
+
+async function mintBatchSingles(c, priceMutez, amount) {
+  const ids = [];
+  for (let i = 0; i < amount; i++) {
+    $("mintStatus").textContent = `minting ${i + 1} of ${amount}… approve in wallet`;
+    ids.push(...(await mintOnce(c, priceMutez)));
+  }
+  return ids;
+}
+
+async function mint() {
+  const me = MD.getAccount();
+  if (!me) return;
+  const now = new Date();
+  const act = activeStageId(now);
+  if (act < 0) return;
+  const stage = stages.find((s) => s.id === act);
+  const total = stage.priceMutez * qty;
+
+  const btn = $("btnMint");
+  btn.disabled = true;
+  $("mintStatus").textContent = "verifying network…";
+  try {
+    // Blocks the send if the RPC or the wallet session is on the wrong network.
+    await MD.assertOperationSafety();
+    $("mintStatus").textContent = "approve in your wallet (Temple / Kukai / Umami)…";
+    const tezos = MD.getToolkit();
+    const c = await tezos.wallet.at(CFG.contract);
+    const ids = await mintBatch(c, stage.priceMutez, qty);
+    sessionIds.push(...ids);
+    $("mintStatus").textContent = "confirmed! revealing…";
+    await reveal(ids);
+    const delayed = !!storage?.delayed_reveal;
+    $("mintStatus").textContent = ids.length
+      ? `minted ${ids.length} token(s) ✓` + (delayed ? " — sealed until reveal (see below)" : "")
+      : "minted ✓ (check your wallet)";
+    refresh();
+  } catch (e) {
+    const msg = e?.data?.[0]?.with?.string || e.message || String(e);
+    $("mintStatus").textContent =
+      "mint failed: " + msg + (/more time than the operation/i.test(msg) ? " — try quantity 1" : "");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function extractMintedIds(op) {
+  try {
+    const results = await op.operationResults();
+    const ids = [];
+    for (const content of results) {
+      const internals = content?.metadata?.internal_operation_results || [];
+      for (const int_ of internals) {
+        if (int_.kind === "event" && (int_.tag || "").includes("blind_mint")) {
+          const v = int_.payload;
+          if (v && v.int != null) ids.push(Number(v.int));
+        }
+      }
+    }
+    return ids;
+  } catch (e) {
+    console.warn("could not parse mint events", e);
+    return [];
+  }
+}
+
+async function reveal(ids) {
+  if (!ids.length) return;
+  $("revealSection").style.display = "";
+  for (const id of ids) {
+    // Upsert by token id so cards refresh in place once a blank is revealed.
+    let card = $("revealGrid").querySelector(`[data-token-id="${id}"]`);
+    if (!card) {
+      card = document.createElement("div");
+      card.className = "reveal-card";
+      card.dataset.tokenId = id;
+      $("revealGrid").prepend(card);
+    }
+    const wasSealed = card.classList.contains("sealed");
+    setCardStatus(card, `token #${id + 1} — loading…`);
+    try {
+      const tm = await storage.token_metadata.get(String(id));
+      const hex = tm.token_info.get("");
+      const uri = MD.hexToUtf8(hex);
+      const metaUrl = safeHttpUrl(MD.ipfsToHttp(uri, CFG.gateway));
+      if (!metaUrl) throw new Error("unsafe metadata URI");
+      const meta = await (await fetch(metaUrl)).json();
+      const sealed = !!storage.delayed_reveal && id >= Number(storage.revealed);
+      card.classList.toggle("sealed", sealed);
+      renderTokenCard(card, meta, id, sealed);
+      if (wasSealed && !sealed) {
+        // sealed → revealed: replay the pop animation for the unveiling
+        card.classList.remove("flip");
+        void card.offsetWidth;
+        card.classList.add("flip");
+      }
+    } catch (e) {
+      setCardStatus(card, `token #${id + 1} (metadata pending)`);
+    }
+  }
+}
+
+// ---------- wallet & qty ----------
+$("btnConnect").addEventListener("click", async () => {
+  try {
+    const addr = await MD.connectWallet(CFG.title || "Macaroni");
+    $("btnConnect").textContent = MD.short(addr);
+    render();
+  } catch (e) { /* user closed the wallet modal */ }
+});
+MD.restoreWallet(CFG.title || "Macaroni").then((addr) => {
+  if (addr) $("btnConnect").textContent = MD.short(addr);
+  render();
+});
+
+$("qtyMinus").addEventListener("click", () => { qty = Math.max(1, qty - 1); $("qty").textContent = qty; render(); });
+$("qtyPlus").addEventListener("click", () => { qty = Math.min(10, qty + 1); $("qty").textContent = qty; render(); });
+$("btnMint").addEventListener("click", mint);
+$("btnReveal").addEventListener("click", publicReveal);
+
+refresh();
+setInterval(render, 1000);     // countdowns
+setInterval(refresh, 30000);   // chain state
