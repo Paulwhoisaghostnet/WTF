@@ -13,7 +13,7 @@ const MD = (() => {
     shadownet: {
       label: "Shadownet (test)",
       rpc: "https://rpc.shadownet.teztnets.com",
-      beaconNetwork: "custom",
+      beaconNetwork: "shadownet",
     },
   };
 

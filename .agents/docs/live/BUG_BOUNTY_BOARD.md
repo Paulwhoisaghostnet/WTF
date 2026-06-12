@@ -69,6 +69,7 @@ Priority labels:
 | WTF-BB-237 | Verified | Codex WTF Domains window conformance pass | 2026-06-11 | Macaroni / WTF Domains app windowing | P1 | 10 | 10 | 2 | 5 | 0 | Subdomain setup now opens from Settings as `/wtf-subdomains/setup` in a normal `AppWindow`, `/wtf-subdomains` is wrapped in the shared OS window shell, and both routes resolve to the WTF Domains native admin surface; verified with TypeScript, admin registry tests, inventory coverage, direct setup route smoke, focused Settings-to-window Playwright, full inventory E2E, and a focused fresh-harness Skywire/WTF LIVE rerun |
 | WTF-BB-238 | Open | - | 2026-06-11 | E2E / Playwright harness artifact stability | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory can report unrelated Skywire/WTF LIVE failures when build or trace artifacts disappear mid-run; current focused fresh-harness rerun passes, so hardening should isolate build output and trace artifacts per run |
 | WTF-BB-239 | Verified | Codex Macaroni Shadownet RPC puppet pass | 2026-06-12 | Macaroni / Shadownet RPC setup | P1 | 13 | 6 | 3 | 5 | 1 | Macaroni now treats Shadownet as a first-class RPC/chain target, blocks mismatched RPCs before signing, and has a focused dummy-account puppet-wallet Playwright runner for the rehearsal flow |
+| WTF-BB-240 | Verified | Codex Macaroni Kukai Shadownet handoff pass | 2026-06-12 | Macaroni / Beacon Kukai Shadownet pairing | P1 | 11 | 8 | 2 | 5 | 0 | Macaroni now sends Beacon the concrete Shadownet network type, so Kukai's web option opens `https://shadownet.kukai.app`; verified by policy, inventory coverage, and a focused Beacon popup Playwright regression |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5164,7 +5165,7 @@ Priority labels:
 ### WTF-BB-239 - Macaroni Shadownet mint/setup flow can surface RPC errors
 
 - Category: Macaroni / Shadownet RPC setup
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Macaroni Shadownet RPC puppet pass
 - Score: C3 + F5 + S1 + P1(4) = 13
 - Evidence:
@@ -5181,6 +5182,29 @@ Priority labels:
   - `npm run test:e2e:macaroni:shadownet` passed 2 Playwright tests after seeding dummy Shadownet puppet accounts; the spec verified the live Shadownet chain id in the iframe, a successful puppet wallet connect, strict operation preflight, and a bad-RPC mismatch block before signing.
   - `npm run test:e2e:inventory:coverage`, `npx tsx --test client/src/features/admin-os/admin-surface-registry.test.ts shared/wtf-app-packages.test.ts`, and `npm run check -- --pretty false` passed.
   - `npm run test:e2e:inventory` reached 302/303 passing with the Macaroni route passing; the only broad-suite failure was the unrelated `/swap` route smoke reporting `ERR_BLOCKED_BY_RESPONSE.NotSameOrigin`, and a focused `/swap` rerun passed.
+
+### WTF-BB-240 - Macaroni Shadownet Kukai pairing opens a blank or wrong tab
+
+- Category: Macaroni / Beacon Kukai Shadownet pairing
+- Status: Claimed
+- Owner/Session: Codex Macaroni Kukai Shadownet handoff pass
+- Score: C2 + F5 + S0 + P1(4) = 11
+- Evidence:
+  - User report on 2026-06-12: when a user selects Kukai from the Beacon wallet picker in Macaroni on Shadownet, a new tab opens but nothing loads; the expected target is `https://shadownet.kukai.app`.
+  - Macaroni was sending Shadownet to Beacon as a generic `custom` network even though the vendored Beacon wallet catalog includes a concrete Kukai Shadownet web link.
+- Why it matters:
+  - Kukai is a primary browser wallet path for creators rehearsing drops on Shadownet. A blank wallet tab makes the app look broken before the user can even approve permissions.
+- Likely correction direction:
+  - Send Beacon the concrete `shadownet` network type while keeping the explicit Shadownet RPC and chain-id guard, then add a browser regression that clicks Kukai in the real Beacon picker and asserts the popup URL targets `shadownet.kukai.app`.
+- Fix:
+  - Changed Macaroni's Shadownet Beacon network from generic `custom` to concrete `shadownet`, while preserving the explicit Shadownet RPC and strict chain-id safety guard.
+  - Added policy coverage that ties the concrete Beacon network type to the vendored Kukai Shadownet web link.
+  - Added a focused Playwright regression that opens Macaroni Studio, selects Kukai in Beacon, clicks `Use Browser`, and asserts the popup URL targets `shadownet.kukai.app`.
+- Verification:
+  - `npx tsx --test server/routes/macaroni-policy.test.ts` passed.
+  - `node --check tests/playwright/live/macaroni-shadownet.spec.mjs && node --check scripts/macaroni/run-local-shadownet-puppet-e2e.mjs` passed.
+  - `npm run test:e2e:inventory:coverage` passed.
+  - `TEZOS_NETWORK=shadownet ... npx playwright test --config=playwright.live.config.mjs tests/playwright/live/macaroni-shadownet.spec.mjs -g "Beacon Kukai"` passed and observed the Kukai popup route to Shadownet.
 
 ## Backlog Intake Template
 

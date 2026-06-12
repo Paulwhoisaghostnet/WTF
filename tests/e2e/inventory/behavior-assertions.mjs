@@ -61,9 +61,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec: "tests/playwright/live/macaroni-shadownet.spec.mjs",
     verificationCommand: "npm run test:e2e:macaroni:shadownet",
     userVisibleAssertion:
-      "A trusted-creator puppet can open Macaroni, enter the Studio, see Shadownet as the default rehearsal network, and connect a Shadownet puppet wallet without RPC errors.",
+      "A trusted-creator puppet can open Macaroni, enter the Studio, see Shadownet as the default rehearsal network, connect a Shadownet puppet wallet without RPC errors, and route Kukai pairing to the Shadownet Kukai app.",
     durableSideEffectAssertion:
-      "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, and proves a mismatched RPC is blocked before wallet signing.",
+      "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves a mismatched RPC is blocked before wallet signing, and checks Beacon's real Kukai option opens `https://shadownet.kukai.app` instead of a blank or mainnet tab.",
   },
   {
     id: "inventory.temporary-grants-unlock-apps",

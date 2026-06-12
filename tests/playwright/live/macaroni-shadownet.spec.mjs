@@ -254,4 +254,38 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await context.close();
     }
   });
+
+  test("Beacon Kukai pairing opens the Shadownet Kukai app", async ({
+    browser,
+    baseURL,
+  }) => {
+    const context = await browser.newContext({ baseURL });
+    const page = await context.newPage();
+    try {
+      await page.goto("/creation-tools/macaroni/studio.html", {
+        waitUntil: "domcontentloaded",
+      });
+      await waitForMacaroniStudio(page);
+      await expect(page.locator("#network")).toHaveValue("shadownet");
+      await expect(page.locator("#netLabel")).toContainText(SHADOWNET_RPC);
+
+      await page.getByRole("button", { name: "Connect wallet" }).click();
+      const kukaiOption = page.getByText("Kukai", { exact: true }).first();
+      await expect(kukaiOption).toBeVisible();
+
+      await kukaiOption.click();
+      const useBrowser = page.getByRole("button", { name: "Use Browser" });
+      await expect(useBrowser).toBeVisible();
+
+      const popupPromise = page.waitForEvent("popup");
+      await useBrowser.click();
+      const popup = await popupPromise;
+      await expect
+        .poll(() => popup.url(), { timeout: 15_000 })
+        .toContain("shadownet.kukai.app");
+      await popup.close().catch(() => {});
+    } finally {
+      await context.close();
+    }
+  });
 });

@@ -4625,3 +4625,15 @@
 **Fix**: Added Shadownet's `NetXsqzbfFenSTS` chain id to Macaroni, made signed operations call strict RPC preflight, and added a local Shadownet puppet-wallet Playwright runner that seeds dummy accounts, verifies the live chain id in the Macaroni iframe, connects a puppet wallet, and proves a bad RPC override is blocked before signing.
 
 **Rule**: Treat Shadownet as a first-class configured network in creator tools, not as an open-ended custom RPC. Every deploy, sync, mint, or reveal path must run strict RPC chain-id preflight, and new Shadownet setup fixes need focused dummy-account puppet-wallet browser coverage.
+
+---
+
+## 2026-06-12 - Wallet deep links depend on concrete Beacon network types
+
+**What happened**: Macaroni sent Shadownet to Beacon as a generic `custom` network. That still let the app verify the Shadownet RPC, but Beacon's Kukai web-wallet catalog chooses provider URLs by network type; with `custom`, selecting Kukai could open a blank or wrong tab instead of the Shadownet Kukai app.
+
+**Why it mattered**: Wallet connection is a user-visible handoff, not just an RPC setting. A creator can have the right chain id and still be blocked if the wallet picker cannot route the selected provider to its testnet host.
+
+**Fix**: Macaroni now sends Beacon `{ type: "shadownet", rpcUrl }` for the Shadownet rehearsal path, keeps strict RPC chain-id preflight, and has a browser regression that clicks Kukai in Beacon and verifies the `shadownet.kukai.app` popup.
+
+**Rule**: For supported Tezos testnets, use Beacon's concrete network type whenever the wallet catalog knows that network. Reserve `custom` only for exploratory RPCs without first-class wallet-provider URLs.
