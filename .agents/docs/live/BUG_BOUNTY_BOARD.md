@@ -71,6 +71,7 @@ Priority labels:
 | WTF-BB-239 | Verified | Codex Macaroni Shadownet RPC puppet pass | 2026-06-12 | Macaroni / Shadownet RPC setup | P1 | 13 | 6 | 3 | 5 | 1 | Macaroni now treats Shadownet as a first-class RPC/chain target, blocks mismatched RPCs before signing, and has a focused dummy-account puppet-wallet Playwright runner for the rehearsal flow |
 | WTF-BB-240 | Verified | Codex Macaroni Kukai Shadownet handoff pass | 2026-06-12 | Macaroni / Beacon Kukai Shadownet pairing | P1 | 11 | 8 | 2 | 5 | 0 | Macaroni now sends Beacon the concrete Shadownet network type, so Kukai's web option opens `https://shadownet.kukai.app`; verified by policy, inventory coverage, and a focused Beacon popup Playwright regression |
 | WTF-BB-241 | Verified | Codex Macaroni Beacon picker restoration | 2026-06-12 | Macaroni / Beacon wallet picker regression | P1 | 12 | 7 | 3 | 5 | 0 | Macaroni explicit connect restores the Beacon wallet picker with Kukai and Temple, clears stale active wallet state without destroying Beacon identity, and only opens `shadownet.kukai.app` after Kukai is selected |
+| WTF-BB-242 | Verified | Codex Macaroni embedded sandbox popup repair | 2026-06-12 | Macaroni / creation-tool iframe wallet popup sandbox | P1 | 11 | 8 | 2 | 5 | 0 | Embedded `/tools/macaroni` allowed popups but not popup sandbox escape, so Beacon could open `about:blank` but could not navigate it to `shadownet.kukai.app`; fixed with `allow-popups-to-escape-sandbox` and embedded-route Playwright coverage |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5227,6 +5228,24 @@ Priority labels:
   - `npx tsx --test server/routes/macaroni-policy.test.ts client/src/lib/tezos/wallet-connect-policy.test.ts` passed.
   - `TEZOS_NETWORK=shadownet ... npx playwright test --config=playwright.live.config.mjs tests/playwright/live/macaroni-shadownet.spec.mjs -g "Beacon Kukai"` passed and asserted no wallet popup opens before the Beacon chooser, Kukai and Temple are both visible, and Kukai opens `shadownet.kukai.app`.
   - `npm run test:e2e:macaroni:shadownet` passed all 3 focused dummy-account/puppet-wallet Shadownet tests.
+
+### WTF-BB-242 - Embedded Macaroni sandbox blocks Kukai popup navigation
+
+- Category: Macaroni / creation-tool iframe wallet popup sandbox
+- Status: Verified
+- Owner/Session: Codex Macaroni embedded sandbox popup repair
+- Score: C2 + F5 + S0 + P1(4) = 11
+- Evidence:
+  - User console report on 2026-06-12: `Unsafe attempt to initiate navigation for frame with URL 'about:blank' from frame with URL 'https://wtfos.app/creation-tools/macaroni/studio.html'` followed by a `SecurityError` when `tezos.js` tried to set popup `Location.href` to `https://shadownet.kukai.app/...`.
+  - The direct static Studio URL passed because it is not sandboxed; the real app entrypoint `/tools/macaroni` embeds Studio in `CreationToolFrame`, whose sandbox allowed popups but did not include `allow-popups-to-escape-sandbox`.
+- Why it matters:
+  - Beacon opens an `about:blank` popup and then navigates it to the selected wallet URL. Without popup sandbox escape, the browser blocks the navigation even though Beacon picked the correct Shadownet Kukai URL.
+- Fix:
+  - Added `allow-popups-to-escape-sandbox` to the creation-tool iframe sandbox.
+  - Moved the focused Beacon Kukai Playwright regression through `/tools/macaroni` and the embedded iframe, then asserted the Kukai popup reaches and loads Shadownet content.
+- Verification:
+  - `npx tsx --test server/routes/macaroni-policy.test.ts client/src/lib/tezos/wallet-connect-policy.test.ts` passed.
+  - `TEZOS_NETWORK=shadownet ... npx playwright test --config=playwright.live.config.mjs tests/playwright/live/macaroni-shadownet.spec.mjs -g "Beacon Kukai"` passed through the embedded `/tools/macaroni` iframe and loaded Kukai Shadownet content.
 
 ## Backlog Intake Template
 

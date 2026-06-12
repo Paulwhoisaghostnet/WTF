@@ -259,20 +259,33 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
     browser,
     baseURL,
   }) => {
-    const context = await browser.newContext({ baseURL });
+    const actor = actorById(puppetCredentials, "cookiemonster");
+    const context = await browser.newContext({
+      baseURL,
+      storageState: sessionFor(actor).storageState,
+    });
     const page = await context.newPage();
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (msg) => {
+      if (msg.type() === "error") errors.push(msg.text());
+    });
     try {
-      await page.goto("/creation-tools/macaroni/studio.html", {
-        waitUntil: "domcontentloaded",
-      });
-      await waitForMacaroniStudio(page);
-      await expect(page.locator("#network")).toHaveValue("shadownet");
-      await expect(page.locator("#netLabel")).toContainText(SHADOWNET_RPC);
+      await page.goto("/tools/macaroni", { waitUntil: "domcontentloaded" });
+      await expect(page.getByText("Blind-mint drop studio")).toBeVisible();
+
+      let frame = await macaroniFrame(page);
+      await frame.getByRole("link", { name: /Open Studio/ }).click();
+
+      frame = await macaroniFrame(page);
+      await waitForMacaroniStudio(frame);
+      await expect(frame.locator("#network")).toHaveValue("shadownet");
+      await expect(frame.locator("#netLabel")).toContainText(SHADOWNET_RPC);
 
       const directWalletPopups = [];
       page.on("popup", (popup) => directWalletPopups.push(popup));
-      await page.getByRole("button", { name: "Connect wallet" }).click();
-      const beaconAlert = page.locator("beacon-alert");
+      await frame.getByRole("button", { name: "Connect wallet" }).click();
+      const beaconAlert = frame.locator("beacon-alert");
       await expect(beaconAlert).toBeAttached();
       const kukaiOption = beaconAlert.getByText(/^Kukai$/i).first();
       const templeOption = beaconAlert.getByText(/^Temple$/i).first();
@@ -294,7 +307,10 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect
         .poll(() => popup.url(), { timeout: 15_000 })
         .toContain("shadownet.kukai.app");
+      await popup.waitForLoadState("domcontentloaded", { timeout: 20_000 });
+      await expect(popup.locator("body")).toContainText("SHADOWNET", { timeout: 10_000 });
       await popup.close().catch(() => {});
+      expect(fatalErrors(errors)).toEqual([]);
     } finally {
       await context.close();
     }

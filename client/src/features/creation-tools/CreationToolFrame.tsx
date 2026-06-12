@@ -37,7 +37,7 @@ export function CreationToolFrame({ tool }: CreationToolFrameProps) {
       <ToolFrame
         title={tool.title}
         src={tool.src}
-        sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox"
         allow="clipboard-read; clipboard-write"
       />
     </Shell>

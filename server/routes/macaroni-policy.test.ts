@@ -27,6 +27,7 @@ test("Macaroni static API calls use the wtfOS CSRF boundary and do not embed pin
 test("Macaroni treats Shadownet as a first-class RPC and chain-id guarded network", () => {
   const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
   const vendorSource = readFileSync("public/creation-tools/macaroni/vendor/tezos.js", "utf8");
+  const frameSource = readFileSync("client/src/features/creation-tools/CreationToolFrame.tsx", "utf8");
 
   assert.match(commonSource, /shadownet:\s*{\s*label:\s*"Shadownet \(test\)"/s);
   assert.match(commonSource, /rpc:\s*"https:\/\/rpc\.shadownet\.teztnets\.com"/);
@@ -49,5 +50,6 @@ test("Macaroni treats Shadownet as a first-class RPC and chain-id guarded networ
   assert.doesNotMatch(commonSource, /restoreWallet[\s\S]*wallet = makeWallet/);
   assert.match(vendorSource, /rR\(\{\.\.\.e,matrixNodes:t\},e\?\.resetClient\)/);
   assert.match(vendorSource, /shadownet:"https:\/\/shadownet\.kukai\.app"/);
+  assert.match(frameSource, /allow-popups-to-escape-sandbox/);
   assert.equal(commonSource.includes("shadownet rotates"), false);
 });

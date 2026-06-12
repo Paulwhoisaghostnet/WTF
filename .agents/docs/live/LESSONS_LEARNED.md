@@ -4649,3 +4649,15 @@
 **Fix**: Macaroni now resets stale Beacon active-account/peer/transport state before explicit Connect, preserves Beacon identity and relay storage required by the SDK, disables Beacon metrics writes that were breaking static usage, resets the vendored DAppClient singleton through `resetClient`, and only requests permissions after the user clicks Connect.
 
 **Rule**: Do not fix one Tezos wallet provider by bypassing Beacon. For Macaroni/Kiln/Bowser-style wallet flows, keep the user-initiated Beacon picker visible, assert no direct wallet popup opens before provider selection, and verify the selected provider's concrete testnet URL after the chooser click.
+
+---
+
+## 2026-06-12 - Wallet popup tests must use the embedded iframe entrypoint
+
+**What happened**: A direct `studio.html` Macaroni check proved Beacon selected the Shadownet Kukai URL, but missed the real production entrypoint. In `/tools/macaroni`, Studio runs inside the creation-tool iframe sandbox, and that sandbox allowed popups without allowing those popups to escape the sandbox. Beacon could open `about:blank`, then the browser blocked `tezos.js` from navigating that popup to Kukai with a `SecurityError`.
+
+**Why it mattered**: Wallet handoff has two separate contracts: Beacon must choose the correct provider URL, and the app shell must grant the embedded tool enough browser permission to navigate the wallet popup. Passing the direct static page only proves the first contract.
+
+**Fix**: Added `allow-popups-to-escape-sandbox` to `CreationToolFrame` and moved the focused Kukai regression through `/tools/macaroni`, where it enters Studio through the iframe, selects Kukai in Beacon, clicks `Use Browser`, and waits for the Shadownet Kukai page to load content.
+
+**Rule**: For sandboxed creation tools, verify wallet popups from the real app route that embeds the tool, not only from the static file. Any iframe that hosts Beacon wallet flows needs `allow-popups` plus `allow-popups-to-escape-sandbox`.
