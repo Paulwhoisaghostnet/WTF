@@ -68,6 +68,7 @@ Priority labels:
 | WTF-BB-236 | Verified | Codex Macaroni domains registry hotfix | 2026-06-11 | Macaroni / app registry feature gate | P1 | 10 | 10 | 2 | 5 | 0 | WTF Domains route existed without a `desktop:wtf-subdomains` app-registry seed/admin surface binding; fixed by promoting WTF Domains to a canonical app key and verified by focused registry/gate tests, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-237 | Verified | Codex WTF Domains window conformance pass | 2026-06-11 | Macaroni / WTF Domains app windowing | P1 | 10 | 10 | 2 | 5 | 0 | Subdomain setup now opens from Settings as `/wtf-subdomains/setup` in a normal `AppWindow`, `/wtf-subdomains` is wrapped in the shared OS window shell, and both routes resolve to the WTF Domains native admin surface; verified with TypeScript, admin registry tests, inventory coverage, direct setup route smoke, focused Settings-to-window Playwright, full inventory E2E, and a focused fresh-harness Skywire/WTF LIVE rerun |
 | WTF-BB-238 | Open | - | 2026-06-11 | E2E / Playwright harness artifact stability | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory can report unrelated Skywire/WTF LIVE failures when build or trace artifacts disappear mid-run; current focused fresh-harness rerun passes, so hardening should isolate build output and trace artifacts per run |
+| WTF-BB-239 | Verified | Codex Macaroni Shadownet RPC puppet pass | 2026-06-12 | Macaroni / Shadownet RPC setup | P1 | 13 | 6 | 3 | 5 | 1 | Macaroni now treats Shadownet as a first-class RPC/chain target, blocks mismatched RPCs before signing, and has a focused dummy-account puppet-wallet Playwright runner for the rehearsal flow |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -4296,7 +4297,7 @@ Priority labels:
 ### WTF-BB-100 - In-app market verifier misses live TzKT entrypoint shape
 
 - Category: Tezos / in-app market verification
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex server verifier pass
 - Score: C2 + F4 + S1 + P1(4) = 11
 - Evidence:
@@ -5159,6 +5160,27 @@ Priority labels:
   - Make inventory runs use an isolated built artifact directory or guarantee no concurrent rebuild removes `dist/public` while the harness is serving it; prefer no-reuse harness mode for full inventory verification; isolate trace output per run; and preserve enough server/build logs to explain artifact failures.
 - Verification idea:
   - Reproduce by running full inventory while intentionally rebuilding or removing `dist/public`, then harden the harness/build lifecycle and prove the same interruption fails early with an artifact-health error instead of unrelated app-spec names. Rerun full inventory plus the focused Skywire/WTF LIVE command above.
+
+### WTF-BB-239 - Macaroni Shadownet mint/setup flow can surface RPC errors
+
+- Category: Macaroni / Shadownet RPC setup
+- Status: Claimed
+- Owner/Session: Codex Macaroni Shadownet RPC puppet pass
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - User report on 2026-06-12: a user attempted to use Macaroni on Shadownet and hit RPC errors.
+  - Current coverage proves Macaroni route reachability, publishing permission gates, and WTF Domains setup mocks, but there is no Macaroni-specific local Shadownet Playwright runner using dummy accounts plus puppet wallet state.
+- Why it matters:
+  - Macaroni is a trusted creator minting tool. A Shadownet rehearsal should catch RPC URL, chain-id, wallet metadata, and setup defaults before creators reach a wallet-signing or contract-origination screen.
+- Likely correction direction:
+  - Map the vendored Macaroni static app's network defaults and RPC usage, make Shadownet a first-class configured target with the expected chain id, and add a repeatable local Playwright runner that seeds dummy accounts/puppet wallets, opens Macaroni on Shadownet, and asserts the user-facing setup path avoids RPC errors.
+- Fix:
+  - Added Shadownet's expected chain id (`NetXsqzbfFenSTS`) to the vendored Macaroni static helper, made signed-operation safety use strict RPC chain-id preflight, and added a Shadownet-only local runner plus Playwright live spec that seeds dummy accounts and injects a puppet Beacon wallet in the Macaroni iframe.
+- Verification:
+  - `npx tsx --test server/routes/macaroni-policy.test.ts client/src/lib/tezos/wallet-shadownet-preflight-policy.test.ts` passed.
+  - `npm run test:e2e:macaroni:shadownet` passed 2 Playwright tests after seeding dummy Shadownet puppet accounts; the spec verified the live Shadownet chain id in the iframe, a successful puppet wallet connect, strict operation preflight, and a bad-RPC mismatch block before signing.
+  - `npm run test:e2e:inventory:coverage`, `npx tsx --test client/src/features/admin-os/admin-surface-registry.test.ts shared/wtf-app-packages.test.ts`, and `npm run check -- --pretty false` passed.
+  - `npm run test:e2e:inventory` reached 302/303 passing with the Macaroni route passing; the only broad-suite failure was the unrelated `/swap` route smoke reporting `ERR_BLOCKED_BY_RESPONSE.NotSameOrigin`, and a focused `/swap` rerun passed.
 
 ## Backlog Intake Template
 

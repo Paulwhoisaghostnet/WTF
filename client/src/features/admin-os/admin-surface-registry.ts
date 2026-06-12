@@ -744,7 +744,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "wtf_site.claimed",
       "macaroni.drop_published",
     ],
-    behaviorAssertionIds: ["settings.subdomain-setup-applet"],
+    behaviorAssertionIds: [
+      "settings.subdomain-setup-applet",
+      "macaroni.shadownet-rpc-wallet-setup",
+    ],
   },
   {
     id: "tv",
@@ -842,7 +845,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Content", "Automation"],
     nativeSettings: ["tool availability", "export rules", "contract origination roles", "IPFS pinning", "drop page publishing", "mint challenge triggers"],
     automationHandles: ["creation_tool.opened", "macaroni.drop_published", "mint_submission.created", "app.interaction.tracked"],
-    behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
+    behaviorAssertionIds: [
+      "skullzarmy.fafolab-integration-contracts",
+      "macaroni.shadownet-rpc-wallet-setup",
+    ],
   },
   {
     id: "mastodon",

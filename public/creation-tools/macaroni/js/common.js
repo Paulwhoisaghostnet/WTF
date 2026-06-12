@@ -17,10 +17,9 @@ const MD = (() => {
     },
   };
 
-  // Chain ids for the fixed networks; shadownet rotates so it is checked
-  // only via the Beacon session, not the RPC.
   const CHAIN_IDS = {
     mainnet: "NetXdQprcVkpaWU",
+    shadownet: "NetXsqzbfFenSTS",
   };
 
   const DEFAULT_GATEWAY = "https://ipfs.io/ipfs/";
@@ -58,7 +57,7 @@ const MD = (() => {
   // never blocks the wallet pairing flow itself.
   async function assertRpcChainId(strict) {
     const expected = CHAIN_IDS[netKey];
-    if (!expected) return; // shadownet/custom: chain id rotates with the testnet
+    if (!expected) return; // custom aliases stay opt-in for exploratory dev RPCs
     let actual;
     try {
       actual = await getToolkit().rpc.getChainId();
@@ -103,7 +102,7 @@ const MD = (() => {
 
   // Call before every operation that signs/sends (deploy, sync, mint).
   async function assertOperationSafety() {
-    await assertRpcChainId();
+    await assertRpcChainId(true);
     const addr = await ensureSessionNetwork();
     if (!addr)
       throw new Error(

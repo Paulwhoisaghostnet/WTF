@@ -55,6 +55,17 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The inventory harness mutates the mocked /api/wtf-sites/claim state to a claimed site, verifies the windowed applet reflects the claimed host, and exercises the WTF Domains registrar commit and register plan endpoints with the same target wallet.",
   },
   {
+    id: "macaroni.shadownet-rpc-wallet-setup",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools", "wtf-domains"],
+    ownerSpec: "tests/playwright/live/macaroni-shadownet.spec.mjs",
+    verificationCommand: "npm run test:e2e:macaroni:shadownet",
+    userVisibleAssertion:
+      "A trusted-creator puppet can open Macaroni, enter the Studio, see Shadownet as the default rehearsal network, and connect a Shadownet puppet wallet without RPC errors.",
+    durableSideEffectAssertion:
+      "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, and proves a mismatched RPC is blocked before wallet signing.",
+  },
+  {
     id: "inventory.temporary-grants-unlock-apps",
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSurfaceIds: ["arcade", "casino", "wtfiam"],

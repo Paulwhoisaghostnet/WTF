@@ -4613,3 +4613,15 @@
 **Fix**: Removed the WIM-local dock and wired buddy-list minimize/close behavior through the shared window manager, then updated the interaction inventory, admin surface registry, behavior assertions, and WIM tests to reject a WIM-owned dock.
 
 **Rule**: Do not add app-local taskbars or docks for desktop widgets. Minimize, restore, focus, and close should flow through the shared OS window manager unless the feature is explicitly a nested document workspace.
+
+---
+
+## 2026-06-12 - Shadownet creator tools need first-class chain guards
+
+**What happened**: Macaroni's vendored static helper treated Shadownet like a custom or rotating network instead of a fixed rehearsal target, so RPC chain-id checks were skipped or soft during setup and signed-operation safety. A user could reach wallet/RPC flows on Shadownet and see confusing RPC errors instead of an early, specific mismatch or liveness failure.
+
+**Why it mattered**: Shadownet is the expected rehearsal path for creator minting. If the app does not prove the RPC, chain id, and wallet session before deploy/sync/mint signing, creators debug infrastructure at the most expensive point in the flow.
+
+**Fix**: Added Shadownet's `NetXsqzbfFenSTS` chain id to Macaroni, made signed operations call strict RPC preflight, and added a local Shadownet puppet-wallet Playwright runner that seeds dummy accounts, verifies the live chain id in the Macaroni iframe, connects a puppet wallet, and proves a bad RPC override is blocked before signing.
+
+**Rule**: Treat Shadownet as a first-class configured network in creator tools, not as an open-ended custom RPC. Every deploy, sync, mint, or reveal path must run strict RPC chain-id preflight, and new Shadownet setup fixes need focused dummy-account puppet-wallet browser coverage.
