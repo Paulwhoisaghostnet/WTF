@@ -42,6 +42,66 @@ const state = {
 // Files can't be persisted; kept in-memory keyed by base name (id).
 const mediaFiles = new Map();
 let coverFile = null;
+let canUseWtfosPinning = false;
+
+function hasWtfosPinningAccess(user) {
+  const perms = user && (user.effectivePermissions || user.permissions || {});
+  if (perms && perms.trusted_market_creator === true) return true;
+  const roles = Array.isArray(user?.roles)
+    ? user.roles
+    : user?.role
+      ? [user.role]
+      : [];
+  return roles.some((role) =>
+    ["admin", "host", "cohost", "trusted_creator"].includes(String(role))
+  );
+}
+
+function pinKindAllowed(kind) {
+  return kind !== "wtfos" || canUseWtfosPinning;
+}
+
+function fallbackPinKind() {
+  return "pinata";
+}
+
+function selectedPinKind() {
+  return pinKindAllowed(state.pin.kind) ? state.pin.kind : fallbackPinKind();
+}
+
+function addPinKindOption(value, label) {
+  const opt = document.createElement("option");
+  opt.value = value;
+  opt.textContent = label;
+  $("pinKind").appendChild(opt);
+}
+
+function renderPinKindOptions() {
+  const select = $("pinKind");
+  select.innerHTML = "";
+  if (canUseWtfosPinning) addPinKindOption("wtfos", "wtfOS IPFS pinning");
+  addPinKindOption("pinata", "Pinata (JWT)");
+  addPinKindOption("node", "Own IPFS node (HTTP API)");
+  select.value = selectedPinKind();
+  const intro = $("pinIntro");
+  if (intro) {
+    intro.textContent = canUseWtfosPinning
+      ? "Your art and metadata are pinned to IPFS. Use wtfOS platform pinning or your own Pinata/IPFS node."
+      : "Your art and metadata are pinned to IPFS. Use your own Pinata JWT or IPFS node.";
+  }
+  togglePinFields();
+}
+
+async function refreshPinningAccess() {
+  try {
+    const res = await MD.apiFetch("/api/auth/user");
+    if (res.ok) canUseWtfosPinning = hasWtfosPinningAccess(await res.json());
+    else canUseWtfosPinning = false;
+  } catch (_) {
+    canUseWtfosPinning = false;
+  }
+  renderPinKindOptions();
+}
 
 // ---------- persistence ----------
 function save() {
@@ -204,8 +264,9 @@ function esc(s) {
 
 // ---------- IPFS pinning ----------
 function pinProvider() {
-  if (state.pin.kind === "wtfos") return { kind: "wtfos" };
-  return state.pin.kind === "pinata"
+  const kind = selectedPinKind();
+  if (kind === "wtfos") return { kind: "wtfos" };
+  return kind === "pinata"
     ? { kind: "pinata", jwt: state.pin.jwt }
     : { kind: "node", url: state.pin.url };
 }
@@ -921,7 +982,8 @@ function readForm() {
   state.drop.treasuryAddr = $("treasuryAddr").value.trim();
   state.drop.revealMode = $("revealMode").value;
   state.drop.revealDelayDays = Number($("revealDelay").value || 7);
-  state.pin.kind = $("pinKind").value;
+  const pinKind = $("pinKind").value;
+  state.pin.kind = pinKindAllowed(pinKind) ? pinKind : fallbackPinKind();
   state.pin.jwt = $("pinJwt").value.trim();
   state.pin.url = $("pinUrl").value.trim();
   state.pin.gateway = $("gateway").value.trim();
@@ -942,7 +1004,7 @@ function toggleRevealFields() {
 }
 
 function fillForm() {
-  if (!["wtfos", "pinata", "node"].includes(state.pin.kind)) state.pin.kind = "wtfos";
+  if (!["wtfos", "pinata", "node"].includes(state.pin.kind)) state.pin.kind = fallbackPinKind();
   $("network").value = state.network;
   $("rpc").value = state.rpc;
   $("dropTitle").value = state.drop.title;
@@ -954,10 +1016,10 @@ function fillForm() {
   $("revealMode").value = state.drop.revealMode || "instant";
   $("revealDelay").value = String(state.drop.revealDelayDays ?? 7);
   toggleRevealFields();
-  $("pinKind").value = state.pin.kind;
   $("pinJwt").value = state.pin.jwt;
   $("pinUrl").value = state.pin.url;
   $("gateway").value = state.pin.gateway;
+  renderPinKindOptions();
   $("contractAddr").value = state.contract;
   $("pageTheme").value = state.page.theme;
   $("pageAccent").value = state.page.accent;
@@ -965,7 +1027,6 @@ function fillForm() {
   $("pageBlocks").value = state.page.blocks;
   $("pageCss").value = state.page.css;
   if (state.contract) $("btnSync").disabled = false;
-  togglePinFields();
   if (state.drop.coverCid)
     $("coverPreview").innerHTML =
       `<img src="${MD.ipfsToHttp("ipfs://" + state.drop.coverCid, state.pin.gateway)}" style="max-width:160px;border-radius:8px" />`;
@@ -1125,6 +1186,7 @@ async function refreshResumeStatusIfNeeded() {
 // ---------- wire up ----------
 load();
 fillForm();
+refreshPinningAccess();
 applyNetwork();
 renderTokens();
 renderStages();

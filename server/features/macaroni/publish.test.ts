@@ -26,6 +26,10 @@ test("Macaroni published page loads stable app assets from the public origin", (
   assert.match(html, /https:\/\/wtfos\.app\/creation-tools\/macaroni\/vendor\/tezos\.js/);
   assert.match(html, /https:\/\/wtfos\.app\/creation-tools\/macaroni\/js\/common\.js/);
   assert.match(html, /https:\/\/wtfos\.app\/creation-tools\/macaroni\/js\/drop\.js/);
+  assert.match(html, /id="btnDisconnect"/);
+  assert.match(html, /id="walletBalance"/);
+  assert.match(html, /id="walletLimitStatus"/);
+  assert.match(html, /id="ownedMintStatus"/);
   assert.equal(html.includes("drop.config.js"), false);
 });
 

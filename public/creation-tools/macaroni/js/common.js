@@ -23,6 +23,7 @@ const MD = (() => {
   };
 
   const DEFAULT_GATEWAY = "https://ipfs.io/ipfs/";
+  const WALLET_SESSION_PREFIX = "macaroni.wallet.session.v1";
 
   const ADDRESS_RE = /^(tz1|tz2|tz3|tz4|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
   const isAddress = (s) => ADDRESS_RE.test(String(s || "").trim());
@@ -32,6 +33,39 @@ const MD = (() => {
   let activeAccount = null;
   let netKey = null;
   let rpcUrl = null;
+
+  function walletSessionKey() {
+    const path = typeof location !== "undefined" ? `${location.origin}${location.pathname}` : "local";
+    return `${WALLET_SESSION_PREFIX}:${netKey || "unknown"}:${path}`;
+  }
+
+  function readWalletSession() {
+    try {
+      const raw = localStorage.getItem(walletSessionKey());
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function saveWalletSession(address) {
+    try {
+      localStorage.setItem(
+        walletSessionKey(),
+        JSON.stringify({ address, network: netKey, rpcUrl, savedAt: new Date().toISOString() })
+      );
+    } catch (_) {
+      /* restricted storage */
+    }
+  }
+
+  function clearWalletSession() {
+    try {
+      localStorage.removeItem(walletSessionKey());
+    } catch (_) {
+      /* restricted storage */
+    }
+  }
 
   function getNetworks() {
     return NETWORKS;
@@ -130,14 +164,15 @@ const MD = (() => {
     client.sendMetrics = () => {};
   }
 
-  function makeWallet(appName) {
+  function makeWallet(appName, options) {
+    const resetClient = !(options && options.resetClient === false);
     const network = beaconNetworkSpec();
     const w = new TZ.BeaconWallet({
       name: appName || "Macaroni",
       network,
       preferredNetwork: beaconPreferredNetwork(),
       enableMetrics: false,
-      resetClient: true,
+      resetClient,
       featuredWallets: ["kukai", "temple", "umami"],
     });
     // Beacon's DAppClient is a singleton: after a network switch the new
@@ -212,6 +247,7 @@ const MD = (() => {
       // current Beacon SDKs reject a `network` property here.
       await wallet.requestPermissions();
       activeAccount = await wallet.getPKH();
+      saveWalletSession(activeAccount);
       return activeAccount;
     };
     try {
@@ -226,13 +262,31 @@ const MD = (() => {
 
   async function disconnectWallet() {
     await resetBeaconPickerState();
+    clearWalletSession();
   }
 
   async function restoreWallet(appName) {
-    // Macaroni connect must be user-initiated so Beacon starts at the wallet
-    // picker instead of silently reusing a cached Temple/Kukai peer.
-    if (!wallet) return null;
-    return ensureSessionNetwork();
+    if (!tezos) return null;
+    const stored = readWalletSession();
+    if (!stored || stored.network !== netKey || !stored.address) return null;
+    if (!wallet) {
+      wallet = makeWallet(appName, { resetClient: false });
+      tezos.setWalletProvider(wallet);
+    }
+    let acc = null;
+    try {
+      acc = await wallet.client.getActiveAccount();
+    } catch (_) {
+      acc = null;
+    }
+    if (!acc || !accountMatchesNetwork(acc) || acc.address !== stored.address) {
+      clearWalletSession();
+      activeAccount = null;
+      return null;
+    }
+    activeAccount = acc.address;
+    saveWalletSession(activeAccount);
+    return activeAccount;
   }
 
   function getAccount() {
@@ -402,6 +456,14 @@ const MD = (() => {
   const fmtTez = (mutez) => (Number(mutez) / 1_000_000).toLocaleString(undefined, { maximumFractionDigits: 6 }) + " ꜩ";
   const short = (addr) => (addr ? addr.slice(0, 7) + "…" + addr.slice(-4) : "");
 
+  async function getBalanceMutez(address) {
+    const target = address || activeAccount;
+    if (!target) return null;
+    const balance = await getToolkit().tz.getBalance(target);
+    if (balance && typeof balance.toNumber === "function") return balance.toNumber();
+    return Number(balance);
+  }
+
   function explorerUrl(networkKey, kt) {
     const base = {
       mainnet: "https://tzkt.io/",
@@ -433,19 +495,25 @@ const MD = (() => {
     return { storage, metadata: contract.metadata || null };
   }
 
-  /** Estimate gas/storage with headroom — avoids wallet "script took more time" failures. */
-  async function sendWalletOp(method, transferOpts, opts) {
-    const tezos = getToolkit();
-    opts = opts || {};
+  async function transferParams(method, transferOpts) {
     let params = transferOpts || {};
     try {
       params = await method.toTransferParams(transferOpts || {});
     } catch (_) {
       /* some methods accept transfer opts only on send */
     }
+    return params;
+  }
+
+  /** Estimate gas/storage with headroom — avoids wallet "script took more time" failures. */
+  async function estimateWalletOp(method, transferOpts, opts) {
+    const tezos = getToolkit();
+    opts = opts || {};
+    const params = await transferParams(method, transferOpts);
     let gasLimit = opts.gasLimit;
     let storageLimit = opts.storageLimit;
     let fee;
+    let estimated = false;
     try {
       const est = await tezos.estimate.transfer(params);
       gasLimit = Math.min(
@@ -453,13 +521,49 @@ const MD = (() => {
         Math.ceil(est.gasLimit * (opts.gasBuffer || 1.65)) + (opts.gasPad || 40_000)
       );
       storageLimit = Math.ceil(est.storageLimit * (opts.storageBuffer || 1.5)) + (opts.storagePad || 120);
-      fee = est.suggestedFeeMutez;
+      fee = Math.ceil(est.suggestedFeeMutez * (opts.feeBuffer || 1.35)) + (opts.feePad || 500);
+      estimated = true;
     } catch (_) {
       const units = opts.units || 1;
       gasLimit = gasLimit || Math.min(1_040_000, (opts.gasPerUnit || 380_000) * units);
       storageLimit = storageLimit || 200 + units * (opts.storagePerUnit || 120);
     }
-    return method.send({ ...(transferOpts || {}), fee, gasLimit, storageLimit });
+    return {
+      fee,
+      gasLimit,
+      storageLimit,
+      storageFeeMutez: Math.max(0, Number(storageLimit || 0)) * 250,
+      estimated,
+    };
+  }
+
+  async function sendWalletOp(method, transferOpts, opts) {
+    const limits = await estimateWalletOp(method, transferOpts, opts);
+    const sendOpts = {
+      ...(transferOpts || {}),
+      gasLimit: limits.gasLimit,
+      storageLimit: limits.storageLimit,
+    };
+    if (limits.fee != null) sendOpts.fee = limits.fee;
+    return method.send(sendOpts);
+  }
+
+  async function fetchOwnedTokenIds(networkKey, kt, holder) {
+    if (!kt || !holder) return [];
+    const api = TZKT_API[networkKey] || TZKT_API.mainnet;
+    const url = new URL(`${api}/v1/tokens/balances`);
+    url.searchParams.set("account", holder);
+    url.searchParams.set("token.contract", kt);
+    url.searchParams.set("balance.gt", "0");
+    url.searchParams.set("select", "token.tokenId");
+    url.searchParams.set("limit", "10000");
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`owned mint lookup failed: ${res.status}`);
+    const json = await res.json();
+    return (Array.isArray(json) ? json : [])
+      .map((value) => Number(typeof value === "object" ? value?.token?.tokenId ?? value?.tokenId : value))
+      .filter((id) => Number.isInteger(id) && id >= 0)
+      .sort((a, b) => a - b);
   }
 
   return {
@@ -472,6 +576,7 @@ const MD = (() => {
     ensureSessionNetwork,
     assertOperationSafety,
     getAccount,
+    getBalanceMutez,
     isAddress,
     utf8ToHex,
     hexToUtf8,
@@ -486,7 +591,9 @@ const MD = (() => {
     explorerUrl,
     objktUrl,
     fetchContractStatus,
+    estimateWalletOp,
     sendWalletOp,
+    fetchOwnedTokenIds,
     TZKT_API,
     DEFAULT_GATEWAY,
   };

@@ -58,6 +58,7 @@ export function buildMacaroniPublishedHtml(input: {
   <div class="row">
     <span class="net muted" id="netLabel"></span>
     <button class="btn small" id="btnConnect">Connect wallet</button>
+    <button class="btn ghost small" id="btnDisconnect" style="display:none">Disconnect</button>
   </div>
 </div>
 
@@ -85,7 +86,10 @@ export function buildMacaroniPublishedHtml(input: {
       <button class="btn" id="btnMint" disabled>Mint</button>
     </div>
     <div class="muted" id="mintStatus"></div>
+    <div class="muted" id="walletBalance"></div>
+    <div class="muted" id="mintPreflight"></div>
     <div class="muted" id="allowStatus" style="margin-top:6px"></div>
+    <div class="muted" id="walletLimitStatus"></div>
     <div id="revealPending" style="display:none">
       <hr class="sep" />
       <div class="muted" id="revealInfo"></div>
@@ -99,6 +103,7 @@ export function buildMacaroniPublishedHtml(input: {
   <section id="revealSection" style="display:none">
     <h2 style="text-align:center">Your mints</h2>
     <div class="reveal-grid" id="revealGrid"></div>
+    <div class="muted" id="ownedMintStatus" style="text-align:center;margin-top:10px"></div>
   </section>
 
   <section class="panel">

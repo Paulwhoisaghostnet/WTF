@@ -4661,3 +4661,39 @@
 **Fix**: Added `allow-popups-to-escape-sandbox` to `CreationToolFrame` and moved the focused Kukai regression through `/tools/macaroni`, where it enters Studio through the iframe, selects Kukai in Beacon, clicks `Use Browser`, and waits for the Shadownet Kukai page to load content.
 
 **Rule**: For sandboxed creation tools, verify wallet popups from the real app route that embeds the tool, not only from the static file. Any iframe that hosts Beacon wallet flows needs `allow-popups` plus `allow-popups-to-escape-sandbox`.
+
+---
+
+## 2026-06-12 - Macaroni wtfOS pinning failures split by auth, config, and Pinata status
+
+**What happened**: A Macaroni user reported wtfOS Pinata service errors while their own Pinata JWT worked. Initial suspicion was that the platform JWT in `.env` was not being used, but live diagnostics showed the app container had `WTFGAMESHOW_IPFS_JWT` loaded, Pinata accepted it, and a direct live app-container pin succeeded. The live Macaroni API then returned `403 Insufficient permissions` for a contestant puppet and `200` with a CID for an admin puppet.
+
+**Why it mattered**: Personal Pinata mode bypasses the wtfOS server permission gate, while wtfOS pinning goes through `/api/macaroni/ipfs/pin` and requires `trusted_market_creator`. A missing trusted-creator role can look like a Pinata/JWT outage unless the status code is checked before debugging secrets or deploy env.
+
+**Fix**: Confirmed production env presence without printing secrets, probed Pinata auth and `pinFileToIPFS` from the live container, checked production role overrides, and proved the live route's permission split with puppet accounts.
+
+**Rule**: Diagnose Macaroni wtfOS pinning in this order: `401` means not signed in, `403` means the user lacks `trusted_market_creator` through `trusted_creator`/admin/host role policy, `503` means the platform JWT is missing from the app runtime, and `502` means Pinata rejected or failed the upstream pin call.
+
+---
+
+## 2026-06-12 - Permission-gated platform providers should not appear as ordinary choices
+
+**What happened**: Macaroni Studio always rendered `wtfOS IPFS pinning` in the provider dropdown even though the server route requires `trusted_market_creator`. Regular signed-in users could select a provider that was guaranteed to return `403`, while their own Pinata JWT worked because that path bypassed the platform route.
+
+**Why it mattered**: A fail-closed server route is necessary but not sufficient for creator tooling. If the UI presents a gated platform provider to an ineligible account, the resulting error looks like broken infrastructure instead of a role boundary.
+
+**Fix**: Removed the wtfOS provider from static HTML, fetch `/api/auth/user` at Studio runtime, add the wtfOS option only when the effective permissions or trusted roles allow `trusted_market_creator`, and keep Pinata/node as the fallback provider.
+
+**Rule**: When a platform-owned provider or workflow is permission-gated server-side, make the matching UI option permission-aware too. Default static bundles to the non-platform fallback until the signed-in user's permissions are known.
+
+---
+
+## 2026-06-12 - Generated drop pages need explicit first-load wallet states
+
+**What happened**: The Macaroni generated mint-site pass added wallet balance, max-per-wallet, owned-mint, and disconnect hooks, but the first focused Shadownet regression found the new `walletBalance` node was present and empty before any wallet session existed.
+
+**Why it mattered**: Generated/static drop pages must explain the no-wallet state immediately, including on older published pages that receive new runtime-inserted nodes. Empty status text makes the page look half-loaded and can hide the difference between disconnected, restoring, and failed balance refresh states.
+
+**Fix**: Updated the drop bootstrap to render the no-wallet balance state on first load, then kept the browser regression around connect, reload restore, disconnect, and reload-after-disconnect.
+
+**Rule**: When adding status elements to generated pages, initialize their disconnected/empty copy during bootstrap and cover the full first-load, restore, disconnect, and post-disconnect reload lifecycle in browser tests.

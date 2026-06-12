@@ -121,12 +121,11 @@
   <!-- 4. IPFS -->
   <section class="panel" id="secIpfs">
     <h2>4 · Media storage (IPFS)</h2>
-    <p class="muted">Your art and metadata are pinned to IPFS. wtfOS can pin with the platform key, or you can use your own Pinata JWT / IPFS node.</p>
+    <p class="muted" id="pinIntro">Your art and metadata are pinned to IPFS.</p>
     <div class="grid3">
       <div>
         <label>Provider</label>
         <select id="pinKind">
-          <option value="wtfos">wtfOS IPFS pinning</option>
           <option value="pinata">Pinata (JWT)</option>
           <option value="node">Own IPFS node (HTTP API)</option>
         </select>
