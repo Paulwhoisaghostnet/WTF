@@ -118,27 +118,57 @@ const MD = (() => {
       : { type: net.beaconNetwork, rpcUrl };
   }
 
+  function beaconPreferredNetwork() {
+    const net = NETWORKS[netKey];
+    return net && net.beaconNetwork === "ghostnet" ? "ghostnet" : "mainnet";
+  }
+
+  function disableBeaconMetrics(client) {
+    if (!client) return;
+    client.enableMetrics = false;
+    client.updateMetricsStorage = async () => {};
+    client.sendMetrics = () => {};
+  }
+
   function makeWallet(appName) {
+    const network = beaconNetworkSpec();
     const w = new TZ.BeaconWallet({
       name: appName || "Macaroni",
-      network: beaconNetworkSpec(),
-      featuredWallets: ["temple", "kukai", "umami"],
+      network,
+      preferredNetwork: beaconPreferredNetwork(),
+      enableMetrics: false,
+      resetClient: true,
+      featuredWallets: ["kukai", "temple", "umami"],
     });
     // Beacon's DAppClient is a singleton: after a network switch the new
     // constructor options can be ignored, so force the client network to
     // match before any permission or operation request (kiln pattern).
-    w.client.network = beaconNetworkSpec();
+    w.client.network = network;
+    w.client.preferredNetwork = beaconPreferredNetwork();
+    w.client.featuredWallets = ["kukai", "temple", "umami"];
+    disableBeaconMetrics(w.client);
     return w;
   }
 
   // A pairing left over from a previous session can be expired; Beacon then
-  // rejects every new request until its localStorage state is wiped.
-  function clearBeaconStorage() {
+  // rejects every new request until its session localStorage state is wiped.
+  // Keep Beacon's local identity seed during an in-page reset; removing it
+  // underneath a live DAppClient produces "Secret seed not found".
+  function isBeaconIdentityKey(key) {
+    return /^beacon(-sdk)?:((sdk-secret-seed)|(user-id)|(sdk_version)|(matrix-selected-node)|(sdk-matrix-preserved-state))$/i.test(key);
+  }
+
+  function clearBeaconStorage(options) {
+    const preserveIdentity = Boolean(options && options.preserveIdentity);
     try {
       const keys = [];
       for (let i = 0; i < localStorage.length; i += 1) {
         const k = localStorage.key(i);
-        if (k && (k.startsWith("beacon:") || k.startsWith("beacon-sdk:"))) keys.push(k);
+        if (
+          k &&
+          (k.startsWith("beacon:") || k.startsWith("beacon-sdk:")) &&
+          !(preserveIdentity && isBeaconIdentityKey(k))
+        ) keys.push(k);
       }
       keys.forEach((k) => localStorage.removeItem(k));
     } catch (_) {
@@ -146,16 +176,38 @@ const MD = (() => {
     }
   }
 
+  async function resetBeaconPickerState() {
+    if (wallet) {
+      try {
+        if (typeof wallet.clearActiveAccount === "function") await wallet.clearActiveAccount();
+      } catch (_) {
+        /* stale account state may already be gone */
+      }
+      try {
+        if (wallet.client && typeof wallet.client.setActivePeer === "function")
+          await wallet.client.setActivePeer(undefined);
+      } catch (_) {
+        /* older Beacon clients keep active peer private */
+      }
+      try {
+        if (wallet.client && typeof wallet.client.setTransport === "function")
+          await wallet.client.setTransport(undefined);
+      } catch (_) {
+        /* no active transport */
+      }
+    }
+    clearBeaconStorage({ preserveIdentity: true });
+    wallet = null;
+    activeAccount = null;
+  }
+
   async function connectWallet(appName) {
     if (!tezos) throw new Error("Pick a network first");
     await assertRpcChainId();
     const doConnect = async () => {
-      if (!wallet) {
-        wallet = makeWallet(appName);
-        tezos.setWalletProvider(wallet);
-      } else {
-        wallet.client.network = beaconNetworkSpec();
-      }
+      await resetBeaconPickerState();
+      wallet = makeWallet(appName);
+      tezos.setWalletProvider(wallet);
       // Network is fixed on the client (constructor + realignment above);
       // current Beacon SDKs reject a `network` property here.
       await wallet.requestPermissions();
@@ -166,22 +218,20 @@ const MD = (() => {
       return await doConnect();
     } catch (e) {
       if (!/expired/i.test(e && e.message ? e.message : String(e))) throw e;
-      clearBeaconStorage();
+      clearBeaconStorage({ preserveIdentity: true });
       wallet = null;
       return doConnect();
     }
   }
 
   async function disconnectWallet() {
-    if (wallet) await wallet.clearActiveAccount();
-    activeAccount = null;
+    await resetBeaconPickerState();
   }
 
   async function restoreWallet(appName) {
-    if (!wallet) {
-      wallet = makeWallet(appName);
-      if (tezos) tezos.setWalletProvider(wallet);
-    }
+    // Macaroni connect must be user-initiated so Beacon starts at the wallet
+    // picker instead of silently reusing a cached Temple/Kukai peer.
+    if (!wallet) return null;
     return ensureSessionNetwork();
   }
 

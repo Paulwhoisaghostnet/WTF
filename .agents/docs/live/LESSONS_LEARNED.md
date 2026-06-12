@@ -4637,3 +4637,15 @@
 **Fix**: Macaroni now sends Beacon `{ type: "shadownet", rpcUrl }` for the Shadownet rehearsal path, keeps strict RPC chain-id preflight, and has a browser regression that clicks Kukai in Beacon and verifies the `shadownet.kukai.app` popup.
 
 **Rule**: For supported Tezos testnets, use Beacon's concrete network type whenever the wallet catalog knows that network. Reserve `custom` only for exploratory RPCs without first-class wallet-provider URLs.
+
+---
+
+## 2026-06-12 - Wallet URL fixes must preserve the Beacon chooser
+
+**What happened**: Macaroni's Kukai Shadownet handoff repair drifted into a wallet-specific connection path where explicit Connect could bypass the Beacon picker and jump toward Temple/stale provider state, removing Kukai as a visible user choice.
+
+**Why it mattered**: The Beacon picker is part of the wallet UX contract, not incidental decoration. A provider URL fix is only correct if users still choose from Kukai, Temple, and the rest of the Beacon catalog before any wallet-specific handoff opens.
+
+**Fix**: Macaroni now resets stale Beacon active-account/peer/transport state before explicit Connect, preserves Beacon identity and relay storage required by the SDK, disables Beacon metrics writes that were breaking static usage, resets the vendored DAppClient singleton through `resetClient`, and only requests permissions after the user clicks Connect.
+
+**Rule**: Do not fix one Tezos wallet provider by bypassing Beacon. For Macaroni/Kiln/Bowser-style wallet flows, keep the user-initiated Beacon picker visible, assert no direct wallet popup opens before provider selection, and verify the selected provider's concrete testnet URL after the chooser click.

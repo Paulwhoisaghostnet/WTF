@@ -269,12 +269,23 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(page.locator("#network")).toHaveValue("shadownet");
       await expect(page.locator("#netLabel")).toContainText(SHADOWNET_RPC);
 
+      const directWalletPopups = [];
+      page.on("popup", (popup) => directWalletPopups.push(popup));
       await page.getByRole("button", { name: "Connect wallet" }).click();
-      const kukaiOption = page.getByText("Kukai", { exact: true }).first();
+      const beaconAlert = page.locator("beacon-alert");
+      await expect(beaconAlert).toBeAttached();
+      const kukaiOption = beaconAlert.getByText(/^Kukai$/i).first();
+      const templeOption = beaconAlert.getByText(/^Temple$/i).first();
       await expect(kukaiOption).toBeVisible();
+      await expect(templeOption).toBeVisible();
+      await page.waitForTimeout(250);
+      expect(
+        directWalletPopups,
+        "Macaroni Connect must show the Beacon wallet picker before opening a wallet handoff"
+      ).toHaveLength(0);
 
       await kukaiOption.click();
-      const useBrowser = page.getByRole("button", { name: "Use Browser" });
+      const useBrowser = beaconAlert.getByRole("button", { name: /Use Browser/i });
       await expect(useBrowser).toBeVisible();
 
       const popupPromise = page.waitForEvent("popup");

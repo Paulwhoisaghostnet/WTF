@@ -70,6 +70,7 @@ Priority labels:
 | WTF-BB-238 | Open | - | 2026-06-11 | E2E / Playwright harness artifact stability | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory can report unrelated Skywire/WTF LIVE failures when build or trace artifacts disappear mid-run; current focused fresh-harness rerun passes, so hardening should isolate build output and trace artifacts per run |
 | WTF-BB-239 | Verified | Codex Macaroni Shadownet RPC puppet pass | 2026-06-12 | Macaroni / Shadownet RPC setup | P1 | 13 | 6 | 3 | 5 | 1 | Macaroni now treats Shadownet as a first-class RPC/chain target, blocks mismatched RPCs before signing, and has a focused dummy-account puppet-wallet Playwright runner for the rehearsal flow |
 | WTF-BB-240 | Verified | Codex Macaroni Kukai Shadownet handoff pass | 2026-06-12 | Macaroni / Beacon Kukai Shadownet pairing | P1 | 11 | 8 | 2 | 5 | 0 | Macaroni now sends Beacon the concrete Shadownet network type, so Kukai's web option opens `https://shadownet.kukai.app`; verified by policy, inventory coverage, and a focused Beacon popup Playwright regression |
+| WTF-BB-241 | Verified | Codex Macaroni Beacon picker restoration | 2026-06-12 | Macaroni / Beacon wallet picker regression | P1 | 12 | 7 | 3 | 5 | 0 | Macaroni explicit connect restores the Beacon wallet picker with Kukai and Temple, clears stale active wallet state without destroying Beacon identity, and only opens `shadownet.kukai.app` after Kukai is selected |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5205,6 +5206,27 @@ Priority labels:
   - `node --check tests/playwright/live/macaroni-shadownet.spec.mjs && node --check scripts/macaroni/run-local-shadownet-puppet-e2e.mjs` passed.
   - `npm run test:e2e:inventory:coverage` passed.
   - `TEZOS_NETWORK=shadownet ... npx playwright test --config=playwright.live.config.mjs tests/playwright/live/macaroni-shadownet.spec.mjs -g "Beacon Kukai"` passed and observed the Kukai popup route to Shadownet.
+
+### WTF-BB-241 - Macaroni connect bypasses the Beacon wallet picker
+
+- Category: Macaroni / Beacon wallet picker regression
+- Status: Verified
+- Owner/Session: Codex Macaroni Beacon picker restoration
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report on 2026-06-12: the Shadownet Kukai repair had changed Macaroni wallet connect so it went straight to Temple instead of showing the Beacon wallet picker, removing Kukai as an explicit user choice.
+  - Local reproduction showed Beacon singleton/session state could bypass the chooser or render stale provider state after explicit Macaroni connect.
+- Why it matters:
+  - Macaroni's wallet connection contract is a user-selected Beacon provider handoff. Fixing Kukai's URL cannot remove the chooser, because creators need Kukai, Temple, and other Beacon wallet options visible before any wallet-specific tab opens.
+- Fix:
+  - Macaroni now resets only Beacon's active picker/session state before an explicit connect, preserves Beacon identity/relay storage needed by the SDK, disables/no-ops Beacon metrics writes that were failing in the static app, and creates Beacon with the same first-class wallet choices used by the WTF/Kiln/Bowser connection patterns.
+  - The vendored Taquito Beacon wallet construction now honors `resetClient` so Macaroni can avoid stale DAppClient singleton state without forcing a direct wallet provider path.
+  - Restore no longer creates a wallet on page load; Macaroni only requests Beacon permissions from the user-initiated Connect action.
+- Verification:
+  - `node --check public/creation-tools/macaroni/js/common.js && node --check public/creation-tools/macaroni/vendor/tezos.js` passed.
+  - `npx tsx --test server/routes/macaroni-policy.test.ts client/src/lib/tezos/wallet-connect-policy.test.ts` passed.
+  - `TEZOS_NETWORK=shadownet ... npx playwright test --config=playwright.live.config.mjs tests/playwright/live/macaroni-shadownet.spec.mjs -g "Beacon Kukai"` passed and asserted no wallet popup opens before the Beacon chooser, Kukai and Temple are both visible, and Kukai opens `shadownet.kukai.app`.
+  - `npm run test:e2e:macaroni:shadownet` passed all 3 focused dummy-account/puppet-wallet Shadownet tests.
 
 ## Backlog Intake Template
 
