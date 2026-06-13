@@ -77,6 +77,7 @@ Priority labels:
 | WTF-BB-245 | Verified | Codex Macaroni CSS injection hotfix | 2026-06-12 | Macaroni / generated drop website stored CSS safety | P0 | 17 | 1 | 3 | 5 | 4 | Macaroni generated pages now sanitize published theme config server-side and client-side, apply only known themes, hex accent colors, and known font stacks, remove arbitrary stored `customCss`, and regression-test `</style>`, `url(javascript:)`, and malformed custom-property payloads; verified by `node --check public/creation-tools/macaroni/js/studio.js public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts server/features/macaroni/publish.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run check`, `npm run build`, and `npm run test:e2e:macaroni:shadownet` |
 | WTF-BB-246 | Verified | Codex Macaroni generated page polish | 2026-06-13 | Macaroni / generated drop website connect and defaults | P1 | 11 | 8 | 2 | 4 | 1 | Generated Macaroni drop pages now coalesce duplicate connect clicks at the shared wallet helper and page button state, expose baseline landmarks/status/progress/quantity accessibility semantics, and default exported IPFS gateway config to Fileship; verified by `node --check public/creation-tools/macaroni/js/common.js public/creation-tools/macaroni/js/drop.js public/creation-tools/macaroni/js/studio.js`, `npx tsx --test server/routes/macaroni-policy.test.ts server/features/macaroni/publish.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:macaroni:shadownet`, and `npm run test:e2e:inventory` |
 | WTF-BB-247 | In Progress | Codex Macaroni OBJKT media limit pass | 2026-06-13 | Macaroni / OBJKT media limits | P1 | 11 | 8 | 2 | 5 | 0 | Macaroni Studio/server media caps drifted from OBJKT expectations and production env could allow 500 MB wtfOS Pinata files while the UI advertised 200 MB; current pass aligns displayed and enforced artifact limits at 250 MB and restricts collection logo/cover uploads to OBJKT-compatible square JPG/PNG ≤1 MB |
+| WTF-BB-251 | Fixed | Codex Macaroni effective mint allowance pass | 2026-06-13 | Macaroni / generated mint page quantity guard | P1 | 12 | 7 | 3 | 5 | 0 | Generated Macaroni mint pages now clamp requested quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance before wallet signing; verified locally with `node --check public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, and `npm run test:e2e:inventory:coverage`, pending production deploy verification |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5251,6 +5252,25 @@ Priority labels:
 - Verification:
   - `npx tsx --test server/routes/macaroni-policy.test.ts client/src/lib/tezos/wallet-connect-policy.test.ts` passed.
   - `TEZOS_NETWORK=shadownet ... npx playwright test --config=playwright.live.config.mjs tests/playwright/live/macaroni-shadownet.spec.mjs -g "Beacon Kukai"` passed through the embedded `/tools/macaroni` iframe and loaded Kukai Shadownet content.
+
+### WTF-BB-251 - Generated Macaroni mint quantity can exceed effective allowance
+
+- Category: Macaroni / generated mint page quantity guard
+- Status: Fixed
+- Owner/Session: Codex Macaroni effective mint allowance pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report on 2026-06-13: creator set max mint limit to 3, a wallet had already minted 2, but the generated page still allowed the collector to set the mint counter to 2, creating a doomed wallet transaction because only 1 mint remained for that wallet.
+  - Existing generated page logic clamped by the raw stage max-per-wallet value or a cached wallet remaining value, but did not consistently clamp by live collection remaining supply, allowlist remaining allowance, or a fresh preflight read before wallet signing.
+- Why it matters:
+  - Collectors should not be asked to sign transactions the UI can already prove will fail. The safe request amount is the minimum of collection remaining supply, connected wallet remaining per-wallet allowance, connected wallet remaining allowlist allowance, and the UI safety cap.
+- Fix:
+  - Added one effective quantity cap from live collection remaining supply, wallet per-stage minted count, stage max-per-wallet, allowlist capacity, and the UI safety cap.
+  - Disabled quantity increase and mint while wallet-specific allowance is loading, and refreshed storage/status again during mint preflight before opening the wallet prompt.
+- Verification:
+  - `node --check public/creation-tools/macaroni/js/drop.js` passed.
+  - `npx tsx --test server/routes/macaroni-policy.test.ts` passed.
+  - `npm run test:e2e:inventory:coverage` passed.
 
 ## Backlog Intake Template
 

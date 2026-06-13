@@ -214,8 +214,10 @@ let walletBalanceMutez = null;
 let currentStageWalletRemaining = null;
 let walletStatusSeq = 0;
 let walletStatusCache = { key: "", status: null };
+let walletStatusLoadingKey = "";
 let ownedMintLoadSeq = 0;
 let walletConnecting = false;
+const MINT_QTY_UI_CAP = 10;
 
 function revealState() {
   if (!storage) return null;
@@ -283,22 +285,73 @@ function walletStatusKey(stage) {
     stage?.id ?? "",
     stage?.maxPerWallet ?? "",
     stage?.useAllowlist ? "allow" : "open",
+    storage ? Number(storage.supply) : "",
     storage ? Number(storage.minted) : "",
   ].join(":");
+}
+
+function stageNeedsWalletAllowance(stage) {
+  return !!stage && (!!stage.maxPerWallet || !!stage.useAllowlist);
+}
+
+function collectionRemaining() {
+  if (!storage) return null;
+  const supply = Number(storage.supply);
+  const minted = Number(storage.minted);
+  if (!Number.isFinite(supply) || !Number.isFinite(minted)) return null;
+  return Math.max(0, supply - minted);
+}
+
+function freshWalletStatus(stage) {
+  if (!stage) return null;
+  return walletStatusCache.key === walletStatusKey(stage) ? walletStatusCache.status : null;
+}
+
+function walletAllowancePending(stage) {
+  return !!MD.getAccount() && stageNeedsWalletAllowance(stage) && !freshWalletStatus(stage);
+}
+
+function effectiveQtyMax(stage) {
+  const limits = [MINT_QTY_UI_CAP];
+  const left = collectionRemaining();
+  if (left != null) limits.push(left);
+  if (stage?.maxPerWallet) limits.push(stage.maxPerWallet);
+  const status = freshWalletStatus(stage);
+  if (status?.remaining != null) {
+    limits.push(status.remaining);
+  } else if (walletAllowancePending(stage)) {
+    limits.push(1);
+  }
+  const max = Math.min(...limits.filter((n) => Number.isFinite(Number(n))).map(Number));
+  return Number.isFinite(max) ? Math.max(0, Math.floor(max)) : MINT_QTY_UI_CAP;
+}
+
+function disableMintControls() {
+  if ($("btnMint")) $("btnMint").disabled = true;
+  if ($("qtyPlus")) $("qtyPlus").disabled = true;
+  if ($("qtyMinus")) $("qtyMinus").disabled = qty <= 1;
+}
+
+function syncMintQuantityUi(stage) {
+  const max = effectiveQtyMax(stage);
+  if (max > 0 && qty > max) qty = max;
+  if (qty < 1) qty = 1;
+  if ($("qty")) $("qty").textContent = qty;
+  if ($("price")) $("price").textContent = stage ? MD.fmtTez(stage.priceMutez * qty) : "";
+
+  const pending = walletAllowancePending(stage);
+  const canMint = !!MD.getAccount() && !!stage && max > 0 && qty <= max && !pending;
+  if ($("btnMint")) $("btnMint").disabled = !canMint;
+  if ($("qtyPlus")) $("qtyPlus").disabled = pending || max <= 0 || qty >= max;
+  if ($("qtyMinus")) $("qtyMinus").disabled = qty <= 1 || max <= 0;
+  return { max, pending };
 }
 
 function applyWalletStageStatus(status) {
   currentStageWalletRemaining = status.remaining;
   setText("walletLimitStatus", status.limitText);
   setText("allowStatus", status.allowText);
-  if (status.remaining != null && status.remaining > 0 && qty > status.remaining) {
-    qty = status.remaining;
-    $("qty").textContent = qty;
-    $("price").textContent = status.stage ? MD.fmtTez(status.stage.priceMutez * qty) : "";
-  }
-  if (status.remaining === 0) {
-    $("btnMint").disabled = true;
-  }
+  syncMintQuantityUi(status.stage);
 }
 
 async function readStageWalletMinted(stage) {
@@ -311,60 +364,87 @@ async function readStageWalletMinted(stage) {
   }
 }
 
-async function updateWalletStatus(stage) {
+async function updateWalletStatus(stage, options) {
   const me = MD.getAccount();
   if (!me) {
     currentStageWalletRemaining = null;
+    walletStatusLoadingKey = "";
     setText("allowStatus", "connect a wallet to mint");
     setText("walletLimitStatus", stage?.maxPerWallet ? `Max ${stage.maxPerWallet} mint(s) per wallet.` : "");
+    syncMintQuantityUi(stage);
     return;
   }
   const key = walletStatusKey(stage);
-  if (walletStatusCache.key === key && walletStatusCache.status) {
+  if (!options?.force && walletStatusCache.key === key && walletStatusCache.status) {
     applyWalletStageStatus(walletStatusCache.status);
     return;
   }
+  if (!options?.force && walletStatusLoadingKey === key) {
+    syncMintQuantityUi(stage);
+    return;
+  }
   const seq = ++walletStatusSeq;
+  walletStatusLoadingKey = key;
+  currentStageWalletRemaining = null;
+  if (stageNeedsWalletAllowance(stage)) setText("walletLimitStatus", "Checking this wallet's mint allowance...");
+  syncMintQuantityUi(stage);
+
   const status = { stage, allowText: "", limitText: "", remaining: null };
+  const remainingCaps = [];
+  const minted = stageNeedsWalletAllowance(stage) ? await readStageWalletMinted(stage) : null;
   if (stage?.useAllowlist) {
     try {
       const cap = await storage.allowlist.get({ stage: stage.id, holder: me });
-      status.allowText = cap && Number(cap) > 0
-        ? `you are allowlisted — ${cap} mint(s) available`
-        : "this wallet is not on the allowlist for this stage";
+      const capNumber = cap == null ? 0 : Number(cap);
+      const used = minted == null ? 0 : minted;
+      const allowRemaining = Math.max(0, capNumber - used);
+      if (capNumber > 0) {
+        remainingCaps.push(allowRemaining);
+        status.allowText = allowRemaining > 0
+          ? `you are allowlisted — ${allowRemaining}/${capNumber} mint(s) remaining for this stage`
+          : `you used this stage's allowlist allowance (${capNumber}/${capNumber})`;
+      } else {
+        remainingCaps.push(0);
+        status.allowText = "this wallet is not on the allowlist for this stage";
+      }
     } catch (_) {
+      remainingCaps.push(0);
       status.allowText = "this wallet is not on the allowlist for this stage";
     }
   }
   if (stage?.maxPerWallet) {
-    const minted = await readStageWalletMinted(stage);
     const remaining = minted == null ? null : Math.max(0, stage.maxPerWallet - minted);
-    status.remaining = remaining;
+    if (remaining != null) remainingCaps.push(remaining);
     status.limitText = remaining == null
       ? `Max ${stage.maxPerWallet} mint(s) per wallet.`
       : `This wallet minted ${minted}/${stage.maxPerWallet} for this stage · ${remaining} remaining.`;
   }
+  status.remaining = remainingCaps.length ? Math.min(...remainingCaps) : null;
   if (seq !== walletStatusSeq) return;
+  walletStatusLoadingKey = "";
   walletStatusCache = { key, status };
   applyWalletStageStatus(status);
 }
 
-function qtyMax() {
-  if (currentStageWalletRemaining != null) return Math.max(1, Math.min(10, currentStageWalletRemaining));
-  const stage = activeStage();
-  return stage?.maxPerWallet ? Math.max(1, Math.min(10, stage.maxPerWallet)) : 10;
-}
-
 async function preflightMint(stage, amount) {
+  if (!stage) throw new Error("no active sale stage is available");
   await MD.assertOperationSafety();
+  await refresh();
+  const freshStage = activeStage(new Date());
+  if (!freshStage || freshStage.id !== stage.id) {
+    throw new Error("sale stage changed while preparing mint — review the current stage and try again");
+  }
+  stage = freshStage;
   await refreshBalance("checked before mint");
-  const minted = await readStageWalletMinted(stage);
-  if (stage.maxPerWallet && minted != null) {
-    const remaining = Math.max(0, stage.maxPerWallet - minted);
-    currentStageWalletRemaining = remaining;
-    if (amount > remaining) {
-      throw new Error(`this wallet can mint ${remaining} more in this stage`);
-    }
+  await updateWalletStatus(stage, { force: true });
+  const max = effectiveQtyMax(stage);
+  if (max <= 0) {
+    throw new Error("no mints are currently available for this wallet");
+  }
+  if (amount > max) {
+    qty = max;
+    syncMintQuantityUi(stage);
+    throw new Error(`only ${max} mint(s) are currently available for this wallet`);
   }
   const tezos = MD.getToolkit();
   const c = await tezos.wallet.at(CFG.contract);
@@ -383,7 +463,7 @@ async function preflightMint(stage, amount) {
   if (walletBalanceMutez != null && walletBalanceMutez < required) {
     throw new Error(`wallet balance ${MD.fmtTez(walletBalanceMutez)} is below estimated total ${MD.fmtTez(required)}`);
   }
-  return c;
+  return { c, stage };
 }
 
 async function loadOwnedMints() {
@@ -499,13 +579,13 @@ function render() {
   if (storage.paused) {
     $("stageInfo").textContent = "Minting is paused by the creator.";
     $("price").textContent = "";
-    $("btnMint").disabled = true;
+    disableMintControls();
     return;
   }
   if (left <= 0 && supply > 0) {
     $("stageInfo").textContent = "Sold out — thank you!";
     $("price").textContent = "";
-    $("btnMint").disabled = true;
+    disableMintControls();
     return;
   }
   if (act < 0) {
@@ -521,7 +601,7 @@ function render() {
       $("stageInfo").textContent = "Sale not scheduled yet.";
     }
     $("price").textContent = "";
-    $("btnMint").disabled = true;
+    disableMintControls();
     return;
   }
   const stage = stages.find((s) => s.id === act);
@@ -529,8 +609,7 @@ function render() {
     `Stage ${act + 1} live` +
     (stage.useAllowlist ? " · allowlist only" : "") +
     (stage.maxPerWallet ? ` · max ${stage.maxPerWallet}/wallet` : "");
-  $("price").textContent = MD.fmtTez(stage.priceMutez * qty);
-  $("btnMint").disabled = !MD.getAccount();
+  syncMintQuantityUi(stage);
   updateWalletStatus(stage);
 }
 
@@ -652,14 +731,16 @@ async function mint() {
   const now = new Date();
   const act = activeStageId(now);
   if (act < 0) return;
-  const stage = stages.find((s) => s.id === act);
+  let stage = stages.find((s) => s.id === act);
 
   const btn = $("btnMint");
   btn.disabled = true;
   $("mintStatus").textContent = "verifying network…";
   try {
     // Blocks the send if the RPC, wallet session, balance, or wallet limit is unsafe.
-    const c = await preflightMint(stage, qty);
+    const preflight = await preflightMint(stage, qty);
+    const c = preflight.c;
+    stage = preflight.stage;
     $("mintStatus").textContent = "approve in your wallet (Temple / Kukai / Umami)…";
     const ids = await mintBatch(c, stage.priceMutez, qty);
     sessionIds.push(...ids);
@@ -678,7 +759,7 @@ async function mint() {
     $("mintStatus").textContent =
       "mint failed: " + msg + (/more time than the operation/i.test(msg) ? " — try quantity 1" : "");
   } finally {
-    btn.disabled = false;
+    syncMintQuantityUi(stage);
   }
 }
 
@@ -762,6 +843,7 @@ $("btnDisconnect").addEventListener("click", async () => {
   sessionIds = [];
   walletBalanceMutez = null;
   currentStageWalletRemaining = null;
+  walletStatusLoadingKey = "";
   walletStatusCache = { key: "", status: null };
   ownedMintLoadSeq++;
   setWalletButtons(false);
@@ -786,8 +868,17 @@ MD.restoreWallet(CFG.title || "Macaroni").then(async (addr) => {
   render();
 });
 
-$("qtyMinus").addEventListener("click", () => { qty = Math.max(1, qty - 1); $("qty").textContent = qty; render(); });
-$("qtyPlus").addEventListener("click", () => { qty = Math.min(qtyMax(), qty + 1); $("qty").textContent = qty; render(); });
+$("qtyMinus").addEventListener("click", () => {
+  qty = Math.max(1, qty - 1);
+  syncMintQuantityUi(activeStage());
+  render();
+});
+$("qtyPlus").addEventListener("click", () => {
+  const max = effectiveQtyMax(activeStage());
+  if (max > 0) qty = Math.min(max, qty + 1);
+  syncMintQuantityUi(activeStage());
+  render();
+});
 $("btnMint").addEventListener("click", mint);
 $("btnReveal").addEventListener("click", publicReveal);
 

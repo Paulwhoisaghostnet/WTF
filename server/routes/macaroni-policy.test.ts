@@ -69,6 +69,23 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   assert.match(dropHtml, /aria-label="Decrease mint quantity"/);
 });
 
+test("Macaroni generated mint quantity clamps to live supply and wallet allowance", () => {
+  const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
+
+  assert.match(dropSource, /const MINT_QTY_UI_CAP = 10/);
+  assert.match(dropSource, /function collectionRemaining\(\)/);
+  assert.match(dropSource, /function effectiveQtyMax\(stage\)/);
+  assert.match(dropSource, /limits\.push\(left\)/);
+  assert.match(dropSource, /stage\.maxPerWallet/);
+  assert.match(dropSource, /stage\.useAllowlist/);
+  assert.match(dropSource, /allowRemaining/);
+  assert.match(dropSource, /walletAllowancePending\(stage\)/);
+  assert.match(dropSource, /syncMintQuantityUi\(stage\)/);
+  assert.match(dropSource, /await refresh\(\)/);
+  assert.match(dropSource, /only \$\{max\} mint\(s\) are currently available for this wallet/);
+  assert.match(dropSource, /qtyPlus[\s\S]*effectiveQtyMax\(activeStage\(\)\)/);
+});
+
 test("Macaroni generated pages only publish bounded theme CSS", () => {
   const publishSource = readFileSync("server/features/macaroni/publish.ts", "utf8");
   const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");

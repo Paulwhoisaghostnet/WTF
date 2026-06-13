@@ -1,3 +1,13 @@
+## 2026-06-13 - Macaroni mint counters must use effective remaining allowance
+
+**What happened**: A generated Macaroni mint page could let a collector set the requested quantity above what the contract would accept. The UI considered the creator's raw max-per-wallet value, but the effective allowance was lower after previous mints had consumed part of that wallet's stage cap or after collection supply had been reduced by other collectors.
+
+**Why it mattered**: A wallet prompt for a transaction the app can already prove will fail is bad UX and makes the contract feel unreliable. Mint limits are not static display settings; they are live constraints derived from collection remaining supply, connected-wallet stage mints, allowlist capacity, and the UI's own safety cap.
+
+**Rule**: Generated mint pages must clamp quantity using the live effective max before wallet signing: `min(collection remaining, wallet remaining per-wallet allowance, wallet remaining allowlist allowance, UI safety cap)`. Disable quantity increase and mint while wallet-specific allowance is loading, and refresh storage/status again during preflight.
+
+---
+
 ## 2026-06-13 - Macaroni media limits must align UI, server defaults, and live env
 
 **What happened**: Macaroni's Studio copy and server fallback advertised one artifact limit while production could still allow a larger wtfOS Pinata upload through `MACARONI_IPFS_MAX_BYTES`. The collection cover path also allowed formats and sizes that do not match OBJKT collection logo expectations, even though Macaroni uses that asset for collection metadata and non-image token previews.
