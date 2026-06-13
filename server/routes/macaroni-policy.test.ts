@@ -56,15 +56,19 @@ test("Macaroni Studio uses sandbox-safe inline feedback instead of browser modal
   const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
   const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
   const themeSource = readFileSync("public/creation-tools/macaroni/css/theme.css", "utf8");
+  const deploySource = studioSource.slice(
+    studioSource.indexOf("async function deploy()"),
+    studioSource.indexOf("async function sync()")
+  );
 
   assert.match(studioHtml, /id="studioNotice" class="notice" role="status" aria-live="polite" hidden/);
-  assert.match(studioHtml, /id="mainnetDeployConfirm" class="notice warn confirm-panel" hidden/);
-  assert.match(studioHtml, /id="btnConfirmMainnetDeploy"/);
-  assert.match(studioHtml, /id="btnCancelMainnetDeploy"/);
   assert.match(studioSource, /function notify\(msg, cls = "err", statusId\)/);
-  assert.match(studioSource, /function requestMainnetDeployConfirmation\(summary\)/);
-  assert.match(studioSource, /btnConfirmMainnetDeploy"\)\.addEventListener\("click", \(\) => resolveMainnetDeployConfirmation\(true\)\)/);
-  assert.match(studioSource, /Treasury is not a valid Tezos address[\s\S]{0,140}deployStatus/);
+  assert.match(studioSource, /function normalizeOptionalAddress\(value\)/);
+  assert.match(studioSource, /invalidAddressNotice\("Treasury", state\.drop\.treasuryAddr, "deployStatus"\)/);
+  assert.match(deploySource, /await MD\.assertOperationSafety\(\)/);
+  assert.match(deploySource, /tezos\.wallet\.originate\(\{ code, storage \}\)\.send\(\)/);
+  assert.doesNotMatch(deploySource, /state\.network\s*===\s*"mainnet"/);
+  assert.doesNotMatch(studioSource, /mainnetDeployConfirm|requestMainnetDeployConfirmation|btnConfirmMainnetDeploy|btnCancelMainnetDeploy/);
   assert.match(themeSource, /\.notice\.err/);
   assert.doesNotMatch(studioSource, /(^|[^\w.])alert\s*\(/);
   assert.doesNotMatch(studioSource, /(^|[^\w.])confirm\s*\(/);
@@ -141,14 +145,16 @@ test("Macaroni treats Shadownet as a first-class RPC and chain-id guarded networ
   assert.match(commonSource, /await assertRpcChainId\(true\)/);
   assert.match(commonSource, /preferredNetwork:\s*beaconPreferredNetwork\(\)/);
   assert.match(commonSource, /enableMetrics:\s*false/);
-  assert.match(commonSource, /const resetClient = !\(options && options\.resetClient === false\)/);
+  assert.match(commonSource, /function configureWalletClient\(w\)/);
+  assert.match(commonSource, /const resetClient = Boolean\(options && options\.resetClient\)/);
   assert.match(commonSource, /wallet = makeWallet\(appName,\s*{\s*resetClient:\s*false\s*}\)/);
   assert.match(commonSource, /function disableBeaconMetrics\(client\)/);
   assert.match(commonSource, /client\.sendMetrics = \(\) => \{\}/);
   assert.match(commonSource, /featuredWallets:\s*\["kukai",\s*"temple",\s*"umami"\]/);
-  assert.match(commonSource, /async function resetBeaconPickerState\(\)/);
+  assert.match(commonSource, /async function resetBeaconPickerState\(options\)/);
   assert.match(commonSource, /await resetBeaconPickerState\(\)/);
   assert.match(commonSource, /wallet\.client\.setActivePeer\(undefined\)/);
+  assert.match(commonSource, /if \(dropWallet\) wallet = null/);
   assert.match(commonSource, /sdk-secret-seed/);
   assert.match(commonSource, /matrix-selected-node/);
   assert.match(commonSource, /clearBeaconStorage\(\{\s*preserveIdentity:\s*true\s*\}\)/);

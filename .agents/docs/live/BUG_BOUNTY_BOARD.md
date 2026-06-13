@@ -82,7 +82,8 @@ Priority labels:
 | WTF-BB-250 | Verified | Codex IPFS Pinning organ full-send | 2026-06-13 | Desktop OS / IPFS pinning app registry | P1 | 11 | 8 | 2 | 5 | 0 | `ipfs-pinning` now has a canonical PageDef, desktop app surface, admin surface, inventory route fixture, behavior assertion, shared service routes, and PDS-backed pin registry docs; verified by focused policy/lexicon tests, TypeScript, creation-tools checks, inventory coverage, and full inventory E2E |
 | WTF-BB-251 | Verified | Codex Macaroni effective mint allowance pass | 2026-06-13 | Macaroni / generated mint page quantity guard | P1 | 12 | 7 | 3 | 5 | 0 | Generated Macaroni mint pages now clamp requested quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance before wallet signing; verified by `node --check public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, `npm run test:e2e:inventory:coverage`, GitHub Deploy to Hetzner run `27476940932`, Quality Gates run `27476940928`, live health commit `70337b0`, and live production `drop.js` asset curl confirming the effective quantity cap code |
 | WTF-BB-252 | Verified | Codex Map Lab public demo access follow-up | 2026-06-13 | Desktop OS / Map Lab public demo access | P1 | 11 | 8 | 2 | 4 | 1 | Anonymous production users can now reach the read-only wtfOS Map Lab demo because `/map-lab` is public in PageDef, shared browser-route metadata, and inventory route fixtures while edit/ingest actions stay session and role gated; verified by shared route policy tests, TypeScript, inventory coverage, focused MapLab Playwright, full inventory E2E, GitHub deploy/quality runs, live health, and anonymous production smoke |
-| WTF-BB-253 | Verified | Codex Macaroni sandbox-safe Studio feedback pass | 2026-06-13 | Macaroni / embedded Studio modal feedback | P1 | 12 | 7 | 3 | 5 | 0 | Embedded Macaroni Studio validation/deploy errors now render through sandbox-safe inline notices and an in-Studio mainnet confirmation panel instead of blocked native `alert`/`confirm` calls; verified locally, by focused sandbox repro, by GitHub deploy/quality runs, and on live `wtfos.app` commit `b5b2384` |
+| WTF-BB-253 | Verified | Codex Macaroni sandbox-safe Studio feedback pass | 2026-06-13 | Macaroni / embedded Studio modal feedback | P1 | 12 | 7 | 3 | 5 | 0 | Embedded Macaroni Studio validation/deploy errors now render through sandbox-safe inline notices instead of blocked native `alert`/`confirm` calls; verified locally, by focused sandbox repro, by GitHub deploy/quality runs, and on live `wtfos.app` commit `b5b2384`; mainnet-confirmation UI drift is superseded by WTF-BB-254 |
+| WTF-BB-254 | In Progress | Codex Macaroni mainnet deploy path repair | 2026-06-13 | Macaroni / mainnet deploy parity and Beacon lifecycle | P1 | 13 | 6 | 4 | 5 | 0 | Mainnet deploy drifted from the proven Shadownet origination path by adding a Studio-only confirmation branch, while reconnect can recreate Beacon clients and surface duplicate-client/no-transport warnings; current pass restores a shared deploy path where network/RPC is the only mainnet-vs-Shadownet difference, normalizes placeholder address fields, and reuses the page wallet client |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5342,7 +5343,7 @@ Priority labels:
   - A creator tool cannot hide the reason a value-bearing mainnet deployment did not proceed. Adding `allow-modals` would loosen the iframe sandbox; the safer fix is first-class in-page feedback that works inside the existing sandbox.
 - Fix:
   - Replace native Studio modal calls with an inline `studioNotice` live region and status-specific messages.
-  - Replace the mainnet deploy browser confirm with an inline mainnet deploy confirmation panel.
+  - Replace the mainnet deploy browser confirm so the sandbox no longer swallows the operation path; WTF-BB-254 later removes the temporary mainnet-specific panel to restore deploy parity with Shadownet.
   - Add source-policy coverage that Studio no longer calls native `alert()`/`confirm()`.
 - Verification:
   - `node --check public/creation-tools/macaroni/js/studio.js`
@@ -5352,7 +5353,26 @@ Priority labels:
   - GitHub Deploy to Hetzner run `27480955620` succeeded.
   - GitHub Quality Gates run `27480955606` succeeded.
   - Live health reported production commit `b5b2384`.
-  - Live `https://wtfos.app/creation-tools/macaroni/studio.html` exposes `studioNotice`, `mainnetDeployConfirm`, and `btnConfirmMainnetDeploy`; live `studio.js` exposes `notify`, `requestMainnetDeployConfirmation`, and contains no native `alert(`/`confirm(` calls.
+  - Live `https://wtfos.app/creation-tools/macaroni/studio.html` exposed `studioNotice`; live `studio.js` exposed `notify` and contained no native `alert(`/`confirm(` calls. The temporary mainnet confirmation panel is superseded by WTF-BB-254.
+
+### WTF-BB-254 - Macaroni mainnet deploy path drifted from Shadownet rehearsal path
+
+- Category: Macaroni / mainnet deploy parity and Beacon lifecycle
+- Status: In Progress
+- Owner/Session: Codex Macaroni mainnet deploy path repair
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - User report on 2026-06-13: after the sandbox feedback fix, live mainnet deploy surfaced `Treasury is not a valid Tezos address` after refresh/reconnect.
+  - Console also showed Beacon duplicate-client and `disconnect on reset failed Error: No transport available` warnings during reconnect.
+  - Code review showed Studio had a mainnet-only confirmation branch before origination even though the Shadownet deploy path is the tested rehearsal path and should differ only by network/RPC.
+- Why it matters:
+  - Mainnet and Shadownet deployment confidence depends on using one shared wallet/origination path. Extra mainnet-only UI changes the exact path being tested, while repeated Beacon client construction can cause reconnect instability.
+- Fix:
+  - Remove the mainnet-only confirmation panel and keep `deploy()` shared across networks with `MD.assertOperationSafety()` as the network/RPC guard.
+  - Normalize optional royalty/treasury placeholder address values to blank so the connected wallet default works after refresh.
+  - Reuse the page Beacon wallet client on reconnect instead of constructing a new client for every Connect click.
+- Verification:
+  - Pending local and live verification.
 
 ## Backlog Intake Template
 

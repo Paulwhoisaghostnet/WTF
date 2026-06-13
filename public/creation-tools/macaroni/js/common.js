@@ -76,7 +76,10 @@ const MD = (() => {
     netKey = networkKey;
     rpcUrl = customRpc || NETWORKS[networkKey].rpc;
     tezos = new TZ.TezosToolkit(rpcUrl);
-    if (wallet) tezos.setWalletProvider(wallet);
+    if (wallet) {
+      configureWalletClient(wallet);
+      tezos.setWalletProvider(wallet);
+    }
     return tezos;
   }
 
@@ -165,8 +168,20 @@ const MD = (() => {
     client.sendMetrics = () => {};
   }
 
+  function configureWalletClient(w) {
+    const network = beaconNetworkSpec();
+    // Beacon's DAppClient is a singleton: after a network switch the new
+    // constructor options can be ignored, so force the client network to
+    // match before any permission or operation request (kiln pattern).
+    w.client.network = network;
+    w.client.preferredNetwork = beaconPreferredNetwork();
+    w.client.featuredWallets = ["kukai", "temple", "umami"];
+    disableBeaconMetrics(w.client);
+    return w;
+  }
+
   function makeWallet(appName, options) {
-    const resetClient = !(options && options.resetClient === false);
+    const resetClient = Boolean(options && options.resetClient);
     const network = beaconNetworkSpec();
     const w = new TZ.BeaconWallet({
       name: appName || "Macaroni",
@@ -176,14 +191,7 @@ const MD = (() => {
       resetClient,
       featuredWallets: ["kukai", "temple", "umami"],
     });
-    // Beacon's DAppClient is a singleton: after a network switch the new
-    // constructor options can be ignored, so force the client network to
-    // match before any permission or operation request (kiln pattern).
-    w.client.network = network;
-    w.client.preferredNetwork = beaconPreferredNetwork();
-    w.client.featuredWallets = ["kukai", "temple", "umami"];
-    disableBeaconMetrics(w.client);
-    return w;
+    return configureWalletClient(w);
   }
 
   // A pairing left over from a previous session can be expired; Beacon then
@@ -212,7 +220,8 @@ const MD = (() => {
     }
   }
 
-  async function resetBeaconPickerState() {
+  async function resetBeaconPickerState(options) {
+    const dropWallet = Boolean(options && options.dropWallet);
     if (wallet) {
       try {
         if (typeof wallet.clearActiveAccount === "function") await wallet.clearActiveAccount();
@@ -233,8 +242,8 @@ const MD = (() => {
       }
     }
     clearBeaconStorage({ preserveIdentity: true });
-    wallet = null;
     activeAccount = null;
+    if (dropWallet) wallet = null;
   }
 
   async function connectWallet(appName) {
@@ -244,7 +253,8 @@ const MD = (() => {
       await assertRpcChainId();
       const doConnect = async () => {
         await resetBeaconPickerState();
-        wallet = makeWallet(appName);
+        if (!wallet) wallet = makeWallet(appName, { resetClient: false });
+        else configureWalletClient(wallet);
         tezos.setWalletProvider(wallet);
         // Network is fixed on the client (constructor + realignment above);
         // current Beacon SDKs reject a `network` property here.
@@ -258,7 +268,7 @@ const MD = (() => {
       } catch (e) {
         if (!/expired/i.test(e && e.message ? e.message : String(e))) throw e;
         clearBeaconStorage({ preserveIdentity: true });
-        wallet = null;
+        activeAccount = null;
         return doConnect();
       }
     })();
@@ -270,7 +280,7 @@ const MD = (() => {
   }
 
   async function disconnectWallet() {
-    await resetBeaconPickerState();
+    await resetBeaconPickerState({ dropWallet: true });
     clearWalletSession();
   }
 
@@ -280,6 +290,9 @@ const MD = (() => {
     if (!stored || stored.network !== netKey || !stored.address) return null;
     if (!wallet) {
       wallet = makeWallet(appName, { resetClient: false });
+      tezos.setWalletProvider(wallet);
+    } else {
+      configureWalletClient(wallet);
       tezos.setWalletProvider(wallet);
     }
     let acc = null;

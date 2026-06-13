@@ -40,28 +40,6 @@ function clearNotice() {
   }
 }
 
-let mainnetDeployConfirmResolve = null;
-function resolveMainnetDeployConfirmation(ok) {
-  const panel = $("mainnetDeployConfirm");
-  if (panel) panel.hidden = true;
-  const resolve = mainnetDeployConfirmResolve;
-  mainnetDeployConfirmResolve = null;
-  if (resolve) resolve(ok);
-}
-
-function requestMainnetDeployConfirmation(summary) {
-  return new Promise((resolve) => {
-    mainnetDeployConfirmResolve = resolve;
-    $("mainnetDeploySummary").textContent =
-      summary +
-      "\n\nThe FIRST MINT permanently locks tokens, stages, allowlists and royalties." +
-      "\nRehearse the full flow on Shadownet first if you haven't.";
-    $("mainnetDeployConfirm").hidden = false;
-    $("mainnetDeployConfirm").scrollIntoView({ block: "center", behavior: "smooth" });
-    setStatus("deployStatus", "confirm mainnet deploy", "warn");
-  });
-}
-
 const STORE_KEY = "macaroni.studio.v1";
 const ALLOWED_THEME_NAMES = new Set(["dark", "gallery", "paper", "neon"]);
 const ALLOWED_FONT_STACKS = new Set([
@@ -76,6 +54,24 @@ const OBJKT_ARTIFACT_MAX_BYTES = 250 * MB;
 const OBJKT_COLLECTION_IMAGE_MAX_BYTES = 1 * MB;
 const OBJKT_COLLECTION_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png"]);
 const OBJKT_COLLECTION_IMAGE_LABEL = "1 MB, square JPG/PNG";
+
+function normalizeOptionalAddress(value) {
+  const text = String(value || "").trim();
+  const compact = text.replace(/\s+/g, "");
+  if (!compact) return "";
+  if (/^(tz1|tz2|tz3|tz4|KT1)(?:…|\.{3})?$/i.test(compact)) return "";
+  return text;
+}
+
+function invalidAddressNotice(label, value, statusId) {
+  const shown = value ? ` "${value}"` : "";
+  return notify(
+    `${label}${shown} is not a valid Tezos address (tz1…/tz2…/tz3…/tz4…/KT1…). ` +
+      "Clear the field to use your connected wallet.",
+    "err",
+    statusId
+  );
+}
 
 const state = {
   network: "shadownet",
@@ -253,6 +249,8 @@ function load() {
     // Drafts saved before a network was retired (e.g. ghostnet) fall back
     // to the current testnet instead of crashing the toolkit setup.
     if (!MD.getNetworks()[state.network]) state.network = "shadownet";
+    state.drop.royaltyAddr = normalizeOptionalAddress(state.drop.royaltyAddr);
+    state.drop.treasuryAddr = normalizeOptionalAddress(state.drop.treasuryAddr);
     if (!state.pin || typeof state.pin !== "object") state.pin = { kind: "wtfos", jwt: "", url: "", gateway: "" };
     if (!state.pin.gateway) state.pin.gateway = MD.DEFAULT_GATEWAY;
   } catch (e) {
@@ -472,7 +470,7 @@ async function pinAll() {
   // Royalties are baked into the pinned metadata — a missing receiver here
   // would silently ship 0% royalties forever.
   if (state.drop.royaltyAddr && !MD.isAddress(state.drop.royaltyAddr))
-    return notify("Royalty receiver is not a valid Tezos address (tz1…/tz2…/tz3…/tz4…/KT1…).", "err", "pinStatus");
+    return invalidAddressNotice("Royalty receiver", state.drop.royaltyAddr, "pinStatus");
   if (Number(state.drop.royaltyPct) > 0 && !state.drop.royaltyAddr && !MD.getAccount())
     return notify(
       `Royalties are set to ${state.drop.royaltyPct}% but there is no receiver: ` +
@@ -677,14 +675,13 @@ async function deploy() {
   try {
     readForm();
     clearNotice();
-    resolveMainnetDeployConfirmation(false);
     if (!MD.getAccount()) return notify("Connect your wallet first.", "err", "deployStatus");
     if (!state.drop.title || !state.drop.description) return notify("Title and description are required.", "err", "deployStatus");
     if (!state.tokens.length) return notify("Upload tokens first.", "err", "deployStatus");
     if (state.tokens.some((t) => !t.metadataCid)) return notify("Pin all media + metadata first (step 4).", "err", "deployStatus");
     if (!state.stages.length) return notify("Configure at least one sale stage (step 5).", "err", "deployStatus");
     if (state.drop.treasuryAddr && !MD.isAddress(state.drop.treasuryAddr))
-      return notify("Treasury is not a valid Tezos address (tz1…/tz2…/tz3…/tz4…/KT1…).", "err", "deployStatus");
+      return invalidAddressNotice("Treasury", state.drop.treasuryAddr, "deployStatus");
     const delayed = state.drop.revealMode === "delayed";
     const delayDays = Number(state.drop.revealDelayDays);
     if (delayed && (!Number.isFinite(delayDays) || delayDays < 0 || delayDays > 30))
@@ -697,22 +694,6 @@ async function deploy() {
     // network before anything signs.
     $("deployStatus").textContent = "verifying network…";
     await MD.assertOperationSafety();
-
-    if (state.network === "mainnet") {
-      const treasury = state.drop.treasuryAddr || MD.getAccount();
-      const summary =
-        `Network:   MAINNET (real tez)\n` +
-        `Tokens:    ${state.tokens.length}\n` +
-        `Stages:    ${stages.map((s) => `${MD.fmtTez(s.value.price)} @ ${s.value.start}`).join(" | ")}\n` +
-        `Royalties: ${state.drop.royaltyPct}% → ${state.drop.royaltyAddr || MD.getAccount()}\n` +
-        `Treasury:  ${treasury}\n` +
-        `Reveal:    ${delayed ? `delayed (auto-reveal opens after ${delayDays} day(s))` : "instant at mint"}`;
-      if (!(await requestMainnetDeployConfirmation(summary))) {
-        $("deployStatus").textContent = "cancelled";
-        return;
-      }
-      clearNotice();
-    }
 
     const btn = $("btnDeploy");
     btn.disabled = true;
@@ -1141,8 +1122,10 @@ function readForm() {
   state.drop.symbol = $("dropSymbol").value.trim();
   state.drop.description = $("dropDesc").value.trim();
   state.drop.royaltyPct = Number($("royaltyPct").value);
-  state.drop.royaltyAddr = $("royaltyAddr").value.trim();
-  state.drop.treasuryAddr = $("treasuryAddr").value.trim();
+  state.drop.royaltyAddr = normalizeOptionalAddress($("royaltyAddr").value);
+  state.drop.treasuryAddr = normalizeOptionalAddress($("treasuryAddr").value);
+  if ($("royaltyAddr").value.trim() !== state.drop.royaltyAddr) $("royaltyAddr").value = state.drop.royaltyAddr;
+  if ($("treasuryAddr").value.trim() !== state.drop.treasuryAddr) $("treasuryAddr").value = state.drop.treasuryAddr;
   state.drop.revealMode = $("revealMode").value;
   state.drop.revealDelayDays = Number($("revealDelay").value || 7);
   const pinKind = $("pinKind").value;
@@ -1168,6 +1151,8 @@ function toggleRevealFields() {
 
 function fillForm() {
   if (!["wtfos", "pinata", "node"].includes(state.pin.kind)) state.pin.kind = fallbackPinKind();
+  state.drop.royaltyAddr = normalizeOptionalAddress(state.drop.royaltyAddr);
+  state.drop.treasuryAddr = normalizeOptionalAddress(state.drop.treasuryAddr);
   $("network").value = state.network;
   $("rpc").value = state.rpc;
   $("dropTitle").value = state.drop.title;
@@ -1430,8 +1415,6 @@ $("contractAddr").addEventListener("change", () => {
     save();
   }
 });
-$("btnConfirmMainnetDeploy").addEventListener("click", () => resolveMainnetDeployConfirmation(true));
-$("btnCancelMainnetDeploy").addEventListener("click", () => resolveMainnetDeployConfirmation(false));
 $("btnDeploy").addEventListener("click", deploy);
 $("btnSync").addEventListener("click", sync);
 $("btnReveal").addEventListener("click", revealMinted);

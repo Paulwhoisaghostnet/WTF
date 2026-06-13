@@ -1,3 +1,13 @@
+## 2026-06-13 - Mainnet and Shadownet deploy paths must not fork UI logic
+
+**What happened**: After fixing blocked sandbox modals, Macaroni's mainnet deploy path carried a custom in-Studio confirmation branch while the Shadownet deploy path used the proven direct origination flow. A later live attempt exposed a treasury validation error and Beacon reconnect warnings, making it clear the mainnet path had drifted from the tested rehearsal path instead of only swapping network/RPC configuration.
+
+**Why it mattered**: Shadownet is only useful as a rehearsal if the mainnet flow uses the same deploy algorithm, wallet lifecycle, validation order, and chain guard. Extra mainnet-only UI can hide the real bug surface and creates confidence in a path that was not the one rehearsed.
+
+**Rule**: For Macaroni deploy/sync signing, keep mainnet and Shadownet on one shared operation path. The selected network/RPC and chain-id guard are the differences; wallet client lifecycle, optional treasury/royalty defaults, validation, and origination code must stay shared and policy-tested.
+
+---
+
 ## 2026-06-13 - Embedded creation tools cannot depend on browser modals
 
 **What happened**: Live Macaroni Studio on `wtfos.app` let a trusted creator complete the mainnet setup flow until Deploy Contract, then the click appeared to do nothing. The browser console showed `Ignored call to 'alert()'. The document is sandboxed, and the 'allow-modals' keyword is not set` because Studio was running inside `/tools/macaroni`'s sandboxed iframe and deploy validation only surfaced the error through `alert()`.
