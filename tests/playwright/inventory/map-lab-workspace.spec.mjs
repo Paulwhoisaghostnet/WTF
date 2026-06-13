@@ -192,4 +192,38 @@ test.describe("Map Lab workspace", () => {
     await expect(runSummary).toHaveText("Last run activated 24 routes across 25 connected nodes.");
     await expect(page.locator("[data-map-lab-route-list-item='demo-wire-1']")).toContainText("active");
   });
+
+  test("allows anonymous users to open and run the read-only wtfOS demo without edit access", async ({
+    page,
+    request,
+  }) => {
+    await setHarnessRole(request, "anonymous");
+    await page.addInitScript(() => {
+      window.localStorage.removeItem("wtfos.map-lab.repo-draft.v1");
+      window.localStorage.removeItem("wtf-os.window-session.v1");
+    });
+
+    await page.goto("/map-lab", { waitUntil: "domcontentloaded" });
+
+    const shell = page.locator("[data-map-lab-shell='true']");
+    const viewport = page.locator("[data-map-lab-viewport='true']");
+    const runSummary = page.locator("[data-map-lab-run-summary='true']");
+
+    await expect(shell).toBeVisible();
+    await expect(viewport).toBeVisible();
+    await expect(page.locator("[data-map-lab-template='gradio-space']")).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Run workflow map" })).toBeDisabled();
+
+    await page.locator("[data-map-lab-open-demo='true']").click();
+    await expect(shell).toHaveAttribute("data-map-lab-mode", "wtfos-demo");
+    await expect(shell).toHaveAttribute("data-map-lab-readonly", "true");
+    await expect(page.getByText("25 nodes, 26 routes").first()).toBeVisible();
+    await expect(page.locator("[data-map-lab-node='true']")).toHaveCount(25);
+    await expect(page.locator("[data-map-lab-template='gradio-space']")).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Save repo draft" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Connect route" })).toBeDisabled();
+
+    await page.getByRole("button", { name: "Run workflow map" }).click();
+    await expect(runSummary).toHaveText("Last run activated 24 routes across 25 connected nodes.");
+  });
 });

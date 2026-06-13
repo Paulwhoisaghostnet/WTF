@@ -28,6 +28,16 @@
 
 ---
 
+## 2026-06-13 - Public demos need anonymous production route smoke
+
+**What happened**: The Map Lab demo was correctly locked read-only inside the component, but `/map-lab` still had `auth: true` route metadata. Authenticated harness tests passed, while an anonymous production smoke on `https://wtfos.app/map-lab` could not reach `[data-map-lab-shell]`.
+
+**Why it mattered**: "Any user can open" is an access contract, not only a component permissions contract. A demo can be safely read-only and still be invisible to public users if the route or inventory fixture remains auth-gated.
+
+**Rule**: When a route adds a public read-only demo, update PageDef auth and inventory route auth in the same pass, then run an anonymous production smoke against the live URL after deploy.
+
+---
+
 ## 2026-06-13 - Macaroni media limits must align UI, server defaults, and live env
 
 **What happened**: Macaroni's Studio copy and server fallback advertised one artifact limit while production could still allow a larger wtfOS Pinata upload through `MACARONI_IPFS_MAX_BYTES`. The collection cover path also allowed formats and sizes that do not match OBJKT collection logo expectations, even though Macaroni uses that asset for collection metadata and non-image token previews.

@@ -61,6 +61,16 @@ test("evaluateBrowserRouteAccess allows public routes anonymously", () => {
   assert.equal(state.allowed, true);
 });
 
+test("evaluateBrowserRouteAccess allows the Map Lab read-only demo route anonymously", () => {
+  const state = evaluateBrowserRouteAccess("/map-lab", BROWSER_ROUTE_META, {
+    role: null,
+    accessSurfaceIds: [],
+    apps: {},
+    findSurfaceForPath: findSurface,
+  });
+  assert.equal(state.allowed, true);
+});
+
 test("evaluateBrowserRouteAccess allows anonymous WTF LIVE room links only on the public room route", () => {
   const publicRoom = evaluateBrowserRouteAccess("/live/r/wtf-live", BROWSER_ROUTE_META, {
     role: null,
