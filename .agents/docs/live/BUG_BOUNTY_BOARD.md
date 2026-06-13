@@ -83,7 +83,7 @@ Priority labels:
 | WTF-BB-251 | Verified | Codex Macaroni effective mint allowance pass | 2026-06-13 | Macaroni / generated mint page quantity guard | P1 | 12 | 7 | 3 | 5 | 0 | Generated Macaroni mint pages now clamp requested quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance before wallet signing; verified by `node --check public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, `npm run test:e2e:inventory:coverage`, GitHub Deploy to Hetzner run `27476940932`, Quality Gates run `27476940928`, live health commit `70337b0`, and live production `drop.js` asset curl confirming the effective quantity cap code |
 | WTF-BB-252 | Verified | Codex Map Lab public demo access follow-up | 2026-06-13 | Desktop OS / Map Lab public demo access | P1 | 11 | 8 | 2 | 4 | 1 | Anonymous production users can now reach the read-only wtfOS Map Lab demo because `/map-lab` is public in PageDef, shared browser-route metadata, and inventory route fixtures while edit/ingest actions stay session and role gated; verified by shared route policy tests, TypeScript, inventory coverage, focused MapLab Playwright, full inventory E2E, GitHub deploy/quality runs, live health, and anonymous production smoke |
 | WTF-BB-253 | Verified | Codex Macaroni sandbox-safe Studio feedback pass | 2026-06-13 | Macaroni / embedded Studio modal feedback | P1 | 12 | 7 | 3 | 5 | 0 | Embedded Macaroni Studio validation/deploy errors now render through sandbox-safe inline notices instead of blocked native `alert`/`confirm` calls; verified locally, by focused sandbox repro, by GitHub deploy/quality runs, and on live `wtfos.app` commit `b5b2384`; mainnet-confirmation UI drift is superseded by WTF-BB-254 |
-| WTF-BB-254 | In Progress | Codex Macaroni mainnet deploy path repair | 2026-06-13 | Macaroni / mainnet deploy parity and Beacon lifecycle | P1 | 13 | 6 | 4 | 5 | 0 | Mainnet deploy drifted from the proven Shadownet origination path by adding a Studio-only confirmation branch, while reconnect can recreate Beacon clients and surface duplicate-client/no-transport warnings; current pass restores a shared deploy path where network/RPC is the only mainnet-vs-Shadownet difference, normalizes placeholder address fields, and reuses the page wallet client |
+| WTF-BB-254 | Verified | Codex Macaroni mainnet deploy path repair | 2026-06-13 | Macaroni / mainnet deploy parity and Beacon lifecycle | P1 | 13 | 6 | 4 | 5 | 0 | Mainnet deploy now shares the same chain-guarded origination path as Shadownet, optional treasury/royalty placeholder values clear to connected-wallet defaults, and explicit reconnect reuses the page Beacon client instead of constructing a duplicate; verified locally, by GitHub deploy/quality runs, and on live `wtfos.app` commit `4c84b5e` |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5358,7 +5358,7 @@ Priority labels:
 ### WTF-BB-254 - Macaroni mainnet deploy path drifted from Shadownet rehearsal path
 
 - Category: Macaroni / mainnet deploy parity and Beacon lifecycle
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex Macaroni mainnet deploy path repair
 - Score: C4 + F5 + S0 + P1(4) = 13
 - Evidence:
@@ -5372,7 +5372,15 @@ Priority labels:
   - Normalize optional royalty/treasury placeholder address values to blank so the connected wallet default works after refresh.
   - Reuse the page Beacon wallet client on reconnect instead of constructing a new client for every Connect click.
 - Verification:
-  - Pending local and live verification.
+  - `node --check public/creation-tools/macaroni/js/studio.js public/creation-tools/macaroni/js/common.js`
+  - `npx tsx --test server/routes/macaroni-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - GitHub Deploy to Hetzner run `27481859874` succeeded.
+  - GitHub Quality Gates run `27481859857` succeeded.
+  - Live health reported production commit `4c84b5e`.
+  - Live `studio.html` exposes `studioNotice` and no `mainnetDeployConfirm` / `btnConfirmMainnetDeploy` controls.
+  - Live `studio.js` exposes `normalizeOptionalAddress`, `invalidAddressNotice`, and the shared `tezos.wallet.originate({ code, storage }).send()` deploy path, with no `mainnetDeploy*`, native `alert(`, or native `confirm(` runtime calls.
+  - Live `common.js` exposes `configureWalletClient`, `const resetClient = Boolean(options && options.resetClient)`, reconnect reuse of `makeWallet(... resetClient: false)`, and wallet dropping only on explicit disconnect.
 
 ## Backlog Intake Template
 
