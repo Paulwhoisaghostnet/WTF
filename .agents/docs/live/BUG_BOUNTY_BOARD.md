@@ -77,6 +77,8 @@ Priority labels:
 | WTF-BB-245 | Verified | Codex Macaroni CSS injection hotfix | 2026-06-12 | Macaroni / generated drop website stored CSS safety | P0 | 17 | 1 | 3 | 5 | 4 | Macaroni generated pages now sanitize published theme config server-side and client-side, apply only known themes, hex accent colors, and known font stacks, remove arbitrary stored `customCss`, and regression-test `</style>`, `url(javascript:)`, and malformed custom-property payloads; verified by `node --check public/creation-tools/macaroni/js/studio.js public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts server/features/macaroni/publish.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run check`, `npm run build`, and `npm run test:e2e:macaroni:shadownet` |
 | WTF-BB-246 | Verified | Codex Macaroni generated page polish | 2026-06-13 | Macaroni / generated drop website connect and defaults | P1 | 11 | 8 | 2 | 4 | 1 | Generated Macaroni drop pages now coalesce duplicate connect clicks at the shared wallet helper and page button state, expose baseline landmarks/status/progress/quantity accessibility semantics, and default exported IPFS gateway config to Fileship; verified by `node --check public/creation-tools/macaroni/js/common.js public/creation-tools/macaroni/js/drop.js public/creation-tools/macaroni/js/studio.js`, `npx tsx --test server/routes/macaroni-policy.test.ts server/features/macaroni/publish.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:macaroni:shadownet`, and `npm run test:e2e:inventory` |
 | WTF-BB-247 | In Progress | Codex Macaroni OBJKT media limit pass | 2026-06-13 | Macaroni / OBJKT media limits | P1 | 11 | 8 | 2 | 5 | 0 | Macaroni Studio/server media caps drifted from OBJKT expectations and production env could allow 500 MB wtfOS Pinata files while the UI advertised 200 MB; current pass aligns displayed and enforced artifact limits at 250 MB and restricts collection logo/cover uploads to OBJKT-compatible square JPG/PNG ≤1 MB |
+| WTF-BB-248 | Verified | Codex Map Lab workspace UX repair | 2026-06-13 | Desktop OS / Map Lab workspace UX | P1 | 12 | 7 | 3 | 5 | 0 | Map Lab now uses a responsive app-window workspace, a large document-space board, internal scroll/pan, zoom/fit/reset controls, direct unlocked-node dragging, keyboard/button nudging, locked-node protection, and inventory-owned regression coverage; verified by TypeScript, inventory coverage, focused Map Lab Playwright, full inventory E2E, and visual scroll/zoom metrics |
+| WTF-BB-249 | Verified | Codex Map Lab workflow graph and demo pass | 2026-06-13 | Desktop OS / Map Lab workflow designer | P1 | 13 | 6 | 4 | 5 | 0 | Map Lab now has typed workflow node templates, input/output ports, compatible/incompatible port feedback, Escape-to-cancel routing, keyboard route deletion, snap-to-grid movement, routed pipeline inspection/editing, graph run activity, non-overlapping template placement, overview recentering, narrow-width internal canvas scrolling, and a read-only wtfOS demo map; verified by `npm run check -- --pretty false`, `npm run build && npx playwright test tests/playwright/inventory/map-lab-workspace.spec.mjs`, `npm run test:e2e:inventory:coverage`, `npm run test:e2e:inventory`, and visual desktop/narrow metrics |
 | WTF-BB-250 | Verified | Codex IPFS Pinning organ full-send | 2026-06-13 | Desktop OS / IPFS pinning app registry | P1 | 11 | 8 | 2 | 5 | 0 | `ipfs-pinning` now has a canonical PageDef, desktop app surface, admin surface, inventory route fixture, behavior assertion, shared service routes, and PDS-backed pin registry docs; verified by focused policy/lexicon tests, TypeScript, creation-tools checks, inventory coverage, and full inventory E2E |
 | WTF-BB-251 | Verified | Codex Macaroni effective mint allowance pass | 2026-06-13 | Macaroni / generated mint page quantity guard | P1 | 12 | 7 | 3 | 5 | 0 | Generated Macaroni mint pages now clamp requested quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance before wallet signing; verified by `node --check public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, `npm run test:e2e:inventory:coverage`, GitHub Deploy to Hetzner run `27476940932`, Quality Gates run `27476940928`, live health commit `70337b0`, and live production `drop.js` asset curl confirming the effective quantity cap code |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
@@ -292,6 +294,30 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-248 - Map Lab workspace is fixed, non-draggable, and missing viewport controls
+
+- Category: Desktop OS / Map Lab workspace UX
+- Status: Verified
+- Owner/Session: Codex Map Lab workspace UX repair
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - The Map Lab route used a shell width capped at `min(1180px, calc(100vw - 44px))`, so maximizing the WTF OS app did not make the working canvas meaningfully adapt to the window.
+  - The canvas was `overflow: hidden` with a fixed minimum height and no viewport controls, leaving larger maps unreachable except by layout buttons.
+  - Node cards were rendered as absolute-positioned buttons with a grab cursor but no pointer/drag implementation, so users could select nodes but could not directly move them.
+- Why it matters:
+  - Map Lab is an interactive workflow editor. Without direct node movement plus scroll and zoom, users cannot arrange real roadmaps or system maps, and the app feels broken even though the route renders.
+- Correction:
+  - Replaced the fixed canvas with a responsive three-pane app workspace and a larger document-space board inside a scrollable viewport.
+  - Added zoom out/in, fit map, reset view, background pan, direct pointer dragging for unlocked nodes, keyboard/button nudging, and locked-node movement protection.
+  - Added typed ports, route inspection, run preview, and a locked read-only wtfOS demo graph so users can see the system mapping capability immediately.
+  - Registered `map_lab.demo.opened`, `map_lab.node.moved`, `map_lab.route.created`, `map_lab.pipeline.ran`, and `map_lab.viewport.changed`, added the `map-lab.workspace-navigation-and-node-drag` behavior assertion, and added `tests/playwright/inventory/map-lab-workspace.spec.mjs`.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run build && npx playwright test tests/playwright/inventory/map-lab-workspace.spec.mjs`.
+  - Passed final `npm run test:e2e:inventory` with 310/310 tests green.
+  - Visual Playwright smoke confirmed the demo opens read-only at 62% zoom, renders 25 nodes, disables structural edits, runs 24 active routes, and keeps desktop/narrow viewports internally scrollable.
 
 ### WTF-BB-226 - Roger Radio live channel seed created an empty playlist in production
 

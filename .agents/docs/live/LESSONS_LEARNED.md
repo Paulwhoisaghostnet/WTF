@@ -8,6 +8,26 @@
 
 ---
 
+## 2026-06-13 - Workflow designers need graph primitives plus bounded narrow viewports
+
+**What happened**: Map Lab's canvas was usable after the workspace repair, but it still behaved like a diagramming board: nodes had no typed ports, routes were not first-class inspectable pipeline objects, and a narrow stacked layout allowed the canvas frame to expand to full board height. That made the product look closer to movable labels than a Hugging Face-style workflow designer, and on mobile-width windows the canvas quietly turned back into page scroll.
+
+**Why it mattered**: A workflow designer is defined by the operations users can perform: choose typed node templates, connect output ports to input ports, inspect/edit routes, see run state, and navigate a large graph without losing the app-window viewport. Selector tests can prove nodes exist while missing the difference between a living graph and a static map.
+
+**Rule**: For node/workflow surfaces, model nodes, ports, routes, route status, and run/inspection state explicitly. Visual smoke must include a narrow viewport metric proving the canvas remains an internally scrollable workspace, not a full-height board pushed into page scroll.
+
+---
+
+## 2026-06-13 - Virtual canvases must opt out of app-surface max-width caps
+
+**What happened**: Map Lab's first workspace repair added a larger 1800px document-space board inside a scrollable viewport, but visual smoke showed the horizontal scroll range was still only slightly wider than the viewport. The global `[data-wtf-app-surface]` rule applies `max-width: 100%` to nested `div`s, so the board wrapper kept its height but had its width clamped until the Map Lab board explicitly set `max-width: none` and matching `min-width`.
+
+**Why it mattered**: Selector-based tests proved scrolling existed, but a constrained board still would have made large maps feel cramped and would have undercut the user's core complaint about the canvas not adapting to maximized windows. Visual metrics caught the difference between "has a scrollbar" and "has a real map-sized workspace."
+
+**Rule**: Any virtual canvas, timeline, whiteboard, map, or board inside an `AppWindow` must explicitly opt its document-space layer out of app-surface `max-width: 100%` caps. Browser verification should assert the board's scroll dimensions are materially larger than the viewport after default and maximized layouts, not merely that overflow is enabled.
+
+---
+
 ## 2026-06-13 - Macaroni media limits must align UI, server defaults, and live env
 
 **What happened**: Macaroni's Studio copy and server fallback advertised one artifact limit while production could still allow a larger wtfOS Pinata upload through `MACARONI_IPFS_MAX_BYTES`. The collection cover path also allowed formats and sizes that do not match OBJKT collection logo expectations, even though Macaroni uses that asset for collection metadata and non-image token previews.

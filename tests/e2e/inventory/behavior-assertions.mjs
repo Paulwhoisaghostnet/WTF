@@ -145,6 +145,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "Shared page-access policy denies disabled app routes from the same app gate map used by launcher models, and app-registry backfill seeds every canonical app key including WTF Domains while leaving ungated OS/admin routes reachable.",
   },
   {
+    id: "map-lab.workspace-navigation-and-node-drag",
+    domain: "Desktop OS, Navigation, and Personal Environment",
+    ownerSurfaceIds: ["map-lab"],
+    ownerSpec: "tests/playwright/inventory/map-lab-workspace.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/map-lab-workspace.spec.mjs",
+    userVisibleAssertion:
+      "Map Lab opens as a resizable WTF OS app workspace whose center canvas expands when the window is maximized, exposes internal scroll/pan plus zoom/fit/reset/overview controls, lets a signed-in user drag unlocked nodes without moving locked nodes, supports workflow-designer interactions through typed node templates, compatible port feedback, Escape route-cancel, keyboard route deletion, route inspection, snap-to-grid movement, and graph-run feedback, and exposes a read-only wtfOS demo map that any user can inspect/run without editing canonical nodes or routes.",
+    durableSideEffectAssertion:
+      "The inventory harness verifies the dragged node's persisted document-space position changes in the rendered map, the locked seed node remains fixed, the zoom readout changes through the viewport controls, a template node exposes compatible input feedback, pending route creation can be canceled, a selected route can be keyboard-deleted and recreated through output/input ports, snap-to-grid movement lands on the grid, the read-only wtfOS demo disables structural controls and blocks route creation/drag edits while still allowing run preview, and the graph run summary updates while Map Lab movement, route creation, demo open, pipeline run, and viewport handles stay registered in the inventory spine.",
+  },
+  {
     id: "auth.time-out-app-lockdown",
     domain: "Entry, Authentication, and Account Identity",
     ownerSurfaceIds: ["admin-panel", "command-palette", "desktop-icons"],
