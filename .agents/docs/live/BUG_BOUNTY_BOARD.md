@@ -82,6 +82,7 @@ Priority labels:
 | WTF-BB-250 | Verified | Codex IPFS Pinning organ full-send | 2026-06-13 | Desktop OS / IPFS pinning app registry | P1 | 11 | 8 | 2 | 5 | 0 | `ipfs-pinning` now has a canonical PageDef, desktop app surface, admin surface, inventory route fixture, behavior assertion, shared service routes, and PDS-backed pin registry docs; verified by focused policy/lexicon tests, TypeScript, creation-tools checks, inventory coverage, and full inventory E2E |
 | WTF-BB-251 | Verified | Codex Macaroni effective mint allowance pass | 2026-06-13 | Macaroni / generated mint page quantity guard | P1 | 12 | 7 | 3 | 5 | 0 | Generated Macaroni mint pages now clamp requested quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance before wallet signing; verified by `node --check public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, `npm run test:e2e:inventory:coverage`, GitHub Deploy to Hetzner run `27476940932`, Quality Gates run `27476940928`, live health commit `70337b0`, and live production `drop.js` asset curl confirming the effective quantity cap code |
 | WTF-BB-252 | Verified | Codex Map Lab public demo access follow-up | 2026-06-13 | Desktop OS / Map Lab public demo access | P1 | 11 | 8 | 2 | 4 | 1 | Anonymous production users can now reach the read-only wtfOS Map Lab demo because `/map-lab` is public in PageDef, shared browser-route metadata, and inventory route fixtures while edit/ingest actions stay session and role gated; verified by shared route policy tests, TypeScript, inventory coverage, focused MapLab Playwright, full inventory E2E, GitHub deploy/quality runs, live health, and anonymous production smoke |
+| WTF-BB-253 | In Progress | Codex Macaroni sandbox-safe Studio feedback pass | 2026-06-13 | Macaroni / embedded Studio modal feedback | P1 | 12 | 7 | 3 | 5 | 0 | Embedded Macaroni Studio validation/deploy errors can silently disappear because `/tools/macaroni` runs in a sandboxed iframe without `allow-modals`; current pass replaces native `alert`/`confirm` calls with inline status/confirmation UI |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5326,6 +5327,25 @@ Priority labels:
   - GitHub Quality Gates run `27476940928` passed.
   - Live `https://wtfos.app/api/health` reported `commitRef: 70337b0`.
   - Live `https://wtfos.app/creation-tools/macaroni/js/drop.js` contains `MINT_QTY_UI_CAP`, `effectiveQtyMax`, `collectionRemaining`, `walletAllowancePending`, and the over-limit message path.
+
+### WTF-BB-253 - Embedded Macaroni Studio silently drops modal validation/deploy errors
+
+- Category: Macaroni / embedded Studio modal feedback
+- Status: In Progress
+- Owner/Session: Codex Macaroni sandbox-safe Studio feedback pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report on 2026-06-13: the `paulwhoisaghost` account could complete the mainnet Macaroni flow until Deploy Contract, but the button appeared to do nothing.
+  - Browser console showed repeated `Ignored call to 'alert()'. The document is sandboxed, and the 'allow-modals' keyword is not set` from `studio.js:637`.
+  - Studio used native `alert()` for deploy validation/error paths and native `confirm()` for mainnet deployment, but `/tools/macaroni` intentionally embeds Studio in a sandboxed iframe.
+- Why it matters:
+  - A creator tool cannot hide the reason a value-bearing mainnet deployment did not proceed. Adding `allow-modals` would loosen the iframe sandbox; the safer fix is first-class in-page feedback that works inside the existing sandbox.
+- Fix:
+  - Replace native Studio modal calls with an inline `studioNotice` live region and status-specific messages.
+  - Replace the mainnet deploy browser confirm with an inline mainnet deploy confirmation panel.
+  - Add source-policy coverage that Studio no longer calls native `alert()`/`confirm()`.
+- Verification:
+  - Pending local and live verification.
 
 ## Backlog Intake Template
 

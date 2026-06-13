@@ -232,6 +232,29 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 #exportStatus.ok { color: var(--accent); }
 #exportStatus.err { color: var(--danger); }
 #resumeStatus.ok { color: var(--accent); }
+.ok { color: var(--accent); }
+.err { color: var(--danger); }
+.warn { color: var(--warn); }
+
+.notice {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) / 2);
+  background: var(--bg-soft);
+  color: var(--text);
+}
+.notice.err { border-color: var(--danger); color: var(--danger); }
+.notice.warn { border-color: var(--warn); color: var(--text); }
+.notice.ok { border-color: var(--accent); color: var(--accent); }
+.confirm-panel { display: block; }
+.confirm-summary {
+  margin: 8px 0 12px;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text);
+}
 
 .progress {
   height: 10px;

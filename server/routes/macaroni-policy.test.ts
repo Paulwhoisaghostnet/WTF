@@ -52,6 +52,24 @@ test("Macaroni exposes OBJKT-compatible media limits in Studio and server pinnin
   assert.doesNotMatch(studioHtml, /≤5 MB/);
 });
 
+test("Macaroni Studio uses sandbox-safe inline feedback instead of browser modals", () => {
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+  const themeSource = readFileSync("public/creation-tools/macaroni/css/theme.css", "utf8");
+
+  assert.match(studioHtml, /id="studioNotice" class="notice" role="status" aria-live="polite" hidden/);
+  assert.match(studioHtml, /id="mainnetDeployConfirm" class="notice warn confirm-panel" hidden/);
+  assert.match(studioHtml, /id="btnConfirmMainnetDeploy"/);
+  assert.match(studioHtml, /id="btnCancelMainnetDeploy"/);
+  assert.match(studioSource, /function notify\(msg, cls = "err", statusId\)/);
+  assert.match(studioSource, /function requestMainnetDeployConfirmation\(summary\)/);
+  assert.match(studioSource, /btnConfirmMainnetDeploy"\)\.addEventListener\("click", \(\) => resolveMainnetDeployConfirmation\(true\)\)/);
+  assert.match(studioSource, /Treasury is not a valid Tezos address[\s\S]{0,140}deployStatus/);
+  assert.match(themeSource, /\.notice\.err/);
+  assert.doesNotMatch(studioSource, /(^|[^\w.])alert\s*\(/);
+  assert.doesNotMatch(studioSource, /(^|[^\w.])confirm\s*\(/);
+});
+
 test("Macaroni generated pages use Fileship defaults, accessible controls, and one connect flow", () => {
   const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
   const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");

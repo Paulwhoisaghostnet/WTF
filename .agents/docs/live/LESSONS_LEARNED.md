@@ -1,3 +1,13 @@
+## 2026-06-13 - Embedded creation tools cannot depend on browser modals
+
+**What happened**: Live Macaroni Studio on `wtfos.app` let a trusted creator complete the mainnet setup flow until Deploy Contract, then the click appeared to do nothing. The browser console showed `Ignored call to 'alert()'. The document is sandboxed, and the 'allow-modals' keyword is not set` because Studio was running inside `/tools/macaroni`'s sandboxed iframe and deploy validation only surfaced the error through `alert()`.
+
+**Why it mattered**: Mainnet creator tooling must never hide validation or wallet-operation failures. Loosening the iframe with `allow-modals` would make the sandbox weaker and still leave a brittle user experience, especially for confirmations and repeated errors.
+
+**Rule**: Embedded creation tools must use in-page live regions/status panels for validation, confirmation, and operation errors. Do not rely on native `alert()` or `confirm()` inside sandboxed app iframes; policy tests should assert those calls stay out of embedded tool flows.
+
+---
+
 ## 2026-06-13 - Macaroni mint counters must use effective remaining allowance
 
 **What happened**: A generated Macaroni mint page could let a collector set the requested quantity above what the contract would accept. The UI considered the creator's raw max-per-wallet value, but the effective allowance was lower after previous mints had consumed part of that wallet's stage cap or after collection supply had been reduced by other collectors.

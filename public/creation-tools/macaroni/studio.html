@@ -21,6 +21,10 @@
   <button class="tab" id="tabPage">Page Designer</button>
 </div>
 
+<div class="wrap" style="padding-bottom:0">
+  <div id="studioNotice" class="notice" role="status" aria-live="polite" hidden></div>
+</div>
+
 <div class="wrap" id="viewDrop">
 
   <!-- 1. Network -->
@@ -186,6 +190,14 @@
       <button class="btn ghost" id="btnSync" disabled>Sync drop</button>
       <button class="btn ghost" id="btnReveal" style="display:none">Reveal minted</button>
       <span id="deployStatus" class="muted"></span>
+    </div>
+    <div id="mainnetDeployConfirm" class="notice warn confirm-panel" hidden>
+      <strong>Mainnet deploy check</strong>
+      <pre id="mainnetDeploySummary" class="confirm-summary"></pre>
+      <div class="row">
+        <button class="btn danger small" id="btnConfirmMainnetDeploy" type="button">Deploy to mainnet</button>
+        <button class="btn ghost small" id="btnCancelMainnetDeploy" type="button">Cancel</button>
+      </div>
     </div>
     <div class="grid2" style="margin-top:10px">
       <div>

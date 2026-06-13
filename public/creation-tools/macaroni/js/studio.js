@@ -13,6 +13,55 @@ function log(msg, cls) {
   if (cls === "err") console.error(msg);
 }
 
+function setStatus(id, msg, cls) {
+  const el = $(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = cls || "muted";
+}
+
+function notify(msg, cls = "err", statusId) {
+  const text = String(msg || "Something went wrong.");
+  const notice = $("studioNotice");
+  if (notice) {
+    notice.textContent = text;
+    notice.className = `notice ${cls}`;
+    notice.hidden = false;
+  }
+  if (statusId) setStatus(statusId, text, cls);
+  return false;
+}
+
+function clearNotice() {
+  const notice = $("studioNotice");
+  if (notice) {
+    notice.textContent = "";
+    notice.hidden = true;
+  }
+}
+
+let mainnetDeployConfirmResolve = null;
+function resolveMainnetDeployConfirmation(ok) {
+  const panel = $("mainnetDeployConfirm");
+  if (panel) panel.hidden = true;
+  const resolve = mainnetDeployConfirmResolve;
+  mainnetDeployConfirmResolve = null;
+  if (resolve) resolve(ok);
+}
+
+function requestMainnetDeployConfirmation(summary) {
+  return new Promise((resolve) => {
+    mainnetDeployConfirmResolve = resolve;
+    $("mainnetDeploySummary").textContent =
+      summary +
+      "\n\nThe FIRST MINT permanently locks tokens, stages, allowlists and royalties." +
+      "\nRehearse the full flow on Shadownet first if you haven't.";
+    $("mainnetDeployConfirm").hidden = false;
+    $("mainnetDeployConfirm").scrollIntoView({ block: "center", behavior: "smooth" });
+    setStatus("deployStatus", "confirm mainnet deploy", "warn");
+  });
+}
+
 const STORE_KEY = "macaroni.studio.v1";
 const ALLOWED_THEME_NAMES = new Set(["dark", "gallery", "paper", "neon"]);
 const ALLOWED_FONT_STACKS = new Set([
@@ -93,8 +142,7 @@ function sizeLabel(bytes) {
 function validateArtifactFile(file) {
   if (!file) return false;
   if (file.size > OBJKT_ARTIFACT_MAX_BYTES) {
-    alert(`${file.name} is ${sizeLabel(file.size)}. Macaroni artifacts must be ≤250 MB for OBJKT compatibility.`);
-    return false;
+    return notify(`${file.name} is ${sizeLabel(file.size)}. Macaroni artifacts must be ≤250 MB for OBJKT compatibility.`);
   }
   return true;
 }
@@ -118,17 +166,14 @@ function imageDimensions(file) {
 async function validateCollectionCover(file) {
   if (!file) return false;
   if (!OBJKT_COLLECTION_IMAGE_MIME_TYPES.has(file.type)) {
-    alert(`Collection logo/cover must be ${OBJKT_COLLECTION_IMAGE_LABEL}.`);
-    return false;
+    return notify(`Collection logo/cover must be ${OBJKT_COLLECTION_IMAGE_LABEL}.`);
   }
   if (file.size > OBJKT_COLLECTION_IMAGE_MAX_BYTES) {
-    alert(`Collection logo/cover is ${sizeLabel(file.size)}. OBJKT collection logos must be ≤1 MB.`);
-    return false;
+    return notify(`Collection logo/cover is ${sizeLabel(file.size)}. OBJKT collection logos must be ≤1 MB.`);
   }
   const dims = await imageDimensions(file);
   if (!dims.width || dims.width !== dims.height) {
-    alert(`Collection logo/cover must be square for OBJKT (${dims.width || "?"}×${dims.height || "?"} selected).`);
-    return false;
+    return notify(`Collection logo/cover must be square for OBJKT (${dims.width || "?"}×${dims.height || "?"} selected).`);
   }
   return true;
 }
@@ -294,7 +339,7 @@ async function onCsv(file) {
     log(`token sheet loaded: ${tokens.length} tokens`);
   } catch (e) {
     log("CSV error: " + e.message, "err");
-    alert("Token sheet error: " + e.message);
+    notify("Token sheet error: " + e.message);
   }
 }
 
@@ -410,15 +455,16 @@ function buildTokenMetadata(t) {
 async function pinAll() {
   readForm();
   const provider = pinProvider();
-  if (provider.kind === "pinata" && !provider.jwt) return alert("Enter your Pinata JWT first.");
-  if (provider.kind === "node" && !provider.url) return alert("Enter your IPFS node API URL first.");
-  if (!state.tokens.length) return alert("Upload your token sheet first.");
+  clearNotice();
+  if (provider.kind === "pinata" && !provider.jwt) return notify("Enter your Pinata JWT first.", "err", "pinStatus");
+  if (provider.kind === "node" && !provider.url) return notify("Enter your IPFS node API URL first.", "err", "pinStatus");
+  if (!state.tokens.length) return notify("Upload your token sheet first.", "err", "pinStatus");
   const missing = state.tokens.filter((t) => !t.fileName && !t.mediaCid);
-  if (missing.length) return alert(`${missing.length} token(s) have no artwork file. Every row needs an artifact.`);
+  if (missing.length) return notify(`${missing.length} token(s) have no artwork file. Every row needs an artifact.`, "err", "pinStatus");
   if (!state.drop.coverCid && !coverFile)
-    return alert(`Add a collection logo/cover image (${OBJKT_COLLECTION_IMAGE_LABEL}) before pinning.`);
+    return notify(`Add a collection logo/cover image (${OBJKT_COLLECTION_IMAGE_LABEL}) before pinning.`, "err", "pinStatus");
   if (state.drop.coverCid && state.drop.coverMime && !OBJKT_COLLECTION_IMAGE_MIME_TYPES.has(state.drop.coverMime))
-    return alert(`Re-upload the collection logo/cover as ${OBJKT_COLLECTION_IMAGE_LABEL} before pinning.`);
+    return notify(`Re-upload the collection logo/cover as ${OBJKT_COLLECTION_IMAGE_LABEL} before pinning.`, "err", "pinStatus");
   for (const t of state.tokens) {
     const f = mediaFiles.get(String(t.id));
     if (f && !validateArtifactFile(f)) return;
@@ -426,12 +472,14 @@ async function pinAll() {
   // Royalties are baked into the pinned metadata — a missing receiver here
   // would silently ship 0% royalties forever.
   if (state.drop.royaltyAddr && !MD.isAddress(state.drop.royaltyAddr))
-    return alert("Royalty receiver is not a valid Tezos address (tz1…/tz2…/tz3…/tz4…/KT1…).");
+    return notify("Royalty receiver is not a valid Tezos address (tz1…/tz2…/tz3…/tz4…/KT1…).", "err", "pinStatus");
   if (Number(state.drop.royaltyPct) > 0 && !state.drop.royaltyAddr && !MD.getAccount())
-    return alert(
+    return notify(
       `Royalties are set to ${state.drop.royaltyPct}% but there is no receiver: ` +
       "connect your wallet or fill in the royalty receiver before pinning, " +
-      "otherwise the metadata is pinned without royalties — permanently."
+      "otherwise the metadata is pinned without royalties — permanently.",
+      "err",
+      "pinStatus"
     );
 
   const btn = $("btnPin");
@@ -494,7 +542,7 @@ async function pinAll() {
   } catch (e) {
     $("pinStatus").textContent = "error — see log";
     log("pinning failed: " + e.message, "err");
-    alert("Pinning failed: " + e.message);
+    notify("Pinning failed: " + e.message, "err", "pinStatus");
   } finally {
     btn.disabled = false;
   }
@@ -553,7 +601,7 @@ function renderStages() {
         renderStages();
         log(`stage ${i + 1}: allowlist with ${state.stages[i].allowlist.length} addresses`);
       } catch (e) {
-        alert("Allowlist error: " + e.message);
+        notify("Allowlist error: " + e.message);
       }
     })
   );
@@ -628,19 +676,21 @@ async function buildContractMetadataCid() {
 async function deploy() {
   try {
     readForm();
-    if (!MD.getAccount()) return alert("Connect your wallet first.");
-    if (!state.drop.title || !state.drop.description) return alert("Title and description are required.");
-    if (!state.tokens.length) return alert("Upload tokens first.");
-    if (state.tokens.some((t) => !t.metadataCid)) return alert("Pin all media + metadata first (step 4).");
-    if (!state.stages.length) return alert("Configure at least one sale stage (step 5).");
+    clearNotice();
+    resolveMainnetDeployConfirmation(false);
+    if (!MD.getAccount()) return notify("Connect your wallet first.", "err", "deployStatus");
+    if (!state.drop.title || !state.drop.description) return notify("Title and description are required.", "err", "deployStatus");
+    if (!state.tokens.length) return notify("Upload tokens first.", "err", "deployStatus");
+    if (state.tokens.some((t) => !t.metadataCid)) return notify("Pin all media + metadata first (step 4).", "err", "deployStatus");
+    if (!state.stages.length) return notify("Configure at least one sale stage (step 5).", "err", "deployStatus");
     if (state.drop.treasuryAddr && !MD.isAddress(state.drop.treasuryAddr))
-      return alert("Treasury is not a valid Tezos address (tz1…/tz2…/tz3…/tz4…/KT1…).");
+      return notify("Treasury is not a valid Tezos address (tz1…/tz2…/tz3…/tz4…/KT1…).", "err", "deployStatus");
     const delayed = state.drop.revealMode === "delayed";
     const delayDays = Number(state.drop.revealDelayDays);
     if (delayed && (!Number.isFinite(delayDays) || delayDays < 0 || delayDays > 30))
-      return alert("Auto-reveal window must be between 0 and 30 days.");
+      return notify("Auto-reveal window must be between 0 and 30 days.", "err", "deployStatus");
     if (delayed && !state.drop.placeholderCid)
-      return alert("Pin all media + metadata first (step 4) — delayed reveal also pins the placeholder.");
+      return notify("Pin all media + metadata first (step 4) — delayed reveal also pins the placeholder.", "err", "deployStatus");
     const stages = stageRecords(); // validates
 
     // Hard guard: RPC chain id + wallet session must both match the selected
@@ -657,14 +707,11 @@ async function deploy() {
         `Royalties: ${state.drop.royaltyPct}% → ${state.drop.royaltyAddr || MD.getAccount()}\n` +
         `Treasury:  ${treasury}\n` +
         `Reveal:    ${delayed ? `delayed (auto-reveal opens after ${delayDays} day(s))` : "instant at mint"}`;
-      if (!confirm(
-        "You are about to deploy to Tezos MAINNET.\n\n" + summary +
-        "\n\nThe FIRST MINT permanently locks tokens, stages, allowlists and royalties." +
-        "\nRehearse the full flow on Shadownet first if you haven't.\n\nDeploy now?"
-      )) {
+      if (!(await requestMainnetDeployConfirmation(summary))) {
         $("deployStatus").textContent = "cancelled";
         return;
       }
+      clearNotice();
     }
 
     const btn = $("btnDeploy");
@@ -729,7 +776,7 @@ async function deploy() {
   } catch (e) {
     $("deployStatus").textContent = "deploy failed";
     log("deploy failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Deploy failed: " + (e.message || e));
+    notify("Deploy failed: " + (e.message || e), "err", "deployStatus");
   } finally {
     $("btnDeploy").disabled = false;
   }
@@ -739,13 +786,14 @@ async function sync() {
   try {
     readForm();
     const kt = $("contractAddr").value.trim() || state.contract;
-    if (!kt) return alert("Deploy first, or paste an existing contract address.");
+    clearNotice();
+    if (!kt) return notify("Deploy first, or paste an existing contract address.", "err", "deployStatus");
     if (!/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(kt))
-      return alert("Contract address must be a KT1… address.");
+      return notify("Contract address must be a KT1… address.", "err", "deployStatus");
     state.contract = kt;
     save();
     if (state.tokens.length && state.tokens.some((t) => !t.metadataCid))
-      return alert("Pin all local token metadata before syncing token changes.");
+      return notify("Pin all local token metadata before syncing token changes.", "err", "deployStatus");
 
     await MD.assertOperationSafety();
     const tezos = MD.getToolkit();
@@ -762,9 +810,11 @@ async function sync() {
     };
 
     if (state.tokens.length && already > state.tokens.length)
-      return alert(
+      return notify(
         `This contract already has ${already} token(s) loaded, but your CSV has ` +
-        `${state.tokens.length}. Re-import the full CSV before syncing token changes.`
+        `${state.tokens.length}. Re-import the full CSV before syncing token changes.`,
+        "err",
+        "deployStatus"
       );
 
     const replaceTodo = [];
@@ -837,7 +887,7 @@ async function sync() {
     log("tip: Save studio backup (Resume panel) so you can restore this draft later.");
   } catch (e) {
     log("sync failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Sync failed: " + (e.message || e) + "\nClick Sync again to resume.");
+    notify("Sync failed: " + (e.message || e) + " Click Sync again to resume.", "err", "deployStatus");
   }
 }
 
@@ -847,7 +897,8 @@ async function revealMinted() {
   try {
     readForm();
     const kt = $("contractAddr").value.trim() || state.contract;
-    if (!kt) return alert("Deploy first, or paste your contract address.");
+    clearNotice();
+    if (!kt) return notify("Deploy first, or paste your contract address.", "err", "deployStatus");
     await MD.assertOperationSafety();
     btn.disabled = true;
     const tezos = MD.getToolkit();
@@ -866,7 +917,7 @@ async function revealMinted() {
     log("reveal complete — every minted token has its artwork.");
   } catch (e) {
     log("reveal failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Reveal failed: " + (e.message || e));
+    notify("Reveal failed: " + (e.message || e), "err", "deployStatus");
   } finally {
     btn.disabled = false;
   }
@@ -973,7 +1024,7 @@ function showView(view) {
 function configJs() {
   const cfg = currentConfig();
   if (!cfg.contract) {
-    if (!confirm("No contract address set — export anyway?")) return null;
+    notify("No contract address set — exporting a draft mint site.", "warn", "exportStatus");
   }
   return CODE_PREFIX + JSON.stringify(cfg, null, 2) + ";\n";
 }
@@ -1019,7 +1070,7 @@ async function exportSite() {
   } catch (e) {
     setExportStatus("Export failed: " + e.message, false);
     log("export failed: " + e.message, "err");
-    alert("Export failed: " + e.message);
+    notify("Export failed: " + e.message, "err", "exportStatus");
   } finally {
     $("btnExport").disabled = false;
   }
@@ -1050,7 +1101,7 @@ async function publishWtfOSSite() {
   } catch (e) {
     setExportStatus("wtfOS publish failed: " + e.message, false);
     log("wtfOS publish failed: " + e.message, "err");
-    alert("wtfOS publish failed: " + e.message);
+    notify("wtfOS publish failed: " + e.message, "err", "exportStatus");
   } finally {
     $("btnPublishWtfOS").disabled = false;
   }
@@ -1075,7 +1126,7 @@ async function downloadSitePackage(body) {
   } catch (e) {
     setExportStatus("Package download failed: " + e.message, false);
     log("package download failed: " + e.message, "err");
-    alert("Package download failed: " + e.message);
+    notify("Package download failed: " + e.message, "err", "exportStatus");
   }
 }
 
@@ -1192,7 +1243,7 @@ function parseDropConfigText(text) {
 async function loadFromChain(kt) {
   kt = (kt || $("resumeAddr").value.trim() || $("contractAddr").value.trim()).trim();
   if (!/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(kt))
-    return alert("Enter a valid KT1… contract address.");
+    return notify("Enter a valid KT1… contract address.", "err", "resumeStatus");
   readForm();
   applyNetwork();
   setResumeStatus("Loading on-chain status…", true);
@@ -1226,7 +1277,7 @@ async function loadFromChain(kt) {
   } catch (e) {
     setResumeStatus("Could not load contract: " + e.message, false);
     log("resume failed: " + e.message, "err");
-    alert("Could not load contract: " + e.message);
+    notify("Could not load contract: " + e.message, "err", "resumeStatus");
     return null;
   }
 }
@@ -1244,7 +1295,7 @@ async function importConfigFile(file) {
     if (state.contract) await loadFromChain(state.contract);
     else setResumeStatus("Imported config — paste or deploy a contract address to continue.", true);
   } catch (e) {
-    alert("Could not read drop.config.js: " + e.message);
+    notify("Could not read drop.config.js: " + e.message, "err", "resumeStatus");
   }
 }
 
@@ -1265,7 +1316,7 @@ async function importStudioBackup(file) {
     else setResumeStatus("Studio backup restored.", true);
     log("Imported studio backup " + file.name);
   } catch (e) {
-    alert("Could not read backup: " + e.message);
+    notify("Could not read backup: " + e.message, "err", "resumeStatus");
   }
 }
 
@@ -1333,7 +1384,7 @@ $("coverFile").addEventListener("change", async (e) => {
         return;
       }
     } catch (err) {
-      alert(`Collection logo/cover must be ${OBJKT_COLLECTION_IMAGE_LABEL}. ${err.message || ""}`.trim());
+      notify(`Collection logo/cover must be ${OBJKT_COLLECTION_IMAGE_LABEL}. ${err.message || ""}`.trim());
       coverFile = null;
       e.target.value = "";
       return;
@@ -1379,6 +1430,8 @@ $("contractAddr").addEventListener("change", () => {
     save();
   }
 });
+$("btnConfirmMainnetDeploy").addEventListener("click", () => resolveMainnetDeployConfirmation(true));
+$("btnCancelMainnetDeploy").addEventListener("click", () => resolveMainnetDeployConfirmation(false));
 $("btnDeploy").addEventListener("click", deploy);
 $("btnSync").addEventListener("click", sync);
 $("btnReveal").addEventListener("click", revealMinted);
