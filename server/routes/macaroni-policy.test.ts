@@ -29,6 +29,26 @@ test("Macaroni static API calls use the wtfOS CSRF boundary and do not embed pin
   assert.equal(studioHtml.includes('<option value="wtfos">'), false);
 });
 
+test("Macaroni generated pages only publish bounded theme CSS", () => {
+  const publishSource = readFileSync("server/features/macaroni/publish.ts", "utf8");
+  const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+
+  assert.match(publishSource, /sanitizeMacaroniConfigForPublish/);
+  assert.match(publishSource, /SAFE_HEX_COLOR/);
+  assert.match(publishSource, /customCss:\s*""/);
+  assert.match(dropSource, /sanitizeCssColor/);
+  assert.match(dropSource, /sanitizeFontStack/);
+  assert.match(dropSource, /\$\("customCss"\)\.textContent = ""/);
+  assert.match(studioSource, /sanitizeDropConfig/);
+  assert.match(studioSource, /customCss:\s*""/);
+  assert.match(studioHtml, /<input type="hidden" id="pageCss" value="" \/>/);
+  assert.equal(studioHtml.includes("Custom CSS"), false);
+  assert.doesNotMatch(dropSource, /customCss\)[\s\S]{0,80}\.textContent = CFG\.theme\.customCss/);
+  assert.doesNotMatch(studioSource, /customCss:\s*state\.page\.css/);
+});
+
 test("Macaroni treats Shadownet as a first-class RPC and chain-id guarded network", () => {
   const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
   const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");

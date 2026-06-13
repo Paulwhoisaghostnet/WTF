@@ -235,8 +235,7 @@
         </div>
         <label>Page content blocks — one per line: <code>h: Heading</code>, <code>p: paragraph text</code>, <code>img: ipfs://… or https://…</code></label>
         <textarea id="pageBlocks" placeholder="h: About this drop&#10;p: 500 unique works, randomly assigned at mint.&#10;img: ipfs://…"></textarea>
-        <label>Custom CSS (applied to the drop page — style anything)</label>
-        <textarea id="pageCss" class="code-editor" spellcheck="false" placeholder=".hero h1 { letter-spacing: 0.2em; }&#10;.mint-box { border-width: 2px; }"></textarea>
+        <input type="hidden" id="pageCss" value="" />
       </section>
 
       <section class="panel">

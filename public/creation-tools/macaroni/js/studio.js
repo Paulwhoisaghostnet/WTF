@@ -14,6 +14,14 @@ function log(msg, cls) {
 }
 
 const STORE_KEY = "macaroni.studio.v1";
+const ALLOWED_THEME_NAMES = new Set(["dark", "gallery", "paper", "neon"]);
+const ALLOWED_FONT_STACKS = new Set([
+  "",
+  "Georgia, 'Times New Roman', serif",
+  "'Courier New', monospace",
+  "Futura, 'Trebuchet MS', sans-serif",
+]);
+const SAFE_HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
 const state = {
   network: "shadownet",
@@ -43,6 +51,35 @@ const state = {
 const mediaFiles = new Map();
 let coverFile = null;
 let canUseWtfosPinning = false;
+
+function sanitizeThemeName(value) {
+  const theme = String(value || "").trim();
+  return ALLOWED_THEME_NAMES.has(theme) ? theme : "dark";
+}
+
+function sanitizeCssColor(value) {
+  const color = String(value || "").trim();
+  return SAFE_HEX_COLOR.test(color) ? color : "";
+}
+
+function sanitizeFontStack(value) {
+  const font = String(value || "").trim();
+  return ALLOWED_FONT_STACKS.has(font) ? font : "";
+}
+
+function sanitizeDropConfig(cfg) {
+  const input = cfg && typeof cfg === "object" ? cfg : {};
+  const theme = input.theme && typeof input.theme === "object" ? input.theme : {};
+  return {
+    ...input,
+    theme: {
+      name: sanitizeThemeName(theme.name),
+      accent: sanitizeCssColor(theme.accent),
+      font: sanitizeFontStack(theme.font),
+      customCss: "",
+    },
+  };
+}
 
 function hasWtfosPinningAccess(user) {
   const perms = user && (user.effectivePermissions || user.permissions || {});
@@ -763,7 +800,7 @@ async function revealMinted() {
 // ---------- page design / export ----------
 function buildConfig() {
   readForm();
-  return {
+  return sanitizeDropConfig({
     network: state.network,
     rpc: state.rpc || MD.getNetworks()[state.network].rpc,
     contract: $("contractAddr").value.trim() || state.contract,
@@ -775,7 +812,7 @@ function buildConfig() {
       name: state.page.theme,
       accent: state.page.accent,
       font: state.page.font,
-      customCss: state.page.css,
+      customCss: "",
     },
     blocks: state.page.blocks
       .split("\n")
@@ -785,7 +822,7 @@ function buildConfig() {
         const m = l.match(/^(h|p|img):\s*(.*)$/i);
         return m ? { type: m[1].toLowerCase(), value: m[2] } : { type: "p", value: l };
       }),
-  };
+  });
 }
 
 // ---------- code editor (drop.config.js) ----------
@@ -806,7 +843,7 @@ function parseCode(text) {
 function currentConfig() {
   if (state.page.code) {
     try {
-      return parseCode(state.page.code);
+      return sanitizeDropConfig(parseCode(state.page.code));
     } catch (e) { /* stale override — fall back to controls */ }
   }
   return buildConfig();
@@ -988,10 +1025,10 @@ function readForm() {
   state.pin.url = $("pinUrl").value.trim();
   state.pin.gateway = $("gateway").value.trim();
   state.page.theme = $("pageTheme").value;
-  state.page.accent = $("pageAccent").value.trim();
-  state.page.font = $("pageFont").value;
+  state.page.accent = sanitizeCssColor($("pageAccent").value);
+  state.page.font = sanitizeFontStack($("pageFont").value);
   state.page.blocks = $("pageBlocks").value;
-  state.page.css = $("pageCss").value;
+  state.page.css = "";
   save();
   toggleRevealFields();
 }
@@ -1021,6 +1058,10 @@ function fillForm() {
   $("gateway").value = state.pin.gateway;
   renderPinKindOptions();
   $("contractAddr").value = state.contract;
+  state.page.theme = sanitizeThemeName(state.page.theme);
+  state.page.accent = sanitizeCssColor(state.page.accent);
+  state.page.font = sanitizeFontStack(state.page.font);
+  state.page.css = "";
   $("pageTheme").value = state.page.theme;
   $("pageAccent").value = state.page.accent;
   $("pageFont").value = state.page.font;
@@ -1055,10 +1096,10 @@ function applyImportedConfig(cfg) {
   if (cfg.description) state.drop.description = cfg.description;
   if (cfg.gateway) state.pin.gateway = cfg.gateway;
   if (cfg.theme) {
-    state.page.theme = cfg.theme.name || state.page.theme;
-    state.page.accent = cfg.theme.accent || "";
-    state.page.font = cfg.theme.font || "";
-    state.page.css = cfg.theme.customCss || "";
+    state.page.theme = sanitizeThemeName(cfg.theme.name || state.page.theme);
+    state.page.accent = sanitizeCssColor(cfg.theme.accent);
+    state.page.font = sanitizeFontStack(cfg.theme.font);
+    state.page.css = "";
   }
   if (Array.isArray(cfg.blocks))
     state.page.blocks = cfg.blocks

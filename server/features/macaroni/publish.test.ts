@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildMacaroniPublishedHtml,
   macaroniStaticAssetBase,
+  sanitizeMacaroniConfigForPublish,
   slugForDropTitle,
 } from "./publish";
 
@@ -46,4 +47,53 @@ test("Macaroni published page escapes title and script-embedded config", () => {
   assert.equal(html.includes("</script><script>alert(1)</script>"), false);
   assert.match(html, /\\u003cscript\\u003ebad\\u003c\/script\\u003e/);
   assert.match(html, /\\u003c\/script\\u003e\\u003cscript\\u003ealert\(1\)\\u003c\/script\\u003e/);
+});
+
+test("Macaroni published page strips stored CSS injection surfaces", () => {
+  const maliciousCss =
+    '</style><img src=x onerror=alert(1)>body{--accent:url(javascript:alert(1));}';
+  const safe = sanitizeMacaroniConfigForPublish({
+    title: "CSS check",
+    theme: {
+      name: "neon",
+      accent: "#abc123",
+      font: "'Courier New', monospace",
+      customCss: maliciousCss,
+      unknown: maliciousCss,
+    },
+  });
+  assert.deepEqual(safe.theme, {
+    name: "neon",
+    accent: "#abc123",
+    font: "'Courier New', monospace",
+    customCss: "",
+  });
+
+  const unsafe = sanitizeMacaroniConfigForPublish({
+    title: "CSS check",
+    theme: {
+      name: 'dark" onclick="alert(1)',
+      accent: "red;--bg:url(javascript:alert(1))",
+      font: "Arial;src:url(javascript:alert(1))",
+      customCss: maliciousCss,
+    },
+  });
+  assert.deepEqual(unsafe.theme, { name: "dark", accent: "", font: "", customCss: "" });
+
+  const html = buildMacaroniPublishedHtml({
+    publicOrigin: "https://wtfos.app",
+    config: {
+      title: "CSS check",
+      theme: {
+        name: "dark",
+        accent: maliciousCss,
+        font: maliciousCss,
+        customCss: maliciousCss,
+      },
+    },
+  });
+  assert.equal(html.includes(maliciousCss), false);
+  assert.equal(html.includes("</style><img"), false);
+  assert.equal(html.includes("javascript:alert"), false);
+  assert.match(html, /"theme":\{"name":"dark","accent":"","font":"","customCss":""\}/);
 });

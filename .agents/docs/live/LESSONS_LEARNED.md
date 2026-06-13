@@ -4697,3 +4697,15 @@
 **Fix**: Updated the drop bootstrap to render the no-wallet balance state on first load, then kept the browser regression around connect, reload restore, disconnect, and reload-after-disconnect.
 
 **Rule**: When adding status elements to generated pages, initialize their disconnected/empty copy during bootstrap and cover the full first-load, restore, disconnect, and post-disconnect reload lifecycle in browser tests.
+
+---
+
+## 2026-06-12 - Generated creator pages must not store arbitrary CSS
+
+**What happened**: Macaroni's Page Designer allowed arbitrary `theme.customCss` and accepted unbounded `theme.accent`/`theme.font` strings into generated drop configs. Published pages escaped the config from script breakout, but there was no policy guard proving stored CSS custom-property payloads could not flow into the live page.
+
+**Why it mattered**: A generated drop page is stored user-site HTML. Even when modern browsers do not execute JavaScript from ordinary CSS values, arbitrary stored CSS and unbounded custom-property values are too broad a trust boundary for creator-published pages.
+
+**Fix**: Removed arbitrary custom CSS from Studio output, sanitized direct publish payloads server-side, made the drop runtime ignore legacy `customCss`, and allowlisted theme name, hex accent color, and known font stack values. Added policy and focused browser regressions for `</style>`, `url(javascript:)`, and malformed custom-property payloads.
+
+**Rule**: Creator-generated pages may expose bounded theme controls, not arbitrary CSS, unless a dedicated CSS sanitizer and regression suite owns that trust boundary. Apply the same sanitizer at export, publish, and runtime so code-editor overrides and legacy configs cannot bypass it.

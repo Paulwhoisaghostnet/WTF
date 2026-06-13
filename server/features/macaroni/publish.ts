@@ -1,4 +1,12 @@
 const MACARONI_ASSET_PATH = "/creation-tools/macaroni";
+const ALLOWED_THEME_NAMES = new Set(["dark", "gallery", "paper", "neon"]);
+const ALLOWED_FONT_STACKS = new Set([
+  "",
+  "Georgia, 'Times New Roman', serif",
+  "'Courier New', monospace",
+  "Futura, 'Trebuchet MS', sans-serif",
+]);
+const SAFE_HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
 function escapeHtml(value: string): string {
   return value
@@ -15,6 +23,42 @@ function safeScriptJson(value: unknown): string {
     .replace(/&/g, "\\u0026")
     .replace(/\u2028/g, "\\u2028")
     .replace(/\u2029/g, "\\u2029");
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function sanitizeThemeName(value: unknown): string {
+  const theme = String(value || "").trim();
+  return ALLOWED_THEME_NAMES.has(theme) ? theme : "dark";
+}
+
+function sanitizeCssColor(value: unknown): string {
+  const color = String(value || "").trim();
+  return SAFE_HEX_COLOR.test(color) ? color : "";
+}
+
+function sanitizeFontStack(value: unknown): string {
+  const font = String(value || "").trim();
+  return ALLOWED_FONT_STACKS.has(font) ? font : "";
+}
+
+export function sanitizeMacaroniConfigForPublish(
+  input: Record<string, unknown>
+): Record<string, unknown> {
+  const theme = asRecord(input.theme);
+  return {
+    ...input,
+    theme: {
+      name: sanitizeThemeName(theme.name),
+      accent: sanitizeCssColor(theme.accent),
+      font: sanitizeFontStack(theme.font),
+      customCss: "",
+    },
+  };
 }
 
 export function macaroniStaticAssetBase(publicOrigin: string): string {
@@ -38,9 +82,10 @@ export function buildMacaroniPublishedHtml(input: {
   publicOrigin: string;
 }): string {
   const assetBase = macaroniStaticAssetBase(input.publicOrigin);
-  const title = String(input.config.title || "Macaroni Drop");
+  const config = sanitizeMacaroniConfigForPublish(input.config);
+  const title = String(config.title || "Macaroni Drop");
   const escapedTitle = escapeHtml(title);
-  const configJson = safeScriptJson(input.config);
+  const configJson = safeScriptJson(config);
 
   return `<!DOCTYPE html>
 <html lang="en" data-theme="dark">

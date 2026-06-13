@@ -273,6 +273,8 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(page.locator('#pinKind option[value="wtfos"]')).toHaveCount(0);
       await expect(page.locator("#pinKind")).toHaveValue("pinata");
       await expect(page.locator("#pinJwtWrap")).toBeVisible();
+      await expect(page.locator("#pageCss")).toHaveAttribute("type", "hidden");
+      await expect(page.getByText("Custom CSS")).toHaveCount(0);
     } finally {
       await context.close();
     }
@@ -295,6 +297,12 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
               network: "shadownet",
               rpc: rpcUrl,
               contract: "",
+              theme: {
+                name: 'dark" onclick="alert(1)',
+                accent: "red;--bg:url(javascript:alert(1))",
+                font: "Arial;src:url(javascript:alert(1))",
+                customCss: '</style><img src=x onerror="window.__macaroniXss=1">',
+              },
               blocks: [],
             })
           );
@@ -310,6 +318,8 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(page.locator("#walletBalance")).toContainText("Connect a wallet");
       await expect(page.locator("#walletLimitStatus")).toBeAttached();
       await expect(page.locator("#ownedMintStatus")).toBeAttached();
+      await expect(page.locator("#customCss")).toHaveText("");
+      await expect.poll(() => page.evaluate(() => Boolean(window.__macaroniXss))).toBe(false);
 
       await page.getByRole("button", { name: "Connect wallet" }).click();
       await expect(page.locator("#btnConnect")).toContainText(actor.walletAddress.slice(0, 7));

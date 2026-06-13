@@ -48,15 +48,42 @@ if (!CFG) {
   throw new Error("missing drop.config.js");
 }
 
+const ALLOWED_THEME_NAMES = new Set(["dark", "gallery", "paper", "neon"]);
+const ALLOWED_FONT_STACKS = new Set([
+  "",
+  "Georgia, 'Times New Roman', serif",
+  "'Courier New', monospace",
+  "Futura, 'Trebuchet MS', sans-serif",
+]);
+const SAFE_HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+function sanitizeThemeName(value) {
+  const theme = String(value || "").trim();
+  return ALLOWED_THEME_NAMES.has(theme) ? theme : "dark";
+}
+
+function sanitizeCssColor(value) {
+  const color = String(value || "").trim();
+  return SAFE_HEX_COLOR.test(color) ? color : "";
+}
+
+function sanitizeFontStack(value) {
+  const font = String(value || "").trim();
+  return ALLOWED_FONT_STACKS.has(font) ? font : "";
+}
+
 // ---------- theming ----------
 const root = document.documentElement;
-if (CFG.theme?.name) root.dataset.theme = CFG.theme.name;
-if (CFG.theme?.accent) root.style.setProperty("--accent", CFG.theme.accent);
-if (CFG.theme?.font) {
-  root.style.setProperty("--font-body", CFG.theme.font);
-  root.style.setProperty("--font-display", CFG.theme.font);
+const theme = CFG.theme && typeof CFG.theme === "object" ? CFG.theme : {};
+root.dataset.theme = sanitizeThemeName(theme.name);
+const accent = sanitizeCssColor(theme.accent);
+if (accent) root.style.setProperty("--accent", accent);
+const font = sanitizeFontStack(theme.font);
+if (font) {
+  root.style.setProperty("--font-body", font);
+  root.style.setProperty("--font-display", font);
 }
-if (CFG.theme?.customCss) $("customCss").textContent = CFG.theme.customCss;
+$("customCss").textContent = "";
 
 // ---------- static content ----------
 document.title = CFG.title || "Macaroni";
