@@ -20,7 +20,7 @@ import {
 
 const router = Router();
 
-const DEFAULT_IPFS_MAX_BYTES = 200 * 1024 * 1024;
+const DEFAULT_IPFS_MAX_BYTES = 250 * 1024 * 1024;
 
 const publishSchema = z.object({
   config: z.object({}).passthrough(),

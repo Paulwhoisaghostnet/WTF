@@ -1,3 +1,13 @@
+## 2026-06-13 - Macaroni media limits must align UI, server defaults, and live env
+
+**What happened**: Macaroni's Studio copy and server fallback advertised one artifact limit while production could still allow a larger wtfOS Pinata upload through `MACARONI_IPFS_MAX_BYTES`. The collection cover path also allowed formats and sizes that do not match OBJKT collection logo expectations, even though Macaroni uses that asset for collection metadata and non-image token previews.
+
+**Why it mattered**: A creator can pass local UI checks and still mint metadata that downstream indexers have to normalize or reject. Limit drift also makes support confusing: the app says one cap, the server enforces another, and production env may enforce a third.
+
+**Rule**: For Macaroni media policy changes, update all three surfaces together: visible Studio labels/client validation, server upload caps/defaults, and production env. Keep collection logo/cover uploads OBJKT-compatible (square JPG/PNG ≤1 MB), keep artifact caps displayed and enforced at the same byte limit, and use the small cover asset for non-image `displayUri`/`thumbnailUri` metadata.
+
+---
+
 ## 2026-06-11 - Cross-domain E2E failures need artifact checks before feature blame
 
 **What happened**: A full inventory run for the WTF Domains windowing pass failed in unrelated Skywire and WTF LIVE specs, while the same log stream also showed missing `dist/public/index.html` stats and missing Playwright trace network artifact copies. A later full inventory run and a focused fresh-harness rerun of the three named Skywire/WTF LIVE tests passed.

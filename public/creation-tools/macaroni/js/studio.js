@@ -22,6 +22,11 @@ const ALLOWED_FONT_STACKS = new Set([
   "Futura, 'Trebuchet MS', sans-serif",
 ]);
 const SAFE_HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+const MB = 1024 * 1024;
+const OBJKT_ARTIFACT_MAX_BYTES = 250 * MB;
+const OBJKT_COLLECTION_IMAGE_MAX_BYTES = 1 * MB;
+const OBJKT_COLLECTION_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png"]);
+const OBJKT_COLLECTION_IMAGE_LABEL = "1 MB, square JPG/PNG";
 
 const state = {
   network: "shadownet",
@@ -79,6 +84,57 @@ function sanitizeDropConfig(cfg) {
       customCss: "",
     },
   };
+}
+
+function sizeLabel(bytes) {
+  return bytes >= MB ? `${Math.round(bytes / MB)} MB` : `${bytes} bytes`;
+}
+
+function validateArtifactFile(file) {
+  if (!file) return false;
+  if (file.size > OBJKT_ARTIFACT_MAX_BYTES) {
+    alert(`${file.name} is ${sizeLabel(file.size)}. Macaroni artifacts must be ≤250 MB for OBJKT compatibility.`);
+    return false;
+  }
+  return true;
+}
+
+function imageDimensions(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.naturalWidth || img.width, height: img.naturalHeight || img.height });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read image dimensions"));
+    };
+    img.src = url;
+  });
+}
+
+async function validateCollectionCover(file) {
+  if (!file) return false;
+  if (!OBJKT_COLLECTION_IMAGE_MIME_TYPES.has(file.type)) {
+    alert(`Collection logo/cover must be ${OBJKT_COLLECTION_IMAGE_LABEL}.`);
+    return false;
+  }
+  if (file.size > OBJKT_COLLECTION_IMAGE_MAX_BYTES) {
+    alert(`Collection logo/cover is ${sizeLabel(file.size)}. OBJKT collection logos must be ≤1 MB.`);
+    return false;
+  }
+  const dims = await imageDimensions(file);
+  if (!dims.width || dims.width !== dims.height) {
+    alert(`Collection logo/cover must be square for OBJKT (${dims.width || "?"}×${dims.height || "?"} selected).`);
+    return false;
+  }
+  return true;
+}
+
+function tokenNeedsCover(t) {
+  return !String(t.mediaMime || "").startsWith("image/");
 }
 
 function hasWtfosPinningAccess(user) {
@@ -242,13 +298,16 @@ async function onCsv(file) {
 }
 
 function onMedia(files) {
+  let accepted = 0;
   for (const f of files) {
+    if (!validateArtifactFile(f)) continue;
     const base = f.name.replace(/\.[^.]+$/, "");
     mediaFiles.set(base, f);
+    accepted++;
   }
   matchMedia_();
   renderTokens();
-  log(`${files.length} artwork file(s) added (${mediaFiles.size} total)`);
+  log(`${accepted} artwork file(s) added (${mediaFiles.size} total)`);
 }
 
 function matchMedia_() {
@@ -321,6 +380,11 @@ function royaltyShares() {
 function buildTokenMetadata(t) {
   const creator = MD.getAccount() || state.drop.royaltyAddr || "";
   const artifact = "ipfs://" + t.mediaCid;
+  const cover = state.drop.coverCid ? "ipfs://" + state.drop.coverCid : "";
+  if (tokenNeedsCover(t) && !cover) throw new Error(`token ${t.id} needs the collection cover for OBJKT preview metadata`);
+  const display = tokenNeedsCover(t) ? cover : artifact;
+  const formats = [{ uri: artifact, mimeType: t.mediaMime }];
+  if (display && display !== artifact) formats.push({ uri: display, mimeType: state.drop.coverMime || "image/png" });
   const meta = {
     name: t.name,
     description: t.description || state.drop.description,
@@ -328,11 +392,11 @@ function buildTokenMetadata(t) {
     isBooleanAmount: true,
     symbol: state.drop.symbol || undefined,
     artifactUri: artifact,
-    displayUri: artifact,
-    thumbnailUri: artifact,
+    displayUri: display,
+    thumbnailUri: display,
     minter: creator || undefined,
     creators: creator ? [creator] : undefined,
-    formats: [{ uri: artifact, mimeType: t.mediaMime }],
+    formats,
     tags: t.tags && t.tags.length ? t.tags : undefined,
     attributes: t.attributes.length ? t.attributes : undefined,
   };
@@ -350,6 +414,14 @@ async function pinAll() {
   if (!state.tokens.length) return alert("Upload your token sheet first.");
   const missing = state.tokens.filter((t) => !t.fileName && !t.mediaCid);
   if (missing.length) return alert(`${missing.length} token(s) have no artwork file. Every row needs an artifact.`);
+  if (!state.drop.coverCid && !coverFile)
+    return alert(`Add a collection logo/cover image (${OBJKT_COLLECTION_IMAGE_LABEL}) before pinning.`);
+  if (state.drop.coverCid && state.drop.coverMime && !OBJKT_COLLECTION_IMAGE_MIME_TYPES.has(state.drop.coverMime))
+    return alert(`Re-upload the collection logo/cover as ${OBJKT_COLLECTION_IMAGE_LABEL} before pinning.`);
+  for (const t of state.tokens) {
+    const f = mediaFiles.get(String(t.id));
+    if (f && !validateArtifactFile(f)) return;
+  }
   // Royalties are baked into the pinned metadata — a missing receiver here
   // would silently ship 0% royalties forever.
   if (state.drop.royaltyAddr && !MD.isAddress(state.drop.royaltyAddr))
@@ -1246,12 +1318,25 @@ $("rpc").addEventListener("change", applyNetwork);
 $("btnConnect").addEventListener("click", connect);
 $("csvFile").addEventListener("change", (e) => e.target.files[0] && onCsv(e.target.files[0]));
 $("mediaFiles").addEventListener("change", (e) => onMedia([...e.target.files]));
-$("coverFile").addEventListener("change", (e) => {
+$("coverFile").addEventListener("change", async (e) => {
   coverFile = e.target.files[0] || null;
   state.drop.coverCid = "";
   state.drop.placeholderCid = ""; // placeholder shows the cover → re-pin
+  $("coverPreview").innerHTML = "";
   if (coverFile) {
-    if (coverFile.size > 5 * 1024 * 1024) { alert("Cover must be ≤ 5MB"); coverFile = null; return; }
+    try {
+      const ok = await validateCollectionCover(coverFile);
+      if (!ok) {
+        coverFile = null;
+        e.target.value = "";
+        return;
+      }
+    } catch (err) {
+      alert(`Collection logo/cover must be ${OBJKT_COLLECTION_IMAGE_LABEL}. ${err.message || ""}`.trim());
+      coverFile = null;
+      e.target.value = "";
+      return;
+    }
     $("coverPreview").innerHTML = `<img src="${URL.createObjectURL(coverFile)}" style="max-width:160px;border-radius:8px" />`;
   }
 });

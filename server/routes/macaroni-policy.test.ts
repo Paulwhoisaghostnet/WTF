@@ -29,6 +29,25 @@ test("Macaroni static API calls use the wtfOS CSRF boundary and do not embed pin
   assert.equal(studioHtml.includes('<option value="wtfos">'), false);
 });
 
+test("Macaroni exposes OBJKT-compatible media limits in Studio and server pinning", () => {
+  const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+
+  assert.match(routeSource, /DEFAULT_IPFS_MAX_BYTES = 250 \* 1024 \* 1024/);
+  assert.match(studioSource, /OBJKT_ARTIFACT_MAX_BYTES = 250 \* MB/);
+  assert.match(studioSource, /OBJKT_COLLECTION_IMAGE_MAX_BYTES = 1 \* MB/);
+  assert.match(studioSource, /new Set\(\["image\/jpeg", "image\/png"\]\)/);
+  assert.match(studioSource, /validateArtifactFile\(f\)/);
+  assert.match(studioSource, /validateCollectionCover\(coverFile\)/);
+  assert.match(studioSource, /OBJKT_COLLECTION_IMAGE_MIME_TYPES\.has\(state\.drop\.coverMime\)/);
+  assert.match(studioSource, /tokenNeedsCover\(t\) \? cover : artifact/);
+  assert.match(studioHtml, /Collection logo \/ cover \(≤1 MB, square JPG\/PNG\)/);
+  assert.match(studioHtml, /accept="image\/png,image\/jpeg"/);
+  assert.match(studioHtml, /Artwork files \(≤250 MB each, named by id\)/);
+  assert.doesNotMatch(studioHtml, /≤5 MB/);
+});
+
 test("Macaroni generated pages use Fileship defaults, accessible controls, and one connect flow", () => {
   const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
   const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
