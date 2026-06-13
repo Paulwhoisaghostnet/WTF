@@ -9,6 +9,8 @@ import { getTzktBase } from "../lib/contract-config";
 import { getServerWtfToken } from "../lib/wtf-token-config";
 import { encryptToken, decryptToken } from "../lib/token-encryption";
 import { logSystemEvent } from "../lib/system-log";
+import { listRolesForUserSnapshot } from "../lib/user-roles";
+import { syncPinCollectorRoleFromInventory } from "../features/ipfs-pinning/service";
 import {
   assertSafeOutboundUrl,
   fetchSafeHttp,
@@ -47,16 +49,23 @@ async function fetchWtfBalance(walletAddress: string): Promise<number> {
 }
 
 async function getUserWalletAndInventory(uid: number) {
-  const { userWallets, userDesktopSettings } = await import("@shared/schema");
+  const { inAppInventoryItems, userWallets } = await import("@shared/schema");
 
-  const wallets = await db
+  const [wallets, inventory] = await Promise.all([
+    db
     .select({ walletAddress: userWallets.walletAddress })
     .from(userWallets)
     .where(eq(userWallets.userId, uid))
-    .limit(1);
+    .limit(1),
+    db
+      .select({ sku: inAppInventoryItems.sku, quantity: inAppInventoryItems.quantity })
+      .from(inAppInventoryItems)
+      .where(eq(inAppInventoryItems.userId, uid)),
+  ]);
 
   const walletAddress = wallets[0]?.walletAddress ?? null;
-  return { walletAddress };
+  const inventorySkus = inventory.filter((item) => item.quantity > 0).map((item) => item.sku);
+  return { walletAddress, inventorySkus };
 }
 
 router.get("/api/porcupin/connection", isAuthenticated, async (req, res) => {
@@ -218,7 +227,9 @@ router.get("/api/porcupin/status", isAuthenticated, async (req, res) => {
 router.get("/api/porcupin/premium-eligibility", isAuthenticated, async (req, res) => {
   try {
     const uid = userId(req);
-    const { walletAddress } = await getUserWalletAndInventory(uid);
+    await syncPinCollectorRoleFromInventory(uid);
+    const { walletAddress, inventorySkus } = await getUserWalletAndInventory(uid);
+    const roles = await listRolesForUserSnapshot(req.user as any);
 
     // Check active dues from club_dues_member_ledger
     const { clubDuesMemberLedger } = await import("@shared/schema");
@@ -230,13 +241,11 @@ router.get("/api/porcupin/premium-eligibility", isAuthenticated, async (req, res
 
     const hasActiveDues = dueLedger[0]?.status === "active";
 
-    // In-app inventory items (membership card SKU check)
-    const inventorySkus: string[] = [];
-
     const result = await checkPorcupinPremiumEligibility({
       walletAddress,
       hasActiveDues,
       inventorySkus,
+      roles,
       fetchWtfBalance,
     });
 

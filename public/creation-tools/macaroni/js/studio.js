@@ -139,6 +139,7 @@ function tokenNeedsCover(t) {
 
 function hasWtfosPinningAccess(user) {
   const perms = user && (user.effectivePermissions || user.permissions || {});
+  if (perms && perms.use_wtfos_pinning === true) return true;
   if (perms && perms.trusted_market_creator === true) return true;
   const roles = Array.isArray(user?.roles)
     ? user.roles
@@ -146,7 +147,7 @@ function hasWtfosPinningAccess(user) {
       ? [user.role]
       : [];
   return roles.some((role) =>
-    ["admin", "host", "cohost", "trusted_creator"].includes(String(role))
+    ["admin", "host", "cohost", "trusted_creator", "wtf_pin_collector"].includes(String(role))
   );
 }
 

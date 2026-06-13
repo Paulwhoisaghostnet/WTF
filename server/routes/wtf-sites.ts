@@ -16,6 +16,7 @@ import {
   updateUserSiteAssets,
   WtfUserSiteError,
 } from "../features/wtf-sites/service";
+import { getPinRegistrySummaryForUser } from "../features/ipfs-pinning/service";
 
 const router = Router();
 
@@ -52,7 +53,8 @@ router.get("/internal/tls/allow", async (req, res) => {
 router.get("/api/wtf-sites/my", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as { id: number };
-    res.json(await getUserSiteState(user.id));
+    const state = await getUserSiteState(user.id);
+    res.json({ ...state, pinRegistry: await getPinRegistrySummaryForUser(user.id) });
   } catch (err) {
     handleSiteError(res, err);
   }

@@ -68,6 +68,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/my-music", path: "/my-music", title: "My Music", domain: "media", subdomain: "My Videos/Photos/Music", auth: true },
   { pattern: "/music", path: "/music", title: "Music", domain: "media", subdomain: "TezosBeats Music", auth: true },
   { pattern: "/tezamp", path: "/tezamp", title: "Music (Tezamp redirect)", domain: "media", subdomain: "TezosBeats Music", auth: true },
+  { pattern: "/ipfs-pinning", path: "/ipfs-pinning", title: "IPFS Pinning Manager", domain: "media", subdomain: "PDS-backed IPFS pinning", auth: true },
   { pattern: "/apps/porcupin-setup", path: "/apps/porcupin-setup", title: "Porcupin Setup", domain: "media", subdomain: "Porcupin", auth: true },
   { pattern: "/apps/porcupin-dashboard", path: "/apps/porcupin-dashboard", title: "Porcupin Dashboard", domain: "media", subdomain: "Porcupin", auth: true },
   { pattern: "/tools/pixel-patterns", path: "/tools/pixel-patterns", title: "PixelPatterns", domain: "media", subdomain: "Creation tools", auth: true },

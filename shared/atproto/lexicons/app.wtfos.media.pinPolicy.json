@@ -1,0 +1,53 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.media.pinPolicy",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "Public-by-design wtfOS IPFS pinning policy. Describes opt-in scope and future scan behavior; does not contain secrets or signed URLs.",
+      "record": {
+        "type": "object",
+        "required": [
+          "$type",
+          "schemaVersion",
+          "scopeType",
+          "scopeRef",
+          "sourceChain",
+          "includeExisting",
+          "includeFuture",
+          "provider",
+          "publicDiscovery",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.media.pinPolicy" },
+          "schemaVersion": { "type": "integer" },
+          "scopeType": { "type": "string" },
+          "scopeRef": { "type": "string" },
+          "walletAddress": { "type": "string" },
+          "sourceChain": { "type": "string" },
+          "includeExisting": { "type": "boolean" },
+          "includeFuture": { "type": "boolean" },
+          "provider": { "type": "string" },
+          "publicDiscovery": { "type": "boolean" },
+          "exclusions": { "type": "unknown" },
+          "subdomainRefs": { "type": "array", "items": { "type": "ref", "ref": "#subdomainRef" } },
+          "sourceEventId": { "type": "string" },
+          "createdAt": { "type": "string", "format": "datetime" },
+          "updatedAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    },
+    "subdomainRef": {
+      "type": "object",
+      "required": ["kind", "host"],
+      "properties": {
+        "kind": { "type": "string", "knownValues": ["wtfos.me", "wtf.tez"] },
+        "host": { "type": "string" },
+        "grantId": { "type": "integer" }
+      }
+    }
+  }
+}

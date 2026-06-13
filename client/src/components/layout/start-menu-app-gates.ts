@@ -30,6 +30,7 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/my-videos": "gallery",
   "/my-photos": "gallery",
   "/my-music": "gallery",
+  "/ipfs-pinning": "ipfs-pinning",
   "/skywire": "skywire",
   "/live": "wtf-live",
   "/tz2at": "tz2at",

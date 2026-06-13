@@ -2,13 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("Macaroni server routes keep pinning and publishing behind trusted creator permission", () => {
+test("Macaroni server routes keep publishing trusted-only while hosted pinning can use Pin Collector", () => {
   const source = readFileSync("server/routes/macaroni.ts", "utf8");
-  const permissionUses = source.match(/requirePermission\("trusted_market_creator"\)/g) ?? [];
 
-  assert.equal(permissionUses.length, 2);
-  assert.match(source, /WTFGAMESHOW_IPFS_JWT/);
-  assert.match(source, /pinFileToIPFS/);
+  assert.match(source, /requirePermission\("trusted_market_creator", "use_wtfos_pinning"\)/);
+  assert.match(source, /requirePermission\("trusted_market_creator"\)/);
+  assert.match(source, /stageAndPinUpload/);
+  assert.match(source, /scopeType:\s*"macaroni_drop"/);
+  assert.equal(source.includes("WTFGAMESHOW_IPFS_JWT"), false);
+  assert.equal(source.includes("pinFileToIPFS"), false);
   assert.equal(source.includes("VITE_PINATA_JWT"), false);
 });
 
@@ -22,6 +24,8 @@ test("Macaroni static API calls use the wtfOS CSRF boundary and do not embed pin
   assert.match(commonSource, /\/api\/macaroni\/ipfs\/pin/);
   assert.match(studioSource, /\/api\/auth\/user/);
   assert.match(studioSource, /trusted_market_creator/);
+  assert.match(studioSource, /use_wtfos_pinning/);
+  assert.match(studioSource, /wtf_pin_collector/);
   assert.match(studioSource, /addPinKindOption\("wtfos"/);
   assert.match(studioSource, /MD\.apiFetch\("\/api\/macaroni\/publish"/);
   assert.equal(commonSource.includes("VITE_PINATA_JWT"), false);

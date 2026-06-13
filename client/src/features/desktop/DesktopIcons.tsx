@@ -654,6 +654,7 @@ export type DesktopAppAvailability = {
   "game-studio": boolean;
   studio: boolean;
   gallery: boolean;
+  "ipfs-pinning": boolean;
   skywire: boolean;
   "wtf-live": boolean;
   tz2at: boolean;
@@ -897,6 +898,15 @@ export function buildDesktopIconDefs(
       defaultY: 540,
       enabled: canOpenApps && (apps.gallery || canOpenDisabledApps),
       openPath: "/my-gallery",
+    },
+    {
+      key: "ipfs-pinning",
+      label: "IPFS Pinning",
+      icon: <ConsoleDeskIcon>PIN</ConsoleDeskIcon>,
+      defaultX: 92,
+      defaultY: 540,
+      enabled: canOpenApps && (apps["ipfs-pinning"] || canOpenDisabledApps),
+      openPath: "/ipfs-pinning",
     },
   ];
   return markExperimentalIconDefs(defs);

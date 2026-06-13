@@ -49,6 +49,79 @@ export const mediaEchoSchema = z.object({
   createdAt: datetime,
 });
 
+export const mediaPinStorageRefSchema = z.object({
+  s3Bucket: z.string().optional(),
+  s3Key: z.string().optional(),
+  s3Region: z.string().optional(),
+  s3Endpoint: z.string().optional(),
+  porcupinProviderKey: z.string().optional(),
+  providerPinId: z.string().optional(),
+  manifestKey: z.string().optional(),
+  byteSize: z.number().int().optional(),
+  mimeType: z.string().optional(),
+  checksumSha256: z.string().optional(),
+});
+
+export const mediaPinSubdomainRefSchema = z.object({
+  kind: z.enum(["wtfos.me", "wtf.tez"]),
+  host: z.string(),
+  grantId: z.number().int().optional(),
+});
+
+export const mediaPinPolicySchema = z.object({
+  $type: z.literal("app.wtfos.media.pinPolicy"),
+  schemaVersion: $version,
+  scopeType: z.string(),
+  scopeRef: z.string(),
+  walletAddress: z.string().optional(),
+  sourceChain: z.string(),
+  includeExisting: z.boolean(),
+  includeFuture: z.boolean(),
+  provider: z.string(),
+  publicDiscovery: z.boolean(),
+  exclusions: z.unknown().optional(),
+  subdomainRefs: z.array(mediaPinSubdomainRefSchema).optional(),
+  sourceEventId: z.string().optional(),
+  createdAt: datetime,
+  updatedAt: datetime,
+});
+
+export const mediaPinManifestSchema = z.object({
+  $type: z.literal("app.wtfos.media.pinManifest"),
+  schemaVersion: $version,
+  scopeType: z.string(),
+  scopeRef: z.string(),
+  walletAddress: z.string().optional(),
+  sourceChain: z.string(),
+  itemCount: z.number().int(),
+  totalBytes: z.number().int(),
+  provider: z.string(),
+  storageRef: mediaPinStorageRefSchema,
+  subdomainRefs: z.array(mediaPinSubdomainRefSchema).optional(),
+  sourceEventId: z.string().optional(),
+  createdAt: datetime,
+  updatedAt: datetime,
+});
+
+export const mediaPinItemSchema = z.object({
+  $type: z.literal("app.wtfos.media.pinItem"),
+  schemaVersion: $version,
+  scopeType: z.string(),
+  scopeRef: z.string(),
+  walletAddress: z.string().optional(),
+  sourceChain: z.string(),
+  cid: z.string(),
+  provider: z.string(),
+  storageRef: mediaPinStorageRefSchema,
+  subdomainRefs: z.array(mediaPinSubdomainRefSchema).optional(),
+  sourceEventId: z.string().optional(),
+  mimeType: z.string().optional(),
+  byteSize: z.number().int().optional(),
+  checksumSha256: z.string().optional(),
+  createdAt: datetime,
+  updatedAt: datetime,
+});
+
 export const identityProfileSchema = z.object({
   $type: z.literal("app.wtfos.identity.profile"),
   schemaVersion: $version,
@@ -178,6 +251,9 @@ export const crpNominationSchema = z.object({
 export const lexiconSchemas = {
   "app.wtfos.index.ref": indexRefSchema,
   "app.wtfos.media.echo": mediaEchoSchema,
+  "app.wtfos.media.pinPolicy": mediaPinPolicySchema,
+  "app.wtfos.media.pinManifest": mediaPinManifestSchema,
+  "app.wtfos.media.pinItem": mediaPinItemSchema,
   "app.wtfos.identity.profile": identityProfileSchema,
   "app.wtfos.identity.walletLink": identityWalletLinkSchema,
   "app.wtfos.identity.site": identitySiteSchema,
@@ -193,6 +269,9 @@ export const LEXICON_IDS = Object.keys(lexiconSchemas) as LexiconId[];
 
 export type IndexRef = z.infer<typeof indexRefSchema>;
 export type MediaEcho = z.infer<typeof mediaEchoSchema>;
+export type MediaPinPolicy = z.infer<typeof mediaPinPolicySchema>;
+export type MediaPinManifest = z.infer<typeof mediaPinManifestSchema>;
+export type MediaPinItem = z.infer<typeof mediaPinItemSchema>;
 export type IdentityProfile = z.infer<typeof identityProfileSchema>;
 export type IdentityWalletLink = z.infer<typeof identityWalletLinkSchema>;
 export type IdentitySite = z.infer<typeof identitySiteSchema>;

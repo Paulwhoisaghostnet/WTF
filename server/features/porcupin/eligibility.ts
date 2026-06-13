@@ -1,4 +1,9 @@
 import { WTF_TOKEN } from "@shared/types";
+import {
+  LEGACY_AUTOPIN_SKU,
+  PIN_COLLECTOR_ROLE,
+  PIN_COLLECTOR_SKU,
+} from "../ipfs-pinning/constants";
 
 export type PorcupinEligibilityResult = {
   wtfBalanceOk: boolean;
@@ -10,17 +15,19 @@ export type PorcupinEligibilityResult = {
 };
 
 const WTF_BALANCE_THRESHOLD = 10_000;
-const AUTOPIN_MEMBERSHIP_SKU = "wtf-autopin-membership";
-
 export async function checkPorcupinPremiumEligibility(input: {
   walletAddress: string | null;
   hasActiveDues: boolean;
   inventorySkus: string[];
+  roles?: string[];
   fetchWtfBalance: (address: string) => Promise<number>;
 }): Promise<PorcupinEligibilityResult> {
   const notes: string[] = [];
   let wtfBalanceOk = false;
-  let membershipCardOk = input.inventorySkus.includes(AUTOPIN_MEMBERSHIP_SKU);
+  let membershipCardOk =
+    input.inventorySkus.includes(LEGACY_AUTOPIN_SKU) ||
+    input.inventorySkus.includes(PIN_COLLECTOR_SKU) ||
+    Boolean(input.roles?.includes(PIN_COLLECTOR_ROLE));
   const duesActiveOk = input.hasActiveDues;
 
   if (!input.walletAddress) {
@@ -36,7 +43,7 @@ export async function checkPorcupinPremiumEligibility(input: {
   }
 
   if (!membershipCardOk) {
-    notes.push("WTF AutoPin Service Membership Card required (in-app marketplace).");
+    notes.push("WTF Pin Collector Pass required (legacy AutoPin membership still counts).");
   }
   if (!duesActiveOk) {
     notes.push("Active WTF Club Dues membership required.");

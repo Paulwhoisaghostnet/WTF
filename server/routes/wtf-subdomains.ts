@@ -13,6 +13,7 @@ import {
 } from "../features/wtf-subdomains/registrar";
 import { prepareCommitPlan } from "../features/wtf-subdomains/commit";
 import { getWalletRegistrarStatus } from "../features/wtf-subdomains/status";
+import { getPinRegistrySummaryForUser } from "../features/ipfs-pinning/service";
 
 const router = Router();
 
@@ -41,6 +42,15 @@ router.get("/api/wtf-subdomains/my", isAuthenticated, async (req, res) => {
     res.json(await listWtfSubdomainGrants(user.id));
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch wtf.tez grants" });
+  }
+});
+
+router.get("/api/wtf-subdomains/pins/summary", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as { id: number };
+    res.json(await getPinRegistrySummaryForUser(user.id));
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch pin registry summary" });
   }
 });
 

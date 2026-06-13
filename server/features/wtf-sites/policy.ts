@@ -158,7 +158,7 @@ export function classifyUserSiteHost(
 
 export function isBlockedUserSitePath(pathname: string): boolean {
   const path = `/${String(pathname || "/").replace(/^\/+/, "")}`.toLowerCase();
-  if (path === "/.well-known/atproto-did") return false;
+  if (path === "/.well-known/atproto-did" || path === "/.well-known/wtfos-pins") return false;
   return BLOCKED_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 

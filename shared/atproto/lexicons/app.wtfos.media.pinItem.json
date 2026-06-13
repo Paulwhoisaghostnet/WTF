@@ -1,0 +1,68 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.media.pinItem",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "One public-by-design pinned CID/media/token artifact record. Carries restore coordinates without credentials, private paths, tokens, or signed URLs.",
+      "record": {
+        "type": "object",
+        "required": [
+          "$type",
+          "schemaVersion",
+          "scopeType",
+          "scopeRef",
+          "sourceChain",
+          "cid",
+          "provider",
+          "storageRef",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.media.pinItem" },
+          "schemaVersion": { "type": "integer" },
+          "scopeType": { "type": "string" },
+          "scopeRef": { "type": "string" },
+          "walletAddress": { "type": "string" },
+          "sourceChain": { "type": "string" },
+          "cid": { "type": "string" },
+          "provider": { "type": "string" },
+          "storageRef": { "type": "ref", "ref": "#storageRef" },
+          "subdomainRefs": { "type": "array", "items": { "type": "ref", "ref": "#subdomainRef" } },
+          "sourceEventId": { "type": "string" },
+          "mimeType": { "type": "string" },
+          "byteSize": { "type": "integer" },
+          "checksumSha256": { "type": "string" },
+          "createdAt": { "type": "string", "format": "datetime" },
+          "updatedAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    },
+    "storageRef": {
+      "type": "object",
+      "properties": {
+        "s3Bucket": { "type": "string" },
+        "s3Key": { "type": "string" },
+        "s3Region": { "type": "string" },
+        "s3Endpoint": { "type": "string" },
+        "porcupinProviderKey": { "type": "string" },
+        "providerPinId": { "type": "string" },
+        "manifestKey": { "type": "string" },
+        "byteSize": { "type": "integer" },
+        "mimeType": { "type": "string" },
+        "checksumSha256": { "type": "string" }
+      }
+    },
+    "subdomainRef": {
+      "type": "object",
+      "required": ["kind", "host"],
+      "properties": {
+        "kind": { "type": "string", "knownValues": ["wtfos.me", "wtf.tez"] },
+        "host": { "type": "string" },
+        "grantId": { "type": "integer" }
+      }
+    }
+  }
+}

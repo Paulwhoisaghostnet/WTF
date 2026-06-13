@@ -179,6 +179,12 @@ const MyMusicPage = lazy(() =>
 const TezampPage = lazy(() =>
   import("../pages/Tezamp").then((m) => ({ default: m.Tezamp }))
 );
+const IpfsPinningPage = lazy(() =>
+  import("../pages/IpfsPinning").then((m) => ({ default: m.IpfsPinning }))
+);
+const PorcupinPage = lazy(() =>
+  import("../pages/Porcupin").then((m) => ({ default: m.Porcupin }))
+);
 const StudioPage = lazy(() =>
   import("../pages/Studio").then((m) => ({ default: m.Studio }))
 );
@@ -463,6 +469,23 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/my-photos", component: MyPhotosPage, auth: true, title: "My Photos", group: "media", startMenu: true },
   { pattern: "/my-music", component: MyMusicPage, auth: true, title: "My Music", group: "media", startMenu: true },
   { pattern: "/tezamp", component: TezampPage, auth: true, title: "Tezamp", group: "media" },
+  { pattern: "/ipfs-pinning", component: IpfsPinningPage, auth: true, title: "IPFS Pinning Manager", group: "media", startMenu: true, desktopIcon: true },
+  {
+    pattern: "/apps/porcupin-setup",
+    component: PorcupinPage,
+    mapProps: () => ({ mode: "setup" }),
+    auth: true,
+    title: "Porcupin Setup",
+    group: "media",
+  },
+  {
+    pattern: "/apps/porcupin-dashboard",
+    component: PorcupinPage,
+    mapProps: () => ({ mode: "dashboard" }),
+    auth: true,
+    title: "Porcupin Dashboard",
+    group: "media",
+  },
   {
     pattern: "/studio/:id",
     component: StudioProjectPage,

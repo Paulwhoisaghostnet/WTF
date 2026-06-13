@@ -1,0 +1,67 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.media.pinManifest",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "Public-by-design restore manifest for wtfOS IPFS pinning. Points to portable restore coordinates while heavy bytes live in S3/Porcupin.",
+      "record": {
+        "type": "object",
+        "required": [
+          "$type",
+          "schemaVersion",
+          "scopeType",
+          "scopeRef",
+          "sourceChain",
+          "itemCount",
+          "totalBytes",
+          "provider",
+          "storageRef",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.media.pinManifest" },
+          "schemaVersion": { "type": "integer" },
+          "scopeType": { "type": "string" },
+          "scopeRef": { "type": "string" },
+          "walletAddress": { "type": "string" },
+          "sourceChain": { "type": "string" },
+          "itemCount": { "type": "integer" },
+          "totalBytes": { "type": "integer" },
+          "provider": { "type": "string" },
+          "storageRef": { "type": "ref", "ref": "#storageRef" },
+          "subdomainRefs": { "type": "array", "items": { "type": "ref", "ref": "#subdomainRef" } },
+          "sourceEventId": { "type": "string" },
+          "createdAt": { "type": "string", "format": "datetime" },
+          "updatedAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    },
+    "storageRef": {
+      "type": "object",
+      "properties": {
+        "s3Bucket": { "type": "string" },
+        "s3Key": { "type": "string" },
+        "s3Region": { "type": "string" },
+        "s3Endpoint": { "type": "string" },
+        "porcupinProviderKey": { "type": "string" },
+        "providerPinId": { "type": "string" },
+        "manifestKey": { "type": "string" },
+        "byteSize": { "type": "integer" },
+        "mimeType": { "type": "string" },
+        "checksumSha256": { "type": "string" }
+      }
+    },
+    "subdomainRef": {
+      "type": "object",
+      "required": ["kind", "host"],
+      "properties": {
+        "kind": { "type": "string", "knownValues": ["wtfos.me", "wtf.tez"] },
+        "host": { "type": "string" },
+        "grantId": { "type": "integer" }
+      }
+    }
+  }
+}

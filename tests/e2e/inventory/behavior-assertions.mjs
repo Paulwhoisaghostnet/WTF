@@ -430,16 +430,27 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The harness asserts the groupchat API is read-only, personal DM writes are disabled, and admin diagnostics expose the active config source.",
   },
   {
+    id: "ipfs-pinning.pds-backed-wallet-backup",
+    domain: "Media, Storage, AT Protocol, and WTF Domains",
+    ownerSurfaceIds: ["ipfs-pinning", "wtf-domains", "creation-tools"],
+    ownerSpec: "tests/playwright/inventory/ipfs-pinning-manager.spec.mjs",
+    verificationCommand: "npm run test:e2e:inventory",
+    userVisibleAssertion:
+      "A WTF Pin Collector can open IPFS Pinning Manager, see role/PDS/subdomain/provider readiness, and enable a whole-wallet backup only after accepting the public PDS record disclosure.",
+    durableSideEffectAssertion:
+      "Saving the policy queues public pinPolicy/pinManifest/pinItem AT records, records only portable pointers in core, stages bytes through S3/Porcupin storage, links the manifest to the wtfos.me subdomain registry, and emits normalized ipfs_pinning.* events.",
+  },
+  {
     id: "skullzarmy.fafolab-integration-contracts",
     domain: "Skullzarmy / FAFOlab Integrations (skllzrmy)",
     ownerSurfaceIds: [
       "arcade",
       "creation-tools",
       "discovery-engine",
+      "ipfs-pinning",
       "mastodon",
       "mint-portal",
       "operator-tools",
-      "porcupin",
       "social-automation",
       "tezosbeats",
     ],

@@ -52,6 +52,10 @@ import {
 import { registerSkywireAtprotoSync } from "../features/atproto/sync";
 import { runIntegrityVerification } from "../features/app-registry/integrity-service";
 import {
+  IPFS_PINNING_WORKER_JOB_NAME,
+} from "../features/ipfs-pinning/constants";
+import { runIpfsPinningWorker } from "../features/ipfs-pinning/service";
+import {
   register as registerJob,
   start as startScheduler,
   stop as stopScheduler,
@@ -66,6 +70,7 @@ const OBJECT_STORAGE_USAGE_CHECK_INTERVAL = 24 * 60 * 60 * 1000;
 const WTF_RECAPTURE_WATCHER_INTERVAL = 2 * 60 * 1000;
 const IN_APP_MARKET_SYNC_INTERVAL = 2 * 60 * 1000;
 const APP_REGISTRY_INTEGRITY_INTERVAL = 6 * 60 * 60 * 1000;
+const IPFS_PINNING_MANAGER_INTERVAL = 10 * 60 * 1000;
 
 export function startBackgroundJobs(): void {
   console.log("[jobs] Registering background jobs with scheduler");
@@ -129,6 +134,15 @@ export function startBackgroundJobs(): void {
     fn: runObjectStorageUsageCheck,
     intervalMs: OBJECT_STORAGE_USAGE_CHECK_INTERVAL,
     initialDelayMs: 10 * 60 * 1000,
+  });
+
+  registerJob({
+    name: IPFS_PINNING_WORKER_JOB_NAME,
+    fn: runIpfsPinningWorker,
+    intervalMs: IPFS_PINNING_MANAGER_INTERVAL,
+    initialDelayMs: 12 * 60 * 1000,
+    skipInitialRun: true,
+    scope: "pds-backed-ipfs-pinning",
   });
 
   registerJob({

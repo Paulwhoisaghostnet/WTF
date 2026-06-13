@@ -58,6 +58,7 @@ const doctrineDomainBySurfaceDomain: Record<string, DoctrineDomainGuide> = {
 
 const doctrineDomainBySurfaceId: Record<string, DoctrineDomainGuide> = {
   "game-studio": DOCTRINE_DOMAIN_GUIDES.arcadeConsoleGameStudio,
+  "ipfs-pinning": DOCTRINE_DOMAIN_GUIDES.mediaTvStudio,
   marketplace: DOCTRINE_DOMAIN_GUIDES.commerceAndWallets,
 };
 
@@ -741,10 +742,12 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     automationHandles: [
       "wtf_domain.grants.viewed",
       "wtf_domain.registration.prepared",
+      "ipfs_pinning.subdomain_registry.linked",
       "wtf_site.claimed",
       "macaroni.drop_published",
     ],
     behaviorAssertionIds: [
+      "ipfs-pinning.pds-backed-wallet-backup",
       "settings.subdomain-setup-applet",
       "macaroni.shadownet-rpc-wallet-setup",
     ],
@@ -846,6 +849,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     nativeSettings: ["tool availability", "export rules", "contract origination roles", "IPFS pinning", "drop page publishing", "mint challenge triggers"],
     automationHandles: ["creation_tool.opened", "macaroni.drop_published", "mint_submission.created", "app.interaction.tracked"],
     behaviorAssertionIds: [
+      "ipfs-pinning.pds-backed-wallet-backup",
       "skullzarmy.fafolab-integration-contracts",
       "macaroni.shadownet-rpc-wallet-setup",
     ],
@@ -864,16 +868,47 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
   },
   {
-    id: "porcupin",
-    label: "Porcupin IPFS",
+    id: "ipfs-pinning",
+    label: "IPFS Pinning Manager",
     domain: "Storage",
-    subdomain: "IPFS pinning",
-    kind: "tool",
-    routePatterns: ["/apps/porcupin-setup", "/apps/porcupin-dashboard"],
+    subdomain: "PDS-backed IPFS pinning",
+    kind: "app",
+    desktopAppKey: "ipfs-pinning",
+    routePatterns: ["/ipfs-pinning", "/apps/porcupin-setup", "/apps/porcupin-dashboard"],
+    adminRoutes: [
+      "/api/ipfs-pinning/overview",
+      "/api/ipfs-pinning/policies",
+      "/api/ipfs-pinning/upload",
+      "/api/wtf-subdomains/pins/summary",
+      "/api/macaroni/ipfs/pin",
+    ],
     adminPanelTabs: ["System Logs", "Automation"],
-    nativeSettings: ["premium pinning worker", "eligibility gates", "quota limits"],
-    automationHandles: ["porcupin.connect", "porcupin.premium.check"],
-    behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
+    nativeSettings: [
+      "pin collector access",
+      "wallet backup policy",
+      "PDS publish state",
+      "provider health",
+      "Hetzner S3 staging",
+      "Storage Box manifest mirror",
+      "quota limits",
+      "restore proofs",
+    ],
+    automationHandles: [
+      "ipfs_pinning.policy.saved",
+      "ipfs_pinning.wallet_backup.enabled",
+      "ipfs_pinning.storage.staged",
+      "ipfs_pinning.pin.completed",
+      "ipfs_pinning.pds_record.queued",
+      "ipfs_pinning.pds_record.published",
+      "ipfs_pinning.subdomain_registry.linked",
+      "ipfs_pinning.restore_proof.created",
+      "porcupin.connect",
+      "porcupin.premium.check",
+    ],
+    behaviorAssertionIds: [
+      "ipfs-pinning.pds-backed-wallet-backup",
+      "skullzarmy.fafolab-integration-contracts",
+    ],
   },
   {
     id: "discovery-engine",

@@ -1,14 +1,10 @@
 import { AppWindow } from "../components/layout/AppWindow";
 import { IpfsPinningManager } from "../features/ipfs-pinning/IpfsPinningManager";
 
-interface Props {
-  mode?: "setup" | "dashboard";
-}
-
-export function Porcupin({ mode }: Props) {
+export function IpfsPinning() {
   return (
     <AppWindow title="IPFS Pinning Manager">
-      <IpfsPinningManager legacyMode={mode} />
+      <IpfsPinningManager />
     </AppWindow>
   );
 }

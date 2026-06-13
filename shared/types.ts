@@ -268,6 +268,20 @@ export const DEFAULT_ROLE_CATALOG: RoleDefinition[] = [
     isAssignable: true,
   },
   {
+    slug: "wtf_pin_collector",
+    label: "WTF Pin Collector",
+    category: "builder",
+    purpose: "Additive hosted IPFS pinning role for PDS-backed wallet backup manifests.",
+    description: "Grants pinning access only; does not grant broader creator, social posting, or admin authority.",
+    accessLevel: 25,
+    sortOrder: 65,
+    color: "#1f7a5b",
+    icon: "archive",
+    defaultWtfOsAccess: true,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
     slug: "test_subject",
     label: "Test Subject",
     category: "experimental",
@@ -416,6 +430,7 @@ export const DESKTOP_APPS = [
   "game-studio",
   "studio",
   "gallery",
+  "ipfs-pinning",
   "skywire",
   "wtf-live",
   "tz2at",
@@ -443,6 +458,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   "game-studio": "Game Studio",
   studio: "Studio",
   gallery: "My Gallery",
+  "ipfs-pinning": "IPFS Pinning Manager",
   skywire: "Skywire",
   "wtf-live": "WTF LIVE",
   tz2at: "tz2at",
@@ -713,6 +729,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "manage_trade_board", label: "Manage Trade Board", description: "Add/remove own tokens on the trade board", category: "market" },
   { key: "use_swap", label: "Use Swap", description: "Access the SpicySwap DEX integration", category: "market" },
   { key: "trusted_market_creator", label: "Trusted Market Creator", description: "Trusted creator lane for in-app store item submissions", category: "market" },
+  { key: "use_wtfos_pinning", label: "Use wtfOS Pinning", description: "Use hosted wtfOS IPFS pinning, PDS manifests, and wallet backup policies", category: "market" },
 
   // ── Moderation ──
   { key: "pin_threads", label: "Pin Threads", description: "Pin or unpin message board threads", category: "moderation" },
@@ -775,6 +792,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     "access_studio", "create_studio_projects", "trusted_tv_creator",
     "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
     "trusted_market_creator",
+  ],
+  wtf_pin_collector: [
+    "view_dashboard", "edit_own_profile", "link_wallets", "view_gallery",
+    "view_marketplace", "use_swap", "use_wtfos_pinning",
   ],
   test_subject: [
     "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",

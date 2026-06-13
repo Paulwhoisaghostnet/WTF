@@ -4741,3 +4741,15 @@
 **Fix**: Added a shared `connectPromise` latch in `MD.connectWallet`, added generated-page `walletConnecting` button state with disabled/`aria-busy` feedback, and covered rapid clicks in the Shadownet puppet browser suite by asserting one permission request. The same pass added baseline landmarks, live status regions, progressbar semantics, quantity button labels, and a Fileship gateway default.
 
 **Rule**: For wallet connect flows on generated/static pages, guard the operation at the shared wallet helper and the visible UI. Browser tests should fire repeated clicks and count permission requests, not just assert the final connected address.
+
+---
+
+## 2026-06-13 - Policy tests and Playwright locators must move with access-model changes
+
+**What happened**: The IPFS Pinning Manager pass intentionally moved Macaroni hosted pinning from direct Pinata/JWT route code into the shared pinning service and widened the pin route to accept `use_wtfos_pinning` while leaving publish trusted-creator only. The old Macaroni policy test still asserted direct `pinFileToIPFS`/`WTFGAMESHOW_IPFS_JWT` wiring and exact trusted-creator gate counts. The new Pinning Manager Playwright test also used strict text and label locators where the UI rendered duplicate DID text and a sibling label/input pattern.
+
+**Why it mattered**: Stale policy tests can make a correct permission split look like a regression, and brittle locators can fail a behavior test before it reaches the behavior being protected. That wastes verification time and weakens confidence in the access boundary.
+
+**Fix**: Updated the Macaroni policy test to assert shared `stageAndPinUpload` routing, dual pinning permission, trusted-only publishing, and no embedded Pinata secrets. Tightened the Pinning Manager browser test to use stable first-match text checks and the actual wallet input placeholder before verifying the public-record acknowledgment gate.
+
+**Rule**: When a route's permission model or provider boundary changes intentionally, update policy tests in the same pass to assert the new split, not the previous implementation detail. For behavior E2E, use locators tied to unique controls or deliberate first matches when the same fact appears in status and detail regions.

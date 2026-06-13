@@ -200,6 +200,27 @@ const STAGED_LISTINGS: Record<WtfIamCategoryKey, WtfIamListing[]> = {
   ],
   preservation: [
     {
+      sku: "wtf-pin-collector-pass",
+      name: "WTF Pin Collector Pass",
+      description: "Unlock hosted wtfOS IPFS pinning, wallet backup policy, and portable PDS pin manifests.",
+      kind: "role-grant",
+      category: "preservation",
+      source: "staged",
+      priceWtfUnits: "25000000000",
+      priceWtfFormatted: "250.00",
+      priceExp: 2500,
+      stockQuantity: 999999,
+      quantityOwned: 0,
+      accent: "#1f7a5b",
+      monogram: "PIN",
+      metadata: {
+        kind: "role-grant",
+        role: "wtf_pin_collector",
+        permission: "use_wtfos_pinning",
+        opens: "/ipfs-pinning",
+      },
+    },
+    {
       sku: "artifact-archiver-pass",
       name: "Artifact Archiver Pass",
       description: "Queue owned Tezos token artifacts for preservation through the WTF archive worker.",

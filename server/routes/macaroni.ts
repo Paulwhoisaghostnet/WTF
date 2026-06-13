@@ -17,6 +17,7 @@ import {
   buildMacaroniPublishedHtml,
   slugForDropTitle,
 } from "../features/macaroni/publish";
+import { stageAndPinUpload } from "../features/ipfs-pinning/service";
 
 const router = Router();
 
@@ -57,17 +58,6 @@ function runPinUpload(req: Request, res: Response, next: NextFunction) {
   });
 }
 
-function pinningJwt(): string {
-  return (
-    process.env.WTFGAMESHOW_IPFS_JWT ||
-    process.env.WTF_GAMESHOW_IPFS_JWT ||
-    process.env.WTFGAMESHOW_PINATA_JWT ||
-    process.env.PINATA_JWT ||
-    process.env.PINATA_API_JWT ||
-    ""
-  ).trim();
-}
-
 function publicOrigin(req: Request): string {
   const configured = process.env.PUBLIC_SITE_URL || process.env.APP_PUBLIC_URL || "";
   if (configured.trim()) return configured.trim().replace(/\/+$/, "");
@@ -94,50 +84,30 @@ function handleMacaroniSiteError(res: Response, err: unknown) {
 
 router.post(
   "/api/macaroni/ipfs/pin",
-  requirePermission("trusted_market_creator"),
+  requirePermission("trusted_market_creator", "use_wtfos_pinning"),
   runPinUpload,
   async (req, res) => {
     const file = req.file;
     if (!file) return res.status(400).json({ error: "Upload a file to pin" });
 
-    const jwt = pinningJwt();
-    if (!jwt) {
-      return res.status(503).json({ error: "Macaroni IPFS pinning is not configured" });
-    }
-
-    const fileBytes = new Uint8Array(file.buffer.byteLength);
-    fileBytes.set(file.buffer);
-    const form = new FormData();
-    form.append(
-      "file",
-      new Blob([fileBytes], { type: file.mimetype || "application/octet-stream" }),
-      file.originalname || "macaroni-upload"
-    );
-
-    const upstream = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${jwt}` },
-      body: form,
-    });
-    const text = await upstream.text();
-    if (!upstream.ok) {
-      return res.status(502).json({
-        error: "Macaroni IPFS pinning failed",
-        status: upstream.status,
-        details: text.slice(0, 1000),
+    try {
+      const user = req.user as { id: number };
+      const result = await stageAndPinUpload({
+        userId: user.id,
+        fileName: file.originalname || "macaroni-upload",
+        mimeType: file.mimetype || "application/octet-stream",
+        buffer: file.buffer,
+        source: "macaroni",
+        scopeType: "macaroni_drop",
+      });
+      return res.json(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Macaroni IPFS pinning failed";
+      return res.status((err as { status?: number })?.status ?? 503).json({
+        error: message,
+        code: (err as { code?: string })?.code,
       });
     }
-
-    let payload: Record<string, unknown> = {};
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      return res.status(502).json({ error: "Macaroni IPFS pinning returned invalid JSON" });
-    }
-
-    const cid = String(payload.IpfsHash || payload.cid || "");
-    if (!cid) return res.status(502).json({ error: "Macaroni IPFS pinning returned no CID" });
-    return res.json({ ...payload, cid, IpfsHash: cid, ipfsUri: `ipfs://${cid}` });
   }
 );
 

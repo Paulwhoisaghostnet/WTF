@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { createTlsAllowHandler } from "@wtfos/atproto-spine";
 import { getSpineConfig, infraHosts, RESERVED_HANDLES } from "../atproto-spine/config";
+import { wellKnownPinsForHost } from "../ipfs-pinning/service";
 import { serveStoredMediaFile } from "../../lib/storage/media-file-serve";
 import {
   classifyUserSiteHost,
@@ -107,6 +108,12 @@ export async function userSiteHostRouter(req: Request, res: Response, next: Next
         return res.status(410).type("text/plain").send("Site suspended");
       }
       return res.status(200).type("text/plain").send(`${resolved.did}\n`);
+    }
+
+    if (req.path === "/.well-known/wtfos-pins") {
+      const result = await wellKnownPinsForHost(host);
+      res.setHeader("Cache-Control", "public, max-age=30, must-revalidate");
+      return res.status(result.status).type("json").send(result.body);
     }
 
     if (await serveMedia(req, res, host)) return;

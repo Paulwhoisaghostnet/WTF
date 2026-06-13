@@ -92,6 +92,7 @@ export * from "./schema-mail";
 export * from "./schema-music";
 export * from "./schema-mastodon";
 export * from "./schema-porcupin";
+export * from "./schema-ipfs-pinning";
 export * from "./schema-atproto-appview";
 export * from "./schema-app-registry";
 export * from "./schema-wtf-sites";

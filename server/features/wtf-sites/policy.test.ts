@@ -39,6 +39,7 @@ test("privileged paths are blocked on user hosts while AT DID path stays public"
   assert.equal(isBlockedUserSitePath("/xrpc/com.atproto.repo.putRecord"), true);
   assert.equal(isBlockedUserSitePath("/sw.js"), true);
   assert.equal(isBlockedUserSitePath("/.well-known/atproto-did"), false);
+  assert.equal(isBlockedUserSitePath("/.well-known/wtfos-pins"), false);
   assert.equal(isBlockedUserSitePath("/project"), false);
 });
 
