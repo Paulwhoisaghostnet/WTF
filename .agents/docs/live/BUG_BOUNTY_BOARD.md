@@ -82,7 +82,7 @@ Priority labels:
 | WTF-BB-250 | Verified | Codex IPFS Pinning organ full-send | 2026-06-13 | Desktop OS / IPFS pinning app registry | P1 | 11 | 8 | 2 | 5 | 0 | `ipfs-pinning` now has a canonical PageDef, desktop app surface, admin surface, inventory route fixture, behavior assertion, shared service routes, and PDS-backed pin registry docs; verified by focused policy/lexicon tests, TypeScript, creation-tools checks, inventory coverage, and full inventory E2E |
 | WTF-BB-251 | Verified | Codex Macaroni effective mint allowance pass | 2026-06-13 | Macaroni / generated mint page quantity guard | P1 | 12 | 7 | 3 | 5 | 0 | Generated Macaroni mint pages now clamp requested quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance before wallet signing; verified by `node --check public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, `npm run test:e2e:inventory:coverage`, GitHub Deploy to Hetzner run `27476940932`, Quality Gates run `27476940928`, live health commit `70337b0`, and live production `drop.js` asset curl confirming the effective quantity cap code |
 | WTF-BB-252 | Verified | Codex Map Lab public demo access follow-up | 2026-06-13 | Desktop OS / Map Lab public demo access | P1 | 11 | 8 | 2 | 4 | 1 | Anonymous production users can now reach the read-only wtfOS Map Lab demo because `/map-lab` is public in PageDef, shared browser-route metadata, and inventory route fixtures while edit/ingest actions stay session and role gated; verified by shared route policy tests, TypeScript, inventory coverage, focused MapLab Playwright, full inventory E2E, GitHub deploy/quality runs, live health, and anonymous production smoke |
-| WTF-BB-253 | In Progress | Codex Macaroni sandbox-safe Studio feedback pass | 2026-06-13 | Macaroni / embedded Studio modal feedback | P1 | 12 | 7 | 3 | 5 | 0 | Embedded Macaroni Studio validation/deploy errors can silently disappear because `/tools/macaroni` runs in a sandboxed iframe without `allow-modals`; current pass replaces native `alert`/`confirm` calls with inline status/confirmation UI |
+| WTF-BB-253 | Verified | Codex Macaroni sandbox-safe Studio feedback pass | 2026-06-13 | Macaroni / embedded Studio modal feedback | P1 | 12 | 7 | 3 | 5 | 0 | Embedded Macaroni Studio validation/deploy errors now render through sandbox-safe inline notices and an in-Studio mainnet confirmation panel instead of blocked native `alert`/`confirm` calls; verified locally, by focused sandbox repro, by GitHub deploy/quality runs, and on live `wtfos.app` commit `b5b2384` |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5331,7 +5331,7 @@ Priority labels:
 ### WTF-BB-253 - Embedded Macaroni Studio silently drops modal validation/deploy errors
 
 - Category: Macaroni / embedded Studio modal feedback
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex Macaroni sandbox-safe Studio feedback pass
 - Score: C3 + F5 + S0 + P1(4) = 12
 - Evidence:
@@ -5345,7 +5345,14 @@ Priority labels:
   - Replace the mainnet deploy browser confirm with an inline mainnet deploy confirmation panel.
   - Add source-policy coverage that Studio no longer calls native `alert()`/`confirm()`.
 - Verification:
-  - Pending local and live verification.
+  - `node --check public/creation-tools/macaroni/js/studio.js`
+  - `npx tsx --test server/routes/macaroni-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - Focused sandbox iframe repro confirmed the Deploy button renders `Connect your wallet first.` in `#studioNotice`/`#deployStatus` with no blocked modal console warnings.
+  - GitHub Deploy to Hetzner run `27480955620` succeeded.
+  - GitHub Quality Gates run `27480955606` succeeded.
+  - Live health reported production commit `b5b2384`.
+  - Live `https://wtfos.app/creation-tools/macaroni/studio.html` exposes `studioNotice`, `mainnetDeployConfirm`, and `btnConfirmMainnetDeploy`; live `studio.js` exposes `notify`, `requestMainnetDeployConfirmation`, and contains no native `alert(`/`confirm(` calls.
 
 ## Backlog Intake Template
 
