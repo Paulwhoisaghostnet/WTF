@@ -7,7 +7,7 @@ window.DROP_CONFIG = {
   title: "Your Drop Title",
   description: "Describe your blind drop for collectors.",
   cover: "",
-  gateway: "https://ipfs.io/ipfs/",
+  gateway: "https://ipfs.fileship.xyz/",
   theme: {
     name: "dark",
     accent: "",

@@ -40,7 +40,7 @@ const state = {
     revealDelayDays: 7, // auto-reveal window (delayed mode), 0–30
     placeholderCid: "", // pinned pre-reveal metadata (delayed mode)
   },
-  pin: { kind: "wtfos", jwt: "", url: "", gateway: "" },
+  pin: { kind: "wtfos", jwt: "", url: "", gateway: MD.DEFAULT_GATEWAY },
   tokens: [], // {id, name, description, attributes, tags, fileName, mediaCid, mediaMime, metadataCid}
   stages: [], // {start, price, useAllowlist, maxPerWallet, allowlist:[{address,capacity}]}
   contract: "",
@@ -151,6 +151,8 @@ function load() {
     // Drafts saved before a network was retired (e.g. ghostnet) fall back
     // to the current testnet instead of crashing the toolkit setup.
     if (!MD.getNetworks()[state.network]) state.network = "shadownet";
+    if (!state.pin || typeof state.pin !== "object") state.pin = { kind: "wtfos", jwt: "", url: "", gateway: "" };
+    if (!state.pin.gateway) state.pin.gateway = MD.DEFAULT_GATEWAY;
   } catch (e) {
     console.warn("could not restore draft", e);
   }

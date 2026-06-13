@@ -22,7 +22,7 @@ const MD = (() => {
     shadownet: "NetXsqzbfFenSTS",
   };
 
-  const DEFAULT_GATEWAY = "https://ipfs.io/ipfs/";
+  const DEFAULT_GATEWAY = "https://ipfs.fileship.xyz/";
   const WALLET_SESSION_PREFIX = "macaroni.wallet.session.v1";
 
   const ADDRESS_RE = /^(tz1|tz2|tz3|tz4|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
@@ -33,6 +33,7 @@ const MD = (() => {
   let activeAccount = null;
   let netKey = null;
   let rpcUrl = null;
+  let connectPromise = null;
 
   function walletSessionKey() {
     const path = typeof location !== "undefined" ? `${location.origin}${location.pathname}` : "local";
@@ -238,25 +239,33 @@ const MD = (() => {
 
   async function connectWallet(appName) {
     if (!tezos) throw new Error("Pick a network first");
-    await assertRpcChainId();
-    const doConnect = async () => {
-      await resetBeaconPickerState();
-      wallet = makeWallet(appName);
-      tezos.setWalletProvider(wallet);
-      // Network is fixed on the client (constructor + realignment above);
-      // current Beacon SDKs reject a `network` property here.
-      await wallet.requestPermissions();
-      activeAccount = await wallet.getPKH();
-      saveWalletSession(activeAccount);
-      return activeAccount;
-    };
+    if (connectPromise) return connectPromise;
+    connectPromise = (async () => {
+      await assertRpcChainId();
+      const doConnect = async () => {
+        await resetBeaconPickerState();
+        wallet = makeWallet(appName);
+        tezos.setWalletProvider(wallet);
+        // Network is fixed on the client (constructor + realignment above);
+        // current Beacon SDKs reject a `network` property here.
+        await wallet.requestPermissions();
+        activeAccount = await wallet.getPKH();
+        saveWalletSession(activeAccount);
+        return activeAccount;
+      };
+      try {
+        return await doConnect();
+      } catch (e) {
+        if (!/expired/i.test(e && e.message ? e.message : String(e))) throw e;
+        clearBeaconStorage({ preserveIdentity: true });
+        wallet = null;
+        return doConnect();
+      }
+    })();
     try {
-      return await doConnect();
-    } catch (e) {
-      if (!/expired/i.test(e && e.message ? e.message : String(e))) throw e;
-      clearBeaconStorage({ preserveIdentity: true });
-      wallet = null;
-      return doConnect();
+      return await connectPromise;
+    } finally {
+      connectPromise = null;
     }
   }
 

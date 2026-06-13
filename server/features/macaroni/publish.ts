@@ -98,61 +98,62 @@ export function buildMacaroniPublishedHtml(input: {
 </head>
 <body>
 
-<div class="topbar">
+<header class="topbar">
   <span class="brand" id="brand">Macaroni</span>
   <div class="row">
     <span class="net muted" id="netLabel"></span>
-    <button class="btn small" id="btnConnect">Connect wallet</button>
-    <button class="btn ghost small" id="btnDisconnect" style="display:none">Disconnect</button>
+    <button class="btn small" id="btnConnect" type="button" aria-label="Connect wallet">Connect wallet</button>
+    <button class="btn ghost small" id="btnDisconnect" type="button" style="display:none">Disconnect</button>
   </div>
-</div>
+</header>
 
-<div class="hero">
+<section class="hero" aria-labelledby="title">
   <img class="cover" id="cover" alt="" style="display:none" />
   <h1 id="title">...</h1>
   <p class="muted narrow" id="desc" style="margin:0 auto"></p>
-</div>
+</section>
 
-<div class="wrap narrow">
+<main class="wrap narrow" id="main">
 
-  <section class="panel mint-box" id="mintPanel">
-    <div class="progress" style="margin-bottom:14px"><div id="supplyBar"></div></div>
-    <div class="muted" id="supplyText">loading collection...</div>
-    <div class="mode-note" id="modeNote" style="display:none"></div>
+  <section class="panel mint-box" id="mintPanel" aria-labelledby="mintHeading">
+    <h2 class="sr-only" id="mintHeading">Mint this drop</h2>
+    <div class="progress" id="supplyProgress" role="progressbar" aria-label="Minted supply" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="margin-bottom:14px"><div id="supplyBar"></div></div>
+    <div class="muted" id="supplyText" aria-live="polite">loading collection...</div>
+    <div class="mode-note" id="modeNote" aria-live="polite" style="display:none"></div>
     <hr class="sep" />
-    <div id="stageInfo" class="muted"></div>
+    <div id="stageInfo" class="muted" role="status" aria-live="polite"></div>
     <div class="price" id="price"></div>
     <div class="row" style="justify-content:center;margin:16px 0">
       <div class="qty">
-        <button id="qtyMinus">-</button>
-        <span id="qty">1</span>
-        <button id="qtyPlus">+</button>
+        <button id="qtyMinus" type="button" aria-label="Decrease mint quantity">-</button>
+        <span id="qty" aria-label="Mint quantity" aria-live="polite">1</span>
+        <button id="qtyPlus" type="button" aria-label="Increase mint quantity">+</button>
       </div>
-      <button class="btn" id="btnMint" disabled>Mint</button>
+      <button class="btn" id="btnMint" type="button" disabled>Mint</button>
     </div>
-    <div class="muted" id="mintStatus"></div>
-    <div class="muted" id="walletBalance"></div>
-    <div class="muted" id="mintPreflight"></div>
-    <div class="muted" id="allowStatus" style="margin-top:6px"></div>
-    <div class="muted" id="walletLimitStatus"></div>
+    <div class="muted" id="mintStatus" role="status" aria-live="polite"></div>
+    <div class="muted" id="walletBalance" role="status" aria-live="polite"></div>
+    <div class="muted" id="mintPreflight" aria-live="polite"></div>
+    <div class="muted" id="allowStatus" role="status" aria-live="polite" style="margin-top:6px"></div>
+    <div class="muted" id="walletLimitStatus" aria-live="polite"></div>
     <div id="revealPending" style="display:none">
       <hr class="sep" />
-      <div class="muted" id="revealInfo"></div>
+      <div class="muted" id="revealInfo" aria-live="polite"></div>
       <div class="row" style="justify-content:center;margin-top:10px">
-        <button class="btn ghost" id="btnReveal" style="display:none">Reveal now</button>
+        <button class="btn ghost" id="btnReveal" type="button" style="display:none">Reveal now</button>
       </div>
-      <div class="muted" id="revealOpStatus"></div>
+      <div class="muted" id="revealOpStatus" role="status" aria-live="polite"></div>
     </div>
   </section>
 
-  <section id="revealSection" style="display:none">
-    <h2 style="text-align:center">Your mints</h2>
+  <section id="revealSection" aria-labelledby="ownedMintsHeading" style="display:none">
+    <h2 id="ownedMintsHeading" style="text-align:center">Your mints</h2>
     <div class="reveal-grid" id="revealGrid"></div>
-    <div class="muted" id="ownedMintStatus" style="text-align:center;margin-top:10px"></div>
+    <div class="muted" id="ownedMintStatus" role="status" aria-live="polite" style="text-align:center;margin-top:10px"></div>
   </section>
 
-  <section class="panel">
-    <h3>Sale schedule</h3>
+  <section class="panel" aria-labelledby="saleScheduleHeading">
+    <h2 id="saleScheduleHeading">Sale schedule</h2>
     <div class="stages-list" id="stagesList"></div>
   </section>
 
@@ -162,7 +163,7 @@ export function buildMacaroniPublishedHtml(input: {
     <span id="contractLink"></span><br/>
     Powered by <strong>Macaroni</strong> - open-source blind mints on Tezos - 0% platform fee
   </footer>
-</div>
+</main>
 
 <script>window.DROP_CONFIG = ${configJson};</script>
 <script src="${assetBase}/vendor/tezos.js"></script>

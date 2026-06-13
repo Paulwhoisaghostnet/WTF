@@ -74,11 +74,26 @@ h1 { font-size: clamp(2rem, 5vw, 3.4rem); margin: 0.4em 0; }
 h2 { font-size: 1.5rem; margin: 1.2em 0 0.5em; }
 h3 { font-size: 1.15rem; margin: 1em 0 0.4em; }
 a { color: var(--accent); }
+a:focus-visible, button:focus-visible, .btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 code, .mono { font-family: var(--font-mono); font-size: 0.85em; }
 
 .wrap { max-width: 1080px; margin: 0 auto; padding: 24px; }
 .narrow { max-width: 760px; }
 .wide { max-width: 1680px; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* studio tabs */
 .tabs {

@@ -24,13 +24,76 @@ function ensureMintSiteEnhancements() {
     btn.textContent = "Disconnect";
     $("btnConnect").insertAdjacentElement("afterend", btn);
   }
-  insertAfter("mintStatus", '<div class="muted" id="walletBalance"></div>');
-  insertAfter("walletBalance", '<div class="muted" id="mintPreflight"></div>');
-  insertAfter("allowStatus", '<div class="muted" id="walletLimitStatus"></div>');
-  insertAfter("revealGrid", '<div class="muted" id="ownedMintStatus" style="text-align:center;margin-top:10px"></div>');
+  insertAfter("mintStatus", '<div class="muted" id="walletBalance" role="status" aria-live="polite"></div>');
+  insertAfter("walletBalance", '<div class="muted" id="mintPreflight" aria-live="polite"></div>');
+  insertAfter("allowStatus", '<div class="muted" id="walletLimitStatus" aria-live="polite"></div>');
+  insertAfter("revealGrid", '<div class="muted" id="ownedMintStatus" role="status" aria-live="polite" style="text-align:center;margin-top:10px"></div>');
 }
 
 ensureMintSiteEnhancements();
+
+function setAttrs(el, attrs) {
+  if (!el) return;
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value == null) el.removeAttribute(key);
+    else el.setAttribute(key, String(value));
+  }
+}
+
+function ensureDropAccessibility() {
+  const topbar = document.querySelector(".topbar");
+  if (topbar && topbar.tagName !== "HEADER") topbar.setAttribute("role", "banner");
+  const main = document.querySelector("main") || document.querySelector(".wrap.narrow");
+  if (main) {
+    if (!main.id) main.id = "main";
+    if (main.tagName !== "MAIN") main.setAttribute("role", "main");
+  }
+  setAttrs(document.querySelector(".hero"), { "aria-labelledby": "title" });
+  const mintPanel = $("mintPanel");
+  if (mintPanel) {
+    setAttrs(mintPanel, { "aria-labelledby": "mintHeading" });
+    if (!$("mintHeading")) {
+      const heading = document.createElement("h2");
+      heading.id = "mintHeading";
+      heading.className = "sr-only";
+      heading.textContent = "Mint this drop";
+      mintPanel.prepend(heading);
+    }
+  }
+  const progress = $("supplyProgress") || $("supplyBar")?.parentElement;
+  if (progress) {
+    if (!progress.id) progress.id = "supplyProgress";
+    setAttrs(progress, {
+      role: "progressbar",
+      "aria-label": "Minted supply",
+      "aria-valuemin": "0",
+      "aria-valuemax": "100",
+      "aria-valuenow": progress.getAttribute("aria-valuenow") || "0",
+    });
+  }
+  const statusIds = ["stageInfo", "mintStatus", "walletBalance", "allowStatus", "ownedMintStatus", "revealOpStatus"];
+  statusIds.forEach((id) => setAttrs($(id), { role: "status", "aria-live": "polite" }));
+  ["supplyText", "modeNote", "mintPreflight", "walletLimitStatus", "revealInfo"].forEach((id) =>
+    setAttrs($(id), { "aria-live": "polite" })
+  );
+  const buttonAttrs = {
+    btnConnect: { type: "button", "aria-label": "Connect wallet" },
+    btnDisconnect: { type: "button" },
+    qtyMinus: { type: "button", "aria-label": "Decrease mint quantity" },
+    qtyPlus: { type: "button", "aria-label": "Increase mint quantity" },
+    btnMint: { type: "button" },
+    btnReveal: { type: "button" },
+  };
+  for (const [id, attrs] of Object.entries(buttonAttrs)) {
+    const button = $(id);
+    if (!button) continue;
+    if (attrs.type) button.type = attrs.type;
+    setAttrs(button, attrs);
+  }
+  setAttrs($("qty"), { "aria-label": "Mint quantity", "aria-live": "polite" });
+}
+
+ensureDropAccessibility();
 
 // ---------- config ----------
 let CFG = window.DROP_CONFIG || null;
@@ -94,6 +157,7 @@ $("netLabel").textContent = CFG.network;
 if (CFG.cover) {
   const img = $("cover");
   img.src = MD.ipfsToHttp(CFG.cover, CFG.gateway);
+  img.alt = `${CFG.title || "Drop"} cover image`;
   img.style.display = "";
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -124,14 +188,14 @@ function renderTokenCard(card, meta, id, sealed) {
   }
   const img = document.createElement("img");
   img.src = imageUrl;
-  img.alt = "";
+  img.alt = `${meta.name || "Token #" + (id + 1)} artwork`;
   card.replaceChildren(img, cap);
 }
 $("contentBlocks").innerHTML = (CFG.blocks || [])
   .map((b) => {
     if (b.type === "h") return `<h2>${esc(b.value)}</h2>`;
     if (b.type === "img")
-      return `<p style="text-align:center"><img src="${esc(MD.ipfsToHttp(b.value, CFG.gateway))}" style="max-width:100%;border-radius:var(--radius)" /></p>`;
+      return `<p style="text-align:center"><img src="${esc(MD.ipfsToHttp(b.value, CFG.gateway))}" alt="Drop content image" loading="lazy" style="max-width:100%;border-radius:var(--radius)" /></p>`;
     return `<p>${esc(b.value)}</p>`;
   })
   .join("");
@@ -151,6 +215,7 @@ let currentStageWalletRemaining = null;
 let walletStatusSeq = 0;
 let walletStatusCache = { key: "", status: null };
 let ownedMintLoadSeq = 0;
+let walletConnecting = false;
 
 function revealState() {
   if (!storage) return null;
@@ -179,7 +244,17 @@ function setText(id, text) {
 }
 
 function setWalletButtons(connected) {
-  if ($("btnConnect")) $("btnConnect").textContent = connected ? MD.short(MD.getAccount()) : "Connect wallet";
+  const connect = $("btnConnect");
+  if (connect) {
+    const account = MD.getAccount();
+    connect.textContent = walletConnecting ? "Connecting wallet..." : connected ? MD.short(account) : "Connect wallet";
+    connect.disabled = walletConnecting || connected;
+    connect.setAttribute("aria-busy", walletConnecting ? "true" : "false");
+    connect.setAttribute(
+      "aria-label",
+      walletConnecting ? "Connecting wallet" : connected ? `Connected wallet ${account}` : "Connect wallet"
+    );
+  }
   if ($("btnDisconnect")) $("btnDisconnect").style.display = connected ? "" : "none";
 }
 
@@ -375,7 +450,13 @@ function render() {
   const minted = Number(storage.minted);
   const left = supply - minted;
   const rs = revealState();
-  $("supplyBar").style.width = supply ? Math.round((minted / supply) * 100) + "%" : "0%";
+  const mintedPct = supply ? Math.round((minted / supply) * 100) : 0;
+  $("supplyBar").style.width = mintedPct + "%";
+  const progress = $("supplyProgress") || $("supplyBar")?.parentElement;
+  if (progress) {
+    progress.setAttribute("aria-valuenow", String(mintedPct));
+    progress.setAttribute("aria-valuetext", `${minted} of ${supply} minted`);
+  }
   $("supplyText").textContent =
     `${minted} / ${supply} minted · ${left} remaining` +
     (rs && rs.delayed && rs.pending > 0 ? ` · ${rs.pending} sealed` : "");
@@ -659,14 +740,20 @@ async function reveal(ids) {
 
 // ---------- wallet & qty ----------
 $("btnConnect").addEventListener("click", async () => {
+  if (walletConnecting || MD.getAccount()) return;
+  walletConnecting = true;
+  setWalletButtons(false);
+  setText("mintStatus", "connecting wallet...");
   try {
-    const addr = await MD.connectWallet(CFG.title || "Macaroni");
-    setWalletButtons(true);
+    await MD.connectWallet(CFG.title || "Macaroni");
     await refreshBalance("connected");
     render();
     await loadOwnedMints();
   } catch (e) {
     setText("mintStatus", "wallet connect cancelled or failed: " + (e.message || e));
+  } finally {
+    walletConnecting = false;
+    setWalletButtons(!!MD.getAccount());
   }
 });
 

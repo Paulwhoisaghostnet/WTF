@@ -87,6 +87,7 @@ async function actorPage(browser, baseURL, actor) {
       const installPuppetBeaconWallet = (tz) => {
         if (!tz || tz.__macaroniPuppetBeaconInstalled) return tz;
         const activeAccountKey = "macaroni-shadownet-puppet-active-account";
+        const permissionCountKey = "macaroni-shadownet-puppet-permission-count";
         const readActiveAccount = () => {
           try {
             return JSON.parse(window.localStorage.getItem(activeAccountKey) || "null");
@@ -98,6 +99,14 @@ async function actorPage(browser, baseURL, actor) {
           try {
             if (account) window.localStorage.setItem(activeAccountKey, JSON.stringify(account));
             else window.localStorage.removeItem(activeAccountKey);
+          } catch (_) {
+            /* restricted storage */
+          }
+        };
+        const incrementPermissionCount = () => {
+          try {
+            const current = Number(window.localStorage.getItem(permissionCountKey) || "0");
+            window.localStorage.setItem(permissionCountKey, String(current + 1));
           } catch (_) {
             /* restricted storage */
           }
@@ -120,6 +129,7 @@ async function actorPage(browser, baseURL, actor) {
             };
           }
           async requestPermissions() {
+            incrementPermissionCount();
             activeAccount = {
               address: walletAddress,
               publicKey: "edpkMacaroniPuppetWallet111111111111111111111111111",
@@ -236,6 +246,7 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(frame.locator("#netLabel")).toContainText(SHADOWNET_RPC);
       await expect(frame.locator('#pinKind option[value="wtfos"]')).toHaveCount(1);
       await expect(frame.locator("#pinKind")).toHaveValue("wtfos");
+      await expect(frame.locator("#gateway")).toHaveValue("https://ipfs.fileship.xyz/");
 
       const chainId = await frame.evaluate(async () => {
         MD.setupToolkit("shadownet");
@@ -314,25 +325,46 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       });
 
       await expect(page.locator("#btnConnect")).toHaveText("Connect wallet");
+      await expect(page.locator("#btnConnect")).toBeEnabled();
+      await expect(page.getByRole("main")).toBeVisible();
+      await expect(page.locator("#supplyProgress")).toHaveAttribute("role", "progressbar");
+      await expect(page.locator("#mintStatus")).toHaveAttribute("aria-live", "polite");
+      await expect(page.locator("#qtyMinus")).toHaveAttribute("aria-label", "Decrease mint quantity");
       await expect(page.locator("#btnDisconnect")).toBeHidden();
       await expect(page.locator("#walletBalance")).toContainText("Connect a wallet");
       await expect(page.locator("#walletLimitStatus")).toBeAttached();
       await expect(page.locator("#ownedMintStatus")).toBeAttached();
       await expect(page.locator("#customCss")).toHaveText("");
       await expect.poll(() => page.evaluate(() => Boolean(window.__macaroniXss))).toBe(false);
+      await expect.poll(() => page.evaluate(() => MD.DEFAULT_GATEWAY)).toBe("https://ipfs.fileship.xyz/");
 
-      await page.getByRole("button", { name: "Connect wallet" }).click();
+      await page.evaluate(() => {
+        window.localStorage.removeItem("macaroni-shadownet-puppet-permission-count");
+        const button = document.getElementById("btnConnect");
+        button.click();
+        button.click();
+        button.click();
+      });
+      await expect
+        .poll(() =>
+          page.evaluate(() => Number(window.localStorage.getItem("macaroni-shadownet-puppet-permission-count") || "0"))
+        )
+        .toBe(1);
       await expect(page.locator("#btnConnect")).toContainText(actor.walletAddress.slice(0, 7));
+      await expect(page.locator("#btnConnect")).toBeDisabled();
+      await expect(page.locator("#btnConnect")).toHaveAttribute("aria-label", new RegExp(actor.walletAddress));
       await expect(page.locator("#btnDisconnect")).toBeVisible();
       await expect(page.locator("#walletBalance")).toContainText("Wallet balance");
 
       await page.reload({ waitUntil: "domcontentloaded" });
       await expect(page.locator("#btnDisconnect")).toBeVisible();
       await expect(page.locator("#btnConnect")).toContainText(actor.walletAddress.slice(0, 7));
+      await expect(page.locator("#btnConnect")).toBeDisabled();
       await expect(page.locator("#walletBalance")).toContainText("restored");
 
       await page.getByRole("button", { name: "Disconnect" }).click();
       await expect(page.locator("#btnConnect")).toHaveText("Connect wallet");
+      await expect(page.locator("#btnConnect")).toBeEnabled();
       await expect(page.locator("#btnDisconnect")).toBeHidden();
       await expect(page.locator("#walletBalance")).toContainText("Wallet disconnected");
 

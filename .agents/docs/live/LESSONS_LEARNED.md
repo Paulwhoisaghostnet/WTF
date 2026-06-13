@@ -4709,3 +4709,15 @@
 **Fix**: Removed arbitrary custom CSS from Studio output, sanitized direct publish payloads server-side, made the drop runtime ignore legacy `customCss`, and allowlisted theme name, hex accent color, and known font stack values. Added policy and focused browser regressions for `</style>`, `url(javascript:)`, and malformed custom-property payloads.
 
 **Rule**: Creator-generated pages may expose bounded theme controls, not arbitrary CSS, unless a dedicated CSS sanitizer and regression suite owns that trust boundary. Apply the same sanitizer at export, publish, and runtime so code-editor overrides and legacy configs cannot bypass it.
+
+---
+
+## 2026-06-13 - Generated wallet pages need both button and helper in-flight guards
+
+**What happened**: Macaroni generated drop pages could start the Beacon `requestPermissions` flow more than once when collectors clicked Connect repeatedly. The page click handler had no in-flight state, and the shared helper resets Beacon state before requesting permissions, so rapid clicks could create duplicate wallet prompts.
+
+**Why it mattered**: Generated pages are static/public collector surfaces, often served outside the Studio flow. A visible button guard alone is fragile because older exported pages load newer shared JS, browser click timing can be tight, and helper callers may not all update in lockstep.
+
+**Fix**: Added a shared `connectPromise` latch in `MD.connectWallet`, added generated-page `walletConnecting` button state with disabled/`aria-busy` feedback, and covered rapid clicks in the Shadownet puppet browser suite by asserting one permission request. The same pass added baseline landmarks, live status regions, progressbar semantics, quantity button labels, and a Fileship gateway default.
+
+**Rule**: For wallet connect flows on generated/static pages, guard the operation at the shared wallet helper and the visible UI. Browser tests should fire repeated clicks and count permission requests, not just assert the final connected address.

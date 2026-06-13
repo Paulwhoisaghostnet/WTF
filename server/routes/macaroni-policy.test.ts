@@ -29,6 +29,27 @@ test("Macaroni static API calls use the wtfOS CSRF boundary and do not embed pin
   assert.equal(studioHtml.includes('<option value="wtfos">'), false);
 });
 
+test("Macaroni generated pages use Fileship defaults, accessible controls, and one connect flow", () => {
+  const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
+  const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
+  const dropHtml = readFileSync("public/creation-tools/macaroni/drop.html", "utf8");
+  const dropConfig = readFileSync("public/creation-tools/macaroni/drop.config.js", "utf8");
+  const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+
+  assert.match(commonSource, /const DEFAULT_GATEWAY = "https:\/\/ipfs\.fileship\.xyz\/"/);
+  assert.match(dropConfig, /gateway:\s*"https:\/\/ipfs\.fileship\.xyz\/"/);
+  assert.match(studioHtml, /placeholder="https:\/\/ipfs\.fileship\.xyz\/"/);
+  assert.match(commonSource, /let connectPromise = null/);
+  assert.match(commonSource, /if \(connectPromise\) return connectPromise/);
+  assert.match(dropSource, /let walletConnecting = false/);
+  assert.match(dropSource, /aria-busy/);
+  assert.match(dropSource, /connect\.disabled = walletConnecting \|\| connected/);
+  assert.match(dropHtml, /<main class="wrap narrow" id="main">/);
+  assert.match(dropHtml, /role="progressbar"/);
+  assert.match(dropHtml, /aria-live="polite"/);
+  assert.match(dropHtml, /aria-label="Decrease mint quantity"/);
+});
+
 test("Macaroni generated pages only publish bounded theme CSS", () => {
   const publishSource = readFileSync("server/features/macaroni/publish.ts", "utf8");
   const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
