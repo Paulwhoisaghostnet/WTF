@@ -81,7 +81,7 @@ Priority labels:
 | WTF-BB-249 | Verified | Codex Map Lab workflow graph and demo pass | 2026-06-13 | Desktop OS / Map Lab workflow designer | P1 | 13 | 6 | 4 | 5 | 0 | Map Lab now has typed workflow node templates, input/output ports, compatible/incompatible port feedback, Escape-to-cancel routing, keyboard route deletion, snap-to-grid movement, routed pipeline inspection/editing, graph run activity, non-overlapping template placement, overview recentering, narrow-width internal canvas scrolling, and a read-only wtfOS demo map; verified by `npm run check -- --pretty false`, `npm run build && npx playwright test tests/playwright/inventory/map-lab-workspace.spec.mjs`, `npm run test:e2e:inventory:coverage`, `npm run test:e2e:inventory`, and visual desktop/narrow metrics |
 | WTF-BB-250 | Verified | Codex IPFS Pinning organ full-send | 2026-06-13 | Desktop OS / IPFS pinning app registry | P1 | 11 | 8 | 2 | 5 | 0 | `ipfs-pinning` now has a canonical PageDef, desktop app surface, admin surface, inventory route fixture, behavior assertion, shared service routes, and PDS-backed pin registry docs; verified by focused policy/lexicon tests, TypeScript, creation-tools checks, inventory coverage, and full inventory E2E |
 | WTF-BB-251 | Verified | Codex Macaroni effective mint allowance pass | 2026-06-13 | Macaroni / generated mint page quantity guard | P1 | 12 | 7 | 3 | 5 | 0 | Generated Macaroni mint pages now clamp requested quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance before wallet signing; verified by `node --check public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, `npm run test:e2e:inventory:coverage`, GitHub Deploy to Hetzner run `27476940932`, Quality Gates run `27476940928`, live health commit `70337b0`, and live production `drop.js` asset curl confirming the effective quantity cap code |
-| WTF-BB-252 | Fixed | Codex Map Lab public demo access follow-up | 2026-06-13 | Desktop OS / Map Lab public demo access | P1 | 11 | 8 | 2 | 4 | 1 | Anonymous production users could not reach the read-only wtfOS Map Lab demo because `/map-lab` stayed auth-gated in PageDef and inventory route metadata; fixed by making the route public while keeping edit/ingest actions session and role gated, pending redeploy and live anonymous smoke |
+| WTF-BB-252 | Verified | Codex Map Lab public demo access follow-up | 2026-06-13 | Desktop OS / Map Lab public demo access | P1 | 11 | 8 | 2 | 4 | 1 | Anonymous production users can now reach the read-only wtfOS Map Lab demo because `/map-lab` is public in PageDef, shared browser-route metadata, and inventory route fixtures while edit/ingest actions stay session and role gated; verified by shared route policy tests, TypeScript, inventory coverage, focused MapLab Playwright, full inventory E2E, GitHub deploy/quality runs, live health, and anonymous production smoke |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -323,7 +323,7 @@ Priority labels:
 ### WTF-BB-252 - Map Lab read-only demo route stayed auth-gated in production
 
 - Category: Desktop OS / Map Lab public demo access
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Map Lab public demo access follow-up
 - Score: C2 + F4 + S1 + P1(4) = 11
 - Evidence:
@@ -335,7 +335,13 @@ Priority labels:
   - Made `/map-lab` public in PageDef and route fixture metadata while leaving draft editing, repo save, ingest, and structural changes disabled for anonymous users unless the read-only demo is opened.
   - Updated the interaction inventory access label to distinguish public demo access from session edit access, role ingest access, and agent create-only access.
 - Verification:
-  - Pending redeploy plus anonymous production smoke against `https://wtfos.app/map-lab`.
+  - Passed `npx tsx --test shared/wtf-browser-route-access.test.ts shared/wtf-browser-routes.sync.test.ts`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npx playwright test tests/playwright/inventory/map-lab-workspace.spec.mjs` with the anonymous demo regression.
+  - Passed final `npm run test:e2e:inventory` with 309/309 tests green.
+  - GitHub Deploy to Hetzner run `27478611691` and Quality Gates run `27478611686` passed for commit `85d5dbc5`.
+  - Live health reported `commitRef: 85d5dbc`, and anonymous production Playwright smoke on `https://wtfos.app/map-lab` opened the demo read-only, rendered 25 nodes with the 26-route summary, disabled edit controls, proved a 1488x967 scrollable canvas, ran the graph, and showed the first route as active.
 
 ### WTF-BB-226 - Roger Radio live channel seed created an empty playlist in production
 
