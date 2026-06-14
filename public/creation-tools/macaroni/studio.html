@@ -165,7 +165,7 @@
   <!-- Resume existing drop -->
   <section class="panel" id="secResume">
     <h2>Resume an existing drop</h2>
-    <p class="muted">Already deployed? Paste your contract address or import a saved file to continue sync, design, and export. If this browser lost your draft, re-import the same CSV + artwork to change stages — on-chain token metadata stays loaded once sync completed.</p>
+    <p class="muted">Already deployed? Paste your contract address or import a saved file to continue sync, design, and export. Import backup JSON at any time to restore a saved project. If this browser lost your draft, re-import the same CSV + artwork to change stages — on-chain token metadata stays loaded once sync completed.</p>
     <div class="grid2">
       <div>
         <label>Contract address</label>
@@ -176,6 +176,7 @@
         <label class="btn ghost" style="cursor:pointer;margin:0">Import drop.config.js<input type="file" id="importConfig" accept=".js,.json,text/javascript,application/json" hidden /></label>
         <label class="btn ghost" style="cursor:pointer;margin:0">Import backup<input type="file" id="importBackup" accept=".json,application/json" hidden /></label>
         <button class="btn ghost small" id="btnSaveBackup" type="button">Save studio backup</button>
+        <button class="btn danger small" id="btnNewDrop" type="button">New drop / clear forms</button>
       </div>
     </div>
     <div id="resumeStatus" class="muted" style="margin-top:8px"></div>

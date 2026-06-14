@@ -78,6 +78,27 @@ test("Macaroni Studio uses sandbox-safe inline feedback instead of browser modal
   assert.doesNotMatch(studioSource, /(^|[^\w.])confirm\s*\(/);
 });
 
+test("Macaroni Studio can reset drafts, restore backups, and visibly save sale stages", () => {
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+
+  assert.match(studioHtml, /id="btnNewDrop"[^>]*>New drop \/ clear forms<\/button>/);
+  assert.match(studioHtml, /Import backup JSON at any time to restore a saved project/);
+  assert.match(studioHtml, /id="importBackup" accept="\.json,application\/json"/);
+  assert.match(studioSource, /function freshDropState\(\)/);
+  assert.match(studioSource, /function replaceState\(next\)/);
+  assert.match(studioSource, /function startNewDrop\(\)/);
+  assert.match(studioSource, /localStorage\.removeItem\(STORE_KEY\)/);
+  assert.match(studioSource, /mediaFiles\.clear\(\)/);
+  assert.match(studioSource, /coverFile = null/);
+  assert.match(studioSource, /replaceState\(draft\)/);
+  assert.match(studioSource, /btnNewDrop"\)\.addEventListener\("click", startNewDrop\)/);
+  assert.match(studioSource, /data-stage-save/);
+  assert.match(studioSource, /function saveStage\(i/);
+  assert.match(studioSource, /data-stage-status/);
+  assert.match(studioSource, /setStageStatus\(i, "edited", "warn"\)/);
+});
+
 test("Macaroni generated pages use Fileship defaults, accessible controls, and one connect flow", () => {
   const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
   const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");

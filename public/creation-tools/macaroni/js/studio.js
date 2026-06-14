@@ -74,29 +74,33 @@ function invalidAddressNotice(label, value, statusId) {
   );
 }
 
-const state = {
-  network: "shadownet",
-  rpc: "",
-  drop: {
-    title: "",
-    symbol: "",
-    description: "",
-    royaltyPct: 10,
-    royaltyAddr: "",
-    treasuryAddr: "",
-    coverCid: "",
-    coverMime: "",
-    contractMetaCid: "",
-    revealMode: "instant", // instant | delayed
-    revealDelayDays: 7, // auto-reveal window (delayed mode), 0–30
-    placeholderCid: "", // pinned pre-reveal metadata (delayed mode)
-  },
-  pin: { kind: "wtfos", jwt: "", url: "", gateway: MD.DEFAULT_GATEWAY },
-  tokens: [], // {id, name, description, attributes, tags, fileName, mediaCid, mediaMime, metadataCid}
-  stages: [], // {start, price, useAllowlist, maxPerWallet, allowlist:[{address,capacity}]}
-  contract: "",
-  page: { theme: "dark", accent: "", font: "", blocks: "", css: "", code: "" },
-};
+function freshDropState() {
+  return {
+    network: "shadownet",
+    rpc: "",
+    drop: {
+      title: "",
+      symbol: "",
+      description: "",
+      royaltyPct: 10,
+      royaltyAddr: "",
+      treasuryAddr: "",
+      coverCid: "",
+      coverMime: "",
+      contractMetaCid: "",
+      revealMode: "instant", // instant | delayed
+      revealDelayDays: 7, // auto-reveal window (delayed mode), 0–30
+      placeholderCid: "", // pinned pre-reveal metadata (delayed mode)
+    },
+    pin: { kind: "wtfos", jwt: "", url: "", gateway: MD.DEFAULT_GATEWAY },
+    tokens: [], // {id, name, description, attributes, tags, fileName, mediaCid, mediaMime, metadataCid}
+    stages: [], // {start, price, useAllowlist, maxPerWallet, allowlist:[{address,capacity}]}
+    contract: "",
+    page: { theme: "dark", accent: "", font: "", blocks: "", css: "", code: "" },
+  };
+}
+
+const state = freshDropState();
 
 // Files can't be persisted; kept in-memory keyed by base name (id).
 const mediaFiles = new Map();
@@ -243,19 +247,48 @@ async function refreshPinningAccess() {
 function save() {
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
 }
+
+function normalizeState() {
+  if (!MD.getNetworks()[state.network]) state.network = "shadownet";
+  if (!state.drop || typeof state.drop !== "object") state.drop = freshDropState().drop;
+  state.drop.royaltyAddr = normalizeOptionalAddress(state.drop.royaltyAddr);
+  state.drop.treasuryAddr = normalizeOptionalAddress(state.drop.treasuryAddr);
+  if (!state.pin || typeof state.pin !== "object") state.pin = freshDropState().pin;
+  if (!state.pin.gateway) state.pin.gateway = MD.DEFAULT_GATEWAY;
+  if (!Array.isArray(state.tokens)) state.tokens = [];
+  if (!Array.isArray(state.stages)) state.stages = [];
+  if (!state.page || typeof state.page !== "object") state.page = freshDropState().page;
+  state.page.theme = sanitizeThemeName(state.page.theme);
+  state.page.accent = sanitizeCssColor(state.page.accent);
+  state.page.font = sanitizeFontStack(state.page.font);
+  state.page.css = "";
+}
+
+function replaceState(next) {
+  const defaults = freshDropState();
+  const input = next && typeof next === "object" ? next : {};
+  const merged = {
+    ...defaults,
+    ...input,
+    drop: { ...defaults.drop, ...(input.drop && typeof input.drop === "object" ? input.drop : {}) },
+    pin: { ...defaults.pin, ...(input.pin && typeof input.pin === "object" ? input.pin : {}) },
+    tokens: Array.isArray(input.tokens) ? input.tokens : defaults.tokens,
+    stages: Array.isArray(input.stages) ? input.stages : defaults.stages,
+    page: { ...defaults.page, ...(input.page && typeof input.page === "object" ? input.page : {}) },
+  };
+  Object.keys(state).forEach((key) => delete state[key]);
+  Object.assign(state, merged);
+  normalizeState();
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) Object.assign(state, JSON.parse(raw));
-    // Drafts saved before a network was retired (e.g. ghostnet) fall back
-    // to the current testnet instead of crashing the toolkit setup.
-    if (!MD.getNetworks()[state.network]) state.network = "shadownet";
-    state.drop.royaltyAddr = normalizeOptionalAddress(state.drop.royaltyAddr);
-    state.drop.treasuryAddr = normalizeOptionalAddress(state.drop.treasuryAddr);
-    if (!state.pin || typeof state.pin !== "object") state.pin = { kind: "wtfos", jwt: "", url: "", gateway: "" };
-    if (!state.pin.gateway) state.pin.gateway = MD.DEFAULT_GATEWAY;
+    if (raw) replaceState(JSON.parse(raw));
+    else normalizeState();
   } catch (e) {
     console.warn("could not restore draft", e);
+    replaceState(freshDropState());
   }
 }
 
@@ -548,6 +581,29 @@ async function pinAll() {
 }
 
 // ---------- stages ----------
+function setStageStatus(i, msg, cls = "muted") {
+  const el = $("stagesEditor").querySelector(`[data-stage-status="${i}"]`);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = cls;
+}
+
+function readStageInputs(i) {
+  const stage = state.stages[i];
+  if (!stage) return false;
+  $("stagesEditor").querySelectorAll(`[data-i="${i}"][data-f]`).forEach((el) => {
+    stage[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value;
+  });
+  return true;
+}
+
+function saveStage(i, msg = "stage saved") {
+  if (!readStageInputs(i)) return;
+  save();
+  setStageStatus(i, msg, "ok");
+  log(`stage ${i + 1}: settings saved`);
+}
+
 function renderStages() {
   const host = $("stagesEditor");
   host.innerHTML = "";
@@ -556,8 +612,13 @@ function renderStages() {
     div.className = "panel";
     div.style.margin = "10px 0";
     div.innerHTML = `
-      <div class="spread"><h3 style="margin:0">Stage ${i + 1}</h3>
-        <button class="btn danger small" data-del="${i}">remove</button></div>
+      <div class="spread">
+        <div class="row" style="gap:8px"><h3 style="margin:0">Stage ${i + 1}</h3><span class="muted" data-stage-status="${i}">saved</span></div>
+        <div class="row" style="gap:8px">
+          <button class="btn small" data-stage-save="${i}" type="button">Save stage</button>
+          <button class="btn danger small" data-del="${i}" type="button">remove</button>
+        </div>
+      </div>
       <div class="grid3">
         <div><label>Start (your local time)</label>
           <input type="datetime-local" data-f="start" data-i="${i}" value="${s.start || ""}" /></div>
@@ -576,11 +637,14 @@ function renderStages() {
   host.querySelectorAll("[data-f]").forEach((el) => {
     el.addEventListener("change", () => {
       const i = +el.dataset.i;
-      const f = el.dataset.f;
-      state.stages[i][f] = el.type === "checkbox" ? el.checked : el.value;
+      readStageInputs(i);
       save();
+      setStageStatus(i, "edited", "warn");
     });
   });
+  host.querySelectorAll("[data-stage-save]").forEach((el) =>
+    el.addEventListener("click", () => saveStage(+el.dataset.stageSave))
+  );
   host.querySelectorAll("[data-del]").forEach((el) =>
     el.addEventListener("click", () => {
       state.stages.splice(+el.dataset.del, 1);
@@ -598,6 +662,7 @@ function renderStages() {
         state.stages[i].useAllowlist = true;
         save();
         renderStages();
+        setStageStatus(i, "allowlist saved", "ok");
         log(`stage ${i + 1}: allowlist with ${state.stages[i].allowlist.length} addresses`);
       } catch (e) {
         notify("Allowlist error: " + e.message);
@@ -1290,8 +1355,7 @@ async function importStudioBackup(file) {
     const data = JSON.parse(await file.text());
     const draft = data.state || data;
     if (!draft || typeof draft !== "object") throw new Error("missing state object");
-    Object.assign(state, draft);
-    if (!MD.getNetworks()[state.network]) state.network = "shadownet";
+    replaceState(draft);
     save();
     fillForm();
     applyNetwork();
@@ -1318,6 +1382,38 @@ function saveStudioBackup() {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   log("Studio backup saved — store this alongside your CSV and artwork.");
+}
+
+function clearProjectFilesAndStatus() {
+  mediaFiles.clear();
+  coverFile = null;
+  ["csvFile", "mediaFiles", "coverFile", "importConfig", "importBackup"].forEach((id) => {
+    const el = $(id);
+    if (el) el.value = "";
+  });
+  $("coverPreview").innerHTML = "";
+  $("pinBar").style.width = "0%";
+  setStatus("pinStatus", "", "muted");
+  setStatus("deployStatus", "", "muted");
+  setStatus("exportStatus", "", "muted");
+  $("log").textContent = "";
+}
+
+function startNewDrop() {
+  clearNotice();
+  replaceState(freshDropState());
+  localStorage.removeItem(STORE_KEY);
+  clearProjectFilesAndStatus();
+  fillForm();
+  applyNetwork();
+  renderTokens();
+  renderStages();
+  $("resumeAddr").value = "";
+  $("btnSync").disabled = true;
+  syncCodeFromForm();
+  showView("drop");
+  setResumeStatus("New drop started. Import backup JSON any time to restore a saved project.", true);
+  log("New drop slate started; wallet session unchanged.");
 }
 
 async function refreshResumeStatusIfNeeded() {
@@ -1402,11 +1498,13 @@ $("btnAddStage").addEventListener("click", () => {
   state.stages.push({ start: "", price: "", useAllowlist: false, maxPerWallet: "", allowlist: [] });
   save();
   renderStages();
+  setStageStatus(state.stages.length - 1, "new stage", "warn");
 });
 $("btnResume").addEventListener("click", () => loadFromChain());
 $("importConfig").addEventListener("change", (e) => e.target.files[0] && importConfigFile(e.target.files[0]));
 $("importBackup").addEventListener("change", (e) => e.target.files[0] && importStudioBackup(e.target.files[0]));
 $("btnSaveBackup").addEventListener("click", saveStudioBackup);
+$("btnNewDrop").addEventListener("click", startNewDrop);
 $("contractAddr").addEventListener("change", () => {
   const kt = $("contractAddr").value.trim();
   if (/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(kt)) {
