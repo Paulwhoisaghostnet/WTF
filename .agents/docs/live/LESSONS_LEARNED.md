@@ -28,6 +28,16 @@
 
 ---
 
+## 2026-06-14 - Macaroni recovery controls need mobile first-viewport proof
+
+**What happened**: Moving Macaroni's Resume existing drop section to the top fixed the desktop information hierarchy, but the first mobile screenshot showed the recovery copy was still tall enough that the New Drop action fell below the first viewport.
+
+**Why it mattered**: A top-placed recovery panel only helps if the creator can see the recovery and fresh-start actions quickly. Desktop selector order can pass while mobile users still have to hunt below a wall of explanatory text.
+
+**Rule**: When moving Macaroni recovery/project controls, verify the desktop order and the narrow viewport together. Keep recovery copy compact, make action clusters stack deliberately on mobile, and assert the New Drop action stays visible in the first mobile viewport.
+
+---
+
 ## 2026-06-13 - Macaroni mint counters must use effective remaining allowance
 
 **What happened**: A generated Macaroni mint page could let a collector set the requested quantity above what the contract would accept. The UI considered the creator's raw max-per-wallet value, but the effective allowance was lower after previous mints had consumed part of that wallet's stage cap or after collection supply had been reduced by other collectors.

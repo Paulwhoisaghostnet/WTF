@@ -83,7 +83,7 @@ test("Macaroni Studio can reset drafts, restore backups, and visibly save sale s
   const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
 
   assert.match(studioHtml, /id="btnNewDrop"[^>]*>New drop \/ clear forms<\/button>/);
-  assert.match(studioHtml, /Import backup JSON at any time to restore a saved project/);
+  assert.match(studioHtml, /restore a Studio backup JSON/);
   assert.match(studioHtml, /id="importBackup" accept="\.json,application\/json"/);
   assert.match(studioSource, /function freshDropState\(\)/);
   assert.match(studioSource, /function replaceState\(next\)/);
@@ -97,6 +97,34 @@ test("Macaroni Studio can reset drafts, restore backups, and visibly save sale s
   assert.match(studioSource, /function saveStage\(i/);
   assert.match(studioSource, /data-stage-status/);
   assert.match(studioSource, /setStageStatus\(i, "edited", "warn"\)/);
+});
+
+test("Macaroni Studio keeps resume first and uses full-width workspace tabs", () => {
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+  const themeSource = readFileSync("public/creation-tools/macaroni/css/theme.css", "utf8");
+
+  assert.ok(
+    studioHtml.indexOf('id="secResume"') < studioHtml.indexOf('id="secNetwork"'),
+    "resume section should be the first drop/contract panel"
+  );
+  assert.match(studioHtml, /<div class="tabs" role="tablist" aria-label="Macaroni workspace">/);
+  assert.match(studioHtml, /id="tabDrop"[^>]+role="tab"[^>]+aria-selected="true"[^>]+aria-controls="viewDrop"[^>]+tabindex="0"/);
+  assert.match(studioHtml, /id="tabPage"[^>]+role="tab"[^>]+aria-selected="false"[^>]+aria-controls="viewPage"[^>]+tabindex="-1"[^>]*>Drop Page Designer<\/button>/);
+  assert.match(studioHtml, /id="viewDrop" role="tabpanel" aria-labelledby="tabDrop"/);
+  assert.match(studioHtml, /id="viewPage" role="tabpanel" aria-labelledby="tabPage"/);
+  assert.match(themeSource, /\.tabs\s*{\s*display:\s*grid;\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/s);
+  const tabRule = themeSource.slice(themeSource.indexOf(".tab {"), themeSource.indexOf(".tab.active"));
+  assert.match(tabRule, /width:\s*100%;/);
+  assert.match(tabRule, /justify-content:\s*center;/);
+  assert.match(tabRule, /min-height:\s*50px;/);
+  assert.match(studioSource, /tabDrop"\)\.setAttribute\("aria-selected", page \? "false" : "true"\)/);
+  assert.match(studioSource, /tabPage"\)\.setAttribute\("aria-selected", page \? "true" : "false"\)/);
+  assert.match(studioSource, /tabDrop"\)\.tabIndex = page \? -1 : 0/);
+  assert.match(studioSource, /tabPage"\)\.tabIndex = page \? 0 : -1/);
+  assert.match(studioSource, /function onWorkspaceTabKey\(e\)/);
+  assert.match(studioSource, /ArrowRight[\s\S]*activateWorkspaceTab\("page"\)/);
+  assert.match(studioSource, /ArrowLeft[\s\S]*activateWorkspaceTab\("drop"\)/);
 });
 
 test("Macaroni generated pages use Fileship defaults, accessible controls, and one connect flow", () => {

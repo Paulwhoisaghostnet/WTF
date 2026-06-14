@@ -97,27 +97,45 @@ code, .mono { font-family: var(--font-mono); font-size: 0.85em; }
 
 /* studio tabs */
 .tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   max-width: 1680px;
   margin: 0 auto;
   padding: 16px 24px 0;
 }
 .tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 50px;
   font: inherit;
   font-weight: 650;
-  padding: 10px 20px;
+  padding: 12px 18px;
   border: 1px solid var(--border);
   border-radius: 10px 10px 0 0;
   background: transparent;
   color: var(--text-dim);
   cursor: pointer;
+  text-align: center;
 }
 .tab.active {
   background: var(--panel);
   color: var(--text);
   border-bottom-color: var(--panel);
   box-shadow: inset 0 2px 0 var(--accent);
+}
+@media (max-width: 520px) {
+  .tabs {
+    gap: 6px;
+    padding: 12px 12px 0;
+  }
+  .tab {
+    min-height: 46px;
+    padding: 10px 8px;
+    font-size: 0.92rem;
+  }
 }
 
 /* page designer split view */
@@ -181,6 +199,19 @@ code, .mono { font-family: var(--font-mono); font-size: 0.85em; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 @media (max-width: 720px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+
+.project-actions { align-items: flex-end; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 720px) {
+  .project-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .project-actions .btn {
+    justify-content: center;
+    width: 100%;
+  }
+}
 
 label { display: block; font-size: 0.82rem; color: var(--text-dim); margin: 10px 0 4px; }
 input[type="text"], input[type="number"], input[type="url"], input[type="password"],

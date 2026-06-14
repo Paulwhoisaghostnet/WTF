@@ -1060,10 +1060,29 @@ function showView(view) {
   $("viewPage").style.display = page ? "" : "none";
   $("tabDrop").classList.toggle("active", !page);
   $("tabPage").classList.toggle("active", page);
+  $("tabDrop").setAttribute("aria-selected", page ? "false" : "true");
+  $("tabPage").setAttribute("aria-selected", page ? "true" : "false");
+  $("tabDrop").tabIndex = page ? -1 : 0;
+  $("tabPage").tabIndex = page ? 0 : -1;
   if (page) {
     $("pageCode").value = state.page.code || CODE_PREFIX + JSON.stringify(buildConfig(), null, 2) + ";\n";
     $("codeStatus").textContent = state.page.code ? "✓ custom code active" : "generated from controls";
     refreshPreview(true);
+  }
+}
+
+function activateWorkspaceTab(view) {
+  showView(view);
+  $(view === "page" ? "tabPage" : "tabDrop").focus();
+}
+
+function onWorkspaceTabKey(e) {
+  if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "End") {
+    e.preventDefault();
+    activateWorkspaceTab("page");
+  } else if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "Home") {
+    e.preventDefault();
+    activateWorkspaceTab("drop");
   }
 }
 
@@ -1492,6 +1511,8 @@ $("pinKind").addEventListener("change", () => { togglePinFields(); readForm(); }
 $("pageCode").addEventListener("input", onCodeEdit);
 $("tabDrop").addEventListener("click", () => showView("drop"));
 $("tabPage").addEventListener("click", () => showView("page"));
+$("tabDrop").addEventListener("keydown", onWorkspaceTabKey);
+$("tabPage").addEventListener("keydown", onWorkspaceTabKey);
 $("btnRefreshPreview").addEventListener("click", () => refreshPreview(true));
 $("btnPin").addEventListener("click", pinAll);
 $("btnAddStage").addEventListener("click", () => {

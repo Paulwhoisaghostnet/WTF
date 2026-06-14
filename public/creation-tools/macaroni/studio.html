@@ -16,16 +16,36 @@
   </div>
 </div>
 
-<div class="tabs">
-  <button class="tab active" id="tabDrop">Drop &amp; Contract</button>
-  <button class="tab" id="tabPage">Page Designer</button>
+<div class="tabs" role="tablist" aria-label="Macaroni workspace">
+  <button class="tab active" id="tabDrop" type="button" role="tab" aria-selected="true" aria-controls="viewDrop" tabindex="0">Drop &amp; Contract</button>
+  <button class="tab" id="tabPage" type="button" role="tab" aria-selected="false" aria-controls="viewPage" tabindex="-1">Drop Page Designer</button>
 </div>
 
 <div class="wrap" style="padding-bottom:0">
   <div id="studioNotice" class="notice" role="status" aria-live="polite" hidden></div>
 </div>
 
-<div class="wrap" id="viewDrop">
+<div class="wrap" id="viewDrop" role="tabpanel" aria-labelledby="tabDrop">
+
+  <!-- Resume existing drop -->
+  <section class="panel" id="secResume">
+    <h2>Resume an existing drop</h2>
+    <p class="muted">Load a deployed contract, restore a Studio backup JSON, or start a new drop. If this browser lost local files, re-select the same CSV and artwork before changing token metadata or stages.</p>
+    <div class="grid2">
+      <div>
+        <label>Contract address</label>
+        <input type="text" id="resumeAddr" placeholder="KT1…" class="mono" autocomplete="off" autocapitalize="none" spellcheck="false" />
+      </div>
+      <div class="row project-actions">
+        <button class="btn" id="btnResume">Load from chain</button>
+        <label class="btn ghost" style="cursor:pointer;margin:0">Import drop.config.js<input type="file" id="importConfig" accept=".js,.json,text/javascript,application/json" hidden /></label>
+        <label class="btn ghost" style="cursor:pointer;margin:0">Import backup<input type="file" id="importBackup" accept=".json,application/json" hidden /></label>
+        <button class="btn ghost small" id="btnSaveBackup" type="button">Save studio backup</button>
+        <button class="btn danger small" id="btnNewDrop" type="button">New drop / clear forms</button>
+      </div>
+    </div>
+    <div id="resumeStatus" class="muted" style="margin-top:8px"></div>
+  </section>
 
   <!-- 1. Network -->
   <section class="panel" id="secNetwork">
@@ -162,26 +182,6 @@
     <button class="btn ghost small" id="btnAddStage">+ Add stage</button>
   </section>
 
-  <!-- Resume existing drop -->
-  <section class="panel" id="secResume">
-    <h2>Resume an existing drop</h2>
-    <p class="muted">Already deployed? Paste your contract address or import a saved file to continue sync, design, and export. Import backup JSON at any time to restore a saved project. If this browser lost your draft, re-import the same CSV + artwork to change stages — on-chain token metadata stays loaded once sync completed.</p>
-    <div class="grid2">
-      <div>
-        <label>Contract address</label>
-        <input type="text" id="resumeAddr" placeholder="KT1…" class="mono" autocomplete="off" autocapitalize="none" spellcheck="false" />
-      </div>
-      <div class="row" style="align-items:flex-end;flex-wrap:wrap;gap:8px">
-        <button class="btn" id="btnResume">Load from chain</button>
-        <label class="btn ghost" style="cursor:pointer;margin:0">Import drop.config.js<input type="file" id="importConfig" accept=".js,.json,text/javascript,application/json" hidden /></label>
-        <label class="btn ghost" style="cursor:pointer;margin:0">Import backup<input type="file" id="importBackup" accept=".json,application/json" hidden /></label>
-        <button class="btn ghost small" id="btnSaveBackup" type="button">Save studio backup</button>
-        <button class="btn danger small" id="btnNewDrop" type="button">New drop / clear forms</button>
-      </div>
-    </div>
-    <div id="resumeStatus" class="muted" style="margin-top:8px"></div>
-  </section>
-
   <!-- 6. Deploy -->
   <section class="panel" id="secDeploy">
     <h2>6 · Deploy & sync on-chain</h2>
@@ -208,7 +208,7 @@
 </div>
 
 <!-- Page Designer view -->
-<div class="wrap wide" id="viewPage" style="display:none">
+<div class="wrap wide" id="viewPage" role="tabpanel" aria-labelledby="tabPage" style="display:none">
   <div class="designer">
 
     <div class="designer-left">
