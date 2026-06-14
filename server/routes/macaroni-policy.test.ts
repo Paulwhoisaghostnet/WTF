@@ -33,6 +33,30 @@ test("Macaroni static API calls use the wtfOS CSRF boundary and do not embed pin
   assert.equal(studioHtml.includes('<option value="wtfos">'), false);
 });
 
+test("Macaroni wtfOS publish requires a deployed KT1 contract", () => {
+  const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+
+  assert.match(routeSource, /const KT1_CONTRACT_ADDRESS = \/\^KT1/);
+  assert.match(routeSource, /function normalizeMacaroniContract\(value: unknown\): string \| null/);
+  assert.match(routeSource, /const contract = normalizeMacaroniContract\(config\.contract\)/);
+  assert.match(routeSource, /Deploy or resume a KT1 contract before publishing to wtfOS\./);
+  assert.match(routeSource, /config\.contract = contract/);
+
+  assert.match(studioSource, /const KT1_CONTRACT_ADDRESS = \/\^KT1/);
+  assert.match(studioSource, /function isValidKt1Address\(value\)/);
+  assert.match(studioSource, /function assertWtfOSPublishReady\(cfg\)/);
+  assert.match(studioSource, /Deploy or resume a KT1 contract before publishing to wtfOS\./);
+  assert.match(studioSource, /cfg = assertWtfOSPublishReady\(currentConfig\(\)\)/);
+  assert.doesNotMatch(
+    studioSource,
+    /async function publishWtfOSSite\(\) \{\s*const body = configJs\(\)/,
+    "wtfOS publish must not reuse draft-tolerant website export config"
+  );
+  assert.match(studioHtml, /Publish to wtfOS<\/strong> requires a deployed or resumed <code>KT1/);
+});
+
 test("Macaroni exposes OBJKT-compatible media limits in Studio and server pinning", () => {
   const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
   const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");

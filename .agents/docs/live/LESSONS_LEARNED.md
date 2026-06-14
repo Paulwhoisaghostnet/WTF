@@ -4823,3 +4823,27 @@
 **Fix**: Updated the Macaroni policy test to assert shared `stageAndPinUpload` routing, dual pinning permission, trusted-only publishing, and no embedded Pinata secrets. Tightened the Pinning Manager browser test to use stable first-match text checks and the actual wallet input placeholder before verifying the public-record acknowledgment gate.
 
 **Rule**: When a route's permission model or provider boundary changes intentionally, update policy tests in the same pass to assert the new split, not the previous implementation detail. For behavior E2E, use locators tied to unique controls or deliberate first matches when the same fact appears in status and detail regions.
+
+---
+
+## 2026-06-14 - Wallet linking UI must not offer address-only ownership shortcuts
+
+**What happened**: The final onboarding audit found Profile still exposed a manual Tezos wallet address field that posted directly to `/api/wallets` with only `walletAddress`, even though the wallet context already had an explicit connect/challenge/signature path.
+
+**Why it mattered**: New-account onboarding, subdomain eligibility, and creator role workflows all depend on wallet ownership being proven. A typed address field can attach identity claims without demonstrating control at the moment of link.
+
+**Fix**: Replaced the Profile raw-address link flow with the shared wallet context `connect()` proof path, showed clear copy that typed addresses are not accepted for new wallet links, and added a source-policy test that fails if Profile reintroduces address-only `/api/wallets` submission.
+
+**Rule**: Any UI that creates a new linked wallet must route through the signer-backed wallet challenge/proof path. Manual address entry may only be used for read-only lookups or admin-reviewed evidence flows, not ownership linking.
+
+---
+
+## 2026-06-14 - Draft export and live wtfOS publish need separate readiness gates
+
+**What happened**: Macaroni's standalone website export and wtfOS user-site publish shared a draft-tolerant config path. That meant a trusted creator could publish a public `username.wtfos.me/drop-title` mint page before deploying or resuming a `KT1...` contract.
+
+**Why it mattered**: Draft export is useful before deployment, but a public wtfOS mint page should not be live until the chain contract exists. Otherwise the user can complete account, roles, subdomain setup, and publish only to land on a mint page that cannot mint.
+
+**Fix**: Kept draft export available, added a Studio-only wtfOS publish readiness assertion for valid `KT1...` contracts, enforced the same guard on `/api/macaroni/publish`, and updated inventory probes/docs to make the boundary explicit.
+
+**Rule**: Treat "download/export draft" and "publish public mint page" as separate product states. Live publication must fail closed on missing contract address both in the client tool and the server route.

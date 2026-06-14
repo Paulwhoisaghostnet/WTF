@@ -298,9 +298,12 @@ const STICKERS_CLASSIC = ["★", "♥", "✦", "☀", "⚡", "🔥", "💎", "�
 
 export function Profile() {
   const { user } = useAuth();
-  const { address } = useWallet();
+  const { address, connect, isConnecting } = useWallet();
   const qc = useQueryClient();
-  const [linkAddress, setLinkAddress] = useState("");
+  const [walletLinkFlash, setWalletLinkFlash] = useState<{
+    kind: "ok" | "err";
+    message: string;
+  } | null>(null);
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [accountDirty, setAccountDirty] = useState(false);
 
@@ -532,13 +535,25 @@ export function Profile() {
       value: w.walletAddress,
     })) ?? [];
 
-  const linkMutation = useMutation({
-    mutationFn: (walletAddress: string) =>
-      api.post("/api/wallets", { walletAddress }),
+  const linkWalletMutation = useMutation({
+    mutationFn: () => connect(),
+    onMutate: () => {
+      setWalletLinkFlash(null);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["wallets"] });
       qc.invalidateQueries({ queryKey: ["profile-tokens"] });
-      setLinkAddress("");
+      qc.invalidateQueries({ queryKey: ["wtf-balance"] });
+      setWalletLinkFlash({
+        kind: "ok",
+        message: "Wallet ownership verified and linked to this account.",
+      });
+    },
+    onError: (err: Error) => {
+      setWalletLinkFlash({
+        kind: "err",
+        message: err.message || "Wallet link failed. Connect your wallet and approve the signature request.",
+      });
     },
   });
 
@@ -745,11 +760,6 @@ export function Profile() {
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     },
   });
-
-  const handleLinkWallet = () => {
-    const addr = linkAddress.trim() || address;
-    if (addr) linkMutation.mutate(addr);
-  };
 
   const handleSaveSocial = () => {
     saveSocialMutation.mutate({
@@ -1415,27 +1425,30 @@ export function Profile() {
 
         <Separator style={{ margin: "8px 0" }} />
 
-        <div style={{ display: "flex", gap: 4 }}>
-          <TextInput
-            aria-label="Wallet address to link"
-            value={linkAddress}
-            onChange={(e: any) => setLinkAddress(e.target.value)}
-            placeholder={address || "tz1... wallet address"}
-            fullWidth
-          />
+        <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
           <UiButton
             uiVariant="primary"
-            onClick={handleLinkWallet}
-            disabled={linkMutation.isPending}
+            onClick={() => linkWalletMutation.mutate()}
+            disabled={isConnecting || linkWalletMutation.isPending}
           >
-            Link wallet
+            {isConnecting || linkWalletMutation.isPending
+              ? "Waiting for wallet..."
+              : address
+                ? "Prove and link connected wallet"
+                : "Connect wallet to link"}
           </UiButton>
-          {address && !linkAddress && (
-            <UiButton onClick={() => setLinkAddress(address)}>
-              Use connected wallet
-            </UiButton>
-          )}
         </div>
+        <HelperText style={{ marginTop: 6 }}>
+          Wallet linking requires an ownership signature from the connected wallet. Typed addresses are not accepted for new wallet links.
+        </HelperText>
+        {walletLinkFlash ? (
+          <UiNotice
+            tone={walletLinkFlash.kind === "ok" ? "success" : "danger"}
+            style={{ marginTop: 8 }}
+          >
+            {walletLinkFlash.message}
+          </UiNotice>
+        ) : null}
       </Section>
 
       {/* ── Etherlink Wallets ── */}

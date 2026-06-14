@@ -618,7 +618,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/studio/projects" },
       { method: "GET", path: "/api/game-studio/projects" },
       { method: "GET", path: "/api/game-studio/templates" },
-      { method: "POST", path: "/api/macaroni/publish", body: { config: { title: "E2E Macaroni Drop", network: "shadownet", contract: "" } }, expectedStatuses: [201, 400, 401, 403, 404, 423, 500, 503] },
+      { method: "POST", path: "/api/macaroni/publish", body: { config: { title: "E2E Macaroni Drop", network: "shadownet", contract: "" } }, expectedStatuses: [400, 401, 403, 404, 423, 500, 503] },
       { method: "GET", path: "/api/arcade/my-games" },
     ],
   },

@@ -22,6 +22,7 @@ import { stageAndPinUpload } from "../features/ipfs-pinning/service";
 const router = Router();
 
 const DEFAULT_IPFS_MAX_BYTES = 250 * 1024 * 1024;
+const KT1_CONTRACT_ADDRESS = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
 
 const publishSchema = z.object({
   config: z.object({}).passthrough(),
@@ -74,6 +75,11 @@ function dropSlug(input: { slug?: string; title?: unknown }): string | null {
   return normalized;
 }
 
+function normalizeMacaroniContract(value: unknown): string | null {
+  const contract = String(value || "").trim();
+  return KT1_CONTRACT_ADDRESS.test(contract) ? contract : null;
+}
+
 function handleMacaroniSiteError(res: Response, err: unknown) {
   if (err instanceof WtfUserSiteError) {
     return res.status(err.status).json({ error: err.message });
@@ -121,6 +127,14 @@ router.post(
     }
 
     const config = parsed.data.config as Record<string, unknown>;
+    const contract = normalizeMacaroniContract(config.contract);
+    if (!contract) {
+      return res.status(400).json({
+        error: "Deploy or resume a KT1 contract before publishing to wtfOS.",
+      });
+    }
+    config.contract = contract;
+
     const slug = dropSlug({ slug: parsed.data.slug, title: config.title });
     if (!slug) {
       return res.status(400).json({ error: "Invalid Macaroni drop slug" });

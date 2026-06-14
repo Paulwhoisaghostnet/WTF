@@ -54,6 +54,7 @@ const OBJKT_ARTIFACT_MAX_BYTES = 250 * MB;
 const OBJKT_COLLECTION_IMAGE_MAX_BYTES = 1 * MB;
 const OBJKT_COLLECTION_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png"]);
 const OBJKT_COLLECTION_IMAGE_LABEL = "1 MB, square JPG/PNG";
+const KT1_CONTRACT_ADDRESS = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
 
 function normalizeOptionalAddress(value) {
   const text = String(value || "").trim();
@@ -62,6 +63,10 @@ function normalizeOptionalAddress(value) {
   if (/^(tz1|tz2|tz3|tz4|KT1)(?:…|\.{3})?$/i.test(compact)) return "";
   if (!MD.isAddress(text)) return "";
   return text;
+}
+
+function isValidKt1Address(value) {
+  return KT1_CONTRACT_ADDRESS.test(String(value || "").trim());
 }
 
 function invalidAddressNotice(label, value, statusId) {
@@ -835,7 +840,7 @@ async function sync() {
     const kt = $("contractAddr").value.trim() || state.contract;
     clearNotice();
     if (!kt) return notify("Deploy first, or paste an existing contract address.", "err", "deployStatus");
-    if (!/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(kt))
+    if (!isValidKt1Address(kt))
       return notify("Contract address must be a KT1… address.", "err", "deployStatus");
     state.contract = kt;
     save();
@@ -1095,6 +1100,14 @@ function configJs() {
   return CODE_PREFIX + JSON.stringify(cfg, null, 2) + ";\n";
 }
 
+function assertWtfOSPublishReady(cfg) {
+  const contract = String(cfg?.contract || "").trim();
+  if (!isValidKt1Address(contract)) {
+    throw new Error("Deploy or resume a KT1 contract before publishing to wtfOS.");
+  }
+  return { ...cfg, contract };
+}
+
 function setExportStatus(msg, ok) {
   const el = $("exportStatus");
   if (!el) return;
@@ -1143,12 +1156,18 @@ async function exportSite() {
 }
 
 async function publishWtfOSSite() {
-  const body = configJs();
-  if (body === null) return;
+  let cfg;
+  try {
+    cfg = assertWtfOSPublishReady(currentConfig());
+  } catch (e) {
+    const message = (e && e.message) || "Deploy or resume a KT1 contract before publishing to wtfOS.";
+    notify(message, "err", "exportStatus");
+    log("wtfOS publish blocked: " + message, "err");
+    return;
+  }
   setExportStatus("Publishing to wtfOS…", true);
   $("btnPublishWtfOS").disabled = true;
   try {
-    const cfg = currentConfig();
     const r = await MD.apiFetch("/api/macaroni/publish", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1312,7 +1331,7 @@ function parseDropConfigText(text) {
 
 async function loadFromChain(kt) {
   kt = (kt || $("resumeAddr").value.trim() || $("contractAddr").value.trim()).trim();
-  if (!/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(kt))
+  if (!isValidKt1Address(kt))
     return notify("Enter a valid KT1… contract address.", "err", "resumeStatus");
   readForm();
   applyNetwork();
@@ -1528,7 +1547,7 @@ $("btnSaveBackup").addEventListener("click", saveStudioBackup);
 $("btnNewDrop").addEventListener("click", startNewDrop);
 $("contractAddr").addEventListener("change", () => {
   const kt = $("contractAddr").value.trim();
-  if (/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(kt)) {
+  if (isValidKt1Address(kt)) {
     state.contract = kt;
     $("resumeAddr").value = kt;
     $("btnSync").disabled = false;

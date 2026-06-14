@@ -85,6 +85,8 @@ Priority labels:
 | WTF-BB-253 | Verified | Codex Macaroni sandbox-safe Studio feedback pass | 2026-06-13 | Macaroni / embedded Studio modal feedback | P1 | 12 | 7 | 3 | 5 | 0 | Embedded Macaroni Studio validation/deploy errors now render through sandbox-safe inline notices instead of blocked native `alert`/`confirm` calls; verified locally, by focused sandbox repro, by GitHub deploy/quality runs, and on live `wtfos.app` commit `b5b2384`; mainnet-confirmation UI drift is superseded by WTF-BB-254 |
 | WTF-BB-254 | Verified | Codex Macaroni mainnet deploy path repair | 2026-06-13 | Macaroni / mainnet deploy parity and Beacon lifecycle | P1 | 13 | 6 | 4 | 5 | 0 | Mainnet deploy now shares the same chain-guarded origination path as Shadownet and optional placeholder values clear to connected-wallet defaults; the Beacon reconnect reuse portion regressed wallet lifecycle and is superseded by WTF-BB-255 |
 | WTF-BB-255 | Verified | Codex Macaroni wallet regression repair | 2026-06-13 | Macaroni / Beacon connect lifecycle and treasury defaults | P0 | 14 | 3 | 3 | 5 | 1 | Macaroni explicit Connect again drops cleared Beacon client state and creates a fresh wallet client, while invalid optional treasury/royalty strings clear to the connected-wallet fallback; verified locally, by GitHub deploy/quality runs, and live asset checks on `wtfos.app` commit `c1279a0` |
+| WTF-BB-262 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Auth / wallet onboarding | P1 | 11 | 8 | 2 | 4 | 1 | Profile now routes wallet linking through explicit signed wallet connect/proof and no longer exposes address-only new-wallet linking; verified by focused source-policy tests, TypeScript, and inventory coverage |
+| WTF-BB-263 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Macaroni / generated mint page readiness | P1 | 9 | 12 | 1 | 4 | 0 | Macaroni wtfOS publish now requires a valid deployed/resumed `KT1...` contract in Studio and on `/api/macaroni/publish`, while draft export remains available; verified by focused policy tests, JS syntax checks, TypeScript, and inventory coverage |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5410,6 +5412,50 @@ Priority labels:
   - Live `common.js` exposes the restored explicit-connect lifecycle: `resetClient` defaults to true, reset drops `wallet = null`, explicit Connect calls `wallet = makeWallet(appName)`, and the bad `dropWallet`/reuse path is absent.
   - Live `studio.js` clears non-Tezos optional address values, keeps `treasury: state.drop.treasuryAddr || me`, and still uses the shared chain-guarded origination path.
   - Live `studio.html` disables autocomplete/autocapitalize/spellcheck on optional Tezos treasury and royalty fields.
+
+### WTF-BB-262 - Profile new-wallet linking allowed address-only submission
+
+- Category: Auth / wallet onboarding
+- Status: Verified
+- Owner/Session: Codex Macaroni onboarding patch
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - The final onboarding audit found Profile still exposed a manual Tezos wallet address field that posted directly to `/api/wallets` with only `walletAddress`.
+  - The shared wallet context already owns a challenge/signature flow for explicit wallet connect, but Profile could bypass that proof path for new links.
+- Why it matters:
+  - New wtfOS account onboarding relies on wallet ownership before roles, subdomain eligibility, and creator workflows can be trusted.
+  - Address-only linking can attach a wallet identity without proving control at the point of link.
+- Correction:
+  - Replaced the raw wallet-address link field with an explicit connected-wallet proof button that calls the shared wallet context `connect()` flow.
+  - Added user-facing copy explaining that typed addresses are not accepted for new wallet links.
+  - Added source-policy coverage so Profile cannot reintroduce address-only `/api/wallets` submission.
+- Verification:
+  - Passed `npx tsx --test client/src/lib/wallet-context-policy.test.ts client/src/pages/profile-wallet-link-policy.test.ts`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `tsc --noEmit --pretty false`.
+
+### WTF-BB-263 - Macaroni could publish a wtfOS mint page before a contract existed
+
+- Category: Macaroni / generated mint page readiness
+- Status: Verified
+- Owner/Session: Codex Macaroni onboarding patch
+- Score: C1 + F4 + S0 + P1(4) = 9
+- Evidence:
+  - The final onboarding audit found Macaroni's website export path and wtfOS publish path both accepted draft config with an empty contract.
+  - A user could publish `username.wtfos.me/drop-title` before deploying or resuming a `KT1...` contract, creating a public mint page that cannot mint.
+- Why it matters:
+  - Draft exports are useful before deployment, but public wtfOS mint pages should not be published until the on-chain contract exists.
+  - Failing late on the public subdomain makes the "create drop then publish mint page" flow look broken after the user has already completed earlier setup.
+- Correction:
+  - Kept draft website export available.
+  - Added a Studio-side wtfOS publish readiness gate that requires a valid `KT1...` contract.
+  - Added the same `KT1...` normalization/rejection to `/api/macaroni/publish` so direct API calls fail closed.
+  - Updated Studio copy, inventory probes, and behavior assertions to distinguish draft export from live wtfOS publish.
+- Verification:
+  - Passed `node --check public/creation-tools/macaroni/js/studio.js public/creation-tools/macaroni/js/common.js public/creation-tools/macaroni/js/drop.js`.
+  - Passed `npx tsx --test server/routes/macaroni-policy.test.ts server/features/macaroni/publish.test.ts`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `tsc --noEmit --pretty false`.
 
 ## Backlog Intake Template
 
