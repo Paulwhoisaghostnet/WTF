@@ -167,6 +167,7 @@
         <input type="url" id="gateway" placeholder="https://ipfs.fileship.xyz/" />
       </div>
     </div>
+    <div id="pinAccessHint" class="muted" style="margin-top:8px"></div>
     <div class="row" style="margin-top:14px">
       <button class="btn" id="btnPin">Pin all media + metadata</button>
       <span id="pinStatus" class="muted"></span>
@@ -250,11 +251,22 @@
         <div id="codeStatus" class="muted" style="margin-top:6px"></div>
         <div class="row" style="margin-top:14px">
           <button class="btn" id="btnExport">Export website</button>
-          <button class="btn ghost" id="btnPublishWtfOS">Publish to wtfOS</button>
+          <button class="btn ghost" id="btnPublishWtfOS" hidden>Publish to wtfOS</button>
           <button class="btn ghost" id="btnConfigOnly">Download site package</button>
         </div>
         <div id="exportStatus" class="muted" style="margin-top:8px"></div>
-        <p class="muted"><strong>Export website</strong> downloads <code>macaroni-site.zip</code> — <code>index.html</code>, <code>drop.config.js</code>, <code>vendor/tezos.js</code>, and wallet connect. <strong>Publish to wtfOS</strong> requires a deployed or resumed <code>KT1...</code> contract, then saves the mint page to your <code>username.wtfos.me/drop-title</code> site path. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.</p>
+        <p class="muted" id="publishPathHint"><strong>Export website</strong> downloads <code>macaroni-site.zip</code> — <code>index.html</code>, <code>drop.config.js</code>, <code>vendor/tezos.js</code>, and wallet connect. <strong>Publish to wtfOS</strong> requires trusted-creator access plus a deployed or resumed <code>KT1...</code> contract, then saves the mint page to your <code>username.wtfos.me/drop-title</code> site path. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.</p>
+      </section>
+
+      <section class="panel" id="secInstallers">
+        <h2>Macaroni desktop app</h2>
+        <p class="muted">Installers run Macaroni locally with the same contract/deploy flow and self-managed Pinata or IPFS node settings. wtfOS platform pinning and subdomain publishing stay available only inside wtfOS for trusted creators.</p>
+        <div class="installer-grid" id="installerGrid" aria-live="polite">
+          <a class="btn ghost installer-link disabled" id="installerMacos" data-installer-platform="macos" aria-disabled="true">macOS</a>
+          <a class="btn ghost installer-link disabled" id="installerWindows" data-installer-platform="windows" aria-disabled="true">Windows</a>
+          <a class="btn ghost installer-link disabled" id="installerRaspberryPi" data-installer-platform="raspberry-pi" aria-disabled="true">Raspberry Pi</a>
+        </div>
+        <div id="installerStatus" class="muted" style="margin-top:8px">Checking installer downloads...</div>
       </section>
     </div>
 

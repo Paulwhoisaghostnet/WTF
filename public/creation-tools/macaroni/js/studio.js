@@ -55,6 +55,11 @@ const OBJKT_COLLECTION_IMAGE_MAX_BYTES = 1 * MB;
 const OBJKT_COLLECTION_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png"]);
 const OBJKT_COLLECTION_IMAGE_LABEL = "1 MB, square JPG/PNG";
 const KT1_CONTRACT_ADDRESS = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
+const INSTALLER_PLATFORMS = [
+  { key: "macos", id: "installerMacos", label: "macOS" },
+  { key: "windows", id: "installerWindows", label: "Windows" },
+  { key: "raspberry-pi", id: "installerRaspberryPi", label: "Raspberry Pi" },
+];
 
 function normalizeOptionalAddress(value) {
   const text = String(value || "").trim();
@@ -97,7 +102,7 @@ function freshDropState() {
       revealDelayDays: 7, // auto-reveal window (delayed mode), 0–30
       placeholderCid: "", // pinned pre-reveal metadata (delayed mode)
     },
-    pin: { kind: "wtfos", jwt: "", url: "", gateway: MD.DEFAULT_GATEWAY },
+    pin: { kind: "pinata", jwt: "", url: "", gateway: MD.DEFAULT_GATEWAY },
     tokens: [], // {id, name, description, attributes, tags, fileName, mediaCid, mediaMime, metadataCid}
     stages: [], // {start, price, useAllowlist, maxPerWallet, allowlist:[{address,capacity}]}
     contract: "",
@@ -190,7 +195,6 @@ function tokenNeedsCover(t) {
 
 function hasWtfosPinningAccess(user) {
   const perms = user && (user.effectivePermissions || user.permissions || {});
-  if (perms && perms.use_wtfos_pinning === true) return true;
   if (perms && perms.trusted_market_creator === true) return true;
   const roles = Array.isArray(user?.roles)
     ? user.roles
@@ -198,7 +202,7 @@ function hasWtfosPinningAccess(user) {
       ? [user.role]
       : [];
   return roles.some((role) =>
-    ["admin", "host", "cohost", "trusted_creator", "wtf_pin_collector"].includes(String(role))
+    ["admin", "host", "cohost", "trusted_creator", "trusted_market_creator"].includes(String(role))
   );
 }
 
@@ -224,6 +228,10 @@ function addPinKindOption(value, label) {
 function renderPinKindOptions() {
   const select = $("pinKind");
   select.innerHTML = "";
+  if (!canUseWtfosPinning && state.pin.kind === "wtfos") {
+    state.pin.kind = fallbackPinKind();
+    save();
+  }
   if (canUseWtfosPinning) addPinKindOption("wtfos", "wtfOS IPFS pinning");
   addPinKindOption("pinata", "Pinata (JWT)");
   addPinKindOption("node", "Own IPFS node (HTTP API)");
@@ -231,10 +239,31 @@ function renderPinKindOptions() {
   const intro = $("pinIntro");
   if (intro) {
     intro.textContent = canUseWtfosPinning
-      ? "Your art and metadata are pinned to IPFS. Use wtfOS platform pinning or your own Pinata/IPFS node."
+      ? "Your art and metadata are pinned to IPFS. Trusted creators can use wtfOS platform pinning or their own Pinata/IPFS node."
       : "Your art and metadata are pinned to IPFS. Use your own Pinata JWT or IPFS node.";
   }
+  const hint = $("pinAccessHint");
+  if (hint) {
+    hint.textContent = canUseWtfosPinning
+      ? "wtfOS pinning and wtfOS subdomain publishing are enabled for this trusted creator account."
+      : "Any wtfOS user can deploy a blind-drop contract here. wtfOS pinning and wtfOS subdomain publishing appear only for trusted creators.";
+  }
+  renderPublishAccess();
   togglePinFields();
+}
+
+function renderPublishAccess() {
+  const btn = $("btnPublishWtfOS");
+  if (btn) {
+    btn.hidden = !canUseWtfosPinning;
+    btn.disabled = !canUseWtfosPinning;
+  }
+  const hint = $("publishPathHint");
+  if (hint) {
+    hint.innerHTML = canUseWtfosPinning
+      ? '<strong>Export website</strong> downloads <code>macaroni-site.zip</code> for self-hosting. <strong>Publish to wtfOS</strong> saves the mint page to your <code>username.wtfos.me/drop-title</code> site path. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.'
+      : '<strong>Export website</strong> downloads <code>macaroni-site.zip</code> for installing the mint site on your own website. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.';
+  }
 }
 
 async function refreshPinningAccess() {
@@ -1156,6 +1185,8 @@ async function exportSite() {
 }
 
 async function publishWtfOSSite() {
+  if (!canUseWtfosPinning)
+    return notify("wtfOS publishing is available only to trusted creators. Export the site package for your own host.", "err", "exportStatus");
   let cfg;
   try {
     cfg = assertWtfOSPublishReady(currentConfig());
@@ -1189,6 +1220,53 @@ async function publishWtfOSSite() {
     notify("wtfOS publish failed: " + e.message, "err", "exportStatus");
   } finally {
     $("btnPublishWtfOS").disabled = false;
+  }
+}
+
+function setInstallerLink(platform, item) {
+  const btn = $(platform.id);
+  if (!btn) return;
+  const available = item && item.available && item.url;
+  btn.textContent = item?.label || platform.label;
+  btn.classList.toggle("disabled", !available);
+  btn.setAttribute("aria-disabled", available ? "false" : "true");
+  if (available) {
+    btn.href = item.url;
+    btn.download = item.fileName || "";
+    btn.removeAttribute("tabindex");
+  } else {
+    btn.removeAttribute("href");
+    btn.removeAttribute("download");
+    btn.tabIndex = -1;
+  }
+}
+
+async function refreshInstallerDownloads() {
+  const status = $("installerStatus");
+  try {
+    const res = await MD.apiFetch("/api/macaroni/installers");
+    if (!res.ok) throw new Error(res.status === 401 ? "sign in to view installer downloads" : `installer manifest unavailable (${res.status})`);
+    const json = await res.json();
+    const byKey = new Map((json.installers || []).map((item) => [item.key, item]));
+    let available = 0;
+    for (const platform of INSTALLER_PLATFORMS) {
+      const item = byKey.get(platform.key) || { key: platform.key, label: platform.label, available: false };
+      if (item.available) available++;
+      setInstallerLink(platform, item);
+    }
+    if (status) {
+      status.textContent = available
+        ? `${available} desktop installer package${available === 1 ? "" : "s"} available.`
+        : "Desktop installer packages are not published yet. Export the website package for self-hosting today.";
+      status.className = available ? "ok" : "muted";
+    }
+  } catch (e) {
+    for (const platform of INSTALLER_PLATFORMS)
+      setInstallerLink(platform, { key: platform.key, label: platform.label, available: false });
+    if (status) {
+      status.textContent = "Installer downloads unavailable: " + e.message;
+      status.className = "muted";
+    }
   }
 }
 
@@ -1478,6 +1556,7 @@ applyNetwork();
 renderTokens();
 renderStages();
 refreshResumeStatusIfNeeded();
+refreshInstallerDownloads();
 MD.restoreWallet("Macaroni Studio").then((addr) => {
   if (addr) {
     $("walletAddr").value = addr;

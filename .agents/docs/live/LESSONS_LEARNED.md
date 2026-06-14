@@ -1,3 +1,11 @@
+## 2026-06-14 - Macaroni access must separate creator tooling from wtfOS hosted resources
+
+**What happened**: Macaroni's product copy, inventory contract, and server pinning policy drifted toward treating trusted creators and Pin Collector users as the complete Macaroni audience. New Studio drafts could also carry `pin.kind = "wtfos"` before the signed-in account's trusted-creator access was known.
+
+**Why it mattered**: Any signed-in wtfOS user should be able to create, deploy, sync, and export a blind-drop contract. Hosted wtfOS Pinata/PDS/subdomain resources are a separate platform privilege for trusted creators. Mixing those boundaries makes ordinary users think the tool is broken or gated when only the hosted publishing path is gated.
+
+**Rule**: Macaroni must keep contract deploy/export available to signed-in users while hiding and server-blocking hosted wtfOS pinning and wtfOS subdomain publishing unless the account has `trusted_market_creator`. Draft defaults should start on self-managed Pinata/IPFS, and native installer download links must only become clickable when real installer artifacts are configured.
+
 ## 2026-06-13 - Mainnet and Shadownet deploy paths must not fork UI logic
 
 **What happened**: After fixing blocked sandbox modals, Macaroni's mainnet deploy path carried a custom in-Studio confirmation branch while the Shadownet deploy path used the proven direct origination flow. A later live attempt exposed a treasury validation error and Beacon reconnect warnings, making it clear the mainnet path had drifted from the tested rehearsal path instead of only swapping network/RPC configuration.

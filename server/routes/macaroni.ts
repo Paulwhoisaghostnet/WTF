@@ -1,7 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import multer from "multer";
 import { z } from "zod";
-import { requirePermission } from "../auth/passport";
+import { isAuthenticated, requirePermission } from "../auth/passport";
 import {
   claimUserSite,
   getUserSiteState,
@@ -23,6 +23,26 @@ const router = Router();
 
 const DEFAULT_IPFS_MAX_BYTES = 250 * 1024 * 1024;
 const KT1_CONTRACT_ADDRESS = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
+const INSTALLER_PLATFORMS = [
+  {
+    key: "macos",
+    label: "macOS",
+    env: "MACARONI_INSTALLER_MACOS_URL",
+    fileName: "Macaroni-Studio.dmg",
+  },
+  {
+    key: "windows",
+    label: "Windows",
+    env: "MACARONI_INSTALLER_WINDOWS_URL",
+    fileName: "Macaroni-Studio.msi",
+  },
+  {
+    key: "raspberry-pi",
+    label: "Raspberry Pi",
+    env: "MACARONI_INSTALLER_RASPBERRY_PI_URL",
+    fileName: "macaroni-studio-arm64.deb",
+  },
+] as const;
 
 const publishSchema = z.object({
   config: z.object({}).passthrough(),
@@ -36,6 +56,18 @@ function envInt(name: string, fallback: number): number {
 
 function macaroniIpfsMaxBytes(): number {
   return envInt("MACARONI_IPFS_MAX_BYTES", DEFAULT_IPFS_MAX_BYTES);
+}
+
+function safeInstallerUrl(value: string | undefined): string {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (text.startsWith("/") && !text.startsWith("//") && !/[\r\n]/.test(text)) return text;
+  try {
+    const url = new URL(text);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
+  } catch (_) {
+    return "";
+  }
 }
 
 const upload = multer({
@@ -90,7 +122,7 @@ function handleMacaroniSiteError(res: Response, err: unknown) {
 
 router.post(
   "/api/macaroni/ipfs/pin",
-  requirePermission("trusted_market_creator", "use_wtfos_pinning"),
+  requirePermission("trusted_market_creator"),
   runPinUpload,
   async (req, res) => {
     const file = req.file;
@@ -116,6 +148,24 @@ router.post(
     }
   }
 );
+
+router.get("/api/macaroni/installers", isAuthenticated, (_req, res) => {
+  const version = String(process.env.MACARONI_INSTALLER_VERSION || "").trim();
+  return res.json({
+    ok: true,
+    version: version || null,
+    installers: INSTALLER_PLATFORMS.map((platform) => {
+      const url = safeInstallerUrl(process.env[platform.env]);
+      return {
+        key: platform.key,
+        label: platform.label,
+        fileName: platform.fileName,
+        available: Boolean(url),
+        url: url || null,
+      };
+    }),
+  });
+});
 
 router.post(
   "/api/macaroni/publish",

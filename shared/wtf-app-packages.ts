@@ -469,9 +469,9 @@ export const WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE = [
     },
     permissionSummary: {
       userAccess:
-        "Authenticated trusted creator/staff route; IPFS pinning and wtfOS drop publishing require the trusted_market_creator permission server-side.",
+        "Authenticated wtfOS users can create, deploy, sync, and export blind drops; hosted wtfOS IPFS pinning and wtfOS subdomain publishing require trusted_market_creator server-side.",
       adminAccess:
-        "Creation Tools admin surface observes availability, contract origination role policy, IPFS pinning, and drop publishing.",
+        "Creation Tools admin surface observes availability, contract origination access, trusted-creator hosted pinning/publishing, installer artifact manifest, and drop publishing.",
       dataTouched: [
         "Macaroni localStorage drafts",
         "wtf_user_site_pages",

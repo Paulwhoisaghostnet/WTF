@@ -2,11 +2,17 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("Macaroni server routes keep publishing trusted-only while hosted pinning can use Pin Collector", () => {
+test("Macaroni server routes keep wtfOS pinning and publishing trusted-creator only", () => {
   const source = readFileSync("server/routes/macaroni.ts", "utf8");
 
-  assert.match(source, /requirePermission\("trusted_market_creator", "use_wtfos_pinning"\)/);
-  assert.match(source, /requirePermission\("trusted_market_creator"\)/);
+  const trustedRouteChecks = source.match(/requirePermission\("trusted_market_creator"\)/g) || [];
+  assert.ok(trustedRouteChecks.length >= 2, "pinning and publishing should both require trusted_market_creator");
+  assert.doesNotMatch(source, /requirePermission\("trusted_market_creator", "use_wtfos_pinning"\)/);
+  assert.match(source, /router\.get\("\/api\/macaroni\/installers", isAuthenticated/);
+  assert.match(source, /MACARONI_INSTALLER_MACOS_URL/);
+  assert.match(source, /MACARONI_INSTALLER_WINDOWS_URL/);
+  assert.match(source, /MACARONI_INSTALLER_RASPBERRY_PI_URL/);
+  assert.match(source, /safeInstallerUrl/);
   assert.match(source, /stageAndPinUpload/);
   assert.match(source, /scopeType:\s*"macaroni_drop"/);
   assert.equal(source.includes("WTFGAMESHOW_IPFS_JWT"), false);
@@ -24,13 +30,21 @@ test("Macaroni static API calls use the wtfOS CSRF boundary and do not embed pin
   assert.match(commonSource, /\/api\/macaroni\/ipfs\/pin/);
   assert.match(studioSource, /\/api\/auth\/user/);
   assert.match(studioSource, /trusted_market_creator/);
-  assert.match(studioSource, /use_wtfos_pinning/);
-  assert.match(studioSource, /wtf_pin_collector/);
+  assert.doesNotMatch(studioSource, /use_wtfos_pinning/);
+  assert.doesNotMatch(studioSource, /wtf_pin_collector/);
+  assert.match(studioSource, /pin:\s*\{ kind: "pinata"/);
   assert.match(studioSource, /addPinKindOption\("wtfos"/);
+  assert.match(studioSource, /btn\.hidden = !canUseWtfosPinning/);
+  assert.match(studioSource, /Export the site package for your own host/);
+  assert.match(studioSource, /\/api\/macaroni\/installers/);
   assert.match(studioSource, /MD\.apiFetch\("\/api\/macaroni\/publish"/);
   assert.equal(commonSource.includes("VITE_PINATA_JWT"), false);
   assert.equal(studioSource.includes("VITE_PINATA_JWT"), false);
   assert.equal(studioHtml.includes('<option value="wtfos">'), false);
+  assert.match(studioHtml, /id="btnPublishWtfOS" hidden/);
+  assert.match(studioHtml, /id="installerMacos"/);
+  assert.match(studioHtml, /id="installerWindows"/);
+  assert.match(studioHtml, /id="installerRaspberryPi"/);
 });
 
 test("Macaroni wtfOS publish requires a deployed KT1 contract", () => {

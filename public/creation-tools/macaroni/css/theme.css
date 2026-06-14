@@ -213,6 +213,26 @@ code, .mono { font-family: var(--font-mono); font-size: 0.85em; }
   }
 }
 
+.installer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.installer-link {
+  justify-content: center;
+  text-align: center;
+}
+.installer-link.disabled,
+.installer-link[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+@media (max-width: 720px) {
+  .installer-grid { grid-template-columns: 1fr; }
+}
+
 label { display: block; font-size: 0.82rem; color: var(--text-dim); margin: 10px 0 4px; }
 input[type="text"], input[type="number"], input[type="url"], input[type="password"],
 input[type="datetime-local"], select, textarea {

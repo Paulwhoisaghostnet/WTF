@@ -85,6 +85,7 @@ Priority labels:
 | WTF-BB-253 | Verified | Codex Macaroni sandbox-safe Studio feedback pass | 2026-06-13 | Macaroni / embedded Studio modal feedback | P1 | 12 | 7 | 3 | 5 | 0 | Embedded Macaroni Studio validation/deploy errors now render through sandbox-safe inline notices instead of blocked native `alert`/`confirm` calls; verified locally, by focused sandbox repro, by GitHub deploy/quality runs, and on live `wtfos.app` commit `b5b2384`; mainnet-confirmation UI drift is superseded by WTF-BB-254 |
 | WTF-BB-254 | Verified | Codex Macaroni mainnet deploy path repair | 2026-06-13 | Macaroni / mainnet deploy parity and Beacon lifecycle | P1 | 13 | 6 | 4 | 5 | 0 | Mainnet deploy now shares the same chain-guarded origination path as Shadownet and optional placeholder values clear to connected-wallet defaults; the Beacon reconnect reuse portion regressed wallet lifecycle and is superseded by WTF-BB-255 |
 | WTF-BB-255 | Verified | Codex Macaroni wallet regression repair | 2026-06-13 | Macaroni / Beacon connect lifecycle and treasury defaults | P0 | 14 | 3 | 3 | 5 | 1 | Macaroni explicit Connect again drops cleared Beacon client state and creates a fresh wallet client, while invalid optional treasury/royalty strings clear to the connected-wallet fallback; verified locally, by GitHub deploy/quality runs, and live asset checks on `wtfos.app` commit `c1279a0` |
+| WTF-BB-256 | Verified | Codex Macaroni access/export workflow pass | 2026-06-14 | Macaroni / access model and self-host export | P1 | 12 | 7 | 2 | 5 | 1 | Macaroni product flow now lets any signed-in wtfOS user create/deploy/export blind drops while hosted wtfOS pinning/publishing are trusted-creator-only; verified by focused policy, inventory coverage, and local browser smoke |
 | WTF-BB-262 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Auth / wallet onboarding | P1 | 11 | 8 | 2 | 4 | 1 | Profile now routes wallet linking through explicit signed wallet connect/proof and no longer exposes address-only new-wallet linking; verified by focused source-policy tests, TypeScript, and inventory coverage |
 | WTF-BB-263 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Macaroni / generated mint page readiness | P1 | 9 | 12 | 1 | 4 | 0 | Macaroni wtfOS publish now requires a valid deployed/resumed `KT1...` contract in Studio and on `/api/macaroni/publish`, while draft export remains available; verified by focused policy tests, JS syntax checks, TypeScript, and inventory coverage |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
@@ -5456,6 +5457,30 @@ Priority labels:
   - Passed `npx tsx --test server/routes/macaroni-policy.test.ts server/features/macaroni/publish.test.ts`.
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed `tsc --noEmit --pretty false`.
+
+### WTF-BB-256 - Macaroni access/export workflow drift
+
+- Category: Macaroni / access model and self-host export
+- Status: Verified
+- Owner/Session: Codex Macaroni access/export workflow pass
+- Score: C2 + F5 + S1 + P1(4) = 12
+- Evidence:
+  - User clarified on 2026-06-14 that every signed-in wtfOS user should be able to create and deploy blind drops, while only trusted creators should use hosted wtfOS pinning and publishing to `username.wtfos.me`.
+  - Existing Studio state defaulted new drafts to `pin.kind = "wtfos"` before role resolution, and the server accepted either `trusted_market_creator` or `use_wtfos_pinning` for Macaroni hosted pinning.
+  - Inventory copy described Macaroni as a trusted-creator/staff route and treated Pin Collector access as sufficient for the Macaroni hosted provider.
+- Why it matters:
+  - Macaroni should be a creator tool, not a platform-hosting gate. Ordinary users need a complete self-host/export path instead of seeing missing trusted-creator privileges as a broken app.
+  - Hosted wtfOS Pinata/PDS/subdomain resources are platform resources tied to the trusted creator lane; blending them with broader Pin Collector access confuses support and quota expectations.
+- Fix:
+  - Keep contract deploy/sync/export available to signed-in users.
+  - Default local drafts to self-managed Pinata/IPFS, hide the wtfOS provider and wtfOS publish button unless the account resolves to `trusted_market_creator`, and hard-block publish client-side when not trusted.
+  - Tighten `/api/macaroni/ipfs/pin` to require `trusted_market_creator`, matching `/api/macaroni/publish`.
+  - Add a config-backed installer manifest route for Mac/Windows/Raspberry Pi packages so the UI can expose real native installers without shipping dead links.
+- Verification:
+  - `node --check public/creation-tools/macaroni/js/studio.js && node --check public/creation-tools/macaroni/js/common.js`
+  - `npx tsx --test server/routes/macaroni-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - Local Playwright smoke of `http://127.0.0.1:4787/studio.html` confirmed default signed-in/non-trusted UI state: Pinata selected, no `wtfos` provider option, `Publish to wtfOS` hidden/disabled, self-host export copy visible, three installer slots disabled without configured artifact URLs, and no horizontal overflow.
 
 ## Backlog Intake Template
 

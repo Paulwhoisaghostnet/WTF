@@ -245,7 +245,8 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(frame.locator("#network")).toHaveValue("shadownet");
       await expect(frame.locator("#netLabel")).toContainText(SHADOWNET_RPC);
       await expect(frame.locator('#pinKind option[value="wtfos"]')).toHaveCount(1);
-      await expect(frame.locator("#pinKind")).toHaveValue("wtfos");
+      await expect(frame.locator("#pinKind")).toHaveValue("pinata");
+      await expect(frame.locator("#btnPublishWtfOS")).toBeVisible();
       await expect(frame.locator("#gateway")).toHaveValue("https://ipfs.fileship.xyz/");
       await expect(frame.getByText("Collection logo / cover (≤1 MB, square JPG/PNG)")).toBeVisible();
       await expect(frame.locator("#coverFile")).toHaveAttribute("accept", "image/png,image/jpeg");
@@ -287,6 +288,9 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(page.locator('#pinKind option[value="wtfos"]')).toHaveCount(0);
       await expect(page.locator("#pinKind")).toHaveValue("pinata");
       await expect(page.locator("#pinJwtWrap")).toBeVisible();
+      await expect(page.locator("#btnPublishWtfOS")).toBeHidden();
+      await expect(page.locator("#publishPathHint")).toContainText("own website");
+      await expect(page.locator("#installerGrid")).toBeVisible();
       await expect(page.locator("#pageCss")).toHaveAttribute("type", "hidden");
       await expect(page.getByText("Custom CSS")).toHaveCount(0);
     } finally {
