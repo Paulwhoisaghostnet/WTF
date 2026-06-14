@@ -84,7 +84,7 @@ Priority labels:
 | WTF-BB-252 | Verified | Codex Map Lab public demo access follow-up | 2026-06-13 | Desktop OS / Map Lab public demo access | P1 | 11 | 8 | 2 | 4 | 1 | Anonymous production users can now reach the read-only wtfOS Map Lab demo because `/map-lab` is public in PageDef, shared browser-route metadata, and inventory route fixtures while edit/ingest actions stay session and role gated; verified by shared route policy tests, TypeScript, inventory coverage, focused MapLab Playwright, full inventory E2E, GitHub deploy/quality runs, live health, and anonymous production smoke |
 | WTF-BB-253 | Verified | Codex Macaroni sandbox-safe Studio feedback pass | 2026-06-13 | Macaroni / embedded Studio modal feedback | P1 | 12 | 7 | 3 | 5 | 0 | Embedded Macaroni Studio validation/deploy errors now render through sandbox-safe inline notices instead of blocked native `alert`/`confirm` calls; verified locally, by focused sandbox repro, by GitHub deploy/quality runs, and on live `wtfos.app` commit `b5b2384`; mainnet-confirmation UI drift is superseded by WTF-BB-254 |
 | WTF-BB-254 | Verified | Codex Macaroni mainnet deploy path repair | 2026-06-13 | Macaroni / mainnet deploy parity and Beacon lifecycle | P1 | 13 | 6 | 4 | 5 | 0 | Mainnet deploy now shares the same chain-guarded origination path as Shadownet and optional placeholder values clear to connected-wallet defaults; the Beacon reconnect reuse portion regressed wallet lifecycle and is superseded by WTF-BB-255 |
-| WTF-BB-255 | In Progress | Codex Macaroni wallet regression repair | 2026-06-13 | Macaroni / Beacon connect lifecycle and treasury defaults | P0 | 14 | 3 | 3 | 5 | 1 | Live Macaroni deploy now fails on both Shadownet and mainnet after commit `4c84b5e` reused a cleared Beacon client and let stale/autofilled non-address treasury strings block the connected-wallet fallback |
+| WTF-BB-255 | Verified | Codex Macaroni wallet regression repair | 2026-06-13 | Macaroni / Beacon connect lifecycle and treasury defaults | P0 | 14 | 3 | 3 | 5 | 1 | Macaroni explicit Connect again drops cleared Beacon client state and creates a fresh wallet client, while invalid optional treasury/royalty strings clear to the connected-wallet fallback; verified locally, by GitHub deploy/quality runs, and live asset checks on `wtfos.app` commit `c1279a0` |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -1260,7 +1260,7 @@ Priority labels:
 ### WTF-BB-177 - Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists
 
 - Category: AT Protocol architecture / identity boundary
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex WTFOS tz2at PDS/firehose pass
 - Score: C4 + F4 + S1 + P1(5) = 14
 - Evidence:
@@ -5397,11 +5397,19 @@ Priority labels:
 - Why it matters:
   - Macaroni's creator deploy path must preserve the known-working Shadownet wallet lifecycle before mainnet use. Reusing a cleared Beacon client can break provider subscriptions and make both networks fail.
   - Optional treasury/royalty fields are documented as defaulting to the connected wallet. A stale draft or browser-autofilled username in those fields must not override that fallback unless it is a real Tezos address.
-- Likely correction direction:
+- Fix:
   - Restore the working explicit-connect lifecycle: clear stale Beacon account/peer/transport/local state, drop the page wallet object, then construct a fresh wallet client for the user-initiated permission request.
   - Treat invalid optional royalty/treasury input as blank at form/load/fill time and disable browser autocomplete on Tezos address fields, while still using `state.drop.treasuryAddr || MD.getAccount()` for storage.
 - Verification:
-  - Pending.
+  - `node --check public/creation-tools/macaroni/js/studio.js public/creation-tools/macaroni/js/common.js`
+  - `npx tsx --test server/routes/macaroni-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - GitHub Deploy to Hetzner run `27485682458` succeeded.
+  - GitHub Quality Gates run `27485682461` succeeded.
+  - Live health reported production commit `c1279a0`.
+  - Live `common.js` exposes the restored explicit-connect lifecycle: `resetClient` defaults to true, reset drops `wallet = null`, explicit Connect calls `wallet = makeWallet(appName)`, and the bad `dropWallet`/reuse path is absent.
+  - Live `studio.js` clears non-Tezos optional address values, keeps `treasury: state.drop.treasuryAddr || me`, and still uses the shared chain-guarded origination path.
+  - Live `studio.html` disables autocomplete/autocapitalize/spellcheck on optional Tezos treasury and royalty fields.
 
 ## Backlog Intake Template
 
