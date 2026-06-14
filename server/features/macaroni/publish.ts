@@ -152,6 +152,14 @@ export function buildMacaroniPublishedHtml(input: {
     <div class="muted" id="ownedMintStatus" role="status" aria-live="polite" style="text-align:center;margin-top:10px"></div>
   </section>
 
+  <section class="panel recent-mints" id="recentMintsSection" aria-labelledby="recentMintsHeading">
+    <div class="spread">
+      <h2 id="recentMintsHeading">Recent mints:</h2>
+      <span class="muted" id="recentMintsStatus" role="status" aria-live="polite"></span>
+    </div>
+    <div class="recent-mints-list" id="recentMintsList"></div>
+  </section>
+
   <section class="panel" aria-labelledby="saleScheduleHeading">
     <h2 id="saleScheduleHeading">Sale schedule</h2>
     <div class="stages-list" id="stagesList"></div>

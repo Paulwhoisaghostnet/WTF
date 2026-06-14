@@ -31,6 +31,10 @@ test("Macaroni published page loads stable app assets from the public origin", (
   assert.match(html, /id="walletBalance"/);
   assert.match(html, /id="walletLimitStatus"/);
   assert.match(html, /id="ownedMintStatus"/);
+  assert.match(html, /id="recentMintsSection"/);
+  assert.match(html, /id="recentMintsStatus" role="status" aria-live="polite"/);
+  assert.match(html, /id="recentMintsList"/);
+  assert.match(html, /Recent mints:/);
   assert.match(html, /<main class="wrap narrow" id="main">/);
   assert.match(html, /id="mintPanel" aria-labelledby="mintHeading"/);
   assert.match(html, /id="supplyProgress" role="progressbar"/);

@@ -133,6 +133,7 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   const dropHtml = readFileSync("public/creation-tools/macaroni/drop.html", "utf8");
   const dropConfig = readFileSync("public/creation-tools/macaroni/drop.config.js", "utf8");
   const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+  const publishSource = readFileSync("server/features/macaroni/publish.ts", "utf8");
 
   assert.match(commonSource, /const DEFAULT_GATEWAY = "https:\/\/ipfs\.fileship\.xyz\/"/);
   assert.match(dropConfig, /gateway:\s*"https:\/\/ipfs\.fileship\.xyz\/"/);
@@ -146,6 +147,23 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   assert.match(dropHtml, /role="progressbar"/);
   assert.match(dropHtml, /aria-live="polite"/);
   assert.match(dropHtml, /aria-label="Decrease mint quantity"/);
+  assert.match(dropHtml, /id="recentMintsSection"/);
+  assert.match(dropHtml, /Recent mints:/);
+  assert.match(publishSource, /id="recentMintsSection"/);
+  assert.match(dropSource, /fetchRecentMintTransfers\(CFG\.network \|\| "mainnet", CFG\.contract, RECENT_MINT_LIMIT\)/);
+  assert.match(dropSource, /fetchWalletIdentities\(CFG\.network \|\| "mainnet", addresses\)/);
+  assert.match(dropSource, /MD\.ipfsToHttp\(tokenPreviewUri\(meta\), CFG\.gateway \|\| MD\.DEFAULT_GATEWAY\)/);
+  assert.match(commonSource, /async function fetchRecentMintTransfers\(networkKey, kt, limit\)/);
+  assert.match(commonSource, /\/v1\/tokens\/transfers/);
+  assert.match(commonSource, /url\.searchParams\.set\("token\.contract", kt\)/);
+  assert.match(commonSource, /url\.searchParams\.set\("sort\.desc", "id"\)/);
+  assert.match(commonSource, /\(!row\.from \|\| !row\.from\.address\)/);
+  assert.match(commonSource, /async function fetchObjktIdentities\(addresses\)/);
+  assert.match(commonSource, /https:\/\/data\.objkt\.com\/v3\/graphql/);
+  assert.match(commonSource, /"Content-Type": "text\/plain"/);
+  assert.match(commonSource, /async function fetchTzktIdentities\(networkKey, addresses\)/);
+  assert.match(commonSource, /\/v1\/accounts\/\$\{address\}/);
+  assert.match(commonSource, /async function fetchWalletIdentities\(networkKey, addresses\)/);
 });
 
 test("Macaroni generated mint quantity clamps to live supply and wallet allowance", () => {

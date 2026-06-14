@@ -586,6 +586,107 @@ const MD = (() => {
       .sort((a, b) => a - b);
   }
 
+  async function fetchRecentMintTransfers(networkKey, kt, limit) {
+    if (!kt) return [];
+    const api = TZKT_API[networkKey] || TZKT_API.mainnet;
+    const take = Math.min(50, Math.max(Number(limit || 8) * 4, Number(limit || 8)));
+    const url = new URL(`${api}/v1/tokens/transfers`);
+    url.searchParams.set("token.contract", kt);
+    url.searchParams.set("sort.desc", "id");
+    url.searchParams.set("limit", String(take));
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`recent mints lookup failed: ${res.status}`);
+    const json = await res.json();
+    const rows = Array.isArray(json) ? json : [];
+    const seen = new Set();
+    return rows
+      .filter((row) => row && row.to && row.to.address && (!row.from || !row.from.address))
+      .map((row) => {
+        const tokenId = Number(row.token?.tokenId);
+        if (!Number.isInteger(tokenId) || tokenId < 0) return null;
+        const key = `${tokenId}:${row.to.address}:${row.transactionId || row.id}`;
+        if (seen.has(key)) return null;
+        seen.add(key);
+        return {
+          id: Number(row.id || 0),
+          tokenId,
+          timestamp: row.timestamp || "",
+          minter: row.to.address,
+          minterAlias: row.to.alias || "",
+          transactionId: row.transactionId || null,
+          token: row.token || {},
+        };
+      })
+      .filter(Boolean)
+      .slice(0, Math.max(1, Number(limit || 8)));
+  }
+
+  async function fetchObjktIdentities(addresses) {
+    const clean = [...new Set((addresses || []).filter(isAddress))].slice(0, 25);
+    const out = new Map();
+    if (!clean.length) return out;
+    const query =
+      "query MacaroniWalletProfiles($addresses:[String!]){" +
+      " holder(where:{address:{_in:$addresses}}, limit:25){ address alias tzdomain logo }" +
+      "}";
+    const res = await fetch("https://data.objkt.com/v3/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ query, variables: { addresses: clean } }),
+    });
+    if (!res.ok) throw new Error(`objkt identity lookup failed: ${res.status}`);
+    const json = await res.json();
+    for (const holder of json?.data?.holder || []) {
+      if (!holder?.address) continue;
+      out.set(holder.address, {
+        address: holder.address,
+        alias: holder.alias || "",
+        tzdomain: holder.tzdomain || "",
+        logo: holder.logo || "",
+      });
+    }
+    return out;
+  }
+
+  async function fetchTzktIdentities(networkKey, addresses) {
+    const clean = [...new Set((addresses || []).filter(isAddress))].slice(0, 25);
+    const api = TZKT_API[networkKey] || TZKT_API.mainnet;
+    const out = new Map();
+    await Promise.allSettled(
+      clean.map(async (address) => {
+        const res = await fetch(`${api}/v1/accounts/${address}`);
+        if (!res.ok) return;
+        const json = await res.json();
+        out.set(address, {
+          address,
+          alias: json.alias || "",
+        });
+      })
+    );
+    return out;
+  }
+
+  async function fetchWalletIdentities(networkKey, addresses) {
+    const clean = [...new Set((addresses || []).filter(isAddress))].slice(0, 25);
+    const [objkt, tzkt] = await Promise.all([
+      networkKey === "mainnet" ? fetchObjktIdentities(clean).catch(() => new Map()) : Promise.resolve(new Map()),
+      fetchTzktIdentities(networkKey, clean).catch(() => new Map()),
+    ]);
+    const out = new Map();
+    for (const address of clean) {
+      const objktIdentity = objkt.get(address) || {};
+      const tzktIdentity = tzkt.get(address) || {};
+      const label = objktIdentity.tzdomain || objktIdentity.alias || tzktIdentity.alias || short(address);
+      out.set(address, {
+        address,
+        label,
+        logo: objktIdentity.logo || "",
+        source: objktIdentity.tzdomain || objktIdentity.alias ? "objkt" : tzktIdentity.alias ? "tzkt" : "address",
+      });
+    }
+    return out;
+  }
+
   return {
     getNetworks,
     setupToolkit,
@@ -614,6 +715,8 @@ const MD = (() => {
     estimateWalletOp,
     sendWalletOp,
     fetchOwnedTokenIds,
+    fetchRecentMintTransfers,
+    fetchWalletIdentities,
     TZKT_API,
     DEFAULT_GATEWAY,
   };

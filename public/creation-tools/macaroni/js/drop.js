@@ -28,6 +28,14 @@ function ensureMintSiteEnhancements() {
   insertAfter("walletBalance", '<div class="muted" id="mintPreflight" aria-live="polite"></div>');
   insertAfter("allowStatus", '<div class="muted" id="walletLimitStatus" aria-live="polite"></div>');
   insertAfter("revealGrid", '<div class="muted" id="ownedMintStatus" role="status" aria-live="polite" style="text-align:center;margin-top:10px"></div>');
+  insertAfter(
+    "revealSection",
+    '<section class="panel recent-mints" id="recentMintsSection" aria-labelledby="recentMintsHeading">' +
+      '<div class="spread"><h2 id="recentMintsHeading">Recent mints:</h2>' +
+      '<span class="muted" id="recentMintsStatus" role="status" aria-live="polite"></span></div>' +
+      '<div class="recent-mints-list" id="recentMintsList"></div>' +
+    '</section>'
+  );
 }
 
 ensureMintSiteEnhancements();
@@ -71,7 +79,15 @@ function ensureDropAccessibility() {
       "aria-valuenow": progress.getAttribute("aria-valuenow") || "0",
     });
   }
-  const statusIds = ["stageInfo", "mintStatus", "walletBalance", "allowStatus", "ownedMintStatus", "revealOpStatus"];
+  const statusIds = [
+    "stageInfo",
+    "mintStatus",
+    "walletBalance",
+    "allowStatus",
+    "ownedMintStatus",
+    "revealOpStatus",
+    "recentMintsStatus",
+  ];
   statusIds.forEach((id) => setAttrs($(id), { role: "status", "aria-live": "polite" }));
   ["supplyText", "modeNote", "mintPreflight", "walletLimitStatus", "revealInfo"].forEach((id) =>
     setAttrs($(id), { "aria-live": "polite" })
@@ -191,6 +207,129 @@ function renderTokenCard(card, meta, id, sealed) {
   img.alt = `${meta.name || "Token #" + (id + 1)} artwork`;
   card.replaceChildren(img, cap);
 }
+
+function tokenPreviewUri(meta) {
+  if (!meta || typeof meta !== "object") return CFG.cover || "";
+  return (
+    meta.thumbnailUri ||
+    meta.displayUri ||
+    meta.artifactUri ||
+    (Array.isArray(meta.formats) && meta.formats[0] && meta.formats[0].uri) ||
+    CFG.cover ||
+    ""
+  );
+}
+
+function tokenNumber(tokenId) {
+  const id = Number(tokenId);
+  return Number.isInteger(id) && id >= 0 ? id + 1 : tokenId;
+}
+
+function formatMintTime(value) {
+  if (!value) return "recently";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "recently";
+  return date.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+}
+
+function setRecentMintsMessage(message) {
+  const list = $("recentMintsList");
+  if (list) list.replaceChildren();
+  setText("recentMintsStatus", message);
+}
+
+function identityProfileUrl(identity) {
+  if (!identity?.address) return "";
+  return CFG.network === "mainnet" && identity.source === "objkt"
+    ? `https://objkt.com/profile/${identity.address}`
+    : MD.explorerUrl(CFG.network || "mainnet", identity.address);
+}
+
+function renderRecentMints(transfers, identities) {
+  const list = $("recentMintsList");
+  if (!list) return;
+  list.replaceChildren();
+  if (!transfers.length) {
+    setText("recentMintsStatus", "No recent mints yet.");
+    return;
+  }
+  setText("recentMintsStatus", `${transfers.length} recent mint${transfers.length === 1 ? "" : "s"}`);
+  for (const transfer of transfers) {
+    const meta = transfer.token?.metadata || {};
+    const identity = identities.get(transfer.minter) || {
+      address: transfer.minter,
+      label: transfer.minterAlias || MD.short(transfer.minter),
+      source: transfer.minterAlias ? "tzkt" : "address",
+    };
+    const item = document.createElement("article");
+    item.className = "recent-mint";
+
+    const media = document.createElement("a");
+    media.className = "recent-mint-media";
+    media.href = MD.explorerUrl(CFG.network || "mainnet", CFG.contract);
+    media.target = "_blank";
+    media.rel = "noopener";
+    const imageUrl = safeHttpUrl(MD.ipfsToHttp(tokenPreviewUri(meta), CFG.gateway || MD.DEFAULT_GATEWAY));
+    if (imageUrl) {
+      const img = document.createElement("img");
+      img.src = imageUrl;
+      img.alt = `${meta.name || "Token #" + tokenNumber(transfer.tokenId)} preview`;
+      img.loading = "lazy";
+      media.appendChild(img);
+    } else {
+      const placeholder = document.createElement("span");
+      placeholder.textContent = "#" + tokenNumber(transfer.tokenId);
+      media.appendChild(placeholder);
+    }
+
+    const body = document.createElement("div");
+    body.className = "recent-mint-body";
+    const title = document.createElement("strong");
+    title.textContent = meta.name || `Token #${tokenNumber(transfer.tokenId)}`;
+    const line = document.createElement("div");
+    line.className = "muted";
+    line.append("minted by ");
+    const profile = document.createElement("a");
+    profile.href = identityProfileUrl(identity);
+    profile.target = "_blank";
+    profile.rel = "noopener";
+    profile.title = `${identity.address}${identity.source !== "address" ? ` via ${identity.source}` : ""}`;
+    profile.textContent = identity.label;
+    line.appendChild(profile);
+    const time = document.createElement("div");
+    time.className = "recent-mint-time muted";
+    time.textContent = formatMintTime(transfer.timestamp);
+    body.append(title, line, time);
+    item.append(media, body);
+    list.appendChild(item);
+  }
+}
+
+async function loadRecentMints(options) {
+  if (!$("recentMintsList")) return;
+  if (!CFG.contract) {
+    recentMintsKey = "";
+    setRecentMintsMessage("Recent mint activity appears after deployment.");
+    return;
+  }
+  const minted = storage ? Number(storage.minted) : "";
+  const key = `${CFG.network || "mainnet"}:${CFG.contract}:${minted}`;
+  if (!options?.force && key === recentMintsKey) return;
+  recentMintsKey = key;
+  const seq = ++recentMintsLoadSeq;
+  setText("recentMintsStatus", "Loading recent mints...");
+  try {
+    const transfers = await MD.fetchRecentMintTransfers(CFG.network || "mainnet", CFG.contract, RECENT_MINT_LIMIT);
+    if (seq !== recentMintsLoadSeq) return;
+    const addresses = transfers.map((mint) => mint.minter).filter(Boolean);
+    const identities = await MD.fetchWalletIdentities(CFG.network || "mainnet", addresses);
+    if (seq !== recentMintsLoadSeq) return;
+    renderRecentMints(transfers, identities);
+  } catch (e) {
+    if (seq !== recentMintsLoadSeq) return;
+    setRecentMintsMessage("Could not load recent mints: " + (e.message || e));
+  }
+}
 $("contentBlocks").innerHTML = (CFG.blocks || [])
   .map((b) => {
     if (b.type === "h") return `<h2>${esc(b.value)}</h2>`;
@@ -216,8 +355,11 @@ let walletStatusSeq = 0;
 let walletStatusCache = { key: "", status: null };
 let walletStatusLoadingKey = "";
 let ownedMintLoadSeq = 0;
+let recentMintsLoadSeq = 0;
+let recentMintsKey = "";
 let walletConnecting = false;
 const MINT_QTY_UI_CAP = 10;
+const RECENT_MINT_LIMIT = 8;
 
 function revealState() {
   if (!storage) return null;
@@ -496,6 +638,7 @@ async function refresh() {
   if (!CFG.contract) {
     $("supplyText").textContent = "drop not deployed yet — check back soon";
     $("stagesList").innerHTML = '<div class="muted">no stages configured</div>';
+    loadRecentMints();
     return;
   }
   try {
@@ -515,6 +658,7 @@ async function refresh() {
     if (sm && typeof sm.forEach === "function") sm.forEach((v, k) => push(k, v));
     stages.sort((a, b) => a.id - b.id);
     render();
+    loadRecentMints();
     // flip this session's cards when a reveal lands while the page is open
     const revealedNow = Number(storage.revealed);
     if (revealedNow !== lastRevealed && sessionIds.length) reveal(sessionIds);
@@ -749,6 +893,7 @@ async function mint() {
     await refreshBalance("checked after mint");
     await reveal(ids);
     await loadOwnedMints();
+    await loadRecentMints({ force: true });
     const delayed = !!storage?.delayed_reveal;
     $("mintStatus").textContent = ids.length
       ? `minted ${ids.length} token(s) ✓` + (delayed ? " — sealed until reveal (see below)" : "")
