@@ -40,11 +40,11 @@
       </div>
       <div>
         <label>RPC endpoint (optional override)</label>
-        <input type="url" id="rpc" placeholder="https://…" />
+        <input type="url" id="rpc" placeholder="https://…" autocomplete="off" autocapitalize="none" spellcheck="false" />
       </div>
       <div>
         <label>Connected wallet</label>
-        <input type="text" id="walletAddr" readonly placeholder="not connected" />
+        <input type="text" id="walletAddr" readonly placeholder="not connected" autocomplete="off" autocapitalize="none" spellcheck="false" />
       </div>
     </div>
     <p class="muted">Run a full Shadownet rehearsal before mainnet. Free test tez: <a href="https://faucet.shadownet.teztnets.com" target="_blank" rel="noopener">shadownet faucet</a>.</p>
@@ -79,11 +79,11 @@
           </div>
           <div>
             <label>Royalty receiver (defaults to your wallet)</label>
-            <input type="text" id="royaltyAddr" placeholder="tz1…" />
+            <input type="text" id="royaltyAddr" placeholder="tz1…" autocomplete="off" autocapitalize="none" spellcheck="false" />
           </div>
         </div>
         <label>Treasury — receives 100% of mint payments (defaults to your wallet)</label>
-        <input type="text" id="treasuryAddr" placeholder="tz1…" />
+        <input type="text" id="treasuryAddr" placeholder="tz1…" autocomplete="off" autocapitalize="none" spellcheck="false" />
         <div class="grid2">
           <div>
             <label>Reveal mode</label>
@@ -169,7 +169,7 @@
     <div class="grid2">
       <div>
         <label>Contract address</label>
-        <input type="text" id="resumeAddr" placeholder="KT1…" class="mono" />
+        <input type="text" id="resumeAddr" placeholder="KT1…" class="mono" autocomplete="off" autocapitalize="none" spellcheck="false" />
       </div>
       <div class="row" style="align-items:flex-end;flex-wrap:wrap;gap:8px">
         <button class="btn" id="btnResume">Load from chain</button>
@@ -194,7 +194,7 @@
     <div class="grid2" style="margin-top:10px">
       <div>
         <label>Contract address</label>
-        <input type="text" id="contractAddr" placeholder="KT1… (filled after deploy, or paste an existing one)" class="mono" />
+        <input type="text" id="contractAddr" placeholder="KT1… (filled after deploy, or paste an existing one)" class="mono" autocomplete="off" autocapitalize="none" spellcheck="false" />
       </div>
       <div>
         <label>Sync progress</label>

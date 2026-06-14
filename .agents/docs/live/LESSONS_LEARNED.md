@@ -18,6 +18,16 @@
 
 ---
 
+## 2026-06-13 - Do not reuse a cleared Beacon client after explicit connect reset
+
+**What happened**: A Macaroni deploy-path parity fix changed explicit wallet connect from the known-working flow of clearing stale Beacon state, dropping the page wallet object, and constructing a fresh `BeaconWallet`, to clearing active account/peer/transport and then reusing the same client with `resetClient: false`. Live users then saw Beacon report an active account without an active subscription, and deploy failed on both Shadownet and mainnet. The same pass only cleared optional treasury/royalty placeholders, so a stale or autofilled wtfOS username such as `paulwhoisaghost` could still sit in the treasury field and block the documented connected-wallet fallback.
+
+**Why it mattered**: Beacon's DAppClient lifecycle is stateful. Clearing its account, peer, transport, and storage while keeping the same object can leave the SDK without the subscriptions it needs to complete permission/account updates. Macaroni's optional address fields are also defaults, not identity fields; a display name there should not prevent the wallet address from becoming the contract treasury.
+
+**Rule**: For Macaroni explicit Connect, reset stale Beacon state and then construct a fresh wallet client for the permission request unless a browser regression proves a different lifecycle is safe. For optional royalty/treasury address inputs, normalize every non-Tezos value to blank before deploy/pin/export so `state.drop.treasuryAddr || connectedWallet` remains the source of truth.
+
+---
+
 ## 2026-06-13 - Macaroni mint counters must use effective remaining allowance
 
 **What happened**: A generated Macaroni mint page could let a collector set the requested quantity above what the contract would accept. The UI considered the creator's raw max-per-wallet value, but the effective allowance was lower after previous mints had consumed part of that wallet's stage cap or after collection supply had been reduced by other collectors.

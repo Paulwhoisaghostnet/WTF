@@ -60,6 +60,7 @@ function normalizeOptionalAddress(value) {
   const compact = text.replace(/\s+/g, "");
   if (!compact) return "";
   if (/^(tz1|tz2|tz3|tz4|KT1)(?:…|\.{3})?$/i.test(compact)) return "";
+  if (!MD.isAddress(text)) return "";
   return text;
 }
 
