@@ -49,6 +49,8 @@ const router = Router();
 const DESKTOP_CLIENT_EVENT_TYPES = new Set([
   "desktop.settings.viewed",
   "desktop.appearance.updated",
+  "desktop.font_pack.updated",
+  "desktop.chat_typography.updated",
   "desktop.wallpaper.uploaded",
   "desktop.wallpaper.token_set",
   "desktop.physics.updated",

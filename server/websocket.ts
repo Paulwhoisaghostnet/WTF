@@ -27,8 +27,23 @@ const MAX_WTF_LIVE_AVATAR_BYTES = 512 * 1024;
 const MAX_WTF_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_AVATAR_BYTES * 1.4);
 const MAX_WTF_LIVE_SIGNAL_LENGTH = 256 * 1024;
 const WTF_LIVE_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "video/mp4"]);
-const WTF_LIVE_CHAT_FONTS = new Set(["system", "serif", "mono", "pixel"]);
+const WTF_LIVE_CHAT_FONTS = new Set(["mek-mono", "grout-display", "classic-95", "terminal", "serif-press"]);
+const WTF_LIVE_LEGACY_CHAT_FONT_MAP: Record<string, string> = {
+  system: "mek-mono",
+  mono: "terminal",
+  serif: "serif-press",
+  pixel: "classic-95",
+};
 const WTF_LIVE_CHAT_COLORS = new Set(["ink", "blue", "green", "red", "purple", "amber"]);
+const WTF_LIVE_ROOM_REACTION_LABELS: Record<string, string> = {
+  "👏": "Applause",
+  "🔥": "Fire",
+  "😂": "Laugh",
+  "😮": "Wow",
+  "❤️": "Love",
+  "👀": "Watching",
+};
+const WTF_LIVE_ROOM_REACTION_EMOJIS = new Set(Object.keys(WTF_LIVE_ROOM_REACTION_LABELS));
 
 type WtfLiveChatStyle = {
   font: string;
@@ -39,7 +54,7 @@ type WtfLiveChatStyle = {
 };
 
 const DEFAULT_WTF_LIVE_CHAT_STYLE: WtfLiveChatStyle = {
-  font: "system",
+  font: "mek-mono",
   color: "ink",
   size: 12,
   bold: false,
@@ -336,12 +351,19 @@ function normalizeWtfLiveChatStyle(value: unknown): WtfLiveChatStyle {
   const font = String(style.font || "");
   const color = String(style.color || "");
   return {
-    font: WTF_LIVE_CHAT_FONTS.has(font) ? font : DEFAULT_WTF_LIVE_CHAT_STYLE.font,
+    font: WTF_LIVE_CHAT_FONTS.has(font)
+      ? font
+      : WTF_LIVE_LEGACY_CHAT_FONT_MAP[font] ?? DEFAULT_WTF_LIVE_CHAT_STYLE.font,
     color: WTF_LIVE_CHAT_COLORS.has(color) ? color : DEFAULT_WTF_LIVE_CHAT_STYLE.color,
     size,
     bold: Boolean(style.bold),
     italic: Boolean(style.italic),
   };
+}
+
+function normalizeWtfLiveRoomReactionEmoji(value: unknown): string | null {
+  const emoji = String(value || "");
+  return WTF_LIVE_ROOM_REACTION_EMOJIS.has(emoji) ? emoji : null;
 }
 
 function wtfLivePeerDisplayName(client: WsClient): string {
@@ -577,6 +599,28 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
           text,
           style,
           attachments,
+          createdAt: new Date().toISOString(),
+        },
+      });
+      break;
+    }
+
+    case "wtf_live_room_reaction": {
+      if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
+      const emoji = normalizeWtfLiveRoomReactionEmoji(msg.emoji);
+      if (!emoji) {
+        sendJson(client.ws, { type: "error", message: "Unsupported WTF LIVE room reaction" });
+        return;
+      }
+      broadcastToWtfLiveRoom(client.wtfLiveRoomId, {
+        type: "wtf_live_room_reaction",
+        roomId: client.wtfLiveRoomId,
+        reaction: {
+          id: `reaction_${Date.now()}_${randomUUID().replace(/-/g, "").slice(0, 10)}`,
+          peerId: client.wtfLivePeerId,
+          guestName: wtfLivePeerDisplayName(client),
+          emoji,
+          label: WTF_LIVE_ROOM_REACTION_LABELS[emoji],
           createdAt: new Date().toISOString(),
         },
       });

@@ -46,6 +46,22 @@ test("normalizes desktop appearance while keeping valid personalization", () => 
     desktopGravityMode: "zero",
     desktopPetEnabled: true,
     fontPackKey: "terminal",
+    chatTypographyPresetKey: "editorial",
+    wimChatStyle: {
+      fontFamily: "Georgia",
+      fontSize: 14,
+      color: "#3a2511",
+      bold: false,
+      italic: true,
+      underline: false,
+    },
+    wtfLiveChatStyle: {
+      font: "serif-press",
+      color: "amber",
+      size: 13,
+      bold: false,
+      italic: true,
+    },
   });
 
   assert.equal(normalized.appearanceStyleKey, "wtf-xp");
@@ -60,6 +76,22 @@ test("normalizes desktop appearance while keeping valid personalization", () => 
   assert.equal(normalized.desktopGravityMode, "zero");
   assert.equal(normalized.desktopPetEnabled, true);
   assert.equal(normalized.fontPackKey, "terminal");
+  assert.equal(normalized.chatTypographyPresetKey, "editorial");
+  assert.deepEqual(normalized.wimChatStyle, {
+    fontFamily: "Georgia",
+    fontSize: 14,
+    color: "#3a2511",
+    bold: false,
+    italic: true,
+    underline: false,
+  });
+  assert.deepEqual(normalized.wtfLiveChatStyle, {
+    font: "serif-press",
+    color: "amber",
+    size: 13,
+    bold: false,
+    italic: true,
+  });
 });
 
 test("falls back to safe desktop appearance defaults for bad input", () => {
@@ -83,6 +115,22 @@ test("falls back to safe desktop appearance defaults for bad input", () => {
 test("desktop appearance defaults are aubergine-first with a broad preset set", () => {
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.appearanceStyleKey, "classic-95");
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.fontPackKey, "mek-type");
+  assert.equal(DEFAULT_DESKTOP_APPEARANCE.chatTypographyPresetKey, "wtfos-default");
+  assert.deepEqual(DEFAULT_DESKTOP_APPEARANCE.wimChatStyle, {
+    fontFamily: "Helvetica",
+    fontSize: 12,
+    color: "#06135f",
+    bold: false,
+    italic: false,
+    underline: false,
+  });
+  assert.deepEqual(DEFAULT_DESKTOP_APPEARANCE.wtfLiveChatStyle, {
+    font: "mek-mono",
+    color: "ink",
+    size: 12,
+    bold: false,
+    italic: false,
+  });
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.cursorStyle, "eggplant");
   assert.deepEqual(
     DESKTOP_APPEARANCE_STYLES.map((style) => style.key),
@@ -110,6 +158,44 @@ test("desktop appearance defaults are aubergine-first with a broad preset set", 
   }
   assert.equal(DESKTOP_CURSOR_STYLES.includes("glitch-block" as any), false);
   assert.equal(DESKTOP_CURSOR_STYLES.includes("rubber-stamp" as any), false);
+});
+
+test("normalizes desktop chat typography defaults inside composer windows", () => {
+  const normalized = normalizeDesktopAppearance({
+    chatTypographyPresetKey: "loud-display",
+    wimChatStyle: {
+      fontFamily: "Papyrus",
+      fontSize: 999,
+      color: "purple",
+      bold: "yes",
+      italic: true,
+      underline: false,
+    },
+    wtfLiveChatStyle: {
+      font: "mono",
+      color: "neon",
+      size: 99,
+      bold: true,
+      italic: "yes",
+    },
+  });
+
+  assert.equal(normalized.chatTypographyPresetKey, "loud-display");
+  assert.deepEqual(normalized.wimChatStyle, {
+    fontFamily: "MEK Mono",
+    fontSize: 18,
+    color: "#8f1d2c",
+    bold: true,
+    italic: true,
+    underline: false,
+  });
+  assert.deepEqual(normalized.wtfLiveChatStyle, {
+    font: "terminal",
+    color: "red",
+    size: 14,
+    bold: true,
+    italic: false,
+  });
 });
 
 test("normalizes icon layout and discards malformed coordinates", () => {

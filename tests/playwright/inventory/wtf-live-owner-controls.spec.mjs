@@ -332,6 +332,99 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     expect(fatalErrors(errors)).toEqual([]);
   });
 
+  test("tablet room keeps controls and chat style targets reachable at the responsive breakpoint", async ({
+    page,
+    request,
+  }) => {
+    await setAnonymous(request);
+    const errors = [];
+    capturePageErrors(page, errors, "tablet-controls");
+
+    for (const viewport of [
+      { width: 980, height: 760 },
+      { width: 1024, height: 768 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+      await page.getByPlaceholder("Display name").fill(`Tablet ${viewport.width}`);
+      await page.getByRole("button", { name: "Join Room" }).click();
+      await expect(page.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+
+      const metrics = await page.evaluate(() => {
+        const box = (selector) => {
+          const node = document.querySelector(selector);
+          if (!node) return null;
+          const rect = node.getBoundingClientRect();
+          return {
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            visibleHeight: Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)),
+          };
+        };
+        const railNode = document.querySelector("[data-wtf-live-control-rail]");
+        const toolbar = box("[data-wtf-live-chat-tools]");
+        const styleTargets = Array.from(
+          document.querySelectorAll("[data-wtf-live-chat-tools] button, [data-wtf-live-chat-tools] select"),
+        ).map((node) => {
+          const rect = node.getBoundingClientRect();
+          return {
+            handle:
+              node.getAttribute("data-wtf-live-chat-font") ??
+              node.getAttribute("data-wtf-live-chat-font-size") ??
+              node.getAttribute("data-wtf-live-chat-color") ??
+              node.getAttribute("data-wtf-live-chat-bold") ??
+              node.getAttribute("data-wtf-live-chat-italic") ??
+              node.getAttribute("data-wtf-live-chat-style-toggle") ??
+              node.getAttribute("data-wtf-live-chat-style-reset") ??
+              node.tagName.toLowerCase(),
+            width: rect.width,
+            height: rect.height,
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+            left: rect.left,
+          };
+        });
+        return {
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          documentScrollWidth: document.documentElement.scrollWidth,
+          rail: box("[data-wtf-live-control-rail]"),
+          railScrollHeight: railNode?.scrollHeight ?? 0,
+          stage: box("[data-wtf-live-stage-area]"),
+          composer: box("[data-wtf-live-chat-composer]"),
+          toolbar,
+          styleTargets,
+        };
+      });
+
+      expect(metrics.documentScrollWidth).toBeLessThanOrEqual(metrics.viewportWidth);
+      expect(metrics.rail).not.toBeNull();
+      expect(metrics.stage).not.toBeNull();
+      expect(metrics.composer).not.toBeNull();
+      expect(metrics.toolbar).not.toBeNull();
+      expect(metrics.rail.visibleHeight).toBeGreaterThan(180);
+      if (viewport.width <= 980) {
+        expect(metrics.rail.height).toBeGreaterThanOrEqual(metrics.railScrollHeight - 2);
+      }
+      expect(metrics.stage.top).toBeGreaterThanOrEqual(0);
+      expect(metrics.composer.left).toBeGreaterThanOrEqual(0);
+      expect(metrics.composer.right).toBeLessThanOrEqual(metrics.viewportWidth);
+      for (const target of metrics.styleTargets) {
+        expect.soft(target.width, `${target.handle} target width`).toBeGreaterThanOrEqual(24);
+        expect.soft(target.height, `${target.handle} target height`).toBeGreaterThanOrEqual(24);
+        expect.soft(target.left, `${target.handle} target left`).toBeGreaterThanOrEqual(metrics.toolbar.left - 1);
+        expect.soft(target.right, `${target.handle} target right`).toBeLessThanOrEqual(metrics.toolbar.right + 1);
+      }
+    }
+
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
   test("signed-in room attendance uses wtfOS names and WIM buddy actions", async ({
     browser,
     request,
@@ -535,6 +628,11 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       await expect(aliceAttendanceBob).toBeVisible();
       await expect(bob.locator("[data-wtf-live-stage-peer]").filter({ hasText: "Alice" })).toHaveCount(0);
       await expect(alice.locator("[data-wtf-live-stage-peer]").filter({ hasText: "Bob" })).toHaveCount(0);
+      await expect(alice.locator("[data-wtf-live-room-reactions]")).toBeVisible();
+      await alice.locator("[data-wtf-live-room-reaction='👏']").click();
+      await expect(
+        bob.locator("[data-wtf-live-reaction-burst][data-wtf-live-reaction-emoji='👏']").filter({ hasText: "Alice" }),
+      ).toBeVisible();
 
       await bob.locator("[data-wtf-live-avatar-file]").setInputFiles({
         name: "avatar.gif",
@@ -608,18 +706,68 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
 
       const aliceToolbox = alice.locator("[data-wtf-live-chat-tools]");
       await expect(aliceToolbox).toBeVisible();
+      await expect(alice.locator("[data-wtf-live-chat-style-panel]")).toHaveCount(0);
       const toolboxSize = await aliceToolbox.boundingBox();
-      expect(toolboxSize?.height ?? 0).toBeLessThanOrEqual(40);
+      expect(toolboxSize?.height ?? 0).toBeGreaterThanOrEqual(32);
+      expect(toolboxSize?.height ?? 0).toBeLessThanOrEqual(44);
+      const styleTargetSizes = await aliceToolbox.locator("button, select").evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const rect = node.getBoundingClientRect();
+          return { width: rect.width, height: rect.height };
+        }),
+      );
+      expect(styleTargetSizes).toHaveLength(2);
+      for (const target of styleTargetSizes) {
+        expect.soft(target.width).toBeGreaterThanOrEqual(24);
+        expect.soft(target.height).toBeGreaterThanOrEqual(24);
+      }
+      await alice.locator("[data-wtf-live-chat-emoji-toggle]").click();
+      const aliceEmojiPanel = alice.locator("[data-wtf-live-chat-emoji-panel]");
+      await expect(aliceEmojiPanel).toBeVisible();
+      const emojiTargetSizes = await aliceEmojiPanel.locator("button").evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const rect = node.getBoundingClientRect();
+          return { width: rect.width, height: rect.height };
+        }),
+      );
+      expect(emojiTargetSizes.length).toBeGreaterThanOrEqual(20);
+      for (const target of emojiTargetSizes) {
+        expect.soft(target.width).toBeGreaterThanOrEqual(24);
+        expect.soft(target.height).toBeGreaterThanOrEqual(24);
+      }
+      await alice.locator("[data-wtf-live-chat-emoji='🔥']").click();
+      await expect(aliceChatInput).toHaveValue("🔥");
+      await aliceChatInput.press("Enter");
+      await expect(bobChatLog.getByText("🔥")).toBeVisible();
+      await alice.locator("[data-wtf-live-chat-style-toggle]").click();
+      const aliceStylePanel = alice.locator("[data-wtf-live-chat-style-panel]");
+      await expect(aliceStylePanel).toBeVisible();
+      const panelTargetSizes = await aliceStylePanel.locator("button, select").evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const rect = node.getBoundingClientRect();
+          return { width: rect.width, height: rect.height };
+        }),
+      );
+      for (const target of panelTargetSizes) {
+        expect.soft(target.width).toBeGreaterThanOrEqual(24);
+        expect.soft(target.height).toBeGreaterThanOrEqual(24);
+      }
       const sizeOptions = await alice.locator("[data-wtf-live-chat-font-size] option").evaluateAll((options) =>
         options.map((option) => option.getAttribute("value")),
       );
       expect(sizeOptions).toEqual(["8", "9", "10", "11", "12", "13", "14"]);
-      await alice.locator("[data-wtf-live-chat-font]").selectOption("mono");
+      const fontOptions = await alice.locator("[data-wtf-live-chat-font] option").evaluateAll((options) =>
+        options.map((option) => option.getAttribute("value")),
+      );
+      expect(fontOptions).toEqual(["mek-mono", "grout-display", "classic-95", "terminal", "serif-press"]);
+      await alice.locator("[data-wtf-live-chat-font]").selectOption("grout-display");
       await alice.locator("[data-wtf-live-chat-font-size]").selectOption("14");
       await alice.locator("[data-wtf-live-chat-color='red']").click();
       await alice.locator("[data-wtf-live-chat-bold]").click();
       await alice.locator("[data-wtf-live-chat-italic]").click();
       await expect(aliceChatInput).toHaveCSS("font-size", "14px");
+      await alice.locator("[data-wtf-live-chat-style-done]").click();
+      await expect(alice.locator("[data-wtf-live-chat-style-panel]")).toHaveCount(0);
       await aliceChatInput.fill("styled chat arrives");
       await aliceChatInput.press("Enter");
       const styledMessage = bobChatLog
@@ -639,7 +787,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       expect(renderedStyle.fontSize).toBe("14px");
       expect(renderedStyle.fontStyle).toBe("italic");
       expect(renderedStyle.color).toBe("rgb(143, 29, 44)");
-      expect(renderedStyle.fontFamily.toLowerCase()).toContain("courier");
+      expect(renderedStyle.fontFamily.toLowerCase()).toContain("grout");
       const renderedWeight = renderedStyle.fontWeight === "bold" ? 700 : Number(renderedStyle.fontWeight);
       expect(renderedWeight).toBeGreaterThanOrEqual(600);
 

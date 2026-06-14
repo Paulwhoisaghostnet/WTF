@@ -312,6 +312,23 @@ app.post("/api/auth/gm-welcome/complete", (_req, res) => {
 const desktopAppearance = {
   appearanceStyleKey: "classic-95",
   colorSchemeKey: "wtf-teal",
+  fontPackKey: "mek-type",
+  chatTypographyPresetKey: "wtfos-default",
+  wimChatStyle: {
+    fontFamily: "Helvetica",
+    fontSize: 12,
+    color: "#06135f",
+    bold: false,
+    italic: false,
+    underline: false,
+  },
+  wtfLiveChatStyle: {
+    font: "mek-mono",
+    color: "ink",
+    size: 12,
+    bold: false,
+    italic: false,
+  },
   desktopColor: "#008080",
   windowColor: "#c0c0c0",
   activeTitleColor: "#000080",
@@ -1159,8 +1176,12 @@ function apiMock(req, res) {
       ),
     });
   }
-  if (pathName === "/api/desktop/settings") {
-    return res.json({ appearance: desktopAppearance, iconLayout: {} });
+  if (pathName === "/api/desktop/settings" && req.method === "GET") {
+    return res.json({ appearance: desktopAppearance, iconLayout: {}, updatedAt: null });
+  }
+  if (pathName === "/api/desktop/settings" && req.method === "PUT") {
+    Object.assign(desktopAppearance, req.body?.appearance ?? {});
+    return res.json({ appearance: desktopAppearance, iconLayout: {}, updatedAt: nowIso() });
   }
   if (pathName === "/api/atproto/oauth/start") {
     const wantsChat = url.searchParams.get("chat") === "1" || url.searchParams.get("chat") === "true";
@@ -3988,8 +4009,22 @@ const server = app.listen(PORT, () => {
 const livePeers = new Map();
 const liveWss = new WebSocketServer({ server, path: "/ws/wtf-live" });
 const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(512 * 1024 * 1.4);
-const LIVE_CHAT_FONTS = new Set(["system", "serif", "mono", "pixel"]);
+const LIVE_CHAT_FONTS = new Set(["mek-mono", "grout-display", "classic-95", "terminal", "serif-press"]);
+const LIVE_LEGACY_CHAT_FONT_MAP = {
+  system: "mek-mono",
+  mono: "terminal",
+  serif: "serif-press",
+  pixel: "classic-95",
+};
 const LIVE_CHAT_COLORS = new Set(["ink", "blue", "green", "red", "purple", "amber"]);
+const LIVE_ROOM_REACTION_LABELS = {
+  "👏": "Applause",
+  "🔥": "Fire",
+  "😂": "Laugh",
+  "😮": "Wow",
+  "❤️": "Love",
+  "👀": "Watching",
+};
 
 function liveSend(ws, payload) {
   if (ws.readyState !== WebSocket.OPEN) return;
@@ -4086,7 +4121,7 @@ function liveNormalizeChatStyle(value) {
   const font = String(style.font || "");
   const color = String(style.color || "");
   return {
-    font: LIVE_CHAT_FONTS.has(font) ? font : "system",
+    font: LIVE_CHAT_FONTS.has(font) ? font : LIVE_LEGACY_CHAT_FONT_MAP[font] || "mek-mono",
     color: LIVE_CHAT_COLORS.has(color) ? color : "ink",
     size,
     bold: Boolean(style.bold),
@@ -4189,6 +4224,28 @@ liveWss.on("connection", (ws) => {
           text,
           style,
           attachments,
+          createdAt: new Date().toISOString(),
+        },
+      });
+      return;
+    }
+
+    if (message.type === "wtf_live_room_reaction" && client.roomId) {
+      const emoji = String(message.emoji || "");
+      const label = LIVE_ROOM_REACTION_LABELS[emoji];
+      if (!label) {
+        liveSend(ws, { type: "error", message: "Unsupported WTF LIVE room reaction" });
+        return;
+      }
+      liveBroadcast(client.roomId, {
+        type: "wtf_live_room_reaction",
+        roomId: client.roomId,
+        reaction: {
+          id: `reaction_${Date.now()}_${randomUUID().replace(/-/g, "").slice(0, 8)}`,
+          peerId: client.peerId,
+          guestName: client.guestName,
+          emoji,
+          label,
           createdAt: new Date().toISOString(),
         },
       });

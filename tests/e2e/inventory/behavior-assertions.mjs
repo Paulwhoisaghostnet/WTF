@@ -123,13 +123,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Desktop OS, Navigation, and Personal Environment",
     ownerSurfaceIds: ["desktop-appearance"],
     ownerSpec:
-      "client/src/features/appearance/font-packs.test.ts, client/src/features/appearance/get-canvas-font.test.ts, shared/desktop.test.ts",
+      "client/src/features/appearance/font-packs.test.ts, client/src/features/appearance/get-canvas-font.test.ts, shared/desktop.test.ts, tests/playwright/inventory/desktop-settings-typography.spec.mjs",
     verificationCommand:
-      "npx tsx --test client/src/features/appearance/font-packs.test.ts client/src/features/appearance/get-canvas-font.test.ts shared/desktop.test.ts",
+      "npx tsx --test client/src/features/appearance/font-packs.test.ts client/src/features/appearance/get-canvas-font.test.ts shared/desktop.test.ts && npx playwright test tests/playwright/inventory/desktop-settings-typography.spec.mjs",
     userVisibleAssertion:
-      "Theme Builder can select a font pack and the desktop shell immediately applies the matching --wtf-app-font CSS variable.",
+      "Theme Builder can select a system font pack and chat typography presets; WIM and WTF LIVE composer defaults stay inside their visible font, color, and size windows.",
     durableSideEffectAssertion:
-      "DesktopAppearance.fontPackKey normalizes to a known pack, persists through /api/desktop/settings, and canvas helpers read the same CSS variable roles.",
+      "DesktopAppearance.fontPackKey, chatTypographyPresetKey, wimChatStyle, and wtfLiveChatStyle normalize to known values, persist through /api/desktop/settings, and canvas helpers read the same CSS variable roles.",
   },
   {
     id: "desktop.app-gates-runtime-policy",
@@ -356,9 +356,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     userVisibleAssertion:
-      "WTF LIVE public-room guests see each other in collapsible attendance; camera/screen shares take visual priority in the bulk stage, mic-only guests stay out of the stage with lit mic indicators in attendance, chat remains reachable, the chat toolbox changes font/color/readable 8-14 size/basic emphasis in one row, Enter submits room chat while Shift+Enter composes multiline text, and shared media can open in pop-out frames/lightboxes.",
+      "WTF LIVE public-room guests see each other in collapsible attendance; camera/screen shares take visual priority in the bulk stage, mic-only guests stay out of the stage with lit mic indicators in attendance, chat remains reachable, a compact emoji icon inserts emoji into chat drafts, a text-style icon opens and collapses the chat style panel for onboard wtfOS fonts/color/readable 8-14 size/basic emphasis, stage-level room reaction buttons send transient guest signals, Enter submits room chat while Shift+Enter composes multiline text, and shared media can open in pop-out frames/lightboxes.",
     durableSideEffectAssertion:
-      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, activeVideo/avatar/audioOpen media-state events, and room chat, verifies push-to-talk changes another guest's attendance mic state without creating a stage tile, verifies camera-first then screen-share switching remains visible to another guest after camera stops, verifies stage pop-outs and chat media lightboxes open/close, verifies Enter sends and clears a chat message while Shift+Enter keeps a multiline draft until the next Enter, verifies the toolbar exposes only 8-14 font-size options and relays a sanitized styled chat message to another guest, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests remain attendance-only without pushing the chat composer offscreen.",
+      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, activeVideo/avatar/audioOpen media-state events, room reactions, and room chat, verifies push-to-talk changes another guest's attendance mic state without creating a stage tile, verifies camera-first then screen-share switching remains visible to another guest after camera stops, verifies stage pop-outs and chat media lightboxes open/close, verifies Enter sends and clears a chat message while Shift+Enter keeps a multiline draft until the next Enter, verifies the collapsed toolbar exposes emoji and style icons with 24px-or-larger targets, verifies the emoji picker inserts into the draft and relays through chat, verifies the style panel exposes only 8-14 font-size options plus MEK/GROUT/Classic/Terminal/Serif font choices, and a sanitized styled chat message relays to another guest, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests remain attendance-only without pushing the chat composer offscreen.",
   },
   {
     id: "wtf-live.wim-attendance-identity",

@@ -37,6 +37,8 @@ test("WIM roster is user-driven and keeps Studio rooms out of buddies", () => {
   }
 
   assert.match(wimSource, /onDoubleClickCapture=\{\(\) => openDirectChat\(item\)\}/);
+  assert.match(wimSource, /data-wim-chat-open=\{item\.id\}/);
+  assert.match(wimSource, /aria-label=\{`Open WIM chat with \$\{userLabel\(item\)\}`\}/);
   assert.match(wimSource, /presenceStatus/);
   assert.match(wimSource, /presenceStatusFor/);
   assert.match(wimSource, /data-wim-window-kind=\{windowState\.kind\}/);
@@ -50,6 +52,8 @@ test("WIM roster is user-driven and keeps Studio rooms out of buddies", () => {
   assert.match(wimSource, /data-wim-drop-layer="conversation"/);
   assert.doesNotMatch(wimSource, /TrafficLights|TrafficLight/);
   assert.match(wimSource, /const WindowControlButton = styled\(Button\)/);
+  assert.match(wimSource, /const TabCloseButton = styled\.button/);
+  assert.doesNotMatch(wimSource, /const TabClose = styled\.span/);
   assert.match(wimSource, /--wtf-window-color/);
   assert.match(wimSource, /--wtf-titlebar-height/);
   assert.match(wimSource, /data-compact-control="true"/);
@@ -70,6 +74,9 @@ test("WIM friend list and unread popups are browser-local and covered by invento
   assert.match(wimSource, /popupDismissalStorageKey/);
   assert.match(wimSource, /data-wim-offline-popup="true"/);
   assert.match(wimSource, /var\(--wim-navy, #07156f\)/);
+  assert.match(wimSource, /aria-expanded=\{settingsOpen\}/);
+  assert.match(wimSource, /id="wim-settings-popover"/);
+  assert.match(wimSource, /event\.key !== "Escape"/);
   assert.match(wimSource, /"wim\.offline_popup\.opened"/);
   assert.match(wimSource, /"wim\.offline_popup\.dismissed"/);
 
@@ -81,6 +88,7 @@ test("WIM friend list and unread popups are browser-local and covered by invento
   assert.match(inventory, /shared OS taskbar/);
   assert.doesNotMatch(inventory, /WIM dock/);
   assert.match(inventory, /in-place popup/);
+  assert.match(inventory, /visible open-chat button/);
   assert.match(inventory, /custom buddy lists/);
   assert.match(inventory, /combine multiple conversations as tabs/);
   assert.match(inventory, /dismissible WIM desktop popups/);
@@ -127,6 +135,7 @@ test("WIM conversations carry classic rich composer metadata and inserts", () =>
     "WIM GIF picker",
     "WIM media picker",
     "WIM token picker",
+    "FormatToolbarRow",
     "GIPHY",
     "Tenor",
     "giphy.com/search",
@@ -147,4 +156,6 @@ test("WIM conversations carry classic rich composer metadata and inserts", () =>
   assert.match(adminSurfaceRegistry, /classic IM-style rich text composer/);
   assert.match(adminSurfaceRegistry, /GIPHY\/Tenor GIF insert handoff/);
   assert.match(behaviorAssertions, /rich WIM composer/);
+  assert.match(wimSource, /aria-label=\{`Remove \$\{attachment\.kind\} attachment \$\{attachment\.title\}`\}/);
+  assert.match(wimSource, /aria-label=\{`Open \$\{attachment\.kind\} attachment \$\{attachment\.title\}`\}/);
 });

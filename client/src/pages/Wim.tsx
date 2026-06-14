@@ -37,6 +37,15 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { resolveTokenThumbnail } from "../lib/media-resolve";
 import { useWindowManager, WindowPathContext } from "../lib/window-context";
+import {
+  DEFAULT_DESKTOP_APPEARANCE,
+  DESKTOP_WIM_CHAT_FONT_FAMILIES,
+  DESKTOP_WIM_CHAT_FONT_SIZES,
+  normalizeDesktopWimChatStyle,
+  type DesktopAppearance,
+  type DesktopIconLayout,
+  type DesktopWimChatStyle,
+} from "@shared/desktop";
 
 type MessageUser = {
   id: number;
@@ -83,14 +92,7 @@ type DmMessage = {
   createdAt: string;
 };
 
-type WimMessageStyle = {
-  fontFamily: string;
-  fontSize: number;
-  color: string;
-  bold: boolean;
-  italic: boolean;
-  underline: boolean;
-};
+type WimMessageStyle = DesktopWimChatStyle;
 
 type WimRichAttachment = {
   id: string;
@@ -138,6 +140,12 @@ type WimCustomList = {
   userIds: number[];
 };
 
+type DesktopSettingsResponse = {
+  appearance: DesktopAppearance;
+  iconLayout: DesktopIconLayout;
+  updatedAt: string | null;
+};
+
 type WimWindowState = {
   id: string;
   kind: "buddy" | "chat";
@@ -172,25 +180,9 @@ type ResizeState = {
 
 const WIM_CONVERSATION_DRAG_TYPE = "application/x-wim-conversation-id";
 const WIM_SOURCE_WINDOW_DRAG_TYPE = "application/x-wim-source-window-id";
-const WIM_FONT_CHOICES = [
-  "Helvetica",
-  "Arial",
-  "Verdana",
-  "Times New Roman",
-  "Georgia",
-  "Courier New",
-  "Comic Sans MS",
-  "MEK Mono",
-] as const;
-const WIM_FONT_SIZES = [10, 12, 14, 18, 24] as const;
-const DEFAULT_WIM_MESSAGE_STYLE: WimMessageStyle = {
-  fontFamily: "Helvetica",
-  fontSize: 12,
-  color: "#06135f",
-  bold: false,
-  italic: false,
-  underline: false,
-};
+const WIM_FONT_CHOICES = DESKTOP_WIM_CHAT_FONT_FAMILIES;
+const WIM_FONT_SIZES = DESKTOP_WIM_CHAT_FONT_SIZES;
+const DEFAULT_WIM_MESSAGE_STYLE: WimMessageStyle = DEFAULT_DESKTOP_APPEARANCE.wimChatStyle;
 const WIM_MAX_ATTACHMENTS = 4;
 
 const INITIAL_WINDOWS: WimWindowState[] = [
@@ -795,7 +787,7 @@ const FooterStat = styled.div`
 `;
 
 const FooterLabel = styled.div`
-  font-size: 11px;
+  font-size: var(--wtf-type-caption, 13px);
   color: #4b557b;
 `;
 
@@ -902,7 +894,7 @@ const TabStrip = styled.div`
   border-bottom: 1px solid rgba(0, 0, 0, 0.32);
 `;
 
-const ChatTab = styled.button<{ $active?: boolean }>`
+const ChatTab = styled.div<{ $active?: boolean }>`
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -919,9 +911,15 @@ const ChatTab = styled.button<{ $active?: boolean }>`
   font-size: var(--wtf-type-caption, 13px);
   font-weight: ${(p) => (p.$active ? 900 : 700)};
   cursor: grab;
+  user-select: none;
 
   &:active {
     cursor: grabbing;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--wtf-highlight-color, #000080);
+    outline-offset: -2px;
   }
 `;
 
@@ -932,14 +930,28 @@ const TabLabel = styled.span`
   white-space: nowrap;
 `;
 
-const TabClose = styled.span`
+const TabCloseButton = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 16px;
   height: 16px;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
+  background: transparent;
   color: #4b557b;
+  cursor: pointer;
+
+  &:hover {
+    color: #06135f;
+    background: rgba(6, 19, 95, 0.1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--wtf-highlight-color, #000080);
+    outline-offset: 1px;
+  }
 `;
 
 const ChatPane = styled.div`
@@ -983,10 +995,8 @@ const ChatLog = styled(Panel).attrs({ variant: "well" })`
   overflow: auto;
   color: var(--wim-ink);
   background:
-    radial-gradient(circle at 0 0, rgba(255, 241, 154, 0.58) 0 10px, transparent 11px),
-    radial-gradient(circle at 28px 24px, rgba(132, 240, 255, 0.5) 0 8px, transparent 9px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 253, 242, 0.98)),
     #ffffff;
-  background-size: 56px 48px;
   border-color: var(--wtf-app-border, #808080);
 
   html[data-wtf-appearance-style="wtf-zine"] & {
@@ -1080,18 +1090,37 @@ const ComposerShell = styled.div`
 `;
 
 const FormatToolbar = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
+  display: grid;
+  gap: 5px;
   padding: 5px;
   border: 1px inset #ffffff;
   background: linear-gradient(180deg, #f7f7f7, #d8d8d8);
 `;
 
+const FormatToolbarRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(104px, 1fr) minmax(66px, 0.56fr) repeat(4, 32px);
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+
+  &[data-wim-toolbar-row="insert"] {
+    grid-template-columns: repeat(3, 32px) minmax(0, 1fr);
+  }
+
+  @media (max-width: 420px) {
+    grid-template-columns: minmax(0, 1fr) 66px repeat(2, 32px);
+
+    &[data-wim-toolbar-row="insert"] {
+      grid-template-columns: repeat(3, 32px);
+    }
+  }
+`;
+
 const FormatSelect = styled.select`
   min-height: 30px;
-  max-width: 132px;
+  width: 100%;
+  min-width: 0;
   font: inherit;
   color: var(--wim-ink);
   background: #ffffff;
@@ -1144,7 +1173,7 @@ const ToolPicker = styled(Panel).attrs({ variant: "well" })`
   position: absolute;
   left: 8px;
   right: 8px;
-  bottom: calc(100% - 6px);
+  bottom: calc(100% + 4px);
   z-index: 20;
   display: grid;
   gap: 7px;
@@ -1507,21 +1536,7 @@ function safeHexColor(value: unknown, fallback = DEFAULT_WIM_MESSAGE_STYLE.color
 }
 
 function normalizeWimMessageStyle(value: unknown): WimMessageStyle {
-  const input = value && typeof value === "object" ? (value as Partial<WimMessageStyle>) : {};
-  const fontFamily = WIM_FONT_CHOICES.includes(input.fontFamily as (typeof WIM_FONT_CHOICES)[number])
-    ? String(input.fontFamily)
-    : DEFAULT_WIM_MESSAGE_STYLE.fontFamily;
-  const fontSize = WIM_FONT_SIZES.includes(Number(input.fontSize) as (typeof WIM_FONT_SIZES)[number])
-    ? Number(input.fontSize)
-    : DEFAULT_WIM_MESSAGE_STYLE.fontSize;
-  return {
-    fontFamily,
-    fontSize,
-    color: safeHexColor(input.color),
-    bold: Boolean(input.bold),
-    italic: Boolean(input.italic),
-    underline: Boolean(input.underline),
-  };
+  return normalizeDesktopWimChatStyle(value, DEFAULT_WIM_MESSAGE_STYLE);
 }
 
 function normalizeWimAttachment(value: unknown): WimRichAttachment | null {
@@ -1650,6 +1665,7 @@ function ChatWindowPane({
 }: ChatWindowPaneProps) {
   const qc = useQueryClient();
   const chatLogRef = useRef<HTMLDivElement | null>(null);
+  const messageStyleTouchedRef = useRef(false);
   const [content, setContent] = useState("");
   const [messageStyle, setMessageStyle] = useState<WimMessageStyle>(DEFAULT_WIM_MESSAGE_STYLE);
   const [attachments, setAttachments] = useState<WimRichAttachment[]>([]);
@@ -1672,6 +1688,14 @@ function ChatWindowPane({
     queryFn: () =>
       api.get<{ items: WimProfileToken[] }>("/api/profile/tokens?limit=36&sortBy=lastSeenAt&sortDir=desc"),
   });
+  const desktopSettingsQuery = useQuery({
+    queryKey: ["desktop", "settings"],
+    queryFn: () => api.get<DesktopSettingsResponse>("/api/desktop/settings"),
+    retry: false,
+    staleTime: 30_000,
+  });
+  const defaultWimMessageStyle =
+    desktopSettingsQuery.data?.appearance.wimChatStyle ?? DEFAULT_WIM_MESSAGE_STYLE;
   const plainMessageContent =
     content.trim() ||
     attachments
@@ -1745,10 +1769,19 @@ function ChatWindowPane({
     });
     setGifUrl("");
   };
+  const updateMessageStyle = (patch: Partial<WimMessageStyle>) => {
+    messageStyleTouchedRef.current = true;
+    setMessageStyle((current) => normalizeWimMessageStyle({ ...current, ...patch }));
+  };
   const toggleStyle = (key: "bold" | "italic" | "underline") => {
-    setMessageStyle((current) => ({ ...current, [key]: !current[key] }));
+    updateMessageStyle({ [key]: !messageStyle[key] } as Partial<WimMessageStyle>);
   };
   const composerTextStyle = cssPropertiesForWimStyle(messageStyle);
+
+  useEffect(() => {
+    if (messageStyleTouchedRef.current) return;
+    setMessageStyle(defaultWimMessageStyle);
+  }, [defaultWimMessageStyle]);
 
   return (
     <ChatPane>
@@ -1778,6 +1811,7 @@ function ChatWindowPane({
                       <AttachmentCard
                         key={attachment.id}
                         href={attachment.url}
+                        aria-label={`Open ${attachment.kind} attachment ${attachment.title}`}
                         target={attachment.url.startsWith("/") ? undefined : "_blank"}
                         rel={attachment.url.startsWith("/") ? undefined : "noreferrer"}
                       >
@@ -1786,7 +1820,7 @@ function ChatWindowPane({
                             attachment.mimeType?.startsWith("video/") ? (
                               <video src={attachment.previewUrl} muted playsInline />
                             ) : (
-                              <img src={attachment.previewUrl} alt="" loading="lazy" />
+                              <img src={attachment.previewUrl} alt={attachment.title} loading="lazy" />
                             )
                           ) : (
                             attachment.kind.toUpperCase()
@@ -1814,100 +1848,108 @@ function ChatWindowPane({
       </ChatLog>
       <ComposerShell>
         <FormatToolbar aria-label="WIM message formatting toolbar">
-          <FormatSelect
-            aria-label="WIM font"
-            value={messageStyle.fontFamily}
-            onChange={(event) =>
-              setMessageStyle((current) => ({ ...current, fontFamily: event.target.value }))
-            }
-          >
-            {WIM_FONT_CHOICES.map((font) => (
-              <option key={font} value={font}>
-                {font}
-              </option>
-            ))}
-          </FormatSelect>
-          <FormatSelect
-            aria-label="WIM font size"
-            value={messageStyle.fontSize}
-            onChange={(event) =>
-              setMessageStyle((current) => ({ ...current, fontSize: Number(event.target.value) }))
-            }
-          >
-            {WIM_FONT_SIZES.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </FormatSelect>
-          <ColorSwatchInput
-            aria-label="WIM text color"
-            type="color"
-            value={messageStyle.color}
-            onChange={(event) =>
-              setMessageStyle((current) => ({ ...current, color: safeHexColor(event.target.value) }))
-            }
-          />
-          <ToolbarButton
-            type="button"
-            aria-label="Bold WIM text"
-            title="Bold"
-            data-compact-control="true"
-            $active={messageStyle.bold}
-            onClick={() => toggleStyle("bold")}
-          >
-            <Bold size={14} aria-hidden />
-          </ToolbarButton>
-          <ToolbarButton
-            type="button"
-            aria-label="Italic WIM text"
-            title="Italic"
-            data-compact-control="true"
-            $active={messageStyle.italic}
-            onClick={() => toggleStyle("italic")}
-          >
-            <Italic size={14} aria-hidden />
-          </ToolbarButton>
-          <ToolbarButton
-            type="button"
-            aria-label="Underline WIM text"
-            title="Underline"
-            data-compact-control="true"
-            $active={messageStyle.underline}
-            onClick={() => toggleStyle("underline")}
-          >
-            <Underline size={14} aria-hidden />
-          </ToolbarButton>
-          <ToolbarButton
-            type="button"
-            aria-label="Insert GIF"
-            title="GIF"
-            data-compact-control="true"
-            $active={activePicker === "gif"}
-            onClick={() => setActivePicker((current) => (current === "gif" ? null : "gif"))}
-          >
-            <GifButtonText>GIF</GifButtonText>
-          </ToolbarButton>
-          <ToolbarButton
-            type="button"
-            aria-label="Insert wtfOS media"
-            title="My media"
-            data-compact-control="true"
-            $active={activePicker === "media"}
-            onClick={() => setActivePicker((current) => (current === "media" ? null : "media"))}
-          >
-            <Image size={14} aria-hidden />
-          </ToolbarButton>
-          <ToolbarButton
-            type="button"
-            aria-label="Insert owned token link"
-            title="Token link"
-            data-compact-control="true"
-            $active={activePicker === "token"}
-            onClick={() => setActivePicker((current) => (current === "token" ? null : "token"))}
-          >
-            <Link2 size={14} aria-hidden />
-          </ToolbarButton>
+          <FormatToolbarRow data-wim-toolbar-row="format">
+            <FormatSelect
+              aria-label="WIM font"
+              value={messageStyle.fontFamily}
+              onChange={(event) =>
+                updateMessageStyle({
+                  fontFamily: event.target.value as WimMessageStyle["fontFamily"],
+                })
+              }
+            >
+              {WIM_FONT_CHOICES.map((font) => (
+                <option key={font} value={font}>
+                  {font}
+                </option>
+              ))}
+            </FormatSelect>
+            <FormatSelect
+              aria-label="WIM font size"
+              value={messageStyle.fontSize}
+              onChange={(event) =>
+                updateMessageStyle({
+                  fontSize: Number(event.target.value) as WimMessageStyle["fontSize"],
+                })
+              }
+            >
+              {WIM_FONT_SIZES.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </FormatSelect>
+            <ColorSwatchInput
+              aria-label="WIM text color"
+              type="color"
+              value={messageStyle.color}
+              onChange={(event) =>
+                updateMessageStyle({ color: safeHexColor(event.target.value) })
+              }
+            />
+            <ToolbarButton
+              type="button"
+              aria-label="Bold WIM text"
+              title="Bold"
+              data-compact-control="true"
+              $active={messageStyle.bold}
+              onClick={() => toggleStyle("bold")}
+            >
+              <Bold size={14} aria-hidden />
+            </ToolbarButton>
+            <ToolbarButton
+              type="button"
+              aria-label="Italic WIM text"
+              title="Italic"
+              data-compact-control="true"
+              $active={messageStyle.italic}
+              onClick={() => toggleStyle("italic")}
+            >
+              <Italic size={14} aria-hidden />
+            </ToolbarButton>
+            <ToolbarButton
+              type="button"
+              aria-label="Underline WIM text"
+              title="Underline"
+              data-compact-control="true"
+              $active={messageStyle.underline}
+              onClick={() => toggleStyle("underline")}
+            >
+              <Underline size={14} aria-hidden />
+            </ToolbarButton>
+          </FormatToolbarRow>
+          <FormatToolbarRow data-wim-toolbar-row="insert">
+            <ToolbarButton
+              type="button"
+              aria-label="Insert GIF"
+              title="GIF"
+              data-compact-control="true"
+              $active={activePicker === "gif"}
+              onClick={() => setActivePicker((current) => (current === "gif" ? null : "gif"))}
+            >
+              <GifButtonText>GIF</GifButtonText>
+            </ToolbarButton>
+            <ToolbarButton
+              type="button"
+              aria-label="Insert wtfOS media"
+              title="My media"
+              data-compact-control="true"
+              $active={activePicker === "media"}
+              onClick={() => setActivePicker((current) => (current === "media" ? null : "media"))}
+            >
+              <Image size={14} aria-hidden />
+            </ToolbarButton>
+            <ToolbarButton
+              type="button"
+              aria-label="Insert owned token link"
+              title="Token link"
+              data-compact-control="true"
+              $active={activePicker === "token"}
+              onClick={() => setActivePicker((current) => (current === "token" ? null : "token"))}
+            >
+              <Link2 size={14} aria-hidden />
+            </ToolbarButton>
+          </FormatToolbarRow>
         </FormatToolbar>
         {attachments.length ? (
           <ComposerAttachmentTray>
@@ -1915,8 +1957,9 @@ function ChatWindowPane({
               <AttachmentChip
                 key={attachment.id}
                 type="button"
+                aria-label={`Remove ${attachment.kind} attachment ${attachment.title}`}
                 onClick={() => setAttachments((current) => current.filter((item) => item.id !== attachment.id))}
-                title="Remove attachment"
+                title={`Remove ${attachment.title}`}
               >
                 {attachment.kind.toUpperCase()} {attachment.title}
                 <X size={11} aria-hidden />
@@ -1964,9 +2007,14 @@ function ChatWindowPane({
                 const attachment = attachmentFromMediaItem(item);
                 if (!attachment) return null;
                 return (
-                  <PickerItem key={item.id} type="button" onClick={() => addAttachment(attachment)}>
+                  <PickerItem
+                    key={item.id}
+                    type="button"
+                    aria-label={`Attach media ${attachment.title}`}
+                    onClick={() => addAttachment(attachment)}
+                  >
                     <PickerPreview>
-                      {attachment.previewUrl ? <img src={attachment.previewUrl} alt="" loading="lazy" /> : "MEDIA"}
+                      {attachment.previewUrl ? <img src={attachment.previewUrl} alt={attachment.title} loading="lazy" /> : "MEDIA"}
                     </PickerPreview>
                     <div>
                       <AttachmentTitle>{attachment.title}</AttachmentTitle>
@@ -1989,10 +2037,11 @@ function ChatWindowPane({
                   <PickerItem
                     key={`${item.tokenContract}-${item.tokenId}`}
                     type="button"
+                    aria-label={`Attach token ${attachment.title}`}
                     onClick={() => addAttachment(attachment)}
                   >
                     <PickerPreview>
-                      {attachment.previewUrl ? <img src={attachment.previewUrl} alt="" loading="lazy" /> : "KT"}
+                      {attachment.previewUrl ? <img src={attachment.previewUrl} alt={attachment.title} loading="lazy" /> : "KT"}
                     </PickerPreview>
                     <div>
                       <AttachmentTitle>{attachment.title}</AttachmentTitle>
@@ -2040,6 +2089,8 @@ export function Wim() {
   const routeMinimized = wm.isMinimized(routePath);
   const qc = useQueryClient();
   const surfaceRef = useRef<HTMLDivElement | null>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const settingsPopoverRef = useRef<HTMLDivElement | null>(null);
   const nextZRef = useRef(8);
   const nextWindowRef = useRef(1);
   const [windows, setWindows] = useState<WimWindowState[]>(INITIAL_WINDOWS);
@@ -2185,6 +2236,11 @@ export function Wim() {
     if (wm.focusedPath !== routePath || routeMinimized) {
       wm.focus(routePath);
     }
+  };
+
+  const closeSettingsPopover = () => {
+    setSettingsOpen(false);
+    window.setTimeout(() => settingsButtonRef.current?.focus(), 0);
   };
 
   const bringToFront = (windowId: string) => {
@@ -2374,6 +2430,24 @@ export function Wim() {
     if (!key || !dismissedPopupsReady) return;
     window.localStorage.setItem(key, JSON.stringify(dismissedPopupKeys.slice(-80)));
   }, [dismissedPopupKeys, dismissedPopupsReady, user?.id]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    settingsPopoverRef.current?.focus();
+  }, [settingsOpen]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (settingsPopoverRef.current?.contains(target)) return;
+      if (settingsButtonRef.current?.contains(target)) return;
+      setSettingsOpen(false);
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, [settingsOpen]);
 
   useEffect(() => {
     if (!dragState && !resizeState) return;
@@ -2770,6 +2844,19 @@ export function Wim() {
           <UserPresence $status={status}>{presenceLabel(status)}</UserPresence>
         </div>
         <UserActions>
+          <IconButton
+            type="button"
+            aria-label={`Open WIM chat with ${userLabel(item)}`}
+            title="Open chat"
+            data-compact-control="true"
+            data-wim-chat-open={item.id}
+            onClickCapture={(event) => {
+              event.stopPropagation();
+              openDirectChat(item);
+            }}
+          >
+            <MessageCircle size={14} aria-hidden />
+          </IconButton>
           {!isFriend ? (
             <IconButton
               type="button"
@@ -2865,11 +2952,14 @@ export function Wim() {
           <StatusLine>Available</StatusLine>
         </div>
         <IconButton
+          ref={settingsButtonRef}
           type="button"
           aria-label="Open WIM settings"
+          aria-expanded={settingsOpen}
+          aria-controls="wim-settings-popover"
           title="Settings"
           data-compact-control="true"
-          onClick={() => setSettingsOpen((current) => !current)}
+          onClick={() => (settingsOpen ? closeSettingsPopover() : setSettingsOpen(true))}
         >
           <Settings size={15} aria-hidden />
         </IconButton>
@@ -2898,7 +2988,18 @@ export function Wim() {
         </IconButton>
       </BuddyToolbar>
       {settingsOpen ? (
-        <SettingsPopover role="dialog" aria-label="WIM settings">
+        <SettingsPopover
+          ref={settingsPopoverRef}
+          id="wim-settings-popover"
+          role="dialog"
+          aria-label="WIM settings"
+          tabIndex={-1}
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            closeSettingsPopover();
+          }}
+        >
           <SettingsHeader>
             <span>Buddy list settings</span>
             <IconButton
@@ -2906,7 +3007,7 @@ export function Wim() {
               aria-label="Close WIM settings"
               title="Close settings"
               data-compact-control="true"
-              onClick={() => setSettingsOpen(false)}
+              onClick={closeSettingsPopover}
             >
               <X size={13} aria-hidden />
             </IconButton>
@@ -3113,12 +3214,18 @@ export function Wim() {
           {conversationIds.map((conversationId) => (
             <ChatTab
               key={conversationId}
-              type="button"
               role="tab"
               aria-selected={activeConversationId === conversationId}
+              aria-label={`Open WIM tab ${labelForConversation(conversationId)}`}
               $active={activeConversationId === conversationId}
+              tabIndex={activeConversationId === conversationId ? 0 : -1}
               draggable
               onClick={() => activateConversationTab(windowState.id, conversationId)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                activateConversationTab(windowState.id, conversationId);
+              }}
               onDragStart={(event) => {
                 setConversationDragActive(true);
                 event.dataTransfer.setData(WIM_CONVERSATION_DRAG_TYPE, String(conversationId));
@@ -3129,8 +3236,8 @@ export function Wim() {
             >
               <MessageCircle size={13} aria-hidden />
               <TabLabel>{labelForConversation(conversationId)}</TabLabel>
-              <TabClose
-                role="button"
+              <TabCloseButton
+                type="button"
                 aria-label={`Close WIM tab ${labelForConversation(conversationId)}`}
                 title="Close tab"
                 data-window-control="true"
@@ -3140,7 +3247,7 @@ export function Wim() {
                 }}
               >
                 <X size={12} aria-hidden />
-              </TabClose>
+              </TabCloseButton>
             </ChatTab>
           ))}
         </TabStrip>

@@ -1,10 +1,25 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, Bold, Camera, Check, ChevronDown, ChevronRight, Copy, ExternalLink, Gauge, Gift, Image as ImageIcon, Italic, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Paperclip, Radio, RotateCcw, Send, Square, UserPlus, Users, Wifi, WifiOff, X } from "lucide-react";
+import { Activity, Bold, Camera, Check, ChevronDown, ChevronRight, Copy, ExternalLink, Gauge, Gift, Image as ImageIcon, Italic, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Paperclip, Radio, RotateCcw, Send, Smile, Square, Type as TypeIcon, UserPlus, Users, Wifi, WifiOff, X } from "lucide-react";
 import styled from "styled-components";
 import { Button, Hourglass, TextField } from "react95";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
+import { getFontPack } from "../appearance/font-packs";
+import {
+  DEFAULT_DESKTOP_APPEARANCE,
+  DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS,
+  DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES,
+  DESKTOP_WTF_LIVE_CHAT_COLORS,
+  DESKTOP_WTF_LIVE_CHAT_FONT_LABELS,
+  DESKTOP_WTF_LIVE_CHAT_FONTS,
+  DESKTOP_WTF_LIVE_CHAT_SIZES,
+  normalizeDesktopWtfLiveChatStyle,
+  type DesktopAppearance,
+  type DesktopWtfLiveChatColor,
+  type DesktopWtfLiveChatFont,
+  type DesktopWtfLiveChatStyle,
+} from "@shared/desktop";
 
 type PublicRoom = {
   id: string;
@@ -150,15 +165,13 @@ type LiveChatAttachment = {
   sizeBytes: number;
 };
 
-type LiveChatFont = "system" | "serif" | "mono" | "pixel";
-type LiveChatColor = "ink" | "blue" | "green" | "red" | "purple" | "amber";
+type LiveChatFont = DesktopWtfLiveChatFont;
+type LiveChatColor = DesktopWtfLiveChatColor;
+type LiveChatStyle = DesktopWtfLiveChatStyle;
 
-type LiveChatStyle = {
-  font: LiveChatFont;
-  color: LiveChatColor;
-  size: number;
-  bold: boolean;
-  italic: boolean;
+type DesktopSettingsResponse = {
+  appearance: DesktopAppearance;
+  updatedAt: string | null;
 };
 
 type LiveChatMessage = {
@@ -169,6 +182,15 @@ type LiveChatMessage = {
   style?: LiveChatStyle;
   attachments: LiveChatAttachment[];
   createdAt: string;
+};
+
+type LiveRoomReaction = {
+  id: string;
+  peerId: string;
+  guestName: string;
+  emoji: string;
+  label: string;
+  createdAt: number;
 };
 
 type WtfLiveSocketEvent = {
@@ -189,6 +211,14 @@ type WtfLiveSocketEvent = {
     candidate?: RTCIceCandidateInit;
   };
   message?: LiveChatMessage | string;
+  reaction?: {
+    id?: string;
+    peerId?: string;
+    guestName?: string;
+    emoji?: string;
+    label?: string;
+    createdAt?: string | number;
+  };
   error?: string;
   messageText?: string;
 };
@@ -199,28 +229,58 @@ const MAX_LIVE_CHAT_ATTACHMENTS = 4;
 const MAX_LIVE_CHAT_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const MAX_LIVE_AVATAR_BYTES = 512 * 1024;
 const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(MAX_LIVE_AVATAR_BYTES * 1.4);
-const LIVE_CHAT_FONT_SIZES = [8, 9, 10, 11, 12, 13, 14] as const;
+const LIVE_CHAT_FONT_SIZES = DESKTOP_WTF_LIVE_CHAT_SIZES;
+const MEK_TYPE_FONT_PACK = getFontPack("mek-type");
+const CLASSIC_95_FONT_PACK = getFontPack("classic-95");
+const TERMINAL_FONT_PACK = getFontPack("terminal");
+const SERIF_PRESS_FONT_PACK = getFontPack("serif-press");
 const LIVE_CHAT_FONT_OPTIONS: Array<{ id: LiveChatFont; label: string; family: string }> = [
-  { id: "system", label: "Sans", family: "system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif" },
-  { id: "serif", label: "Serif", family: "Georgia, \"Times New Roman\", serif" },
-  { id: "mono", label: "Mono", family: "\"Courier New\", Courier, monospace" },
-  { id: "pixel", label: "Win", family: "\"MS Sans Serif\", Tahoma, Geneva, sans-serif" },
+  { id: "mek-mono", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["mek-mono"], family: MEK_TYPE_FONT_PACK.roles.mono },
+  { id: "grout-display", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["grout-display"], family: MEK_TYPE_FONT_PACK.roles.display },
+  { id: "classic-95", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["classic-95"], family: CLASSIC_95_FONT_PACK.roles.app },
+  { id: "terminal", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS.terminal, family: TERMINAL_FONT_PACK.roles.mono },
+  { id: "serif-press", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["serif-press"], family: SERIF_PRESS_FONT_PACK.roles.app },
 ];
-const LIVE_CHAT_COLOR_OPTIONS: Array<{ id: LiveChatColor; label: string; value: string }> = [
-  { id: "ink", label: "Ink", value: "#07120f" },
-  { id: "blue", label: "Blue", value: "#0b4d8f" },
-  { id: "green", label: "Green", value: "#087c39" },
-  { id: "red", label: "Red", value: "#8f1d2c" },
-  { id: "purple", label: "Purple", value: "#5b2c83" },
-  { id: "amber", label: "Amber", value: "#8a4b00" },
-];
-const DEFAULT_LIVE_CHAT_STYLE: LiveChatStyle = {
-  font: "system",
-  color: "ink",
-  size: 12,
-  bold: false,
-  italic: false,
-};
+const LIVE_CHAT_COLOR_OPTIONS: Array<{ id: LiveChatColor; label: string; value: string }> =
+  DESKTOP_WTF_LIVE_CHAT_COLORS.map((color) => ({
+    id: color,
+    label: DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS[color],
+    value: DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES[color],
+  }));
+const LIVE_CHAT_EMOJI_OPTIONS = [
+  "😀",
+  "😂",
+  "😍",
+  "😎",
+  "😮",
+  "😭",
+  "😡",
+  "👍",
+  "👏",
+  "🙌",
+  "🔥",
+  "✨",
+  "💯",
+  "❤️",
+  "💀",
+  "👀",
+  "🎉",
+  "🚀",
+  "🫡",
+  "🤯",
+  "🤌",
+  "🧠",
+] as const;
+const LIVE_ROOM_REACTION_OPTIONS = [
+  { emoji: "👏", label: "Applause" },
+  { emoji: "🔥", label: "Fire" },
+  { emoji: "😂", label: "Laugh" },
+  { emoji: "😮", label: "Wow" },
+  { emoji: "❤️", label: "Love" },
+  { emoji: "👀", label: "Watching" },
+] as const;
+const LIVE_ROOM_REACTION_EMOJIS = new Set<string>(LIVE_ROOM_REACTION_OPTIONS.map((option) => option.emoji));
+const DEFAULT_LIVE_CHAT_STYLE: LiveChatStyle = DEFAULT_DESKTOP_APPEARANCE.wtfLiveChatStyle;
 const PEER_CONNECTION_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
@@ -245,7 +305,7 @@ const GuestShell = styled.main`
   box-sizing: border-box;
   overflow: hidden;
 
-  @media (max-width: 820px) {
+  @media (max-width: 980px) {
     display: block;
     padding: 6px;
     overflow-x: hidden;
@@ -267,7 +327,7 @@ const RoomFrame = styled.section`
   box-shadow: 7px 9px 0 rgba(0, 0, 0, 0.38);
   overflow: hidden;
 
-  @media (max-width: 820px) {
+  @media (max-width: 980px) {
     display: block;
     height: auto;
     min-height: calc(100vh - 12px);
@@ -386,9 +446,14 @@ const RoomBody = styled.div<{ $sidebarDetached?: boolean }>`
 
   @media (max-width: 980px) {
     grid-template-columns: 1fr;
-    overflow: auto;
+    min-height: auto;
+    overflow: visible;
     ${ControlRail} {
-      order: 3;
+      order: 1;
+      height: auto;
+      min-height: auto;
+      max-height: none;
+      overflow: visible;
     }
   }
 
@@ -425,7 +490,7 @@ const StagePanel = styled.section`
   background: #111;
   color: #f7f7f7;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 6px;
   padding: 6px;
   min-height: 0;
@@ -451,6 +516,120 @@ const StageHeader = styled.div`
   min-height: 24px;
   font-size: var(--wtf-type-caption, 13px);
   color: #dff7ff;
+`;
+
+const RoomReactionDock = styled.div`
+  border: 2px outset #2f4a43;
+  background: #162721;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px;
+  min-height: 40px;
+  box-sizing: border-box;
+  overflow-x: auto;
+`;
+
+const RoomReactionButton = styled.button`
+  min-width: 34px;
+  width: 34px;
+  height: 30px;
+  border: 2px outset #fff;
+  background: #f2efe1;
+  color: #07120f;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+
+  &:active {
+    border-style: inset;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #f5d45d;
+    outline-offset: 1px;
+  }
+`;
+
+const StageGridShell = styled.div`
+  position: relative;
+  display: grid;
+  min-height: 0;
+  overflow: hidden;
+`;
+
+const ReactionBurstLayer = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+`;
+
+const ReactionBurst = styled.div`
+  position: absolute;
+  bottom: 12px;
+  transform: translateX(-50%);
+  min-width: 48px;
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+  animation: wtf-live-reaction-rise 2.8s ease-out forwards;
+
+  span {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 2px outset rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.68);
+    font-size: 27px;
+    line-height: 1;
+  }
+
+  small {
+    max-width: 96px;
+    padding: 1px 4px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(0, 0, 0, 0.62);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  @keyframes wtf-live-reaction-rise {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, 18px) scale(0.88);
+    }
+    14% {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -128px) scale(1.16);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 1.6s;
+    transform: translateX(-50%);
+  }
 `;
 
 const StageGrid = styled.div<{ $count: number }>`
@@ -1028,31 +1207,83 @@ const ChatComposer = styled.div`
 `;
 
 const ChatToolbox = styled.div`
-  border: 2px inset #fff;
-  background: #d8d8d8;
-  height: 36px;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
-  padding: 2px 3px;
+  min-height: 34px;
   box-sizing: border-box;
-  overflow-x: auto;
-  overflow-y: hidden;
-  white-space: nowrap;
-  scrollbar-width: thin;
+`;
+
+const ChatEmojiPanel = styled.div`
+  border: 2px inset #fff;
+  background: #f4f0df;
+  padding: 6px;
+  box-sizing: border-box;
+  min-width: 0;
+`;
+
+const ChatEmojiGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+  gap: 4px;
+`;
+
+const ChatEmojiButton = styled.button`
+  min-width: 30px;
+  height: 30px;
+  border: 2px outset #fff;
+  background: #fff;
+  color: #07120f;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:active {
+    border-style: inset;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #090980;
+    outline-offset: 1px;
+  }
+`;
+
+const ChatStylePanel = styled.div`
+  border: 2px inset #fff;
+  background: #d8d8d8;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(88px, 0.55fr);
+  gap: 6px;
+  padding: 6px;
+  box-sizing: border-box;
+  min-width: 0;
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ChatStyleField = styled.label`
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
 `;
 
 const ChatToolSelect = styled.select`
-  height: 22px;
-  min-height: 22px;
-  max-height: 22px;
-  min-width: 58px;
+  min-height: 28px;
+  width: 100%;
+  min-width: 0;
   border: 2px inset #fff;
   background: #fff;
   color: #07120f;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 18px;
-  padding: 0 18px 0 4px;
+  padding: 2px 20px 2px 5px;
   box-sizing: border-box;
 `;
 
@@ -1060,12 +1291,14 @@ const ChatColorStrip = styled.div`
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  flex-wrap: wrap;
+  min-width: 0;
 `;
 
 const ChatColorSwatch = styled.button<{ $color: string; $active?: boolean }>`
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   border: 2px ${({ $active }) => ($active ? "inset" : "outset")} #fff;
   background: ${({ $color }) => $color};
   box-shadow: ${({ $active }) => ($active ? "0 0 0 1px #090980" : "none")};
@@ -1078,16 +1311,30 @@ const ChatColorSwatch = styled.button<{ $color: string; $active?: boolean }>`
 `;
 
 const ChatToolIconButton = styled(Button)<{ $active?: boolean }>`
-  min-width: 26px;
-  min-height: 22px;
-  height: 22px;
-  max-height: 22px;
+  min-width: 32px;
+  min-height: 32px;
   padding: 0;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: ${({ $active }) => ($active ? "#c4dbff" : undefined)};
+`;
+
+const ChatStyleActionRow = styled.div`
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+`;
+
+const ChatStyleActionGroup = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
 `;
 
 const ChatTextArea = styled.textarea`
@@ -1293,34 +1540,16 @@ function storedAvatarUrl(): string | null {
   }
 }
 
-function isLiveChatFont(value: unknown): value is LiveChatFont {
-  return LIVE_CHAT_FONT_OPTIONS.some((option) => option.id === value);
-}
-
-function isLiveChatColor(value: unknown): value is LiveChatColor {
-  return LIVE_CHAT_COLOR_OPTIONS.some((option) => option.id === value);
-}
-
 function normalizeLiveChatStyle(value: unknown): LiveChatStyle {
-  const style = typeof value === "object" && value ? value as Record<string, unknown> : {};
-  const rawSize = Number(style.size);
-  const size = Number.isFinite(rawSize)
-    ? Math.min(14, Math.max(8, Math.round(rawSize)))
-    : DEFAULT_LIVE_CHAT_STYLE.size;
-  return {
-    font: isLiveChatFont(style.font) ? style.font : DEFAULT_LIVE_CHAT_STYLE.font,
-    color: isLiveChatColor(style.color) ? style.color : DEFAULT_LIVE_CHAT_STYLE.color,
-    size,
-    bold: Boolean(style.bold),
-    italic: Boolean(style.italic),
-  };
+  return normalizeDesktopWtfLiveChatStyle(value, DEFAULT_LIVE_CHAT_STYLE);
 }
 
-function storedLiveChatStyle(): LiveChatStyle {
+function readStoredLiveChatStyle(): LiveChatStyle | null {
   try {
-    return normalizeLiveChatStyle(JSON.parse(localStorage.getItem("wtf-live:chat-style") || "null"));
+    const raw = localStorage.getItem("wtf-live:chat-style");
+    return raw ? normalizeLiveChatStyle(JSON.parse(raw)) : null;
   } catch {
-    return DEFAULT_LIVE_CHAT_STYLE;
+    return null;
   }
 }
 
@@ -1334,6 +1563,30 @@ function liveChatTextStyle(value: unknown): CSSProperties {
     fontSize: `${style.size}px`,
     fontStyle: style.italic ? "italic" : "normal",
     fontWeight: style.bold ? 700 : 400,
+  };
+}
+
+function liveRoomReactionLabel(emoji: string): string {
+  return LIVE_ROOM_REACTION_OPTIONS.find((option) => option.emoji === emoji)?.label ?? "Reaction";
+}
+
+function normalizeLiveRoomReaction(value: unknown): LiveRoomReaction | null {
+  const reaction = typeof value === "object" && value ? value as Record<string, unknown> : {};
+  const emoji = String(reaction.emoji || "");
+  if (!LIVE_ROOM_REACTION_EMOJIS.has(emoji)) return null;
+  const createdAtValue = reaction.createdAt;
+  const createdAt = typeof createdAtValue === "number"
+    ? createdAtValue
+    : typeof createdAtValue === "string"
+      ? Date.parse(createdAtValue)
+      : Date.now();
+  return {
+    id: String(reaction.id || `reaction_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`).slice(0, 96),
+    peerId: String(reaction.peerId || "peer").slice(0, 80),
+    guestName: String(reaction.guestName || "guest").trim().replace(/\s+/g, " ").slice(0, 48) || "guest",
+    emoji,
+    label: String(reaction.label || liveRoomReactionLabel(emoji)).trim().slice(0, 32) || liveRoomReactionLabel(emoji),
+    createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
   };
 }
 
@@ -1819,6 +2072,13 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       }
     },
   });
+  const desktopSettingsQuery = useQuery<DesktopSettingsResponse>({
+    queryKey: ["desktop", "settings"],
+    enabled: Boolean(user),
+    queryFn: () => api.get<DesktopSettingsResponse>("/api/desktop/settings"),
+    retry: false,
+    staleTime: 30_000,
+  });
 
   const [guestName, setGuestName] = useState(() => localStorage.getItem("wtf-live:guest-name") || "");
   const [joined, setJoined] = useState(false);
@@ -1838,8 +2098,16 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const [peerDiagnostics, setPeerDiagnostics] = useState<Record<string, PeerDiagnostic>>({});
   const [liveMessages, setLiveMessages] = useState<LiveChatMessage[]>([]);
   const [chatText, setChatText] = useState("");
-  const [chatStyle, setChatStyle] = useState<LiveChatStyle>(() => storedLiveChatStyle());
+  const chatStyleOverriddenRef = useRef(false);
+  const [chatStyle, setChatStyle] = useState<LiveChatStyle>(() => {
+    const stored = readStoredLiveChatStyle();
+    chatStyleOverriddenRef.current = Boolean(stored);
+    return stored ?? DEFAULT_LIVE_CHAT_STYLE;
+  });
+  const [chatEmojiOpen, setChatEmojiOpen] = useState(false);
+  const [chatStyleOpen, setChatStyleOpen] = useState(false);
   const [chatAttachments, setChatAttachments] = useState<LiveChatAttachment[]>([]);
+  const [roomReactions, setRoomReactions] = useState<LiveRoomReaction[]>([]);
   const [wimFriendIds, setWimFriendIds] = useState<number[]>([]);
   const [tipTrayOpen, setTipTrayOpen] = useState(false);
   const [tipTargetUserId, setTipTargetUserId] = useState<number | null>(null);
@@ -1849,6 +2117,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const [popoutFrames, setPopoutFrames] = useState<PopoutFrame[]>([]);
   const cameraRef = useRef<HTMLVideoElement | null>(null);
   const screenRef = useRef<HTMLVideoElement | null>(null);
+  const chatTextAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const micAnimationRef = useRef<number | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
@@ -1861,6 +2130,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const chatNearBottomRef = useRef(true);
   const lastChatItemCountRef = useRef(0);
   const dragFrameRef = useRef<{ id: string; startX: number; startY: number; frameX: number; frameY: number } | null>(null);
+  const reactionTimeoutsRef = useRef<Map<string, number>>(new Map());
   const lastMediaStateRef = useRef<LiveMediaState>({ mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null });
   const localStreamsRef = useRef({
     micStream: null as MediaStream | null,
@@ -1872,6 +2142,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   });
   const room = roomQuery.data?.room;
   const joinMode = roomQuery.data?.joinMode ?? "guest_room_only";
+  const defaultLiveChatStyle =
+    desktopSettingsQuery.data?.appearance.wtfLiveChatStyle ?? DEFAULT_LIVE_CHAT_STYLE;
   const viewerUserId = normalizeLiveUserId(user?.id);
   const signedInUsername = user?.username?.trim() || "";
   const signedInDisplayName = signedInUsername || user?.displayName?.trim() || "";
@@ -1961,6 +2233,12 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   }, [tipTargetUserId, tipTargets]);
 
   useEffect(() => {
+    if (chatStyleOverriddenRef.current) return;
+    setChatStyle(defaultLiveChatStyle);
+  }, [defaultLiveChatStyle]);
+
+  useEffect(() => {
+    if (!chatStyleOverriddenRef.current) return;
     try {
       localStorage.setItem("wtf-live:chat-style", JSON.stringify(chatStyle));
     } catch {
@@ -1993,6 +2271,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    peerConnectionsRef.current.clear();
 	    remoteStreamsRef.current.clear();
 	    statsSamplesRef.current.clear();
+	    for (const timeoutId of reactionTimeoutsRef.current.values()) window.clearTimeout(timeoutId);
+	    reactionTimeoutsRef.current.clear();
 	    stopStream(localStreamsRef.current.micStream);
 	    stopStream(localStreamsRef.current.cameraStream);
 	    stopStream(localStreamsRef.current.screenStream);
@@ -2068,6 +2348,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    setScreenStream(null);
 	    setActiveVideoSource(null);
 	    setPushHeld(false);
+	    setChatEmojiOpen(false);
+	    setRoomReactions([]);
+	    for (const timeoutId of reactionTimeoutsRef.current.values()) window.clearTimeout(timeoutId);
+	    reactionTimeoutsRef.current.clear();
 	    setPopoutFrames([]);
 	    setRemotePeers([]);
 	    setPeerDiagnostics({});
@@ -2196,6 +2480,20 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 
   function sendSignal(toPeerId: string, signal: WtfLiveSocketEvent["signal"]) {
     sendRoomSocket({ type: "wtf_live_signal", toPeerId, signal });
+  }
+
+  function addRoomReaction(reaction: LiveRoomReaction) {
+    setRoomReactions((current) => {
+      const next = current.filter((item) => item.id !== reaction.id);
+      return [...next, reaction].slice(-24);
+    });
+    const existingTimeout = reactionTimeoutsRef.current.get(reaction.id);
+    if (existingTimeout) window.clearTimeout(existingTimeout);
+    const timeoutId = window.setTimeout(() => {
+      reactionTimeoutsRef.current.delete(reaction.id);
+      setRoomReactions((current) => current.filter((item) => item.id !== reaction.id));
+    }, 2800);
+    reactionTimeoutsRef.current.set(reaction.id, timeoutId);
   }
 
   function ensurePeerConnection(remotePeerId: string) {
@@ -2399,6 +2697,12 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
         if (current.some((message) => message.id === liveMessage.id)) return current;
         return [...current, liveMessage].slice(-120);
       });
+      return;
+    }
+
+    if (event.type === "wtf_live_room_reaction") {
+      const reaction = normalizeLiveRoomReaction(event.reaction);
+      if (reaction) addRoomReaction(reaction);
       return;
     }
 
@@ -2752,7 +3056,48 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   }
 
   function updateChatStyle(next: Partial<LiveChatStyle>) {
+    chatStyleOverriddenRef.current = true;
     setChatStyle((current) => normalizeLiveChatStyle({ ...current, ...next }));
+  }
+
+  function resetChatStyle() {
+    chatStyleOverriddenRef.current = false;
+    try {
+      localStorage.removeItem("wtf-live:chat-style");
+    } catch {
+      // Preference persistence is best-effort only.
+    }
+    setChatStyle(defaultLiveChatStyle);
+  }
+
+  function insertChatEmoji(emoji: string) {
+    const input = chatTextAreaRef.current;
+    const start = input?.selectionStart ?? chatText.length;
+    const end = input?.selectionEnd ?? start;
+    const next = `${chatText.slice(0, start)}${emoji}${chatText.slice(end)}`.slice(0, 1200);
+    const cursor = Math.min(start + emoji.length, next.length);
+    setChatText(next);
+    setChatEmojiOpen(false);
+    window.requestAnimationFrame(() => {
+      input?.focus();
+      input?.setSelectionRange(cursor, cursor);
+    });
+  }
+
+  function handleChatEmojiPanelKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Escape") return;
+    event.stopPropagation();
+    setChatEmojiOpen(false);
+  }
+
+  function sendRoomReaction(option: (typeof LIVE_ROOM_REACTION_OPTIONS)[number]) {
+    if (!joined || !socketReady) {
+      setStatus("Join the room before reacting.");
+      return;
+    }
+    if (!sendRoomSocket({ type: "wtf_live_room_reaction", emoji: option.emoji })) {
+      setStatus("Room reactions are not connected.");
+    }
   }
 
 	  function sendLiveChat() {
@@ -3146,73 +3491,166 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     );
   }
 
+  function handleChatStylePanelKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Escape") return;
+    event.stopPropagation();
+    setChatStyleOpen(false);
+  }
+
   function renderChatToolbox() {
+    const emojiPanelId = "wtf-live-chat-emoji-panel";
+    const panelId = "wtf-live-chat-style-panel";
     return (
-      <ChatToolbox role="toolbar" aria-label="Chat text style" data-wtf-live-chat-tools>
-        <ChatToolSelect
-          aria-label="Chat font"
-          value={chatStyle.font}
-          onChange={(event) => updateChatStyle({ font: event.target.value as LiveChatFont })}
-          data-wtf-live-chat-font
-        >
-          {LIVE_CHAT_FONT_OPTIONS.map((option) => (
-            <option key={option.id} value={option.id}>{option.label}</option>
-          ))}
-        </ChatToolSelect>
-        <ChatToolSelect
-          aria-label="Chat font size"
-          value={chatStyle.size}
-          onChange={(event) => updateChatStyle({ size: Number(event.target.value) })}
-          data-wtf-live-chat-font-size
-        >
-          {LIVE_CHAT_FONT_SIZES.map((size) => (
-            <option key={size} value={size}>{size}px</option>
-          ))}
-        </ChatToolSelect>
-        <ChatColorStrip aria-label="Chat text color">
-          {LIVE_CHAT_COLOR_OPTIONS.map((option) => (
-            <ChatColorSwatch
-              key={option.id}
-              type="button"
-              $color={option.value}
-              $active={chatStyle.color === option.id}
-              title={`Text color ${option.label}`}
-              aria-label={`Text color ${option.label}`}
-              aria-pressed={chatStyle.color === option.id}
-              onClick={() => updateChatStyle({ color: option.id })}
-              data-wtf-live-chat-color={option.id}
-            />
-          ))}
-        </ChatColorStrip>
-        <ChatToolIconButton
-          $active={chatStyle.bold}
-          aria-label="Bold chat text"
-          aria-pressed={chatStyle.bold}
-          title="Bold"
-          onClick={() => updateChatStyle({ bold: !chatStyle.bold })}
-          data-wtf-live-chat-bold
-        >
-          <Bold size={14} aria-hidden />
-        </ChatToolIconButton>
-        <ChatToolIconButton
-          $active={chatStyle.italic}
-          aria-label="Italic chat text"
-          aria-pressed={chatStyle.italic}
-          title="Italic"
-          onClick={() => updateChatStyle({ italic: !chatStyle.italic })}
-          data-wtf-live-chat-italic
-        >
-          <Italic size={14} aria-hidden />
-        </ChatToolIconButton>
-        <ChatToolIconButton
-          aria-label="Reset chat style"
-          title="Reset"
-          onClick={() => setChatStyle(DEFAULT_LIVE_CHAT_STYLE)}
-          data-wtf-live-chat-style-reset
-        >
-          <RotateCcw size={14} aria-hidden />
-        </ChatToolIconButton>
-      </ChatToolbox>
+      <>
+        <ChatToolbox role="toolbar" aria-label="Chat tools" data-wtf-live-chat-tools>
+          <ChatToolIconButton
+            $active={chatEmojiOpen}
+            aria-label={chatEmojiOpen ? "Close chat emoji picker" : "Open chat emoji picker"}
+            aria-controls={emojiPanelId}
+            aria-expanded={chatEmojiOpen}
+            disabled={!joined || !socketReady}
+            title="Emoji"
+            onClick={() => {
+              setChatEmojiOpen((open) => !open);
+              setChatStyleOpen(false);
+            }}
+            data-wtf-live-chat-emoji-toggle
+          >
+            <Smile size={16} aria-hidden />
+          </ChatToolIconButton>
+          <ChatToolIconButton
+            $active={chatStyleOpen}
+            aria-label={chatStyleOpen ? "Close chat text style settings" : "Open chat text style settings"}
+            aria-controls={panelId}
+            aria-expanded={chatStyleOpen}
+            title="Text style"
+            onClick={() => {
+              setChatStyleOpen((open) => !open);
+              setChatEmojiOpen(false);
+            }}
+            data-wtf-live-chat-style-toggle
+          >
+            <TypeIcon size={16} aria-hidden />
+          </ChatToolIconButton>
+        </ChatToolbox>
+        {chatEmojiOpen ? (
+          <ChatEmojiPanel
+            id={emojiPanelId}
+            role="group"
+            aria-label="Chat emoji picker"
+            onKeyDown={handleChatEmojiPanelKeyDown}
+            data-wtf-live-chat-emoji-panel
+          >
+            <ChatEmojiGrid>
+              {LIVE_CHAT_EMOJI_OPTIONS.map((emoji) => (
+                <ChatEmojiButton
+                  key={emoji}
+                  type="button"
+                  aria-label={`Insert ${emoji}`}
+                  title={emoji}
+                  onClick={() => insertChatEmoji(emoji)}
+                  data-wtf-live-chat-emoji={emoji}
+                >
+                  {emoji}
+                </ChatEmojiButton>
+              ))}
+            </ChatEmojiGrid>
+          </ChatEmojiPanel>
+        ) : null}
+        {chatStyleOpen ? (
+          <ChatStylePanel
+            id={panelId}
+            role="group"
+            aria-label="Chat text style settings"
+            onKeyDown={handleChatStylePanelKeyDown}
+            data-wtf-live-chat-style-panel
+          >
+            <ChatStyleField>
+              <span>Font</span>
+              <ChatToolSelect
+                aria-label="Chat font"
+                value={chatStyle.font}
+                onChange={(event) => updateChatStyle({ font: event.target.value as LiveChatFont })}
+                data-wtf-live-chat-font
+              >
+                {LIVE_CHAT_FONT_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </ChatToolSelect>
+            </ChatStyleField>
+            <ChatStyleField>
+              <span>Size</span>
+              <ChatToolSelect
+                aria-label="Chat font size"
+                value={chatStyle.size}
+                onChange={(event) =>
+                  updateChatStyle({ size: Number(event.target.value) as LiveChatStyle["size"] })
+                }
+                data-wtf-live-chat-font-size
+              >
+                {LIVE_CHAT_FONT_SIZES.map((size) => (
+                  <option key={size} value={size}>{size}px</option>
+                ))}
+              </ChatToolSelect>
+            </ChatStyleField>
+            <ChatStyleActionRow>
+              <ChatColorStrip aria-label="Chat text color">
+                {LIVE_CHAT_COLOR_OPTIONS.map((option) => (
+                  <ChatColorSwatch
+                    key={option.id}
+                    type="button"
+                    $color={option.value}
+                    $active={chatStyle.color === option.id}
+                    title={`Text color ${option.label}`}
+                    aria-label={`Text color ${option.label}`}
+                    aria-pressed={chatStyle.color === option.id}
+                    onClick={() => updateChatStyle({ color: option.id })}
+                    data-wtf-live-chat-color={option.id}
+                  />
+                ))}
+              </ChatColorStrip>
+              <ChatStyleActionGroup>
+                <ChatToolIconButton
+                  $active={chatStyle.bold}
+                  aria-label="Bold chat text"
+                  aria-pressed={chatStyle.bold}
+                  title="Bold"
+                  onClick={() => updateChatStyle({ bold: !chatStyle.bold })}
+                  data-wtf-live-chat-bold
+                >
+                  <Bold size={14} aria-hidden />
+                </ChatToolIconButton>
+                <ChatToolIconButton
+                  $active={chatStyle.italic}
+                  aria-label="Italic chat text"
+                  aria-pressed={chatStyle.italic}
+                  title="Italic"
+                  onClick={() => updateChatStyle({ italic: !chatStyle.italic })}
+                  data-wtf-live-chat-italic
+                >
+                  <Italic size={14} aria-hidden />
+                </ChatToolIconButton>
+                <ChatToolIconButton
+                  aria-label="Reset chat style"
+                  title="Reset"
+                  onClick={resetChatStyle}
+                  data-wtf-live-chat-style-reset
+                >
+                  <RotateCcw size={14} aria-hidden />
+                </ChatToolIconButton>
+                <ChatToolIconButton
+                  aria-label="Done editing chat style"
+                  title="Done"
+                  onClick={() => setChatStyleOpen(false)}
+                  data-wtf-live-chat-style-done
+                >
+                  <Check size={14} aria-hidden />
+                </ChatToolIconButton>
+              </ChatStyleActionGroup>
+            </ChatStyleActionRow>
+          </ChatStylePanel>
+        ) : null}
+      </>
     );
   }
 
@@ -3283,6 +3721,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
         {renderChatToolbox()}
         {renderTipTray()}
         <ChatTextArea
+          ref={chatTextAreaRef}
           aria-label="WTF LIVE room chat message"
           data-wtf-live-chat-text
           disabled={!joined || !socketReady}
@@ -3314,6 +3753,26 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
           </Button>
         </GuestGrid>
       </ChatComposer>
+    );
+  }
+
+  function renderRoomReactionDock() {
+    return (
+      <RoomReactionDock role="toolbar" aria-label="Room reactions" data-wtf-live-room-reactions>
+        {LIVE_ROOM_REACTION_OPTIONS.map((option) => (
+          <RoomReactionButton
+            key={option.emoji}
+            type="button"
+            aria-label={`React ${option.label}`}
+            title={option.label}
+            disabled={!joined || !socketReady}
+            onClick={() => sendRoomReaction(option)}
+            data-wtf-live-room-reaction={option.emoji}
+          >
+            {option.emoji}
+          </RoomReactionButton>
+        ))}
+      </RoomReactionDock>
     );
   }
 
@@ -3591,31 +4050,51 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	              <span>Screen / camera stage</span>
 	              <span>{stageCount ? `${stageCount} share${stageCount === 1 ? "" : "s"}` : "no video shared"}</span>
 	            </StageHeader>
-	            <StageGrid $count={stageCount} data-wtf-live-stage-grid>
-	              {joined && localMediaState.activeVideo ? (
-	                <StageParticipantTile
-	                  id="self"
-	                  name={attendeeDisplayName}
-	                  mediaState={localMediaState}
-	                  stream={localStageStream}
-	                  connected={socketReady}
-	                  isSelf
-	                  onOpen={() => openStagePopout({ peerId: "self", guestName: attendeeDisplayName, mediaState: localMediaState })}
-	                />
-	              ) : null}
-              {remoteStagePeers.map((peer) => (
-                <StageParticipantTile
-                  key={peer.peerId}
-                  id={peer.peerId}
-                  name={livePeerName(peer)}
-	                  mediaState={peer.mediaState}
-	                  stream={peer.stream}
-	                  connected={peer.connected}
-	                  onOpen={() => openStagePopout(peer)}
-	                />
-	              ))}
-		              {!stageCount ? <EmptyStage>No screen or camera shared</EmptyStage> : null}
-		            </StageGrid>
+	            {renderRoomReactionDock()}
+	            <StageGridShell data-wtf-live-stage-grid-shell>
+	              <ReactionBurstLayer aria-live="polite" data-wtf-live-reaction-layer>
+	                {roomReactions.map((reaction, index) => (
+	                  <ReactionBurst
+	                    key={reaction.id}
+	                    style={{
+	                      left: `${14 + (index % 5) * 18}%`,
+	                      animationDelay: `${(index % 3) * 40}ms`,
+	                    }}
+	                    aria-label={`${reaction.guestName} reacted ${reaction.label}`}
+	                    data-wtf-live-reaction-burst={reaction.id}
+	                    data-wtf-live-reaction-emoji={reaction.emoji}
+	                  >
+	                    <span aria-hidden>{reaction.emoji}</span>
+	                    <small>{reaction.guestName}</small>
+	                  </ReactionBurst>
+	                ))}
+	              </ReactionBurstLayer>
+	              <StageGrid $count={stageCount} data-wtf-live-stage-grid>
+	                {joined && localMediaState.activeVideo ? (
+	                  <StageParticipantTile
+	                    id="self"
+	                    name={attendeeDisplayName}
+	                    mediaState={localMediaState}
+	                    stream={localStageStream}
+	                    connected={socketReady}
+	                    isSelf
+	                    onOpen={() => openStagePopout({ peerId: "self", guestName: attendeeDisplayName, mediaState: localMediaState })}
+	                  />
+	                ) : null}
+	                {remoteStagePeers.map((peer) => (
+	                  <StageParticipantTile
+	                    key={peer.peerId}
+	                    id={peer.peerId}
+	                    name={livePeerName(peer)}
+	                    mediaState={peer.mediaState}
+	                    stream={peer.stream}
+	                    connected={peer.connected}
+	                    onOpen={() => openStagePopout(peer)}
+	                  />
+	                ))}
+	                {!stageCount ? <EmptyStage>No screen or camera shared</EmptyStage> : null}
+	              </StageGrid>
+	            </StageGridShell>
 		            {remotePeers.map((peer) => (
 		              <RemoteAudioSink key={`audio-${peer.peerId}`} peer={peer} />
 		            ))}
