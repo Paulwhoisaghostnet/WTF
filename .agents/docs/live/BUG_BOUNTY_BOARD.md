@@ -89,7 +89,7 @@ Priority labels:
 | WTF-BB-262 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Auth / wallet onboarding | P1 | 11 | 8 | 2 | 4 | 1 | Profile now routes wallet linking through explicit signed wallet connect/proof and no longer exposes address-only new-wallet linking; verified by focused source-policy tests, TypeScript, and inventory coverage |
 | WTF-BB-263 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Macaroni / generated mint page readiness | P1 | 9 | 12 | 1 | 4 | 0 | Macaroni wtfOS publish now requires a valid deployed/resumed `KT1...` contract in Studio and on `/api/macaroni/publish`, while draft export remains available; verified by focused policy tests, JS syntax checks, TypeScript, and inventory coverage |
 | WTF-BB-264 | Verified | Codex Macaroni direct upload lane full-send | 2026-06-15 | Macaroni / hosted IPFS direct upload lane | P1 | 10 | 10 | 2 | 4 | 0 | Live hosted pinning stalled before token 3 reached server-side staging because large media uploads traverse Cloudflare; verified live on commit `57e5e30` with short-lived upload tickets, bearer-only `/api/macaroni/ipfs/upload`, Caddy upload hosts scoped to that endpoint, direct fallback origin `upload.5-78-202-50.sslip.io`, and production env loaded |
-| WTF-BB-265 | Fixed | Codex Macaroni ticket limit regression | 2026-06-15 | Macaroni / practical media upload tickets | P1 | 10 | 10 | 2 | 4 | 0 | Live upload-ticket endpoint still treated production `MACARONI_IPFS_MAX_BYTES=262144000` as the per-file hard cap; production env was corrected to 1 GiB and code now fixes the Macaroni server hard cap at 1 GiB so legacy env drift cannot block valid larger artifacts before Studio average policy runs |
+| WTF-BB-265 | Verified | Codex Macaroni ticket limit regression | 2026-06-15 | Macaroni / practical media upload tickets | P1 | 10 | 10 | 2 | 4 | 0 | Live upload-ticket endpoint still treated production `MACARONI_IPFS_MAX_BYTES=262144000` as the per-file hard cap; production env was corrected to 1 GiB and code now fixes the Macaroni server hard cap at 1 GiB so legacy env drift cannot block valid larger artifacts before Studio average policy runs |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -354,7 +354,7 @@ Priority labels:
 ### WTF-BB-226 - Roger Radio live channel seed created an empty playlist in production
 
 - Category: WTF TV / boot backfill external embed seed
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Roger Radio full-send repair
 - Score: C1 + F4 + S0 + P1(4) = 9
 - Evidence:
@@ -5507,6 +5507,7 @@ Priority labels:
 - Verification:
   - Local/source: `npx tsx --test server/features/macaroni/upload-limits.test.ts server/routes/macaroni-policy.test.ts`, `npm run check -- --pretty false`, `npm run build`, and `npm run test:e2e:inventory:coverage` passed.
   - Production immediate env repair: `https://wtfos.app/api/health` returned `ok` on commit `62f2a57`, app env reported `MACARONI_IPFS_MAX_BYTES=1073741824`, `MACARONI_DIRECT_UPLOAD_ORIGIN=https://upload.wtfos.app`, and `https://upload.wtfos.app/` returned Caddy 404.
+  - Full-send verification: Deploy to Hetzner run `27529326522` and Quality Gates run `27529326533` passed for commit `635083487ad84010c26e878ec5f564b3ffce8bd9`; live health returned `ok` with `commitRef:"6350834"`, app env reported `MACARONI_IPFS_MAX_BYTES=1073741824`, canonical upload host returned Caddy 404, and CORS preflight to `/api/macaroni/ipfs/upload` from `https://wtfos.app` returned 204.
 
 ### WTF-BB-256 - Macaroni access/export workflow drift
 
