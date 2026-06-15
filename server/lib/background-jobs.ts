@@ -56,6 +56,11 @@ import {
 } from "../features/ipfs-pinning/constants";
 import { runIpfsPinningWorker } from "../features/ipfs-pinning/service";
 import {
+  publishQueuedWtfosOutbox,
+  WTFOS_ATPROTO_OUTBOX_PUBLISHER_JOB_NAME,
+  WTFOS_ATPROTO_OUTBOX_PUBLISHER_LIMIT,
+} from "../features/tz2at/wtfos-outbox";
+import {
   register as registerJob,
   start as startScheduler,
   stop as stopScheduler,
@@ -71,6 +76,7 @@ const WTF_RECAPTURE_WATCHER_INTERVAL = 2 * 60 * 1000;
 const IN_APP_MARKET_SYNC_INTERVAL = 2 * 60 * 1000;
 const APP_REGISTRY_INTEGRITY_INTERVAL = 6 * 60 * 60 * 1000;
 const IPFS_PINNING_MANAGER_INTERVAL = 10 * 60 * 1000;
+const WTFOS_ATPROTO_OUTBOX_PUBLISHER_INTERVAL = 60 * 1000;
 
 export function startBackgroundJobs(): void {
   console.log("[jobs] Registering background jobs with scheduler");
@@ -143,6 +149,27 @@ export function startBackgroundJobs(): void {
     initialDelayMs: 12 * 60 * 1000,
     skipInitialRun: true,
     scope: "pds-backed-ipfs-pinning",
+  });
+
+  registerJob({
+    name: WTFOS_ATPROTO_OUTBOX_PUBLISHER_JOB_NAME,
+    fn: async () => {
+      const rows = await publishQueuedWtfosOutbox({
+        limit: WTFOS_ATPROTO_OUTBOX_PUBLISHER_LIMIT,
+      });
+      const published = rows.filter((row) => row?.status === "published").length;
+      const failed = rows.filter((row) => row?.status === "failed").length;
+      const skipped = rows.filter((row) => row?.status === "skipped").length;
+      return {
+        itemsIn: rows.length,
+        itemsOut: published,
+        cursorAfter: { published, failed, skipped },
+      };
+    },
+    intervalMs: WTFOS_ATPROTO_OUTBOX_PUBLISHER_INTERVAL,
+    initialDelayMs: 75_000,
+    skipInitialRun: true,
+    scope: "wtfos-atproto-outbox",
   });
 
   registerJob({

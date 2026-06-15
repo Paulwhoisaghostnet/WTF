@@ -24,6 +24,10 @@ import {
   uploadLimitLabel,
 } from "../features/macaroni/upload-limits";
 import { stageAndPinUpload } from "../features/ipfs-pinning/service";
+import {
+  listWtfosOutboxForSource,
+  publishQueuedWtfosOutboxForSource,
+} from "../features/tz2at/wtfos-outbox";
 
 const router = Router();
 
@@ -246,6 +250,51 @@ function handleMacaroniSiteError(res: Response, err: unknown) {
   return res.status(500).json({ error: "Failed to process Macaroni request" });
 }
 
+function summarizePdsDelivery(rows: Awaited<ReturnType<typeof listWtfosOutboxForSource>>) {
+  const expected = 3;
+  const published = rows.filter((row) => row?.status === "published").length;
+  const failed = rows.filter((row) => row?.status === "failed").length;
+  const skipped = rows.filter((row) => row?.status === "skipped").length;
+  const pending = rows.filter((row) => row?.status === "queued").length;
+  return {
+    expected,
+    total: rows.length,
+    published,
+    failed,
+    skipped,
+    pending,
+    ready: rows.length >= expected && published >= expected && failed === 0 && skipped === 0 && pending === 0,
+  };
+}
+
+async function probePublicMacaroniUrl(url: string): Promise<{
+  live: boolean;
+  status: number | null;
+  error?: string;
+}> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6_000);
+  try {
+    const response = await fetch(url, {
+      method: "HEAD",
+      redirect: "manual",
+      signal: controller.signal,
+    });
+    return {
+      live: response.status >= 200 && response.status < 400,
+      status: response.status,
+    };
+  } catch (err) {
+    return {
+      live: false,
+      status: null,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 router.post(
   "/api/macaroni/ipfs/upload-ticket",
   requirePermission("trusted_market_creator"),
@@ -405,11 +454,41 @@ router.post(
       });
       const published = await publishUserSite(user.id);
       const host = published.site?.host ?? state.site.host;
+      const latestVersion = published.site?.versions?.[0] ?? null;
+      const url = `https://${host}/${slug}`;
+      if (latestVersion) {
+        await publishQueuedWtfosOutboxForSource({
+          userId: user.id,
+          sourceRefType: "wtf_user_site_version",
+          sourceRefId: String(latestVersion.id),
+          limit: 10,
+        });
+      }
+      const pdsRows = latestVersion
+        ? await listWtfosOutboxForSource({
+            userId: user.id,
+            sourceRefType: "wtf_user_site_version",
+            sourceRefId: String(latestVersion.id),
+            limit: 10,
+          })
+        : [];
+      const pdsDelivery = summarizePdsDelivery(pdsRows);
+      const publicProbe = await probePublicMacaroniUrl(url);
+      const live = pdsDelivery.ready && publicProbe.live;
+      const publishStatus = !pdsDelivery.ready
+        ? "pending_pds_delivery"
+        : live
+          ? "live"
+          : "pending_public_serving";
       return res.status(201).json({
         ok: true,
         slug,
         host,
-        url: `https://${host}/${slug}`,
+        url,
+        live,
+        publishStatus,
+        pdsDelivery,
+        publicProbe,
         site: published.site,
       });
     } catch (err) {

@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { deterministicRkey } from "@wtfos/atproto-spine";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { listRolesForUserSnapshot } from "../../lib/user-roles";
@@ -687,6 +688,19 @@ export async function publishUserSite(userId: number): Promise<WtfUserSiteStateD
     didSource: eligibility.didTarget.source,
   });
 
+  const publishedAtIso = publishedAt.toISOString();
+  const pageSlugs = pageSnapshots.map((page) => page.slug);
+  const didTarget = {
+    did: eligibility.didTarget.did,
+    source: eligibility.didTarget.source,
+    handle: eligibility.didTarget.handle ?? site.host,
+  };
+  const snapshotCollection = "app.wtfos.identity.siteSnapshot";
+  const snapshotRkeyParts = [site.label, versionNumber];
+  const snapshotRkey = deterministicRkey(snapshotRkeyParts);
+  const sourceRefType = "wtf_user_site_version";
+  const sourceRefId = String(version.id);
+
   await enqueueSpineRecord({
     userId,
     type: "app.wtfos.identity.site",
@@ -695,24 +709,74 @@ export async function publishUserSite(userId: number): Promise<WtfUserSiteStateD
       host: site.host,
       url: siteUrl(site.host),
       versionDigest: digest,
-      pageSlugs: pageSnapshots.map((page) => page.slug),
+      pageSlugs,
       assetMediaIds,
-      didTarget: {
-        did: eligibility.didTarget.did,
-        source: eligibility.didTarget.source,
-        handle: eligibility.didTarget.handle ?? site.host,
-      },
-      publishedAt: publishedAt.toISOString(),
+      didTarget,
+      publishedAt: publishedAtIso,
     },
-    rkeyParts: [site.label, versionNumber],
+    rkeyParts: snapshotRkeyParts,
     targetType: "user_wtfos_repo",
     targetDid: eligibility.didTarget.did,
     targetHandle: eligibility.didTarget.handle ?? site.host,
     targetPdsUrl: eligibility.didTarget.pdsUrl,
     wtfosIdentityId: eligibility.didTarget.wtfosIdentityId ?? null,
     sourceEventType: "wtf_user_site.published",
-    sourceRefType: "wtf_user_site_version",
-    sourceRefId: String(version.id),
+    sourceRefType,
+    sourceRefId,
+  });
+
+  await enqueueSpineRecord({
+    userId,
+    type: snapshotCollection,
+    record: {
+      schemaVersion: 1,
+      host: site.host,
+      url: siteUrl(site.host),
+      versionDigest: digest,
+      versionNumber,
+      payload: {
+        pages: pageSnapshots,
+        assetMediaIds,
+      },
+      didTarget,
+      publishedAt: publishedAtIso,
+    },
+    rkeyParts: snapshotRkeyParts,
+    targetType: "user_wtfos_repo",
+    targetDid: eligibility.didTarget.did,
+    targetHandle: eligibility.didTarget.handle ?? site.host,
+    targetPdsUrl: eligibility.didTarget.pdsUrl,
+    wtfosIdentityId: eligibility.didTarget.wtfosIdentityId ?? null,
+    sourceEventType: "wtf_user_site.snapshot_published",
+    sourceRefType,
+    sourceRefId,
+  });
+
+  const spineConfig = getSpineConfig();
+  await enqueueSpineRecord({
+    userId,
+    type: "app.wtfos.identity.siteIndex",
+    record: {
+      schemaVersion: 1,
+      host: site.host,
+      url: siteUrl(site.host),
+      repoDid: eligibility.didTarget.did,
+      repoHandle: eligibility.didTarget.handle ?? site.host,
+      snapshotCollection,
+      snapshotRkey,
+      versionDigest: digest,
+      versionNumber,
+      pageSlugs,
+      publishedAt: publishedAtIso,
+    },
+    rkeyParts: [site.label],
+    targetType: "primary_wtfos_repo",
+    targetDid: spineConfig.master.repoDid ?? null,
+    targetHandle: spineConfig.master.identifier ?? null,
+    targetPdsUrl: spineConfig.master.url,
+    sourceEventType: "wtf_user_site.index_published",
+    sourceRefType,
+    sourceRefId,
   });
 
   return getUserSiteState(userId);

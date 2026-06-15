@@ -60,12 +60,24 @@ test("Macaroni wtfOS publish requires a deployed KT1 contract", () => {
   assert.match(routeSource, /const contract = normalizeMacaroniContract\(config\.contract\)/);
   assert.match(routeSource, /Deploy or resume a KT1 contract before publishing to wtfOS\./);
   assert.match(routeSource, /config\.contract = contract/);
+  assert.match(routeSource, /publishQueuedWtfosOutboxForSource/);
+  assert.match(routeSource, /listWtfosOutboxForSource/);
+  assert.match(routeSource, /sourceRefType:\s*"wtf_user_site_version"/);
+  assert.match(routeSource, /probePublicMacaroniUrl/);
+  assert.match(routeSource, /publishStatus/);
+  assert.match(routeSource, /const live = pdsDelivery\.ready && publicProbe\.live/);
+  assert.match(routeSource, /pending_pds_delivery/);
+  assert.match(routeSource, /pending_public_serving/);
 
   assert.match(studioSource, /const KT1_CONTRACT_ADDRESS = \/\^KT1/);
   assert.match(studioSource, /function isValidKt1Address\(value\)/);
   assert.match(studioSource, /function assertWtfOSPublishReady\(cfg\)/);
   assert.match(studioSource, /Deploy or resume a KT1 contract before publishing to wtfOS\./);
   assert.match(studioSource, /cfg = assertWtfOSPublishReady\(currentConfig\(\)\)/);
+  assert.match(studioSource, /j\.live === false/);
+  assert.match(studioSource, /pending_pds_delivery/);
+  assert.match(studioSource, /PDS delivery is still catching up/);
+  assert.match(studioSource, /\.me serving is still catching up/);
   assert.doesNotMatch(
     studioSource,
     /async function publishWtfOSSite\(\) \{\s*const body = configJs\(\)/,

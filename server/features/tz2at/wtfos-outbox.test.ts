@@ -43,6 +43,9 @@ test("WTFOS outbox publisher targets primary or linked WTFOS repos, not canonica
 
   assert.match(source, /collection:\s*row\.collection/);
   assert.match(source, /repo:\s*row\.targetDid/);
+  assert.match(source, /repo\.putRecord/);
+  assert.match(source, /repo\.createRecord/);
+  assert.match(source, /export async function listWtfosOutboxForSource/);
   assert.match(source, /PRIMARY_WTFOS_OUTBOX_TARGET/);
   assert.match(source, /USER_WTFOS_OUTBOX_TARGET/);
   assert.doesNotMatch(source, /repo:\s*account\.did/);

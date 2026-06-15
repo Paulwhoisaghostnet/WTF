@@ -1,0 +1,45 @@
+{
+  "lexicon": 1,
+  "id": "app.wtfos.identity.siteIndex",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "Primary-repo pointer from a wtfOS user-site host to the renderable site snapshot in the user's WTFOS repo.",
+      "record": {
+        "type": "object",
+        "required": [
+          "$type",
+          "schemaVersion",
+          "host",
+          "url",
+          "repoDid",
+          "snapshotCollection",
+          "snapshotRkey",
+          "versionDigest",
+          "versionNumber",
+          "pageSlugs",
+          "publishedAt"
+        ],
+        "properties": {
+          "$type": { "type": "string", "const": "app.wtfos.identity.siteIndex" },
+          "schemaVersion": { "type": "integer" },
+          "host": { "type": "string" },
+          "url": { "type": "string" },
+          "repoDid": { "type": "string" },
+          "repoHandle": { "type": "string" },
+          "snapshotCollection": { "type": "string" },
+          "snapshotRkey": { "type": "string" },
+          "versionDigest": { "type": "string" },
+          "versionNumber": { "type": "integer" },
+          "pageSlugs": {
+            "type": "array",
+            "items": { "type": "string" },
+            "maxLength": 26
+          },
+          "publishedAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

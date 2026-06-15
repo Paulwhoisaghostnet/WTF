@@ -1257,7 +1257,7 @@ function setExportStatus(msg, ok) {
   const el = $("exportStatus");
   if (!el) return;
   el.textContent = msg;
-  el.className = ok ? "ok" : "err";
+  el.className = ok === "warn" ? "warn" : ok ? "ok" : "err";
 }
 
 async function exportSite() {
@@ -1327,8 +1327,13 @@ async function publishWtfOSSite() {
       throw new Error("server did not return JSON");
     }
     if (!r.ok || !j.ok) throw new Error(j.error || "publish failed");
-    const msg = `Published to ${j.url}`;
-    setExportStatus(msg, true);
+    const pendingReason = j.publishStatus === "pending_pds_delivery"
+      ? "PDS delivery is still catching up"
+      : ".me serving is still catching up";
+    const msg = j.live === false
+      ? `Published in wtfOS; ${pendingReason}. ${j.url}`
+      : `Published to ${j.url}`;
+    setExportStatus(msg, j.live === false ? "warn" : true);
     log(msg);
   } catch (e) {
     setExportStatus("wtfOS publish failed: " + e.message, false);

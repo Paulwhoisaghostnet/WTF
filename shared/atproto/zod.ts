@@ -163,6 +163,48 @@ export const identitySiteSchema = z.object({
   publishedAt: datetime,
 });
 
+export const identitySiteSnapshotPageSchema = z.object({
+  slug: z.string(),
+  title: z.string(),
+  html: z.string(),
+});
+
+export const identitySiteSnapshotPayloadSchema = z.object({
+  pages: z.array(identitySiteSnapshotPageSchema).max(26),
+  assetMediaIds: z.array(z.number().int()).max(200),
+});
+
+export const identitySiteSnapshotSchema = z.object({
+  $type: z.literal("app.wtfos.identity.siteSnapshot"),
+  schemaVersion: $version,
+  host: z.string(),
+  url: z.string(),
+  versionDigest: z.string(),
+  versionNumber: z.number().int(),
+  payload: identitySiteSnapshotPayloadSchema,
+  didTarget: z.object({
+    did: z.string(),
+    source: z.enum(["wtf", "bsky"]),
+    handle: z.string().optional(),
+  }),
+  publishedAt: datetime,
+});
+
+export const identitySiteIndexSchema = z.object({
+  $type: z.literal("app.wtfos.identity.siteIndex"),
+  schemaVersion: $version,
+  host: z.string(),
+  url: z.string(),
+  repoDid: z.string(),
+  repoHandle: z.string().optional(),
+  snapshotCollection: z.string(),
+  snapshotRkey: z.string(),
+  versionDigest: z.string(),
+  versionNumber: z.number().int(),
+  pageSlugs: z.array(z.string()).max(26),
+  publishedAt: datetime,
+});
+
 export const boardChannelSchema = z.object({
   $type: z.literal("app.wtfos.social.board.channel"),
   schemaVersion: $version,
@@ -257,6 +299,8 @@ export const lexiconSchemas = {
   "app.wtfos.identity.profile": identityProfileSchema,
   "app.wtfos.identity.walletLink": identityWalletLinkSchema,
   "app.wtfos.identity.site": identitySiteSchema,
+  "app.wtfos.identity.siteSnapshot": identitySiteSnapshotSchema,
+  "app.wtfos.identity.siteIndex": identitySiteIndexSchema,
   "app.wtfos.social.board.channel": boardChannelSchema,
   "app.wtfos.social.board.post": boardPostSchema,
   "app.wtfos.social.board.reaction": boardReactionSchema,
@@ -275,6 +319,8 @@ export type MediaPinItem = z.infer<typeof mediaPinItemSchema>;
 export type IdentityProfile = z.infer<typeof identityProfileSchema>;
 export type IdentityWalletLink = z.infer<typeof identityWalletLinkSchema>;
 export type IdentitySite = z.infer<typeof identitySiteSchema>;
+export type IdentitySiteSnapshot = z.infer<typeof identitySiteSnapshotSchema>;
+export type IdentitySiteIndex = z.infer<typeof identitySiteIndexSchema>;
 export type BoardChannel = z.infer<typeof boardChannelSchema>;
 export type BoardPost = z.infer<typeof boardPostSchema>;
 export type BoardReaction = z.infer<typeof boardReactionSchema>;

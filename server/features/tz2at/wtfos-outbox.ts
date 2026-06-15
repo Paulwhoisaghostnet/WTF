@@ -14,6 +14,8 @@ import { getCrpNominationsRepoConfig } from "../crp-nominations/crp-repo";
 export const WTFOS_ACTIVITY_EVENT_COLLECTION = "app.wtfos.activity.event";
 export const PRIMARY_WTFOS_OUTBOX_TARGET = "primary_wtfos_repo";
 export const USER_WTFOS_OUTBOX_TARGET = "user_wtfos_repo";
+export const WTFOS_ATPROTO_OUTBOX_PUBLISHER_JOB_NAME = "wtfos-atproto-outbox-publisher";
+export const WTFOS_ATPROTO_OUTBOX_PUBLISHER_LIMIT = 50;
 
 type WtfosIdentity = typeof wtfosAtprotoIdentities.$inferSelect;
 type WtfosOutboxRow = typeof wtfosAtprotoOutbox.$inferSelect;
@@ -519,16 +521,15 @@ export async function publishWtfosOutboxItem(row: WtfosOutboxRow) {
     } else {
       agent = await agentForPrimaryWtfosRepo(row);
     }
-    const created = await agent.com.atproto.repo.createRecord(
-      {
-        repo: row.targetDid,
-        collection: row.collection,
-        rkey: row.rkey ?? undefined,
-        record: row.record,
-        validate: false,
-      },
-      { encoding: "application/json" }
-    );
+    const write = {
+      repo: row.targetDid,
+      collection: row.collection,
+      record: row.record,
+      validate: false,
+    };
+    const created = row.rkey
+      ? await agent.com.atproto.repo.putRecord({ ...write, rkey: row.rkey }, { encoding: "application/json" })
+      : await agent.com.atproto.repo.createRecord(write, { encoding: "application/json" });
     const [updated] = await db
       .update(wtfosAtprotoOutbox)
       .set({
@@ -574,6 +575,54 @@ export async function publishQueuedWtfosOutbox(input: { userId?: number; limit?:
     results.push(await publishWtfosOutboxItem(row));
   }
   return results;
+}
+
+export async function publishQueuedWtfosOutboxForSource(input: {
+  userId?: number;
+  sourceRefType?: string;
+  sourceRefId: string;
+  limit?: number;
+}) {
+  const limit = Math.max(1, Math.min(input.limit ?? 10, 50));
+  const conditions = [
+    eq(wtfosAtprotoOutbox.status, "queued"),
+    eq(wtfosAtprotoOutbox.sourceRefId, input.sourceRefId),
+  ];
+  if (input.userId) conditions.push(eq(wtfosAtprotoOutbox.userId, input.userId));
+  if (input.sourceRefType) {
+    conditions.push(eq(wtfosAtprotoOutbox.sourceRefType, input.sourceRefType));
+  }
+  const rows = await db
+    .select()
+    .from(wtfosAtprotoOutbox)
+    .where(and(...conditions))
+    .orderBy(asc(wtfosAtprotoOutbox.scheduledAt), asc(wtfosAtprotoOutbox.id))
+    .limit(limit);
+  const results = [];
+  for (const row of rows) {
+    results.push(await publishWtfosOutboxItem(row));
+  }
+  return results;
+}
+
+export async function listWtfosOutboxForSource(input: {
+  userId?: number;
+  sourceRefType?: string;
+  sourceRefId: string;
+  limit?: number;
+}) {
+  const limit = Math.max(1, Math.min(input.limit ?? 25, 50));
+  const conditions = [eq(wtfosAtprotoOutbox.sourceRefId, input.sourceRefId)];
+  if (input.userId) conditions.push(eq(wtfosAtprotoOutbox.userId, input.userId));
+  if (input.sourceRefType) {
+    conditions.push(eq(wtfosAtprotoOutbox.sourceRefType, input.sourceRefType));
+  }
+  return db
+    .select()
+    .from(wtfosAtprotoOutbox)
+    .where(and(...conditions))
+    .orderBy(asc(wtfosAtprotoOutbox.id))
+    .limit(limit);
 }
 
 export async function wtfosOutboxStatusForUser(userId: number) {

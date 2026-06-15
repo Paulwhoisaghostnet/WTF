@@ -1,3 +1,23 @@
+## 2026-06-15 - Emergency user-site bridges must be per-host and time-boxed
+
+**What happened**: `paulwhoisaghost.wtfos.me` needed to be reachable before the intended PDS-backed `.me` serving tier was ready. The app server already had an active `*.wtfos.me` on-demand TLS route and could serve the published page by Host header, while GoDaddy/DomainControl wildcard DNS still sent all user-site hosts to the `.me` AT-services box. Adding one explicit GoDaddy `A` record for `paulwhoisaghost.wtfos.me -> 5.78.202.50` overrode the wildcard without moving every user host.
+
+**Why it mattered**: A single creator's live drop needed a practical bridge, but changing the wildcard would have contradicted the intended architecture and risked dragging unrelated user-site hosts back through the app server. The first Caddy ACME attempt failed because Let's Encrypt still saw the old wildcard IP during DNS propagation; a later forced/current-DNS request succeeded and minted the host certificate.
+
+**Rule**: Temporary user-site bridges must be explicit per-host DNS overrides, backed up before mutation, verified against authoritative and public resolvers, and smoke-tested over HTTPS with the expected page title. Keep the bridge documented as temporary until the `.me` PDS renderer/TLS path owns user-site serving.
+
+---
+
+## 2026-06-15 - wtfOS publish success must mean public serving-tier success
+
+**What happened**: Macaroni returned `Published to https://paulwhoisaghost.wtfos.me/airporters-vol-1` after saving and publishing the drop page in the app database, but the public `.me` link failed during TLS. Direct app-container routing with `Host: paulwhoisaghost.wtfos.me` served the page, while live DNS correctly pointed wildcard `.wtfos.me` hosts at the AT-services box. The related `app.wtfos.identity.site` outbox row was still queued, and even that record only carried provenance fields, not a renderable site payload.
+
+**Why it mattered**: The product contract is PDS-backed user sites served from the low-load `.me` server, not app-DB pages hidden behind a success toast. A creator should not see a positive public URL until the PDS/outbox and `.me` serving tier can actually deliver that URL.
+
+**Rule**: For hosted Macaroni/wtfOS publishing, distinguish app-side save, PDS/outbox delivery, and public `.me` serving. The publish endpoint should only report a public `.wtfos.me` URL as live after the site artifact is renderable from the intended `.me` tier, or it should return an explicit pending state. Do not repair this class of bug by pointing wildcard user-site DNS at the app server unless that is a deliberate temporary bridge.
+
+---
+
 ## 2026-06-15 - Macaroni pinning progress must distinguish browser upload, staging, and provider pin
 
 **What happened**: A live Macaroni drop appeared frozen during artifact/metadata pinning after the cover plus the first two token media/metadata pairs had completed. Production health was OK and the app container was not OOM-killed, but the IPFS pinning tables and `ipfs_pinning.storage.staged` events stopped after `2.json`; no token 3 storage event existed yet.

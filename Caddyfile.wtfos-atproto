@@ -89,6 +89,21 @@ users.wtfos.me    { import wtfos_pds_site wtfos-pds-users }
 # the relay/network (PDS_CRAWLERS="" in compose) and excluded from the public firehose.
 private.wtfos.me  { import wtfos_pds_site wtfos-pds-private }
 
+# ── PDS-backed user sites (*.wtfos.me) ──────────────────────────────────────
+# Importable upstream snippet only. Do not activate a wildcard site block from
+# this staged file; the active Caddyfile owns wildcard traffic until the .me
+# host runs this renderer and its on-demand TLS ask gate.
+(wtfos_user_site_renderer) {
+	encode gzip zstd
+
+	reverse_proxy wtfos-user-site-renderer:3009 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
+
 # ── Indigo relay (firehose) — runs network_mode:host, binds :2470 ────────────
 relay.wtfos.me {
 	encode gzip zstd
@@ -128,9 +143,8 @@ mod.wtfos.me {
 
 # =============================================================================
 # WILDCARD USER HANDLES (*.wtfos.me) WITH ON-DEMAND TLS.
-# The active production wildcard now lives in the main ./Caddyfile. If this
-# staged file is later promoted into the main import path, keep the same shape:
-# on-demand TLS must ask the app so only registered handles can trigger certs.
+# When the .me host is ready, add the global ask gate to that host's active
+# Caddyfile and point only the wildcard user-site block at the renderer:
 #
 #   {
 #       on_demand_tls {
@@ -138,11 +152,9 @@ mod.wtfos.me {
 #       }
 #   }
 #
-# ...and add this site block (here or in the main Caddyfile):
-#
 #   *.wtfos.me {
 #       tls { on_demand }
-#       reverse_proxy app:3000                 # user sites and /.well-known/atproto-did
+#       import wtfos_user_site_renderer
 #   }
 #
 # The ask endpoint is served by the kernel via createTlsAllowHandler

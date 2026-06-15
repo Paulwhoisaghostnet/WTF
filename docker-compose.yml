@@ -249,6 +249,28 @@ services:
       - ${WTFOS_PDS_USERS_DATA_DIR:-/mnt/wtf-data/pds-users}:/pds
     healthcheck: *wtfos-pds-healthcheck
 
+  # ── Low-load user-site renderer for wildcard *.wtfos.me hosts ───────────
+  wtfos-user-site-renderer:
+    build:
+      context: .
+      args:
+        COMMIT_SHA: ${COMMIT_SHA:-dev}
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    depends_on:
+      wtfos-pds:
+        condition: service_healthy
+      wtfos-pds-users:
+        condition: service_healthy
+    env_file:
+      - ${WTF_ENV_FILE:-.env}
+    environment:
+      NODE_ENV: production
+      PORT: "3009"
+      WTFOS_USER_SITE_INDEX_PDS_URL: ${WTFOS_USER_SITE_INDEX_PDS_URL:-http://wtfos-pds:3000}
+      WTFOS_USER_SITE_SNAPSHOT_PDS_URL: ${WTFOS_USER_SITE_SNAPSHOT_PDS_URL:-http://wtfos-pds-users:3000}
+    command: ["npx", "tsx", "scripts/wtfos-user-site-renderer.ts"]
+
   # ── Private PDS (encrypted DM/room records; NOT federated) ───────────────
   wtfos-pds-private:
     image: ghcr.io/bluesky-social/pds:0.4
