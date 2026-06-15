@@ -88,7 +88,7 @@ Priority labels:
 | WTF-BB-256 | Verified | Codex Macaroni access/export workflow pass | 2026-06-14 | Macaroni / access model and self-host export | P1 | 12 | 7 | 2 | 5 | 1 | Macaroni product flow now lets any signed-in wtfOS user create/deploy/export blind drops while hosted wtfOS pinning/publishing are trusted-creator-only; verified by focused policy, inventory coverage, and local browser smoke |
 | WTF-BB-262 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Auth / wallet onboarding | P1 | 11 | 8 | 2 | 4 | 1 | Profile now routes wallet linking through explicit signed wallet connect/proof and no longer exposes address-only new-wallet linking; verified by focused source-policy tests, TypeScript, and inventory coverage |
 | WTF-BB-263 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Macaroni / generated mint page readiness | P1 | 9 | 12 | 1 | 4 | 0 | Macaroni wtfOS publish now requires a valid deployed/resumed `KT1...` contract in Studio and on `/api/macaroni/publish`, while draft export remains available; verified by focused policy tests, JS syntax checks, TypeScript, and inventory coverage |
-| WTF-BB-264 | Fixed | Codex Macaroni direct upload lane | 2026-06-15 | Macaroni / hosted IPFS direct upload lane | P1 | 10 | 10 | 2 | 4 | 0 | Live hosted pinning stalled before token 3 reached server-side staging because large media uploads traverse Cloudflare; fixed in source with short-lived upload tickets, a bearer-only `/api/macaroni/ipfs/upload` endpoint, and an `upload.wtfos.app` Caddy block scoped to that endpoint, pending production DNS/env/deploy verification |
+| WTF-BB-264 | Verified | Codex Macaroni direct upload lane full-send | 2026-06-15 | Macaroni / hosted IPFS direct upload lane | P1 | 10 | 10 | 2 | 4 | 0 | Live hosted pinning stalled before token 3 reached server-side staging because large media uploads traverse Cloudflare; verified live on commit `57e5e30` with short-lived upload tickets, bearer-only `/api/macaroni/ipfs/upload`, Caddy upload hosts scoped to that endpoint, direct fallback origin `upload.5-78-202-50.sslip.io`, and production env loaded |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5462,7 +5462,7 @@ Priority labels:
 ### WTF-BB-264 - Macaroni hosted pinning can stall behind Cloudflare's request body cap
 
 - Category: Macaroni / hosted IPFS direct upload lane
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Macaroni direct upload lane
 - Score: C2 + F4 + S0 + P1(4) = 10
 - Evidence:
@@ -5477,11 +5477,14 @@ Priority labels:
   - Added `/api/macaroni/ipfs/upload-ticket`, gated by `trusted_market_creator`, to mint short-lived HMAC upload tickets through the normal same-origin CSRF/session boundary.
   - Added bearer-only `/api/macaroni/ipfs/upload`, which validates and consumes the ticket before multer buffers the file, then stages/pins as source `macaroni`.
   - Updated Studio's wtfOS provider to request an upload ticket before each hosted pin and POST the actual file to the returned upload URL with `Authorization: Bearer ...` and `credentials: "omit"`.
-  - Added `MACARONI_DIRECT_UPLOAD_ORIGIN` and `MACARONI_UPLOAD_TICKET_SECRET` env guidance. When `MACARONI_DIRECT_UPLOAD_ORIGIN=https://upload.wtfos.app`, Studio sends only the file POST to that direct DNS-only host.
-  - Added a Caddy `upload.wtfos.app` block that proxies only `/api/macaroni/ipfs/upload` and returns 404 for every other path.
+  - Added `MACARONI_DIRECT_UPLOAD_ORIGIN` and `MACARONI_UPLOAD_TICKET_SECRET` env guidance. When `MACARONI_DIRECT_UPLOAD_ORIGIN=https://upload.wtfos.app` or the origin-only fallback `https://upload.5-78-202-50.sslip.io`, Studio sends only the file POST to that direct host.
+  - Added a Caddy `upload.wtfos.app, upload.5-78-202-50.sslip.io` block that proxies only `/api/macaroni/ipfs/upload` and returns 404 for every other path.
 - Verification:
-  - Source verification pending in this pass.
-  - Production closeout still requires DNS-only `upload.wtfos.app` A/AAAA records pointing at the Hetzner origin, production env `MACARONI_DIRECT_UPLOAD_ORIGIN=https://upload.wtfos.app`, deploy, and live ticket/upload smoke.
+  - Local/source: `node --check public/creation-tools/macaroni/js/common.js`, `node --check public/creation-tools/macaroni/js/studio.js`, `npx tsx --test server/lib/cors-origins.test.ts server/routes/macaroni-policy.test.ts`, `node scripts/caddy-domain-policy.test.mjs`, `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` all passed.
+  - GitHub: Deploy to Hetzner run `27519983597` and Quality Gates run `27519983587` passed for commit `57e5e30a828816c2e7f6d40a9f4734a764f6e724`.
+  - Production: `https://wtfos.app/api/health` returned `status:"ok"` with `commitRef:"57e5e30"`, the app container had Macaroni direct origin and ticket secret env loaded, and live static Macaroni `common.js`/`studio.js` contained the ticketed upload plus upload-progress code.
+  - Direct origin: `https://upload.5-78-202-50.sslip.io/` returned Caddy 404, CORS preflight to `/api/macaroni/ipfs/upload` from `https://wtfos.app` returned 204 with `Access-Control-Allow-Origin: https://wtfos.app`, and unauthenticated upload POST returned 401 `Invalid or expired Macaroni upload ticket`.
+  - Follow-up: Cloudflare DNS for `upload.wtfos.app` still resolves through the orange-cloud edge; flip it to DNS-only A/AAAA when Cloudflare access is available, then update `MACARONI_DIRECT_UPLOAD_ORIGIN` from the sslip fallback to `https://upload.wtfos.app`.
 
 ### WTF-BB-256 - Macaroni access/export workflow drift
 
