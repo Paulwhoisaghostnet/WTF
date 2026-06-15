@@ -76,12 +76,15 @@ test("Macaroni wtfOS publish requires a deployed KT1 contract", () => {
 
 test("Macaroni exposes practical media limits in Studio and server pinning", () => {
   const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
+  const limitSource = readFileSync("server/features/macaroni/upload-limits.ts", "utf8");
   const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
   const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
   const envExample = readFileSync(".env.example", "utf8");
 
-  assert.match(routeSource, /MEBIBYTE_BYTES = 1024 \* 1024/);
-  assert.match(routeSource, /DEFAULT_IPFS_MAX_BYTES = 1024 \* MEBIBYTE_BYTES/);
+  assert.match(routeSource, /features\/macaroni\/upload-limits/);
+  assert.match(limitSource, /MACARONI_IPFS_HARD_MAX_BYTES = 1024 \* MEBIBYTE_BYTES/);
+  assert.match(limitSource, /MACARONI_IPFS_AVERAGE_MAX_BYTES = 250 \* MEBIBYTE_BYTES/);
+  assert.match(limitSource, /function macaroniIpfsMaxBytes\(\): number \{\s*return MACARONI_IPFS_HARD_MAX_BYTES;\s*\}/s);
   assert.match(routeSource, /uploadLimitLabel\(macaroniIpfsMaxBytes\(\)\)/);
   assert.match(studioSource, /const GB = 1024 \* MB/);
   assert.match(studioSource, /OBJKT_ARTIFACT_AVERAGE_BYTES = 250 \* MB/);
@@ -98,7 +101,7 @@ test("Macaroni exposes practical media limits in Studio and server pinning", () 
   assert.match(studioHtml, /Collection logo \/ cover \(≤1 MB, square JPG\/PNG\)/);
   assert.match(studioHtml, /accept="image\/png,image\/jpeg"/);
   assert.match(studioHtml, /Artwork files \(≤1 GB each, ≤250 MB average, named by id\)/);
-  assert.match(envExample, /Default 1 GB \(1073741824\)/);
+  assert.match(envExample, /Macaroni hosted uploads use a fixed 1 GB/);
   assert.match(envExample, /average 250 MB or less/);
   assert.match(envExample, /MACARONI_DIRECT_UPLOAD_ORIGIN=/);
   assert.match(envExample, /MACARONI_UPLOAD_TICKET_SECRET=/);

@@ -19,12 +19,14 @@ import {
   buildMacaroniPublishedHtml,
   slugForDropTitle,
 } from "../features/macaroni/publish";
+import {
+  macaroniIpfsMaxBytes,
+  uploadLimitLabel,
+} from "../features/macaroni/upload-limits";
 import { stageAndPinUpload } from "../features/ipfs-pinning/service";
 
 const router = Router();
 
-const MEBIBYTE_BYTES = 1024 * 1024;
-const DEFAULT_IPFS_MAX_BYTES = 1024 * MEBIBYTE_BYTES;
 const MACARONI_UPLOAD_AUDIENCE = "macaroni-ipfs-upload";
 const MACARONI_UPLOAD_PATH = "/api/macaroni/ipfs/upload";
 const MACARONI_UPLOAD_TICKET_TTL_MS = 10 * 60 * 1000;
@@ -78,22 +80,6 @@ type MacaroniUploadRequest = Request & {
 };
 
 const usedUploadTickets = new Map<string, number>();
-
-function envInt(name: string, fallback: number): number {
-  const parsed = Number(process.env[name]);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
-}
-
-function macaroniIpfsMaxBytes(): number {
-  return envInt("MACARONI_IPFS_MAX_BYTES", DEFAULT_IPFS_MAX_BYTES);
-}
-
-function uploadLimitLabel(bytes: number): string {
-  const gb = bytes / (1024 * MEBIBYTE_BYTES);
-  if (Number.isInteger(gb) && gb >= 1) return `${gb} GB`;
-  const mb = bytes / MEBIBYTE_BYTES;
-  return Number.isInteger(mb) ? `${mb} MB` : `${bytes} bytes`;
-}
 
 function macaroniUploadTicketSecret(): string {
   return process.env.MACARONI_UPLOAD_TICKET_SECRET || getSessionSecret();

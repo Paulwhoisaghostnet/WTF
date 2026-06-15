@@ -4899,3 +4899,15 @@
 **Fix**: Used the account-owned token admin permission to mint a narrow `wtfos.app` DNS-edit token with `Zone Read` and `DNS Write`, stored it as `CLOUDFLARE_DNS_API_TOKEN` in `/etc/wtf/cloudflare.env`, created DNS-only `A upload.wtfos.app -> 5.78.202.50`, and then changed production `MACARONI_DIRECT_UPLOAD_ORIGIN` from the sslip fallback to `https://upload.wtfos.app`.
 
 **Rule**: Before a DNS-only cutover, test the actual operation endpoint with the token, not just token metadata or zone listing. For Cloudflare DNS changes, confirm `GET` and `POST/PATCH` access to `/zones/:zone_id/dns_records`; if an account token can manage account-owned tokens but cannot edit zone DNS directly, mint and store a narrow zone DNS token instead of broadening the app runtime secret surface.
+
+---
+
+## 2026-06-15 - Macaroni average limits must not become upload-ticket hard caps
+
+**What happened**: After the direct upload lane went live, Macaroni still returned `400 File exceeds the 250 MB Macaroni IPFS upload limit` from `/api/macaroni/ipfs/upload-ticket` for larger artifacts. Production still had `MACARONI_IPFS_MAX_BYTES=262144000`, and the ticket route used that env as the per-file hard cap.
+
+**Why it mattered**: The intended policy is a 1 GB per-artifact hard max plus a 250 MB collection-average limit. Treating the average as the upload-ticket hard cap blocks valid drops with one or two larger videos before Studio can apply the aggregate policy.
+
+**Fix**: Immediately corrected production env to `MACARONI_IPFS_MAX_BYTES=1073741824`, then moved the server Macaroni upload hard cap into code as a fixed 1 GB helper so legacy env drift cannot lower it back to 250 MB. Added a regression test that sets the legacy env to 250 MB and still expects the Macaroni hard cap to be 1 GB.
+
+**Rule**: Keep per-file hard limits and collection-average limits as separate code paths. Upload-ticket and multer limits enforce the 1 GB hard cap; Studio draft validation enforces the 250 MB average before pin/deploy/sync.
