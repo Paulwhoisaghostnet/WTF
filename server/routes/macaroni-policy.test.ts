@@ -71,13 +71,21 @@ test("Macaroni wtfOS publish requires a deployed KT1 contract", () => {
   assert.match(studioHtml, /Publish to wtfOS<\/strong> requires a deployed or resumed <code>KT1/);
 });
 
-test("Macaroni exposes OBJKT-compatible media limits in Studio and server pinning", () => {
+test("Macaroni exposes practical media limits in Studio and server pinning", () => {
   const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
   const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
   const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+  const envExample = readFileSync(".env.example", "utf8");
 
-  assert.match(routeSource, /DEFAULT_IPFS_MAX_BYTES = 250 \* 1024 \* 1024/);
-  assert.match(studioSource, /OBJKT_ARTIFACT_MAX_BYTES = 250 \* MB/);
+  assert.match(routeSource, /MEBIBYTE_BYTES = 1024 \* 1024/);
+  assert.match(routeSource, /DEFAULT_IPFS_MAX_BYTES = 1024 \* MEBIBYTE_BYTES/);
+  assert.match(routeSource, /uploadLimitLabel\(macaroniIpfsMaxBytes\(\)\)/);
+  assert.match(studioSource, /const GB = 1024 \* MB/);
+  assert.match(studioSource, /OBJKT_ARTIFACT_AVERAGE_BYTES = 250 \* MB/);
+  assert.match(studioSource, /OBJKT_ARTIFACT_MAX_BYTES = 1 \* GB/);
+  assert.match(studioSource, /mediaBytes: 0/);
+  assert.match(studioSource, /function artifactSizePolicy\(\)/);
+  assert.match(studioSource, /assertArtifactSizePolicy\(\{ requireKnownSizes: true \}\)/);
   assert.match(studioSource, /OBJKT_COLLECTION_IMAGE_MAX_BYTES = 1 \* MB/);
   assert.match(studioSource, /new Set\(\["image\/jpeg", "image\/png"\]\)/);
   assert.match(studioSource, /validateArtifactFile\(f\)/);
@@ -86,8 +94,11 @@ test("Macaroni exposes OBJKT-compatible media limits in Studio and server pinnin
   assert.match(studioSource, /tokenNeedsCover\(t\) \? cover : artifact/);
   assert.match(studioHtml, /Collection logo \/ cover \(≤1 MB, square JPG\/PNG\)/);
   assert.match(studioHtml, /accept="image\/png,image\/jpeg"/);
-  assert.match(studioHtml, /Artwork files \(≤250 MB each, named by id\)/);
+  assert.match(studioHtml, /Artwork files \(≤1 GB each, ≤250 MB average, named by id\)/);
+  assert.match(envExample, /Default 1 GB \(1073741824\)/);
+  assert.match(envExample, /average 250 MB or less/);
   assert.doesNotMatch(studioHtml, /≤5 MB/);
+  assert.doesNotMatch(studioHtml, /≤250 MB each/);
 });
 
 test("Macaroni Studio uses sandbox-safe inline feedback instead of browser modals", () => {

@@ -1,3 +1,13 @@
+## 2026-06-15 - Macaroni artifact policy needs both hard and aggregate caps
+
+**What happened**: Macaroni's earlier media policy used one per-artifact number to represent both creator freedom and downstream practicality. That made the rule too blunt: every artifact was capped at 250 MB even when a drop could reasonably include one larger hero/video file as long as the rest of the set stayed lightweight.
+
+**Why it mattered**: OBJKT, Fileship gateways, and collector browsers care about load behavior across the whole drop, not just the largest individual file. A single huge file can be acceptable, but a collection where every token is huge can become slow to index, preview, and display, and can trip endpoint timeouts even when IPFS/Pinata technically accept the bytes.
+
+**Rule**: Macaroni media limits may need separate caps for per-file safety and collection-level practicality. Store each token artifact's byte size in Studio drafts, surface the current average, enforce the aggregate policy before pin/deploy/sync, and keep server single-file upload caps, Studio copy, `.env.example`, inventory assertions, and focused tests aligned.
+
+---
+
 ## 2026-06-14 - Macaroni access must separate creator tooling from wtfOS hosted resources
 
 **What happened**: Macaroni's product copy, inventory contract, and server pinning policy drifted toward treating trusted creators and Pin Collector users as the complete Macaroni audience. New Studio drafts could also carry `pin.kind = "wtfos"` before the signed-in account's trusted-creator access was known.

@@ -50,7 +50,9 @@ const ALLOWED_FONT_STACKS = new Set([
 ]);
 const SAFE_HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 const MB = 1024 * 1024;
-const OBJKT_ARTIFACT_MAX_BYTES = 250 * MB;
+const GB = 1024 * MB;
+const OBJKT_ARTIFACT_AVERAGE_BYTES = 250 * MB;
+const OBJKT_ARTIFACT_MAX_BYTES = 1 * GB;
 const OBJKT_COLLECTION_IMAGE_MAX_BYTES = 1 * MB;
 const OBJKT_COLLECTION_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png"]);
 const OBJKT_COLLECTION_IMAGE_LABEL = "1 MB, square JPG/PNG";
@@ -104,7 +106,7 @@ function freshDropState() {
       placeholderCid: "", // pinned pre-reveal metadata (delayed mode)
     },
     pin: { kind: "pinata", jwt: "", url: "", gateway: MD.DEFAULT_GATEWAY },
-    tokens: [], // {id, name, description, attributes, tags, fileName, mediaCid, mediaMime, metadataCid}
+    tokens: [], // {id, name, description, attributes, tags, fileName, mediaBytes, mediaCid, mediaMime, metadataCid}
     stages: [], // {start, price, useAllowlist, maxPerWallet, allowlist:[{address,capacity}]}
     contract: "",
     page: { theme: "dark", accent: "", font: "", blocks: "", css: "", code: "" },
@@ -148,15 +150,68 @@ function sanitizeDropConfig(cfg) {
 }
 
 function sizeLabel(bytes) {
-  return bytes >= MB ? `${Math.round(bytes / MB)} MB` : `${bytes} bytes`;
+  if (bytes >= GB) {
+    const gb = bytes / GB;
+    return `${Number.isInteger(gb) ? gb : gb.toFixed(1)} GB`;
+  }
+  if (bytes >= MB) {
+    const mb = bytes / MB;
+    return `${Number.isInteger(mb) ? mb : mb.toFixed(1)} MB`;
+  }
+  return `${bytes} bytes`;
 }
 
 function validateArtifactFile(file) {
   if (!file) return false;
   if (file.size > OBJKT_ARTIFACT_MAX_BYTES) {
-    return notify(`${file.name} is ${sizeLabel(file.size)}. Macaroni artifacts must be ≤250 MB for OBJKT compatibility.`);
+    return notify(`${file.name} is ${sizeLabel(file.size)}. Macaroni artifacts must be ≤1 GB.`);
   }
   return true;
+}
+
+function artifactSizePolicy() {
+  const sizes = [];
+  const missingSizeTokens = [];
+  const overMax = [];
+  for (const t of state.tokens) {
+    const f = mediaFiles.get(String(t.id));
+    const size = f ? f.size : Number(t.mediaBytes || 0);
+    if (Number.isFinite(size) && size > 0) {
+      sizes.push({ token: t, size });
+      if (size > OBJKT_ARTIFACT_MAX_BYTES) overMax.push({ token: t, size });
+    } else if (t.fileName || t.mediaCid) {
+      missingSizeTokens.push(t);
+    }
+  }
+  const totalBytes = sizes.reduce((sum, item) => sum + item.size, 0);
+  const averageBytes = sizes.length ? totalBytes / sizes.length : 0;
+  return { sizes, missingSizeTokens, overMax, totalBytes, averageBytes };
+}
+
+function assertArtifactSizePolicy({ requireKnownSizes = false } = {}) {
+  const policy = artifactSizePolicy();
+  if (policy.overMax.length) {
+    const first = policy.overMax[0];
+    throw new Error(
+      `Token ${first.token.id} artifact is ${sizeLabel(first.size)}. ` +
+      "Macaroni artifacts must be ≤1 GB each."
+    );
+  }
+  if (requireKnownSizes && policy.missingSizeTokens.length) {
+    const ids = policy.missingSizeTokens.slice(0, 8).map((t) => t.id).join(", ");
+    const extra = policy.missingSizeTokens.length > 8 ? "…" : "";
+    throw new Error(
+      `Macaroni needs artwork file sizes for token(s) ${ids}${extra} before it can verify the 250 MB average. ` +
+      "Re-select those artwork files or re-import the CSV/media before continuing."
+    );
+  }
+  if (policy.sizes.length && policy.averageBytes > OBJKT_ARTIFACT_AVERAGE_BYTES) {
+    throw new Error(
+      `Average artifact size is ${sizeLabel(policy.averageBytes)} across ${policy.sizes.length} token(s). ` +
+      "Keep the drop average at or below 250 MB so gateways and OBJKT can load it reliably."
+    );
+  }
+  return policy;
 }
 
 function imageDimensions(file) {
@@ -385,6 +440,7 @@ async function onCsv(file) {
         tags: r.tags ? r.tags.split(/[;,]\s*/) : [],
         attributes,
         fileName: "",
+        mediaBytes: 0,
         mediaCid: "",
         mediaMime: "",
         metadataCid: "",
@@ -401,7 +457,7 @@ async function onCsv(file) {
     for (const t of tokens) {
       const old = prev.get(t.id);
       if (old) Object.assign(t, {
-        mediaCid: old.mediaCid, mediaMime: old.mediaMime,
+        mediaCid: old.mediaCid, mediaMime: old.mediaMime, mediaBytes: old.mediaBytes || 0,
         metadataCid: "", // metadata depends on sheet content → re-pin
         fileName: old.fileName,
       });
@@ -434,11 +490,12 @@ function matchMedia_() {
   for (const t of state.tokens) {
     const f = mediaFiles.get(String(t.id));
     if (f) {
-      if (t.fileName !== f.name) {
+      if (t.fileName !== f.name || Number(t.mediaBytes || 0) !== f.size) {
         t.mediaCid = "";
         t.metadataCid = "";
       }
       t.fileName = f.name;
+      t.mediaBytes = f.size;
       t.mediaMime = f.type || "application/octet-stream";
     }
   }
@@ -448,10 +505,13 @@ function renderTokens() {
   const total = state.tokens.length;
   const withArt = state.tokens.filter((t) => t.fileName).length;
   const pinned = state.tokens.filter((t) => t.metadataCid).length;
+  const policy = artifactSizePolicy();
+  const averageOk = !policy.sizes.length || policy.averageBytes <= OBJKT_ARTIFACT_AVERAGE_BYTES;
   $("tokenSummary").innerHTML =
     `<span class="pill ${total ? "ok" : ""}">${total} tokens</span>` +
     `<span class="pill ${withArt === total && total ? "ok" : "warn"}">${withArt}/${total} artworks matched</span>` +
-    `<span class="pill ${pinned === total && total ? "ok" : ""}">${pinned}/${total} pinned</span>`;
+    `<span class="pill ${pinned === total && total ? "ok" : ""}">${pinned}/${total} pinned</span>` +
+    `<span class="pill ${averageOk ? "ok" : "bad"}">avg ${sizeLabel(policy.averageBytes)} / 250 MB</span>`;
 
   const tbl = $("tokenTable");
   if (!total) { tbl.innerHTML = ""; return; }
@@ -542,6 +602,11 @@ async function pinAll() {
   for (const t of state.tokens) {
     const f = mediaFiles.get(String(t.id));
     if (f && !validateArtifactFile(f)) return;
+  }
+  try {
+    assertArtifactSizePolicy({ requireKnownSizes: true });
+  } catch (e) {
+    return notify(e.message, "err", "pinStatus");
   }
   // Royalties are baked into the pinned metadata — a missing receiver here
   // would silently ship 0% royalties forever.
@@ -787,6 +852,11 @@ async function deploy() {
     if (!state.drop.title || !state.drop.description) return notify("Title and description are required.", "err", "deployStatus");
     if (!state.tokens.length) return notify("Upload tokens first.", "err", "deployStatus");
     if (state.tokens.some((t) => !t.metadataCid)) return notify("Pin all media + metadata first (step 4).", "err", "deployStatus");
+    try {
+      assertArtifactSizePolicy({ requireKnownSizes: true });
+    } catch (e) {
+      return notify(e.message, "err", "deployStatus");
+    }
     if (!state.stages.length) return notify("Configure at least one sale stage (step 5).", "err", "deployStatus");
     if (state.drop.treasuryAddr && !MD.isAddress(state.drop.treasuryAddr))
       return invalidAddressNotice("Treasury", state.drop.treasuryAddr, "deployStatus");
@@ -883,6 +953,13 @@ async function sync() {
     save();
     if (state.tokens.length && state.tokens.some((t) => !t.metadataCid))
       return notify("Pin all local token metadata before syncing token changes.", "err", "deployStatus");
+    if (state.tokens.length) {
+      try {
+        assertArtifactSizePolicy({ requireKnownSizes: true });
+      } catch (e) {
+        return notify(e.message, "err", "deployStatus");
+      }
+    }
 
     await MD.assertOperationSafety();
     const tezos = MD.getToolkit();

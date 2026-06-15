@@ -250,7 +250,7 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(frame.locator("#gateway")).toHaveValue("https://ipfs.fileship.xyz/");
       await expect(frame.getByText("Collection logo / cover (≤1 MB, square JPG/PNG)")).toBeVisible();
       await expect(frame.locator("#coverFile")).toHaveAttribute("accept", "image/png,image/jpeg");
-      await expect(frame.getByText("Artwork files (≤250 MB each, named by id)")).toBeVisible();
+      await expect(frame.getByText("Artwork files (≤1 GB each, ≤250 MB average, named by id)")).toBeVisible();
 
       const chainId = await frame.evaluate(async () => {
         MD.setupToolkit("shadownet");

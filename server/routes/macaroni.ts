@@ -21,7 +21,8 @@ import { stageAndPinUpload } from "../features/ipfs-pinning/service";
 
 const router = Router();
 
-const DEFAULT_IPFS_MAX_BYTES = 250 * 1024 * 1024;
+const MEBIBYTE_BYTES = 1024 * 1024;
+const DEFAULT_IPFS_MAX_BYTES = 1024 * MEBIBYTE_BYTES;
 const KT1_CONTRACT_ADDRESS = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
 const INSTALLER_PLATFORMS = [
   {
@@ -58,6 +59,13 @@ function macaroniIpfsMaxBytes(): number {
   return envInt("MACARONI_IPFS_MAX_BYTES", DEFAULT_IPFS_MAX_BYTES);
 }
 
+function uploadLimitLabel(bytes: number): string {
+  const gb = bytes / (1024 * MEBIBYTE_BYTES);
+  if (Number.isInteger(gb) && gb >= 1) return `${gb} GB`;
+  const mb = bytes / MEBIBYTE_BYTES;
+  return Number.isInteger(mb) ? `${mb} MB` : `${bytes} bytes`;
+}
+
 function safeInstallerUrl(value: string | undefined): string {
   const text = String(value || "").trim();
   if (!text) return "";
@@ -85,7 +93,7 @@ function runPinUpload(req: Request, res: Response, next: NextFunction) {
     if (!err) return next();
     const message =
       err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE"
-        ? `File exceeds the ${macaroniIpfsMaxBytes()} byte Macaroni IPFS upload limit`
+        ? `File exceeds the ${uploadLimitLabel(macaroniIpfsMaxBytes())} Macaroni IPFS upload limit`
         : "Invalid Macaroni IPFS upload";
     return res.status(400).json({ error: message });
   });
