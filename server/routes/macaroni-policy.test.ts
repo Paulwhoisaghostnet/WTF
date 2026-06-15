@@ -131,7 +131,7 @@ test("Macaroni hosted pinning has a direct-origin ticketed upload lane", () => {
   assert.match(commonSource, /Configure the direct Macaroni upload hostname/);
   assert.match(studioSource, /function makePinUploadProgress/);
   assert.match(studioSource, /upload complete, waiting for IPFS CID/);
-  assert.match(caddyfile, /upload\.wtfos\.app\s*\{[\s\S]*handle \/api\/macaroni\/ipfs\/upload[\s\S]*handle\s*\{\s*respond 404\s*\}[\s\S]*\}/);
+  assert.match(caddyfile, /upload\.wtfos\.app,\s*upload\.5-78-202-50\.sslip\.io\s*\{[\s\S]*handle \/api\/macaroni\/ipfs\/upload[\s\S]*handle\s*\{\s*respond 404\s*\}[\s\S]*\}/);
 });
 
 test("Macaroni Studio uses sandbox-safe inline feedback instead of browser modals", () => {

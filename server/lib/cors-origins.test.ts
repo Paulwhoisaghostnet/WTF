@@ -17,17 +17,17 @@ describe("CORS origin resolution", () => {
   it("includes the standalone colleKT and dues module origins plus legacy aliases", () => {
     const origins = allowedOriginsForRuntime({
       NODE_ENV: "production",
-      PUBLIC_SITE_URL: "https://wtfos.app",
+      PUBLIC_SITE_URL: "https://wtfgameshow.app",
       COLLEKT_MODULE_URL: "https://collekt.wtfos.app/wtf",
       DUES_MODULE_URL: "https://dues.wtfos.app",
       CORS_ALLOWED_ORIGINS: "https://extra.example/path",
     });
 
     assert.equal(origins.has("https://wtfos.app"), true);
+    assert.equal(origins.has("https://wtfgameshow.app"), true);
     assert.equal(origins.has("https://collekt.wtfos.app"), true);
     assert.equal(origins.has("https://dues.wtfos.app"), true);
     assert.equal(origins.has("https://dues.wtfgameshow.app"), true);
-    assert.equal(origins.has("https://wtfgameshow.app"), true);
     assert.equal(origins.has("https://extra.example"), true);
   });
 

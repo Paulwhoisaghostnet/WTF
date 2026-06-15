@@ -17,7 +17,7 @@ assert.match(
 
 assert.match(
   caddyfile,
-  /upload\.wtfos\.app\s*\{[\s\S]*handle \/api\/macaroni\/ipfs\/upload\s*\{[\s\S]*reverse_proxy app:3000[\s\S]*handle\s*\{\s*respond 404\s*\}[\s\S]*\}/,
+  /upload\.wtfos\.app,\s*upload\.5-78-202-50\.sslip\.io\s*\{[\s\S]*handle \/api\/macaroni\/ipfs\/upload\s*\{[\s\S]*reverse_proxy app:3000[\s\S]*handle\s*\{\s*respond 404\s*\}[\s\S]*\}/,
   "upload.wtfos.app must proxy only the ticket-authenticated Macaroni upload endpoint",
 );
 

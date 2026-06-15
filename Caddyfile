@@ -130,7 +130,7 @@ www.wtfos.app, wtfgameshow.app, www.wtfgameshow.app, new.wtfgameshow.app {
 	redir https://wtfos.app{uri} permanent
 }
 
-upload.wtfos.app {
+upload.wtfos.app, upload.5-78-202-50.sslip.io {
 	encode gzip zstd
 
 	handle /api/macaroni/ipfs/upload {
