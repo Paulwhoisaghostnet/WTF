@@ -4887,3 +4887,15 @@
 **Fix**: Added an Electron desktop package with a local Macaroni asset server, native-mode API boundaries, export-to-Documents support, reproducible npm scripts, GitHub Actions builds for macOS/Windows/Raspberry Pi, packaging policy tests, and docs. Moved `electron` to `devDependencies` after the builder rejected it in `dependencies`.
 
 **Rule**: Any downloadable native app slot needs a matching package lock, CI artifact workflow, release instructions, and at least one local Electron Builder smoke before the UI points users at it. Keep Electron itself in `devDependencies`.
+
+---
+
+## 2026-06-15 - DNS cutovers need endpoint-level token validation
+
+**What happened**: The Macaroni direct upload lane was ready on the origin server, but the canonical `upload.wtfos.app` DNS cutover was initially blocked because the provided Cloudflare credentials could list the `wtfos.app` zone but failed on DNS-record read/write endpoints. Local and Hetzner searches first found token names, account metadata, and Wrangler package references, but no saved usable DNS-edit Cloudflare API token secret. A later Cloudflare credential set was stored on Hetzner under `/etc/wtf/cloudflare.env`; its account token could administer account-owned tokens but still returned auth errors for `/zones/:zone_id/dns_records`.
+
+**Why it mattered**: Cloudflare token names, account ids, and broad zone visibility are not enough to edit DNS. Planning a canonical upload-domain cutover around a token that has not been tested against `/zones/:id/dns_records` leaves production on the fallback origin and makes the remaining blocker look like an app issue instead of an access issue.
+
+**Fix**: Used the account-owned token admin permission to mint a narrow `wtfos.app` DNS-edit token with `Zone Read` and `DNS Write`, stored it as `CLOUDFLARE_DNS_API_TOKEN` in `/etc/wtf/cloudflare.env`, created DNS-only `A upload.wtfos.app -> 5.78.202.50`, and then changed production `MACARONI_DIRECT_UPLOAD_ORIGIN` from the sslip fallback to `https://upload.wtfos.app`.
+
+**Rule**: Before a DNS-only cutover, test the actual operation endpoint with the token, not just token metadata or zone listing. For Cloudflare DNS changes, confirm `GET` and `POST/PATCH` access to `/zones/:zone_id/dns_records`; if an account token can manage account-owned tokens but cannot edit zone DNS directly, mint and store a narrow zone DNS token instead of broadening the app runtime secret surface.

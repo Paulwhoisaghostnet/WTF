@@ -5484,7 +5484,8 @@ Priority labels:
   - GitHub: Deploy to Hetzner run `27519983597` and Quality Gates run `27519983587` passed for commit `57e5e30a828816c2e7f6d40a9f4734a764f6e724`.
   - Production: `https://wtfos.app/api/health` returned `status:"ok"` with `commitRef:"57e5e30"`, the app container had Macaroni direct origin and ticket secret env loaded, and live static Macaroni `common.js`/`studio.js` contained the ticketed upload plus upload-progress code.
   - Direct origin: `https://upload.5-78-202-50.sslip.io/` returned Caddy 404, CORS preflight to `/api/macaroni/ipfs/upload` from `https://wtfos.app` returned 204 with `Access-Control-Allow-Origin: https://wtfos.app`, and unauthenticated upload POST returned 401 `Invalid or expired Macaroni upload ticket`.
-  - Follow-up: Cloudflare DNS for `upload.wtfos.app` still resolves through the orange-cloud edge; flip it to DNS-only A/AAAA when Cloudflare access is available, then update `MACARONI_DIRECT_UPLOAD_ORIGIN` from the sslip fallback to `https://upload.wtfos.app`.
+  - 2026-06-15 canonical host follow-up: the Cloudflare/R2 credential set is stored on Hetzner at `/etc/wtf/cloudflare.env` with `0600` root-only permissions. The account token can administer account-owned tokens but could not edit zone DNS directly, so a narrow `CLOUDFLARE_DNS_API_TOKEN` was minted for `wtfos.app` with `Zone Read` and `DNS Write`.
+  - 2026-06-15 canonical verification: Cloudflare DNS now has DNS-only `A upload.wtfos.app -> 5.78.202.50`, public resolvers `1.1.1.1` and `8.8.8.8` both returned `5.78.202.50`, `https://upload.wtfos.app/` returned Caddy 404 instead of Cloudflare, production app env reports `MACARONI_DIRECT_UPLOAD_ORIGIN=https://upload.wtfos.app`, CORS preflight to `/api/macaroni/ipfs/upload` from `https://wtfos.app` returned 204, unauthenticated upload POST returned 401, and `https://wtfos.app/api/health` returned `ok` on commit `d38b572` with jobs healthy.
 
 ### WTF-BB-256 - Macaroni access/export workflow drift
 
