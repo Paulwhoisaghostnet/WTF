@@ -66,6 +66,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves the IPFS provider selector and wtfOS Publish button follow `trusted_market_creator` access, proves a mismatched RPC is blocked before wallet signing, confirms explicit connect does not open a wallet handoff before the Beacon picker is visible, checks from `/tools/macaroni` that Beacon's real Kukai option can escape the sandbox and load `https://shadownet.kukai.app` instead of a blank, mainnet, or Temple-only tab, asserts rapid generated-page connect clicks coalesce to one Beacon permission request, and keeps source-policy coverage for OBJKT media limits, sandbox-safe Studio notices without native `alert`/`confirm`, shared mainnet/Shadownet deploy-path parity, optional treasury/royalty address normalization, new-drop draft reset, backup JSON restore, sale-stage save confirmation, contract-required wtfOS publishing, non-image cover preview metadata, installer manifest visibility, the generated mint page's validated wallet restore, disconnect, accessible controls/status regions, balance preflight, max-per-wallet and allowlist remaining allowance clamping, TzKT-owned-mint lookup, TzKT recent-mint transfer lookup, Objkt/TzKT minter identity fallback, Fileship gateway default, and CSS theme allowlist paths.",
   },
   {
+    id: "macaroni.desktop-installer-pipeline",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools"],
+    ownerSpec: "scripts/macaroni-desktop-package-policy.test.mjs, .github/workflows/macaroni-desktop-installers.yml",
+    verificationCommand:
+      "npm run macaroni:desktop:check && npm run dist:mac --prefix apps/macaroni-desktop",
+    userVisibleAssertion:
+      "Macaroni exposes real no-prereq desktop installer targets for macOS, Windows, and Raspberry Pi while native Studio hides hosted installer downloads and explains that wtfOS pinning/subdomain publishing are unavailable outside wtfOS.",
+    durableSideEffectAssertion:
+      "The desktop policy test verifies the Electron wrapper serves bundled local Studio assets, blocks `/api/macaroni/ipfs/pin` and `/api/macaroni/publish`, writes exported drop sites under the user's Documents/Macaroni/site folder, and the local Electron Builder smoke produces macOS DMG/ZIP artifacts plus an app bundle containing `Contents/Resources/app.asar`; CI builds macOS, Windows NSIS, and Raspberry Pi arm64 Debian artifacts.",
+  },
+  {
     id: "inventory.temporary-grants-unlock-apps",
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSurfaceIds: ["arcade", "casino", "wtfiam"],

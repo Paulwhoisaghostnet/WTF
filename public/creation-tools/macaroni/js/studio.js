@@ -55,6 +55,7 @@ const OBJKT_COLLECTION_IMAGE_MAX_BYTES = 1 * MB;
 const OBJKT_COLLECTION_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png"]);
 const OBJKT_COLLECTION_IMAGE_LABEL = "1 MB, square JPG/PNG";
 const KT1_CONTRACT_ADDRESS = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
+const IS_NATIVE_APP = Boolean(window.MACARONI_DESKTOP && window.MACARONI_DESKTOP.native);
 const INSTALLER_PLATFORMS = [
   { key: "macos", id: "installerMacos", label: "macOS" },
   { key: "windows", id: "installerWindows", label: "Windows" },
@@ -244,7 +245,9 @@ function renderPinKindOptions() {
   }
   const hint = $("pinAccessHint");
   if (hint) {
-    hint.textContent = canUseWtfosPinning
+    hint.textContent = IS_NATIVE_APP
+      ? "Macaroni Desktop uses your own Pinata JWT or IPFS node. wtfOS hosted pinning and subdomain publishing are not included."
+      : canUseWtfosPinning
       ? "wtfOS pinning and wtfOS subdomain publishing are enabled for this trusted creator account."
       : "Any wtfOS user can deploy a blind-drop contract here. wtfOS pinning and wtfOS subdomain publishing appear only for trusted creators.";
   }
@@ -261,12 +264,17 @@ function renderPublishAccess() {
   const hint = $("publishPathHint");
   if (hint) {
     hint.innerHTML = canUseWtfosPinning
-      ? '<strong>Export website</strong> downloads <code>macaroni-site.zip</code> for self-hosting. <strong>Publish to wtfOS</strong> saves the mint page to your <code>username.wtfos.me/drop-title</code> site path. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.'
+      ? '<strong>Export website</strong> downloads <code>macaroni-site.zip</code> for self-hosting. <strong>Publish to wtfOS</strong> requires a deployed or resumed <code>KT1...</code> contract and saves the mint page to your <code>username.wtfos.me/drop-title</code> site path. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.'
       : '<strong>Export website</strong> downloads <code>macaroni-site.zip</code> for installing the mint site on your own website. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.';
   }
 }
 
 async function refreshPinningAccess() {
+  if (IS_NATIVE_APP) {
+    canUseWtfosPinning = false;
+    renderPinKindOptions();
+    return;
+  }
   try {
     const res = await MD.apiFetch("/api/auth/user");
     if (res.ok) canUseWtfosPinning = hasWtfosPinningAccess(await res.json());
@@ -1242,6 +1250,11 @@ function setInstallerLink(platform, item) {
 }
 
 async function refreshInstallerDownloads() {
+  if (IS_NATIVE_APP) {
+    const section = $("secInstallers");
+    if (section) section.hidden = true;
+    return;
+  }
   const status = $("installerStatus");
   try {
     const res = await MD.apiFetch("/api/macaroni/installers");

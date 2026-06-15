@@ -863,6 +863,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "ipfs-pinning.pds-backed-wallet-backup",
       "skullzarmy.fafolab-integration-contracts",
       "macaroni.shadownet-rpc-wallet-setup",
+      "macaroni.desktop-installer-pipeline",
     ],
   },
   {

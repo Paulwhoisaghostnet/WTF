@@ -1,0 +1,76 @@
+{
+  "name": "@wtf/macaroni-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "author": "wtfOS",
+  "description": "Native Macaroni Studio installer builds for Mac, Windows, and Raspberry Pi.",
+  "main": "src/main.cjs",
+  "scripts": {
+    "prepare": "node scripts/prepare-assets.mjs",
+    "start": "npm run prepare && electron .",
+    "pack": "npm run prepare && electron-builder --dir --publish never",
+    "dist": "npm run prepare && electron-builder --publish never",
+    "dist:mac": "npm run prepare && electron-builder --mac dmg zip --universal --publish never",
+    "dist:mac:dir": "npm run prepare && electron-builder --mac dir --universal --publish never",
+    "dist:windows": "npm run prepare && electron-builder --win nsis --x64 --publish never",
+    "dist:raspberry-pi": "npm run prepare && electron-builder --linux deb --arm64 --publish never"
+  },
+  "build": {
+    "appId": "app.wtfos.macaroni",
+    "productName": "Macaroni Studio",
+    "asar": true,
+    "files": [
+      "package.json",
+      "src/**/*",
+      "macaroni/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "artifactName": "Macaroni-Studio-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "dmg": {
+      "sign": false
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "linux": {
+      "category": "Development",
+      "target": [
+        {
+          "target": "deb",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "42.4.0",
+    "electron-builder": "26.15.3"
+  }
+}

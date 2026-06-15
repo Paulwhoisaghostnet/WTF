@@ -1,5 +1,7 @@
 node_modules/
 dist/
+apps/macaroni-desktop/macaroni/
+apps/macaroni-desktop/release/
 .env
 .env.*
 !.env.example

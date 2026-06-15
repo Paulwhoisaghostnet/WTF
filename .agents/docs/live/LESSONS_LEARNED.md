@@ -4855,3 +4855,15 @@
 **Fix**: Kept draft export available, added a Studio-only wtfOS publish readiness assertion for valid `KT1...` contracts, enforced the same guard on `/api/macaroni/publish`, and updated inventory probes/docs to make the boundary explicit.
 
 **Rule**: Treat "download/export draft" and "publish public mint page" as separate product states. Live publication must fail closed on missing contract address both in the client tool and the server route.
+
+---
+
+## 2026-06-14 - Native download buttons need a real release pipeline
+
+**What happened**: Macaroni had UI and server manifest support for future Mac, Windows, and Raspberry Pi downloads, but no committed package, lockfile, CI workflow, or release path that could actually produce installer artifacts. The first Electron Builder smoke also caught a packaging-rule miss: `electron` cannot be listed under runtime `dependencies`.
+
+**Why it mattered**: The native Macaroni promise is specifically to remove Python/npm/manual-server setup from creator testing. Installer UI without reproducible artifacts would send users back into the same unsupported setup loop, and a workflow that has never invoked Electron Builder can fail after the links are already advertised.
+
+**Fix**: Added an Electron desktop package with a local Macaroni asset server, native-mode API boundaries, export-to-Documents support, reproducible npm scripts, GitHub Actions builds for macOS/Windows/Raspberry Pi, packaging policy tests, and docs. Moved `electron` to `devDependencies` after the builder rejected it in `dependencies`.
+
+**Rule**: Any downloadable native app slot needs a matching package lock, CI artifact workflow, release instructions, and at least one local Electron Builder smoke before the UI points users at it. Keep Electron itself in `devDependencies`.

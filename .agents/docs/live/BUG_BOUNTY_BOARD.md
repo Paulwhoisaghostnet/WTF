@@ -5482,6 +5482,35 @@ Priority labels:
   - `npm run test:e2e:inventory:coverage`
   - Local Playwright smoke of `http://127.0.0.1:4787/studio.html` confirmed default signed-in/non-trusted UI state: Pinata selected, no `wtfos` provider option, `Publish to wtfOS` hidden/disabled, self-host export copy visible, three installer slots disabled without configured artifact URLs, and no horizontal overflow.
 
+### WTF-BB-257 - Macaroni native download slots had no installer pipeline
+
+- Category: Macaroni / native installer packaging
+- Status: Verified
+- Owner/Session: Codex Macaroni desktop packaging pipeline
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - User clarified on 2026-06-14 that Macaroni should offer downloadable native apps for Windows, Mac, and Raspberry Pi without requiring testers to preinstall Python/npm or manually run a local server.
+  - The Studio could expose installer slots through `/api/macaroni/installers`, but the repo had no package, lockfile, CI workflow, or release process that actually produced those no-prereq artifacts.
+- Why it matters:
+  - Dead or hand-built installer links would recreate the exact setup failure the hosted wtfOS integration was meant to remove.
+  - The desktop build must also preserve the access split: local users can create/deploy/export, but wtfOS hosted pinning and subdomain publishing stay unavailable outside wtfOS.
+- Fix:
+  - Add `apps/macaroni-desktop`, an Electron wrapper that serves the bundled Macaroni Studio from localhost, exports static drop pages to the user's Documents folder, and blocks wtfOS hosted pin/publish APIs with explicit native-app messages.
+  - Add reproducible npm scripts and a committed package lock for prepare, local pack/dist, macOS, Windows NSIS, and Raspberry Pi arm64 Debian builds.
+  - Add a GitHub Actions workflow to build all installer targets, upload artifacts, and optionally attach them to `macaroni-desktop-v*` releases.
+  - Add policy coverage and packaging docs so future passes can verify the installer pipeline without rediscovering Electron Builder rules.
+- Verification:
+  - `npm ci --prefix apps/macaroni-desktop`
+  - `node --check apps/macaroni-desktop/src/main.cjs`
+  - `node --check apps/macaroni-desktop/src/preload.cjs`
+  - `node --check public/creation-tools/macaroni/js/studio.js`
+  - `npm run macaroni:desktop:prepare`
+  - `npm run macaroni:desktop:check`
+  - `npm run dist:mac:dir --prefix apps/macaroni-desktop`
+  - `npm run dist:mac --prefix apps/macaroni-desktop`
+  - Local build produced `apps/macaroni-desktop/release/mac-universal/Macaroni Studio.app` with `Contents/Resources/app.asar`.
+  - Local installer build produced `Macaroni-Studio-1.0.0-mac-universal.dmg`, `.zip`, and blockmap artifacts.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

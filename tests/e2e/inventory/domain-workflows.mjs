@@ -608,6 +608,7 @@ export const DOMAIN_WORKFLOWS = [
       "game_studio.build.succeeded",
       "game_studio.submitted_to_arcade",
       "macaroni.installer_manifest.viewed",
+      "macaroni.desktop.exported",
       "macaroni.drop_published",
       "arcade.game.submitted",
     ],

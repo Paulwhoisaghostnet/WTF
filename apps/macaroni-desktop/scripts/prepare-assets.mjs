@@ -1,0 +1,48 @@
+#!/usr/bin/env node
+
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const appDir = path.resolve(scriptDir, "..");
+const repoRoot = path.resolve(appDir, "../..");
+const sourceDir = path.join(repoRoot, "public/creation-tools/macaroni");
+const outDir = path.join(appDir, "macaroni");
+
+const required = [
+  "studio.html",
+  "drop.html",
+  "css/theme.css",
+  "js/common.js",
+  "js/studio.js",
+  "js/site-bundle.js",
+  "vendor/tezos.js",
+  "contract/mydrop.contract.json",
+];
+
+if (!existsSync(sourceDir)) {
+  console.error(`Macaroni source assets not found: ${sourceDir}`);
+  process.exit(1);
+}
+
+for (const rel of required) {
+  const target = path.join(sourceDir, rel);
+  if (!existsSync(target) || statSync(target).size === 0) {
+    console.error(`Missing Macaroni desktop asset: ${rel}`);
+    process.exit(1);
+  }
+}
+
+rmSync(outDir, { recursive: true, force: true });
+mkdirSync(outDir, { recursive: true });
+
+for (const entry of readdirSync(sourceDir)) {
+  const from = path.join(sourceDir, entry);
+  const to = path.join(outDir, entry);
+  const stats = statSync(from);
+  if (stats.isDirectory()) cpSync(from, to, { recursive: true });
+  else if (stats.isFile()) copyFileSync(from, to);
+}
+
+console.log(`Prepared Macaroni desktop assets in ${path.relative(repoRoot, outDir)}`);
