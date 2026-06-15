@@ -27,7 +27,10 @@ test("Macaroni static API calls use the wtfOS CSRF boundary and do not embed pin
 
   assert.match(commonSource, /\/api\/auth\/csrf-token/);
   assert.match(commonSource, /X-CSRF-Token/);
-  assert.match(commonSource, /\/api\/macaroni\/ipfs\/pin/);
+  assert.match(commonSource, /\/api\/macaroni\/ipfs\/upload-ticket/);
+  assert.match(commonSource, /ticket\.uploadUrl/);
+  assert.match(commonSource, /Authorization: "Bearer " \+ ticket\.token/);
+  assert.match(commonSource, /credentials: "omit"/);
   assert.match(studioSource, /\/api\/auth\/user/);
   assert.match(studioSource, /trusted_market_creator/);
   assert.doesNotMatch(studioSource, /use_wtfos_pinning/);
@@ -97,8 +100,38 @@ test("Macaroni exposes practical media limits in Studio and server pinning", () 
   assert.match(studioHtml, /Artwork files \(≤1 GB each, ≤250 MB average, named by id\)/);
   assert.match(envExample, /Default 1 GB \(1073741824\)/);
   assert.match(envExample, /average 250 MB or less/);
+  assert.match(envExample, /MACARONI_DIRECT_UPLOAD_ORIGIN=/);
+  assert.match(envExample, /MACARONI_UPLOAD_TICKET_SECRET=/);
   assert.doesNotMatch(studioHtml, /≤5 MB/);
   assert.doesNotMatch(studioHtml, /≤250 MB each/);
+});
+
+test("Macaroni hosted pinning has a direct-origin ticketed upload lane", () => {
+  const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
+  const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const caddyfile = readFileSync("Caddyfile", "utf8");
+
+  assert.match(routeSource, /MACARONI_UPLOAD_AUDIENCE = "macaroni-ipfs-upload"/);
+  assert.match(routeSource, /MACARONI_UPLOAD_PATH = "\/api\/macaroni\/ipfs\/upload"/);
+  assert.match(routeSource, /MACARONI_DIRECT_UPLOAD_ORIGIN/);
+  assert.match(routeSource, /MACARONI_UPLOAD_TICKET_SECRET/);
+  assert.match(routeSource, /router\.post\(\s*"\/api\/macaroni\/ipfs\/upload-ticket",\s*requirePermission\("trusted_market_creator"\)/s);
+  assert.match(routeSource, /createHmac\("sha256", macaroniUploadTicketSecret\(\)\)/);
+  assert.match(routeSource, /timingSafeEqual/);
+  assert.match(routeSource, /usedUploadTickets\.set\(ticket\.jti, ticket\.exp\)/);
+  assert.match(routeSource, /router\.post\(\s*MACARONI_UPLOAD_PATH,\s*requireMacaroniUploadTicket,\s*runPinUpload/s);
+  assert.match(routeSource, /file\.buffer\.length !== ticket\.byteSize/);
+  assert.match(routeSource, /userId: ticket\.sub/);
+  assert.match(commonSource, /async function issueWtfosUploadTicket/);
+  assert.match(commonSource, /\/api\/macaroni\/ipfs\/upload-ticket/);
+  assert.match(commonSource, /uploadFormData\(ticket\.uploadUrl/);
+  assert.match(commonSource, /xhr\.upload\.onprogress/);
+  assert.match(commonSource, /credentials: "omit"/);
+  assert.match(commonSource, /Configure the direct Macaroni upload hostname/);
+  assert.match(studioSource, /function makePinUploadProgress/);
+  assert.match(studioSource, /upload complete, waiting for IPFS CID/);
+  assert.match(caddyfile, /upload\.wtfos\.app\s*\{[\s\S]*handle \/api\/macaroni\/ipfs\/upload[\s\S]*handle\s*\{\s*respond 404\s*\}[\s\S]*\}/);
 });
 
 test("Macaroni Studio uses sandbox-safe inline feedback instead of browser modals", () => {

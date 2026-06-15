@@ -1,7 +1,9 @@
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { Router, type NextFunction, type Request, type Response } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { isAuthenticated, requirePermission } from "../auth/passport";
+import { getSessionSecret } from "../auth/session-secret";
 import {
   claimUserSite,
   getUserSiteState,
@@ -23,6 +25,9 @@ const router = Router();
 
 const MEBIBYTE_BYTES = 1024 * 1024;
 const DEFAULT_IPFS_MAX_BYTES = 1024 * MEBIBYTE_BYTES;
+const MACARONI_UPLOAD_AUDIENCE = "macaroni-ipfs-upload";
+const MACARONI_UPLOAD_PATH = "/api/macaroni/ipfs/upload";
+const MACARONI_UPLOAD_TICKET_TTL_MS = 10 * 60 * 1000;
 const KT1_CONTRACT_ADDRESS = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
 const INSTALLER_PLATFORMS = [
   {
@@ -50,6 +55,30 @@ const publishSchema = z.object({
   slug: z.string().trim().min(1).max(80).optional(),
 });
 
+const uploadTicketSchema = z.object({
+  fileName: z.string().trim().min(1).max(260).optional(),
+  byteSize: z.number().int().nonnegative().optional(),
+  mimeType: z.string().trim().max(160).optional(),
+});
+
+type MacaroniUploadTicket = {
+  v: 1;
+  aud: typeof MACARONI_UPLOAD_AUDIENCE;
+  sub: number;
+  jti: string;
+  exp: number;
+  fileName: string;
+  byteSize: number | null;
+  mimeType: string;
+  maxBytes: number;
+};
+
+type MacaroniUploadRequest = Request & {
+  macaroniUploadTicket?: MacaroniUploadTicket;
+};
+
+const usedUploadTickets = new Map<string, number>();
+
 function envInt(name: string, fallback: number): number {
   const parsed = Number(process.env[name]);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
@@ -64,6 +93,109 @@ function uploadLimitLabel(bytes: number): string {
   if (Number.isInteger(gb) && gb >= 1) return `${gb} GB`;
   const mb = bytes / MEBIBYTE_BYTES;
   return Number.isInteger(mb) ? `${mb} MB` : `${bytes} bytes`;
+}
+
+function macaroniUploadTicketSecret(): string {
+  return process.env.MACARONI_UPLOAD_TICKET_SECRET || getSessionSecret();
+}
+
+function safeDirectUploadOrigin(): string {
+  const text = String(process.env.MACARONI_DIRECT_UPLOAD_ORIGIN || "").trim();
+  if (!text) return "";
+  try {
+    const url = new URL(text);
+    const local = ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+    if (url.protocol === "https:" || (process.env.NODE_ENV !== "production" && url.protocol === "http:" && local)) {
+      return url.origin;
+    }
+  } catch (_) {
+    return "";
+  }
+  return "";
+}
+
+function macaroniUploadUrl(): string {
+  const origin = safeDirectUploadOrigin();
+  return origin ? `${origin}${MACARONI_UPLOAD_PATH}` : MACARONI_UPLOAD_PATH;
+}
+
+function signUploadTicketPayload(encodedPayload: string): string {
+  return createHmac("sha256", macaroniUploadTicketSecret())
+    .update(encodedPayload)
+    .digest("base64url");
+}
+
+function createMacaroniUploadTicket(input: {
+  userId: number;
+  fileName?: string;
+  byteSize?: number;
+  mimeType?: string;
+}): { token: string; ticket: MacaroniUploadTicket } {
+  const ticket: MacaroniUploadTicket = {
+    v: 1,
+    aud: MACARONI_UPLOAD_AUDIENCE,
+    sub: input.userId,
+    jti: randomBytes(18).toString("base64url"),
+    exp: Date.now() + MACARONI_UPLOAD_TICKET_TTL_MS,
+    fileName: String(input.fileName || "macaroni-upload").slice(0, 260),
+    byteSize: Number.isInteger(input.byteSize) ? Number(input.byteSize) : null,
+    mimeType: String(input.mimeType || "application/octet-stream").slice(0, 160),
+    maxBytes: macaroniIpfsMaxBytes(),
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(ticket)).toString("base64url");
+  return {
+    token: `${encodedPayload}.${signUploadTicketPayload(encodedPayload)}`,
+    ticket,
+  };
+}
+
+function cleanupUsedUploadTickets(now = Date.now()) {
+  for (const [jti, exp] of usedUploadTickets.entries()) {
+    if (exp <= now) usedUploadTickets.delete(jti);
+  }
+}
+
+function verifyMacaroniUploadTicket(token: string): MacaroniUploadTicket | null {
+  const [encodedPayload, signature, extra] = String(token || "").split(".");
+  if (!encodedPayload || !signature || extra) return null;
+  const expected = signUploadTicketPayload(encodedPayload);
+  const actualBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length || !timingSafeEqual(actualBuffer, expectedBuffer)) {
+    return null;
+  }
+  let ticket: MacaroniUploadTicket;
+  try {
+    ticket = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as MacaroniUploadTicket;
+  } catch (_) {
+    return null;
+  }
+  if (ticket.v !== 1 || ticket.aud !== MACARONI_UPLOAD_AUDIENCE) return null;
+  if (!Number.isInteger(ticket.sub) || ticket.sub < 1) return null;
+  if (!ticket.jti || !Number.isFinite(ticket.exp) || ticket.exp <= Date.now()) return null;
+  if (!Number.isInteger(ticket.maxBytes) || ticket.maxBytes < 1 || ticket.maxBytes > macaroniIpfsMaxBytes()) return null;
+  if (ticket.byteSize != null && (!Number.isInteger(ticket.byteSize) || ticket.byteSize < 0 || ticket.byteSize > ticket.maxBytes)) {
+    return null;
+  }
+  cleanupUsedUploadTickets();
+  if (usedUploadTickets.has(ticket.jti)) return null;
+  usedUploadTickets.set(ticket.jti, ticket.exp);
+  return ticket;
+}
+
+function bearerToken(req: Request): string {
+  const value = String(req.get("authorization") || "");
+  const match = value.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || "";
+}
+
+function requireMacaroniUploadTicket(req: Request, res: Response, next: NextFunction) {
+  const ticket = verifyMacaroniUploadTicket(bearerToken(req));
+  if (!ticket) {
+    return res.status(401).json({ error: "Invalid or expired Macaroni upload ticket" });
+  }
+  (req as MacaroniUploadRequest).macaroniUploadTicket = ticket;
+  return next();
 }
 
 function safeInstallerUrl(value: string | undefined): string {
@@ -127,6 +259,73 @@ function handleMacaroniSiteError(res: Response, err: unknown) {
   console.error("[macaroni] route error:", err);
   return res.status(500).json({ error: "Failed to process Macaroni request" });
 }
+
+router.post(
+  "/api/macaroni/ipfs/upload-ticket",
+  requirePermission("trusted_market_creator"),
+  (req, res) => {
+    const parsed = uploadTicketSchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid Macaroni upload ticket request" });
+    }
+
+    const byteSize = parsed.data.byteSize;
+    const maxBytes = macaroniIpfsMaxBytes();
+    if (byteSize != null && byteSize > maxBytes) {
+      return res.status(400).json({
+        error: `File exceeds the ${uploadLimitLabel(maxBytes)} Macaroni IPFS upload limit`,
+      });
+    }
+
+    const user = req.user as { id: number };
+    const { token, ticket } = createMacaroniUploadTicket({
+      userId: user.id,
+      fileName: parsed.data.fileName,
+      byteSize,
+      mimeType: parsed.data.mimeType,
+    });
+    return res.json({
+      token,
+      uploadUrl: macaroniUploadUrl(),
+      direct: Boolean(safeDirectUploadOrigin()),
+      expiresAt: new Date(ticket.exp).toISOString(),
+      maxBytes: ticket.maxBytes,
+    });
+  }
+);
+
+router.post(
+  MACARONI_UPLOAD_PATH,
+  requireMacaroniUploadTicket,
+  runPinUpload,
+  async (req, res) => {
+    const ticket = (req as MacaroniUploadRequest).macaroniUploadTicket;
+    const file = req.file;
+    if (!ticket) return res.status(401).json({ error: "Invalid or expired Macaroni upload ticket" });
+    if (!file) return res.status(400).json({ error: "Upload a file to pin" });
+    if (ticket.byteSize != null && file.buffer.length !== ticket.byteSize) {
+      return res.status(400).json({ error: "Macaroni upload size did not match the upload ticket" });
+    }
+
+    try {
+      const result = await stageAndPinUpload({
+        userId: ticket.sub,
+        fileName: file.originalname || ticket.fileName || "macaroni-upload",
+        mimeType: file.mimetype || ticket.mimeType || "application/octet-stream",
+        buffer: file.buffer,
+        source: "macaroni",
+        scopeType: "macaroni_drop",
+      });
+      return res.json(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Macaroni IPFS pinning failed";
+      return res.status((err as { status?: number })?.status ?? 503).json({
+        error: message,
+        code: (err as { code?: string })?.code,
+      });
+    }
+  }
+);
 
 router.post(
   "/api/macaroni/ipfs/pin",

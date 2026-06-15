@@ -621,6 +621,8 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/game-studio/projects" },
       { method: "GET", path: "/api/game-studio/templates" },
       { method: "GET", path: "/api/macaroni/installers", expectedStatuses: [200, 401, 403, 404, 500, 503] },
+      { method: "POST", path: "/api/macaroni/ipfs/upload-ticket", body: { fileName: "probe.txt", byteSize: 12, mimeType: "text/plain" }, expectedStatuses: [200, 400, 401, 403, 404, 423, 500, 503] },
+      { method: "POST", path: "/api/macaroni/ipfs/upload", body: {}, expectedStatuses: [400, 401, 403, 404, 413, 423, 500, 503] },
       { method: "POST", path: "/api/macaroni/publish", body: { config: { title: "E2E Macaroni Drop", network: "shadownet", contract: "" } }, expectedStatuses: [400, 401, 403, 404, 423, 500, 503] },
       { method: "GET", path: "/api/arcade/my-games" },
     ],

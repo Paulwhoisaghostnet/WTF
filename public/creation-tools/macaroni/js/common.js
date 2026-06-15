@@ -354,26 +354,96 @@ const MD = (() => {
 
   // ---------- IPFS pinning ----------
   // Providers: wtfOS server pinning, Pinata (JWT), or any IPFS HTTP API (Kubo /api/v0/add).
-  async function pinBlob(provider, blob, filename) {
+  async function issueWtfosUploadTicket(blob, filename) {
+    const res = await apiFetch("/api/macaroni/ipfs/upload-ticket", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: filename || "macaroni-upload",
+        byteSize: Number(blob?.size || 0),
+        mimeType: blob?.type || "application/octet-stream",
+      }),
+    });
+    if (!res.ok) throw new Error("wtfOS upload ticket error " + res.status + ": " + (await res.text()));
+    const json = await res.json();
+    if (!json.token || !json.uploadUrl) throw new Error("wtfOS upload ticket response was incomplete");
+    return json;
+  }
+
+  function responseHeadersFromXhr(raw) {
+    const headers = new Headers();
+    String(raw || "").trim().split(/[\r\n]+/).forEach((line) => {
+      const i = line.indexOf(":");
+      if (i > 0) headers.append(line.slice(0, i).trim(), line.slice(i + 1).trim());
+    });
+    return headers;
+  }
+
+  function uploadFormData(url, init, callbacks) {
+    const onUploadProgress = callbacks && callbacks.onUploadProgress;
+    const onUploadComplete = callbacks && callbacks.onUploadComplete;
+    if (typeof onUploadProgress !== "function" || typeof XMLHttpRequest === "undefined") {
+      return fetch(url, init);
+    }
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(init.method || "POST", url, true);
+      const headers = new Headers(init.headers || {});
+      headers.forEach((value, key) => xhr.setRequestHeader(key, value));
+      xhr.withCredentials = init.credentials === "include";
+      xhr.upload.onprogress = (event) => {
+        onUploadProgress({
+          loaded: event.loaded,
+          total: event.lengthComputable ? event.total : 0,
+        });
+      };
+      xhr.upload.onload = () => {
+        if (typeof onUploadComplete === "function") onUploadComplete();
+      };
+      xhr.onerror = () => reject(new Error("Upload network request failed"));
+      xhr.ontimeout = () => reject(new Error("Upload network request timed out"));
+      xhr.onload = () => {
+        resolve(new Response(xhr.responseText, {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          headers: responseHeadersFromXhr(xhr.getAllResponseHeaders()),
+        }));
+      };
+      xhr.send(init.body);
+    });
+  }
+
+  async function pinBlob(provider, blob, filename, options) {
+    const uploadCallbacks = options || {};
     if (provider.kind === "wtfos") {
+      const ticket = await issueWtfosUploadTicket(blob, filename);
       const fd = new FormData();
       fd.append("file", blob, filename);
-      const res = await apiFetch("/api/macaroni/ipfs/pin", {
+      const res = await uploadFormData(ticket.uploadUrl, {
         method: "POST",
+        headers: { Authorization: "Bearer " + ticket.token },
         body: fd,
-      });
-      if (!res.ok) throw new Error("wtfOS IPFS error " + res.status + ": " + (await res.text()));
+        credentials: "omit",
+      }, uploadCallbacks);
+      if (!res.ok) {
+        const text = await res.text();
+        const route = ticket.direct ? "direct upload lane" : "standard app route";
+        const hint = res.status === 413 && !ticket.direct
+          ? " Configure the direct Macaroni upload hostname for files over the Cloudflare request limit."
+          : "";
+        throw new Error("wtfOS IPFS error " + res.status + " via " + route + ": " + text + hint);
+      }
       const json = await res.json();
       return json.cid || json.IpfsHash;
     }
     if (provider.kind === "pinata") {
       const fd = new FormData();
       fd.append("file", blob, filename);
-      const res = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+      const res = await uploadFormData("https://api.pinata.cloud/pinning/pinFileToIPFS", {
         method: "POST",
         headers: { Authorization: "Bearer " + provider.jwt },
         body: fd,
-      });
+      }, uploadCallbacks);
       if (!res.ok) throw new Error("Pinata error " + res.status + ": " + (await res.text()));
       const json = await res.json();
       return json.IpfsHash;
@@ -382,10 +452,10 @@ const MD = (() => {
       const fd = new FormData();
       fd.append("file", blob, filename);
       const base = provider.url.replace(/\/+$/, "");
-      const res = await fetch(base + "/api/v0/add?pin=true&cid-version=1", {
+      const res = await uploadFormData(base + "/api/v0/add?pin=true&cid-version=1", {
         method: "POST",
         body: fd,
-      });
+      }, uploadCallbacks);
       if (!res.ok) throw new Error("IPFS node error " + res.status + ": " + (await res.text()));
       const text = await res.text();
       const last = text.trim().split("\n").pop();
@@ -394,9 +464,9 @@ const MD = (() => {
     throw new Error("Unknown pinning provider");
   }
 
-  async function pinJson(provider, obj, filename) {
+  async function pinJson(provider, obj, filename, options) {
     const blob = new Blob([JSON.stringify(obj)], { type: "application/json" });
-    return pinBlob(provider, blob, filename || "metadata.json");
+    return pinBlob(provider, blob, filename || "metadata.json", options);
   }
 
   function ipfsToHttp(uri, gateway) {

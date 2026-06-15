@@ -15,6 +15,12 @@ assert.match(
   "Caddyfile must serve the canonical wtfos.app host without the legacy wtfgameshow platform aliases",
 );
 
+assert.match(
+  caddyfile,
+  /upload\.wtfos\.app\s*\{[\s\S]*handle \/api\/macaroni\/ipfs\/upload\s*\{[\s\S]*reverse_proxy app:3000[\s\S]*handle\s*\{\s*respond 404\s*\}[\s\S]*\}/,
+  "upload.wtfos.app must proxy only the ticket-authenticated Macaroni upload endpoint",
+);
+
 const servedBlockHeaders = [...caddyfile.matchAll(/^([^{\n]+)\{\s*\n\s*encode/gm)].map((match) =>
   match[1].trim()
 );

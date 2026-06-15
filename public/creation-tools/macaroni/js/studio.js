@@ -161,6 +161,31 @@ function sizeLabel(bytes) {
   return `${bytes} bytes`;
 }
 
+function makePinUploadProgress(label, fallbackBytes) {
+  let lastPercent = -1;
+  let lastLoadedBucket = -1;
+  return {
+    onUploadProgress(event) {
+      const loaded = Math.max(0, Number(event && event.loaded) || 0);
+      const total = Math.max(0, Number(event && event.total) || Number(fallbackBytes) || 0);
+      if (!total) {
+        const loadedBucket = Math.floor(loaded / MB);
+        if (loadedBucket === lastLoadedBucket) return;
+        lastLoadedBucket = loadedBucket;
+        $("pinStatus").textContent = `${label}: uploading ${sizeLabel(loaded)}…`;
+        return;
+      }
+      const percent = Math.min(100, Math.floor((loaded / total) * 100));
+      if (percent === lastPercent) return;
+      lastPercent = percent;
+      $("pinStatus").textContent = `${label}: uploading ${sizeLabel(Math.min(loaded, total))} / ${sizeLabel(total)} (${percent}%)…`;
+    },
+    onUploadComplete() {
+      $("pinStatus").textContent = `${label}: upload complete, waiting for IPFS CID…`;
+    },
+  };
+}
+
 function validateArtifactFile(file) {
   if (!file) return false;
   if (file.size > OBJKT_ARTIFACT_MAX_BYTES) {
@@ -627,7 +652,12 @@ async function pinAll() {
     // cover image first
     if (coverFile && !state.drop.coverCid) {
       $("pinStatus").textContent = "pinning cover…";
-      state.drop.coverCid = await MD.pinBlob(provider, coverFile, coverFile.name);
+      state.drop.coverCid = await MD.pinBlob(
+        provider,
+        coverFile,
+        coverFile.name,
+        makePinUploadProgress("cover", coverFile.size)
+      );
       state.drop.coverMime = coverFile.type;
       save();
       log("cover pinned: " + state.drop.coverCid);
@@ -663,8 +693,9 @@ async function pinAll() {
       if (!t.mediaCid) {
         const f = mediaFiles.get(String(t.id));
         if (!f) throw new Error(`artwork file for token ${t.id} is not loaded (re-select your files)`);
-        $("pinStatus").textContent = `pinning media ${t.id} (${done + 1}/${todo.length})…`;
-        t.mediaCid = await MD.pinBlob(provider, f, f.name);
+        const mediaLabel = `media ${t.id} (${done + 1}/${todo.length})`;
+        $("pinStatus").textContent = `pinning ${mediaLabel}…`;
+        t.mediaCid = await MD.pinBlob(provider, f, f.name, makePinUploadProgress(mediaLabel, f.size));
         save();
       }
       $("pinStatus").textContent = `pinning metadata ${t.id} (${done + 1}/${todo.length})…`;

@@ -88,6 +88,7 @@ Priority labels:
 | WTF-BB-256 | Verified | Codex Macaroni access/export workflow pass | 2026-06-14 | Macaroni / access model and self-host export | P1 | 12 | 7 | 2 | 5 | 1 | Macaroni product flow now lets any signed-in wtfOS user create/deploy/export blind drops while hosted wtfOS pinning/publishing are trusted-creator-only; verified by focused policy, inventory coverage, and local browser smoke |
 | WTF-BB-262 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Auth / wallet onboarding | P1 | 11 | 8 | 2 | 4 | 1 | Profile now routes wallet linking through explicit signed wallet connect/proof and no longer exposes address-only new-wallet linking; verified by focused source-policy tests, TypeScript, and inventory coverage |
 | WTF-BB-263 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Macaroni / generated mint page readiness | P1 | 9 | 12 | 1 | 4 | 0 | Macaroni wtfOS publish now requires a valid deployed/resumed `KT1...` contract in Studio and on `/api/macaroni/publish`, while draft export remains available; verified by focused policy tests, JS syntax checks, TypeScript, and inventory coverage |
+| WTF-BB-264 | Fixed | Codex Macaroni direct upload lane | 2026-06-15 | Macaroni / hosted IPFS direct upload lane | P1 | 10 | 10 | 2 | 4 | 0 | Live hosted pinning stalled before token 3 reached server-side staging because large media uploads traverse Cloudflare; fixed in source with short-lived upload tickets, a bearer-only `/api/macaroni/ipfs/upload` endpoint, and an `upload.wtfos.app` Caddy block scoped to that endpoint, pending production DNS/env/deploy verification |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5457,6 +5458,30 @@ Priority labels:
   - Passed `npx tsx --test server/routes/macaroni-policy.test.ts server/features/macaroni/publish.test.ts`.
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed `tsc --noEmit --pretty false`.
+
+### WTF-BB-264 - Macaroni hosted pinning can stall behind Cloudflare's request body cap
+
+- Category: Macaroni / hosted IPFS direct upload lane
+- Status: Fixed
+- Owner/Session: Codex Macaroni direct upload lane
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - 2026-06-15 live incident report: creator saw artifact/metadata pinning freeze around token 3 of a 120-token drop.
+  - Read-only production checks showed `/api/health` healthy on commit `cc2d7bd`, app container healthy/not OOM-killed, and no Macaroni/IPFS app log errors.
+  - `ipfs_pinning_jobs` had only the collection cover, `1.mp4`, `1.json`, `2.mp4`, and `2.json` for source `macaroni`; latest row was `2.json` at `2026-06-15 01:13:13 UTC`.
+  - `challenge_system_events` showed matching `ipfs_pinning.storage.staged` events through `2.json` only; no token 3 staging event existed, so the stall was before the first durable server progress marker for that artifact.
+- Why it matters:
+  - The app can enforce a 1 GB Macaroni upload limit, but `wtfos.app` is still Cloudflare-proxied. Oversized multipart uploads can be rejected or stranded before Express/multer ever sees the request, making Studio look frozen while the backend has no row to inspect.
+  - Widening auth cookies to a separate upload subdomain would increase session blast radius. The direct path needs a narrow bearer-ticket boundary instead.
+- Correction:
+  - Added `/api/macaroni/ipfs/upload-ticket`, gated by `trusted_market_creator`, to mint short-lived HMAC upload tickets through the normal same-origin CSRF/session boundary.
+  - Added bearer-only `/api/macaroni/ipfs/upload`, which validates and consumes the ticket before multer buffers the file, then stages/pins as source `macaroni`.
+  - Updated Studio's wtfOS provider to request an upload ticket before each hosted pin and POST the actual file to the returned upload URL with `Authorization: Bearer ...` and `credentials: "omit"`.
+  - Added `MACARONI_DIRECT_UPLOAD_ORIGIN` and `MACARONI_UPLOAD_TICKET_SECRET` env guidance. When `MACARONI_DIRECT_UPLOAD_ORIGIN=https://upload.wtfos.app`, Studio sends only the file POST to that direct DNS-only host.
+  - Added a Caddy `upload.wtfos.app` block that proxies only `/api/macaroni/ipfs/upload` and returns 404 for every other path.
+- Verification:
+  - Source verification pending in this pass.
+  - Production closeout still requires DNS-only `upload.wtfos.app` A/AAAA records pointing at the Hetzner origin, production env `MACARONI_DIRECT_UPLOAD_ORIGIN=https://upload.wtfos.app`, deploy, and live ticket/upload smoke.
 
 ### WTF-BB-256 - Macaroni access/export workflow drift
 

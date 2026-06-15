@@ -1,3 +1,13 @@
+## 2026-06-15 - Macaroni pinning progress must distinguish browser upload, staging, and provider pin
+
+**What happened**: A live Macaroni drop appeared frozen during artifact/metadata pinning after the cover plus the first two token media/metadata pairs had completed. Production health was OK and the app container was not OOM-killed, but the IPFS pinning tables and `ipfs_pinning.storage.staged` events stopped after `2.json`; no token 3 storage event existed yet.
+
+**Why it mattered**: The current Studio progress text advances only after each token's awaited pin calls complete. For hosted wtfOS pinning, a large artifact has several invisible phases: browser upload through Cloudflare/Caddy, multer buffering in the app, object-storage staging, then provider pinning. If the stall happens before staging, server-side completed-job rows are absent and the creator sees a frozen counter with no phase-specific feedback. The app's 1 GB server cap is not enough when the public hostname still traverses Cloudflare's request body cap.
+
+**Rule**: Macaroni hosted pinning needs a direct-origin upload lane for large artifacts plus durable/request-visible progress before the first completed CID. Keep the normal app behind Cloudflare, but route only the bearer-ticket upload POST through a DNS-only origin such as `upload.wtfos.app`. When diagnosing a reported freeze, compare `/api/health`, container restart/OOM state, `ipfs_pinning_jobs`, and `ipfs_pinning.storage.staged` events before assuming a contract/deploy failure.
+
+---
+
 ## 2026-06-15 - Macaroni artifact policy needs both hard and aggregate caps
 
 **What happened**: Macaroni's earlier media policy used one per-artifact number to represent both creator freedom and downstream practicality. That made the rule too blunt: every artifact was capped at 250 MB even when a drop could reasonably include one larger hero/video file as long as the rest of the set stayed lightweight.
