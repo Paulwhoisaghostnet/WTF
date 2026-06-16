@@ -1,3 +1,13 @@
+## 2026-06-16 - Padded gas limits need matching fee floors
+
+**What happened**: A live Macaroni mint failed with `Fee is too low, blockchain says: "No tip, no trip"`. Macaroni was using Taquito's estimate, then manually padding the gas/storage limits for safer contract execution, but the explicit fee sent to Beacon was still based on the lower unpadded Taquito suggestion.
+
+**Why it mattered**: Tezos mempool fee checks consider the declared gas limit on the operation. If a dApp raises `gasLimit` but does not raise the explicit fee enough, the resulting operation can be internally inconsistent: it has plenty of execution headroom but not enough baker fee for the gas limit it declares. Media file size was not the cause because Macaroni stores IPFS/metadata CIDs on-chain, not artifact bytes.
+
+**Rule**: Any Macaroni wallet operation that pads Taquito gas/storage estimates must derive the final fee floor from the padded gas limit actually sent to Beacon/Taquito, plus a small tip. Do not treat media artifact byte size as a mint gas input unless those bytes are actually embedded in on-chain parameters.
+
+---
+
 ## 2026-06-16 - Wallet-returned hashes are not node-accepted operations
 
 **What happened**: During a live Airporters mint failure, Macaroni showed the operation hash returned by the wallet, but the hash was absent from TzKT indexed operations, TzKT mainnet mempool, SmartPy mainnet mempool, and sampled public RPC head operation hashes. The first diagnosis leaned too hard on the user's Temple RPC setting even after the user changed nodes and reproduced the failure through the updated UI.

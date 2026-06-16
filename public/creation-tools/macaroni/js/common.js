@@ -24,6 +24,10 @@ const MD = (() => {
 
   const DEFAULT_GATEWAY = "https://ipfs.fileship.xyz/";
   const WALLET_SESSION_PREFIX = "macaroni.wallet.session.v1";
+  const TEZOS_MINIMAL_FEE_MUTEZ = 100;
+  const TEZOS_MINIMAL_MUTEZ_PER_BYTE = 1;
+  const TEZOS_MINIMAL_MUTEZ_PER_GAS_UNIT = 0.1;
+  const DEFAULT_OPERATION_SIZE_BYTES = 1800;
 
   const ADDRESS_RE = /^(tz1|tz2|tz3|tz4|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
   const isAddress = (s) => ADDRESS_RE.test(String(s || "").trim());
@@ -626,6 +630,29 @@ const MD = (() => {
     return params;
   }
 
+  function operationSizeEstimate(est, opts) {
+    const raw =
+      est?.operationSize ??
+      est?.opSize ??
+      est?.size ??
+      opts?.operationSize ??
+      opts?.opSize ??
+      DEFAULT_OPERATION_SIZE_BYTES;
+    const size = Number(raw);
+    return Number.isFinite(size) && size > 0 ? size : DEFAULT_OPERATION_SIZE_BYTES;
+  }
+
+  function feeFloorForGasLimit(gasLimit, est, opts) {
+    const gas = Number(gasLimit || 0);
+    if (!Number.isFinite(gas) || gas <= 0) return null;
+    const size = operationSizeEstimate(est, opts);
+    const base =
+      TEZOS_MINIMAL_FEE_MUTEZ +
+      size * TEZOS_MINIMAL_MUTEZ_PER_BYTE +
+      gas * TEZOS_MINIMAL_MUTEZ_PER_GAS_UNIT;
+    return Math.ceil(base * (opts?.feeFloorBuffer || 1.2) + (opts?.feeTipMutez || 1_000));
+  }
+
   /** Estimate gas/storage with headroom — avoids wallet "script took more time" failures. */
   async function estimateWalletOp(method, transferOpts, opts) {
     const tezos = getToolkit();
@@ -642,12 +669,15 @@ const MD = (() => {
         Math.ceil(est.gasLimit * (opts.gasBuffer || 1.65)) + (opts.gasPad || 40_000)
       );
       storageLimit = Math.ceil(est.storageLimit * (opts.storageBuffer || 1.5)) + (opts.storagePad || 120);
-      fee = Math.ceil(est.suggestedFeeMutez * (opts.feeBuffer || 1.35)) + (opts.feePad || 500);
+      const estimateFee = Math.ceil(est.suggestedFeeMutez * (opts.feeBuffer || 1.35)) + (opts.feePad || 500);
+      const paddedFeeFloor = feeFloorForGasLimit(gasLimit, est, opts);
+      fee = Math.max(estimateFee, paddedFeeFloor || 0);
       estimated = true;
     } catch (_) {
       const units = opts.units || 1;
       gasLimit = gasLimit || Math.min(1_040_000, (opts.gasPerUnit || 380_000) * units);
       storageLimit = storageLimit || 200 + units * (opts.storagePerUnit || 120);
+      fee = feeFloorForGasLimit(gasLimit, null, opts);
     }
     return {
       fee,

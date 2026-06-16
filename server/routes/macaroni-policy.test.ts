@@ -230,6 +230,21 @@ test("Macaroni wallet operations align Beacon active account RPC before signing"
   assert.match(commonSource, /could not align wallet operation RPC/);
 });
 
+test("Macaroni wallet operation fees track the padded gas limit that is actually sent", () => {
+  const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
+
+  assert.match(commonSource, /TEZOS_MINIMAL_MUTEZ_PER_GAS_UNIT = 0\.1/);
+  assert.match(commonSource, /DEFAULT_OPERATION_SIZE_BYTES = 1800/);
+  assert.match(commonSource, /function feeFloorForGasLimit\(gasLimit, est, opts\)/);
+  assert.match(commonSource, /gas \* TEZOS_MINIMAL_MUTEZ_PER_GAS_UNIT/);
+  assert.match(commonSource, /feeFloorBuffer \|\| 1\.2/);
+  assert.match(commonSource, /feeTipMutez \|\| 1_000/);
+  assert.match(commonSource, /const paddedFeeFloor = feeFloorForGasLimit\(gasLimit, est, opts\)/);
+  assert.match(commonSource, /fee = Math\.max\(estimateFee, paddedFeeFloor \|\| 0\)/);
+  assert.match(commonSource, /fee = feeFloorForGasLimit\(gasLimit, null, opts\)/);
+  assert.match(commonSource, /if \(limits\.fee != null\) sendOpts\.fee = limits\.fee/);
+});
+
 test("Macaroni Studio uses sandbox-safe inline feedback instead of browser modals", () => {
   const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
   const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
