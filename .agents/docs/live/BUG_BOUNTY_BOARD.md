@@ -91,7 +91,7 @@ Priority labels:
 | WTF-BB-264 | Verified | Codex Macaroni direct upload lane full-send | 2026-06-15 | Macaroni / hosted IPFS direct upload lane | P1 | 10 | 10 | 2 | 4 | 0 | Live hosted pinning stalled before token 3 reached server-side staging because large media uploads traverse Cloudflare; verified live on commit `57e5e30` with short-lived upload tickets, bearer-only `/api/macaroni/ipfs/upload`, Caddy upload hosts scoped to that endpoint, direct fallback origin `upload.5-78-202-50.sslip.io`, and production env loaded |
 | WTF-BB-265 | Verified | Codex Macaroni ticket limit regression | 2026-06-15 | Macaroni / practical media upload tickets | P1 | 10 | 10 | 2 | 4 | 0 | Live upload-ticket endpoint still treated production `MACARONI_IPFS_MAX_BYTES=262144000` as the per-file hard cap; production env was corrected to 1 GiB and code now fixes the Macaroni server hard cap at 1 GiB so legacy env drift cannot block valid larger artifacts before Studio average policy runs |
 | WTF-BB-266 | In Progress | Codex Macaroni PDS user-site publish investigation | 2026-06-15 | Macaroni / PDS-backed user-site serving | P1 | 14 | 3 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
-| WTF-BB-267 | Fixed | Codex Macaroni video preview/drop wallet repair | 2026-06-16 | Macaroni / generated drop website media previews and wallet restore | P1 | 13 | 6 | 3 | 5 | 1 | Generated drop pages could let stale passive wallet restore collide with explicit connect, while Macaroni Studio metadata sent MP4/video tokens to the collection cover for display/thumbnail; fixed locally with a passive-restore guard, per-token OBJKT-sized preview generation for GIF/video artifacts, video-aware drop rendering, reveal-aware recent-mint refresh, and pending live deploy verification |
+| WTF-BB-267 | Verified | Codex Macaroni video preview/drop wallet repair | 2026-06-16 | Macaroni / generated drop website media previews and wallet restore | P1 | 13 | 6 | 3 | 5 | 1 | Generated drop pages could let stale passive wallet restore collide with explicit connect, while Macaroni Studio metadata sent MP4/video tokens to the collection cover for display/thumbnail; fixed with commit `a17f8c5`, deployed on main, and verified live on Macaroni plus Airporters site version 5 |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -309,7 +309,7 @@ Priority labels:
 ### WTF-BB-267 - Macaroni generated drop pages reused collection covers for video previews
 
 - Category: Macaroni / generated drop website media previews and wallet restore
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Macaroni video preview/drop wallet repair
 - Score: C3 + F5 + S1 + P1(4) = 13
 - Evidence:
@@ -325,13 +325,17 @@ Priority labels:
   - Macaroni Studio now requires a per-token preview CID for GIF/video artifacts before token metadata pinning, publishes the original media as `artifactUri`, and uses the generated preview for `displayUri`/`thumbnailUri`.
   - Generated drop pages now render video artifacts directly when legacy metadata points preview fields at the collection cover, hydrate recent mints from contract storage/IPFS, include reveal state in the cache key, and retry pending/sealed recent mints.
   - Generated drop pages now disable Connect during passive wallet restore, show `Checking wallet...`, and recover stale restore failures with a clear reconnect state.
+  - The live Airporters published page was promoted to user-site version 5 so its older inlined runtime also renders MP4 artifacts directly, treats `delayed_reveal=false` as fully revealed, and labels revealed-but-not-yet-indexed token metadata as pending instead of sealed.
 - Verification:
   - Passed `node --check public/creation-tools/macaroni/js/studio.js && node --check public/creation-tools/macaroni/js/drop.js && node --check public/creation-tools/macaroni/js/common.js`.
   - Passed `npx tsx --test server/routes/macaroni-policy.test.ts server/features/macaroni/publish.test.ts`.
   - Passed `npm run check -- --pretty false`.
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed `npm run test:e2e:inventory` with 311/311 tests green.
-  - Live production deploy and Airporters smoke are still pending.
+  - GitHub Deploy to Hetzner run `27585587135` and Quality Gates run `27585587140` passed for commit `a17f8c5`.
+  - Live `https://wtfos.app/api/health` reported `commitRef:"a17f8c5"`, and live Macaroni `studio.js`/`drop.js` assets contained `/api/macaroni/media-preview`, `tokenNeedsMediaPreview`, wallet passive-restore guards, and video-aware render helpers.
+  - Live Airporters page `https://paulwhoisaghost.wtfos.me/airporters-vol-1` was verified at published version 5 (`0073fb91...`) with public HTML markers for `isVideoMetadata`, `metadataSameIpfsUri`, `cache: "no-store"`, non-delayed reveal math, and `metadata pending` placeholders.
+  - Live TzKT storage for `KT1JRXn5Ryc14URKoWoGUwzQX9cYWLxanjk2` returned `minted=31`, `revealed=31`, `delayed_reveal=false`; live Playwright smoke rendered 8 recent cards, 1 MP4 `<video>` from Fileship, odds text `31/120 minted - 31 revealed - 0 sealed - 89 left to mint`, and no console errors.
 
 ### WTF-BB-248 - Map Lab workspace is fixed, non-draggable, and missing viewport controls
 

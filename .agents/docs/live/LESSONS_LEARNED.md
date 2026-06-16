@@ -4943,3 +4943,15 @@
 **Fix**: Added a hosted media-preview endpoint that can create bounded OBJKT-sized animated GIF previews for GIF/video uploads with browser-side still-image fallback, made Studio require and pin per-token previews before metadata for GIF/video artifacts, kept original media as `artifactUri`, and updated generated drop pages to render video artifacts when legacy metadata preview fields equal the collection cover. Recent mints now hydrate token metadata from contract storage/IPFS, include reveal state in the cache key, and retry pending/sealed cards. The generated drop wallet button now blocks explicit connect during passive restore and clears stale restore failures into a visible reconnect state.
 
 **Rule**: Do not route playable token media through the generic non-image cover fallback. GIF/video artifacts must get a token-level preview CID before metadata pinning, and generated drop pages must treat cover-backed video preview metadata as a legacy fallback to override with the artifact for display. Passive wallet restore on generated pages must be its own visible state so it cannot race explicit connect.
+
+---
+
+## 2026-06-16 - Revealed metadata lag is not the same as sealed
+
+**What happened**: Airporters had `delayed_reveal=false` and TzKT storage showed `minted=31` plus `revealed=31`, but the custom published page still showed several recent cards with the same `sealed` placeholder because those token metadata lookups had not produced displayable media yet. The first live patch fixed reveal math and MP4 artifact fallback, but the placeholder text still conflated metadata-indexing lag with delayed-reveal state.
+
+**Why it mattered**: Collectors read `sealed` as a contract/reveal status, not as "TzKT/IPFS metadata is not ready yet." When auto-reveal is complete, stale placeholder wording makes a healthy contract look broken and hides the actual retryable state.
+
+**Fix**: Promoted the Airporters published page to user-site version 5 so revealed tokens without loaded metadata render as `pending`, keep retrying through no-store metadata fetches, and only use `sealed` for tokens that are actually still behind delayed reveal. Verified live with TzKT storage and a public Playwright smoke showing odds text `31/120 minted - 31 revealed - 0 sealed - 89 left to mint`.
+
+**Rule**: Generated and custom drop pages must separate contract reveal state from metadata-indexer availability. If storage says a token is revealed but metadata is missing or empty, label it pending/loading and retry; reserve sealed language for delayed-reveal tokens only.
