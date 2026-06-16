@@ -197,18 +197,37 @@ test("Macaroni generated mint pages classify confirmation polling timeouts by op
   assert.match(dropSource, /function isConfirmationTimeout\(e\)/);
   assert.match(dropSource, /confirmation polling timed out\|polling timed out/);
   assert.match(dropSource, /function operationHash\(op\)/);
+  assert.match(dropSource, /function operationRpcBase\(\)/);
   assert.match(dropSource, /function setOperationProgressStatus\(statusId, actionLabel, hash, suffix\)/);
+  assert.match(dropSource, /wallet returned \$\{actionLabel\} hash/);
+  assert.match(dropSource, /checking public nodes/);
+  assert.match(dropSource, /not visible on public nodes yet/);
   assert.match(dropSource, /waiting for chain confirmation/);
   assert.match(dropSource, /async function confirmWalletOperation\(op, entrypoint, statusId, actionLabel\)/);
   assert.match(dropSource, /op\.confirmation\(1\)/);
   assert.match(dropSource, /\/v1\/operations\/transactions\/\$\{encodeURIComponent\(hash\)\}/);
+  assert.match(dropSource, /\/chains\/main\/mempool\/pending_operations/);
+  assert.match(dropSource, /seen in node mempool/);
   assert.match(dropSource, /operationTargetAddress\(row\) !== CFG\.contract/);
   assert.match(dropSource, /operationEntrypoint\(row\) !== entrypoint/);
   assert.match(dropSource, /row\?\.status === "applied"/);
   assert.match(dropSource, /row\.status && row\.status !== "applied"/);
   assert.match(dropSource, /\`\$\{actionLabel\} not confirmed\`/);
+  assert.match(dropSource, /wallet returned operation \$\{shortHash\}, but it is not visible on public Tezos nodes/);
   assert.match(dropSource, /Check \$\{operationLink\(hash\)\} before retrying/);
   assert.doesNotMatch(dropSource, /confirmation\(1\);\s*return extractMintedIds\(op\)/);
+});
+
+test("Macaroni wallet operations align Beacon active account RPC before signing", () => {
+  const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
+
+  assert.match(commonSource, /function accountNeedsNetworkSync\(acc\)/);
+  assert.match(commonSource, /function syncActiveAccountNetwork\(acc, options\)/);
+  assert.match(commonSource, /normalizedRpc\(current\.rpcUrl\) !== normalizedRpc\(expected\.rpcUrl\)/);
+  assert.match(commonSource, /wallet\.client\.setActiveAccount\(updated\)/);
+  assert.match(commonSource, /network: beaconNetworkSpec\(\)/);
+  assert.match(commonSource, /ensureSessionNetwork\(\{ requireRpc: true \}\)/);
+  assert.match(commonSource, /could not align wallet operation RPC/);
 });
 
 test("Macaroni Studio uses sandbox-safe inline feedback instead of browser modals", () => {

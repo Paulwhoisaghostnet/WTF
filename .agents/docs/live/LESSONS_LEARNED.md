@@ -1,3 +1,13 @@
+## 2026-06-16 - Wallet-returned hashes are not node-accepted operations
+
+**What happened**: During a live Airporters mint failure, Macaroni showed the operation hash returned by the wallet, but the hash was absent from TzKT indexed operations, TzKT mainnet mempool, SmartPy mainnet mempool, and sampled public RPC head operation hashes. The first diagnosis leaned too hard on the user's Temple RPC setting even after the user changed nodes and reproduced the failure through the updated UI.
+
+**Why it mattered**: A Beacon/Temple operation response proves only that the wallet returned a hash to the dApp. It does not prove that the configured public node accepted the operation or that the indexer will ever see it. Some users can hit this when their cached Beacon active-account network object lacks Macaroni's configured RPC URL or carries wallet-side network state, while other users mint normally.
+
+**Rule**: Before any Macaroni wallet operation, align the Beacon active account's network object to the exact configured Macaroni RPC and chain. Generated mint pages must distinguish wallet-returned hash, node-visible mempool state, and indexer-confirmed operation state; never describe a hash as submitted/accepted until public node or indexer visibility proves it.
+
+---
+
 ## 2026-06-16 - Macaroni mint confirmation timeouts need operation-hash classification
 
 **What happened**: A collector saw `mint failed: confirmation polling timed out` during an Airporters mint, and the generated drop page collapsed the raw Taquito/RPC confirmation timeout into a generic mint failure. That message did not tell the collector whether the wallet operation applied, failed/backtracked, or was still not indexed, and it gave no safe retry instruction tied to the operation hash.

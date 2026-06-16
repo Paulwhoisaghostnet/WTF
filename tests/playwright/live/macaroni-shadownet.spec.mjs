@@ -363,11 +363,28 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(page.locator("#btnDisconnect")).toBeVisible();
       await expect(page.locator("#walletBalance")).toContainText("Wallet balance");
 
+      await page.evaluate(() => {
+        const key = "macaroni-shadownet-puppet-active-account";
+        const account = JSON.parse(window.localStorage.getItem(key) || "null");
+        account.network = { type: "shadownet" };
+        window.localStorage.setItem(key, JSON.stringify(account));
+      });
       await page.reload({ waitUntil: "domcontentloaded" });
       await expect(page.locator("#btnDisconnect")).toBeVisible();
       await expect(page.locator("#btnConnect")).toContainText(actor.walletAddress.slice(0, 7));
       await expect(page.locator("#btnConnect")).toBeDisabled();
       await expect(page.locator("#walletBalance")).toContainText("restored");
+      const alignedNetwork = await page.evaluate(async () => {
+        await MD.assertOperationSafety();
+        const account = JSON.parse(
+          window.localStorage.getItem("macaroni-shadownet-puppet-active-account") || "null"
+        );
+        return account?.network;
+      });
+      expect(alignedNetwork).toEqual({
+        type: "shadownet",
+        rpcUrl: SHADOWNET_RPC,
+      });
 
       await page.getByRole("button", { name: "Disconnect" }).click();
       await expect(page.locator("#btnConnect")).toHaveText("Connect wallet");

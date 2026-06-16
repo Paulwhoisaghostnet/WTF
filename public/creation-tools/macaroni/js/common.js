@@ -119,12 +119,42 @@ const MD = (() => {
     return acc.network.type === net.beaconNetwork;
   }
 
+  function normalizedRpc(value) {
+    return String(value || "").replace(/\/+$/, "");
+  }
+
+  function accountNeedsNetworkSync(acc) {
+    if (!accountMatchesNetwork(acc)) return false;
+    const expected = beaconNetworkSpec();
+    const current = acc.network || {};
+    if (expected.type === "custom" && current.name !== expected.name) return true;
+    return normalizedRpc(current.rpcUrl) !== normalizedRpc(expected.rpcUrl);
+  }
+
+  async function syncActiveAccountNetwork(acc, options) {
+    if (!wallet || !acc || !wallet.client || !accountNeedsNetworkSync(acc)) return acc;
+    if (typeof wallet.client.setActiveAccount !== "function") {
+      if (options?.requireRpc)
+        throw new Error(`wallet cannot align operation RPC to ${rpcUrl} — reconnect your wallet and try again`);
+      return acc;
+    }
+    const updated = { ...acc, network: beaconNetworkSpec() };
+    try {
+      await wallet.client.setActiveAccount(updated);
+      return updated;
+    } catch (e) {
+      if (options?.requireRpc)
+        throw new Error(`could not align wallet operation RPC to ${rpcUrl} — reconnect your wallet and try again (${e.message || e})`);
+      return acc;
+    }
+  }
+
   // Adopt the cached Beacon session only if it was granted for the network
   // the app is on; otherwise drop it so a stale testnet session can never
   // sign for a mainnet flow (or vice versa).
-  async function ensureSessionNetwork() {
+  async function ensureSessionNetwork(options) {
     if (!wallet) return activeAccount;
-    const acc = await wallet.client.getActiveAccount();
+    let acc = await wallet.client.getActiveAccount();
     if (!acc) {
       activeAccount = null;
       return null;
@@ -134,6 +164,7 @@ const MD = (() => {
       activeAccount = null;
       return null;
     }
+    acc = await syncActiveAccountNetwork(acc, options);
     activeAccount = acc.address;
     return activeAccount;
   }
@@ -141,7 +172,7 @@ const MD = (() => {
   // Call before every operation that signs/sends (deploy, sync, mint).
   async function assertOperationSafety() {
     await assertRpcChainId(true);
-    const addr = await ensureSessionNetwork();
+    const addr = await ensureSessionNetwork({ requireRpc: true });
     if (!addr)
       throw new Error(
         `wallet is not connected on ${netKey} — click Connect to pair on the right network`

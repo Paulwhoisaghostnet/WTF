@@ -1040,6 +1040,11 @@ function operationLink(hash) {
   return base + hash;
 }
 
+function operationRpcBase() {
+  const networkRpc = MD.getNetworks?.()[CFG.network || "mainnet"]?.rpc;
+  return String(CFG.rpc || networkRpc || "").replace(/\/+$/, "");
+}
+
 function setOperationProgressStatus(statusId, actionLabel, hash, suffix) {
   const el = $(statusId);
   if (!el || !hash) return false;
@@ -1049,7 +1054,7 @@ function setOperationProgressStatus(statusId, actionLabel, hash, suffix) {
   link.rel = "noopener";
   link.textContent = MD.short(hash);
   link.setAttribute("aria-label", `${actionLabel} operation ${hash}`);
-  el.replaceChildren(`${actionLabel} submitted (`, link, `); ${suffix}`);
+  el.replaceChildren(`wallet returned ${actionLabel} hash (`, link, `); ${suffix}`);
   return true;
 }
 
@@ -1106,6 +1111,28 @@ async function lookupRelevantOperation(hash, entrypoint) {
   });
 }
 
+async function lookupRpcMempoolOperation(hash) {
+  const base = operationRpcBase();
+  if (!base) return null;
+  const res = await fetch(`${base}/chains/main/mempool/pending_operations`, { cache: "no-store" });
+  if (!res.ok) return null;
+  const json = await res.json();
+  for (const state of ["applied", "refused", "branch_refused", "branch_delayed", "outdated", "unprocessed"]) {
+    const rows = Array.isArray(json?.[state]) ? json[state] : [];
+    const row = rows.find((item) => item?.hash === hash);
+    if (row) return { state, row };
+  }
+  return null;
+}
+
+async function lookupOperationVisibility(hash, entrypoint) {
+  const row = await lookupRelevantOperation(hash, entrypoint);
+  if (row) return { kind: "indexed", row };
+  const mempool = await lookupRpcMempoolOperation(hash).catch(() => null);
+  if (mempool) return { kind: "mempool", mempool };
+  return null;
+}
+
 async function waitForIndexedOperation(hash, entrypoint) {
   for (let attempt = 0; attempt < 6; attempt++) {
     const row = await lookupRelevantOperation(hash, entrypoint);
@@ -1118,7 +1145,22 @@ async function waitForIndexedOperation(hash, entrypoint) {
 async function confirmWalletOperation(op, entrypoint, statusId, actionLabel) {
   const submittedHash = operationHash(op);
   if (submittedHash) {
-    setOperationProgressStatus(statusId, actionLabel, submittedHash, "waiting for chain confirmation...");
+    setOperationProgressStatus(statusId, actionLabel, submittedHash, "checking public nodes...");
+    const visible = await lookupOperationVisibility(submittedHash, entrypoint).catch(() => null);
+    if (visible?.row?.status === "applied") {
+      setText(statusId, `${actionLabel} confirmed by indexer (${MD.short(submittedHash)})`);
+      return { status: "confirmed", hash: submittedHash, source: "tzkt", row: visible.row };
+    }
+    if (visible?.row && visible.row.status && visible.row.status !== "applied") {
+      throw macaroniOperationError(
+        `${actionLabel} failed`,
+        `operation ${visible.row.status}: ${operationFailureText(visible.row)} (${MD.short(submittedHash)})`
+      );
+    }
+    const suffix = visible?.mempool
+      ? `seen in node mempool (${visible.mempool.state}); waiting for block confirmation...`
+      : "not visible on public nodes yet; waiting for chain confirmation...";
+    setOperationProgressStatus(statusId, actionLabel, submittedHash, suffix);
   }
   try {
     await op.confirmation(1);
@@ -1145,10 +1187,17 @@ async function confirmWalletOperation(op, entrypoint, statusId, actionLabel) {
         `operation ${row.status}: ${operationFailureText(row)} (${shortHash})`
       );
     }
+    const mempool = await lookupRpcMempoolOperation(hash).catch(() => null);
+    if (mempool) {
+      throw macaroniOperationError(
+        `${actionLabel} not confirmed`,
+        `operation ${shortHash} is still ${mempool.state.replace(/_/g, " ")} on the configured node. Check ${operationLink(hash)} before retrying.`
+      );
+    }
     const pendingState = entrypoint === "mint" ? "no mint was indexed yet" : "the operation has not been indexed yet";
     throw macaroniOperationError(
       `${actionLabel} not confirmed`,
-      `operation ${shortHash} was submitted but ${pendingState}. Check ${operationLink(hash)} before retrying.`
+      `wallet returned operation ${shortHash}, but it is not visible on public Tezos nodes and ${pendingState}. Check ${operationLink(hash)} before retrying.`
     );
   }
 }
