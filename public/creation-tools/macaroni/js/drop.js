@@ -1040,6 +1040,19 @@ function operationLink(hash) {
   return base + hash;
 }
 
+function setOperationProgressStatus(statusId, actionLabel, hash, suffix) {
+  const el = $(statusId);
+  if (!el || !hash) return false;
+  const link = document.createElement("a");
+  link.href = operationLink(hash);
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.textContent = MD.short(hash);
+  link.setAttribute("aria-label", `${actionLabel} operation ${hash}`);
+  el.replaceChildren(`${actionLabel} submitted (`, link, `); ${suffix}`);
+  return true;
+}
+
 function operationErrorMessage(e) {
   return e?.data?.[0]?.with?.string || e?.message || String(e);
 }
@@ -1103,12 +1116,16 @@ async function waitForIndexedOperation(hash, entrypoint) {
 }
 
 async function confirmWalletOperation(op, entrypoint, statusId, actionLabel) {
+  const submittedHash = operationHash(op);
+  if (submittedHash) {
+    setOperationProgressStatus(statusId, actionLabel, submittedHash, "waiting for chain confirmation...");
+  }
   try {
     await op.confirmation(1);
-    return { status: "confirmed", hash: operationHash(op), source: "wallet" };
+    return { status: "confirmed", hash: submittedHash, source: "wallet" };
   } catch (e) {
     if (!isConfirmationTimeout(e)) throw e;
-    const hash = operationHash(op);
+    const hash = submittedHash || operationHash(op);
     if (!hash) {
       throw macaroniOperationError(
         `${actionLabel} not confirmed`,
@@ -1116,7 +1133,7 @@ async function confirmWalletOperation(op, entrypoint, statusId, actionLabel) {
       );
     }
     const shortHash = MD.short(hash);
-    setText(statusId, `${actionLabel} submitted (${shortHash}); checking chain confirmation...`);
+    setOperationProgressStatus(statusId, actionLabel, hash, "checking chain confirmation...");
     const row = await waitForIndexedOperation(hash, entrypoint);
     if (row?.status === "applied") {
       setText(statusId, `${actionLabel} confirmed by indexer (${shortHash})`);

@@ -197,6 +197,8 @@ test("Macaroni generated mint pages classify confirmation polling timeouts by op
   assert.match(dropSource, /function isConfirmationTimeout\(e\)/);
   assert.match(dropSource, /confirmation polling timed out\|polling timed out/);
   assert.match(dropSource, /function operationHash\(op\)/);
+  assert.match(dropSource, /function setOperationProgressStatus\(statusId, actionLabel, hash, suffix\)/);
+  assert.match(dropSource, /waiting for chain confirmation/);
   assert.match(dropSource, /async function confirmWalletOperation\(op, entrypoint, statusId, actionLabel\)/);
   assert.match(dropSource, /op\.confirmation\(1\)/);
   assert.match(dropSource, /\/v1\/operations\/transactions\/\$\{encodeURIComponent\(hash\)\}/);
