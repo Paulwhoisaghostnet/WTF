@@ -21,6 +21,9 @@ test("published Macaroni pages are served with the current runtime", () => {
   assert.match(normalized, /Currently on Sale Stage/);
   assert.match(normalized, /https:\/\/x\.com\/intent\/post/);
   assert.match(normalized, /https:\/\/bsky\.app\/intent\/compose/);
+  assert.match(normalized, /function loadCustomRecentMintsCompat\(options\)/);
+  assert.match(normalized, /airportersRecentGrid/);
+  assert.match(normalized, /customRecentMintLimit\(grid\)/);
   assert.doesNotMatch(normalized, /Temple \/ Kukai \/ Umami/);
   assert.doesNotMatch(normalized, /Stage \$\{act \+ 1\} live/);
   assert.doesNotMatch(normalized, /mint\(s\)/);

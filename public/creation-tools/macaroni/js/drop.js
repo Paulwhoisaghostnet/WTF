@@ -546,6 +546,100 @@ async function loadRecentMints(options) {
     setRecentMintsMessage("Could not load recent mints: " + (e.message || e));
   }
 }
+
+function customRecentMintLimit(grid) {
+  return Math.max(CUSTOM_RECENT_MINT_LIMIT, grid?.children?.length || 0);
+}
+
+function customRecentMintCaption(transfer, identity, meta) {
+  const id = Number(transfer.tokenId);
+  const title = tokenDisplayName(meta, Number.isInteger(id) ? id : 0);
+  const who = identity?.label || transfer.minterAlias || MD.short(transfer.minter);
+  if (transfer.sealed) return `${title} - sealed`;
+  if (transfer.metadataPending) return `${title} - updating metadata`;
+  return `${title} - minted by ${who}`;
+}
+
+function renderCustomRecentMintCards(grid, noteEl, transfers, identities) {
+  if (!grid || !noteEl) return;
+  grid.replaceChildren();
+  noteEl.textContent = transfers.length ? `${transfers.length} recent mints` : "No recent mints yet.";
+  for (const transfer of transfers) {
+    const id = Number(transfer.tokenId);
+    const meta = transfer.token?.metadata || {};
+    const identity = identities.get(transfer.minter) || {
+      address: transfer.minter,
+      label: transfer.minterAlias || MD.short(transfer.minter),
+      source: transfer.minterAlias ? "tzkt" : "address",
+    };
+    const button = document.createElement("button");
+    button.className = "airporters-recent-card";
+    button.type = "button";
+    button.dataset.tokenId = String(id);
+    const mediaRendered =
+      !transfer.sealed &&
+      !transfer.metadataPending &&
+      renderMediaPreview(button, meta, `${tokenDisplayName(meta, id)} preview`);
+    if (mediaRendered) {
+      button.addEventListener("click", () => {
+        const url = safeHttpUrl(MD.ipfsToHttp(tokenArtifactUri(meta) || tokenPreviewUri(meta), CFG.gateway || MD.DEFAULT_GATEWAY));
+        if (url) window.open(url, "_blank", "noopener");
+      });
+    } else {
+      button.disabled = true;
+      const placeholder = document.createElement("div");
+      placeholder.className = transfer.metadataPending ? "airporters-sealed airporters-pending" : "airporters-sealed";
+      placeholder.textContent = transfer.sealed ? "sealed" : "updating";
+      button.appendChild(placeholder);
+    }
+    const cap = document.createElement("span");
+    cap.textContent = customRecentMintCaption(transfer, identity, meta);
+    button.appendChild(cap);
+    grid.appendChild(button);
+  }
+}
+
+async function loadCustomRecentMintsCompat(options) {
+  const grid = $("airportersRecentGrid");
+  const noteEl = $("airportersRecentNote");
+  if (!grid || !noteEl || !CFG.contract) return;
+  const minted = storage ? Number(storage.minted || 0) : "";
+  const revealed = storage ? Number(storage.revealed || 0) : "";
+  const key = `${CFG.network || "mainnet"}:${CFG.contract}:${minted}:${revealed}:${grid.children.length}`;
+  if (!options?.force && key === customRecentCompatKey) return;
+  customRecentCompatKey = key;
+  const seq = ++customRecentCompatSeq;
+  try {
+    const fetched = await MD.fetchRecentMintTransfers(
+      CFG.network || "mainnet",
+      CFG.contract,
+      customRecentMintLimit(grid)
+    );
+    const transfers = await hydrateRecentMints(fetched);
+    if (seq !== customRecentCompatSeq) return;
+    const identities = await MD.fetchWalletIdentities(
+      CFG.network || "mainnet",
+      transfers.map((mint) => mint.minter).filter(Boolean)
+    );
+    if (seq !== customRecentCompatSeq) return;
+    renderCustomRecentMintCards(grid, noteEl, transfers, identities);
+  } catch (e) {
+    if (seq !== customRecentCompatSeq) return;
+    noteEl.textContent = "Could not load recent mints: " + (e.message || e);
+  }
+}
+
+function scheduleCustomRecentMintsCompat() {
+  [0, 1500, 5000].forEach((delay) => {
+    setTimeout(() => loadCustomRecentMintsCompat({ force: delay > 0 }), delay);
+  });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", scheduleCustomRecentMintsCompat);
+} else {
+  scheduleCustomRecentMintsCompat();
+}
 $("contentBlocks").innerHTML = (CFG.blocks || [])
   .map((b) => {
     if (b.type === "h") return `<h2>${esc(b.value)}</h2>`;
@@ -574,10 +668,13 @@ let ownedMintLoadSeq = 0;
 let recentMintsLoadSeq = 0;
 let recentMintsKey = "";
 let recentMintsRetryTimer = null;
+let customRecentCompatSeq = 0;
+let customRecentCompatKey = "";
 let walletConnecting = false;
 let walletRestoring = true;
 const MINT_QTY_UI_CAP = 10;
 const RECENT_MINT_LIMIT = 8;
+const CUSTOM_RECENT_MINT_LIMIT = 10;
 
 function revealState() {
   if (!storage) return null;
@@ -1456,3 +1553,4 @@ $("btnReveal").addEventListener("click", publicReveal);
 refresh().then(() => loadOwnedMints());
 setInterval(render, 1000);     // countdowns
 setInterval(refresh, 30000);   // chain state
+setInterval(() => loadCustomRecentMintsCompat({ force: true }), 30000);

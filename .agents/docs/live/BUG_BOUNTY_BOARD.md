@@ -5726,6 +5726,25 @@ Priority labels:
   - `CI=1 playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs`
   - `CI=1 playwright test tests/playwright/inventory`
 
+### WTF-BB-269 - Custom Macaroni recent mints guessed blind token IDs
+
+- Category: Macaroni / published drop recent mints
+- Status: Verified
+- Owner/Session: Codex Macaroni recent-mints hotfix
+- Score: C1 + F3 + S1 + P1(4) = 9
+- Evidence:
+  - Live Airporters showed most custom recent-mint cards as `pending` even though TzKT contract storage reported the drop was revealed and current token metadata existed.
+  - The custom Airporters recent section hid the generated Macaroni recent-mints widget and looped from `minted - 1` downward, but blind-mint token IDs are randomized. TzKT showed recent token IDs such as `90`, `33`, `112`, `61`, `93`, `63`, `8`, `100`, `110`, and `85`, so the sequential countdown naturally landed on mostly empty guesses.
+- Why it matters:
+  - A live blind-mint page must show actual collector activity, not inferred token slots. Displaying real mints as pending makes reveal and metadata handling look broken when the custom UI is using the wrong token source.
+- Fix:
+  - Added current-runtime compatibility for custom published recent-mint grids so `#airportersRecentGrid` is replaced from TzKT mint transfer rows, hydrated with contract/IPFS token metadata, identity-resolved through the existing Macaroni path, and refreshed after the stored custom script has run.
+- Verification:
+  - `node --check public/creation-tools/macaroni/js/drop.js`
+  - `npx tsx --test server/routes/macaroni-policy.test.ts server/features/wtf-sites/macaroni-compat.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - Live Airporters smoke confirmed the custom grid renders actual random token IDs from recent TzKT mint transfers instead of `minted - 1` countdown guesses.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

@@ -5043,3 +5043,15 @@
 **Why it mattered**: Secure origin, browser capture API support, site permission, visible input devices, busy hardware, privacy-browser shields, and OS app permission are separate gates. Generic "permission blocked" copy sends users to the wrong settings and makes mobile rooms feel broken.
 
 **Rule**: Realtime media surfaces need a pre-join mic test that feature-detects secure context and MediaDevices, treats the Permissions API as optional, enumerates audio inputs when possible, briefly opens and stops `getUserMedia({ audio: true })` on user gesture, and maps DOMException names to browser/site/OS recovery guidance. Keep heavy multi-context inventory specs parallelized or fresh-harnessed so support diagnostics are not hidden by harness timeouts.
+
+---
+
+## 2026-06-16 - Blind-mint recent lists must use mint-transfer token IDs
+
+**What happened**: The live Airporters page still showed most custom recent-mint cards as `pending` even after metadata and reveal hydration were fixed. The custom page section hid Macaroni's generated recent-mints widget and inferred recent token IDs by counting down from `minted - 1`, while the blind-drop contract had minted random token IDs such as `90`, `33`, `112`, and `61`.
+
+**Why it mattered**: `minted` is a supply counter, not a token-id cursor. In a blind mint, random assignment means sequential guesses can point at tokens that have not minted yet, so a UI can falsely show pending metadata for real recent activity.
+
+**Fix**: Added published-page runtime compatibility for custom recent-mint grids so they render from TzKT mint transfer rows, hydrate token metadata through the existing Macaroni contract/IPFS path, resolve minter identity, and rerun after stored custom scripts mutate the page.
+
+**Rule**: Never infer recent blind-mint token IDs from supply counters. Recent-mint UIs must use actual transfer/event rows from TzKT or contract-originated mint records, then hydrate those token IDs through the same metadata path used by generated Macaroni pages.

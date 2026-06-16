@@ -366,6 +366,12 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   assert.match(dropHtml, /Recent mints:/);
   assert.match(publishSource, /id="recentMintsSection"/);
   assert.match(dropSource, /fetchRecentMintTransfers\(CFG\.network \|\| "mainnet", CFG\.contract, RECENT_MINT_LIMIT\)/);
+  assert.match(dropSource, /function loadCustomRecentMintsCompat\(options\)/);
+  assert.match(dropSource, /"airportersRecentGrid"/);
+  assert.match(dropSource, /customRecentMintLimit\(grid\)/);
+  assert.match(dropSource, /MD\.fetchRecentMintTransfers\(\s*CFG\.network \|\| "mainnet",\s*CFG\.contract,\s*customRecentMintLimit\(grid\)\s*\)/s);
+  assert.match(dropSource, /button\.dataset\.tokenId = String\(id\)/);
+  assert.match(dropSource, /setInterval\(\(\) => loadCustomRecentMintsCompat\(\{ force: true \}\), 30000\)/);
   assert.match(dropSource, /fetchWalletIdentities\(CFG\.network \|\| "mainnet", addresses\)/);
   assert.match(dropSource, /const previewUri = tokenPreviewUri\(meta\)/);
   assert.match(dropSource, /safeHttpUrl\(MD\.ipfsToHttp\(previewUri, CFG\.gateway \|\| MD\.DEFAULT_GATEWAY\)\)/);
