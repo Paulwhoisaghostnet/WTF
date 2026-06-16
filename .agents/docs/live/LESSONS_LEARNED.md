@@ -4931,3 +4931,15 @@
 **Fix**: Immediately corrected production env to `MACARONI_IPFS_MAX_BYTES=1073741824`, then moved the server Macaroni upload hard cap into code as a fixed 1 GB helper so legacy env drift cannot lower it back to 250 MB. Added a regression test that sets the legacy env to 250 MB and still expects the Macaroni hard cap to be 1 GB.
 
 **Rule**: Keep per-file hard limits and collection-average limits as separate code paths. Upload-ticket and multer limits enforce the 1 GB hard cap; Studio draft validation enforces the 250 MB average before pin/deploy/sync.
+
+---
+
+## 2026-06-16 - Video token previews must not fall back to the collection cover
+
+**What happened**: A live Macaroni/Airporters report initially sounded like missing GIF previews, but the user clarified that no GIFs had minted yet; the actual visible issue was MP4 tokens on OBJKT and the generated drop page using the collection cover as the preview. Studio's metadata path treated every non-image token as needing the cover, so video artifacts received cover-backed `displayUri`/`thumbnailUri` values.
+
+**Why it mattered**: Video tokens need token-specific preview media just as much as GIFs. If Macaroni pins a valid MP4 artifact but tells indexers and the drop page to use the collection cover for the token preview, the token looks generic even though the artifact is correct. Existing minted tokens may already have immutable IPFS metadata, so the generated drop page also needs to compensate when legacy metadata points video previews at the cover.
+
+**Fix**: Added a hosted media-preview endpoint that can create bounded OBJKT-sized animated GIF previews for GIF/video uploads with browser-side still-image fallback, made Studio require and pin per-token previews before metadata for GIF/video artifacts, kept original media as `artifactUri`, and updated generated drop pages to render video artifacts when legacy metadata preview fields equal the collection cover. Recent mints now hydrate token metadata from contract storage/IPFS, include reveal state in the cache key, and retry pending/sealed cards. The generated drop wallet button now blocks explicit connect during passive restore and clears stale restore failures into a visible reconnect state.
+
+**Rule**: Do not route playable token media through the generic non-image cover fallback. GIF/video artifacts must get a token-level preview CID before metadata pinning, and generated drop pages must treat cover-backed video preview metadata as a legacy fallback to override with the artifact for display. Passive wallet restore on generated pages must be its own visible state so it cannot race explicit connect.

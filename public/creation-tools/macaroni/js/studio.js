@@ -56,6 +56,9 @@ const OBJKT_ARTIFACT_MAX_BYTES = 1 * GB;
 const OBJKT_COLLECTION_IMAGE_MAX_BYTES = 1 * MB;
 const OBJKT_COLLECTION_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png"]);
 const OBJKT_COLLECTION_IMAGE_LABEL = "1 MB, square JPG/PNG";
+const OBJKT_TOKEN_PREVIEW_MAX_BYTES = 2 * MB;
+const OBJKT_TOKEN_PREVIEW_MAX_SIDE = 800;
+const OBJKT_TOKEN_PREVIEW_LABEL = "2 MB token preview";
 const KT1_CONTRACT_ADDRESS = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
 const IS_NATIVE_APP = Boolean(window.MACARONI_DESKTOP && window.MACARONI_DESKTOP.native);
 const INSTALLER_PLATFORMS = [
@@ -106,7 +109,7 @@ function freshDropState() {
       placeholderCid: "", // pinned pre-reveal metadata (delayed mode)
     },
     pin: { kind: "pinata", jwt: "", url: "", gateway: MD.DEFAULT_GATEWAY },
-    tokens: [], // {id, name, description, attributes, tags, fileName, mediaBytes, mediaCid, mediaMime, metadataCid}
+    tokens: [], // {id, name, description, attributes, tags, fileName, mediaBytes, mediaCid, mediaMime, previewCid, previewMime, previewBytes, metadataCid}
     stages: [], // {start, price, useAllowlist, maxPerWallet, allowlist:[{address,capacity}]}
     contract: "",
     page: { theme: "dark", accent: "", font: "", blocks: "", css: "", code: "" },
@@ -270,8 +273,13 @@ async function validateCollectionCover(file) {
   return true;
 }
 
+function tokenNeedsMediaPreview(t) {
+  const mime = String(t.mediaMime || "").toLowerCase();
+  return mime === "image/gif" || mime.startsWith("video/");
+}
+
 function tokenNeedsCover(t) {
-  return !String(t.mediaMime || "").startsWith("image/");
+  return !String(t.mediaMime || "").startsWith("image/") && !tokenNeedsMediaPreview(t);
 }
 
 function hasWtfosPinningAccess(user) {
@@ -378,6 +386,13 @@ function normalizeState() {
   if (!state.pin || typeof state.pin !== "object") state.pin = freshDropState().pin;
   if (!state.pin.gateway) state.pin.gateway = MD.DEFAULT_GATEWAY;
   if (!Array.isArray(state.tokens)) state.tokens = [];
+  state.tokens.forEach((t) => {
+    if (!t || typeof t !== "object") return;
+    t.previewCid = t.previewCid || "";
+    t.previewMime = t.previewMime || "";
+    t.previewBytes = Number(t.previewBytes || 0);
+    if (tokenNeedsMediaPreview(t) && !t.previewCid) t.metadataCid = "";
+  });
   if (!Array.isArray(state.stages)) state.stages = [];
   if (!state.page || typeof state.page !== "object") state.page = freshDropState().page;
   state.page.theme = sanitizeThemeName(state.page.theme);
@@ -468,6 +483,9 @@ async function onCsv(file) {
         mediaBytes: 0,
         mediaCid: "",
         mediaMime: "",
+        previewCid: "",
+        previewMime: "",
+        previewBytes: 0,
         metadataCid: "",
       });
     }
@@ -483,6 +501,7 @@ async function onCsv(file) {
       const old = prev.get(t.id);
       if (old) Object.assign(t, {
         mediaCid: old.mediaCid, mediaMime: old.mediaMime, mediaBytes: old.mediaBytes || 0,
+        previewCid: old.previewCid || "", previewMime: old.previewMime || "", previewBytes: old.previewBytes || 0,
         metadataCid: "", // metadata depends on sheet content → re-pin
         fileName: old.fileName,
       });
@@ -517,6 +536,9 @@ function matchMedia_() {
     if (f) {
       if (t.fileName !== f.name || Number(t.mediaBytes || 0) !== f.size) {
         t.mediaCid = "";
+        t.previewCid = "";
+        t.previewMime = "";
+        t.previewBytes = 0;
         t.metadataCid = "";
       }
       t.fileName = f.name;
@@ -553,9 +575,13 @@ function renderTokens() {
       : `<span class="pill bad">missing artifact</span>`;
     const pin = t.metadataCid
       ? `<span class="pill ok">pinned</span>`
-      : t.mediaCid
-        ? `<span class="pill warn">media only</span>`
-        : `<span class="pill">—</span>`;
+      : tokenNeedsMediaPreview(t) && t.mediaCid && !t.previewCid
+        ? `<span class="pill warn">media pinned, token preview pending</span>`
+        : t.previewCid
+          ? `<span class="pill warn">media + preview pinned, metadata pending</span>`
+          : t.mediaCid
+            ? `<span class="pill warn">media pinned, metadata pending</span>`
+            : `<span class="pill">—</span>`;
     html += `<tr><td>${img}</td><td class="mono">${t.id}</td><td>${esc(t.name)}</td><td class="muted">${t.attributes.length}</td><td>${art}</td><td>${pin}</td></tr>`;
   }
   tbl.innerHTML = html;
@@ -582,14 +608,186 @@ function royaltyShares() {
   return { decimals: 4, shares: { [addr]: Math.round(pct * 100) } };
 }
 
+function blobFromCanvas(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob && blob.size > 0) resolve(blob);
+      else reject(new Error(`Could not encode ${type} preview`));
+    }, type, quality);
+  });
+}
+
+function scaleCanvasForMedia(width, height, maxSide) {
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  return canvas;
+}
+
+async function makeStillImagePreview(file, maxSide, type, quality) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    if (typeof img.decode === "function") await img.decode();
+    else await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+    const width = img.naturalWidth || img.width;
+    const height = img.naturalHeight || img.height;
+    if (!width || !height) throw new Error("Could not read media dimensions");
+    const canvas = scaleCanvasForMedia(width, height, maxSide);
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return blobFromCanvas(canvas, type, quality);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function waitForMediaEvent(el, eventName) {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      el.removeEventListener(eventName, onEvent);
+      el.removeEventListener("error", onError);
+    };
+    const onEvent = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("Could not read media preview frame"));
+    };
+    el.addEventListener(eventName, onEvent, { once: true });
+    el.addEventListener("error", onError, { once: true });
+  });
+}
+
+async function makeStillVideoPreview(file, maxSide, type, quality) {
+  const url = URL.createObjectURL(file);
+  try {
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.src = url;
+    await waitForMediaEvent(video, "loadedmetadata");
+    const duration = Number(video.duration || 0);
+    if (Number.isFinite(duration) && duration > 0) {
+      video.currentTime = Math.min(Math.max(0.1, duration * 0.12), Math.max(0.1, duration - 0.05));
+      await waitForMediaEvent(video, "seeked").catch(() => undefined);
+    }
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+    if (!width || !height) throw new Error("Could not read video dimensions");
+    const canvas = scaleCanvasForMedia(width, height, maxSide);
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return blobFromCanvas(canvas, type, quality);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function fileLooksVideo(file) {
+  return String(file?.type || "").toLowerCase().startsWith("video/") ||
+    /\.(mp4|webm|mov)$/i.test(String(file?.name || ""));
+}
+
+function makeStillMediaImagePreview(file, maxSide, type, quality) {
+  return fileLooksVideo(file)
+    ? makeStillVideoPreview(file, maxSide, type, quality)
+    : makeStillImagePreview(file, maxSide, type, quality);
+}
+
+async function makeStandaloneMediaPreview(file) {
+  const attempts = [
+    { side: OBJKT_TOKEN_PREVIEW_MAX_SIDE, type: "image/png", quality: 0.92, ext: "png" },
+    { side: 640, type: "image/png", quality: 0.9, ext: "png" },
+    { side: 480, type: "image/jpeg", quality: 0.86, ext: "jpg" },
+    { side: 320, type: "image/jpeg", quality: 0.82, ext: "jpg" },
+  ];
+  let best = null;
+  for (const attempt of attempts) {
+    const blob = await makeStillMediaImagePreview(file, attempt.side, attempt.type, attempt.quality);
+    const out = { blob, mime: blob.type || attempt.type, ext: attempt.ext };
+    if (!best || blob.size < best.blob.size) best = out;
+    if (blob.size <= OBJKT_TOKEN_PREVIEW_MAX_BYTES) return out;
+  }
+  return best;
+}
+
+async function makeHostedMediaPreview(file) {
+  const fd = new FormData();
+  fd.append("file", file, file.name || "source.media");
+  const res = await MD.apiFetch("/api/macaroni/media-preview", {
+    method: "POST",
+    body: fd,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const blob = await res.blob();
+  if (!blob || blob.size <= 0) throw new Error("Hosted preview response was empty");
+  if (blob.size > OBJKT_TOKEN_PREVIEW_MAX_BYTES)
+    throw new Error(`Hosted preview was ${sizeLabel(blob.size)}, above ${OBJKT_TOKEN_PREVIEW_LABEL}`);
+  return { blob, mime: blob.type || "image/gif", ext: "gif" };
+}
+
+async function makeMediaPreview(file) {
+  try {
+    return await makeHostedMediaPreview(file);
+  } catch (err) {
+    log("hosted token preview unavailable, using local still preview: " + (err.message || err), "warn");
+    const fallback = await makeStandaloneMediaPreview(file);
+    if (!fallback || !fallback.blob) throw new Error("Could not create token preview");
+    return fallback;
+  }
+}
+
+async function pinMediaPreview(provider, token, file, indexLabel) {
+  if (!tokenNeedsMediaPreview(token) || token.previewCid) return;
+  if (!file) {
+    throw new Error(`token ${token.id} is media and needs its original file re-selected so Macaroni can create an OBJKT preview`);
+  }
+  $("pinStatus").textContent = `creating token preview ${token.id} (${indexLabel})…`;
+  const preview = await makeMediaPreview(file);
+  if (!preview || !preview.blob) throw new Error(`could not create preview for media token ${token.id}`);
+  if (preview.blob.size > OBJKT_TOKEN_PREVIEW_MAX_BYTES) {
+    throw new Error(
+      `token ${token.id} preview is ${sizeLabel(preview.blob.size)}. ` +
+      `token previews must be ≤${sizeLabel(OBJKT_TOKEN_PREVIEW_MAX_BYTES)} for OBJKT.`
+    );
+  }
+  const base = String(file.name || `${token.id}.gif`).replace(/\.[^.]+$/, "");
+  const name = `${base}-objkt-preview.${preview.ext || "gif"}`;
+  $("pinStatus").textContent = `pinning token preview ${token.id} (${indexLabel})…`;
+  token.previewCid = await MD.pinBlob(
+    provider,
+    preview.blob,
+    name,
+    makePinUploadProgress(`token preview ${token.id}`, preview.blob.size)
+  );
+  token.previewMime = preview.mime || preview.blob.type || "image/gif";
+  token.previewBytes = preview.blob.size;
+  token.metadataCid = "";
+  save();
+}
+
 function buildTokenMetadata(t) {
   const creator = MD.getAccount() || state.drop.royaltyAddr || "";
   const artifact = "ipfs://" + t.mediaCid;
   const cover = state.drop.coverCid ? "ipfs://" + state.drop.coverCid : "";
+  if (tokenNeedsMediaPreview(t) && !t.previewCid)
+    throw new Error(`token ${t.id} needs a smaller token preview for OBJKT metadata`);
   if (tokenNeedsCover(t) && !cover) throw new Error(`token ${t.id} needs the collection cover for OBJKT preview metadata`);
-  const display = tokenNeedsCover(t) ? cover : artifact;
+  const display = t.previewCid ? "ipfs://" + t.previewCid : tokenNeedsCover(t) ? cover : artifact;
   const formats = [{ uri: artifact, mimeType: t.mediaMime }];
-  if (display && display !== artifact) formats.push({ uri: display, mimeType: state.drop.coverMime || "image/png" });
+  if (display && display !== artifact)
+    formats.push({ uri: display, mimeType: t.previewMime || state.drop.coverMime || "image/png" });
   const meta = {
     name: t.name,
     description: t.description || state.drop.description,
@@ -690,13 +888,16 @@ async function pinAll() {
     const todo = state.tokens.filter((t) => !t.metadataCid);
     let done = 0;
     for (const t of todo) {
+      const f = mediaFiles.get(String(t.id));
       if (!t.mediaCid) {
-        const f = mediaFiles.get(String(t.id));
         if (!f) throw new Error(`artwork file for token ${t.id} is not loaded (re-select your files)`);
         const mediaLabel = `media ${t.id} (${done + 1}/${todo.length})`;
         $("pinStatus").textContent = `pinning ${mediaLabel}…`;
         t.mediaCid = await MD.pinBlob(provider, f, f.name, makePinUploadProgress(mediaLabel, f.size));
         save();
+      }
+      if (tokenNeedsMediaPreview(t) && !t.previewCid) {
+        await pinMediaPreview(provider, t, f, `${done + 1}/${todo.length}`);
       }
       $("pinStatus").textContent = `pinning metadata ${t.id} (${done + 1}/${todo.length})…`;
       t.metadataCid = await MD.pinJson(provider, buildTokenMetadata(t), `${t.id}.json`);

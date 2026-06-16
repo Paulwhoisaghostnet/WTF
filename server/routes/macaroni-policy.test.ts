@@ -109,7 +109,12 @@ test("Macaroni exposes practical media limits in Studio and server pinning", () 
   assert.match(studioSource, /validateArtifactFile\(f\)/);
   assert.match(studioSource, /validateCollectionCover\(coverFile\)/);
   assert.match(studioSource, /OBJKT_COLLECTION_IMAGE_MIME_TYPES\.has\(state\.drop\.coverMime\)/);
-  assert.match(studioSource, /tokenNeedsCover\(t\) \? cover : artifact/);
+  assert.match(studioSource, /function tokenNeedsMediaPreview\(t\)/);
+  assert.match(studioSource, /mime === "image\/gif" \|\| mime\.startsWith\("video\/"\)/);
+  assert.match(studioSource, /\/api\/macaroni\/media-preview/);
+  assert.match(studioSource, /tokenNeedsMediaPreview\(t\) && !t\.previewCid/);
+  assert.match(studioSource, /const display = t\.previewCid \? "ipfs:\/\/" \+ t\.previewCid : tokenNeedsCover\(t\) \? cover : artifact/);
+  assert.match(studioSource, /formats\.push\(\{ uri: display, mimeType: t\.previewMime \|\| state\.drop\.coverMime \|\| "image\/png" \}\)/);
   assert.match(studioHtml, /Collection logo \/ cover \(≤1 MB, square JPG\/PNG\)/);
   assert.match(studioHtml, /accept="image\/png,image\/jpeg"/);
   assert.match(studioHtml, /Artwork files \(≤1 GB each, ≤250 MB average, named by id\)/);
@@ -147,6 +152,43 @@ test("Macaroni hosted pinning has a direct-origin ticketed upload lane", () => {
   assert.match(studioSource, /function makePinUploadProgress/);
   assert.match(studioSource, /upload complete, waiting for IPFS CID/);
   assert.match(caddyfile, /upload\.wtfos\.app,\s*upload\.5-78-202-50\.sslip\.io\s*\{[\s\S]*handle \/api\/macaroni\/ipfs\/upload[\s\S]*handle\s*\{\s*respond 404\s*\}[\s\S]*\}/);
+});
+
+test("Macaroni creates OBJKT-sized per-token previews for GIF and video media", () => {
+  const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
+  const themeSource = readFileSync("public/creation-tools/macaroni/css/theme.css", "utf8");
+
+  assert.match(routeSource, /MACARONI_TOKEN_PREVIEW_MAX_BYTES = 2 \* 1024 \* 1024/);
+  assert.match(routeSource, /MACARONI_TOKEN_PREVIEW_TIMEOUT_MS = 45_000/);
+  assert.match(routeSource, /MACARONI_TOKEN_PREVIEW_MAX_CONCURRENT = 2/);
+  assert.match(routeSource, /MACARONI_TOKEN_PREVIEW_MIME_TYPES = new Set\(\[[\s\S]*"video\/mp4"[\s\S]*"video\/webm"/);
+  assert.match(routeSource, /router\.post\(\s*"\/api\/macaroni\/media-preview",\s*isAuthenticated,\s*runTokenPreviewUpload/s);
+  assert.match(routeSource, /tryAcquireMacaroniTokenPreviewSlot\(\)/);
+  assert.match(routeSource, /res\.status\(429\)\.json\(\{ error: "Macaroni token preview processing is busy; try again in a moment" \}\)/);
+  assert.match(routeSource, /spawn\("ffmpeg"/);
+  assert.match(routeSource, /child\.kill\("SIGKILL"\)/);
+  assert.match(routeSource, /palettegen=max_colors/);
+  assert.match(routeSource, /X-Macaroni-Preview-Kind", "animated-gif"/);
+
+  assert.match(studioSource, /const OBJKT_TOKEN_PREVIEW_MAX_BYTES = 2 \* MB/);
+  assert.match(studioSource, /function makeStillVideoPreview\(file, maxSide, type, quality\)/);
+  assert.match(studioSource, /video\.currentTime/);
+  assert.match(studioSource, /async function makeHostedMediaPreview\(file\)/);
+  assert.match(studioSource, /MD\.apiFetch\("\/api\/macaroni\/media-preview"/);
+  assert.match(studioSource, /async function pinMediaPreview\(provider, token, file, indexLabel\)/);
+  assert.match(studioSource, /token\.previewCid = await MD\.pinBlob/);
+  assert.match(studioSource, /artifactUri:\s*artifact/);
+  assert.match(studioSource, /displayUri:\s*display/);
+  assert.match(studioSource, /thumbnailUri:\s*display/);
+
+  assert.match(dropSource, /function tokenLooksVideo\(meta\)/);
+  assert.match(dropSource, /if \(\(tokenLooksGif\(meta\) \|\| tokenLooksVideo\(meta\)\) && \(!preferred \|\| sameIpfsUri\(preferred, CFG\.cover\)\)\)/);
+  assert.match(dropSource, /const video = document\.createElement\("video"\)/);
+  assert.match(dropSource, /hydrateRecentMints\(fetched\)/);
+  assert.match(dropSource, /recentMintsRetryTimer = setTimeout/);
+  assert.match(themeSource, /\.recent-mint-media img,\s*\.recent-mint-media video/s);
 });
 
 test("Macaroni Studio uses sandbox-safe inline feedback instead of browser modals", () => {
@@ -238,8 +280,13 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   assert.match(commonSource, /let connectPromise = null/);
   assert.match(commonSource, /if \(connectPromise\) return connectPromise/);
   assert.match(dropSource, /let walletConnecting = false/);
+  assert.match(dropSource, /let walletRestoring = true/);
   assert.match(dropSource, /aria-busy/);
-  assert.match(dropSource, /connect\.disabled = walletConnecting \|\| connected/);
+  assert.match(dropSource, /const busy = walletConnecting \|\| walletRestoring/);
+  assert.match(dropSource, /connect\.disabled = busy \|\| connected/);
+  assert.match(dropSource, /walletRestoring \? "Checking wallet\.\.\."/);
+  assert.match(dropSource, /if \(walletRestoring \|\| walletConnecting \|\| MD\.getAccount\(\)\) return/);
+  assert.match(dropSource, /Wallet session expired\. Connect again to mint\./);
   assert.match(dropHtml, /<main class="wrap narrow" id="main">/);
   assert.match(dropHtml, /role="progressbar"/);
   assert.match(dropHtml, /aria-live="polite"/);
@@ -249,7 +296,8 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   assert.match(publishSource, /id="recentMintsSection"/);
   assert.match(dropSource, /fetchRecentMintTransfers\(CFG\.network \|\| "mainnet", CFG\.contract, RECENT_MINT_LIMIT\)/);
   assert.match(dropSource, /fetchWalletIdentities\(CFG\.network \|\| "mainnet", addresses\)/);
-  assert.match(dropSource, /MD\.ipfsToHttp\(tokenPreviewUri\(meta\), CFG\.gateway \|\| MD\.DEFAULT_GATEWAY\)/);
+  assert.match(dropSource, /const previewUri = tokenPreviewUri\(meta\)/);
+  assert.match(dropSource, /safeHttpUrl\(MD\.ipfsToHttp\(previewUri, CFG\.gateway \|\| MD\.DEFAULT_GATEWAY\)\)/);
   assert.match(commonSource, /async function fetchRecentMintTransfers\(networkKey, kt, limit\)/);
   assert.match(commonSource, /\/v1\/tokens\/transfers/);
   assert.match(commonSource, /url\.searchParams\.set\("token\.contract", kt\)/);

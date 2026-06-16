@@ -1,4 +1,8 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { spawn } from "node:child_process";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { Router, type NextFunction, type Request, type Response } from "express";
 import multer from "multer";
 import { z } from "zod";
@@ -34,6 +38,17 @@ const router = Router();
 const MACARONI_UPLOAD_AUDIENCE = "macaroni-ipfs-upload";
 const MACARONI_UPLOAD_PATH = "/api/macaroni/ipfs/upload";
 const MACARONI_UPLOAD_TICKET_TTL_MS = 10 * 60 * 1000;
+const MACARONI_TOKEN_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
+const MACARONI_TOKEN_PREVIEW_INPUT_MAX_BYTES = 250 * 1024 * 1024;
+const MACARONI_TOKEN_PREVIEW_TIMEOUT_MS = 45_000;
+const MACARONI_TOKEN_PREVIEW_MAX_CONCURRENT = 2;
+const MACARONI_TOKEN_PREVIEW_MIME_TYPES = new Set([
+  "image/gif",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+]);
+let activeMacaroniTokenPreviewJobs = 0;
 const KT1_CONTRACT_ADDRESS = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
 const INSTALLER_PLATFORMS = [
   {
@@ -210,6 +225,16 @@ const upload = multer({
   },
 });
 
+const tokenPreviewUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: MACARONI_TOKEN_PREVIEW_INPUT_MAX_BYTES,
+    files: 1,
+    fields: 4,
+    fieldSize: 64 * 1024,
+  },
+});
+
 function runPinUpload(req: Request, res: Response, next: NextFunction) {
   upload.single("file")(req, res, (err: unknown) => {
     if (!err) return next();
@@ -219,6 +244,105 @@ function runPinUpload(req: Request, res: Response, next: NextFunction) {
         : "Invalid Macaroni IPFS upload";
     return res.status(400).json({ error: message });
   });
+}
+
+function runTokenPreviewUpload(req: Request, res: Response, next: NextFunction) {
+  tokenPreviewUpload.single("file")(req, res, (err: unknown) => {
+    if (!err) return next();
+    const message =
+      err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE"
+        ? "Token preview input exceeds the 250 MB Macaroni preview processing limit"
+        : "Invalid Macaroni token preview upload";
+    return res.status(400).json({ error: message });
+  });
+}
+
+function tryAcquireMacaroniTokenPreviewSlot(): boolean {
+  if (activeMacaroniTokenPreviewJobs >= MACARONI_TOKEN_PREVIEW_MAX_CONCURRENT) return false;
+  activeMacaroniTokenPreviewJobs += 1;
+  return true;
+}
+
+function releaseMacaroniTokenPreviewSlot(): void {
+  activeMacaroniTokenPreviewJobs = Math.max(0, activeMacaroniTokenPreviewJobs - 1);
+}
+
+function runFfmpeg(args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] });
+    let stderr = "";
+    let settled = false;
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      finish(new Error(`ffmpeg timed out after ${MACARONI_TOKEN_PREVIEW_TIMEOUT_MS}ms`));
+    }, MACARONI_TOKEN_PREVIEW_TIMEOUT_MS);
+    const finish = (err?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (err) reject(err);
+      else resolve();
+    };
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk.toString();
+      if (stderr.length > 32_000) stderr = stderr.slice(-16_000);
+    });
+    child.once("error", (err) => finish(err));
+    child.once("close", (code) => {
+      if (code === 0) finish();
+      else finish(new Error(`ffmpeg exited ${code}: ${stderr.slice(-600).trim()}`));
+    });
+  });
+}
+
+async function makeMacaroniTokenPreview(inputBuffer: Buffer, fileName: string): Promise<Buffer> {
+  const root = await mkdtemp(path.join(tmpdir(), "wtf-macaroni-token-preview-"));
+  const ext = path.extname(fileName || "").replace(/[^.\w-]/g, "").slice(0, 12) || ".media";
+  const input = path.join(root, `source${ext}`);
+  const output = path.join(root, "preview.gif");
+  try {
+    await writeFile(input, inputBuffer);
+    const attempts = [
+      { side: 640, fps: 12, colors: 96, dither: "bayer:bayer_scale=5" },
+      { side: 480, fps: 10, colors: 64, dither: "bayer:bayer_scale=6" },
+      { side: 360, fps: 8, colors: 48, dither: "bayer:bayer_scale=7" },
+      { side: 280, fps: 6, colors: 32, dither: "bayer:bayer_scale=8" },
+    ];
+    let lastError: Error | null = null;
+    for (const attempt of attempts) {
+      await rm(output, { force: true }).catch(() => undefined);
+      const scale =
+        `scale='min(${attempt.side},iw)':'min(${attempt.side},ih)':` +
+        "force_original_aspect_ratio=decrease";
+      const vf =
+        `fps=${attempt.fps},${scale},split[s0][s1];` +
+        `[s0]palettegen=max_colors=${attempt.colors}[p];` +
+        `[s1][p]paletteuse=dither=${attempt.dither}`;
+      try {
+        await runFfmpeg([
+          "-y",
+          "-hide_banner",
+          "-loglevel", "error",
+          "-nostdin",
+          "-t", "12",
+          "-i", input,
+          "-filter_complex", vf,
+          "-loop", "0",
+          output,
+        ]);
+        const outStat = await stat(output);
+        if (outStat.size > 0 && outStat.size <= MACARONI_TOKEN_PREVIEW_MAX_BYTES) {
+          return await readFile(output);
+        }
+        lastError = new Error(`preview was ${outStat.size} bytes after ${attempt.side}px/${attempt.fps}fps compression`);
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+      }
+    }
+    throw lastError || new Error("ffmpeg did not produce a token preview");
+  } finally {
+    await rm(root, { recursive: true, force: true }).catch(() => undefined);
+  }
 }
 
 function publicOrigin(req: Request): string {
@@ -387,6 +511,41 @@ router.post(
         error: message,
         code: (err as { code?: string })?.code,
       });
+    }
+  }
+);
+
+router.post(
+  "/api/macaroni/media-preview",
+  isAuthenticated,
+  runTokenPreviewUpload,
+  async (req, res) => {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "Upload a token media file to preview" });
+    const mime = String(file.mimetype || "").toLowerCase();
+    const name = String(file.originalname || "");
+    const extensionAllowed = /\.(gif|mp4|webm|mov)$/i.test(name);
+    if (!MACARONI_TOKEN_PREVIEW_MIME_TYPES.has(mime) && !extensionAllowed) {
+      return res.status(400).json({ error: "Macaroni preview processing only accepts GIF, MP4, WebM, or MOV files" });
+    }
+    if (!tryAcquireMacaroniTokenPreviewSlot()) {
+      return res.status(429).json({ error: "Macaroni token preview processing is busy; try again in a moment" });
+    }
+
+    try {
+      const preview = await makeMacaroniTokenPreview(file.buffer, file.originalname || "source.media");
+      res.setHeader("Content-Type", "image/gif");
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("X-Macaroni-Preview-Kind", "animated-gif");
+      res.setHeader("X-Macaroni-Preview-Max-Bytes", String(MACARONI_TOKEN_PREVIEW_MAX_BYTES));
+      return res.send(preview);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not create token preview";
+      return res.status(422).json({
+        error: `Could not create OBJKT-sized token preview: ${message}`,
+      });
+    } finally {
+      releaseMacaroniTokenPreviewSlot();
     }
   }
 );

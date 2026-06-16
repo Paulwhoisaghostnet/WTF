@@ -193,23 +193,79 @@ function setCardStatus(card, text) {
   card.replaceChildren(cap);
 }
 
+function tokenPrimaryMime(meta) {
+  if (!meta || typeof meta !== "object") return "";
+  const direct = String(meta.mimeType || meta.mime_type || "").toLowerCase();
+  if (direct) return direct;
+  const formats = Array.isArray(meta.formats) ? meta.formats : [];
+  return String(formats[0]?.mimeType || formats[0]?.mime_type || "").toLowerCase();
+}
+
+function tokenArtifactUri(meta) {
+  if (!meta || typeof meta !== "object") return "";
+  return meta.artifactUri || (Array.isArray(meta.formats) && meta.formats[0] && meta.formats[0].uri) || "";
+}
+
+function tokenLooksVideo(meta) {
+  const mime = tokenPrimaryMime(meta);
+  if (mime.startsWith("video/")) return true;
+  const formats = Array.isArray(meta?.formats) ? meta.formats : [];
+  return formats.some((format) => String(format?.mimeType || format?.mime_type || "").toLowerCase().startsWith("video/"));
+}
+
+function tokenLooksGif(meta) {
+  const mime = tokenPrimaryMime(meta);
+  if (mime === "image/gif") return true;
+  const formats = Array.isArray(meta?.formats) ? meta.formats : [];
+  return formats.some((format) => String(format?.mimeType || format?.mime_type || "").toLowerCase() === "image/gif");
+}
+
+function renderMediaPreview(parent, meta, label) {
+  const previewUri = tokenPreviewUri(meta);
+  const url = safeHttpUrl(MD.ipfsToHttp(previewUri, CFG.gateway || MD.DEFAULT_GATEWAY));
+  if (!url) return false;
+  const artifactUri = tokenArtifactUri(meta);
+  if (tokenLooksVideo(meta) && sameIpfsUri(previewUri, artifactUri)) {
+    const video = document.createElement("video");
+    video.src = url;
+    video.muted = true;
+    video.loop = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.controls = false;
+    video.preload = "metadata";
+    video.setAttribute("aria-label", label);
+    parent.appendChild(video);
+    return true;
+  }
+  const img = document.createElement("img");
+  img.src = url;
+  img.alt = label;
+  img.loading = "lazy";
+  parent.appendChild(img);
+  return true;
+}
+
 function renderTokenCard(card, meta, id, sealed) {
-  const imageUrl = safeHttpUrl(MD.ipfsToHttp(meta.displayUri || meta.artifactUri || "", CFG.gateway));
   const cap = document.createElement("div");
   cap.className = "cap";
   cap.textContent = `${meta.name || "#" + (id + 1)}${sealed ? " · sealed" : ""}`;
-  if (!imageUrl) {
+  const media = document.createElement("div");
+  media.className = "token-media";
+  if (!renderMediaPreview(media, meta, `${meta.name || "Token #" + (id + 1)} artwork`)) {
     card.replaceChildren(cap);
     return;
   }
-  const img = document.createElement("img");
-  img.src = imageUrl;
-  img.alt = `${meta.name || "Token #" + (id + 1)} artwork`;
-  card.replaceChildren(img, cap);
+  card.replaceChildren(...media.childNodes, cap);
 }
 
 function tokenPreviewUri(meta) {
   if (!meta || typeof meta !== "object") return CFG.cover || "";
+  const artifact = tokenArtifactUri(meta);
+  const preferred = meta.thumbnailUri || meta.displayUri || "";
+  if ((tokenLooksGif(meta) || tokenLooksVideo(meta)) && (!preferred || sameIpfsUri(preferred, CFG.cover))) {
+    return artifact || preferred || CFG.cover || "";
+  }
   return (
     meta.thumbnailUri ||
     meta.displayUri ||
@@ -218,6 +274,70 @@ function tokenPreviewUri(meta) {
     CFG.cover ||
     ""
   );
+}
+
+function normalizeIpfsRef(uri) {
+  return String(uri || "")
+    .trim()
+    .replace(/^ipfs:\/\//i, "")
+    .replace(/^https?:\/\/[^/]+\/ipfs\//i, "")
+    .replace(/\/+$/, "");
+}
+
+function sameIpfsUri(a, b) {
+  const left = normalizeIpfsRef(a);
+  const right = normalizeIpfsRef(b);
+  return !!left && !!right && left === right;
+}
+
+function metadataLooksPending(meta, sealed) {
+  if (sealed) return false;
+  if (!meta || typeof meta !== "object") return true;
+  const name = String(meta.name || "");
+  const preview = tokenPreviewUri(meta);
+  if (/sealed|unrevealed|pending/i.test(name) && sameIpfsUri(preview, CFG.cover)) return true;
+  if (!meta.artifactUri && !meta.displayUri && !meta.thumbnailUri) return true;
+  return false;
+}
+
+async function fetchTokenMetadataFromStorage(tokenId) {
+  if (!storage || !storage.token_metadata) return null;
+  try {
+    const tm = await storage.token_metadata.get(String(tokenId));
+    const hex = tm && tm.token_info && typeof tm.token_info.get === "function"
+      ? tm.token_info.get("")
+      : tm?.token_info?.[""];
+    if (!hex) return null;
+    const uri = MD.hexToUtf8(hex);
+    const metaUrl = safeHttpUrl(MD.ipfsToHttp(uri, CFG.gateway || MD.DEFAULT_GATEWAY));
+    if (!metaUrl) return null;
+    const res = await fetch(metaUrl, { cache: "no-store" });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (_) {
+    return null;
+  }
+}
+
+async function hydrateRecentMintTransfer(transfer) {
+  const tokenId = Number(transfer.tokenId);
+  const sealed = !!storage?.delayed_reveal && tokenId >= Number(storage.revealed || 0);
+  const chainMeta = await fetchTokenMetadataFromStorage(tokenId);
+  const metadata = chainMeta || transfer.token?.metadata || {};
+  return {
+    ...transfer,
+    sealed,
+    metadataPending: metadataLooksPending(metadata, sealed),
+    token: {
+      ...(transfer.token || {}),
+      metadata,
+    },
+  };
+}
+
+async function hydrateRecentMints(transfers) {
+  if (!transfers.length || !storage) return transfers;
+  return Promise.all(transfers.map((transfer) => hydrateRecentMintTransfer(transfer)));
 }
 
 function tokenNumber(tokenId) {
@@ -269,14 +389,7 @@ function renderRecentMints(transfers, identities) {
     media.href = MD.explorerUrl(CFG.network || "mainnet", CFG.contract);
     media.target = "_blank";
     media.rel = "noopener";
-    const imageUrl = safeHttpUrl(MD.ipfsToHttp(tokenPreviewUri(meta), CFG.gateway || MD.DEFAULT_GATEWAY));
-    if (imageUrl) {
-      const img = document.createElement("img");
-      img.src = imageUrl;
-      img.alt = `${meta.name || "Token #" + tokenNumber(transfer.tokenId)} preview`;
-      img.loading = "lazy";
-      media.appendChild(img);
-    } else {
+    if (!renderMediaPreview(media, meta, `${meta.name || "Token #" + tokenNumber(transfer.tokenId)} preview`)) {
       const placeholder = document.createElement("span");
       placeholder.textContent = "#" + tokenNumber(transfer.tokenId);
       media.appendChild(placeholder);
@@ -285,7 +398,9 @@ function renderRecentMints(transfers, identities) {
     const body = document.createElement("div");
     body.className = "recent-mint-body";
     const title = document.createElement("strong");
-    title.textContent = meta.name || `Token #${tokenNumber(transfer.tokenId)}`;
+    title.textContent =
+      (meta.name || `Token #${tokenNumber(transfer.tokenId)}`) +
+      (transfer.sealed ? " · sealed" : transfer.metadataPending ? " · updating" : "");
     const line = document.createElement("div");
     line.className = "muted";
     line.append("minted by ");
@@ -313,18 +428,29 @@ async function loadRecentMints(options) {
     return;
   }
   const minted = storage ? Number(storage.minted) : "";
-  const key = `${CFG.network || "mainnet"}:${CFG.contract}:${minted}`;
+  const revealed = storage ? Number(storage.revealed || 0) : "";
+  const delayed = storage ? Number(!!storage.delayed_reveal) : "";
+  const key = `${CFG.network || "mainnet"}:${CFG.contract}:${minted}:${revealed}:${delayed}`;
   if (!options?.force && key === recentMintsKey) return;
   recentMintsKey = key;
   const seq = ++recentMintsLoadSeq;
   setText("recentMintsStatus", "Loading recent mints...");
   try {
-    const transfers = await MD.fetchRecentMintTransfers(CFG.network || "mainnet", CFG.contract, RECENT_MINT_LIMIT);
+    const fetched = await MD.fetchRecentMintTransfers(CFG.network || "mainnet", CFG.contract, RECENT_MINT_LIMIT);
+    const transfers = await hydrateRecentMints(fetched);
     if (seq !== recentMintsLoadSeq) return;
     const addresses = transfers.map((mint) => mint.minter).filter(Boolean);
     const identities = await MD.fetchWalletIdentities(CFG.network || "mainnet", addresses);
     if (seq !== recentMintsLoadSeq) return;
     renderRecentMints(transfers, identities);
+    if (recentMintsRetryTimer) clearTimeout(recentMintsRetryTimer);
+    const needsRetry = transfers.some((transfer) => transfer.metadataPending || transfer.sealed);
+    if (needsRetry) {
+      recentMintsRetryTimer = setTimeout(() => {
+        recentMintsKey = "";
+        loadRecentMints({ force: true });
+      }, 12000);
+    }
   } catch (e) {
     if (seq !== recentMintsLoadSeq) return;
     setRecentMintsMessage("Could not load recent mints: " + (e.message || e));
@@ -357,7 +483,9 @@ let walletStatusLoadingKey = "";
 let ownedMintLoadSeq = 0;
 let recentMintsLoadSeq = 0;
 let recentMintsKey = "";
+let recentMintsRetryTimer = null;
 let walletConnecting = false;
+let walletRestoring = true;
 const MINT_QTY_UI_CAP = 10;
 const RECENT_MINT_LIMIT = 8;
 
@@ -391,12 +519,13 @@ function setWalletButtons(connected) {
   const connect = $("btnConnect");
   if (connect) {
     const account = MD.getAccount();
-    connect.textContent = walletConnecting ? "Connecting wallet..." : connected ? MD.short(account) : "Connect wallet";
-    connect.disabled = walletConnecting || connected;
-    connect.setAttribute("aria-busy", walletConnecting ? "true" : "false");
+    const busy = walletConnecting || walletRestoring;
+    connect.textContent = walletRestoring ? "Checking wallet..." : walletConnecting ? "Connecting wallet..." : connected ? MD.short(account) : "Connect wallet";
+    connect.disabled = busy || connected;
+    connect.setAttribute("aria-busy", busy ? "true" : "false");
     connect.setAttribute(
       "aria-label",
-      walletConnecting ? "Connecting wallet" : connected ? `Connected wallet ${account}` : "Connect wallet"
+      walletRestoring ? "Checking wallet session" : walletConnecting ? "Connecting wallet" : connected ? `Connected wallet ${account}` : "Connect wallet"
     );
   }
   if ($("btnDisconnect")) $("btnDisconnect").style.display = connected ? "" : "none";
@@ -966,7 +1095,7 @@ async function reveal(ids) {
 
 // ---------- wallet & qty ----------
 $("btnConnect").addEventListener("click", async () => {
-  if (walletConnecting || MD.getAccount()) return;
+  if (walletRestoring || walletConnecting || MD.getAccount()) return;
   walletConnecting = true;
   setWalletButtons(false);
   setText("mintStatus", "connecting wallet...");
@@ -1002,16 +1131,29 @@ $("btnDisconnect").addEventListener("click", async () => {
   render();
 });
 
-MD.restoreWallet(CFG.title || "Macaroni").then(async (addr) => {
-  setWalletButtons(!!addr);
-  if (addr) {
-    await refreshBalance("restored");
-    await loadOwnedMints();
-  } else {
-    await refreshBalance();
-  }
-  render();
-});
+setWalletButtons(false);
+MD.restoreWallet(CFG.title || "Macaroni")
+  .then(async (addr) => {
+    setWalletButtons(!!addr);
+    if (addr) {
+      await refreshBalance("restored");
+      await loadOwnedMints();
+    } else {
+      await refreshBalance();
+    }
+    render();
+  })
+  .catch(async (err) => {
+    console.warn("Macaroni wallet restore failed", err);
+    await MD.disconnectWallet().catch(() => {});
+    setText("walletBalance", "Wallet session expired. Connect again to mint.");
+    render();
+  })
+  .finally(() => {
+    walletRestoring = false;
+    setWalletButtons(!!MD.getAccount());
+    syncMintQuantityUi(activeStage());
+  });
 
 $("qtyMinus").addEventListener("click", () => {
   qty = Math.max(1, qty - 1);
