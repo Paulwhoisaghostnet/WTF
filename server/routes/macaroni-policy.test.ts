@@ -191,6 +191,24 @@ test("Macaroni creates OBJKT-sized per-token previews for GIF and video media", 
   assert.match(themeSource, /\.recent-mint-media img,\s*\.recent-mint-media video/s);
 });
 
+test("Macaroni generated mint pages classify confirmation polling timeouts by operation hash", () => {
+  const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
+
+  assert.match(dropSource, /function isConfirmationTimeout\(e\)/);
+  assert.match(dropSource, /confirmation polling timed out\|polling timed out/);
+  assert.match(dropSource, /function operationHash\(op\)/);
+  assert.match(dropSource, /async function confirmWalletOperation\(op, entrypoint, statusId, actionLabel\)/);
+  assert.match(dropSource, /op\.confirmation\(1\)/);
+  assert.match(dropSource, /\/v1\/operations\/transactions\/\$\{encodeURIComponent\(hash\)\}/);
+  assert.match(dropSource, /operationTargetAddress\(row\) !== CFG\.contract/);
+  assert.match(dropSource, /operationEntrypoint\(row\) !== entrypoint/);
+  assert.match(dropSource, /row\?\.status === "applied"/);
+  assert.match(dropSource, /row\.status && row\.status !== "applied"/);
+  assert.match(dropSource, /\`\$\{actionLabel\} not confirmed\`/);
+  assert.match(dropSource, /Check \$\{operationLink\(hash\)\} before retrying/);
+  assert.doesNotMatch(dropSource, /confirmation\(1\);\s*return extractMintedIds\(op\)/);
+});
+
 test("Macaroni Studio uses sandbox-safe inline feedback instead of browser modals", () => {
   const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
   const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");

@@ -1,3 +1,13 @@
+## 2026-06-16 - Macaroni mint confirmation timeouts need operation-hash classification
+
+**What happened**: A collector saw `mint failed: confirmation polling timed out` during an Airporters mint, and the generated drop page collapsed the raw Taquito/RPC confirmation timeout into a generic mint failure. That message did not tell the collector whether the wallet operation applied, failed/backtracked, or was still not indexed, and it gave no safe retry instruction tied to the operation hash.
+
+**Why it mattered**: Confirmation polling is not the same thing as mint execution. A timeout can happen after wallet approval with an operation hash in hand, and retrying blindly can either duplicate a successful mint or confuse a real failed/not-indexed operation. The generated drop page must classify the on-chain result before telling collectors what happened.
+
+**Rule**: Macaroni generated mint/reveal pages must wrap `op.confirmation(1)` with operation-hash-aware recovery. On confirmation timeout, query TzKT by operation hash and matching contract/entrypoint; treat `applied` as success, failed/backtracked/skipped as a real chain failure, and not-found as `not confirmed` with an explorer link and explicit check-before-retry copy.
+
+---
+
 ## 2026-06-15 - Emergency user-site bridges must be per-host and time-boxed
 
 **What happened**: `paulwhoisaghost.wtfos.me` needed to be reachable before the intended PDS-backed `.me` serving tier was ready. The app server already had an active `*.wtfos.me` on-demand TLS route and could serve the published page by Host header, while GoDaddy/DomainControl wildcard DNS still sent all user-site hosts to the `.me` AT-services box. Adding one explicit GoDaddy `A` record for `paulwhoisaghost.wtfos.me -> 5.78.202.50` overrode the wildcard without moving every user host.

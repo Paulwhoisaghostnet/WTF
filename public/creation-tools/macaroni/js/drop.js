@@ -1025,6 +1025,117 @@ function renderRevealPanel(now) {
   $("btnReveal").disabled = !MD.getAccount();
 }
 
+function operationHash(op) {
+  const hash = op?.opHash || op?.hash || op?.operationHash || "";
+  return typeof hash === "string" && /^o[1-9A-HJ-NP-Za-km-z]{30,}$/.test(hash) ? hash : "";
+}
+
+function operationLink(hash) {
+  if (!hash) return "";
+  const base =
+    {
+      mainnet: "https://tzkt.io/",
+      shadownet: "https://shadownet.tzkt.io/",
+    }[CFG.network || "mainnet"] || "https://tzkt.io/";
+  return base + hash;
+}
+
+function operationErrorMessage(e) {
+  return e?.data?.[0]?.with?.string || e?.message || String(e);
+}
+
+function isConfirmationTimeout(e) {
+  const msg = operationErrorMessage(e);
+  return /confirmation polling timed out|polling timed out|confirmation.*timed out|timeout.*confirmation/i.test(msg);
+}
+
+function macaroniOperationError(prefix, message) {
+  const err = new Error(message);
+  err.macaroniPrefix = prefix;
+  return err;
+}
+
+function tzktApiBase() {
+  return (MD.TZKT_API && (MD.TZKT_API[CFG.network || "mainnet"] || MD.TZKT_API.mainnet)) || "https://api.tzkt.io";
+}
+
+function operationTargetAddress(row) {
+  return row?.target?.address || row?.target || "";
+}
+
+function operationEntrypoint(row) {
+  return row?.parameter?.entrypoint || "";
+}
+
+function operationFailureText(row) {
+  const error = Array.isArray(row?.errors) ? row.errors[0] : null;
+  const id = error?.id || error?.with?.string || row?.status || "operation rejected";
+  return String(id).replace(/^proto\.[^.]+\./, "");
+}
+
+async function fetchOperationTransactions(hash) {
+  const res = await fetch(`${tzktApiBase()}/v1/operations/transactions/${encodeURIComponent(hash)}`, {
+    cache: "no-store",
+  });
+  if (res.status === 404) return [];
+  if (!res.ok) throw new Error(`operation lookup failed: ${res.status}`);
+  const json = await res.json();
+  return Array.isArray(json) ? json : [json];
+}
+
+async function lookupRelevantOperation(hash, entrypoint) {
+  const rows = await fetchOperationTransactions(hash);
+  return rows.find((row) => {
+    if (!row || row.hash !== hash) return false;
+    if (CFG.contract && operationTargetAddress(row) !== CFG.contract) return false;
+    if (entrypoint && operationEntrypoint(row) !== entrypoint) return false;
+    return true;
+  });
+}
+
+async function waitForIndexedOperation(hash, entrypoint) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const row = await lookupRelevantOperation(hash, entrypoint);
+    if (row) return row;
+    if (attempt < 5) await new Promise((resolve) => setTimeout(resolve, 5000));
+  }
+  return null;
+}
+
+async function confirmWalletOperation(op, entrypoint, statusId, actionLabel) {
+  try {
+    await op.confirmation(1);
+    return { status: "confirmed", hash: operationHash(op), source: "wallet" };
+  } catch (e) {
+    if (!isConfirmationTimeout(e)) throw e;
+    const hash = operationHash(op);
+    if (!hash) {
+      throw macaroniOperationError(
+        `${actionLabel} not confirmed`,
+        "wallet confirmation timed out before an operation hash was returned"
+      );
+    }
+    const shortHash = MD.short(hash);
+    setText(statusId, `${actionLabel} submitted (${shortHash}); checking chain confirmation...`);
+    const row = await waitForIndexedOperation(hash, entrypoint);
+    if (row?.status === "applied") {
+      setText(statusId, `${actionLabel} confirmed by indexer (${shortHash})`);
+      return { status: "confirmed", hash, source: "tzkt", row };
+    }
+    if (row && row.status && row.status !== "applied") {
+      throw macaroniOperationError(
+        `${actionLabel} failed`,
+        `operation ${row.status}: ${operationFailureText(row)} (${shortHash})`
+      );
+    }
+    const pendingState = entrypoint === "mint" ? "no mint was indexed yet" : "the operation has not been indexed yet";
+    throw macaroniOperationError(
+      `${actionLabel} not confirmed`,
+      `operation ${shortHash} was submitted but ${pendingState}. Check ${operationLink(hash)} before retrying.`
+    );
+  }
+}
+
 async function publicReveal() {
   const rs = revealState();
   if (!rs || rs.pending <= 0) return;
@@ -1042,13 +1153,13 @@ async function publicReveal() {
       { gasPerUnit: 420_000, units: Math.min(50, rs.pending) }
     );
     $("revealOpStatus").textContent = "revealing… waiting for confirmation";
-    await op.confirmation(1);
+    await confirmWalletOperation(op, "reveal", "revealOpStatus", "reveal");
     $("revealOpStatus").textContent = "revealed ✓";
     await refresh();
     if (sessionIds.length) await reveal(sessionIds); // refresh this session's cards
   } catch (e) {
-    const msg = e?.data?.[0]?.with?.string || e.message || String(e);
-    $("revealOpStatus").textContent = "reveal failed: " + msg;
+    const msg = operationErrorMessage(e);
+    $("revealOpStatus").textContent = (e?.macaroniPrefix || "reveal failed") + ": " + msg;
   } finally {
     btn.disabled = false;
   }
@@ -1062,7 +1173,7 @@ async function mintOnce(c, priceMutez) {
     { gasPerUnit: 480_000, units: 1 }
   );
   $("mintStatus").textContent = "minting… waiting for confirmation";
-  await op.confirmation(1);
+  await confirmWalletOperation(op, "mint", "mintStatus", "mint");
   return extractMintedIds(op);
 }
 
@@ -1080,12 +1191,12 @@ async function mintBatch(c, priceMutez, amount) {
       { gasPerUnit: 480_000, units: amount }
     );
     $("mintStatus").textContent = "minting… waiting for confirmation";
-    await op.confirmation(1);
+    await confirmWalletOperation(op, "mint", "mintStatus", "mint");
     const ids = await extractMintedIds(op);
     if (ids.length) return ids;
     return mintBatchSingles(c, priceMutez, amount);
   } catch (e) {
-    const msg = e?.data?.[0]?.with?.string || e.message || String(e);
+    const msg = operationErrorMessage(e);
     if (!/more time than the operation|gas|exceeded/i.test(msg)) throw e;
     $("mintStatus").textContent = "batch gas tight — minting one at a time…";
     return mintBatchSingles(c, priceMutez, amount);
@@ -1134,9 +1245,10 @@ async function mint() {
       : "minted ✓ (check your wallet)";
     refresh();
   } catch (e) {
-    const msg = e?.data?.[0]?.with?.string || e.message || String(e);
+    const msg = operationErrorMessage(e);
+    const prefix = e?.macaroniPrefix || "mint failed";
     $("mintStatus").textContent =
-      "mint failed: " + msg + (/more time than the operation/i.test(msg) ? " — try quantity 1" : "");
+      prefix + ": " + msg + (/more time than the operation/i.test(msg) ? " — try quantity 1" : "");
   } finally {
     syncMintQuantityUi(stage);
   }
