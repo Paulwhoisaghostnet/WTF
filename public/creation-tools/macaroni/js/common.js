@@ -717,6 +717,30 @@ const MD = (() => {
       .sort((a, b) => a - b);
   }
 
+  async function fetchMintedTokenIds(networkKey, kt, holder) {
+    if (!kt || !holder) return [];
+    const api = TZKT_API[networkKey] || TZKT_API.mainnet;
+    const url = new URL(`${api}/v1/tokens/transfers`);
+    url.searchParams.set("token.contract", kt);
+    url.searchParams.set("to", holder);
+    url.searchParams.set("from.null", "true");
+    url.searchParams.set("select", "token.tokenId");
+    url.searchParams.set("limit", "10000");
+    url.searchParams.set("sort.desc", "id");
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`minted token lookup failed: ${res.status}`);
+    const json = await res.json();
+    const seen = new Set();
+    return (Array.isArray(json) ? json : [])
+      .map((value) => Number(typeof value === "object" ? value?.token?.tokenId ?? value?.tokenId : value))
+      .filter((id) => Number.isInteger(id) && id >= 0)
+      .filter((id) => {
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+  }
+
   async function fetchRecentMintTransfers(networkKey, kt, limit) {
     if (!kt) return [];
     const api = TZKT_API[networkKey] || TZKT_API.mainnet;
@@ -846,6 +870,7 @@ const MD = (() => {
     estimateWalletOp,
     sendWalletOp,
     fetchOwnedTokenIds,
+    fetchMintedTokenIds,
     fetchRecentMintTransfers,
     fetchWalletIdentities,
     TZKT_API,

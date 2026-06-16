@@ -5055,3 +5055,15 @@
 **Fix**: Added published-page runtime compatibility for custom recent-mint grids so they render from TzKT mint transfer rows, hydrate token metadata through the existing Macaroni contract/IPFS path, resolve minter identity, and rerun after stored custom scripts mutate the page.
 
 **Rule**: Never infer recent blind-mint token IDs from supply counters. Recent-mint UIs must use actual transfer/event rows from TzKT or contract-originated mint records, then hydrate those token IDs through the same metadata path used by generated Macaroni pages.
+
+---
+
+## 2026-06-16 - Wallet ownership is not mint history
+
+**What happened**: The Macaroni wallet gallery was labeled as `Your mints`, but it populated itself from TzKT token balances. That means it showed tokens currently held by the connected wallet, not necessarily tokens minted by that wallet, while the max-per-wallet contract limit uses `stage_minted` mint history.
+
+**Why it mattered**: A wallet can mint a token and transfer it away, or own a token minted by someone else. Both cases are normal for a public mint, but they mean different things: mint history affects eligibility/max limits, while ownership affects what the collector currently holds and can view/share.
+
+**Fix**: Split the generated page into two data sources: TzKT mint-transfer rows for tokens minted directly to the connected wallet, and TzKT balance rows for tokens currently owned. The wallet gallery now uses neutral drop-token wording, shows minted-this-stage versus max and currently-owned counts, and orders cards with minted-by-wallet tokens first and owned-from-other-minter tokens second.
+
+**Rule**: Do not use balances as a proxy for mint history. Any Macaroni UI that talks about wallet mint limits must read contract `stage_minted` or actual mint-transfer records; any UI that talks about holdings must read token balances and label that as ownership.

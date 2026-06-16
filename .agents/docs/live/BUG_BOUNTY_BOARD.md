@@ -5745,6 +5745,25 @@ Priority labels:
   - `npm run test:e2e:inventory:coverage`
   - Live Airporters smoke confirmed the custom grid renders actual random token IDs from recent TzKT mint transfers instead of `minted - 1` countdown guesses.
 
+### WTF-BB-270 - Macaroni wallet gallery conflated owned tokens with minted tokens
+
+- Category: Macaroni / generated mint page wallet gallery
+- Status: Verified
+- Owner/Session: Codex Macaroni minted-vs-owned gallery pass
+- Score: C1 + F2 + S1 + P1(4) = 8
+- Evidence:
+  - The generated drop page heading and gallery used `fetchOwnedTokenIds`, so `Your mints` actually meant tokens currently held by the connected wallet.
+  - Max-per-wallet enforcement comes from `stage_minted`, which counts what the wallet minted for the stage, even if the token was later transferred away. The gallery copy did not represent that distinction.
+- Why it matters:
+  - Collectors and creators need to understand both eligibility and holdings: how many the wallet has minted against the configured max, and how many tokens it currently owns. Treating ownership as mint history makes secondary transfers and sold/transferred-away mints confusing.
+- Fix:
+  - Added a TzKT mint-transfer lookup for tokens minted directly to the connected wallet, kept ownership from TzKT token balances, changed the wallet gallery heading to drop-token language, added minted-this-stage/currently-owned status copy, and ordered cards as minted-by-wallet first, then owned-from-other-minter tokens.
+- Verification:
+  - `node --check public/creation-tools/macaroni/js/drop.js && node --check public/creation-tools/macaroni/js/common.js`
+  - `npx tsx --test server/routes/macaroni-policy.test.ts server/features/wtf-sites/macaroni-compat.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `git diff --check`
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

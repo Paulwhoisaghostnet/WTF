@@ -341,8 +341,13 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   assert.match(dropSource, /Currently on Sale Stage \$\{position\} of \$\{total\}/);
   assert.match(dropSource, /currentStageLiveLabel\(stage, stageIndex >= 0 \? stageIndex : act, stages\.length\)/);
   assert.doesNotMatch(dropSource, /Stage \$\{act \+ 1\} live/);
-  assert.match(dropSource, /function ownedMintsHeadingText\(count\)/);
-  assert.match(dropSource, /Your \$\{countLabel\(n, "mint", "mints"\)\}/);
+  assert.match(dropSource, /function walletTokensHeadingText\(count\)/);
+  assert.match(dropSource, /Your \$\{countLabel\(n, "drop token", "drop tokens"\)\}/);
+  assert.match(dropSource, /function walletTokenPresentation\(mintedIds, ownedIds\)/);
+  assert.match(dropSource, /context\.set\(id, ownedSet\.has\(id\) \? "minted by you" : "minted by you · no longer held"\)/);
+  assert.match(dropSource, /context\.set\(id, "owned · minted by another wallet"\)/);
+  assert.match(dropSource, /Minted this stage: \$\{stats\.stageMinted\}\/\$\{stats\.stage\.maxPerWallet\}/);
+  assert.match(dropSource, /Currently owned: \$\{stats\.ownedCount\}/);
   assert.match(dropSource, /function mintShareText\(meta, id\)/);
   assert.match(dropSource, /I just minted \$\{tokenDisplayName\(meta, id\)\} from/);
   assert.match(dropSource, /https:\/\/x\.com\/intent\/post/);
@@ -350,8 +355,11 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   assert.doesNotMatch(dropSource, /twitter\.com\/intent\/tweet/);
   assert.doesNotMatch(dropSource, /mint\(s\) currently held/);
   assert.doesNotMatch(dropSource, /Temple \/ Kukai \/ Umami/);
+  assert.match(dropHtml, /Your drop tokens/);
+  assert.match(publishSource, /Your drop tokens/);
   assert.match(themeSource, /\.mint-share-row/);
   assert.match(themeSource, /\.mint-share/);
+  assert.match(themeSource, /\.mint-context/);
   assert.match(dropSource, /aria-busy/);
   assert.match(dropSource, /const busy = walletConnecting \|\| walletRestoring/);
   assert.match(dropSource, /connect\.disabled = busy \|\| connected/);
@@ -376,6 +384,10 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   assert.match(dropSource, /const previewUri = tokenPreviewUri\(meta\)/);
   assert.match(dropSource, /safeHttpUrl\(MD\.ipfsToHttp\(previewUri, CFG\.gateway \|\| MD\.DEFAULT_GATEWAY\)\)/);
   assert.match(commonSource, /async function fetchRecentMintTransfers\(networkKey, kt, limit\)/);
+  assert.match(commonSource, /async function fetchMintedTokenIds\(networkKey, kt, holder\)/);
+  assert.match(commonSource, /url\.searchParams\.set\("to", holder\)/);
+  assert.match(commonSource, /url\.searchParams\.set\("from\.null", "true"\)/);
+  assert.match(commonSource, /url\.searchParams\.set\("select", "token\.tokenId"\)/);
   assert.match(commonSource, /\/v1\/tokens\/transfers/);
   assert.match(commonSource, /url\.searchParams\.set\("token\.contract", kt\)/);
   assert.match(commonSource, /url\.searchParams\.set\("sort\.desc", "id"\)/);
@@ -459,6 +471,7 @@ test("Macaroni treats Shadownet as a first-class RPC and chain-id guarded networ
   assert.match(dropSource, /btnDisconnect/);
   assert.match(dropSource, /refreshBalance\("checked before mint"\)/);
   assert.match(dropSource, /fetchOwnedTokenIds/);
+  assert.match(dropSource, /fetchMintedTokenIds/);
   assert.match(dropSource, /stage\.maxPerWallet/);
   assert.match(vendorSource, /rR\(\{\.\.\.e,matrixNodes:t\},e\?\.resetClient\)/);
   assert.match(vendorSource, /shadownet:"https:\/\/shadownet\.kukai\.app"/);

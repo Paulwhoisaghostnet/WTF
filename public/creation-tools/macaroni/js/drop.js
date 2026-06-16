@@ -201,13 +201,60 @@ function countLabel(count, singular, plural) {
   return `${count} ${countWord(count, singular, plural)}`;
 }
 
-function ownedMintsHeadingText(count) {
+function walletTokensHeadingText(count) {
   const n = Number(count || 0);
-  return n > 0 ? `Your ${countLabel(n, "mint", "mints")}` : "Your mints";
+  return n > 0 ? `Your ${countLabel(n, "drop token", "drop tokens")}` : "Your drop tokens";
 }
 
-function updateOwnedMintsHeading(count) {
-  setText("ownedMintsHeading", ownedMintsHeadingText(count));
+function updateWalletTokensHeading(count) {
+  setText("ownedMintsHeading", walletTokensHeadingText(count));
+}
+
+function walletTokenStatusText(stats) {
+  const parts = [];
+  if (stats.stage?.maxPerWallet && stats.stageMinted != null) {
+    parts.push(`Minted this stage: ${stats.stageMinted}/${stats.stage.maxPerWallet}`);
+  } else {
+    parts.push(`Minted from this drop: ${stats.mintedCount}`);
+  }
+  if (stats.stage?.maxPerWallet && stats.stageMinted != null && stats.mintedCount !== stats.stageMinted) {
+    parts.push(`Minted from this drop: ${stats.mintedCount}`);
+  }
+  parts.push(`Currently owned: ${stats.ownedCount}`);
+  return parts.join(" · ");
+}
+
+function setWalletTokenStatus(stats, prefix) {
+  const text = walletTokenStatusText(stats);
+  setText("ownedMintStatus", prefix ? `${prefix} ${text}` : text);
+}
+
+function uniqueTokenIds(ids) {
+  const seen = new Set();
+  return (ids || [])
+    .map(Number)
+    .filter((id) => Number.isInteger(id) && id >= 0)
+    .filter((id) => {
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+}
+
+function walletTokenPresentation(mintedIds, ownedIds) {
+  const minted = uniqueTokenIds(mintedIds);
+  const owned = uniqueTokenIds(ownedIds);
+  const ownedSet = new Set(owned);
+  const mintedSet = new Set(minted);
+  const ids = [...minted, ...owned.filter((id) => !mintedSet.has(id))];
+  const context = new Map();
+  minted.forEach((id) => {
+    context.set(id, ownedSet.has(id) ? "minted by you" : "minted by you · no longer held");
+  });
+  owned.forEach((id) => {
+    if (!context.has(id)) context.set(id, "owned · minted by another wallet");
+  });
+  return { ids, minted, owned, context };
 }
 
 function shortAddressIfNeeded(value) {
@@ -333,12 +380,18 @@ function renderMediaPreview(parent, meta, label) {
   return true;
 }
 
-function renderTokenCard(card, meta, id, sealed) {
+function renderTokenCard(card, meta, id, sealed, contextLabel) {
   const cap = document.createElement("div");
   cap.className = "cap";
   const name = document.createElement("span");
   name.textContent = `${tokenDisplayName(meta, id)}${sealed ? " · sealed" : ""}`;
   cap.appendChild(name);
+  if (contextLabel) {
+    const source = document.createElement("span");
+    source.className = "mint-context";
+    source.textContent = contextLabel;
+    cap.appendChild(source);
+  }
   if (!sealed) cap.appendChild(makeMintShareLinks(meta, id));
   const media = document.createElement("div");
   media.className = "token-media";
@@ -658,6 +711,7 @@ let storage = null;
 let stages = []; // [{id, start:Date, priceMutez, useAllowlist, maxPerWallet}]
 let qty = 1;
 let sessionIds = []; // token ids minted in this browser session
+let walletTokenContextLabels = new Map();
 let lastRevealed = -1;
 let walletBalanceMutez = null;
 let currentStageWalletRemaining = null;
@@ -941,29 +995,47 @@ async function preflightMint(stage, amount) {
 async function loadOwnedMints() {
   const me = MD.getAccount();
   if (!me || !CFG.contract) {
-    updateOwnedMintsHeading(0);
+    updateWalletTokensHeading(0);
+    walletTokenContextLabels = new Map();
     setText("ownedMintStatus", "");
+    if ($("revealGrid")) $("revealGrid").innerHTML = "";
+    if ($("revealSection")) $("revealSection").style.display = "none";
     return;
   }
   const seq = ++ownedMintLoadSeq;
-  setText("ownedMintStatus", "Checking this wallet's mints...");
+  setText("ownedMintStatus", "Checking this wallet's drop tokens...");
   if (!storage) await refresh();
   if (!storage || seq !== ownedMintLoadSeq) return;
   try {
-    const ids = await MD.fetchOwnedTokenIds(CFG.network || "mainnet", CFG.contract, me);
+    const [ownedIds, mintedIds] = await Promise.all([
+      MD.fetchOwnedTokenIds(CFG.network || "mainnet", CFG.contract, me),
+      MD.fetchMintedTokenIds(CFG.network || "mainnet", CFG.contract, me),
+    ]);
     if (seq !== ownedMintLoadSeq) return;
-    if (!ids.length) {
-      updateOwnedMintsHeading(0);
-      setText("ownedMintStatus", "No mints found for this wallet yet.");
+    const stage = activeStage(new Date());
+    const stageMinted = stage ? await readStageWalletMinted(stage) : null;
+    if (seq !== ownedMintLoadSeq) return;
+    const walletTokens = walletTokenPresentation(mintedIds, ownedIds);
+    walletTokenContextLabels = walletTokens.context;
+    updateWalletTokensHeading(walletTokens.ids.length);
+    const stats = {
+      stage,
+      stageMinted,
+      mintedCount: walletTokens.minted.length,
+      ownedCount: walletTokens.owned.length,
+    };
+    if (!walletTokens.ids.length) {
+      setWalletTokenStatus(stats, "No drop tokens found for this wallet yet.");
+      $("revealGrid").innerHTML = "";
+      $("revealSection").style.display = "none";
       return;
     }
-    sessionIds = [...new Set([...sessionIds, ...ids])];
+    sessionIds = [...new Set([...sessionIds, ...walletTokens.ids])];
     $("revealSection").style.display = "";
-    updateOwnedMintsHeading(ids.length);
-    setText("ownedMintStatus", "");
-    await reveal(ids);
+    setWalletTokenStatus(stats);
+    await reveal(walletTokens.ids);
   } catch (e) {
-    setText("ownedMintStatus", "Could not load wallet mints: " + (e.message || e));
+    setText("ownedMintStatus", "Could not load wallet drop tokens: " + (e.message || e));
   }
 }
 
@@ -1460,7 +1532,7 @@ async function reveal(ids) {
       const meta = await (await fetch(metaUrl)).json();
       const sealed = !!storage.delayed_reveal && id >= Number(storage.revealed);
       card.classList.toggle("sealed", sealed);
-      renderTokenCard(card, meta, id, sealed);
+      renderTokenCard(card, meta, id, sealed, walletTokenContextLabels.get(Number(id)) || "");
       if (wasSealed && !sealed) {
         // sealed → revealed: replay the pop animation for the unveiling
         card.classList.remove("flip");
@@ -1495,6 +1567,7 @@ $("btnConnect").addEventListener("click", async () => {
 $("btnDisconnect").addEventListener("click", async () => {
   await MD.disconnectWallet();
   sessionIds = [];
+  walletTokenContextLabels = new Map();
   walletBalanceMutez = null;
   currentStageWalletRemaining = null;
   walletStatusLoadingKey = "";
@@ -1505,7 +1578,7 @@ $("btnDisconnect").addEventListener("click", async () => {
   setText("walletLimitStatus", "");
   setText("allowStatus", "connect a wallet to mint");
   setText("mintPreflight", "");
-  updateOwnedMintsHeading(0);
+  updateWalletTokensHeading(0);
   setText("ownedMintStatus", "");
   $("revealGrid").innerHTML = "";
   $("revealSection").style.display = "none";

@@ -400,6 +400,11 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
   display: grid;
   gap: 8px;
 }
+.mint-context {
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
 .mint-share-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .mint-share {
   display: inline-flex;
