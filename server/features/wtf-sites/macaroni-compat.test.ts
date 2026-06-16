@@ -21,6 +21,11 @@ test("published Macaroni pages are served with the current runtime", () => {
   assert.match(normalized, /Currently on Sale Stage/);
   assert.match(normalized, /https:\/\/x\.com\/intent\/post/);
   assert.match(normalized, /https:\/\/bsky\.app\/intent\/compose/);
+  assert.match(normalized, /function creatorShareIdentity\(service, meta\)/);
+  assert.match(normalized, /function tokenShareMediaUrl\(meta\)/);
+  assert.match(normalized, /function ensureShareMedia\(text, media\)/);
+  assert.match(normalized, /function dropShareText\(service, stage, statusText\)/);
+  assert.match(normalized, /function updateDropShareLinks\(stage, statusText\)/);
   assert.match(normalized, /function walletTokenPresentation\(mintedIds, ownedIds\)/);
   assert.match(normalized, /fetchMintedTokenIds/);
   assert.match(normalized, /Currently owned/);

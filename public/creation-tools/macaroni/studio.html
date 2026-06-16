@@ -241,6 +241,18 @@
         </div>
         <label>Page content blocks — one per line: <code>h: Heading</code>, <code>p: paragraph text</code>, <code>img: ipfs://… or https://…</code></label>
         <textarea id="pageBlocks" placeholder="h: About this drop&#10;p: 500 unique works, randomly assigned at mint.&#10;img: ipfs://…"></textarea>
+        <div class="grid2" style="margin-top:14px">
+          <div>
+            <label>X creator handle</label>
+            <input type="text" id="shareTwitter" maxlength="160" placeholder="@creator" />
+          </div>
+          <div>
+            <label>Bluesky creator handle</label>
+            <input type="text" id="shareBsky" maxlength="160" placeholder="creator.bsky.social" />
+          </div>
+        </div>
+        <label>Share message</label>
+        <textarea id="shareText" maxlength="600" placeholder="I just minted {token} from {creator}'s blind mint drop for {collection}. Mint your own here {url}.&#10;{media}"></textarea>
         <input type="hidden" id="pageCss" value="" />
       </section>
 

@@ -1,4 +1,5 @@
 const MACARONI_ASSET_PATH = "/creation-tools/macaroni";
+const DEFAULT_IPFS_GATEWAY = "https://ipfs.fileship.xyz/";
 const ALLOWED_THEME_NAMES = new Set(["dark", "gallery", "paper", "neon"]);
 const ALLOWED_FONT_STACKS = new Set([
   "",
@@ -46,10 +47,36 @@ function sanitizeFontStack(value: unknown): string {
   return ALLOWED_FONT_STACKS.has(font) ? font : "";
 }
 
+function sanitizeSocialHandle(value: unknown): string {
+  const cleaned = String(value || "")
+    .trim()
+    .replace(/^https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/@?/i, "")
+    .replace(/^https?:\/\/(?:www\.)?bsky\.app\/profile\/@?/i, "")
+    .replace(/^@+/, "")
+    .split(/[?#\s]/)[0]
+    .replace(/\/+$/, "");
+  return cleaned.replace(/[^a-z0-9._-]/gi, "").slice(0, 120);
+}
+
+function sanitizeShareText(value: unknown): string {
+  return String(value || "").replace(/\r\n/g, "\n").slice(0, 600).trim();
+}
+
+function publicMediaUrl(value: unknown, gateway: unknown): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const gw = String(gateway || DEFAULT_IPFS_GATEWAY).replace(/\/+$/, "") + "/";
+  if (raw.startsWith("ipfs://")) return `${gw}${raw.slice("ipfs://".length).replace(/^\/+/, "")}`;
+  return "";
+}
+
 export function sanitizeMacaroniConfigForPublish(
   input: Record<string, unknown>
 ): Record<string, unknown> {
   const theme = asRecord(input.theme);
+  const social = asRecord(input.social);
+  const share = asRecord(input.share);
   return {
     ...input,
     theme: {
@@ -57,6 +84,15 @@ export function sanitizeMacaroniConfigForPublish(
       accent: sanitizeCssColor(theme.accent),
       font: sanitizeFontStack(theme.font),
       customCss: "",
+    },
+    social: {
+      twitter: sanitizeSocialHandle(social.twitter || social.x),
+      bsky: sanitizeSocialHandle(social.bsky || social.bluesky),
+    },
+    share: {
+      template: sanitizeShareText(share.template),
+      xText: sanitizeShareText(share.xText || share.twitterText),
+      bskyText: sanitizeShareText(share.bskyText || share.blueskyText),
     },
   };
 }
@@ -84,8 +120,26 @@ export function buildMacaroniPublishedHtml(input: {
   const assetBase = macaroniStaticAssetBase(input.publicOrigin);
   const config = sanitizeMacaroniConfigForPublish(input.config);
   const title = String(config.title || "Macaroni Drop");
+  const description = String(config.description || "").trim().slice(0, 300);
+  const coverUrl = publicMediaUrl(config.cover, config.gateway);
+  const social = asRecord(config.social);
+  const twitterCreator = sanitizeSocialHandle(social.twitter);
   const escapedTitle = escapeHtml(title);
+  const escapedDescription = escapeHtml(description);
+  const escapedCoverUrl = escapeHtml(coverUrl);
   const configJson = safeScriptJson(config);
+  const socialMeta = [
+    `<meta property="og:title" content="${escapedTitle}" />`,
+    description ? `<meta property="og:description" content="${escapedDescription}" />` : "",
+    coverUrl ? `<meta property="og:image" content="${escapedCoverUrl}" />` : "",
+    `<meta name="twitter:card" content="${coverUrl ? "summary_large_image" : "summary"}" />`,
+    `<meta name="twitter:title" content="${escapedTitle}" />`,
+    description ? `<meta name="twitter:description" content="${escapedDescription}" />` : "",
+    coverUrl ? `<meta name="twitter:image" content="${escapedCoverUrl}" />` : "",
+    twitterCreator ? `<meta name="twitter:creator" content="@${escapeHtml(twitterCreator)}" />` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return `<!DOCTYPE html>
 <html lang="en" data-theme="dark">
@@ -93,6 +147,7 @@ export function buildMacaroniPublishedHtml(input: {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapedTitle}</title>
+${socialMeta}
 <link rel="stylesheet" href="${assetBase}/css/theme.css" />
 <style id="customCss"></style>
 </head>
@@ -136,6 +191,13 @@ export function buildMacaroniPublishedHtml(input: {
     <div class="muted" id="mintPreflight" aria-live="polite"></div>
     <div class="muted" id="allowStatus" role="status" aria-live="polite" style="margin-top:6px"></div>
     <div class="muted" id="walletLimitStatus" aria-live="polite"></div>
+    <div class="drop-share" id="dropSharePanel" aria-label="Share this blind mint">
+      <span class="muted">Share this blind mint</span>
+      <div class="mint-share-row">
+        <a class="mint-share" id="dropShareX" target="_blank" rel="noopener" href="#">X</a>
+        <a class="mint-share" id="dropShareBsky" target="_blank" rel="noopener" href="#">Bluesky</a>
+      </div>
+    </div>
     <div id="revealPending" style="display:none">
       <hr class="sep" />
       <div class="muted" id="revealInfo" aria-live="polite"></div>

@@ -112,7 +112,17 @@ function freshDropState() {
     tokens: [], // {id, name, description, attributes, tags, fileName, mediaBytes, mediaCid, mediaMime, previewCid, previewMime, previewBytes, metadataCid}
     stages: [], // {start, price, useAllowlist, maxPerWallet, allowlist:[{address,capacity}]}
     contract: "",
-    page: { theme: "dark", accent: "", font: "", blocks: "", css: "", code: "" },
+    page: {
+      theme: "dark",
+      accent: "",
+      font: "",
+      blocks: "",
+      css: "",
+      code: "",
+      shareTwitter: "",
+      shareBsky: "",
+      shareText: "",
+    },
   };
 }
 
@@ -138,9 +148,30 @@ function sanitizeFontStack(value) {
   return ALLOWED_FONT_STACKS.has(font) ? font : "";
 }
 
+function sanitizeSocialHandle(value) {
+  let text = String(value || "").trim();
+  text = text
+    .replace(/^https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/@?/i, "")
+    .replace(/^https?:\/\/(?:www\.)?bsky\.app\/profile\/@?/i, "")
+    .replace(/^@+/, "")
+    .split(/[?#\s]/)[0]
+    .replace(/\/+$/, "");
+  return text.replace(/[^a-z0-9._-]/gi, "").slice(0, 120);
+}
+
+function shareFieldText(value, max = 600) {
+  return String(value || "").replace(/\r\n/g, "\n").slice(0, max).trim();
+}
+
+function configRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
 function sanitizeDropConfig(cfg) {
   const input = cfg && typeof cfg === "object" ? cfg : {};
   const theme = input.theme && typeof input.theme === "object" ? input.theme : {};
+  const social = configRecord(input.social);
+  const share = configRecord(input.share);
   return {
     ...input,
     theme: {
@@ -148,6 +179,15 @@ function sanitizeDropConfig(cfg) {
       accent: sanitizeCssColor(theme.accent),
       font: sanitizeFontStack(theme.font),
       customCss: "",
+    },
+    social: {
+      twitter: sanitizeSocialHandle(social.twitter || social.x),
+      bsky: sanitizeSocialHandle(social.bsky || social.bluesky),
+    },
+    share: {
+      template: shareFieldText(share.template),
+      xText: shareFieldText(share.xText || share.twitterText),
+      bskyText: shareFieldText(share.bskyText || share.blueskyText),
     },
   };
 }
@@ -373,6 +413,39 @@ async function refreshPinningAccess() {
   renderPinKindOptions();
 }
 
+function fillShareFields() {
+  if ($("shareTwitter")) $("shareTwitter").value = state.page.shareTwitter || "";
+  if ($("shareBsky")) $("shareBsky").value = state.page.shareBsky || "";
+  if ($("shareText")) $("shareText").value = state.page.shareText || "";
+}
+
+async function refreshCreatorSocialDefaults() {
+  if (IS_NATIVE_APP) return;
+  try {
+    const res = await MD.apiFetch("/api/profile/social");
+    if (!res.ok) return;
+    const profile = await res.json();
+    let changed = false;
+    const twitter = profile.twitterPublic ? sanitizeSocialHandle(profile.twitterHandle) : "";
+    const bsky = sanitizeSocialHandle(profile.atprotoHandle);
+    if (!sanitizeSocialHandle(state.page.shareTwitter) && twitter) {
+      state.page.shareTwitter = twitter;
+      changed = true;
+    }
+    if (!sanitizeSocialHandle(state.page.shareBsky) && bsky) {
+      state.page.shareBsky = bsky;
+      changed = true;
+    }
+    if (!changed) return;
+    fillShareFields();
+    save();
+    syncCodeFromForm();
+    refreshPreview();
+  } catch (_) {
+    // Standalone exports and native builds do not have wtfOS profile defaults.
+  }
+}
+
 // ---------- persistence ----------
 function save() {
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
@@ -399,6 +472,9 @@ function normalizeState() {
   state.page.accent = sanitizeCssColor(state.page.accent);
   state.page.font = sanitizeFontStack(state.page.font);
   state.page.css = "";
+  state.page.shareTwitter = shareFieldText(state.page.shareTwitter, 160);
+  state.page.shareBsky = shareFieldText(state.page.shareBsky, 160);
+  state.page.shareText = shareFieldText(state.page.shareText);
 }
 
 function replaceState(next) {
@@ -1338,6 +1414,13 @@ function buildConfig() {
       font: state.page.font,
       customCss: "",
     },
+    social: {
+      twitter: sanitizeSocialHandle(state.page.shareTwitter),
+      bsky: sanitizeSocialHandle(state.page.shareBsky),
+    },
+    share: {
+      template: shareFieldText(state.page.shareText),
+    },
     blocks: state.page.blocks
       .split("\n")
       .map((l) => l.trim())
@@ -1647,6 +1730,9 @@ function readForm() {
   state.page.font = sanitizeFontStack($("pageFont").value);
   state.page.blocks = $("pageBlocks").value;
   state.page.css = "";
+  state.page.shareTwitter = shareFieldText($("shareTwitter").value, 160);
+  state.page.shareBsky = shareFieldText($("shareBsky").value, 160);
+  state.page.shareText = shareFieldText($("shareText").value);
   save();
   toggleRevealFields();
 }
@@ -1687,6 +1773,9 @@ function fillForm() {
   $("pageFont").value = state.page.font;
   $("pageBlocks").value = state.page.blocks;
   $("pageCss").value = state.page.css;
+  $("shareTwitter").value = state.page.shareTwitter || "";
+  $("shareBsky").value = state.page.shareBsky || "";
+  $("shareText").value = state.page.shareText || "";
   if (state.contract) $("btnSync").disabled = false;
   if (state.drop.coverCid)
     $("coverPreview").innerHTML =
@@ -1726,6 +1815,17 @@ function applyImportedConfig(cfg) {
       .map((b) => (b.type && b.value != null ? `${b.type}: ${b.value}` : ""))
       .filter(Boolean)
       .join("\n");
+  const social = configRecord(cfg.social);
+  const share = configRecord(cfg.share);
+  state.page.shareTwitter = sanitizeSocialHandle(
+    social.twitter || social.x || share.twitterHandle || share.xHandle || cfg.twitterHandle || cfg.xHandle
+  );
+  state.page.shareBsky = sanitizeSocialHandle(
+    social.bsky || social.bluesky || share.bskyHandle || share.blueskyHandle || cfg.bskyHandle || cfg.blueskyHandle
+  );
+  state.page.shareText = shareFieldText(
+    share.template || share.xText || share.twitterText || share.bskyText || share.blueskyText || cfg.shareText
+  );
 }
 
 function parseDropConfigText(text) {
@@ -1854,6 +1954,7 @@ function startNewDrop() {
   $("resumeAddr").value = "";
   $("btnSync").disabled = true;
   syncCodeFromForm();
+  refreshCreatorSocialDefaults();
   showView("drop");
   setResumeStatus("New drop started. Import backup JSON any time to restore a saved project.", true);
   log("New drop slate started; wallet session unchanged.");
@@ -1879,6 +1980,7 @@ async function refreshResumeStatusIfNeeded() {
 load();
 fillForm();
 refreshPinningAccess();
+refreshCreatorSocialDefaults();
 applyNetwork();
 renderTokens();
 renderStages();
@@ -1924,7 +2026,7 @@ $("pinKind").addEventListener("change", () => { togglePinFields(); readForm(); }
   .forEach((id) => $(id).addEventListener("change", readForm));
 
 // Designer controls: regenerate code + live preview as you type.
-["pageTheme", "pageAccent", "pageFont", "pageBlocks", "pageCss"].forEach((id) => {
+["pageTheme", "pageAccent", "pageFont", "pageBlocks", "pageCss", "shareTwitter", "shareBsky", "shareText"].forEach((id) => {
   for (const evt of ["change", "input"]) {
     $(id).addEventListener(evt, () => {
       readForm();

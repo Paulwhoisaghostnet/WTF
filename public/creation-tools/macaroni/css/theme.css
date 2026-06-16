@@ -405,6 +405,13 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
   font-size: 0.76rem;
   font-weight: 500;
 }
+.drop-share {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.drop-share .mint-share-row { justify-content: center; }
 .mint-share-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .mint-share {
   display: inline-flex;

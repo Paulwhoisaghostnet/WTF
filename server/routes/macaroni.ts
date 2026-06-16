@@ -6,6 +6,8 @@ import path from "node:path";
 import { Router, type NextFunction, type Request, type Response } from "express";
 import multer from "multer";
 import { z } from "zod";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { db } from "../db";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { getSessionSecret } from "../auth/session-secret";
 import {
@@ -32,6 +34,10 @@ import {
   listWtfosOutboxForSource,
   publishQueuedWtfosOutboxForSource,
 } from "../features/tz2at/wtfos-outbox";
+import {
+  atprotoAccounts,
+  users,
+} from "@shared/schema";
 
 const router = Router();
 
@@ -366,6 +372,66 @@ function normalizeMacaroniContract(value: unknown): string | null {
   return KT1_CONTRACT_ADDRESS.test(contract) ? contract : null;
 }
 
+function normalizeCreatorSocialHandle(value: unknown): string {
+  const cleaned = String(value || "")
+    .trim()
+    .replace(/^https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/@?/i, "")
+    .replace(/^https?:\/\/(?:www\.)?bsky\.app\/profile\/@?/i, "")
+    .replace(/^@+/, "")
+    .split(/[?#\s]/)[0]
+    .replace(/\/+$/, "");
+  return cleaned.replace(/[^a-z0-9._-]/gi, "").slice(0, 120);
+}
+
+function plainRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+async function loadMacaroniCreatorSocial(userId: number): Promise<{
+  twitter: string;
+  bsky: string;
+}> {
+  const [profile] = await db
+    .select({
+      twitterHandle: users.twitterHandle,
+      twitterPublic: users.twitterPublic,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const [atproto] = await db
+    .select({
+      handle: atprotoAccounts.handle,
+    })
+    .from(atprotoAccounts)
+    .where(and(eq(atprotoAccounts.userId, userId), isNull(atprotoAccounts.disconnectedAt)))
+    .orderBy(desc(atprotoAccounts.updatedAt))
+    .limit(1);
+  return {
+    twitter: profile?.twitterPublic ? normalizeCreatorSocialHandle(profile.twitterHandle) : "",
+    bsky: normalizeCreatorSocialHandle(atproto?.handle),
+  };
+}
+
+function enrichMacaroniCreatorSocial(
+  config: Record<string, unknown>,
+  creatorSocial: { twitter: string; bsky: string }
+): Record<string, unknown> {
+  const social = plainRecord(config.social);
+  const twitter = normalizeCreatorSocialHandle(social.twitter || social.x) || creatorSocial.twitter;
+  const bsky = normalizeCreatorSocialHandle(social.bsky || social.bluesky) || creatorSocial.bsky;
+  return {
+    ...config,
+    social: {
+      ...social,
+      twitter,
+      bsky,
+    },
+  };
+}
+
 function handleMacaroniSiteError(res: Response, err: unknown) {
   if (err instanceof WtfUserSiteError) {
     return res.status(err.status).json({ error: err.message });
@@ -599,9 +665,11 @@ router.post(
         return res.status(409).json({ error: "Claim a wtfOS site before publishing Macaroni drops" });
       }
 
-      const title = String(config.title || "Macaroni Drop").trim().slice(0, 200) || "Macaroni Drop";
+      const creatorSocial = await loadMacaroniCreatorSocial(user.id);
+      const publishedConfig = enrichMacaroniCreatorSocial(config, creatorSocial);
+      const title = String(publishedConfig.title || "Macaroni Drop").trim().slice(0, 200) || "Macaroni Drop";
       const html = buildMacaroniPublishedHtml({
-        config,
+        config: publishedConfig,
         publicOrigin: publicOrigin(req),
       });
 

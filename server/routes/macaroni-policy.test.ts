@@ -86,6 +86,73 @@ test("Macaroni wtfOS publish requires a deployed KT1 contract", () => {
   assert.match(studioHtml, /Publish to wtfOS<\/strong> requires a deployed or resumed <code>KT1/);
 });
 
+test("Macaroni social share presets include creator handles and token media URLs", () => {
+  const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
+  const publishSource = readFileSync("server/features/macaroni/publish.ts", "utf8");
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+  const dropHtml = readFileSync("public/creation-tools/macaroni/drop.html", "utf8");
+  const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
+
+  assert.match(studioHtml, /id="shareTwitter"/);
+  assert.match(studioHtml, /id="shareBsky"/);
+  assert.match(studioHtml, /id="shareText"/);
+  assert.match(studioHtml, /\{token\}[\s\S]*\{creator\}[\s\S]*\{collection\}[\s\S]*\{url\}[\s\S]*\{media\}/);
+  assert.match(studioSource, /async function refreshCreatorSocialDefaults\(\)/);
+  assert.match(studioSource, /MD\.apiFetch\("\/api\/profile\/social"\)/);
+  assert.match(studioSource, /profile\.twitterPublic/);
+  assert.match(studioSource, /profile\.atprotoHandle/);
+  assert.match(studioSource, /shareTwitter/);
+  assert.match(studioSource, /shareBsky/);
+  assert.match(studioSource, /share:\s*\{\s*template: shareFieldText\(state\.page\.shareText\)/s);
+  assert.match(studioSource, /social:\s*\{\s*twitter: sanitizeSocialHandle\(state\.page\.shareTwitter\),\s*bsky: sanitizeSocialHandle\(state\.page\.shareBsky\)/s);
+
+  assert.match(routeSource, /atprotoAccounts/);
+  assert.match(routeSource, /users/);
+  assert.match(routeSource, /async function loadMacaroniCreatorSocial\(userId: number\)/);
+  assert.match(routeSource, /twitterPublic/);
+  assert.match(routeSource, /isNull\(atprotoAccounts\.disconnectedAt\)/);
+  assert.match(routeSource, /function enrichMacaroniCreatorSocial/);
+  assert.match(routeSource, /const publishedConfig = enrichMacaroniCreatorSocial\(config, creatorSocial\)/);
+  assert.match(routeSource, /config: publishedConfig/);
+
+  assert.match(publishSource, /function sanitizeSocialHandle/);
+  assert.match(publishSource, /function sanitizeShareText/);
+  assert.match(publishSource, /social:\s*\{\s*twitter: sanitizeSocialHandle\(social\.twitter \|\| social\.x\),\s*bsky: sanitizeSocialHandle\(social\.bsky \|\| social\.bluesky\)/s);
+  assert.match(publishSource, /share:\s*\{\s*template: sanitizeShareText\(share\.template\)/s);
+  assert.match(publishSource, /twitter:creator/);
+  assert.match(publishSource, /twitter:image/);
+  assert.match(publishSource, /id="dropSharePanel"/);
+
+  assert.match(dropHtml, /id="dropSharePanel"/);
+  assert.match(dropHtml, /id="dropShareX"/);
+  assert.match(dropHtml, /id="dropShareBsky"/);
+
+  assert.match(dropSource, /function creatorSocialHandle\(service\)/);
+  assert.match(dropSource, /function creatorShareIdentity\(service, meta\)/);
+  assert.match(dropSource, /function tokenShareMediaUrl\(meta\)/);
+  assert.match(dropSource, /tokenArtifactUri\(meta\) \|\| tokenPreviewUri\(meta\)/);
+  assert.match(dropSource, /function collectionCoverUrl\(\)/);
+  assert.match(dropSource, /function shareIntentUrl\(service, text\)/);
+  assert.match(dropSource, /function shareTemplateFor\(service\)/);
+  assert.match(dropSource, /function ensureShareMedia\(text, media\)/);
+  assert.match(dropSource, /function mintShareText\(service, meta, id\)/);
+  assert.match(dropSource, /function dropShareText\(service, stage, statusText\)/);
+  assert.match(dropSource, /function updateDropShareLinks\(stage, statusText\)/);
+  assert.match(dropSource, /creator: creatorShareIdentity\(service, meta\)/);
+  assert.match(dropSource, /media,/);
+  assert.match(dropSource, /mintShareText\(service, meta, id\)/);
+  assert.match(dropSource, /Mint cost:/);
+  assert.match(dropSource, /Wallet limit:/);
+  assert.match(dropSource, /Access:/);
+  assert.match(dropSource, /Mint page:/);
+  assert.match(dropSource, /Cover image:/);
+  assert.match(dropSource, /updateDropShareLinks\(stage, stageLabel\)/);
+  assert.match(dropSource, /https:\/\/x\.com\/intent\/post/);
+  assert.match(dropSource, /https:\/\/bsky\.app\/intent\/compose/);
+  assert.doesNotMatch(dropSource, /api\.twitter\.com|api\.bsky\.app|com\.atproto\.repo\.createRecord/);
+});
+
 test("Macaroni exposes practical media limits in Studio and server pinning", () => {
   const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
   const limitSource = readFileSync("server/features/macaroni/upload-limits.ts", "utf8");
@@ -348,15 +415,21 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   assert.match(dropSource, /context\.set\(id, "owned · minted by another wallet"\)/);
   assert.match(dropSource, /Minted this stage: \$\{stats\.stageMinted\}\/\$\{stats\.stage\.maxPerWallet\}/);
   assert.match(dropSource, /Currently owned: \$\{stats\.ownedCount\}/);
-  assert.match(dropSource, /function mintShareText\(meta, id\)/);
-  assert.match(dropSource, /I just minted \$\{tokenDisplayName\(meta, id\)\} from/);
+  assert.match(dropSource, /function mintShareText\(service, meta, id\)/);
+  assert.match(dropSource, /function dropShareText\(service, stage, statusText\)/);
+  assert.match(dropSource, /function updateDropShareLinks\(stage, statusText\)/);
+  assert.match(dropSource, /creator: creatorShareIdentity\(service, meta\)/);
+  assert.match(dropSource, /tokenShareMediaUrl\(meta\)/);
   assert.match(dropSource, /https:\/\/x\.com\/intent\/post/);
   assert.match(dropSource, /https:\/\/bsky\.app\/intent\/compose/);
   assert.doesNotMatch(dropSource, /twitter\.com\/intent\/tweet/);
   assert.doesNotMatch(dropSource, /mint\(s\) currently held/);
   assert.doesNotMatch(dropSource, /Temple \/ Kukai \/ Umami/);
   assert.match(dropHtml, /Your drop tokens/);
+  assert.match(dropHtml, /id="dropSharePanel"/);
   assert.match(publishSource, /Your drop tokens/);
+  assert.match(publishSource, /id="dropSharePanel"/);
+  assert.match(themeSource, /\.drop-share/);
   assert.match(themeSource, /\.mint-share-row/);
   assert.match(themeSource, /\.mint-share/);
   assert.match(themeSource, /\.mint-context/);

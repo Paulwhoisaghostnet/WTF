@@ -1,3 +1,13 @@
+## 2026-06-16 - Macaroni social share text must carry platform identity and token media
+
+**What happened**: Generated Macaroni drop pages had X and Bluesky compose links, but the drafted text used a generic artist label for both platforms and omitted the minted token media URL. Creators also had no Page Designer fields to override missing or wrong social handles before exporting or publishing.
+
+**Why it mattered**: Collector shares are part of the drop's distribution loop. A Bluesky post should credit the creator's Bluesky handle, an X post should credit the creator's X handle, and both should include the token artifact/preview URL without switching to social posting APIs or auto-posting on the collector's behalf.
+
+**Rule**: Macaroni generated share presets must stay compose-intent based, but the text should be service-aware, use the creator's matching platform handle when configured, append the token media URL, and expose Studio override fields when wtfOS cannot safely infer the handles.
+
+---
+
 ## 2026-06-16 - Padded gas limits need matching fee floors
 
 **What happened**: A live Macaroni mint failed with `Fee is too low, blockchain says: "No tip, no trip"`. Macaroni was using Taquito's estimate, then manually padding the gas/storage limits for safer contract execution, but the explicit fee sent to Beacon was still based on the lower unpadded Taquito suggestion.

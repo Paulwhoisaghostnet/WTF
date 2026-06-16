@@ -27,6 +27,16 @@ function ensureMintSiteEnhancements() {
   insertAfter("mintStatus", '<div class="muted" id="walletBalance" role="status" aria-live="polite"></div>');
   insertAfter("walletBalance", '<div class="muted" id="mintPreflight" aria-live="polite"></div>');
   insertAfter("allowStatus", '<div class="muted" id="walletLimitStatus" aria-live="polite"></div>');
+  insertAfter(
+    "walletLimitStatus",
+    '<div class="drop-share" id="dropSharePanel" aria-label="Share this blind mint">' +
+      '<span class="muted">Share this blind mint</span>' +
+      '<div class="mint-share-row">' +
+        '<a class="mint-share" id="dropShareX" target="_blank" rel="noopener" href="#">X</a>' +
+        '<a class="mint-share" id="dropShareBsky" target="_blank" rel="noopener" href="#">Bluesky</a>' +
+      '</div>' +
+    '</div>'
+  );
   insertAfter("revealGrid", '<div class="muted" id="ownedMintStatus" role="status" aria-live="polite" style="text-align:center;margin-top:10px"></div>');
   insertAfter(
     "revealSection",
@@ -106,6 +116,8 @@ function ensureDropAccessibility() {
     if (attrs.type) button.type = attrs.type;
     setAttrs(button, attrs);
   }
+  setAttrs($("dropShareX"), { "aria-label": "Share this blind mint on X" });
+  setAttrs($("dropShareBsky"), { "aria-label": "Share this blind mint on Bluesky" });
   setAttrs($("qty"), { "aria-label": "Mint quantity", "aria-live": "polite" });
 }
 
@@ -297,16 +309,180 @@ function tokenDisplayName(meta, id) {
   return String(meta?.name || "#" + (id + 1));
 }
 
-function mintShareText(meta, id) {
-  return `I just minted ${tokenDisplayName(meta, id)} from ${dropArtistName(meta)}'s blind mint drop for ${
-    CFG.title || "this collection"
-  }. Mint your own here ${shareDropUrl()}.`;
+function normalizeShareHandle(value) {
+  let text = String(value || "").trim();
+  text = text
+    .replace(/^https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/@?/i, "")
+    .replace(/^https?:\/\/(?:www\.)?bsky\.app\/profile\/@?/i, "")
+    .replace(/^@+/, "")
+    .split(/[?#\s]/)[0]
+    .replace(/\/+$/, "");
+  return text.replace(/[^a-z0-9._-]/gi, "").slice(0, 120);
+}
+
+function shareRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function creatorSocialHandle(service) {
+  const social = shareRecord(CFG.social);
+  const creatorSocial = shareRecord(CFG.creatorSocial);
+  const share = shareRecord(CFG.share);
+  const candidates =
+    service === "bsky"
+      ? [
+          social.bsky,
+          social.bluesky,
+          creatorSocial.bsky,
+          creatorSocial.bluesky,
+          share.bskyHandle,
+          share.blueskyHandle,
+          CFG.bskyHandle,
+          CFG.blueskyHandle,
+          CFG.bsky,
+        ]
+      : [
+          social.twitter,
+          social.x,
+          creatorSocial.twitter,
+          creatorSocial.x,
+          share.twitterHandle,
+          share.xHandle,
+          CFG.twitterHandle,
+          CFG.xHandle,
+          CFG.twitter,
+          CFG.x,
+        ];
+  for (const candidate of candidates) {
+    const handle = normalizeShareHandle(candidate);
+    if (handle) return handle;
+  }
+  return "";
+}
+
+function creatorShareIdentity(service, meta) {
+  const handle = creatorSocialHandle(service);
+  return handle ? `@${handle}` : dropArtistName(meta);
+}
+
+function tokenShareMediaUrl(meta) {
+  const uri = tokenArtifactUri(meta) || tokenPreviewUri(meta);
+  return safeHttpUrl(MD.ipfsToHttp(uri, CFG.gateway || MD.DEFAULT_GATEWAY));
+}
+
+function shareTemplateFor(service) {
+  const share = shareRecord(CFG.share);
+  const template =
+    service === "bsky"
+      ? share.bskyText || share.blueskyText || share.template || CFG.shareText
+      : share.xText || share.twitterText || share.template || CFG.shareText;
+  return String(template || "").trim();
+}
+
+function fillShareTemplate(template, values) {
+  return template.replace(/\{(token|artist|creator|collection|url|media|service)\}/gi, (_, key) => {
+    const lookup = String(key || "").toLowerCase();
+    return values[lookup] || "";
+  });
+}
+
+function ensureShareMedia(text, media) {
+  const body = String(text || "").trim();
+  if (!media || body.includes(media)) return body;
+  return `${body}\n${media}`;
+}
+
+function collectionCoverUrl() {
+  return safeHttpUrl(MD.ipfsToHttp(CFG.cover, CFG.gateway || MD.DEFAULT_GATEWAY));
+}
+
+function shareIntentUrl(service, text) {
+  if (service === "bsky") return `https://bsky.app/intent/compose?${new URLSearchParams({ text }).toString()}`;
+  return `https://x.com/intent/post?${new URLSearchParams({ text }).toString()}`;
+}
+
+function mintShareText(service, meta, id) {
+  const media = tokenShareMediaUrl(meta);
+  const values = {
+    token: tokenDisplayName(meta, id),
+    artist: dropArtistName(meta),
+    creator: creatorShareIdentity(service, meta),
+    collection: CFG.title || "this collection",
+    url: shareDropUrl(),
+    media,
+    service: service === "bsky" ? "Bluesky" : "X",
+  };
+  const template = shareTemplateFor(service);
+  if (template) return ensureShareMedia(fillShareTemplate(template, values), media);
+  return ensureShareMedia(
+    `I just minted ${values.token} from ${values.creator}'s blind mint drop for ${values.collection}. Mint your own here ${values.url}.`,
+    media
+  );
 }
 
 function shareUrlFor(service, meta, id) {
-  const text = mintShareText(meta, id);
-  if (service === "bsky") return `https://bsky.app/intent/compose?${new URLSearchParams({ text }).toString()}`;
-  return `https://x.com/intent/post?${new URLSearchParams({ text }).toString()}`;
+  return shareIntentUrl(service, mintShareText(service, meta, id));
+}
+
+function stagePositionText(stage) {
+  if (!stage) return "";
+  const index = stages.findIndex((s) => s.id === stage.id);
+  const total = Math.max(1, stages.length || 1);
+  if (total === 1) return "Mint stage";
+  return `Stage ${Math.max(0, index) + 1} of ${total}`;
+}
+
+function dropSupplyShareLine() {
+  if (!storage) return "";
+  const supply = Number(storage.supply);
+  const minted = Number(storage.minted);
+  if (!Number.isFinite(supply) || !Number.isFinite(minted)) return "";
+  return `Minted: ${minted}/${supply}${supply > minted ? `, ${supply - minted} remaining` : ""}`;
+}
+
+function dropStageShareLines(stage, statusText) {
+  const lines = [];
+  if (statusText) lines.push(`Sale: ${statusText}`);
+  if (stage) {
+    const live = stage.start <= new Date();
+    lines.push(`${stagePositionText(stage)}: ${live ? "live" : "opens"} ${live ? "now" : stage.start.toLocaleString()}`);
+    lines.push(`Mint cost: ${MD.fmtTez(stage.priceMutez)} each`);
+    lines.push(`Wallet limit: ${stage.maxPerWallet ? `${stage.maxPerWallet} per wallet` : "no per-wallet cap"}`);
+    lines.push(`Access: ${stage.useAllowlist ? "allowlist only" : "public mint"}`);
+  } else {
+    lines.push("Stage: not scheduled");
+  }
+  const supplyLine = dropSupplyShareLine();
+  if (supplyLine) lines.push(supplyLine);
+  return lines;
+}
+
+function dropShareText(service, stage, statusText) {
+  const cover = collectionCoverUrl();
+  const title = CFG.title || "this blind mint drop";
+  const creator = creatorShareIdentity(service, null);
+  const lines = [
+    `${title} blind mint${creator ? ` by ${creator}` : ""}.`,
+    ...dropStageShareLines(stage, statusText),
+    `Mint page: ${shareDropUrl()}`,
+  ];
+  if (cover) lines.push(`Cover image: ${cover}`);
+  return lines.filter(Boolean).join("\n");
+}
+
+function updateDropShareLinks(stage, statusText) {
+  const title = CFG.title || "this blind mint";
+  const x = $("dropShareX");
+  const bsky = $("dropShareBsky");
+  if (!x && !bsky) return;
+  if (x) {
+    x.href = shareIntentUrl("x", dropShareText("x", stage, statusText));
+    x.setAttribute("aria-label", `Share ${title} blind mint on X`);
+  }
+  if (bsky) {
+    bsky.href = shareIntentUrl("bsky", dropShareText("bsky", stage, statusText));
+    bsky.setAttribute("aria-label", `Share ${title} blind mint on Bluesky`);
+  }
 }
 
 function makeMintShareLink(service, label, meta, id) {
@@ -1043,6 +1219,7 @@ async function refresh() {
   if (!CFG.contract) {
     $("supplyText").textContent = "drop not deployed yet — check back soon";
     $("stagesList").innerHTML = '<div class="muted">no stages configured</div>';
+    updateDropShareLinks(null, "Drop page is live; contract is not deployed yet");
     loadRecentMints();
     return;
   }
@@ -1128,12 +1305,14 @@ function render() {
   if (storage.paused) {
     $("stageInfo").textContent = "Minting is paused by the creator.";
     $("price").textContent = "";
+    updateDropShareLinks(activeStage(now) || stages[0] || null, "Minting is paused by the creator");
     disableMintControls();
     return;
   }
   if (left <= 0 && supply > 0) {
     $("stageInfo").textContent = "Sold out — thank you!";
     $("price").textContent = "";
+    updateDropShareLinks(activeStage(now) || stages[stages.length - 1] || null, "Sold out");
     disableMintControls();
     return;
   }
@@ -1150,12 +1329,15 @@ function render() {
       $("stageInfo").textContent = "Sale not scheduled yet.";
     }
     $("price").textContent = "";
+    updateDropShareLinks(next || null, next ? `Starts ${next.start.toLocaleString()}` : "Sale not scheduled yet");
     disableMintControls();
     return;
   }
   const stageIndex = stages.findIndex((s) => s.id === act);
   const stage = stages[stageIndex] || stages.find((s) => s.id === act);
-  $("stageInfo").textContent = currentStageLiveLabel(stage, stageIndex >= 0 ? stageIndex : act, stages.length);
+  const stageLabel = currentStageLiveLabel(stage, stageIndex >= 0 ? stageIndex : act, stages.length);
+  $("stageInfo").textContent = stageLabel;
+  updateDropShareLinks(stage, stageLabel);
   syncMintQuantityUi(stage);
   updateWalletStatus(stage);
 }
