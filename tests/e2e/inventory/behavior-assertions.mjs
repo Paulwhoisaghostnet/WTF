@@ -361,6 +361,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The inventory harness verifies Join opens /live/r/:roomId as a popup, Leave Room resets socket/media/chat-enabled state, and Close Window requests browser tab closure after cleanup.",
   },
   {
+    id: "wtf-live.public-room-mic-test",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"mic test\"",
+    userVisibleAssertion:
+      "A mobile-width public WTF LIVE room exposes a pre-join mic test that reports unsupported browser capture, browser-level denied permission, and successful microphone capture with visible browser, permission, device, and recovery guidance.",
+    durableSideEffectAssertion:
+      "The inventory harness mocks unsupported MediaDevices, denied microphone permission, and a successful audioinput, then verifies the stopped getUserMedia probe leaves the mobile mic-test panel inside the viewport with a 44px-or-larger touch target.",
+  },
+  {
     id: "wtf-live.public-room-realtime-media-chat",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["wtf-live"],

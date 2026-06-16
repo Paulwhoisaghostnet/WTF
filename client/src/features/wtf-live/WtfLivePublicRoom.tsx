@@ -168,6 +168,17 @@ type LiveChatAttachment = {
 type LiveChatFont = DesktopWtfLiveChatFont;
 type LiveChatColor = DesktopWtfLiveChatColor;
 type LiveChatStyle = DesktopWtfLiveChatStyle;
+type MicDiagnosticStatus = "idle" | "checking" | "ok" | "warn" | "blocked" | "unsupported";
+type MicPermissionProbeState = PermissionState | "unsupported" | "unknown";
+
+type MicDiagnosticState = {
+  status: MicDiagnosticStatus;
+  headline: string;
+  detail: string;
+  browserLabel: string;
+  permissionLabel: string;
+  deviceLabel: string;
+};
 
 type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
@@ -777,6 +788,88 @@ const ButtonLabel = styled.span`
   justify-content: center;
   gap: 5px;
   white-space: nowrap;
+`;
+
+const MicTestPanel = styled.div<{ $status: MicDiagnosticStatus }>`
+  border: 2px inset #fff;
+  background: ${({ $status }) =>
+    $status === "ok"
+      ? "#e6f8e8"
+      : $status === "blocked" || $status === "unsupported"
+        ? "#fff0d8"
+        : $status === "warn"
+          ? "#fff7c8"
+          : "#f8f8f8"};
+  padding: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--wtf-type-caption, 13px);
+`;
+
+const MicTestHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+
+  strong,
+  span {
+    overflow-wrap: anywhere;
+  }
+`;
+
+const MicTestBadge = styled.span<{ $status: MicDiagnosticStatus }>`
+  border: 1px solid #646464;
+  background: ${({ $status }) =>
+    $status === "ok"
+      ? "#bff0ca"
+      : $status === "blocked" || $status === "unsupported"
+        ? "#ffdca8"
+        : $status === "warn"
+          ? "#fff09d"
+          : "#ececec"};
+  color: #07120f;
+  padding: 2px 5px;
+  font-size: 11px;
+  text-transform: uppercase;
+  white-space: nowrap;
+`;
+
+const MicTestActionRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(92px, auto) minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+
+  button {
+    min-height: 32px !important;
+  }
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+
+    button {
+      min-height: 44px !important;
+    }
+  }
+`;
+
+const MicTestFacts = styled.div`
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+
+  span {
+    overflow-wrap: anywhere;
+  }
+`;
+
+const MicTestGuidance = styled.div`
+  color: #2f2f2f;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 `;
 
 const MicMeter = styled.div`
@@ -1507,6 +1600,132 @@ function stopStream(stream: MediaStream | null) {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
+const INITIAL_MIC_DIAGNOSTIC: MicDiagnosticState = {
+  status: "idle",
+  headline: "Run a mic test before going live.",
+  detail: "Checks browser support, site permission, visible input devices, and whether the browser can actually open the microphone.",
+  browserLabel: "Browser: not checked",
+  permissionLabel: "Permission: not checked",
+  deviceLabel: "Device: not checked",
+};
+
+function isMicSecureContext(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.isSecureContext ||
+    window.location.protocol === "file:" ||
+    ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
+  );
+}
+
+function browserMediaLabel(): string {
+  if (typeof window === "undefined") return "Browser: not checked";
+  if (!isMicSecureContext()) return "Browser: HTTPS or localhost required";
+  if (!navigator.mediaDevices?.getUserMedia) return "Browser: microphone API unavailable";
+  return "Browser: microphone API available";
+}
+
+async function queryMicrophonePermission(): Promise<{ state: MicPermissionProbeState; label: string }> {
+  if (!navigator.permissions?.query) {
+    return { state: "unsupported", label: "Permission: browser check unavailable" };
+  }
+  try {
+    const result = await navigator.permissions.query({ name: "microphone" as PermissionName });
+    return { state: result.state, label: `Permission: ${result.state}` };
+  } catch {
+    return { state: "unsupported", label: "Permission: direct prompt only" };
+  }
+}
+
+async function describeAudioInputs(mediaDevices: MediaDevices | undefined): Promise<string> {
+  if (!mediaDevices?.enumerateDevices) return "Device: list unavailable";
+  try {
+    const devices = await mediaDevices.enumerateDevices();
+    const audioInputs = devices.filter((device) => device.kind === "audioinput");
+    if (!audioInputs.length) return "Device: no microphone visible";
+    const namedInputs = audioInputs.map((device) => device.label.trim()).filter(Boolean);
+    if (namedInputs.length) {
+      return `Device: ${audioInputs.length} mic${audioInputs.length === 1 ? "" : "s"} visible (${namedInputs.slice(0, 2).join(", ")})`;
+    }
+    return `Device: ${audioInputs.length} mic${audioInputs.length === 1 ? "" : "s"} visible, names hidden until allowed`;
+  } catch {
+    return "Device: list blocked";
+  }
+}
+
+function micDiagnosticFromFailure(
+  error: unknown,
+  permissionLabel: string,
+  deviceLabel: string,
+  browserLabel: string,
+): MicDiagnosticState {
+  const errorName =
+    typeof error === "object" && error !== null && "name" in error
+      ? String((error as { name?: unknown }).name || "")
+      : "";
+  const browserDenied = /\bdenied\b/i.test(permissionLabel);
+  if (errorName === "NotFoundError" || errorName === "DevicesNotFoundError") {
+    return {
+      status: "blocked",
+      headline: "No microphone was found.",
+      detail: "Connect a microphone or choose a browser profile that can see the device, then run the test again.",
+      browserLabel,
+      permissionLabel,
+      deviceLabel,
+    };
+  }
+  if (errorName === "NotReadableError" || errorName === "TrackStartError" || errorName === "AbortError") {
+    return {
+      status: "blocked",
+      headline: "The microphone exists but could not open.",
+      detail: "Check operating-system microphone privacy for this browser and close other apps or tabs that may already be using the mic.",
+      browserLabel,
+      permissionLabel,
+      deviceLabel,
+    };
+  }
+  if (errorName === "SecurityError") {
+    return {
+      status: "unsupported",
+      headline: "This browser blocked microphone capture.",
+      detail: "Use the public HTTPS room URL and check privacy-browser shields, site permissions, and any iframe or content-blocking settings.",
+      browserLabel,
+      permissionLabel,
+      deviceLabel,
+    };
+  }
+  if (errorName === "OverconstrainedError" || errorName === "ConstraintNotSatisfiedError") {
+    return {
+      status: "blocked",
+      headline: "The selected microphone could not match the room constraints.",
+      detail: "Switch to a standard input device or reset this browser's microphone device choice, then retry.",
+      browserLabel,
+      permissionLabel,
+      deviceLabel,
+    };
+  }
+  if (errorName === "NotAllowedError" || errorName === "PermissionDeniedError") {
+    return {
+      status: "blocked",
+      headline: browserDenied ? "Microphone is blocked in this browser." : "Microphone is blocked by browser or system privacy settings.",
+      detail: browserDenied
+        ? "Open this site's microphone permission in the browser and set it to Allow, then run Test mic again."
+        : "Allow the browser prompt. If the browser already says allowed, enable microphone access for this browser in macOS, Windows, iOS, or Android privacy settings.",
+      browserLabel,
+      permissionLabel,
+      deviceLabel,
+    };
+  }
+  return {
+    status: "blocked",
+    headline: "Microphone test failed.",
+    detail: "Check this site's microphone permission, privacy-browser shields, and the operating-system microphone permission for this browser.",
+    browserLabel,
+    permissionLabel,
+    deviceLabel,
+  };
+}
+
 function useMediaStream<T extends HTMLMediaElement>(
   ref: RefObject<T | null>,
   stream: MediaStream | null,
@@ -2086,6 +2305,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const [peerId, setPeerId] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  const [micDiagnostic, setMicDiagnostic] = useState<MicDiagnosticState>(INITIAL_MIC_DIAGNOSTIC);
   const [micLevel, setMicLevel] = useState(0);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
@@ -2942,12 +3162,155 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       setStatus("Mic off.");
       return;
     }
+    const browserLabel = browserMediaLabel();
+    if (!isMicSecureContext()) {
+      const nextDiagnostic: MicDiagnosticState = {
+        status: "unsupported",
+        headline: "Microphone requires HTTPS or localhost.",
+        detail: "Open WTF LIVE from the public HTTPS URL. Mobile and privacy browsers will not expose microphone capture on insecure pages.",
+        browserLabel,
+        permissionLabel: "Permission: not checked",
+        deviceLabel: "Device: not checked",
+      };
+      setMicDiagnostic(nextDiagnostic);
+      setStatus(nextDiagnostic.headline);
+      return;
+    }
+    const mediaDevices = navigator.mediaDevices;
+    if (!mediaDevices?.getUserMedia) {
+      const nextDiagnostic: MicDiagnosticState = {
+        status: "unsupported",
+        headline: "This browser cannot open a microphone.",
+        detail: "Update the browser or try a current Chrome, Safari, Firefox, or Edge build with microphone capture enabled.",
+        browserLabel,
+        permissionLabel: "Permission: unavailable",
+        deviceLabel: "Device: not checked",
+      };
+      setMicDiagnostic(nextDiagnostic);
+      setStatus(nextDiagnostic.headline);
+      return;
+    }
+    const permission = await queryMicrophonePermission();
+    const deviceLabel = await describeAudioInputs(mediaDevices);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await mediaDevices.getUserMedia({ audio: true });
       setMicStream(stream);
+      const nextDiagnostic: MicDiagnosticState = {
+        status: "ok",
+        headline: "Mic is on for this room.",
+        detail: "Audio opened successfully. Use Push-to-talk if you want the mic permission ready while staying muted.",
+        browserLabel,
+        permissionLabel: permission.label,
+        deviceLabel: await describeAudioInputs(mediaDevices),
+      };
+      setMicDiagnostic(nextDiagnostic);
       setStatus("Mic ready.");
-    } catch {
-      setStatus("Mic permission was blocked.");
+    } catch (error) {
+      const nextDiagnostic = micDiagnosticFromFailure(error, permission.label, deviceLabel, browserLabel);
+      setMicDiagnostic(nextDiagnostic);
+      setStatus(nextDiagnostic.headline);
+    }
+  }
+
+  async function runMicDiagnostic() {
+    const checkingDiagnostic: MicDiagnosticState = {
+      status: "checking",
+      headline: "Checking microphone...",
+      detail: "The browser may show a microphone prompt. WTF LIVE will stop the test track immediately after the check.",
+      browserLabel: browserMediaLabel(),
+      permissionLabel: "Permission: checking",
+      deviceLabel: "Device: checking",
+    };
+    setMicDiagnostic(checkingDiagnostic);
+    setStatus("Checking microphone...");
+
+    const browserLabel = browserMediaLabel();
+    if (!isMicSecureContext()) {
+      const nextDiagnostic: MicDiagnosticState = {
+        status: "unsupported",
+        headline: "Microphone requires HTTPS or localhost.",
+        detail: "Use the public HTTPS room URL on mobile. Browsers hide microphone APIs on insecure pages.",
+        browserLabel,
+        permissionLabel: "Permission: not checked",
+        deviceLabel: "Device: not checked",
+      };
+      setMicDiagnostic(nextDiagnostic);
+      setStatus(nextDiagnostic.headline);
+      return;
+    }
+
+    const mediaDevices = navigator.mediaDevices;
+    if (!mediaDevices?.getUserMedia) {
+      const nextDiagnostic: MicDiagnosticState = {
+        status: "unsupported",
+        headline: "This browser does not expose microphone capture.",
+        detail: "Try a current Chrome, Safari, Firefox, or Edge browser. In privacy browsers, disable site shields that block camera and microphone APIs.",
+        browserLabel,
+        permissionLabel: "Permission: unavailable",
+        deviceLabel: "Device: not checked",
+      };
+      setMicDiagnostic(nextDiagnostic);
+      setStatus(nextDiagnostic.headline);
+      return;
+    }
+
+    const permission = await queryMicrophonePermission();
+    const deviceLabel = await describeAudioInputs(mediaDevices);
+    if (permission.state === "denied") {
+      const nextDiagnostic: MicDiagnosticState = {
+        status: "blocked",
+        headline: "Microphone is blocked in this browser.",
+        detail: "Open this site's microphone permission and set it to Allow. If it still fails after that, check the operating-system microphone permission for this browser.",
+        browserLabel,
+        permissionLabel: permission.label,
+        deviceLabel,
+      };
+      setMicDiagnostic(nextDiagnostic);
+      setStatus(nextDiagnostic.headline);
+      return;
+    }
+
+    if (micStream) {
+      const nextDiagnostic: MicDiagnosticState = {
+        status: "ok",
+        headline: "Mic is already on.",
+        detail: "The room already has an open microphone stream, so no extra test stream was created.",
+        browserLabel,
+        permissionLabel: permission.label,
+        deviceLabel,
+      };
+      setMicDiagnostic(nextDiagnostic);
+      setStatus(nextDiagnostic.headline);
+      return;
+    }
+
+    try {
+      const stream = await mediaDevices.getUserMedia({ audio: true, video: false });
+      const hasAudioTrack = stream.getAudioTracks().length > 0;
+      stopStream(stream);
+      const nextDiagnostic: MicDiagnosticState = hasAudioTrack
+        ? {
+            status: "ok",
+            headline: "Mic test passed.",
+            detail: "WTF LIVE opened the microphone and stopped the test stream. You can join the room and turn on Mic when ready.",
+            browserLabel,
+            permissionLabel: permission.label,
+            deviceLabel: await describeAudioInputs(mediaDevices),
+          }
+        : {
+            status: "warn",
+            headline: "Mic opened but returned no audio track.",
+            detail: "Choose another input device in the browser or operating-system sound settings, then run Test mic again.",
+            browserLabel,
+            permissionLabel: permission.label,
+            deviceLabel,
+          };
+      setMicDiagnostic(nextDiagnostic);
+      setStatus(nextDiagnostic.headline);
+    } catch (error) {
+      const nextDiagnostic = micDiagnosticFromFailure(error, permission.label, deviceLabel, browserLabel);
+      setMicDiagnostic(nextDiagnostic);
+      setStatus(nextDiagnostic.headline);
     }
   }
 
@@ -3927,6 +4290,35 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	                  {screenStream ? <Square aria-hidden /> : <MonitorUp aria-hidden />} Screen
 	                </ControlButton>
 	              </MediaButtonGrid>
+	              <MicTestPanel $status={micDiagnostic.status} data-wtf-live-mic-test data-wtf-live-mic-test-state={micDiagnostic.status}>
+	                <MicTestHeader>
+	                  <strong>Mic test</strong>
+	                  <MicTestBadge $status={micDiagnostic.status} data-wtf-live-mic-test-badge>
+	                    {micDiagnostic.status === "checking" ? "checking" : micDiagnostic.status}
+	                  </MicTestBadge>
+	                </MicTestHeader>
+	                <MicTestActionRow>
+	                  <Button
+	                    aria-label="Test microphone"
+	                    disabled={micDiagnostic.status === "checking"}
+	                    onClick={runMicDiagnostic}
+	                    data-wtf-live-mic-test-button
+	                  >
+	                    <ButtonLabel><Gauge size={15} aria-hidden /> {micDiagnostic.status === "checking" ? "Testing" : "Test mic"}</ButtonLabel>
+	                  </Button>
+	                  <StatusLine aria-live="polite" data-wtf-live-mic-test-status>
+	                    {micDiagnostic.headline}
+	                  </StatusLine>
+	                </MicTestActionRow>
+	                <MicTestFacts>
+	                  <span data-wtf-live-mic-test-browser>{micDiagnostic.browserLabel}</span>
+	                  <span data-wtf-live-mic-test-permission>{micDiagnostic.permissionLabel}</span>
+	                  <span data-wtf-live-mic-test-device>{micDiagnostic.deviceLabel}</span>
+	                </MicTestFacts>
+	                <MicTestGuidance aria-live="polite" data-wtf-live-mic-test-guidance>
+	                  {micDiagnostic.detail}
+	                </MicTestGuidance>
+	              </MicTestPanel>
 	              <ControlButton
 	                disabled={!joined || !socketReady || !micStream || !pushToTalk}
 	                $active={pushHeld}

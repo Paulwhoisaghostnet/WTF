@@ -5003,3 +5003,13 @@
 **Fix**: Added a user-site compatibility normalizer that detects published Macaroni pages and swaps their inline `macaroniCommonJs`/`macaroniDropJs` scripts to the current shipped runtime while leaving ordinary user pages untouched.
 
 **Rule**: For generated pages that are stored as immutable publish snapshots, always verify the live snapshot path as well as the source generator. If a runtime fix needs to reach already-published drops, provide a migration, republish, or server-side compatibility layer.
+
+---
+
+## 2026-06-16 - WTF LIVE mic failures need browser and OS-gate diagnostics
+
+**What happened**: Mobile and privacy-browser users saw generic WTF LIVE microphone failures. A reported DuckDuckGo/Firefox case looked like browser incompatibility until the real blocker turned out to be operating-system microphone permission for the browser.
+
+**Why it mattered**: Secure origin, browser capture API support, site permission, visible input devices, busy hardware, privacy-browser shields, and OS app permission are separate gates. Generic "permission blocked" copy sends users to the wrong settings and makes mobile rooms feel broken.
+
+**Rule**: Realtime media surfaces need a pre-join mic test that feature-detects secure context and MediaDevices, treats the Permissions API as optional, enumerates audio inputs when possible, briefly opens and stops `getUserMedia({ audio: true })` on user gesture, and maps DOMException names to browser/site/OS recovery guidance. Keep heavy multi-context inventory specs parallelized or fresh-harnessed so support diagnostics are not hidden by harness timeouts.

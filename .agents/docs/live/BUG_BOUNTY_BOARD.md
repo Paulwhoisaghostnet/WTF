@@ -92,6 +92,7 @@ Priority labels:
 | WTF-BB-265 | Verified | Codex Macaroni ticket limit regression | 2026-06-15 | Macaroni / practical media upload tickets | P1 | 10 | 10 | 2 | 4 | 0 | Live upload-ticket endpoint still treated production `MACARONI_IPFS_MAX_BYTES=262144000` as the per-file hard cap; production env was corrected to 1 GiB and code now fixes the Macaroni server hard cap at 1 GiB so legacy env drift cannot block valid larger artifacts before Studio average policy runs |
 | WTF-BB-266 | In Progress | Codex Macaroni PDS user-site publish investigation | 2026-06-15 | Macaroni / PDS-backed user-site serving | P1 | 14 | 3 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-267 | Verified | Codex Macaroni video preview/drop wallet repair | 2026-06-16 | Macaroni / generated drop website media previews and wallet restore | P1 | 13 | 6 | 3 | 5 | 1 | Generated drop pages could let stale passive wallet restore collide with explicit connect, while Macaroni Studio metadata sent MP4/video tokens to the collection cover for display/thumbnail; fixed with commit `a17f8c5`, deployed on main, and verified live on Macaroni plus Airporters site version 5 |
+| WTF-BB-268 | Verified | Codex WTF LIVE mobile mic compatibility full-send | 2026-06-16 | WTF LIVE / microphone permissions and browser compatibility | P1 | 12 | 7 | 3 | 5 | 0 | WTF LIVE now exposes a pre-join mic compatibility test that distinguishes secure context, MediaDevices support, browser permission, audio-input visibility, stopped `getUserMedia` success, unsupported browsers, and OS/busy-device style failures; verified locally by TypeScript, inventory coverage, build, focused mic Playwright, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5698,6 +5699,29 @@ Priority labels:
 - Verification:
   - `npx tsx --test server/features/wtf-sites/macaroni-compat.test.ts`
   - Live Airporters body smoke confirms current-runtime markers, `Mint is Live`, and X/Bluesky compose URLs after deploy.
+
+### WTF-BB-268 - WTF LIVE needs microphone permission diagnostics for mobile and non-standard browsers
+
+- Category: WTF LIVE / microphone permissions and browser compatibility
+- Status: Verified
+- Owner/Session: Codex WTF LIVE mobile mic compatibility full-send
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User requirement on 2026-06-16: WTF LIVE public rooms have serious mobile connection issues, and one non-standard-browser support case looked like DuckDuckGo/Firefox failure before the real cause was missing operating-system microphone permission for the browser.
+  - WTF LIVE started media from joined room controls, but had no guided microphone compatibility test that separated secure-context support, browser API support, browser permission denial, missing input devices, busy hardware/OS denial, or unsupported Permissions API states.
+- Why it matters:
+  - Mobile and privacy-focused browser users need a portable room join path that fails with actionable recovery copy instead of a generic media failure. Browser-level permission, OS-level privacy permission, hardware presence, and secure-origin support are separate gates, and users cannot fix the right setting if WTF LIVE collapses them into one error.
+- Fix:
+  - Added a room-level `Test mic` panel that runs before join, treats Permissions API support as optional, checks secure context and MediaDevices, enumerates audio inputs when possible, briefly opens/stops an audio-only stream on user gesture, and maps failure names to browser/site/OS recovery guidance.
+  - Updated the normal Mic toggle to reuse the same diagnostics before opening room audio.
+  - Updated the WTF LIVE interaction inventory, domain workflow registry, admin surface registry, and behavior assertion registry for `wtf_live.public_room.mic_test_completed`.
+- Verification:
+  - `tsc --noEmit --pretty false`
+  - `tsx tests/e2e/inventory/coverage.ts`
+  - `vite build`
+  - `playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "mic test"`
+  - `CI=1 playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs`
+  - `CI=1 playwright test tests/playwright/inventory`
 
 ## Backlog Intake Template
 

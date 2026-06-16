@@ -166,6 +166,7 @@ export const DOMAIN_WORKFLOWS = [
       "wtf_live.lobby_presence_viewed",
       "wtf_live.public_room.joined",
       "wtf_live.public_room.media_toggled",
+      "wtf_live.public_room.mic_test_completed",
       "wtf_live.public_room.active_video_selected",
       "wtf_live.public_room.avatar_changed",
       "wtf_live.public_room.push_to_talk_used",

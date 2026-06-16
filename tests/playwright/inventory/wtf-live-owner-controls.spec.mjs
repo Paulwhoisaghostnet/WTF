@@ -96,6 +96,26 @@ async function installMediaMocks(page, fillStyle) {
           return stream;
         },
         getDisplayMedia: async () => makeVideoStream("screen"),
+        enumerateDevices: async () => [
+          {
+            deviceId: "harness-mic",
+            groupId: "harness-audio",
+            kind: "audioinput",
+            label: "Harness Mic",
+            toJSON() {
+              return this;
+            },
+          },
+          {
+            deviceId: "harness-camera",
+            groupId: "harness-video",
+            kind: "videoinput",
+            label: "Harness Camera",
+            toJSON() {
+              return this;
+            },
+          },
+        ],
       },
     });
   }, fillStyle);
@@ -330,6 +350,106 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     expect(after).not.toBeNull();
     expect(after.stageWidth).toBeGreaterThan(before.stageWidth + before.sidebarWidth * 0.5);
     expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("public room mic test diagnoses mobile browser and system permission blockers", async ({
+    browser,
+    request,
+  }) => {
+    await setAnonymous(request);
+    const errors = [];
+
+    const unsupportedContext = await browser.newContext({ viewport: { width: 390, height: 780 } });
+    const unsupported = await unsupportedContext.newPage();
+    capturePageErrors(unsupported, errors, "mic-unsupported");
+    await unsupported.addInitScript(() => {
+      Object.defineProperty(navigator, "mediaDevices", {
+        configurable: true,
+        value: undefined,
+      });
+    });
+
+    const deniedContext = await browser.newContext({ viewport: { width: 390, height: 780 } });
+    const denied = await deniedContext.newPage();
+    capturePageErrors(denied, errors, "mic-denied");
+    await denied.addInitScript(() => {
+      Object.defineProperty(navigator, "permissions", {
+        configurable: true,
+        value: {
+          query: async (descriptor) => {
+            if (descriptor?.name === "microphone") return { state: "denied" };
+            throw new TypeError("permission unsupported");
+          },
+        },
+      });
+      Object.defineProperty(navigator, "mediaDevices", {
+        configurable: true,
+        value: {
+          getUserMedia: async () => {
+            throw new DOMException("blocked", "NotAllowedError");
+          },
+          enumerateDevices: async () => [
+            {
+              deviceId: "blocked-mic",
+              groupId: "blocked-audio",
+              kind: "audioinput",
+              label: "",
+              toJSON() {
+                return this;
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    const successContext = await browser.newContext({ viewport: { width: 390, height: 780 } });
+    const success = await successContext.newPage();
+    capturePageErrors(success, errors, "mic-success");
+    await installMediaMocks(success, "#1f6feb");
+
+    try {
+      await unsupported.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+      await expect(unsupported.locator("[data-wtf-live-mic-test]")).toBeVisible();
+      await unsupported.locator("[data-wtf-live-mic-test-button]").click();
+      await expect(unsupported.locator("[data-wtf-live-mic-test]")).toHaveAttribute("data-wtf-live-mic-test-state", "unsupported");
+      await expect(unsupported.locator("[data-wtf-live-mic-test-status]")).toContainText("browser does not expose microphone capture");
+      await expect(unsupported.locator("[data-wtf-live-mic-test-guidance]")).toContainText("privacy browsers");
+
+      await denied.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+      await denied.locator("[data-wtf-live-mic-test-button]").click();
+      await expect(denied.locator("[data-wtf-live-mic-test]")).toHaveAttribute("data-wtf-live-mic-test-state", "blocked");
+      await expect(denied.locator("[data-wtf-live-mic-test-permission]")).toContainText("denied");
+      await expect(denied.locator("[data-wtf-live-mic-test-guidance]")).toContainText("operating-system microphone permission");
+
+      await success.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+      await expect(success.locator("[data-wtf-live-mic-test-button]")).toBeVisible();
+      await success.locator("[data-wtf-live-mic-test-button]").click();
+      await expect(success.locator("[data-wtf-live-mic-test]")).toHaveAttribute("data-wtf-live-mic-test-state", "ok");
+      await expect(success.locator("[data-wtf-live-mic-test-status]")).toContainText("Mic test passed");
+      await expect(success.locator("[data-wtf-live-mic-test-device]")).toContainText("Harness Mic");
+      const mobileMetrics = await success.evaluate(() => {
+        const panel = document.querySelector("[data-wtf-live-mic-test]")?.getBoundingClientRect();
+        const button = document.querySelector("[data-wtf-live-mic-test-button]")?.getBoundingClientRect();
+        return {
+          viewportWidth: window.innerWidth,
+          documentScrollWidth: document.documentElement.scrollWidth,
+          panel: panel ? { left: panel.left, right: panel.right, width: panel.width } : null,
+          button: button ? { width: button.width, height: button.height } : null,
+        };
+      });
+      expect(mobileMetrics.documentScrollWidth).toBeLessThanOrEqual(mobileMetrics.viewportWidth);
+      expect(mobileMetrics.panel).not.toBeNull();
+      expect(mobileMetrics.panel.left).toBeGreaterThanOrEqual(0);
+      expect(mobileMetrics.panel.right).toBeLessThanOrEqual(mobileMetrics.viewportWidth);
+      expect(mobileMetrics.button).not.toBeNull();
+      expect(mobileMetrics.button.height).toBeGreaterThanOrEqual(44);
+      expect(fatalErrors(errors)).toEqual([]);
+    } finally {
+      await unsupportedContext.close();
+      await deniedContext.close();
+      await successContext.close();
+    }
   });
 
   test("tablet room keeps controls and chat style targets reachable at the responsive breakpoint", async ({
@@ -875,9 +995,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
 	    try {
 	      const alice = await joinGuest("Layout Alice");
 	      const guestNames = Array.from({ length: 7 }, (_, index) => `Layout Guest ${index + 1}`);
-	      for (const guestName of guestNames) {
-	        await joinGuest(guestName);
-	      }
+	      await Promise.all(guestNames.map((guestName) => joinGuest(guestName)));
 	      await alice.locator("[data-wtf-live-attendance-toggle]").click();
 
 	      for (const guestName of guestNames) {
