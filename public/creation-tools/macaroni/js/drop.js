@@ -193,6 +193,93 @@ function setCardStatus(card, text) {
   card.replaceChildren(cap);
 }
 
+function countWord(count, singular, plural) {
+  return Number(count) === 1 ? singular : plural;
+}
+
+function countLabel(count, singular, plural) {
+  return `${count} ${countWord(count, singular, plural)}`;
+}
+
+function ownedMintsHeadingText(count) {
+  const n = Number(count || 0);
+  return n > 0 ? `Your ${countLabel(n, "mint", "mints")}` : "Your mints";
+}
+
+function updateOwnedMintsHeading(count) {
+  setText("ownedMintsHeading", ownedMintsHeadingText(count));
+}
+
+function shortAddressIfNeeded(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return /^(tz1|tz2|tz3|tz4|KT1)[1-9A-HJ-NP-Za-km-z]+$/.test(text) ? MD.short(text) : text;
+}
+
+function dropArtistName(meta) {
+  const creators = Array.isArray(meta?.creators) ? meta.creators : [];
+  const authors = Array.isArray(CFG.authors) ? CFG.authors : [];
+  const candidates = [
+    CFG.artist,
+    CFG.artistName,
+    CFG.creatorName,
+    ...authors,
+    ...creators,
+    meta?.minter,
+    CFG.creator,
+    CFG.author,
+  ];
+  for (const candidate of candidates) {
+    const name = shortAddressIfNeeded(candidate);
+    if (name) return name;
+  }
+  return "the artist";
+}
+
+function shareDropUrl() {
+  try {
+    const url = new URL(location.href);
+    url.hash = "";
+    return url.href;
+  } catch (_) {
+    return location.href;
+  }
+}
+
+function tokenDisplayName(meta, id) {
+  return String(meta?.name || "#" + (id + 1));
+}
+
+function mintShareText(meta, id) {
+  return `I just minted ${tokenDisplayName(meta, id)} from ${dropArtistName(meta)}'s blind mint drop for ${
+    CFG.title || "this collection"
+  }. Mint your own here ${shareDropUrl()}.`;
+}
+
+function shareUrlFor(service, meta, id) {
+  const text = mintShareText(meta, id);
+  if (service === "bsky") return `https://bsky.app/intent/compose?${new URLSearchParams({ text }).toString()}`;
+  return `https://x.com/intent/post?${new URLSearchParams({ text }).toString()}`;
+}
+
+function makeMintShareLink(service, label, meta, id) {
+  const link = document.createElement("a");
+  link.className = "mint-share";
+  link.href = shareUrlFor(service, meta, id);
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.textContent = label;
+  link.setAttribute("aria-label", `Share ${tokenDisplayName(meta, id)} on ${label}`);
+  return link;
+}
+
+function makeMintShareLinks(meta, id) {
+  const row = document.createElement("div");
+  row.className = "mint-share-row";
+  row.append(makeMintShareLink("x", "X", meta, id), makeMintShareLink("bsky", "Bluesky", meta, id));
+  return row;
+}
+
 function tokenPrimaryMime(meta) {
   if (!meta || typeof meta !== "object") return "";
   const direct = String(meta.mimeType || meta.mime_type || "").toLowerCase();
@@ -249,10 +336,13 @@ function renderMediaPreview(parent, meta, label) {
 function renderTokenCard(card, meta, id, sealed) {
   const cap = document.createElement("div");
   cap.className = "cap";
-  cap.textContent = `${meta.name || "#" + (id + 1)}${sealed ? " · sealed" : ""}`;
+  const name = document.createElement("span");
+  name.textContent = `${tokenDisplayName(meta, id)}${sealed ? " · sealed" : ""}`;
+  cap.appendChild(name);
+  if (!sealed) cap.appendChild(makeMintShareLinks(meta, id));
   const media = document.createElement("div");
   media.className = "token-media";
-  if (!renderMediaPreview(media, meta, `${meta.name || "Token #" + (id + 1)} artwork`)) {
+  if (!renderMediaPreview(media, meta, `${tokenDisplayName(meta, id)} artwork`)) {
     card.replaceChildren(cap);
     return;
   }
@@ -510,6 +600,20 @@ function activeStage(now) {
   return stages.find((s) => s.id === id) || null;
 }
 
+function currentStageLiveLabel(stage, activeIndex, totalStages) {
+  const total = Math.max(1, Number(totalStages || 0));
+  const position = Math.max(1, Number(activeIndex || 0) + 1);
+  const base =
+    total === 1
+      ? "Mint is Live"
+      : `Currently on Sale Stage ${position} of ${total}`;
+  return (
+    base +
+    (stage && stage.useAllowlist ? " · allowlist only" : "") +
+    (stage && stage.maxPerWallet ? ` · max ${stage.maxPerWallet}/wallet` : "")
+  );
+}
+
 function setText(id, text) {
   const el = $(id);
   if (el) el.textContent = text || "";
@@ -641,7 +745,7 @@ async function updateWalletStatus(stage, options) {
     currentStageWalletRemaining = null;
     walletStatusLoadingKey = "";
     setText("allowStatus", "connect a wallet to mint");
-    setText("walletLimitStatus", stage?.maxPerWallet ? `Max ${stage.maxPerWallet} mint(s) per wallet.` : "");
+    setText("walletLimitStatus", stage?.maxPerWallet ? `Max ${countLabel(stage.maxPerWallet, "mint", "mints")} per wallet.` : "");
     syncMintQuantityUi(stage);
     return;
   }
@@ -672,7 +776,7 @@ async function updateWalletStatus(stage, options) {
       if (capNumber > 0) {
         remainingCaps.push(allowRemaining);
         status.allowText = allowRemaining > 0
-          ? `you are allowlisted — ${allowRemaining}/${capNumber} mint(s) remaining for this stage`
+          ? `you are allowlisted — ${allowRemaining}/${capNumber} ${countWord(allowRemaining, "mint", "mints")} remaining for this stage`
           : `you used this stage's allowlist allowance (${capNumber}/${capNumber})`;
       } else {
         remainingCaps.push(0);
@@ -687,7 +791,7 @@ async function updateWalletStatus(stage, options) {
     const remaining = minted == null ? null : Math.max(0, stage.maxPerWallet - minted);
     if (remaining != null) remainingCaps.push(remaining);
     status.limitText = remaining == null
-      ? `Max ${stage.maxPerWallet} mint(s) per wallet.`
+      ? `Max ${countLabel(stage.maxPerWallet, "mint", "mints")} per wallet.`
       : `This wallet minted ${minted}/${stage.maxPerWallet} for this stage · ${remaining} remaining.`;
   }
   status.remaining = remainingCaps.length ? Math.min(...remainingCaps) : null;
@@ -715,7 +819,7 @@ async function preflightMint(stage, amount) {
   if (amount > max) {
     qty = max;
     syncMintQuantityUi(stage);
-    throw new Error(`only ${max} mint(s) are currently available for this wallet`);
+    throw new Error(`only ${max} ${countWord(max, "mint is", "mints are")} currently available for this wallet`);
   }
   const tezos = MD.getToolkit();
   const c = await tezos.wallet.at(CFG.contract);
@@ -740,6 +844,7 @@ async function preflightMint(stage, amount) {
 async function loadOwnedMints() {
   const me = MD.getAccount();
   if (!me || !CFG.contract) {
+    updateOwnedMintsHeading(0);
     setText("ownedMintStatus", "");
     return;
   }
@@ -751,12 +856,14 @@ async function loadOwnedMints() {
     const ids = await MD.fetchOwnedTokenIds(CFG.network || "mainnet", CFG.contract, me);
     if (seq !== ownedMintLoadSeq) return;
     if (!ids.length) {
+      updateOwnedMintsHeading(0);
       setText("ownedMintStatus", "No mints found for this wallet yet.");
       return;
     }
     sessionIds = [...new Set([...sessionIds, ...ids])];
     $("revealSection").style.display = "";
-    setText("ownedMintStatus", `${ids.length} mint(s) currently held by this wallet.`);
+    updateOwnedMintsHeading(ids.length);
+    setText("ownedMintStatus", "");
     await reveal(ids);
   } catch (e) {
     setText("ownedMintStatus", "Could not load wallet mints: " + (e.message || e));
@@ -877,11 +984,9 @@ function render() {
     disableMintControls();
     return;
   }
-  const stage = stages.find((s) => s.id === act);
-  $("stageInfo").textContent =
-    `Stage ${act + 1} live` +
-    (stage.useAllowlist ? " · allowlist only" : "") +
-    (stage.maxPerWallet ? ` · max ${stage.maxPerWallet}/wallet` : "");
+  const stageIndex = stages.findIndex((s) => s.id === act);
+  const stage = stages[stageIndex] || stages.find((s) => s.id === act);
+  $("stageInfo").textContent = currentStageLiveLabel(stage, stageIndex >= 0 ? stageIndex : act, stages.length);
   syncMintQuantityUi(stage);
   updateWalletStatus(stage);
 }
@@ -900,7 +1005,7 @@ function renderRevealPanel(now) {
   const open = openAt && now >= openAt;
   if (open) {
     $("revealInfo").innerHTML =
-      `<span class="countdown">${rs.pending}</span> sealed mint(s) — ` +
+      `<span class="countdown">${rs.pending}</span> sealed ${countWord(rs.pending, "mint", "mints")} — ` +
       "the auto-reveal window is open: <strong>anyone</strong> can trigger the reveal.";
   } else if (openAt) {
     // render() runs every second, so this ticks like the stage countdown.
@@ -910,11 +1015,11 @@ function renderRevealPanel(now) {
       m = Math.floor((dt % 3600000) / 60000),
       s = Math.floor((dt % 60000) / 1000);
     $("revealInfo").innerHTML =
-      `${rs.pending} sealed mint(s) awaiting reveal — public auto-reveal opens in ` +
+      `${countLabel(rs.pending, "sealed mint", "sealed mints")} awaiting reveal — public auto-reveal opens in ` +
       `<span class="countdown">${d ? d + "d " : ""}${h}h ${m}m ${s}s</span>` +
       " · the creator can reveal sooner.";
   } else {
-    $("revealInfo").textContent = `${rs.pending} sealed mint(s) awaiting reveal.`;
+    $("revealInfo").textContent = `${countLabel(rs.pending, "sealed mint", "sealed mints")} awaiting reveal.`;
   }
   $("btnReveal").style.display = open ? "" : "none";
   $("btnReveal").disabled = !MD.getAccount();
@@ -963,10 +1068,10 @@ async function mintOnce(c, priceMutez) {
 
 async function mintBatch(c, priceMutez, amount) {
   if (amount <= 1) {
-    $("mintStatus").textContent = "approve in your wallet (Temple / Kukai / Umami)…";
+    $("mintStatus").textContent = "approve in your wallet…";
     return mintOnce(c, priceMutez);
   }
-  $("mintStatus").textContent = "approve in your wallet (Temple / Kukai / Umami)…";
+  $("mintStatus").textContent = "approve in your wallet…";
   try {
     const total = priceMutez * amount;
     const op = await MD.sendWalletOp(
@@ -1014,7 +1119,7 @@ async function mint() {
     const preflight = await preflightMint(stage, qty);
     const c = preflight.c;
     stage = preflight.stage;
-    $("mintStatus").textContent = "approve in your wallet (Temple / Kukai / Umami)…";
+    $("mintStatus").textContent = "approve in your wallet…";
     const ids = await mintBatch(c, stage.priceMutez, qty);
     sessionIds.push(...ids);
     walletStatusCache = { key: "", status: null };
@@ -1025,7 +1130,7 @@ async function mint() {
     await loadRecentMints({ force: true });
     const delayed = !!storage?.delayed_reveal;
     $("mintStatus").textContent = ids.length
-      ? `minted ${ids.length} token(s) ✓` + (delayed ? " — sealed until reveal (see below)" : "")
+      ? `minted ${countLabel(ids.length, "token", "tokens")} ✓` + (delayed ? " — sealed until reveal (see below)" : "")
       : "minted ✓ (check your wallet)";
     refresh();
   } catch (e) {
@@ -1125,6 +1230,7 @@ $("btnDisconnect").addEventListener("click", async () => {
   setText("walletLimitStatus", "");
   setText("allowStatus", "connect a wallet to mint");
   setText("mintPreflight", "");
+  updateOwnedMintsHeading(0);
   setText("ownedMintStatus", "");
   $("revealGrid").innerHTML = "";
   $("revealSection").style.display = "none";

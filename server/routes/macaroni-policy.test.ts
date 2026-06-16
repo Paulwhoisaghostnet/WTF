@@ -273,6 +273,7 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   const dropConfig = readFileSync("public/creation-tools/macaroni/drop.config.js", "utf8");
   const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
   const publishSource = readFileSync("server/features/macaroni/publish.ts", "utf8");
+  const themeSource = readFileSync("public/creation-tools/macaroni/css/theme.css", "utf8");
 
   assert.match(commonSource, /const DEFAULT_GATEWAY = "https:\/\/ipfs\.fileship\.xyz\/"/);
   assert.match(dropConfig, /gateway:\s*"https:\/\/ipfs\.fileship\.xyz\/"/);
@@ -281,6 +282,22 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   assert.match(commonSource, /if \(connectPromise\) return connectPromise/);
   assert.match(dropSource, /let walletConnecting = false/);
   assert.match(dropSource, /let walletRestoring = true/);
+  assert.match(dropSource, /function currentStageLiveLabel\(stage, activeIndex, totalStages\)/);
+  assert.match(dropSource, /Mint is Live/);
+  assert.match(dropSource, /Currently on Sale Stage \$\{position\} of \$\{total\}/);
+  assert.match(dropSource, /currentStageLiveLabel\(stage, stageIndex >= 0 \? stageIndex : act, stages\.length\)/);
+  assert.doesNotMatch(dropSource, /Stage \$\{act \+ 1\} live/);
+  assert.match(dropSource, /function ownedMintsHeadingText\(count\)/);
+  assert.match(dropSource, /Your \$\{countLabel\(n, "mint", "mints"\)\}/);
+  assert.match(dropSource, /function mintShareText\(meta, id\)/);
+  assert.match(dropSource, /I just minted \$\{tokenDisplayName\(meta, id\)\} from/);
+  assert.match(dropSource, /https:\/\/x\.com\/intent\/post/);
+  assert.match(dropSource, /https:\/\/bsky\.app\/intent\/compose/);
+  assert.doesNotMatch(dropSource, /twitter\.com\/intent\/tweet/);
+  assert.doesNotMatch(dropSource, /mint\(s\) currently held/);
+  assert.doesNotMatch(dropSource, /Temple \/ Kukai \/ Umami/);
+  assert.match(themeSource, /\.mint-share-row/);
+  assert.match(themeSource, /\.mint-share/);
   assert.match(dropSource, /aria-busy/);
   assert.match(dropSource, /const busy = walletConnecting \|\| walletRestoring/);
   assert.match(dropSource, /connect\.disabled = busy \|\| connected/);
@@ -324,7 +341,7 @@ test("Macaroni generated mint quantity clamps to live supply and wallet allowanc
   assert.match(dropSource, /walletAllowancePending\(stage\)/);
   assert.match(dropSource, /syncMintQuantityUi\(stage\)/);
   assert.match(dropSource, /await refresh\(\)/);
-  assert.match(dropSource, /only \$\{max\} mint\(s\) are currently available for this wallet/);
+  assert.match(dropSource, /only \$\{max\} \$\{countWord\(max, "mint is", "mints are"\)\} currently available for this wallet/);
   assert.match(dropSource, /qtyPlus[\s\S]*effectiveQtyMax\(activeStage\(\)\)/);
 });
 

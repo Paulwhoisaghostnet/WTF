@@ -393,7 +393,28 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
 }
 .reveal-card img,
 .reveal-card video { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #000; }
-.reveal-card .cap { padding: 10px 12px; font-size: 0.85rem; font-weight: 600; }
+.reveal-card .cap {
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: grid;
+  gap: 8px;
+}
+.mint-share-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.mint-share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(255,255,255,0.06);
+  font-size: 0.78rem;
+  text-decoration: none;
+}
+.mint-share:hover { border-color: var(--accent); }
 @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 .recent-mints h2 { margin: 0; }

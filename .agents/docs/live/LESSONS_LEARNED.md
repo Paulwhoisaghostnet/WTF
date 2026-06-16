@@ -4955,3 +4955,27 @@
 **Fix**: Promoted the Airporters published page to user-site version 5 so revealed tokens without loaded metadata render as `pending`, keep retrying through no-store metadata fetches, and only use `sealed` for tokens that are actually still behind delayed reveal. Verified live with TzKT storage and a public Playwright smoke showing odds text `31/120 minted - 31 revealed - 0 sealed - 89 left to mint`.
 
 **Rule**: Generated and custom drop pages must separate contract reveal state from metadata-indexer availability. If storage says a token is revealed but metadata is missing or empty, label it pending/loading and retry; reserve sealed language for delayed-reveal tokens only.
+
+---
+
+## 2026-06-16 - Live sale copy must account for total stage count
+
+**What happened**: Generated Macaroni mint pages always labeled the active sale as `Stage ${act + 1} live`, even when the drop only had one configured sale stage. That made a one-stage mint sound like stage 2 was coming.
+
+**Why it mattered**: Sale-stage copy is product information, not decoration. Buyers use it to infer whether pricing, access, or timing will change later, and creators need one-stage drops to feel final and intentional.
+
+**Fix**: Added count-aware generated-page copy: single-stage drops say `Mint is Live`; multi-stage drops say `Currently on Sale Stage X of N`, while preserving allowlist and max-per-wallet suffixes. Added source-policy and inventory coverage for the generated mint-page wording.
+
+**Rule**: When rendering sale-stage state, never infer the label from the active stage id alone. Use the total configured stage count, and make one-stage drops read as a normal live mint instead of a staged sale schedule.
+
+---
+
+## 2026-06-16 - Post-mint UI should read like collector copy, not logs
+
+**What happened**: The generated Macaroni owned-mints panel showed `Your mints` plus `1 mint(s) currently held by this wallet.` and wallet approval copy named Temple/Kukai/Umami even after the user had already chosen a wallet. The page also had no post-mint share affordance.
+
+**Why it mattered**: A successful mint page is public collector UI. Mechanical pluralization and wallet-name noise make the page feel like debug output, while the raw media filename can be intentional collection character and should not be "cleaned" away without direction.
+
+**Fix**: Moved the owned count into the heading as `Your 1 mint` / `Your N mints`, removed the redundant held-by-wallet status line, kept raw token filenames as captions, simplified wallet approval copy to `approve in your wallet...`, and added per-token X plus Bluesky compose links with prefilled collector share text.
+
+**Rule**: On generated public mint pages, humanize count/status copy and preserve creator-provided token names or filenames unless the creator explicitly opts into alternate labels. Social sharing should open user-confirmed compose intents, not use posting APIs or auto-publish.

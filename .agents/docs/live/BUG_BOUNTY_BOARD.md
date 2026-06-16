@@ -5624,6 +5624,46 @@ Priority labels:
   - Local build produced `apps/macaroni-desktop/release/mac-universal/Macaroni Studio.app` with `Contents/Resources/app.asar`.
   - Local installer build produced `Macaroni-Studio-1.0.0-mac-universal.dmg`, `.zip`, and blockmap artifacts.
 
+### WTF-BB-258 - Single-stage Macaroni drops imply extra sale stages
+
+- Category: Macaroni / generated mint page UX
+- Status: Verified
+- Owner/Session: Codex Macaroni stage copy pass
+- Score: C1 + F2 + S1 + P0(0) = 4
+- Evidence:
+  - User reported on 2026-06-16 that the generated mint/drop page says `Stage 1 is live` for a drop that only has one sale stage, which implies a future stage 2 that does not exist.
+  - `public/creation-tools/macaroni/js/drop.js` built the live sale copy from the active stage id alone: `Stage ${act + 1} live`.
+- Why it matters:
+  - Buyers and creators read stage language as sale-structure information. A one-stage drop should communicate that the mint is simply open, while multi-stage drops should communicate the current position within the configured schedule.
+- Fix:
+  - Make generated mint-page live sale copy depend on configured stage count: `Mint is Live` for one-stage drops and `Currently on Sale Stage X of N` for multi-stage drops, while preserving allowlist and max-per-wallet suffixes.
+- Verification:
+  - `node --check public/creation-tools/macaroni/js/drop.js`
+  - `npx tsx --test server/routes/macaroni-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory`
+
+### WTF-BB-259 - Macaroni owned-mints copy and social sharing feel mechanical
+
+- Category: Macaroni / generated mint page UX
+- Status: Verified
+- Owner/Session: Codex Macaroni owned-mints/share pass
+- Score: C1 + F2 + S1 + P0(0) = 4
+- Evidence:
+  - User reported on 2026-06-16 that `1 mint(s) currently held by this wallet.` sounds like machine logging, while the owned-mints section should say `Your 1 mint` or `Your N mints`.
+  - User also requested collector share buttons that open prefilled social post composers for X/Twitter-style posting and Bluesky, while preserving the raw media filename as intentional charm.
+  - The generated page hard-coded wallet-specific approval copy as `Temple / Kukai / Umami`, which adds noise after the collector has already chosen a wallet.
+- Why it matters:
+  - The generated mint page is a collector-facing public surface. Mechanical pluralization and wallet-noise status text make a successful mint feel less polished, and missing share affordances wastes a natural post-mint promotion moment.
+- Fix:
+  - Move owned count into the section heading, remove redundant `mint(s)` status copy, keep filename captions, and add per-token X plus Bluesky compose links that prefill a human share message without using social APIs or auto-posting.
+- Verification:
+  - Add source-policy coverage for count-aware owned headings, X/Bluesky compose URLs, absence of `mint(s)` owned status copy, and absence of wallet-name approval noise.
+  - `node --check public/creation-tools/macaroni/js/drop.js`
+  - `npx tsx --test server/routes/macaroni-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run test:e2e:inventory`
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:
