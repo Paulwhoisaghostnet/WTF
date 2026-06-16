@@ -4991,3 +4991,15 @@
 **Fix**: Added the WalletConnect relay websocket and verify iframe to both user-site CSP implementations: the app host router and the staged/PDS renderer.
 
 **Rule**: Wallet-capable published user sites need CSP allowances for the wallet transport layer, not just app scripts. When debugging wallet connect on `.wtfos.me`, check browser CSP errors before changing wallet lifecycle code.
+
+---
+
+## 2026-06-16 - Published Macaroni pages can outlive their generator runtime
+
+**What happened**: The shared Macaroni runtime deployed with improved stage labels, owned-mint copy, and social share buttons, but existing published drops such as Airporters had already stored a full inline copy of the older runtime in their user-site snapshot.
+
+**Why it mattered**: Generator fixes only affect future exports unless existing published snapshots are republished, migrated, or normalized at serve time. Live collectors were still seeing old copy on the public drop page.
+
+**Fix**: Added a user-site compatibility normalizer that detects published Macaroni pages and swaps their inline `macaroniCommonJs`/`macaroniDropJs` scripts to the current shipped runtime while leaving ordinary user pages untouched.
+
+**Rule**: For generated pages that are stored as immutable publish snapshots, always verify the live snapshot path as well as the source generator. If a runtime fix needs to reach already-published drops, provide a migration, republish, or server-side compatibility layer.

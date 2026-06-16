@@ -5682,6 +5682,23 @@ Priority labels:
   - `npm run test:e2e:inventory:coverage`
   - Live Airporters header smoke confirms the CSP contains the relay websocket and verify-frame allowances after deploy.
 
+### WTF-BB-261 - Published Macaroni snapshots keep stale inline runtime
+
+- Category: Macaroni / user-site runtime compatibility
+- Status: Verified
+- Owner/Session: Codex Macaroni live snapshot pass
+- Score: C1 + F2 + S1 + P0(0) = 4
+- Evidence:
+  - Existing published Airporters HTML still contained the older inline `macaroniDropJs` strings after the shared generator/runtime had deployed.
+  - The stored user-site version is a full HTML snapshot, so future generator edits do not automatically change the live public drop page.
+- Why it matters:
+  - Existing collectors need the fixed mint-page copy, share links, recent-mint behavior, and media fallback without changing the contract or token metadata.
+- Fix:
+  - Serve published Macaroni snapshots through a compatibility normalizer that replaces inline Macaroni runtime scripts with the current deployed `common.js` and `drop.js`.
+- Verification:
+  - `npx tsx --test server/features/wtf-sites/macaroni-compat.test.ts`
+  - Live Airporters body smoke confirms current-runtime markers, `Mint is Live`, and X/Bluesky compose URLs after deploy.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

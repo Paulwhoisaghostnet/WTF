@@ -40,6 +40,7 @@ import {
   type DidTargetSnapshot,
   type ManifestPageSnapshot,
 } from "./policy";
+import { normalizeMacaroniPublishedHtml } from "./macaroni-compat";
 
 type UserRow = typeof users.$inferSelect;
 type SiteRow = typeof wtfUserSites.$inferSelect;
@@ -924,7 +925,7 @@ export async function resolvePublishedPage(input: {
   if (!page) return { kind: "not_found" };
   return {
     kind: "page",
-    html: String(page.html ?? ""),
+    html: normalizeMacaroniPublishedHtml(String(page.html ?? "")),
     title: String(page.title ?? slug),
     digest: version.digest,
   };
