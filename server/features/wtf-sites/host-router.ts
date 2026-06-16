@@ -26,7 +26,8 @@ const USER_SITE_CSP = [
   "font-src 'self' https: data:",
   "style-src 'self' 'unsafe-inline' https:",
   "script-src 'self' 'unsafe-inline' https: data: blob:",
-  "connect-src 'self' https:",
+  "connect-src 'self' https: wss://relay.walletconnect.org",
+  "frame-src https://verify.walletconnect.org",
   "worker-src 'none'",
   "child-src 'none'",
 ].join("; ");

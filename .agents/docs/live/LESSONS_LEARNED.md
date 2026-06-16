@@ -4979,3 +4979,15 @@
 **Fix**: Moved the owned count into the heading as `Your 1 mint` / `Your N mints`, removed the redundant held-by-wallet status line, kept raw token filenames as captions, simplified wallet approval copy to `approve in your wallet...`, and added per-token X plus Bluesky compose links with prefilled collector share text.
 
 **Rule**: On generated public mint pages, humanize count/status copy and preserve creator-provided token names or filenames unless the creator explicitly opts into alternate labels. Social sharing should open user-confirmed compose intents, not use posting APIs or auto-publish.
+
+---
+
+## 2026-06-16 - User-site CSP must include wallet relay and verify surfaces
+
+**What happened**: Airporters wallet connect on `paulwhoisaghost.wtfos.me` failed because the user-site CSP allowed `connect-src 'self' https:` but not WalletConnect's `wss://relay.walletconnect.org`, and it had no `frame-src` allowance for `https://verify.walletconnect.org`.
+
+**Why it mattered**: The generated drop page wallet code was trying to connect correctly, but the published user-site security boundary blocked the wallet transport and verification iframe before the wallet UI could complete.
+
+**Fix**: Added the WalletConnect relay websocket and verify iframe to both user-site CSP implementations: the app host router and the staged/PDS renderer.
+
+**Rule**: Wallet-capable published user sites need CSP allowances for the wallet transport layer, not just app scripts. When debugging wallet connect on `.wtfos.me`, check browser CSP errors before changing wallet lifecycle code.

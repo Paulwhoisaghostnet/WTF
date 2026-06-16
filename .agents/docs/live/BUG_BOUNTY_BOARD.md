@@ -5664,6 +5664,24 @@ Priority labels:
   - `npm run test:e2e:inventory:coverage`
   - `npm run test:e2e:inventory`
 
+### WTF-BB-260 - Published user-site CSP blocks Macaroni wallet connect
+
+- Category: Macaroni / user-site wallet CSP
+- Status: Verified
+- Owner/Session: Codex Macaroni user-site CSP pass
+- Score: C1 + F3 + S1 + P1(4) = 9
+- Evidence:
+  - Live Airporters console reported CSP blocks for `wss://relay.walletconnect.org` under `connect-src 'self' https:` and `https://verify.walletconnect.org/` under `child-src 'none'` because no explicit `frame-src` was set.
+  - The failure happened on the public published drop host `paulwhoisaghost.wtfos.me`, so the generated drop page wallet connect could not complete even though the wallet code path was active.
+- Why it matters:
+  - Published Macaroni drops are collector-facing sale pages. Blocking WalletConnect at CSP makes the mint button look broken and risks mistaken wallet-code changes.
+- Fix:
+  - Allow `wss://relay.walletconnect.org` in user-site `connect-src` and `https://verify.walletconnect.org` in `frame-src` for both the app host-router CSP and staged/PDS renderer CSP.
+- Verification:
+  - `npx tsx --test server/features/wtf-sites/user-site-csp-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - Live Airporters header smoke confirms the CSP contains the relay websocket and verify-frame allowances after deploy.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:
