@@ -81,6 +81,12 @@
         <input type="text" id="dropSymbol" placeholder="DROP" maxlength="8" />
         <label>Description *</label>
         <textarea id="dropDesc" placeholder="What is this collection about?"></textarea>
+        <label>Contract version</label>
+        <select id="contractVersion">
+          <option value="macaroni-v1">Macaroni V1 — classic blind mint</option>
+          <option value="macaroni-editions-v2">Macaroni V2 — editions + minter royalties</option>
+        </select>
+        <p class="muted" id="contractVersionHint">V1 is for 1/1 blind drops. V2 is required for shared-token editions, minter royalty pools, or multiple unrevealed images.</p>
       </div>
       <div>
         <label>Collection logo / cover (≤1 MB, square JPG/PNG) *</label>
@@ -104,6 +110,29 @@
         </div>
         <label>Treasury — receives 100% of mint payments (defaults to your wallet)</label>
         <input type="text" id="treasuryAddr" placeholder="tz1…" autocomplete="off" autocapitalize="none" spellcheck="false" />
+        <div class="panel" style="margin:12px 0;padding:12px">
+          <label style="margin:0"><input type="checkbox" id="minterRoyaltiesEnabled" /> add minter royalty pool (Macaroni V2)</label>
+          <div id="minterRoyaltyFields" style="display:none;margin-top:8px">
+            <div class="grid2">
+              <div>
+                <label>Minter royalty pool</label>
+                <input type="number" id="minterRoyaltyPct" min="0" max="100" step="0.1" value="0" />
+              </div>
+              <div>
+                <label>Minter royalty split</label>
+                <select id="minterRoyaltyMode">
+                  <option value="first_minter">First minter gets the full pool</option>
+                  <option value="rolling_pool">Equal split between minters after sellout/lock</option>
+                </select>
+              </div>
+            </div>
+            <label>Royalty updater (defaults to your wallet)</label>
+            <input type="text" id="royaltyUpdaterAddr" placeholder="tz1…" autocomplete="off" autocapitalize="none" spellcheck="false" />
+            <label>Royalty updater endpoint (optional)</label>
+            <input type="url" id="royaltyUpdateEndpoint" placeholder="https://…" autocomplete="off" autocapitalize="none" spellcheck="false" />
+            <p class="muted">Minter royalties use Macaroni V2 metadata updates. The generated drop page or creator-triggered updater patches token metadata after mints, then locks it after first-minter sync or after sellout/creator lock for rolling pools.</p>
+          </div>
+        </div>
         <div class="grid2">
           <div>
             <label>Reveal mode</label>
@@ -118,6 +147,11 @@
           </div>
         </div>
         <p class="muted" id="revealHint" style="display:none">Delayed: collectors mint blanks showing your cover image. You can reveal at any time from step 6 — and once the oldest unrevealed mint is older than the window, <strong>anyone</strong> can trigger the reveal from the mint page, so collectors are never stuck. The window can be changed later but never above 30 days.</p>
+        <div id="placeholderPoolWrap" style="display:none;margin-top:10px">
+          <label>Unrevealed placeholder images (optional pool)</label>
+          <input type="file" id="placeholderFiles" accept="image/*" multiple />
+          <p class="muted" id="placeholderPoolStatus">No custom placeholder pool selected.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -125,7 +159,7 @@
   <!-- 3. Tokens -->
   <section class="panel" id="secTokens">
     <h2>3 · Tokens</h2>
-    <p class="muted">Upload a CSV with columns <code>id</code>, <code>name</code>, <code>description</code> (extra columns become traits). Then upload your artwork files named by token id (<code>1.png</code>, <code>2.jpg</code>, …). <a href="sample/tokens.csv" download>Download CSV template</a>.</p>
+    <p class="muted">Upload a CSV with columns <code>id</code>, <code>quantity</code>, <code>name</code>, <code>description</code> (extra columns become traits). <code>quantity</code> defaults to 1. Then upload your artwork files named by token id (<code>1.png</code>, <code>2.jpg</code>, …). <a href="sample/tokens.csv" download>Download CSV template</a>.</p>
     <div class="grid2">
       <div>
         <label>Token sheet (.csv)</label>

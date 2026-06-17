@@ -26,6 +26,7 @@ function ensureMintSiteEnhancements() {
   }
   insertAfter("mintStatus", '<div class="muted" id="walletBalance" role="status" aria-live="polite"></div>');
   insertAfter("walletBalance", '<div class="muted" id="mintPreflight" aria-live="polite"></div>');
+  insertAfter("mintPreflight", '<div class="muted" id="royaltyStatus" role="status" aria-live="polite"></div>');
   insertAfter("allowStatus", '<div class="muted" id="walletLimitStatus" aria-live="polite"></div>');
   insertAfter(
     "walletLimitStatus",
@@ -93,6 +94,7 @@ function ensureDropAccessibility() {
     "stageInfo",
     "mintStatus",
     "walletBalance",
+    "royaltyStatus",
     "allowStatus",
     "ownedMintStatus",
     "revealOpStatus",
@@ -619,6 +621,24 @@ function metadataLooksPending(meta, sealed) {
   return false;
 }
 
+async function tokenIsSealed(tokenId) {
+  if (!storage?.delayed_reveal) return false;
+  if (storage.token_placeholder) {
+    try {
+      const placeholder = await storage.token_placeholder.get(String(tokenId));
+      return placeholder != null;
+    } catch (_) {
+      try {
+        const placeholder = await storage.token_placeholder.get(Number(tokenId));
+        return placeholder != null;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+  return Number(tokenId) >= Number(storage.revealed || 0);
+}
+
 async function fetchTokenMetadataFromStorage(tokenId) {
   if (!storage || !storage.token_metadata) return null;
   try {
@@ -640,7 +660,7 @@ async function fetchTokenMetadataFromStorage(tokenId) {
 
 async function hydrateRecentMintTransfer(transfer) {
   const tokenId = Number(transfer.tokenId);
-  const sealed = !!storage?.delayed_reveal && tokenId >= Number(storage.revealed || 0);
+  const sealed = await tokenIsSealed(tokenId);
   const chainMeta = await fetchTokenMetadataFromStorage(tokenId);
   const metadata = chainMeta || transfer.token?.metadata || {};
   return {
@@ -881,6 +901,41 @@ if (CFG.contract)
   $("contractLink").innerHTML =
     `contract <a class="mono" target="_blank" rel="noopener" href="${MD.explorerUrl(CFG.network, CFG.contract)}">${CFG.contract}</a>`;
 
+function minterRoyaltyConfig() {
+  const cfg = CFG.minterRoyalties && typeof CFG.minterRoyalties === "object" ? CFG.minterRoyalties : {};
+  const bps = Number(cfg.bps || 0);
+  return {
+    enabled: !!cfg.enabled && bps > 0,
+    bps,
+    percent: Number(cfg.percent || bps / 100),
+    mode: cfg.mode === "rolling_pool" ? "rolling_pool" : "first_minter",
+    updater: String(cfg.updater || ""),
+    updateEndpoint: String(cfg.updateEndpoint || ""),
+    lock: String(cfg.lock || ""),
+  };
+}
+
+function minterRoyaltyLabel() {
+  const cfg = minterRoyaltyConfig();
+  if (!cfg.enabled) return "";
+  return cfg.mode === "rolling_pool"
+    ? `Minter royalty pool: ${cfg.percent}% split across minters until sellout or creator lock.`
+    : `Minter royalty pool: ${cfg.percent}% assigned to the first minter of each token.`;
+}
+
+function renderMinterRoyaltyStatus() {
+  const cfg = minterRoyaltyConfig();
+  if (!cfg.enabled) {
+    setText("royaltyStatus", "");
+    return;
+  }
+  const mutable =
+    cfg.mode === "rolling_pool"
+      ? " Royalty metadata can update after each mint until the pool is locked."
+      : " Royalty metadata locks after the first-minter sync for that token.";
+  setText("royaltyStatus", minterRoyaltyLabel() + mutable);
+}
+
 // ---------- chain state ----------
 MD.setupToolkit(CFG.network || "mainnet", CFG.rpc);
 let storage = null;
@@ -908,9 +963,13 @@ const CUSTOM_RECENT_MINT_LIMIT = 10;
 
 function revealState() {
   if (!storage) return null;
+  const queuePending =
+    storage.reveal_tail != null && storage.reveal_cursor != null
+      ? Math.max(0, Number(storage.reveal_tail) - Number(storage.reveal_cursor))
+      : null;
   return {
     delayed: !!storage.delayed_reveal,
-    pending: Number(storage.minted) - Number(storage.revealed),
+    pending: queuePending != null ? queuePending : Number(storage.minted) - Number(storage.revealed),
     since: storage.unrevealed_since ? new Date(storage.unrevealed_since) : null,
     delayMs: Number(storage.reveal_delay) * 1000,
   };
@@ -1252,6 +1311,7 @@ async function refresh() {
 
 function render() {
   if (!storage) return;
+  renderMinterRoyaltyStatus();
   const supply = Number(storage.supply);
   const minted = Number(storage.minted);
   const left = supply - minted;
@@ -1631,6 +1691,59 @@ async function mintBatchSingles(c, priceMutez, amount) {
   return ids;
 }
 
+async function maybeSyncMinterRoyalties(ids) {
+  const cfg = minterRoyaltyConfig();
+  if (!cfg.enabled || !ids.length) return;
+  const uniqueIds = [...new Set(ids)];
+  if (!cfg.updateEndpoint) {
+    setText(
+      "royaltyStatus",
+      minterRoyaltyLabel() +
+        " Mint was recorded; royalty metadata sync is pending until the creator or configured updater pushes the revised metadata."
+    );
+    return;
+  }
+  setText("royaltyStatus", "Updating minter royalty metadata...");
+  const payload = {
+    network: CFG.network || "mainnet",
+    contract: CFG.contract,
+    minter: MD.getAccount(),
+    tokenIds: uniqueIds,
+    mode: cfg.mode,
+    bps: cfg.bps,
+    tokens: Array.isArray(CFG.tokens) ? CFG.tokens.filter((t) => uniqueIds.includes(Number(t.id))) : [],
+    reveal: CFG.reveal || null,
+  };
+  try {
+    const res = await fetch(cfg.updateEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    let body = null;
+    try {
+      body = await res.json();
+    } catch (_) {
+      body = null;
+    }
+    if (!res.ok || body?.ok === false) {
+      throw new Error(body?.error || "royalty metadata updater rejected the mint");
+    }
+  } catch (e) {
+    setText(
+      "royaltyStatus",
+      "Mint confirmed, but minter royalty metadata sync is pending: " + (e.message || e)
+    );
+    return;
+  }
+  setText(
+    "royaltyStatus",
+    cfg.mode === "rolling_pool"
+      ? "Minter royalty metadata updated; pool remains mutable until sellout or creator lock."
+      : "Minter royalty metadata updated and ready to lock for first-minter mode."
+  );
+}
+
 async function mint() {
   const me = MD.getAccount();
   if (!me) return;
@@ -1654,6 +1767,7 @@ async function mint() {
     $("mintStatus").textContent = "confirmed! revealing…";
     await refreshBalance("checked after mint");
     await reveal(ids);
+    await maybeSyncMinterRoyalties(ids);
     await loadOwnedMints();
     await loadRecentMints({ force: true });
     const delayed = !!storage?.delayed_reveal;
@@ -1712,7 +1826,7 @@ async function reveal(ids) {
       const metaUrl = safeHttpUrl(MD.ipfsToHttp(uri, CFG.gateway));
       if (!metaUrl) throw new Error("unsafe metadata URI");
       const meta = await (await fetch(metaUrl)).json();
-      const sealed = !!storage.delayed_reveal && id >= Number(storage.revealed);
+      const sealed = await tokenIsSealed(id);
       card.classList.toggle("sealed", sealed);
       renderTokenCard(card, meta, id, sealed, walletTokenContextLabels.get(Number(id)) || "");
       if (wasSealed && !sealed) {

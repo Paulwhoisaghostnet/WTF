@@ -524,6 +524,94 @@ test("Macaroni generated mint quantity clamps to live supply and wallet allowanc
   assert.match(dropSource, /qtyPlus[\s\S]*effectiveQtyMax\(activeStage\(\)\)/);
 });
 
+test("Macaroni Studio models V2 editions, minter royalties, and placeholder pools", () => {
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+  const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
+  const dropConfig = readFileSync("public/creation-tools/macaroni/drop.config.js", "utf8");
+  const sampleCsv = readFileSync("public/creation-tools/macaroni/sample/tokens.csv", "utf8");
+  const compileSource = readFileSync("scripts/macaroni/compile-v2-contract-template.mjs", "utf8");
+  const compiledTemplate = JSON.parse(
+    readFileSync("public/creation-tools/macaroni/contract/macaroni-v2.template.json", "utf8")
+  );
+  const compiledContract = JSON.parse(
+    readFileSync("public/creation-tools/macaroni/contract/macaroni-v2.contract.json", "utf8")
+  );
+
+  assert.match(studioHtml, /id="contractVersion"/);
+  assert.match(studioHtml, /value="macaroni-v1"/);
+  assert.match(studioHtml, /value="macaroni-editions-v2"/);
+  assert.match(studioHtml, /id="minterRoyaltiesEnabled"/);
+  assert.match(studioHtml, /id="minterRoyaltyPct"/);
+  assert.match(studioHtml, /id="minterRoyaltyMode"/);
+  assert.match(studioHtml, /id="royaltyUpdaterAddr"/);
+  assert.match(studioHtml, /id="royaltyUpdateEndpoint"/);
+  assert.match(studioHtml, /id="placeholderFiles"[^>]*multiple/);
+
+  assert.match(studioSource, /const MACARONI_CONTRACT_VERSIONS = new Set\(\["macaroni-v1", "macaroni-editions-v2"\]\)/);
+  assert.match(studioSource, /const MACARONI_V2_ARTIFACT = "contract\/macaroni-v2\.contract\.json"/);
+  assert.match(studioSource, /function normalizeTokenQuantity\(value\)/);
+  assert.match(studioSource, /function normalizeOptionalHttpUrl\(value\)/);
+  assert.match(studioSource, /function normalizeContractVersion\(value\)/);
+  assert.match(studioSource, /function dropRequiresMacaroniV2\(\)/);
+  assert.match(studioSource, /function assertSelectedContractSupportsDraft\(\)/);
+  assert.match(studioSource, /function royaltyPolicyMetadata\(\)/);
+  assert.match(studioSource, /function buildPlaceholderMetadata\(source, index, poolSize\)/);
+  assert.match(studioSource, /tokenSummary:\s*\{\s*tokenCount: state\.tokens\.length,\s*editionCount: tokenEditionTotal\(\)/s);
+  assert.match(studioSource, /placeholderPool:\s*pool/);
+  assert.match(studioSource, /minterRoyalties:\s*\{/);
+  assert.match(studioSource, /updateStrategy: minterRoyaltiesEnabled\(\) \? "drop_page_or_creator_triggered" : "none"/);
+  assert.match(studioSource, /storage = \{[\s\S]*token_supply: new M\(\)[\s\S]*token_minted: new M\(\)[\s\S]*placeholder_pool: placeholderPoolMap[\s\S]*minter_royalty_config:/);
+  assert.match(studioSource, /const ep = contractIsV2 \? "replace_tokens_v2" : "replace_tokens"/);
+  assert.match(studioSource, /const ep = contractIsV2 \? "add_tokens_v2" : "add_tokens"/);
+  assert.match(studioSource, /quantity: normalizeTokenQuantity\(t\.quantity\)/);
+
+  assert.match(dropSource, /function minterRoyaltyConfig\(\)/);
+  assert.match(dropSource, /async function tokenIsSealed\(tokenId\)/);
+  assert.match(dropSource, /storage\.token_placeholder\.get\(String\(tokenId\)\)/);
+  assert.match(dropSource, /function maybeSyncMinterRoyalties\(ids\)/);
+  assert.match(dropSource, /await maybeSyncMinterRoyalties\(ids\)/);
+  assert.match(dropSource, /storage\.reveal_tail != null && storage\.reveal_cursor != null/);
+  assert.match(dropSource, /royalty metadata sync is pending until the creator or configured updater pushes the revised metadata/);
+
+  assert.match(dropConfig, /contractVersion: "macaroni-v1"/);
+  assert.match(dropConfig, /placeholderPool: \[\]/);
+  assert.match(dropConfig, /minterRoyalties:\s*\{/);
+  assert.match(dropConfig, /updateEndpoint: ""/);
+  assert.match(sampleCsv, /^id,quantity,name,description,tags/m);
+  assert.match(compileSource, /scenarioName = "deploy_macaroni_blind_mint_v2_template"/);
+  assert.match(compileSource, /macaroni-v2\.contract\.json/);
+  assert.match(compileSource, /macaroni-v2\.template\.json/);
+  assert.equal(compiledTemplate.templateVersion, "macaroni-editions-v2");
+  assert.ok(compiledTemplate.entrypoints.includes("add_tokens_v2"));
+  assert.ok(compiledTemplate.entrypoints.includes("replace_tokens_v2"));
+  assert.ok(compiledTemplate.entrypoints.includes("update_minter_royalty_metadata"));
+  assert.ok(compiledTemplate.entrypoints.includes("lock_minter_royalties"));
+  assert.ok(Array.isArray(compiledContract));
+  assert.ok(compiledContract.length > 0);
+});
+
+test("Macaroni V2 SmartPy source exposes edition and royalty entrypoints", () => {
+  const source = readFileSync("contracts/wtf-collections/MacaroniBlindMintFA2V2.py", "utf8");
+
+  assert.match(source, /@sp\.module/);
+  assert.match(source, /LedgerKeyType: type = sp\.record\(owner=sp\.address, token_id=sp\.nat\)/);
+  assert.match(source, /TokenBatchItemType: type = sp\.record\(token_id=sp\.nat, token_info=sp\.map\[sp\.string, sp\.bytes\], quantity=sp\.nat\)/);
+  assert.match(source, /self\.data\.token_supply = sp\.cast\(sp\.big_map\(\), sp\.big_map\[sp\.nat, sp\.nat\]\)/);
+  assert.match(source, /self\.data\.token_minted = sp\.cast\(sp\.big_map\(\), sp\.big_map\[sp\.nat, sp\.nat\]\)/);
+  assert.match(source, /self\.data\.placeholder_pool = sp\.cast\(placeholder_pool, sp\.big_map\[sp\.nat, TokenMetadataType\]\)/);
+  assert.match(source, /self\.data\.minter_royalty_config = sp\.cast\(minter_royalty_config, RoyaltyConfigType\)/);
+  assert.match(source, /def add_tokens_v2\(self, tokens\):/);
+  assert.match(source, /def replace_tokens_v2\(self, tokens\):/);
+  assert.match(source, /for slot_index in sp\.range\(0, token\.quantity\):/);
+  assert.match(source, /self\.data\.slots\[self\.data\.supply\] = token\.token_id/);
+  assert.match(source, /placeholder_index = sp\.mod\(/);
+  assert.match(source, /def update_minter_royalty_metadata\(self, params\):/);
+  assert.match(source, /def lock_minter_royalties\(self, token_id\):/);
+  assert.match(source, /assert cfg\.mode == 0 or sold_out or sp\.sender == self\.data\.administrator, "ROYALTY_POOL_OPEN"/);
+  assert.match(source, /def deploy_macaroni_blind_mint_v2_template\(\):/);
+});
+
 test("Macaroni generated pages only publish bounded theme CSS", () => {
   const publishSource = readFileSync("server/features/macaroni/publish.ts", "utf8");
   const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");

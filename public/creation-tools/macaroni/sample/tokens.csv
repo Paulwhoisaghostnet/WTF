@@ -1,2 +1,2 @@
-id,name,description,tags
-1,Token name,Token description,optional;trait;tags
+id,quantity,name,description,tags
+1,1,Token name,Token description,optional;trait;tags

@@ -44,6 +44,7 @@ test("Macaroni published page loads stable app assets from the public origin", (
   assert.match(html, /id="supplyProgress" role="progressbar"/);
   assert.match(html, /id="btnConnect" type="button" aria-label="Connect wallet"/);
   assert.match(html, /id="mintStatus" role="status" aria-live="polite"/);
+  assert.match(html, /id="royaltyStatus" role="status" aria-live="polite"/);
   assert.match(html, /id="qtyMinus" type="button" aria-label="Decrease mint quantity"/);
   assert.equal(html.includes("drop.config.js"), false);
 });
@@ -110,4 +111,66 @@ test("Macaroni published page strips stored CSS injection surfaces", () => {
   assert.equal(html.includes("</style><img"), false);
   assert.equal(html.includes("javascript:alert"), false);
   assert.match(html, /"theme":\{"name":"dark","accent":"","font":"","customCss":""\}/);
+});
+
+test("Macaroni publish preserves V2 edition and minter royalty config fields", () => {
+  const safe = sanitizeMacaroniConfigForPublish({
+    title: "V2 Drop",
+    contractVersion: "macaroni-editions-v2",
+    tokenSummary: {
+      tokenCount: 2,
+      editionCount: 5,
+      hasMultiEdition: true,
+    },
+    tokens: [
+      { id: 0, name: "One", quantity: 3, metadata: "ipfs://one" },
+      { id: 1, name: "Two", quantity: 2, metadata: "ipfs://two" },
+    ],
+    reveal: {
+      mode: "delayed",
+      delayDays: 7,
+      placeholderPool: [
+        { cid: "bafyplaceholder1", uri: "ipfs://bafyplaceholder1", name: "Placeholder 1" },
+        { cid: "bafyplaceholder2", uri: "ipfs://bafyplaceholder2", name: "Placeholder 2" },
+      ],
+    },
+    minterRoyalties: {
+      enabled: true,
+      bps: 500,
+      percent: 5,
+      mode: "rolling_pool",
+      updater: "tz1burnburnburnburnburnburnburjAYjjX",
+      updateEndpoint: "https://drop.example.test/royalty-sync",
+      updateStrategy: "drop_page_or_creator_triggered",
+      metadataSource: "contract_storage_token_metadata",
+      lock: "sellout_or_creator_lock",
+    },
+  });
+
+  assert.equal(safe.contractVersion, "macaroni-editions-v2");
+  assert.deepEqual(safe.tokenSummary, {
+    tokenCount: 2,
+    editionCount: 5,
+    hasMultiEdition: true,
+  });
+  assert.equal((safe.tokens as Array<Record<string, unknown>>)[0].quantity, 3);
+  assert.deepEqual(safe.reveal, {
+    mode: "delayed",
+    delayDays: 7,
+    placeholderPool: [
+      { cid: "bafyplaceholder1", uri: "ipfs://bafyplaceholder1", name: "Placeholder 1" },
+      { cid: "bafyplaceholder2", uri: "ipfs://bafyplaceholder2", name: "Placeholder 2" },
+    ],
+  });
+  assert.deepEqual(safe.minterRoyalties, {
+    enabled: true,
+    bps: 500,
+    percent: 5,
+    mode: "rolling_pool",
+    updater: "tz1burnburnburnburnburnburnburjAYjjX",
+    updateEndpoint: "https://drop.example.test/royalty-sync",
+    updateStrategy: "drop_page_or_creator_triggered",
+    metadataSource: "contract_storage_token_metadata",
+    lock: "sellout_or_creator_lock",
+  });
 });

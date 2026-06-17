@@ -98,6 +98,7 @@ Priority labels:
 | WTF-BB-271 | Fixed | Codex Macaroni fee-floor repair | 2026-06-16 | Macaroni / generated drop website wallet operation fees | P0 | 13 | 5 | 2 | 5 | 1 | Live mint attempts can fail with `Fee is too low, blockchain says: "No tip, no trip"` because Macaroni inflates Taquito-estimated gas/storage limits but derives the explicit wallet fee from the lower unpadded estimate; fixed by deriving a fee floor from the padded gas limit actually sent to Beacon/Taquito plus a small tip, and verified by `node --check public/creation-tools/macaroni/js/common.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, and `npm run test:e2e:inventory:coverage` |
 | WTF-BB-272 | Verified | Codex Macaroni social-share identity/media pass | 2026-06-16 | Macaroni / generated drop website social sharing | P1 | 10 | 10 | 2 | 4 | 0 | Generated Macaroni share presets drafted generic posts without the creator's same-platform X/Bluesky identity and without the actual token media URL; fixed with Studio share handle/copy controls, wtfOS profile enrichment on trusted publish, token-media URLs in compose-intent text, and source-policy coverage; verified by JS syntax checks, focused Macaroni policy tests, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-273 | Verified | Codex Airporters Octez Connect full-send | 2026-06-17 | Macaroni / published drop wallet compatibility | P1 | 12 | 7 | 3 | 5 | 0 | Airporters is mainnet, but Brave/Kukai users could receive a confusing Mainnet mismatch because published/drop wallet code sent the dApp RPC inside a named wallet network; fixed with Octez Connect-primary wallet bridge, Beacon backup, plain named wallet networks, and serve-time injection for stored Macaroni drops; verified live after Hetzner deploy on `https://paulwhoisaghost.wtfos.me/airporters-vol-1` |
+| WTF-BB-274 | Fixed | Codex Macaroni V2 editions full-send | 2026-06-17 | Macaroni / contract versions, editions, and minter royalties | P1 | 14 | 3 | 4 | 5 | 1 | Macaroni Studio only generated the V1 blind-mint contract, so creators could not choose shared-token editions, V2 minter royalty policies, or multiple delayed-reveal placeholder artifacts; fixed with a V1/V2 selector, SmartPy V2 contract template, compiled public artifact, generated config, and source-policy coverage; local verification passed, pending production deploy verification |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5815,6 +5816,30 @@ Priority labels:
   - Hetzner deploy for commit `da79c63` completed successfully and live health reported `commitRef:"da79c63"` with `status:"ok"`.
   - Live Airporters verification passed on `https://paulwhoisaghost.wtfos.me/airporters-vol-1`: HTTP 200 user-site surface, Octez/Beacon CSP websocket/frame allowances present, `vendor/octez-connect.js` before `js/octez-wallet.js`, the wrapper before `installOctezPrimaryWallet({ patchBeacon: true })`, the patch before `macaroniCommonJs`, Beacon fallback runtime present, and no `{ type: net.beaconNetwork, rpcUrl }` leak.
   - Live Macaroni static assets verified on `https://wtfos.app/creation-tools/macaroni/drop.html`, `studio.html`, `js/octez-wallet.js`, and `vendor/octez-connect.js`: Octez assets load before `common.js`, the wrapper exposes `providerName = "octez.connect"` plus `beaconBackup`, and the vendor bundle exposes `MacaroniOctezConnect` plus `getDAppClientInstance`.
+
+### WTF-BB-274 - Macaroni V2 contract versions, editions, and minter royalties
+
+- Category: Macaroni / contract versions, editions, and minter royalties
+- Status: Fixed
+- Owner/Session: Codex Macaroni V2 editions full-send
+- Score: C4 + F5 + S1 + P1(4) = 14
+- Evidence:
+  - Studio only loaded the legacy Macaroni contract artifact, so a creator had no explicit Macaroni V1/V2 choice before deployment.
+  - Token CSV/import metadata had no quantity field, preventing creator-defined shared-token edition supply.
+  - Delayed reveal accepted one placeholder artifact, so unrevealed tokens could not draw from a creator-provided placeholder pool.
+  - Minter royalty policy needed contract-owned mutable state plus creator/drop-page updater hooks without turning Macaroni into an indefinite metadata watchdog.
+- Why it matters:
+  - Multi-edition blind mints, mutable-until-lock minter royalty pools, and richer unrevealed placeholder presentation are core creator capabilities. Shipping them without an explicit contract version selector or generated V2 artifact would make deployments ambiguous and hard to verify.
+- Fix:
+  - Added `MacaroniBlindMintFA2V2.py` with per-token edition supply, one-edition-at-a-time minting into shared FA2 token IDs, delayed placeholder pools, minter royalty revision state, updater-gated metadata patching, and lock entrypoints.
+  - Added the SmartPy compile script and public V2 contract/template artifacts for Studio deployment.
+  - Added Studio controls for Macaroni V1/V2 selection, token `quantity`, optional minter royalty percentage/mode/updater policy, and multiple unrevealed placeholder images.
+  - Exported generated drop config for edition summaries, V2 reveal placeholder pools, and minter royalty metadata sync status.
+  - Updated publish HTML, interaction inventory, focused source-policy tests, and the Shadownet puppet spec expectations.
+- Verification:
+  - Local verification passed: SmartPy V2 template compile with `scripts/macaroni/compile-v2-contract-template.mjs`, JS syntax checks for `studio.js`, `drop.js`, compile script, and the live Macaroni Playwright spec, compiled artifact/template JSON parse, focused Macaroni policy/publish tests, `tsx tests/e2e/inventory/coverage.ts`, `npm run check -- --pretty false`, and `npm run test:e2e:inventory` (313/313 passed after build).
+  - `npm run test:e2e:macaroni:shadownet` is blocked in the clean worktree because puppet seeding requires `DATABASE_URL`.
+  - Pending production full-send deploy verification for this pass.
 
 ## Backlog Intake Template
 

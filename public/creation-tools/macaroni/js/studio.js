@@ -60,6 +60,10 @@ const OBJKT_TOKEN_PREVIEW_MAX_BYTES = 2 * MB;
 const OBJKT_TOKEN_PREVIEW_MAX_SIDE = 800;
 const OBJKT_TOKEN_PREVIEW_LABEL = "2 MB token preview";
 const KT1_CONTRACT_ADDRESS = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
+const MACARONI_CONTRACT_VERSIONS = new Set(["macaroni-v1", "macaroni-editions-v2"]);
+const MINTER_ROYALTY_MODES = new Set(["first_minter", "rolling_pool"]);
+const MACARONI_LEGACY_ARTIFACT = "contract/mydrop.contract.json";
+const MACARONI_V2_ARTIFACT = "contract/macaroni-v2.contract.json";
 const IS_NATIVE_APP = Boolean(window.MACARONI_DESKTOP && window.MACARONI_DESKTOP.native);
 const INSTALLER_PLATFORMS = [
   { key: "macos", id: "installerMacos", label: "macOS" },
@@ -76,6 +80,17 @@ function normalizeOptionalAddress(value) {
   return text;
 }
 
+function normalizeOptionalHttpUrl(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  try {
+    const url = new URL(text);
+    return /^https?:$/.test(url.protocol) ? url.toString() : "";
+  } catch (_) {
+    return "";
+  }
+}
+
 function isValidKt1Address(value) {
   return KT1_CONTRACT_ADDRESS.test(String(value || "").trim());
 }
@@ -90,6 +105,92 @@ function invalidAddressNotice(label, value, statusId) {
   );
 }
 
+function normalizeTokenQuantity(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return 1;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) throw new Error(`bad quantity "${value}" — quantity must be a positive integer`);
+  return n;
+}
+
+function normalizeMinterRoyaltyMode(value) {
+  const mode = String(value || "").trim();
+  return MINTER_ROYALTY_MODES.has(mode) ? mode : "first_minter";
+}
+
+function normalizeContractVersion(value) {
+  const version = String(value || "").trim();
+  return MACARONI_CONTRACT_VERSIONS.has(version) ? version : "macaroni-v1";
+}
+
+function minterRoyaltyBps() {
+  return Math.round(Number(state.drop.minterRoyaltyPct || 0) * 100);
+}
+
+function creatorRoyaltyBps() {
+  return Math.round(Number(state.drop.royaltyPct || 0) * 100);
+}
+
+function minterRoyaltiesEnabled() {
+  return !!state.drop.minterRoyaltiesEnabled && minterRoyaltyBps() > 0;
+}
+
+function tokenEditionTotal() {
+  return state.tokens.reduce((sum, t) => sum + normalizeTokenQuantity(t.quantity), 0);
+}
+
+function placeholderPool() {
+  return Array.isArray(state.drop.placeholderPool) ? state.drop.placeholderPool : [];
+}
+
+function hasMultiplePlaceholderPool() {
+  if (state.drop.revealMode !== "delayed") return false;
+  return placeholderPool().filter((p) => p && p.metadataCid).length > 1 || placeholderFiles.length > 1;
+}
+
+function dropRequiresMacaroniV2() {
+  return state.tokens.some((t) => normalizeTokenQuantity(t.quantity) > 1) ||
+    minterRoyaltiesEnabled() ||
+    hasMultiplePlaceholderPool();
+}
+
+function macaroniContractProfile() {
+  const selected = normalizeContractVersion(state.drop.contractVersion);
+  const usesV2 = selected === "macaroni-editions-v2";
+  return {
+    id: usesV2 ? "macaroni-editions-v2" : "macaroni-v1",
+    artifact: usesV2 ? MACARONI_V2_ARTIFACT : MACARONI_LEGACY_ARTIFACT,
+    selected,
+    usesV2,
+    requiresV2: dropRequiresMacaroniV2(),
+    incompatible: !usesV2 && dropRequiresMacaroniV2(),
+  };
+}
+
+function assertSelectedContractSupportsDraft() {
+  const profile = macaroniContractProfile();
+  if (!profile.incompatible) return profile;
+  throw new Error(
+    "This draft uses Macaroni V2-only features. Select Macaroni V2 in Drop details, " +
+    "or turn off multi-editions, minter royalties, and multiple unrevealed placeholder images."
+  );
+}
+
+async function loadContractCodeForDraft() {
+  const profile = macaroniContractProfile();
+  const res = await fetch(profile.artifact);
+  if (!res.ok) {
+    if (profile.usesV2) {
+      throw new Error(
+        `Macaroni V2 was selected, but ${MACARONI_V2_ARTIFACT} is not present in this build. ` +
+        "Run scripts/macaroni/compile-v2-contract-template.mjs after installing SmartPy, then deploy again."
+      );
+    }
+    throw new Error(`Could not load ${profile.artifact}`);
+  }
+  return { profile, code: await res.json() };
+}
+
 function freshDropState() {
   return {
     network: "shadownet",
@@ -98,6 +199,7 @@ function freshDropState() {
       title: "",
       symbol: "",
       description: "",
+      contractVersion: "macaroni-v1",
       royaltyPct: 10,
       royaltyAddr: "",
       treasuryAddr: "",
@@ -107,9 +209,15 @@ function freshDropState() {
       revealMode: "instant", // instant | delayed
       revealDelayDays: 7, // auto-reveal window (delayed mode), 0–30
       placeholderCid: "", // pinned pre-reveal metadata (delayed mode)
+      placeholderPool: [], // [{name, mime, cid, metadataCid}]
+      minterRoyaltiesEnabled: false,
+      minterRoyaltyPct: 0,
+      minterRoyaltyMode: "first_minter", // first_minter | rolling_pool
+      royaltyUpdaterAddr: "",
+      royaltyUpdateEndpoint: "",
     },
     pin: { kind: "pinata", jwt: "", url: "", gateway: MD.DEFAULT_GATEWAY },
-    tokens: [], // {id, name, description, attributes, tags, fileName, mediaBytes, mediaCid, mediaMime, previewCid, previewMime, previewBytes, metadataCid}
+    tokens: [], // {id, quantity, name, description, attributes, tags, fileName, mediaBytes, mediaCid, mediaMime, previewCid, previewMime, previewBytes, metadataCid}
     stages: [], // {start, price, useAllowlist, maxPerWallet, allowlist:[{address,capacity}]}
     contract: "",
     page: {
@@ -131,6 +239,7 @@ const state = freshDropState();
 // Files can't be persisted; kept in-memory keyed by base name (id).
 const mediaFiles = new Map();
 let coverFile = null;
+let placeholderFiles = [];
 let canUseWtfosPinning = false;
 
 function sanitizeThemeName(value) {
@@ -454,13 +563,21 @@ function save() {
 function normalizeState() {
   if (!MD.getNetworks()[state.network]) state.network = "shadownet";
   if (!state.drop || typeof state.drop !== "object") state.drop = freshDropState().drop;
+  state.drop.contractVersion = normalizeContractVersion(state.drop.contractVersion);
   state.drop.royaltyAddr = normalizeOptionalAddress(state.drop.royaltyAddr);
   state.drop.treasuryAddr = normalizeOptionalAddress(state.drop.treasuryAddr);
+  if (!Array.isArray(state.drop.placeholderPool)) state.drop.placeholderPool = [];
+  state.drop.minterRoyaltiesEnabled = !!state.drop.minterRoyaltiesEnabled;
+  state.drop.minterRoyaltyPct = Number(state.drop.minterRoyaltyPct || 0);
+  state.drop.minterRoyaltyMode = normalizeMinterRoyaltyMode(state.drop.minterRoyaltyMode);
+  state.drop.royaltyUpdaterAddr = normalizeOptionalAddress(state.drop.royaltyUpdaterAddr);
+  state.drop.royaltyUpdateEndpoint = normalizeOptionalHttpUrl(state.drop.royaltyUpdateEndpoint);
   if (!state.pin || typeof state.pin !== "object") state.pin = freshDropState().pin;
   if (!state.pin.gateway) state.pin.gateway = MD.DEFAULT_GATEWAY;
   if (!Array.isArray(state.tokens)) state.tokens = [];
   state.tokens.forEach((t) => {
     if (!t || typeof t !== "object") return;
+    t.quantity = normalizeTokenQuantity(t.quantity);
     t.previewCid = t.previewCid || "";
     t.previewMime = t.previewMime || "";
     t.previewBytes = Number(t.previewBytes || 0);
@@ -535,7 +652,7 @@ async function connect() {
 }
 
 // ---------- tokens ----------
-const RESERVED_COLS = new Set(["id", "name", "description", "tags"]);
+const RESERVED_COLS = new Set(["id", "name", "description", "tags", "quantity"]);
 
 async function onCsv(file) {
   try {
@@ -551,6 +668,7 @@ async function onCsv(file) {
       }
       tokens.push({
         id,
+        quantity: normalizeTokenQuantity(r.quantity),
         name: r.name || `#${id}`,
         description: r.description || "",
         tags: r.tags ? r.tags.split(/[;,]\s*/) : [],
@@ -576,6 +694,7 @@ async function onCsv(file) {
     for (const t of tokens) {
       const old = prev.get(t.id);
       if (old) Object.assign(t, {
+        quantity: normalizeTokenQuantity(t.quantity),
         mediaCid: old.mediaCid, mediaMime: old.mediaMime, mediaBytes: old.mediaBytes || 0,
         previewCid: old.previewCid || "", previewMime: old.previewMime || "", previewBytes: old.previewBytes || 0,
         metadataCid: "", // metadata depends on sheet content → re-pin
@@ -626,19 +745,21 @@ function matchMedia_() {
 
 function renderTokens() {
   const total = state.tokens.length;
+  const editions = tokenEditionTotal();
   const withArt = state.tokens.filter((t) => t.fileName).length;
   const pinned = state.tokens.filter((t) => t.metadataCid).length;
   const policy = artifactSizePolicy();
   const averageOk = !policy.sizes.length || policy.averageBytes <= OBJKT_ARTIFACT_AVERAGE_BYTES;
   $("tokenSummary").innerHTML =
-    `<span class="pill ${total ? "ok" : ""}">${total} tokens</span>` +
+    `<span class="pill ${total ? "ok" : ""}">${total} token row${total === 1 ? "" : "s"}</span>` +
+    `<span class="pill ${editions ? "ok" : ""}">${editions} edition${editions === 1 ? "" : "s"}</span>` +
     `<span class="pill ${withArt === total && total ? "ok" : "warn"}">${withArt}/${total} artworks matched</span>` +
     `<span class="pill ${pinned === total && total ? "ok" : ""}">${pinned}/${total} pinned</span>` +
     `<span class="pill ${averageOk ? "ok" : "bad"}">avg ${sizeLabel(policy.averageBytes)} / 250 MB</span>`;
 
   const tbl = $("tokenTable");
   if (!total) { tbl.innerHTML = ""; return; }
-  let html = "<tr><th></th><th>id</th><th>name</th><th>traits</th><th>artifact</th><th>IPFS</th></tr>";
+  let html = "<tr><th></th><th>id</th><th>editions</th><th>name</th><th>traits</th><th>artifact</th><th>IPFS</th></tr>";
   for (const t of state.tokens) {
     const f = mediaFiles.get(String(t.id));
     const img = f && f.type.startsWith("image/")
@@ -658,7 +779,7 @@ function renderTokens() {
           : t.mediaCid
             ? `<span class="pill warn">media pinned, metadata pending</span>`
             : `<span class="pill">—</span>`;
-    html += `<tr><td>${img}</td><td class="mono">${t.id}</td><td>${esc(t.name)}</td><td class="muted">${t.attributes.length}</td><td>${art}</td><td>${pin}</td></tr>`;
+    html += `<tr><td>${img}</td><td class="mono">${t.id}</td><td>${normalizeTokenQuantity(t.quantity)}</td><td>${esc(t.name)}</td><td class="muted">${t.attributes.length}</td><td>${art}</td><td>${pin}</td></tr>`;
   }
   tbl.innerHTML = html;
 }
@@ -682,6 +803,19 @@ function royaltyShares() {
   if (!pct || !addr) return null;
   // objkt-compatible: decimals 4 → 10% = 1000
   return { decimals: 4, shares: { [addr]: Math.round(pct * 100) } };
+}
+
+function royaltyPolicyMetadata() {
+  if (!minterRoyaltiesEnabled()) return undefined;
+  return {
+    minterPoolBps: minterRoyaltyBps(),
+    mode: normalizeMinterRoyaltyMode(state.drop.minterRoyaltyMode),
+    updater: state.drop.royaltyUpdaterAddr || MD.getAccount() || "",
+    mutableUntil:
+      normalizeMinterRoyaltyMode(state.drop.minterRoyaltyMode) === "rolling_pool"
+        ? "sellout_or_creator_lock"
+        : "first_mint_sync",
+  };
 }
 
 function blobFromCanvas(canvas, type, quality) {
@@ -857,6 +991,7 @@ function buildTokenMetadata(t) {
   const creator = MD.getAccount() || state.drop.royaltyAddr || "";
   const artifact = "ipfs://" + t.mediaCid;
   const cover = state.drop.coverCid ? "ipfs://" + state.drop.coverCid : "";
+  const quantity = normalizeTokenQuantity(t.quantity);
   if (tokenNeedsMediaPreview(t) && !t.previewCid)
     throw new Error(`token ${t.id} needs a smaller token preview for OBJKT metadata`);
   if (tokenNeedsCover(t) && !cover) throw new Error(`token ${t.id} needs the collection cover for OBJKT preview metadata`);
@@ -868,7 +1003,9 @@ function buildTokenMetadata(t) {
     name: t.name,
     description: t.description || state.drop.description,
     decimals: 0,
-    isBooleanAmount: true,
+    isBooleanAmount: quantity === 1,
+    editions: quantity,
+    supply: quantity,
     symbol: state.drop.symbol || undefined,
     artifactUri: artifact,
     displayUri: display,
@@ -878,6 +1015,37 @@ function buildTokenMetadata(t) {
     formats,
     tags: t.tags && t.tags.length ? t.tags : undefined,
     attributes: t.attributes.length ? t.attributes : undefined,
+    macaroni: {
+      contractVersion: macaroniContractProfile().id,
+      royaltyPolicy: royaltyPolicyMetadata(),
+    },
+  };
+  const roy = royaltyShares();
+  if (roy) meta.royalties = roy;
+  Object.keys(meta).forEach((k) => meta[k] === undefined && delete meta[k]);
+  return meta;
+}
+
+function buildPlaceholderMetadata(source, index, poolSize) {
+  const artifact = source?.cid ? "ipfs://" + source.cid : state.drop.coverCid ? "ipfs://" + state.drop.coverCid : "";
+  if (!artifact) throw new Error("delayed reveal needs an unrevealed placeholder artifact");
+  const meta = {
+    name: `${state.drop.title || "Drop"} — unrevealed ${poolSize > 1 ? index + 1 : ""}`.trim(),
+    description:
+      "This token has not been revealed yet. A random artwork from the collection will be assigned at reveal.",
+    decimals: 0,
+    isBooleanAmount: true,
+    symbol: state.drop.symbol || undefined,
+    artifactUri: artifact,
+    displayUri: artifact,
+    thumbnailUri: artifact,
+    formats: [{ uri: artifact, mimeType: source?.mime || state.drop.coverMime || "image/png" }],
+    macaroni: {
+      unrevealedPlaceholder: true,
+      placeholderIndex: index,
+      placeholderPoolSize: poolSize,
+      royaltyPolicy: royaltyPolicyMetadata(),
+    },
   };
   const roy = royaltyShares();
   if (roy) meta.royalties = roy;
@@ -887,8 +1055,13 @@ function buildTokenMetadata(t) {
 
 async function pinAll() {
   readForm();
-  const provider = pinProvider();
   clearNotice();
+  try {
+    assertSelectedContractSupportsDraft();
+  } catch (e) {
+    return notify(e.message, "err", "pinStatus");
+  }
+  const provider = pinProvider();
   if (provider.kind === "pinata" && !provider.jwt) return notify("Enter your Pinata JWT first.", "err", "pinStatus");
   if (provider.kind === "node" && !provider.url) return notify("Enter your IPFS node API URL first.", "err", "pinStatus");
   if (!state.tokens.length) return notify("Upload your token sheet first.", "err", "pinStatus");
@@ -919,6 +1092,13 @@ async function pinAll() {
       "err",
       "pinStatus"
     );
+  if (minterRoyaltiesEnabled()) {
+    if (creatorRoyaltyBps() + minterRoyaltyBps() > 10_000)
+      return notify("Creator royalties plus the minter royalty pool cannot exceed 100%.", "err", "pinStatus");
+    const updater = state.drop.royaltyUpdaterAddr || MD.getAccount();
+    if (!updater || !MD.isAddress(updater))
+      return notify("Minter royalties need a valid royalty updater address. Connect your wallet or fill it in.", "err", "pinStatus");
+  }
 
   const btn = $("btnPin");
   btn.disabled = true;
@@ -936,30 +1116,50 @@ async function pinAll() {
       save();
       log("cover pinned: " + state.drop.coverCid);
     }
-    // delayed reveal: the cover doubles as the pre-reveal placeholder artwork
-    if (state.drop.revealMode === "delayed" && !state.drop.placeholderCid) {
-      if (!state.drop.coverCid)
-        throw new Error("delayed reveal needs a cover image — it is shown on unrevealed tokens");
-      $("pinStatus").textContent = "pinning placeholder…";
-      const cover = "ipfs://" + state.drop.coverCid;
-      const ph = {
-        name: (state.drop.title || "Drop") + " — unrevealed",
-        description:
-          "This token has not been revealed yet. A random artwork from the collection will be assigned at reveal.",
-        decimals: 0,
-        isBooleanAmount: true,
-        symbol: state.drop.symbol || undefined,
-        artifactUri: cover,
-        displayUri: cover,
-        thumbnailUri: cover,
-        formats: [{ uri: cover, mimeType: state.drop.coverMime || "image/png" }],
-      };
-      const roy = royaltyShares();
-      if (roy) ph.royalties = roy;
-      Object.keys(ph).forEach((k) => ph[k] === undefined && delete ph[k]);
-      state.drop.placeholderCid = await MD.pinJson(provider, ph, "placeholder.json");
+    // delayed reveal: creators may provide a pool of unrevealed artifacts.
+    // Without an explicit pool, the collection cover remains the fallback.
+    if (state.drop.revealMode === "delayed") {
+      if (!placeholderFiles.length && !state.drop.coverCid && !placeholderPool().length)
+        throw new Error("delayed reveal needs a cover image or at least one unrevealed placeholder image");
+      if (placeholderFiles.length) {
+        state.drop.placeholderPool = [];
+        for (let i = 0; i < placeholderFiles.length; i++) {
+          const f = placeholderFiles[i];
+          if (!f.type.startsWith("image/")) throw new Error(`${f.name} is not an image placeholder`);
+          if (!validateArtifactFile(f)) throw new Error(`${f.name} is too large for an unrevealed placeholder`);
+          $("pinStatus").textContent = `pinning unrevealed placeholder ${i + 1}/${placeholderFiles.length}…`;
+          const cid = await MD.pinBlob(
+            provider,
+            f,
+            f.name,
+            makePinUploadProgress(`unrevealed placeholder ${i + 1}`, f.size)
+          );
+          state.drop.placeholderPool.push({ name: f.name, mime: f.type || "image/png", cid, metadataCid: "" });
+          save();
+        }
+      }
+      if (!placeholderPool().length) {
+        state.drop.placeholderPool = [{
+          name: "collection-cover",
+          mime: state.drop.coverMime || "image/png",
+          cid: state.drop.coverCid,
+          metadataCid: state.drop.placeholderCid || "",
+        }];
+      }
+      for (let i = 0; i < state.drop.placeholderPool.length; i++) {
+        const source = state.drop.placeholderPool[i];
+        if (source.metadataCid) continue;
+        $("pinStatus").textContent = `pinning unrevealed metadata ${i + 1}/${state.drop.placeholderPool.length}…`;
+        source.metadataCid = await MD.pinJson(
+          provider,
+          buildPlaceholderMetadata(source, i, state.drop.placeholderPool.length),
+          `placeholder-${i + 1}.json`
+        );
+        save();
+        log("placeholder pinned: " + source.metadataCid);
+      }
+      state.drop.placeholderCid = state.drop.placeholderPool[0]?.metadataCid || "";
       save();
-      log("placeholder pinned: " + state.drop.placeholderCid);
     }
     const todo = state.tokens.filter((t) => !t.metadataCid);
     let done = 0;
@@ -1156,6 +1356,11 @@ async function deploy() {
   try {
     readForm();
     clearNotice();
+    try {
+      assertSelectedContractSupportsDraft();
+    } catch (e) {
+      return notify(e.message, "err", "deployStatus");
+    }
     if (!MD.getAccount()) return notify("Connect your wallet first.", "err", "deployStatus");
     if (!state.drop.title || !state.drop.description) return notify("Title and description are required.", "err", "deployStatus");
     if (!state.tokens.length) return notify("Upload tokens first.", "err", "deployStatus");
@@ -1174,6 +1379,13 @@ async function deploy() {
       return notify("Auto-reveal window must be between 0 and 30 days.", "err", "deployStatus");
     if (delayed && !state.drop.placeholderCid)
       return notify("Pin all media + metadata first (step 4) — delayed reveal also pins the placeholder.", "err", "deployStatus");
+    if (minterRoyaltiesEnabled()) {
+      const updater = state.drop.royaltyUpdaterAddr || MD.getAccount();
+      if (!updater || !MD.isAddress(updater))
+        return notify("Minter royalties need a valid royalty updater address.", "err", "deployStatus");
+      if (creatorRoyaltyBps() + minterRoyaltyBps() > 10_000)
+        return notify("Creator royalties plus the minter royalty pool cannot exceed 100%.", "err", "deployStatus");
+    }
     const stages = stageRecords(); // validates
 
     // Hard guard: RPC chain id + wallet session must both match the selected
@@ -1191,7 +1403,7 @@ async function deploy() {
     }
 
     $("deployStatus").textContent = "loading contract code…";
-    const code = await (await fetch("contract/mydrop.contract.json")).json();
+    const { profile, code } = await loadContractCodeForDraft();
 
     const me = MD.getAccount();
     const M = TZ.MichelsonMap;
@@ -1201,31 +1413,85 @@ async function deploy() {
     if (delayed)
       placeholderMap.set("", MD.utf8ToHex("ipfs://" + state.drop.placeholderCid));
 
-    const storage = {
-      administrator: me,
-      pending_administrator: null,
-      treasury: state.drop.treasuryAddr || me,
-      metadata: metadataMap,
-      ledger: new M(),
-      operators: new M(),
-      token_metadata: new M(),
-      pending_tokens: new M(),
-      slots: new M(),
-      supply: 0,
-      minted: 0,
-      seed_salt: "00",
-      stages: new M(),
-      allowlist: new M(),
-      stage_minted: new M(),
-      locked: false,
-      paused: false,
-      delayed_reveal: delayed,
-      placeholder: placeholderMap,
-      reveal_delay: delayed ? Math.round(delayDays * 86400) : 604800,
-      unrevealed_since: null,
-      revealed: 0,
-      entropy: "00",
-    };
+    let storage;
+    if (profile.usesV2) {
+      const placeholderPoolMap = new M();
+      const pool = placeholderPool().length ? placeholderPool() : [{ metadataCid: state.drop.placeholderCid }];
+      pool.forEach((p, i) => {
+        const info = new M();
+        info.set("", MD.utf8ToHex("ipfs://" + p.metadataCid));
+        placeholderPoolMap.set(i, { token_id: i, token_info: info });
+      });
+      storage = {
+        administrator: me,
+        pending_administrator: null,
+        treasury: state.drop.treasuryAddr || me,
+        metadata: metadataMap,
+        ledger: new M(),
+        operators: new M(),
+        token_metadata: new M(),
+        pending_tokens: new M(),
+        token_supply: new M(),
+        token_minted: new M(),
+        slots: new M(),
+        supply: 0,
+        minted: 0,
+        token_count: 0,
+        stages: new M(),
+        allowlist: new M(),
+        stage_minted: new M(),
+        locked: false,
+        paused: false,
+        delayed_reveal: delayed,
+        placeholder_pool: placeholderPoolMap,
+        placeholder_count: delayed ? pool.length : 0,
+        token_placeholder: new M(),
+        reveal_queue: new M(),
+        reveal_cursor: 0,
+        reveal_tail: 0,
+        reveal_delay: delayed ? Math.round(delayDays * 86400) : 604800,
+        unrevealed_since: null,
+        revealed: 0,
+        minter_royalty_config: {
+          enabled: minterRoyaltiesEnabled(),
+          bps: minterRoyaltyBps(),
+          mode: normalizeMinterRoyaltyMode(state.drop.minterRoyaltyMode) === "rolling_pool" ? 1 : 0,
+          updater: state.drop.royaltyUpdaterAddr || me,
+        },
+        first_minter: new M(),
+        minter_pool: new M(),
+        minter_pool_count: new M(),
+        royalty_revision: new M(),
+        metadata_revision: new M(),
+        royalty_locked: new M(),
+      };
+    } else {
+      storage = {
+        administrator: me,
+        pending_administrator: null,
+        treasury: state.drop.treasuryAddr || me,
+        metadata: metadataMap,
+        ledger: new M(),
+        operators: new M(),
+        token_metadata: new M(),
+        pending_tokens: new M(),
+        slots: new M(),
+        supply: 0,
+        minted: 0,
+        seed_salt: "00",
+        stages: new M(),
+        allowlist: new M(),
+        stage_minted: new M(),
+        locked: false,
+        paused: false,
+        delayed_reveal: delayed,
+        placeholder: placeholderMap,
+        reveal_delay: delayed ? Math.round(delayDays * 86400) : 604800,
+        unrevealed_since: null,
+        revealed: 0,
+        entropy: "00",
+      };
+    }
 
     $("deployStatus").textContent = "waiting for wallet signature…";
     log("originating contract…");
@@ -1252,6 +1518,12 @@ async function deploy() {
 async function sync() {
   try {
     readForm();
+    let profile;
+    try {
+      profile = assertSelectedContractSupportsDraft();
+    } catch (e) {
+      return notify(e.message, "err", "deployStatus");
+    }
     const kt = $("contractAddr").value.trim() || state.contract;
     clearNotice();
     if (!kt) return notify("Deploy first, or paste an existing contract address.", "err", "deployStatus");
@@ -1273,14 +1545,28 @@ async function sync() {
     const tezos = MD.getToolkit();
     const c = await tezos.wallet.at(kt);
     const st = await (await tezos.contract.at(kt)).storage();
-    const already = Number(st.supply);
-    log(`sync: contract has ${already}/${state.tokens.length} tokens loaded`);
+    const contractIsV2 = st.token_supply != null && st.token_minted != null && st.minter_royalty_config != null;
+    if (profile.usesV2 && !contractIsV2) {
+      return notify(
+        "Macaroni V2 is selected, but the selected contract is the legacy Macaroni artifact. " +
+        "Deploy or resume a V2 contract for this draft.",
+        "err",
+        "deployStatus"
+      );
+    }
+    if (!profile.usesV2 && contractIsV2)
+      return notify("This contract is Macaroni V2. Select Macaroni V2 in Drop details before syncing it.", "err", "deployStatus");
+    const already = contractIsV2 ? Number(st.token_count || 0) : Number(st.supply);
+    const editionTotal = tokenEditionTotal();
+    log(`sync: contract has ${already}/${state.tokens.length} token row(s) loaded (${editionTotal} edition(s) in draft)`);
 
     const M = TZ.MichelsonMap;
     const batchify = (t) => {
       const info = new M();
       info.set("", MD.utf8ToHex("ipfs://" + t.metadataCid));
-      return { token_id: t.id - 1, token_info: info };
+      const entry = { token_id: t.id - 1, token_info: info };
+      if (contractIsV2) entry.quantity = normalizeTokenQuantity(t.quantity);
+      return entry;
     };
 
     if (state.tokens.length && already > state.tokens.length)
@@ -1322,16 +1608,18 @@ async function sync() {
 
     for (let i = 0; i < replaceTodo.length; i += CHUNK) {
       const chunk = replaceTodo.slice(i, i + CHUNK).map(batchify);
-      log(`replace_tokens ${chunk[0].token_id}…${chunk[chunk.length - 1].token_id} (${chunk.length}) — approve in wallet`);
-      const op = await MD.sendWalletOp(c.methodsObject.replace_tokens(chunk), {}, { gasPerUnit: 180_000, units: chunk.length });
+      const ep = contractIsV2 ? "replace_tokens_v2" : "replace_tokens";
+      log(`${ep} ${chunk[0].token_id}…${chunk[chunk.length - 1].token_id} (${chunk.length}) — approve in wallet`);
+      const op = await MD.sendWalletOp(c.methodsObject[ep](chunk), {}, { gasPerUnit: 180_000, units: chunk.length });
       await op.confirmation(1);
       bump();
     }
 
     for (let i = 0; i < todo.length; i += CHUNK) {
       const chunk = todo.slice(i, i + CHUNK).map(batchify);
-      log(`add_tokens ${chunk[0].token_id}…${chunk[chunk.length - 1].token_id} (${chunk.length}) — approve in wallet`);
-      const op = await MD.sendWalletOp(c.methodsObject.add_tokens(chunk), {}, { gasPerUnit: 180_000, units: chunk.length });
+      const ep = contractIsV2 ? "add_tokens_v2" : "add_tokens";
+      log(`${ep} ${chunk[0].token_id}…${chunk[chunk.length - 1].token_id} (${chunk.length}) — approve in wallet`);
+      const op = await MD.sendWalletOp(c.methodsObject[ep](chunk), {}, { gasPerUnit: 180_000, units: chunk.length });
       await op.confirmation(1);
       bump();
     }
@@ -1400,14 +1688,58 @@ async function revealMinted() {
 // ---------- page design / export ----------
 function buildConfig() {
   readForm();
+  const profile = macaroniContractProfile();
+  const pool = placeholderPool()
+    .filter((p) => p && p.metadataCid)
+    .map((p, index) => ({
+      index,
+      name: p.name || `placeholder-${index + 1}`,
+      mime: p.mime || "image/png",
+      artifact: p.cid ? "ipfs://" + p.cid : "",
+      metadata: "ipfs://" + p.metadataCid,
+    }));
   return sanitizeDropConfig({
     network: state.network,
     rpc: state.rpc || MD.getNetworks()[state.network].rpc,
     contract: $("contractAddr").value.trim() || state.contract,
+    contractVersion: profile.id,
     title: state.drop.title,
     description: state.drop.description,
     cover: state.drop.coverCid ? "ipfs://" + state.drop.coverCid : "",
     gateway: state.pin.gateway || MD.DEFAULT_GATEWAY,
+    tokenSummary: {
+      tokenCount: state.tokens.length,
+      editionCount: tokenEditionTotal(),
+      hasMultiEditions: state.tokens.some((t) => normalizeTokenQuantity(t.quantity) > 1),
+    },
+    tokens: state.tokens.map((t) => ({
+      id: t.id - 1,
+      displayId: t.id,
+      quantity: normalizeTokenQuantity(t.quantity),
+      name: t.name,
+      metadata: t.metadataCid ? "ipfs://" + t.metadataCid : "",
+      artifact: t.mediaCid ? "ipfs://" + t.mediaCid : "",
+      mime: t.mediaMime || "",
+    })),
+    reveal: {
+      mode: state.drop.revealMode,
+      delayDays: Number(state.drop.revealDelayDays || 0),
+      placeholderPool: pool,
+    },
+    minterRoyalties: {
+      enabled: minterRoyaltiesEnabled(),
+      decimals: 4,
+      bps: minterRoyaltyBps(),
+      percent: Number(state.drop.minterRoyaltyPct || 0),
+      mode: normalizeMinterRoyaltyMode(state.drop.minterRoyaltyMode),
+      updater: state.drop.royaltyUpdaterAddr || MD.getAccount() || "",
+      updateEndpoint: normalizeOptionalHttpUrl(state.drop.royaltyUpdateEndpoint),
+      updateStrategy: minterRoyaltiesEnabled() ? "drop_page_or_creator_triggered" : "none",
+      metadataSource: "fetch_visible_and_final_token_metadata_then_patch_royalties",
+      lock: normalizeMinterRoyaltyMode(state.drop.minterRoyaltyMode) === "rolling_pool"
+        ? "sellout_or_creator_trigger"
+        : "first_mint_sync",
+    },
     theme: {
       name: state.page.theme,
       accent: state.page.accent,
@@ -1713,10 +2045,18 @@ function readForm() {
   state.drop.title = $("dropTitle").value.trim();
   state.drop.symbol = $("dropSymbol").value.trim();
   state.drop.description = $("dropDesc").value.trim();
+  state.drop.contractVersion = normalizeContractVersion($("contractVersion").value);
   state.drop.royaltyPct = Number($("royaltyPct").value);
   state.drop.royaltyAddr = normalizeOptionalAddress($("royaltyAddr").value);
+  state.drop.minterRoyaltiesEnabled = !!$("minterRoyaltiesEnabled").checked;
+  state.drop.minterRoyaltyPct = Number($("minterRoyaltyPct").value || 0);
+  state.drop.minterRoyaltyMode = normalizeMinterRoyaltyMode($("minterRoyaltyMode").value);
+  state.drop.royaltyUpdaterAddr = normalizeOptionalAddress($("royaltyUpdaterAddr").value);
+  state.drop.royaltyUpdateEndpoint = normalizeOptionalHttpUrl($("royaltyUpdateEndpoint").value);
   state.drop.treasuryAddr = normalizeOptionalAddress($("treasuryAddr").value);
   if ($("royaltyAddr").value.trim() !== state.drop.royaltyAddr) $("royaltyAddr").value = state.drop.royaltyAddr;
+  if ($("royaltyUpdaterAddr").value.trim() !== state.drop.royaltyUpdaterAddr) $("royaltyUpdaterAddr").value = state.drop.royaltyUpdaterAddr;
+  if ($("royaltyUpdateEndpoint").value.trim() !== state.drop.royaltyUpdateEndpoint) $("royaltyUpdateEndpoint").value = state.drop.royaltyUpdateEndpoint;
   if ($("treasuryAddr").value.trim() !== state.drop.treasuryAddr) $("treasuryAddr").value = state.drop.treasuryAddr;
   state.drop.revealMode = $("revealMode").value;
   state.drop.revealDelayDays = Number($("revealDelay").value || 7);
@@ -1735,13 +2075,39 @@ function readForm() {
   state.page.shareText = shareFieldText($("shareText").value);
   save();
   toggleRevealFields();
+  toggleMinterRoyaltyFields();
+  renderContractVersionHint();
 }
 
 function toggleRevealFields() {
   const delayed = state.drop.revealMode === "delayed";
   $("revealDelayWrap").style.display = delayed ? "" : "none";
   $("revealHint").style.display = delayed ? "" : "none";
+  $("placeholderPoolWrap").style.display = delayed ? "" : "none";
   $("btnReveal").style.display = delayed ? "" : "none";
+}
+
+function toggleMinterRoyaltyFields() {
+  const enabled = !!state.drop.minterRoyaltiesEnabled;
+  $("minterRoyaltyFields").style.display = enabled ? "" : "none";
+}
+
+function renderContractVersionHint() {
+  const el = $("contractVersionHint");
+  if (!el) return;
+  const profile = macaroniContractProfile();
+  if (profile.incompatible) {
+    el.textContent =
+      "This draft uses V2-only settings. Select Macaroni V2 before pinning, deploying, or syncing.";
+    el.className = "err";
+  } else if (profile.usesV2) {
+    el.textContent =
+      "V2 supports shared-token editions, delayed placeholder pools, and minter royalty metadata revisions.";
+    el.className = "muted";
+  } else {
+    el.textContent = "V1 is for classic 1/1 blind drops with the existing Macaroni contract.";
+    el.className = "muted";
+  }
 }
 
 function fillForm() {
@@ -1753,12 +2119,21 @@ function fillForm() {
   $("dropTitle").value = state.drop.title;
   $("dropSymbol").value = state.drop.symbol;
   $("dropDesc").value = state.drop.description;
+  state.drop.contractVersion = normalizeContractVersion(state.drop.contractVersion);
+  $("contractVersion").value = state.drop.contractVersion;
   $("royaltyPct").value = String(state.drop.royaltyPct);
   $("royaltyAddr").value = state.drop.royaltyAddr;
+  $("minterRoyaltiesEnabled").checked = !!state.drop.minterRoyaltiesEnabled;
+  $("minterRoyaltyPct").value = String(state.drop.minterRoyaltyPct ?? 0);
+  $("minterRoyaltyMode").value = normalizeMinterRoyaltyMode(state.drop.minterRoyaltyMode);
+  $("royaltyUpdaterAddr").value = state.drop.royaltyUpdaterAddr || "";
+  $("royaltyUpdateEndpoint").value = state.drop.royaltyUpdateEndpoint || "";
   $("treasuryAddr").value = state.drop.treasuryAddr;
   $("revealMode").value = state.drop.revealMode || "instant";
   $("revealDelay").value = String(state.drop.revealDelayDays ?? 7);
   toggleRevealFields();
+  toggleMinterRoyaltyFields();
+  renderContractVersionHint();
   $("pinJwt").value = state.pin.jwt;
   $("pinUrl").value = state.pin.url;
   $("gateway").value = state.pin.gateway;
@@ -1776,6 +2151,10 @@ function fillForm() {
   $("shareTwitter").value = state.page.shareTwitter || "";
   $("shareBsky").value = state.page.shareBsky || "";
   $("shareText").value = state.page.shareText || "";
+  const poolCount = placeholderPool().filter((p) => p.metadataCid).length;
+  $("placeholderPoolStatus").textContent = poolCount
+    ? `${poolCount} pinned unrevealed placeholder image${poolCount === 1 ? "" : "s"}.`
+    : "No custom placeholder pool selected.";
   if (state.contract) $("btnSync").disabled = false;
   if (state.drop.coverCid)
     $("coverPreview").innerHTML =
@@ -1803,7 +2182,28 @@ function applyImportedConfig(cfg) {
   if (cfg.contract) state.contract = cfg.contract;
   if (cfg.title) state.drop.title = cfg.title;
   if (cfg.description) state.drop.description = cfg.description;
+  if (cfg.contractVersion) state.drop.contractVersion = normalizeContractVersion(cfg.contractVersion);
   if (cfg.gateway) state.pin.gateway = cfg.gateway;
+  if (cfg.minterRoyalties && typeof cfg.minterRoyalties === "object") {
+    state.drop.minterRoyaltiesEnabled = !!cfg.minterRoyalties.enabled;
+    state.drop.minterRoyaltyPct = Number(cfg.minterRoyalties.percent || (Number(cfg.minterRoyalties.bps || 0) / 100));
+    state.drop.minterRoyaltyMode = normalizeMinterRoyaltyMode(cfg.minterRoyalties.mode);
+    state.drop.royaltyUpdaterAddr = normalizeOptionalAddress(cfg.minterRoyalties.updater || state.drop.royaltyUpdaterAddr);
+    state.drop.royaltyUpdateEndpoint = normalizeOptionalHttpUrl(cfg.minterRoyalties.updateEndpoint || state.drop.royaltyUpdateEndpoint);
+  }
+  if (cfg.reveal && typeof cfg.reveal === "object") {
+    if (cfg.reveal.mode) state.drop.revealMode = cfg.reveal.mode;
+    if (cfg.reveal.delayDays != null) state.drop.revealDelayDays = Number(cfg.reveal.delayDays);
+    if (Array.isArray(cfg.reveal.placeholderPool)) {
+      state.drop.placeholderPool = cfg.reveal.placeholderPool.map((p) => ({
+        name: p.name || "",
+        mime: p.mime || "image/png",
+        cid: String(p.artifact || "").replace(/^ipfs:\/\//, ""),
+        metadataCid: String(p.metadata || "").replace(/^ipfs:\/\//, ""),
+      }));
+      state.drop.placeholderCid = state.drop.placeholderPool[0]?.metadataCid || state.drop.placeholderCid;
+    }
+  }
   if (cfg.theme) {
     state.page.theme = sanitizeThemeName(cfg.theme.name || state.page.theme);
     state.page.accent = sanitizeCssColor(cfg.theme.accent);
@@ -1930,7 +2330,8 @@ function saveStudioBackup() {
 function clearProjectFilesAndStatus() {
   mediaFiles.clear();
   coverFile = null;
-  ["csvFile", "mediaFiles", "coverFile", "importConfig", "importBackup"].forEach((id) => {
+  placeholderFiles = [];
+  ["csvFile", "mediaFiles", "coverFile", "placeholderFiles", "importConfig", "importBackup"].forEach((id) => {
     const el = $(id);
     if (el) el.value = "";
   });
@@ -1998,10 +2399,31 @@ $("rpc").addEventListener("change", applyNetwork);
 $("btnConnect").addEventListener("click", connect);
 $("csvFile").addEventListener("change", (e) => e.target.files[0] && onCsv(e.target.files[0]));
 $("mediaFiles").addEventListener("change", (e) => onMedia([...e.target.files]));
+$("placeholderFiles").addEventListener("change", (e) => {
+  placeholderFiles = [...e.target.files].filter((f) => {
+    if (!f.type.startsWith("image/")) {
+      notify(`${f.name} is not an image. Unrevealed placeholders must be image files.`);
+      return false;
+    }
+    return validateArtifactFile(f);
+  });
+  state.drop.placeholderPool = [];
+  state.drop.placeholderCid = "";
+  const count = placeholderFiles.length;
+  $("placeholderPoolStatus").textContent = count
+    ? `${count} unrevealed placeholder image${count === 1 ? "" : "s"} ready to pin.`
+    : "No custom placeholder pool selected.";
+  save();
+  renderContractVersionHint();
+});
 $("coverFile").addEventListener("change", async (e) => {
   coverFile = e.target.files[0] || null;
   state.drop.coverCid = "";
   state.drop.placeholderCid = ""; // placeholder shows the cover → re-pin
+  state.drop.placeholderPool = [];
+  placeholderFiles = [];
+  if ($("placeholderFiles")) $("placeholderFiles").value = "";
+  if ($("placeholderPoolStatus")) $("placeholderPoolStatus").textContent = "No custom placeholder pool selected.";
   $("coverPreview").innerHTML = "";
   if (coverFile) {
     try {
@@ -2021,8 +2443,9 @@ $("coverFile").addEventListener("change", async (e) => {
   }
 });
 $("pinKind").addEventListener("change", () => { togglePinFields(); readForm(); });
-["pinJwt", "pinUrl", "gateway", "dropTitle", "dropSymbol", "dropDesc", "royaltyPct",
- "royaltyAddr", "treasuryAddr", "revealMode", "revealDelay"]
+["pinJwt", "pinUrl", "gateway", "dropTitle", "dropSymbol", "dropDesc", "contractVersion", "royaltyPct",
+ "royaltyAddr", "minterRoyaltiesEnabled", "minterRoyaltyPct", "minterRoyaltyMode",
+ "royaltyUpdaterAddr", "royaltyUpdateEndpoint", "treasuryAddr", "revealMode", "revealDelay"]
   .forEach((id) => $(id).addEventListener("change", readForm));
 
 // Designer controls: regenerate code + live preview as you type.

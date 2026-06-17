@@ -243,6 +243,8 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       frame = await macaroniFrame(page);
       await waitForMacaroniStudio(frame);
       await expect(frame.locator("#network")).toHaveValue("shadownet");
+      await expect(frame.locator("#contractVersion")).toHaveValue("macaroni-v1");
+      await expect(frame.locator('#contractVersion option[value="macaroni-editions-v2"]')).toHaveCount(1);
       await expect(frame.locator("#netLabel")).toContainText(SHADOWNET_RPC);
       await expect(frame.locator('#pinKind option[value="wtfos"]')).toHaveCount(1);
       await expect(frame.locator("#pinKind")).toHaveValue("pinata");

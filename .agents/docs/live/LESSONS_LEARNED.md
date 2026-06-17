@@ -5087,3 +5087,13 @@
 **Why it mattered**: Octez Connect owns the dApp client/session handoff, while Taquito still needs an operation provider and an app-side RPC for reads, estimates, and chain-id preflight. Conflating those layers makes browser compatibility look random, especially in iOS Brave/privacy-browser contexts that are not the same as desktop Chromium.
 
 **Rule**: Tezos drop pages must load the Octez Connect SDK/bridge before shared wallet runtime, prefer `getDAppClientInstance`, keep Beacon as compatibility backup, and keep RPC URLs in Taquito/chain-id preflight rather than named wallet permission identity. Stored legacy Macaroni pages need serve-time Octez bridge injection before any inline wallet helper runs.
+
+---
+
+## 2026-06-17 - Macaroni contract features need explicit versioned artifacts
+
+**What happened**: Macaroni feature planning added multi-edition token quantities, minter royalty policies, and delayed-reveal placeholder pools, but the Studio could still only deploy the legacy V1 contract artifact. Without a visible contract-version choice and a compiled V2 template, creators could configure capabilities that the deployed contract could not enforce.
+
+**Why it mattered**: Contract templates are the behavioral boundary for minted tokens. A UI-only feature would create false confidence, especially for royalty mutability/locking and shared-token edition supply where external marketplaces and indexers rely on contract storage and token metadata behavior.
+
+**Rule**: When Macaroni adds chain-level capabilities, ship the versioned contract source, compiled public artifact, Studio version selector, generated config shape, source-policy tests, and inventory coverage in the same pass. The generated drop page or creator-owned updater may process metadata revisions, but Macaroni itself must not become an indefinite watchdog for deployed drops.
