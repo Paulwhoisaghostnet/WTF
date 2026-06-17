@@ -188,7 +188,7 @@ const MD = (() => {
     const net = NETWORKS[netKey];
     return net.beaconNetwork === "custom"
       ? { type: "custom", name: netKey, rpcUrl }
-      : { type: net.beaconNetwork, rpcUrl };
+      : { type: net.beaconNetwork };
   }
 
   function beaconPreferredNetwork() {
@@ -218,7 +218,9 @@ const MD = (() => {
   function makeWallet(appName, options) {
     const resetClient = !(options && options.resetClient === false);
     const network = beaconNetworkSpec();
-    const w = new TZ.BeaconWallet({
+    if (typeof TZ.installOctezPrimaryWallet === "function") TZ.installOctezPrimaryWallet();
+    const WalletClass = TZ.OctezPrimaryWallet || TZ.BeaconWallet;
+    const w = new WalletClass({
       name: appName || "Macaroni",
       network,
       preferredNetwork: beaconPreferredNetwork(),

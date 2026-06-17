@@ -66,6 +66,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves the IPFS provider selector and wtfOS Publish button follow `trusted_market_creator` access, proves a mismatched RPC is blocked before wallet signing, confirms explicit connect does not open a wallet handoff before the Beacon picker is visible, checks from `/tools/macaroni` that Beacon's real Kukai option can escape the sandbox and load `https://shadownet.kukai.app` instead of a blank, mainnet, or Temple-only tab, asserts rapid generated-page connect clicks coalesce to one Beacon permission request, and keeps source-policy coverage for the 1 GB per-file and 250 MB average Macaroni artifact policy, direct-origin hosted upload tickets for Cloudflare-bypassing media pinning, OBJKT-sized per-token GIF/video preview generation, sandbox-safe Studio notices without native `alert`/`confirm`, shared mainnet/Shadownet deploy-path parity, optional treasury/royalty address normalization, new-drop draft reset, backup JSON restore, sale-stage save confirmation, generated mint-page live stage copy, minted-versus-owned wallet gallery ordering and count copy, social share creator-handle, token-media, and blind-mint sale compose text, Beacon active-account RPC alignment, wallet fee floor alignment with the padded gas limit, wallet-returned-hash versus node-visible operation status copy, operation-hash-aware confirmation timeout classification, contract-required wtfOS publishing with live-versus-pending `.me` serving status, published user-site WalletConnect relay websocket and verify-frame CSP allowances, stored Macaroni snapshot current-runtime compatibility, custom recent-mint grid compatibility using TzKT transfer token IDs, non-image fallback cover metadata, installer manifest visibility, the generated mint page's validated wallet restore, disconnect, accessible controls/status regions, balance preflight, max-per-wallet and allowlist remaining allowance clamping, TzKT-owned-token lookup, TzKT minted-token transfer lookup, TzKT recent-mint transfer lookup with contract metadata refresh/retry, Objkt/TzKT minter identity fallback, Fileship gateway default, and CSS theme allowlist paths.",
   },
   {
+    id: "macaroni.drop-wallet-octez-primary",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools", "wtf-domains"],
+    ownerSpec:
+      "server/routes/macaroni-policy.test.ts, server/features/wtf-sites/macaroni-compat.test.ts, server/features/macaroni/publish.test.ts",
+    verificationCommand:
+      "node_modules/tsx/dist/cli.mjs --test server/routes/macaroni-policy.test.ts server/features/wtf-sites/macaroni-compat.test.ts server/features/macaroni/publish.test.ts",
+    userVisibleAssertion:
+      "Generated Macaroni mint pages and stored published drops such as Airporters load Octez Connect before the shared wallet runtime, prefer the Octez Connect dApp session path, keep Beacon as backup, and send plain named wallet networks without leaking the dApp RPC URL into Mainnet/Shadownet wallet identity.",
+    durableSideEffectAssertion:
+      "Source-policy tests prove future exported/published Macaroni pages include the Octez bridge assets before `common.js`, stored user-site Macaroni snapshots receive serve-time Octez bridge injection before their inline runtime, and the compatibility path keeps Taquito RPC/chain-id preflight separate from wallet permission network identity.",
+  },
+  {
     id: "macaroni.desktop-installer-pipeline",
     domain: "Media, Creation, Gallery, and Preservation",
     ownerSurfaceIds: ["creation-tools"],

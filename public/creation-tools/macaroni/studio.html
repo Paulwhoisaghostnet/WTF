@@ -267,7 +267,7 @@
           <button class="btn ghost" id="btnConfigOnly">Download site package</button>
         </div>
         <div id="exportStatus" class="muted" style="margin-top:8px"></div>
-        <p class="muted" id="publishPathHint"><strong>Export website</strong> downloads <code>macaroni-site.zip</code> — <code>index.html</code>, <code>drop.config.js</code>, <code>vendor/tezos.js</code>, and wallet connect. <strong>Publish to wtfOS</strong> requires a deployed or resumed <code>KT1...</code> contract and trusted-creator access, then saves the mint page to your <code>username.wtfos.me/drop-title</code> site path. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.</p>
+        <p class="muted" id="publishPathHint"><strong>Export website</strong> downloads <code>macaroni-site.zip</code> — <code>index.html</code>, <code>drop.config.js</code>, <code>vendor/tezos.js</code>, <code>vendor/octez-connect.js</code>, and wallet connect. <strong>Publish to wtfOS</strong> requires a deployed or resumed <code>KT1...</code> contract and trusted-creator access, then saves the mint page to your <code>username.wtfos.me/drop-title</code> site path. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.</p>
       </section>
 
       <section class="panel" id="secInstallers">
@@ -298,9 +298,11 @@
 
 <footer class="credits">Macaroni — open-source blind mints on Tezos · 0% platform fee · your contract, your keys</footer>
 
-<script src="vendor/tezos.js"></script>
-<script src="js/common.js"></script>
 <script src="js/site-bundle.js"></script>
+<script src="vendor/tezos.js"></script>
+<script src="vendor/octez-connect.js"></script>
+<script src="js/octez-wallet.js"></script>
+<script src="js/common.js"></script>
 <script src="js/studio.js"></script>
 </body>
 </html>

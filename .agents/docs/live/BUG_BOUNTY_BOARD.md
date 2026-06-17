@@ -97,6 +97,7 @@ Priority labels:
 | WTF-BB-270 | Fixed | Codex Macaroni wallet-returned hash boundary repair | 2026-06-16 | Macaroni / generated drop website wallet operation propagation | P0 | 14 | 3 | 3 | 5 | 1 | A live Temple user received operation hash `onqHofT7uzbey8XpeS5sXYjpnkHppH2cyPqXNGc4r9Q4V6pLw6r` from Macaroni, but the hash was absent from TzKT indexed operations, TzKT/SmartPy mempools, and sampled public RPC head operation hashes; fixed by aligning Beacon active-account network RPC to Macaroni's configured RPC before signed operations and by changing generated mint-page status to distinguish wallet-returned hash, node-visible mempool state, and indexer-confirmed application; verified locally by `node --check public/creation-tools/macaroni/js/common.js`, `node --check public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, and `npm run test:e2e:inventory:coverage`; DB-backed `npm run test:e2e:macaroni:shadownet` was blocked in the temp worktree by missing `DATABASE_URL` |
 | WTF-BB-271 | Fixed | Codex Macaroni fee-floor repair | 2026-06-16 | Macaroni / generated drop website wallet operation fees | P0 | 13 | 5 | 2 | 5 | 1 | Live mint attempts can fail with `Fee is too low, blockchain says: "No tip, no trip"` because Macaroni inflates Taquito-estimated gas/storage limits but derives the explicit wallet fee from the lower unpadded estimate; fixed by deriving a fee floor from the padded gas limit actually sent to Beacon/Taquito plus a small tip, and verified by `node --check public/creation-tools/macaroni/js/common.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, and `npm run test:e2e:inventory:coverage` |
 | WTF-BB-272 | Verified | Codex Macaroni social-share identity/media pass | 2026-06-16 | Macaroni / generated drop website social sharing | P1 | 10 | 10 | 2 | 4 | 0 | Generated Macaroni share presets drafted generic posts without the creator's same-platform X/Bluesky identity and without the actual token media URL; fixed with Studio share handle/copy controls, wtfOS profile enrichment on trusted publish, token-media URLs in compose-intent text, and source-policy coverage; verified by JS syntax checks, focused Macaroni policy tests, TypeScript, inventory coverage, and full inventory E2E |
+| WTF-BB-273 | Fixed | Codex Airporters Octez Connect full-send | 2026-06-17 | Macaroni / published drop wallet compatibility | P1 | 12 | 7 | 3 | 5 | 0 | Airporters is mainnet, but Brave/Kukai users could receive a confusing Mainnet mismatch because published/drop wallet code sent the dApp RPC inside a named wallet network; fixed with Octez Connect-primary wallet bridge, Beacon backup, plain named wallet networks, and serve-time injection for stored Macaroni drops, pending production deploy/live recheck |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5787,6 +5788,31 @@ Priority labels:
   - `npm run check -- --pretty false`
   - `npm run test:e2e:inventory:coverage`
   - `npm run test:e2e:inventory`
+
+### WTF-BB-273 - Airporters/Kukai rejects named mainnet wallet permission with dApp RPC override
+
+- Category: Macaroni / published drop wallet compatibility
+- Status: Fixed
+- Owner/Session: Codex Airporters Octez Connect full-send
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report on 2026-06-16: `https://paulwhoisaghost.wtfos.me/airporters-vol-1` fails for a Brave plus Kukai user with Kukai's confusing error that the request is for a different network than the selected device network ("Mainnet").
+  - Airporters is a mainnet drop with a mainnet KT1 contract, but the drop wallet network shape could include `{ type: "mainnet", rpcUrl: "https://rpc.tzkt.io/mainnet" }`, which mobile/privacy-wallet paths can treat as custom rather than the wallet's selected Mainnet.
+  - Existing Airporters is a stored user-site snapshot, so generator-only fixes do not guarantee the live page gets the corrected wallet connection path.
+- Why it matters:
+  - Published mint pages must work for collectors in privacy/mobile browsers, not only for the creator's Chrome setup. A mainnet drop that appears to ask for a different Mainnet blocks real mints and gives users no actionable recovery path.
+- Fix:
+  - Added `vendor/octez-connect.js` and `js/octez-wallet.js` to Macaroni static assets.
+  - Updated generated drop pages, Studio preview/export, and wtfOS publish HTML to load Octez Connect before `common.js`.
+  - Updated the shared wallet runtime to prefer `TZ.OctezPrimaryWallet || TZ.BeaconWallet`, while keeping Beacon as backup and keeping `rpcUrl` only on custom wallet networks.
+  - Extended the user-site Macaroni compatibility normalizer to inject Octez bridge tags before the inlined `macaroniCommonJs` runtime for stored pages such as Airporters.
+  - Expanded app/user-site/PDS-renderer CSP allowances for Octez/Beacon wallet relay websocket and verification frame sources.
+- Verification:
+  - Source-policy tests cover generated asset order, Octez-primary provider selection, Beacon backup, no named-network RPC leak, stored-page Octez injection, and CSP.
+  - Inventory and behavior assertion registries now include `macaroni.drop-wallet-octez-primary`.
+  - Local verification passed: JS syntax checks for `common.js`, `octez-wallet.js`, `octez-connect.js`, `site-bundle.js`, and `behavior-assertions.mjs`; focused `tsx --test` suite for Macaroni publish, user-site compatibility, wallet policy, user-site CSP, and app CSP; `tsc --noEmit --pretty false`; `tsx tests/e2e/inventory/coverage.ts`; `npm run build`; and `playwright test tests/playwright/inventory` (313/313 passed).
+  - `npm run test:e2e:macaroni:shadownet` was blocked locally because the temp production worktree has no `DATABASE_URL` for the puppet seed step.
+  - Production live recheck remains required after this full-send deploy.
 
 ## Backlog Intake Template
 

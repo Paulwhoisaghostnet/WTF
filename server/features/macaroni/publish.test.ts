@@ -25,8 +25,12 @@ test("Macaroni published page loads stable app assets from the public origin", (
   assert.equal(macaroniStaticAssetBase("https://wtfos.app/"), "https://wtfos.app/creation-tools/macaroni");
   assert.match(html, /https:\/\/wtfos\.app\/creation-tools\/macaroni\/css\/theme\.css/);
   assert.match(html, /https:\/\/wtfos\.app\/creation-tools\/macaroni\/vendor\/tezos\.js/);
+  assert.match(html, /https:\/\/wtfos\.app\/creation-tools\/macaroni\/vendor\/octez-connect\.js/);
+  assert.match(html, /https:\/\/wtfos\.app\/creation-tools\/macaroni\/js\/octez-wallet\.js/);
   assert.match(html, /https:\/\/wtfos\.app\/creation-tools\/macaroni\/js\/common\.js/);
   assert.match(html, /https:\/\/wtfos\.app\/creation-tools\/macaroni\/js\/drop\.js/);
+  assert.ok(html.indexOf("/vendor/octez-connect.js") < html.indexOf("/js/common.js"));
+  assert.ok(html.indexOf("/js/octez-wallet.js") < html.indexOf("/js/common.js"));
   assert.match(html, /id="btnDisconnect"/);
   assert.match(html, /id="walletBalance"/);
   assert.match(html, /id="walletLimitStatus"/);

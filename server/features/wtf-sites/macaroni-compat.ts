@@ -64,6 +64,11 @@ function readPublicAsset(relativePath: string): string {
   return readFileSync(path.join(process.cwd(), relativePath), "utf8");
 }
 
+function macaroniAssetBase(): string {
+  const origin = (process.env.PUBLIC_SITE_URL?.trim() || "https://wtfos.app").replace(/\/+$/, "");
+  return `${origin}/creation-tools/macaroni`;
+}
+
 function macaroniRuntime(): MacaroniRuntimeBundle | null {
   if (cachedRuntime !== undefined) return cachedRuntime;
   try {
@@ -94,16 +99,33 @@ function ensureCompatStyle(html: string): string {
   return `${style}\n${html}`;
 }
 
+function octezPrimaryWalletTags(): string {
+  const base = macaroniAssetBase();
+  return [
+    `<script src="${base}/vendor/octez-connect.js"></script>`,
+    `<script src="${base}/js/octez-wallet.js"></script>`,
+    `<script>window.TZ && window.TZ.installOctezPrimaryWallet && window.TZ.installOctezPrimaryWallet({ patchBeacon: true });</script>`,
+  ].join("\n");
+}
+
+function injectOctezPrimaryWallet(html: string): string {
+  if (html.includes("octez-wallet.js") || html.includes("installOctezPrimaryWallet({ patchBeacon: true })")) return html;
+  const marker = /<script\s+id=["']macaroniCommonJs["'][^>]*>/i.exec(html);
+  if (!marker || marker.index == null) return html;
+  return `${html.slice(0, marker.index)}${octezPrimaryWalletTags()}\n${html.slice(marker.index)}`;
+}
+
 export function normalizeMacaroniPublishedHtml(html: string): string {
   if (!html.includes("window.DROP_CONFIG")) return html;
   if (!/id=["']macaroniDropJs["']/i.test(html)) return html;
   const runtime = macaroniRuntime();
   if (!runtime) return html;
 
-  let next = html;
+  let next = html.replace(/\{ type: net\.beaconNetwork,\s*rpcUrl \}/g, "{ type: net.beaconNetwork }");
   if (/id=["']macaroniCommonJs["']/i.test(next)) {
     next = replaceInlineScript(next, "macaroniCommonJs", runtime.commonJs);
   }
   next = replaceInlineScript(next, "macaroniDropJs", runtime.dropJs);
+  next = injectOctezPrimaryWallet(next);
   return ensureCompatStyle(next);
 }

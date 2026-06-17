@@ -8,6 +8,8 @@ const MDSiteBundle = (() => {
     "css/theme.css",
     "js/common.js",
     "js/drop.js",
+    "js/octez-wallet.js",
+    "vendor/octez-connect.js",
     "vendor/tezos.js",
   ];
 

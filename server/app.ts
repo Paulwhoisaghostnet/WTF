@@ -151,9 +151,15 @@ export async function createApp() {
     "https://walletconnect.com",
     "https://walletconnect.org",
     "https://reown.com",
+    "https://walletbeacon.io",
+    "https://*.walletbeacon.io",
+    "https://*.octez.io",
     "https://*.walletconnect.com",
     "https://*.walletconnect.org",
     "https://*.reown.com",
+    "wss://walletbeacon.io",
+    "wss://*.walletbeacon.io",
+    "wss://*.octez.io",
     "wss://walletconnect.com",
     "wss://walletconnect.org",
     "wss://reown.com",
@@ -164,6 +170,7 @@ export async function createApp() {
   const walletFrameSources = [
     "https://walletbeacon.io",
     "https://*.walletbeacon.io",
+    "https://*.octez.io",
     ...walletConnectFrameSources,
   ];
   const trustedCalendarFrameSources = ["https://thetezos.com"];

@@ -763,6 +763,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "ipfs-pinning.pds-backed-wallet-backup",
       "settings.subdomain-setup-applet",
       "macaroni.shadownet-rpc-wallet-setup",
+      "macaroni.drop-wallet-octez-primary",
     ],
   },
   {
@@ -865,6 +866,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "ipfs-pinning.pds-backed-wallet-backup",
       "skullzarmy.fafolab-integration-contracts",
       "macaroni.shadownet-rpc-wallet-setup",
+      "macaroni.drop-wallet-octez-primary",
       "macaroni.desktop-installer-pipeline",
     ],
   },

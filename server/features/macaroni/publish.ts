@@ -237,6 +237,8 @@ ${socialMeta}
 
 <script>window.DROP_CONFIG = ${configJson};</script>
 <script src="${assetBase}/vendor/tezos.js"></script>
+<script src="${assetBase}/vendor/octez-connect.js"></script>
+<script src="${assetBase}/js/octez-wallet.js"></script>
 <script src="${assetBase}/js/common.js"></script>
 <script src="${assetBase}/js/drop.js"></script>
 </body>

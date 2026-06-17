@@ -5077,3 +5077,13 @@
 **Fix**: Split the generated page into two data sources: TzKT mint-transfer rows for tokens minted directly to the connected wallet, and TzKT balance rows for tokens currently owned. The wallet gallery now uses neutral drop-token wording, shows minted-this-stage versus max and currently-owned counts, and orders cards with minted-by-wallet tokens first and owned-from-other-minter tokens second.
 
 **Rule**: Do not use balances as a proxy for mint history. Any Macaroni UI that talks about wallet mint limits must read contract `stage_minted` or actual mint-transfer records; any UI that talks about holdings must read token balances and label that as ownership.
+
+---
+
+## 2026-06-17 - Octez Connect primary does not mean RPC and wallet identity are the same thing
+
+**What happened**: Airporters was a mainnet drop, but the wallet permission network shape could include the dApp RPC URL inside the named Mainnet wallet request. Kukai's mobile/WalletConnect path can treat that as a different network from the wallet's selected Mainnet. The broader hardening also needed Octez Connect to be loaded before Macaroni's shared wallet runtime and injected into stored user-site snapshots before their inline runtime executes.
+
+**Why it mattered**: Octez Connect owns the dApp client/session handoff, while Taquito still needs an operation provider and an app-side RPC for reads, estimates, and chain-id preflight. Conflating those layers makes browser compatibility look random, especially in iOS Brave/privacy-browser contexts that are not the same as desktop Chromium.
+
+**Rule**: Tezos drop pages must load the Octez Connect SDK/bridge before shared wallet runtime, prefer `getDAppClientInstance`, keep Beacon as compatibility backup, and keep RPC URLs in Taquito/chain-id preflight rather than named wallet permission identity. Stored legacy Macaroni pages need serve-time Octez bridge injection before any inline wallet helper runs.

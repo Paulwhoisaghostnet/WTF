@@ -17,6 +17,11 @@ test("published Macaroni pages are served with the current runtime", () => {
 
   assert.match(normalized, /data-macaroni-runtime-compat="current"/);
   assert.match(normalized, /data-macaroni-runtime-compat-style/);
+  assert.match(normalized, /https:\/\/wtfos\.app\/creation-tools\/macaroni\/vendor\/octez-connect\.js/);
+  assert.match(normalized, /https:\/\/wtfos\.app\/creation-tools\/macaroni\/js\/octez-wallet\.js/);
+  assert.match(normalized, /installOctezPrimaryWallet\(\{ patchBeacon: true \}\)/);
+  assert.ok(normalized.indexOf("vendor/octez-connect.js") < normalized.indexOf('id="macaroniCommonJs"'));
+  assert.ok(normalized.indexOf("js/octez-wallet.js") < normalized.indexOf('id="macaroniCommonJs"'));
   assert.match(normalized, /Mint is Live/);
   assert.match(normalized, /Currently on Sale Stage/);
   assert.match(normalized, /https:\/\/x\.com\/intent\/post/);
@@ -35,6 +40,38 @@ test("published Macaroni pages are served with the current runtime", () => {
   assert.doesNotMatch(normalized, /Temple \/ Kukai \/ Umami/);
   assert.doesNotMatch(normalized, /Stage \$\{act \+ 1\} live/);
   assert.doesNotMatch(normalized, /mint\(s\)/);
+});
+
+test("published Macaroni compatibility removes named-network RPC overrides before runtime swap", () => {
+  const html = `<!doctype html>
+<html>
+<body>
+<script>window.DROP_CONFIG = {"network":"mainnet"};</script>
+<script id="macaroniCommonJs">function beaconNetworkSpec(){ return { type: net.beaconNetwork, rpcUrl }; }</script>
+<script id="macaroniDropJs">console.log("old drop");</script>
+</body>
+</html>`;
+
+  const normalized = normalizeMacaroniPublishedHtml(html);
+
+  assert.doesNotMatch(normalized, /\{ type: net\.beaconNetwork,\s*rpcUrl \}/);
+  assert.match(normalized, /\{ type: net\.beaconNetwork \}/);
+});
+
+test("published Macaroni compatibility does not duplicate Octez bridge tags", () => {
+  const html = `<!doctype html>
+<html>
+<body>
+<script>window.DROP_CONFIG = {"network":"mainnet"};</script>
+<script src="https://wtfos.app/creation-tools/macaroni/js/octez-wallet.js"></script>
+<script id="macaroniCommonJs">window.MacaroniDrop = {};</script>
+<script id="macaroniDropJs">console.log("old drop");</script>
+</body>
+</html>`;
+
+  const normalized = normalizeMacaroniPublishedHtml(html);
+
+  assert.equal((normalized.match(/octez-wallet\.js/g) || []).length, 1);
 });
 
 test("non-Macaroni pages are not rewritten", () => {

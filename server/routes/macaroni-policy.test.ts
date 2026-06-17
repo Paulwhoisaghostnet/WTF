@@ -297,6 +297,40 @@ test("Macaroni wallet operations align Beacon active account RPC before signing"
   assert.match(commonSource, /could not align wallet operation RPC/);
 });
 
+test("Macaroni drop wallet runtime prefers Octez Connect with Beacon backup", () => {
+  const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
+  const octezWalletSource = readFileSync("public/creation-tools/macaroni/js/octez-wallet.js", "utf8");
+  const octezVendorSource = readFileSync("public/creation-tools/macaroni/vendor/octez-connect.js", "utf8");
+  const dropHtml = readFileSync("public/creation-tools/macaroni/drop.html", "utf8");
+  const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+  const siteBundle = readFileSync("public/creation-tools/macaroni/js/site-bundle.js", "utf8");
+
+  assert.match(commonSource, /\? \{ type: "custom", name: netKey, rpcUrl \}\s*: \{ type: net\.beaconNetwork \}/);
+  assert.doesNotMatch(commonSource, /\{ type: net\.beaconNetwork,\s*rpcUrl \}/);
+  assert.match(commonSource, /TZ\.installOctezPrimaryWallet/);
+  assert.match(commonSource, /const WalletClass = TZ\.OctezPrimaryWallet \|\| TZ\.BeaconWallet/);
+
+  assert.match(octezVendorSource, /MacaroniOctezConnect/);
+  assert.match(octezVendorSource, /getDAppClientInstance/);
+  assert.doesNotMatch(octezVendorSource, /eval\(/);
+
+  assert.match(octezWalletSource, /function installOctezPrimaryWallet/);
+  assert.match(octezWalletSource, /providerName = "octez\.connect"/);
+  assert.match(octezWalletSource, /this\.beaconBackup = new NativeBeaconWallet/);
+  assert.match(octezWalletSource, /this\.walletProvider = this\.octezProvider/);
+  assert.match(octezWalletSource, /this\.walletProvider = this\.beaconBackup/);
+  assert.match(octezWalletSource, /patchBeacon/);
+
+  for (const html of [dropHtml, studioHtml]) {
+    assert.match(html, /vendor\/octez-connect\.js/);
+    assert.match(html, /js\/octez-wallet\.js/);
+    assert.ok(html.indexOf("vendor/octez-connect.js") < html.indexOf("js/common.js"));
+    assert.ok(html.indexOf("js/octez-wallet.js") < html.indexOf("js/common.js"));
+  }
+  assert.match(siteBundle, /"vendor\/octez-connect\.js"/);
+  assert.match(siteBundle, /"js\/octez-wallet\.js"/);
+});
+
 test("Macaroni wallet operation fees track the padded gas limit that is actually sent", () => {
   const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
 
