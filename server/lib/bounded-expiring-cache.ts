@@ -54,11 +54,15 @@ export function createBoundedExpiringCache<T>(options: {
       entry.lastAccessedAt = now;
       return entry.value;
     },
-    set(key: string, value: T, now = Date.now()) {
+    set(key: string, value: T, now = Date.now(), ttlOverrideMs?: number) {
       maybeSweep(now);
+      const ttl =
+        typeof ttlOverrideMs === "number" && ttlOverrideMs > 0
+          ? ttlOverrideMs
+          : options.ttlMs;
       entries.set(key, {
         value,
-        expiresAt: now + options.ttlMs,
+        expiresAt: now + ttl,
         lastAccessedAt: now,
       });
       if (entries.size > maxEntries) {

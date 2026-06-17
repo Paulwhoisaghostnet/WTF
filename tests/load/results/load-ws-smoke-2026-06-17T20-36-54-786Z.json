@@ -1,0 +1,85 @@
+{
+  "label": "ws-smoke",
+  "baseUrl": "http://127.0.0.1:3000",
+  "commitRef": null,
+  "startedAt": "2026-06-17T20:36:41.147Z",
+  "finishedAt": "2026-06-17T20:36:54.786Z",
+  "config": {
+    "steps": [
+      4
+    ],
+    "stepSeconds": 8,
+    "sampleMs": 1500,
+    "mix": [
+      {
+        "name": "room",
+        "weight": 1
+      }
+    ],
+    "auth": "guest",
+    "roomId": "e2e-room-1"
+  },
+  "metricsAvailable": true,
+  "steps": [
+    {
+      "level": 4,
+      "durationSec": 8,
+      "rps": 1,
+      "client": {
+        "totalRequests": 8,
+        "errors": 0,
+        "errorRate": 0,
+        "overall": {
+          "avgMs": 0.2,
+          "p50Ms": 0.1,
+          "p95Ms": 0.8,
+          "p99Ms": 0.8,
+          "maxMs": 0.8
+        },
+        "byLabel": {
+          "WS chat message": {
+            "count": 8,
+            "errors": 0,
+            "avgMs": 0.2,
+            "p50Ms": 0.1,
+            "p95Ms": 0.8,
+            "p99Ms": 0.8,
+            "maxMs": 0.8
+          }
+        }
+      },
+      "server": {
+        "sampleCount": 7,
+        "eventLoopMeanMs": 11.13,
+        "eventLoopP99AvgMs": 15.07,
+        "eventLoopP99MaxMs": 15.07,
+        "eventLoopResolutionMs": 10,
+        "cpuPercentAvg": 0.9,
+        "cpuPercentMax": 97.7,
+        "dbPoolMax": 15,
+        "dbActiveAvg": 0,
+        "dbActiveMax": 0,
+        "dbWaitingAvg": 0,
+        "dbWaitingMax": 0,
+        "rssMaxMB": 140.1,
+        "wsTotalMax": 4,
+        "wsLiveMax": 4,
+        "httpInFlightMax": 1,
+        "serverWindowReqTotal": 7,
+        "serverWindowErrTotal": 0
+      },
+      "serverRoutes": [
+        {
+          "key": "GET /api/metrics",
+          "count": 7,
+          "errorCount": 0,
+          "avgMs": 2.7,
+          "p50Ms": 2.37,
+          "p95Ms": 4.51,
+          "p99Ms": 4.51,
+          "maxMs": 4.51
+        }
+      ]
+    }
+  ]
+}

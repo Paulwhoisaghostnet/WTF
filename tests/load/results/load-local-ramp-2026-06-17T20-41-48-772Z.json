@@ -1,0 +1,917 @@
+{
+  "label": "local-ramp",
+  "baseUrl": "http://127.0.0.1:3000",
+  "commitRef": null,
+  "startedAt": "2026-06-17T20:38:14.948Z",
+  "finishedAt": "2026-06-17T20:41:48.772Z",
+  "config": {
+    "steps": [
+      1,
+      5,
+      10,
+      25,
+      50
+    ],
+    "stepSeconds": 30,
+    "sampleMs": 2000,
+    "mix": [
+      {
+        "name": "lobby",
+        "weight": 0.4
+      },
+      {
+        "name": "browse",
+        "weight": 0.3
+      },
+      {
+        "name": "room",
+        "weight": 0.3
+      }
+    ],
+    "auth": "auto",
+    "roomId": "e2e-room-1"
+  },
+  "metricsAvailable": true,
+  "steps": [
+    {
+      "level": 1,
+      "durationSec": 30,
+      "rps": 0.6,
+      "client": {
+        "totalRequests": 18,
+        "errors": 0,
+        "errorRate": 0,
+        "overall": {
+          "avgMs": 20.9,
+          "p50Ms": 19.2,
+          "p95Ms": 33.1,
+          "p99Ms": 33.1,
+          "maxMs": 33.1
+        },
+        "byLabel": {
+          "GET /api/wtf-live/rooms": {
+            "count": 6,
+            "errors": 0,
+            "avgMs": 20.1,
+            "p50Ms": 16.5,
+            "p95Ms": 33.1,
+            "p99Ms": 33.1,
+            "maxMs": 33.1
+          },
+          "GET /api/wtf-live/rooms/mine": {
+            "count": 6,
+            "errors": 0,
+            "avgMs": 21.6,
+            "p50Ms": 23.7,
+            "p95Ms": 29.9,
+            "p99Ms": 29.9,
+            "maxMs": 29.9
+          },
+          "GET /api/wtf-live/rooms/private": {
+            "count": 6,
+            "errors": 0,
+            "avgMs": 20.9,
+            "p50Ms": 17.9,
+            "p95Ms": 32.1,
+            "p99Ms": 32.1,
+            "maxMs": 32.1
+          }
+        }
+      },
+      "server": {
+        "sampleCount": 17,
+        "eventLoopMeanMs": 10.95,
+        "eventLoopP99AvgMs": 12.98,
+        "eventLoopP99MaxMs": 13.92,
+        "eventLoopResolutionMs": 10,
+        "cpuPercentAvg": 5.9,
+        "cpuPercentMax": 8.6,
+        "dbPoolMax": 15,
+        "dbActiveAvg": 0.2,
+        "dbActiveMax": 3,
+        "dbWaitingAvg": 0,
+        "dbWaitingMax": 0,
+        "rssMaxMB": 351.3,
+        "wsTotalMax": 0,
+        "wsLiveMax": 0,
+        "httpInFlightMax": 4,
+        "serverWindowReqTotal": 34,
+        "serverWindowErrTotal": 0
+      },
+      "serverRoutes": [
+        {
+          "key": "GET /api/metrics",
+          "count": 16,
+          "errorCount": 0,
+          "avgMs": 2.49,
+          "p50Ms": 2.46,
+          "p95Ms": 4.08,
+          "p99Ms": 4.08,
+          "maxMs": 4.08
+        },
+        {
+          "key": "GET /api/wtf-live/rooms",
+          "count": 6,
+          "errorCount": 0,
+          "avgMs": 15.79,
+          "p50Ms": 12.59,
+          "p95Ms": 28.83,
+          "p99Ms": 28.83,
+          "maxMs": 28.83
+        },
+        {
+          "key": "GET /api/wtf-live/rooms/mine",
+          "count": 6,
+          "errorCount": 0,
+          "avgMs": 16.33,
+          "p50Ms": 12.46,
+          "p95Ms": 25.22,
+          "p99Ms": 25.22,
+          "maxMs": 25.22
+        },
+        {
+          "key": "GET /api/wtf-live/rooms/private",
+          "count": 6,
+          "errorCount": 0,
+          "avgMs": 15.69,
+          "p50Ms": 12.82,
+          "p95Ms": 26.68,
+          "p99Ms": 26.68,
+          "maxMs": 26.68
+        }
+      ]
+    },
+    {
+      "level": 5,
+      "durationSec": 30,
+      "rps": 3.3,
+      "client": {
+        "totalRequests": 99,
+        "errors": 0,
+        "errorRate": 0,
+        "overall": {
+          "avgMs": 55.5,
+          "p50Ms": 18.1,
+          "p95Ms": 232.4,
+          "p99Ms": 443.9,
+          "maxMs": 443.9
+        },
+        "byLabel": {
+          "WS chat message": {
+            "count": 7,
+            "errors": 0,
+            "avgMs": 0.4,
+            "p50Ms": 0.5,
+            "p95Ms": 0.8,
+            "p99Ms": 0.8,
+            "maxMs": 0.8
+          },
+          "GET /api/desktop/settings": {
+            "count": 14,
+            "errors": 0,
+            "avgMs": 16.4,
+            "p50Ms": 13.3,
+            "p95Ms": 47.5,
+            "p99Ms": 47.5,
+            "maxMs": 47.5
+          },
+          "GET /api/in-app-market": {
+            "count": 14,
+            "errors": 0,
+            "avgMs": 22.1,
+            "p50Ms": 20.8,
+            "p95Ms": 42.9,
+            "p99Ms": 42.9,
+            "maxMs": 42.9
+          },
+          "GET /api/notifications": {
+            "count": 14,
+            "errors": 0,
+            "avgMs": 12,
+            "p50Ms": 10.8,
+            "p95Ms": 31.4,
+            "p99Ms": 31.4,
+            "maxMs": 31.4
+          },
+          "GET /api/atproto/me": {
+            "count": 14,
+            "errors": 0,
+            "avgMs": 257.9,
+            "p50Ms": 219.6,
+            "p95Ms": 443.9,
+            "p99Ms": 443.9,
+            "maxMs": 443.9
+          },
+          "GET /api/wtf-live/rooms": {
+            "count": 12,
+            "errors": 0,
+            "avgMs": 29.8,
+            "p50Ms": 15,
+            "p95Ms": 90.8,
+            "p99Ms": 90.8,
+            "maxMs": 90.8
+          },
+          "GET /api/wtf-live/rooms/mine": {
+            "count": 12,
+            "errors": 0,
+            "avgMs": 30.7,
+            "p50Ms": 23.4,
+            "p95Ms": 117.2,
+            "p99Ms": 117.2,
+            "maxMs": 117.2
+          },
+          "GET /api/wtf-live/rooms/private": {
+            "count": 12,
+            "errors": 0,
+            "avgMs": 37.5,
+            "p50Ms": 24.4,
+            "p95Ms": 133.1,
+            "p99Ms": 133.1,
+            "maxMs": 133.1
+          }
+        }
+      },
+      "server": {
+        "sampleCount": 17,
+        "eventLoopMeanMs": 10.98,
+        "eventLoopP99AvgMs": 14.3,
+        "eventLoopP99MaxMs": 15.85,
+        "eventLoopResolutionMs": 10,
+        "cpuPercentAvg": 5.7,
+        "cpuPercentMax": 6.1,
+        "dbPoolMax": 15,
+        "dbActiveAvg": 0,
+        "dbActiveMax": 0,
+        "dbWaitingAvg": 0,
+        "dbWaitingMax": 0,
+        "rssMaxMB": 264,
+        "wsTotalMax": 1,
+        "wsLiveMax": 1,
+        "httpInFlightMax": 3,
+        "serverWindowReqTotal": 108,
+        "serverWindowErrTotal": 0
+      },
+      "serverRoutes": [
+        {
+          "key": "GET /api/metrics",
+          "count": 16,
+          "errorCount": 0,
+          "avgMs": 2.5,
+          "p50Ms": 1.97,
+          "p95Ms": 11.79,
+          "p99Ms": 11.79,
+          "maxMs": 11.79
+        },
+        {
+          "key": "GET /api/desktop/settings",
+          "count": 14,
+          "errorCount": 0,
+          "avgMs": 12.14,
+          "p50Ms": 9.05,
+          "p95Ms": 38.27,
+          "p99Ms": 38.27,
+          "maxMs": 38.27
+        },
+        {
+          "key": "GET /api/in-app-market",
+          "count": 14,
+          "errorCount": 0,
+          "avgMs": 19.97,
+          "p50Ms": 18.85,
+          "p95Ms": 31.05,
+          "p99Ms": 31.05,
+          "maxMs": 31.05
+        },
+        {
+          "key": "GET /api/notifications",
+          "count": 14,
+          "errorCount": 0,
+          "avgMs": 10.5,
+          "p50Ms": 8.54,
+          "p95Ms": 30.44,
+          "p99Ms": 30.44,
+          "maxMs": 30.44
+        },
+        {
+          "key": "GET /api/atproto/me",
+          "count": 14,
+          "errorCount": 0,
+          "avgMs": 256.21,
+          "p50Ms": 218.33,
+          "p95Ms": 441.35,
+          "p99Ms": 441.35,
+          "maxMs": 441.35
+        },
+        {
+          "key": "GET /api/wtf-live/rooms",
+          "count": 12,
+          "errorCount": 0,
+          "avgMs": 26.98,
+          "p50Ms": 12.34,
+          "p95Ms": 87.44,
+          "p99Ms": 87.44,
+          "maxMs": 87.44
+        },
+        {
+          "key": "GET /api/wtf-live/rooms/mine",
+          "count": 12,
+          "errorCount": 0,
+          "avgMs": 27.07,
+          "p50Ms": 18.49,
+          "p95Ms": 111.16,
+          "p99Ms": 111.16,
+          "maxMs": 111.16
+        },
+        {
+          "key": "GET /api/wtf-live/rooms/private",
+          "count": 12,
+          "errorCount": 0,
+          "avgMs": 32.89,
+          "p50Ms": 21.64,
+          "p95Ms": 118.61,
+          "p99Ms": 118.61,
+          "maxMs": 118.61
+        }
+      ]
+    },
+    {
+      "level": 10,
+      "durationSec": 30,
+      "rps": 5.6,
+      "client": {
+        "totalRequests": 168,
+        "errors": 12,
+        "errorRate": 0.07,
+        "overall": {
+          "avgMs": 33.3,
+          "p50Ms": 24.3,
+          "p95Ms": 83.4,
+          "p99Ms": 238.4,
+          "maxMs": 422.2
+        },
+        "byLabel": {
+          "WS chat message": {
+            "count": 14,
+            "errors": 0,
+            "avgMs": 0.2,
+            "p50Ms": 0.2,
+            "p95Ms": 1,
+            "p99Ms": 1,
+            "maxMs": 1
+          },
+          "GET /api/desktop/settings": {
+            "count": 7,
+            "errors": 0,
+            "avgMs": 23.2,
+            "p50Ms": 13.3,
+            "p95Ms": 83.4,
+            "p99Ms": 83.4,
+            "maxMs": 83.4
+          },
+          "GET /api/in-app-market": {
+            "count": 7,
+            "errors": 0,
+            "avgMs": 17.6,
+            "p50Ms": 14.4,
+            "p95Ms": 33.7,
+            "p99Ms": 33.7,
+            "maxMs": 33.7
+          },
+          "GET /api/notifications": {
+            "count": 7,
+            "errors": 0,
+            "avgMs": 14.3,
+            "p50Ms": 8.7,
+            "p95Ms": 47.6,
+            "p99Ms": 47.6,
+            "maxMs": 47.6
+          },
+          "GET /api/atproto/me": {
+            "count": 7,
+            "errors": 0,
+            "avgMs": 246.9,
+            "p50Ms": 213.8,
+            "p95Ms": 422.2,
+            "p99Ms": 422.2,
+            "maxMs": 422.2
+          },
+          "GET /api/wtf-live/rooms/mine": {
+            "count": 42,
+            "errors": 0,
+            "avgMs": 27,
+            "p50Ms": 26.7,
+            "p95Ms": 53,
+            "p99Ms": 55.1,
+            "maxMs": 55.1
+          },
+          "GET /api/wtf-live/rooms": {
+            "count": 42,
+            "errors": 0,
+            "avgMs": 27,
+            "p50Ms": 26.1,
+            "p95Ms": 63.5,
+            "p99Ms": 97.3,
+            "maxMs": 97.3
+          },
+          "GET /api/wtf-live/rooms/private": {
+            "count": 42,
+            "errors": 12,
+            "avgMs": 28.8,
+            "p50Ms": 26.3,
+            "p95Ms": 63.4,
+            "p99Ms": 81.3,
+            "maxMs": 81.3
+          }
+        }
+      },
+      "server": {
+        "sampleCount": 17,
+        "eventLoopMeanMs": 10.95,
+        "eventLoopP99AvgMs": 12.71,
+        "eventLoopP99MaxMs": 12.78,
+        "eventLoopResolutionMs": 10,
+        "cpuPercentAvg": 4.8,
+        "cpuPercentMax": 4.7,
+        "dbPoolMax": 15,
+        "dbActiveAvg": 0,
+        "dbActiveMax": 0,
+        "dbWaitingAvg": 0,
+        "dbWaitingMax": 0,
+        "rssMaxMB": 263.2,
+        "wsTotalMax": 2,
+        "wsLiveMax": 2,
+        "httpInFlightMax": 2,
+        "serverWindowReqTotal": 170,
+        "serverWindowErrTotal": 12
+      },
+      "serverRoutes": [
+        {
+          "key": "GET /api/wtf-live/rooms/mine",
+          "count": 42,
+          "errorCount": 0,
+          "avgMs": 23.97,
+          "p50Ms": 23.12,
+          "p95Ms": 49.02,
+          "p99Ms": 53.25,
+          "maxMs": 53.25
+        },
+        {
+          "key": "GET /api/wtf-live/rooms",
+          "count": 42,
+          "errorCount": 0,
+          "avgMs": 24.49,
+          "p50Ms": 21.32,
+          "p95Ms": 59.23,
+          "p99Ms": 94.7,
+          "maxMs": 94.7
+        },
+        {
+          "key": "GET /api/wtf-live/rooms/private",
+          "count": 42,
+          "errorCount": 12,
+          "avgMs": 25.39,
+          "p50Ms": 23.58,
+          "p95Ms": 56.96,
+          "p99Ms": 78.09,
+          "maxMs": 78.09
+        },
+        {
+          "key": "GET /api/metrics",
+          "count": 16,
+          "errorCount": 0,
+          "avgMs": 2.2,
+          "p50Ms": 2.15,
+          "p95Ms": 4.44,
+          "p99Ms": 4.44,
+          "maxMs": 4.44
+        },
+        {
+          "key": "GET /api/desktop/settings",
+          "count": 7,
+          "errorCount": 0,
+          "avgMs": 17.92,
+          "p50Ms": 11.11,
+          "p95Ms": 59.68,
+          "p99Ms": 59.68,
+          "maxMs": 59.68
+        },
+        {
+          "key": "GET /api/in-app-market",
+          "count": 7,
+          "errorCount": 0,
+          "avgMs": 15.75,
+          "p50Ms": 12.36,
+          "p95Ms": 29.29,
+          "p99Ms": 29.29,
+          "maxMs": 29.29
+        },
+        {
+          "key": "GET /api/notifications",
+          "count": 7,
+          "errorCount": 0,
+          "avgMs": 12.88,
+          "p50Ms": 7.38,
+          "p95Ms": 44.41,
+          "p99Ms": 44.41,
+          "maxMs": 44.41
+        },
+        {
+          "key": "GET /api/atproto/me",
+          "count": 7,
+          "errorCount": 0,
+          "avgMs": 245.61,
+          "p50Ms": 211.59,
+          "p95Ms": 421.22,
+          "p99Ms": 421.22,
+          "maxMs": 421.22
+        }
+      ]
+    },
+    {
+      "level": 25,
+      "durationSec": 30,
+      "rps": 9.1,
+      "client": {
+        "totalRequests": 273,
+        "errors": 7,
+        "errorRate": 0.03,
+        "overall": {
+          "avgMs": 913.5,
+          "p50Ms": 15.4,
+          "p95Ms": 6956.3,
+          "p99Ms": 11969,
+          "maxMs": 20002.7
+        },
+        "byLabel": {
+          "GET /api/atproto/me": {
+            "count": 36,
+            "errors": 1,
+            "avgMs": 6821.9,
+            "p50Ms": 6271.6,
+            "p95Ms": 12362.3,
+            "p99Ms": 20002.7,
+            "maxMs": 20002.7
+          },
+          "WS chat message": {
+            "count": 63,
+            "errors": 0,
+            "avgMs": 0,
+            "p50Ms": 0,
+            "p95Ms": 0.1,
+            "p99Ms": 0.3,
+            "maxMs": 0.3
+          },
+          "GET /api/desktop/settings": {
+            "count": 28,
+            "errors": 0,
+            "avgMs": 10.4,
+            "p50Ms": 10.2,
+            "p95Ms": 15.1,
+            "p99Ms": 15.5,
+            "maxMs": 15.5
+          },
+          "GET /api/in-app-market": {
+            "count": 28,
+            "errors": 0,
+            "avgMs": 20.1,
+            "p50Ms": 19.5,
+            "p95Ms": 25.6,
+            "p99Ms": 33.9,
+            "maxMs": 33.9
+          },
+          "GET /api/notifications": {
+            "count": 28,
+            "errors": 0,
+            "avgMs": 11.1,
+            "p50Ms": 11.2,
+            "p95Ms": 14.3,
+            "p99Ms": 19.3,
+            "maxMs": 19.3
+          },
+          "GET /api/wtf-live/rooms": {
+            "count": 30,
+            "errors": 0,
+            "avgMs": 26.7,
+            "p50Ms": 21.8,
+            "p95Ms": 66,
+            "p99Ms": 67.1,
+            "maxMs": 67.1
+          },
+          "GET /api/wtf-live/rooms/mine": {
+            "count": 30,
+            "errors": 0,
+            "avgMs": 29.7,
+            "p50Ms": 23.3,
+            "p95Ms": 67.7,
+            "p99Ms": 68.4,
+            "maxMs": 68.4
+          },
+          "GET /api/wtf-live/rooms/private": {
+            "count": 30,
+            "errors": 6,
+            "avgMs": 31.4,
+            "p50Ms": 28.3,
+            "p95Ms": 63.7,
+            "p99Ms": 68.6,
+            "maxMs": 68.6
+          }
+        }
+      },
+      "server": {
+        "sampleCount": 18,
+        "eventLoopMeanMs": 10.86,
+        "eventLoopP99AvgMs": 11.98,
+        "eventLoopP99MaxMs": 12.77,
+        "eventLoopResolutionMs": 10,
+        "cpuPercentAvg": 10.8,
+        "cpuPercentMax": 10.9,
+        "dbPoolMax": 15,
+        "dbActiveAvg": 0,
+        "dbActiveMax": 0,
+        "dbWaitingAvg": 0,
+        "dbWaitingMax": 0,
+        "rssMaxMB": 269.9,
+        "wsTotalMax": 9,
+        "wsLiveMax": 9,
+        "httpInFlightMax": 10,
+        "serverWindowReqTotal": 219,
+        "serverWindowErrTotal": 6
+      },
+      "serverRoutes": [
+        {
+          "key": "GET /api/wtf-live/rooms",
+          "count": 30,
+          "errorCount": 0,
+          "avgMs": 23.45,
+          "p50Ms": 20.09,
+          "p95Ms": 59.92,
+          "p99Ms": 60.99,
+          "maxMs": 60.99
+        },
+        {
+          "key": "GET /api/wtf-live/rooms/mine",
+          "count": 30,
+          "errorCount": 0,
+          "avgMs": 26.15,
+          "p50Ms": 20.67,
+          "p95Ms": 61.88,
+          "p99Ms": 62.49,
+          "maxMs": 62.49
+        },
+        {
+          "key": "GET /api/wtf-live/rooms/private",
+          "count": 30,
+          "errorCount": 6,
+          "avgMs": 27.4,
+          "p50Ms": 23.87,
+          "p95Ms": 58.8,
+          "p99Ms": 62.22,
+          "maxMs": 62.22
+        },
+        {
+          "key": "GET /api/atproto/me",
+          "count": 29,
+          "errorCount": 0,
+          "avgMs": 6712.95,
+          "p50Ms": 6270.16,
+          "p95Ms": 11967.33,
+          "p99Ms": 20002.46,
+          "maxMs": 20002.46
+        },
+        {
+          "key": "GET /api/desktop/settings",
+          "count": 28,
+          "errorCount": 0,
+          "avgMs": 8.15,
+          "p50Ms": 8.21,
+          "p95Ms": 11.39,
+          "p99Ms": 11.71,
+          "maxMs": 11.71
+        },
+        {
+          "key": "GET /api/in-app-market",
+          "count": 28,
+          "errorCount": 0,
+          "avgMs": 18.52,
+          "p50Ms": 17.93,
+          "p95Ms": 22.83,
+          "p99Ms": 32.43,
+          "maxMs": 32.43
+        },
+        {
+          "key": "GET /api/notifications",
+          "count": 28,
+          "errorCount": 0,
+          "avgMs": 9.77,
+          "p50Ms": 9.88,
+          "p95Ms": 12.81,
+          "p99Ms": 17.08,
+          "maxMs": 17.08
+        },
+        {
+          "key": "GET /api/metrics",
+          "count": 16,
+          "errorCount": 0,
+          "avgMs": 1.7,
+          "p50Ms": 1.45,
+          "p95Ms": 2.82,
+          "p99Ms": 2.82,
+          "maxMs": 2.82
+        }
+      ]
+    },
+    {
+      "level": 50,
+      "durationSec": 30,
+      "rps": 22.3,
+      "client": {
+        "totalRequests": 669,
+        "errors": 36,
+        "errorRate": 0.05,
+        "overall": {
+          "avgMs": 429.6,
+          "p50Ms": 22.5,
+          "p95Ms": 1300.3,
+          "p99Ms": 8354.4,
+          "maxMs": 14268.5
+        },
+        "byLabel": {
+          "GET /api/atproto/me": {
+            "count": 37,
+            "errors": 0,
+            "avgMs": 6723.9,
+            "p50Ms": 6954.6,
+            "p95Ms": 12179.8,
+            "p99Ms": 14268.5,
+            "maxMs": 14268.5
+          },
+          "WS chat message": {
+            "count": 98,
+            "errors": 0,
+            "avgMs": 0.1,
+            "p50Ms": 0,
+            "p95Ms": 0.2,
+            "p99Ms": 0.6,
+            "maxMs": 0.6
+          },
+          "GET /api/desktop/settings": {
+            "count": 28,
+            "errors": 0,
+            "avgMs": 27.1,
+            "p50Ms": 12,
+            "p95Ms": 46.2,
+            "p99Ms": 366.1,
+            "maxMs": 366.1
+          },
+          "GET /api/in-app-market": {
+            "count": 28,
+            "errors": 0,
+            "avgMs": 23.5,
+            "p50Ms": 18,
+            "p95Ms": 36.8,
+            "p99Ms": 139.9,
+            "maxMs": 139.9
+          },
+          "GET /api/notifications": {
+            "count": 28,
+            "errors": 0,
+            "avgMs": 10,
+            "p50Ms": 9.4,
+            "p95Ms": 15.6,
+            "p99Ms": 21.9,
+            "maxMs": 21.9
+          },
+          "GET /api/wtf-live/rooms": {
+            "count": 150,
+            "errors": 0,
+            "avgMs": 83.1,
+            "p50Ms": 31.6,
+            "p95Ms": 316.5,
+            "p99Ms": 544.4,
+            "maxMs": 545.1
+          },
+          "GET /api/wtf-live/rooms/private": {
+            "count": 150,
+            "errors": 36,
+            "avgMs": 81.5,
+            "p50Ms": 32.5,
+            "p95Ms": 374.4,
+            "p99Ms": 411.1,
+            "maxMs": 415.6
+          },
+          "GET /api/wtf-live/rooms/mine": {
+            "count": 150,
+            "errors": 0,
+            "avgMs": 81.4,
+            "p50Ms": 34.5,
+            "p95Ms": 310.8,
+            "p99Ms": 468.8,
+            "maxMs": 515.7
+          }
+        }
+      },
+      "server": {
+        "sampleCount": 18,
+        "eventLoopMeanMs": 10.91,
+        "eventLoopP99AvgMs": 13.74,
+        "eventLoopP99MaxMs": 14.18,
+        "eventLoopResolutionMs": 10,
+        "cpuPercentAvg": 15.9,
+        "cpuPercentMax": 17.2,
+        "dbPoolMax": 15,
+        "dbActiveAvg": 1.2,
+        "dbActiveMax": 15,
+        "dbWaitingAvg": 1.89,
+        "dbWaitingMax": 34,
+        "rssMaxMB": 279.7,
+        "wsTotalMax": 14,
+        "wsLiveMax": 14,
+        "httpInFlightMax": 55,
+        "serverWindowReqTotal": 579,
+        "serverWindowErrTotal": 36
+      },
+      "serverRoutes": [
+        {
+          "key": "GET /api/wtf-live/rooms",
+          "count": 150,
+          "errorCount": 0,
+          "avgMs": 78.56,
+          "p50Ms": 29.11,
+          "p95Ms": 313.64,
+          "p99Ms": 524.06,
+          "maxMs": 524.78
+        },
+        {
+          "key": "GET /api/wtf-live/rooms/private",
+          "count": 150,
+          "errorCount": 36,
+          "avgMs": 76.41,
+          "p50Ms": 28.44,
+          "p95Ms": 352.18,
+          "p99Ms": 389.88,
+          "maxMs": 402.64
+        },
+        {
+          "key": "GET /api/wtf-live/rooms/mine",
+          "count": 150,
+          "errorCount": 0,
+          "avgMs": 76.71,
+          "p50Ms": 31.61,
+          "p95Ms": 306.44,
+          "p99Ms": 450.93,
+          "maxMs": 496.65
+        },
+        {
+          "key": "GET /api/atproto/me",
+          "count": 29,
+          "errorCount": 0,
+          "avgMs": 6306.89,
+          "p50Ms": 6625.83,
+          "p95Ms": 11124.07,
+          "p99Ms": 12176.21,
+          "maxMs": 12176.21
+        },
+        {
+          "key": "GET /api/desktop/settings",
+          "count": 28,
+          "errorCount": 0,
+          "avgMs": 23.5,
+          "p50Ms": 8.86,
+          "p95Ms": 40.78,
+          "p99Ms": 347.27,
+          "maxMs": 347.27
+        },
+        {
+          "key": "GET /api/in-app-market",
+          "count": 28,
+          "errorCount": 0,
+          "avgMs": 22.19,
+          "p50Ms": 16.5,
+          "p95Ms": 35.91,
+          "p99Ms": 135.43,
+          "maxMs": 135.43
+        },
+        {
+          "key": "GET /api/notifications",
+          "count": 28,
+          "errorCount": 0,
+          "avgMs": 8.67,
+          "p50Ms": 8.19,
+          "p95Ms": 14.28,
+          "p99Ms": 16.57,
+          "maxMs": 16.57
+        },
+        {
+          "key": "GET /api/metrics",
+          "count": 16,
+          "errorCount": 0,
+          "avgMs": 2.64,
+          "p50Ms": 2.33,
+          "p95Ms": 5.39,
+          "p99Ms": 5.39,
+          "maxMs": 5.39
+        }
+      ]
+    }
+  ]
+}

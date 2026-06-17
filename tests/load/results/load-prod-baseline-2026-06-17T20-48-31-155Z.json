@@ -1,0 +1,86 @@
+{
+  "label": "prod-baseline",
+  "baseUrl": "https://wtfos.app",
+  "commitRef": "f625670",
+  "startedAt": "2026-06-17T20:47:33.505Z",
+  "finishedAt": "2026-06-17T20:48:31.154Z",
+  "config": {
+    "steps": [
+      1,
+      3
+    ],
+    "stepSeconds": 20,
+    "sampleMs": 2000,
+    "mix": [
+      {
+        "name": "public",
+        "weight": 1
+      }
+    ],
+    "auth": "guest",
+    "roomId": null
+  },
+  "metricsAvailable": false,
+  "steps": [
+    {
+      "level": 1,
+      "durationSec": 20,
+      "rps": 0.15,
+      "client": {
+        "totalRequests": 3,
+        "errors": 0,
+        "errorRate": 0,
+        "overall": {
+          "avgMs": 885.4,
+          "p50Ms": 873.9,
+          "p95Ms": 911.4,
+          "p99Ms": 911.4,
+          "maxMs": 911.4
+        },
+        "byLabel": {
+          "GET /api/health": {
+            "count": 3,
+            "errors": 0,
+            "avgMs": 885.4,
+            "p50Ms": 873.9,
+            "p95Ms": 911.4,
+            "p99Ms": 911.4,
+            "maxMs": 911.4
+          }
+        }
+      },
+      "server": null,
+      "serverRoutes": []
+    },
+    {
+      "level": 3,
+      "durationSec": 20,
+      "rps": 0.55,
+      "client": {
+        "totalRequests": 11,
+        "errors": 0,
+        "errorRate": 0,
+        "overall": {
+          "avgMs": 1321.9,
+          "p50Ms": 1285.1,
+          "p95Ms": 1552.7,
+          "p99Ms": 1552.7,
+          "maxMs": 1552.7
+        },
+        "byLabel": {
+          "GET /api/health": {
+            "count": 11,
+            "errors": 0,
+            "avgMs": 1321.9,
+            "p50Ms": 1285.1,
+            "p95Ms": 1552.7,
+            "p99Ms": 1552.7,
+            "maxMs": 1552.7
+          }
+        }
+      },
+      "server": null,
+      "serverRoutes": []
+    }
+  ]
+}

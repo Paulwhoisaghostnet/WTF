@@ -1,0 +1,127 @@
+{
+  "label": "smoke",
+  "baseUrl": "http://127.0.0.1:3000",
+  "commitRef": null,
+  "startedAt": "2026-06-17T20:31:50.020Z",
+  "finishedAt": "2026-06-17T20:32:03.325Z",
+  "config": {
+    "steps": [
+      3
+    ],
+    "stepSeconds": 8,
+    "sampleMs": 1500,
+    "mix": [
+      {
+        "name": "lobby",
+        "weight": 0.5
+      },
+      {
+        "name": "browse",
+        "weight": 0.35
+      },
+      {
+        "name": "room",
+        "weight": 0.15
+      }
+    ],
+    "auth": "auto",
+    "roomId": null
+  },
+  "metricsAvailable": true,
+  "steps": [
+    {
+      "level": 3,
+      "durationSec": 8,
+      "rps": 2.25,
+      "client": {
+        "totalRequests": 18,
+        "errors": 4,
+        "errorRate": 0.22,
+        "overall": {
+          "avgMs": 156.9,
+          "p50Ms": 18.6,
+          "p95Ms": 855.6,
+          "p99Ms": 855.6,
+          "maxMs": 855.6
+        },
+        "byLabel": {
+          "GET /api/wtf-live/rooms": {
+            "count": 2,
+            "errors": 0,
+            "avgMs": 3.8,
+            "p50Ms": 1.9,
+            "p95Ms": 5.8,
+            "p99Ms": 5.8,
+            "maxMs": 5.8
+          },
+          "GET /api/desktop/settings": {
+            "count": 4,
+            "errors": 0,
+            "avgMs": 21,
+            "p50Ms": 18.6,
+            "p95Ms": 30.7,
+            "p99Ms": 30.7,
+            "maxMs": 30.7
+          },
+          "GET /api/in-app-market": {
+            "count": 4,
+            "errors": 4,
+            "avgMs": 22.1,
+            "p50Ms": 19.8,
+            "p95Ms": 31.1,
+            "p99Ms": 31.1,
+            "maxMs": 31.1
+          },
+          "GET /api/notifications": {
+            "count": 4,
+            "errors": 0,
+            "avgMs": 10.1,
+            "p50Ms": 9.6,
+            "p95Ms": 12.9,
+            "p99Ms": 12.9,
+            "maxMs": 12.9
+          },
+          "GET /api/atproto/me": {
+            "count": 4,
+            "errors": 0,
+            "avgMs": 651,
+            "p50Ms": 509.2,
+            "p95Ms": 855.6,
+            "p99Ms": 855.6,
+            "maxMs": 855.6
+          }
+        }
+      },
+      "server": {
+        "sampleCount": 7,
+        "eventLoopMeanMs": 10.9,
+        "eventLoopP99AvgMs": 13.29,
+        "eventLoopP99MaxMs": 17.19,
+        "cpuPercentAvg": 8.4,
+        "cpuPercentMax": 16,
+        "dbPoolMax": 15,
+        "dbActiveAvg": 0.1,
+        "dbActiveMax": 1,
+        "dbWaitingAvg": 0,
+        "dbWaitingMax": 0,
+        "rssMaxMB": 314.5,
+        "wsTotalMax": 0,
+        "wsLiveMax": 0,
+        "serverWindowReqTotal": 40,
+        "serverWindowErrTotal": 6
+      },
+      "serverRoutes": [
+        {
+          "key": "GET /api/metrics",
+          "count": 1,
+          "errorCount": 0,
+          "avgMs": 1.98,
+          "p50Ms": 1.98,
+          "p95Ms": 1.98,
+          "p99Ms": 1.98,
+          "maxMs": 1.98
+        }
+      ]
+    }
+  ]
+}

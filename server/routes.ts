@@ -82,9 +82,41 @@ import musicRoutes from "./routes/music";
 import mastodonRoutes from "./routes/mastodon";
 import porcupinRoutes from "./routes/porcupin";
 import { buildHealthSnapshot } from "./lib/health";
+import {
+  buildRuntimeMetricsSnapshot,
+  resetRuntimeMetricWindows,
+} from "./lib/runtime-metrics";
+import { getWebSocketStats } from "./websocket";
+import { requirePermission } from "./auth/passport";
+import { timingSafeEqual } from "crypto";
+import type { NextFunction, Request, Response } from "express";
 import { WTF_IN_APP_MARKET_CONTRACT } from "@shared/types";
 
 const SHADOWNET_IN_APP_MARKET_CONTRACT = "KT1MdvE9hYFpQP7boybqSJ9XNfXjLUG6QZrC";
+
+/**
+ * Gate for `/api/metrics`. Default posture is admin-only
+ * (`access_admin_panel`). When `WTF_METRICS_TOKEN` is set, a matching
+ * `x-metrics-token` header or `?token=` query also grants access so an
+ * automated load harness can scrape metrics without an admin session.
+ */
+function metricsGate(req: Request, res: Response, next: NextFunction): void {
+  const token = process.env.WTF_METRICS_TOKEN?.trim();
+  if (token) {
+    const provided = String(
+      req.headers["x-metrics-token"] || req.query.token || "",
+    ).trim();
+    if (provided.length === token.length && provided.length > 0) {
+      const a = Buffer.from(provided);
+      const b = Buffer.from(token);
+      if (a.length === b.length && timingSafeEqual(a, b)) {
+        next();
+        return;
+      }
+    }
+  }
+  requirePermission("access_admin_panel")(req, res, next);
+}
 
 export function registerRoutes(app: Express) {
   app.get("/api/health", async (_req, res) => {
@@ -138,6 +170,38 @@ export function registerRoutes(app: Express) {
         },
         chain: null,
         jobs: null,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // Runtime metrics: event-loop lag, CPU, DB pool saturation, per-route
+  // latency, and live WebSocket counts. Admin- or token-gated. A load
+  // harness polls `?reset=1` at a fixed cadence to get clean delta windows.
+  app.get("/api/metrics", metricsGate, async (req, res) => {
+    try {
+      const { pool } = await import("./db");
+      const poolOptions = (pool as unknown as { options?: { max?: number } })
+        .options;
+      const dbPool = {
+        max: typeof poolOptions?.max === "number" ? poolOptions.max : null,
+        total: pool.totalCount,
+        idle: pool.idleCount,
+        active: pool.totalCount - pool.idleCount,
+        waiting: pool.waitingCount,
+      };
+      const snapshot = buildRuntimeMetricsSnapshot({
+        dbPool,
+        websocket: getWebSocketStats() as unknown as Record<string, number>,
+      });
+      if (String(req.query.reset || "") === "1") {
+        resetRuntimeMetricWindows();
+      }
+      res.json(snapshot);
+    } catch (err) {
+      res.status(500).json({
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
         timestamp: new Date().toISOString(),
       });
     }

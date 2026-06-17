@@ -128,6 +128,50 @@ export function getWtfLiveRoomPresence(roomId: string): WtfLiveRoomPresence {
   };
 }
 
+export type WebSocketStats = {
+  total: number;
+  wtfLive: number;
+  board: number;
+  studio: number;
+  authenticated: number;
+  activeWtfLiveRooms: number;
+};
+
+/**
+ * Live counts of open WebSocket connections by surface. Used by the runtime
+ * metrics endpoint so load tests can see how realtime concurrency tracks with
+ * event-loop lag and broadcast fan-out cost.
+ */
+export function getWebSocketStats(): WebSocketStats {
+  let total = 0;
+  let wtfLive = 0;
+  let board = 0;
+  let studio = 0;
+  let authenticated = 0;
+  const rooms = new Set<string>();
+  for (const client of clients) {
+    if (client.ws.readyState !== WebSocket.OPEN) continue;
+    total += 1;
+    if (client.userId > 0) authenticated += 1;
+    if (client.publicSocket === "wtf-live") {
+      wtfLive += 1;
+      if (client.wtfLiveRoomId) rooms.add(client.wtfLiveRoomId);
+    } else if (client.studioProjectId || client.studioFileId) {
+      studio += 1;
+    } else if (client.channelId) {
+      board += 1;
+    }
+  }
+  return {
+    total,
+    wtfLive,
+    board,
+    studio,
+    authenticated,
+    activeWtfLiveRooms: rooms.size,
+  };
+}
+
 function parseCookieHeader(header: string | undefined): Map<string, string> {
   const parsed = new Map<string, string>();
   if (!header) return parsed;

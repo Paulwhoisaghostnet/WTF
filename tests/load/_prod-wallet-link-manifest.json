@@ -1,0 +1,21 @@
+{
+  "purpose": "Reversible surgical wallet links added to PROD (wtfos.app) so local keyring puppets can wallet-login for load testing.",
+  "createdAt": "2026-06-17",
+  "db": "wtf @ 5.78.202.50 (wtf-app-postgres-1)",
+  "table": "user_wallets",
+  "note": "All rows is_primary=false; addresses are local test-keyring puppet wallets. Safe to DELETE by id to fully revert.",
+  "rows": [
+    { "id": 40, "user_id": 43, "username": "e2e_ernie", "wallet_address": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ" },
+    { "id": 41, "user_id": 45, "username": "e2e_bigbird", "wallet_address": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL" },
+    { "id": 42, "user_id": 50, "username": "e2e_abbycadabby", "wallet_address": "tz1bhbjkaxxCKVXZPWjL8r46Nw1SMJggp9qs" },
+    { "id": 43, "user_id": 52, "username": "e2e_rosita", "wallet_address": "tz1eSySZQjYUXXrrmy65PGujfKE1ssGegGpj" },
+    { "id": 44, "user_id": 28, "username": "e2e_thecount", "wallet_address": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV" },
+    { "id": 45, "user_id": 48, "username": "e2e_cookiemonster", "wallet_address": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf" },
+    { "id": 46, "user_id": 51, "username": "e2e_zoe", "wallet_address": "tz1fS9roDUJvRkXFWfekf7YF1rHpLX66Hmw6" },
+    { "id": 47, "user_id": 49, "username": "e2e_oscar", "wallet_address": "tz1RqDCZZgxrqMDUBLDRJAWUhtiHy39yMf62" },
+    { "id": 48, "user_id": 47, "username": "e2e_grover", "wallet_address": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh" },
+    { "id": 49, "user_id": 46, "username": "e2e_snuffaluffagus", "wallet_address": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT" },
+    { "id": 50, "user_id": 44, "username": "e2e_elmo", "wallet_address": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk" }
+  ],
+  "revertSql": "DELETE FROM user_wallets WHERE id IN (40,41,42,43,44,45,46,47,48,49,50);"
+}

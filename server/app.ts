@@ -18,6 +18,7 @@ import { csrfProtection } from "./lib/csrf";
 import { createAdminMutationAuditMiddleware } from "./lib/admin-mutation-audit";
 import { canonicalDomainRedirectMiddleware } from "./lib/canonical-domain";
 import { userSiteHostRouter } from "./features/wtf-sites/host-router";
+import { routeTimingMiddleware } from "./lib/runtime-metrics";
 
 /**
  * Read-heavy playback routes exempted from the generic `/api/*` rate
@@ -67,8 +68,34 @@ function isLocalE2eRateLimitBypass(req: Request): boolean {
   return ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1";
 }
 
+/**
+ * Explicit IP allowlist that exempts only known load-test source IPs from
+ * the API/auth rate limiters. Unlike the local-only E2E bypass this works in
+ * production, but it is scoped to specific IPs set in
+ * `WTF_LOAD_TEST_ALLOW_IPS` (comma-separated) and is a no-op when unset, so it
+ * never relaxes limits for the public.
+ */
+const loadTestAllowedIps: ReadonlySet<string> = new Set(
+  String(process.env.WTF_LOAD_TEST_ALLOW_IPS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
+
+function isAllowlistedLoadTestIp(req: Request): boolean {
+  if (loadTestAllowedIps.size === 0) return false;
+  const ip = String(req.ip || req.socket.remoteAddress || "");
+  if (loadTestAllowedIps.has(ip)) return true;
+  const normalized = ip.startsWith("::ffff:") ? ip.slice("::ffff:".length) : ip;
+  return loadTestAllowedIps.has(normalized);
+}
+
+function isRateLimitExempt(req: Request): boolean {
+  return isLocalE2eRateLimitBypass(req) || isAllowlistedLoadTestIp(req);
+}
+
 function shouldSkipApiRateLimit(req: Request): boolean {
-  return isMediaStreamRequest(req) || isLocalE2eRateLimitBypass(req);
+  return isMediaStreamRequest(req) || isRateLimitExempt(req);
 }
 
 function sessionOrIpRateLimitKey(req: Request): string {
@@ -135,6 +162,10 @@ export async function createApp() {
     app.set("trust proxy", 1);
   }
   app.use(canonicalDomainRedirectMiddleware);
+  // Per-request latency + in-flight accounting for the runtime metrics
+  // endpoint. Registered early so it brackets the full middleware chain
+  // (rate limiters, auth, handlers) and reports true end-to-end timing.
+  app.use(routeTimingMiddleware);
 
   // Base CSP directives shared by the whole app.  Game-cartridge pages get
   // a superset of this (see below) — keeping them derived from the same
@@ -290,7 +321,7 @@ export async function createApp() {
       max: 30,
       maxEntries: 2_000,
       message: { error: "Too many client log events, please try again later" },
-      skip: isLocalE2eRateLimitBypass,
+      skip: isRateLimitExempt,
     })
   );
 
@@ -301,7 +332,7 @@ export async function createApp() {
       windowMs: 60 * 1000,
       max: 60,
       message: { error: "Too many CLI route probes, please try again later" },
-      skip: isLocalE2eRateLimitBypass,
+      skip: isRateLimitExempt,
     })
   );
 
@@ -323,7 +354,7 @@ export async function createApp() {
       windowMs: 15 * 60 * 1000,
       max: 20,
       message: { error: "Too many authentication attempts, please try again later" },
-      skip: isLocalE2eRateLimitBypass,
+      skip: isRateLimitExempt,
     })
   );
 
@@ -334,7 +365,7 @@ export async function createApp() {
       windowMs: 15 * 60 * 1000,
       max: 30,
       message: { error: "Too many wallet auth attempts, please try again later" },
-      skip: isLocalE2eRateLimitBypass,
+      skip: isRateLimitExempt,
     })
   );
 

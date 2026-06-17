@@ -43,6 +43,24 @@ const identityCache = createBoundedExpiringCache<TezosDomainsIdentity>({
   maxEntries: Math.max(100, Number(process.env.TEZOS_DOMAINS_CACHE_MAX_ENTRIES || 5_000)),
 });
 
+// Short TTL for failed/empty resolutions. Without this, a slow or failing
+// Tezos Domains upstream is never cached, so every request re-queues behind the
+// 3 req/s upstream limiter. Under concurrency this serializes the hot
+// `/api/atproto/me` path into multi-second responses (load-test confirmed:
+// 20 concurrent calls -> ~20s). Negative caching breaks that loop.
+const NEGATIVE_CACHE_TTL_MS = Math.max(
+  5_000,
+  Number(process.env.TEZOS_DOMAINS_NEGATIVE_CACHE_TTL_MS || 60_000),
+);
+
+const EMPTY_IDENTITY: TezosDomainsIdentity = { reverseDomain: null, ownedDomains: [] };
+
+// Single-flight de-duplication: collapse concurrent lookups for the same key
+// into one upstream call. This is the dominant fix for the WTF Live lag — many
+// simultaneous identity reads for the same wallet now share one request instead
+// of each consuming a token from the 3 req/s upstream limiter.
+const inFlight = new Map<string, Promise<TezosDomainsIdentity>>();
+
 function normalizeDomainName(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toLowerCase().replace(/^\.+|\.+$/g, "");
@@ -104,27 +122,43 @@ export async function resolveTezosDomainsIdentity(
     client?: GraphqlClient | null;
   } = {}
 ): Promise<TezosDomainsIdentity> {
-  const cacheKey = `${address}:${Math.min(50, Math.max(1, Math.floor(options.limit ?? 20)))}`;
+  const limit = Math.min(50, Math.max(1, Math.floor(options.limit ?? 20)));
+  const cacheKey = `${address}:${limit}`;
   const cached = identityCache.get(cacheKey);
   if (cached) return cached;
 
   const client = options.client === undefined ? domainsClient() : options.client;
   if (!client) {
-    const empty = { reverseDomain: null, ownedDomains: [] };
-    identityCache.set(cacheKey, empty);
-    return empty;
+    identityCache.set(cacheKey, EMPTY_IDENTITY);
+    return EMPTY_IDENTITY;
   }
 
-  const limit = Math.min(50, Math.max(1, Math.floor(options.limit ?? 20)));
-  const payload = await client.postJson<TezosDomainsIdentityResponse>("", {
-    query: tezosDomainsQuery,
-    variables: { address, limit },
-  });
+  // Coalesce concurrent lookups for the same key.
+  const existing = inFlight.get(cacheKey);
+  if (existing) return existing;
 
-  const identity = {
-    reverseDomain: pickReverseTezosDomain(payload),
-    ownedDomains: pickOwnedTezosDomains(payload),
-  };
-  identityCache.set(cacheKey, identity);
-  return identity;
+  const work = (async (): Promise<TezosDomainsIdentity> => {
+    try {
+      const payload = await client.postJson<TezosDomainsIdentityResponse>("", {
+        query: tezosDomainsQuery,
+        variables: { address, limit },
+      });
+      const identity = {
+        reverseDomain: pickReverseTezosDomain(payload),
+        ownedDomains: pickOwnedTezosDomains(payload),
+      };
+      identityCache.set(cacheKey, identity);
+      return identity;
+    } catch (err) {
+      // Negatively cache the failure for a short window so a slow/failing
+      // upstream cannot serialize the hot identity path on every request.
+      identityCache.set(cacheKey, EMPTY_IDENTITY, Date.now(), NEGATIVE_CACHE_TTL_MS);
+      return EMPTY_IDENTITY;
+    } finally {
+      inFlight.delete(cacheKey);
+    }
+  })();
+
+  inFlight.set(cacheKey, work);
+  return work;
 }

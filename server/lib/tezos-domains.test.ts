@@ -87,3 +87,49 @@ test("caches Tezos Domains GraphQL identity lookups by address", async () => {
 
   assert.equal(calls, 1);
 });
+
+test("coalesces concurrent identity lookups into a single upstream call", async () => {
+  let calls = 0;
+  const client = {
+    async postJson<T>() {
+      calls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      return {
+        data: {
+          reverseRecord: { domain: { name: "single.tez" } },
+          domains: { items: [{ name: "single.tez" }] },
+        },
+      } as T;
+    },
+  };
+
+  const addr = "tz1SingleFlight2222222222222222222222";
+  const results = await Promise.all(
+    Array.from({ length: 20 }, () => resolveTezosDomainsIdentity(addr, { client })),
+  );
+
+  assert.equal(calls, 1);
+  for (const result of results) {
+    assert.equal(result.reverseDomain, "single.tez");
+  }
+});
+
+test("negatively caches failed lookups so a failing upstream is not re-queried", async () => {
+  let calls = 0;
+  const client = {
+    async postJson<T>(): Promise<T> {
+      calls += 1;
+      throw new Error("upstream unavailable");
+    },
+  };
+
+  const addr = "tz1NegativeCache33333333333333333333";
+  const first = await resolveTezosDomainsIdentity(addr, { client });
+  const second = await resolveTezosDomainsIdentity(addr, { client });
+
+  // Failure is swallowed (empty identity), and the second call is served from
+  // the negative cache rather than hitting the upstream again.
+  assert.deepEqual(first, { reverseDomain: null, ownedDomains: [] });
+  assert.deepEqual(second, { reverseDomain: null, ownedDomains: [] });
+  assert.equal(calls, 1);
+});

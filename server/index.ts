@@ -15,9 +15,11 @@ import {
   installSystemLogging,
   logSystemEvent,
 } from "./lib/system-log";
+import { startRuntimeMetrics } from "./lib/runtime-metrics";
 
 installSystemLogging();
 installPgPoolSystemLogBridge(pool);
+startRuntimeMetrics();
 
 async function main() {
   logSystemEvent({

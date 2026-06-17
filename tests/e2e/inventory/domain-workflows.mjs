@@ -773,6 +773,7 @@ export const DOMAIN_WORKFLOWS = [
     ],
     apiProbes: [
       { method: "GET", path: "/api/admin/stats" },
+      { method: "GET", path: "/api/metrics", expectedStatuses: [200, 401, 403] },
       { method: "GET", path: "/api/admin/apps/desktop" },
       { method: "GET", path: "/api/admin/users" },
       { method: "GET", path: "/api/admin/roles" },
