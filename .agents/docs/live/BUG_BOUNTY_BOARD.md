@@ -100,9 +100,9 @@ Priority labels:
 | WTF-BB-273 | Verified | Codex Airporters Octez Connect full-send | 2026-06-17 | Macaroni / published drop wallet compatibility | P1 | 12 | 7 | 3 | 5 | 0 | Airporters is mainnet, but Brave/Kukai users could receive a confusing Mainnet mismatch because published/drop wallet code sent the dApp RPC inside a named wallet network; fixed with Octez Connect-primary wallet bridge, Beacon backup, plain named wallet networks, and serve-time injection for stored Macaroni drops; verified live after Hetzner deploy on `https://paulwhoisaghost.wtfos.me/airporters-vol-1` |
 | WTF-BB-274 | Verified | Codex Macaroni V2 editions full-send | 2026-06-17 | Macaroni / contract versions, editions, and minter royalties | P1 | 14 | 3 | 4 | 5 | 1 | Macaroni Studio only generated the V1 blind-mint contract, so creators could not choose shared-token editions, V2 minter royalty policies, or multiple delayed-reveal placeholder artifacts; fixed with a V1/V2 selector, SmartPy V2 contract template, compiled public artifact, generated config, and source-policy coverage; verified live on wtfos.app after Hetzner deploy |
 | WTF-BB-275 | Verified | Codex Broot direct-route full-send | 2026-06-18 | Creation tools / shared route metadata | P1 | 10 | 10 | 2 | 4 | 0 | Generated creation-tool routes could exist in `PAGE_DEFS` while missing from `BROWSER_ROUTE_META` and `/api/access`, causing direct `/tools/broot` opens or agent route discovery to miss Broot; fixed by mirroring generated routes across both manifests and verified live on wtfos.app |
-| WTF-BB-276 | Fixed | Codex Skywire live/group/vault full-send | 2026-06-18 | Skywire / AT Protocol parity and Tezos vault performance | P1 | 13 | 6 | 3 | 5 | 1 | Skywire lagged current Bluesky chat/live features and could reprocess large Tezos wallets through expensive source calls instead of leaning on indexed holdings; fixed locally with live-status repo writes, group conversation creation, permission coverage, and vault pagination verification, pending production deploy verification |
-| WTF-BB-277 | Fixed | Codex inventory harness contract repair | 2026-06-18 | E2E / CH-EASE and WTF LIVE harness parity | P1 | 10 | 10 | 2 | 4 | 0 | CH-EASE and WTF LIVE inventory specs could fall through generic harness mocks that dropped package, soundboard, media-deck, and handoff event contracts; fixed locally with stateful domain mocks and full inventory E2E verification, pending production deploy verification |
-| WTF-BB-278 | Fixed | Codex external-link quality gate repair | 2026-06-18 | Frontend security / tabnabbing link safety | P2 | 7 | 15 | 1 | 2 | 1 | Colander opened a contract explorer link with `target="_blank"` and only `rel="noreferrer"`, tripping the external-link safety gate; fixed locally by adding `noopener noreferrer`, pending production deploy verification |
+| WTF-BB-276 | Verified | Codex Skywire live/group/vault full-send | 2026-06-18 | Skywire / AT Protocol parity and Tezos vault performance | P1 | 13 | 6 | 3 | 5 | 1 | Skywire now supports Bluesky live-status record writes, group conversation creation, permission coverage, and paginated indexed vault holdings; verified by local unit/type/build/full inventory checks, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live `wtfos.app` Skywire/API smoke |
+| WTF-BB-277 | Verified | Codex inventory harness contract repair | 2026-06-18 | E2E / CH-EASE and WTF LIVE harness parity | P1 | 10 | 10 | 2 | 4 | 0 | CH-EASE and WTF LIVE inventory specs now use stateful package, handoff, soundboard, media-deck, and event mocks instead of generic catch-all responses; verified by focused inventory specs, full inventory 343/343, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live route/static smoke |
+| WTF-BB-278 | Verified | Codex external-link quality gate repair | 2026-06-18 | Frontend security / tabnabbing link safety | P2 | 7 | 15 | 1 | 2 | 1 | Colander explorer links now include `rel="noopener noreferrer"` with `target="_blank"`; verified by `node scripts/check-external-links.mjs`, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live Colander asset smoke |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5876,7 +5876,7 @@ Priority labels:
 ### WTF-BB-276 - Skywire live status, group chat, and vault read-model parity
 
 - Category: Skywire / AT Protocol parity and Tezos vault performance
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Skywire live/group/vault full-send
 - Score: C3 + F5 + S1 + P1(4) = 13
 - Evidence:
@@ -5899,12 +5899,17 @@ Priority labels:
   - `./node_modules/.bin/playwright test tests/playwright/inventory/skywire-feed.spec.mjs --project=chromium`
   - `./node_modules/.bin/playwright test tests/playwright/inventory --project=chromium` passed 343/343.
 - Production verification:
-  - Pending this full-send deployment.
+  - GitHub Quality Gates `27734260941` completed successfully for commit `082a183a`.
+  - Deploy to Hetzner `27734260925` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"`, `commitRef:"082a183"`, `db:true`, and `jobs:true`.
+  - Live `https://wtfos.app/skywire` and `https://wtfos.app/live` returned 200.
+  - Live `https://wtfos.app/api/skywire/live-status` returned 401 when unauthenticated, confirming the new endpoint is present behind auth.
+  - The deployed Skywire bundle served from `https://wtfos.app/assets/Skywire-wtf2-Ij59tUGD.js` and contains the live-status/group-chat code path.
 
 ### WTF-BB-277 - Inventory harness mocks can drop stateful domain contracts
 
 - Category: E2E / CH-EASE and WTF LIVE harness parity
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex inventory harness contract repair
 - Score: C2 + F4 + S0 + P1(4) = 10
 - Evidence:
@@ -5924,12 +5929,16 @@ Priority labels:
   - `./node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs --project=chromium`
   - `./node_modules/.bin/playwright test tests/playwright/inventory --project=chromium` passed 343/343.
 - Production verification:
-  - Pending this full-send deployment.
+  - GitHub Quality Gates `27734260941` completed successfully for commit `082a183a`.
+  - Deploy to Hetzner `27734260925` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"`, `commitRef:"082a183"`, `db:true`, and `jobs:true`.
+  - Live `https://wtfos.app/creation-tools/macaroni/index.html` contains the `packageSourceStatus` handoff marker.
+  - The deployed Macaroni Packager bundle served from `https://wtfos.app/assets/MacaroniPackager-wtf2-BfyBHcU3.js`.
 
 ### WTF-BB-278 - External links must include noopener as well as noreferrer
 
 - Category: Frontend security / tabnabbing link safety
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex external-link quality gate repair
 - Score: C1 + F2 + S1 + P2(3) = 7
 - Evidence:
@@ -5940,7 +5949,10 @@ Priority labels:
 - Local verification:
   - `node scripts/check-external-links.mjs`
 - Production verification:
-  - Pending this full-send deployment.
+  - GitHub Quality Gates `27734260941` completed successfully for commit `082a183a`.
+  - Deploy to Hetzner `27734260925` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"`, `commitRef:"082a183"`, `db:true`, and `jobs:true`.
+  - The deployed Colander bundle served from `https://wtfos.app/assets/Colander-wtf2-D4jVEv_R.js` and contains `rel:"noopener noreferrer"`.
 
 ## Backlog Intake Template
 
