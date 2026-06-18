@@ -381,6 +381,30 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The server uses a search-capable Bluesky AppView for app.bsky.feed.searchPosts, domain-filters Objkt and Teia searches, filters normalized text/embed/facet hrefs through Skywire's token parser, and returns 502 when every upstream marketplace search fails.",
   },
   {
+    id: "skywire.live-status-visible-indicator",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["skywire"],
+    ownerSpec: "tests/playwright/inventory/skywire-feed.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"live status\"",
+    userVisibleAssertion:
+      "After a user goes live from Skywire, the main Skywire shell shows a WTF LIVE header badge and live banner outside the Signals form, with controls to open WTF LIVE or return to the live-status controls.",
+    durableSideEffectAssertion:
+      "The same flow writes `app.bsky.actor.status/self`, stores the live URL in the Skywire live-status read model, and removes the local badge/banner after the user clears the status.",
+  },
+  {
+    id: "skywire.signal-starter-presets",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["skywire"],
+    ownerSpec: "tests/playwright/inventory/skywire-feed.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"signal starter\"",
+    userVisibleAssertion:
+      "The Skywire Signals tab offers standard starter presets for recent sales, live broadcasts, open drops, collector calls, and proofs; selecting the recent-sale starter fills the signal type, text, and tags with creator-friendly defaults.",
+    durableSideEffectAssertion:
+      "Publishing the recent-sale starter writes an `app.wtfgameshow.skywire.signal` repo record with `signalType=market.sale`, sale/collector/tezos tags, and an optional related token URL.",
+  },
+  {
     id: "skywire.oauth-original-window-permission-sync",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["skywire"],

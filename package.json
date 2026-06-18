@@ -126,7 +126,11 @@
     "ux-lab:panel": "tsx scripts/run-ux-lab-panel.ts",
     "check:vite-env": "node --test scripts/vite-env-policy.test.mjs",
     "check:external-links": "node scripts/check-external-links.mjs",
-    "db:backup": "bash scripts/backup-db.sh"
+    "db:backup": "bash scripts/backup-db.sh",
+    "load:test": "npx tsx tests/load/run-load.mjs",
+    "load:test:prod-baseline": "WTF_LOAD_BASE_URL=https://wtfos.app WTF_LOAD_ALLOW_PRODUCTION=1 WTF_LOAD_LABEL=prod-baseline WTF_LOAD_STEPS=1,3 WTF_LOAD_MIX=public:1 WTF_LOAD_MAX_RPS=4 WTF_LOAD_STEP_SECONDS=20 WTF_LOAD_AUTH=guest npx tsx tests/load/run-load.mjs",
+    "load:test:prod-ramp": "WTF_LOAD_BASE_URL=https://wtfos.app WTF_LOAD_ALLOW_PRODUCTION=1 WTF_LOAD_AUTH=wallet WTF_LOAD_LABEL=prod-ramp WTF_LOAD_STEPS=1,3,5,10 WTF_LOAD_STEP_SECONDS=25 npx tsx tests/load/run-load.mjs",
+    "load:ui:wtf-live": "npx tsx tests/load/ui-wtf-live-scenario.mjs"
   },
   "dependencies": {
     "@atproto/api": "^0.20.4",

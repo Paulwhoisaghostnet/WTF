@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { request as pwRequest } from "@playwright/test";
 import { loadConfig, loadPuppetCredentials, isProductionHost } from "./config.mjs";
+import { loginWalletActor } from "./auth-wallet.mjs";
 import { resolveJourney, pickJourneyName, sleep } from "./journeys.mjs";
 import { renderMarkdown, summarizeClient, summarizeServer } from "./report.mjs";
 
@@ -44,6 +45,17 @@ async function fetchHealth() {
 }
 
 async function loginActor(actor) {
+  const useWallet =
+    config.auth === "wallet" ||
+    (config.auth === "auto" && isProductionHost(config.baseUrl));
+  if (useWallet) {
+    const bundle = await loginWalletActor(config.baseUrl, actor);
+    const context = await pwRequest.newContext({
+      baseURL: config.baseUrl,
+      extraHTTPHeaders: bundle.cookieHeader ? { Cookie: bundle.cookieHeader } : undefined,
+    });
+    return { actor, context, cookieHeader: bundle.cookieHeader };
+  }
   const context = await pwRequest.newContext({ baseURL: config.baseUrl });
   const res = await context.post("/api/auth/login", {
     data: { username: actor.username, password: actor.password },

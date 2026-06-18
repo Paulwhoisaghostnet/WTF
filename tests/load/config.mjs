@@ -60,7 +60,7 @@ export function loadConfig() {
     settleSeconds: envInt("WTF_LOAD_SETTLE_SECONDS", 6),
     sampleMs: envInt("WTF_LOAD_SAMPLE_MS", 2000),
     mix: parseMix(envStr("WTF_LOAD_MIX", "lobby:0.5,browse:0.35,room:0.15")),
-    auth: envStr("WTF_LOAD_AUTH", "auto"), // auto | guest | required
+    auth: envStr("WTF_LOAD_AUTH", "auto"), // auto | guest | required | wallet
     credentialsPath: envStr(
       "WTF_LOAD_CREDENTIALS_PATH",
       DEFAULT_CREDENTIALS_PATH,
@@ -78,9 +78,9 @@ export function loadConfig() {
 export async function loadPuppetCredentials(config) {
   if (config.auth === "guest") return null;
   if (!existsSync(config.credentialsPath)) {
-    if (config.auth === "required") {
+    if (config.auth === "required" || config.auth === "wallet") {
       throw new Error(
-        `WTF_LOAD_AUTH=required but no puppet credentials at ${config.credentialsPath}. Run: npm run test:e2e:puppets:seed`,
+        `WTF_LOAD_AUTH=${config.auth} but no puppet credentials at ${config.credentialsPath}. Run: npm run test:e2e:puppets:seed`,
       );
     }
     return null;

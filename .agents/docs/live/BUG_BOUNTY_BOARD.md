@@ -103,14 +103,16 @@ Priority labels:
 | WTF-BB-276 | Verified | Codex Skywire live/group/vault full-send | 2026-06-18 | Skywire / AT Protocol parity and Tezos vault performance | P1 | 13 | 6 | 3 | 5 | 1 | Skywire now supports Bluesky live-status record writes, group conversation creation, permission coverage, and paginated indexed vault holdings; verified by local unit/type/build/full inventory checks, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live `wtfos.app` Skywire/API smoke |
 | WTF-BB-277 | Verified | Codex inventory harness contract repair | 2026-06-18 | E2E / CH-EASE and WTF LIVE harness parity | P1 | 10 | 10 | 2 | 4 | 0 | CH-EASE and WTF LIVE inventory specs now use stateful package, handoff, soundboard, media-deck, and event mocks instead of generic catch-all responses; verified by focused inventory specs, full inventory 343/343, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live route/static smoke |
 | WTF-BB-278 | Verified | Codex external-link quality gate repair | 2026-06-18 | Frontend security / tabnabbing link safety | P2 | 7 | 15 | 1 | 2 | 1 | Colander explorer links now include `rel="noopener noreferrer"` with `target="_blank"`; verified by `node scripts/check-external-links.mjs`, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live Colander asset smoke |
-| WTF-BB-279 | Fixed | Codex Broot media-open repair | 2026-06-18 | Broot / media file import | P1 | 9 | 12 | 2 | 3 | 0 | Broot's top-level Open picker only accepted project JSON and the side import accepted only `image/*`, so normal PNG/JPG/GIF/MP4 media looked unsupported; fixed locally by unifying project/image/video import handling, pending production deploy verification |
-| WTF-BB-280 | Fixed | Codex Broot wallet/HEN mint repair | 2026-06-18 | Broot / Tezos wallet publishing | P1 | 13 | 6 | 3 | 5 | 1 | Broot now restores a previously connected wallet after refresh, replaces repeated connect prompts with connected state, and adds direct Mainnet HEN minting through the user's wallet with gas/storage paid by the user; pending production deploy verification |
-| WTF-BB-287 | Fixed | Codex Broot audit implementation full-send | 2026-06-18 | Broot / app-window layout | P1 | 12 | 7 | 3 | 5 | 0 | Broot now keeps tools, canvas, and layers visible in the default wtfOS window by moving tabbed mobile mode below the default AppWindow width; locally verified with focused Broot E2E, full inventory, and browser metrics, pending production deploy verification |
-| WTF-BB-288 | Fixed | Codex Broot audit implementation full-send | 2026-06-18 | Broot / destructive layer operations | P1 | 11 | 8 | 3 | 4 | 0 | Broot layer merge/flatten/warp/delete now have selection guards, undo/redo history, shift/cmd multi-select from the layer list, and confirmation for destructive full-canvas/delete actions; locally verified, pending production deploy verification |
-| WTF-BB-289 | Fixed | Codex Broot audit implementation full-send | 2026-06-18 | Broot / runtime performance | P2 | 9 | 12 | 3 | 3 | 0 | Broot now serves a prebuilt `js/app.js` browser bundle with local glfx/FFmpeg assets and no runtime Babel or `text/babel` script in the iframe; locally verified, pending production deploy verification |
-| WTF-BB-290 | Fixed | Codex Broot audit implementation full-send | 2026-06-18 | Broot / keyboard and accessibility | P2 | 9 | 12 | 3 | 3 | 0 | Broot now exposes focus-visible styling, object-specific layer labels, keyboard undo/redo/delete/nudge handling, and a focusable canvas workspace; locally verified, pending production deploy verification |
-| WTF-BB-291 | Fixed | Codex Broot audit implementation full-send | 2026-06-18 | Broot / HEN mint trust preview | P1 | 13 | 6 | 3 | 5 | 1 | Broot HEN publishing now splits Prepare and Sign, shows contract/network/wallet/token/CID/fee/storage review before wallet send, and prevents wallet submission until the user confirms; locally verified, pending production deploy verification |
-| WTF-BB-292 | Fixed | Codex Broot audit implementation full-send | 2026-06-18 | Broot / animation export UX | P2 | 9 | 12 | 2 | 4 | 0 | Broot MP4 export now defaults to a neutral still-hold capture and exposes explicit pulse/reveal modes plus duration/FPS controls instead of silently applying a hardcoded pulse; locally verified, pending production deploy verification |
+| WTF-BB-279 | Verified | Codex Broot media-open repair | 2026-06-18 | Broot / media file import | P1 | 9 | 12 | 2 | 3 | 0 | Broot's top-level Open picker only accepted project JSON and the side import accepted only `image/*`, so normal PNG/JPG/GIF/MP4 media looked unsupported; fixed by unifying project/image/video import handling and verified live on `wtfos.app` commit `94d26fe` |
+| WTF-BB-280 | Verified | Codex Broot wallet/HEN mint repair | 2026-06-18 | Broot / Tezos wallet publishing | P1 | 13 | 6 | 3 | 5 | 1 | Broot now restores a previously connected wallet after refresh, replaces repeated connect prompts with connected state, and adds direct Mainnet HEN minting through the user's wallet with gas/storage paid by the user; verified live on `wtfos.app` commit `94d26fe` |
+| WTF-BB-281 | Fixed | Codex Skywire live-status UX pass | 2026-06-18 | Skywire / Bluesky live status UX | P2 | 8 | 14 | 2 | 3 | 0 | Skywire live-status writes could succeed while the local app gave no persistent owned indicator if Bluesky or Ovoid suppressed beta badges; fixed locally with a WTF LIVE header badge/banner and focused Playwright coverage, pending production deploy verification |
+| WTF-BB-286 | Fixed | Codex Skywire Signal starter pass | 2026-06-18 | Skywire / Skywire Signals publishing UX | P2 | 8 | 14 | 2 | 3 | 0 | Skywire Signals required users to hand-author record type, text, tags, and related URI for common creator actions; fixed locally with starter presets and focused publish coverage, pending production deploy verification |
+| WTF-BB-287 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / app-window layout | P1 | 12 | 7 | 3 | 5 | 0 | Broot now keeps tools, canvas, and layers visible in the default wtfOS window by moving tabbed mobile mode below the default AppWindow width; verified live on `wtfos.app` commit `94d26fe` |
+| WTF-BB-288 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / destructive layer operations | P1 | 11 | 8 | 3 | 4 | 0 | Broot layer merge/flatten/warp/delete now have selection guards, undo/redo history, shift/cmd multi-select from the layer list, and confirmation for destructive full-canvas/delete actions; verified live on `wtfos.app` commit `94d26fe` |
+| WTF-BB-289 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / runtime performance | P2 | 9 | 12 | 3 | 3 | 0 | Broot now serves a prebuilt `js/app.js` browser bundle with local glfx/FFmpeg assets and no runtime Babel or `text/babel` script in the iframe; verified live on `wtfos.app` commit `94d26fe` |
+| WTF-BB-290 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / keyboard and accessibility | P2 | 9 | 12 | 3 | 3 | 0 | Broot now exposes focus-visible styling, object-specific layer labels, keyboard undo/redo/delete/nudge handling, and a focusable canvas workspace; verified live on `wtfos.app` commit `94d26fe` |
+| WTF-BB-291 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / HEN mint trust preview | P1 | 13 | 6 | 3 | 5 | 1 | Broot HEN publishing now splits Prepare and Sign, shows contract/network/wallet/token/CID/fee/storage review before wallet send, and prevents wallet submission until the user confirms; verified live on `wtfos.app` commit `94d26fe` |
+| WTF-BB-292 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / animation export UX | P2 | 9 | 12 | 2 | 4 | 0 | Broot MP4 export now defaults to a neutral still-hold capture and exposes explicit pulse/reveal modes plus duration/FPS controls instead of silently applying a hardcoded pulse; verified live on `wtfos.app` commit `94d26fe` |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5965,7 +5967,7 @@ Priority labels:
 ### WTF-BB-279 - Broot Open rejects normal creator media
 
 - Category: Broot / media file import
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Broot media-open repair
 - Score: C2 + F3 + S0 + P1(4) = 9
 - Evidence:
@@ -5988,12 +5990,15 @@ Priority labels:
   - Passed `./node_modules/.bin/tsx --test client/src/features/admin-os/admin-surface-registry.test.ts`.
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs`.
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
-  - Production verification is pending a deploy.
+  - GitHub Quality Gates `27738388493` completed successfully for deployed commit `94d26fef`.
+  - Deploy to Hetzner `27738388502` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"` and `commitRef:"94d26fe"`.
+  - Live `https://wtfos.app/creation-tools/broot/index.html` loads `./js/app.js`, and the deployed Broot bundle includes the unified Open/media import path.
 
 ### WTF-BB-280 - Broot wallet connection does not persist and HEN publishing is not wallet-signed
 
 - Category: Broot / Tezos wallet publishing
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Broot wallet/HEN mint repair
 - Score: C3 + F5 + S1 + P1(4) = 13
 - Evidence:
@@ -6018,12 +6023,54 @@ Priority labels:
   - Passed `./node_modules/.bin/tsx --test client/src/features/admin-os/admin-surface-registry.test.ts`.
   - Passed `./node_modules/.bin/tsc --noEmit --pretty false`.
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
-  - Production verification is pending a deploy.
+  - GitHub Quality Gates `27738388493` completed successfully for deployed commit `94d26fef`.
+  - Deploy to Hetzner `27738388502` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"` and `commitRef:"94d26fe"`.
+  - Live `https://wtfos.app/creation-tools/broot/js/app.js` contains `Prepare HEN Mint`, connected wallet restore code, and the Sign review flow.
+
+### WTF-BB-281 - Skywire live status has no obvious local indicator
+
+- Category: Skywire / Bluesky live status UX
+- Status: Fixed
+- Owner/Session: Codex Skywire live-status UX pass
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - Skywire can now write and clear `app.bsky.actor.status/self` live records, but Bluesky/Ovoid beta rendering is platform-controlled and may not show the badge consistently.
+  - Without an owned in-app indicator, users could successfully go live and still have no persistent confirmation in the Skywire shell after leaving the live-status controls.
+- Why it matters:
+  - Live status is a creator trust surface. If the portable AT record writes but the app does not visibly reflect it, hosts may retry or assume the connection failed.
+- Correction:
+  - Added a top-level Skywire live-status read model shared with the Signals controls.
+  - Added a `WTF LIVE` header badge and live banner with actions to open the live URL or jump back to Signals live-status controls.
+  - Registered `skywire.live-status-visible-indicator` in behavior assertions, admin surface ownership, domain workflow probes, and the user interaction inventory.
+- Verification:
+  - Passed `PATH=/opt/homebrew/bin:/usr/local/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "live status|signal starter" --project=chromium`.
+  - Production verification is pending this full-send deploy.
+
+### WTF-BB-286 - Skywire Signals lack creator-friendly starter presets
+
+- Category: Skywire / Skywire Signals publishing UX
+- Status: Fixed
+- Owner/Session: Codex Skywire Signal starter pass
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - The Signals tab exposed a raw record publisher, so common creator actions such as recent sales, live broadcasts, drops, collector calls, and proofs required users to hand-author type, text, tags, and related URI.
+  - The server signal schema did not yet include the more specific `market.sale`, `broadcast.live`, `drop.open`, `quest.collector`, or `proof.created` types.
+- Why it matters:
+  - Skywire Signals are meant to make portable creator/collector state easy to publish. A blank technical form makes the feature feel like infrastructure instead of an app workflow.
+- Correction:
+  - Added Signal starter cards for recent sales, live broadcasts, open drops, collector calls, and proof of work.
+  - Expanded the server signal schema to accept the starter signal types.
+  - Added focused Playwright and policy coverage proving the recent-sale starter publishes `market.sale` with sale/collector/tezos tags and optional related token URL.
+- Verification:
+  - Passed `npx tsx --test server/features/atproto/skywire-policy.test.ts client/src/features/admin-os/admin-surface-registry.test.ts`.
+  - Passed `PATH=/opt/homebrew/bin:/usr/local/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "live status|signal starter" --project=chromium`.
+  - Production verification is pending this full-send deploy.
 
 ### WTF-BB-287 - Broot default app window hides the editor panels behind mobile tabs
 
 - Category: Broot / app-window layout
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Broot audit implementation full-send
 - Score: C3 + F5 + S0 + P1(4) = 12
 - Evidence:
@@ -6040,12 +6087,15 @@ Priority labels:
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs` (5/5).
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
   - Local browser smoke at `http://127.0.0.1:4173/tools/broot` showed left panel `236x367`, right panel `276x367`, canvas stage `400x337`, `.mobile-tabs` display `none`, and zero console errors.
-  - Production verification is pending this full-send deploy.
+  - GitHub Quality Gates `27738388493` completed successfully for deployed commit `94d26fef`.
+  - Deploy to Hetzner `27738388502` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"` and `commitRef:"94d26fe"`.
+  - Live Broot index and bundle smoke confirmed the deployed editor uses the compiled `./js/app.js` asset.
 
 ### WTF-BB-288 - Broot destructive layer operations lack undo, guards, and confirmation
 
 - Category: Broot / destructive layer operations
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Broot audit implementation full-send
 - Score: C3 + F4 + S0 + P1(4) = 11
 - Evidence:
@@ -6063,12 +6113,15 @@ Priority labels:
   - Focused Broot Playwright asserts merge is disabled until multi-select, flatten requires confirmation, and Undo restores multiple layers after flatten.
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs` (5/5).
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
-  - Production verification is pending this full-send deploy.
+  - GitHub Quality Gates `27738388493` completed successfully for deployed commit `94d26fef`.
+  - Deploy to Hetzner `27738388502` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"` and `commitRef:"94d26fe"`.
+  - Live `https://wtfos.app/creation-tools/broot/js/app.js` contains the destructive action confirmation and undo-enabled layer operation paths.
 
 ### WTF-BB-289 - Broot compiles JSX with browser Babel at runtime
 
 - Category: Broot / runtime performance
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Broot audit implementation full-send
 - Score: C3 + F3 + S0 + P2(3) = 9
 - Evidence:
@@ -6087,12 +6140,15 @@ Priority labels:
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run creation-tools:check`.
   - Focused Broot Playwright asserts scripts include `./js/app.js` and do not include Babel/text-babel.
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
-  - Production verification is pending this full-send deploy.
+  - GitHub Quality Gates `27738388493` completed successfully for deployed commit `94d26fef`.
+  - Deploy to Hetzner `27738388502` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"` and `commitRef:"94d26fe"`.
+  - Live `https://wtfos.app/creation-tools/broot/index.html` loads `./js/app.js` and has no `text/babel` script.
 
 ### WTF-BB-290 - Broot lacks keyboard-first canvas and visible focus coverage
 
 - Category: Broot / keyboard and accessibility
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Broot audit implementation full-send
 - Score: C3 + F3 + S0 + P2(3) = 9
 - Evidence:
@@ -6109,12 +6165,15 @@ Priority labels:
   - Passed focused Broot Playwright (5/5), which exercises layer list selection, multi-select, destructive confirmation, and undo visibility.
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory:coverage`.
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
-  - Production verification is pending this full-send deploy.
+  - GitHub Quality Gates `27738388493` completed successfully for deployed commit `94d26fef`.
+  - Deploy to Hetzner `27738388502` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"` and `commitRef:"94d26fe"`.
+  - Live `https://wtfos.app/creation-tools/broot/js/app.js` contains the focusable canvas workspace and keyboard action handlers.
 
 ### WTF-BB-291 - Broot HEN mint needs a pre-sign trust review
 
 - Category: Broot / HEN mint trust preview
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Broot audit implementation full-send
 - Score: C3 + F5 + S1 + P1(4) = 13
 - Evidence:
@@ -6131,12 +6190,15 @@ Priority labels:
   - Focused Broot wallet Playwright asserts the review appears first, no `__brootHenMint` wallet-send record exists before signing, then Sign sends exactly once to the HEN contract stub.
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs` (5/5).
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
-  - Production verification is pending this full-send deploy.
+  - GitHub Quality Gates `27738388493` completed successfully for deployed commit `94d26fef`.
+  - Deploy to Hetzner `27738388502` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"` and `commitRef:"94d26fe"`.
+  - Live `https://wtfos.app/creation-tools/broot/js/app.js` contains `Prepare HEN Mint`, review fields, and the delayed `Sign HEN Mint` path.
 
 ### WTF-BB-292 - Broot MP4 export uses a hardcoded opacity pulse
 
 - Category: Broot / animation export UX
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Broot audit implementation full-send
 - Score: C2 + F4 + S0 + P2(3) = 9
 - Evidence:
@@ -6152,7 +6214,10 @@ Priority labels:
   - Focused Broot Playwright asserts the default `MP4 mode` value is `hold`.
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs` (5/5).
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
-  - Production verification is pending this full-send deploy.
+  - GitHub Quality Gates `27738388493` completed successfully for deployed commit `94d26fef`.
+  - Deploy to Hetzner `27738388502` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"` and `commitRef:"94d26fe"`.
+  - Live `https://wtfos.app/creation-tools/broot/js/app.js` contains `MP4 mode` and the explicit hold/pulse/reveal export controls.
 
 ### WTF-BB-282 - Embedded Pasta publishers rely on blocked native modals for critical feedback
 

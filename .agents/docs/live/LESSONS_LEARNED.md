@@ -5207,3 +5207,13 @@
 **Why it mattered**: Static creation tools sit outside the app module graph. A bundle that passes `node --check` can still be shaped for a module loader the iframe does not have, and a harness that serves `dist/public` can hide a fixed source asset behind a stale build artifact.
 
 **Rule**: For static iframe tools, force a browser-native JSX transform when compiling standalone React files, assert no `require`, `jsx-runtime`, `text/babel`, or Babel script remains, rebuild `dist/public` before Playwright, and make focused tests inspect the iframe script list rather than trusting source files.
+
+---
+
+## 2026-06-18 - Production load harnesses need explicit auth and bounded ramps
+
+**What happened**: The dirty load-test work introduced wallet-backed production load scenarios, but the shared config still treated only `required` auth as a hard credentials requirement and the production ramp script could inherit broad local defaults for step shape and duration.
+
+**Why it mattered**: A production load harness that silently falls back to guest mode or an unbounded local profile can produce comforting but false results, or worse, hit the live site with a larger ramp than intended.
+
+**Rule**: Any production load script must declare its auth mode, fail closed when wallet/required credentials are missing, set conservative step and duration bounds in the package script itself, and keep generated load result artifacts out of commits unless the task explicitly asks to archive them.

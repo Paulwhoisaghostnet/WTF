@@ -66,14 +66,39 @@ WTF_METRICS_TOKEN=devtoken WTF_LOAD_ROOM_ID=<roomId> \
 
 Production applies a 200 req/min-per-IP limiter with no bypass, so a single
 machine cannot realistically simulate many distributed users — it just measures
-the limiter. Use the gentle, guest-only, rate-capped baseline instead:
+the limiter. Set `WTF_LOAD_TEST_ALLOW_IPS` on the server (comma-separated egress
+IPs) to bypass the limiter for approved load runs, then use wallet auth:
+
+```bash
+WTF_METRICS_TOKEN=<same-as-server> \
+WTF_LOAD_BASE_URL=https://wtfos.app \
+WTF_LOAD_ALLOW_PRODUCTION=1 \
+WTF_LOAD_AUTH=wallet \
+WTF_LOAD_STEPS=1,3,5,10 \
+npm run load:test:prod-ramp
+```
+
+For a gentle guest-only baseline without auth:
 
 ```bash
 npm run load:test:prod-baseline
 ```
 
-This hits `https://wtfos.app` with guest `public` journeys, 1 and 3 users, and a
-4 rps cap to capture a real-world latency baseline without impacting users.
+## Real-UI WTF Live scenario (presenter + viewers + TV + Skywire)
+
+Runs Chromium with mocked `getUserMedia` / `getDisplayMedia`, joins an existing
+public room (or creates one when CSRF/session allow), toggles screen share as
+the presenter, and holds N guest viewers for the configured duration:
+
+```bash
+WTF_METRICS_TOKEN=<same-as-server> \
+WTF_LOAD_BASE_URL=https://wtfos.app \
+WTF_LOAD_ALLOW_PRODUCTION=1 \
+WTF_LOAD_UI_VIEWERS=3 \
+WTF_LOAD_UI_DURATION_SEC=45 \
+WTF_LOAD_UI_PRESENTER_ID=bigbird \
+npm run load:ui:wtf-live
+```
 
 ## Configuration (env vars)
 
@@ -86,7 +111,7 @@ This hits `https://wtfos.app` with guest `public` journeys, 1 and 3 users, and a
 | `WTF_LOAD_SETTLE_SECONDS` | `6` | Cooldown between steps |
 | `WTF_LOAD_SAMPLE_MS` | `2000` | Metrics sample interval |
 | `WTF_LOAD_MIX` | `lobby:0.5,browse:0.35,room:0.15` | Journey weighting |
-| `WTF_LOAD_AUTH` | `auto` | `auto` \| `guest` \| `required` |
+| `WTF_LOAD_AUTH` | `auto` | `auto` \| `guest` \| `required` \| `wallet` (`auto` uses wallet auth on prod hosts) |
 | `WTF_LOAD_ROOM_ID` | – | Public WTF Live room id for `room` journey |
 | `WTF_LOAD_MAX_RPS` | `0` | Global request cap (0 = unlimited) |
 | `WTF_LOAD_LABEL` | `local` | Report label |

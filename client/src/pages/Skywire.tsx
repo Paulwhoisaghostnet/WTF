@@ -467,6 +467,84 @@ interface SignalsResponse {
   }>;
 }
 
+type SkywireSignalType =
+  | "status"
+  | "quest"
+  | "drop"
+  | "proof"
+  | "broadcast"
+  | "market.sale"
+  | "broadcast.live"
+  | "drop.open"
+  | "quest.collector"
+  | "proof.created";
+
+interface SkywireSignalPreset {
+  id: string;
+  label: string;
+  signalType: SkywireSignalType;
+  text: string;
+  tags: string[];
+  summary: string;
+  relatedUri?: string;
+}
+
+const SKYWIRE_SIGNAL_TYPES: Array<{ value: SkywireSignalType; label: string }> = [
+  { value: "status", label: "Status" },
+  { value: "market.sale", label: "Recent sale" },
+  { value: "broadcast.live", label: "Live broadcast" },
+  { value: "drop.open", label: "Open drop" },
+  { value: "quest.collector", label: "Collector call" },
+  { value: "proof.created", label: "Proof of work" },
+  { value: "quest", label: "Quest" },
+  { value: "drop", label: "Drop" },
+  { value: "proof", label: "Proof" },
+  { value: "broadcast", label: "Broadcast" },
+];
+
+const SKYWIRE_SIGNAL_PRESETS: SkywireSignalPreset[] = [
+  {
+    id: "recent-sale",
+    label: "Recent sale",
+    signalType: "market.sale",
+    text: "Recent sale: [Artwork title] sold for [price] tez. Thank you to the collector.",
+    tags: ["sale", "collector", "tezos"],
+    summary: "Announce a sale collectors can verify and Skywire automations can react to.",
+  },
+  {
+    id: "live-broadcast",
+    label: "Live broadcast",
+    signalType: "broadcast.live",
+    text: "Live now on WTF LIVE: [room or stage title]. Come through.",
+    tags: ["live", "broadcast", "wtf-live"],
+    summary: "Pair a live room with portable AT repo state.",
+  },
+  {
+    id: "open-drop",
+    label: "Open drop",
+    signalType: "drop.open",
+    text: "Drop is open: [drop name]. Collect while it is live.",
+    tags: ["drop", "collect", "tezos"],
+    summary: "Mark a drop as actively collectible.",
+  },
+  {
+    id: "collector-call",
+    label: "Collector call",
+    signalType: "quest.collector",
+    text: "Collector call: I am looking for [theme, work, trade, or collaboration].",
+    tags: ["collector-call", "quest", "community"],
+    summary: "Ask for collector action without making a normal feed post do all the work.",
+  },
+  {
+    id: "proof-created",
+    label: "Proof of work",
+    signalType: "proof.created",
+    text: "Proof of work: [title] is connected to this wallet, post, token, or live session.",
+    tags: ["proof", "creator", "identity"],
+    summary: "Attach creator proof to a token, wallet, post, or WTF LIVE moment.",
+  },
+];
+
 interface SkywireRoom {
   id: string;
   title: string;
@@ -814,12 +892,120 @@ const StatusBadge = styled.div<{ $tone?: "ready" | "warn" | "quiet" }>`
   }
 `;
 
+const LiveIndicatorBanner = styled.div`
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid #fb7185;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(100, 20, 45, 0.96), rgba(18, 53, 62, 0.96));
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.18),
+    0 8px 22px rgba(0, 0, 0, 0.26);
+  color: #fff7fb;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+`;
+
+const LivePulse = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid #ffd6df;
+  border-radius: 999px;
+  background: #fb315e;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+`;
+
+const LiveIndicatorBody = styled.div`
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+
+  strong {
+    font-size: 15px;
+  }
+
+  span {
+    color: #ffe0e8;
+    line-height: 1.35;
+  }
+`;
+
 const NoticeBar = styled.div`
   border: 1px solid rgba(242, 201, 76, 0.72);
   border-radius: 8px;
   background: rgba(87, 64, 18, 0.58);
   color: #ffe9a6;
   padding: 6px 8px;
+`;
+
+const SignalStarterGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(214px, 1fr));
+  gap: 8px;
+`;
+
+const SignalStarterCard = styled.button<{ $selected?: boolean }>`
+  width: 100%;
+  min-height: 142px;
+  padding: 9px;
+  border: 1px solid ${({ $selected }) => ($selected ? "#67e8f9" : "var(--sky-border)")};
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(20, 52, 64, 0.96), rgba(8, 28, 38, 0.98)) !important;
+  color: var(--sky-text);
+  display: grid;
+  gap: 7px;
+  align-content: start;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: ${({ $selected }) => ($selected ? "0 0 0 2px rgba(103, 232, 249, 0.22)" : "none")};
+
+  &:focus-visible {
+    outline: 2px solid var(--sky-cyan);
+    outline-offset: 2px;
+  }
+`;
+
+const SignalStarterHeader = styled.div`
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+
+  strong {
+    overflow-wrap: anywhere;
+  }
+`;
+
+const SignalStarterCopy = styled.p`
+  margin: 0;
+  color: var(--sky-muted);
+  line-height: 1.35;
+`;
+
+const SignalStarterAction = styled.span`
+  justify-self: start;
+  min-height: 24px;
+  padding: 3px 7px;
+  border: 1px solid rgba(103, 232, 249, 0.55);
+  border-radius: 999px;
+  background: rgba(19, 78, 91, 0.68);
+  color: #dffcff;
+  font-size: 12px;
 `;
 
 const ContentBody = styled(TabBody)`
@@ -4058,7 +4244,7 @@ function LiveStatusPanel({ me, canSetLiveStatus }: { me: AtprotoMe; canSetLiveSt
             disabled={!canUseAtprotoSession || !canSetLiveStatus || setLive.isPending || !liveUrl.trim()}
             onClick={() => setLive.mutate()}
           >
-            {setLive.isPending ? "Setting Live..." : "Set WTF LIVE Status"}
+            {setLive.isPending ? "Going Live..." : "Go Live on Skywire"}
           </Button>
           <Button
             disabled={!canUseAtprotoSession || !canSetLiveStatus || clearLive.isPending || !active}
@@ -4080,6 +4266,37 @@ function LiveStatusPanel({ me, canSetLiveStatus }: { me: AtprotoMe; canSetLiveSt
   );
 }
 
+function SkywireLiveStatusBanner({
+  status,
+  onOpenSignals,
+}: {
+  status: SkywireLiveStatus;
+  onOpenSignals: () => void;
+}) {
+  const liveUrl = status.liveUrl || "/live";
+  return (
+    <LiveIndicatorBanner data-skywire-live-banner="active" aria-live="polite">
+      <LivePulse>LIVE</LivePulse>
+      <LiveIndicatorBody>
+        <strong>{status.title || "WTF LIVE is active"}</strong>
+        <span>
+          Skywire sees your live status even if Bluesky or Ovoid do not render the beta badge.
+        </span>
+        <Mono>{liveUrl}</Mono>
+        {status.createdAt ? <FinePrint>Set {formatDate(status.createdAt)}</FinePrint> : null}
+      </LiveIndicatorBody>
+      <Row>
+        <Button onClick={() => { window.location.href = liveUrl; }}>
+          Open WTF LIVE
+        </Button>
+        <Button onClick={onOpenSignals}>
+          Update live status
+        </Button>
+      </Row>
+    </LiveIndicatorBanner>
+  );
+}
+
 function SignalsPanel({
   me,
   canPublishSignals,
@@ -4091,10 +4308,18 @@ function SignalsPanel({
 }) {
   const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
   const [text, setText] = useState("");
-  const [signalType, setSignalType] = useState("status");
+  const [signalType, setSignalType] = useState<SkywireSignalType>("status");
   const [tags, setTags] = useState("");
   const [relatedUri, setRelatedUri] = useState("");
+  const [activePresetId, setActivePresetId] = useState("");
   const qc = useQueryClient();
+  const applySignalPreset = (preset: SkywireSignalPreset) => {
+    setActivePresetId(preset.id);
+    setSignalType(preset.signalType);
+    setText(preset.text);
+    setTags(preset.tags.join(", "));
+    setRelatedUri(preset.relatedUri || "");
+  };
   const signals = useQuery<SignalsResponse>({
     queryKey: ["skywire", "signals"],
     enabled: canUseAtprotoSession && canPublishSignals,
@@ -4109,11 +4334,13 @@ function SignalsPanel({
           .split(",")
           .map((tag) => tag.trim())
           .filter(Boolean),
-        relatedUri: relatedUri || undefined,
+        relatedUri: relatedUri.trim() || undefined,
       }),
     onSuccess: () => {
       setText("");
       setRelatedUri("");
+      setTags("");
+      setActivePresetId("");
       qc.invalidateQueries({ queryKey: ["skywire", "signals"] });
     },
   });
@@ -4125,34 +4352,75 @@ function SignalsPanel({
       {!canPublishSignals ? <p>Choose Be Heard or Be Bold from Settings to publish WTF-native Skywire Signals.</p> : null}
       {canPublishSignals ? (
         <Grid>
-          <GroupBox label="Publish Skywire Signal">
-            <Stack>
-              <NativeSelect value={signalType} onChange={(event) => setSignalType(event.target.value)}>
-                <option value="status">Status</option>
-                <option value="quest">Quest</option>
-                <option value="drop">Drop</option>
-                <option value="proof">Proof</option>
-                <option value="broadcast">Broadcast</option>
-              </NativeSelect>
-              <TextArea value={text} onChange={(event) => setText(event.target.value)} maxLength={300} />
-              <TextField
-                value={tags}
-                onChange={(e: any) => setTags(e.target.value)}
-                placeholder="tags, comma separated"
-                fullWidth
-              />
-              <TextField
-                value={relatedUri}
-                onChange={(e: any) => setRelatedUri(e.target.value)}
-                placeholder="optional related at:// uri"
-                fullWidth
-              />
-              <Button disabled={!canPublishSignals || !text.trim() || publish.isPending} onClick={() => publish.mutate()}>
-                Publish Signal
-              </Button>
-              {publish.isError ? <span>{(publish.error as Error).message}</span> : null}
-            </Stack>
-          </GroupBox>
+          <Stack>
+            <GroupBox label="Signal Starters">
+              <SignalStarterGrid>
+                {SKYWIRE_SIGNAL_PRESETS.map((preset) => (
+                  <SignalStarterCard
+                    key={preset.id}
+                    type="button"
+                    data-skywire-signal-preset={preset.id}
+                    $selected={activePresetId === preset.id}
+                    aria-pressed={activePresetId === preset.id}
+                    aria-label={`Use ${preset.label} signal`}
+                    onClick={() => applySignalPreset(preset)}
+                  >
+                    <SignalStarterHeader>
+                      <strong>{preset.label}</strong>
+                      <StatChip>{preset.signalType}</StatChip>
+                    </SignalStarterHeader>
+                    <SignalStarterCopy>{preset.summary}</SignalStarterCopy>
+                    <MetaRow>
+                      {preset.tags.map((tag) => (
+                        <StatChip key={tag}>{tag}</StatChip>
+                      ))}
+                    </MetaRow>
+                    <SignalStarterAction>Use {preset.label}</SignalStarterAction>
+                  </SignalStarterCard>
+                ))}
+              </SignalStarterGrid>
+            </GroupBox>
+            <GroupBox label="Publish Skywire Signal">
+              <Stack>
+                <NativeSelect
+                  aria-label="Skywire signal type"
+                  value={signalType}
+                  onChange={(event) => setSignalType(event.target.value as SkywireSignalType)}
+                >
+                  {SKYWIRE_SIGNAL_TYPES.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+                <TextArea
+                  aria-label="Skywire signal text"
+                  value={text}
+                  onChange={(event) => setText(event.target.value)}
+                  maxLength={300}
+                  placeholder="Write the signal text"
+                />
+                <TextField
+                  aria-label="Skywire signal tags"
+                  value={tags}
+                  onChange={(e: any) => setTags(e.target.value)}
+                  placeholder="tags, comma separated"
+                  fullWidth
+                />
+                <TextField
+                  aria-label="Related Skywire signal URI"
+                  value={relatedUri}
+                  onChange={(e: any) => setRelatedUri(e.target.value)}
+                  placeholder="optional related at:// uri or token URL"
+                  fullWidth
+                />
+                <Button disabled={!canPublishSignals || !text.trim() || publish.isPending} onClick={() => publish.mutate()}>
+                  Publish Signal
+                </Button>
+                {publish.isError ? <span>{(publish.error as Error).message}</span> : null}
+              </Stack>
+            </GroupBox>
+          </Stack>
           <GroupBox label="Your AT Repo Signals">
             <Stack>
               <Mono>{signals.data?.collection || "app.wtfgameshow.skywire.signal"}</Mono>
@@ -4748,6 +5016,13 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   const canSetLiveStatus = Boolean(me?.account && accountHasCapability(me.account, "liveStatus"));
   const canUseChat = Boolean(me?.account && accountHasCapability(me.account, "chat"));
   const canUseNotifications = Boolean(me?.account && accountHasCapability(me.account, "notifications"));
+  const liveStatusQuery = useQuery<SkywireLiveStatusResponse>({
+    queryKey: ["skywire", "live-status"],
+    enabled: canUseAtprotoSession,
+    queryFn: () => api.get<SkywireLiveStatusResponse>("/api/skywire/live-status"),
+    staleTime: 15_000,
+  });
+  const activeLiveStatus = liveStatusQuery.data?.status ?? null;
   const openActorFeed = (actor: SkywireActor) => {
     if (!actor.did && !actor.handle) return;
     setSelectedActor(actor);
@@ -4819,6 +5094,24 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
               <strong>{canUseAtprotoSession ? "Ready" : me?.account ? "Reconnect" : "Offline"}</strong>
             </StatusBadge>
             <StatusBadge
+              $tone={activeLiveStatus ? "ready" : "quiet"}
+              role="button"
+              tabIndex={0}
+              style={{ cursor: "pointer" }}
+              data-skywire-live-badge={activeLiveStatus ? "active" : "inactive"}
+              aria-label={activeLiveStatus ? "WTF LIVE status is live now" : "WTF LIVE status is not live"}
+              onClick={() => selectTab("signals")}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  selectTab("signals");
+                }
+              }}
+            >
+              <span>WTF LIVE</span>
+              <strong>{activeLiveStatus ? "Live now" : "Not live"}</strong>
+            </StatusBadge>
+            <StatusBadge
               $tone={chatTone}
               role="button"
               style={{ cursor: "pointer" }}
@@ -4834,6 +5127,12 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
           </HeaderBadgeGrid>
         </SkywireHeader>
         {notice ? <NoticeBar>{notice}</NoticeBar> : null}
+        {activeLiveStatus ? (
+          <SkywireLiveStatusBanner
+            status={activeLiveStatus}
+            onOpenSignals={() => selectTab("signals")}
+          />
+        ) : null}
         {me && !me.enabled ? (
           <NoticeBar>
             Skywire is in {me.rollout?.rolloutMode || "staff_alpha"} rollout. Your account cannot open Skywire yet.

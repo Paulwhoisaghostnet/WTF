@@ -209,9 +209,22 @@ const profileUpdateSchema = z.object({
   description: z.string().trim().max(256).optional(),
 });
 
+const skywireSignalTypes = [
+  "status",
+  "quest",
+  "drop",
+  "proof",
+  "broadcast",
+  "market.sale",
+  "broadcast.live",
+  "drop.open",
+  "quest.collector",
+  "proof.created",
+] as const;
+
 const signalSchema = z.object({
   text: z.string().trim().min(1).max(300),
-  signalType: z.enum(["status", "quest", "drop", "proof", "broadcast"]).default("status"),
+  signalType: z.enum(skywireSignalTypes).default("status"),
   tags: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
   relatedUri: z.string().trim().max(2000).optional().nullable(),
 });

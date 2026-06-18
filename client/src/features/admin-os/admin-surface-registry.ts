@@ -264,6 +264,8 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     ],
     behaviorAssertionIds: [
       "skywire.market-feed-search-source",
+      "skywire.live-status-visible-indicator",
+      "skywire.signal-starter-presets",
       "skywire.oauth-original-window-permission-sync",
       "skywire.oauth-canonical-domain-alias",
     ],

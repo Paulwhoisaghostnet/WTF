@@ -25,6 +25,7 @@ const state = {
   skywirePostPayloads: [],
   skywireFollowPayloads: [],
   skywireGroupPayloads: [],
+  skywireSignals: [],
   skywireLiveStatus: null,
   skywireChatEnabled: true,
   skywireHandle: "wtf-admin.bsky.social",
@@ -184,6 +185,7 @@ app.post("/__test/state", (req, res) => {
   state.skywirePostPayloads = [];
   state.skywireFollowPayloads = [];
   state.skywireGroupPayloads = [];
+  state.skywireSignals = [];
   state.skywireLiveStatus = null;
   state.skywireChatEnabled = req.body?.skywireChatEnabled !== false;
   state.skywireHandle = String(req.body?.skywireHandle || "wtf-admin.bsky.social");
@@ -211,6 +213,7 @@ app.get("/__test/state", (_req, res) => {
     skywirePostPayloads: state.skywirePostPayloads,
     skywireFollowPayloads: state.skywireFollowPayloads,
     skywireGroupPayloads: state.skywireGroupPayloads,
+    skywireSignals: state.skywireSignals,
     skywireLiveStatus: state.skywireLiveStatus,
     skywireChatEnabled: state.skywireChatEnabled,
     skywireHandle: state.skywireHandle,
@@ -1672,6 +1675,47 @@ function apiMock(req, res) {
       collection: "app.bsky.actor.status",
       rkey: "self",
       source: "inventory.harness.skywire.liveStatus.delete",
+    });
+  }
+  if (pathName === "/api/skywire/signals" && req.method === "GET") {
+    return res.json({
+      collection: "app.wtfgameshow.skywire.signal",
+      records: state.skywireSignals,
+      cursor: null,
+      source: "inventory.harness.skywire.signals",
+    });
+  }
+  if (pathName === "/api/skywire/signals" && req.method === "POST") {
+    const rkey = randomUUID().replace(/-/g, "").slice(0, 14);
+    const tags = Array.isArray(req.body?.tags) ? req.body.tags.map((tag) => String(tag)).filter(Boolean) : [];
+    const value = {
+      $type: "app.wtfgameshow.skywire.signal",
+      text: String(req.body?.text || ""),
+      signalType: String(req.body?.signalType || "status"),
+      tags,
+      relatedUri: req.body?.relatedUri ? String(req.body.relatedUri) : null,
+      wtfUserId: state.authUser?.id ?? 1,
+      wtfUsername: state.authUser?.username ?? "wtf-admin",
+      source: "wtfos.skywire",
+      createdAt: nowIso(),
+    };
+    const record = {
+      uri: `at://did:plc:skywiretest/app.wtfgameshow.skywire.signal/${rkey}`,
+      cid: `bafyrei${rkey}`,
+      value,
+    };
+    state.skywireSignals = [record, ...state.skywireSignals].slice(0, 50);
+    state.interactionLog.push({
+      eventType: "atproto.signal.published",
+      timestamp: nowIso(),
+      metadata: { signalType: value.signalType, tags },
+    });
+    return res.status(201).json({
+      collection: "app.wtfgameshow.skywire.signal",
+      uri: record.uri,
+      cid: record.cid,
+      record: value,
+      source: "inventory.harness.skywire.signals.put",
     });
   }
   if (pathName === "/api/skywire/post" && req.method === "POST") {

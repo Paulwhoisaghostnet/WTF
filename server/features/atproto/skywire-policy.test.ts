@@ -388,7 +388,7 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(page, /ChatPanel/);
   assert.match(page, /onThreadOpen/);
   assert.match(page, /Reply In Chat/);
-  assert.match(page, /Send To Members/);
+  assert.match(page, /Create Group \+ Send|Send To Member/);
   assert.match(page, /ChatQuotePreview/);
   assert.match(page, /QuoteSupertext/);
   assert.match(page, /SkywireChatMedia/);
@@ -400,7 +400,7 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(page, /ExternalThumb/);
   assert.match(wtfLiveApp, /Send Room Message/);
   assert.match(wtfLiveApp, /Send Broadcast/);
-  assert.match(wtfLiveApp, /Create Room/);
+  assert.match(wtfLiveApp, /Create Public Room|Create Private Room/);
   assert.match(wtfLiveApp, /Create Stage/);
   assert.match(page, /onChatQuote/);
   assert.match(page, /onRoomQuote/);
@@ -434,6 +434,10 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(route, /requireAtprotoCapability\(account,\s*"socialActions",\s*"be-social"\)/);
   assert.match(route, /requireAtprotoCapability\(account,\s*"compose",\s*"be-heard"\)/);
   assert.match(route, /requireAtprotoCapability\(account,\s*"signals",\s*"be-heard"\)/);
+  assert.match(route, /"market\.sale"/);
+  assert.match(route, /"broadcast\.live"/);
+  assert.match(page, /Signal Starters/);
+  assert.match(page, /recent-sale/);
   assert.match(wtfLiveRoute, /requireAtprotoCapability\(account,\s*"rooms",\s*"be-heard"\)/);
   assert.match(wtfLiveRoute, /requireAtprotoCapability\(account,\s*"stages",\s*"be-heard"\)/);
   assert.match(route, /requireSkywireChatCapability\(account\)/);

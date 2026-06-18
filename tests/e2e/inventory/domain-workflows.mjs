@@ -305,6 +305,18 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/skywire/live-status", expectedStatuses: [200, 401, 404, 409, 500] },
       { method: "POST", path: "/api/skywire/live-status", body: { liveUrl: "https://wtfos.app/live/r/e2e", title: "WTF LIVE", durationMinutes: 30 }, expectedStatuses: [201, 400, 401, 403, 409, 500] },
       { method: "DELETE", path: "/api/skywire/live-status", expectedStatuses: [200, 400, 401, 403, 409, 500] },
+      { method: "GET", path: "/api/skywire/signals", expectedStatuses: [200, 400, 401, 403, 409, 500] },
+      {
+        method: "POST",
+        path: "/api/skywire/signals",
+        body: {
+          text: "Recent sale: E2E Token sold for 1 tez. Thank you to the collector.",
+          signalType: "market.sale",
+          tags: ["sale", "collector", "tezos"],
+          relatedUri: "https://objkt.com/tokens/KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton/1",
+        },
+        expectedStatuses: [201, 400, 401, 403, 409, 500],
+      },
       {
         method: "POST",
         path: "/api/skywire/post",

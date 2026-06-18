@@ -182,9 +182,21 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     await expect(page.getByText("Bluesky Live Status")).toBeVisible();
     await expect(page.getByText("app.bsky.actor.status/self")).toBeVisible();
     await page.getByPlaceholder("https://wtfos.app/live/r/room-id").fill("https://wtfos.app/live/r/wtf-testing");
-    await page.getByRole("button", { name: "Set WTF LIVE Status" }).click();
+    await page.getByRole("button", { name: "Go Live on Skywire" }).click();
     const activeLive = page.locator("[data-skywire-live-status='active']");
     await expect(activeLive).toContainText("https://wtfos.app/live/r/wtf-testing");
+    await expect(page.locator("[data-skywire-live-badge='active']")).toContainText("Live now");
+    await expect(page.locator("[data-skywire-live-banner='active']")).toContainText(
+      "https://wtfos.app/live/r/wtf-testing",
+    );
+
+    await page.goto("/skywire?tab=home", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-skywire-live-badge='active']")).toContainText("Live now");
+    await expect(page.locator("[data-skywire-live-banner='active']")).toContainText(
+      "Skywire sees your live status",
+    );
+    await page.getByRole("button", { name: "Update live status" }).click();
+    await expect(page.getByText("Bluesky Live Status")).toBeVisible();
 
     let state = await (await request.get("/__test/state")).json();
     expect(state.skywireLiveStatus).toMatchObject({
@@ -194,8 +206,46 @@ test.describe("interaction inventory — Skywire feed usability", () => {
 
     await page.getByRole("button", { name: "Clear Live" }).click();
     await expect(page.getByText("No live record")).toBeVisible();
+    await expect(page.locator("[data-skywire-live-badge='inactive']")).toContainText("Not live");
+    await expect(page.locator("[data-skywire-live-banner='active']")).toHaveCount(0);
     state = await (await request.get("/__test/state")).json();
     expect(state.skywireLiveStatus).toBeNull();
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("signal starter presets publish a recent sale Skywire Signal", async ({ page, request }) => {
+    await setAdmin(request);
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+
+    await page.goto("/skywire?tab=signals", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("Signal Starters")).toBeVisible();
+    const recentSaleStarter = page.locator("[data-skywire-signal-preset='recent-sale']");
+    await expect(recentSaleStarter).toContainText("Recent sale");
+    await recentSaleStarter.click();
+
+    await expect(page.getByLabel("Skywire signal type")).toHaveValue("market.sale");
+    await expect(page.getByLabel("Skywire signal text")).toHaveValue(/Recent sale:/);
+    await expect(page.getByLabel("Skywire signal tags")).toHaveValue(/sale, collector, tezos/);
+    await page
+      .getByLabel("Skywire signal text")
+      .fill("Recent sale: Harness Alpha sold for 2.5 tez. Thank you to the collector.");
+    await page
+      .getByLabel("Related Skywire signal URI")
+      .fill("https://objkt.com/tokens/KT1AlphaCreatedCollection/2");
+    await page.getByRole("button", { name: "Publish Signal" }).click();
+
+    await expect(page.getByText("Harness Alpha sold for 2.5 tez")).toBeVisible();
+    const state = await (await request.get("/__test/state")).json();
+    expect(state.skywireSignals[0].value).toMatchObject({
+      text: "Recent sale: Harness Alpha sold for 2.5 tez. Thank you to the collector.",
+      signalType: "market.sale",
+      tags: ["sale", "collector", "tezos"],
+      relatedUri: "https://objkt.com/tokens/KT1AlphaCreatedCollection/2",
+    });
     expect(fatalErrors(errors)).toEqual([]);
   });
 
