@@ -25,6 +25,8 @@ test("Start Menu app gates hide disabled WTF OS launchers", () => {
   assert.equal(isStartMenuItemEnabled("/console", apps), false);
   assert.equal(isStartMenuItemEnabled("/my-gallery", apps), false);
   assert.equal(isStartMenuItemEnabled("/wtf-subdomains", { "wtf-subdomains": false }), false);
+  assert.equal(isStartMenuItemEnabled("/tools/ch-ease", { "ch-ease": false }), false);
+  assert.equal(isStartMenuItemEnabled("/tools/macaroni-packager", { "ch-ease": false }), false);
   assert.equal(isStartMenuItemEnabled("/links", apps), true);
 });
 
@@ -174,6 +176,15 @@ test("Start Menu model respects auth roles and desktop app gates", () => {
   assert(!userPaths.includes("/my-gallery"));
   assert(!userPaths.includes("/wtf-subdomains"));
   assert(!userPaths.includes("/admin"));
+
+  const hostGroups = buildStartMenuGroups(
+    PAGE_DEFS,
+    { "ch-ease": false },
+    "host",
+    { casinoMembershipActive: false }
+  );
+  const hostPaths = hostGroups.flatMap((group) => group.items.map((item) => item.path));
+  assert(!hostPaths.includes("/tools/ch-ease"));
 });
 
 test("Start Menu hides every app entry from time out accounts", () => {

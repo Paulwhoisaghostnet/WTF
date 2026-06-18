@@ -80,6 +80,22 @@ test("WTF Domains owns the subdomain route and desktop app gate", () => {
   assert.equal(getAdminSurfaceDoctrineDomain(surface!), DOCTRINE_DOMAIN_GUIDES.tezosPlatform);
 });
 
+test("CH-EASE owns its package routes and Macaroni source audit handles", () => {
+  const surface = surfaceById("ch-ease");
+  assert(surface, "CH-EASE should be registered for admin observability");
+  assert.equal(surface?.desktopAppKey, "ch-ease");
+  assert.deepEqual(surface?.routePatterns, ["/tools/ch-ease", "/tools/macaroni-packager"]);
+  assert.equal(findAdminSurfaceForPath("/tools/ch-ease")?.id, "ch-ease");
+  assert.equal(findAdminSurfaceForPath("/tools/macaroni-packager")?.id, "ch-ease");
+  assert.equal(getAdminSurfaceDoctrineDomain(surface!), DOCTRINE_DOMAIN_GUIDES.mediaTvStudio);
+  assert(surface?.automationHandles.includes("macaroni.package_created"));
+  assert(surface?.automationHandles.includes("macaroni.package_drop_config_updated"));
+  assert(surface?.automationHandles.includes("macaroni.package_export_downloaded"));
+  assert(surface?.automationHandles.includes("macaroni.package_source_loaded"));
+  assert(surface?.automationHandles.includes("macaroni.package_handoff_opened"));
+  assert(surface?.behaviorAssertionIds?.includes("macaroni.wtfos-package-source"));
+});
+
 test("desktop app admin surface bindings are one-to-one", () => {
   const counts = new Map<string, number>();
   for (const surface of ALL_ADMIN_SURFACES) {

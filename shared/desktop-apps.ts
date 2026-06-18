@@ -50,6 +50,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   console: true,
   "game-studio": true,
   studio: true,
+  "ch-ease": true,
   gallery: true,
   "ipfs-pinning": true,
   skywire: true,

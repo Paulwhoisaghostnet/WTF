@@ -119,6 +119,12 @@ const GameStudioPage = lazy(() =>
 const CreationToolPage = lazy(() =>
   import("../pages/CreationTool").then((m) => ({ default: m.CreationTool }))
 );
+const MacaroniPackagerPage = lazy(() =>
+  import("../pages/MacaroniPackager").then((m) => ({ default: m.MacaroniPackager }))
+);
+const ColanderPage = lazy(() =>
+  import("../pages/Colander").then((m) => ({ default: m.Colander }))
+);
 const SwapPage = lazy(() =>
   import("../pages/Swap").then((m) => ({ default: m.Swap }))
 );
@@ -287,10 +293,10 @@ function findSurfaceForPath(path: string) {
 }
 
 const CREATION_TOOL_DESKTOP_ICON_PATHS = new Set<string>([
+  "/tools/broot",
   "/tools/particle-painter",
   "/tools/industrializer",
   "/tools/pauls-particles-v1",
-  "/tools/nikshumika-paint",
   "/tools/kandinsky-composer",
 ]);
 
@@ -431,7 +437,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
   { pattern: "/marketplace", component: MarketplacePage, auth: true, title: "On Chain Market", group: "market", startMenu: true },
   { pattern: "/rat-race", component: RatRacePage, auth: true, title: "Rat Race", group: "market", startMenu: true, desktopIcon: true },
-  { pattern: "/map-lab", component: WtfMapLabPage, auth: false, title: "WTF Map Lab", group: "desktop-os", startMenu: true, desktopIcon: true },
+  { pattern: "/map-lab", component: WtfMapLabPage, auth: true, title: "WTF Map Lab", group: "desktop-os", startMenu: true, desktopIcon: true },
   { pattern: "/trade-boards", component: TradeBoardsPage, auth: true, title: "Trade Boards", group: "market", startMenu: true },
   { pattern: "/w", component: WPage, auth: true, title: "W Feed", group: "social", startMenu: true },
   { pattern: "/w/post/:id", component: WPage, auth: true, title: "W Post", group: "social" },
@@ -450,6 +456,32 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/dues", component: DuesManagerPage, auth: false, title: "Club Dues Manager", group: "market", startMenu: true, desktopIcon: true },
   { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "gaming", startMenu: true, desktopIcon: true },
   { pattern: "/game-studio", component: GameStudioPage, auth: true, title: "Game Studio", group: "gaming", startMenu: true, desktopIcon: true },
+  {
+    pattern: "/tools/ch-ease",
+    component: MacaroniPackagerPage,
+    auth: true,
+    roles: ["admin", "host", "cohost", "trusted_creator"],
+    title: "CH-EASE",
+    group: "create",
+    startMenu: true,
+  },
+  {
+    pattern: "/tools/macaroni-packager",
+    component: MacaroniPackagerPage,
+    auth: true,
+    roles: ["admin", "host", "cohost", "trusted_creator"],
+    title: "CH-EASE",
+    group: "create",
+  },
+  {
+    pattern: "/tools/colander",
+    component: ColanderPage,
+    auth: true,
+    roles: ["admin", "host", "cohost", "trusted_creator"],
+    title: "Colander",
+    group: "create",
+    startMenu: true,
+  },
   ...CREATION_TOOL_PAGE_DEFS,
   { pattern: "/swap", component: SwapPage, auth: true, title: "Swap", group: "market", startMenu: true },
   { pattern: "/profile", component: ProfilePage, auth: true, title: "Profile", group: "social", startMenu: true },

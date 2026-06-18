@@ -1050,7 +1050,7 @@ export async function stageAndPinUpload(input: {
   fileName: string;
   mimeType: string;
   buffer: Buffer;
-  source: "macaroni" | "manual" | "studio";
+  source: "macaroni" | "macaroni_package" | "manual" | "studio";
   scopeType?: ScopeType;
   scopeRef?: string | null;
 }) {

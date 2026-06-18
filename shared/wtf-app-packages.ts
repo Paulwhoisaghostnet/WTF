@@ -80,6 +80,7 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   "game-studio": domainGuides.arcadeConsoleGameStudio,
   studio: domainGuides.mediaTvStudio,
   gallery: domainGuides.mediaTvStudio,
+  "ch-ease": domainGuides.mediaTvStudio,
   "ipfs-pinning": domainGuides.mediaTvStudio,
   skywire: domainGuides.identityAndSocial,
   "wtf-live": domainGuides.identityAndSocial,

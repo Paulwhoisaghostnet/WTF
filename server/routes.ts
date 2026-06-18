@@ -58,6 +58,7 @@ import wtfSubdomainRoutes from "./routes/wtf-subdomains";
 import wtfSitesRoutes from "./routes/wtf-sites";
 import ipfsPinningRoutes from "./routes/ipfs-pinning";
 import macaroniRoutes from "./routes/macaroni";
+import macaroniPackagesRoutes from "./routes/macaroni-packages";
 import atprotoRoutes from "./routes/atproto";
 import skywireRoutes from "./routes/skywire";
 import wtfLiveRoutes from "./routes/wtf-live";
@@ -314,6 +315,7 @@ export function registerRoutes(app: Express) {
   app.use(wtfSitesRoutes);
   app.use(ipfsPinningRoutes);
   app.use(macaroniRoutes);
+  app.use(macaroniPackagesRoutes);
   app.use(collektRoutes);
   app.use(attendanceRoutes);
   app.use(calendarRoutes);

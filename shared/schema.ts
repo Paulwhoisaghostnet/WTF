@@ -54,6 +54,7 @@ import {
   studioProjectMembers,
   studioProjects,
 } from "./schema-studio";
+import { macaroniPackages } from "./schema-macaroni";
 import { tvChannels } from "./schema-tv";
 import {
   telegramDigestAnnouncements,
@@ -93,6 +94,7 @@ export * from "./schema-music";
 export * from "./schema-mastodon";
 export * from "./schema-porcupin";
 export * from "./schema-ipfs-pinning";
+export * from "./schema-macaroni";
 export * from "./schema-atproto-appview";
 export * from "./schema-app-registry";
 export * from "./schema-wtf-sites";
@@ -123,6 +125,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   studioMemberships: many(studioProjectMembers),
   studioFilesUploaded: many(studioFiles),
   studioAnnotations: many(studioAnnotations),
+  macaroniPackages: many(macaroniPackages),
   desktopSettings: one(userDesktopSettings, {
     fields: [users.id],
     references: [userDesktopSettings.userId],
