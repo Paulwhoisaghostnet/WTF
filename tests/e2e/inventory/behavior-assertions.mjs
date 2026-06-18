@@ -56,6 +56,50 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The inventory harness mutates the mocked /api/wtf-sites/claim state to a claimed site, verifies the windowed applet reflects the claimed host, and exercises the WTF Domains registrar commit and register plan endpoints with the same target wallet.",
   },
   {
+    id: "broot.media-open-import",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools"],
+    ownerSpec: "tests/playwright/inventory/broot.spec.mjs",
+    verificationCommand: "npx playwright test tests/playwright/inventory/broot.spec.mjs",
+    userVisibleAssertion:
+      "Broot opens from `/tools/broot`, exposes top-level Open for Broot project files plus common image/GIF/video media, and imports selected media as visible canvas layers with status feedback.",
+    durableSideEffectAssertion:
+      "The focused Broot inventory spec stubs the browser file picker, verifies the advertised MIME/extension accept map includes PNG, JPEG, GIF, and MP4, imports PNG/GIF fixtures as Fabric layers, and imports an MP4 selection as a video layer placeholder when the browser cannot decode a preview.",
+  },
+  {
+    id: "broot.project-file-vanity-extension",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools"],
+    ownerSpec: "tests/playwright/inventory/broot.spec.mjs",
+    verificationCommand: "npx playwright test tests/playwright/inventory/broot.spec.mjs",
+    userVisibleAssertion:
+      "Broot saves project documents with the vanity `.broot` extension while keeping the file body JSON-backed and reloadable through the top-level Open action.",
+    durableSideEffectAssertion:
+      "The focused Broot inventory spec stubs the browser save/open file pickers, verifies Save suggests `project-name.broot` with a JSON MIME payload, parses the saved text as Broot project JSON, and reopens the same bytes from a `.broot` file with no MIME type.",
+  },
+  {
+    id: "broot.ffmpeg-glfx-layer-ops",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools"],
+    ownerSpec: "tests/playwright/inventory/broot.spec.mjs",
+    verificationCommand: "npx playwright test tests/playwright/inventory/broot.spec.mjs",
+    userVisibleAssertion:
+      "Broot loads local FFmpeg.wasm and glfx engines without browser Babel runtime compilation, keeps tools/layers visible in the default app window, exposes neutral-by-default MP4 export modes plus glfx distortion controls, and adds undo-backed grouping, merging, flattening, and canvas-warp controls.",
+    durableSideEffectAssertion:
+      "The focused Broot inventory spec verifies the local FFmpeg/glfx globals are present, confirms Broot serves compiled app.js rather than text/babel, applies a glfx warp to an active layer, disables invalid merge until multiple layers are selected, confirms flatten through a dialog, and proves Undo restores the editable layer stack.",
+  },
+  {
+    id: "broot.wallet-hen-mint",
+    domain: "Wallets, Tokens, Portfolio, and On-Chain State",
+    ownerSurfaceIds: ["creation-tools"],
+    ownerSpec: "tests/playwright/inventory/broot.spec.mjs",
+    verificationCommand: "npx playwright test tests/playwright/inventory/broot.spec.mjs",
+    userVisibleAssertion:
+      "Broot restores a previously connected Tezos wallet after refresh, replaces the active Connect Wallet action with connected state, and exposes a Mainnet HEN mint prepare/review/sign flow for the current canvas.",
+    durableSideEffectAssertion:
+      "The focused Broot inventory spec stubs the Tezos wallet runtime, proves refresh restore does not request wallet permissions again, verifies artifact/metadata CIDs plus gas/storage/fee appear in the HEN review before any wallet send, then signs once and verifies the operation targets the HEN FA2 contract mint entrypoint with padded gas/storage options.",
+  },
+  {
     id: "macaroni.shadownet-rpc-wallet-setup",
     domain: "Media, Creation, Gallery, and Preservation",
     ownerSurfaceIds: ["creation-tools", "wtf-domains"],

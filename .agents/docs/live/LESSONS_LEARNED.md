@@ -5157,3 +5157,53 @@
 **Why it mattered**: Tezos publishing tools are not just static art toys. Operators need one auditable app gate, creators need signed-in self-managed publishing without trusted-host privileges, and cross-app package/contract handoffs need explicit observable contracts so rewards, recovery, and support can trust the system event spine.
 
 **Rule**: Protocol app suites need a first-class desktop/admin/package owner, signed-in route access separated from privileged hosted resources, sandbox-safe inline feedback, shared handoff contracts, and emitted event handles in the same pass. Do not document cross-app workflows until the source, inventory, and tests prove the wiring exists.
+
+---
+
+## 2026-06-18 - Vanity project extensions need one canonical save path plus built-asset verification
+
+**What happened**: Broot already classified `.broot` as a project import extension, but the actual Save path still suggested and downloaded files as `.broot.json`. The first focused Playwright run also served stale `dist/public` assets, so the browser kept seeing the old filename until the static bundle was rebuilt.
+
+**Why it mattered**: A creation tool's native-feeling project format is part of the product contract. Saving a vanity extension with an extra `.json` tail makes the format feel accidental, while source-only verification can produce false negatives or false positives when the inventory harness is reading built static assets.
+
+**Rule**: For creation-tool project formats, make the vanity extension canonical in the File System Access save picker, fallback download name, open accept map, and extension-based classifier while keeping legacy JSON imports only as compatibility. Before browser-verifying static creation-tool changes, rebuild the assets served by the Playwright harness.
+
+---
+
+## 2026-06-18 - Creation-tool wallet restore needs network memory plus active-account proof
+
+**What happened**: Broot's wallet connect path created a fresh toolkit and wallet only inside the Connect button handler. After a successful connect, the UI still rendered an active Connect Wallet button, did not persist Broot-scoped session metadata, did not restore `wallet.client.getActiveAccount()` on refresh, and defaulted back to Shadownet even if the user had connected Mainnet for HEN publishing.
+
+**Why it mattered**: A Photoshop-style Tezos creation tool has to feel like a real workstation: connect once, keep working, refresh safely, then sign only when publishing. Persisting only an address would be unsafe for value operations, while failing to persist the selected network makes a valid Mainnet wallet session appear lost after reload.
+
+**Rule**: Creation-tool wallet restore must persist public network/session metadata only after explicit connect, restore passively from the wallet SDK active account without calling `requestPermissions()`, validate active account plus chain ID before every mint/send, and render connected state instead of another active Connect button. For direct mints, confirm the target contract entrypoint from the configured RPC or indexer before wiring Taquito wallet sends.
+
+---
+
+## 2026-06-18 - Creation-tool Open must mean creator media, not only project JSON
+
+**What happened**: Broot's top-level Open action used the File System Access API with only `application/json` project types, while the side-panel import accepted only `image/*`. Users browsing for PNG, JPG, GIF, or MP4 files saw the picker behave like those media types were unsupported, and the old Open path would try to parse selected media bytes as Broot JSON.
+
+**Why it mattered**: In Photoshop-style tools, Open is a creative media affordance first and an app-project restore affordance second. Splitting those paths behind different controls made the first interaction feel broken even though Fabric image import existed elsewhere.
+
+**Rule**: Top-level Open in creation tools must advertise and classify both project files and expected creator media by MIME and extension, then route each file to the correct importer. Add focused picker/import coverage any time an accept map changes, and clear project save handles when a media file is imported so Save cannot overwrite the original media.
+
+---
+
+## 2026-06-18 - Static creation tools need pinned local media engines
+
+**What happened**: Broot needed FFmpeg.wasm video export support and glfx canvas distortion inside a static creation-tool bundle. The browser could load the lightweight JS shims eagerly, but the FFmpeg core and wasm payload are large enough that they need to stay local, pinned, and lazy-loaded only when MP4 export actually runs.
+
+**Why it mattered**: Creation tools are expected to work from the repo's static public bundle, not from CDN luck or a dev-server-only module graph. Browser verification also needs to prove the runtime globals and destructive canvas operations without forcing every inventory pass through a slow full transcode.
+
+**Rule**: Vendor static media engines under the tool's own `public` bundle, keep heavy wasm paths lazy, provide a MediaRecorder fallback for export failures, and verify new layer/destructive-canvas controls with a focused tool spec plus inventory coverage.
+
+---
+
+## 2026-06-18 - Static iframe tools need classic browser bundles and fresh dist tests
+
+**What happened**: Broot moved from browser Babel to a compiled `app.js`, but the first esbuild output inherited the repo `react-jsx` setting and emitted `require("react/jsx-runtime")`, which cannot run in Broot's plain static iframe. After recompiling correctly, the first Playwright rerun still exercised stale `dist/public` assets until the Vite build refreshed the served copy.
+
+**Why it mattered**: Static creation tools sit outside the app module graph. A bundle that passes `node --check` can still be shaped for a module loader the iframe does not have, and a harness that serves `dist/public` can hide a fixed source asset behind a stale build artifact.
+
+**Rule**: For static iframe tools, force a browser-native JSX transform when compiling standalone React files, assert no `require`, `jsx-runtime`, `text/babel`, or Babel script remains, rebuild `dist/public` before Playwright, and make focused tests inspect the iframe script list rather than trusting source files.

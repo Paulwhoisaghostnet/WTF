@@ -103,6 +103,14 @@ Priority labels:
 | WTF-BB-276 | Verified | Codex Skywire live/group/vault full-send | 2026-06-18 | Skywire / AT Protocol parity and Tezos vault performance | P1 | 13 | 6 | 3 | 5 | 1 | Skywire now supports Bluesky live-status record writes, group conversation creation, permission coverage, and paginated indexed vault holdings; verified by local unit/type/build/full inventory checks, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live `wtfos.app` Skywire/API smoke |
 | WTF-BB-277 | Verified | Codex inventory harness contract repair | 2026-06-18 | E2E / CH-EASE and WTF LIVE harness parity | P1 | 10 | 10 | 2 | 4 | 0 | CH-EASE and WTF LIVE inventory specs now use stateful package, handoff, soundboard, media-deck, and event mocks instead of generic catch-all responses; verified by focused inventory specs, full inventory 343/343, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live route/static smoke |
 | WTF-BB-278 | Verified | Codex external-link quality gate repair | 2026-06-18 | Frontend security / tabnabbing link safety | P2 | 7 | 15 | 1 | 2 | 1 | Colander explorer links now include `rel="noopener noreferrer"` with `target="_blank"`; verified by `node scripts/check-external-links.mjs`, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live Colander asset smoke |
+| WTF-BB-279 | Fixed | Codex Broot media-open repair | 2026-06-18 | Broot / media file import | P1 | 9 | 12 | 2 | 3 | 0 | Broot's top-level Open picker only accepted project JSON and the side import accepted only `image/*`, so normal PNG/JPG/GIF/MP4 media looked unsupported; fixed locally by unifying project/image/video import handling, pending production deploy verification |
+| WTF-BB-280 | Fixed | Codex Broot wallet/HEN mint repair | 2026-06-18 | Broot / Tezos wallet publishing | P1 | 13 | 6 | 3 | 5 | 1 | Broot now restores a previously connected wallet after refresh, replaces repeated connect prompts with connected state, and adds direct Mainnet HEN minting through the user's wallet with gas/storage paid by the user; pending production deploy verification |
+| WTF-BB-287 | Fixed | Codex Broot audit implementation full-send | 2026-06-18 | Broot / app-window layout | P1 | 12 | 7 | 3 | 5 | 0 | Broot now keeps tools, canvas, and layers visible in the default wtfOS window by moving tabbed mobile mode below the default AppWindow width; locally verified with focused Broot E2E, full inventory, and browser metrics, pending production deploy verification |
+| WTF-BB-288 | Fixed | Codex Broot audit implementation full-send | 2026-06-18 | Broot / destructive layer operations | P1 | 11 | 8 | 3 | 4 | 0 | Broot layer merge/flatten/warp/delete now have selection guards, undo/redo history, shift/cmd multi-select from the layer list, and confirmation for destructive full-canvas/delete actions; locally verified, pending production deploy verification |
+| WTF-BB-289 | Fixed | Codex Broot audit implementation full-send | 2026-06-18 | Broot / runtime performance | P2 | 9 | 12 | 3 | 3 | 0 | Broot now serves a prebuilt `js/app.js` browser bundle with local glfx/FFmpeg assets and no runtime Babel or `text/babel` script in the iframe; locally verified, pending production deploy verification |
+| WTF-BB-290 | Fixed | Codex Broot audit implementation full-send | 2026-06-18 | Broot / keyboard and accessibility | P2 | 9 | 12 | 3 | 3 | 0 | Broot now exposes focus-visible styling, object-specific layer labels, keyboard undo/redo/delete/nudge handling, and a focusable canvas workspace; locally verified, pending production deploy verification |
+| WTF-BB-291 | Fixed | Codex Broot audit implementation full-send | 2026-06-18 | Broot / HEN mint trust preview | P1 | 13 | 6 | 3 | 5 | 1 | Broot HEN publishing now splits Prepare and Sign, shows contract/network/wallet/token/CID/fee/storage review before wallet send, and prevents wallet submission until the user confirms; locally verified, pending production deploy verification |
+| WTF-BB-292 | Fixed | Codex Broot audit implementation full-send | 2026-06-18 | Broot / animation export UX | P2 | 9 | 12 | 2 | 4 | 0 | Broot MP4 export now defaults to a neutral still-hold capture and exposes explicit pulse/reveal modes plus duration/FPS controls instead of silently applying a hardcoded pulse; locally verified, pending production deploy verification |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5953,6 +5961,198 @@ Priority labels:
   - Deploy to Hetzner `27734260925` completed successfully.
   - Live `https://wtfos.app/api/health` returned `status:"ok"`, `commitRef:"082a183"`, `db:true`, and `jobs:true`.
   - The deployed Colander bundle served from `https://wtfos.app/assets/Colander-wtf2-D4jVEv_R.js` and contains `rel:"noopener noreferrer"`.
+
+### WTF-BB-279 - Broot Open rejects normal creator media
+
+- Category: Broot / media file import
+- Status: Fixed
+- Owner/Session: Codex Broot media-open repair
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Evidence:
+  - User reported the Broot Open picker let them browse but did not recognize common PNG, JPG, GIF, or MP4 media.
+  - `openProjectFile()` passed `showOpenFilePicker()` only a Broot project JSON type, and the fallback hidden input accepted only `.json,.broot,application/json`.
+  - The side-panel media import path accepted only `image/*` and did not give the top-level Open action media semantics.
+- Why it matters:
+  - For a Photoshop-like creation tool, Open must accept normal media directly; otherwise the first creative action feels broken even though export and canvas tooling work.
+- Correction:
+  - Added a MIME/extension classifier for Broot project files, common image formats, GIF, and video formats.
+  - Changed the top-level Open picker and fallback file input to advertise project, image, GIF, and video accept types instead of JSON only.
+  - Routed Open through a unified handler that loads Broot project JSON, imports images/GIFs as Fabric image layers, and imports videos as live Fabric video layers when decodable or as a named video placeholder when preview decode fails.
+  - Cleared the save file handle after media imports so a later Save cannot overwrite the original PNG/JPG/GIF/MP4 with Broot JSON.
+  - Updated the side-panel import control from image-only to media import.
+  - Registered `broot.media-open-import` in the inventory behavior registry and Creation Tools admin surface.
+- Verification:
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/vite build`.
+  - Passed `./node_modules/.bin/tsc --noEmit --pretty false`.
+  - Passed `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts`.
+  - Passed `./node_modules/.bin/tsx --test client/src/features/admin-os/admin-surface-registry.test.ts`.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs`.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
+  - Production verification is pending a deploy.
+
+### WTF-BB-280 - Broot wallet connection does not persist and HEN publishing is not wallet-signed
+
+- Category: Broot / Tezos wallet publishing
+- Status: Fixed
+- Owner/Session: Codex Broot wallet/HEN mint repair
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - User reported Broot connects a wallet, keeps showing an active Connect Wallet button, allows repeated connect attempts, and loses the connection after page refresh.
+  - `connectWallet()` built a fresh Tezos toolkit and wallet only inside the click handler, never restored `wallet.client.getActiveAccount()` on page load, and stored no Broot-scoped public session metadata.
+  - Broot generated metadata/FA2 artifacts but had no direct HEN contract mint operation through `Tezos.wallet`.
+- Why it matters:
+  - Creation tools need a one-time wallet connection model. Repeated permission prompts make direct publishing feel untrustworthy, and address-only metadata is not enough for value operations.
+  - HEN direct publishing moves token creation to a real mainnet FA2 contract, so Broot must prove active account, chain ID, contract, token id, and wallet provider immediately before prompting the user to pay gas/storage.
+- Correction:
+  - Persist Broot's selected network and public wallet session metadata by network/path after explicit connect.
+  - Restore the wallet from the wallet SDK active account on refresh without calling `requestPermissions()` again.
+  - Replace the active Connect Wallet button with a disabled Connected state while connected and coalesce explicit connect clicks.
+  - Add a Mainnet-only HEN prepare/sign path that pins PNG plus metadata, reads HEN's next token id, calls the `mint` entrypoint on `KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton` through `tezos.wallet.at`, and sends padded gas/storage/fee options for the user-signed operation only after the in-app review is confirmed.
+  - Register `broot.wallet-hen-mint` in inventory behavior assertions and the Creation Tools admin surface.
+- Verification:
+  - Queried configured Tezos mainnet Octez RPC for HEN `KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton` entrypoints and confirmed `mint({ address, amount, token_id, token_info })`.
+  - Queried TzKT HEN storage and confirmed `all_tokens` is the next token id source.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/vite build`.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs` (5/5).
+  - Passed `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts`.
+  - Passed `./node_modules/.bin/tsx --test client/src/features/admin-os/admin-surface-registry.test.ts`.
+  - Passed `./node_modules/.bin/tsc --noEmit --pretty false`.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
+  - Production verification is pending a deploy.
+
+### WTF-BB-287 - Broot default app window hides the editor panels behind mobile tabs
+
+- Category: Broot / app-window layout
+- Status: Fixed
+- Owner/Session: Codex Broot audit implementation full-send
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - Master UI/UX audit on 2026-06-18 loaded `http://127.0.0.1:4191/tools/broot` through the Playwright harness at a 1440x900 desktop viewport.
+  - The rendered Broot iframe inside the default wtfOS window measured about 912x520, so the `@media (max-width: 980px)` rule fired.
+  - The first-open desktop state displayed `.mobile-tabs`, hid both `.side-panel.left` and `.side-panel.right`, and left `.canvas-stage` at about 196px tall.
+  - Screenshot evidence was captured at `/tmp/broot-audit-desktop.png`; narrow screenshot at `/tmp/broot-audit-mobile.png`.
+- Why it matters:
+  - A Photoshop-style tool needs tools, canvas, and layers available as a working triad on first open. Hiding tools/layers behind mobile tabs makes the desktop app feel cramped and underpowered before users do anything.
+- Correction:
+  - Moved Broot's mobile tab breakpoint below the default wtfOS AppWindow width so the first-open desktop state keeps tools, canvas, and layers visible together.
+  - Added focused Broot Playwright assertions for visible left/right panels, hidden mobile tabs, minimum canvas-stage height, and the compiled-script contract.
+- Verification:
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs` (5/5).
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
+  - Local browser smoke at `http://127.0.0.1:4173/tools/broot` showed left panel `236x367`, right panel `276x367`, canvas stage `400x337`, `.mobile-tabs` display `none`, and zero console errors.
+  - Production verification is pending this full-send deploy.
+
+### WTF-BB-288 - Broot destructive layer operations lack undo, guards, and confirmation
+
+- Category: Broot / destructive layer operations
+- Status: Fixed
+- Owner/Session: Codex Broot audit implementation full-send
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - `public/creation-tools/broot/js/app.jsx` exposes `Merge`, `Flatten`, `Warp Canvas`, and `Delete` as immediate button handlers.
+  - `flattenCanvas()` removes every object and replaces the canvas with one raster layer without confirmation or undo.
+  - `mergeSelection()` can rasterize a single selected object and report `Selected layers merged`, which is misleading when only one layer was selected.
+  - `groupSelection()` requires Fabric `activeSelection`, but the layer panel gives only single-object selection buttons and does not explain a multi-select path.
+- Why it matters:
+  - In a creation tool, destructive rasterization is a high-cost action. Users need recoverability, clear disabled states, and selection-specific copy before flattening or losing editability.
+- Correction:
+  - Added bounded undo/redo history around object add, import, duplicate, move, lock, visibility, group, ungroup, merge, flatten, warp, and delete flows.
+  - Added active-selection guards for merge/group/ungroup and enabled shift/cmd/ctrl multi-select from the layer list.
+  - Routed delete, flatten, and whole-canvas warp through a confirmation dialog with explicit action labels.
+- Verification:
+  - Focused Broot Playwright asserts merge is disabled until multi-select, flatten requires confirmation, and Undo restores multiple layers after flatten.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs` (5/5).
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
+  - Production verification is pending this full-send deploy.
+
+### WTF-BB-289 - Broot compiles JSX with browser Babel at runtime
+
+- Category: Broot / runtime performance
+- Status: Fixed
+- Owner/Session: Codex Broot audit implementation full-send
+- Score: C3 + F3 + S0 + P2(3) = 9
+- Evidence:
+  - `public/creation-tools/broot/index.html` loads `./lib/babel.min.js` and then `<script type="text/babel" src="./js/app.jsx">`.
+  - `public/creation-tools/broot/lib/babel.min.js` is about 3.1 MB, and `public/creation-tools/broot/js/app.jsx` is about 86 KB.
+  - The Broot iframe therefore parses Babel and compiles the editor source on each load instead of serving a prebuilt JS bundle.
+- Why it matters:
+  - Broot is aiming at a serious Photoshop-like workflow. Runtime compilation adds startup cost inside a small app window and makes later FFmpeg/WebGL work feel heavier than it needs to be.
+- Correction:
+  - Compiled Broot JSX to `public/creation-tools/broot/js/app.js` with the classic React browser transform, avoiding the repo `react-jsx` runtime in this static iframe.
+  - Removed `babel.min.js` and `type="text/babel"` from Broot's HTML/runtime asset contract while keeping the editable source `app.jsx` in the repo.
+  - Registered local glfx and FFmpeg assets in the creation-tool asset manifest; FFmpeg core/wasm remain lazy-loaded by MP4 export.
+- Verification:
+  - Passed `node --check public/creation-tools/broot/js/app.js`.
+  - Passed `! rg -q "require\\(|jsx-runtime|text/babel|babel.min" public/creation-tools/broot/js/app.js public/creation-tools/broot/index.html`.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run creation-tools:check`.
+  - Focused Broot Playwright asserts scripts include `./js/app.js` and do not include Babel/text-babel.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
+  - Production verification is pending this full-send deploy.
+
+### WTF-BB-290 - Broot lacks keyboard-first canvas and visible focus coverage
+
+- Category: Broot / keyboard and accessibility
+- Status: Fixed
+- Owner/Session: Codex Broot audit implementation full-send
+- Score: C3 + F3 + S0 + P2(3) = 9
+- Evidence:
+  - The audit script found no explicit `:focus` or `:focus-visible` CSS rules in Broot's loaded styles.
+  - The canvas has an aria label, but there is no documented keyboard path for selecting objects, nudging layers, multi-select/grouping, zoom/pan, or triggering canvas operations without pointer gestures.
+  - Dense repeated controls use short labels such as `Hide`, `Show`, `Up`, `Down`, `Back`, and `Front` without object-specific accessible names in layer rows.
+- Why it matters:
+  - WCAG 2.2 AA requires keyboard operation and visible focus for interactive controls. A canvas-heavy tool can still be usable if layer list actions, object selection, and transform controls are keyboard reachable.
+- Correction:
+  - Added Broot-wide `:focus-visible` styling for buttons, inputs, selects, textareas, the canvas stage, and compact icon-style controls.
+  - Gave repeated layer select/show-hide buttons object-specific accessible labels.
+  - Added a focusable canvas workspace with keyboard undo/redo, delete confirmation, Escape cancel, and arrow-key nudge handling.
+- Verification:
+  - Passed focused Broot Playwright (5/5), which exercises layer list selection, multi-select, destructive confirmation, and undo visibility.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory:coverage`.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
+  - Production verification is pending this full-send deploy.
+
+### WTF-BB-291 - Broot HEN mint needs a pre-sign trust review
+
+- Category: Broot / HEN mint trust preview
+- Status: Fixed
+- Owner/Session: Codex Broot audit implementation full-send
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - `mintToHen()` prepares/pins artifacts, fetches the next HEN token id, estimates wallet operation limits, and calls `method.send(...)` in one flow.
+  - The user sees a status line saying to approve the HEN mint and that they pay gas/storage, but there is no in-app review sheet before the wallet prompt.
+  - `sendEstimatedWalletOp()` estimates gas/storage/fee, then immediately sends the operation with those limits.
+- Why it matters:
+  - Direct mainnet publishing is value-bearing. Before a wallet prompt, creators should see the contract, network, wallet, token id, edition count, artifact/metadata CIDs, estimated fee/storage, and recovery path if pinning succeeded but minting fails.
+- Correction:
+  - Split HEN publishing into `Prepare HEN Mint` and `Sign HEN Mint` steps.
+  - Added an in-panel HEN review showing network, wallet, contract, token id, edition count, artifact CID, metadata CID, estimated gas, storage, and fee before any wallet send.
+  - Revalidate the active wallet and chain before signing and keep the prepared mint payload until the user signs or cancels.
+- Verification:
+  - Focused Broot wallet Playwright asserts the review appears first, no `__brootHenMint` wallet-send record exists before signing, then Sign sends exactly once to the HEN contract stub.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs` (5/5).
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
+  - Production verification is pending this full-send deploy.
+
+### WTF-BB-292 - Broot MP4 export uses a hardcoded opacity pulse
+
+- Category: Broot / animation export UX
+- Status: Fixed
+- Owner/Session: Codex Broot audit implementation full-send
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - `recordCanvasClip()` records the canvas stream while mutating every even-indexed object's opacity with a hardcoded sine pulse.
+  - The function restores opacity after recording, but the exported MP4 does not represent either a neutral still capture or a user-authored animation timeline.
+- Why it matters:
+  - FFmpeg support should make animation/video export more powerful, not surprise creators with an arbitrary effect baked into the artifact.
+- Correction:
+  - Added explicit MP4 modes: still hold, layer pulse, and layer reveal.
+  - Changed the default MP4 path to neutral still-hold capture and moved the previous opacity pulse behind an explicit selection.
+  - Added duration and FPS controls that feed the canvas recorder and FFmpeg transcode path.
+- Verification:
+  - Focused Broot Playwright asserts the default `MP4 mode` value is `hold`.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs` (5/5).
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (349/349).
+  - Production verification is pending this full-send deploy.
 
 ### WTF-BB-282 - Embedded Pasta publishers rely on blocked native modals for critical feedback
 

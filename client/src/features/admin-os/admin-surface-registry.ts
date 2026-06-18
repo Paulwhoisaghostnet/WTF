@@ -969,6 +969,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     nativeSettings: ["tool availability", "export rules", "Broot local draft and file export policy", "contract origination roles", "IPFS pinning", "drop page publishing", "wtfOS package sources", "mint challenge triggers"],
     automationHandles: ["creation_tool.opened", "macaroni.package_finalized", "macaroni.drop_published", "mint_submission.created", "app.interaction.tracked"],
     behaviorAssertionIds: [
+      "broot.media-open-import",
+      "broot.project-file-vanity-extension",
+      "broot.ffmpeg-glfx-layer-ops",
+      "broot.wallet-hen-mint",
       "ipfs-pinning.pds-backed-wallet-backup",
       "skullzarmy.fafolab-integration-contracts",
       "macaroni.shadownet-rpc-wallet-setup",
