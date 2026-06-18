@@ -105,8 +105,8 @@ Priority labels:
 | WTF-BB-278 | Verified | Codex external-link quality gate repair | 2026-06-18 | Frontend security / tabnabbing link safety | P2 | 7 | 15 | 1 | 2 | 1 | Colander explorer links now include `rel="noopener noreferrer"` with `target="_blank"`; verified by `node scripts/check-external-links.mjs`, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live Colander asset smoke |
 | WTF-BB-279 | Verified | Codex Broot media-open repair | 2026-06-18 | Broot / media file import | P1 | 9 | 12 | 2 | 3 | 0 | Broot's top-level Open picker only accepted project JSON and the side import accepted only `image/*`, so normal PNG/JPG/GIF/MP4 media looked unsupported; fixed by unifying project/image/video import handling and verified live on `wtfos.app` commit `94d26fe` |
 | WTF-BB-280 | Verified | Codex Broot wallet/HEN mint repair | 2026-06-18 | Broot / Tezos wallet publishing | P1 | 13 | 6 | 3 | 5 | 1 | Broot now restores a previously connected wallet after refresh, replaces repeated connect prompts with connected state, and adds direct Mainnet HEN minting through the user's wallet with gas/storage paid by the user; verified live on `wtfos.app` commit `94d26fe` |
-| WTF-BB-281 | Fixed | Codex Skywire live-status UX pass | 2026-06-18 | Skywire / Bluesky live status UX | P2 | 8 | 14 | 2 | 3 | 0 | Skywire live-status writes could succeed while the local app gave no persistent owned indicator if Bluesky or Ovoid suppressed beta badges; fixed locally with a WTF LIVE header badge/banner and focused Playwright coverage, pending production deploy verification |
-| WTF-BB-286 | Fixed | Codex Skywire Signal starter pass | 2026-06-18 | Skywire / Skywire Signals publishing UX | P2 | 8 | 14 | 2 | 3 | 0 | Skywire Signals required users to hand-author record type, text, tags, and related URI for common creator actions; fixed locally with starter presets and focused publish coverage, pending production deploy verification |
+| WTF-BB-281 | Verified | Codex Skywire live-status UX pass | 2026-06-18 | Skywire / Bluesky live status UX | P2 | 8 | 14 | 2 | 3 | 0 | Skywire live-status writes could succeed while the local app gave no persistent owned indicator if Bluesky or Ovoid suppressed beta badges; fixed with a WTF LIVE header badge/banner and verified live on `wtfos.app` commit `dee415b` |
+| WTF-BB-286 | Verified | Codex Skywire Signal starter pass | 2026-06-18 | Skywire / Skywire Signals publishing UX | P2 | 8 | 14 | 2 | 3 | 0 | Skywire Signals required users to hand-author record type, text, tags, and related URI for common creator actions; fixed with starter presets and verified live on `wtfos.app` commit `dee415b` |
 | WTF-BB-287 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / app-window layout | P1 | 12 | 7 | 3 | 5 | 0 | Broot now keeps tools, canvas, and layers visible in the default wtfOS window by moving tabbed mobile mode below the default AppWindow width; verified live on `wtfos.app` commit `94d26fe` |
 | WTF-BB-288 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / destructive layer operations | P1 | 11 | 8 | 3 | 4 | 0 | Broot layer merge/flatten/warp/delete now have selection guards, undo/redo history, shift/cmd multi-select from the layer list, and confirmation for destructive full-canvas/delete actions; verified live on `wtfos.app` commit `94d26fe` |
 | WTF-BB-289 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / runtime performance | P2 | 9 | 12 | 3 | 3 | 0 | Broot now serves a prebuilt `js/app.js` browser bundle with local glfx/FFmpeg assets and no runtime Babel or `text/babel` script in the iframe; verified live on `wtfos.app` commit `94d26fe` |
@@ -6031,7 +6031,7 @@ Priority labels:
 ### WTF-BB-281 - Skywire live status has no obvious local indicator
 
 - Category: Skywire / Bluesky live status UX
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Skywire live-status UX pass
 - Score: C2 + F3 + S0 + P2(3) = 8
 - Evidence:
@@ -6045,12 +6045,15 @@ Priority labels:
   - Registered `skywire.live-status-visible-indicator` in behavior assertions, admin surface ownership, domain workflow probes, and the user interaction inventory.
 - Verification:
   - Passed `PATH=/opt/homebrew/bin:/usr/local/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "live status|signal starter" --project=chromium`.
-  - Production verification is pending this full-send deploy.
+  - GitHub Quality Gates `27739351890` completed successfully for commit `dee415b6`.
+  - Deploy to Hetzner `27739351880` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"` and `commitRef:"dee415b"`.
+  - Live `https://wtfos.app/assets/Skywire-wtf2-BGDs5G0A.js` contains `data-skywire-live-badge` and `WTF LIVE`.
 
 ### WTF-BB-286 - Skywire Signals lack creator-friendly starter presets
 
 - Category: Skywire / Skywire Signals publishing UX
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Skywire Signal starter pass
 - Score: C2 + F3 + S0 + P2(3) = 8
 - Evidence:
@@ -6065,7 +6068,10 @@ Priority labels:
 - Verification:
   - Passed `npx tsx --test server/features/atproto/skywire-policy.test.ts client/src/features/admin-os/admin-surface-registry.test.ts`.
   - Passed `PATH=/opt/homebrew/bin:/usr/local/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "live status|signal starter" --project=chromium`.
-  - Production verification is pending this full-send deploy.
+  - GitHub Quality Gates `27739351890` completed successfully for commit `dee415b6`.
+  - Deploy to Hetzner `27739351880` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"` and `commitRef:"dee415b"`.
+  - Live `https://wtfos.app/assets/Skywire-wtf2-BGDs5G0A.js` contains `Signal Starters` and `market.sale`.
 
 ### WTF-BB-287 - Broot default app window hides the editor panels behind mobile tabs
 
