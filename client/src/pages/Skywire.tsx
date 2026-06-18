@@ -400,6 +400,26 @@ interface SkywireTezosVaultResponse {
   };
 }
 
+interface SkywireLiveStatus {
+  uri: string;
+  cid: string | null;
+  status: string;
+  liveUrl: string | null;
+  title: string | null;
+  description: string | null;
+  durationMinutes: number | null;
+  createdAt: string | null;
+  source: string;
+}
+
+interface SkywireLiveStatusResponse {
+  status: SkywireLiveStatus | null;
+  collection: string;
+  rkey: string;
+  source: string;
+  note?: string;
+}
+
 type SkywireVaultTokenContext = "owned" | "created";
 
 interface SkywireVaultShareTarget {
@@ -3973,7 +3993,102 @@ function DiscoverPanel({
   );
 }
 
-function SignalsPanel({ me, canPublishSignals }: { me: AtprotoMe; canPublishSignals: boolean }) {
+function LiveStatusPanel({ me, canSetLiveStatus }: { me: AtprotoMe; canSetLiveStatus: boolean }) {
+  const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
+  const defaultLiveUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/live`
+      : "https://wtfos.app/live";
+  const [liveUrl, setLiveUrl] = useState(defaultLiveUrl);
+  const [durationMinutes, setDurationMinutes] = useState(120);
+  const statusQuery = useQuery<SkywireLiveStatusResponse>({
+    queryKey: ["skywire", "live-status"],
+    enabled: canUseAtprotoSession,
+    queryFn: () => api.get<SkywireLiveStatusResponse>("/api/skywire/live-status"),
+    staleTime: 15_000,
+  });
+  const setLive = useMutation({
+    mutationFn: () =>
+      api.post<SkywireLiveStatusResponse>("/api/skywire/live-status", {
+        liveUrl,
+        title: "WTF LIVE",
+        description: "Live now on WTF LIVE.",
+        durationMinutes,
+      }),
+    onSuccess: () => statusQuery.refetch(),
+  });
+  const clearLive = useMutation({
+    mutationFn: () => api.delete("/api/skywire/live-status"),
+    onSuccess: () => statusQuery.refetch(),
+  });
+  const active = statusQuery.data?.status;
+
+  return (
+    <GroupBox label="Bluesky Live Status">
+      <Stack>
+        <MetaRow>
+          <StatChip>{active?.liveUrl ? "Live record set" : "No live record"}</StatChip>
+          <StatChip>app.bsky.actor.status/self</StatChip>
+        </MetaRow>
+        {active?.liveUrl ? (
+          <VaultShareDraft data-skywire-live-status="active">
+            <strong>{active.title || "Live"}</strong>
+            <Mono>{active.liveUrl}</Mono>
+            {active.createdAt ? <FinePrint>Set {formatDate(active.createdAt)}</FinePrint> : null}
+          </VaultShareDraft>
+        ) : null}
+        <TextField
+          value={liveUrl}
+          onChange={(event: any) => setLiveUrl(event.target.value)}
+          placeholder="https://wtfos.app/live/r/room-id"
+          fullWidth
+        />
+        <NativeSelect
+          value={String(durationMinutes)}
+          onChange={(event) => setDurationMinutes(Number(event.target.value) || 120)}
+        >
+          <option value="30">30 minutes</option>
+          <option value="60">1 hour</option>
+          <option value="120">2 hours</option>
+          <option value="240">4 hours</option>
+          <option value="480">8 hours</option>
+        </NativeSelect>
+        <Row>
+          <Button
+            disabled={!canUseAtprotoSession || !canSetLiveStatus || setLive.isPending || !liveUrl.trim()}
+            onClick={() => setLive.mutate()}
+          >
+            {setLive.isPending ? "Setting Live..." : "Set WTF LIVE Status"}
+          </Button>
+          <Button
+            disabled={!canUseAtprotoSession || !canSetLiveStatus || clearLive.isPending || !active}
+            onClick={() => clearLive.mutate()}
+          >
+            {clearLive.isPending ? "Clearing..." : "Clear Live"}
+          </Button>
+        </Row>
+        {!me.account ? <FinePrint>Connect Bluesky in Skywire first.</FinePrint> : null}
+        {me.account && !canUseAtprotoSession ? <FinePrint>Reconnect Bluesky from Settings before changing live status.</FinePrint> : null}
+        {me.account && canUseAtprotoSession && !canSetLiveStatus ? <FinePrint>Choose Be Heard or Be Bold again to grant the new live-status scope.</FinePrint> : null}
+        <FinePrint>Bluesky stores this record in your repo; bsky.app still decides whether unsupported live URLs render as a badge during beta.</FinePrint>
+        {statusQuery.isError ? <InlineState>{(statusQuery.error as Error).message}</InlineState> : null}
+        {setLive.isError || clearLive.isError ? (
+          <InlineState>{((setLive.error || clearLive.error) as Error)?.message || "Live status update failed."}</InlineState>
+        ) : null}
+      </Stack>
+    </GroupBox>
+  );
+}
+
+function SignalsPanel({
+  me,
+  canPublishSignals,
+  canSetLiveStatus,
+}: {
+  me: AtprotoMe;
+  canPublishSignals: boolean;
+  canSetLiveStatus: boolean;
+}) {
   const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
   const [text, setText] = useState("");
   const [signalType, setSignalType] = useState("status");
@@ -4004,55 +4119,60 @@ function SignalsPanel({ me, canPublishSignals }: { me: AtprotoMe; canPublishSign
   });
   if (!me.account) return <p>Connect or register an AT account to publish WTF-native Skywire Signals.</p>;
   if (!canUseAtprotoSession) return <p>Reconnect Bluesky from Settings to publish and inspect Skywire Signals.</p>;
-  if (!canPublishSignals) return <p>Choose Be Heard or Be Bold from Settings to publish WTF-native Skywire Signals.</p>;
   return (
-    <Grid>
-      <GroupBox label="Publish Skywire Signal">
-        <Stack>
-          <NativeSelect value={signalType} onChange={(event) => setSignalType(event.target.value)}>
-            <option value="status">Status</option>
-            <option value="quest">Quest</option>
-            <option value="drop">Drop</option>
-            <option value="proof">Proof</option>
-            <option value="broadcast">Broadcast</option>
-          </NativeSelect>
-          <TextArea value={text} onChange={(event) => setText(event.target.value)} maxLength={300} />
-          <TextField
-            value={tags}
-            onChange={(e: any) => setTags(e.target.value)}
-            placeholder="tags, comma separated"
-            fullWidth
-          />
-          <TextField
-            value={relatedUri}
-            onChange={(e: any) => setRelatedUri(e.target.value)}
-            placeholder="optional related at:// uri"
-            fullWidth
-          />
-          <Button disabled={!canPublishSignals || !text.trim() || publish.isPending} onClick={() => publish.mutate()}>
-            Publish Signal
-          </Button>
-          {publish.isError ? <span>{(publish.error as Error).message}</span> : null}
-        </Stack>
-      </GroupBox>
-      <GroupBox label="Your AT Repo Signals">
-        <Stack>
-          <Mono>{signals.data?.collection || "app.wtfgameshow.skywire.signal"}</Mono>
-          {signals.isLoading ? <Hourglass size={24} /> : null}
-          {signals.isError ? <span>{(signals.error as Error).message}</span> : null}
-          <FeedList>
-            {(signals.data?.records ?? []).map((record) => (
-              <FeedItem key={record.uri}>
-                <strong>{record.value.signalType || "signal"}</strong>
-                <span>{record.value.text || "(no text)"}</span>
-                {record.value.tags?.length ? <span>{record.value.tags.join(", ")}</span> : null}
-                <Mono>{record.uri}</Mono>
-              </FeedItem>
-            ))}
-          </FeedList>
-        </Stack>
-      </GroupBox>
-    </Grid>
+    <Stack>
+      <LiveStatusPanel me={me} canSetLiveStatus={canSetLiveStatus} />
+      {!canPublishSignals ? <p>Choose Be Heard or Be Bold from Settings to publish WTF-native Skywire Signals.</p> : null}
+      {canPublishSignals ? (
+        <Grid>
+          <GroupBox label="Publish Skywire Signal">
+            <Stack>
+              <NativeSelect value={signalType} onChange={(event) => setSignalType(event.target.value)}>
+                <option value="status">Status</option>
+                <option value="quest">Quest</option>
+                <option value="drop">Drop</option>
+                <option value="proof">Proof</option>
+                <option value="broadcast">Broadcast</option>
+              </NativeSelect>
+              <TextArea value={text} onChange={(event) => setText(event.target.value)} maxLength={300} />
+              <TextField
+                value={tags}
+                onChange={(e: any) => setTags(e.target.value)}
+                placeholder="tags, comma separated"
+                fullWidth
+              />
+              <TextField
+                value={relatedUri}
+                onChange={(e: any) => setRelatedUri(e.target.value)}
+                placeholder="optional related at:// uri"
+                fullWidth
+              />
+              <Button disabled={!canPublishSignals || !text.trim() || publish.isPending} onClick={() => publish.mutate()}>
+                Publish Signal
+              </Button>
+              {publish.isError ? <span>{(publish.error as Error).message}</span> : null}
+            </Stack>
+          </GroupBox>
+          <GroupBox label="Your AT Repo Signals">
+            <Stack>
+              <Mono>{signals.data?.collection || "app.wtfgameshow.skywire.signal"}</Mono>
+              {signals.isLoading ? <Hourglass size={24} /> : null}
+              {signals.isError ? <span>{(signals.error as Error).message}</span> : null}
+              <FeedList>
+                {(signals.data?.records ?? []).map((record) => (
+                  <FeedItem key={record.uri}>
+                    <strong>{record.value.signalType || "signal"}</strong>
+                    <span>{record.value.text || "(no text)"}</span>
+                    {record.value.tags?.length ? <span>{record.value.tags.join(", ")}</span> : null}
+                    <Mono>{record.uri}</Mono>
+                  </FeedItem>
+                ))}
+              </FeedList>
+            </Stack>
+          </GroupBox>
+        </Grid>
+      ) : null}
+    </Stack>
   );
 }
 
@@ -4074,6 +4194,7 @@ function ChatPanel({
   const canUseAtprotoSession = Boolean(me.account && !me.account.session?.reconnectRequired);
   const [selectedConvoId, setSelectedConvoId] = useState("");
   const [membersText, setMembersText] = useState("");
+  const [groupName, setGroupName] = useState("");
   const [messageText, setMessageText] = useState("");
   const [pendingMedia, setPendingMedia] = useState<SkywireChatMediaAttachment[]>([]);
   const [uploadError, setUploadError] = useState("");
@@ -4118,7 +4239,10 @@ function ChatPanel({
   const canSendMessage = Boolean(messageText.trim() || quotePayload || pendingMedia.length);
   const resolveConvo = useMutation({
     mutationFn: async () =>
-      (await api.post("/api/skywire/chats/resolve", { members })) as { convo: SkywireChatConvo },
+      (await api.post("/api/skywire/chats/resolve", {
+        members,
+        groupName: members.length > 1 ? groupName || undefined : undefined,
+      })) as { convo: SkywireChatConvo },
     onSuccess: (data: { convo: SkywireChatConvo }) => {
       setSelectedConvoId(data.convo.id);
       qc.invalidateQueries({ queryKey: ["skywire", "chats"] });
@@ -4144,6 +4268,7 @@ function ChatPanel({
     mutationFn: async () =>
       (await api.post("/api/skywire/chats/send", {
         members,
+        groupName: members.length > 1 ? groupName || undefined : undefined,
         text: messageText,
         quotedPost: quotePayload,
         media: mediaPayload,
@@ -4244,11 +4369,19 @@ function ChatPanel({
               placeholder="handle.bsky.social, did:plc:..."
               fullWidth
             />
+            {members.length > 1 ? (
+              <TextField
+                value={groupName}
+                onChange={(event: any) => setGroupName(event.target.value)}
+                placeholder="group name"
+                fullWidth
+              />
+            ) : null}
             <Row>
               <Button size="sm" disabled={members.length === 0 || resolveConvo.isPending} onClick={() => resolveConvo.mutate()}>
-                Open Members
+                {members.length > 1 ? "Create Group" : "Open Member"}
               </Button>
-              <span>{members.length >= 2 ? "Group ready" : "Add handle or DID"}</span>
+              <span>{members.length >= 2 ? "Group chat" : "Add handle or DID"}</span>
             </Row>
             <ConversationList>
               {(chats.data?.convos ?? []).map((convo) => {
@@ -4375,7 +4508,7 @@ function ChatPanel({
                 disabled={members.length === 0 || !canSendMessage || sendToMembers.isPending}
                 onClick={() => sendToMembers.mutate()}
               >
-                Send To Members
+                {members.length > 1 ? "Create Group + Send" : "Send To Member"}
               </Button>
             </Row>
             {uploadError ? <span>{uploadError}</span> : null}
@@ -4612,6 +4745,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   const canUseSocialActions = Boolean(me?.account && accountHasCapability(me.account, "socialActions"));
   const canCompose = Boolean(me?.account && accountHasCapability(me.account, "compose"));
   const canUseSignals = Boolean(me?.account && accountHasCapability(me.account, "signals"));
+  const canSetLiveStatus = Boolean(me?.account && accountHasCapability(me.account, "liveStatus"));
   const canUseChat = Boolean(me?.account && accountHasCapability(me.account, "chat"));
   const canUseNotifications = Boolean(me?.account && accountHasCapability(me.account, "notifications"));
   const openActorFeed = (actor: SkywireActor) => {
@@ -4893,7 +5027,13 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
                   onEnableChat={enableChatAddOn}
                 />
               ) : null}
-              {tab === "signals" ? <SignalsPanel me={me} canPublishSignals={canUseSignals} /> : null}
+              {tab === "signals" ? (
+                <SignalsPanel
+                  me={me}
+                  canPublishSignals={canUseSignals}
+                  canSetLiveStatus={canSetLiveStatus}
+                />
+              ) : null}
               {tab === "challenges" ? <ChallengesPanel /> : null}
               {tab === "composer" ? <ComposerPanel me={me} canCompose={canCompose} /> : null}
               {tab === "debug" && isAdmin ? (

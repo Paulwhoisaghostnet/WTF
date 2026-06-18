@@ -14,6 +14,7 @@ import {
   isAtprotoSessionUnavailableError,
 } from "../features/atproto/oauth";
 import {
+  BSKY_ACTOR_STATUS_COLLECTION,
   SKYWIRE_ROOM_MESSAGE_COLLECTION,
   SKYWIRE_SIGNAL_COLLECTION,
   SKYWIRE_STAGE_BROADCAST_COLLECTION,
@@ -54,6 +55,8 @@ const SKYWIRE_CHAT_MEDIA_TOKEN_TTL_MS = Number(process.env.SKYWIRE_CHAT_MEDIA_TO
 const SKYWIRE_CHAT_MEDIA_LINE_RE = /^\[skywire-media:([A-Za-z0-9_-]+)\]\s+(\S+)$/;
 const SKYWIRE_EXTERNAL_THUMB_MAX_BYTES = 1_000_000;
 const SKYWIRE_EXTERNAL_THUMB_TIMEOUT_MS = 8_000;
+const BSKY_ACTOR_STATUS_RKEY = "self";
+const BSKY_ACTOR_STATUS_LIVE = "app.bsky.actor.status#live";
 
 const postSchema = z.object({
   text: z.string().trim().min(1).max(300),
@@ -178,6 +181,13 @@ const tezosVaultQuerySchema = z.object({
     .default(false),
 });
 
+const liveStatusSchema = z.object({
+  liveUrl: z.string().trim().url().max(2000),
+  title: z.string().trim().min(1).max(300).default("WTF LIVE"),
+  description: z.string().trim().max(1000).optional().nullable(),
+  durationMinutes: z.coerce.number().int().min(1).max(1440).default(120),
+});
+
 const skywireClientEventSchema = z.object({
   eventType: z.enum(["skywire.token_listing.buy_requested"]),
   tokenRef: z.string().trim().min(1).max(240).optional(),
@@ -294,6 +304,7 @@ const chatMembersSchema = z.object({
     .min(1)
     .max(10)
     .transform((members) => Array.from(new Set(members.map((member) => member.replace(/^@/, "").trim()).filter(Boolean)))),
+  groupName: z.string().trim().min(1).max(120).optional().nullable(),
 });
 
 const chatMediaAttachmentSchema = z.object({
@@ -326,6 +337,43 @@ const chatMessagesQuerySchema = z.object({
 });
 
 const convoIdSchema = z.string().trim().min(1).max(300).regex(/^[a-z0-9._:-]+$/i);
+
+function chatBskyGroupCreateGroupLexicon() {
+  return {
+    lexicon: 1,
+    id: "chat.bsky.group.createGroup",
+    defs: {
+      main: {
+        type: "procedure",
+        input: {
+          encoding: "application/json",
+          schema: {
+            type: "object",
+            required: ["members", "name"],
+            properties: {
+              members: {
+                type: "array",
+                maxLength: 49,
+                items: { type: "string", format: "did" },
+              },
+              name: { type: "string", minLength: 1, maxLength: 500, maxGraphemes: 50 },
+            },
+          },
+        },
+        output: {
+          encoding: "application/json",
+          schema: {
+            type: "object",
+            required: ["convo"],
+            properties: {
+              convo: { type: "ref", ref: "chat.bsky.convo.defs#convoView" },
+            },
+          },
+        },
+      },
+    },
+  } as const;
+}
 
 const SKYWIRE_ROOMS = [
   {
@@ -1050,7 +1098,13 @@ function normalizeSkywireVaultToken(row: {
 
 function recordSkywireSystemEvent(
   user: any,
-  eventType: "skywire.token_link.resolved" | "skywire.token_listing.buy_requested" | "skywire.tezos_vault.viewed",
+  eventType:
+    | "skywire.token_link.resolved"
+    | "skywire.token_listing.buy_requested"
+    | "skywire.tezos_vault.viewed"
+    | "atproto.live_status.updated"
+    | "atproto.live_status.cleared"
+    | "atproto.chat.group_created",
   rawRefType: string,
   rawRefId: string,
   metadata: Record<string, unknown> = {},
@@ -1066,6 +1120,70 @@ function recordSkywireSystemEvent(
   }).catch((err: any) => {
     console.warn("[skywire] system event failed:", eventType, err?.message || err);
   });
+}
+
+async function resolveChatMemberDids(
+  members: string[],
+  account: typeof atprotoAccounts.$inferSelect,
+): Promise<string[]> {
+  const publicAgent = getPublicAtprotoAgent();
+  const dids: string[] = [];
+  for (const member of members) {
+    const actor = member.trim().replace(/^@/, "");
+    if (!actor) continue;
+    const did = actor.startsWith("did:")
+      ? actor
+      : String((await publicAgent.getProfile({ actor })).data.did || "");
+    if (did && did !== account.did && !dids.includes(did)) dids.push(did);
+  }
+  return dids;
+}
+
+function groupNameForMembers(groupName: string | null | undefined, members: string[]): string {
+  const explicit = String(groupName || "").trim();
+  if (explicit) return explicit.slice(0, 120);
+  const label = members
+    .map((member) => member.replace(/^@/, "").trim())
+    .filter(Boolean)
+    .slice(0, 4)
+    .join(", ");
+  return (label ? `Skywire: ${label}` : "Skywire group").slice(0, 120);
+}
+
+async function createSkywireGroupConvo(
+  agent: ReturnType<typeof skywireChatAgent>,
+  input: { members: string[]; name: string },
+) {
+  const current = (agent as any).chat?.bsky?.group?.createGroup;
+  if (typeof current === "function") {
+    return current.call((agent as any).chat.bsky.group, input, { encoding: "application/json" });
+  }
+  if (!agent.lex.get("chat.bsky.group.createGroup")) {
+    agent.lex.add(chatBskyGroupCreateGroupLexicon() as any);
+  }
+  return agent.call(
+    "chat.bsky.group.createGroup",
+    undefined,
+    input,
+    { encoding: "application/json" },
+  );
+}
+
+function normalizeSkywireLiveStatusRecord(record: any) {
+  const value = record?.value ?? record ?? null;
+  if (!value || typeof value !== "object") return null;
+  const external = value.embed?.external || null;
+  return {
+    uri: record?.uri || `at://${record?.repo || ""}/${BSKY_ACTOR_STATUS_COLLECTION}/${BSKY_ACTOR_STATUS_RKEY}`,
+    cid: record?.cid || null,
+    status: String(value.status || ""),
+    liveUrl: external?.uri || null,
+    title: external?.title || null,
+    description: external?.description || null,
+    durationMinutes: Number(value.durationMinutes || 0) || null,
+    createdAt: value.createdAt || null,
+    source: BSKY_ACTOR_STATUS_COLLECTION,
+  };
 }
 
 function feedSearchQuery(feedType: string, q?: string): string {
@@ -1424,13 +1542,28 @@ router.get("/api/skywire/chats", isAuthenticated, async (req, res) => {
 router.post("/api/skywire/chats/resolve", isAuthenticated, actionLimiter, async (req, res) => {
   const parsed = chatMembersSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire chat members" });
-  const account = await requireLinkedAccount((req.user as any).id);
+  const user = req.user as any;
+  const account = await requireLinkedAccount(user.id);
   requireSkywireChatCapability(account);
   const agent = skywireChatAgent(await getAtprotoAgentForDid(account.did));
-  const convo = await agent.chat.bsky.convo.getConvoForMembers({ members: parsed.data.members });
+  const memberDids = await resolveChatMemberDids(parsed.data.members, account);
+  if (!memberDids.length) return res.status(400).json({ error: "Add at least one chat member besides yourself" });
+  const groupName = groupNameForMembers(parsed.data.groupName, parsed.data.members);
+  const convo =
+    memberDids.length > 1
+      ? await createSkywireGroupConvo(agent, { members: memberDids, name: groupName })
+      : await agent.chat.bsky.convo.getConvoForMembers({ members: memberDids });
+  if (memberDids.length > 1) {
+    recordSkywireSystemEvent(user, "atproto.chat.group_created", "atproto_chat_convo", convo.data.convo.id, {
+      groupName,
+      members: memberDids,
+      requestedMembers: parsed.data.members,
+      source: "chat.bsky.group.createGroup",
+    });
+  }
   res.json({
     convo: normalizeChatConvo(convo.data.convo),
-    source: "chat.bsky.convo.getConvoForMembers",
+    source: memberDids.length > 1 ? "chat.bsky.group.createGroup" : "chat.bsky.convo.getConvoForMembers",
   });
 });
 
@@ -1514,7 +1647,13 @@ router.post("/api/skywire/chats/send", isAuthenticated, actionLimiter, async (re
   const account = await requireLinkedAccount(user.id);
   requireSkywireChatCapability(account);
   const agent = skywireChatAgent(await getAtprotoAgentForDid(account.did));
-  const convo = await agent.chat.bsky.convo.getConvoForMembers({ members: parsed.data.members });
+  const memberDids = await resolveChatMemberDids(parsed.data.members, account);
+  if (!memberDids.length) return res.status(400).json({ error: "Add at least one chat member besides yourself" });
+  const groupName = groupNameForMembers(parsed.data.groupName, parsed.data.members);
+  const convo =
+    memberDids.length > 1
+      ? await createSkywireGroupConvo(agent, { members: memberDids, name: groupName })
+      : await agent.chat.bsky.convo.getConvoForMembers({ members: memberDids });
   const mediaAttachments = await resolveSkywireChatMediaAttachments(req, user.id, parsed.data.media);
   const messageInput = chatMessageInputFromBody(parsed.data, mediaAttachments);
   const result = await agent.chat.bsky.convo.sendMessage(
@@ -1541,10 +1680,19 @@ router.post("/api/skywire/chats/send", isAuthenticated, actionLimiter, async (re
       mediaCount: mediaAttachments.length,
     },
   });
+  if (memberDids.length > 1) {
+    recordSkywireSystemEvent(user, "atproto.chat.group_created", "atproto_chat_convo", convo.data.convo.id, {
+      groupName,
+      members: memberDids,
+      requestedMembers: parsed.data.members,
+      source: "chat.bsky.group.createGroup",
+      messageId: result.data.id,
+    });
+  }
   res.status(201).json({
     convo: normalizeChatConvo(convo.data.convo),
     message: normalizeChatMessage(result.data),
-    source: "chat.bsky.convo.sendMessage",
+    source: memberDids.length > 1 ? "chat.bsky.group.createGroup+chat.bsky.convo.sendMessage" : "chat.bsky.convo.sendMessage",
   });
 });
 
@@ -1582,6 +1730,116 @@ router.post("/api/skywire/events", isAuthenticated, actionLimiter, async (req, r
     parsed.data.metadata ?? {},
   );
   res.json({ ok: true });
+});
+
+router.get("/api/skywire/live-status", isAuthenticated, async (req, res) => {
+  const account = await requireLinkedAccount((req.user as any).id);
+  const agent = await getAtprotoAgentForDid(account.did);
+  try {
+    const record = await agent.com.atproto.repo.getRecord({
+      repo: account.did,
+      collection: BSKY_ACTOR_STATUS_COLLECTION,
+      rkey: BSKY_ACTOR_STATUS_RKEY,
+    });
+    res.json({
+      status: normalizeSkywireLiveStatusRecord(record.data),
+      collection: BSKY_ACTOR_STATUS_COLLECTION,
+      rkey: BSKY_ACTOR_STATUS_RKEY,
+      source: "com.atproto.repo.getRecord",
+    });
+  } catch (err: any) {
+    if (err?.error === "RecordNotFound" || /not found/i.test(String(err?.message || ""))) {
+      return res.json({
+        status: null,
+        collection: BSKY_ACTOR_STATUS_COLLECTION,
+        rkey: BSKY_ACTOR_STATUS_RKEY,
+        source: "com.atproto.repo.getRecord",
+      });
+    }
+    throw err;
+  }
+});
+
+router.post("/api/skywire/live-status", isAuthenticated, actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const parsed = liveStatusSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire live status payload" });
+  const account = await requireLinkedAccount(user.id);
+  requireAtprotoCapability(account, "liveStatus", "be-heard");
+  const agent = await getAtprotoAgentForDid(account.did);
+  const createdAt = new Date().toISOString();
+  const record = {
+    $type: BSKY_ACTOR_STATUS_COLLECTION,
+    status: BSKY_ACTOR_STATUS_LIVE,
+    durationMinutes: parsed.data.durationMinutes,
+    createdAt,
+    embed: {
+      $type: "app.bsky.embed.external",
+      external: {
+        uri: parsed.data.liveUrl,
+        title: parsed.data.title,
+        description:
+          parsed.data.description ||
+          "Live now on WTF LIVE. Bluesky may still hide unsupported services while its Live feature is in beta.",
+      },
+    },
+  };
+  const result = await agent.com.atproto.repo.putRecord(
+    {
+      repo: account.did,
+      collection: BSKY_ACTOR_STATUS_COLLECTION,
+      rkey: BSKY_ACTOR_STATUS_RKEY,
+      record,
+      validate: false,
+    },
+    { encoding: "application/json" },
+  );
+  recordSkywireSystemEvent(user, "atproto.live_status.updated", "atproto_status", result.data.uri, {
+    collection: BSKY_ACTOR_STATUS_COLLECTION,
+    rkey: BSKY_ACTOR_STATUS_RKEY,
+    liveUrl: parsed.data.liveUrl,
+    durationMinutes: parsed.data.durationMinutes,
+  });
+  res.status(201).json({
+    collection: BSKY_ACTOR_STATUS_COLLECTION,
+    rkey: BSKY_ACTOR_STATUS_RKEY,
+    uri: result.data.uri,
+    cid: result.data.cid,
+    status: normalizeSkywireLiveStatusRecord({ uri: result.data.uri, cid: result.data.cid, value: record }),
+    source: "com.atproto.repo.putRecord",
+    note: "Bluesky controls whether bsky.app displays third-party live URLs during its beta allowlist.",
+  });
+});
+
+router.delete("/api/skywire/live-status", isAuthenticated, actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const account = await requireLinkedAccount(user.id);
+  requireAtprotoCapability(account, "liveStatus", "be-heard");
+  const agent = await getAtprotoAgentForDid(account.did);
+  try {
+    await agent.com.atproto.repo.deleteRecord(
+      {
+        repo: account.did,
+        collection: BSKY_ACTOR_STATUS_COLLECTION,
+        rkey: BSKY_ACTOR_STATUS_RKEY,
+      },
+      { encoding: "application/json" },
+    );
+  } catch (err: any) {
+    if (!(err?.error === "RecordNotFound" || /not found/i.test(String(err?.message || "")))) {
+      throw err;
+    }
+  }
+  recordSkywireSystemEvent(user, "atproto.live_status.cleared", "atproto_status", `${account.did}:${BSKY_ACTOR_STATUS_RKEY}`, {
+    collection: BSKY_ACTOR_STATUS_COLLECTION,
+    rkey: BSKY_ACTOR_STATUS_RKEY,
+  });
+  res.json({
+    ok: true,
+    collection: BSKY_ACTOR_STATUS_COLLECTION,
+    rkey: BSKY_ACTOR_STATUS_RKEY,
+    source: "com.atproto.repo.deleteRecord",
+  });
 });
 
 router.get("/api/skywire/tezos-vault", isAuthenticated, async (req, res) => {

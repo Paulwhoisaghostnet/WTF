@@ -100,6 +100,8 @@ Priority labels:
 | WTF-BB-273 | Verified | Codex Airporters Octez Connect full-send | 2026-06-17 | Macaroni / published drop wallet compatibility | P1 | 12 | 7 | 3 | 5 | 0 | Airporters is mainnet, but Brave/Kukai users could receive a confusing Mainnet mismatch because published/drop wallet code sent the dApp RPC inside a named wallet network; fixed with Octez Connect-primary wallet bridge, Beacon backup, plain named wallet networks, and serve-time injection for stored Macaroni drops; verified live after Hetzner deploy on `https://paulwhoisaghost.wtfos.me/airporters-vol-1` |
 | WTF-BB-274 | Verified | Codex Macaroni V2 editions full-send | 2026-06-17 | Macaroni / contract versions, editions, and minter royalties | P1 | 14 | 3 | 4 | 5 | 1 | Macaroni Studio only generated the V1 blind-mint contract, so creators could not choose shared-token editions, V2 minter royalty policies, or multiple delayed-reveal placeholder artifacts; fixed with a V1/V2 selector, SmartPy V2 contract template, compiled public artifact, generated config, and source-policy coverage; verified live on wtfos.app after Hetzner deploy |
 | WTF-BB-275 | Verified | Codex Broot direct-route full-send | 2026-06-18 | Creation tools / shared route metadata | P1 | 10 | 10 | 2 | 4 | 0 | Generated creation-tool routes could exist in `PAGE_DEFS` while missing from `BROWSER_ROUTE_META` and `/api/access`, causing direct `/tools/broot` opens or agent route discovery to miss Broot; fixed by mirroring generated routes across both manifests and verified live on wtfos.app |
+| WTF-BB-276 | Fixed | Codex Skywire live/group/vault full-send | 2026-06-18 | Skywire / AT Protocol parity and Tezos vault performance | P1 | 13 | 6 | 3 | 5 | 1 | Skywire lagged current Bluesky chat/live features and could reprocess large Tezos wallets through expensive source calls instead of leaning on indexed holdings; fixed locally with live-status repo writes, group conversation creation, permission coverage, and vault pagination verification, pending production deploy verification |
+| WTF-BB-277 | Fixed | Codex inventory harness contract repair | 2026-06-18 | E2E / CH-EASE and WTF LIVE harness parity | P1 | 10 | 10 | 2 | 4 | 0 | CH-EASE and WTF LIVE inventory specs could fall through generic harness mocks that dropped package, soundboard, media-deck, and handoff event contracts; fixed locally with stateful domain mocks and full inventory E2E verification, pending production deploy verification |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5869,6 +5871,59 @@ Priority labels:
   - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs`.
   - Deploy to Hetzner `27731713838` completed successfully for commit `bd836b23`.
   - Live production verification passed on `https://wtfos.app`: `/api/health` reported `commitRef:"bd836b2"` with `status:"ok"`, `/api/access` exposed `/tools/broot` as an enabled `browser-session` route, `/api/access` exposed `/tools/ch-ease` and `/tools/macaroni-packager` with `appGate:"ch-ease"`, and the Broot static assets `index.html`, `js/app.jsx`, and `lib/fabric.min.js` all returned 200.
+
+### WTF-BB-276 - Skywire live status, group chat, and vault read-model parity
+
+- Category: Skywire / AT Protocol parity and Tezos vault performance
+- Status: Fixed
+- Owner/Session: Codex Skywire live/group/vault full-send
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - Bluesky exposes `app.bsky.actor.status` for account live status, including `app.bsky.actor.status#live`, optional external embeds, `durationMinutes`, and `createdAt`.
+  - Bluesky group chat now uses `chat.bsky.group.createGroup` with DID members and a group name.
+  - Skywire vault inventory was doing repeated ownership work even though indexed `wallet_holdings` already provide the user's owned-token read model.
+- Correction:
+  - Added a `liveStatus` Skywire OAuth capability and `repo:app.bsky.actor.status` permission mapping.
+  - Added Skywire live-status GET/POST/DELETE endpoints that write or clear `app.bsky.actor.status/self` with a WTF LIVE external embed, while surfacing Bluesky's beta allowlist caveat.
+  - Added a Signals-tab live-status panel and group-chat creation controls in Skywire.
+  - Updated chat resolution/send flows to resolve handles to DIDs and create a Bluesky group conversation when multiple members are entered.
+  - Updated the harness and inventory row for `atproto.live_status.updated`, `atproto.live_status.cleared`, and `atproto.chat.group_created`.
+  - Kept the vault path on paginated indexed holdings so large wallets do not redo expensive on-chain/source discovery on tab mount.
+- Local verification:
+  - `node --check tests/playwright/harness.mjs`
+  - `./node_modules/.bin/tsx --test server/features/atproto/permission-tiers.test.ts`
+  - `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts`
+  - `./node_modules/.bin/tsc --noEmit --pretty false`
+  - `./node_modules/.bin/vite build`
+  - `./node_modules/.bin/playwright test tests/playwright/inventory/skywire-feed.spec.mjs --project=chromium`
+  - `./node_modules/.bin/playwright test tests/playwright/inventory --project=chromium` passed 343/343.
+- Production verification:
+  - Pending this full-send deployment.
+
+### WTF-BB-277 - Inventory harness mocks can drop stateful domain contracts
+
+- Category: E2E / CH-EASE and WTF LIVE harness parity
+- Status: Fixed
+- Owner/Session: Codex inventory harness contract repair
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - CH-EASE package create/upload/finalize could pass through generic `{ ok: true }` mocks and then lose package detail, package source status, and handoff/export events expected by inventory.
+  - WTF LIVE soundboard settings and room media-deck state were similarly dropped by generic API/WebSocket harness paths, causing focused inventory failures for persisted soundboard clips and remote media sources.
+- Correction:
+  - Added stateful harness routes for CH-EASE package CRUD, upload, config, finalize, source, and CSV export.
+  - Added Macaroni launcher source-status rendering for CH-EASE package handoffs.
+  - Added client-side package-detail normalization so stale package shapes cannot crash readiness rendering.
+  - Added harness capture for client system-log events.
+  - Added stateful WTF LIVE soundboard GET/PUT mocks, preserved media-deck/soundboard fields in harness WebSocket media state, and relayed soundboard clip events to room audiences.
+- Local verification:
+  - `node --check tests/playwright/harness.mjs`
+  - `./node_modules/.bin/tsc --noEmit --pretty false`
+  - `./node_modules/.bin/vite build`
+  - `./node_modules/.bin/playwright test tests/playwright/inventory/macaroni-packager.spec.mjs --project=chromium`
+  - `./node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs --project=chromium`
+  - `./node_modules/.bin/playwright test tests/playwright/inventory --project=chromium` passed 343/343.
+- Production verification:
+  - Pending this full-send deployment.
 
 ## Backlog Intake Template
 

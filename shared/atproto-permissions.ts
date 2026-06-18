@@ -15,6 +15,7 @@ export type SkywirePermissionCapability =
   | "socialActions"
   | "compose"
   | "profileWrite"
+  | "liveStatus"
   | "signals"
   | "rooms"
   | "stages"
@@ -39,6 +40,7 @@ export const ATPROTO_CHAT_SCOPE = "transition:chat.bsky";
 export const ATPROTO_CHAT_SCOPE_ALIASES = [ATPROTO_CHAT_SCOPE, "chat.bsky"] as const;
 export const TZ2AT_TZBSKY_COLLECTION = "com.tzbsky.cryptoAddress";
 export const TZ2AT_WALLET_LINK_COLLECTION = "xyz.tz2at.identity.walletLink";
+export const BSKY_ACTOR_STATUS_COLLECTION = "app.bsky.actor.status";
 export const SKYWIRE_SIGNAL_COLLECTION = "app.wtfgameshow.skywire.signal";
 export const SKYWIRE_ROOM_MESSAGE_COLLECTION = "app.wtfgameshow.skywire.room.message";
 export const SKYWIRE_STAGE_BROADCAST_COLLECTION = "app.wtfgameshow.skywire.stage.broadcast";
@@ -75,6 +77,7 @@ export const SKYWIRE_SOCIAL_ACTION_SCOPES = [
 export const SKYWIRE_CREATOR_SCOPES = [
   "repo:app.bsky.feed.post",
   "repo:app.bsky.actor.profile",
+  `repo:${BSKY_ACTOR_STATUS_COLLECTION}`,
   `repo:${SKYWIRE_SIGNAL_COLLECTION}`,
   `repo:${SKYWIRE_ROOM_MESSAGE_COLLECTION}`,
   `repo:${SKYWIRE_STAGE_BROADCAST_COLLECTION}`,
@@ -128,13 +131,14 @@ export const SKYWIRE_PERMISSION_TIER_OPTIONS: SkywirePermissionTierOption[] = [
       "Everything in Be Social.",
       "Create Bluesky posts and replies from Skywire.",
       "Update the profile record Skywire shows for your AT identity.",
+      "Set or clear your Bluesky live status record for WTF LIVE handoffs.",
       "Upload image blobs for future media posting.",
       "Publish WTF-native Skywire Signal records into your AT repo.",
       "Publish public Skywire Room messages into your AT repo.",
       "Publish public one-way Skywire Stage broadcasts into your AT repo.",
     ],
     warnings: [
-      "Skywire can write post/profile/signal records into your AT repo. Use this only if you want Skywire to create content for you.",
+      "Skywire can write post/profile/live-status/signal records into your AT repo. Use this only if you want Skywire to create content for you.",
     ],
     capabilities: [
       "identity",
@@ -144,6 +148,7 @@ export const SKYWIRE_PERMISSION_TIER_OPTIONS: SkywirePermissionTierOption[] = [
       "socialActions",
       "compose",
       "profileWrite",
+      "liveStatus",
       "signals",
       "rooms",
       "stages",
@@ -173,6 +178,7 @@ export const SKYWIRE_PERMISSION_TIER_OPTIONS: SkywirePermissionTierOption[] = [
       "socialActions",
       "compose",
       "profileWrite",
+      "liveStatus",
       "signals",
       "rooms",
       "stages",
@@ -291,6 +297,9 @@ export function grantedSkywireCapabilities(scopes: string | null | undefined): S
   if (hasGeneric || granted.has("repo:app.bsky.actor.profile")) {
     capabilities.add("profileWrite");
   }
+  if (hasGeneric || granted.has(`repo:${BSKY_ACTOR_STATUS_COLLECTION}`)) {
+    capabilities.add("liveStatus");
+  }
   if (hasGeneric || granted.has(`repo:${SKYWIRE_SIGNAL_COLLECTION}`)) {
     capabilities.add("signals");
   }
@@ -314,6 +323,7 @@ export function inferSkywirePermissionTier(scopes: string | null | undefined): S
   if (
     capabilities.has("compose") ||
     capabilities.has("profileWrite") ||
+    capabilities.has("liveStatus") ||
     capabilities.has("signals") ||
     capabilities.has("rooms") ||
     capabilities.has("stages")

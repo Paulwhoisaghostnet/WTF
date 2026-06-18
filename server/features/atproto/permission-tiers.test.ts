@@ -28,6 +28,7 @@ test("Skywire AT permission tiers request progressively broader scopes", () => {
 
   assert.match(heard, /repo:app\.bsky\.feed\.post/);
   assert.match(heard, /repo:app\.bsky\.actor\.profile/);
+  assert.match(heard, /repo:app\.bsky\.actor\.status/);
   assert.match(heard, /repo:app\.wtfgameshow\.skywire\.signal/);
   assert.match(heard, /blob:image\/\*/);
 
@@ -44,6 +45,7 @@ test("Skywire chat add-on is explicit and included in the maximum metadata scope
   assert.equal(boldWithChat, "atproto transition:generic transition:chat.bsky");
   assert.match(max, new RegExp(ATPROTO_CHAT_SCOPE.replace(".", "\\.")));
   assert.match(max, /repo:app\.bsky\.feed\.post/);
+  assert.match(max, /repo:app\.bsky\.actor\.status/);
   assert.match(max, /transition:generic/);
 });
 
@@ -54,10 +56,15 @@ test("Skywire capabilities are inferred from granted scopes, not selected labels
 
   const boldCapabilities = grantedSkywireCapabilities(buildSkywireAtprotoScope("be-bold"));
   assert.equal(boldCapabilities.has("compose"), true);
+  assert.equal(boldCapabilities.has("liveStatus"), true);
   assert.equal(boldCapabilities.has("signals"), true);
   assert.equal(boldCapabilities.has("chat"), false);
 
+  const liveOnlyCapabilities = grantedSkywireCapabilities("atproto repo:app.bsky.actor.status");
+  assert.equal(liveOnlyCapabilities.has("liveStatus"), true);
+
   assert.equal(inferSkywirePermissionTier(buildSkywireAtprotoScope("be-heard")), "be-heard");
+  assert.equal(inferSkywirePermissionTier("atproto repo:app.bsky.actor.status"), "be-heard");
   assert.equal(inferSkywirePermissionTier(buildSkywireAtprotoScope("be-bold", true)), "be-bold");
 });
 

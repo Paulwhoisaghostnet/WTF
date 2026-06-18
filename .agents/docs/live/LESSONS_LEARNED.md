@@ -5117,3 +5117,23 @@
 **Why it mattered**: Contract templates are the behavioral boundary for minted tokens. A UI-only feature would create false confidence, especially for royalty mutability/locking and shared-token edition supply where external marketplaces and indexers rely on contract storage and token metadata behavior.
 
 **Rule**: When Macaroni adds chain-level capabilities, ship the versioned contract source, compiled public artifact, Studio version selector, generated config shape, source-policy tests, and inventory coverage in the same pass. The generated drop page or creator-owned updater may process metadata revisions, but Macaroni itself must not become an indefinite watchdog for deployed drops.
+
+---
+
+## 2026-06-18 - Skywire vaults must not rediscover owned tokens on every tab open
+
+**What happened**: Skywire's Tezos vault path could make a large wallet feel unusable because the app tried to build ownership views from source/indexer work each time the vault opened, even though the user's owned tokens were already known through indexed profile holdings.
+
+**Why it mattered**: A wallet with thousands of tokens turns repeated on-demand ownership discovery into browser jank and server load. The user's profile-owned holdings should be the fast read model, while heavier creator-side Objkt expansion should wait until the user asks for created-token context.
+
+**Rule**: Wallet-heavy wtfOS surfaces need a bounded indexed read path first: paginate `wallet_holdings`, return total counts, and defer marketplace/source expansion until explicitly requested. Do not make a tab mount redo on-chain ownership work that the app already indexed.
+
+---
+
+## 2026-06-18 - Inventory harness mocks must preserve domain event contracts
+
+**What happened**: The Skywire full-send pass initially hit unrelated CH-EASE and WTF LIVE inventory failures. CH-EASE was falling through to generic `{ ok: true }` API mocks, so package details and handoff events disappeared. WTF LIVE had the same shape problem: the harness ignored soundboard persistence and dropped media-deck fields from WebSocket media state.
+
+**Why it mattered**: A generic green API response can be worse than a 404 in inventory tests because the UI believes the operation succeeded while losing the state or normalized event that proves the workflow. That creates false negatives in other full-send work and can hide production contract drift.
+
+**Rule**: Any inventory spec that mutates domain state needs a domain-owned harness mock with the production response shape, durable test state, and canonical event logging. Do not let stateful workflows fall through to catch-all API mocks, and keep realtime harness payload normalizers in sync with newly added media/status fields.

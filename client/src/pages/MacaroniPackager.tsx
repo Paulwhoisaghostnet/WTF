@@ -963,6 +963,105 @@ function normalizeDropConfig(input: unknown, pkg?: Pick<PackageSummary, "title" 
   };
 }
 
+function packageStatus(value: unknown): PackageSummary["status"] {
+  return value === "finalized" || value === "archived" ? value : "draft";
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function stringValue(value: unknown, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+
+function numberValue(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizePackageSummary(input: unknown): PackageSummary {
+  const source = input && typeof input === "object" ? input as Record<string, unknown> : {};
+  const summary = {
+    id: numberValue(source.id),
+    title: stringValue(source.title, DEFAULT_PACKAGE_TITLE) || DEFAULT_PACKAGE_TITLE,
+    description: stringValue(source.description),
+    status: packageStatus(source.status),
+    itemCount: numberValue(source.itemCount),
+    totalBytes: numberValue(source.totalBytes),
+    averageBytes: numberValue(source.averageBytes),
+    csvCid: nullableString(source.csvCid),
+    manifestCid: nullableString(source.manifestCid),
+    dropConfig: DEFAULT_DROP_CONFIG,
+    finalizedAt: nullableString(source.finalizedAt),
+    updatedAt: nullableString(source.updatedAt),
+  };
+  summary.dropConfig = normalizeDropConfig(source.dropConfig, summary);
+  return summary;
+}
+
+function normalizePackageItem(input: unknown): PackageItem {
+  const source = input && typeof input === "object" ? input as Record<string, unknown> : {};
+  const rawReadiness =
+    source.readiness && typeof source.readiness === "object"
+      ? source.readiness as Record<string, unknown>
+      : {};
+  const mediaCid = stringValue(source.mediaCid);
+  const metadataCid = nullableString(source.metadataCid);
+  const originalTitle = stringValue(source.originalTitle, stringValue(source.tokenName, "Untitled media"));
+  const tokenName = stringValue(source.tokenName, originalTitle) || originalTitle;
+  const hasMedia = rawReadiness.hasMedia === undefined ? Boolean(mediaCid) : Boolean(rawReadiness.hasMedia);
+  const hasMetadata =
+    rawReadiness.hasMetadata === undefined ? Boolean(metadataCid || tokenName) : Boolean(rawReadiness.hasMetadata);
+  const hasName = rawReadiness.hasName === undefined ? Boolean(tokenName) : Boolean(rawReadiness.hasName);
+  const warnings = Array.isArray(rawReadiness.warnings)
+    ? rawReadiness.warnings.filter((warning): warning is string => typeof warning === "string")
+    : [];
+  return {
+    id: numberValue(source.id),
+    packageId: numberValue(source.packageId),
+    tokenId: numberValue(source.tokenId),
+    originalFilename: stringValue(source.originalFilename, originalTitle),
+    originalTitle,
+    normalizedFilename: stringValue(source.normalizedFilename, stringValue(source.originalFilename, originalTitle)),
+    tokenName,
+    tokenDescription: stringValue(source.tokenDescription),
+    mimeType: stringValue(source.mimeType, "application/octet-stream"),
+    sizeBytes: numberValue(source.sizeBytes),
+    mediaCid,
+    metadataCid,
+    tags: Array.isArray(source.tags)
+      ? source.tags.filter((tag): tag is string => typeof tag === "string")
+      : [],
+    attributes: Array.isArray(source.attributes)
+      ? source.attributes.filter(
+          (attribute): attribute is { name: string; value: string } =>
+            Boolean(attribute) &&
+            typeof attribute === "object" &&
+            typeof (attribute as { name?: unknown }).name === "string" &&
+            typeof (attribute as { value?: unknown }).value === "string",
+        )
+      : [],
+    readiness: {
+      hasMedia,
+      hasMetadata,
+      hasName,
+      readyForMint:
+        rawReadiness.readyForMint === undefined
+          ? hasMedia && hasMetadata && hasName
+          : Boolean(rawReadiness.readyForMint),
+      warnings,
+    },
+  };
+}
+
+function normalizePackageDetail(input: PackageDetailResponse): PackageDetailResponse {
+  return {
+    package: normalizePackageSummary(input.package),
+    items: Array.isArray(input.items) ? input.items.map(normalizePackageItem) : [],
+  };
+}
+
 function targetMeta(targetId: ExportTarget) {
   return EXPORT_TARGETS.find((target) => target.id === targetId) || EXPORT_TARGETS[0];
 }
@@ -1015,11 +1114,24 @@ export function MacaroniPackager() {
     [items, selectedItemId]
   );
 
-  async function loadPackages(selectId?: number) {
+  function applyPackageDetail(data: PackageDetailResponse) {
+    setActivePackage(data.package);
+    setItems(data.items);
+    setDropConfig(normalizeDropConfig(data.package.dropConfig, data.package));
+    setConfigDirty(false);
+    setSelectedItemId((prev) => data.items.find((item) => item.id === prev)?.id || data.items[0]?.id || null);
+  }
+
+  async function loadPackages(selectId?: number, fallback?: PackageDetailResponse) {
     const data = await api.get<{ packages: PackageSummary[] }>("/api/macaroni/packages");
-    setPackages(data.packages);
-    const next = data.packages.find((pkg) => pkg.id === selectId) || data.packages[0] || null;
+    const normalizedPackages = Array.isArray(data.packages) ? data.packages.map(normalizePackageSummary) : [];
+    setPackages(normalizedPackages);
+    const next = normalizedPackages.find((pkg) => pkg.id === selectId) || normalizedPackages[0] || null;
     if (next) await loadPackage(next.id);
+    else if (fallback) {
+      setPackages([fallback.package]);
+      applyPackageDetail(fallback);
+    }
     else {
       setActivePackage(null);
       setItems([]);
@@ -1028,12 +1140,9 @@ export function MacaroniPackager() {
   }
 
   async function loadPackage(packageId: number) {
-    const data = await api.get<PackageDetailResponse>(`/api/macaroni/packages/${packageId}`);
-    setActivePackage(data.package);
-    setItems(data.items);
-    setDropConfig(normalizeDropConfig(data.package.dropConfig, data.package));
-    setConfigDirty(false);
-    setSelectedItemId((prev) => data.items.find((item) => item.id === prev)?.id || data.items[0]?.id || null);
+    const data = normalizePackageDetail(await api.get<PackageDetailResponse>(`/api/macaroni/packages/${packageId}`));
+    applyPackageDetail(data);
+    return data;
   }
 
   useEffect(() => {
@@ -1075,10 +1184,11 @@ export function MacaroniPackager() {
         title,
         description,
       });
-      setDropConfig(normalizeDropConfig(data.package.dropConfig, data.package));
+      const normalized = normalizePackageDetail(data);
+      setDropConfig(normalizeDropConfig(normalized.package.dropConfig, normalized.package));
       setConfigDirty(false);
       setStatus(`${APP_NAME} package created`);
-      await loadPackages(data.package.id);
+      await loadPackages(normalized.package.id, normalized);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create package");
     } finally {
@@ -1103,8 +1213,8 @@ export function MacaroniPackager() {
         });
         await readJson<PackageDetailResponse>(res);
       }
-      await loadPackage(activePackage.id);
-      await loadPackages(activePackage.id);
+      const loaded = await loadPackage(activePackage.id);
+      await loadPackages(activePackage.id, loaded);
       setStatus(`${uploadList.length} media file(s) stored`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
@@ -1130,7 +1240,7 @@ export function MacaroniPackager() {
           throw new Error("Attributes JSON must be valid JSON, such as [{\"name\":\"palette\",\"value\":\"green\"}].");
         }
       }
-      const data = await api.patch<PackageDetailResponse>(
+      const data = normalizePackageDetail(await api.patch<PackageDetailResponse>(
         `/api/macaroni/packages/${activePackage.id}/items/${selectedItem.id}`,
         {
           tokenName: draftName,
@@ -1138,7 +1248,7 @@ export function MacaroniPackager() {
           tags: draftTags,
           attributes,
         }
-      );
+      ));
       setActivePackage(data.package);
       setItems(data.items);
       setSelectedItemId(selectedItem.id);
@@ -1185,10 +1295,10 @@ export function MacaroniPackager() {
       setError("");
     }
     try {
-      const data = await api.patch<PackageDetailResponse>(
+      const data = normalizePackageDetail(await api.patch<PackageDetailResponse>(
         `/api/macaroni/packages/${activePackage.id}/config`,
         dropConfig
-      );
+      ));
       setActivePackage(data.package);
       setItems(data.items);
       setDropConfig(normalizeDropConfig(data.package.dropConfig, data.package));
@@ -1219,7 +1329,7 @@ export function MacaroniPackager() {
         setStatus("Saving drop page config before finalizing");
         await persistDropConfig({ quiet: true });
       }
-      const data = await api.post<PackageDetailResponse>(`/api/macaroni/packages/${packageId}/finalize`, {});
+      const data = normalizePackageDetail(await api.post<PackageDetailResponse>(`/api/macaroni/packages/${packageId}/finalize`, {}));
       setActivePackage(data.package);
       setItems(data.items);
       setDropConfig(normalizeDropConfig(data.package.dropConfig, data.package));

@@ -24,8 +24,14 @@ const state = {
   authUser: { id: 1, username: "wtf-admin", displayName: "WTF Admin" },
   skywirePostPayloads: [],
   skywireFollowPayloads: [],
+  skywireGroupPayloads: [],
+  skywireLiveStatus: null,
   skywireChatEnabled: true,
   skywireHandle: "wtf-admin.bsky.social",
+  wtfLiveSoundboard: { clips: [], armed: true, updatedAt: null },
+  macaroniPackages: [],
+  macaroniNextPackageId: 1,
+  macaroniNextItemId: 1,
   wtfUserSiteClaimed: false,
   wtfLiveOwnedRoom: { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, accessMode: "public", isPublic: true },
   wtfLivePrivateRoom: null,
@@ -177,8 +183,14 @@ app.post("/__test/state", (req, res) => {
     : null;
   state.skywirePostPayloads = [];
   state.skywireFollowPayloads = [];
+  state.skywireGroupPayloads = [];
+  state.skywireLiveStatus = null;
   state.skywireChatEnabled = req.body?.skywireChatEnabled !== false;
   state.skywireHandle = String(req.body?.skywireHandle || "wtf-admin.bsky.social");
+  state.wtfLiveSoundboard = { clips: [], armed: true, updatedAt: null };
+  state.macaroniPackages = [];
+  state.macaroniNextPackageId = 1;
+  state.macaroniNextItemId = 1;
   state.wtfUserSiteClaimed = Boolean(req.body?.wtfUserSiteClaimed);
   state.wtfLiveOwnedRoom = { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, accessMode: "public", isPublic: true };
   state.wtfLivePrivateRoom = null;
@@ -198,6 +210,8 @@ app.get("/__test/state", (_req, res) => {
     authUser: state.authUser,
     skywirePostPayloads: state.skywirePostPayloads,
     skywireFollowPayloads: state.skywireFollowPayloads,
+    skywireGroupPayloads: state.skywireGroupPayloads,
+    skywireLiveStatus: state.skywireLiveStatus,
     skywireChatEnabled: state.skywireChatEnabled,
     skywireHandle: state.skywireHandle,
   });
@@ -1208,6 +1222,7 @@ function apiMock(req, res) {
       : "atproto transition:generic";
     const skywireCapabilities = [
       "profileWrite",
+      "liveStatus",
       "socialActions",
       "compose",
       "signals",
@@ -1257,6 +1272,27 @@ function apiMock(req, res) {
       atprotoEnabled: true,
       skywireSettingsPath: "/skywire?tab=account",
       publishesThrough: "Skywire AT Protocol identity",
+    });
+  }
+  if (pathName === "/api/wtf-live/soundboard" && req.method === "GET") {
+    return res.json({
+      ...state.wtfLiveSoundboard,
+      storage: "harness_wtf_live_soundboard",
+    });
+  }
+  if (pathName === "/api/wtf-live/soundboard" && req.method === "PUT") {
+    state.wtfLiveSoundboard = {
+      clips: Array.isArray(req.body?.clips) ? req.body.clips : [],
+      armed: req.body?.armed !== false,
+      updatedAt: nowIso(),
+    };
+    logHarnessInteraction("wtf_live.soundboard.configured", {
+      clipCount: state.wtfLiveSoundboard.clips.length,
+      armed: state.wtfLiveSoundboard.armed,
+    });
+    return res.json({
+      ...state.wtfLiveSoundboard,
+      storage: "harness_wtf_live_soundboard",
     });
   }
   if (/^\/api\/wtf-live\/public\/rooms\/[^/]+$/.test(pathName) && req.method === "GET") {
@@ -1535,6 +1571,12 @@ function apiMock(req, res) {
       owned: {
         source: "wallet_holdings",
         total: 1,
+        pagination: {
+          limit: 24,
+          offset: 0,
+          hasMore: false,
+          nextOffset: 1,
+        },
         items: [
           {
             walletAddress: "tz1HarnessWallet",
@@ -1595,6 +1637,43 @@ function apiMock(req, res) {
       },
     });
   }
+  if (pathName === "/api/skywire/live-status" && req.method === "GET") {
+    return res.json({
+      status: state.skywireLiveStatus,
+      collection: "app.bsky.actor.status",
+      rkey: "self",
+      source: "inventory.harness.skywire.liveStatus",
+    });
+  }
+  if (pathName === "/api/skywire/live-status" && req.method === "POST") {
+    state.skywireLiveStatus = {
+      uri: "at://did:plc:skywiretest/app.bsky.actor.status/self",
+      cid: "bafyreilivestatus",
+      status: "app.bsky.actor.status#live",
+      liveUrl: String(req.body?.liveUrl || ""),
+      title: String(req.body?.title || "WTF LIVE"),
+      description: String(req.body?.description || ""),
+      durationMinutes: Number(req.body?.durationMinutes || 120),
+      createdAt: nowIso(),
+      source: "app.bsky.actor.status",
+    };
+    return res.status(201).json({
+      status: state.skywireLiveStatus,
+      collection: "app.bsky.actor.status",
+      rkey: "self",
+      source: "inventory.harness.skywire.liveStatus.put",
+      note: "Harness live status saved.",
+    });
+  }
+  if (pathName === "/api/skywire/live-status" && req.method === "DELETE") {
+    state.skywireLiveStatus = null;
+    return res.json({
+      ok: true,
+      collection: "app.bsky.actor.status",
+      rkey: "self",
+      source: "inventory.harness.skywire.liveStatus.delete",
+    });
+  }
   if (pathName === "/api/skywire/post" && req.method === "POST") {
     state.skywirePostPayloads.push(req.body ?? {});
     return res.status(201).json({
@@ -1643,8 +1722,28 @@ function apiMock(req, res) {
   }
   if (pathName === "/api/skywire/chats" && req.method === "GET") {
     const gifUrl = "data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==";
+    const latestGroup = state.skywireGroupPayloads.at(-1);
+    const groupConvo = latestGroup
+      ? {
+          id: "test-group-convo",
+          rev: "1",
+          status: "accepted",
+          muted: false,
+          unreadCount: 0,
+          kind: "group",
+          groupName: String(latestGroup.groupName || "Harness group"),
+          memberCount: Array.isArray(latestGroup.members) ? latestGroup.members.length + 1 : 3,
+          members: [
+            { did: "did:plc:skywiretest", handle: "wtf-admin.bsky.social", displayName: "WTF Admin", avatar: null, description: null },
+            { did: "did:plc:harness", handle: "harness.bsky.social", displayName: "Harness Skywire", avatar: null, description: null },
+            { did: "did:plc:second", handle: "second.bsky.social", displayName: "Second Skywire", avatar: null, description: null },
+          ],
+          lastMessage: null,
+        }
+      : null;
     return res.json({
       convos: [
+        ...(groupConvo ? [groupConvo] : []),
         {
           id: "test-convo",
           rev: "1",
@@ -1678,16 +1777,19 @@ function apiMock(req, res) {
     });
   }
   if (pathName === "/api/skywire/chats/resolve" && req.method === "POST") {
+    const members = Array.isArray(req.body?.members) ? req.body.members : [];
+    const isGroup = members.length > 1;
+    if (isGroup) state.skywireGroupPayloads.push(req.body ?? {});
     return res.json({
       convo: {
-        id: "test-convo",
+        id: isGroup ? "test-group-convo" : "test-convo",
         rev: "1",
         status: "accepted",
         muted: false,
         unreadCount: 0,
-        kind: "direct",
-        groupName: null,
-        memberCount: 2,
+        kind: isGroup ? "group" : "direct",
+        groupName: isGroup ? String(req.body?.groupName || "Harness group") : null,
+        memberCount: isGroup ? members.length + 1 : 2,
         members: [
           { did: "did:plc:skywiretest", handle: "wtf-admin.bsky.social", displayName: "WTF Admin", avatar: null, description: null },
           { did: "did:plc:harness", handle: "harness.bsky.social", displayName: "Harness Skywire", avatar: null, description: null },
@@ -1695,6 +1797,14 @@ function apiMock(req, res) {
         lastMessage: null,
       },
       source: "inventory.harness.skywire.resolve",
+    });
+  }
+  if (pathName === "/api/skywire/chats/test-group-convo/messages" && req.method === "GET") {
+    return res.json({
+      convoId: "test-group-convo",
+      messages: [],
+      cursor: null,
+      source: "inventory.harness.skywire.groupMessages",
     });
   }
   if (pathName === "/api/skywire/chats/test-convo/messages" && req.method === "GET") {
@@ -1755,16 +1865,19 @@ function apiMock(req, res) {
     });
   }
   if (pathName === "/api/skywire/chats/send" && req.method === "POST") {
+    const members = Array.isArray(req.body?.members) ? req.body.members : [];
+    const isGroup = members.length > 1;
+    if (isGroup) state.skywireGroupPayloads.push(req.body ?? {});
     return res.status(201).json({
       convo: {
-        id: "test-convo",
+        id: isGroup ? "test-group-convo" : "test-convo",
         rev: "1",
         status: "accepted",
         muted: false,
         unreadCount: 0,
-        kind: "direct",
-        groupName: null,
-        memberCount: 2,
+        kind: isGroup ? "group" : "direct",
+        groupName: isGroup ? String(req.body?.groupName || "Harness group") : null,
+        memberCount: isGroup ? members.length + 1 : 2,
         members: [],
         lastMessage: null,
       },
@@ -3987,6 +4100,271 @@ app.get("/api/w/groupchat", (_req, res) => {
   }
 });
 
+function logHarnessInteraction(eventType, metadata = {}) {
+  const authUser = currentAuthUser() || { id: 1 };
+  state.interactionLog.push({
+    id: `harness_evt_${Date.now()}_${state.interactionLog.length}`,
+    eventType,
+    userId: authUser.id,
+    timestamp: nowIso(),
+    source: "inventory-harness",
+    metadata,
+  });
+}
+
+app.post("/api/system/logs/client", (req, res) => {
+  const eventType = String(req.body?.eventType || "client_event");
+  logHarnessInteraction(eventType, {
+    severity: req.body?.severity || "info",
+    message: req.body?.message || "",
+    url: req.body?.url || "",
+    ...(req.body?.metadata && typeof req.body.metadata === "object" ? req.body.metadata : {}),
+  });
+  res.json({ ok: true, eventId: `harness-client-${state.interactionLog.length}` });
+});
+
+function cheaseDefaultDropConfig(pkg) {
+  return {
+    exportTarget: "macaroni",
+    layout: "single-page",
+    theme: "gallery-white",
+    headline: pkg?.title || "Untitled drop",
+    intro: pkg?.description || "A wtfOS-staged collection package.",
+    callToAction: "View collection",
+    modules: {
+      dropStory: true,
+      mintPanel: true,
+      tokenGrid: true,
+      recentMints: false,
+      mintGallery: true,
+      leaderboard: false,
+      collectionCompletion: false,
+    },
+  };
+}
+
+function cheasePackageSummary(pkg) {
+  const totalBytes = pkg.items.reduce((sum, item) => sum + item.sizeBytes, 0);
+  return {
+    id: pkg.id,
+    title: pkg.title,
+    description: pkg.description,
+    schemaVersion: 1,
+    status: pkg.status,
+    itemCount: pkg.items.length,
+    totalBytes,
+    averageBytes: pkg.items.length ? Math.round(totalBytes / pkg.items.length) : 0,
+    csvCid: pkg.csvCid,
+    manifestCid: pkg.manifestCid,
+    dropConfig: pkg.dropConfig,
+    finalizedAt: pkg.finalizedAt,
+    createdAt: pkg.createdAt,
+    updatedAt: pkg.updatedAt,
+  };
+}
+
+function cheaseItemPayload(item) {
+  const hasMedia = Boolean(item.mediaCid);
+  const hasMetadata = Boolean(item.metadataCid || item.tokenName);
+  const hasName = Boolean(item.tokenName);
+  return {
+    id: item.id,
+    packageId: item.packageId,
+    tokenId: item.tokenId,
+    originalFilename: item.originalFilename,
+    originalTitle: item.originalTitle,
+    normalizedFilename: item.normalizedFilename,
+    tokenName: item.tokenName,
+    tokenDescription: item.tokenDescription,
+    mimeType: item.mimeType,
+    sizeBytes: item.sizeBytes,
+    checksumSha256: "harness-checksum",
+    mediaCid: item.mediaCid,
+    mediaJobId: `media-${item.id}`,
+    metadataCid: item.metadataCid,
+    metadataJobId: item.metadataCid ? `metadata-${item.id}` : null,
+    tags: item.tags,
+    attributes: item.attributes,
+    metadataJson: null,
+    readiness: {
+      hasMedia,
+      hasMetadata,
+      hasName,
+      readyForMint: hasMedia && hasMetadata && hasName,
+      warnings: [],
+    },
+    status: hasMedia && hasMetadata && hasName ? "ready" : "needs_metadata",
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  };
+}
+
+function cheasePackageDetail(pkg) {
+  return {
+    package: cheasePackageSummary(pkg),
+    items: pkg.items.map(cheaseItemPayload),
+  };
+}
+
+function cheasePackageById(id) {
+  return state.macaroniPackages.find((pkg) => pkg.id === Number(id));
+}
+
+function cheaseCsvForPackage(pkg) {
+  const header = "token_id,token_name,original_filename,normalized_filename,tags,attributes\n";
+  const rows = pkg.items.map((item) => {
+    const attrs = item.attributes.map((attr) => `${attr.name}:${attr.value}`).join(";");
+    return [item.tokenId, item.tokenName, item.originalFilename, item.normalizedFilename, item.tags.join(";"), attrs]
+      .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+      .join(",");
+  });
+  return `${header}${rows.join("\n")}\n`;
+}
+
+function parseCheaseUploadMeta(buffer) {
+  const body = Buffer.isBuffer(buffer) ? buffer.toString("latin1") : "";
+  const filename = body.match(/filename="([^"]+)"/)?.[1] || "Moon Salad FINAL 04.png";
+  const mimeType = body.match(/Content-Type:\s*([^\r\n]+)/i)?.[1]?.trim() || "image/png";
+  const ext = filename.includes(".") ? filename.split(".").pop() || "bin" : "bin";
+  const originalTitle = filename.replace(/\.[^.]+$/, "");
+  return { filename, mimeType, ext, originalTitle };
+}
+
+const cheaseUploadBody = express.raw({ type: () => true, limit: "10mb" });
+
+app.get("/api/macaroni/packages", (_req, res) => {
+  res.json({ packages: state.macaroniPackages.map(cheasePackageSummary) });
+});
+
+app.post("/api/macaroni/packages", (req, res) => {
+  const pkg = {
+    id: state.macaroniNextPackageId++,
+    title: String(req.body?.title || "CH-EASE Package"),
+    description: String(req.body?.description || ""),
+    status: "draft",
+    items: [],
+    csvCid: null,
+    manifestCid: null,
+    dropConfig: null,
+    finalizedAt: null,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  };
+  pkg.dropConfig = cheaseDefaultDropConfig(pkg);
+  state.macaroniPackages.unshift(pkg);
+  logHarnessInteraction("macaroni.package_created", { packageId: pkg.id });
+  res.json(cheasePackageDetail(pkg));
+});
+
+app.get("/api/macaroni/packages/:packageId", (req, res) => {
+  const pkg = cheasePackageById(req.params.packageId);
+  if (!pkg) return res.status(404).json({ error: "Macaroni package not found" });
+  res.json(cheasePackageDetail(pkg));
+});
+
+app.post("/api/macaroni/packages/:packageId/items", cheaseUploadBody, (req, res) => {
+  const pkg = cheasePackageById(req.params.packageId);
+  if (!pkg) return res.status(404).json({ error: "Macaroni package not found" });
+  const upload = parseCheaseUploadMeta(req.body);
+  const tokenId = pkg.items.length + 1;
+  const item = {
+    id: state.macaroniNextItemId++,
+    packageId: pkg.id,
+    tokenId,
+    originalFilename: upload.filename,
+    originalTitle: upload.originalTitle,
+    normalizedFilename: `${tokenId}.${upload.ext}`,
+    tokenName: upload.originalTitle,
+    tokenDescription: "",
+    mimeType: upload.mimeType,
+    sizeBytes: Buffer.isBuffer(req.body) ? req.body.length : 0,
+    mediaCid: `bafy-chease-media-${tokenId}`,
+    metadataCid: null,
+    tags: [],
+    attributes: [],
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  };
+  pkg.items.push(item);
+  pkg.updatedAt = nowIso();
+  logHarnessInteraction("macaroni.package_item_uploaded", { packageId: pkg.id, itemId: item.id });
+  res.json(cheasePackageDetail(pkg));
+});
+
+app.patch("/api/macaroni/packages/:packageId/config", (req, res) => {
+  const pkg = cheasePackageById(req.params.packageId);
+  if (!pkg) return res.status(404).json({ error: "Macaroni package not found" });
+  pkg.dropConfig = { ...cheaseDefaultDropConfig(pkg), ...(req.body || {}) };
+  pkg.updatedAt = nowIso();
+  logHarnessInteraction("macaroni.package_drop_config_updated", { packageId: pkg.id });
+  res.json(cheasePackageDetail(pkg));
+});
+
+app.patch("/api/macaroni/packages/:packageId/items/:itemId", (req, res) => {
+  const pkg = cheasePackageById(req.params.packageId);
+  if (!pkg) return res.status(404).json({ error: "Macaroni package not found" });
+  const item = pkg.items.find((candidate) => candidate.id === Number(req.params.itemId));
+  if (!item) return res.status(404).json({ error: "Macaroni package item not found" });
+  item.tokenName = String(req.body?.tokenName || item.tokenName);
+  item.tokenDescription = String(req.body?.tokenDescription || "");
+  item.tags = String(req.body?.tags || "")
+    .split(/[;,]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+  item.attributes = Array.isArray(req.body?.attributes) ? req.body.attributes : [];
+  item.metadataCid = `bafy-chease-metadata-${item.id}`;
+  item.updatedAt = nowIso();
+  pkg.updatedAt = nowIso();
+  logHarnessInteraction("macaroni.package_metadata_updated", { packageId: pkg.id, itemId: item.id });
+  res.json(cheasePackageDetail(pkg));
+});
+
+app.post("/api/macaroni/packages/:packageId/finalize", (req, res) => {
+  const pkg = cheasePackageById(req.params.packageId);
+  if (!pkg) return res.status(404).json({ error: "Macaroni package not found" });
+  pkg.status = "finalized";
+  pkg.csvCid = `bafy-chease-csv-${pkg.id}`;
+  pkg.manifestCid = `bafy-chease-manifest-${pkg.id}`;
+  pkg.finalizedAt = nowIso();
+  pkg.updatedAt = nowIso();
+  logHarnessInteraction("macaroni.package_finalized", { packageId: pkg.id });
+  res.json(cheasePackageDetail(pkg));
+});
+
+app.get("/api/macaroni/packages/:packageId/export.csv", (req, res) => {
+  const pkg = cheasePackageById(req.params.packageId);
+  if (!pkg) return res.status(404).send("Macaroni package not found");
+  logHarnessInteraction("macaroni.package_csv_downloaded", { packageId: pkg.id, target: req.query?.target || "macaroni" });
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="macaroni-package-${pkg.id}.csv"`);
+  res.send(cheaseCsvForPackage(pkg));
+});
+
+app.get("/api/macaroni/packages/:packageId/source", (req, res) => {
+  const pkg = cheasePackageById(req.params.packageId);
+  if (!pkg) return res.status(404).json({ error: "Macaroni package not found" });
+  logHarnessInteraction("macaroni.package_source_loaded", { packageId: pkg.id, itemCount: pkg.items.length });
+  res.json({
+    source: "wtfos-macaroni-package",
+    package: cheasePackageSummary(pkg),
+    dropConfig: pkg.dropConfig,
+    tokens: pkg.items.map((item) => ({
+      id: item.tokenId,
+      quantity: 1,
+      name: item.tokenName,
+      title: item.tokenName,
+      description: item.tokenDescription,
+      tags: item.tags,
+      attributes: item.attributes,
+      fileName: item.normalizedFilename,
+      mediaBytes: item.sizeBytes,
+      mediaCid: item.mediaCid,
+      mediaMime: item.mimeType,
+      metadataCid: item.metadataCid || "",
+    })),
+  });
+});
+
 // Catch-all for unmocked /api/* — returns empty 200 to keep the page from
 // surfacing unrelated errors.
 app.use("/api", (req, res) => {
@@ -4094,6 +4472,16 @@ function liveRoomPresence(roomId) {
   };
 }
 
+function liveSanitizeTrackId(value) {
+  const trackId = String(value || "").trim();
+  return trackId && trackId.length <= 160 ? trackId : null;
+}
+
+function liveSanitizeMediaName(value) {
+  const name = String(value || "").trim().replace(/\s+/g, " ").slice(0, 96);
+  return name || null;
+}
+
 function liveNormalizeMediaState(value) {
   const state = value && typeof value === "object" ? value : {};
   const camera = Boolean(state.camera);
@@ -4109,7 +4497,16 @@ function liveNormalizeMediaState(value) {
 	    audioOpen: Boolean(state.audioOpen ?? state.mic),
 	    camera,
 	    screen,
+    screenAudio: Boolean(state.screenAudio),
+    mediaVideo: Boolean(state.mediaVideo),
+    mediaAudio: Boolean(state.mediaAudio),
+    mediaName: liveSanitizeMediaName(state.mediaName),
+    soundboard: Boolean(state.soundboard),
     activeVideo: requestedActiveVideo === "camera" && camera ? "camera" : requestedActiveVideo === "screen" && screen ? "screen" : null,
+    cameraTrackId: liveSanitizeTrackId(state.cameraTrackId),
+    screenTrackId: liveSanitizeTrackId(state.screenTrackId),
+    mediaVideoTrackId: liveSanitizeTrackId(state.mediaVideoTrackId),
+    mediaAudioTrackId: liveSanitizeTrackId(state.mediaAudioTrackId),
     avatarUrl,
   };
 }
@@ -4138,7 +4535,23 @@ liveWss.on("connection", (ws) => {
     userId: null,
     username: null,
     isWtfUser: false,
-	    mediaState: { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null },
+	    mediaState: {
+      mic: false,
+      audioOpen: false,
+      camera: false,
+      screen: false,
+      screenAudio: false,
+      mediaVideo: false,
+      mediaAudio: false,
+      mediaName: null,
+      soundboard: false,
+      activeVideo: null,
+      cameraTrackId: null,
+      screenTrackId: null,
+      mediaVideoTrackId: null,
+      mediaAudioTrackId: null,
+      avatarUrl: null,
+    },
   };
   livePeers.set(ws, client);
   liveSend(ws, { type: "wtf_live_connected", peerId: client.peerId });
@@ -4207,6 +4620,23 @@ liveWss.on("connection", (ws) => {
         fromPeerId: client.peerId,
         signal: message.signal,
       });
+      return;
+    }
+
+    if (message.type === "wtf_live_soundboard_clip" && client.roomId) {
+      liveBroadcast(
+        client.roomId,
+        {
+          type: "wtf_live_soundboard_clip",
+          roomId: client.roomId,
+          peerId: client.peerId,
+          triggeredByName: client.username || client.guestName,
+          triggeredByUserId: client.userId,
+          soundboardClip: message.clip || message.soundboardClip,
+          delivery: message.delivery || "webrtc",
+        },
+        ws,
+      );
       return;
     }
 
