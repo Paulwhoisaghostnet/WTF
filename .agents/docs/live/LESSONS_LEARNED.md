@@ -1,3 +1,13 @@
+## 2026-06-18 - Mobile-visible tool rows need explicit grid tracks
+
+**What happened**: Broot's mobile tabs were shown through a breakpoint while the shell grid still declared only four rows. The extra visible toolbar row was implicitly placed, which let the canvas workspace overlap the layer/tool controls and intercept creation-tool clicks during the mobile-focused Playwright smoke.
+
+**Why it mattered**: A desktop-style editor can look fine at wide widths while its responsive controls become unreachable on smaller viewports. For creation tools, one hidden overlap can make core actions such as shape insertion or export feel broken even though the underlying handlers are correct.
+
+**Rule**: When a breakpoint reveals additional persistent chrome, update the parent grid tracks in the same change and verify the embedded `/tools/<tool>` route at a constrained viewport. Route smoke is not enough; click the controls that sit closest to the canvas.
+
+---
+
 ## 2026-06-16 - Macaroni social share text must carry platform identity and token media
 
 **What happened**: Generated Macaroni drop pages had X and Bluesky compose links, but the drafted text used a generic artist label for both platforms and omitted the minted token media URL. Creators also had no Page Designer fields to override missing or wrong social handles before exporting or publishing.
