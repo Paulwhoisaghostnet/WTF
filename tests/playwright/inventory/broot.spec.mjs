@@ -24,7 +24,8 @@ test.describe("interaction inventory - Broot", () => {
     });
 
     await page.goto("/tools/broot", { waitUntil: "domcontentloaded" });
-    await expect(page.getByText("Tezos-native Photoshop alternative").first()).toBeVisible();
+    await expect(page).toHaveURL(/\/tools\/broot$/);
+    await expect(page.locator('iframe[title="Broot"]')).toBeVisible();
 
     const frame = page.frameLocator('iframe[title="Broot"]');
     await expect(frame.getByLabel("Broot editor")).toBeVisible();
@@ -32,8 +33,8 @@ test.describe("interaction inventory - Broot", () => {
     await expect(frame.getByLabel("Broot Fabric canvas")).toBeVisible();
     await expect(frame.getByLabel("Broot layers and Tezos")).toContainText("Layers");
 
-    await frame.getByRole("button", { name: "Rect" }).click();
-    await frame.getByRole("button", { name: "Text" }).click();
+    await frame.getByRole("button", { name: "Rect", exact: true }).click();
+    await frame.getByRole("button", { name: "Text", exact: true }).click();
     await expect(frame.getByLabel("Broot layers and Tezos")).toContainText("Rectangle");
     await expect(frame.getByLabel("Broot layers and Tezos")).toContainText("Text");
 

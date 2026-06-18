@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-06-18 - Generated creation-tool routes need shared route metadata
+
+**What happened**: Broot was present in the generated creation-tool page definitions and route fixtures, but `shared/wtf-browser-routes.ts` did not include every generated tool route. Direct `/tools/broot` navigation stayed on the desktop shell without opening the Broot iframe until the shared access map was brought back into parity.
+
+**Why it mattered**: The desktop router, CLI open checks, and browser access gates all use the shared route metadata. A route can pass basic shell smoke and still be unusable from a direct URL if generated routes are not mirrored into that shared map.
+
+**Rule**: When adding generated creation tools, update `BROWSER_ROUTE_META` and make the route sync test read both literal page definitions and `CREATION_TOOLS.routePath` values. Verify the embedded app route, not only the static `/creation-tools/*` asset.
+
+---
+
 ## 2026-06-16 - Macaroni social share text must carry platform identity and token media
 
 **What happened**: Generated Macaroni drop pages had X and Bluesky compose links, but the drafted text used a generic artist label for both platforms and omitted the minted token media URL. Creators also had no Page Designer fields to override missing or wrong social handles before exporting or publishing.

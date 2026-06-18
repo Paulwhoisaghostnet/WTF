@@ -99,6 +99,7 @@ Priority labels:
 | WTF-BB-272 | Verified | Codex Macaroni social-share identity/media pass | 2026-06-16 | Macaroni / generated drop website social sharing | P1 | 10 | 10 | 2 | 4 | 0 | Generated Macaroni share presets drafted generic posts without the creator's same-platform X/Bluesky identity and without the actual token media URL; fixed with Studio share handle/copy controls, wtfOS profile enrichment on trusted publish, token-media URLs in compose-intent text, and source-policy coverage; verified by JS syntax checks, focused Macaroni policy tests, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-273 | Verified | Codex Airporters Octez Connect full-send | 2026-06-17 | Macaroni / published drop wallet compatibility | P1 | 12 | 7 | 3 | 5 | 0 | Airporters is mainnet, but Brave/Kukai users could receive a confusing Mainnet mismatch because published/drop wallet code sent the dApp RPC inside a named wallet network; fixed with Octez Connect-primary wallet bridge, Beacon backup, plain named wallet networks, and serve-time injection for stored Macaroni drops; verified live after Hetzner deploy on `https://paulwhoisaghost.wtfos.me/airporters-vol-1` |
 | WTF-BB-274 | Verified | Codex Macaroni V2 editions full-send | 2026-06-17 | Macaroni / contract versions, editions, and minter royalties | P1 | 14 | 3 | 4 | 5 | 1 | Macaroni Studio only generated the V1 blind-mint contract, so creators could not choose shared-token editions, V2 minter royalty policies, or multiple delayed-reveal placeholder artifacts; fixed with a V1/V2 selector, SmartPy V2 contract template, compiled public artifact, generated config, and source-policy coverage; verified live on wtfos.app after Hetzner deploy |
+| WTF-BB-275 | Fixed | Codex Broot direct-route full-send | 2026-06-18 | Creation tools / shared route metadata | P1 | 10 | 10 | 2 | 4 | 0 | Generated creation-tool routes could exist in `PAGE_DEFS` while missing from `BROWSER_ROUTE_META`, causing direct `/tools/broot` opens to stay on the desktop shell; fixed by mirroring generated routes and expanding the sync test, pending production redeploy verification |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5841,6 +5842,28 @@ Priority labels:
   - `npm run test:e2e:macaroni:shadownet` is blocked in the clean worktree because puppet seeding requires `DATABASE_URL`.
   - GitHub Actions passed for commit `b52b5b5`: Quality Gates `27662189723` and Deploy to Hetzner `27662189719`.
   - Live production verification passed on `https://wtfos.app`: `/api/health` reported `commitRef:"b52b5b5"` with `status:"ok"`, `studio.html` exposed the Macaroni V1/V2 selector plus `macaroni-editions-v2`, `minterRoyaltiesEnabled`, `royaltyUpdateEndpoint`, and `placeholderFiles`, `js/studio.js` exposed `MACARONI_V2_ARTIFACT`, `normalizeTokenQuantity`, `add_tokens_v2`, and updater config, `contract/macaroni-v2.template.json` parsed as `templateVersion:"macaroni-editions-v2"` with V2 entrypoints, `contract/macaroni-v2.contract.json` parsed as a non-empty Micheline array, and `drop.html` exposed the minter royalty status region.
+
+### WTF-BB-275 - Generated creation-tool routes can miss shared browser metadata
+
+- Category: Creation tools / shared route metadata
+- Status: Fixed
+- Owner/Session: Codex Broot direct-route full-send
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - `tests/playwright/inventory/broot.spec.mjs` failed on `/tools/broot` because the desktop shell stayed visible without an embedded `iframe[title="Broot"]`.
+  - `shared/wtf-browser-routes.sync.test.ts` only scanned literal `pattern: "..."` entries in `page-defs.ts`, so generated `CREATION_TOOLS.routePath` entries such as `/tools/broot` could be present in `PAGE_DEFS` but absent from `BROWSER_ROUTE_META`.
+  - The same shared metadata gap also left CH-EASE, Macaroni Packager, and Colander direct routes out of the browser/CLI access map.
+- Why it matters:
+  - Direct browser routes, CLI `open /path`, and desktop window access gates all depend on `BROWSER_ROUTE_META`. A creation tool can appear in launchers and pass static asset checks while direct route opens silently fail.
+- Correction:
+  - Added Broot, CH-EASE, Macaroni Packager, Colander, and Pasta Protocol creation-tool routes to `BROWSER_ROUTE_META` with matching auth/role gates.
+  - Expanded `shared/wtf-browser-routes.sync.test.ts` to scan `client/src/features/creation-tools/tool-registry.ts` for generated `routePath` values in addition to literal page definitions.
+  - Hardened the Broot inventory spec to assert the embedded iframe/editor contract and use exact toolbar button names.
+- Verification:
+  - Passed `npx tsx --test shared/wtf-browser-routes.sync.test.ts`.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/vite build`.
+  - Passed `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/broot.spec.mjs`.
+  - Production redeploy verification is pending for this fix.
 
 ## Backlog Intake Template
 

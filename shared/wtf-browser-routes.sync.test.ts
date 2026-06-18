@@ -5,10 +5,14 @@ import { BROWSER_ROUTE_META } from "./wtf-browser-routes";
 
 test("BROWSER_ROUTE_META stays aligned with PAGE_DEFS route patterns", () => {
   const pageDefsSource = readFileSync("client/src/routes/page-defs.ts", "utf8");
-  const patterns = [...pageDefsSource.matchAll(/pattern:\s*"([^"]+)"/g)].map((match) => match[1]);
+  const toolRegistrySource = readFileSync("client/src/features/creation-tools/tool-registry.ts", "utf8");
+  const patterns = [
+    ...pageDefsSource.matchAll(/pattern:\s*"([^"]+)"/g),
+    ...toolRegistrySource.matchAll(/routePath:\s*"([^"]+)"/g),
+  ].map((match) => match[1]);
   const metaPatterns = new Set(BROWSER_ROUTE_META.map((route) => route.pattern));
 
-  const missing = patterns.filter((pattern) => !metaPatterns.has(pattern));
+  const missing = [...new Set(patterns.filter((pattern) => !metaPatterns.has(pattern)))];
   assert.deepEqual(
     missing,
     [],
