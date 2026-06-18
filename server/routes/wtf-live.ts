@@ -38,6 +38,10 @@ import {
   updateOwnedWtfLiveRoomVisibility,
   wtfLiveStageExists,
 } from "../features/wtf-live/registry";
+import {
+  getUserWtfLiveSoundboardSettings,
+  replaceUserWtfLiveSoundboardSettings,
+} from "../features/wtf-live/soundboard";
 import { getWtfLiveRoomPresence } from "../websocket";
 
 const router = Router();
@@ -345,6 +349,22 @@ router.get("/api/wtf-live/public/rooms/:roomId/messages", async (req, res) => {
 });
 
 router.use("/api/wtf-live", isAuthenticated, requireWtfLiveRollout);
+
+router.get("/api/wtf-live/soundboard", async (req, res) => {
+  const user = req.user as any;
+  const settings = await getUserWtfLiveSoundboardSettings(user.id);
+  res.json(settings);
+});
+
+router.put("/api/wtf-live/soundboard", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  try {
+    const settings = await replaceUserWtfLiveSoundboardSettings(user.id, req.body);
+    res.json(settings);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message || "Could not save soundboard" });
+  }
+});
 
 router.get("/api/wtf-live/rooms", async (_req, res) => {
   const rooms = await listWtfLiveRooms();

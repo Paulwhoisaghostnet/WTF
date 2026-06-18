@@ -39,6 +39,7 @@ test("parseWtfLiveSearchParams reads tab room and stage slugs", () => {
 test("buildWtfLiveSearch omits overview tab and encodes active lane slug", () => {
   assert.equal(buildWtfLiveSearch({ tab: "overview" }), "");
   assert.equal(buildWtfLiveSearch({ tab: "skywire" }), "?tab=skywire");
+  assert.equal(buildWtfLiveSearch({ tab: "show-kit" }), "?tab=show-kit");
   assert.equal(buildWtfLiveSearch({ tab: "rooms", room: "tezos-wire" }), "?tab=rooms&room=tezos-wire");
   assert.equal(buildWtfLiveSearch({ tab: "stages", stage: "wtf-stage" }), "?tab=stages&stage=wtf-stage");
 });

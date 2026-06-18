@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, Bold, Camera, Check, ChevronDown, ChevronRight, Copy, ExternalLink, Gauge, Gift, Image as ImageIcon, Italic, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Paperclip, Radio, RotateCcw, Send, Smile, Square, Type as TypeIcon, UserPlus, Users, Wifi, WifiOff, X } from "lucide-react";
+import { Activity, Bold, Camera, Check, ChevronDown, ChevronRight, Copy, ExternalLink, FileAudio, Gauge, Gift, Image as ImageIcon, Italic, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Music2, Paperclip, Pause, Play, Radio, RotateCcw, Send, Smile, Square, Type as TypeIcon, UserPlus, Users, Volume2, VolumeX, Wifi, WifiOff, X } from "lucide-react";
 import styled from "styled-components";
 import { Button, Hourglass, TextField } from "react95";
 import { api } from "../../lib/api";
@@ -20,6 +20,18 @@ import {
   type DesktopWtfLiveChatFont,
   type DesktopWtfLiveChatStyle,
 } from "@shared/desktop";
+import {
+  isWtfLiveShortcutEventTargetEditable,
+  normalizeWtfLiveSoundboardClip,
+  normalizeWtfLiveSoundboardSettings,
+  playWtfLiveSoundboardClip,
+  readWtfLiveSoundboardSettings,
+  shortcutFromWtfLiveKeyboardEvent,
+  volumeToAudioGain,
+  wtfLiveSoundboardStorageKey,
+  type WtfLiveSoundboardClip,
+  type WtfLiveSoundboardSettings,
+} from "./soundboard";
 
 type PublicRoom = {
   id: string;
@@ -84,14 +96,49 @@ type RoomMessage = {
 };
 
 type ActiveVideoSource = "camera" | "screen" | null;
+type StageSource = "camera" | "screen" | "media";
 
 type LiveMediaState = {
   mic: boolean;
   audioOpen: boolean;
   camera: boolean;
   screen: boolean;
+  screenAudio: boolean;
+  mediaVideo: boolean;
+  mediaAudio: boolean;
+  mediaName: string | null;
+  soundboard: boolean;
   activeVideo: ActiveVideoSource;
+  cameraTrackId: string | null;
+  screenTrackId: string | null;
+  mediaVideoTrackId: string | null;
+  mediaAudioTrackId: string | null;
   avatarUrl: string | null;
+};
+
+type MediaDeckState = {
+  name: string;
+  kind: "audio" | "video";
+  objectUrl: string;
+  stream: MediaStream;
+  playing: boolean;
+  loop: boolean;
+  muted: boolean;
+  volume: number;
+  duration: number | null;
+  currentTime: number;
+};
+
+type StageEntry = {
+  id: string;
+  peerId: string;
+  name: string;
+  source: StageSource;
+  mediaState: LiveMediaState;
+  stream: MediaStream | null;
+  connected: boolean;
+  isSelf?: boolean;
+  title: string;
 };
 
 type LivePeer = {
@@ -125,7 +172,7 @@ type PopoutFrame =
       title: string;
       kind: "stream";
       streamScope: "local" | "remote";
-      source: "camera" | "screen" | "active";
+      source: StageSource | "active";
       peerId?: string;
       x: number;
       y: number;
@@ -230,12 +277,23 @@ type WtfLiveSocketEvent = {
     label?: string;
     createdAt?: string | number;
   };
+  soundboardClip?: WtfLiveSoundboardClip;
+  delivery?: "webrtc";
+  triggeredByName?: string;
+  triggeredByPeerId?: string;
   error?: string;
   messageText?: string;
 };
 
+type SoundboardSettingsResponse = WtfLiveSoundboardSettings & {
+  storage?: string;
+};
+
 const LIVE_CHAT_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "video/mp4"]);
 const LIVE_AVATAR_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+const LIVE_MEDIA_DECK_TYPES = new Set(["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/mp4", "audio/webm", "video/mp4", "video/webm"]);
+const LIVE_MEDIA_DECK_ACCEPT = Array.from(LIVE_MEDIA_DECK_TYPES).join(",");
+const MAX_LIVE_MEDIA_DECK_BYTES = 100 * 1024 * 1024;
 const MAX_LIVE_CHAT_ATTACHMENTS = 4;
 const MAX_LIVE_CHAT_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const MAX_LIVE_AVATAR_BYTES = 512 * 1024;
@@ -782,24 +840,101 @@ const ControlButton = styled(Button)<{ $active?: boolean }>`
   }
 `;
 
-const ButtonLabel = styled.span`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+const SoundboardButtonGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
-  white-space: nowrap;
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const SoundboardButton = styled(ControlButton)`
+  justify-content: stretch;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding-inline: 7px;
+  min-width: 0;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    grid-column: 2;
+    color: #555;
+    font-size: var(--wtf-type-caption, 12px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+`;
+
+const SoundboardBroadcastStatus = styled.div`
+  border: 2px inset #fff;
+  background: #fff8d6;
+  color: #151515;
+  padding: 5px 7px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--wtf-type-caption, 13px);
+`;
+
+const MediaDeckPanel = styled.div`
+  border: 2px inset #fff;
+  background: #f8f8f8;
+  padding: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--wtf-type-caption, 13px);
+`;
+
+const MediaDeckInfo = styled.div`
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+`;
+
+const MediaDeckControls = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+
+  button {
+    min-width: 0;
+    min-height: 30px;
+    padding-inline: 5px;
+  }
+
+  @media (max-width: 520px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+`;
+
+const MediaDeckRange = styled.input`
+  width: 100%;
+  min-width: 0;
 `;
 
 const MicTestPanel = styled.div<{ $status: MicDiagnosticStatus }>`
   border: 2px inset #fff;
   background: ${({ $status }) =>
-    $status === "ok"
-      ? "#e6f8e8"
-      : $status === "blocked" || $status === "unsupported"
-        ? "#fff0d8"
-        : $status === "warn"
-          ? "#fff7c8"
-          : "#f8f8f8"};
+    $status === "ok" ? "#e6f8e8" :
+      $status === "blocked" || $status === "unsupported" ? "#fff0d8" :
+        $status === "warn" ? "#fff7c8" : "#f8f8f8"};
   padding: 6px;
   display: grid;
   gap: 6px;
@@ -823,13 +958,9 @@ const MicTestHeader = styled.div`
 const MicTestBadge = styled.span<{ $status: MicDiagnosticStatus }>`
   border: 1px solid #646464;
   background: ${({ $status }) =>
-    $status === "ok"
-      ? "#bff0ca"
-      : $status === "blocked" || $status === "unsupported"
-        ? "#ffdca8"
-        : $status === "warn"
-          ? "#fff09d"
-          : "#ececec"};
+    $status === "ok" ? "#bff0ca" :
+      $status === "blocked" || $status === "unsupported" ? "#ffdca8" :
+        $status === "warn" ? "#fff09d" : "#ececec"};
   color: #07120f;
   padding: 2px 5px;
   font-size: 11px;
@@ -870,6 +1001,14 @@ const MicTestGuidance = styled.div`
   color: #2f2f2f;
   line-height: 1.3;
   overflow-wrap: anywhere;
+`;
+
+const ButtonLabel = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
 `;
 
 const MicMeter = styled.div`
@@ -1034,6 +1173,20 @@ const AvatarStage = styled.div`
     linear-gradient(180deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
     #17231f;
   background-size: 16px 16px;
+`;
+
+const MediaStageFallback = styled(AvatarStage)`
+  align-content: center;
+  gap: 8px;
+  color: #dfffe9;
+  font-weight: 800;
+  text-align: center;
+  padding: 16px;
+
+  span {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
 `;
 
 const AvatarCircle = styled.div<{ $size?: "mini" | "small" | "large" }>`
@@ -1609,6 +1762,17 @@ const INITIAL_MIC_DIAGNOSTIC: MicDiagnosticState = {
   deviceLabel: "Device: not checked",
 };
 
+function browserMediaLabel(): string {
+  if (typeof window === "undefined") return "Browser: not checked";
+  const secureContext =
+    window.isSecureContext ||
+    window.location.protocol === "file:" ||
+    ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  if (!secureContext) return "Browser: HTTPS or localhost required";
+  if (!navigator.mediaDevices?.getUserMedia) return "Browser: microphone API unavailable";
+  return "Browser: microphone API available";
+}
+
 function isMicSecureContext(): boolean {
   if (typeof window === "undefined") return false;
   return (
@@ -1616,13 +1780,6 @@ function isMicSecureContext(): boolean {
     window.location.protocol === "file:" ||
     ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
   );
-}
-
-function browserMediaLabel(): string {
-  if (typeof window === "undefined") return "Browser: not checked";
-  if (!isMicSecureContext()) return "Browser: HTTPS or localhost required";
-  if (!navigator.mediaDevices?.getUserMedia) return "Browser: microphone API unavailable";
-  return "Browser: microphone API available";
 }
 
 async function queryMicrophonePermission(): Promise<{ state: MicPermissionProbeState; label: string }> {
@@ -1724,6 +1881,71 @@ function micDiagnosticFromFailure(
     permissionLabel,
     deviceLabel,
   };
+}
+
+function emptyLiveMediaState(avatarUrl: string | null = null): LiveMediaState {
+  return {
+    mic: false,
+    audioOpen: false,
+    camera: false,
+    screen: false,
+    screenAudio: false,
+    mediaVideo: false,
+    mediaAudio: false,
+    mediaName: null,
+    soundboard: false,
+    activeVideo: null,
+    cameraTrackId: null,
+    screenTrackId: null,
+    mediaVideoTrackId: null,
+    mediaAudioTrackId: null,
+    avatarUrl,
+  };
+}
+
+function mediaElementCaptureStream(element: HTMLMediaElement): MediaStream | null {
+  const capturable = element as HTMLMediaElement & {
+    captureStream?: () => MediaStream;
+    mozCaptureStream?: () => MediaStream;
+  };
+  try {
+    return capturable.captureStream?.() ?? capturable.mozCaptureStream?.() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function isLiveMediaDeckFile(file: File): boolean {
+  if (LIVE_MEDIA_DECK_TYPES.has(file.type)) return true;
+  return /\.(?:mp3|m4a|aac|wav|ogg|oga|opus|mp4|webm)$/i.test(file.name);
+}
+
+function formatMediaTime(seconds: number | null | undefined): string {
+  if (!Number.isFinite(seconds ?? Number.NaN) || (seconds ?? 0) < 0) return "0:00";
+  const total = Math.floor(seconds ?? 0);
+  const minutes = Math.floor(total / 60);
+  const remaining = total % 60;
+  return `${minutes}:${String(remaining).padStart(2, "0")}`;
+}
+
+function videoOnlyStreamFromTrack(baseStream: MediaStream | null, trackId: string | null, fallbackIndex = 0): MediaStream | null {
+  const videoTracks = (baseStream?.getVideoTracks() ?? []).filter((track) => track.readyState === "live");
+  const track = (trackId ? videoTracks.find((candidate) => candidate.id === trackId) : null) ?? videoTracks[fallbackIndex] ?? null;
+  return track ? new MediaStream([track]) : null;
+}
+
+function stageStreamFromMediaState(baseStream: MediaStream | null, mediaState: LiveMediaState, source: StageSource): MediaStream | null {
+  if (source === "camera") return videoOnlyStreamFromTrack(baseStream, mediaState.cameraTrackId, 0);
+  if (source === "screen") return videoOnlyStreamFromTrack(baseStream, mediaState.screenTrackId, mediaState.cameraTrackId ? 1 : 0);
+  return videoOnlyStreamFromTrack(
+    baseStream,
+    mediaState.mediaVideoTrackId,
+    [mediaState.cameraTrackId, mediaState.screenTrackId].filter(Boolean).length,
+  );
+}
+
+function hasRemoteAudioLane(mediaState: LiveMediaState): boolean {
+  return mediaState.mic || mediaState.audioOpen || mediaState.screenAudio || mediaState.mediaAudio || mediaState.soundboard;
 }
 
 function useMediaStream<T extends HTMLMediaElement>(
@@ -1865,6 +2087,10 @@ function hasLiveTrack(stream: MediaStream | null, kind: MediaStreamTrack["kind"]
   return Boolean(stream?.getTracks().some((track) => track.kind === kind && track.readyState === "live"));
 }
 
+function firstLiveTrack(stream: MediaStream | null, kind: MediaStreamTrack["kind"]): MediaStreamTrack | null {
+  return stream?.getTracks().find((track) => track.kind === kind && track.readyState === "live") ?? null;
+}
+
 function resolveActiveVideoSource(
   streams: {
     cameraStream: MediaStream | null;
@@ -1885,19 +2111,36 @@ function mediaStateFromStreams(streams: {
   micStream: MediaStream | null;
   cameraStream: MediaStream | null;
   screenStream: MediaStream | null;
+  mediaStream?: MediaStream | null;
+  mediaName?: string | null;
+  soundboardStream?: MediaStream | null;
   activeVideoSource: ActiveVideoSource;
   audioEnabled: boolean;
   avatarUrl: string | null;
 }): LiveMediaState {
-  const camera = hasLiveTrack(streams.cameraStream, "video");
-  const screen = hasLiveTrack(streams.screenStream, "video");
+  const cameraTrack = firstLiveTrack(streams.cameraStream, "video");
+  const screenTrack = firstLiveTrack(streams.screenStream, "video");
+  const screenAudioTrack = firstLiveTrack(streams.screenStream, "audio");
+  const mediaVideoTrack = firstLiveTrack(streams.mediaStream ?? null, "video");
+  const mediaAudioTrack = firstLiveTrack(streams.mediaStream ?? null, "audio");
   const mic = hasLiveTrack(streams.micStream, "audio");
+  const soundboard = hasLiveTrack(streams.soundboardStream ?? null, "audio");
+  const preferredActive = resolveActiveVideoSource(streams, streams.activeVideoSource);
   return {
     mic,
     audioOpen: mic && streams.audioEnabled,
-    camera,
-    screen,
-    activeVideo: resolveActiveVideoSource(streams, streams.activeVideoSource),
+    camera: Boolean(cameraTrack),
+    screen: Boolean(screenTrack),
+    screenAudio: Boolean(screenAudioTrack),
+    mediaVideo: Boolean(mediaVideoTrack),
+    mediaAudio: Boolean(mediaAudioTrack),
+    mediaName: sanitizeStageMediaName(streams.mediaName),
+    soundboard,
+    activeVideo: preferredActive,
+    cameraTrackId: cameraTrack?.id ?? null,
+    screenTrackId: screenTrack?.id ?? null,
+    mediaVideoTrackId: mediaVideoTrack?.id ?? null,
+    mediaAudioTrackId: mediaAudioTrack?.id ?? null,
     avatarUrl: normalizeAvatarUrl(streams.avatarUrl),
   };
 }
@@ -1907,12 +2150,22 @@ function normalizeMediaState(value: Partial<LiveMediaState> | undefined): LiveMe
   const screen = Boolean(value?.screen);
   const requested = value?.activeVideo === "camera" || value?.activeVideo === "screen" ? value.activeVideo : null;
   const mic = Boolean(value?.mic);
+  const mediaName = sanitizeStageMediaName(value?.mediaName);
   return {
     mic,
     audioOpen: Boolean(value?.audioOpen ?? mic),
     camera,
     screen,
+    screenAudio: Boolean(value?.screenAudio),
+    mediaVideo: Boolean(value?.mediaVideo),
+    mediaAudio: Boolean(value?.mediaAudio),
+    mediaName,
+    soundboard: Boolean(value?.soundboard),
     activeVideo: requested === "camera" && camera ? "camera" : requested === "screen" && screen ? "screen" : null,
+    cameraTrackId: sanitizeTrackId(value?.cameraTrackId),
+    screenTrackId: sanitizeTrackId(value?.screenTrackId),
+    mediaVideoTrackId: sanitizeTrackId(value?.mediaVideoTrackId),
+    mediaAudioTrackId: sanitizeTrackId(value?.mediaAudioTrackId),
     avatarUrl: normalizeAvatarUrl(value?.avatarUrl),
   };
 }
@@ -1961,26 +2214,40 @@ function initialsForName(name: string): string {
 }
 
 function labelForMediaState(state: LiveMediaState, connected = true): string {
-  if (state.activeVideo === "screen") return "Screen";
-  if (state.activeVideo === "camera") return "Camera";
+  const visualSources = [state.camera ? "Camera" : "", state.screen ? "Screen" : "", state.mediaVideo ? "Media" : ""].filter(Boolean);
+  if (visualSources.length > 1) return visualSources.join(" + ");
+  if (visualSources.length === 1) return visualSources[0];
+  if (state.mediaAudio) return "Media audio";
+  if (state.soundboard) return "Soundboard";
   if (state.audioOpen) return "Mic live";
   if (state.mic) return "Mic ready";
   return connected ? "Idle" : "Connecting";
 }
 
-function activeVideoStreamForSource(source: ActiveVideoSource, streams: {
-  cameraStream: MediaStream | null;
-  screenStream: MediaStream | null;
-}): MediaStream | null {
-  if (source === "camera") return streams.cameraStream;
-  if (source === "screen") return streams.screenStream;
-  return null;
+function sanitizeTrackId(value: unknown): string | null {
+  const id = String(value || "").trim();
+  return id ? id.slice(0, 160) : null;
+}
+
+function sanitizeStageMediaName(value: unknown): string | null {
+  const name = String(value || "").trim().replace(/\s+/g, " ").slice(0, 80);
+  return name || null;
 }
 
 function formatFileSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "";
   if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function soundboardDataUrlToArrayBuffer(dataUrl: string): ArrayBuffer {
+  const [, base64 = ""] = dataUrl.split(",", 2);
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 }
 
 function readAttachment(file: File): Promise<LiveChatAttachment> {
@@ -2048,90 +2315,92 @@ function AvatarMark({ name, avatarUrl, size = "large" }: { name: string; avatarU
 
 function StageParticipantTile({
   id,
+  peerId,
   name,
+  source,
+  title,
   mediaState,
-	  stream,
-	  connected,
-	  isSelf = false,
-	  onOpen,
-	}: {
-	  id: string;
-	  name: string;
-	  mediaState: LiveMediaState;
-	  stream: MediaStream | null;
-	  connected: boolean;
-	  isSelf?: boolean;
-	  onOpen?: () => void;
-	}) {
+  stream,
+  connected,
+  isSelf = false,
+  onOpen,
+}: StageEntry & {
+  onOpen?: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const streamSignature = (stream?.getTracks() ?? [])
     .map((track) => `${track.kind}:${track.id}:${track.readyState}`)
     .join("|");
-  const hasVideo = Boolean(mediaState.activeVideo) && Boolean(stream?.getVideoTracks().some((track) => track.readyState === "live"));
-  const hasAudio = mediaState.mic || Boolean(stream?.getAudioTracks().some((track) => track.readyState === "live"));
-  const mode = hasVideo ? mediaState.activeVideo ?? "video" : hasAudio ? "mic" : "idle";
-  const activeVideoLabel = mediaState.activeVideo === "screen"
-    ? "Viewing screen"
-    : mediaState.activeVideo === "camera"
-      ? "Viewing camera"
+  const hasVideo = Boolean(stream?.getVideoTracks().some((track) => track.readyState === "live"));
+  const hasAudio = source === "media" ? mediaState.mediaAudio : hasRemoteAudioLane(mediaState);
+  const mode = hasVideo ? source : hasAudio ? `${source}-audio` : "idle";
+  const sourceLabel = source === "media" ? mediaState.mediaName || "Media" : source === "screen" ? "Screen" : "Camera";
+  const activeVideoLabel = hasVideo
+    ? `${sourceLabel} live`
+    : source === "media" && mediaState.mediaAudio
+      ? `${sourceLabel} audio`
       : hasAudio
-        ? "Mic live"
+        ? "Audio live"
         : connected
-          ? "Idle"
+          ? `${sourceLabel} ready`
           : "Connecting";
   useMediaStream(videoRef, hasVideo ? stream : null, streamSignature);
-  useMediaStream(audioRef, !isSelf && !hasVideo && hasAudio ? stream : null, streamSignature);
   return (
-	    <StageTile
-	      $hasVideo={hasVideo}
-	      onClick={hasVideo ? onOpen : undefined}
-	      data-wtf-live-stage-peer={id}
-	      data-wtf-live-stage-mode={mode}
-      data-wtf-live-remote-peer={isSelf ? undefined : id}
-      data-wtf-live-remote-active-video={isSelf ? undefined : mediaState.activeVideo ?? "none"}
-	    >
-	      {hasVideo ? (
-	        <StageOpenButton
-	          type="button"
-	          aria-label={`Open ${name} share`}
-	          data-wtf-live-open-stage-popout={id}
-	          onClick={(event) => {
-	            event.stopPropagation();
-	            onOpen?.();
-	          }}
-	        >
-	          <Maximize2 size={15} aria-hidden />
-	        </StageOpenButton>
-	      ) : null}
-	      {hasVideo ? (
+    <StageTile
+      $hasVideo={hasVideo}
+      onClick={hasVideo ? onOpen : undefined}
+      data-wtf-live-stage-entry={id}
+      data-wtf-live-stage-peer={peerId}
+      data-wtf-live-stage-source={source}
+      data-wtf-live-stage-mode={mode}
+      data-wtf-live-remote-peer={isSelf ? undefined : peerId}
+      data-wtf-live-remote-active-video={isSelf ? undefined : source}
+    >
+      {hasVideo ? (
+        <StageOpenButton
+          type="button"
+          aria-label={`Open ${title}`}
+          data-wtf-live-open-stage-popout={id}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen?.();
+          }}
+        >
+          <Maximize2 size={15} aria-hidden />
+        </StageOpenButton>
+      ) : null}
+      {hasVideo ? (
         <StageVideoFrame>
           <StageVideo
             ref={videoRef}
-            data-wtf-live-remote-video={isSelf ? undefined : id}
+            data-wtf-live-remote-video={isSelf ? undefined : peerId}
             data-wtf-live-local-stage-video={isSelf ? "true" : undefined}
             autoPlay
             playsInline
             muted={isSelf}
           />
         </StageVideoFrame>
+      ) : source === "media" ? (
+        <MediaStageFallback>
+          <Music2 size={42} aria-hidden />
+          <span>{mediaState.mediaName || "Media audio"}</span>
+        </MediaStageFallback>
       ) : (
         <AvatarStage>
           <AvatarMark name={name} avatarUrl={mediaState.avatarUrl} />
         </AvatarStage>
       )}
-      {!isSelf && !hasVideo && hasAudio ? <RemoteAudio ref={audioRef} data-wtf-live-remote-audio={id} autoPlay /> : null}
       <StageMeta>
         <strong>{isSelf ? `${name} (you)` : name}</strong>
         <span>{activeVideoLabel}</span>
       </StageMeta>
     </StageTile>
-	  );
-	}
+  );
+}
 
 function RemoteAudioSink({ peer }: { peer: LivePeer }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const shouldAttachAudio = peer.mediaState.mic && !peer.mediaState.activeVideo;
+  const shouldAttachAudio = hasRemoteAudioLane(peer.mediaState);
   useMediaStream(audioRef, shouldAttachAudio ? peer.stream : null, streamSignature(peer.stream));
   return <RemoteAudio ref={audioRef} data-wtf-live-remote-audio={peer.peerId} autoPlay />;
 }
@@ -2309,6 +2578,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const [micLevel, setMicLevel] = useState(0);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [soundboardOutputStream, setSoundboardOutputStream] = useState<MediaStream | null>(null);
+  const [mediaDeck, setMediaDeck] = useState<MediaDeckState | null>(null);
   const [activeVideoSource, setActiveVideoSource] = useState<ActiveVideoSource>(null);
   const [pushToTalk, setPushToTalk] = useState(false);
   const [pushHeld, setPushHeld] = useState(false);
@@ -2324,6 +2595,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     chatStyleOverriddenRef.current = Boolean(stored);
     return stored ?? DEFAULT_LIVE_CHAT_STYLE;
   });
+  const [soundboardSettings, setSoundboardSettings] = useState<WtfLiveSoundboardSettings>(() =>
+    readWtfLiveSoundboardSettings(user?.id),
+  );
+  const [soundboardStatus, setSoundboardStatus] = useState("");
   const [chatEmojiOpen, setChatEmojiOpen] = useState(false);
   const [chatStyleOpen, setChatStyleOpen] = useState(false);
   const [chatAttachments, setChatAttachments] = useState<LiveChatAttachment[]>([]);
@@ -2347,15 +2622,26 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const selfPeerIdRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const mediaFileInputRef = useRef<HTMLInputElement | null>(null);
+  const mediaDeckElementRef = useRef<HTMLMediaElement | null>(null);
+  const mediaDeckRef = useRef<MediaDeckState | null>(null);
   const chatNearBottomRef = useRef(true);
   const lastChatItemCountRef = useRef(0);
   const dragFrameRef = useRef<{ id: string; startX: number; startY: number; frameX: number; frameY: number } | null>(null);
   const reactionTimeoutsRef = useRef<Map<string, number>>(new Map());
-  const lastMediaStateRef = useRef<LiveMediaState>({ mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null });
+  const soundboardAudioRef = useRef<HTMLAudioElement[]>([]);
+  const soundboardAudioContextRef = useRef<AudioContext | null>(null);
+  const soundboardDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const soundboardSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
+  const soundboardCooldownRef = useRef<Map<string, number>>(new Map());
+  const lastMediaStateRef = useRef<LiveMediaState>(emptyLiveMediaState());
   const localStreamsRef = useRef({
     micStream: null as MediaStream | null,
     cameraStream: null as MediaStream | null,
     screenStream: null as MediaStream | null,
+    mediaStream: null as MediaStream | null,
+    mediaName: null as string | null,
+    soundboardStream: null as MediaStream | null,
     activeVideoSource: null as ActiveVideoSource,
     audioEnabled: false,
     avatarUrl: null as string | null,
@@ -2368,6 +2654,20 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const signedInUsername = user?.username?.trim() || "";
   const signedInDisplayName = signedInUsername || user?.displayName?.trim() || "";
   const attendeeDisplayName = signedInDisplayName || guestName.trim() || "guest";
+  const soundboardStorageKey = wtfLiveSoundboardStorageKey(viewerUserId);
+  const canUseRoomSoundboard = Boolean(
+    viewerUserId &&
+      room?.source === "user" &&
+      normalizeLiveUserId(room.ownerUserId) === viewerUserId,
+  );
+  const soundboardClips = soundboardSettings.clips;
+  const soundboardQuery = useQuery<SoundboardSettingsResponse>({
+    queryKey: ["wtf-live", "soundboard", viewerUserId],
+    enabled: Boolean(viewerUserId),
+    queryFn: () => api.get<SoundboardSettingsResponse>("/api/wtf-live/soundboard"),
+    retry: false,
+    staleTime: 15_000,
+  });
   const messagesQuery = useQuery<{ messages: RoomMessage[] }>({
     queryKey: ["wtf-live", "room", joinMode, roomId, "messages"],
     enabled: Boolean(room),
@@ -2467,12 +2767,75 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   }, [chatStyle]);
 
   useEffect(() => {
-    localStreamsRef.current = { micStream, cameraStream, screenStream, activeVideoSource, audioEnabled: localAudioOpen, avatarUrl };
-  }, [activeVideoSource, avatarUrl, cameraStream, localAudioOpen, micStream, screenStream]);
+    localStreamsRef.current = {
+      micStream,
+      cameraStream,
+      screenStream,
+      mediaStream: mediaDeck?.stream ?? null,
+      mediaName: mediaDeck?.name ?? null,
+      soundboardStream: soundboardOutputStream,
+      activeVideoSource,
+      audioEnabled: localAudioOpen,
+      avatarUrl,
+    };
+  }, [activeVideoSource, avatarUrl, cameraStream, localAudioOpen, mediaDeck?.name, mediaDeck?.stream, micStream, screenStream, soundboardOutputStream]);
 
   useEffect(() => {
     setWimFriendIds(readWimFriendIds(viewerUserId));
   }, [viewerUserId]);
+
+  useEffect(() => {
+    setSoundboardSettings(readWtfLiveSoundboardSettings(viewerUserId));
+  }, [viewerUserId]);
+
+  useEffect(() => {
+    if (!viewerUserId || !soundboardQuery.data) return;
+    setSoundboardSettings(normalizeWtfLiveSoundboardSettings(soundboardQuery.data));
+  }, [soundboardQuery.data, viewerUserId]);
+
+  useEffect(() => {
+    const refreshSoundboard = () => {
+      setSoundboardSettings(readWtfLiveSoundboardSettings(viewerUserId));
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === soundboardStorageKey) refreshSoundboard();
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("wtf-live:soundboard-updated", refreshSoundboard);
+    window.addEventListener("focus", refreshSoundboard);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("wtf-live:soundboard-updated", refreshSoundboard);
+      window.removeEventListener("focus", refreshSoundboard);
+    };
+  }, [soundboardStorageKey, viewerUserId]);
+
+  useEffect(() => {
+    if (!canUseRoomSoundboard) {
+      closeSoundboardGraph();
+      return;
+    }
+    if (!joined || !socketReady) return;
+    const stream = ensureSoundboardOutputStream();
+    if (!stream) return;
+    publishMediaState();
+    void renegotiateAllPeers();
+  }, [canUseRoomSoundboard, joined, socketReady]);
+
+  useEffect(() => {
+    if (!canUseRoomSoundboard || !joined || !socketReady || !soundboardSettings.armed) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat || isWtfLiveShortcutEventTargetEditable(event.target)) return;
+      const shortcut = shortcutFromWtfLiveKeyboardEvent(event);
+      if (!shortcut) return;
+      const clip = soundboardSettings.clips.find((candidate) => candidate.shortcut === shortcut);
+      if (!clip) return;
+      event.preventDefault();
+      triggerSoundboardClip(clip, "shortcut");
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [canUseRoomSoundboard, joined, socketReady, soundboardSettings]);
 
   useEffect(() => {
     micStream?.getAudioTracks().forEach((track) => {
@@ -2493,9 +2856,16 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    statsSamplesRef.current.clear();
 	    for (const timeoutId of reactionTimeoutsRef.current.values()) window.clearTimeout(timeoutId);
 	    reactionTimeoutsRef.current.clear();
+	    soundboardAudioRef.current.forEach((audio) => {
+	      audio.pause();
+	      audio.src = "";
+	    });
+	    soundboardAudioRef.current = [];
 	    stopStream(localStreamsRef.current.micStream);
 	    stopStream(localStreamsRef.current.cameraStream);
 	    stopStream(localStreamsRef.current.screenStream);
+	    closeMediaDeck("");
+	    closeSoundboardGraph();
 	  }, []);
 
   useEffect(() => {
@@ -2559,10 +2929,12 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    remoteStreamsRef.current.clear();
 	    statsSamplesRef.current.clear();
 	    selfPeerIdRef.current = null;
-	    lastMediaStateRef.current = { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl };
+	    lastMediaStateRef.current = emptyLiveMediaState(avatarUrl);
 	    stopStream(localStreamsRef.current.micStream);
 	    stopStream(localStreamsRef.current.cameraStream);
 	    stopStream(localStreamsRef.current.screenStream);
+	    closeMediaDeck("");
+	    closeSoundboardGraph();
 	    setMicStream(null);
 	    setCameraStream(null);
 	    setScreenStream(null);
@@ -2572,6 +2944,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    setRoomReactions([]);
 	    for (const timeoutId of reactionTimeoutsRef.current.values()) window.clearTimeout(timeoutId);
 	    reactionTimeoutsRef.current.clear();
+	    stopSoundboardAudio("");
 	    setPopoutFrames([]);
 	    setRemotePeers([]);
 	    setPeerDiagnostics({});
@@ -2587,7 +2960,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   }
 
   function hasAnyMedia(state: LiveMediaState) {
-    return state.mic || state.camera || state.screen;
+    return state.mic || state.camera || state.screen || state.screenAudio || state.mediaVideo || state.mediaAudio || state.soundboard;
   }
 
   function upsertRemotePeer(next: {
@@ -2657,14 +3030,12 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
         .filter((track) => track.readyState === "live" && (!kind || track.kind === kind))
         .forEach((track) => desiredTracks.set(track.id, { track, stream }));
     };
-    const activeSource = resolveActiveVideoSource(localStreamsRef.current, localStreamsRef.current.activeVideoSource);
     addStreamTracks(localStreamsRef.current.micStream, "audio");
-    if (activeSource === "screen") {
-      addStreamTracks(localStreamsRef.current.screenStream, "video");
-      addStreamTracks(localStreamsRef.current.screenStream, "audio");
-    } else if (activeSource === "camera") {
-      addStreamTracks(localStreamsRef.current.cameraStream, "video");
-    }
+    addStreamTracks(localStreamsRef.current.soundboardStream, "audio");
+    addStreamTracks(localStreamsRef.current.cameraStream, "video");
+    addStreamTracks(localStreamsRef.current.screenStream, "video");
+    addStreamTracks(localStreamsRef.current.screenStream, "audio");
+    addStreamTracks(localStreamsRef.current.mediaStream);
 
     for (const transceiver of connection.getTransceivers()) {
       const sender = transceiver.sender;
@@ -2724,6 +3095,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     peerConnectionsRef.current.set(remotePeerId, connection);
     try {
       connection.addTransceiver("audio", { direction: "recvonly" });
+      connection.addTransceiver("video", { direction: "recvonly" });
       connection.addTransceiver("video", { direction: "recvonly" });
       connection.addTransceiver("video", { direction: "recvonly" });
     } catch {
@@ -2926,6 +3298,15 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       return;
     }
 
+    if (event.type === "wtf_live_soundboard_clip") {
+      const clip = normalizeWtfLiveSoundboardClip(event.soundboardClip);
+      if (!clip) return;
+      const hostName = event.triggeredByName || "Host";
+      setSoundboardStatus(`${hostName}: ${clip.label}`);
+      setStatus(`Soundboard: ${clip.label}`);
+      return;
+    }
+
     if (event.type === "error") {
       setStatus(event.messageText || (typeof event.message === "string" ? event.message : "WTF LIVE room error."));
     }
@@ -2937,7 +3318,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    peerConnectionsRef.current.clear();
 	    remoteStreamsRef.current.clear();
 	    statsSamplesRef.current.clear();
-	    lastMediaStateRef.current = { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl };
+	    lastMediaStateRef.current = emptyLiveMediaState(avatarUrl);
 	    setRemotePeers([]);
 	    setPeerDiagnostics({});
 	    setSocketReady(false);
@@ -2986,12 +3367,20 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	      previousMediaState.mic !== nextMediaState.mic ||
 	      previousMediaState.camera !== nextMediaState.camera ||
 	      previousMediaState.screen !== nextMediaState.screen ||
-	      previousMediaState.activeVideo !== nextMediaState.activeVideo;
+	      previousMediaState.screenAudio !== nextMediaState.screenAudio ||
+	      previousMediaState.mediaVideo !== nextMediaState.mediaVideo ||
+	      previousMediaState.mediaAudio !== nextMediaState.mediaAudio ||
+	      previousMediaState.soundboard !== nextMediaState.soundboard ||
+	      previousMediaState.activeVideo !== nextMediaState.activeVideo ||
+	      previousMediaState.cameraTrackId !== nextMediaState.cameraTrackId ||
+	      previousMediaState.screenTrackId !== nextMediaState.screenTrackId ||
+	      previousMediaState.mediaVideoTrackId !== nextMediaState.mediaVideoTrackId ||
+	      previousMediaState.mediaAudioTrackId !== nextMediaState.mediaAudioTrackId;
 	    if (needsRenegotiation) {
 	      void renegotiateAllPeers();
 	    }
 	    lastMediaStateRef.current = nextMediaState;
-	  }, [activeVideoSource, avatarUrl, joined, localAudioOpen, socketReady, micStream, cameraStream, screenStream]);
+	  }, [activeVideoSource, avatarUrl, joined, localAudioOpen, mediaDeck?.muted, mediaDeck?.name, mediaDeck?.playing, mediaDeck?.stream, socketReady, micStream, cameraStream, screenStream, soundboardOutputStream]);
 
 	  useEffect(() => {
 	    if (!joined || !socketReady) return;
@@ -3373,7 +3762,156 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       return;
     }
     setActiveVideoSource(source);
-    setStatus(source === "camera" ? "Sharing camera to the room." : "Sharing screen to the room.");
+    setStatus(source === "camera" ? "Camera is the preferred stage focus." : "Screen is the preferred stage focus.");
+  }
+
+  function closeMediaDeck(nextStatus = "Media deck cleared.") {
+    const element = mediaDeckElementRef.current;
+    mediaDeckElementRef.current = null;
+    if (element) {
+      element.pause();
+      element.removeAttribute("src");
+      element.load();
+    }
+    const current = mediaDeckRef.current;
+    mediaDeckRef.current = null;
+    if (current) {
+      stopStream(current.stream);
+      URL.revokeObjectURL(current.objectUrl);
+    }
+    localStreamsRef.current.mediaStream = null;
+    localStreamsRef.current.mediaName = null;
+    setMediaDeck(null);
+    if (nextStatus) setStatus(nextStatus);
+  }
+
+  async function handleMediaDeckInput(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!isLiveMediaDeckFile(file)) {
+      setStatus("Choose an audio or video file for the media deck.");
+      return;
+    }
+    if (file.size > MAX_LIVE_MEDIA_DECK_BYTES) {
+      setStatus("Media deck files are limited to 100 MB.");
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    const kind: MediaDeckState["kind"] = file.type.startsWith("video/") || /\.(?:mp4|webm)$/i.test(file.name) ? "video" : "audio";
+    const element = document.createElement(kind) as HTMLMediaElement;
+    element.preload = "auto";
+    element.loop = false;
+    element.muted = false;
+    element.volume = 0.82;
+    element.src = objectUrl;
+    if (kind === "video") {
+      (element as HTMLVideoElement).playsInline = true;
+    }
+    const stream = mediaElementCaptureStream(element);
+    if (!stream) {
+      URL.revokeObjectURL(objectUrl);
+      setStatus("This browser cannot share local media files.");
+      return;
+    }
+    closeMediaDeck("");
+    mediaDeckElementRef.current = element;
+    const syncDeck = () => {
+      setMediaDeck((current) => {
+        if (!current || current.objectUrl !== objectUrl) return current;
+        const next = {
+          ...current,
+          playing: !element.paused && !element.ended,
+          duration: Number.isFinite(element.duration) ? element.duration : current.duration,
+          currentTime: Number.isFinite(element.currentTime) ? element.currentTime : current.currentTime,
+        };
+        mediaDeckRef.current = next;
+        return next;
+      });
+    };
+    element.addEventListener("play", syncDeck);
+    element.addEventListener("pause", syncDeck);
+    element.addEventListener("ended", syncDeck);
+    element.addEventListener("durationchange", syncDeck);
+    element.addEventListener("timeupdate", syncDeck);
+    stream.addEventListener("addtrack", syncDeck);
+    element.load();
+    const nextDeck: MediaDeckState = {
+      name: sanitizeStageMediaName(file.name) || "Media file",
+      kind,
+      objectUrl,
+      stream,
+      playing: false,
+      loop: false,
+      muted: false,
+      volume: 82,
+      duration: null,
+      currentTime: 0,
+    };
+    mediaDeckRef.current = nextDeck;
+    setMediaDeck(nextDeck);
+    setStatus(`${nextDeck.name} loaded into the media deck.`);
+  }
+
+  async function toggleMediaDeckPlayback() {
+    const deck = mediaDeckRef.current;
+    const element = mediaDeckElementRef.current;
+    if (!deck || !element) {
+      mediaFileInputRef.current?.click();
+      return;
+    }
+    if (deck.playing) {
+      element.pause();
+      setMediaDeck((current) => current ? { ...current, playing: false } : current);
+      setStatus("Media deck paused.");
+      return;
+    }
+    try {
+      await element.play();
+      const nextDeck = { ...deck, playing: true };
+      mediaDeckRef.current = nextDeck;
+      setMediaDeck((current) => current ? { ...current, playing: true } : current);
+      setStatus(`${deck.name} playing to the room.`);
+    } catch {
+      setStatus("Media playback was blocked. Press Play again in the room.");
+    }
+  }
+
+  function setMediaDeckVolume(volume: number) {
+    const nextVolume = Math.max(0, Math.min(100, Math.round(volume)));
+    const element = mediaDeckElementRef.current;
+    if (element) element.volume = nextVolume / 100;
+    setMediaDeck((current) => {
+      if (!current) return current;
+      const next = { ...current, volume: nextVolume };
+      mediaDeckRef.current = next;
+      return next;
+    });
+  }
+
+  function toggleMediaDeckLoop() {
+    const element = mediaDeckElementRef.current;
+    setMediaDeck((current) => {
+      if (!current) return current;
+      const next = { ...current, loop: !current.loop };
+      if (element) element.loop = next.loop;
+      mediaDeckRef.current = next;
+      return next;
+    });
+  }
+
+  function toggleMediaDeckMuted() {
+    const element = mediaDeckElementRef.current;
+    setMediaDeck((current) => {
+      if (!current) return current;
+      const next = { ...current, muted: !current.muted };
+      if (element) element.muted = next.muted;
+      next.stream.getAudioTracks().forEach((track) => {
+        track.enabled = !next.muted;
+      });
+      mediaDeckRef.current = next;
+      return next;
+    });
   }
 
   async function handleAvatarInput(event: ChangeEvent<HTMLInputElement>) {
@@ -3461,6 +3999,124 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     if (!sendRoomSocket({ type: "wtf_live_room_reaction", emoji: option.emoji })) {
       setStatus("Room reactions are not connected.");
     }
+  }
+
+  function ensureSoundboardOutputStream(): MediaStream | null {
+    if (soundboardDestinationRef.current) return soundboardDestinationRef.current.stream;
+    const AudioContextCtor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) {
+      setSoundboardStatus("This browser cannot inject Show Kit audio.");
+      return null;
+    }
+    const context = new AudioContextCtor();
+    const destination = context.createMediaStreamDestination();
+    soundboardAudioContextRef.current = context;
+    soundboardDestinationRef.current = destination;
+    localStreamsRef.current.soundboardStream = destination.stream;
+    setSoundboardOutputStream(destination.stream);
+    return destination.stream;
+  }
+
+  function closeSoundboardGraph() {
+    stopSoundboardAudio("");
+    const context = soundboardAudioContextRef.current;
+    soundboardAudioContextRef.current = null;
+    soundboardDestinationRef.current = null;
+    localStreamsRef.current.soundboardStream = null;
+    setSoundboardOutputStream(null);
+    void context?.close().catch(() => undefined);
+  }
+
+  async function injectSoundboardClip(clip: WtfLiveSoundboardClip): Promise<boolean> {
+    const stream = ensureSoundboardOutputStream();
+    const context = soundboardAudioContextRef.current;
+    const destination = soundboardDestinationRef.current;
+    if (!stream || !context || !destination) return false;
+    try {
+      await context.resume();
+      const audioBuffer = await context.decodeAudioData(soundboardDataUrlToArrayBuffer(clip.dataUrl));
+      const source = context.createBufferSource();
+      const gain = context.createGain();
+      source.buffer = audioBuffer;
+      gain.gain.value = volumeToAudioGain(clip.volume);
+      source.connect(gain);
+      gain.connect(destination);
+      gain.connect(context.destination);
+      soundboardSourcesRef.current.add(source);
+      source.onended = () => {
+        soundboardSourcesRef.current.delete(source);
+        source.disconnect();
+        gain.disconnect();
+      };
+      source.start();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function trackSoundboardAudio(audio: HTMLAudioElement) {
+    soundboardAudioRef.current = [...soundboardAudioRef.current, audio].slice(-8);
+    const remove = () => {
+      soundboardAudioRef.current = soundboardAudioRef.current.filter((item) => item !== audio);
+    };
+    audio.addEventListener("ended", remove, { once: true });
+    audio.addEventListener("error", remove, { once: true });
+  }
+
+  async function playSoundboardClip(clip: WtfLiveSoundboardClip, inject = false) {
+    if (inject && await injectSoundboardClip(clip)) return;
+    const audio = playWtfLiveSoundboardClip(clip, volumeToAudioGain(clip.volume));
+    trackSoundboardAudio(audio);
+  }
+
+  function stopSoundboardAudio(nextStatus = "Soundboard stopped.") {
+    soundboardSourcesRef.current.forEach((source) => {
+      try {
+        source.stop();
+      } catch {
+        // Source nodes can only be stopped once.
+      }
+    });
+    soundboardSourcesRef.current.clear();
+    soundboardAudioRef.current.forEach((audio) => {
+      audio.pause();
+      audio.src = "";
+    });
+    soundboardAudioRef.current = [];
+    if (nextStatus) setSoundboardStatus(nextStatus);
+  }
+
+  async function triggerSoundboardClip(clip: WtfLiveSoundboardClip, source: "button" | "shortcut") {
+    if (!canUseRoomSoundboard) {
+      setSoundboardStatus("Only the room owner can trigger Show Kit audio.");
+      return;
+    }
+    if (!joined || !socketReady) {
+      setSoundboardStatus("Join the room before triggering Show Kit audio.");
+      return;
+    }
+    const now = Date.now();
+    const readyAt = soundboardCooldownRef.current.get(clip.id) ?? 0;
+    if (readyAt > now) {
+      const seconds = Math.max(1, Math.ceil((readyAt - now) / 1000));
+      setSoundboardStatus(`${clip.label} is cooling down for ${seconds}s.`);
+      return;
+    }
+    soundboardCooldownRef.current.set(clip.id, now + Math.max(0, clip.cooldownMs));
+    await playSoundboardClip(clip, true);
+    const sent = sendRoomSocket({
+      type: "wtf_live_soundboard_clip",
+      clip,
+      delivery: "webrtc",
+    });
+    if (!sent) {
+      setSoundboardStatus("Soundboard relay is not connected.");
+      return;
+    }
+    const suffix = source === "shortcut" && clip.shortcut ? ` via ${clip.shortcut}` : "";
+    setSoundboardStatus(`${clip.label} sent${suffix}.`);
+    setStatus(`Soundboard: ${clip.label} sent.`);
   }
 
 	  function sendLiveChat() {
@@ -3552,15 +4208,15 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    });
 	  }
 
-	  function openStagePopout(peer: { peerId: string; guestName: string; mediaState: LiveMediaState }) {
-	    if (!peer.mediaState.activeVideo) return;
+	  function openStagePopout(entry: StageEntry) {
+	    if (!entry.stream?.getVideoTracks().some((track) => track.readyState === "live")) return;
 	    upsertPopoutFrame({
-	      id: `remote-${peer.peerId}-${peer.mediaState.activeVideo}`,
-	      title: `${peer.guestName} ${peer.mediaState.activeVideo === "screen" ? "screen" : "camera"}`,
+	      id: `${entry.isSelf ? "local" : "remote"}-${entry.peerId}-${entry.source}`,
+	      title: entry.title,
 	      kind: "stream",
-	      streamScope: peer.peerId === "self" ? "local" : "remote",
-	      source: peer.mediaState.activeVideo,
-	      peerId: peer.peerId === "self" ? undefined : peer.peerId,
+	      streamScope: entry.isSelf ? "local" : "remote",
+	      source: entry.source,
+	      peerId: entry.isSelf ? undefined : entry.peerId,
 	      ...frameBasePosition(),
 	    });
 	  }
@@ -3671,19 +4327,112 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 
   const messages = messagesQuery.data?.messages ?? [];
   const canSendChat = joined && socketReady && (Boolean(chatText.trim()) || chatAttachments.length > 0);
-	  const localMediaState = mediaStateFromStreams({ micStream, cameraStream, screenStream, activeVideoSource, audioEnabled: localAudioOpen, avatarUrl });
-	  const localStageStream = localMediaState.activeVideo
-	    ? activeVideoStreamForSource(localMediaState.activeVideo, { cameraStream, screenStream })
-	    : null;
-	  const remoteStagePeers = remotePeers.filter((peer) => Boolean(peer.mediaState.activeVideo));
-	  const stageCount = (joined && localMediaState.activeVideo ? 1 : 0) + remoteStagePeers.length;
+  const mediaDeckStream = mediaDeck?.stream ?? null;
+  const localMediaState = mediaStateFromStreams({
+    micStream,
+    cameraStream,
+    screenStream,
+    mediaStream: mediaDeckStream,
+    mediaName: mediaDeck?.name ?? null,
+    soundboardStream: soundboardOutputStream,
+    activeVideoSource,
+    audioEnabled: localAudioOpen,
+    avatarUrl,
+  });
+  const localStageEntries: StageEntry[] = joined
+    ? ([
+        localMediaState.camera
+          ? {
+              id: "self-camera",
+              peerId: "self",
+              name: attendeeDisplayName,
+              source: "camera" as const,
+              title: `${attendeeDisplayName} camera`,
+              mediaState: localMediaState,
+              stream: stageStreamFromMediaState(cameraStream, localMediaState, "camera"),
+              connected: socketReady,
+              isSelf: true,
+            }
+          : null,
+        localMediaState.screen
+          ? {
+              id: "self-screen",
+              peerId: "self",
+              name: attendeeDisplayName,
+              source: "screen" as const,
+              title: `${attendeeDisplayName} screen`,
+              mediaState: localMediaState,
+              stream: stageStreamFromMediaState(screenStream, localMediaState, "screen"),
+              connected: socketReady,
+              isSelf: true,
+            }
+          : null,
+        localMediaState.mediaVideo || localMediaState.mediaAudio
+          ? {
+              id: "self-media",
+              peerId: "self",
+              name: attendeeDisplayName,
+              source: "media" as const,
+              title: `${attendeeDisplayName} media`,
+              mediaState: localMediaState,
+              stream: stageStreamFromMediaState(mediaDeckStream, localMediaState, "media"),
+              connected: socketReady,
+              isSelf: true,
+            }
+          : null,
+      ] as Array<StageEntry | null>).filter((entry): entry is StageEntry => Boolean(entry))
+    : [];
+  const remoteStageEntries: StageEntry[] = remotePeers.flatMap((peer) => {
+    const name = livePeerName(peer);
+    return ([
+      peer.mediaState.camera
+        ? {
+            id: `${peer.peerId}-camera`,
+            peerId: peer.peerId,
+            name,
+            source: "camera" as const,
+            title: `${name} camera`,
+            mediaState: peer.mediaState,
+            stream: stageStreamFromMediaState(peer.stream, peer.mediaState, "camera"),
+            connected: peer.connected,
+          }
+        : null,
+      peer.mediaState.screen
+        ? {
+            id: `${peer.peerId}-screen`,
+            peerId: peer.peerId,
+            name,
+            source: "screen" as const,
+            title: `${name} screen`,
+            mediaState: peer.mediaState,
+            stream: stageStreamFromMediaState(peer.stream, peer.mediaState, "screen"),
+            connected: peer.connected,
+          }
+        : null,
+      peer.mediaState.mediaVideo || peer.mediaState.mediaAudio
+        ? {
+            id: `${peer.peerId}-media`,
+            peerId: peer.peerId,
+            name,
+            source: "media" as const,
+            title: `${name} media`,
+            mediaState: peer.mediaState,
+            stream: stageStreamFromMediaState(peer.stream, peer.mediaState, "media"),
+            connected: peer.connected,
+        }
+        : null,
+    ] as Array<StageEntry | null>).filter((entry): entry is StageEntry => Boolean(entry));
+  });
+  const stageEntries = [...localStageEntries, ...remoteStageEntries];
+  const stageCount = stageEntries.length;
 	  const participantCount = remotePeers.length + (joined ? 1 : 0);
 	  const openMicCount = remotePeers.filter((peer) => peer.mediaState.audioOpen).length + (localMediaState.audioOpen ? 1 : 0);
-	  const activeShareLabel = activeVideoSource === "screen"
-	    ? "Sharing screen"
-	    : activeVideoSource === "camera"
-	      ? "Sharing camera"
-      : "No video shared";
+  const sourceCountLabel = labelForMediaState(localMediaState);
+  const activeShareLabel = activeVideoSource === "screen"
+    ? "Screen focus"
+    : activeVideoSource === "camera"
+      ? "Camera focus"
+      : "No focus";
   const attendanceDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "attendance");
   const chatDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "chat");
   const sidebarDetached = attendanceDetached && chatDetached;
@@ -3724,7 +4473,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     return (
       <AttendeeRow
         key={entry.id}
-        $active={Boolean(entry.mediaState.activeVideo || entry.mediaState.audioOpen)}
+        $active={Boolean(entry.mediaState.camera || entry.mediaState.screen || entry.mediaState.mediaVideo || entry.mediaState.mediaAudio || entry.mediaState.audioOpen || entry.mediaState.soundboard)}
         data-wtf-live-attendee={entry.id}
         data-wtf-live-attendee-state={stateLabel.toLowerCase()}
         data-wtf-live-attendee-user-id={attendeeUserId ?? undefined}
@@ -4017,6 +4766,50 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     );
   }
 
+  function renderSoundboardRuntime() {
+    if (!canUseRoomSoundboard) return null;
+    return (
+      <SettingsGroup data-wtf-live-soundboard-runtime>
+        <LiveSectionHeader>
+          <span><Music2 size={15} aria-hidden /> Soundboard</span>
+          <ShareStatus>{soundboardOutputStream ? "WebRTC lane" : soundboardClips.length ? `${soundboardClips.length} clips` : "No clips"}</ShareStatus>
+        </LiveSectionHeader>
+        {soundboardClips.length ? (
+          <SoundboardButtonGrid>
+            {soundboardClips.map((clip) => (
+              <SoundboardButton
+                key={clip.id}
+                disabled={!joined || !socketReady}
+                title={clip.shortcut ? `${clip.label} (${clip.shortcut})` : clip.label}
+                onClick={() => triggerSoundboardClip(clip, "button")}
+                data-wtf-live-soundboard-trigger={clip.id}
+              >
+                <Music2 aria-hidden />
+                <span>{clip.label}</span>
+                <small>{clip.shortcut || `${clip.volume}%`} {clip.cooldownMs ? `· ${Math.round(clip.cooldownMs / 1000)}s` : ""}</small>
+              </SoundboardButton>
+            ))}
+          </SoundboardButtonGrid>
+        ) : (
+          <StatusLine>No Show Kit clips.</StatusLine>
+        )}
+        <GuestGrid>
+          <Button onClick={() => stopSoundboardAudio()} data-wtf-live-soundboard-stop>
+            <ButtonLabel><VolumeX size={16} aria-hidden /> Stop</ButtonLabel>
+          </Button>
+          <Button onClick={() => window.open("/live?tab=show-kit", "_blank", "noopener,noreferrer")} data-wtf-live-soundboard-open-settings>
+            Show Kit
+          </Button>
+        </GuestGrid>
+        {soundboardStatus ? (
+          <StatusLine aria-live="polite" data-wtf-live-soundboard-status>
+            {soundboardStatus}
+          </StatusLine>
+        ) : null}
+      </SettingsGroup>
+    );
+  }
+
   function renderTipTray() {
     if (!tipTrayOpen) return null;
     const targetValue = selectedTipTarget?.userId ? String(selectedTipTarget.userId) : "";
@@ -4251,7 +5044,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	            <SettingsGroup>
 	              <LiveSectionHeader>
 	                <span>Share</span>
-	                <ShareStatus>{activeShareLabel}</ShareStatus>
+	                <ShareStatus>{sourceCountLabel}</ShareStatus>
 	              </LiveSectionHeader>
 	              <MediaButtonGrid>
 	                <ControlButton
@@ -4336,7 +5129,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	              </ControlButton>
 	              <SharePicker data-wtf-live-active-share={activeVideoSource ?? "none"}>
 	                <LiveSectionHeader>
-	                  <span>Active video</span>
+	                  <span>Stage focus</span>
 	                  <ShareStatus>{activeShareLabel}</ShareStatus>
 	                </LiveSectionHeader>
 	                <GuestGrid>
@@ -4358,7 +5151,69 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	                  </ControlButton>
 	                </GuestGrid>
 	              </SharePicker>
+	              <MediaDeckPanel data-wtf-live-media-deck>
+	                <LiveSectionHeader>
+	                  <span><FileAudio size={15} aria-hidden /> Media deck</span>
+	                  <ShareStatus>{mediaDeck ? (mediaDeck.playing ? "Playing" : "Ready") : "Empty"}</ShareStatus>
+	                </LiveSectionHeader>
+	                <HiddenFileInput
+	                  ref={mediaFileInputRef}
+	                  data-wtf-live-media-file
+	                  type="file"
+	                  accept={LIVE_MEDIA_DECK_ACCEPT}
+	                  onChange={handleMediaDeckInput}
+	                />
+	                <GuestGrid>
+	                  <Button
+	                    disabled={!joined || !socketReady}
+	                    onClick={() => mediaFileInputRef.current?.click()}
+	                    data-wtf-live-media-load
+	                  >
+	                    <ButtonLabel><FileAudio size={16} aria-hidden /> Load</ButtonLabel>
+	                  </Button>
+	                  <Button
+	                    disabled={!joined || !socketReady || !mediaDeck}
+	                    onClick={toggleMediaDeckPlayback}
+	                    data-wtf-live-media-play
+	                  >
+	                    <ButtonLabel>{mediaDeck?.playing ? <Pause size={16} aria-hidden /> : <Play size={16} aria-hidden />} {mediaDeck?.playing ? "Pause" : "Play"}</ButtonLabel>
+	                  </Button>
+	                </GuestGrid>
+	                {mediaDeck ? (
+	                  <>
+	                    <MediaDeckInfo data-wtf-live-media-deck-info>
+	                      <strong>{mediaDeck.name}</strong>
+	                      <span>{mediaDeck.kind} · {formatMediaTime(mediaDeck.currentTime)} / {formatMediaTime(mediaDeck.duration)}</span>
+	                    </MediaDeckInfo>
+	                    <MediaDeckControls>
+	                      <Button onClick={toggleMediaDeckLoop} data-wtf-live-media-loop>
+	                        {mediaDeck.loop ? "Loop on" : "Loop"}
+	                      </Button>
+	                      <Button onClick={toggleMediaDeckMuted} data-wtf-live-media-mute>
+	                        <ButtonLabel>{mediaDeck.muted ? <VolumeX size={15} aria-hidden /> : <Volume2 size={15} aria-hidden />} {mediaDeck.muted ? "Muted" : "Audio"}</ButtonLabel>
+	                      </Button>
+	                      <Button onClick={() => closeMediaDeck()} data-wtf-live-media-stop>
+	                        <ButtonLabel><Square size={15} aria-hidden /> Stop</ButtonLabel>
+	                      </Button>
+	                      <ShareStatus>{mediaDeck.volume}%</ShareStatus>
+	                    </MediaDeckControls>
+	                    <MediaDeckRange
+	                      aria-label="Media deck volume"
+	                      data-wtf-live-media-volume
+	                      type="range"
+	                      min="0"
+	                      max="100"
+	                      value={mediaDeck.volume}
+	                      onChange={(event) => setMediaDeckVolume(Number(event.currentTarget.value))}
+	                    />
+	                  </>
+	                ) : (
+	                  <StatusLine data-wtf-live-media-deck-status>No media loaded.</StatusLine>
+	                )}
+	              </MediaDeckPanel>
 	            </SettingsGroup>
+
+	            {renderSoundboardRuntime()}
 
 	            <SettingsGroup>
 	              <LiveSectionHeader>
@@ -4395,18 +5250,18 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	              <LocalPreviewDock>
 	                <LiveSectionHeader>
 	                  <span>Preview</span>
-	                  <span>{activeShareLabel}</span>
+	                  <span>{sourceCountLabel}</span>
 	                </LiveSectionHeader>
 	                <PreviewGrid>
 	                  <PreviewBox
-	                    $active={activeVideoSource === "camera"}
+	                    $active={Boolean(cameraStream)}
 	                    data-wtf-live-local-preview="camera"
 	                    onClick={() => openLocalPreview("camera")}
 	                  >
 	                    {cameraStream ? <PreviewVideo ref={cameraRef} muted autoPlay playsInline /> : <span>Camera</span>}
 	                  </PreviewBox>
 	                  <PreviewBox
-	                    $active={activeVideoSource === "screen"}
+	                    $active={Boolean(screenStream)}
 	                    data-wtf-live-local-preview="screen"
 	                    onClick={() => openLocalPreview("screen")}
 	                  >
@@ -4439,9 +5294,15 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 
 	          <StagePanel data-wtf-live-stage-area>
 	            <StageHeader>
-	              <span>Screen / camera stage</span>
-	              <span>{stageCount ? `${stageCount} share${stageCount === 1 ? "" : "s"}` : "no video shared"}</span>
+	              <span>Stage sources</span>
+	              <span>{stageCount ? `${stageCount} source${stageCount === 1 ? "" : "s"}` : "no sources shared"}</span>
 	            </StageHeader>
+	            {soundboardStatus ? (
+	              <SoundboardBroadcastStatus aria-live="polite" data-wtf-live-soundboard-received>
+	                <Music2 size={14} aria-hidden />
+	                <span>{soundboardStatus}</span>
+	              </SoundboardBroadcastStatus>
+	            ) : null}
 	            {renderRoomReactionDock()}
 	            <StageGridShell data-wtf-live-stage-grid-shell>
 	              <ReactionBurstLayer aria-live="polite" data-wtf-live-reaction-layer>
@@ -4462,29 +5323,14 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	                ))}
 	              </ReactionBurstLayer>
 	              <StageGrid $count={stageCount} data-wtf-live-stage-grid>
-	                {joined && localMediaState.activeVideo ? (
-	                  <StageParticipantTile
-	                    id="self"
-	                    name={attendeeDisplayName}
-	                    mediaState={localMediaState}
-	                    stream={localStageStream}
-	                    connected={socketReady}
-	                    isSelf
-	                    onOpen={() => openStagePopout({ peerId: "self", guestName: attendeeDisplayName, mediaState: localMediaState })}
-	                  />
-	                ) : null}
-	                {remoteStagePeers.map((peer) => (
-	                  <StageParticipantTile
-	                    key={peer.peerId}
-	                    id={peer.peerId}
-	                    name={livePeerName(peer)}
-	                    mediaState={peer.mediaState}
-	                    stream={peer.stream}
-	                    connected={peer.connected}
-	                    onOpen={() => openStagePopout(peer)}
-	                  />
-	                ))}
-	                {!stageCount ? <EmptyStage>No screen or camera shared</EmptyStage> : null}
+	                {stageEntries.map((entry) => (
+                    <StageParticipantTile
+                      key={entry.id}
+                      {...entry}
+                      onOpen={() => openStagePopout(entry)}
+                    />
+                  ))}
+	                {!stageCount ? <EmptyStage>No camera, screen, or media shared</EmptyStage> : null}
 	              </StageGrid>
 	            </StageGridShell>
 		            {remotePeers.map((peer) => (
@@ -4605,9 +5451,14 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	            }
 	            const stream = frame.streamScope === "local"
 	              ? frame.source === "camera"
-	                ? cameraStream
-	                : screenStream
-	              : remoteStreamsRef.current.get(frame.peerId ?? "") ?? remotePeers.find((peer) => peer.peerId === frame.peerId)?.stream ?? null;
+	                ? stageStreamFromMediaState(cameraStream, localMediaState, "camera")
+	                : frame.source === "screen"
+	                  ? stageStreamFromMediaState(screenStream, localMediaState, "screen")
+	                  : stageStreamFromMediaState(mediaDeckStream, localMediaState, "media")
+	              : (() => {
+	                  const peer = remotePeers.find((item) => item.peerId === frame.peerId);
+	                  return peer ? stageStreamFromMediaState(peer.stream, peer.mediaState, frame.source === "active" ? peer.mediaState.activeVideo ?? "camera" : frame.source) : null;
+	                })();
 	            return (
 	              <FloatingStreamWindow
 	                key={frame.id}

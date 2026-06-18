@@ -1,6 +1,6 @@
-export type WtfLiveTab = "overview" | "rooms" | "stages" | "skywire";
+export type WtfLiveTab = "overview" | "rooms" | "stages" | "show-kit" | "skywire";
 
-export const WTF_LIVE_TAB_IDS: WtfLiveTab[] = ["overview", "rooms", "stages", "skywire"];
+export const WTF_LIVE_TAB_IDS: WtfLiveTab[] = ["overview", "rooms", "stages", "show-kit", "skywire"];
 
 export type WtfLiveNavItem = {
   id: WtfLiveTab;
@@ -13,6 +13,7 @@ export const WTF_LIVE_NAV_ITEMS: WtfLiveNavItem[] = [
   { id: "overview", label: "Lobby", hint: "Create and share rooms", icon: "📋" },
   { id: "rooms", label: "Room Host", hint: "Messages and guest URL", icon: "💬" },
   { id: "stages", label: "Stages", hint: "One-way stage broadcasts", icon: "📡" },
+  { id: "show-kit", label: "Show Kit", hint: "Soundboard and shortcuts", icon: "🎚" },
   { id: "skywire", label: "Skywire Link", hint: "Bluesky permissions", icon: "⚙" },
 ];
 
@@ -52,6 +53,7 @@ export function buildWtfLiveSearch(input: {
 export function wtfLiveContextTitle(tab: WtfLiveTab, roomTitle?: string | null, stageTitle?: string | null): string {
   if (tab === "rooms" && roomTitle) return `Room · ${roomTitle}`;
   if (tab === "stages" && stageTitle) return `Stage · ${stageTitle}`;
+  if (tab === "show-kit") return "Show Kit";
   if (tab === "skywire") return "Skywire Link";
   if (tab === "overview") return "Overview";
   return "WTF LIVE";

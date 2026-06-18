@@ -76,6 +76,26 @@ export const Stack = styled.div`
   gap: 8px;
 `;
 
+export const SettingsField = styled.label`
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+
+  input[type="file"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+`;
+
+export const InlineActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+`;
+
 export const FeedList = styled.div`
   display: grid;
   gap: 6px;

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, TextField } from "react95";
-import { Copy, ExternalLink, Lock, LogIn, Power, Radio, Trash2, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, ExternalLink, Keyboard, Lock, LogIn, Music2, Play, Power, Radio, Trash2, Upload, Users } from "lucide-react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { skywirePermissionTierLabel, type SkywirePermissionTier } from "@shared/atproto-permissions";
@@ -15,6 +15,7 @@ import {
   FeedItem,
   FeedList,
   Grid,
+  InlineActions,
   MainLayout,
   NativeSelect,
   NavButton,
@@ -26,6 +27,7 @@ import {
   RoomDirectory,
   RoomMetaRow,
   RoomPresenceBadge,
+  SettingsField,
   Sidebar,
   ShareLink,
   Stack,
@@ -45,6 +47,22 @@ import {
   wtfLiveContextTitle,
   type WtfLiveTab,
 } from "./wtf-live-nav";
+import {
+  findWtfLiveSoundboardShortcutConflict,
+  normalizeWtfLiveSoundboardShortcut,
+  normalizeWtfLiveSoundboardSettings,
+  playWtfLiveSoundboardClip,
+  readWtfLiveSoundboardFile,
+  readWtfLiveSoundboardSettings,
+  shortcutFromWtfLiveKeyboardEvent,
+  WTF_LIVE_SOUNDBOARD_ACCEPT,
+  WTF_LIVE_SOUNDBOARD_DEFAULT_COOLDOWN_MS,
+  WTF_LIVE_SOUNDBOARD_DEFAULT_VOLUME,
+  WTF_LIVE_SOUNDBOARD_MAX_CLIPS,
+  writeWtfLiveSoundboardSettings,
+  type WtfLiveSoundboardClip,
+  type WtfLiveSoundboardSettings,
+} from "./soundboard";
 
 const SKYWIRE_SETTINGS_PATH = "/skywire?tab=account";
 
@@ -73,6 +91,10 @@ type WtfLiveRoom = {
   accessMode?: "public" | "private";
   isPublic?: boolean;
   presence?: WtfLiveRoomPresence;
+};
+
+type SoundboardSettingsResponse = WtfLiveSoundboardSettings & {
+  storage?: string;
 };
 type WtfLiveStage = WtfLiveRoom & { liveUrl?: string | null };
 
@@ -287,11 +309,28 @@ export function WtfLiveApp() {
     enabled: tab === "stages",
     queryFn: () => api.get(`/api/wtf-live/stages/${encodeURIComponent(stageId)}/broadcasts`),
   });
+  const soundboardQuery = useQuery<SoundboardSettingsResponse>({
+    queryKey: ["wtf-live", "soundboard", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: () => api.get<SoundboardSettingsResponse>("/api/wtf-live/soundboard"),
+    retry: false,
+    staleTime: 15_000,
+  });
 
   const [roomText, setRoomText] = useState("");
   const [stageText, setStageText] = useState("");
   const [stageMode, setStageMode] = useState<"text" | "voice" | "video" | "link">("text");
   const [stageLiveUrl, setStageLiveUrl] = useState("");
+  const [soundboardSettings, setSoundboardSettings] = useState<WtfLiveSoundboardSettings>(() =>
+    readWtfLiveSoundboardSettings(user?.id),
+  );
+  const [soundboardLabel, setSoundboardLabel] = useState("");
+  const [soundboardCategory, setSoundboardCategory] = useState("General");
+  const [soundboardShortcut, setSoundboardShortcut] = useState("");
+  const [soundboardVolume, setSoundboardVolume] = useState(WTF_LIVE_SOUNDBOARD_DEFAULT_VOLUME);
+  const [soundboardCooldownMs, setSoundboardCooldownMs] = useState(WTF_LIVE_SOUNDBOARD_DEFAULT_COOLDOWN_MS);
+  const [soundboardCapturing, setSoundboardCapturing] = useState(false);
+  const [soundboardStatus, setSoundboardStatus] = useState("");
 
   useEffect(() => {
     try {
@@ -308,6 +347,40 @@ export function WtfLiveApp() {
   useEffect(() => {
     syncLiveUrl(tab, tab === "rooms" ? roomId : null, tab === "stages" ? stageId : null);
   }, [tab, roomId, stageId]);
+
+  useEffect(() => {
+    setSoundboardSettings(readWtfLiveSoundboardSettings(user?.id));
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !soundboardQuery.data) return;
+    const normalized = normalizeWtfLiveSoundboardSettings(soundboardQuery.data);
+    setSoundboardSettings(normalized);
+    writeWtfLiveSoundboardSettings(user.id, normalized);
+  }, [soundboardQuery.data, user?.id]);
+
+  useEffect(() => {
+    if (!soundboardCapturing) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setSoundboardCapturing(false);
+        setSoundboardStatus("Shortcut capture cancelled.");
+        return;
+      }
+      const shortcut = shortcutFromWtfLiveKeyboardEvent(event);
+      if (!shortcut) {
+        setSoundboardStatus("Use Ctrl, Alt, or Meta with a key.");
+        return;
+      }
+      event.preventDefault();
+      setSoundboardShortcut(shortcut);
+      setSoundboardCapturing(false);
+      setSoundboardStatus(`Shortcut ${shortcut} captured.`);
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [soundboardCapturing]);
 
   const me = meQuery.data;
   const account = me?.account ?? null;
@@ -339,6 +412,26 @@ export function WtfLiveApp() {
   const selectedRoomManageable = selectedRoom ? canManageRoom(selectedRoom) : false;
   const selectedRoomPresence = selectedRoom ? roomPresence(selectedRoom) : null;
   const selectedStageManageable = selectedStage ? selectedStage.source === "user" && ownedStageOptions.some((stage) => stage.id === selectedStage.id) : false;
+  const normalizedSoundboardShortcut = normalizeWtfLiveSoundboardShortcut(soundboardShortcut);
+  const soundboardShortcutInvalid = Boolean(soundboardShortcut.trim() && !normalizedSoundboardShortcut);
+  const soundboardShortcutConflict = findWtfLiveSoundboardShortcutConflict(
+    soundboardSettings.clips,
+    normalizedSoundboardShortcut,
+  );
+  const saveSoundboardMutation = useMutation({
+    mutationFn: (settings: WtfLiveSoundboardSettings) =>
+      api.put<SoundboardSettingsResponse>("/api/wtf-live/soundboard", settings),
+    onSuccess: (result) => {
+      const normalized = normalizeWtfLiveSoundboardSettings(result);
+      if (user?.id) writeWtfLiveSoundboardSettings(user.id, normalized);
+      setSoundboardSettings(normalized);
+      qc.invalidateQueries({ queryKey: ["wtf-live", "soundboard", user?.id] });
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : "Server sync failed.";
+      setSoundboardStatus(`Saved locally. ${message}`);
+    },
+  });
 
   const accessListQuery = useQuery<{ members: WtfLiveRoomAccessMember[] }>({
     queryKey: ["wtf-live", "rooms", roomId, "access"],
@@ -549,6 +642,94 @@ export function WtfLiveApp() {
   function confirmDeleteStage(stage: WtfLiveStage) {
     if (!window.confirm(`Delete ${stage.title}? Stage broadcasts for this lane will stop.`)) return;
     deleteStage.mutate(stage);
+  }
+
+  function saveSoundboardSettings(next: WtfLiveSoundboardSettings, statusText: string) {
+    if (!user?.id) {
+      setSoundboardStatus("Sign in to save a WTF LIVE soundboard.");
+      return;
+    }
+    const saved = writeWtfLiveSoundboardSettings(user.id, next);
+    setSoundboardSettings(saved);
+    setSoundboardStatus(`${statusText} Syncing...`);
+    saveSoundboardMutation.mutate(saved, {
+      onSuccess: () => setSoundboardStatus(statusText),
+    });
+  }
+
+  async function addSoundboardClip(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!user?.id) {
+      setSoundboardStatus("Sign in to save a WTF LIVE soundboard.");
+      return;
+    }
+    if (soundboardSettings.clips.length >= WTF_LIVE_SOUNDBOARD_MAX_CLIPS) {
+      setSoundboardStatus(`Soundboard limit is ${WTF_LIVE_SOUNDBOARD_MAX_CLIPS} clips.`);
+      return;
+    }
+    const shortcut = normalizeWtfLiveSoundboardShortcut(soundboardShortcut);
+    const conflict = findWtfLiveSoundboardShortcutConflict(soundboardSettings.clips, shortcut);
+    if (conflict) {
+      setSoundboardStatus(`${shortcut} is already bound to ${conflict.label}.`);
+      return;
+    }
+    try {
+      const clip = await readWtfLiveSoundboardFile(file, {
+        label: soundboardLabel,
+        category: soundboardCategory,
+        shortcut,
+        volume: soundboardVolume,
+        cooldownMs: soundboardCooldownMs,
+      });
+      saveSoundboardSettings(
+        { ...soundboardSettings, clips: [...soundboardSettings.clips, clip] },
+        `${clip.label} added to Show Kit.`,
+      );
+      setSoundboardLabel("");
+      setSoundboardCategory("General");
+      setSoundboardShortcut("");
+      setSoundboardVolume(WTF_LIVE_SOUNDBOARD_DEFAULT_VOLUME);
+      setSoundboardCooldownMs(WTF_LIVE_SOUNDBOARD_DEFAULT_COOLDOWN_MS);
+    } catch (error) {
+      setSoundboardStatus(error instanceof Error ? error.message : "Could not add that sound.");
+    }
+  }
+
+  function previewSoundboardClip(clip: WtfLiveSoundboardClip) {
+    try {
+      playWtfLiveSoundboardClip(clip, 0.75);
+      setSoundboardStatus(`Previewing ${clip.label}.`);
+    } catch {
+      setSoundboardStatus(`Could not preview ${clip.label}.`);
+    }
+  }
+
+  function deleteSoundboardClip(clip: WtfLiveSoundboardClip) {
+    saveSoundboardSettings(
+      {
+        ...soundboardSettings,
+        clips: soundboardSettings.clips.filter((candidate) => candidate.id !== clip.id),
+      },
+      `${clip.label} removed from Show Kit.`,
+    );
+  }
+
+  function moveSoundboardClip(clip: WtfLiveSoundboardClip, direction: -1 | 1) {
+    const index = soundboardSettings.clips.findIndex((candidate) => candidate.id === clip.id);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= soundboardSettings.clips.length) return;
+    const clips = [...soundboardSettings.clips];
+    const [moved] = clips.splice(index, 1);
+    clips.splice(nextIndex, 0, moved);
+    saveSoundboardSettings(
+      {
+        ...soundboardSettings,
+        clips,
+      },
+      `${clip.label} moved ${direction < 0 ? "up" : "down"}.`,
+    );
   }
 
   function canManageRoom(room: WtfLiveRoom) {
@@ -794,6 +975,176 @@ export function WtfLiveApp() {
               </Stack>
             </GroupBox>
           </WideGrid>
+        ) : null}
+
+        {tab === "show-kit" ? (
+          <Grid>
+            <GroupBox label="Soundboard">
+              <Stack data-wtf-live-soundboard-settings>
+                <FeedItem>
+                  <strong><Music2 size={14} aria-hidden /> Clips</strong>
+                  <span>{soundboardSettings.clips.length} / {WTF_LIVE_SOUNDBOARD_MAX_CLIPS} · {soundboardQuery.data?.storage ? "server presets" : "local cache"}</span>
+                </FeedItem>
+                <SettingsField>
+                  Button label
+                  <TextField
+                    value={soundboardLabel}
+                    placeholder="Intro sting"
+                    fullWidth
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSoundboardLabel(e.target.value)}
+                    data-wtf-live-soundboard-label
+                  />
+                </SettingsField>
+                <SettingsField>
+                  Category
+                  <TextField
+                    value={soundboardCategory}
+                    placeholder="Intro / reactions / outro"
+                    fullWidth
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSoundboardCategory(e.target.value)}
+                    data-wtf-live-soundboard-category
+                  />
+                </SettingsField>
+                <SettingsField>
+                  Keyboard shortcut
+                  <TextField
+                    value={soundboardShortcut}
+                    placeholder="Alt+1"
+                    fullWidth
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSoundboardShortcut(e.target.value)}
+                    onBlur={() => setSoundboardShortcut((current) => normalizeWtfLiveSoundboardShortcut(current) || current)}
+                    data-wtf-live-soundboard-shortcut
+                  />
+                </SettingsField>
+                <InlineActions>
+                  <SettingsField>
+                    Volume
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={soundboardVolume}
+                      aria-label="Soundboard clip volume"
+                      onChange={(event) => setSoundboardVolume(Number(event.currentTarget.value))}
+                      data-wtf-live-soundboard-volume
+                    />
+                    <MutedText>{soundboardVolume}%</MutedText>
+                  </SettingsField>
+                  <SettingsField>
+                    Cooldown
+                    <NativeSelect
+                      value={String(soundboardCooldownMs)}
+                      onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setSoundboardCooldownMs(Number(event.target.value))}
+                      data-wtf-live-soundboard-cooldown
+                    >
+                      <option value="0">No cooldown</option>
+                      <option value="500">0.5 seconds</option>
+                      <option value="1500">1.5 seconds</option>
+                      <option value="3000">3 seconds</option>
+                      <option value="5000">5 seconds</option>
+                      <option value="10000">10 seconds</option>
+                    </NativeSelect>
+                  </SettingsField>
+                </InlineActions>
+                <InlineActions>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setSoundboardCapturing(true);
+                      setSoundboardStatus("Press a Ctrl, Alt, or Meta shortcut.");
+                    }}
+                    data-wtf-live-soundboard-capture
+                  >
+                    <ButtonLabel><Keyboard size={14} aria-hidden /> {soundboardCapturing ? "Capturing" : "Capture Shortcut"}</ButtonLabel>
+                  </Button>
+                  <SettingsField>
+                    Audio file
+                    <input
+                      type="file"
+                      accept={WTF_LIVE_SOUNDBOARD_ACCEPT}
+                      disabled={!user?.id || saveSoundboardMutation.isPending || soundboardShortcutInvalid || Boolean(soundboardShortcutConflict)}
+                      onChange={addSoundboardClip}
+                      data-wtf-live-soundboard-file
+                    />
+                  </SettingsField>
+                </InlineActions>
+                {normalizedSoundboardShortcut ? (
+                  <MutedText data-wtf-live-soundboard-shortcut-preview>
+                    Shortcut: {normalizedSoundboardShortcut}
+                  </MutedText>
+                ) : null}
+                {soundboardShortcutInvalid ? (
+                  <MutedText data-wtf-live-soundboard-shortcut-error>
+                    Use Ctrl, Alt, or Meta with a key.
+                  </MutedText>
+                ) : null}
+                {soundboardShortcutConflict ? (
+                  <MutedText data-wtf-live-soundboard-conflict>
+                    {normalizedSoundboardShortcut} is already bound to {soundboardShortcutConflict.label}.
+                  </MutedText>
+                ) : null}
+                {!user?.id ? <MutedText>Sign in to save Show Kit clips.</MutedText> : null}
+                {soundboardStatus ? (
+                  <MutedText aria-live="polite" data-wtf-live-soundboard-status>
+                    {soundboardStatus}
+                  </MutedText>
+                ) : null}
+                {soundboardQuery.isLoading ? <MutedText>Loading server presets...</MutedText> : null}
+              </Stack>
+            </GroupBox>
+            <GroupBox label="Programmed buttons">
+              <FeedList data-wtf-live-soundboard-clip-list>
+                {soundboardSettings.clips.length ? (
+                  soundboardSettings.clips.map((clip, index) => (
+                    <FeedItem key={clip.id} data-wtf-live-soundboard-clip={clip.id}>
+                      <strong>{clip.label}</strong>
+                      <span>{clip.category} · {clip.shortcut || "No shortcut"} · {clip.volume}% · {clip.cooldownMs ? `${(clip.cooldownMs / 1000).toFixed(clip.cooldownMs % 1000 ? 1 : 0)}s cooldown` : "no cooldown"} · {Math.round(clip.sizeBytes / 1024)} KB</span>
+                      <ActionGrid>
+                        <Button
+                          size="sm"
+                          disabled={index === 0 || saveSoundboardMutation.isPending}
+                          aria-label={`Move ${clip.label} up`}
+                          title="Move up"
+                          onClick={() => moveSoundboardClip(clip, -1)}
+                          data-wtf-live-soundboard-move-up={clip.id}
+                        >
+                          <ArrowUp size={14} aria-hidden />
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={index === soundboardSettings.clips.length - 1 || saveSoundboardMutation.isPending}
+                          aria-label={`Move ${clip.label} down`}
+                          title="Move down"
+                          onClick={() => moveSoundboardClip(clip, 1)}
+                          data-wtf-live-soundboard-move-down={clip.id}
+                        >
+                          <ArrowDown size={14} aria-hidden />
+                        </Button>
+                        <Button size="sm" onClick={() => previewSoundboardClip(clip)} data-wtf-live-soundboard-preview={clip.id}>
+                          <ButtonLabel><Play size={14} aria-hidden /> Preview</ButtonLabel>
+                        </Button>
+                        <Button size="sm" disabled={saveSoundboardMutation.isPending} onClick={() => deleteSoundboardClip(clip)} data-wtf-live-soundboard-delete={clip.id}>
+                          <ButtonLabel><Trash2 size={14} aria-hidden /> Delete</ButtonLabel>
+                        </Button>
+                      </ActionGrid>
+                    </FeedItem>
+                  ))
+                ) : (
+                  <MutedText>No soundboard clips yet.</MutedText>
+                )}
+              </FeedList>
+            </GroupBox>
+            <GroupBox label="Runtime">
+              <Stack>
+                <FeedItem>
+                  <strong><Upload size={14} aria-hidden /> Owner room trigger</strong>
+                  <span>{soundboardSettings.clips.length ? "Ready" : "Waiting for clips"}</span>
+                </FeedItem>
+                <Button onClick={() => setTab("rooms")}>Open Room Host</Button>
+              </Stack>
+            </GroupBox>
+          </Grid>
         ) : null}
 
         {tab === "skywire" ? (

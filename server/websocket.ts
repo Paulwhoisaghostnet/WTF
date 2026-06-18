@@ -26,7 +26,10 @@ const MAX_WTF_LIVE_ATTACHMENT_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_ATTACHMEN
 const MAX_WTF_LIVE_AVATAR_BYTES = 512 * 1024;
 const MAX_WTF_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_AVATAR_BYTES * 1.4);
 const MAX_WTF_LIVE_SIGNAL_LENGTH = 256 * 1024;
+const MAX_WTF_LIVE_SOUNDBOARD_BYTES = 1_200_000;
+const MAX_WTF_LIVE_SOUNDBOARD_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_SOUNDBOARD_BYTES * 1.4);
 const WTF_LIVE_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "video/mp4"]);
+const WTF_LIVE_SOUNDBOARD_TYPES = new Set(["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/mp4", "audio/webm"]);
 const WTF_LIVE_CHAT_FONTS = new Set(["mek-mono", "grout-display", "classic-95", "terminal", "serif-press"]);
 const WTF_LIVE_LEGACY_CHAT_FONT_MAP: Record<string, string> = {
   system: "mek-mono",
@@ -66,7 +69,16 @@ type WtfLiveMediaState = {
   audioOpen: boolean;
   camera: boolean;
   screen: boolean;
+  screenAudio: boolean;
+  mediaVideo: boolean;
+  mediaAudio: boolean;
+  mediaName: string | null;
+  soundboard: boolean;
   activeVideo: "camera" | "screen" | null;
+  cameraTrackId: string | null;
+  screenTrackId: string | null;
+  mediaVideoTrackId: string | null;
+  mediaAudioTrackId: string | null;
   avatarUrl: string | null;
 };
 
@@ -115,9 +127,10 @@ export function getWtfLiveRoomPresence(roomId: string): WtfLiveRoomPresence {
       client.ws.readyState === WebSocket.OPEN,
   );
   const audioOpenCount = peers.filter((client) => client.wtfLiveMediaState?.audioOpen).length;
-  const cameraShareCount = peers.filter((client) => client.wtfLiveMediaState?.activeVideo === "camera").length;
-  const screenShareCount = peers.filter((client) => client.wtfLiveMediaState?.activeVideo === "screen").length;
-  const videoShareCount = cameraShareCount + screenShareCount;
+  const cameraShareCount = peers.filter((client) => client.wtfLiveMediaState?.camera).length;
+  const screenShareCount = peers.filter((client) => client.wtfLiveMediaState?.screen).length;
+  const mediaVideoShareCount = peers.filter((client) => client.wtfLiveMediaState?.mediaVideo).length;
+  const videoShareCount = cameraShareCount + screenShareCount + mediaVideoShareCount;
   return {
     active: peers.length > 0,
     participantCount: peers.length,
@@ -348,6 +361,36 @@ function normalizeWtfLiveAvatarUrl(value: unknown): string | null {
   return avatarUrl;
 }
 
+function emptyWtfLiveMediaState(): WtfLiveMediaState {
+  return {
+    mic: false,
+    audioOpen: false,
+    camera: false,
+    screen: false,
+    screenAudio: false,
+    mediaVideo: false,
+    mediaAudio: false,
+    mediaName: null,
+    soundboard: false,
+    activeVideo: null,
+    cameraTrackId: null,
+    screenTrackId: null,
+    mediaVideoTrackId: null,
+    mediaAudioTrackId: null,
+    avatarUrl: null,
+  };
+}
+
+function normalizeWtfLiveTrackId(value: unknown): string | null {
+  const trackId = String(value || "").trim();
+  return trackId ? trackId.slice(0, 160) : null;
+}
+
+function normalizeWtfLiveMediaName(value: unknown): string | null {
+  const name = String(value || "").trim().replace(/\s+/g, " ").slice(0, 80);
+  return name || null;
+}
+
 function normalizeWtfLiveMediaState(value: unknown): WtfLiveMediaState {
   const state = typeof value === "object" && value ? value as Record<string, unknown> : {};
   const camera = Boolean(state.camera);
@@ -358,7 +401,16 @@ function normalizeWtfLiveMediaState(value: unknown): WtfLiveMediaState {
     audioOpen: Boolean(state.audioOpen ?? state.mic),
     camera,
     screen,
+    screenAudio: Boolean(state.screenAudio),
+    mediaVideo: Boolean(state.mediaVideo),
+    mediaAudio: Boolean(state.mediaAudio),
+    mediaName: normalizeWtfLiveMediaName(state.mediaName),
+    soundboard: Boolean(state.soundboard),
     activeVideo: requestedActiveVideo === "camera" && camera ? "camera" : requestedActiveVideo === "screen" && screen ? "screen" : null,
+    cameraTrackId: normalizeWtfLiveTrackId(state.cameraTrackId),
+    screenTrackId: normalizeWtfLiveTrackId(state.screenTrackId),
+    mediaVideoTrackId: normalizeWtfLiveTrackId(state.mediaVideoTrackId),
+    mediaAudioTrackId: normalizeWtfLiveTrackId(state.mediaAudioTrackId),
     avatarUrl: normalizeWtfLiveAvatarUrl(state.avatarUrl),
   };
 }
@@ -410,6 +462,29 @@ function normalizeWtfLiveRoomReactionEmoji(value: unknown): string | null {
   return WTF_LIVE_ROOM_REACTION_EMOJIS.has(emoji) ? emoji : null;
 }
 
+function normalizeWtfLiveSoundboardClip(value: unknown) {
+  const clip = typeof value === "object" && value ? value as Record<string, unknown> : null;
+  if (!clip) return null;
+  const mimeType = String(clip.mimeType || "");
+  const dataUrl = String(clip.dataUrl || "");
+  if (!WTF_LIVE_SOUNDBOARD_TYPES.has(mimeType)) return null;
+  if (!dataUrl.startsWith(`data:${mimeType};base64,`)) return null;
+  if (dataUrl.length > MAX_WTF_LIVE_SOUNDBOARD_DATA_URL_LENGTH) return null;
+  const sizeBytes = Number(clip.sizeBytes);
+  if (!Number.isFinite(sizeBytes) || sizeBytes < 0 || sizeBytes > MAX_WTF_LIVE_SOUNDBOARD_BYTES) return null;
+  return {
+    id: String(clip.id || `clip_${randomUUID()}`).replace(/[^a-z0-9_-]/gi, "").slice(0, 80) || `clip_${randomUUID()}`,
+    label: String(clip.label || "Sound").trim().replace(/\s+/g, " ").slice(0, 36) || "Sound",
+    category: String(clip.category || "General").trim().replace(/\s+/g, " ").slice(0, 32) || "General",
+    shortcut: String(clip.shortcut || "").trim().slice(0, 32),
+    mimeType,
+    dataUrl,
+    sizeBytes: Math.round(sizeBytes),
+    volume: Math.min(100, Math.max(0, Math.round(Number.isFinite(Number(clip.volume)) ? Number(clip.volume) : 90))),
+    cooldownMs: Math.min(30_000, Math.max(0, Math.round(Number.isFinite(Number(clip.cooldownMs)) ? Number(clip.cooldownMs) : 1500))),
+  };
+}
+
 function wtfLivePeerDisplayName(client: WsClient): string {
   return client.wtfLiveGuestName || (client.userId > 0 ? client.username : "guest") || "guest";
 }
@@ -422,7 +497,7 @@ function wtfLivePeerPayload(client: WsClient): WtfLivePeerPayload {
     userId: isWtfUser ? client.userId : null,
     username: isWtfUser ? client.username : null,
     isWtfUser,
-    mediaState: client.wtfLiveMediaState || { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null },
+    mediaState: client.wtfLiveMediaState || emptyWtfLiveMediaState(),
   };
 }
 
@@ -456,7 +531,7 @@ export function setupWebSocket(server: Server) {
         publicSocket: "wtf-live",
         wtfLivePeerId: `peer_${randomUUID().replace(/-/g, "").slice(0, 18)}`,
         wtfLiveGuestName: auth?.username ?? "guest",
-        wtfLiveMediaState: { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null },
+        wtfLiveMediaState: emptyWtfLiveMediaState(),
       };
       clients.add(client);
       installHeartbeat(ws);
@@ -646,6 +721,34 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
           createdAt: new Date().toISOString(),
         },
       });
+      break;
+    }
+
+    case "wtf_live_soundboard_clip": {
+      if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
+      const room = await canAccessWtfLiveRoom(client.wtfLiveRoomId, client.userId > 0 ? client.userId : null);
+      if (!room || !room.ownerUserId || room.ownerUserId !== client.userId) {
+        sendJson(client.ws, { type: "error", message: "Only the room owner can trigger soundboard audio" });
+        return;
+      }
+      const clip = normalizeWtfLiveSoundboardClip(msg.clip ?? msg.soundboardClip);
+      if (!clip) {
+        sendJson(client.ws, { type: "error", message: "Unsupported soundboard clip" });
+        return;
+      }
+      broadcastToWtfLiveRoom(
+        client.wtfLiveRoomId,
+        {
+          type: "wtf_live_soundboard_clip",
+          roomId: client.wtfLiveRoomId,
+          triggeredByPeerId: client.wtfLivePeerId,
+          triggeredByName: wtfLivePeerDisplayName(client),
+          soundboardClip: clip,
+          delivery: "webrtc",
+          createdAt: new Date().toISOString(),
+        },
+        client,
+      );
       break;
     }
 
@@ -1002,7 +1105,7 @@ function leaveWtfLiveRoom(client: WsClient) {
   const peerId = client.wtfLivePeerId;
   const guestName = wtfLivePeerDisplayName(client);
   client.wtfLiveRoomId = undefined;
-  client.wtfLiveMediaState = { mic: false, audioOpen: false, camera: false, screen: false, activeVideo: null, avatarUrl: null };
+  client.wtfLiveMediaState = emptyWtfLiveMediaState();
   broadcastToWtfLiveRoom(
     roomId,
     {

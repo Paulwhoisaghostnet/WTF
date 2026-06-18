@@ -76,3 +76,29 @@ export const wtfLiveStages = pgTable(
     index("wtf_live_stages_owner_idx").on(table.ownerUserId),
   ],
 );
+
+export const wtfLiveSoundboardClips = pgTable(
+  "wtf_live_soundboard_clips",
+  {
+    id: serial("id").primaryKey(),
+    ownerUserId: integer("owner_user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    clipId: varchar("clip_id", { length: 80 }).notNull(),
+    label: varchar("label", { length: 64 }).notNull(),
+    category: varchar("category", { length: 48 }).default("General").notNull(),
+    shortcut: varchar("shortcut", { length: 32 }).default("").notNull(),
+    mimeType: varchar("mime_type", { length: 64 }).notNull(),
+    dataUrl: text("data_url").notNull(),
+    sizeBytes: integer("size_bytes").default(0).notNull(),
+    volume: integer("volume").default(90).notNull(),
+    cooldownMs: integer("cooldown_ms").default(1500).notNull(),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("wtf_live_soundboard_owner_clip_idx").on(table.ownerUserId, table.clipId),
+    index("wtf_live_soundboard_owner_order_idx").on(table.ownerUserId, table.sortOrder),
+  ],
+);
