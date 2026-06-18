@@ -5957,7 +5957,7 @@ Priority labels:
 ### WTF-BB-282 - Embedded Pasta publishers rely on blocked native modals for critical feedback
 
 - Category: Pasta Protocol / embedded creation-tool feedback
-- Status: Fixed (local verification passed; production verification pending full-send)
+- Status: Verified
 - Owner/Session: Codex Pasta Protocol implementation/full-send pass
 - Score: C2 + F4 + S0 + P1(4) = 10
 - Evidence:
@@ -5975,11 +5975,12 @@ Priority labels:
   - Passed `for app in spaghetti gnocchi ravioli rotini penne lasagna; do node --check public/creation-tools/$app/js/common.js && node --check public/creation-tools/$app/js/studio.js; done`.
   - Passed `./node_modules/.bin/tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts`.
   - `rg -n "alert\s*\(|confirm\s*\(|prompt\s*\(" public/creation-tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/js` returned no matches.
+  - Production verified on 2026-06-18: GitHub Quality Gates `27738002649` passed, Deploy to Hetzner `27738002671` passed, live `https://wtfos.app/api/health` returned `commitRef:"64674a8"`, and the deployed Spaghetti/Penne/Lasagna assets exposed the inline notice, handoff, and pinner wiring without native dialogs.
 
 ### WTF-BB-283 - Pasta publisher access and wtfOS pinner gates conflate self-hosted tools with trusted resources
 
 - Category: Pasta Protocol / access model and hosted-resource gating
-- Status: Fixed (local verification passed; production verification pending full-send)
+- Status: Verified
 - Owner/Session: Codex Pasta Protocol implementation/full-send pass
 - Score: C3 + F4 + S1 + P1(4) = 12
 - Evidence:
@@ -5997,11 +5998,12 @@ Priority labels:
   - Added shared Pasta capability detection for embedded wtfOS sessions and hides/disables the `wtfos` pinner unless `/api/auth/user` proves `trusted_market_creator`/admin/trusted creator capability.
   - Passed `./node_modules/.bin/tsx --test client/src/components/layout/start-menu-app-gates.test.ts shared/wtf-browser-routes.sync.test.ts server/features/app-registry/backfill-policy.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts`.
   - Passed `PATH=/opt/homebrew/bin:/usr/local/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npm run build`.
+  - Production verified on 2026-06-18: GitHub Quality Gates `27738002649` passed, Deploy to Hetzner `27738002671` passed, live health returned `commitRef:"64674a8"`, and the deployed Pasta common helper includes `loadPlatformCapabilities()` plus `pinProviderFromForm()`.
 
 ### WTF-BB-284 - Pasta Protocol handoffs and event spine are mostly documentation, not working wiring
 
 - Category: Pasta Protocol / cross-app handoffs and SystemEvent wiring
-- Status: Fixed (local verification passed; production verification pending full-send)
+- Status: Verified
 - Owner/Session: Codex Pasta Protocol implementation/full-send pass
 - Score: C4 + F4 + S1 + P1(4) = 13
 - Evidence:
@@ -6021,11 +6023,12 @@ Priority labels:
   - Aligned Pasta inventory/domain workflow handles with emitted events and added owned behavior assertions for sandbox feedback, CH-EASE handoff, and Colander context handoff.
   - Passed `./node_modules/.bin/tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts shared/pasta-protocol/foundation.test.ts client/src/features/pasta-protocol/chease/build-package.test.ts`.
   - Passed `PATH=/opt/homebrew/bin:/usr/local/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/macaroni-packager.spec.mjs`.
+  - Production verified on 2026-06-18: GitHub Quality Gates `27738002649` passed, Deploy to Hetzner `27738002671` passed, live health returned `commitRef:"64674a8"`, and deployed Pasta assets expose `consumeCheaseHandoff()` plus Colander route handoff consumption.
 
 ### WTF-BB-285 - Pasta Protocol lacks first-class OS package and doc-registry ownership
 
 - Category: Pasta Protocol / app registry and OS ownership
-- Status: Fixed (local verification passed; production verification pending full-send)
+- Status: Verified
 - Owner/Session: Codex Pasta Protocol implementation/full-send pass
 - Score: C3 + F3 + S0 + P2(3) = 9
 - Evidence:
@@ -6044,6 +6047,7 @@ Priority labels:
   - Passed `./node_modules/.bin/tsx --test shared/wtf-app-packages.test.ts client/src/features/admin-os/admin-surface-registry.test.ts client/src/components/layout/start-menu-app-gates.test.ts server/features/app-registry/backfill-policy.test.ts`.
   - Passed `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts`.
   - Passed full inventory route/domain coverage for Pasta inside `PATH=/opt/homebrew/bin:/usr/local/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory`; the overall suite remained red only on pre-existing Broot and Skywire failures unrelated to Pasta.
+  - Production verified on 2026-06-18: GitHub Quality Gates `27738002649` passed, Deploy to Hetzner `27738002671` passed, live health returned `commitRef:"64674a8"`, and deployed Pasta route/static smoke confirmed the suite assets are reachable.
 
 ## Backlog Intake Template
 
