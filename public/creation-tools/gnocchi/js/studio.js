@@ -40,18 +40,7 @@ function log(message, kind) {
 }
 
 function pinProvider() {
-  const kind = $("pinProvider").value;
-  if (kind === "pinata") {
-    const jwt = $("pinJwt").value.trim();
-    if (!jwt) throw new Error("Enter your Pinata JWT, or switch pinning provider.");
-    return { kind: "pinata", jwt };
-  }
-  if (kind === "node") {
-    const url = $("pinNode").value.trim();
-    if (!url) throw new Error("Enter your IPFS node URL, or switch pinning provider.");
-    return { kind: "node", url };
-  }
-  return { kind: "wtfos" };
+  return MD.pinProviderFromForm();
 }
 
 function readRelationship() {
@@ -140,13 +129,17 @@ async function importPackage(file) {
   try {
     parsed = JSON.parse(await file.text());
   } catch (_) {
-    return alert("That file is not valid JSON.");
+    return MD.notify("That file is not valid JSON.", "error");
   }
+  return importCheasePackage(parsed, "file");
+}
+
+function importCheasePackage(parsed, source) {
   const result = validateCheasePackage(parsed);
-  if (!result.ok) return alert("Invalid CH-EASE package:\n" + result.errors.join("\n"));
-  if (!isCheasePackage(parsed)) return alert("Unrecognized package.");
+  if (!result.ok) return MD.notify("Invalid CH-EASE package:\n" + result.errors.join("\n"), "error");
+  if (!isCheasePackage(parsed)) return MD.notify("Unrecognized package.", "error");
   const token = parsed.kind === "single_token" ? parsed.token : parsed.items?.[0];
-  if (!token) return alert("Package has no token to import.");
+  if (!token) return MD.notify("Package has no token to import.", "error");
   $("oeName").value = token.name || "";
   $("oeDesc").value = token.description || "";
   $("oeTags").value = (token.tags || []).join(", ");
@@ -160,7 +153,8 @@ async function importPackage(file) {
     $("relFranchise").value = parsed.relationship.franchise_contract || "";
     $("relGroup").value = parsed.relationship.collection_group || "";
   }
-  log(`imported "${token.name}" from CH-EASE package`);
+  log(`imported "${token.name}" from CH-EASE ${source || "package"}`);
+  MD.notify(`Imported "${token.name}" from CH-EASE.`, "success");
 }
 
 // ---------- wallet ----------
@@ -176,7 +170,7 @@ async function connect() {
     log(`connected ${acc} on ${state.network}`);
   } catch (e) {
     log("connect failed: " + (e.message || e), "err");
-    alert("Connect failed: " + (e.message || e));
+    MD.notify("Connect failed: " + (e.message || e), "error");
   }
 }
 
@@ -302,10 +296,21 @@ async function publish() {
     log("open edition live ✓ — token id 0");
     $("mintKt").value = kt;
     $("mintTokenId").value = "0";
-    alert("Open edition deployed. Token id 0 is live for minting. See the log for explorer links.");
+    MD.logEvent("gnocchi.collection_deployed", "Gnocchi deployed an open-edition collection", {
+      contract: kt,
+      network: state.network,
+    });
+    MD.logEvent("gnocchi.edition_published", "Gnocchi published an open edition", {
+      contract: kt,
+      network: state.network,
+      tokenId: 0,
+      saleMode: saleMode(),
+      basePriceMutez: config.base_price,
+    });
+    MD.notify("Open edition deployed. Token id 0 is live for minting. See the log for explorer links.", "success");
   } catch (e) {
     log("publish failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Publish failed: " + (e.message || e));
+    MD.notify("Publish failed: " + (e.message || e), "error");
   } finally {
     $("btnPublish").disabled = false;
   }
@@ -341,7 +346,7 @@ async function readSale(kt, tokenId) {
 async function loadPrice() {
   try {
     const kt = $("mintKt").value.trim();
-    if (!MD.isAddress(kt)) return alert("Enter the KT1 contract address.");
+    if (!MD.isAddress(kt)) return MD.notify("Enter the KT1 contract address.", "error");
     const tokenId = parseInt($("mintTokenId").value, 10) || 0;
     const { config, minted, active, maxSupply } = await readSale(kt, tokenId);
     const unit = priceAtSupply(config, minted);
@@ -351,7 +356,7 @@ async function loadPrice() {
     $("mintInfo").textContent = info;
   } catch (e) {
     $("mintInfo").textContent = "";
-    alert("Could not load price: " + (e.message || e));
+    MD.notify("Could not load price: " + (e.message || e), "error");
   }
 }
 
@@ -378,11 +383,18 @@ async function mint() {
       .send({ amount: cost, mutez: true });
     await op.confirmation();
     log("minted ✓");
-    alert(`Minted ${amount} edition(s) for ${fmtTez(cost)}.`);
+    MD.logEvent("gnocchi.edition_minted", "Gnocchi minted open-edition tokens", {
+      contract: kt,
+      network: state.network,
+      tokenId,
+      amount,
+      costMutez: cost,
+    });
+    MD.notify(`Minted ${amount} edition(s) for ${fmtTez(cost)}.`, "success");
     await loadPrice();
   } catch (e) {
     log("mint failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Mint failed: " + (e.message || e));
+    MD.notify("Mint failed: " + (e.message || e), "error");
   } finally {
     $("btnMint").disabled = false;
   }
@@ -391,6 +403,8 @@ async function mint() {
 // ---------- wiring ----------
 
 function wire() {
+  MD.updatePinProviderRows();
+  void MD.loadPlatformCapabilities();
   $("network").addEventListener("change", () => {
     state.network = $("network").value;
   });
@@ -403,11 +417,7 @@ function wire() {
     if (file) importPackage(file);
     e.target.value = "";
   });
-  $("pinProvider").addEventListener("change", () => {
-    const kind = $("pinProvider").value;
-    $("pinJwtRow").hidden = kind !== "pinata";
-    $("pinNodeRow").hidden = kind !== "node";
-  });
+  $("pinProvider").addEventListener("change", MD.updatePinProviderRows);
   $("saleMode").addEventListener("change", () => {
     const mode = saleMode();
     $("windowStartRow").hidden = mode !== "timed";
@@ -420,6 +430,8 @@ function wire() {
   );
 
   refreshCurvePreview();
+  const handoff = MD.consumeCheaseHandoff("gnocchi");
+  if (handoff) importCheasePackage(handoff, "handoff");
 }
 
 wire();

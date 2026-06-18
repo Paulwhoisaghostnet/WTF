@@ -100,6 +100,7 @@ const APP_NAME = "CH-EASE";
 const APP_BADGE = "CHZ";
 const APP_ACRONYM = "Creator Handoff: Edit, Arrange, Stage, Export";
 const DEFAULT_PACKAGE_TITLE = `${APP_NAME} Package`;
+const PASTA_HANDOFF_PREFIX = "wtfos.pasta.handoff.v1";
 
 const DEFAULT_DROP_CONFIG: DropConfig = {
   exportTarget: "macaroni",
@@ -1389,12 +1390,8 @@ export function MacaroniPackager() {
     setStatus(`${target.label} package export requested`);
   }
 
-  function exportPastaPackage() {
-    if (!activePackage || items.length === 0) {
-      setError("Store media in a package before exporting a Pasta package.");
-      return;
-    }
-    setError("");
+  function buildPastaPackagePayload() {
+    if (!activePackage || items.length === 0) return null;
     const source: CheaseSourceItem[] = items.map((item) => ({
       tokenId: item.tokenId,
       tokenName: item.tokenName || item.originalTitle,
@@ -1412,7 +1409,17 @@ export function MacaroniPackager() {
             { title: activePackage.title, description: activePackage.description || undefined },
             source
           );
-    const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: "application/json" });
+    return { pkg, source };
+  }
+
+  function exportPastaPackage() {
+    const payload = buildPastaPackagePayload();
+    if (!payload || !activePackage) {
+      setError("Store media in a package before exporting a Pasta package.");
+      return;
+    }
+    setError("");
+    const blob = new Blob([JSON.stringify(payload.pkg, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -1429,10 +1436,41 @@ export function MacaroniPackager() {
         packageId: activePackage.id,
         targetApp: pastaTarget,
         kind: pastaKind,
-        itemCount: source.length,
+        itemCount: payload.source.length,
       },
     });
     setStatus(`Exported ${pastaKind} package for ${pastaTarget}`);
+  }
+
+  function openPastaPublisher() {
+    const payload = buildPastaPackagePayload();
+    if (!payload || !activePackage) {
+      setError("Store media in a package before opening a Pasta publisher.");
+      return;
+    }
+    setError("");
+    const key = `${PASTA_HANDOFF_PREFIX}:${pastaTarget}`;
+    try {
+      window.sessionStorage.setItem(key, JSON.stringify(payload.pkg));
+    } catch {
+      setError("Browser session storage is unavailable; download the Pasta package instead.");
+      return;
+    }
+    const path = `/tools/${pastaTarget}?handoff=chease-package&handoffKey=${encodeURIComponent(key)}`;
+    logClientSystemEvent({
+      eventType: "chease.package_handoff_opened",
+      message: `${APP_NAME} opened ${pastaTarget} with a package handoff`,
+      metadata: {
+        app: APP_NAME,
+        packageId: activePackage.id,
+        targetApp: pastaTarget,
+        kind: pastaKind,
+        itemCount: payload.source.length,
+        path,
+      },
+    });
+    window.open(path, "_blank", "noopener");
+    setStatus(`Opening ${pastaTarget} with CH-EASE package context`);
   }
 
   function selectPastaTarget(targetApp: PastaAppId) {
@@ -1653,6 +1691,15 @@ export function MacaroniPackager() {
           >
             <Download aria-hidden="true" />
             Export Pasta package
+          </Button>
+          <Button
+            type="button"
+            onClick={openPastaPublisher}
+            disabled={!activePackage || items.length === 0}
+            title="Open the selected Pasta Protocol app with this package as a same-browser handoff"
+          >
+            <PackageCheck aria-hidden="true" />
+            Open in Pasta app
           </Button>
         </Toolbar>
 

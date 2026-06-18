@@ -27,6 +27,8 @@ test("Start Menu app gates hide disabled WTF OS launchers", () => {
   assert.equal(isStartMenuItemEnabled("/wtf-subdomains", { "wtf-subdomains": false }), false);
   assert.equal(isStartMenuItemEnabled("/tools/ch-ease", { "ch-ease": false }), false);
   assert.equal(isStartMenuItemEnabled("/tools/macaroni-packager", { "ch-ease": false }), false);
+  assert.equal(isStartMenuItemEnabled("/tools/colander", { "pasta-protocol": false }), false);
+  assert.equal(isStartMenuItemEnabled("/tools/spaghetti", { "pasta-protocol": false }), false);
   assert.equal(isStartMenuItemEnabled("/links", apps), true);
 });
 
@@ -118,6 +120,8 @@ test("Start Menu model houses registered creation apps under CREATE!", () => {
       `${tool.title} should not stay buried in My Media`
     );
   }
+  assert(createPaths.includes("/tools/spaghetti"), "Spaghetti should be visible to signed-in users");
+  assert(createPaths.includes("/tools/penne"), "Penne should be visible to signed-in users");
   assert(!createPaths.includes("/tools/macaroni"), "Macaroni should stay hidden from contestant CREATE!");
 });
 
@@ -163,6 +167,7 @@ test("Start Menu model respects auth roles and desktop app gates", () => {
       arcade: false,
       console: false,
       gallery: false,
+      "pasta-protocol": false,
       "wtf-subdomains": false,
     },
     "contestant"
@@ -174,6 +179,8 @@ test("Start Menu model respects auth roles and desktop app gates", () => {
   assert(!userPaths.includes("/arcade"));
   assert(!userPaths.includes("/console"));
   assert(!userPaths.includes("/my-gallery"));
+  assert(!userPaths.includes("/tools/colander"));
+  assert(!userPaths.includes("/tools/spaghetti"));
   assert(!userPaths.includes("/wtf-subdomains"));
   assert(!userPaths.includes("/admin"));
 

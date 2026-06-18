@@ -48,12 +48,16 @@ export const CREATION_TOOLS = [
     requiredAssets: [
       "/creation-tools/broot/index.html",
       "/creation-tools/broot/css/broot.css",
-      "/creation-tools/broot/js/app.jsx",
+      "/creation-tools/broot/js/app.js",
       "/creation-tools/broot/js/broot-worker.js",
       "/creation-tools/broot/lib/react.production.min.js",
       "/creation-tools/broot/lib/react-dom.production.min.js",
-      "/creation-tools/broot/lib/babel.min.js",
       "/creation-tools/broot/lib/fabric.min.js",
+      "/creation-tools/broot/lib/glfx.js",
+      "/creation-tools/broot/lib/ffmpeg.js",
+      "/creation-tools/broot/lib/814.ffmpeg.js",
+      "/creation-tools/broot/lib/ffmpeg-core.js",
+      "/creation-tools/broot/lib/ffmpeg-core.wasm",
       "/creation-tools/macaroni/vendor/tezos.js",
       "/creation-tools/macaroni/vendor/octez-connect.js",
       "/creation-tools/macaroni/js/octez-wallet.js",
@@ -212,7 +216,6 @@ export const CREATION_TOOLS = [
       "/creation-tools/spaghetti/vendor/octez-connect.js",
       "/creation-tools/spaghetti/contract/pasta-standard-collection.contract.json",
     ],
-    roles: ["admin", "host", "cohost", "trusted_creator"],
     provenance: {
       creatorName: "WTF OS",
     },
@@ -235,7 +238,6 @@ export const CREATION_TOOLS = [
       "/creation-tools/gnocchi/vendor/octez-connect.js",
       "/creation-tools/gnocchi/contract/pasta-open-edition.contract.json",
     ],
-    roles: ["admin", "host", "cohost", "trusted_creator"],
     provenance: {
       creatorName: "WTF OS",
     },
@@ -258,7 +260,6 @@ export const CREATION_TOOLS = [
       "/creation-tools/ravioli/vendor/octez-connect.js",
       "/creation-tools/ravioli/contract/pasta-bundle.contract.json",
     ],
-    roles: ["admin", "host", "cohost", "trusted_creator"],
     provenance: {
       creatorName: "WTF OS",
     },
@@ -281,7 +282,6 @@ export const CREATION_TOOLS = [
       "/creation-tools/rotini/vendor/octez-connect.js",
       "/creation-tools/rotini/contract/pasta-standard-collection.contract.json",
     ],
-    roles: ["admin", "host", "cohost", "trusted_creator"],
     provenance: {
       creatorName: "WTF OS",
     },
@@ -304,7 +304,6 @@ export const CREATION_TOOLS = [
       "/creation-tools/penne/vendor/octez-connect.js",
       "/creation-tools/penne/contract/pasta-distribution.contract.json",
     ],
-    roles: ["admin", "host", "cohost", "trusted_creator"],
     provenance: {
       creatorName: "WTF OS",
     },
@@ -327,7 +326,6 @@ export const CREATION_TOOLS = [
       "/creation-tools/lasagna/vendor/octez-connect.js",
       "/creation-tools/lasagna/contract/pasta-exhibition.contract.json",
     ],
-    roles: ["admin", "host", "cohost", "trusted_creator"],
     provenance: {
       creatorName: "WTF OS",
     },

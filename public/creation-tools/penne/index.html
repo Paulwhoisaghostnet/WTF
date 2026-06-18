@@ -59,7 +59,12 @@
         <label>Token name <input id="tokName" type="text" placeholder="Claimable token" /></label>
         <label>Token description <textarea id="tokDesc" rows="2" placeholder="Optional"></textarea></label>
         <label>Token artifact <input id="tokFile" type="file" accept="image/*,video/*,audio/*" /></label>
+        <span id="tokArtifactStatus" class="pp-note"></span>
         <label>Tags (comma separated) <input id="tokTags" type="text" placeholder="airdrop, pasta" /></label>
+        <label class="pp-import">
+          Import CH-EASE package
+          <input id="importPkg" type="file" accept="application/json,.json" />
+        </label>
 
         <details class="pp-rel">
           <summary>Ownership relationship (optional)</summary>

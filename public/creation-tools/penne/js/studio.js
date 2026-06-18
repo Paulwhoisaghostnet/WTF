@@ -12,9 +12,11 @@
 import {
   buildCollectionMetadata,
   buildTokenMetadata,
+  isCheasePackage,
   parseRecipientList,
   sanitizeRelationshipMetadata,
   totalAllocation,
+  validateCheasePackage,
 } from "./pasta-foundation.js";
 
 const CONTRACT_ARTIFACT = "contract/pasta-distribution.contract.json";
@@ -25,6 +27,8 @@ const $ = (id) => document.getElementById(id);
 const state = {
   network: "shadownet",
   parsed: { entries: [], errors: [] },
+  artifactUri: "",
+  artifactMime: "",
 };
 
 function log(message, kind) {
@@ -35,18 +39,7 @@ function log(message, kind) {
 }
 
 function pinProvider() {
-  const kind = $("pinProvider").value;
-  if (kind === "pinata") {
-    const jwt = $("pinJwt").value.trim();
-    if (!jwt) throw new Error("Enter your Pinata JWT, or switch pinning provider.");
-    return { kind: "pinata", jwt };
-  }
-  if (kind === "node") {
-    const url = $("pinNode").value.trim();
-    if (!url) throw new Error("Enter your IPFS node URL, or switch pinning provider.");
-    return { kind: "node", url };
-  }
-  return { kind: "wtfos" };
+  return MD.pinProviderFromForm();
 }
 
 function readRelationship() {
@@ -55,6 +48,43 @@ function readRelationship() {
     franchise_contract: $("relFranchise").value,
     collection_group: $("relGroup").value,
   });
+}
+
+// ---------- CH-EASE package import ----------
+
+async function importPackage(file) {
+  let parsed;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch (_) {
+    return MD.notify("That file is not valid JSON.", "error");
+  }
+  return importCheasePackage(parsed, "file");
+}
+
+function importCheasePackage(parsed, source) {
+  const result = validateCheasePackage(parsed);
+  if (!result.ok) return MD.notify("Invalid CH-EASE package:\n" + result.errors.join("\n"), "error");
+  if (!isCheasePackage(parsed)) return MD.notify("Unrecognized package.", "error");
+  const token = parsed.kind === "single_token" ? parsed.token : parsed.items?.[0];
+  if (!token) return MD.notify("Package has no token to import.", "error");
+  if (parsed.kind === "collection" && parsed.title) $("collName").value = parsed.title;
+  else if (token.name) $("collName").value = token.name;
+  $("tokName").value = token.name || "";
+  $("tokDesc").value = token.description || parsed.description || "";
+  $("tokTags").value = (token.tags || []).join(", ");
+  if (token.artifactUri) {
+    state.artifactUri = token.artifactUri;
+    state.artifactMime = token.mimeType || "";
+    $("tokArtifactStatus").textContent = `artifact: ${token.artifactUri}`;
+  }
+  if (parsed.relationship) {
+    $("relParent").value = parsed.relationship.parent_contract || "";
+    $("relFranchise").value = parsed.relationship.franchise_contract || "";
+    $("relGroup").value = parsed.relationship.collection_group || "";
+  }
+  log(`imported "${token.name}" from CH-EASE ${source || "package"}`);
+  MD.notify(`Imported "${token.name}" from CH-EASE. Add recipients before deploying.`, "success");
 }
 
 // ---------- recipient list ----------
@@ -91,7 +121,7 @@ async function connect() {
     log(`connected ${acc} on ${state.network}`);
   } catch (e) {
     log("connect failed: " + (e.message || e), "err");
-    alert("Connect failed: " + (e.message || e));
+    MD.notify("Connect failed: " + (e.message || e), "error");
   }
 }
 
@@ -128,8 +158,8 @@ async function deploy() {
     const M = TZ.MichelsonMap;
 
     // 1. Artifact
-    let artifactUri = "";
-    let mimeType = "";
+    let artifactUri = state.artifactUri;
+    let mimeType = state.artifactMime;
     const artifactFile = $("tokFile").files?.[0];
     if (artifactFile) {
       log("pinning artifact…");
@@ -223,10 +253,19 @@ async function deploy() {
       log(`allocations loaded: ${loaded}/${allocs.length}`);
     }
     log(`done — ${loaded} allocations live on ${kt}. Choose a distribution mode below.`);
-    alert(`Distribution contract deployed with ${loaded} allocations.\n${kt}`);
+    MD.logEvent("penne.collection_deployed", "Penne deployed a distribution contract", {
+      contract: kt,
+      network: state.network,
+    });
+    MD.logEvent("penne.distribution_configured", "Penne loaded distribution allocations", {
+      contract: kt,
+      network: state.network,
+      allocations: loaded,
+    });
+    MD.notify(`Distribution contract deployed with ${loaded} allocations: ${kt}`, "success");
   } catch (e) {
     log("deploy failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Deploy failed: " + (e.message || e));
+    MD.notify("Deploy failed: " + (e.message || e), "error");
   } finally {
     $("btnDeploy").disabled = false;
   }
@@ -262,9 +301,14 @@ async function setClaim(active) {
     const op = await c.methodsObject.open_claim(params).send();
     await op.confirmation();
     log(`claim window ${active ? "OPEN ✓" : "closed ✓"}`);
+    MD.logEvent("penne.distribution_configured", "Penne updated a claim window", {
+      contract: kt,
+      network: state.network,
+      active,
+    });
   } catch (e) {
     log("claim config failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Claim config failed: " + (e.message || e));
+    MD.notify("Claim config failed: " + (e.message || e), "error");
   } finally {
     btn.disabled = false;
   }
@@ -282,10 +326,10 @@ async function claim() {
     const op = await c.methodsObject.claim(tokenId).send();
     await op.confirmation();
     log("claimed ✓");
-    alert("Claimed your allocation. See the log for details.");
+    MD.notify("Claimed your allocation. See the log for details.", "success");
   } catch (e) {
     log("claim failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Claim failed: " + (e.message || e));
+    MD.notify("Claim failed: " + (e.message || e), "error");
   } finally {
     $("btnClaim").disabled = false;
   }
@@ -314,10 +358,16 @@ async function airdrop() {
       log(`distributed: ${done}/${items.length}`);
     }
     log(`airdrop complete ✓ — ${done} recipients`);
-    alert(`Airdropped to ${done} recipients.`);
+    MD.logEvent("penne.distribution_configured", "Penne completed a push airdrop", {
+      contract: kt,
+      network: state.network,
+      tokenId,
+      recipients: done,
+    });
+    MD.notify(`Airdropped to ${done} recipients.`, "success");
   } catch (e) {
     log("airdrop failed (some batches may have succeeded — check the log): " + (e.message || JSON.stringify(e)), "err");
-    alert("Airdrop failed: " + (e.message || e));
+    MD.notify("Airdrop failed: " + (e.message || e), "error");
   } finally {
     $("btnAirdrop").disabled = false;
   }
@@ -326,6 +376,8 @@ async function airdrop() {
 // ---------- wiring ----------
 
 function wire() {
+  MD.updatePinProviderRows();
+  void MD.loadPlatformCapabilities();
   $("network").addEventListener("change", () => {
     state.network = $("network").value;
   });
@@ -346,11 +398,19 @@ function wire() {
     }
     e.target.value = "";
   });
-  $("pinProvider").addEventListener("change", () => {
-    const kind = $("pinProvider").value;
-    $("pinJwtRow").hidden = kind !== "pinata";
-    $("pinNodeRow").hidden = kind !== "node";
+  $("importPkg")?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) importPackage(file);
+    e.target.value = "";
   });
+  $("pinProvider").addEventListener("change", MD.updatePinProviderRows);
+  const handoff = MD.consumeCheaseHandoff("penne");
+  if (handoff) importCheasePackage(handoff, "handoff");
+  const routeHandoff = MD.readRouteHandoff();
+  if (routeHandoff?.contract) {
+    $("contractKt").value = routeHandoff.contract;
+    MD.notify(`Loaded ${routeHandoff.contract} from Colander.`, "success");
+  }
 }
 
 wire();

@@ -8,7 +8,12 @@
  * exhibition manifest, then deploys/operates a PastaExhibitionRegistry: curator set + append-only
  * revisions (ordered token references) + a movable "current" pointer. Rehearse on Shadownet first.
  */
-import { buildExhibitionMetadata, parseTokenReferences } from "./pasta-foundation.js";
+import {
+  buildExhibitionMetadata,
+  isCheasePackage,
+  parseTokenReferences,
+  validateCheasePackage,
+} from "./pasta-foundation.js";
 
 const CONTRACT_ARTIFACT = "contract/pasta-exhibition.contract.json";
 const MD = window.MD;
@@ -28,18 +33,7 @@ function log(message, kind) {
 }
 
 function pinProvider() {
-  const kind = $("pinProvider").value;
-  if (kind === "pinata") {
-    const jwt = $("pinJwt").value.trim();
-    if (!jwt) throw new Error("Enter your Pinata JWT, or switch pinning provider.");
-    return { kind: "pinata", jwt };
-  }
-  if (kind === "node") {
-    const url = $("pinNode").value.trim();
-    if (!url) throw new Error("Enter your IPFS node URL, or switch pinning provider.");
-    return { kind: "node", url };
-  }
-  return { kind: "wtfos" };
+  return MD.pinProviderFromForm();
 }
 
 function parseRefs() {
@@ -57,6 +51,56 @@ function parseRefs() {
   return state.parsed;
 }
 
+// ---------- CH-EASE package import ----------
+
+async function importPackage(file) {
+  let parsed;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch (_) {
+    return MD.notify("That file is not valid JSON.", "error");
+  }
+  return importCheasePackage(parsed, "file");
+}
+
+function itemReference(item, relationship) {
+  const meta = item?.tokenMetadata && typeof item.tokenMetadata === "object" ? item.tokenMetadata : {};
+  const contract = String(meta.contract || item.contract || relationship?.parent_contract || "").trim();
+  const tokenId = Number(item?.tokenId ?? meta.tokenId);
+  if (!/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(contract) || !Number.isInteger(tokenId) || tokenId < 0) {
+    return "";
+  }
+  return `${contract}, ${tokenId}`;
+}
+
+function importCheasePackage(parsed, source) {
+  const result = validateCheasePackage(parsed);
+  if (!result.ok) return MD.notify("Invalid CH-EASE package:\n" + result.errors.join("\n"), "error");
+  if (!isCheasePackage(parsed)) return MD.notify("Unrecognized package.", "error");
+  const items = parsed.kind === "collection" ? parsed.items : [parsed.token];
+  if (parsed.kind === "collection") {
+    if (parsed.title) $("exName").value = parsed.title;
+    if (parsed.description) $("exDesc").value = parsed.description;
+    if (parsed.coverImageUri) $("exCover").value = parsed.coverImageUri;
+  } else if (items[0]) {
+    $("exName").value = items[0].name || "";
+    $("exDesc").value = items[0].description || "";
+    $("exCover").value = items[0].previewUri || items[0].artifactUri || "";
+  }
+  const refs = items.map((item) => itemReference(item, parsed.relationship)).filter(Boolean);
+  if (refs.length) {
+    $("refs").value = refs.join("\n");
+    parseRefs();
+  }
+  log(`imported exhibition context from CH-EASE ${source || "package"}`);
+  MD.notify(
+    refs.length
+      ? `Imported ${refs.length} token reference(s) from CH-EASE.`
+      : "Imported CH-EASE exhibition context. Add KT1/token references before publishing.",
+    "success"
+  );
+}
+
 // ---------- wallet ----------
 
 async function connect() {
@@ -69,7 +113,7 @@ async function connect() {
     log(`connected ${acc} on ${state.network}`);
   } catch (e) {
     log("connect failed: " + (e.message || e), "err");
-    alert("Connect failed: " + (e.message || e));
+    MD.notify("Connect failed: " + (e.message || e), "error");
   }
 }
 
@@ -139,10 +183,14 @@ async function deploy() {
     log("explorer: " + MD.explorerUrl(state.network, kt));
     $("contractKt").value = kt;
     log("you are the admin curator. Publish the first revision below.");
-    alert("Exhibition contract deployed.\n" + kt);
+    MD.logEvent("lasagna.registry_updated", "Lasagna deployed an exhibition registry", {
+      contract: kt,
+      network: state.network,
+    });
+    MD.notify("Exhibition contract deployed: " + kt, "success");
   } catch (e) {
     log("deploy failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Deploy failed: " + (e.message || e));
+    MD.notify("Deploy failed: " + (e.message || e), "error");
   } finally {
     $("btnDeploy").disabled = false;
   }
@@ -184,10 +232,16 @@ async function publishRevision() {
     const op = await c.methodsObject.publish_revision(params).send();
     await op.confirmation();
     log(`revision #${revision} published ✓ — now the current revision`);
-    alert(`Published revision #${revision}.`);
+    MD.logEvent("lasagna.exhibition_published", "Lasagna published an exhibition revision", {
+      contract: kt,
+      network: state.network,
+      revision,
+      referenceCount: items.length,
+    });
+    MD.notify(`Published revision #${revision}.`, "success");
   } catch (e) {
     log("publish failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Publish failed: " + (e.message || e));
+    MD.notify("Publish failed: " + (e.message || e), "error");
   } finally {
     $("btnPublish").disabled = false;
   }
@@ -207,9 +261,15 @@ async function curatorOp(add) {
     const op = await (add ? c.methodsObject.add_curator(addr) : c.methodsObject.remove_curator(addr)).send();
     await op.confirmation();
     log(`curator ${add ? "added" : "removed"} ✓`);
+    MD.logEvent("lasagna.registry_updated", "Lasagna updated curator roles", {
+      contract: kt,
+      network: state.network,
+      action: add ? "add_curator" : "remove_curator",
+      curator: addr,
+    });
   } catch (e) {
     log("curator op failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Curator op failed: " + (e.message || e));
+    MD.notify("Curator op failed: " + (e.message || e), "error");
   } finally {
     btn.disabled = false;
   }
@@ -228,9 +288,14 @@ async function setCurrent() {
     const op = await c.methodsObject.set_current_revision(rid).send();
     await op.confirmation();
     log(`current revision set to #${rid} ✓`);
+    MD.logEvent("lasagna.registry_updated", "Lasagna set the current exhibition revision", {
+      contract: kt,
+      network: state.network,
+      revision: rid,
+    });
   } catch (e) {
     log("set current failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Set current failed: " + (e.message || e));
+    MD.notify("Set current failed: " + (e.message || e), "error");
   } finally {
     $("btnSetCurrent").disabled = false;
   }
@@ -239,6 +304,8 @@ async function setCurrent() {
 // ---------- wiring ----------
 
 function wire() {
+  MD.updatePinProviderRows();
+  void MD.loadPlatformCapabilities();
   $("network").addEventListener("change", () => {
     state.network = $("network").value;
   });
@@ -258,11 +325,19 @@ function wire() {
     }
     e.target.value = "";
   });
-  $("pinProvider").addEventListener("change", () => {
-    const kind = $("pinProvider").value;
-    $("pinJwtRow").hidden = kind !== "pinata";
-    $("pinNodeRow").hidden = kind !== "node";
+  $("importPkg")?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) importPackage(file);
+    e.target.value = "";
   });
+  $("pinProvider").addEventListener("change", MD.updatePinProviderRows);
+  const handoff = MD.consumeCheaseHandoff("lasagna");
+  if (handoff) importCheasePackage(handoff, "handoff");
+  const routeHandoff = MD.readRouteHandoff();
+  if (routeHandoff?.contract) {
+    $("contractKt").value = routeHandoff.contract;
+    MD.notify(`Loaded ${routeHandoff.contract} from Colander.`, "success");
+  }
 }
 
 wire();

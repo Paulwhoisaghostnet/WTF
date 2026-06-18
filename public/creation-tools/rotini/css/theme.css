@@ -265,3 +265,33 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+.pp-notice {
+  margin: 0 18px 10px;
+  border: 1px solid #7d8fa1;
+  border-left: 4px solid #2f6fab;
+  background: #f7fbff;
+  color: #102033;
+  padding: 9px 11px;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.pp-notice[hidden] {
+  display: none !important;
+}
+
+.pp-notice-success {
+  border-left-color: #1f7a45;
+  background: #f2fbf5;
+}
+
+.pp-notice-warn {
+  border-left-color: #a66a00;
+  background: #fff8e8;
+}
+
+.pp-notice-error {
+  border-left-color: #a82424;
+  background: #fff2f2;
+}

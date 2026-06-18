@@ -79,6 +79,41 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The package stores numbered media filenames, original filenames/titles, metadata JSON, drop-page config, CSV, and manifest records while routing media, metadata, CSV, and manifests through the shared wtfOS IPFS/object-storage pinning path; package create, media upload, metadata update, drop config update, finalization, CSV/export download, source load, and handoff-open actions emit canonical audit events, and the package source exposes Macaroni-ready token rows with media and metadata CIDs plus saved drop config.",
   },
   {
+    id: "pasta-protocol.sandbox-safe-feedback",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec: "client/src/features/pasta-protocol/pasta-static-policy.test.ts",
+    verificationCommand: "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts",
+    userVisibleAssertion:
+      "Pasta publishers show inline status/error notices inside the embedded studio instead of browser-native modal dialogs, and the wtfOS pinner option is hidden unless the embedded signed-in account has trusted_market_creator capability.",
+    durableSideEffectAssertion:
+      "The source-policy test scans every Pasta static common/studio script for modal-free feedback helpers, capability-gated pinner selection, and system-event logging hooks.",
+  },
+  {
+    id: "pasta-protocol.chease-handoff",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec:
+      "client/src/pages/MacaroniPackager.tsx, public/creation-tools/*/js/studio.js, client/src/features/pasta-protocol/pasta-static-policy.test.ts",
+    verificationCommand: "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts",
+    userVisibleAssertion:
+      "CH-EASE can open a target Pasta publisher with the current package preloaded through a same-origin sessionStorage handoff, and the publisher confirms import with inline status.",
+    durableSideEffectAssertion:
+      "The CH-EASE handoff emits chease.package_handoff_opened and the six Pasta studios consume the shared handoff key without mutating server storage before the creator chooses to deploy or export.",
+  },
+  {
+    id: "pasta-protocol.colander-context-handoff",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec:
+      "client/src/features/pasta-protocol/colander/ColanderApp.tsx, public/creation-tools/*/js/studio.js, client/src/features/pasta-protocol/pasta-static-policy.test.ts",
+    verificationCommand: "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts",
+    userVisibleAssertion:
+      "Colander external actions open the matching Pasta tool with contract, network, action, and kind context in the URL so the target studio can prefill the relevant contract field.",
+    durableSideEffectAssertion:
+      "The Colander handoff emits colander.handoff_opened and the target static studios read the route handoff before any wallet or chain action is submitted.",
+  },
+  {
     id: "inventory.temporary-grants-unlock-apps",
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSurfaceIds: ["arcade", "casino", "wtfiam"],

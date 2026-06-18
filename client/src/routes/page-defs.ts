@@ -477,7 +477,6 @@ export const PAGE_DEFS: PageDef[] = [
     pattern: "/tools/colander",
     component: ColanderPage,
     auth: true,
-    roles: ["admin", "host", "cohost", "trusted_creator"],
     title: "Colander",
     group: "create",
     startMenu: true,

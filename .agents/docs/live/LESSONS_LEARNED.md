@@ -5147,3 +5147,13 @@
 **Why it mattered**: Some browsers imply noopener for noreferrer, but the repo quality gate intentionally requires the explicit token. Missing it makes the CI result noisy and keeps future agents from trusting a clean deploy signal.
 
 **Rule**: Every JSX/HTML link with `target="_blank"` must include `rel="noopener noreferrer"` exactly enough for `scripts/check-external-links.mjs` to pass. Run the link checker before pushing any frontend change, even when the touched feature is unrelated to external links.
+
+---
+
+## 2026-06-18 - Pasta apps need one suite owner and real host bridges
+
+**What happened**: The Pasta Protocol publishers had working static tool shells, but the suite was split across generic creation-tool ownership, stale route roles, downloaded-only CH-EASE exports, Colander links without contract context, native modal feedback inside sandboxed iframes, and event handles that were documented but not emitted.
+
+**Why it mattered**: Tezos publishing tools are not just static art toys. Operators need one auditable app gate, creators need signed-in self-managed publishing without trusted-host privileges, and cross-app package/contract handoffs need explicit observable contracts so rewards, recovery, and support can trust the system event spine.
+
+**Rule**: Protocol app suites need a first-class desktop/admin/package owner, signed-in route access separated from privileged hosted resources, sandbox-safe inline feedback, shared handoff contracts, and emitted event handles in the same pass. Do not document cross-app workflows until the source, inventory, and tests prove the wiring exists.

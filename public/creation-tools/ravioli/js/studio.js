@@ -13,7 +13,9 @@ import {
   buildBundleManifest,
   buildCollectionMetadata,
   buildTokenMetadata,
+  isCheasePackage,
   sanitizeRelationshipMetadata,
+  validateCheasePackage,
 } from "./pasta-foundation.js";
 
 const CONTRACT_ARTIFACT = "contract/pasta-bundle.contract.json";
@@ -39,18 +41,7 @@ function targetMode() {
 }
 
 function pinProvider() {
-  const kind = $("pinProvider").value;
-  if (kind === "pinata") {
-    const jwt = $("pinJwt").value.trim();
-    if (!jwt) throw new Error("Enter your Pinata JWT, or switch pinning provider.");
-    return { kind: "pinata", jwt };
-  }
-  if (kind === "node") {
-    const url = $("pinNode").value.trim();
-    if (!url) throw new Error("Enter your IPFS node URL, or switch pinning provider.");
-    return { kind: "node", url };
-  }
-  return { kind: "wtfos" };
+  return MD.pinProviderFromForm();
 }
 
 function readRelationship() {
@@ -97,6 +88,56 @@ function readMemberRow(member) {
   };
 }
 
+// ---------- CH-EASE package import ----------
+
+async function importPackage(file) {
+  let parsed;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch (_) {
+    return MD.notify("That file is not valid JSON.", "error");
+  }
+  return importCheasePackage(parsed, "file");
+}
+
+function importCheasePackage(parsed, source) {
+  const result = validateCheasePackage(parsed);
+  if (!result.ok) return MD.notify("Invalid CH-EASE package:\n" + result.errors.join("\n"), "error");
+  if (!isCheasePackage(parsed)) return MD.notify("Unrecognized package.", "error");
+
+  const items = parsed.kind === "collection" ? parsed.items : [parsed.token];
+  const first = items[0];
+  if (parsed.kind === "collection") {
+    if (parsed.title) {
+      $("collName").value = parsed.title;
+      $("bnName").value = parsed.title;
+    }
+  } else if (first?.name) {
+    $("bnName").value = first.name;
+  }
+  if (parsed.description) $("bnDesc").value = parsed.description;
+  else if (first?.description) $("bnDesc").value = first.description;
+  const tags = [...new Set(items.flatMap((item) => item.tags || []))];
+  if (tags.length) $("bnTags").value = tags.join(", ");
+  if (first?.artifactUri) $("bnArtifactStatus").textContent = `CH-EASE artifact: ${first.artifactUri}`;
+  if (parsed.relationship) {
+    $("relParent").value = parsed.relationship.parent_contract || "";
+    $("relFranchise").value = parsed.relationship.franchise_contract || "";
+    $("relGroup").value = parsed.relationship.collection_group || "";
+  }
+  items.forEach((item) =>
+    addMemberRow({
+      name: item.name,
+      uri: item.artifactUri || item.previewUri || "",
+      mimeType: item.mimeType || "",
+      tokenId: item.tokenId,
+      quantity: 1,
+    })
+  );
+  log(`imported ${items.length} bundle item(s) from CH-EASE ${source || "package"}`);
+  MD.notify(`Imported ${items.length} bundle item(s) from CH-EASE.`, "success");
+}
+
 // ---------- wallet ----------
 
 async function connect() {
@@ -109,7 +150,7 @@ async function connect() {
     log(`connected ${acc} on ${state.network}`);
   } catch (e) {
     log("connect failed: " + (e.message || e), "err");
-    alert("Connect failed: " + (e.message || e));
+    MD.notify("Connect failed: " + (e.message || e), "error");
   }
 }
 
@@ -277,14 +318,29 @@ async function publish() {
       $("revealUri").value = manifestUri;
       log(`mystery pack: keep this manifest URI to reveal later → ${manifestUri}`);
     }
-    alert(
+    if (targetMode() === "new_collection") {
+      MD.logEvent("ravioli.collection_deployed", "Ravioli deployed a bundle collection", {
+        contract: kt,
+        network: state.network,
+      });
+    }
+    MD.logEvent("ravioli.bundle_published", "Ravioli published a bundle", {
+      contract: kt,
+      network: state.network,
+      tokenId: startId,
+      editions,
+      mystery,
+      redeemable,
+    });
+    MD.notify(
       mystery
         ? `Mystery bundle deployed (token id ${startId}). Save the manifest URI shown in the log to reveal contents later.`
-        : `Bundle deployed (token id ${startId}). See the log for explorer links.`
+        : `Bundle deployed (token id ${startId}). See the log for explorer links.`,
+      "success"
     );
   } catch (e) {
     log("publish failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Publish failed: " + (e.message || e));
+    MD.notify("Publish failed: " + (e.message || e), "error");
   } finally {
     $("btnPublish").disabled = false;
   }
@@ -300,7 +356,7 @@ function bigToNum(value) {
 async function loadBundle() {
   try {
     const kt = $("opKt").value.trim();
-    if (!MD.isAddress(kt)) return alert("Enter the KT1 contract address.");
+    if (!MD.isAddress(kt)) return MD.notify("Enter the KT1 contract address.", "error");
     const tokenId = parseInt($("opTokenId").value, 10) || 0;
     const c = await MD.getToolkit().contract.at(kt);
     const st = await c.storage();
@@ -314,7 +370,7 @@ async function loadBundle() {
     $("opInfo").textContent = info;
   } catch (e) {
     $("opInfo").textContent = "";
-    alert("Could not load bundle: " + (e.message || e));
+    MD.notify("Could not load bundle: " + (e.message || e), "error");
   }
 }
 
@@ -332,11 +388,17 @@ async function redeem() {
     const op = await c.methodsObject.redeem({ token_id: tokenId, amount }).send();
     await op.confirmation();
     log("redeemed ✓ — wrapper burned on-chain");
-    alert("Redeemed. The wrapper edition was burned on-chain.");
+    MD.logEvent("ravioli.redeemed", "Ravioli redeemed bundle editions", {
+      contract: kt,
+      network: state.network,
+      tokenId,
+      amount,
+    });
+    MD.notify("Redeemed. The wrapper edition was burned on-chain.", "success");
     await loadBundle();
   } catch (e) {
     log("redeem failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Redeem failed: " + (e.message || e));
+    MD.notify("Redeem failed: " + (e.message || e), "error");
   } finally {
     $("btnRedeem").disabled = false;
   }
@@ -359,11 +421,17 @@ async function reveal() {
       .send();
     await op.confirmation();
     log("contents revealed ✓");
-    alert("Mystery contents revealed on-chain.");
+    MD.logEvent("ravioli.contents_revealed", "Ravioli revealed mystery contents", {
+      contract: kt,
+      network: state.network,
+      tokenId,
+      uri,
+    });
+    MD.notify("Mystery contents revealed on-chain.", "success");
     await loadBundle();
   } catch (e) {
     log("reveal failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Reveal failed: " + (e.message || e));
+    MD.notify("Reveal failed: " + (e.message || e), "error");
   } finally {
     $("btnReveal").disabled = false;
   }
@@ -378,6 +446,8 @@ function updateMysteryNote() {
 }
 
 function wire() {
+  MD.updatePinProviderRows();
+  void MD.loadPlatformCapabilities();
   $("network").addEventListener("change", () => {
     state.network = $("network").value;
   });
@@ -388,11 +458,12 @@ function wire() {
   $("btnRedeem").addEventListener("click", redeem);
   $("btnReveal").addEventListener("click", reveal);
   $("bnMystery").addEventListener("change", updateMysteryNote);
-  $("pinProvider").addEventListener("change", () => {
-    const kind = $("pinProvider").value;
-    $("pinJwtRow").hidden = kind !== "pinata";
-    $("pinNodeRow").hidden = kind !== "node";
+  $("importPkg")?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) importPackage(file);
+    e.target.value = "";
   });
+  $("pinProvider").addEventListener("change", MD.updatePinProviderRows);
   document.querySelectorAll('input[name="target"]').forEach((radio) =>
     radio.addEventListener("change", () => {
       $("newCollectionFields").hidden = targetMode() !== "new_collection";
@@ -401,13 +472,20 @@ function wire() {
   );
   $("btnLoadContract").addEventListener("click", async () => {
     const kt = $("existingKt").value.trim();
-    if (!MD.isAddress(kt)) return alert("Enter a KT1 address.");
+    if (!MD.isAddress(kt)) return MD.notify("Enter a KT1 address.", "error");
     const id = await nextTokenId(kt);
     $("existingInfo").textContent = `next token id: ${id}`;
   });
 
   addMemberRow();
   updateMysteryNote();
+  const handoff = MD.consumeCheaseHandoff("ravioli");
+  if (handoff) importCheasePackage(handoff, "handoff");
+  const routeHandoff = MD.readRouteHandoff();
+  if (routeHandoff?.contract) {
+    $("opKt").value = routeHandoff.contract;
+    MD.notify(`Loaded ${routeHandoff.contract} from Colander.`, "success");
+  }
 }
 
 wire();

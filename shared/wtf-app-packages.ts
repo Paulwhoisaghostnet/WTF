@@ -62,6 +62,7 @@ const domainGuides = {
   commerceAndWallets: { label: "Commerce And Wallets", guide: "docs/domains/commerce-and-wallets.md" },
   mediaTvStudio: { label: "Media, TV, And Studio", guide: "docs/domains/media-tv-studio.md" },
   tezosPlatform: { label: "Tezos Platform", guide: "docs/domains/tezos-platform.md" },
+  pastaProtocol: { label: "Pasta Protocol", guide: "docs/domains/pasta-protocol.md" },
 } as const;
 
 const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof typeof domainGuides]>> = {
@@ -81,6 +82,7 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   studio: domainGuides.mediaTvStudio,
   gallery: domainGuides.mediaTvStudio,
   "ch-ease": domainGuides.mediaTvStudio,
+  "pasta-protocol": domainGuides.pastaProtocol,
   "ipfs-pinning": domainGuides.mediaTvStudio,
   skywire: domainGuides.identityAndSocial,
   "wtf-live": domainGuides.identityAndSocial,
@@ -106,6 +108,7 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
   "game-studio": ["Studio project storage", "arcade publishing queue"],
   studio: ["Studio project storage", "media storage"],
   gallery: ["Media storage", "TzKT", "Objkt"],
+  "pasta-protocol": ["Tezos wallets", "Tezos RPC", "IPFS pinning providers", "CH-EASE handoff packages"],
   "ipfs-pinning": [
     "AT Protocol",
     "WTFOS PDS",
@@ -156,6 +159,7 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
   "game-studio": ["game_studio_projects", "arcade submissions", "studio projects"],
   studio: ["studio_projects", "studio_files", "media_items"],
   gallery: ["media_items", "token media cache", "user media libraries"],
+  "pasta-protocol": ["Pasta Protocol browser drafts", "system_events", "client-exported contract package artifacts"],
   "ipfs-pinning": [
     "ipfs_pinning_policies",
     "ipfs_pinning_jobs",
@@ -233,7 +237,114 @@ function desktopPackage(appKey: DesktopAppKey): WtfAppPackageAcceptance {
 export const WTF_DESKTOP_APP_PACKAGE_ACCEPTANCE =
   DESKTOP_APPS.map(desktopPackage) as readonly WtfAppPackageAcceptance[];
 
+const PASTA_CREATION_TOOLS = [
+  {
+    id: "spaghetti",
+    label: "Spaghetti",
+    contractEvidence: "public/creation-tools/spaghetti/contract/pasta-standard-collection.contract.json",
+  },
+  {
+    id: "gnocchi",
+    label: "Gnocchi",
+    contractEvidence: "public/creation-tools/gnocchi/contract/pasta-open-edition.contract.json",
+  },
+  {
+    id: "ravioli",
+    label: "Ravioli",
+    contractEvidence: "public/creation-tools/ravioli/contract/pasta-bundle.contract.json",
+  },
+  {
+    id: "rotini",
+    label: "Rotini",
+    contractEvidence: "public/creation-tools/rotini/contract/pasta-standard-collection.contract.json",
+  },
+  {
+    id: "penne",
+    label: "Penne",
+    contractEvidence: "public/creation-tools/penne/contract/pasta-distribution.contract.json",
+  },
+  {
+    id: "lasagna",
+    label: "Lasagna",
+    contractEvidence: "public/creation-tools/lasagna/contract/pasta-exhibition.contract.json",
+  },
+] as const;
+
+const PASTA_CREATION_TOOL_PACKAGE_ACCEPTANCE = PASTA_CREATION_TOOLS.map((tool) => ({
+  id: `creation-tool:${tool.id}`,
+  key: tool.id,
+  label: tool.label,
+  kind: "creation-tool",
+  state: "active",
+  domain: domainGuides.pastaProtocol,
+  toolId: tool.id,
+  routeEvidence: [`/tools/${tool.id}`, `/creation-tools/${tool.id}/index.html`],
+  provenance: {
+    owner: "WTF OS / Pasta Protocol",
+    source: "Pasta Protocol static Tezos publisher package",
+    evidence: [
+      "client/src/features/creation-tools/tool-registry.ts",
+      `public/creation-tools/${tool.id}`,
+      tool.contractEvidence,
+    ],
+  },
+  permissionSummary: {
+    userAccess:
+      "Signed-in wtfOS users can open the embedded Pasta publisher; hosted wtfOS pinner actions require trusted_market_creator capability inside the platform iframe, while Pinata and own-node paths remain self-managed.",
+    adminAccess:
+      "Pasta Protocol admin surface observes route availability, CH-EASE handoffs, Colander context handoffs, publisher events, and desktop app gate state.",
+    dataTouched: [
+      "Pasta Protocol browser drafts",
+      "download/export artifacts in the browser",
+      "system_events",
+      "creator-originated Tezos contract operations",
+    ],
+    externalSystems: ["Tezos wallets", "Tezos RPC", "IPFS pinning providers", "CH-EASE handoff packages"],
+  },
+  rollback: {
+    method:
+      "Restore the previous static asset package and Pasta Protocol route/app-gate ownership from the deployed commit.",
+    evidence: ["scripts/check-creation-tool-assets.ts", `public/creation-tools/${tool.id}`],
+  },
+  uninstall: {
+    method:
+      "Remove the static route only after preserving browser-exported package artifacts and documenting already-originated on-chain contracts.",
+    preservesUserData: true,
+    evidence: ["client/src/features/creation-tools/tool-registry.ts", "docs/domains/pasta-protocol-registry.md"],
+  },
+})) satisfies readonly WtfAppPackageAcceptance[];
+
 export const WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE = [
+  {
+    id: "creation-tool:broot",
+    key: "broot",
+    label: "Broot",
+    kind: "creation-tool",
+    state: "active",
+    domain: domainGuides.mediaTvStudio,
+    toolId: "broot",
+    routeEvidence: ["/tools/broot", "/creation-tools/broot/index.html"],
+    provenance: {
+      owner: "WTF OS",
+      source: "Tezos-native Photoshop alternative integrated as a static creation tool",
+      evidence: ["client/src/features/creation-tools/tool-registry.ts", "public/creation-tools/broot"],
+    },
+    permissionSummary: {
+      userAccess: "Authenticated browser route; static iframe tool assets served from the WTF app origin.",
+      adminAccess: "Admin observability through the Creation Tools admin surface and Content/Automation tabs.",
+      dataTouched: ["Broot local project documents", "creation tool interaction events", "download/export artifacts in the browser"],
+      externalSystems: ["Tezos wallets", "IPFS pinning providers", "HEN FA2 mint contract"],
+    },
+    rollback: {
+      method: "Restore the previous static asset package and tool registry entry from the deployed commit.",
+      evidence: ["scripts/check-creation-tool-assets.ts"],
+    },
+    uninstall: {
+      method: "Remove the route from the tool registry only after preserving documented provenance and user exports.",
+      preservesUserData: true,
+      evidence: ["client/src/features/creation-tools/tool-registry.ts"],
+    },
+  },
   {
     id: "creation-tool:particle-painter",
     key: "particle-painter",
@@ -494,6 +605,7 @@ export const WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE = [
       evidence: ["client/src/features/creation-tools/tool-registry.ts", "server/features/wtf-sites/service.ts"],
     },
   },
+  ...PASTA_CREATION_TOOL_PACKAGE_ACCEPTANCE,
 ] as const satisfies readonly WtfAppPackageAcceptance[];
 
 export const WTF_SYSTEM_PACKAGE_ACCEPTANCE = [

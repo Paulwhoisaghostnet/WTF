@@ -37,6 +37,194 @@ const MD = (() => {
   let rpcUrl = null;
   let connectPromise = null;
 
+  const PASTA_HANDOFF_PREFIX = "wtfos.pasta.handoff.v1";
+  let platformCapabilities = {
+    loaded: false,
+    embedded: false,
+    authenticated: false,
+    trustedMarketCreator: false,
+    canUseWtfosPinner: false,
+  };
+
+  function appIdFromPath() {
+    const match = String(location?.pathname || "").match(/\/creation-tools\/([^/]+)/);
+    return match ? match[1] : "pasta";
+  }
+
+  function isEmbeddedInWtfos() {
+    try {
+      return window.parent !== window && location.protocol !== "file:";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function ensureNoticeRegion() {
+    let el = document.getElementById("ppNotice");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "ppNotice";
+    el.className = "pp-notice";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+    el.hidden = true;
+    const header = document.querySelector(".pp-top");
+    if (header && header.parentNode) header.parentNode.insertBefore(el, header.nextSibling);
+    else document.body.prepend(el);
+    return el;
+  }
+
+  function notify(message, kind) {
+    const text = String(message || "").trim();
+    if (!text) return;
+    const el = ensureNoticeRegion();
+    const tone = kind || "info";
+    el.className = "pp-notice pp-notice-" + tone;
+    el.textContent = text;
+    el.hidden = false;
+    el.setAttribute("role", tone === "error" ? "alert" : "status");
+    el.setAttribute("aria-live", tone === "error" ? "assertive" : "polite");
+  }
+
+  function clearNotice() {
+    const el = ensureNoticeRegion();
+    el.textContent = "";
+    el.hidden = true;
+    el.className = "pp-notice";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+  }
+
+  function roleList(user) {
+    const roles = Array.isArray(user?.roles) ? user.roles : user?.role ? [user.role] : [];
+    return roles.map((role) => String(role));
+  }
+
+  async function loadPlatformCapabilities() {
+    const embedded = isEmbeddedInWtfos();
+    const next = { ...platformCapabilities, loaded: true, embedded };
+    try {
+      const res = await fetch("/api/auth/user", { credentials: "same-origin" });
+      if (res.ok) {
+        const user = await res.json();
+        const permissions = user?.effectivePermissions || {};
+        const roles = roleList(user);
+        const trustedMarketCreator = Boolean(
+          permissions.trusted_market_creator || roles.includes("admin") || roles.includes("trusted_creator")
+        );
+        Object.assign(next, {
+          authenticated: true,
+          trustedMarketCreator,
+          canUseWtfosPinner: embedded && trustedMarketCreator,
+        });
+      }
+    } catch (_) {
+      /* standalone/downloaded builds cannot see wtfOS session APIs */
+    }
+    platformCapabilities = next;
+    updatePinProviderRows();
+    return platformCapabilities;
+  }
+
+  function getPlatformCapabilities() {
+    return platformCapabilities;
+  }
+
+  function updatePinProviderRows() {
+    const select = document.getElementById("pinProvider");
+    if (!select) return;
+    const option = [...select.options].find((candidate) => candidate.value === "wtfos");
+    if (option) {
+      option.disabled = !platformCapabilities.canUseWtfosPinner;
+      option.hidden = !platformCapabilities.canUseWtfosPinner;
+    }
+    if (!platformCapabilities.canUseWtfosPinner && select.value === "wtfos") {
+      select.value = "pinata";
+      notify("wtfOS platform pinning is available only inside wtfOS for trusted market creators. Pinata is selected for this session.", "warn");
+    }
+    const kind = select.value;
+    const jwtRow = document.getElementById("pinJwtRow");
+    const nodeRow = document.getElementById("pinNodeRow");
+    if (jwtRow) jwtRow.hidden = kind !== "pinata";
+    if (nodeRow) nodeRow.hidden = kind !== "node";
+  }
+
+  function pinProviderFromForm() {
+    const select = document.getElementById("pinProvider");
+    const kind = select ? select.value : "pinata";
+    if (kind === "pinata") {
+      const jwt = document.getElementById("pinJwt")?.value.trim();
+      if (!jwt) throw new Error("Enter your Pinata JWT, or switch pinning provider.");
+      return { kind: "pinata", jwt };
+    }
+    if (kind === "node") {
+      const url = document.getElementById("pinNode")?.value.trim();
+      if (!url) throw new Error("Enter your IPFS node URL, or switch pinning provider.");
+      return { kind: "node", url };
+    }
+    if (!platformCapabilities.canUseWtfosPinner) {
+      throw new Error("wtfOS platform pinning requires an embedded trusted-market-creator session. Use Pinata or your own IPFS node for self-managed publishing.");
+    }
+    return { kind: "wtfos" };
+  }
+
+  function handoffStorageKey(appId) {
+    return PASTA_HANDOFF_PREFIX + ":" + (appId || appIdFromPath());
+  }
+
+  function consumeCheaseHandoff(appId) {
+    const params = new URLSearchParams(location.search || "");
+    if (params.get("handoff") !== "chease-package") return null;
+    const key = params.get("handoffKey") || handoffStorageKey(appId);
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return null;
+      sessionStorage.removeItem(key);
+      return JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function readRouteHandoff() {
+    const params = new URLSearchParams(location.search || "");
+    const source = params.get("handoff") || "";
+    if (!source || source === "chease-package") return null;
+    return {
+      source,
+      action: params.get("action") || "",
+      contract: params.get("contract") || "",
+      network: params.get("network") || "",
+      kind: params.get("kind") || "",
+    };
+  }
+
+  function logEvent(eventType, message, metadata, severity) {
+    try {
+      const payload = {
+        eventType,
+        severity: severity || "info",
+        message,
+        url: location.href,
+        metadata: {
+          app: appIdFromPath(),
+          viewport: { width: window.innerWidth, height: window.innerHeight },
+          userAgent: navigator.userAgent,
+          ...(metadata || {}),
+        },
+      };
+      fetch("/api/system/logs/client", {
+        method: "POST",
+        credentials: "include",
+        keepalive: true,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).catch(() => undefined);
+    } catch (_) {
+      /* event logging must never block publishing */
+    }
+  }
+
   function walletSessionKey() {
     const path = typeof location !== "undefined" ? `${location.origin}${location.pathname}` : "local";
     return `${WALLET_SESSION_PREFIX}:${netKey || "unknown"}:${path}`;
@@ -593,6 +781,15 @@ const MD = (() => {
     isAddress,
     utf8ToHex,
     hexToUtf8,
+    notify,
+    clearNotice,
+    loadPlatformCapabilities,
+    getPlatformCapabilities,
+    updatePinProviderRows,
+    pinProviderFromForm,
+    consumeCheaseHandoff,
+    readRouteHandoff,
+    logEvent,
     pinBlob,
     pinJson,
     apiFetch,

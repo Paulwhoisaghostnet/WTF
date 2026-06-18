@@ -38,18 +38,7 @@ function targetMode() {
 }
 
 function pinProvider() {
-  const kind = $("pinProvider").value;
-  if (kind === "pinata") {
-    const jwt = $("pinJwt").value.trim();
-    if (!jwt) throw new Error("Enter your Pinata JWT, or switch pinning provider.");
-    return { kind: "pinata", jwt };
-  }
-  if (kind === "node") {
-    const url = $("pinNode").value.trim();
-    if (!url) throw new Error("Enter your IPFS node URL, or switch pinning provider.");
-    return { kind: "node", url };
-  }
-  return { kind: "wtfos" };
+  return MD.pinProviderFromForm();
 }
 
 function readRelationship() {
@@ -112,11 +101,15 @@ async function importPackage(file) {
   try {
     parsed = JSON.parse(await file.text());
   } catch (_) {
-    return alert("That file is not valid JSON.");
+    return MD.notify("That file is not valid JSON.", "error");
   }
+  return importCheasePackage(parsed, "file");
+}
+
+function importCheasePackage(parsed, source) {
   const result = validateCheasePackage(parsed);
-  if (!result.ok) return alert("Invalid CH-EASE package:\n" + result.errors.join("\n"));
-  if (!isCheasePackage(parsed)) return alert("Unrecognized package.");
+  if (!result.ok) return MD.notify("Invalid CH-EASE package:\n" + result.errors.join("\n"), "error");
+  if (!isCheasePackage(parsed)) return MD.notify("Unrecognized package.", "error");
 
   const items = parsed.kind === "collection" ? parsed.items : [parsed.token];
   if (parsed.kind === "collection") {
@@ -129,6 +122,13 @@ async function importPackage(file) {
     $("relFranchise").value = parsed.relationship.franchise_contract || "";
     $("relGroup").value = parsed.relationship.collection_group || "";
   }
+  for (const token of [...state.tokens]) {
+    const row = readTokenRow(token);
+    if (!row.name && !row.artifactUri && !row.file) {
+      state.tokens = state.tokens.filter((t) => t !== token);
+      token.el.remove();
+    }
+  }
   items.forEach((item) =>
     addTokenRow({
       name: item.name,
@@ -139,7 +139,8 @@ async function importPackage(file) {
       mimeType: item.mimeType || "",
     })
   );
-  log(`imported ${items.length} token(s) from CH-EASE package`);
+  log(`imported ${items.length} token(s) from CH-EASE ${source || "package"}`);
+  MD.notify(`Imported ${items.length} token(s) from CH-EASE.`, "success");
 }
 
 function exportPackage() {
@@ -165,6 +166,10 @@ function exportPackage() {
   a.click();
   URL.revokeObjectURL(a.href);
   log("exported CH-EASE package");
+  MD.logEvent("spaghetti.exported", "Spaghetti exported a CH-EASE package", {
+    tokenCount: items.length,
+    targetApp: "spaghetti",
+  });
 }
 
 // ---------- wallet ----------
@@ -179,7 +184,7 @@ async function connect() {
     log(`connected ${acc} on ${state.network}`);
   } catch (e) {
     log("connect failed: " + (e.message || e), "err");
-    alert("Connect failed: " + (e.message || e));
+    MD.notify("Connect failed: " + (e.message || e), "error");
   }
 }
 
@@ -318,10 +323,22 @@ async function publish() {
     }
     await publishTokens(provider, kt, me, startId);
     log(`done — collection ${kt}`);
-    alert("Published. See the log for explorer links.");
+    if (targetMode() === "new_collection") {
+      MD.logEvent("spaghetti.collection_deployed", "Spaghetti deployed a standard collection", {
+        contract: kt,
+        network: state.network,
+      });
+    }
+    MD.logEvent("spaghetti.token_published", "Spaghetti published token products", {
+      contract: kt,
+      network: state.network,
+      tokenCount: state.tokens.length,
+      startTokenId: startId,
+    });
+    MD.notify("Published. See the log for explorer links.", "success");
   } catch (e) {
     log("publish failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Publish failed: " + (e.message || e));
+    MD.notify("Publish failed: " + (e.message || e), "error");
   } finally {
     $("btnPublish").disabled = false;
   }
@@ -330,6 +347,8 @@ async function publish() {
 // ---------- wiring ----------
 
 function wire() {
+  MD.updatePinProviderRows();
+  void MD.loadPlatformCapabilities();
   $("network").addEventListener("change", () => {
     state.network = $("network").value;
   });
@@ -342,11 +361,7 @@ function wire() {
     if (file) importPackage(file);
     e.target.value = "";
   });
-  $("pinProvider").addEventListener("change", () => {
-    const kind = $("pinProvider").value;
-    $("pinJwtRow").hidden = kind !== "pinata";
-    $("pinNodeRow").hidden = kind !== "node";
-  });
+  $("pinProvider").addEventListener("change", MD.updatePinProviderRows);
   document.querySelectorAll('input[name="target"]').forEach((radio) =>
     radio.addEventListener("change", () => {
       $("newCollectionFields").hidden = targetMode() !== "new_collection";
@@ -355,12 +370,14 @@ function wire() {
   );
   $("btnLoadContract").addEventListener("click", async () => {
     const kt = $("existingKt").value.trim();
-    if (!MD.isAddress(kt)) return alert("Enter a KT1 address.");
+    if (!MD.isAddress(kt)) return MD.notify("Enter a KT1 address.", "error");
     const id = await startTokenId(kt);
     $("existingInfo").textContent = `next token id: ${id}`;
   });
 
   addTokenRow();
+  const handoff = MD.consumeCheaseHandoff("spaghetti");
+  if (handoff) importCheasePackage(handoff, "handoff");
 }
 
 wire();

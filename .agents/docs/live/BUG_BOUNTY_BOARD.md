@@ -5954,6 +5954,97 @@ Priority labels:
   - Live `https://wtfos.app/api/health` returned `status:"ok"`, `commitRef:"082a183"`, `db:true`, and `jobs:true`.
   - The deployed Colander bundle served from `https://wtfos.app/assets/Colander-wtf2-D4jVEv_R.js` and contains `rel:"noopener noreferrer"`.
 
+### WTF-BB-282 - Embedded Pasta publishers rely on blocked native modals for critical feedback
+
+- Category: Pasta Protocol / embedded creation-tool feedback
+- Status: Fixed (local verification passed; production verification pending full-send)
+- Owner/Session: Codex Pasta Protocol implementation/full-send pass
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - `/tools/spaghetti`, `/tools/gnocchi`, `/tools/ravioli`, `/tools/rotini`, `/tools/penne`, and `/tools/lasagna` render through `CreationToolFrame`, whose iframe sandbox omits `allow-modals`.
+  - The static publishers call `alert()` for import validation, wallet connect failures, deploy success/failure, mint/redeem/reveal outcomes, and invalid KT1 inputs.
+  - This repeats the Macaroni lesson that embedded creation tools must not rely on browser modals because sandboxed modals are ignored.
+- Why it matters:
+  - A creator can click a signing/deploy/publish action and miss the only explicit validation or completion notice, making value-bearing Tezos operations feel dead or unsafe.
+- Likely correction direction:
+  - Add a shared Pasta in-page notice/status helper with `role="status"` / `role="alert"` semantics, replace `alert()` calls across all six static publishers, and add a sandbox regression that fails on native modal usage in embedded flows.
+- Verification idea:
+  - Run `node --check` for all Pasta static JS, focused Playwright for `/tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}` that triggers a validation error inside the iframe, and assert visible inline feedback instead of `dialog`/`alert` calls.
+- Verification notes:
+  - Added shared `MD.notify` / `MD.clearNotice` notice regions to all six Pasta static publishers and replaced native modal feedback with inline status/alert semantics.
+  - Passed `for app in spaghetti gnocchi ravioli rotini penne lasagna; do node --check public/creation-tools/$app/js/common.js && node --check public/creation-tools/$app/js/studio.js; done`.
+  - Passed `./node_modules/.bin/tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts`.
+  - `rg -n "alert\s*\(|confirm\s*\(|prompt\s*\(" public/creation-tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/js` returned no matches.
+
+### WTF-BB-283 - Pasta publisher access and wtfOS pinner gates conflate self-hosted tools with trusted resources
+
+- Category: Pasta Protocol / access model and hosted-resource gating
+- Status: Fixed (local verification passed; production verification pending full-send)
+- Owner/Session: Codex Pasta Protocol implementation/full-send pass
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - Browser route metadata and PageDefs role-gate Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, Lasagna, and Colander to admin/host/cohost/trusted_creator even though the Pasta domain guide says user-provided pinning/storage/hosting is the default.
+  - Each static publisher shows `wtfOS platform pinner (trusted creators)` in the provider select regardless of embedded host detection or role proof.
+  - The shared Pasta `pinBlob({ kind: "wtfos" })` path posts directly to `/api/macaroni/ipfs/pin`, so non-authorized or standalone users can select a backend-only path and fail late.
+- Why it matters:
+  - Ordinary signed-in creators are blocked from user-wallet/user-pinning flows, while non-trusted users who can reach the UI are invited into a backend feature that should be hidden or disabled until the host proves eligibility.
+- Likely correction direction:
+  - Make route access match the product contract: user-signed/self-hosted flows available to signed-in creators, wtfOS storage/pinning/hosting only shown after same-origin host capability and `trusted_market_creator` proof. Use a Pasta-named capability endpoint or a shared host bridge instead of hardcoding Macaroni pinning semantics.
+- Verification idea:
+  - Add route/access policy tests for ordinary session users, trusted creator users, and standalone/static mode; browser-test that the wtfOS pinner option is hidden/disabled without capability proof and visible only for trusted embedded sessions.
+- Verification notes:
+  - Changed the six Pasta publisher routes and Colander from role-gated creation tools to signed-in routes behind the `pasta-protocol` desktop app gate, while leaving Macaroni's trusted creator gate intact.
+  - Added shared Pasta capability detection for embedded wtfOS sessions and hides/disables the `wtfos` pinner unless `/api/auth/user` proves `trusted_market_creator`/admin/trusted creator capability.
+  - Passed `./node_modules/.bin/tsx --test client/src/components/layout/start-menu-app-gates.test.ts shared/wtf-browser-routes.sync.test.ts server/features/app-registry/backfill-policy.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts`.
+  - Passed `PATH=/opt/homebrew/bin:/usr/local/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npm run build`.
+
+### WTF-BB-284 - Pasta Protocol handoffs and event spine are mostly documentation, not working wiring
+
+- Category: Pasta Protocol / cross-app handoffs and SystemEvent wiring
+- Status: Fixed (local verification passed; production verification pending full-send)
+- Owner/Session: Codex Pasta Protocol implementation/full-send pass
+- Score: C4 + F4 + S1 + P1(4) = 13
+- Evidence:
+  - CH-EASE exports Pasta packages only as a downloaded JSON file; there is no direct selected-app handoff like the Macaroni package source flow.
+  - Spaghetti and Gnocchi expose manual CH-EASE import controls, while Ravioli, Penne, and Lasagna have no CH-EASE package intake despite the inventory describing CH-EASE as the universal prep layer.
+  - Colander marks some actions as external to Penne/Lasagna, but `selectAction()` opens `/tools/${action.external}` without passing contract, network, action, token, or revision context.
+  - The inventory and workflow registries list app-specific handles such as `spaghetti.collection_deployed`, `penne.contract_deployed`, and `lasagna.revision_added`, but the static publishers emit no corresponding client/SystemEvent logs, and the inventory/workflow names drift for Penne and Lasagna.
+- Why it matters:
+  - The suite currently behaves like isolated tools with route-level smoke coverage. Rewards, automation, audit review, and recovery cannot reliably observe the publishing actions the inventory promises.
+- Likely correction direction:
+  - Define a narrow Pasta host bridge for package handoff, contract/action deep links, and app event emission. Update every publisher to consume CH-EASE packages where applicable, preserve Colander action context in URL/query/session handoff, and align inventory handles with emitted events.
+- Verification idea:
+  - Add behavior assertions for CH-EASE -> selected publisher import, Colander -> Penne/Lasagna deep link context, and one emitted/durable event per published/deployed/redeemed/revised workflow.
+- Verification notes:
+  - Added CH-EASE `Open in Pasta app` sessionStorage handoffs, publisher-side handoff consumption/import for all six Pasta apps, and Colander query-context handoffs to external Pasta tools.
+  - Added client SystemEvent logging for publisher deploy/publish/export/mint/redeem/reveal/registry actions plus `chease.package_handoff_opened` and `colander.handoff_opened`.
+  - Aligned Pasta inventory/domain workflow handles with emitted events and added owned behavior assertions for sandbox feedback, CH-EASE handoff, and Colander context handoff.
+  - Passed `./node_modules/.bin/tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts shared/pasta-protocol/foundation.test.ts client/src/features/pasta-protocol/chease/build-package.test.ts`.
+  - Passed `PATH=/opt/homebrew/bin:/usr/local/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin ./node_modules/.bin/playwright test tests/playwright/inventory/macaroni-packager.spec.mjs`.
+
+### WTF-BB-285 - Pasta Protocol lacks first-class OS package and doc-registry ownership
+
+- Category: Pasta Protocol / app registry and OS ownership
+- Status: Fixed (local verification passed; production verification pending full-send)
+- Owner/Session: Codex Pasta Protocol implementation/full-send pass
+- Score: C3 + F3 + S0 + P2(3) = 9
+- Evidence:
+  - `CREATION_TOOL_PAGE_DEFS` makes the static Pasta tools reachable and Start Menu eligible, but `DESKTOP_APPS`, `DEFAULT_DESKTOP_APP_CONFIG`, Start Menu app gates, package acceptance, and doc-registry mappings only define `ch-ease` and the older Macaroni creation tool.
+  - The admin surface groups Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna under generic `creation-tools` settings rather than giving Pasta Protocol its own owner package/admin surface.
+  - `docs/domains/pasta-protocol.md` exists, but `shared/wtf-docregistry.ts` and `shared/wtf-app-packages.ts` do not include a Pasta Protocol domain/package mapping for the new apps.
+- Why it matters:
+  - Operators cannot independently enable, disable, audit, document, or uninstall the Pasta suite as real wtfOS apps. Stale shortcuts and generic creation-tool gates can drift from the on-chain publishing risk each app carries.
+- Likely correction direction:
+  - Decide whether Pasta is one suite-level desktop app gate or separate app gates per publisher, then register package acceptance, doc links, admin surface ownership, Start Menu/command palette gates, and regression tests accordingly.
+- Verification idea:
+  - Extend app-registry/package/doc tests to cover the Pasta suite, verify disabled gates block Start Menu/direct route/native access consistently, and run inventory coverage plus focused route smoke.
+- Verification notes:
+  - Added `pasta-protocol` to desktop app keys/default config/labels, Start Menu gates/icons, admin surface ownership, doc registry links, and app package acceptance.
+  - Added `docs/domains/pasta-protocol-registry.md` and a Pasta Protocol admin surface owning Colander plus Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna.
+  - Passed `./node_modules/.bin/tsx --test shared/wtf-app-packages.test.ts client/src/features/admin-os/admin-surface-registry.test.ts client/src/components/layout/start-menu-app-gates.test.ts server/features/app-registry/backfill-policy.test.ts`.
+  - Passed `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts`.
+  - Passed full inventory route/domain coverage for Pasta inside `PATH=/opt/homebrew/bin:/usr/local/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory`; the overall suite remained red only on pre-existing Broot and Skywire failures unrelated to Pasta.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

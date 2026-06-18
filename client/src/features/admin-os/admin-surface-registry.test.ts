@@ -96,6 +96,30 @@ test("CH-EASE owns its package routes and Macaroni source audit handles", () => 
   assert(surface?.behaviorAssertionIds?.includes("macaroni.wtfos-package-source"));
 });
 
+test("Pasta Protocol owns Colander and static publisher routes", () => {
+  const surface = surfaceById("pasta-protocol");
+  assert(surface, "Pasta Protocol should be registered for admin observability");
+  assert.equal(surface?.desktopAppKey, "pasta-protocol");
+  assert.deepEqual(surface?.routePatterns, [
+    "/tools/colander",
+    "/tools/spaghetti",
+    "/tools/gnocchi",
+    "/tools/ravioli",
+    "/tools/rotini",
+    "/tools/penne",
+    "/tools/lasagna",
+  ]);
+  assert.equal(findAdminSurfaceForPath("/tools/colander")?.id, "pasta-protocol");
+  assert.equal(findAdminSurfaceForPath("/tools/spaghetti")?.id, "pasta-protocol");
+  assert.equal(getAdminSurfaceDoctrineDomain(surface!), DOCTRINE_DOMAIN_GUIDES.pastaProtocol);
+  assert(surface?.automationHandles.includes("chease.package_handoff_opened"));
+  assert(surface?.automationHandles.includes("colander.handoff_opened"));
+  assert(surface?.automationHandles.includes("penne.distribution_configured"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.sandbox-safe-feedback"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.chease-handoff"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.colander-context-handoff"));
+});
+
 test("desktop app admin surface bindings are one-to-one", () => {
   const counts = new Map<string, number>();
   for (const surface of ALL_ADMIN_SURFACES) {
@@ -120,4 +144,5 @@ test("admin registry maps every surface to a doctrine domain guide", () => {
   assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("tv")!).label, "Media, TV, And Studio");
   assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("operator-tools")!).label, "Operations");
   assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("hoard")!).label, "Tezos Platform");
+  assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("pasta-protocol")!).label, "Pasta Protocol");
 });

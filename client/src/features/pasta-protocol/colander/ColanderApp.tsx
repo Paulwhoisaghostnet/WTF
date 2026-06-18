@@ -206,7 +206,27 @@ export function ColanderApp() {
 
   function selectAction(action: PastaContractAction) {
     if (action.external) {
-      window.open(`/tools/${action.external}`, "_blank", "noopener");
+      const params = new URLSearchParams({
+        handoff: "colander",
+        contract: opened?.address ?? "",
+        action: action.id,
+        network,
+        kind: opened?.adapter?.kind ?? "unknown",
+      });
+      const path = `/tools/${action.external}?${params.toString()}`;
+      logClientSystemEvent({
+        eventType: "colander.handoff_opened",
+        message: `Colander opened ${action.external} for ${action.id}`,
+        metadata: {
+          app: "Colander",
+          contract: opened?.address ?? null,
+          action: action.id,
+          destination: action.external,
+          kind: opened?.adapter?.kind ?? "unknown",
+          path,
+        },
+      });
+      window.open(path, "_blank", "noopener");
       return;
     }
     setActiveAction((cur) => (cur === action.id ? null : action.id));

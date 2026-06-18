@@ -46,6 +46,7 @@ test("app package acceptance manifests map to active doctrine domains", () => {
     ["Commerce And Wallets", "docs/domains/commerce-and-wallets.md"],
     ["Media, TV, And Studio", "docs/domains/media-tv-studio.md"],
     ["Tezos Platform", "docs/domains/tezos-platform.md"],
+    ["Pasta Protocol", "docs/domains/pasta-protocol.md"],
     ["Operations", "docs/domains/operations.md"],
   ]);
 
@@ -103,13 +104,21 @@ test("every creation tool route has package acceptance and static asset provenan
 
   const creationSurface = ALL_ADMIN_SURFACES.find((surface) => surface.id === "creation-tools");
   assert(creationSurface, "creation tools need an admin surface");
-  const creationSurfaceRoutes = new Set<string>(creationSurface.routePatterns);
+  const pastaSurface = ALL_ADMIN_SURFACES.find((surface) => surface.id === "pasta-protocol");
+  assert(pastaSurface, "Pasta Protocol tools need an admin surface");
+  const routeOwners = new Map<string, string>();
+  for (const surface of ALL_ADMIN_SURFACES) {
+    for (const routePattern of surface.routePatterns) {
+      routeOwners.set(routePattern, surface.id);
+    }
+  }
 
   for (const tool of CREATION_TOOLS) {
     const entry = WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE.find((candidate) => candidate.toolId === tool.id);
     assert(entry, `${tool.id} needs package acceptance`);
     assert.equal(entry?.label, tool.title);
-    assert(creationSurfaceRoutes.has(tool.routePath), `${tool.id} route is not admin observable`);
+    const expectedOwner = tool.domain === "pasta-protocol" ? "pasta-protocol" : "creation-tools";
+    assert.equal(routeOwners.get(tool.routePath), expectedOwner, `${tool.id} route is not admin observable`);
     assert(new Set<string>(entry.routeEvidence).has(tool.routePath), `${tool.id} package needs route evidence`);
     assert(tool.requiredAssets.length > 0, `${tool.id} needs required assets`);
   }

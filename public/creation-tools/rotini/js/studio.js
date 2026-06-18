@@ -12,9 +12,11 @@ import {
   buildCollectionPackage,
   buildTokenMetadata,
   generateEditions,
+  isCheasePackage,
   maxCombinations,
   sanitizeRelationshipMetadata,
   traitAttributes,
+  validateCheasePackage,
 } from "./pasta-foundation.js";
 
 const CONTRACT_ARTIFACT = "contract/pasta-standard-collection.contract.json";
@@ -41,18 +43,7 @@ function targetMode() {
 }
 
 function pinProvider() {
-  const kind = $("pinProvider").value;
-  if (kind === "pinata") {
-    const jwt = $("pinJwt").value.trim();
-    if (!jwt) throw new Error("Enter your Pinata JWT, or switch pinning provider.");
-    return { kind: "pinata", jwt };
-  }
-  if (kind === "node") {
-    const url = $("pinNode").value.trim();
-    if (!url) throw new Error("Enter your IPFS node URL, or switch pinning provider.");
-    return { kind: "node", url };
-  }
-  return { kind: "wtfos" };
+  return MD.pinProviderFromForm();
 }
 
 function readRelationship() {
@@ -61,6 +52,39 @@ function readRelationship() {
     franchise_contract: $("relFranchise").value,
     collection_group: $("relGroup").value,
   });
+}
+
+// ---------- CH-EASE package import ----------
+
+async function importPackage(file) {
+  let parsed;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch (_) {
+    return MD.notify("That file is not valid JSON.", "error");
+  }
+  return importCheasePackage(parsed, "file");
+}
+
+function importCheasePackage(parsed, source) {
+  const result = validateCheasePackage(parsed);
+  if (!result.ok) return MD.notify("Invalid CH-EASE package:\n" + result.errors.join("\n"), "error");
+  if (!isCheasePackage(parsed)) return MD.notify("Unrecognized package.", "error");
+  if (parsed.kind === "collection") {
+    if (parsed.title) $("collName").value = parsed.title;
+    if (parsed.symbol) $("collSymbol").value = parsed.symbol;
+    if (parsed.description) $("collDesc").value = parsed.description;
+  } else if (parsed.token?.name) {
+    $("collName").value = parsed.token.name;
+    if (parsed.token.description) $("collDesc").value = parsed.token.description;
+  }
+  if (parsed.relationship) {
+    $("relParent").value = parsed.relationship.parent_contract || "";
+    $("relFranchise").value = parsed.relationship.franchise_contract || "";
+    $("relGroup").value = parsed.relationship.collection_group || "";
+  }
+  log(`imported collection context from CH-EASE ${source || "package"}`);
+  MD.notify("Imported CH-EASE collection context. Build the layer traits in Rotini before publishing.", "success");
 }
 
 // ---------- layers & variants ----------
@@ -163,14 +187,14 @@ function compositeEdition(edition, config, size) {
 function generate() {
   try {
     const config = readLayerConfig();
-    if (config.length === 0) return alert("Add at least one layer with a named variant.");
+    if (config.length === 0) return MD.notify("Add at least one layer with a named variant.", "error");
     const size = Math.max(64, Math.min(2048, parseInt($("genSize").value, 10) || 512));
     const count = Math.max(1, parseInt($("genCount").value, 10) || 1);
     const seed = $("genSeed").value.trim() || "rotini";
     const unique = $("genUnique").checked;
 
     const editions = generateEditions(engineLayers(config), count, seed, { unique });
-    if (editions.length === 0) return alert("Nothing generated — check your layers.");
+    if (editions.length === 0) return MD.notify("Nothing generated — check your layers.", "error");
 
     const preview = $("preview");
     preview.textContent = "";
@@ -194,9 +218,14 @@ function generate() {
     if (unique && state.editions.length < count) status += ` (capped to ${requested} unique combos)`;
     $("genStatus").textContent = status;
     log(status);
+    MD.logEvent("rotini.generated", "Rotini generated edition previews", {
+      editionCount: state.editions.length,
+      seed,
+      unique,
+    });
   } catch (e) {
     log("generate failed: " + (e.message || e), "err");
-    alert("Generate failed: " + (e.message || e));
+    MD.notify("Generate failed: " + (e.message || e), "error");
   }
 }
 
@@ -332,17 +361,29 @@ async function publish() {
     const mintOp = await mintBatch.send();
     await mintOp.confirmation();
     log("generative collection published ✓");
-    alert(`Published ${prepared.length} generative token(s) to ${kt}.`);
+    if (targetMode() === "new_collection") {
+      MD.logEvent("rotini.collection_deployed", "Rotini deployed a generative collection", {
+        contract: kt,
+        network: state.network,
+      });
+    }
+    MD.logEvent("rotini.tokens_published", "Rotini published generated tokens", {
+      contract: kt,
+      network: state.network,
+      tokenCount: prepared.length,
+      startTokenId: startId,
+    });
+    MD.notify(`Published ${prepared.length} generative token(s) to ${kt}.`, "success");
   } catch (e) {
     log("publish failed: " + (e.message || JSON.stringify(e)), "err");
-    alert("Publish failed: " + (e.message || e));
+    MD.notify("Publish failed: " + (e.message || e), "error");
   } finally {
     $("btnPublish").disabled = false;
   }
 }
 
 function exportPackage() {
-  if (state.editions.length === 0) return alert("Generate a preview first.");
+  if (state.editions.length === 0) return MD.notify("Generate a preview first.", "error");
   const baseName = $("collName").value.trim() || "Generative";
   const items = state.editions.map((edition) => ({
     name: `${baseName} #${edition.index + 1}`,
@@ -365,6 +406,10 @@ function exportPackage() {
   a.click();
   URL.revokeObjectURL(a.href);
   log(`exported CH-EASE collection package (${items.length} item(s); pin the artwork separately)`);
+  MD.logEvent("rotini.package_exported", "Rotini exported a CH-EASE package", {
+    tokenCount: items.length,
+    targetApp: "rotini",
+  });
 }
 
 // ---------- wallet & wiring ----------
@@ -379,11 +424,13 @@ async function connect() {
     log(`connected ${acc} on ${state.network}`);
   } catch (e) {
     log("connect failed: " + (e.message || e), "err");
-    alert("Connect failed: " + (e.message || e));
+    MD.notify("Connect failed: " + (e.message || e), "error");
   }
 }
 
 function wire() {
+  MD.updatePinProviderRows();
+  void MD.loadPlatformCapabilities();
   $("network").addEventListener("change", () => {
     state.network = $("network").value;
   });
@@ -392,11 +439,12 @@ function wire() {
   $("btnGenerate").addEventListener("click", generate);
   $("btnPublish").addEventListener("click", publish);
   $("btnExportPkg").addEventListener("click", exportPackage);
-  $("pinProvider").addEventListener("change", () => {
-    const kind = $("pinProvider").value;
-    $("pinJwtRow").hidden = kind !== "pinata";
-    $("pinNodeRow").hidden = kind !== "node";
+  $("importPkg")?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) importPackage(file);
+    e.target.value = "";
   });
+  $("pinProvider").addEventListener("change", MD.updatePinProviderRows);
   document.querySelectorAll('input[name="target"]').forEach((radio) =>
     radio.addEventListener("change", () => {
       $("newCollectionFields").hidden = targetMode() !== "new_collection";
@@ -405,7 +453,7 @@ function wire() {
   );
   $("btnLoadContract").addEventListener("click", async () => {
     const kt = $("existingKt").value.trim();
-    if (!MD.isAddress(kt)) return alert("Enter a KT1 address.");
+    if (!MD.isAddress(kt)) return MD.notify("Enter a KT1 address.", "error");
     const id = await nextTokenId(kt);
     $("existingInfo").textContent = `next token id: ${id}`;
   });
@@ -413,6 +461,8 @@ function wire() {
 
   addLayer("Background");
   addLayer("Foreground");
+  const handoff = MD.consumeCheaseHandoff("rotini");
+  if (handoff) importCheasePackage(handoff, "handoff");
 }
 
 wire();
