@@ -102,6 +102,7 @@ Priority labels:
 | WTF-BB-275 | Verified | Codex Broot direct-route full-send | 2026-06-18 | Creation tools / shared route metadata | P1 | 10 | 10 | 2 | 4 | 0 | Generated creation-tool routes could exist in `PAGE_DEFS` while missing from `BROWSER_ROUTE_META` and `/api/access`, causing direct `/tools/broot` opens or agent route discovery to miss Broot; fixed by mirroring generated routes across both manifests and verified live on wtfos.app |
 | WTF-BB-276 | Fixed | Codex Skywire live/group/vault full-send | 2026-06-18 | Skywire / AT Protocol parity and Tezos vault performance | P1 | 13 | 6 | 3 | 5 | 1 | Skywire lagged current Bluesky chat/live features and could reprocess large Tezos wallets through expensive source calls instead of leaning on indexed holdings; fixed locally with live-status repo writes, group conversation creation, permission coverage, and vault pagination verification, pending production deploy verification |
 | WTF-BB-277 | Fixed | Codex inventory harness contract repair | 2026-06-18 | E2E / CH-EASE and WTF LIVE harness parity | P1 | 10 | 10 | 2 | 4 | 0 | CH-EASE and WTF LIVE inventory specs could fall through generic harness mocks that dropped package, soundboard, media-deck, and handoff event contracts; fixed locally with stateful domain mocks and full inventory E2E verification, pending production deploy verification |
+| WTF-BB-278 | Fixed | Codex external-link quality gate repair | 2026-06-18 | Frontend security / tabnabbing link safety | P2 | 7 | 15 | 1 | 2 | 1 | Colander opened a contract explorer link with `target="_blank"` and only `rel="noreferrer"`, tripping the external-link safety gate; fixed locally by adding `noopener noreferrer`, pending production deploy verification |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -5922,6 +5923,22 @@ Priority labels:
   - `./node_modules/.bin/playwright test tests/playwright/inventory/macaroni-packager.spec.mjs --project=chromium`
   - `./node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs --project=chromium`
   - `./node_modules/.bin/playwright test tests/playwright/inventory --project=chromium` passed 343/343.
+- Production verification:
+  - Pending this full-send deployment.
+
+### WTF-BB-278 - External links must include noopener as well as noreferrer
+
+- Category: Frontend security / tabnabbing link safety
+- Status: Fixed
+- Owner/Session: Codex external-link quality gate repair
+- Score: C1 + F2 + S1 + P2(3) = 7
+- Evidence:
+  - `node scripts/check-external-links.mjs` failed on `client/src/features/pasta-protocol/colander/ColanderApp.tsx:360`.
+  - The Colander explorer link opened a new tab with `target="_blank"` and `rel="noreferrer"` but omitted `noopener`.
+- Correction:
+  - Added `rel="noopener noreferrer"` to the Colander explorer link.
+- Local verification:
+  - `node scripts/check-external-links.mjs`
 - Production verification:
   - Pending this full-send deployment.
 

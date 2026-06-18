@@ -5137,3 +5137,13 @@
 **Why it mattered**: A generic green API response can be worse than a 404 in inventory tests because the UI believes the operation succeeded while losing the state or normalized event that proves the workflow. That creates false negatives in other full-send work and can hide production contract drift.
 
 **Rule**: Any inventory spec that mutates domain state needs a domain-owned harness mock with the production response shape, durable test state, and canonical event logging. Do not let stateful workflows fall through to catch-all API mocks, and keep realtime harness payload normalizers in sync with newly added media/status fields.
+
+---
+
+## 2026-06-18 - New-tab links need explicit noopener even with noreferrer
+
+**What happened**: The pushed Skywire full-send commit passed local typecheck, build, and inventory, but GitHub Quality Gates failed at the external-link safety step because Colander had an explorer link with `target="_blank"` and `rel="noreferrer"` but not `noopener`.
+
+**Why it mattered**: Some browsers imply noopener for noreferrer, but the repo quality gate intentionally requires the explicit token. Missing it makes the CI result noisy and keeps future agents from trusting a clean deploy signal.
+
+**Rule**: Every JSX/HTML link with `target="_blank"` must include `rel="noopener noreferrer"` exactly enough for `scripts/check-external-links.mjs` to pass. Run the link checker before pushing any frontend change, even when the touched feature is unrelated to external links.

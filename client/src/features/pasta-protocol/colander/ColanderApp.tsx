@@ -357,7 +357,7 @@ export function ColanderApp() {
                   {opened.adapter?.label ?? "Unrecognized contract"}
                   <PanelSubtitle>{opened.adapter?.description ?? "No Pasta adapter matched the entrypoints."}</PanelSubtitle>
                 </PanelTitle>
-                <a href={explorerUrl(opened.address)} target="_blank" rel="noreferrer">explorer ↗</a>
+                <a href={explorerUrl(opened.address)} target="_blank" rel="noopener noreferrer">explorer ↗</a>
               </PanelHeader>
               <Scroll>
                 <FactRow><Muted>Address</Muted><span>{opened.address}</span></FactRow>
