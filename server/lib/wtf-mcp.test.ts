@@ -141,6 +141,11 @@ test("standard access manifest exposes browser, API, and MCP without cookie/bear
   assert.ok(manifest.browserRoutes.some((route) => route.path === "/notification-center"));
   assert.ok(manifest.browserRoutes.some((route) => route.path === "/theme-builder"));
   assert.ok(manifest.browserRoutes.some((route) => route.path === "/desktop-settings"));
+  assert.ok(manifest.browserRoutes.some((route) => route.path === "/tools/broot"));
+  assert.equal(
+    manifest.browserRoutes.find((route) => route.path === "/tools/ch-ease")?.appGate,
+    "ch-ease"
+  );
   assert.equal(
     manifest.browserRoutes.find((route) => route.path === "/arcade")?.enabled,
     false

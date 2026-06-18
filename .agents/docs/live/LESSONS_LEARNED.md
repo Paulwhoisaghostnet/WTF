@@ -10,11 +10,11 @@
 
 ## 2026-06-18 - Generated creation-tool routes need shared route metadata
 
-**What happened**: Broot was present in the generated creation-tool page definitions and route fixtures, but `shared/wtf-browser-routes.ts` did not include every generated tool route. Direct `/tools/broot` navigation stayed on the desktop shell without opening the Broot iframe until the shared access map was brought back into parity.
+**What happened**: Broot was present in the generated creation-tool page definitions and route fixtures, but `shared/wtf-browser-routes.ts` did not include every generated tool route. Direct `/tools/broot` navigation stayed on the desktop shell without opening the Broot iframe until the shared access map was brought back into parity. A follow-up production smoke also showed `/api/access` missing Broot because `server/lib/wtf-access.ts` keeps its own standard browser route manifest.
 
-**Why it mattered**: The desktop router, CLI open checks, and browser access gates all use the shared route metadata. A route can pass basic shell smoke and still be unusable from a direct URL if generated routes are not mirrored into that shared map.
+**Why it mattered**: The desktop router, CLI open checks, browser access gates, and paired-agent discovery all use route metadata. A route can pass basic shell smoke and still be unusable from a direct URL, or invisible to agents, if generated routes are not mirrored into every standard route manifest.
 
-**Rule**: When adding generated creation tools, update `BROWSER_ROUTE_META` and make the route sync test read both literal page definitions and `CREATION_TOOLS.routePath` values. Verify the embedded app route, not only the static `/creation-tools/*` asset.
+**Rule**: When adding generated creation tools, update `BROWSER_ROUTE_META` and `WTF_STANDARD_BROWSER_ROUTES`, and make the route sync/access tests read both literal page definitions and `CREATION_TOOLS.routePath` values. Verify the embedded app route, `/api/access`, and the static `/creation-tools/*` asset.
 
 ---
 
