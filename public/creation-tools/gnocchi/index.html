@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gnocchi — Pasta Protocol</title>
+    <link rel="stylesheet" href="css/theme.css" />
+  </head>
+  <body>
+    <header class="pp-top">
+      <div class="pp-brand">
+        <h1>Gnocchi</h1>
+        <span class="pp-tag">Pasta Protocol · Open-Edition Publisher (timed · forever · capped · bonding curve)</span>
+      </div>
+      <div class="pp-wallet">
+        <label>
+          Network
+          <select id="network">
+            <option value="shadownet">Shadownet (test)</option>
+            <option value="mainnet">Mainnet</option>
+          </select>
+        </label>
+        <button id="btnConnect" type="button">Connect wallet</button>
+        <span id="account" class="pp-account">not connected</span>
+      </div>
+    </header>
+
+    <main class="pp-grid">
+      <section class="pp-card">
+        <h2>1 · Storage / pinning</h2>
+        <p class="pp-note">
+          You provide pinning. wtfOS trusted creators may use the platform pinner when embedded in
+          wtfOS; downloaded builds must use Pinata or their own IPFS node.
+        </p>
+        <label>
+          Provider
+          <select id="pinProvider">
+            <option value="pinata">Pinata (JWT)</option>
+            <option value="node">IPFS node (Kubo HTTP API)</option>
+            <option value="wtfos">wtfOS platform pinner (trusted creators)</option>
+          </select>
+        </label>
+        <label id="pinJwtRow">
+          Pinata JWT
+          <input id="pinJwt" type="password" autocomplete="off" placeholder="eyJ…" />
+        </label>
+        <label id="pinNodeRow" hidden>
+          Node URL
+          <input id="pinNode" type="url" placeholder="http://127.0.0.1:5001" />
+        </label>
+      </section>
+
+      <section class="pp-card">
+        <h2>2 · Open edition</h2>
+        <label class="pp-import">
+          Import CH-EASE single-token package
+          <input id="importPkg" type="file" accept="application/json,.json" />
+        </label>
+        <label>Edition name <input id="oeName" type="text" placeholder="My Open Edition" /></label>
+        <label>Symbol <input id="oeSymbol" type="text" placeholder="WTF" /></label>
+        <label>Description <textarea id="oeDesc" rows="2" placeholder="Optional"></textarea></label>
+        <label>Tags (comma separated) <input id="oeTags" type="text" placeholder="art, pasta" /></label>
+        <label>Cover image (collection) <input id="oeCover" type="file" accept="image/*" /></label>
+        <label>Artifact <input id="oeArtifact" type="file" accept="image/*,video/*,audio/*" /></label>
+        <span id="oeArtifactStatus" class="pp-note"></span>
+
+        <details class="pp-rel">
+          <summary>Ownership relationship (optional)</summary>
+          <label>Parent contract <input id="relParent" type="text" placeholder="KT1…" /></label>
+          <label>Franchise contract <input id="relFranchise" type="text" placeholder="KT1…" /></label>
+          <label>Collection group <input id="relGroup" type="text" placeholder="group id / slug" /></label>
+        </details>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>3 · Sale &amp; pricing</h2>
+        <div class="pp-row">
+          <label>
+            Mode
+            <select id="saleMode">
+              <option value="forever">Forever (open-ended)</option>
+              <option value="timed">Timed window</option>
+              <option value="capped">Supply capped</option>
+            </select>
+          </label>
+          <label id="windowStartRow" hidden>Start <input id="saleStart" type="datetime-local" /></label>
+          <label id="windowEndRow" hidden>End <input id="saleEnd" type="datetime-local" /></label>
+          <label id="supplyCapRow" hidden>Max supply <input id="saleMaxSupply" type="number" min="1" placeholder="100" /></label>
+        </div>
+        <div class="pp-row">
+          <label>Base price (tez) <input id="basePrice" type="number" min="0" step="0.000001" value="1" /></label>
+          <label>Increment per step (tez) <input id="increment" type="number" min="0" step="0.000001" value="0" /></label>
+          <label>Editions per step <input id="stepSize" type="number" min="1" value="1" /></label>
+        </div>
+        <div class="pp-row">
+          <label>Min price (tez, optional) <input id="minPrice" type="number" min="0" step="0.000001" placeholder="" /></label>
+          <label>Max price (tez, optional) <input id="maxPrice" type="number" min="0" step="0.000001" placeholder="" /></label>
+          <label>Treasury (proceeds) <input id="treasury" type="text" placeholder="defaults to your wallet" /></label>
+        </div>
+        <p id="curvePreview" class="pp-note" aria-live="polite"></p>
+        <p id="curveError" class="pp-warn" aria-live="polite"></p>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>4 · Publish</h2>
+        <button id="btnPublish" type="button" class="pp-primary">Deploy open edition to Tezos</button>
+        <p class="pp-warn">
+          Rehearse the full flow on Shadownet before mainnet. Origination, sale config, and mints are
+          signed by your connected wallet and are permanent.
+        </p>
+        <pre id="log" class="pp-log" aria-live="polite"></pre>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>5 · Public mint (buy editions)</h2>
+        <p class="pp-note">
+          Anyone can mint from a deployed Gnocchi open edition. Load the live price, then mint — the
+          exact bonding-curve cost is sent to the sale treasury on-chain.
+        </p>
+        <div class="pp-row">
+          <label>Contract <input id="mintKt" type="text" placeholder="KT1…" /></label>
+          <label>Token id <input id="mintTokenId" type="number" min="0" value="0" /></label>
+          <button id="btnLoadPrice" type="button">Load price</button>
+        </div>
+        <div class="pp-row">
+          <label>Amount <input id="mintAmount" type="number" min="1" value="1" /></label>
+          <button id="btnMint" type="button" class="pp-primary">Mint editions</button>
+        </div>
+        <p id="mintInfo" class="pp-note" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <script src="vendor/tezos.js"></script>
+    <script src="vendor/octez-connect.js"></script>
+    <script src="js/octez-wallet.js"></script>
+    <script src="js/common.js"></script>
+    <script type="module" src="js/studio.js"></script>
+  </body>
+</html>

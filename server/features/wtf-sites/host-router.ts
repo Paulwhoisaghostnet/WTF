@@ -15,6 +15,26 @@ import {
   resolvePublishedPage,
 } from "./service";
 
+const USER_SITE_WALLET_CONNECT_SOURCES = [
+  "wss://*.octez.io",
+  "wss://walletbeacon.io",
+  "wss://*.walletbeacon.io",
+  "wss://relay.walletconnect.org",
+  "wss://walletconnect.org",
+  "wss://*.walletconnect.org",
+  "wss://reown.com",
+  "wss://*.reown.com",
+];
+
+const USER_SITE_WALLET_FRAME_SOURCES = [
+  "https://walletbeacon.io",
+  "https://*.walletbeacon.io",
+  "https://*.octez.io",
+  "https://verify.walletconnect.org",
+  "https://verify.walletconnect.com",
+  "https://verify.reown.com",
+];
+
 const USER_SITE_CSP = [
   "default-src 'none'",
   "base-uri 'none'",
@@ -26,8 +46,8 @@ const USER_SITE_CSP = [
   "font-src 'self' https: data:",
   "style-src 'self' 'unsafe-inline' https:",
   "script-src 'self' 'unsafe-inline' https: data: blob:",
-  "connect-src 'self' https: wss://relay.walletconnect.org wss://*.octez.io wss://walletbeacon.io wss://*.walletbeacon.io",
-  "frame-src https://verify.walletconnect.org https://walletbeacon.io https://*.walletbeacon.io https://*.octez.io",
+  `connect-src 'self' https: ${USER_SITE_WALLET_CONNECT_SOURCES.join(" ")}`,
+  `frame-src ${USER_SITE_WALLET_FRAME_SOURCES.join(" ")}`,
   "worker-src 'none'",
   "child-src 'none'",
 ].join("; ");
@@ -39,6 +59,7 @@ function requestHost(req: Request): string {
 function setUserSiteHeaders(res: Response) {
   res.removeHeader("Set-Cookie");
   res.setHeader("Content-Security-Policy", USER_SITE_CSP);
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("X-Content-Type-Options", "nosniff");

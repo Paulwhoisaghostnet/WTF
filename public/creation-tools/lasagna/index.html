@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lasagna — Pasta Protocol</title>
+    <link rel="stylesheet" href="css/theme.css" />
+  </head>
+  <body>
+    <header class="pp-top">
+      <div class="pp-brand">
+        <h1>Lasagna</h1>
+        <span class="pp-tag">Pasta Protocol · On-chain Curation &amp; Exhibitions</span>
+      </div>
+      <div class="pp-wallet">
+        <label>
+          Network
+          <select id="network">
+            <option value="shadownet">Shadownet (test)</option>
+            <option value="mainnet">Mainnet</option>
+          </select>
+        </label>
+        <button id="btnConnect" type="button">Connect wallet</button>
+        <span id="account" class="pp-account">not connected</span>
+      </div>
+    </header>
+
+    <main class="pp-grid">
+      <section class="pp-card">
+        <h2>1 · Storage / pinning</h2>
+        <p class="pp-note">
+          Lasagna references existing tokens — it never uploads or re-mints art. It only pins the small
+          exhibition manifest (title, statement, ordered references). wtfOS trusted creators may use the
+          platform pinner when embedded; downloaded builds use Pinata or their own IPFS node.
+        </p>
+        <label>
+          Provider
+          <select id="pinProvider">
+            <option value="pinata">Pinata (JWT)</option>
+            <option value="node">IPFS node (Kubo HTTP API)</option>
+            <option value="wtfos">wtfOS platform pinner (trusted creators)</option>
+          </select>
+        </label>
+        <label id="pinJwtRow">
+          Pinata JWT
+          <input id="pinJwt" type="password" autocomplete="off" placeholder="eyJ…" />
+        </label>
+        <label id="pinNodeRow" hidden>
+          Node URL
+          <input id="pinNode" type="url" placeholder="http://127.0.0.1:5001" />
+        </label>
+      </section>
+
+      <section class="pp-card">
+        <h2>2 · Exhibition</h2>
+        <label>Title <input id="exName" type="text" placeholder="Group Show I" /></label>
+        <label>Short description <input id="exDesc" type="text" placeholder="Optional" /></label>
+        <label>Curatorial statement <textarea id="exStatement" rows="3" placeholder="Optional long-form statement"></textarea></label>
+        <label>Cover image URL (optional, already hosted) <input id="exCover" type="url" placeholder="ipfs://… or https://…" /></label>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>3 · Ordered token references</h2>
+        <p class="pp-note">
+          One per line: <code>KT1… , tokenId</code>. Order is preserved; exact duplicates are dropped.
+          Lines starting with <code>#</code> are ignored.
+        </p>
+        <div class="pp-row">
+          <label class="pp-import">
+            Import list
+            <input id="importRefs" type="file" accept=".csv,text/csv,text/plain" />
+          </label>
+          <button id="btnParse" type="button">Validate references</button>
+        </div>
+        <label>
+          References
+          <textarea id="refs" class="pp-refs" placeholder="KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton, 0"></textarea>
+        </label>
+        <div class="pp-summary">
+          <span>References: <b id="sumCount">0</b></span>
+          <span id="sumErrCount" class="pp-warn"></span>
+        </div>
+        <ul id="errors" class="pp-errors"></ul>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>4 · Deploy exhibition contract</h2>
+        <p class="pp-note">
+          Originates a <code>PastaExhibitionRegistry</code> (you are the first curator). Publishing the
+          first revision happens below.
+        </p>
+        <button id="btnDeploy" type="button" class="pp-primary">Deploy exhibition</button>
+        <p class="pp-warn">
+          Rehearse on Shadownet before mainnet. Origination and calls are signed by your wallet and are
+          permanent. Revisions are append-only.
+        </p>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>5 · Curate</h2>
+        <label>Exhibition contract <input id="contractKt" type="text" placeholder="KT1… (filled after deploy)" /></label>
+
+        <div class="pp-row">
+          <strong>Curators</strong>
+        </div>
+        <div class="pp-row">
+          <label class="pp-import">Curator address <input id="curatorAddr" type="text" placeholder="tz1…" /></label>
+          <button id="btnAddCurator" type="button">Add curator</button>
+          <button id="btnRemoveCurator" type="button">Remove curator</button>
+        </div>
+
+        <div class="pp-row">
+          <strong>Publish a revision (uses the references + statement above)</strong>
+        </div>
+        <div class="pp-row">
+          <button id="btnPublish" type="button" class="pp-primary">Publish revision</button>
+          <label>Set current revision # <input id="currentRid" type="number" min="0" placeholder="0" /></label>
+          <button id="btnSetCurrent" type="button">Set current</button>
+        </div>
+
+        <pre id="log" class="pp-log" aria-live="polite"></pre>
+      </section>
+    </main>
+
+    <script src="vendor/tezos.js"></script>
+    <script src="vendor/octez-connect.js"></script>
+    <script src="js/octez-wallet.js"></script>
+    <script src="js/common.js"></script>
+    <script type="module" src="js/studio.js"></script>
+  </body>
+</html>

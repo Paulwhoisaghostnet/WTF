@@ -18,6 +18,30 @@ function fatalErrors(errors) {
   return errors.filter((error) => !/(favicon|ResizeObserver|WebGL|wallet|beacon|taquito|status of 401 \(Unauthorized\))/i.test(error));
 }
 
+function tinyWavBuffer() {
+  const sampleRate = 8000;
+  const sampleCount = 400;
+  const buffer = Buffer.alloc(44 + sampleCount * 2);
+  buffer.write("RIFF", 0);
+  buffer.writeUInt32LE(36 + sampleCount * 2, 4);
+  buffer.write("WAVE", 8);
+  buffer.write("fmt ", 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write("data", 36);
+  buffer.writeUInt32LE(sampleCount * 2, 40);
+  for (let index = 0; index < sampleCount; index += 1) {
+    const sample = Math.round(Math.sin((index / sampleRate) * 440 * Math.PI * 2) * 1200);
+    buffer.writeInt16LE(sample, 44 + index * 2);
+  }
+  return buffer;
+}
+
 async function mockAuthUser(context, user) {
   await context.route("**/api/auth/user", async (route) => {
     await route.fulfill({
@@ -95,7 +119,11 @@ async function installMediaMocks(page, fillStyle) {
           if (constraints.audio) addAudioTrack(stream);
           return stream;
         },
-        getDisplayMedia: async () => makeVideoStream("screen"),
+        getDisplayMedia: async () => {
+          const stream = makeVideoStream("screen");
+          addAudioTrack(stream);
+          return stream;
+        },
         enumerateDevices: async () => [
           {
             deviceId: "harness-mic",
@@ -117,6 +145,36 @@ async function installMediaMocks(page, fillStyle) {
           },
         ],
       },
+    });
+    HTMLMediaElement.prototype.captureStream = function captureStream() {
+      const stream = new MediaStream();
+      if (this.tagName.toLowerCase() === "video") {
+        makeVideoStream("media").getVideoTracks().forEach((track) => stream.addTrack(track));
+      }
+      addAudioTrack(stream);
+      return stream;
+    };
+    HTMLMediaElement.prototype.mozCaptureStream = HTMLMediaElement.prototype.captureStream;
+    HTMLMediaElement.prototype.play = async function play() {
+      this.dispatchEvent(new Event("play"));
+      this.dispatchEvent(new Event("timeupdate"));
+      return Promise.resolve();
+    };
+    HTMLMediaElement.prototype.pause = function pause() {
+      this.dispatchEvent(new Event("pause"));
+    };
+    Object.defineProperty(HTMLMediaElement.prototype, "duration", {
+      configurable: true,
+      get() {
+        return 4;
+      },
+    });
+    Object.defineProperty(HTMLMediaElement.prototype, "currentTime", {
+      configurable: true,
+      get() {
+        return 1;
+      },
+      set() {},
     });
   }, fillStyle);
 }
@@ -247,6 +305,101 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     await expect(roomPage.getByText("Private room")).toBeVisible();
     await roomPage.close();
     expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("signed-in Show Kit soundboard persists clips and owner relays them to an audience room", async ({
+    browser,
+    page,
+    request,
+  }) => {
+    await setAdmin(request);
+    const errors = [];
+    capturePageErrors(page, errors, "show-kit-settings");
+
+    await page.goto("/live?tab=show-kit", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-wtf-live-soundboard-settings]")).toBeVisible();
+    await page.locator("[data-wtf-live-soundboard-label]").fill("Intro Sting");
+    await page.locator("[data-wtf-live-soundboard-category]").fill("Intro");
+    await page.locator("[data-wtf-live-soundboard-shortcut]").fill("Alt+1");
+    await page.locator("[data-wtf-live-soundboard-volume]").evaluate((node) => {
+      const input = /** @type {HTMLInputElement} */ (node);
+      const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      valueSetter?.call(input, "65");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await page.locator("[data-wtf-live-soundboard-cooldown]").selectOption("500");
+    await page.locator("[data-wtf-live-soundboard-file]").setInputFiles({
+      name: "intro-sting.wav",
+      mimeType: "audio/wav",
+      buffer: tinyWavBuffer(),
+    });
+    await expect(page.locator("[data-wtf-live-soundboard-status]")).toContainText("Intro Sting added");
+    const clip = page.locator("[data-wtf-live-soundboard-clip]").filter({ hasText: "Intro Sting" });
+    await expect(clip).toBeVisible();
+    await expect(clip).toContainText("Alt+1");
+    await expect(clip).toContainText("Intro");
+    await expect(clip).toContainText("65%");
+
+    await page.evaluate(() => {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith("wtf-live:soundboard:")) localStorage.removeItem(key);
+      }
+    });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-wtf-live-soundboard-clip]").filter({ hasText: "Intro Sting" })).toBeVisible();
+    await expect(page.locator("[data-wtf-live-soundboard-settings]")).toContainText("server presets");
+    await page.locator("[data-wtf-live-soundboard-shortcut]").fill("Alt+1");
+    await expect(page.locator("[data-wtf-live-soundboard-conflict]")).toContainText("Intro Sting");
+    await expect(page.locator("[data-wtf-live-soundboard-file]")).toBeDisabled();
+
+    const owner = page;
+    const audienceContext = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const audience = await audienceContext.newPage();
+    capturePageErrors(owner, errors, "show-kit-owner");
+    capturePageErrors(audience, errors, "show-kit-audience");
+    await mockAnonymousUser(audienceContext);
+
+    try {
+      await owner.goto("/live/r/my-room", { waitUntil: "domcontentloaded" });
+      await owner.getByRole("button", { name: "Join Room" }).click();
+      await expect(owner.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+      await expect(owner.locator("[data-wtf-live-soundboard-runtime]")).toBeVisible();
+      const trigger = owner.locator("[data-wtf-live-soundboard-trigger]").filter({ hasText: "Intro Sting" });
+      await expect(trigger).toBeVisible();
+
+      await audience.goto("/live/r/my-room", { waitUntil: "domcontentloaded" });
+      await audience.getByPlaceholder("Display name").fill("Audience Guest");
+      await audience.getByRole("button", { name: "Join Room" }).click();
+      await expect(audience.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+      await expect(audience.locator("[data-wtf-live-soundboard-runtime]")).toHaveCount(0);
+      await expect(audience.locator("[data-wtf-live-remote-audio]")).toHaveCount(1, { timeout: 10_000 });
+
+      await trigger.click();
+      await expect(owner.locator("[data-wtf-live-soundboard-status]")).toContainText("Intro Sting sent");
+      await expect(audience.locator("[data-wtf-live-soundboard-received]")).toContainText("wtf-admin: Intro Sting");
+      await trigger.click();
+      await expect(owner.locator("[data-wtf-live-soundboard-status]")).toContainText("cooling down");
+
+      await owner.locator("[data-wtf-live-soundboard-stop]").click();
+      await expect(owner.locator("[data-wtf-live-soundboard-status]")).toContainText("Soundboard stopped.");
+      await owner.locator("[data-wtf-live-chat-text]").focus();
+      await owner.keyboard.down("Alt");
+      await owner.keyboard.press("Digit1");
+      await owner.keyboard.up("Alt");
+      await expect(owner.locator("[data-wtf-live-soundboard-status]")).toContainText("Soundboard stopped.");
+
+      await owner.locator("[data-wtf-live-chat-text]").evaluate((node) => node.blur());
+      await owner.locator("[data-wtf-live-stage-area]").click();
+      await owner.waitForTimeout(650);
+      await owner.keyboard.down("Alt");
+      await owner.keyboard.press("Digit1");
+      await owner.keyboard.up("Alt");
+      await expect(owner.locator("[data-wtf-live-soundboard-status]")).toContainText("Intro Sting sent via Alt+1");
+      expect(fatalErrors(errors)).toEqual([]);
+    } finally {
+      await audienceContext.close();
+    }
   });
 
   test("mobile room setup controls are first and desktop chat plus attendance pop out", async ({
@@ -771,11 +924,11 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
 
       await alice.locator("[data-wtf-live-toggle-camera]").click();
       await expect(alice.locator("[data-wtf-live-active-share]")).toHaveAttribute("data-wtf-live-active-share", "camera");
-      const bobSeesAlice = bob.locator("[data-wtf-live-remote-peer]").filter({ hasText: "Alice" });
-      await expect(bobSeesAlice).toBeVisible();
-      await expect(bobSeesAlice).toHaveAttribute("data-wtf-live-remote-active-video", "camera");
-      await expect(bobSeesAlice.getByText("Viewing camera", { exact: true })).toBeVisible();
-	      const remoteVideo = bobSeesAlice.locator("video[data-wtf-live-remote-video]").first();
+      const bobAliceCamera = bob.locator("[data-wtf-live-stage-source='camera']").filter({ hasText: "Alice" });
+      await expect(bobAliceCamera).toBeVisible();
+      await expect(bobAliceCamera).toHaveAttribute("data-wtf-live-remote-active-video", "camera");
+      await expect(bobAliceCamera.getByText("Camera live", { exact: true })).toBeVisible();
+	      const remoteVideo = bobAliceCamera.locator("video[data-wtf-live-remote-video]").first();
 	      await expect(remoteVideo).toBeVisible();
 	      await expect
 	        .poll(async () => remoteVideo.evaluate((video) => video.srcObject?.getVideoTracks().length ?? 0))
@@ -790,22 +943,44 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
 
       await alice.locator("[data-wtf-live-toggle-screen]").click();
       await expect(alice.locator("[data-wtf-live-active-share]")).toHaveAttribute("data-wtf-live-active-share", "screen");
-      await expect(bobSeesAlice).toHaveAttribute("data-wtf-live-remote-active-video", "screen");
-      await expect(bobSeesAlice.getByText("Viewing screen", { exact: true })).toBeVisible();
+      const bobAliceScreen = bob.locator("[data-wtf-live-stage-source='screen']").filter({ hasText: "Alice" });
+      await expect(bobAliceCamera).toBeVisible();
+      await expect(bobAliceScreen).toBeVisible();
+      await expect(bobAliceScreen).toHaveAttribute("data-wtf-live-remote-active-video", "screen");
+      await expect(bobAliceScreen.getByText("Screen live", { exact: true })).toBeVisible();
 
       await alice.locator("[data-wtf-live-share-camera]").click();
       await expect(alice.locator("[data-wtf-live-active-share]")).toHaveAttribute("data-wtf-live-active-share", "camera");
-      await expect(bobSeesAlice).toHaveAttribute("data-wtf-live-remote-active-video", "camera");
+      await expect(bobAliceCamera).toBeVisible();
+      await expect(bobAliceScreen).toBeVisible();
 
       await alice.locator("[data-wtf-live-share-screen]").click();
       await expect(alice.locator("[data-wtf-live-active-share]")).toHaveAttribute("data-wtf-live-active-share", "screen");
-      await expect(bobSeesAlice).toHaveAttribute("data-wtf-live-remote-active-video", "screen");
+      await expect(bobAliceCamera).toBeVisible();
+      await expect(bobAliceScreen).toBeVisible();
+
+      await expect(alice.locator("[data-wtf-live-media-deck]")).toBeVisible();
+      await alice.locator("[data-wtf-live-media-file]").setInputFiles({
+        name: "backing.wav",
+        mimeType: "audio/wav",
+        buffer: tinyWavBuffer(),
+      });
+      await expect(alice.locator("[data-wtf-live-media-deck-info]")).toContainText("backing.wav");
+      await alice.locator("[data-wtf-live-media-play]").click();
+      await expect(alice.locator("[data-wtf-live-media-deck]")).toContainText("Playing");
+      const bobAliceMedia = bob.locator("[data-wtf-live-stage-source='media']").filter({ hasText: "Alice" });
+      await expect(bobAliceMedia).toBeVisible({ timeout: 10_000 });
+      await expect(bobAliceMedia).toContainText("backing.wav");
+      await expect(bobAliceCamera).toBeVisible();
+      await expect(bobAliceScreen).toBeVisible();
 
       await alice.locator("[data-wtf-live-toggle-camera]").click();
       await expect(alice.locator("[data-wtf-live-active-share]")).toHaveAttribute("data-wtf-live-active-share", "screen");
-      await expect(bobSeesAlice).toHaveAttribute("data-wtf-live-remote-active-video", "screen");
+      await expect(bobAliceCamera).toHaveCount(0);
+      await expect(bobAliceScreen).toBeVisible();
+      await expect(bobAliceMedia).toBeVisible();
       await expect
-        .poll(async () => remoteVideo.evaluate((video) => video.srcObject?.getVideoTracks().length ?? 0))
+        .poll(async () => bobAliceScreen.locator("video[data-wtf-live-remote-video]").first().evaluate((video) => video.srcObject?.getVideoTracks().length ?? 0))
         .toBeGreaterThan(0);
 
       const aliceChatInput = alice.locator("[data-wtf-live-chat-text]");

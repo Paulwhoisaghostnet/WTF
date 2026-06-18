@@ -73,6 +73,10 @@ function beaconPreferredNetwork(network: string): BeaconPreferredNetwork {
   return network === "ghostnet" ? "ghostnet" : "mainnet";
 }
 
+function walletNetworkSpec(network: string) {
+  return { type: beaconPreferredNetwork(network) as any };
+}
+
 interface WalletAdapter {
   name: WalletProviderName;
   init(network: string, rpcUrl: string): Promise<void>;
@@ -192,15 +196,13 @@ class BeaconLegacyAdapter implements WalletAdapter {
   name: WalletProviderName = "beacon";
   private wallet: any = null;
   private network: BeaconPreferredNetwork = "mainnet";
-  private rpcUrl = "";
 
-  async init(network: string, rpcUrl: string) {
+  async init(network: string, _rpcUrl: string) {
     const { BeaconWallet } = await loadBeaconWallet();
     this.network = beaconPreferredNetwork(network);
-    this.rpcUrl = rpcUrl;
     this.wallet = new BeaconWallet({
       name: "WTF OS",
-      network: { type: this.network as any, rpcUrl: this.rpcUrl },
+      network: walletNetworkSpec(network),
       enableMetrics: false,
       // Cast: airgap vs ecad Beacon both use string enum values; TS types differ by major.
       preferredNetwork: this.network as any,
@@ -239,7 +241,7 @@ class OctezConnectAdapter implements WalletAdapter {
     const preferredNetwork = beaconPreferredNetwork(network);
     this.client = new (DAppClient as any)({
       name: "WTF OS",
-      network: { type: preferredNetwork as any, rpcUrl: _rpcUrl },
+      network: walletNetworkSpec(network),
       preferredNetwork: preferredNetwork as any,
       enableMetrics: false,
       featuredWallets: OCTEZ_FEATURED_WALLETS,

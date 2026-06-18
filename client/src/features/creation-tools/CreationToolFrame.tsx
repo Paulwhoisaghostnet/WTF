@@ -7,6 +7,10 @@ type CreationToolFrameProps = {
 
 export function CreationToolFrame({ tool }: CreationToolFrameProps) {
   const provenance = tool.provenance;
+  const frameSrc =
+    tool.id === "macaroni" && typeof window !== "undefined" && window.location.search
+      ? `${tool.src}${tool.src.includes("?") ? "&" : "?"}${window.location.search.slice(1)}`
+      : tool.src;
   const xLabel = provenance?.xHandle
     ? `@${provenance.xHandle.replace(/^@+/, "")}`
     : null;
@@ -36,7 +40,7 @@ export function CreationToolFrame({ tool }: CreationToolFrameProps) {
       </Header>
       <ToolFrame
         title={tool.title}
-        src={tool.src}
+        src={frameSrc}
         sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox"
         allow="clipboard-read; clipboard-write"
       />

@@ -1,0 +1,25 @@
+{
+  "templateName": "PastaOpenEditionFA2",
+  "artifactSlug": "pasta-open-edition",
+  "source": "contracts/pasta-protocol/PastaOpenEditionFA2.py",
+  "compileScript": "scripts/pasta-protocol/compile-fa2-template.mjs",
+  "smartpyBinaryEnv": "SMARTPY_BIN",
+  "compiledContract": "public/creation-tools/gnocchi/contract/pasta-open-edition.contract.json",
+  "storage": {
+    "note": "Origination storage: { admin: tz address, metadata: MichelsonMap { '' : hex(ipfs uri) } }. Other big_maps initialize empty."
+  },
+  "entrypoints": [
+    "transfer",
+    "update_operators",
+    "balance_of",
+    "create_open_edition",
+    "set_sale",
+    "set_sale_active",
+    "open_mint",
+    "mint",
+    "burn",
+    "add_minter",
+    "remove_minter",
+    "set_token_metadata"
+  ]
+}

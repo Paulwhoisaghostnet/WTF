@@ -1,0 +1,20 @@
+{
+  "templateName": "PastaExhibitionRegistry",
+  "artifactSlug": "pasta-exhibition",
+  "source": "contracts/pasta-protocol/PastaExhibitionRegistry.py",
+  "compileScript": "scripts/pasta-protocol/compile-fa2-template.mjs",
+  "smartpyBinaryEnv": "SMARTPY_BIN",
+  "compiledContract": "public/creation-tools/lasagna/contract/pasta-exhibition.contract.json",
+  "storage": {
+    "note": "Origination storage: { admin: tz address, metadata: MichelsonMap { '' : hex(ipfs uri) } }. Other big_maps initialize empty."
+  },
+  "entrypoints": [
+    "add_curator",
+    "remove_curator",
+    "publish_revision",
+    "set_current_revision",
+    "set_metadata",
+    "transfer_administration",
+    "accept_administration"
+  ]
+}

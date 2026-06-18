@@ -1,6 +1,11 @@
 import type { UserRole } from "@shared/types";
 
-export type CreationToolDomain = "visual-art" | "particle-art" | "pattern-art" | "drop-studio";
+export type CreationToolDomain =
+  | "visual-art"
+  | "particle-art"
+  | "pattern-art"
+  | "drop-studio"
+  | "pasta-protocol";
 
 export type CreationToolProvenance = {
   creatorName: string;
@@ -33,6 +38,30 @@ const GREG_NIKSHUMIKA = {
 } as const;
 
 export const CREATION_TOOLS = [
+  {
+    id: "broot",
+    title: "Broot",
+    subtitle: "Tezos-native Photoshop alternative with Fabric canvas, local drafts, WebGL bakes, IPFS, and FA2 exports.",
+    domain: "visual-art",
+    routePath: "/tools/broot",
+    src: "/creation-tools/broot/index.html",
+    requiredAssets: [
+      "/creation-tools/broot/index.html",
+      "/creation-tools/broot/css/broot.css",
+      "/creation-tools/broot/js/app.jsx",
+      "/creation-tools/broot/js/broot-worker.js",
+      "/creation-tools/broot/lib/react.production.min.js",
+      "/creation-tools/broot/lib/react-dom.production.min.js",
+      "/creation-tools/broot/lib/babel.min.js",
+      "/creation-tools/broot/lib/fabric.min.js",
+      "/creation-tools/macaroni/vendor/tezos.js",
+      "/creation-tools/macaroni/vendor/octez-connect.js",
+      "/creation-tools/macaroni/js/octez-wallet.js",
+    ],
+    provenance: {
+      creatorName: "WTF OS",
+    },
+  },
   {
     id: "particle-painter",
     title: "PArticle Painter",
@@ -159,6 +188,144 @@ export const CREATION_TOOLS = [
       "/creation-tools/macaroni/js/site-bundle.js",
       "/creation-tools/macaroni/vendor/tezos.js",
       "/creation-tools/macaroni/contract/mydrop.contract.json",
+    ],
+    roles: ["admin", "host", "cohost", "trusted_creator"],
+    provenance: {
+      creatorName: "WTF OS",
+    },
+  },
+  {
+    id: "spaghetti",
+    title: "Spaghetti",
+    subtitle: "Standard collection and token-product publisher for Tezos FA2 contracts.",
+    domain: "pasta-protocol",
+    routePath: "/tools/spaghetti",
+    src: "/creation-tools/spaghetti/index.html",
+    requiredAssets: [
+      "/creation-tools/spaghetti/index.html",
+      "/creation-tools/spaghetti/css/theme.css",
+      "/creation-tools/spaghetti/js/common.js",
+      "/creation-tools/spaghetti/js/studio.js",
+      "/creation-tools/spaghetti/js/octez-wallet.js",
+      "/creation-tools/spaghetti/js/pasta-foundation.js",
+      "/creation-tools/spaghetti/vendor/tezos.js",
+      "/creation-tools/spaghetti/vendor/octez-connect.js",
+      "/creation-tools/spaghetti/contract/pasta-standard-collection.contract.json",
+    ],
+    roles: ["admin", "host", "cohost", "trusted_creator"],
+    provenance: {
+      creatorName: "WTF OS",
+    },
+  },
+  {
+    id: "gnocchi",
+    title: "Gnocchi",
+    subtitle: "Open-edition publisher with timed, forever, supply-limited, and bonding-curve modes.",
+    domain: "pasta-protocol",
+    routePath: "/tools/gnocchi",
+    src: "/creation-tools/gnocchi/index.html",
+    requiredAssets: [
+      "/creation-tools/gnocchi/index.html",
+      "/creation-tools/gnocchi/css/theme.css",
+      "/creation-tools/gnocchi/js/common.js",
+      "/creation-tools/gnocchi/js/studio.js",
+      "/creation-tools/gnocchi/js/octez-wallet.js",
+      "/creation-tools/gnocchi/js/pasta-foundation.js",
+      "/creation-tools/gnocchi/vendor/tezos.js",
+      "/creation-tools/gnocchi/vendor/octez-connect.js",
+      "/creation-tools/gnocchi/contract/pasta-open-edition.contract.json",
+    ],
+    roles: ["admin", "host", "cohost", "trusted_creator"],
+    provenance: {
+      creatorName: "WTF OS",
+    },
+  },
+  {
+    id: "ravioli",
+    title: "Ravioli",
+    subtitle: "Bundle publisher for art packs, redeemables, mystery, and wrapped sets.",
+    domain: "pasta-protocol",
+    routePath: "/tools/ravioli",
+    src: "/creation-tools/ravioli/index.html",
+    requiredAssets: [
+      "/creation-tools/ravioli/index.html",
+      "/creation-tools/ravioli/css/theme.css",
+      "/creation-tools/ravioli/js/common.js",
+      "/creation-tools/ravioli/js/studio.js",
+      "/creation-tools/ravioli/js/octez-wallet.js",
+      "/creation-tools/ravioli/js/pasta-foundation.js",
+      "/creation-tools/ravioli/vendor/tezos.js",
+      "/creation-tools/ravioli/vendor/octez-connect.js",
+      "/creation-tools/ravioli/contract/pasta-bundle.contract.json",
+    ],
+    roles: ["admin", "host", "cohost", "trusted_creator"],
+    provenance: {
+      creatorName: "WTF OS",
+    },
+  },
+  {
+    id: "rotini",
+    title: "Rotini",
+    subtitle: "Generative publisher for trait-layered Tezos collections.",
+    domain: "pasta-protocol",
+    routePath: "/tools/rotini",
+    src: "/creation-tools/rotini/index.html",
+    requiredAssets: [
+      "/creation-tools/rotini/index.html",
+      "/creation-tools/rotini/css/theme.css",
+      "/creation-tools/rotini/js/common.js",
+      "/creation-tools/rotini/js/studio.js",
+      "/creation-tools/rotini/js/octez-wallet.js",
+      "/creation-tools/rotini/js/pasta-foundation.js",
+      "/creation-tools/rotini/vendor/tezos.js",
+      "/creation-tools/rotini/vendor/octez-connect.js",
+      "/creation-tools/rotini/contract/pasta-standard-collection.contract.json",
+    ],
+    roles: ["admin", "host", "cohost", "trusted_creator"],
+    provenance: {
+      creatorName: "WTF OS",
+    },
+  },
+  {
+    id: "penne",
+    title: "Penne",
+    subtitle: "Distribution publisher for airdrops, claims, and participation rewards.",
+    domain: "pasta-protocol",
+    routePath: "/tools/penne",
+    src: "/creation-tools/penne/index.html",
+    requiredAssets: [
+      "/creation-tools/penne/index.html",
+      "/creation-tools/penne/css/theme.css",
+      "/creation-tools/penne/js/common.js",
+      "/creation-tools/penne/js/studio.js",
+      "/creation-tools/penne/js/octez-wallet.js",
+      "/creation-tools/penne/js/pasta-foundation.js",
+      "/creation-tools/penne/vendor/tezos.js",
+      "/creation-tools/penne/vendor/octez-connect.js",
+      "/creation-tools/penne/contract/pasta-distribution.contract.json",
+    ],
+    roles: ["admin", "host", "cohost", "trusted_creator"],
+    provenance: {
+      creatorName: "WTF OS",
+    },
+  },
+  {
+    id: "lasagna",
+    title: "Lasagna",
+    subtitle: "On-chain curation and exhibition publisher.",
+    domain: "pasta-protocol",
+    routePath: "/tools/lasagna",
+    src: "/creation-tools/lasagna/index.html",
+    requiredAssets: [
+      "/creation-tools/lasagna/index.html",
+      "/creation-tools/lasagna/css/theme.css",
+      "/creation-tools/lasagna/js/common.js",
+      "/creation-tools/lasagna/js/studio.js",
+      "/creation-tools/lasagna/js/octez-wallet.js",
+      "/creation-tools/lasagna/js/pasta-foundation.js",
+      "/creation-tools/lasagna/vendor/tezos.js",
+      "/creation-tools/lasagna/vendor/octez-connect.js",
+      "/creation-tools/lasagna/contract/pasta-exhibition.contract.json",
     ],
     roles: ["admin", "host", "cohost", "trusted_creator"],
     provenance: {

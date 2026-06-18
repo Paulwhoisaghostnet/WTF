@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rotini — Pasta Protocol</title>
+    <link rel="stylesheet" href="css/theme.css" />
+  </head>
+  <body>
+    <header class="pp-top">
+      <div class="pp-brand">
+        <h1>Rotini</h1>
+        <span class="pp-tag">Pasta Protocol · Generative Publisher (layers · rarity · deterministic seed)</span>
+      </div>
+      <div class="pp-wallet">
+        <label>
+          Network
+          <select id="network">
+            <option value="shadownet">Shadownet (test)</option>
+            <option value="mainnet">Mainnet</option>
+          </select>
+        </label>
+        <button id="btnConnect" type="button">Connect wallet</button>
+        <span id="account" class="pp-account">not connected</span>
+      </div>
+    </header>
+
+    <main class="pp-grid">
+      <section class="pp-card">
+        <h2>1 · Storage / pinning</h2>
+        <p class="pp-note">
+          You provide pinning. wtfOS trusted creators may use the platform pinner when embedded in
+          wtfOS; downloaded builds must use Pinata or their own IPFS node. Generation runs entirely in
+          your browser — no external dependencies.
+        </p>
+        <label>
+          Provider
+          <select id="pinProvider">
+            <option value="pinata">Pinata (JWT)</option>
+            <option value="node">IPFS node (Kubo HTTP API)</option>
+            <option value="wtfos">wtfOS platform pinner (trusted creators)</option>
+          </select>
+        </label>
+        <label id="pinJwtRow">
+          Pinata JWT
+          <input id="pinJwt" type="password" autocomplete="off" placeholder="eyJ…" />
+        </label>
+        <label id="pinNodeRow" hidden>
+          Node URL
+          <input id="pinNode" type="url" placeholder="http://127.0.0.1:5001" />
+        </label>
+      </section>
+
+      <section class="pp-card">
+        <h2>2 · Collection</h2>
+        <div class="pp-radio">
+          <label><input type="radio" name="target" value="new_collection" checked /> Create a new collection contract</label>
+          <label><input type="radio" name="target" value="existing_contract" /> Publish into a contract I administer</label>
+        </div>
+        <div id="newCollectionFields">
+          <label>Collection name <input id="collName" type="text" placeholder="My Generative" /></label>
+          <label>Symbol <input id="collSymbol" type="text" placeholder="WTF" /></label>
+          <label>Description <textarea id="collDesc" rows="2" placeholder="Optional"></textarea></label>
+          <label>Cover image <input id="collCover" type="file" accept="image/*" /></label>
+        </div>
+        <div id="existingContractFields" hidden>
+          <label>Contract address <input id="existingKt" type="text" placeholder="KT1…" /></label>
+          <button id="btnLoadContract" type="button">Load next token id</button>
+          <span id="existingInfo" class="pp-note"></span>
+        </div>
+        <details class="pp-rel">
+          <summary>Ownership relationship (optional)</summary>
+          <label>Parent contract <input id="relParent" type="text" placeholder="KT1…" /></label>
+          <label>Franchise contract <input id="relFranchise" type="text" placeholder="KT1…" /></label>
+          <label>Collection group <input id="relGroup" type="text" placeholder="group id / slug" /></label>
+        </details>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>3 · Generator</h2>
+        <div class="pp-row">
+          <label>Output size (px) <input id="genSize" type="number" min="64" max="2048" value="512" /></label>
+          <label>Collection size <input id="genCount" type="number" min="1" value="20" /></label>
+          <label>Seed <input id="genSeed" type="text" placeholder="any text or number" value="wtf-rotini" /></label>
+          <label><input type="checkbox" id="genUnique" checked /> Unique trait combos</label>
+        </div>
+        <p id="genCombos" class="pp-note"></p>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>4 · Layers &amp; traits</h2>
+        <p class="pp-note">Layers composite bottom-to-top in the order shown. Each variant's weight sets its rarity.</p>
+        <div class="pp-row">
+          <button id="btnAddLayer" type="button">Add layer</button>
+        </div>
+        <div id="layers"></div>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>5 · Generate &amp; preview</h2>
+        <div class="pp-row">
+          <button id="btnGenerate" type="button">Generate preview</button>
+          <span id="genStatus" class="pp-note"></span>
+        </div>
+        <div id="preview" class="pp-preview"></div>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>6 · Publish</h2>
+        <div class="pp-row">
+          <button id="btnPublish" type="button" class="pp-primary">Publish generative collection</button>
+          <button id="btnExportPkg" type="button">Export CH-EASE collection package</button>
+        </div>
+        <p class="pp-warn">
+          Rehearse on Shadownet before mainnet. Publishing pins every composite + per-token metadata and
+          mints one token per edition via the standard Pasta FA2; large drops can be heavy — start small.
+        </p>
+        <pre id="log" class="pp-log" aria-live="polite"></pre>
+      </section>
+    </main>
+
+    <template id="layerTpl">
+      <div class="pp-token pp-layer">
+        <div class="pp-token-head">
+          <input class="l-name" type="text" placeholder="Layer name (e.g. Background)" />
+          <span>
+            <button type="button" class="l-add-variant">+ variant</button>
+            <button type="button" class="pp-layer-del" title="Remove layer">✕</button>
+          </span>
+        </div>
+        <div class="l-variants"></div>
+      </div>
+    </template>
+
+    <template id="variantTpl">
+      <div class="pp-variant">
+        <input class="v-label" type="text" placeholder="Variant label (e.g. Blue)" />
+        <input class="v-weight" type="number" min="0" step="0.1" value="1" title="Rarity weight" />
+        <input class="v-file" type="file" accept="image/*" />
+        <button type="button" class="pp-variant-del" title="Remove">✕</button>
+      </div>
+    </template>
+
+    <script src="vendor/tezos.js"></script>
+    <script src="vendor/octez-connect.js"></script>
+    <script src="js/octez-wallet.js"></script>
+    <script src="js/common.js"></script>
+    <script type="module" src="js/studio.js"></script>
+  </body>
+</html>

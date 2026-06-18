@@ -4,6 +4,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -184,13 +185,63 @@ const WIM_FONT_CHOICES = DESKTOP_WIM_CHAT_FONT_FAMILIES;
 const WIM_FONT_SIZES = DESKTOP_WIM_CHAT_FONT_SIZES;
 const DEFAULT_WIM_MESSAGE_STYLE: WimMessageStyle = DEFAULT_DESKTOP_APPEARANCE.wimChatStyle;
 const WIM_MAX_ATTACHMENTS = 4;
+const WIM_SURFACE_GAP = 8;
+const WIM_MOBILE_MIN_WIDTH = 220;
+const WIM_MOBILE_MIN_HEIGHT = 260;
+
+function wimLocale(): string | undefined {
+  return typeof navigator !== "undefined" && navigator.language ? navigator.language : undefined;
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function wimWindowMinWidth(kind: WimWindowState["kind"], surfaceWidth?: number): number {
+  const classic = kind === "buddy" ? 258 : 356;
+  if (!surfaceWidth || !Number.isFinite(surfaceWidth) || surfaceWidth <= 0) return classic;
+  return Math.min(classic, Math.max(WIM_MOBILE_MIN_WIDTH, surfaceWidth - WIM_SURFACE_GAP * 2));
+}
+
+function wimWindowMinHeight(kind: WimWindowState["kind"], surfaceHeight?: number): number {
+  const classic = kind === "buddy" ? 330 : 328;
+  if (!surfaceHeight || !Number.isFinite(surfaceHeight) || surfaceHeight <= 0) return classic;
+  return Math.min(classic, Math.max(WIM_MOBILE_MIN_HEIGHT, surfaceHeight - WIM_SURFACE_GAP * 2));
+}
+
+function fitWimWindowToSurface(
+  windowState: WimWindowState,
+  surfaceWidth: number,
+  surfaceHeight: number
+): WimWindowState {
+  if (windowState.maximized || surfaceWidth <= 0 || surfaceHeight <= 0) return windowState;
+  const minWidth = wimWindowMinWidth(windowState.kind, surfaceWidth);
+  const minHeight = wimWindowMinHeight(windowState.kind, surfaceHeight);
+  const maxWidth = Math.max(minWidth, surfaceWidth - WIM_SURFACE_GAP * 2);
+  const maxHeight = Math.max(minHeight, surfaceHeight - WIM_SURFACE_GAP * 2);
+  const width = clampNumber(windowState.width, minWidth, maxWidth);
+  const height = clampNumber(windowState.height, minHeight, maxHeight);
+  const maxX = Math.max(WIM_SURFACE_GAP, surfaceWidth - width - WIM_SURFACE_GAP);
+  const maxY = Math.max(WIM_SURFACE_GAP, surfaceHeight - height - WIM_SURFACE_GAP);
+  const x = clampNumber(windowState.x, WIM_SURFACE_GAP, maxX);
+  const y = clampNumber(windowState.y, WIM_SURFACE_GAP, maxY);
+  if (
+    width === windowState.width &&
+    height === windowState.height &&
+    x === windowState.x &&
+    y === windowState.y
+  ) {
+    return windowState;
+  }
+  return { ...windowState, width, height, x, y };
+}
 
 const INITIAL_WINDOWS: WimWindowState[] = [
   {
     id: "buddy-list",
     kind: "buddy",
     title: "Buddy List",
-    x: 18,
+    x: WIM_SURFACE_GAP,
     y: 16,
     width: 312,
     height: 520,
@@ -217,6 +268,9 @@ const Shell = styled.div<{ $hidden: boolean }>`
   --wim-soft-shadow: 2px 2px 0 rgba(6, 19, 95, 0.18);
   --wim-titlebar: linear-gradient(180deg, #fafafa 0%, #c9c9c9 52%, #a8a8a8 100%);
   --wim-titlebar-active: linear-gradient(180deg, #ffffff 0%, #d8ecff 42%, #9fbfdc 100%);
+  --wim-control-size: 32px;
+  --wim-window-control-size: 32px;
+  --wim-tab-close-size: 24px;
 
   position: absolute;
   inset: 0;
@@ -266,14 +320,22 @@ const Shell = styled.div<{ $hidden: boolean }>`
   @media (max-width: 760px) {
     min-height: 0;
   }
+
+  @media (max-width: 520px), (pointer: coarse) {
+    --wim-control-size: 44px;
+    --wim-window-control-size: 40px;
+    --wim-tab-close-size: 32px;
+  }
 `;
 
 const WimWindowFrame = styled.div<{ $maximized: boolean; $kind: WimWindowState["kind"] }>`
   position: absolute;
   display: flex;
   flex-direction: column;
-  min-width: ${(p) => (p.$kind === "buddy" ? "258px" : "356px")};
-  min-height: ${(p) => (p.$kind === "buddy" ? "330px" : "328px")};
+  min-width: min(${(p) => (p.$kind === "buddy" ? "258px" : "356px")}, calc(100vw - 16px));
+  min-height: min(${(p) => (p.$kind === "buddy" ? "330px" : "328px")}, calc(100dvh - 16px));
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
   color: var(--wim-ink);
   background: var(--wtf-window-color, var(--wim-silver));
   border: var(--wtf-window-border, 1px solid #4b4b4b);
@@ -332,6 +394,7 @@ const WindowTitlebar = styled.div<{ $focused?: boolean }>`
   font-family: var(--wtf-titlebar-font, var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif));
   font-weight: var(--wtf-titlebar-font-weight, 700);
   transition: var(--wtf-chrome-transition, none);
+  touch-action: none;
 
   html[data-wtf-appearance-style="wtf-xp"] & {
     background: ${(p) =>
@@ -404,10 +467,10 @@ const WindowControls = styled.div`
 const WindowControlButton = styled(Button)`
   && {
     padding: 0;
-    min-width: 32px;
-    width: 32px;
-    min-height: 32px;
-    height: 32px;
+    min-width: var(--wim-window-control-size, 32px);
+    width: var(--wim-window-control-size, 32px);
+    min-height: var(--wim-window-control-size, 32px);
+    height: var(--wim-window-control-size, 32px);
     font-size: 13px;
     font-weight: bold;
     line-height: 1;
@@ -455,12 +518,18 @@ const ResizeHandle = styled.div`
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   cursor: nwse-resize;
+  touch-action: none;
   background:
     linear-gradient(135deg, transparent 0 44%, rgba(0, 0, 0, 0.32) 45% 52%, transparent 53%),
     linear-gradient(135deg, transparent 0 62%, rgba(0, 0, 0, 0.32) 63% 70%, transparent 71%);
+
+  @media (max-width: 520px), (pointer: coarse) {
+    width: 34px;
+    height: 34px;
+  }
 `;
 
 const BuddyPane = styled.div`
@@ -570,12 +639,17 @@ const SearchInput = styled.input`
   background: transparent;
   color: var(--wim-ink);
   font: inherit;
+
+  @media (max-width: 520px), (pointer: coarse) {
+    font-size: 16px;
+  }
 `;
 
 const IconButton = styled.button`
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
+  width: var(--wim-control-size, 32px);
+  min-width: var(--wim-control-size, 32px);
+  min-height: var(--wim-control-size, 32px);
+  height: var(--wim-control-size, 32px);
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -596,6 +670,11 @@ const IconButton = styled.button`
     background: var(--wtf-app-disabled-bg, #d8d8d8);
     cursor: default;
     opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--wtf-highlight-color, #000080);
+    outline-offset: 2px;
   }
 `;
 
@@ -667,7 +746,7 @@ const UserRow = styled.div<{ $active?: boolean }>`
   grid-template-columns: 16px minmax(0, 1fr) auto;
   gap: 7px;
   align-items: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 5px 6px;
   margin-bottom: 3px;
   border: 1px solid ${(p) => (p.$active ? "var(--wim-navy)" : "transparent")};
@@ -687,6 +766,11 @@ const UserRow = styled.div<{ $active?: boolean }>`
 
   html[data-wtf-appearance-style="wtf-zine"] & {
     border-color: ${(p) => (p.$active ? "#000000" : "transparent")};
+  }
+
+  @media (max-width: 520px), (pointer: coarse) {
+    min-height: 56px;
+    grid-template-columns: 16px minmax(0, 1fr) auto;
   }
 `;
 
@@ -739,7 +823,7 @@ const UserActions = styled.div`
 
 const RecentButton = styled.button<{ $active?: boolean }>`
   width: 100%;
-  min-height: 36px;
+  min-height: 44px;
   height: auto;
   padding: 5px 7px;
   margin-bottom: 4px;
@@ -753,6 +837,11 @@ const RecentButton = styled.button<{ $active?: boolean }>`
   font: inherit;
   font-weight: ${(p) => (p.$active ? 900 : 700)};
   cursor: default;
+
+  &:focus-visible {
+    outline: 2px solid var(--wtf-highlight-color, #000080);
+    outline-offset: 1px;
+  }
 `;
 
 const BuddyName = styled.div`
@@ -885,7 +974,7 @@ const TabStrip = styled.div`
   display: flex;
   align-items: end;
   gap: 2px;
-  min-height: 34px;
+  min-height: 38px;
   padding: 5px 7px 0;
   overflow-x: auto;
   background:
@@ -900,7 +989,7 @@ const ChatTab = styled.div<{ $active?: boolean }>`
   gap: 5px;
   min-width: 118px;
   max-width: 210px;
-  height: 29px;
+  min-height: 32px;
   padding: 4px 7px;
   border: 1px solid #6e6e6e;
   border-bottom-color: ${(p) => (p.$active ? "#fffef2" : "#6e6e6e")};
@@ -921,6 +1010,11 @@ const ChatTab = styled.div<{ $active?: boolean }>`
     outline: 2px solid var(--wtf-highlight-color, #000080);
     outline-offset: -2px;
   }
+
+  @media (max-width: 520px), (pointer: coarse) {
+    min-width: 132px;
+    min-height: 44px;
+  }
 `;
 
 const TabLabel = styled.span`
@@ -934,8 +1028,10 @@ const TabCloseButton = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: var(--wim-tab-close-size, 24px);
+  min-width: var(--wim-tab-close-size, 24px);
+  height: var(--wim-tab-close-size, 24px);
+  min-height: var(--wim-tab-close-size, 24px);
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -1046,6 +1142,11 @@ const AttachmentCard = styled.a`
   &:hover {
     background: #fff8c9;
   }
+
+  &:focus-visible {
+    outline: 2px solid var(--wtf-highlight-color, #000080);
+    outline-offset: 2px;
+  }
 `;
 
 const AttachmentPreview = styled.div`
@@ -1099,38 +1200,43 @@ const FormatToolbar = styled.div`
 
 const FormatToolbarRow = styled.div`
   display: grid;
-  grid-template-columns: minmax(104px, 1fr) minmax(66px, 0.56fr) repeat(4, 32px);
+  grid-template-columns: minmax(104px, 1fr) minmax(66px, 0.56fr) repeat(4, var(--wim-control-size, 32px));
   gap: 4px;
   align-items: center;
   min-width: 0;
 
   &[data-wim-toolbar-row="insert"] {
-    grid-template-columns: repeat(3, 32px) minmax(0, 1fr);
+    grid-template-columns: repeat(3, var(--wim-control-size, 32px)) minmax(0, 1fr);
   }
 
   @media (max-width: 420px) {
-    grid-template-columns: minmax(0, 1fr) 66px repeat(2, 32px);
+    grid-template-columns: minmax(0, 1fr) minmax(66px, 0.42fr) repeat(2, var(--wim-control-size, 44px));
 
     &[data-wim-toolbar-row="insert"] {
-      grid-template-columns: repeat(3, 32px);
+      grid-template-columns: repeat(3, var(--wim-control-size, 44px));
     }
   }
 `;
 
 const FormatSelect = styled.select`
-  min-height: 30px;
+  min-height: var(--wim-control-size, 32px);
   width: 100%;
   min-width: 0;
   font: inherit;
   color: var(--wim-ink);
   background: #ffffff;
   border: 2px inset #ffffff;
+
+  @media (max-width: 520px), (pointer: coarse) {
+    font-size: 16px;
+  }
 `;
 
 const ColorSwatchInput = styled.input`
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
+  width: var(--wim-control-size, 32px);
+  min-width: var(--wim-control-size, 32px);
+  height: var(--wim-control-size, 32px);
+  min-height: var(--wim-control-size, 32px);
   padding: 2px;
   border: 2px outset #ffffff;
   background: #ffffff;
@@ -1159,7 +1265,7 @@ const AttachmentChip = styled.button`
   align-items: center;
   gap: 5px;
   max-width: 100%;
-  min-height: 28px;
+  min-height: 32px;
   padding: 3px 6px;
   border: 1px solid #7498ae;
   background: #dff7ff;
@@ -1167,6 +1273,15 @@ const AttachmentChip = styled.button`
   font: inherit;
   font-size: var(--wtf-type-caption, 13px);
   cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--wtf-highlight-color, #000080);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 520px), (pointer: coarse) {
+    min-height: 44px;
+  }
 `;
 
 const ToolPicker = styled(Panel).attrs({ variant: "well" })`
@@ -1214,6 +1329,11 @@ const PickerItem = styled.button`
   &:hover {
     background: #fff8c9;
   }
+
+  &:focus-visible {
+    outline: 2px solid var(--wtf-highlight-color, #000080);
+    outline-offset: 2px;
+  }
 `;
 
 const PickerPreview = styled.div`
@@ -1244,6 +1364,10 @@ const ComposerTextArea = styled.textarea`
   background: #ffffff;
   border: 2px inset #ffffff;
   font: inherit;
+
+  @media (max-width: 520px), (pointer: coarse) {
+    font-size: 16px;
+  }
 `;
 
 const Composer = styled.form`
@@ -1332,20 +1456,27 @@ const PopupTitle = styled.div`
 `;
 
 const PopupCloseButton = styled(IconButton)`
-  width: 22px;
-  min-width: 22px;
-  height: 22px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
   box-shadow: none;
 `;
 
 const PopupBody = styled.button`
   width: 100%;
+  min-height: 44px;
   padding: 8px 6px 3px;
   border: 0;
   background: transparent;
   color: inherit;
   text-align: left;
   cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--wtf-highlight-color, #000080);
+    outline-offset: 2px;
+  }
 `;
 
 const PopupSnippet = styled.div`
@@ -1405,18 +1536,19 @@ function presenceSortValue(status: PresenceStatus): number {
 }
 
 function sortUsersForRoster(users: MessageUser[]): MessageUser[] {
+  const locale = wimLocale();
   return [...users].sort((a, b) => {
     const byStatus =
       presenceSortValue(presenceStatusFor(a)) - presenceSortValue(presenceStatusFor(b));
     if (byStatus !== 0) return byStatus;
-    return userLabel(a).localeCompare(userLabel(b), undefined, { sensitivity: "base" });
+    return userLabel(a).localeCompare(userLabel(b), locale, { sensitivity: "base" });
   });
 }
 
 function shortTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return date.toLocaleTimeString(wimLocale(), { hour: "numeric", minute: "2-digit" });
 }
 
 function popupKeyForConversation(conversation: DmConversation): string {
@@ -1792,7 +1924,13 @@ function ChatWindowPane({
         </div>
         <MessageCircle size={24} aria-hidden />
       </ChatHeader>
-      <ChatLog ref={chatLogRef}>
+      <ChatLog
+        ref={chatLogRef}
+        role="log"
+        aria-label={`WIM messages with ${label}`}
+        aria-live="polite"
+        aria-relevant="additions text"
+      >
         {(messagesQuery.data ?? []).map((message) => {
           const mine = message.senderId === currentUserId;
           const rich = wimRichMetadataFromMessage(message);
@@ -1847,7 +1985,7 @@ function ChatWindowPane({
         ) : null}
       </ChatLog>
       <ComposerShell>
-        <FormatToolbar aria-label="WIM message formatting toolbar">
+        <FormatToolbar role="toolbar" aria-label="WIM message formatting toolbar">
           <FormatToolbarRow data-wim-toolbar-row="format">
             <FormatSelect
               aria-label="WIM font"
@@ -1892,6 +2030,7 @@ function ChatWindowPane({
               aria-label="Bold WIM text"
               title="Bold"
               data-compact-control="true"
+              aria-pressed={messageStyle.bold}
               $active={messageStyle.bold}
               onClick={() => toggleStyle("bold")}
             >
@@ -1902,6 +2041,7 @@ function ChatWindowPane({
               aria-label="Italic WIM text"
               title="Italic"
               data-compact-control="true"
+              aria-pressed={messageStyle.italic}
               $active={messageStyle.italic}
               onClick={() => toggleStyle("italic")}
             >
@@ -1912,6 +2052,7 @@ function ChatWindowPane({
               aria-label="Underline WIM text"
               title="Underline"
               data-compact-control="true"
+              aria-pressed={messageStyle.underline}
               $active={messageStyle.underline}
               onClick={() => toggleStyle("underline")}
             >
@@ -1924,6 +2065,7 @@ function ChatWindowPane({
               aria-label="Insert GIF"
               title="GIF"
               data-compact-control="true"
+              aria-pressed={activePicker === "gif"}
               $active={activePicker === "gif"}
               onClick={() => setActivePicker((current) => (current === "gif" ? null : "gif"))}
             >
@@ -1934,6 +2076,7 @@ function ChatWindowPane({
               aria-label="Insert wtfOS media"
               title="My media"
               data-compact-control="true"
+              aria-pressed={activePicker === "media"}
               $active={activePicker === "media"}
               onClick={() => setActivePicker((current) => (current === "media" ? null : "media"))}
             >
@@ -1944,6 +2087,7 @@ function ChatWindowPane({
               aria-label="Insert owned token link"
               title="Token link"
               data-compact-control="true"
+              aria-pressed={activePicker === "token"}
               $active={activePicker === "token"}
               onClick={() => setActivePicker((current) => (current === "token" ? null : "token"))}
             >
@@ -2322,18 +2466,20 @@ export function Wim() {
       const surfaceBounds = surfaceRef.current?.getBoundingClientRect();
       const surfaceWidth = surfaceBounds?.width ?? 960;
       const surfaceHeight = surfaceBounds?.height ?? 640;
-      const preferredWidth = Math.min(560, Math.max(356, surfaceWidth - 24));
-      const preferredHeight = Math.min(470, Math.max(328, surfaceHeight - 56));
+      const minWidth = wimWindowMinWidth("chat", surfaceWidth);
+      const minHeight = wimWindowMinHeight("chat", surfaceHeight);
+      const preferredWidth = Math.min(560, Math.max(minWidth, surfaceWidth - 24));
+      const preferredHeight = Math.min(470, Math.max(minHeight, surfaceHeight - 56));
       const buddyWindow = current.find((windowState) => windowState.id === "buddy-list");
       const preferredX = buddyWindow ? buddyWindow.x + buddyWindow.width + 12 : 342;
-      const maxX = Math.max(8, surfaceWidth - preferredWidth - 10);
-      const maxY = Math.max(8, surfaceHeight - preferredHeight - 10);
+      const maxX = Math.max(WIM_SURFACE_GAP, surfaceWidth - preferredWidth - WIM_SURFACE_GAP);
+      const maxY = Math.max(WIM_SURFACE_GAP, surfaceHeight - preferredHeight - WIM_SURFACE_GAP);
       const newWindow: WimWindowState = {
         id: `chat-${nextWindowRef.current++}`,
         kind: "chat",
         title: "Conversation",
-        x: Math.min(Math.max(8, preferredX), maxX),
-        y: Math.min(46, maxY),
+        x: clampNumber(preferredX, WIM_SURFACE_GAP, maxX),
+        y: clampNumber(46, WIM_SURFACE_GAP, maxY),
         width: preferredWidth,
         height: preferredHeight,
         z,
@@ -2449,6 +2595,38 @@ export function Wim() {
     return () => window.removeEventListener("pointerdown", onPointerDown);
   }, [settingsOpen]);
 
+  useLayoutEffect(() => {
+    const node = surfaceRef.current;
+    if (!node) return;
+    let frameId = 0;
+    const fitWindows = () => {
+      const bounds = node.getBoundingClientRect();
+      setWindows((current) => {
+        let changed = false;
+        const next = current.map((windowState) => {
+          const fitted = fitWimWindowToSurface(windowState, bounds.width, bounds.height);
+          if (fitted !== windowState) changed = true;
+          return fitted;
+        });
+        return changed ? next : current;
+      });
+    };
+    const scheduleFit = () => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(fitWindows);
+    };
+    fitWindows();
+    window.addEventListener("resize", scheduleFit);
+    const observer =
+      typeof window.ResizeObserver === "function" ? new window.ResizeObserver(scheduleFit) : null;
+    observer?.observe(node);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", scheduleFit);
+      observer?.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     if (!dragState && !resizeState) return;
     const onPointerMove = (event: PointerEvent) => {
@@ -2459,12 +2637,16 @@ export function Wim() {
         setWindows((current) =>
           current.map((windowState) => {
             if (windowState.id !== dragState.id || windowState.maximized) return windowState;
-            const maxX = bounds ? Math.max(0, bounds.width - 72) : Number.POSITIVE_INFINITY;
-            const maxY = bounds ? Math.max(0, bounds.height - 42) : Number.POSITIVE_INFINITY;
+            const maxX = bounds
+              ? Math.max(WIM_SURFACE_GAP, bounds.width - windowState.width - WIM_SURFACE_GAP)
+              : Number.POSITIVE_INFINITY;
+            const maxY = bounds
+              ? Math.max(WIM_SURFACE_GAP, bounds.height - windowState.height - WIM_SURFACE_GAP)
+              : Number.POSITIVE_INFINITY;
             return {
               ...windowState,
-              x: Math.min(Math.max(0, dragState.originX + dx), maxX),
-              y: Math.min(Math.max(0, dragState.originY + dy), maxY),
+              x: clampNumber(dragState.originX + dx, WIM_SURFACE_GAP, maxX),
+              y: clampNumber(dragState.originY + dy, WIM_SURFACE_GAP, maxY),
             };
           })
         );
@@ -2477,18 +2659,18 @@ export function Wim() {
           current.map((windowState) =>
             windowState.id === resizeState.id
               ? (() => {
-                  const minWidth = windowState.kind === "buddy" ? 258 : 356;
-                  const minHeight = windowState.kind === "buddy" ? 330 : 328;
+                  const minWidth = wimWindowMinWidth(windowState.kind, bounds?.width);
+                  const minHeight = wimWindowMinHeight(windowState.kind, bounds?.height);
                   const maxWidth = bounds
-                    ? Math.max(minWidth, bounds.width - windowState.x - 8)
+                    ? Math.max(minWidth, bounds.width - windowState.x - WIM_SURFACE_GAP)
                     : Number.POSITIVE_INFINITY;
                   const maxHeight = bounds
-                    ? Math.max(minHeight, bounds.height - windowState.y - 8)
+                    ? Math.max(minHeight, bounds.height - windowState.y - WIM_SURFACE_GAP)
                     : Number.POSITIVE_INFINITY;
                   return {
                     ...windowState,
-                    width: Math.min(maxWidth, Math.max(minWidth, resizeState.originWidth + dx)),
-                    height: Math.min(maxHeight, Math.max(minHeight, resizeState.originHeight + dy)),
+                    width: clampNumber(resizeState.originWidth + dx, minWidth, maxWidth),
+                    height: clampNumber(resizeState.originHeight + dy, minHeight, maxHeight),
                   };
                 })()
               : windowState
@@ -2766,16 +2948,18 @@ export function Wim() {
     const surfaceBounds = surfaceRef.current?.getBoundingClientRect();
     const surfaceWidth = surfaceBounds?.width ?? 960;
     const surfaceHeight = surfaceBounds?.height ?? 640;
-    const width = Math.min(540, Math.max(356, surfaceWidth - 16));
-    const height = Math.min(460, Math.max(328, surfaceHeight - 48));
-    const maxX = Math.max(8, surfaceWidth - width - 8);
-    const maxY = Math.max(8, surfaceHeight - height - 8);
+    const minWidth = wimWindowMinWidth("chat", surfaceWidth);
+    const minHeight = wimWindowMinHeight("chat", surfaceHeight);
+    const width = Math.min(540, Math.max(minWidth, surfaceWidth - WIM_SURFACE_GAP * 2));
+    const height = Math.min(460, Math.max(minHeight, surfaceHeight - 48));
+    const maxX = Math.max(WIM_SURFACE_GAP, surfaceWidth - width - WIM_SURFACE_GAP);
+    const maxY = Math.max(WIM_SURFACE_GAP, surfaceHeight - height - WIM_SURFACE_GAP);
     const newWindow: WimWindowState = {
       id: `chat-${nextWindowRef.current++}`,
       kind: "chat",
       title: "Conversation",
-      x: Math.min(maxX, Math.max(8, x - 170)),
-      y: Math.min(maxY, Math.max(8, y - 18)),
+      x: clampNumber(x - 170, WIM_SURFACE_GAP, maxX),
+      y: clampNumber(y - 18, WIM_SURFACE_GAP, maxY),
       width,
       height,
       z,
@@ -2808,7 +2992,11 @@ export function Wim() {
     label: string,
     count: number
   ) => (
-    <SectionToggle type="button" onClick={() => toggleSection(key)}>
+    <SectionToggle
+      type="button"
+      aria-expanded={sections[key]}
+      onClick={() => toggleSection(key)}
+    >
       <SectionTitle>
         {sections[key] ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
         {label}
@@ -2831,10 +3019,9 @@ export function Wim() {
         onClick={() => setSelectedBuddyId(item.id)}
         onDoubleClickCapture={() => openDirectChat(item)}
         onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            openDirectChat(item);
-          }
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          openDirectChat(item);
         }}
       >
         <PresenceDot $status={status} title={presenceLabel(status)} />
@@ -2887,6 +3074,7 @@ export function Wim() {
       <div key={list.id}>
         <SectionToggle
           type="button"
+          aria-expanded={!collapsed}
           onClick={() =>
             setCollapsedCustomLists((current) => ({ ...current, [list.id]: !collapsed }))
           }
@@ -2924,8 +3112,14 @@ export function Wim() {
             key={conversation.id}
             $active={active}
             type="button"
+            aria-label={`Open recent WIM chat ${label}`}
             onClick={() => peer && setSelectedBuddyId(peer)}
             onDoubleClickCapture={() => openConversation(conversation)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              openConversation(conversation);
+            }}
           >
             <BuddyName>
               {label}

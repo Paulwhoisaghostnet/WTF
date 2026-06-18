@@ -1,0 +1,26 @@
+{
+  "templateName": "PastaDistributionFA2",
+  "artifactSlug": "pasta-distribution",
+  "source": "contracts/pasta-protocol/PastaDistributionFA2.py",
+  "compileScript": "scripts/pasta-protocol/compile-fa2-template.mjs",
+  "smartpyBinaryEnv": "SMARTPY_BIN",
+  "compiledContract": "public/creation-tools/penne/contract/pasta-distribution.contract.json",
+  "storage": {
+    "note": "Origination storage: { admin: tz address, metadata: MichelsonMap { '' : hex(ipfs uri) } }. Other big_maps initialize empty."
+  },
+  "entrypoints": [
+    "transfer",
+    "update_operators",
+    "balance_of",
+    "create_token",
+    "set_allocations",
+    "open_claim",
+    "claim",
+    "airdrop",
+    "mint",
+    "burn",
+    "add_minter",
+    "remove_minter",
+    "set_token_metadata"
+  ]
+}

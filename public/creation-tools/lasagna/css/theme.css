@@ -1,0 +1,212 @@
+/* Lasagna (Pasta Protocol) curation studio theme. Self-contained, no external dependencies. */
+:root {
+  color-scheme: dark;
+  --bg: #1a1410;
+  --card: #261c16;
+  --ink: #f7efe6;
+  --muted: #cdb9a6;
+  --accent: #e8923a;
+  --accent-ink: #2a1503;
+  --ok: #c7e08b;
+  --warn: #ff9a7a;
+  --border: #3d2d22;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.pp-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: #1f1812;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.pp-brand h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+}
+
+.pp-tag {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.pp-wallet {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.pp-account {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.pp-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+}
+
+.pp-card-wide {
+  grid-column: 1 / -1;
+}
+
+.pp-card h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.05rem;
+}
+
+label {
+  display: block;
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input,
+select,
+textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.6rem;
+  background: #140f0b;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #322419;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pp-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  border-color: var(--accent);
+}
+
+.pp-note {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.pp-warn {
+  font-size: 0.8rem;
+  color: var(--warn);
+}
+
+.pp-rel summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.pp-row {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.pp-refs {
+  min-height: 8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+
+.pp-summary {
+  display: flex;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+}
+
+.pp-summary b {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-errors {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+  color: var(--warn);
+}
+
+.pp-import {
+  flex: 1;
+  min-width: 200px;
+}
+
+.pp-log {
+  background: #100b07;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem;
+  font-size: 0.78rem;
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: #f0d8bf;
+}
+
+@media (max-width: 720px) {
+  .pp-grid {
+    grid-template-columns: 1fr;
+  }
+}

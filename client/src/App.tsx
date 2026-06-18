@@ -380,7 +380,7 @@ function URLSync({ appAvailability }: { appAvailability: DesktopAppAvailability 
 
     if (!wm.openPages.includes(location)) {
       wm.openPage(location);
-    } else if (wm.focusedPath !== location) {
+    } else if (wm.focusedPath !== location || wm.isMinimized(location)) {
       wm.focus(location);
     }
     initialised.current = true;

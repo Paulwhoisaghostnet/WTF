@@ -39,6 +39,7 @@ test("WIM roster is user-driven and keeps Studio rooms out of buddies", () => {
   assert.match(wimSource, /onDoubleClickCapture=\{\(\) => openDirectChat\(item\)\}/);
   assert.match(wimSource, /data-wim-chat-open=\{item\.id\}/);
   assert.match(wimSource, /aria-label=\{`Open WIM chat with \$\{userLabel\(item\)\}`\}/);
+  assert.match(wimSource, /event\.key !== "Enter" && event\.key !== " "/);
   assert.match(wimSource, /presenceStatus/);
   assert.match(wimSource, /presenceStatusFor/);
   assert.match(wimSource, /data-wim-window-kind=\{windowState\.kind\}/);
@@ -62,6 +63,33 @@ test("WIM roster is user-driven and keeps Studio rooms out of buddies", () => {
   assert.match(wimSource, /wm\.close\(routePath\)/);
   assert.doesNotMatch(wimSource, /const Dock = styled|DockButton|WIM minimized windows/);
   assert.doesNotMatch(wimSource, retiredMessengerNamePattern);
+});
+
+test("WIM has mobile WCAG accessibility guards", () => {
+  for (const expected of [
+    "WIM_SURFACE_GAP",
+    "WIM_MOBILE_MIN_WIDTH",
+    "wimWindowMinWidth",
+    "fitWimWindowToSurface",
+    "window.ResizeObserver",
+    "--wim-control-size",
+    "--wim-window-control-size",
+    "--wim-tab-close-size",
+    "role=\"toolbar\"",
+    "aria-pressed={messageStyle.bold}",
+    "role=\"log\"",
+    "aria-live=\"polite\"",
+    "aria-relevant=\"additions text\"",
+    "aria-expanded={sections[key]}",
+    "aria-expanded={!collapsed}",
+    "toLocaleTimeString(wimLocale()",
+    "localeCompare(userLabel(b), locale",
+  ]) {
+    assert.match(wimSource, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+
+  assert.match(inventory, /WCAG 2\.2 AA target-size floor/);
+  assert.match(behaviorAssertions, /320px mobile Chrome-style viewport/);
 });
 
 test("WIM friend list and unread popups are browser-local and covered by inventory", () => {
@@ -114,10 +142,9 @@ test("WIM interior chrome follows desktop appearance styles", () => {
 test("WIM conversations carry classic rich composer metadata and inserts", () => {
   for (const expected of [
     "WIM_FONT_CHOICES",
-    "Helvetica",
-    "Times New Roman",
-    "Comic Sans MS",
+    "DESKTOP_WIM_CHAT_FONT_FAMILIES",
     "WIM_FONT_SIZES",
+    "DESKTOP_WIM_CHAT_FONT_SIZES",
     "DEFAULT_WIM_MESSAGE_STYLE",
     "WIM_MAX_ATTACHMENTS",
     "WimRichMetadata",

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spaghetti — Pasta Protocol</title>
+    <link rel="stylesheet" href="css/theme.css" />
+  </head>
+  <body>
+    <header class="pp-top">
+      <div class="pp-brand">
+        <h1>Spaghetti</h1>
+        <span class="pp-tag">Pasta Protocol · Standard Collection &amp; Token-Product Publisher</span>
+      </div>
+      <div class="pp-wallet">
+        <label>
+          Network
+          <select id="network">
+            <option value="shadownet">Shadownet (test)</option>
+            <option value="mainnet">Mainnet</option>
+          </select>
+        </label>
+        <button id="btnConnect" type="button">Connect wallet</button>
+        <span id="account" class="pp-account">not connected</span>
+      </div>
+    </header>
+
+    <main class="pp-grid">
+      <section class="pp-card">
+        <h2>1 · Storage / pinning</h2>
+        <p class="pp-note">
+          You provide pinning. wtfOS trusted creators may use the platform pinner when embedded in
+          wtfOS; downloaded builds must use Pinata or their own IPFS node.
+        </p>
+        <label>
+          Provider
+          <select id="pinProvider">
+            <option value="pinata">Pinata (JWT)</option>
+            <option value="node">IPFS node (Kubo HTTP API)</option>
+            <option value="wtfos">wtfOS platform pinner (trusted creators)</option>
+          </select>
+        </label>
+        <label id="pinJwtRow">
+          Pinata JWT
+          <input id="pinJwt" type="password" autocomplete="off" placeholder="eyJ…" />
+        </label>
+        <label id="pinNodeRow" hidden>
+          Node URL
+          <input id="pinNode" type="url" placeholder="http://127.0.0.1:5001" />
+        </label>
+      </section>
+
+      <section class="pp-card">
+        <h2>2 · Mint target</h2>
+        <div class="pp-radio">
+          <label><input type="radio" name="target" value="new_collection" checked /> Create a new collection contract</label>
+          <label><input type="radio" name="target" value="existing_contract" /> Publish into a contract I administer</label>
+        </div>
+
+        <div id="newCollectionFields">
+          <label>Collection name <input id="collName" type="text" placeholder="My Collection" /></label>
+          <label>Symbol <input id="collSymbol" type="text" placeholder="WTF" /></label>
+          <label>Description <textarea id="collDesc" rows="2" placeholder="Optional"></textarea></label>
+          <label>Cover image <input id="collCover" type="file" accept="image/*" /></label>
+        </div>
+
+        <div id="existingContractFields" hidden>
+          <label>Contract address <input id="existingKt" type="text" placeholder="KT1…" /></label>
+          <button id="btnLoadContract" type="button">Load next token id</button>
+          <span id="existingInfo" class="pp-note"></span>
+        </div>
+
+        <details class="pp-rel">
+          <summary>Ownership relationship (optional)</summary>
+          <label>Parent contract <input id="relParent" type="text" placeholder="KT1…" /></label>
+          <label>Franchise contract <input id="relFranchise" type="text" placeholder="KT1…" /></label>
+          <label>Collection group <input id="relGroup" type="text" placeholder="group id / slug" /></label>
+        </details>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>3 · Token products</h2>
+        <div class="pp-row">
+          <label class="pp-import">
+            Import CH-EASE package
+            <input id="importPkg" type="file" accept="application/json,.json" />
+          </label>
+          <button id="btnAddToken" type="button">Add token</button>
+          <button id="btnExportPkg" type="button">Export CH-EASE package</button>
+        </div>
+        <div id="tokens" class="pp-tokens"></div>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>4 · Publish</h2>
+        <button id="btnPublish" type="button" class="pp-primary">Publish to Tezos</button>
+        <p class="pp-warn">
+          Rehearse the full flow on Shadownet before mainnet. Origination and mints are signed by your
+          connected wallet and are permanent.
+        </p>
+        <pre id="log" class="pp-log" aria-live="polite"></pre>
+      </section>
+    </main>
+
+    <template id="tokenRowTpl">
+      <div class="pp-token">
+        <div class="pp-token-head">
+          <strong class="pp-token-title">Token</strong>
+          <button type="button" class="pp-token-del" title="Remove">✕</button>
+        </div>
+        <label>Name <input class="t-name" type="text" placeholder="Token name" /></label>
+        <label>Description <input class="t-desc" type="text" placeholder="Optional" /></label>
+        <label>Editions <input class="t-editions" type="number" min="1" value="1" /></label>
+        <label>Tags (comma separated) <input class="t-tags" type="text" placeholder="art, pasta" /></label>
+        <label>Artifact <input class="t-file" type="file" accept="image/*,video/*,audio/*" /></label>
+        <span class="t-status pp-note"></span>
+      </div>
+    </template>
+
+    <script src="vendor/tezos.js"></script>
+    <script src="vendor/octez-connect.js"></script>
+    <script src="js/octez-wallet.js"></script>
+    <script src="js/common.js"></script>
+    <script type="module" src="js/studio.js"></script>
+  </body>
+</html>

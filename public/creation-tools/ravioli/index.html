@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ravioli — Pasta Protocol</title>
+    <link rel="stylesheet" href="css/theme.css" />
+  </head>
+  <body>
+    <header class="pp-top">
+      <div class="pp-brand">
+        <h1>Ravioli</h1>
+        <span class="pp-tag">Pasta Protocol · Bundle Publisher (art packs · redeemable · mystery · wrapped sets)</span>
+      </div>
+      <div class="pp-wallet">
+        <label>
+          Network
+          <select id="network">
+            <option value="shadownet">Shadownet (test)</option>
+            <option value="mainnet">Mainnet</option>
+          </select>
+        </label>
+        <button id="btnConnect" type="button">Connect wallet</button>
+        <span id="account" class="pp-account">not connected</span>
+      </div>
+    </header>
+
+    <main class="pp-grid">
+      <section class="pp-card">
+        <h2>1 · Storage / pinning</h2>
+        <p class="pp-note">
+          You provide pinning. wtfOS trusted creators may use the platform pinner when embedded in
+          wtfOS; downloaded builds must use Pinata or their own IPFS node.
+        </p>
+        <label>
+          Provider
+          <select id="pinProvider">
+            <option value="pinata">Pinata (JWT)</option>
+            <option value="node">IPFS node (Kubo HTTP API)</option>
+            <option value="wtfos">wtfOS platform pinner (trusted creators)</option>
+          </select>
+        </label>
+        <label id="pinJwtRow">
+          Pinata JWT
+          <input id="pinJwt" type="password" autocomplete="off" placeholder="eyJ…" />
+        </label>
+        <label id="pinNodeRow" hidden>
+          Node URL
+          <input id="pinNode" type="url" placeholder="http://127.0.0.1:5001" />
+        </label>
+      </section>
+
+      <section class="pp-card">
+        <h2>2 · Mint target</h2>
+        <div class="pp-radio">
+          <label><input type="radio" name="target" value="new_collection" checked /> Create a new bundle contract</label>
+          <label><input type="radio" name="target" value="existing_contract" /> Publish into a bundle contract I administer</label>
+        </div>
+        <div id="newCollectionFields">
+          <label>Collection name <input id="collName" type="text" placeholder="My Bundles" /></label>
+          <label>Symbol <input id="collSymbol" type="text" placeholder="WTF" /></label>
+          <label>Cover image <input id="collCover" type="file" accept="image/*" /></label>
+        </div>
+        <div id="existingContractFields" hidden>
+          <label>Contract address <input id="existingKt" type="text" placeholder="KT1…" /></label>
+          <button id="btnLoadContract" type="button">Load next token id</button>
+          <span id="existingInfo" class="pp-note"></span>
+        </div>
+        <details class="pp-rel">
+          <summary>Ownership relationship (optional)</summary>
+          <label>Parent contract <input id="relParent" type="text" placeholder="KT1…" /></label>
+          <label>Franchise contract <input id="relFranchise" type="text" placeholder="KT1…" /></label>
+          <label>Collection group <input id="relGroup" type="text" placeholder="group id / slug" /></label>
+        </details>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>3 · Bundle wrapper</h2>
+        <div class="pp-row">
+          <label class="pp-import">Name <input id="bnName" type="text" placeholder="Mystery Art Pack" /></label>
+          <label>Editions to mint <input id="bnEditions" type="number" min="1" value="1" /></label>
+        </div>
+        <label>Description <textarea id="bnDesc" rows="2" placeholder="Optional"></textarea></label>
+        <label>Tags (comma separated) <input id="bnTags" type="text" placeholder="bundle, pack" /></label>
+        <label>Wrapper artwork <input id="bnArtifact" type="file" accept="image/*,video/*,audio/*" /></label>
+        <span id="bnArtifactStatus" class="pp-note"></span>
+        <div class="pp-row">
+          <label><input type="checkbox" id="bnRedeemable" checked /> Redeemable (holders can burn to redeem)</label>
+          <label><input type="checkbox" id="bnMystery" /> Mystery (contents hidden until you reveal)</label>
+        </div>
+        <p id="bnMysteryNote" class="pp-note"></p>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>4 · Bundle contents</h2>
+        <div class="pp-row">
+          <button id="btnAddMember" type="button">Add item</button>
+          <span class="pp-note">Each item is recorded in the pinned contents manifest referenced on-chain.</span>
+        </div>
+        <div id="members" class="pp-tokens"></div>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>5 · Publish</h2>
+        <button id="btnPublish" type="button" class="pp-primary">Deploy bundle to Tezos</button>
+        <p class="pp-warn">
+          Rehearse on Shadownet before mainnet. Origination, bundle registration, and mints are signed by
+          your connected wallet and are permanent. Redeeming burns the wrapper edition on-chain.
+        </p>
+        <pre id="log" class="pp-log" aria-live="polite"></pre>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>6 · Redeem &amp; reveal</h2>
+        <div class="pp-row">
+          <label>Contract <input id="opKt" type="text" placeholder="KT1…" /></label>
+          <label>Token id <input id="opTokenId" type="number" min="0" value="0" /></label>
+          <button id="btnLoadBundle" type="button">Load bundle</button>
+        </div>
+        <p id="opInfo" class="pp-note" aria-live="polite"></p>
+        <div class="pp-row">
+          <label>Redeem amount <input id="redeemAmount" type="number" min="1" value="1" /></label>
+          <button id="btnRedeem" type="button" class="pp-primary">Redeem (burn wrapper)</button>
+        </div>
+        <div class="pp-row">
+          <label>Reveal contents URI (admin) <input id="revealUri" type="text" placeholder="ipfs://… manifest CID" /></label>
+          <button id="btnReveal" type="button">Reveal mystery contents</button>
+        </div>
+      </section>
+    </main>
+
+    <template id="memberRowTpl">
+      <div class="pp-token">
+        <div class="pp-token-head">
+          <strong class="pp-token-title">Item</strong>
+          <button type="button" class="pp-member-del" title="Remove">✕</button>
+        </div>
+        <label>Name <input class="m-name" type="text" placeholder="Item name" /></label>
+        <label>Media URI <input class="m-uri" type="text" placeholder="ipfs://… or https://…" /></label>
+        <label>MIME type <input class="m-mime" type="text" placeholder="image/png" /></label>
+        <label>Token contract (optional) <input class="m-kt" type="text" placeholder="KT1…" /></label>
+        <label>Token id (optional) <input class="m-tid" type="number" min="0" /></label>
+        <label>Quantity <input class="m-qty" type="number" min="1" value="1" /></label>
+      </div>
+    </template>
+
+    <script src="vendor/tezos.js"></script>
+    <script src="vendor/octez-connect.js"></script>
+    <script src="js/octez-wallet.js"></script>
+    <script src="js/common.js"></script>
+    <script type="module" src="js/studio.js"></script>
+  </body>
+</html>
