@@ -384,12 +384,19 @@ interface SkywireTezosVaultResponse {
     source: "wallet_holdings";
     items: SkywireVaultOwnedToken[];
     total: number;
+    pagination: {
+      limit: number;
+      offset: number;
+      hasMore: boolean;
+      nextOffset: number;
+    };
   };
   created: {
     source: "objkt";
     items: SkywireTokenSummary[];
     total: number;
     error: string | null;
+    deferred?: boolean;
   };
 }
 
@@ -2490,10 +2497,22 @@ function SkywireTezosVaultPanel({ me }: { me: AtprotoMe }) {
   const [shareTarget, setShareTarget] = useState<SkywireVaultShareTarget | null>(null);
   const [shareText, setShareText] = useState("");
   const [sharePostedUri, setSharePostedUri] = useState("");
-  const vaultQuery = useQuery<SkywireTezosVaultResponse>({
-    queryKey: ["skywire", "tezos-vault"],
-    queryFn: () => api.get<SkywireTezosVaultResponse>("/api/skywire/tezos-vault?limit=24"),
+  const vaultQuery = useInfiniteQuery<SkywireTezosVaultResponse>({
+    queryKey: ["skywire", "tezos-vault", "owned"],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      api.get<SkywireTezosVaultResponse>(
+        `/api/skywire/tezos-vault?limit=24&offset=${encodeURIComponent(String(pageParam || 0))}`,
+      ),
+    getNextPageParam: (lastPage) =>
+      lastPage.owned.pagination.hasMore ? lastPage.owned.pagination.nextOffset : undefined,
     staleTime: 30_000,
+  });
+  const createdQuery = useQuery<SkywireTezosVaultResponse>({
+    queryKey: ["skywire", "tezos-vault", "created"],
+    enabled: false,
+    queryFn: () => api.get<SkywireTezosVaultResponse>("/api/skywire/tezos-vault?limit=24&includeCreated=true"),
+    staleTime: 60_000,
   });
   const sharePost = useMutation({
     mutationFn: () =>
@@ -2525,9 +2544,11 @@ function SkywireTezosVaultPanel({ me }: { me: AtprotoMe }) {
       linkedAt: null,
       lastSyncedAt: null,
     })) ?? [];
-  const wallets = vaultQuery.data?.wallets ?? fallbackWallets;
-  const owned = vaultQuery.data?.owned?.items ?? [];
-  const created = vaultQuery.data?.created?.items ?? [];
+  const firstVaultPage = vaultQuery.data?.pages[0] ?? createdQuery.data ?? null;
+  const wallets = firstVaultPage?.wallets ?? fallbackWallets;
+  const owned = vaultQuery.data?.pages.flatMap((page) => page.owned.items) ?? [];
+  const ownedTotal = firstVaultPage?.owned?.total ?? owned.length;
+  const created = createdQuery.data?.created?.items ?? [];
   const createdGroups = useMemo(() => groupSkywireCreatedTokens(created), [created]);
   const shareRemaining = 300 - Array.from(shareText).length;
   const handleShareToken = useCallback(
@@ -2554,8 +2575,8 @@ function SkywireTezosVaultPanel({ me }: { me: AtprotoMe }) {
           <VaultToolbar>
             <MetaRow>
               <StatChip>{wallets.length} wallets</StatChip>
-              <StatChip>{vaultQuery.data?.owned?.total ?? owned.length} owned</StatChip>
-              <StatChip>{vaultQuery.data?.created?.total ?? created.length} created</StatChip>
+              <StatChip>{ownedTotal} owned</StatChip>
+              <StatChip>{createdQuery.data?.created?.total ?? created.length} created</StatChip>
             </MetaRow>
             <TokenMarketActions>
               <Button size="sm" disabled={connect.isPending || wallet.isConnecting} onClick={() => connect.mutate()}>
@@ -2663,12 +2684,37 @@ function SkywireTezosVaultPanel({ me }: { me: AtprotoMe }) {
               <span>Refresh after a wallet sync.</span>
             </EmptyState>
           )}
+          {vaultQuery.hasNextPage ? (
+            <Button
+              size="sm"
+              disabled={vaultQuery.isFetchingNextPage}
+              onClick={() => vaultQuery.fetchNextPage()}
+            >
+              {vaultQuery.isFetchingNextPage ? "Loading..." : `Load More Owned (${owned.length}/${ownedTotal})`}
+            </Button>
+          ) : null}
         </Stack>
       </GroupBox>
 
       <GroupBox label="Created Tokens by Collection">
         <Stack>
-          {vaultQuery.data?.created?.error ? <InlineState>{vaultQuery.data.created.error}</InlineState> : null}
+          {createdQuery.isError ? <InlineState>{(createdQuery.error as Error).message}</InlineState> : null}
+          {createdQuery.data?.created?.error ? <InlineState>{createdQuery.data.created.error}</InlineState> : null}
+          {!createdQuery.data ? (
+            <VaultShareDraft>
+              <strong>Created-token lookup is deferred.</strong>
+              <FinePrint>
+                Owned tokens above come from the local indexed holdings cache. Load created tokens only when you need the Objkt creator-side view.
+              </FinePrint>
+              <Button
+                size="sm"
+                disabled={createdQuery.isFetching}
+                onClick={() => createdQuery.refetch()}
+              >
+                {createdQuery.isFetching ? "Loading Created..." : "Load Created Tokens"}
+              </Button>
+            </VaultShareDraft>
+          ) : null}
           {createdGroups.length ? (
             <VaultCollectionStack>
               {createdGroups.map((group) => (
@@ -2693,12 +2739,12 @@ function SkywireTezosVaultPanel({ me }: { me: AtprotoMe }) {
                 </VaultCollectionGroup>
               ))}
             </VaultCollectionStack>
-          ) : (
+          ) : createdQuery.data ? (
             <EmptyState>
               <strong>No created tokens found.</strong>
               <span>Objkt has no creator matches for the linked wallets.</span>
             </EmptyState>
-          )}
+          ) : null}
         </Stack>
       </GroupBox>
     </Stack>

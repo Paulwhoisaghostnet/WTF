@@ -129,6 +129,8 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     await page.goto("/skywire?tab=vault", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("Owned Tokens", { exact: true })).toBeVisible();
     await expect(page.locator("[data-skywire-vault-section='owned'] [data-skywire-vault-token='owned']")).toHaveCount(1);
+    await expect(page.getByText("Created-token lookup is deferred.")).toBeVisible();
+    await page.getByRole("button", { name: "Load Created Tokens" }).click();
     const createdGroups = page.locator("[data-skywire-vault-created-group='true']");
     await expect(createdGroups).toHaveCount(2);
 
@@ -168,6 +170,35 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     expect(fatalErrors(errors)).toEqual([]);
   });
 
+  test("live status writes and clears the Bluesky actor status record", async ({ page, request }) => {
+    await setAdmin(request);
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+
+    await page.goto("/skywire?tab=signals", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("Bluesky Live Status")).toBeVisible();
+    await expect(page.getByText("app.bsky.actor.status/self")).toBeVisible();
+    await page.getByPlaceholder("https://wtfos.app/live/r/room-id").fill("https://wtfos.app/live/r/wtf-testing");
+    await page.getByRole("button", { name: "Set WTF LIVE Status" }).click();
+    const activeLive = page.locator("[data-skywire-live-status='active']");
+    await expect(activeLive).toContainText("https://wtfos.app/live/r/wtf-testing");
+
+    let state = await (await request.get("/__test/state")).json();
+    expect(state.skywireLiveStatus).toMatchObject({
+      liveUrl: "https://wtfos.app/live/r/wtf-testing",
+      status: "app.bsky.actor.status#live",
+    });
+
+    await page.getByRole("button", { name: "Clear Live" }).click();
+    await expect(page.getByText("No live record")).toBeVisible();
+    state = await (await request.get("/__test/state")).json();
+    expect(state.skywireLiveStatus).toBeNull();
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
   test("chat renders quoted replies and GIF media attachments", async ({ page, request }) => {
     await setAdmin(request);
     const errors = [];
@@ -185,6 +216,30 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     await expect(page.locator("[data-skywire-chat-media='true'] img")).toBeVisible();
     await expect(page.getByRole("link", { name: "Open media" })).toBeVisible();
     await expect(page.getByText("This GIF should render in chat.")).toBeVisible();
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("chat creates a group conversation when multiple members are entered", async ({ page, request }) => {
+    await setAdmin(request);
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+
+    await page.goto("/skywire?tab=chat", { waitUntil: "domcontentloaded" });
+    await page.getByPlaceholder("handle.bsky.social, did:plc:...").fill("harness.bsky.social, second.bsky.social");
+    await page.getByPlaceholder("group name").fill("WTF group");
+    await page.getByRole("button", { name: "Create Group", exact: true }).click();
+    await expect(page.getByRole("button", { name: /WTF group/i })).toBeVisible();
+    await expect(page.getByText("This conversation is ready, but the selected history is empty.")).toBeVisible();
+
+    const state = await (await request.get("/__test/state")).json();
+    expect(state.skywireGroupPayloads).toHaveLength(1);
+    expect(state.skywireGroupPayloads[0]).toMatchObject({
+      members: ["harness.bsky.social", "second.bsky.social"],
+      groupName: "WTF group",
+    });
     expect(fatalErrors(errors)).toEqual([]);
   });
 

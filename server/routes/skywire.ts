@@ -168,6 +168,14 @@ const tokenLinkQuerySchema = z.object({
 
 const tezosVaultQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(48).default(24),
+  offset: z.coerce.number().int().min(0).max(100_000).default(0),
+  includeCreated: z
+    .preprocess((value) => {
+      if (value == null) return false;
+      if (typeof value === "string") return ["1", "true", "yes"].includes(value.trim().toLowerCase());
+      return Boolean(value);
+    }, z.boolean())
+    .default(false),
 });
 
 const skywireClientEventSchema = z.object({
@@ -1581,6 +1589,8 @@ router.get("/api/skywire/tezos-vault", isAuthenticated, async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: "Invalid Tezos vault query" });
   const user = req.user as any;
   const limit = parsed.data.limit;
+  const offset = parsed.data.offset;
+  const includeCreated = parsed.data.includeCreated;
 
   const wallets = await db
     .select({
@@ -1620,18 +1630,29 @@ router.get("/api/skywire/tezos-vault", isAuthenticated, async (req, res) => {
         .where(eq(walletHoldings.userId, user.id))
         .orderBy(desc(lastSeenExpr))
         .limit(limit)
+        .offset(offset)
     : [];
+
+  const ownedTotalRows = wallets.length
+    ? await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(walletHoldings)
+        .where(eq(walletHoldings.userId, user.id))
+    : [];
+  const ownedTotal = Number(ownedTotalRows[0]?.count ?? 0);
 
   let createdError: string | null = null;
   let createdItems: SkywireTokenSummary[] = [];
-  try {
-    createdItems = await fetchObjktCreatedTokens(
-      wallets.map((wallet) => wallet.walletAddress),
-      limit,
-    );
-  } catch (err: any) {
-    createdError = "Created-token lookup is temporarily unavailable.";
-    console.warn("[skywire] created token lookup failed:", err?.message || err);
+  if (includeCreated) {
+    try {
+      createdItems = await fetchObjktCreatedTokens(
+        wallets.map((wallet) => wallet.walletAddress),
+        limit,
+      );
+    } catch (err: any) {
+      createdError = "Created-token lookup is temporarily unavailable.";
+      console.warn("[skywire] created token lookup failed:", err?.message || err);
+    }
   }
 
   const response = {
@@ -1647,19 +1668,29 @@ router.get("/api/skywire/tezos-vault", isAuthenticated, async (req, res) => {
     owned: {
       source: "wallet_holdings",
       items: ownedRows.map(normalizeSkywireVaultToken),
-      total: ownedRows.length,
+      total: ownedTotal,
+      pagination: {
+        limit,
+        offset,
+        hasMore: offset + ownedRows.length < ownedTotal,
+        nextOffset: offset + ownedRows.length,
+      },
     },
     created: {
       source: "objkt",
       items: createdItems,
       total: createdItems.length,
       error: createdError,
+      deferred: !includeCreated,
     },
   };
   recordSkywireSystemEvent(user, "skywire.tezos_vault.viewed", "tezos_wallet", wallets.map((wallet) => wallet.walletAddress).join(",") || "none", {
     walletCount: wallets.length,
     ownedCount: response.owned.total,
     createdCount: response.created.total,
+    ownedLimit: limit,
+    ownedOffset: offset,
+    createdDeferred: !includeCreated,
     createdLookupError: createdError,
   });
   res.json(response);
