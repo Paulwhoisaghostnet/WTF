@@ -5,11 +5,51 @@ async function setAdmin(request) {
   expect(res.ok()).toBeTruthy();
 }
 
+async function setAnonymous(request) {
+  const res = await request.post("/__test/state", { data: { userRole: "anonymous" } });
+  expect(res.ok()).toBeTruthy();
+}
+
 function fatalErrors(errors) {
   return errors.filter((error) => !/(favicon|ResizeObserver|WebGL|wallet|beacon|taquito)/i.test(error));
 }
 
 test.describe("interaction inventory — Skywire feed usability", () => {
+  test("standalone AT login renders without wtfOS auth and starts Skywire OAuth", async ({
+    page,
+    request,
+  }) => {
+    await setAnonymous(request);
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+
+    await page.goto("/skywire?standalone=1", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-skywire-standalone-login='true']")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open Stuffs menu" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Skywire" })).toBeVisible();
+    await expect(page.getByText("A Tezos-aware AT Protocol client")).toBeVisible();
+    await expect(page.getByText("Recent sale")).toBeVisible();
+    const signalExamples = page.getByLabel("Skywire signal examples");
+    await expect(signalExamples.getByText("WTF LIVE", { exact: true })).toBeVisible();
+
+    await page.getByLabel("Handle or DID").fill("paulwhoisaghost.bsky.social");
+    await Promise.all([
+      page.waitForURL(/\/api\/atproto\/oauth\/start/),
+      page.getByRole("button", { name: "Continue" }).click(),
+    ]);
+    const current = new URL(page.url());
+    expect(current.searchParams.get("handle")).toBe("paulwhoisaghost.bsky.social");
+    expect(current.searchParams.get("returnTo")).toBe("/skywire?tab=account&standalone=1");
+    expect(current.searchParams.get("tier")).toBe("be-social");
+    expect(current.searchParams.get("chat")).toBe("0");
+    expect(current.searchParams.get("standalone")).toBe("1");
+    await expect(page.getByText(/Harness Skywire OAuth connect pending/i)).toBeVisible();
+    expect(fatalErrors(errors).filter((error) => !/401 \(Unauthorized\)/i.test(error))).toEqual([]);
+  });
+
   test("feed cards self-expand, keep readable spacing, and contain media/token previews", async ({
     page,
     request,
@@ -22,6 +62,10 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     });
 
     await page.goto("/skywire", { waitUntil: "domcontentloaded" });
+    const quickActions = page.getByLabel("Skywire quick actions");
+    await expect(quickActions.getByRole("button", { name: "Go live" })).toBeVisible();
+    await expect(quickActions.getByRole("button", { name: "Recent sale signal" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /WTF Feed/ })).toHaveCount(0);
     await expect(page.locator("[data-skywire-feed-card='true']")).toHaveCount(3);
     await expect(page.locator("[data-skywire-token-preview='true']")).toHaveCount(3);
     const firstCard = page.locator("[data-skywire-feed-card='true']").first();

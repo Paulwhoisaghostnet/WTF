@@ -3,6 +3,7 @@ import { z } from "zod";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { isAuthenticated } from "../auth/passport";
+import { createUser, getUserById } from "../auth/storage";
 import {
   atprotoAccounts,
   atprotoHandleClaims,
@@ -95,6 +96,7 @@ const oauthStartSchema = z.object({
   tier: z.string().optional(),
   chat: z.string().optional(),
   platformActor: z.string().optional(),
+  standalone: z.string().optional(),
 });
 
 const mutationLimiter = createInMemoryRateLimit({
@@ -110,12 +112,13 @@ type AtprotoOAuthPendingState = {
   state: string;
   returnTo: string;
   popup: boolean;
-  userId: number;
+  userId?: number;
   appName: AtprotoOAuthAppName;
   tz2atStep: string;
   permissionTier: SkywirePermissionTier;
   chatEnabled: boolean;
   platformActorIntent: boolean;
+  standalone: boolean;
   requestedScope: string;
   requestedHandle: string;
   origin?: string;
@@ -179,6 +182,88 @@ async function clearAtprotoOAuthState(req: any, state: string): Promise<void> {
   await deleteAtprotoOAuthStateFamily(state);
 }
 
+function isAtprotoDid(value: string | null | undefined): boolean {
+  return /^did:(plc|web):[A-Za-z0-9._:%-]{3,240}$/.test(String(value || "").trim());
+}
+
+function normalizeAtprotoOAuthActor(value: string, defaultSuffix?: string | null): string {
+  const raw = String(value || "").trim().replace(/^@/, "");
+  return isAtprotoDid(raw) ? raw : normalizeRegistrationHandle(raw, defaultSuffix);
+}
+
+function isValidAtprotoOAuthActor(value: string): boolean {
+  return isAtprotoDid(value) || isValidAtHandle(value);
+}
+
+function skywireStandaloneUsernameCandidates(handle: string, did: string): string[] {
+  const handleSlug =
+    normalizeAtHandle(handle)
+      .split(".")[0]
+      ?.replace(/[^a-z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 28) || "atproto";
+  const didSlug = did.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(-12) || randomProofToken().slice(0, 10);
+  const primary = `skywire-${handleSlug}-${didSlug}`.slice(0, 50);
+  return [
+    primary,
+    `skywire-${didSlug}`.slice(0, 50),
+    `skywire-${didSlug}-${randomProofToken().slice(0, 6)}`.slice(0, 50),
+  ];
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  return String((err as any)?.code || "") === "23505";
+}
+
+async function linkedAccountForDid(did: string) {
+  const [account] = await db
+    .select()
+    .from(atprotoAccounts)
+    .where(and(eq(atprotoAccounts.did, did), isNull(atprotoAccounts.disconnectedAt)))
+    .orderBy(desc(atprotoAccounts.updatedAt))
+    .limit(1);
+  return account ?? null;
+}
+
+async function findOrCreateSkywireStandaloneUser(input: {
+  did: string;
+  handle: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+}) {
+  const existingAccount = await linkedAccountForDid(input.did);
+  if (existingAccount) {
+    const existingUser = await getUserById(existingAccount.userId);
+    if (existingUser) return existingUser;
+  }
+
+  for (const username of skywireStandaloneUsernameCandidates(input.handle, input.did)) {
+    try {
+      const user = await createUser({
+        username,
+        displayName: input.displayName || input.handle || username,
+        role: "test_subject",
+      });
+      if (user) return user;
+    } catch (err) {
+      if (isUniqueViolation(err)) continue;
+      throw err;
+    }
+  }
+
+  throw new Error("Unable to create standalone Skywire user");
+}
+
+async function loginRequestUser(req: any, user: any): Promise<void> {
+  if (typeof req.login !== "function") return;
+  await new Promise<void>((resolve, reject) => {
+    req.login(user, (err: unknown) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+}
+
 function safeReturnPath(value: unknown): string {
   const requested = typeof value === "string" ? value : "/skywire";
   const allowed = (process.env.ATPROTO_ALLOWED_RETURN_PATHS || "/profile,/skywire,/tz2at,/challenges,/side-quests")
@@ -223,6 +308,7 @@ function allowedOAuthReturnOrigins(): Set<string> {
       ...(process.env.CORS_ALLOWED_ORIGINS || "").split(","),
       "https://wtfos.app",
       "https://www.wtfos.app",
+      "https://skywire.wtfos.app",
       "https://wtfgameshow.app",
       "https://www.wtfgameshow.app",
       "http://127.0.0.1:3000",
@@ -825,7 +911,7 @@ router.post("/api/atproto/register", isAuthenticated, mutationLimiter, async (re
   res.status(201).json({ account: safeAtprotoAccount(account) });
 });
 
-router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
+router.get("/api/atproto/oauth/start", mutationLimiter, async (req, res) => {
   if (!isAtprotoEnabled()) return res.status(503).json({ error: "AT Protocol is disabled" });
   const parsed = oauthStartSchema.safeParse(req.query);
   if (!parsed.success) {
@@ -835,7 +921,29 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
   const origin = requestOrigin(req);
   const popup = parsed.data.popup === "1";
   const appName = parsed.data.app === "tz2at" ? "tz2at" : "skywire";
-  if (appName === "skywire" && !userEligibleForSkywireRollout((req.user as any).roles ?? (req.user as any).role)) {
+  const standalone = appName === "skywire" && (parsed.data.standalone === "1" || parsed.data.standalone === "true");
+  const sessionUser = req.isAuthenticated?.() ? (req.user as any) : null;
+  if (!sessionUser && !standalone) {
+    return redirectAtprotoOAuthStartError(res, {
+      popup,
+      error: "atproto_session",
+      returnTo,
+      appName,
+      origin,
+      handle: parsed.data.handle,
+    });
+  }
+  if (!sessionUser && appName !== "skywire") {
+    return redirectAtprotoOAuthStartError(res, {
+      popup,
+      error: "atproto_session",
+      returnTo,
+      appName,
+      origin,
+      handle: parsed.data.handle,
+    });
+  }
+  if (appName === "skywire" && sessionUser && !userEligibleForSkywireRollout(sessionUser.roles ?? sessionUser.role)) {
     return res.status(403).json({ error: "Skywire is not available for your account yet", code: "skywire_rollout_denied" });
   }
   const tz2atStep = normalizeTz2atPermissionStep(parsed.data.step);
@@ -846,11 +954,12 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     appName === "tz2at"
       ? buildTz2atAtprotoScope(tz2atStep)
       : buildSkywireAtprotoScope(tier, chatEnabled);
-  const handle = normalizeRegistrationHandle(parsed.data.handle, registrationHandleSuffix());
-  if (!isValidAtHandle(handle)) {
+  const handle = normalizeAtprotoOAuthActor(parsed.data.handle, registrationHandleSuffix());
+  const handleIsDid = isAtprotoDid(handle);
+  if (!isValidAtprotoOAuthActor(handle)) {
     return redirectAtprotoOAuthStartError(res, { popup, error: "atproto_handle", returnTo, appName, origin, handle });
   }
-  if (appName === "skywire" && isReservedSkywirePlatformHandle(handle) && !platformActorIntent) {
+  if (appName === "skywire" && !handleIsDid && isReservedSkywirePlatformHandle(handle) && !platformActorIntent) {
     return redirectAtprotoOAuthStartError(res, {
       popup,
       error: "atproto_platform_actor_confirmation_required",
@@ -860,7 +969,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
       handle,
     });
   }
-  if (appName === "skywire") {
+  if (appName === "skywire" && !handleIsDid) {
     const resolvedHandle = await resolveAtprotoHandleViaPublicResolver(handle).catch(() => null);
     if (resolvedHandle?.error === "unresolved") {
       return redirectAtprotoOAuthStartError(res, {
@@ -874,7 +983,17 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     }
   }
   if (appName === "skywire" && chatEnabled) {
-    const existingAccount = await linkedAccountForUser((req.user as any).id);
+    if (!sessionUser) {
+      return redirectAtprotoOAuthStartError(res, {
+        popup,
+        error: "atproto_chat_account_required",
+        returnTo,
+        appName,
+        origin,
+        handle,
+      });
+    }
+    const existingAccount = await linkedAccountForUser(sessionUser.id);
     if (!existingAccount) {
       return redirectAtprotoOAuthStartError(res, {
         popup,
@@ -885,7 +1004,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
         handle,
       });
     }
-    if (normalizeAtHandle(existingAccount.handle) !== handle) {
+    if (handleIsDid ? existingAccount.did !== handle : normalizeAtHandle(existingAccount.handle) !== handle) {
       return redirectAtprotoOAuthStartError(res, {
         popup,
         error: "atproto_chat_account_mismatch",
@@ -901,12 +1020,13 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     state,
     returnTo,
     popup,
-    userId: (req.user as any).id,
+    userId: sessionUser?.id,
     appName,
     tz2atStep,
     permissionTier: tier,
     chatEnabled,
     platformActorIntent: appName === "skywire" && platformActorIntent,
+    standalone,
     requestedScope,
     requestedHandle: handle,
     origin,
@@ -917,11 +1037,11 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
     await rememberAtprotoOAuthState(oauthState);
     const client = await getAtprotoOAuthClient();
     const url = await client.authorize(handle, { scope: requestedScope, state });
-    if (appName === "skywire") {
-      const localDid = `did:wtf:local-user-${(req.user as any).id}`;
+    if (appName === "skywire" && sessionUser) {
+      const localDid = `did:wtf:local-user-${sessionUser.id}`;
       await emitAtprotoSystemEvent({
         eventType: "atproto.permission_tier.selected",
-        userId: (req.user as any).id,
+        userId: sessionUser.id,
         did: localDid,
         handle,
         rawRefType: "atproto_oauth_start",
@@ -930,7 +1050,7 @@ router.get("/api/atproto/oauth/start", isAuthenticated, async (req, res) => {
       });
       await emitAtprotoSystemEvent({
         eventType: "atproto.chat_permission.toggled",
-        userId: (req.user as any).id,
+        userId: sessionUser.id,
         did: localDid,
         handle,
         rawRefType: "atproto_oauth_start",
@@ -967,7 +1087,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
   const params = new URLSearchParams(req.originalUrl.split("?")[1] || "");
   const callbackState = params.get("state");
   const sessionState = await atprotoOAuthStateForCallback(req, callbackState);
-  if (!sessionState?.userId) {
+  if (!sessionState || (!sessionState.userId && !sessionState.standalone)) {
     return res.redirect(originUrl(requestOrigin(req), "/skywire?error=atproto_session"));
   }
   const returnTo = safeReturnPath(sessionState.returnTo);
@@ -1000,7 +1120,12 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     return res.redirect(originUrl(returnOrigin, returnPathWithQuery(returnTo, parsed)));
   };
   const authenticatedUserId = req.isAuthenticated?.() ? Number((req.user as any)?.id) : null;
-  if (authenticatedUserId && authenticatedUserId !== Number(sessionState.userId) && callbackOrigin === returnOrigin) {
+  if (
+    authenticatedUserId &&
+    sessionState.userId &&
+    authenticatedUserId !== Number(sessionState.userId) &&
+    callbackOrigin === returnOrigin
+  ) {
     return redirectWith("error=atproto_session");
   }
   try {
@@ -1032,11 +1157,20 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
           : "tz2at-identity"
         : (normalizeSkywirePermissionTier(sessionState.permissionTier) as SkywirePermissionTier);
     const resolvedChatEnabled = grants.chatEnabled;
-    const requestedHandle = normalizeAtHandle(sessionState.requestedHandle || "");
+    const requestedActor = String(sessionState.requestedHandle || "").trim();
+    const requestedHandle = isAtprotoDid(requestedActor) ? "" : normalizeAtHandle(requestedActor);
     const returnedHandle = normalizeAtHandle(profile.data.handle || "");
+    if (appName === "skywire" && isAtprotoDid(requestedActor) && requestedActor !== session.did) {
+      console.warn("[skywire] refused OAuth DID mismatch", {
+        userId: sessionState.userId ?? null,
+        requestedDid: requestedActor,
+        returnedDid: session.did,
+      });
+      return redirectWith("error=atproto_account_mismatch");
+    }
     if (appName === "skywire" && requestedHandle && returnedHandle && requestedHandle !== returnedHandle) {
       console.warn("[skywire] refused OAuth account mismatch", {
-        userId: sessionState.userId,
+        userId: sessionState.userId ?? null,
         requestedHandle,
         returnedHandle,
         did: session.did,
@@ -1045,22 +1179,36 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     }
     if (appName === "skywire" && isReservedSkywirePlatformHandle(returnedHandle) && !sessionState.platformActorIntent) {
       console.warn("[skywire] refused reserved platform actor OAuth binding without explicit intent", {
-        userId: sessionState.userId,
+        userId: sessionState.userId ?? null,
         requestedHandle,
         returnedHandle,
         did: session.did,
       });
       return redirectWith("error=atproto_platform_actor_confirmation_required");
     }
-    const existingForDid = await linkedAccountForUserDid(sessionState.userId, session.did);
-    const existingForUser = await linkedAccountForUser(sessionState.userId);
+    let resolvedUserId = sessionState.userId ? Number(sessionState.userId) : null;
+    let standaloneLoginUser: Awaited<ReturnType<typeof getUserById>> | null = null;
+    if (!resolvedUserId && sessionState.standalone && appName === "skywire") {
+      standaloneLoginUser = await findOrCreateSkywireStandaloneUser({
+        did: session.did,
+        handle: profile.data.handle,
+        displayName: profile.data.displayName,
+        avatarUrl: profile.data.avatar,
+      });
+      resolvedUserId = standaloneLoginUser?.id ?? null;
+    }
+    if (!resolvedUserId) {
+      return redirectWith("error=atproto_session");
+    }
+    const existingForDid = await linkedAccountForUserDid(resolvedUserId, session.did);
+    const existingForUser = await linkedAccountForUser(resolvedUserId);
     if (appName === "skywire" && sessionState.chatEnabled) {
       if (!existingForUser) {
         return redirectWith("error=atproto_chat_account_required");
       }
       if (existingForUser.did !== session.did || normalizeAtHandle(existingForUser.handle) !== returnedHandle) {
         console.warn("[skywire] refused chat OAuth upgrade for non-canonical account", {
-          userId: sessionState.userId,
+          userId: resolvedUserId,
           existingDid: existingForUser.did,
           existingHandle: existingForUser.handle,
           returnedDid: session.did,
@@ -1071,7 +1219,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     }
 
     const accountValues = {
-      userId: sessionState.userId,
+      userId: resolvedUserId,
       did: session.did,
       handle: profile.data.handle,
       pdsUrl: tokenInfo?.aud ?? null,
@@ -1099,7 +1247,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       : await db
           .insert(atprotoAccounts)
           .values({
-        userId: sessionState.userId,
+        userId: resolvedUserId,
         did: session.did,
         handle: profile.data.handle,
         pdsUrl: tokenInfo?.aud ?? null,
@@ -1124,7 +1272,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     }
     await persistOAuthSessionForDid(session.did, storedSession, {
       accountId: account.id,
-      userId: sessionState.userId,
+      userId: resolvedUserId,
       oauthScopes: grantedScope,
       oauthRequestedScopes: requestedScope,
       oauthPermissionTier: resolvedPermissionTier,
@@ -1133,7 +1281,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
 
     await emitAtprotoSystemEvent({
       eventType: "atproto.account.linked",
-      userId: sessionState.userId,
+      userId: resolvedUserId,
       did: session.did,
       handle: profile.data.handle,
       rawRefType: "atproto_account",
@@ -1147,6 +1295,13 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
         grantedScope,
       },
     });
+
+    if (sessionState.standalone && appName === "skywire") {
+      const loginUser = standaloneLoginUser ?? (await getUserById(resolvedUserId));
+      if (loginUser) {
+        await loginRequestUser(req, loginUser);
+      }
+    }
 
     await clearAtprotoOAuthState(req, sessionState.state);
     const verifiedParams = new URLSearchParams({

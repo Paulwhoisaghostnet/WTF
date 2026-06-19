@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import styled from "styled-components";
 import {
   Button,
@@ -213,6 +213,22 @@ function replaceSkywireTabUrl(tab: SkywireTab) {
   if (next !== current) {
     window.history.replaceState({}, "", next);
   }
+}
+
+function isSkywireStandaloneSurface(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.location.hostname === "skywire.wtfos.app" ||
+    new URLSearchParams(window.location.search).get("standalone") === "1"
+  );
+}
+
+function skywireStandaloneReturnTo(): string {
+  const params = new URLSearchParams({ tab: "account" });
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("standalone") === "1") {
+    params.set("standalone", "1");
+  }
+  return `/skywire?${params.toString()}`;
 }
 
 function shareSkywireOAuthCompletion(payload: AtprotoOAuthCompletion) {
@@ -714,35 +730,39 @@ interface SkywirePipelineHistoryResponse {
   storage: string;
 }
 
-const Shell = styled.div`
+const Shell = styled.div<{ $standalone?: boolean }>`
   min-height: 100%;
-  padding: 10px;
-  --sky-bg: #061116;
-  --sky-panel: #0d1c25;
-  --sky-panel-2: #102733;
-  --sky-card: #122b36;
-  --sky-card-soft: #183643;
-  --sky-border: #285465;
-  --sky-border-strong: #3a8797;
-  --sky-text: #f2fbff;
-  --sky-muted: #abc1ca;
-  --sky-dim: #7f9aa5;
-  --sky-cyan: #67e8f9;
-  --sky-teal: #22c7bd;
+  padding: ${({ $standalone }) => ($standalone ? "clamp(14px, 2.2vw, 28px)" : "10px")};
+  --sky-bg: #110c1d;
+  --sky-panel: #171222;
+  --sky-panel-2: #211936;
+  --sky-card: #20182f;
+  --sky-card-soft: #2a2140;
+  --sky-border: #3b3154;
+  --sky-border-strong: #675a8a;
+  --sky-text: #f1ecfb;
+  --sky-muted: #b9acd6;
+  --sky-dim: #8d7ead;
+  --sky-cyan: #6ee7d8;
+  --sky-teal: #35cbbd;
   --sky-rose: #fb7185;
-  --sky-amber: #f2c94c;
+  --sky-amber: #f6c85f;
   background:
-    radial-gradient(circle at 14% 8%, rgba(34, 199, 189, 0.18), transparent 28%),
-    linear-gradient(90deg, rgba(103, 232, 249, 0.08) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(251, 113, 133, 0.06) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(17, 12, 29, 0.98), rgba(11, 8, 18, 0.98)),
     var(--sky-bg);
-  background-size: 14px 14px, 14px 14px, auto;
   display: grid;
-  gap: 8px;
+  gap: 12px;
   color: var(--sky-text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  ${({ $standalone }) => ($standalone ? "min-height: 100vh; align-content: start;" : "")}
 
   a {
     color: var(--sky-cyan);
+  }
+
+  :where(button, input, textarea, select, p, span, strong, div, section, article, nav, h1, h2, h3, h4, label, legend, fieldset) {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    letter-spacing: 0 !important;
   }
 
   input,
@@ -754,43 +774,53 @@ const Shell = styled.div`
   input:not([type="checkbox"]):not([type="radio"]),
   textarea,
   select {
-    background-color: #07141c !important;
+    background-color: #110c1d !important;
     color: var(--sky-text) !important;
     border-color: var(--sky-border-strong) !important;
+    border-radius: 8px !important;
   }
 
   div:has(> input:not([type="checkbox"]):not([type="radio"])) {
-    background-color: #07141c !important;
+    background-color: #110c1d !important;
     border-color: var(--sky-border-strong) !important;
+    border-radius: 999px !important;
   }
 
   button {
     color: var(--sky-text) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
   }
 
   button:not(:disabled) {
     border-color: var(--sky-border-strong) !important;
     background-color: var(--sky-card-soft) !important;
     background-image:
-      linear-gradient(180deg, rgba(24, 54, 67, 0.98), rgba(13, 28, 37, 0.98)) !important;
+      linear-gradient(180deg, rgba(42, 33, 64, 0.98), rgba(27, 20, 43, 0.98)) !important;
     color: var(--sky-text) !important;
   }
 
   button:disabled {
     border-color: var(--sky-border) !important;
-    background-color: #111f27 !important;
+    background-color: #1a1328 !important;
     background-image: none !important;
     color: var(--sky-dim) !important;
   }
 
   fieldset {
-    border-color: var(--sky-border) !important;
-    background: rgba(9, 25, 34, 0.32);
+    border: 1px solid var(--sky-border) !important;
+    background: rgba(24, 18, 36, 0.62);
     color: var(--sky-text);
+    border-radius: 12px;
+    box-shadow: none !important;
   }
 
   legend {
     color: var(--sky-text);
+    background: var(--sky-bg) !important;
+    border: 1px solid var(--sky-border) !important;
+    border-radius: 999px;
+    padding: 0 6px;
   }
 `;
 
@@ -819,16 +849,16 @@ const Row = styled.div`
 
 const SkywireHeader = styled.section`
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: stretch;
-  padding: 8px;
-  border: 1px solid var(--sky-border-strong);
-  border-radius: 8px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid rgba(103, 90, 138, 0.74);
+  border-radius: 16px;
   background:
-    linear-gradient(135deg, #071a44 0%, #003a66 48%, #008080 100%);
-  color: #fff;
-  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.32);
+    linear-gradient(135deg, rgba(32, 24, 47, 0.96) 0%, rgba(23, 18, 34, 0.96) 68%, rgba(18, 42, 48, 0.92) 100%);
+  color: var(--sky-text);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
 
   @media (max-width: 780px) {
     grid-template-columns: 1fr;
@@ -850,46 +880,68 @@ const HeaderTitle = styled.div`
   p {
     margin: 0;
     max-width: 760px;
-    color: #dffcff;
+    color: var(--sky-muted);
     line-height: 1.35;
   }
 `;
 
 const HeaderBadgeGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, minmax(118px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
-  min-width: min(330px, 100%);
-
-  @media (max-width: 520px) {
-    grid-template-columns: 1fr;
-  }
+  min-width: 0;
 `;
 
 const StatusBadge = styled.div<{ $tone?: "ready" | "warn" | "quiet" }>`
-  border: 1px solid ${({ $tone }) => ($tone === "ready" ? "#41d99c" : $tone === "warn" ? "#f2c94c" : "#466575")};
-  border-radius: 8px;
+  border: 1px solid ${({ $tone }) => ($tone === "ready" ? "#35cbbd" : $tone === "warn" ? "#f6c85f" : "#50466b")};
+  border-radius: 999px;
   background: ${({ $tone }) =>
     $tone === "ready"
-      ? "linear-gradient(180deg, rgba(18, 86, 64, 0.9), rgba(11, 44, 45, 0.95))"
+      ? "linear-gradient(180deg, rgba(21, 79, 75, 0.84), rgba(21, 37, 49, 0.94))"
       : $tone === "warn"
-        ? "linear-gradient(180deg, rgba(82, 62, 19, 0.9), rgba(45, 35, 19, 0.95))"
-        : "linear-gradient(180deg, rgba(20, 42, 54, 0.9), rgba(11, 30, 41, 0.95))"};
+        ? "linear-gradient(180deg, rgba(79, 59, 24, 0.86), rgba(46, 35, 28, 0.94))"
+        : "linear-gradient(180deg, rgba(33, 25, 54, 0.9), rgba(24, 18, 36, 0.96))"};
   color: var(--sky-text);
-  padding: 6px;
-  display: grid;
-  gap: 2px;
-  min-height: 48px;
+  padding: 5px 10px;
+  display: inline-grid;
+  gap: 1px;
+  min-height: 34px;
+  min-width: 96px;
 
   span {
-    font-size: 11px;
+    font-size: 10px;
     text-transform: uppercase;
     color: var(--sky-muted);
   }
 
   strong {
     overflow-wrap: anywhere;
+    font-size: 12px;
   }
+`;
+
+const HeaderActionRow = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+`;
+
+const HeaderActionButton = styled.button<{ $primary?: boolean }>`
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid ${({ $primary }) => ($primary ? "var(--sky-cyan)" : "var(--sky-border-strong)")} !important;
+  border-radius: 999px !important;
+  background:
+    ${({ $primary }) =>
+      $primary
+        ? "linear-gradient(135deg, rgba(39, 190, 176, 0.95), rgba(124, 92, 255, 0.85))"
+        : "rgba(32, 24, 47, 0.82)"} !important;
+  color: #ffffff !important;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 `;
 
 const LiveIndicatorBanner = styled.div`
@@ -951,6 +1003,172 @@ const NoticeBar = styled.div`
   padding: 6px 8px;
 `;
 
+const StandaloneLoginPage = styled.main`
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  background: #110c1d;
+  color: #f1ecfb;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  padding: clamp(20px, 5vw, 56px);
+`;
+
+const StandaloneLoginCenter = styled.section`
+  width: min(100%, 430px);
+  justify-self: center;
+  align-self: center;
+  display: grid;
+  gap: 18px;
+`;
+
+const StandaloneMark = styled.div`
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  border: 1px solid rgba(185, 172, 214, 0.28);
+  background:
+    linear-gradient(135deg, #20182f 0 35%, #35cbbd 35% 58%, #fb7185 58% 100%);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+  font-weight: 800;
+  letter-spacing: 0;
+`;
+
+const StandaloneIntro = styled.div`
+  display: grid;
+  gap: 8px;
+  text-align: center;
+
+  h1 {
+    margin: 0;
+    font-size: 25px;
+    letter-spacing: 0;
+    line-height: 1.1;
+  }
+
+  p {
+    margin: 0;
+    color: #b9acd6;
+    line-height: 1.45;
+  }
+`;
+
+const StandaloneForm = styled.form`
+  display: grid;
+  gap: 10px;
+`;
+
+const StandaloneLabel = styled.label`
+  display: grid;
+  gap: 7px;
+  color: #b9acd6;
+  font-weight: 700;
+`;
+
+const StandaloneInput = styled.input`
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  border: 1px solid rgba(103, 90, 138, 0.82);
+  border-radius: 999px;
+  background: #110c1d;
+  color: #f1ecfb;
+  padding: 0 18px;
+  font: inherit;
+  font-size: 16px;
+
+  &::placeholder {
+    color: #8d7ead;
+  }
+
+  &:focus {
+    outline: 2px solid #7c5cff;
+    outline-offset: 2px;
+  }
+`;
+
+const StandaloneButton = styled.button`
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  background: #7c5cff;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+
+  &:hover {
+    background: #8b70ff;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #35cbbd;
+    outline-offset: 2px;
+  }
+`;
+
+const StandaloneNotice = styled.div`
+  border: 1px solid rgba(251, 113, 133, 0.78);
+  border-radius: 8px;
+  background: rgba(88, 22, 46, 0.52);
+  color: #ffdce5;
+  padding: 10px 12px;
+  line-height: 1.35;
+`;
+
+const StandaloneSignals = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+
+  @media (max-width: 460px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const StandaloneSignal = styled.div`
+  min-height: 70px;
+  border: 1px solid rgba(103, 90, 138, 0.48);
+  border-radius: 8px;
+  background: rgba(32, 24, 47, 0.78);
+  padding: 9px;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+
+  strong {
+    font-size: 13px;
+  }
+
+  span {
+    color: #b9acd6;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+`;
+
+const StandaloneFooter = styled.footer`
+  justify-self: center;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  color: #8d7ead;
+  font-size: 13px;
+
+  a {
+    color: #b9acd6;
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: #f1ecfb;
+    text-decoration: underline;
+  }
+`;
+
 const SignalStarterGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(214px, 1fr));
@@ -961,17 +1179,17 @@ const SignalStarterCard = styled.button<{ $selected?: boolean }>`
   width: 100%;
   min-height: 142px;
   padding: 9px;
-  border: 1px solid ${({ $selected }) => ($selected ? "#67e8f9" : "var(--sky-border)")};
+  border: 1px solid ${({ $selected }) => ($selected ? "var(--sky-cyan)" : "var(--sky-border)")};
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(20, 52, 64, 0.96), rgba(8, 28, 38, 0.98)) !important;
+    linear-gradient(180deg, rgba(42, 33, 64, 0.96), rgba(17, 12, 29, 0.98)) !important;
   color: var(--sky-text);
   display: grid;
   gap: 7px;
   align-content: start;
   text-align: left;
   cursor: pointer;
-  box-shadow: ${({ $selected }) => ($selected ? "0 0 0 2px rgba(103, 232, 249, 0.22)" : "none")};
+  box-shadow: ${({ $selected }) => ($selected ? "0 0 0 2px rgba(110, 231, 216, 0.22)" : "none")};
 
   &:focus-visible {
     outline: 2px solid var(--sky-cyan);
@@ -1009,10 +1227,11 @@ const SignalStarterAction = styled.span`
 `;
 
 const ContentBody = styled(TabBody)`
-  padding: 10px;
-  background:
-    linear-gradient(180deg, var(--sky-panel) 0%, #091821 100%);
-  border-color: #050c10 #315362 #315362 #050c10;
+  padding: clamp(10px, 1.5vw, 16px);
+  background: rgba(15, 11, 24, 0.78);
+  border: 1px solid var(--sky-border) !important;
+  border-radius: 16px;
+  box-shadow: none !important;
   color: var(--sky-text);
 `;
 
@@ -1341,7 +1560,7 @@ const VaultWalletCard = styled.div`
   border: 1px solid var(--sky-border);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(18, 47, 58, 0.96), rgba(9, 25, 34, 0.96));
+    linear-gradient(180deg, rgba(32, 24, 47, 0.96), rgba(17, 12, 29, 0.96));
   color: var(--sky-text);
   padding: 8px;
   display: grid;
@@ -1781,7 +2000,7 @@ const ThreadMarker = styled.div<{ $focus?: boolean }>`
   padding: 2px 7px;
   border: 1px solid ${({ $focus }) => ($focus ? "var(--sky-cyan)" : "var(--sky-border)")};
   border-radius: 999px;
-  background: ${({ $focus }) => ($focus ? "rgba(103, 232, 249, 0.18)" : "rgba(16, 39, 51, 0.95)")};
+  background: ${({ $focus }) => ($focus ? "rgba(110, 231, 216, 0.18)" : "rgba(32, 24, 47, 0.95)")};
   color: var(--sky-text);
   font-size: 12px;
 `;
@@ -4792,6 +5011,97 @@ function ChatPanel({
   );
 }
 
+function SkywireStandaloneLogin({
+  notice,
+  initialHandle,
+  onHandleChange,
+}: {
+  notice: string;
+  initialHandle: string;
+  onHandleChange: (value: string) => void;
+}) {
+  const [localNotice, setLocalNotice] = useState("");
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const actor = initialHandle.trim();
+    if (!actor) {
+      setLocalNotice("Enter a Bluesky handle or AT Protocol DID to continue.");
+      return;
+    }
+    const params = new URLSearchParams({
+      handle: actor,
+      returnTo: skywireStandaloneReturnTo(),
+      tier: SKYWIRE_DEFAULT_PERMISSION_TIER,
+      chat: "0",
+      standalone: "1",
+    });
+    try {
+      window.localStorage.setItem(
+        SKYWIRE_OAUTH_PENDING_KEY,
+        JSON.stringify({
+          handle: actor,
+          tier: SKYWIRE_DEFAULT_PERMISSION_TIER,
+          chatEnabled: false,
+          standalone: true,
+          at: Date.now(),
+        }),
+      );
+    } catch {
+      // Local pending marker is only a client hint.
+    }
+    window.location.assign(`/api/atproto/oauth/start?${params.toString()}`);
+  };
+
+  return (
+    <StandaloneLoginPage data-skywire-standalone-login="true">
+      <StandaloneLoginCenter aria-labelledby="skywire-standalone-title">
+        <StandaloneMark aria-hidden="true">SW</StandaloneMark>
+        <StandaloneIntro>
+          <h1 id="skywire-standalone-title">Skywire</h1>
+          <p>A Tezos-aware AT Protocol client for Bluesky, live status, creator signals, and portable sales context.</p>
+        </StandaloneIntro>
+        <StandaloneForm onSubmit={handleSubmit}>
+          <StandaloneLabel>
+            Handle or DID
+            <StandaloneInput
+              value={initialHandle}
+              onChange={(event) => {
+                setLocalNotice("");
+                onHandleChange(event.currentTarget.value);
+              }}
+              placeholder="paulwhoisaghost.bsky.social"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+          </StandaloneLabel>
+          <StandaloneButton type="submit">Continue</StandaloneButton>
+        </StandaloneForm>
+        {notice || localNotice ? <StandaloneNotice role="status">{notice || localNotice}</StandaloneNotice> : null}
+        <StandaloneSignals aria-label="Skywire signal examples">
+          <StandaloneSignal>
+            <strong>Recent sale</strong>
+            <span>Share sale context without hand-writing a record.</span>
+          </StandaloneSignal>
+          <StandaloneSignal>
+            <strong>WTF LIVE</strong>
+            <span>Publish a live-status handoff that points at your room.</span>
+          </StandaloneSignal>
+          <StandaloneSignal>
+            <strong>Proof link</strong>
+            <span>Attach identity, token, wallet, or post evidence.</span>
+          </StandaloneSignal>
+        </StandaloneSignals>
+      </StandaloneLoginCenter>
+      <StandaloneFooter>
+        <a href="https://bsky.app" target="_blank" rel="noopener noreferrer">Bluesky</a>
+        <a href="https://wtfos.app/faq" target="_blank" rel="noopener noreferrer">Help</a>
+        <a href="https://wtfos.app/links" target="_blank" rel="noopener noreferrer">WTF OS</a>
+      </StandaloneFooter>
+    </StandaloneLoginPage>
+  );
+}
+
 function resolveInitialSkywireTab(explicitTab?: SkywireTab) {
   if (explicitTab) {
     return { didChoose: true, tab: explicitTab };
@@ -4806,8 +5116,9 @@ function resolveInitialSkywireTab(explicitTab?: SkywireTab) {
 }
 
 export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, isLoading: authLoading } = useAuth();
   const qc = useQueryClient();
+  const standaloneSurface = isSkywireStandaloneSurface();
   const [tab, setTab] = useState<SkywireTab>(() => resolveInitialSkywireTab(initialTab).tab);
   const [selectedActor, setSelectedActor] = useState<SkywireActor | null>(null);
   const [selectedThreadPost, setSelectedThreadPost] = useState<SkywirePost | null>(null);
@@ -4830,6 +5141,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   const meQuery = useQuery<AtprotoMe>({
     queryKey: ["skywire", "me"],
     queryFn: () => api.get("/api/atproto/me"),
+    enabled: Boolean(user),
   });
   const fetchCanonicalAtprotoAccount = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: ["skywire", "me"] });
@@ -4944,7 +5256,13 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
     }
     if (error === "atproto_oauth_start") setNotice("Bluesky connection could not start. Check the handle and try again.");
     if (error === "atproto_oauth") setNotice("Bluesky connection did not complete. Try connecting again.");
-    if (error === "atproto_session") setNotice("Sign in to WTF OS before connecting Bluesky.");
+    if (error === "atproto_session") {
+      setNotice(
+        standaloneSurface
+          ? "Skywire could not restore the AT login session. Try continuing again from this page."
+          : "Sign in to WTF OS before connecting Bluesky."
+      );
+    }
     if (error === "atproto_state") setNotice("Bluesky connection state expired. Try connecting again.");
     if (error === "atproto_platform_account_reserved") {
       setNotice("Skywire blocked the platform actor because the OAuth request did not carry explicit confirmation.");
@@ -4961,7 +5279,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
     if (params.has("verified") || params.has("error")) {
       replaceSkywireTabUrl(tabParam && isSkywireTab(tabParam) ? (tabParam as SkywireTab) : "account");
     }
-  }, [handleAtprotoOAuthCompletion, selectTab]);
+  }, [handleAtprotoOAuthCompletion, selectTab, standaloneSurface]);
 
   useEffect(() => {
     const me = meQuery.data;
@@ -5073,16 +5391,45 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   const connectionTone = me?.account && canUseAtprotoSession ? "ready" : me?.account ? "warn" : "quiet";
   const chatTone = me?.account && canUseChat ? "ready" : me?.account ? "warn" : "quiet";
 
-  return (
-    <AppWindow title="Skywire">
-      <Shell>
+  if (!authLoading && !user) {
+    return (
+      <SkywireStandaloneLogin
+        notice={notice}
+        initialHandle={welcomeHandle}
+        onHandleChange={setWelcomeHandle}
+      />
+    );
+  }
+
+  const skywireBody = (
+      <Shell $standalone={standaloneSurface}>
         <SkywireHeader>
           <HeaderTitle>
             <h2>Skywire</h2>
             <p>
-              Bluesky-style home, search, notifications, and messages — plus WTF feeds, Tezos vault, signals, and app pipelines.
-              Use the separate <strong>WTF LIVE</strong> app for public rooms and stage broadcasts.
+              AT Protocol for creators: timeline, market context, live status, signals, chat, and Tezos identity.
             </p>
+            <HeaderActionRow aria-label="Skywire quick actions">
+              <HeaderActionButton
+                type="button"
+                $primary
+                onClick={() => selectTab("signals")}
+              >
+                {activeLiveStatus ? "Live status" : "Go live"}
+              </HeaderActionButton>
+              <HeaderActionButton
+                type="button"
+                onClick={() => selectTab("signals")}
+              >
+                Recent sale signal
+              </HeaderActionButton>
+              <HeaderActionButton
+                type="button"
+                onClick={() => selectTab("composer")}
+              >
+                New post
+              </HeaderActionButton>
+            </HeaderActionRow>
           </HeaderTitle>
           <HeaderBadgeGrid>
             <StatusBadge $tone={connectionTone} role="button" style={{ cursor: "pointer" }} onClick={openSettings}>
@@ -5163,7 +5510,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
           }
         >
         <ContentBody>
-          {meQuery.isLoading ? <Hourglass size={32} /> : null}
+          {authLoading || meQuery.isLoading ? <Hourglass size={32} /> : null}
           {meQuery.isError ? <p>{(meQuery.error as Error).message}</p> : null}
           {me ? (
             <>
@@ -5351,6 +5698,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
         </ContentBody>
         </SkywireMainLayout>
       </Shell>
-    </AppWindow>
   );
+
+  return standaloneSurface ? skywireBody : <AppWindow title="Skywire">{skywireBody}</AppWindow>;
 }

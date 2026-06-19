@@ -33,61 +33,56 @@ import {
 
 const MainLayout = styled.div`
   display: grid;
-  grid-template-columns: minmax(168px, 210px) minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
-
-  @media (max-width: 820px) {
-    grid-template-columns: 1fr;
-  }
 `;
 
 const Sidebar = styled.nav`
-  border: 1px solid var(--sky-border, #285465);
-  border-radius: 8px;
-  background:
-    linear-gradient(180deg, rgba(13, 28, 37, 0.98) 0%, rgba(7, 19, 26, 0.98) 100%);
-  color: var(--sky-text, #f2fbff);
-  padding: 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--sky-text, #f1ecfb);
   display: grid;
-  gap: 10px;
-  max-height: min(72vh, 760px);
-  overflow: auto;
-  box-shadow: inset 0 0 0 1px rgba(103, 232, 249, 0.08);
+  gap: 8px;
+  overflow: visible;
 `;
 
 const NavGroup = styled.section`
   display: grid;
-  gap: 4px;
+  gap: 6px;
 `;
 
 const NavGroupLabel = styled.div`
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--sky-muted, #abc1ca);
+  color: var(--sky-muted, #b9acd6);
   padding: 0 4px;
 `;
 
 const NavButton = styled.button<{ $active?: boolean }>`
   appearance: none;
   border: 1px solid
-    ${({ $active }) => ($active ? "var(--sky-cyan, #67e8f9)" : "var(--sky-border, #285465)")} !important;
-  border-radius: 6px;
-  background-color: ${({ $active }) => ($active ? "rgba(15, 118, 126, 0.98)" : "rgba(16, 39, 51, 0.92)")} !important;
+    ${({ $active }) => ($active ? "var(--sky-cyan, #6ee7d8)" : "var(--sky-border, #3b3154)")} !important;
+  border-radius: 999px !important;
+  background-color: ${({ $active }) => ($active ? "rgba(21, 79, 75, 0.98)" : "rgba(32, 24, 47, 0.88)")} !important;
   background-image: ${({ $active }) =>
     $active
-      ? "linear-gradient(135deg, rgba(15, 118, 126, 0.98), rgba(31, 41, 99, 0.98))"
-      : "linear-gradient(180deg, rgba(16, 39, 51, 0.95), rgba(9, 25, 34, 0.95))"} !important;
-  color: ${({ $active }) => ($active ? "#f8feff" : "var(--sky-text, #f2fbff)")} !important;
-  padding: 6px 8px;
+      ? "linear-gradient(135deg, rgba(26, 92, 86, 0.96), rgba(45, 52, 83, 0.9))"
+      : "linear-gradient(180deg, rgba(32, 24, 47, 0.9), rgba(20, 15, 31, 0.9))"} !important;
+  color: ${({ $active }) => ($active ? "#f8feff" : "var(--sky-text, #f1ecfb)")} !important;
+  min-height: 40px;
+  padding: 7px 12px;
   text-align: left;
   cursor: pointer;
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-columns: 20px minmax(0, max-content);
   gap: 6px;
   align-items: center;
-  box-shadow: ${({ $active }) => ($active ? "0 0 0 2px rgba(103, 232, 249, 0.12)" : "none")};
+  flex: 0 0 auto;
+  box-shadow: ${({ $active }) => ($active ? "0 0 0 2px rgba(110, 231, 216, 0.14)" : "none")} !important;
+  white-space: nowrap;
 
   strong {
     display: block;
@@ -95,20 +90,20 @@ const NavButton = styled.button<{ $active?: boolean }>`
     line-height: 1.1;
   }
 
-  span {
-    display: block;
+  div > span {
+    display: none;
     font-size: 11px;
-    color: ${({ $active }) => ($active ? "#dbfbff" : "var(--sky-muted, #abc1ca)")};
+    color: ${({ $active }) => ($active ? "#dbfbff" : "var(--sky-muted, #b9acd6)")};
     line-height: 1.2;
   }
 
   &:hover {
-    border-color: var(--sky-cyan, #67e8f9);
-    background-color: ${({ $active }) => ($active ? "rgba(15, 118, 126, 0.98)" : "rgba(20, 55, 66, 0.98)")} !important;
+    border-color: var(--sky-cyan, #6ee7d8);
+    background-color: ${({ $active }) => ($active ? "rgba(45, 52, 83, 0.98)" : "rgba(42, 33, 64, 0.98)")} !important;
     background-image: ${({ $active }) =>
       $active
-        ? "linear-gradient(135deg, rgba(15, 118, 126, 0.98), rgba(31, 41, 99, 0.98))"
-        : "linear-gradient(180deg, rgba(20, 55, 66, 0.98), rgba(11, 31, 43, 0.98))"} !important;
+        ? "linear-gradient(135deg, rgba(45, 52, 83, 0.98), rgba(26, 80, 78, 0.92))"
+        : "linear-gradient(180deg, rgba(42, 33, 64, 0.98), rgba(22, 16, 34, 0.98))"} !important;
   }
 `;
 
@@ -119,10 +114,85 @@ const NavIconSlot = styled.span`
   height: 18px;
 `;
 
+const PrimaryNavRow = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  scrollbar-width: thin;
+`;
+
+const MoreNavDetails = styled.details`
+  position: relative;
+  flex: 0 0 auto;
+`;
+
+const MoreNavSummary = styled.summary`
+  min-height: 40px;
+  padding: 7px 12px;
+  border: 1px solid var(--sky-border, #3b3154);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(32, 24, 47, 0.9), rgba(20, 15, 31, 0.9));
+  color: var(--sky-text, #f1ecfb);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  white-space: nowrap;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &::after {
+    content: "⌄";
+    color: var(--sky-muted, #b9acd6);
+  }
+`;
+
+const SecondaryNavPanel = styled.div`
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(78vw, 360px);
+  max-height: min(72vh, 620px);
+  overflow: auto;
+  border: 1px solid var(--sky-border-strong, #675a8a);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(32, 24, 47, 0.99) 0%, rgba(17, 12, 29, 0.99) 100%);
+  padding: 10px;
+  display: grid;
+  gap: 12px;
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.4);
+
+  ${NavButton} {
+    grid-template-columns: 22px minmax(0, 1fr);
+    border-radius: 10px !important;
+    min-height: 48px;
+    width: 100%;
+    white-space: normal;
+  }
+
+  ${NavButton} div > span {
+    display: block;
+  }
+
+  @media (max-width: 640px) {
+    left: 0;
+    right: auto;
+    width: calc(100vw - 34px);
+  }
+`;
+
 const ContentPane = styled.div`
   min-width: 0;
   display: grid;
-  gap: 8px;
+  gap: 10px;
 `;
 
 const ContextBar = styled.div`
@@ -142,11 +212,11 @@ const ContextTitle = styled.strong`
 `;
 
 const WelcomeCard = styled.div`
-  border: 1px solid var(--sky-border, #285465);
+  border: 1px solid var(--sky-border, #3b3154);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(18, 47, 58, 0.96) 0%, rgba(9, 25, 34, 0.96) 100%);
-  color: var(--sky-text, #f2fbff);
+    linear-gradient(180deg, rgba(32, 24, 47, 0.96) 0%, rgba(17, 12, 29, 0.96) 100%);
+  color: var(--sky-text, #f1ecfb);
   padding: 12px;
   display: grid;
   gap: 10px;
@@ -182,11 +252,11 @@ const SectionHeader = styled.div`
 
   strong {
     font-size: 14px;
-    color: var(--sky-text, #f2fbff);
+    color: var(--sky-text, #f1ecfb);
   }
 
   span {
-    color: var(--sky-muted, #abc1ca);
+    color: var(--sky-muted, #b9acd6);
     line-height: 1.35;
   }
 `;
@@ -197,10 +267,10 @@ const TierGrid = styled.div`
 `;
 
 const TierCard = styled.div`
-  border: 1px solid var(--sky-border, #285465);
+  border: 1px solid var(--sky-border, #3b3154);
   border-radius: 8px;
-  background: rgba(16, 39, 51, 0.9);
-  color: var(--sky-text, #f2fbff);
+  background: rgba(32, 24, 47, 0.9);
+  color: var(--sky-text, #f1ecfb);
   padding: 8px;
   display: grid;
   gap: 4px;
@@ -209,11 +279,11 @@ const TierCard = styled.div`
 `;
 
 const ComposeBox = styled.div`
-  border: 1px solid var(--sky-border, #285465);
+  border: 1px solid var(--sky-border, #3b3154);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(18, 47, 58, 0.96), rgba(9, 25, 34, 0.96));
-  color: var(--sky-text, #f2fbff);
+    linear-gradient(180deg, rgba(32, 24, 47, 0.96), rgba(17, 12, 29, 0.96));
+  color: var(--sky-text, #f1ecfb);
   padding: 10px;
   display: grid;
   gap: 8px;
@@ -222,17 +292,17 @@ const ComposeBox = styled.div`
 const TextArea = styled.textarea`
   width: 100%;
   min-height: 72px;
-  border: 1px solid var(--sky-border-strong, #3a8797);
+  border: 1px solid var(--sky-border-strong, #675a8a);
   border-radius: 6px;
-  background: #07141c;
-  color: var(--sky-text, #f2fbff);
+  background: #110c1d;
+  color: var(--sky-text, #f1ecfb);
   padding: 6px;
   font: inherit;
   resize: vertical;
   box-sizing: border-box;
 
   &::placeholder {
-    color: var(--sky-dim, #7f9aa5);
+    color: var(--sky-dim, #8d7ead);
   }
 `;
 
@@ -240,7 +310,7 @@ const AdminHint = styled.div`
   border: 1px solid rgba(65, 217, 156, 0.48);
   border-radius: 8px;
   background: rgba(11, 47, 43, 0.72);
-  color: var(--sky-text, #f2fbff);
+  color: var(--sky-text, #f1ecfb);
   padding: 8px;
   display: grid;
   gap: 6px;
@@ -267,6 +337,8 @@ const NAV_ICONS: Partial<Record<SkywireTab | "wtf-live", LucideIcon>> = {
   "wtf-live": Clapperboard,
 };
 
+const PRIMARY_NAV_IDS = new Set<SkywireTab>(["home", "market", "signals", "chat", "vault", "account"]);
+
 export function SkywireSidebar({
   isAdmin,
   activeTab,
@@ -280,48 +352,67 @@ export function SkywireSidebar({
 }) {
   const groups = useMemo(() => skywireNavGroups(isAdmin), [isAdmin]);
   const sidebarTab = ["thread", "actor", "pipelines"].includes(activeTab) ? "home" : activeTab;
+  const allItems = groups.flatMap((group) => group.items);
+  const primaryItems = allItems.filter((item) => PRIMARY_NAV_IDS.has(item.id));
+  const secondaryGroups = groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !PRIMARY_NAV_IDS.has(item.id)),
+    }))
+    .filter((group) => group.items.length > 0);
+  const activeSecondaryItem = allItems.find((item) => item.id === sidebarTab && !PRIMARY_NAV_IDS.has(item.id));
+  const renderNavButton = (item: SkywireNavGroup["items"][number]) => {
+    const Icon = NAV_ICONS[item.id] || Radio;
+    return (
+      <NavButton
+        key={item.id}
+        type="button"
+        $active={sidebarTab === item.id}
+        aria-current={sidebarTab === item.id ? "page" : undefined}
+        onClick={() => onSelect(item.id)}
+        title={item.hint}
+      >
+        <NavIconSlot aria-hidden>
+          <Icon size={16} strokeWidth={2.2} />
+        </NavIconSlot>
+        <div>
+          <strong>{item.label}</strong>
+          <span>{item.hint}</span>
+        </div>
+      </NavButton>
+    );
+  };
 
   return (
     <Sidebar aria-label="Skywire navigation">
-      {groups.map((group: SkywireNavGroup) => (
-        <NavGroup key={group.id}>
-          <NavGroupLabel>{group.label}</NavGroupLabel>
-          {group.items.map((item) => {
-            const Icon = NAV_ICONS[item.id] || Radio;
-            return (
-            <NavButton
-              key={item.id}
-              type="button"
-              $active={sidebarTab === item.id}
-              onClick={() => onSelect(item.id)}
-              title={item.hint}
-            >
-              <NavIconSlot aria-hidden>
-                <Icon size={16} strokeWidth={2.2} />
-              </NavIconSlot>
-              <div>
-                <strong>{item.label}</strong>
-                <span>{item.hint}</span>
-              </div>
-            </NavButton>
-            );
-          })}
-        </NavGroup>
-      ))}
-      {onOpenWtfLive ? (
-        <NavGroup>
-          <NavGroupLabel>Separate app</NavGroupLabel>
-          <NavButton type="button" onClick={onOpenWtfLive} title="Public rooms and stage broadcasts">
-            <NavIconSlot aria-hidden>
-              <Clapperboard size={16} strokeWidth={2.2} />
-            </NavIconSlot>
-            <div>
-              <strong>WTF LIVE</strong>
-              <span>Rooms &amp; stages app</span>
-            </div>
-          </NavButton>
-        </NavGroup>
-      ) : null}
+      <PrimaryNavRow>
+        {primaryItems.map(renderNavButton)}
+        <MoreNavDetails open={Boolean(activeSecondaryItem)}>
+          <MoreNavSummary>{activeSecondaryItem ? activeSecondaryItem.label : "More"}</MoreNavSummary>
+          <SecondaryNavPanel>
+            {secondaryGroups.map((group: SkywireNavGroup) => (
+              <NavGroup key={group.id}>
+                <NavGroupLabel>{group.label}</NavGroupLabel>
+                {group.items.map(renderNavButton)}
+              </NavGroup>
+            ))}
+            {onOpenWtfLive ? (
+              <NavGroup>
+                <NavGroupLabel>Separate app</NavGroupLabel>
+                <NavButton type="button" onClick={onOpenWtfLive} title="Public rooms and stage broadcasts">
+                  <NavIconSlot aria-hidden>
+                    <Clapperboard size={16} strokeWidth={2.2} />
+                  </NavIconSlot>
+                  <div>
+                    <strong>WTF LIVE</strong>
+                    <span>Rooms &amp; stages app</span>
+                  </div>
+                </NavButton>
+              </NavGroup>
+            ) : null}
+          </SecondaryNavPanel>
+        </MoreNavDetails>
+      </PrimaryNavRow>
     </Sidebar>
   );
 }

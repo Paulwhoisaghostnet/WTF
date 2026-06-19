@@ -579,7 +579,7 @@ export const PAGE_DEFS: PageDef[] = [
     group: "admin",
     startMenu: true,
   },
-  { pattern: "/skywire", component: SkywirePage, auth: true, title: "Skywire", group: "social", startMenu: true, desktopIcon: true },
+  { pattern: "/skywire", component: SkywirePage, auth: false, title: "Skywire", group: "social", startMenu: true, desktopIcon: true },
   {
     pattern: "/live/r/:roomId",
     component: WtfLiveRoomPage,

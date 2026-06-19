@@ -41,6 +41,7 @@ test("skywire staff-alpha rollout unlocks operator and test-subject roles", () =
     assert.equal(canOpenPageDef(skywire!, role, ["skywire"], { skywire: true }), true, role);
     assert.equal(canOpenPageDef(live!, role, ["skywire"], { skywire: true }), true, role);
   }
+  assert.equal(canOpenPageDef(skywire!, null, [], { skywire: true }), true);
   assert.equal(canOpenPageDef(skywire!, "witness", [], { skywire: true }), false);
 });
 

@@ -14,6 +14,7 @@ import { encryptOAuthSecret } from "./oauth-crypto";
 import { hasPermission } from "../lib/permissions";
 import { listRolesForUserSnapshot } from "../lib/user-roles";
 import { getSessionSecret } from "./session-secret";
+import { WTFOS_PLATFORM_DOMAIN } from "@shared/platform-branding";
 import {
   legacyTwitterOAuthConfigured,
   legacyTwitterOAuthEnabled,
@@ -55,6 +56,9 @@ export async function comparePasswords(
 
 export async function setupAuth(app: Express) {
   const sessionSecret = getSessionSecret();
+  const sessionCookieDomain =
+    process.env.WTFOS_SESSION_COOKIE_DOMAIN ||
+    (process.env.NODE_ENV === "production" ? `.${WTFOS_PLATFORM_DOMAIN}` : undefined);
 
   const PgStore = connectPgSimple(session);
   const store = new PgStore({ pool, createTableIfMissing: true });
@@ -70,6 +74,7 @@ export async function setupAuth(app: Express) {
         httpOnly: true,
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
+        domain: sessionCookieDomain,
       },
     })
   );

@@ -147,7 +147,7 @@ upload.wtfos.app, upload.5-78-202-50.sslip.io {
 	}
 }
 
-wtfos.app, dues.wtfgameshow.app {
+wtfos.app, skywire.wtfos.app, dues.wtfgameshow.app {
 	encode gzip zstd
 
 	reverse_proxy app:3000 {

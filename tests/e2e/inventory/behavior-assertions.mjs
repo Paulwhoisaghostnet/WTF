@@ -369,6 +369,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The live harness reads public links, FAQ, access, leaderboard, gallery state, and the WTFOS inventory tool, rejects unauthenticated MCP calls, creates a scoped MCP token, proves tools/list works without setting cookies, and revokes the token.",
   },
   {
+    id: "skywire.standalone-at-login",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["skywire"],
+    ownerSpec: "server/features/atproto/skywire-policy.test.ts, tests/playwright/inventory/skywire-feed.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test server/features/atproto/skywire-policy.test.ts && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"standalone AT login\"",
+    userVisibleAssertion:
+      "Anonymous users can open Skywire directly as a public OVOID-style AT Protocol login screen with Handle-or-DID input, a Continue action, and signal examples before any WTF OS login page appears.",
+    durableSideEffectAssertion:
+      "Standalone OAuth start carries `standalone=1`, preserves the Skywire return path, accepts handles or DIDs, recovers durable callback state, creates or resumes the session-bound Skywire user only after the returned DID is known, and shares the production session cookie across wtfos.app and skywire.wtfos.app.",
+  },
+  {
     id: "skywire.market-feed-search-source",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["skywire"],

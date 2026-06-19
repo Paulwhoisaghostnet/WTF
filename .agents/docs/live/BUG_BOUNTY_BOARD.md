@@ -113,6 +113,7 @@ Priority labels:
 | WTF-BB-290 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / keyboard and accessibility | P2 | 9 | 12 | 3 | 3 | 0 | Broot now exposes focus-visible styling, object-specific layer labels, keyboard undo/redo/delete/nudge handling, and a focusable canvas workspace; verified live on `wtfos.app` commit `94d26fe` |
 | WTF-BB-291 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / HEN mint trust preview | P1 | 13 | 6 | 3 | 5 | 1 | Broot HEN publishing now splits Prepare and Sign, shows contract/network/wallet/token/CID/fee/storage review before wallet send, and prevents wallet submission until the user confirms; verified live on `wtfos.app` commit `94d26fe` |
 | WTF-BB-292 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / animation export UX | P2 | 9 | 12 | 2 | 4 | 0 | Broot MP4 export now defaults to a neutral still-hold capture and exposes explicit pulse/reveal modes plus duration/FPS controls instead of silently applying a hardcoded pulse; verified live on `wtfos.app` commit `94d26fe` |
+| WTF-BB-293 | Verified | Codex Skywire standalone OVOID UX pass | 2026-06-18 | Skywire / standalone AT login and OVOID-style UI | P1 | 13 | 6 | 4 | 5 | 0 | Skywire now has public standalone AT login at `skywire.wtfos.app`, subdomain Caddy/CORS/session support, standalone OAuth resume/create behavior, a compact task-led app shell with top quick actions and progressive disclosure, and verified source/build/coverage/full-inventory/Playwright screenshot coverage |
 | WTF-BB-219 | Verified | Codex desktop icon drag paint repair | 2026-06-07 | Desktop OS / icon drag rendering | P2 | 8 | 14 | 2 | 3 | 0 | Dragging a desktop icon could make all on-screen text blink out until movement stopped; fixed by decoupling live drag movement from parent desktop rerenders and verified locally |
 | WTF-BB-220 | Verified | Codex Impeccable shared UI repair pass | 2026-06-07 | Skywire / vault created-token layout | P2 | 8 | 14 | 2 | 3 | 0 | Skywire vault created-token collections could freeze the rendered client after a successful API response; fixed by removing the fragile nested auto-fill grid and verified in the full inventory suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 10 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
@@ -6224,6 +6225,29 @@ Priority labels:
   - Deploy to Hetzner `27738388502` completed successfully.
   - Live `https://wtfos.app/api/health` returned `status:"ok"` and `commitRef:"94d26fe"`.
   - Live `https://wtfos.app/creation-tools/broot/js/app.js` contains `MP4 mode` and the explicit hold/pulse/reveal export controls.
+
+### WTF-BB-293 - Skywire needs a standalone AT login and OVOID-style entry
+
+- Category: Skywire / standalone AT login and OVOID-style UI
+- Status: Verified
+- Owner/Session: Codex Skywire standalone OVOID UX pass
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - `/skywire` was marked auth-required in PageDef, shared browser-route metadata, access inventory, and E2E fixtures.
+  - `/api/atproto/oauth/start` required an existing wtfOS session and the callback rejected pending OAuth state without a user id.
+  - `skywire.wtfos.app` had no first-class standalone route behavior, so anonymous users got the wtfOS landing/login flow instead of a Skywire-branded AT Protocol login.
+  - The current Skywire UI still used the heavier desktop/retro shell where OVOID.at presents a focused dark, centered AT login surface.
+- Why it matters:
+  - Skywire should be usable as an AT Protocol client entrypoint, not only as an app inside an existing WTF OS session.
+  - A subdomain-specific AT login lets creators share Skywire as a clean product surface while still relying on the existing Skywire server permissions after OAuth.
+- Correction:
+  - Made Skywire's browser route public enough to show a standalone login shell while keeping mutation/feed APIs protected.
+  - Added a Skywire standalone OAuth lane that creates or resumes a server user from the returned AT DID and establishes a normal browser session after callback.
+  - Reworked the standalone shell toward OVOID's focused task model: compact top navigation, primary actions exposed first, secondary tools behind a More disclosure, and less persistent chrome.
+  - Registered `skywire.wtfos.app` as an allowed OAuth return origin and added inventory coverage for the public standalone login state.
+- Verification:
+  - Verified with `npm run check -- --pretty false`, `npm run build`, `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` with 354/354 passing.
+  - Captured local Playwright walkthrough screenshots under `output/playwright/skywire-standalone-walkthrough/`, including `08-ux-redesign-feed-polished.png` and `10-ux-redesign-signals-polished.png`.
 
 ### WTF-BB-282 - Embedded Pasta publishers rely on blocked native modals for critical feedback
 

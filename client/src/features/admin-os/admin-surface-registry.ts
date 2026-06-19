@@ -263,6 +263,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "app.interaction.tracked",
     ],
     behaviorAssertionIds: [
+      "skywire.standalone-at-login",
       "skywire.market-feed-search-source",
       "skywire.live-status-visible-indicator",
       "skywire.signal-starter-presets",

@@ -49,6 +49,7 @@ export function allowedOriginsForRuntime(env: EnvLike = process.env): Set<string
 
   if (env.NODE_ENV === "production") {
     allowed.add(WTFOS_PLATFORM_ORIGIN);
+    allowed.add(`https://skywire.${WTFOS_PLATFORM_DOMAIN}`);
     allowed.add(`https://dues.${WTFOS_PLATFORM_DOMAIN}`);
     allowed.add(`https://dues.wtfgameshow.app`);
     for (const legacyOrigin of WTFOS_LEGACY_PLATFORM_ORIGINS) {

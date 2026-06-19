@@ -49,6 +49,28 @@ const DISABLED_DESKTOP_APP_AVAILABILITY = Object.fromEntries(
   DESKTOP_APPS.map((key) => [key, false])
 ) as DesktopAppAvailability;
 
+function isSkywireStandaloneHost(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.hostname === "skywire.wtfos.app";
+}
+
+function locationHasSkywireStandaloneFlag(location: string): boolean {
+  const query =
+    location.split("?")[1]?.split("#")[0] ||
+    (typeof window !== "undefined" ? window.location.search.replace(/^\?/, "") : "");
+  return new URLSearchParams(query).get("standalone") === "1";
+}
+
+function skywireStandaloneRouteLocation(location: string): string | null {
+  if (isSkywireStandaloneHost()) {
+    return location.startsWith("/skywire") ? location : "/skywire";
+  }
+  if (location.startsWith("/skywire") && locationHasSkywireStandaloneFlag(location)) {
+    return location;
+  }
+  return null;
+}
+
 /* ═══ WindowRenderer ═════════════════════════════════ */
 
 function WindowCrashFallback({
@@ -420,6 +442,10 @@ function AppContent() {
   const showRegister = location === "/register";
   const showLanding = location === "/" && !user;
   const authOverlayActive = showLogin || showRegister || showLanding;
+  const skywireStandaloneLocation = skywireStandaloneRouteLocation(location);
+  const skywireStandaloneMatch = skywireStandaloneLocation
+    ? matchPage(skywireStandaloneLocation)
+    : null;
   const fullscreenMatch = matchPage(location);
   const routeOnlyFullscreen =
     fullscreenMatch &&
@@ -458,6 +484,10 @@ function AppContent() {
       );
     }
     return <WtfOsCliShell />;
+  }
+
+  if (skywireStandaloneMatch) {
+    return <FullscreenRouteRenderer match={skywireStandaloneMatch} />;
   }
 
   if (routeOnlyFullscreen) {

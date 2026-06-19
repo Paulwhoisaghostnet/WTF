@@ -29,7 +29,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/map-lab", path: "/map-lab", title: "WTF Map Lab", domain: "desktop-os", subdomain: "System maps and roadmaps", auth: true },
   { pattern: "/trade-boards", path: "/trade-boards", title: "Trade Boards", domain: "commerce", subdomain: "Trade boards/barter", auth: true },
   { pattern: "/w", path: "/w", title: "W Feed", domain: "social", subdomain: "W timeline", auth: true },
-  { pattern: "/skywire", path: "/skywire", title: "Skywire", domain: "social", subdomain: "Skywire AT Protocol bridge", auth: true },
+  { pattern: "/skywire", path: "/skywire", title: "Skywire", domain: "social", subdomain: "Skywire AT Protocol bridge", auth: false },
   { pattern: "/live/r/:roomId", path: "/live/r/wtf-live", title: "WTF LIVE Room", domain: "social", subdomain: "WTF LIVE public guest room", auth: false },
   { pattern: "/live", path: "/live", title: "WTF LIVE", domain: "social", subdomain: "WTF LIVE standalone rooms and stages", auth: true },
   { pattern: "/tz2at", path: "/tz2at", title: "tz2at", domain: "social", subdomain: "tz2at identity proof", auth: true },

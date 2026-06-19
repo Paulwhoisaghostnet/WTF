@@ -5217,3 +5217,13 @@
 **Why it mattered**: A production load harness that silently falls back to guest mode or an unbounded local profile can produce comforting but false results, or worse, hit the live site with a larger ramp than intended.
 
 **Rule**: Any production load script must declare its auth mode, fail closed when wallet/required credentials are missing, set conservative step and duration bounds in the package script itself, and keep generated load result artifacts out of commits unless the task explicitly asks to archive them.
+
+---
+
+## 2026-06-19 - UX references are task models, not palette swatches
+
+**What happened**: The first Skywire OVOID pass borrowed the dark color vocabulary and login veneer but kept Skywire's crowded navigation rail, status wall, and retro fieldset chrome. The Playwright walkthrough also caught route/query behavior that source-level checks did not cover, plus duplicate live-status action labels that made the app harder to scan.
+
+**Why it mattered**: A reference UI is useful because it shows what the product chooses to promote, group, hide, and simplify. Copying only the colors leaves the same bloated experience in a new coat of paint, and it misses the user's actual UX complaint.
+
+**Rule**: Before matching a reference UI, name the task-model changes first: which actions become primary, which sections are grouped, what chrome disappears, and what gets progressively disclosed. Then verify the result in a real browser screenshot and add tests for the new UX contract, including unique action labels for major controls.

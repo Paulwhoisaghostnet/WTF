@@ -101,7 +101,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/contract-factory", auth: true, roles: ["admin"], title: "Contract Factory" },
   { pattern: "/operator-wallet", auth: true, roles: ["admin"], title: "Operator Wallet" },
   { pattern: "/control-board", auth: true, roles: ["admin"], title: "Control Board" },
-  { pattern: "/skywire", auth: true, title: "Skywire" },
+  { pattern: "/skywire", auth: false, title: "Skywire" },
   { pattern: "/live/r/:roomId", auth: false, title: "WTF LIVE Room" },
   { pattern: "/live", auth: true, title: "WTF LIVE" },
   { pattern: "/tz2at", auth: true, title: "tz2at" },

@@ -137,7 +137,7 @@ export function evaluateBrowserRouteAccess(
     };
   }
 
-  if (cleanPath === "/skywire" && !userEligibleForSkywireRollout(roles)) {
+  if (cleanPath === "/skywire" && roles.length > 0 && !userEligibleForSkywireRollout(roles)) {
     return {
       allowed: false,
       path: cleanPath,

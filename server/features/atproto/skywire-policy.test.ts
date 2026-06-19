@@ -106,12 +106,14 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /oauthPermissionTier/);
   assert.match(route, /oauthChatEnabled/);
   assert.match(route, /resolvedChatEnabled/);
-  assert.match(route, /requestedHandle = normalizeAtHandle\(sessionState\.requestedHandle \|\| ""\)/);
+  assert.match(route, /requestedActor = String\(sessionState\.requestedHandle \|\| ""\)\.trim\(\)/);
+  assert.match(route, /requestedHandle = isAtprotoDid\(requestedActor\) \? "" : normalizeAtHandle\(requestedActor\)/);
   assert.match(route, /returnedHandle = normalizeAtHandle\(profile\.data\.handle \|\| ""\)/);
+  assert.match(route, /requestedActor !== session\.did/);
   assert.match(route, /requestedHandle && returnedHandle && requestedHandle !== returnedHandle/);
   assert.match(route, /existingForUser\.did !== session\.did/);
   assert.match(route, /refused chat OAuth upgrade for non-canonical account/);
-  assert.match(route, /linkedAccountForUserDid\(sessionState\.userId,\s*session\.did\)/);
+  assert.match(route, /linkedAccountForUserDid\(resolvedUserId,\s*session\.did\)/);
   assert.match(route, /oauthChatEnabled:\s*resolvedChatEnabled/);
   assert.match(route, /resolveAtprotoOAuthGrantState/);
   assert.match(route, /oauthScopes:\s*grantedScope/);
@@ -219,6 +221,35 @@ test("Skywire registration UI only offers official signup handoff", () => {
   assert.doesNotMatch(page, /skywire-registration-password/);
   assert.doesNotMatch(page, /skywire-registration-phone/);
   assert.doesNotMatch(page, /Send Phone Code/);
+});
+
+test("Skywire exposes a standalone OVOID-style AT login surface", () => {
+  const page = readFileSync("client/src/pages/Skywire.tsx", "utf8");
+  const app = readFileSync("client/src/App.tsx", "utf8");
+  const route = readFileSync("server/routes/atproto.ts", "utf8");
+  const passport = readFileSync("server/auth/passport.ts", "utf8");
+  const pageDefs = readFileSync("client/src/routes/page-defs.ts", "utf8");
+  const browserRoutes = readFileSync("shared/wtf-browser-routes.ts", "utf8");
+  const access = readFileSync("server/lib/wtf-access.ts", "utf8");
+  const caddy = readFileSync("Caddyfile", "utf8");
+
+  assert.match(page, /data-skywire-standalone-login="true"/);
+  assert.match(page, /Handle or DID/);
+  assert.match(page, /standalone:\s*"1"/);
+  assert.match(page, /skywireStandaloneReturnTo/);
+  assert.match(page, /enabled:\s*Boolean\(user\)/);
+  assert.match(app, /skywire\.wtfos\.app/);
+  assert.match(route, /standalone\s*=\s*appName === "skywire"/);
+  assert.match(route, /findOrCreateSkywireStandaloneUser/);
+  assert.match(route, /role:\s*"test_subject"/);
+  assert.match(route, /loginRequestUser/);
+  assert.match(route, /"https:\/\/skywire\.wtfos\.app"/);
+  assert.match(passport, /WTFOS_SESSION_COOKIE_DOMAIN/);
+  assert.match(passport, /`\.\$\{WTFOS_PLATFORM_DOMAIN\}`/);
+  assert.match(pageDefs, /pattern:\s*"\/skywire"[\s\S]*auth:\s*false/);
+  assert.match(browserRoutes, /\{\s*pattern:\s*"\/skywire",\s*auth:\s*false/);
+  assert.match(access, /Standalone AT Protocol login surface/);
+  assert.match(caddy, /wtfos\.app,\s*skywire\.wtfos\.app,\s*dues\.wtfgameshow\.app\s*\{/);
 });
 
 test("Skywire bridge exposes preferred Tezos identity and detected .tez domains", () => {
