@@ -5297,3 +5297,13 @@
 **Why it mattered**: External OAuth providers optimize for the currently signed-in browser account, not the user's in-app intent. Without a server-side expected-handle check, one shared or stale X session can silently attach the wrong social identity; without login-field cleanup, a failed wallet attempt can make users chase invalid password credentials.
 
 **Rule**: Profile social OAuth must store the intended handle in the server session, compare it with the provider's returned identity before token persistence or onboarding, and report a clear switch-account error on mismatch. Wallet auth screens must clear stale credential fields before wallet login and submit password login from real named form fields.
+
+---
+
+## 2026-06-21 - OAuth callback origins must canonicalize legacy platform env
+
+**What happened**: After deploying the X expected-handle guard, live smoke on `wtfos.app` still showed `/api/auth/social/config` reporting `PUBLIC_SITE_URL` as the legacy `https://wtfgameshow.app` origin. The OAuth helper used that raw env value when deriving callback and return URLs, so a stale production environment could send X callbacks through the legacy domain even though the product is canonical on `wtfos.app`.
+
+**Why it mattered**: OAuth state and cookies are origin-sensitive. A correct account-mismatch guard can still fail if the provider callback returns to a different platform host than the tab that started the flow, and operators may not notice because the legacy host still resolves.
+
+**Rule**: All platform OAuth callback helpers must canonicalize legacy `wtfgameshow.app` / `www` / `new` origins to `https://wtfos.app` before building provider URLs or diagnostics. Keep custom preview/local origins intact, but never let stale legacy platform env leak into production callback URLs.

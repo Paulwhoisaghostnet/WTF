@@ -26,13 +26,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Entry, Authentication, and Account Identity",
     platformOwner: "profile-social",
     ownerSpec:
-      "server/features/w/x-connect-onboarding-policy.test.ts, client/src/pages/profile-social-link-policy.test.ts",
+      "server/auth/oauth-base.test.ts, server/features/w/x-connect-onboarding-policy.test.ts, client/src/pages/profile-social-link-policy.test.ts",
     verificationCommand:
-      "npx tsx --test server/features/w/x-connect-onboarding-policy.test.ts client/src/pages/profile-social-link-policy.test.ts",
+      "npx tsx --test server/auth/oauth-base.test.ts server/features/w/x-connect-onboarding-policy.test.ts client/src/pages/profile-social-link-policy.test.ts",
     userVisibleAssertion:
-      "When a user types an intended X handle before connecting, Profile sends that handle into OAuth and shows a wrong-account recovery message if X authorizes a different logged-in account.",
+      "When a user types an intended X handle before connecting, Profile sends that handle into OAuth, the provider callback URL stays on canonical wtfos.app even if legacy platform env is present, and Profile shows a wrong-account recovery message if X authorizes a different logged-in account.",
     durableSideEffectAssertion:
-      "The server stores the expected X handle in the OAuth session and rejects mismatched callbacks before updating twitterId/twitterHandle/token fields or running X onboarding.",
+      "The server stores the expected X handle in the OAuth session, canonicalizes legacy wtfgameshow.app callback origins to wtfos.app, and rejects mismatched callbacks before updating twitterId/twitterHandle/token fields or running X onboarding.",
   },
   {
     id: "auth.wallet-challenge-login",

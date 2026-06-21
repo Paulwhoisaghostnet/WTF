@@ -16,7 +16,11 @@ import {
   markUserGmWelcomeForUtcDay,
 } from "./storage";
 import { classifyDbError } from "../errors/db-errors";
-import { getPublicSiteOrigin, oauthCallbackUrl } from "./oauth-base";
+import {
+  canonicalizeOAuthProviderUrl,
+  getPublicSiteOrigin,
+  oauthCallbackUrl,
+} from "./oauth-base";
 import {
   buildChallengeMessage,
   verifyWalletSignature,
@@ -266,7 +270,7 @@ const X_OAUTH2_TIERS: Record<string, { scopes: string[] }> = {
 
 function twitterOAuth2CallbackUrl(): string {
   const configured = process.env.TWITTER_OAUTH2_REDIRECT_URI?.trim();
-  if (configured) return configured;
+  if (configured) return canonicalizeOAuthProviderUrl(configured);
   return oauthCallbackUrl("/api/auth/twitter-oauth2/callback");
 }
 
