@@ -5267,3 +5267,13 @@
 **Why it mattered**: Treating login as network-flexible can make the primary account boundary ambiguous and can send wallet providers a Shadownet permission request when the user is only trying to sign into wtfOS. That breaks the login mental model and risks signing challenges on the wrong lane.
 
 **Rule**: Keep `connectAuthWallet()` and auth challenge signing pinned to mainnet unless the product explicitly creates a separate testnet-login feature. App wallets may use Shadownet or other configured networks, but primary account login must ignore app-local network overrides.
+
+---
+
+## 2026-06-21 - Wallet provider timeouts also need a visible UI boundary
+
+**What happened**: Production served a wallet helper bundle containing provider and signing timeouts, and browser instrumentation confirmed the timeout timers fired, but the login button still stayed on `Connecting...` because the screen awaited the wallet-login promise without its own recovery boundary.
+
+**Why it mattered**: Wallet SDKs can leave provider handoff promises unresolved in ways that are hard to unwind from inside the adapter layer. Users judge the product by the visible login control, so the screen must always return to a retryable state even if the connector internals stall.
+
+**Rule**: Any primary wallet-auth button must race the whole login/linking action against a UI-level timeout, clear connector state on timeout, and show a retryable error. Adapter-level timeouts are necessary but not sufficient for production login reassurance.

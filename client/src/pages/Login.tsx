@@ -11,8 +11,33 @@ import {
 } from "react95";
 import { useLocation, Redirect } from "wouter";
 import { useAuth } from "../lib/auth-context";
+import { disconnectWallet } from "../lib/tezos";
 import { AuthScreenShell } from "../components/layout/AuthScreenShell";
 import { WTFOS_PLATFORM_NAME } from "@shared/platform-branding";
+
+const WALLET_LOGIN_TIMEOUT_MS = 38_000;
+const WALLET_LOGIN_TIMEOUT_MESSAGE =
+  "Wallet login did not finish opening a provider. Clear the wallet connection and try again, or choose another Tezos wallet.";
+
+function isWalletLoginTimeout(err: unknown): boolean {
+  return err instanceof Error && err.message === WALLET_LOGIN_TIMEOUT_MESSAGE;
+}
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
+
+function withWalletLoginTimeout<T>(task: Promise<T>): Promise<T> {
+  let timerId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timerId = window.setTimeout(() => {
+      reject(new Error(WALLET_LOGIN_TIMEOUT_MESSAGE));
+    }, WALLET_LOGIN_TIMEOUT_MS);
+  });
+  return Promise.race([task, timeout]).finally(() => {
+    if (timerId !== undefined) window.clearTimeout(timerId);
+  });
+}
 
 const CenterWrapper = styled.div`
   display: grid;
@@ -118,8 +143,8 @@ export function Login() {
     try {
       await login(username, password);
       setLocation("/", { replace: true });
-    } catch (err: any) {
-      setError(err.message || "Login failed");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Login failed"));
     } finally {
       setLoading(false);
     }
@@ -129,7 +154,7 @@ export function Login() {
     setError("");
     setWalletLoading(true);
     try {
-      const result = await walletLogin();
+      const result = await withWalletLoginTimeout(walletLogin());
       if (result.action === "login") {
         setLocation("/", { replace: true });
       } else {
@@ -139,8 +164,15 @@ export function Login() {
         });
         setLocation(`/register?${params.toString()}`);
       }
-    } catch (err: any) {
-      setError(err.message || "Wallet login failed");
+    } catch (err: unknown) {
+      if (isWalletLoginTimeout(err)) {
+        try {
+          await disconnectWallet();
+        } catch {
+          // Best-effort reset so the next click starts from a clean wallet provider state.
+        }
+      }
+      setError(getErrorMessage(err, "Wallet login failed"));
     } finally {
       setWalletLoading(false);
     }
