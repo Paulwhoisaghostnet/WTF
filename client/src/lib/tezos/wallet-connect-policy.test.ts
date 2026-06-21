@@ -33,7 +33,11 @@ test("Octez Connect is the primary wallet path with valid featured wallet prefix
   assert.match(source, /ACTIVE_ACCOUNT_SET/);
   assert.match(source, /subscribeToEvent/);
   assert.match(source, /preflightOctezExtensionHandshake/);
+  assert.match(source, /WALLET_CONNECT_TIMEOUT_MS/);
   assert.match(source, /WALLET_PERMISSION_TIMEOUT_MS/);
+  assert.match(source, /WALLET_SIGN_TIMEOUT_MS/);
+  assert.match(source, /Wallet connection did not finish opening a provider/);
+  assert.match(source, /Wallet signing did not finish/);
   assert.match(source, /clearWalletIndexedDbState/);
   assert.match(source, /WalletAccountMismatchError/);
   assert.match(source, /WalletProviderPreflightError/);
@@ -43,4 +47,5 @@ test("Octez Connect is the primary wallet path with valid featured wallet prefix
   assert.doesNotMatch(source, /retrying via Beacon/);
   assert.match(source, /const perms = await this\.client\.requestPermissions\(\)/);
   assert.doesNotMatch(source, /if \(rpcUrl\) spec\.rpcUrl = rpcUrl/);
+  assert.doesNotMatch(source, /this\.wallet\.requestPermissions\(\{\s*network/s);
 });

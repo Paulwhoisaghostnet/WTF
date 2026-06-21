@@ -75,7 +75,9 @@ function persistWalletSession(session: PersistedWalletSession | null) {
 
 /** Beacon `NetworkType` string values (ecad / airgap Beacon, Taquito 14–24). */
 type BeaconPreferredNetwork = "mainnet" | "ghostnet" | "shadownet";
+const WALLET_CONNECT_TIMEOUT_MS = 35_000;
 const WALLET_PERMISSION_TIMEOUT_MS = 30_000;
+const WALLET_SIGN_TIMEOUT_MS = 30_000;
 const AUTH_WALLET_NETWORK = "mainnet";
 const OCTEZ_FEATURED_WALLETS = [
   "kukai",
@@ -315,12 +317,10 @@ class BeaconLegacyAdapter implements WalletAdapter {
   name: WalletProviderName = "beacon";
   private wallet: any = null;
   private network: BeaconPreferredNetwork = "mainnet";
-  private rpcUrl = "";
 
   async init(network: string, rpcUrl: string) {
     const { BeaconWallet, BeaconEvent } = (await loadBeaconWallet()) as any;
     this.network = beaconPreferredNetwork(network);
-    this.rpcUrl = rpcUrl;
     this.wallet = new BeaconWallet({
       name: "WTF OS",
       network: walletNetworkSpec(network, rpcUrl),
@@ -335,9 +335,7 @@ class BeaconLegacyAdapter implements WalletAdapter {
   }
 
   async requestPermissions(): Promise<string> {
-    await this.wallet.requestPermissions({
-      network: walletNetworkSpec(this.network, this.rpcUrl),
-    } as any);
+    await this.wallet.requestPermissions();
     const account = await this.wallet.getPKH();
     return account;
   }
@@ -571,7 +569,7 @@ export async function connectWallet(
     return connectPromise;
   }
 
-  const task = (async () => {
+  const innerTask = (async () => {
     if (forcePermissions) {
       await resetWalletConnectorState();
     }
@@ -591,7 +589,18 @@ export async function connectWallet(
       }
       throw new WalletProviderPreflightError(adapter.name, err);
     }
-  })().finally(() => {
+  })();
+
+  const task = withWalletTimeout(
+    innerTask,
+    "Wallet connection did not finish opening a provider. Clear the wallet connection and try again, or choose another Tezos wallet.",
+    WALLET_CONNECT_TIMEOUT_MS,
+  ).catch(async (err) => {
+    if (forcePermissions) {
+      await resetWalletConnectorState();
+    }
+    throw err;
+  }).finally(() => {
     connectPromise = null;
     connectPromiseConfig = null;
   });
@@ -661,7 +670,11 @@ export async function signPayload(
 
   if (adapter.name === "octez.connect") {
     const octezAdapter = adapter as any;
-    const result = await octezAdapter.client.requestSignPayload(payload);
+    const result = await withWalletTimeout(
+      octezAdapter.client.requestSignPayload(payload),
+      "Wallet signing did not finish. Clear the wallet connection and try again, or choose another Tezos wallet.",
+      WALLET_SIGN_TIMEOUT_MS,
+    );
     const account = await octezAdapter.client.getActiveAccount();
     return {
       signature: result.signature,
@@ -670,7 +683,11 @@ export async function signPayload(
   }
 
   const beaconAdapter = adapter as any;
-  const result = await beaconAdapter.wallet.client.requestSignPayload(payload);
+  const result = await withWalletTimeout(
+    beaconAdapter.wallet.client.requestSignPayload(payload),
+    "Wallet signing did not finish. Clear the wallet connection and try again, or choose another Tezos wallet.",
+    WALLET_SIGN_TIMEOUT_MS,
+  );
   const account = await beaconAdapter.wallet.client.getActiveAccount();
   return {
     signature: result.signature,
