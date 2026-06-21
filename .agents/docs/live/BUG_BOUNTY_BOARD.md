@@ -50,8 +50,8 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-304 | Fixed | Codex wallet/X auth full-send | 2026-06-21 | Auth / Tezos wallet sign-in | P0 | 14 | 3 | 3 | 5 | 1 | Production wallet sign-in could hang on `Connecting...` or bounce back to login after wallet connect; source preserves the live wallet lifecycle hardening, clears stale username/password state before wallet auth, binds real login form names/labels, and keeps wallet waits bounded; pending production deploy and fresh live smoke |
-| WTF-BB-308 | Fixed | Codex wallet/X auth full-send | 2026-06-21 | Auth / X OAuth account binding | P1 | 12 | 7 | 3 | 4 | 1 | Profile X linking can authorize the wrong current browser X account such as shared `wtfgameshow`; source now stores the intended handle in session, rejects mismatched callbacks before token persistence, and returns a clear switch-account error; pending production deploy and live smoke |
+| WTF-BB-304 | Verified | Codex wallet/X auth full-send | 2026-06-21 | Auth / Tezos wallet sign-in | P0 | 14 | 3 | 3 | 5 | 1 | Production wallet sign-in could hang on `Connecting...` or bounce back to login after wallet connect; fixed by preserving live wallet lifecycle hardening, clearing stale username/password state before wallet auth, binding real login form names/labels, and keeping wallet waits bounded; verified live on `wtfos.app` commit `069b96b` |
+| WTF-BB-308 | Verified | Codex wallet/X auth full-send | 2026-06-21 | Auth / X OAuth account binding | P1 | 12 | 7 | 3 | 4 | 1 | Profile X linking can authorize the wrong current browser X account such as shared `wtfgameshow`; fixed by storing the intended handle in session, rejecting mismatched callbacks before token persistence, and returning a clear switch-account error; verified deployed on `wtfos.app` commit `069b96b` |
 | WTF-BB-305 | Verified | Codex wallet live full-send | 2026-06-21 | Operations / production health | P0 | 13 | 4 | 3 | 5 | 0 | Live `/api/health` could intermittently return 503 because scheduler audit used a whole-table latest-run query that timed out under production audit volume; fixed by querying only registered job names through indexed lateral latest-row lookups plus a production index; verified live on `wtfos.app` |
 | WTF-BB-296 | Verified | Codex cobwebsaints domain readiness pass | 2026-06-20 | WTF Domains / account-specific advanced feature coverage | P2 | 8 | 14 | 2 | 3 | 0 | Domain/pinning harness data hardcoded `pincollector.wtfos.me`, so account-specific readiness for `cobwebsaints` could pass generic checks while advanced surfaces showed another user's host; fixed with signed-in-user-derived harness domains, Cobweb persona coverage across Settings, WTF Domains, IPFS Pinning, and Macaroni trusted creator access, plus full inventory verification |
 | WTF-BB-295 | Verified | Codex stale welcome auth repair | 2026-06-20 | Auth / welcome session recovery | P1 | 12 | 7 | 3 | 5 | 0 | Welcome dialog could retain a cached signed-in user after the protected API session was gone, so every welcome/profile/diary action returned `Not authenticated` and passive wallet reconciliation logged repeated 401s; fixed with protected-401 session invalidation, auth cache clearing, passive wallet warning suppression, and focused/full inventory verification |
@@ -5840,7 +5840,7 @@ Priority labels:
 ### WTF-BB-304 - Production wallet sign-in could hang on `Connecting...`
 
 - Category: Auth / Tezos wallet sign-in
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex wallet/X auth full-send
 - Score: C3 + F5 + S1 + P0(5) = 14
 - Evidence:
@@ -5866,11 +5866,15 @@ Priority labels:
   - GitHub `Deploy to Hetzner` run `27914410198` and `Quality Gates` run `27914410209` completed successfully for commit `595d7c0`.
   - Live `https://wtfos.app/api/health` reported `status:"ok"`, DB OK, chain OK, `network:"mainnet"`, `tezosRpcUrl:"https://tezos-mainnet.octez.io/"`, TzKT API fallback, 31 registered jobs, scheduler audit reachable, and zero recent errors.
   - Clean-profile live wallet smoke on `https://wtfos.app/login` cleared cookies/local/session storage, IndexedDB, and Cache Storage before retrying; the button reached `Connecting...`, then recovered to enabled `Connect Tezos Wallet` with the retryable timeout message instead of staying stuck.
+  - 2026-06-21 full-send follow-up commit `069b96b4` deployed through GitHub `Quality Gates` run `27917843184` and `Deploy to Hetzner` run `27917843189`.
+  - Live `https://wtfos.app/api/health` reported `commitRef:"069b96b"`, `status:"ok"`, DB OK, chain OK, `network:"mainnet"`, `tezosRpcUrl:"https://tezos-mainnet.octez.io/"`, 31 registered jobs, scheduler audit reachable, and zero recent errors.
+  - Live `https://wtfos.app/login` returned HTTP 200, and the deployed login bundle contains `new FormData(i.currentTarget)`, stable `wtfos-login-username` / `wtfos-login-password` field IDs and `name` attributes, the wallet UI timeout message, and the wallet button state clearing before wallet auth.
+  - The live wallet bundle contains bounded wallet connection/signing messages plus Beacon permission requests with the explicit network object, confirming the fallback provider is deployed on the intended auth lane.
 
 ### WTF-BB-308 - X OAuth can link the wrong current browser account
 
 - Category: Auth / X OAuth account binding
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex wallet/X auth full-send
 - Score: C3 + F4 + S1 + P1(4) = 12
 - Evidence:
@@ -5884,7 +5888,11 @@ Priority labels:
   - The Profile UI reports the expected and actual handles and tells the user to switch accounts on `x.com` before retrying.
 - Verification:
   - Local verification passed `npx tsx --test server/features/w/x-connect-onboarding-policy.test.ts client/src/pages/profile-social-link-policy.test.ts` plus the combined auth/profile policy suite, TypeScript, inventory coverage, and full inventory E2E before deployment.
-  - Production deploy and live smoke pending.
+  - 2026-06-21 full-send commit `069b96b4` deployed through GitHub `Quality Gates` run `27917843184` and `Deploy to Hetzner` run `27917843189`.
+  - Live `https://wtfos.app/api/health` reported `commitRef:"069b96b"` and `status:"ok"`.
+  - Live `https://wtfos.app/api/auth/social/config` reports `twitterOauth2:true`, and the deployed route manifest points Profile to `Profile-wtf2-Ck_hc8Xf.js`.
+  - The live Profile bundle contains the normalized `expectedHandle` OAuth start parameter, handle-specific `Connect @...` / `Reconnect @...` button logic, the `twitter_oauth2_wrong_account` error branch, and the `Switch accounts on x.com` recovery copy.
+  - The deployed server source for commit `069b96b4` uses `https://x.com/i/oauth2/authorize`, stores `expectedHandle` in the OAuth session, compares it with `/users/me`, and redirects before token persistence if the returned account does not match.
 
 ### WTF-BB-305 - Public health intermittently returned 503 from scheduler audit timeout
 
