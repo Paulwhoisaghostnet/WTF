@@ -5276,4 +5276,4 @@
 
 **Why it mattered**: Wallet SDKs can leave provider handoff promises unresolved in ways that are hard to unwind from inside the adapter layer. Users judge the product by the visible login control, so the screen must always return to a retryable state even if the connector internals stall.
 
-**Rule**: Any primary wallet-auth button must race the whole login/linking action against a UI-level timeout, clear connector state on timeout, and show a retryable error. Adapter-level timeouts are necessary but not sufficient for production login reassurance.
+**Rule**: Any primary wallet-auth button must race the whole login/linking action against a UI-level timeout, trigger non-blocking connector cleanup on timeout, and show a retryable error. Adapter-level timeouts are necessary but not sufficient for production login reassurance.

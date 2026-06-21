@@ -45,7 +45,7 @@ test("wallet login screen recovers from provider handoff hangs", () => {
   );
   assert.match(
     loginSource,
-    /disconnectWallet\(\)/,
-    "provider state should be cleared after a login timeout so the next click starts cleanly"
+    /void disconnectWallet\(\)\.catch\(\(\) => undefined\)/,
+    "provider state cleanup should be non-blocking so a stalled SDK disconnect cannot keep the button spinning"
   );
 });

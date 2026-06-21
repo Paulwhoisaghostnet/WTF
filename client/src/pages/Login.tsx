@@ -166,11 +166,8 @@ export function Login() {
       }
     } catch (err: unknown) {
       if (isWalletLoginTimeout(err)) {
-        try {
-          await disconnectWallet();
-        } catch {
-          // Best-effort reset so the next click starts from a clean wallet provider state.
-        }
+        // Do not await cleanup: a stalled provider handoff can also stall disconnect.
+        void disconnectWallet().catch(() => undefined);
       }
       setError(getErrorMessage(err, "Wallet login failed"));
     } finally {
