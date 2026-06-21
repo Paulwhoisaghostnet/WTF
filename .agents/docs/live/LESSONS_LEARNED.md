@@ -5277,3 +5277,13 @@
 **Why it mattered**: Wallet SDKs can leave provider handoff promises unresolved in ways that are hard to unwind from inside the adapter layer. Users judge the product by the visible login control, so the screen must always return to a retryable state even if the connector internals stall.
 
 **Rule**: Any primary wallet-auth button must race the whole login/linking action against a UI-level timeout, trigger non-blocking connector cleanup on timeout, and show a retryable error. Adapter-level timeouts are necessary but not sufficient for production login reassurance.
+
+---
+
+## 2026-06-21 - Public health checks must not run table-sweeping observability queries
+
+**What happened**: After a successful live deploy, `/api/health` intermittently returned HTTP 503 even though the app, DB, chain config, and Octez mainnet RPC were healthy. The failing payload showed the scheduler audit query timed out after 2000ms because the latest-job read swept the growing `sync_runs` audit table.
+
+**Why it mattered**: A readiness endpoint is the operator contract for "is the site up." If it performs heavyweight observability work on every request, monitoring and verification can create false outages and drown out real wallet/auth findings.
+
+**Rule**: Keep public readiness checks cheap, indexed, and bounded to known live surfaces. Use registered job names plus latest-row indexes for scheduler health, and reserve whole-table audit/reporting queries for operator dashboards or background jobs.

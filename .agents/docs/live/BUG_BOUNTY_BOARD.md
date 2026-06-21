@@ -51,6 +51,7 @@ Priority labels:
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-304 | Fixed | Codex wallet live full-send | 2026-06-21 | Auth / Tezos wallet sign-in | P0 | 14 | 3 | 3 | 5 | 1 | Production wallet sign-in could hang on `Connecting...` after a fresh-cache retry because the login lane reused app wallet state and did not force a mainnet auth provider lifecycle; fixed with fresh Beacon/WalletConnect auth clearing, Octez-primary mainnet login, ACTIVE_ACCOUNT_SET subscriptions, bounded wallet/login timeouts, and Octez RPC deploy defaults; pending production deploy verification |
+| WTF-BB-305 | Fixed | Codex wallet live full-send | 2026-06-21 | Operations / production health | P0 | 13 | 4 | 3 | 5 | 0 | Live `/api/health` could intermittently return 503 because scheduler audit used a whole-table latest-run query that timed out under production audit volume; fixed by querying only registered job names through indexed lateral latest-row lookups plus a production index; pending deploy verification |
 | WTF-BB-296 | Verified | Codex cobwebsaints domain readiness pass | 2026-06-20 | WTF Domains / account-specific advanced feature coverage | P2 | 8 | 14 | 2 | 3 | 0 | Domain/pinning harness data hardcoded `pincollector.wtfos.me`, so account-specific readiness for `cobwebsaints` could pass generic checks while advanced surfaces showed another user's host; fixed with signed-in-user-derived harness domains, Cobweb persona coverage across Settings, WTF Domains, IPFS Pinning, and Macaroni trusted creator access, plus full inventory verification |
 | WTF-BB-295 | Verified | Codex stale welcome auth repair | 2026-06-20 | Auth / welcome session recovery | P1 | 12 | 7 | 3 | 5 | 0 | Welcome dialog could retain a cached signed-in user after the protected API session was gone, so every welcome/profile/diary action returned `Not authenticated` and passive wallet reconciliation logged repeated 401s; fixed with protected-401 session invalidation, auth cache clearing, passive wallet warning suppression, and focused/full inventory verification |
 | WTF-BB-215 | Verified | Codex Skywire new OAuth outage repair | 2026-06-06 | Skywire / AT OAuth new-session connect | P0 | 17 | 1 | 4 | 5 | 3 | New Skywire OAuth connections to Bluesky fail while existing sessions continue working; fixed with durable app+SDK OAuth state persistence and verified live on wtfos.app |
@@ -5858,6 +5859,26 @@ Priority labels:
   - Update interaction inventory and behavior assertions so future auth changes preserve the mainnet-login lane and do not confuse it with Shadownet app flows.
 - Verification:
   - Pending production deploy verification: after pushing `main`, confirm Hetzner deploy publishes the new commit, live `/api/health` reports Octez mainnet RPC plus OK DB/chain/jobs, and a clean-profile live wallet login smoke no longer stays indefinitely on `Connecting...`.
+
+### WTF-BB-305 - Public health intermittently returned 503 from scheduler audit timeout
+
+- Category: Operations / production health
+- Status: Fixed
+- Owner/Session: Codex wallet live full-send
+- Score: C3 + F5 + S0 + P0(5) = 13
+- Evidence:
+  - After final wallet deploy, `https://wtfos.app/api/health` repeatedly alternated between HTTP 200 and HTTP 503 while serving commit `e78a15a`.
+  - Captured failing body showed `status:"degraded"`, DB OK, chain OK, Octez mainnet RPC OK, `recentErrors:0`, and `jobs.error:"scheduler audit check timed out after 2000ms"`.
+  - The scheduler audit query used `SELECT DISTINCT ON (job_name) ... FROM sync_runs ORDER BY job_name, started_at DESC`, which can sweep the growing production audit table.
+- Why it matters:
+  - The public health endpoint is the deployment and operator readiness contract. Intermittent 503s make production look down and can mask the difference between an app outage and a slow diagnostics query.
+  - Wallet/login reassurance depends on a stable live readiness endpoint after deploy, not just a green browser smoke.
+- Fix:
+  - Rewrite scheduler `latestPerJob()` to query the known registered scheduler job names and fetch one latest row per job through a `LEFT JOIN LATERAL` lookup.
+  - Add `idx_sync_runs_job_started_desc` on `(job_name, started_at DESC)` so latest-row audit reads match the query order.
+  - Add a policy test preventing the health scheduler audit from drifting back to a whole-table `DISTINCT ON` scan.
+- Verification:
+  - Pending production deploy verification: after pushing `main`, confirm Hetzner deploy applies `0105_sync_runs_latest_job_index.sql`, live `/api/health` stays HTTP 200 on commit with DB/chain/jobs OK, and repeated public stability probes no longer show scheduler-audit timeout 503s.
 
 ### WTF-BB-274 - Macaroni V2 contract versions, editions, and minter royalties
 

@@ -327,12 +327,39 @@ export async function latestPerJob(): Promise<
     error: string | null;
   }>
 > {
+  const jobNames = Array.from(registry.keys()).sort();
+  if (jobNames.length === 0) return [];
+  const registeredJobs = sql.join(jobNames.map((name) => sql`(${name})`), sql`, `);
   const result = (await db.execute(sql`
-    SELECT DISTINCT ON (job_name)
-      job_name, status, started_at, finished_at, duration_ms,
-      items_in, items_out, error
-    FROM sync_runs
-    ORDER BY job_name, started_at DESC
+    WITH registered(job_name) AS (
+      VALUES ${registeredJobs}
+    )
+    SELECT
+      registered.job_name,
+      latest.status,
+      latest.started_at,
+      latest.finished_at,
+      latest.duration_ms,
+      latest.items_in,
+      latest.items_out,
+      latest.error
+    FROM registered
+    LEFT JOIN LATERAL (
+      SELECT
+        status,
+        started_at,
+        finished_at,
+        duration_ms,
+        items_in,
+        items_out,
+        error
+      FROM sync_runs
+      WHERE sync_runs.job_name = registered.job_name
+      ORDER BY started_at DESC
+      LIMIT 1
+    ) latest ON true
+    WHERE latest.started_at IS NOT NULL
+    ORDER BY registered.job_name
   `)) as any;
   const raw: any[] = result?.rows ?? (Array.isArray(result) ? result : []);
   return raw.map((r) => ({
