@@ -8,7 +8,7 @@ function deps(overrides: Partial<HealthDeps> = {}): HealthDeps {
     env: {
       NODE_ENV: "production",
       COMMIT_REF: "abc123",
-      TEZOS_RPC_URL: "https://rpc.tzkt.io/mainnet",
+      TEZOS_RPC_URL: "https://tezos-mainnet.octez.io/",
       ...envOverrides,
     },
     uptime: () => 42,

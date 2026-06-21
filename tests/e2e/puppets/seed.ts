@@ -232,9 +232,9 @@ function rpcForNetwork(network: PlatformWalletNetwork): string {
     case "ghostnet":
       return "https://rpc.ghostnet.teztnets.com";
     case "shadownet":
-      return "https://rpc.shadownet.teztnets.com";
+      return "https://tezos-shadownet.octez.io/";
     case "mainnet":
-      return "https://rpc.tzkt.io/mainnet";
+      return "https://tezos-mainnet.octez.io/";
     case "custom":
       return process.env.WTF_OPERATOR_SIGNER_RPC || "https://rpc.ghostnet.teztnets.com";
   }

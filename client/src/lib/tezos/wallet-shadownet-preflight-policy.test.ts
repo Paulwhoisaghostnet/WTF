@@ -19,7 +19,7 @@ const shadownetRunner = readFileSync(
 );
 
 test("Shadownet marketplace sends use explicit RPC and chain-id preflight", () => {
-  assert.match(sharedTypes, /shadownet:\s*"https:\/\/rpc\.shadownet\.teztnets\.com"/);
+  assert.match(sharedTypes, /shadownet:\s*"https:\/\/tezos-shadownet\.octez\.io\/"/);
   assert.match(loaders, /localStorage\.getItem\("wtf:network"\)/);
   assert.match(preflight, /NetXsqzbfFenSTS:\s*"shadownet"/);
   assert.match(preflight, /shadownet:\s*"NetXsqzbfFenSTS"/);

@@ -32,6 +32,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The server verifies each platform-keyring signature against the linked wallet and returns the matching user.",
   },
   {
+    id: "auth.wallet-provider-login-lifecycle",
+    domain: "Wallets, Tokens, Portfolio, and On-Chain State",
+    ownerSurfaceIds: ["hoard"],
+    ownerSpec:
+      "client/src/lib/tezos/wallet-connect-policy.test.ts, client/src/lib/tezos/wallet-shadownet-preflight-policy.test.ts",
+    verificationCommand:
+      "npx tsx --test client/src/lib/tezos/wallet-connect-policy.test.ts client/src/lib/tezos/wallet-shadownet-preflight-policy.test.ts",
+    userVisibleAssertion:
+      "The login wallet button starts from fresh Beacon/WalletConnect auth state, opens Octez Connect as the primary Tezos provider on mainnet, ignores Shadownet app-local preferences for auth identity, and either completes provider permission or shows a bounded retryable error instead of staying on Connecting forever.",
+    durableSideEffectAssertion:
+      "Policy coverage keeps ACTIVE_ACCOUNT_SET subscribed before permission requests, keeps Beacon/Taquito as backup, clears wallet IndexedDB/localStorage for forced auth reconnects, forces auth challenge signing through the mainnet wallet lane, and keeps Octez-hosted app RPC defaults ahead of TzKT indexer fallbacks.",
+  },
+  {
     id: "wallet.checkout-intent-bound-to-signed-session",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
     ownerSurfaceIds: ["hoard", "wtfiam"],

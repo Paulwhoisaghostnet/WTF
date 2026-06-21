@@ -20,6 +20,6 @@ Users see Tezos state through the wallet tray, profile, leaderboard, market, arc
 
 ## Notes
 
-Default RPCs should use supported providers such as TzKT-backed RPC, not ECAD endpoints. Platform signer operations must be audited, allowlisted, and isolated from browser/admin UI custody controls.
+Default RPCs should use Octez-hosted Tezos endpoints, with TzKT kept as the indexer/API fallback rather than the primary RPC. Platform signer operations must be audited, allowlisted, and isolated from browser/admin UI custody controls.
 
-TzKT API/RPC ownership, cache rules, verification, and failure response live in [TzKT Upstream Runbook](../runbooks/tzkt-upstream.md).
+TzKT API ownership, cache rules, verification, and RPC fallback response live in [TzKT Upstream Runbook](../runbooks/tzkt-upstream.md).

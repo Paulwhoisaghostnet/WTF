@@ -746,6 +746,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     automationHandles: ["user.wallet.connected", "token.contract.owned", "token.id.owned"],
     behaviorAssertionIds: [
       "auth.wallet-challenge-login",
+      "auth.wallet-provider-login-lifecycle",
       "wallet.checkout-intent-bound-to-signed-session",
       "wallet.passive-refresh-no-signature",
     ],

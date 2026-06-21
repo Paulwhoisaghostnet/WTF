@@ -3,7 +3,7 @@ import { TezosToolkit } from "@taquito/taquito";
 import { NetworkType, SigningType, type AccountInfo } from "@ecadlabs/beacon-types";
 
 // Use mainnet for production
-const RPC_URL = "https://rpc.tzkt.io/mainnet";
+const RPC_URL = "https://tezos-mainnet.octez.io/";
 const NETWORK_TYPE = NetworkType.MAINNET;
 
 // Debug logging - only enabled in development mode
@@ -44,7 +44,7 @@ class WalletService {
     log("Initializing wallet...");
     
     try {
-      // Initialize wallet lazily with explicit network configuration
+      // Initialize wallet lazily with a wallet-compatible named network.
       // This is required by Beacon SDK v4.x for reliable connection
       this.wallet = new BeaconWallet({
         name: "Particle Painter",
@@ -52,7 +52,6 @@ class WalletService {
         preferredNetwork: NETWORK_TYPE,
         network: {
           type: NETWORK_TYPE,
-          rpcUrl: RPC_URL,
         },
       });
       

@@ -7,12 +7,12 @@ const MD = (() => {
   const NETWORKS = {
     mainnet: {
       label: "Mainnet",
-      rpc: "https://rpc.tzkt.io/mainnet",
+      rpc: "https://tezos-mainnet.octez.io/",
       beaconNetwork: "mainnet",
     },
     shadownet: {
       label: "Shadownet (test)",
-      rpc: "https://rpc.shadownet.teztnets.com",
+      rpc: "https://tezos-shadownet.octez.io/",
       beaconNetwork: "shadownet",
     },
   };

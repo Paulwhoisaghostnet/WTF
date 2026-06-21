@@ -12,7 +12,7 @@ const DEFAULT_MARKETPLACE_V2 = "KT1U9cZBQAZwTTnSrwdgBso5W25LqjgeSsYy";
 const DEFAULT_IN_APP_MARKET = "KT1MdvE9hYFpQP7boybqSJ9XNfXjLUG6QZrC";
 const DEFAULT_WTF_FA2 = "KT1L5m2ohNDhbzSbRcitn1LaMmGf7jhDbVGj";
 const DEFAULT_SAMPLE_FA2 = "KT1RoZavK1g2suSAMinjZ2Dnto1efkRApR2V";
-const SHADOWNET_RPC = "https://rpc.shadownet.teztnets.com";
+const SHADOWNET_RPC = "https://tezos-shadownet.octez.io/";
 const SHADOWNET_TZKT = "https://api.shadownet.tzkt.io/v1";
 
 function run(label, command, args, env) {

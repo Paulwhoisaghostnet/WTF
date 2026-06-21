@@ -8,7 +8,7 @@ import type { SignerEnv } from "./env";
 import { enforceEnvelopePolicy } from "./policy";
 
 const env: SignerEnv = {
-  WTF_OPERATOR_SIGNER_RPC: "https://rpc.tzkt.io/mainnet",
+  WTF_OPERATOR_SIGNER_RPC: "https://tezos-mainnet.octez.io/",
   WTF_OPERATOR_SIGNER_SOCKET: "/tmp/wtf-operator-signer.sock",
   WTF_OPERATOR_SIGNER_AUTH_TOKEN: "test-auth-token",
   WTF_OPERATOR_SIGNER_SECRET: "",

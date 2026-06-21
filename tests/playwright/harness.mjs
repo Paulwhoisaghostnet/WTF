@@ -2771,7 +2771,7 @@ function apiMock(req, res) {
         ok: true,
         network: "mainnet",
         rpcBase: "https://api.tzkt.io/v1",
-        tezosRpcUrl: "https://rpc.tzkt.io/mainnet",
+        tezosRpcUrl: "https://tezos-mainnet.octez.io/",
       },
       jobs: { ok: true, registered: 7, running: 0, recentErrors: 0 },
     });

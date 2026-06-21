@@ -60,7 +60,7 @@ npm run import-game-studio:open-assets
 
 Browser-originated Tezos writes go through the connected user wallet. Platform-originated operations go through the isolated operator signer service over a local socket; wallet keys and keyrings must stay outside the Git repo and outside the web process.
 
-The default mainnet RPC in `.env.example` uses `https://rpc.tzkt.io/mainnet`. Do not add ECAD RPC endpoints back into app defaults.
+The default mainnet RPC in `.env.example` uses `https://tezos-mainnet.octez.io/`. Keep Octez-hosted RPCs as app defaults, with TzKT serving as the indexer/API fallback instead of the primary RPC.
 
 ## Deployment
 

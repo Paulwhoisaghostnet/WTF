@@ -45,13 +45,13 @@ const NETWORK_CONFIGS: Record<TezosNetwork, Omit<NetworkConfig, "registrarAddres
     shadownet: {
         name: "shadownet",
         tld: "shd",
-        rpcUrl: "https://rpc.shadownet.teztnets.com",
+        rpcUrl: "https://tezos-shadownet.octez.io/",
         tzktApi: "https://api.shadownet.tzkt.io",
     },
     mainnet: {
         name: "mainnet",
         tld: "tez",
-        rpcUrl: "https://rpc.tzkt.io/mainnet",
+        rpcUrl: "https://tezos-mainnet.octez.io/",
         tzktApi: "https://api.tzkt.io",
     },
 };

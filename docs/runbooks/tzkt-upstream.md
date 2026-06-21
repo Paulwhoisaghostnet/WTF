@@ -2,14 +2,14 @@
 
 ## Scope
 
-TzKT is the canonical public Tezos indexer for WTF reads. WTF also uses the TzKT-backed mainnet RPC for wallet and server-side chain checks.
+TzKT is the canonical public Tezos indexer for WTF reads and remains the reliable API/indexer fallback. WTF uses Octez-hosted RPCs for wallet and server-side chain checks.
 
 Default production endpoints:
 
 - API: `https://api.tzkt.io/v1`
-- RPC: `https://rpc.tzkt.io/mainnet`
+- RPC: `https://tezos-mainnet.octez.io/`
 
-ECAD RPC endpoints must not be reintroduced.
+Do not move app defaults back to public RPCs without naming the fallback and the reason.
 
 ## Code Ownership
 
@@ -35,7 +35,7 @@ npm run test:e2e:inventory:coverage
 After deploy, verify production health:
 
 ```bash
-curl -fsS https://wtfgameshow.app/api/health
+curl -fsS https://wtfos.app/api/health
 ```
 
 The live response must report:
@@ -43,7 +43,7 @@ The live response must report:
 - `chain.ok: true`
 - `chain.network: mainnet`
 - `chain.tzktBase: https://api.tzkt.io/v1`
-- `chain.tezosRpcUrl: https://rpc.tzkt.io/mainnet`
+- `chain.tezosRpcUrl: https://tezos-mainnet.octez.io/`
 - `jobs.ok: true`
 - `jobs.issues: []`
 
@@ -59,7 +59,7 @@ If TzKT returns 429 or transient 5xx responses:
 
 If the RPC endpoint fails:
 
-1. Confirm `TEZOS_RPC_URL` on the host is not ECAD.
+1. Confirm `TEZOS_RPC_URL` on the host is the intended Octez-hosted endpoint.
 2. Confirm `/api/health` reports the failing value.
 3. Patch the runtime config, deploy through GitHub Actions, and verify the live health response.
 

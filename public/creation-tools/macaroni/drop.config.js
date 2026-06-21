@@ -2,7 +2,7 @@
 // Preview in drop.html uses your in-progress studio draft when available.
 window.DROP_CONFIG = {
   network: "shadownet",
-  rpc: "https://rpc.shadownet.teztnets.com",
+  rpc: "https://tezos-shadownet.octez.io/",
   contract: "",
   contractVersion: "macaroni-v1",
   title: "Your Drop Title",

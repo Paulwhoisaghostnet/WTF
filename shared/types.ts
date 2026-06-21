@@ -826,9 +826,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
 };
 
 export const RPC_URLS: Record<string, string> = {
-  mainnet: "https://rpc.tzkt.io/mainnet",
+  mainnet: "https://tezos-mainnet.octez.io/",
   ghostnet: "https://rpc.ghostnet.teztnets.com",
-  shadownet: "https://rpc.shadownet.teztnets.com",
+  shadownet: "https://tezos-shadownet.octez.io/",
 };
 
 // ---------------------------------------------------------------------------

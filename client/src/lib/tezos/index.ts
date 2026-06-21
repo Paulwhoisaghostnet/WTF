@@ -1,15 +1,17 @@
 export {
   connectWallet,
+  connectAuthWallet,
   disconnectWallet,
   ensureWalletProviderForSend,
   getActiveAccount,
   getTezos,
   signPayload,
+  signAuthPayload,
   readPersistedWalletSession,
   WALLET_SESSION_EVENT,
   WALLET_SESSION_KEY,
 } from "./wallet";
-export { getNetwork, getRpcUrl } from "./loaders";
+export { getNetwork, getRpcUrl, getRpcUrlForNetwork } from "./loaders";
 export type { PersistedWalletSession, WalletConnectionResult, ConnectWalletOptions } from "./wallet";
 export { transferWtf, batchTransferWtf, getWtfBalance } from "./token";
 export {

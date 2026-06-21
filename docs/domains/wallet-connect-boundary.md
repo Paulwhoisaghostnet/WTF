@@ -39,7 +39,7 @@ npm run test:e2e:inventory:coverage
 After production deployment, verify the live header still exposes an explicit wallet frame policy:
 
 ```bash
-curl -fsSI https://wtfgameshow.app
+curl -fsSI https://wtfos.app
 ```
 
 The `content-security-policy` header must include `frame-src` entries for `walletbeacon.io`, `walletconnect.com`, `walletconnect.org`, and `reown.com`.

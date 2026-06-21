@@ -5247,3 +5247,23 @@
 **Why it mattered**: A reference UI is useful because it shows what the product chooses to promote, group, hide, and simplify. Copying only the colors leaves the same bloated experience in a new coat of paint, and it misses the user's actual UX complaint.
 
 **Rule**: Before matching a reference UI, name the task-model changes first: which actions become primary, which sections are grouped, what chrome disappears, and what gets progressively disclosed. Then verify the result in a real browser screenshot and add tests for the new UX contract, including unique action labels for major controls.
+
+---
+
+## 2026-06-21 - Wallet connect hangs need a fresh-profile retry before code blame
+
+**What happened**: Production wallet login was reported as stuck on `Connecting...`. Before patching wallet code, the live app was retried from a fresh Chromium profile with cookies, localStorage, sessionStorage, IndexedDB, and Cache Storage cleared, and the hang reproduced.
+
+**Why it mattered**: Wallet SDKs persist Beacon, WalletConnect, and active-account state across reloads. Without a clean-profile retry, it is easy to misdiagnose a stale local session as a live production regression or to ship a fix that only masks cached state.
+
+**Rule**: Before editing wallet-connect or wallet-login code, reproduce the live behavior once from an empty browser profile/storage state, record provider console warnings, then make forced auth reconnects clear only wallet SDK auth caches before requesting permissions.
+
+---
+
+## 2026-06-21 - Wallet auth identity is mainnet even when apps rehearse on Shadownet
+
+**What happened**: A wallet-login repair initially preserved app-local Shadownet preferences too broadly. The platform's actual auth identity is Tezos mainnet wallet ownership, while Shadownet is used by specific creation, contract, and rehearsal apps.
+
+**Why it mattered**: Treating login as network-flexible can make the primary account boundary ambiguous and can send wallet providers a Shadownet permission request when the user is only trying to sign into wtfOS. That breaks the login mental model and risks signing challenges on the wrong lane.
+
+**Rule**: Keep `connectAuthWallet()` and auth challenge signing pinned to mainnet unless the product explicitly creates a separate testnet-login feature. App wallets may use Shadownet or other configured networks, but primary account login must ignore app-local network overrides.

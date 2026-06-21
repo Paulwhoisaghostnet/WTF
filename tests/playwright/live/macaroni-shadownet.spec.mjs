@@ -6,7 +6,7 @@ import {
   readPuppetCredentials,
 } from "../../e2e/puppets/runtime.mjs";
 
-const SHADOWNET_RPC = "https://rpc.shadownet.teztnets.com";
+const SHADOWNET_RPC = "https://tezos-shadownet.octez.io/";
 const SHADOWNET_CHAIN_ID = "NetXsqzbfFenSTS";
 const authCacheDir = path.resolve(".e2e", "macaroni-shadownet-auth");
 
@@ -415,7 +415,7 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
 
       frame = await macaroniFrame(page);
       await waitForMacaroniStudio(frame);
-      await frame.locator("#rpc").fill("https://rpc.tzkt.io/mainnet");
+      await frame.locator("#rpc").fill("https://tezos-mainnet.octez.io/");
       await frame.locator("#rpc").dispatchEvent("change");
       await frame.getByRole("button", { name: "Connect wallet" }).click();
 

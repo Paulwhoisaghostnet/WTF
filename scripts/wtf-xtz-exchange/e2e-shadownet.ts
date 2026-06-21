@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..", "..");
 const docsDir = path.join(root, ".agents", "docs", "archive", "contracts", "wtf-xtz-exchange");
 
-const rpcUrl = process.env.SHADOWNET_RPC_URL ?? "https://rpc.shadownet.teztnets.com";
+const rpcUrl = process.env.SHADOWNET_RPC_URL ?? "https://tezos-shadownet.octez.io/";
 const expectedChainId = process.env.SHADOWNET_CHAIN_ID ?? "NetXsqzbfFenSTS";
 const dummyWtfAddress = process.env.DUMMY_WTF_ADDRESS;
 const exchangeAddress = process.env.EXCHANGE_ADDRESS;

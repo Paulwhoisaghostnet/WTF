@@ -134,7 +134,7 @@ export function Register() {
           { walletAddress: walletParams.walletAddress }
         );
         const tezos = await import("../lib/tezos");
-        const { signature } = await tezos.signPayload(message);
+        const { signature } = await tezos.signAuthPayload(message);
         if (!cancelled) {
           setWalletSignature({ nonce, signature });
         }

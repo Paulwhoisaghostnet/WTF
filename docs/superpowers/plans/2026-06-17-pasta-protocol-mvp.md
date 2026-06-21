@@ -178,11 +178,11 @@ Net-new modules:
 
 ## RPC Policy
 
-- **Macaroni (unchanged):** keep the working `rpc.tzkt.io/mainnet` and `rpc.shadownet.teztnets.com`.
-- **New apps (Spaghetti, Gnocchi, Ravioli, Rotini, Penne, Lasagna, Colander):** follow `AGENTS.md`
-  doctrine — Tezos Mainnet `https://tezos-mainnet.octez.io/` (fallback `https://tcinfra.net/rpc/tezos/mainnet`),
-  Tezos Shadownet `https://tezos-shadownet.octez.io/` (fallback `https://tcinfra.net/rpc/tezos/shadownet`).
-  Forks start from Macaroni's `common.js` but swap the `NETWORKS` RPCs to the doctrine endpoints.
+- **Macaroni and new apps (Spaghetti, Gnocchi, Ravioli, Rotini, Penne, Lasagna, Colander):** follow
+  `AGENTS.md` doctrine — Tezos Mainnet `https://tezos-mainnet.octez.io/` (fallback
+  `https://tcinfra.net/rpc/tezos/mainnet`), Tezos Shadownet `https://tezos-shadownet.octez.io/`
+  (fallback `https://tcinfra.net/rpc/tezos/shadownet`). TzKT remains the indexer/API fallback, not the
+  primary app RPC.
 
 ## Open Decisions (need owner confirmation)
 

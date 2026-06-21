@@ -77,11 +77,11 @@ function parseArgs(argv: string[]): Flags {
 function usage(): string {
   return [
     "Usage:",
-    "  npm run platform-wallets -- init --network shadownet --rpc https://rpc.shadownet.teztnets.com",
+    "  npm run platform-wallets -- init --network shadownet --rpc https://tezos-shadownet.octez.io/",
     "  npm run platform-wallets -- create --id arcade-treasury --label \"Arcade Treasury\" --role arcade_treasury --network shadownet",
     "  npm run platform-wallets -- list",
-    "  npm run platform-wallets -- balance --id arcade-treasury --network mainnet --rpc https://rpc.tzkt.io/mainnet",
-    "  npm run platform-wallets -- send-xtz --id arcade-treasury --to tz1... --mutez 1000 --network mainnet --rpc https://rpc.tzkt.io/mainnet",
+    "  npm run platform-wallets -- balance --id arcade-treasury --network mainnet --rpc https://tezos-mainnet.octez.io/",
+    "  npm run platform-wallets -- send-xtz --id arcade-treasury --to tz1... --mutez 1000 --network mainnet --rpc https://tezos-mainnet.octez.io/",
     "",
     "Secrets are stored outside the repo by default:",
     `  keyring: ${defaultKeyringPath}`,
@@ -104,11 +104,11 @@ function rpcForNetwork(network: PlatformWalletNetwork): string {
     case "ghostnet":
       return "https://rpc.ghostnet.teztnets.com";
     case "shadownet":
-      return "https://rpc.shadownet.teztnets.com";
+      return "https://tezos-shadownet.octez.io/";
     case "mainnet":
-      return "https://rpc.tzkt.io/mainnet";
+      return "https://tezos-mainnet.octez.io/";
     case "custom":
-      return process.env.WTF_OPERATOR_SIGNER_RPC || "https://rpc.tzkt.io/mainnet";
+      return process.env.WTF_OPERATOR_SIGNER_RPC || "https://tezos-mainnet.octez.io/";
   }
 }
 

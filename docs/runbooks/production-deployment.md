@@ -2,10 +2,10 @@
 
 ## Scope
 
-This runbook covers the live `wtfgameshow.app` deployment from the correct repo:
+This runbook covers the live `wtfos.app` deployment from the correct repo:
 
 ```bash
-/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF-media-access-hotfix
+/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF
 ```
 
 Production is a Docker Compose app on Hetzner, deployed by GitHub Actions from `main`.
@@ -61,7 +61,7 @@ gh run watch <deploy-run-id> --exit-status
 Verify the deployed commit and readiness:
 
 ```bash
-curl -fsS https://wtfgameshow.app/api/health
+curl -fsS https://wtfos.app/api/health
 ```
 
 Required live health fields:
@@ -72,14 +72,14 @@ Required live health fields:
 - `chain.ok`: true.
 - `chain.network`: `mainnet`.
 - `chain.tzktBase`: `https://api.tzkt.io/v1`.
-- `chain.tezosRpcUrl`: `https://rpc.tzkt.io/mainnet`.
+- `chain.tezosRpcUrl`: `https://tezos-mainnet.octez.io/`.
 - `jobs.ok`: true.
 - `jobs.recentErrors`: 0 unless there is a known, documented transient.
 
 Verify security headers when the slice touches browser, wallet, embed, or media boundaries:
 
 ```bash
-curl -fsSI https://wtfgameshow.app
+curl -fsSI https://wtfos.app
 ```
 
 For wallet slices, `content-security-policy` must include explicit `frame-src` and `child-src`; wallet frames must not fall back to `default-src`.

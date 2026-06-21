@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-304 | Fixed | Codex wallet live full-send | 2026-06-21 | Auth / Tezos wallet sign-in | P0 | 14 | 3 | 3 | 5 | 1 | Production wallet sign-in could hang on `Connecting...` after a fresh-cache retry because the login lane reused app wallet state and did not force a mainnet auth provider lifecycle; fixed with fresh Beacon/WalletConnect auth clearing, Octez-primary mainnet login, ACTIVE_ACCOUNT_SET subscriptions, bounded permission timeout, and Octez RPC deploy defaults; pending production deploy verification |
 | WTF-BB-296 | Verified | Codex cobwebsaints domain readiness pass | 2026-06-20 | WTF Domains / account-specific advanced feature coverage | P2 | 8 | 14 | 2 | 3 | 0 | Domain/pinning harness data hardcoded `pincollector.wtfos.me`, so account-specific readiness for `cobwebsaints` could pass generic checks while advanced surfaces showed another user's host; fixed with signed-in-user-derived harness domains, Cobweb persona coverage across Settings, WTF Domains, IPFS Pinning, and Macaroni trusted creator access, plus full inventory verification |
 | WTF-BB-295 | Verified | Codex stale welcome auth repair | 2026-06-20 | Auth / welcome session recovery | P1 | 12 | 7 | 3 | 5 | 0 | Welcome dialog could retain a cached signed-in user after the protected API session was gone, so every welcome/profile/diary action returned `Not authenticated` and passive wallet reconciliation logged repeated 401s; fixed with protected-401 session invalidation, auth cache clearing, passive wallet warning suppression, and focused/full inventory verification |
 | WTF-BB-215 | Verified | Codex Skywire new OAuth outage repair | 2026-06-06 | Skywire / AT OAuth new-session connect | P0 | 17 | 1 | 4 | 5 | 3 | New Skywire OAuth connections to Bluesky fail while existing sessions continue working; fixed with durable app+SDK OAuth state persistence and verified live on wtfos.app |
@@ -5833,6 +5834,29 @@ Priority labels:
   - Hetzner deploy for commit `da79c63` completed successfully and live health reported `commitRef:"da79c63"` with `status:"ok"`.
   - Live Airporters verification passed on `https://paulwhoisaghost.wtfos.me/airporters-vol-1`: HTTP 200 user-site surface, Octez/Beacon CSP websocket/frame allowances present, `vendor/octez-connect.js` before `js/octez-wallet.js`, the wrapper before `installOctezPrimaryWallet({ patchBeacon: true })`, the patch before `macaroniCommonJs`, Beacon fallback runtime present, and no `{ type: net.beaconNetwork, rpcUrl }` leak.
   - Live Macaroni static assets verified on `https://wtfos.app/creation-tools/macaroni/drop.html`, `studio.html`, `js/octez-wallet.js`, and `vendor/octez-connect.js`: Octez assets load before `common.js`, the wrapper exposes `providerName = "octez.connect"` plus `beaconBackup`, and the vendor bundle exposes `MacaroniOctezConnect` plus `getDAppClientInstance`.
+
+### WTF-BB-304 - Production wallet sign-in could hang on `Connecting...`
+
+- Category: Auth / Tezos wallet sign-in
+- Status: Fixed
+- Owner/Session: Codex wallet live full-send
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - Live `https://wtfos.app/login` was retried from a fresh Chromium profile with cookies, local/session storage, IndexedDB, and Cache Storage cleared before any fix work.
+  - The wallet login button still stayed on `Connecting...` on production, while the console reported an active Beacon account without an `ACTIVE_ACCOUNT_SET` subscription.
+  - Live health was otherwise OK but reported `chain.tezosRpcUrl:"https://rpc.tzkt.io/mainnet"`, so the host runtime env could preserve an old public RPC default even after source defaults changed.
+  - Auth wallet identity is intentionally Tezos mainnet wallet ownership; Shadownet is for deliberate app/contract flows, not the primary wtfOS login vector.
+- Why it matters:
+  - Wallet sign-in is a primary account entry path. A stuck provider prompt blocks users from logging in, registering wallet-backed accounts, and reaching role-permitted surfaces.
+  - Mixing app-local Shadownet preferences into login would make auth identity ambiguous and can make wallet providers reject or stall requests.
+- Fix:
+  - Split the auth wallet lane from app wallet network preferences with explicit mainnet `connectAuthWallet()` and `signAuthPayload()` helpers.
+  - Force fresh Beacon/WalletConnect auth state for explicit login retries by clearing relevant localStorage and IndexedDB entries before requesting permissions.
+  - Subscribe to `ACTIVE_ACCOUNT_SET` before permission requests for Octez Connect and Beacon, keep Octez Connect as primary with Beacon/Taquito as backup, and bound permission requests with a retryable timeout.
+  - Move source defaults and deploy-time known-default migration to Octez-hosted mainnet/shadownet RPCs while retaining TzKT as the indexer/API fallback.
+  - Update interaction inventory and behavior assertions so future auth changes preserve the mainnet-login lane and do not confuse it with Shadownet app flows.
+- Verification:
+  - Pending production deploy verification: after pushing `main`, confirm Hetzner deploy publishes the new commit, live `/api/health` reports Octez mainnet RPC plus OK DB/chain/jobs, and a clean-profile live wallet login smoke no longer stays indefinitely on `Connecting...`.
 
 ### WTF-BB-274 - Macaroni V2 contract versions, editions, and minter royalties
 

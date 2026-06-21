@@ -81,7 +81,7 @@ Latest passed proof, 2026-06-06:
 If `KILN_API_TOKEN` is missing and Kiln rejects unauthenticated mutation routes, the script exits with code `2` and writes BLOCKED reports. That is not a shadownet pass.
 
 The script retries transient Kiln/RPC 429 and 5xx responses. If
-`https://rpc.shadownet.teztnets.com` returns sustained HTTP 503, the pass is
+`https://tezos-shadownet.octez.io/` returns sustained HTTP 503, the pass is
 blocked before any shadownet origination can be proven.
 
 If Kiln workflow clearance cannot prove the dependent FA2 marketplace path in

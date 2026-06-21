@@ -11,7 +11,7 @@ const NETWORK_DEFAULTS: Record<
 > = {
   mainnet: {
     network: "mainnet",
-    rpcUrl: "https://rpc.tzkt.io/mainnet",
+    rpcUrl: "https://tezos-mainnet.octez.io/",
     tzktApi: "https://api.tzkt.io",
     domainsGraphql: "https://api.tezos.domains/graphql",
     tedAppUrl: "https://app.tezos.domains",
@@ -31,7 +31,7 @@ const NETWORK_DEFAULTS: Record<
   },
   shadownet: {
     network: "shadownet",
-    rpcUrl: "https://rpc.shadownet.teztnets.com",
+    rpcUrl: "https://tezos-shadownet.octez.io/",
     tzktApi: "https://api.shadownet.tzkt.io",
     domainsGraphql: "",
     tedAppUrl: "https://shadownet.tezos.domains",

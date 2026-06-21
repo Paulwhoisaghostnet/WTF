@@ -10,8 +10,9 @@ if [[ ! -f .env ]]; then
 fi
 
 runtime_env=""
+runtime_env_is_temp="0"
 cleanup() {
-  if [[ -n "$runtime_env" && -f "$runtime_env" ]]; then
+  if [[ "$runtime_env_is_temp" == "1" && -n "$runtime_env" && -f "$runtime_env" ]]; then
     rm -f "$runtime_env"
   fi
 }
@@ -23,9 +24,27 @@ if [[ -r "$default_runtime_env" ]]; then
   runtime_env="$default_runtime_env"
 elif sudo -n test -r "$default_runtime_env" 2>/dev/null; then
   runtime_env="$(mktemp /tmp/wtf-runtime.XXXXXX.env)"
+  runtime_env_is_temp="1"
   chmod 600 "$runtime_env"
   sudo -n cat "$default_runtime_env" > "$runtime_env"
 fi
+
+migrate_known_rpc_defaults() {
+  local env_file="$1"
+  [[ -n "$env_file" && -f "$env_file" ]] || return 0
+
+  local rewrite_script='s#https://rpc\.tzkt\.io/mainnet#https://tezos-mainnet.octez.io/#g; s#https://rpc\.shadownet\.teztnets\.com#https://tezos-shadownet.octez.io/#g'
+  if [[ -w "$env_file" ]]; then
+    perl -0pi -e "$rewrite_script" "$env_file"
+  elif sudo -n test -w "$env_file" 2>/dev/null; then
+    sudo perl -0pi -e "$rewrite_script" "$env_file"
+  else
+    echo "[server-deploy] note: cannot rewrite RPC defaults in $env_file; continuing with current file"
+  fi
+}
+
+migrate_known_rpc_defaults ".env"
+migrate_known_rpc_defaults "$runtime_env"
 
 set -a
 . ./.env

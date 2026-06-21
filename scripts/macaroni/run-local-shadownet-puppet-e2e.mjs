@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..", "..");
 const localSecretDir = path.join(root, ".tmp", "macaroni-shadownet-e2e");
 
-const SHADOWNET_RPC = "https://rpc.shadownet.teztnets.com";
+const SHADOWNET_RPC = "https://tezos-shadownet.octez.io/";
 const SHADOWNET_TZKT = "https://api.shadownet.tzkt.io/v1";
 
 function run(label, command, args, env) {

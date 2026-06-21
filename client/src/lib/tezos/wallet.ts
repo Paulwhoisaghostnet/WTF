@@ -1,4 +1,10 @@
-import { loadOctezConnect, loadBeaconWallet, loadTaquito, getRpcUrl, getNetwork } from "./loaders";
+import {
+  loadOctezConnect,
+  loadBeaconWallet,
+  loadTaquito,
+  getRpcUrlForNetwork,
+  getNetwork,
+} from "./loaders";
 
 type WalletProviderName = "octez.connect" | "beacon";
 
@@ -14,6 +20,12 @@ export interface ConnectWalletOptions {
    * Beacon/Octez session is never reused silently.
    */
   forcePermissions?: boolean;
+  /**
+   * Explicit chain lane for the wallet provider. Auth uses mainnet here;
+   * Shadownet-capable apps can still pass their selected app network.
+   */
+  network?: string;
+  rpcUrl?: string;
 }
 
 /**
@@ -62,19 +74,56 @@ function persistWalletSession(session: PersistedWalletSession | null) {
 }
 
 /** Beacon `NetworkType` string values (ecad / airgap Beacon, Taquito 14–24). */
-type BeaconPreferredNetwork = "mainnet" | "ghostnet";
+type BeaconPreferredNetwork = "mainnet" | "ghostnet" | "shadownet";
+const WALLET_PERMISSION_TIMEOUT_MS = 30_000;
+const AUTH_WALLET_NETWORK = "mainnet";
 const OCTEZ_FEATURED_WALLETS = [
   "kukai",
   "temple",
   "umami",
 ];
+const NAMED_WALLET_NETWORKS = new Set(["mainnet", "ghostnet", "shadownet"]);
 
-function beaconPreferredNetwork(network: string): BeaconPreferredNetwork {
-  return network === "ghostnet" ? "ghostnet" : "mainnet";
+interface WalletNetworkConfig {
+  network: string;
+  rpcUrl: string;
 }
 
-function walletNetworkSpec(network: string) {
-  return { type: beaconPreferredNetwork(network) as any };
+function beaconPreferredNetwork(network: string): BeaconPreferredNetwork {
+  if (network === "ghostnet") return "ghostnet";
+  if (network === "shadownet") return "shadownet";
+  return "mainnet";
+}
+
+function walletNetworkSpec(network: string, rpcUrl?: string) {
+  const spec: { type: any; name?: string; rpcUrl?: string } = {
+    type: beaconPreferredNetwork(network) as any,
+  };
+  if (!NAMED_WALLET_NETWORKS.has(network) && rpcUrl) {
+    spec.type = "custom";
+    spec.name = network;
+    spec.rpcUrl = rpcUrl;
+  }
+  return spec;
+}
+
+function resolveWalletConfig(options: { network?: string; rpcUrl?: string } = {}): WalletNetworkConfig {
+  const network = options.network || getNetwork();
+  return {
+    network,
+    rpcUrl: options.rpcUrl || getRpcUrlForNetwork(network),
+  };
+}
+
+function resolveAuthWalletConfig(): WalletNetworkConfig {
+  return {
+    network: AUTH_WALLET_NETWORK,
+    rpcUrl: getRpcUrlForNetwork(AUTH_WALLET_NETWORK),
+  };
+}
+
+function sameWalletConfig(a: WalletNetworkConfig | null, b: WalletNetworkConfig): boolean {
+  return !!a && a.network === b.network && a.rpcUrl === b.rpcUrl;
 }
 
 interface WalletAdapter {
@@ -87,11 +136,15 @@ interface WalletAdapter {
 }
 
 let currentAdapter: WalletAdapter | null = null;
+let currentAdapterConfig: WalletNetworkConfig | null = null;
 let tezosToolkit: any = null;
+let tezosToolkitConfig: WalletNetworkConfig | null = null;
 let adapterInitPromise: Promise<WalletAdapter> | null = null;
+let adapterInitConfig: WalletNetworkConfig | null = null;
 let connectPromise:
   | Promise<WalletConnectionResult>
   | null = null;
+let connectPromiseConfig: WalletNetworkConfig | null = null;
 
 function sameWalletAddress(a: string, b: string): boolean {
   return a.trim() === b.trim();
@@ -128,11 +181,55 @@ function clearStaleBeaconState() {
   const keysToRemove: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && (key.startsWith("beacon:") || key.startsWith("beacon-sdk:"))) {
+    const normalized = key?.toLowerCase() || "";
+    if (
+      key &&
+      (key.startsWith("beacon:") ||
+        key.startsWith("beacon-sdk:") ||
+        key.startsWith("wc@") ||
+        normalized.includes("walletconnect") ||
+        normalized.includes("octez.connect"))
+    ) {
       keysToRemove.push(key);
     }
   }
   keysToRemove.forEach((k) => localStorage.removeItem(k));
+}
+
+function deleteIndexedDb(name: string): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof indexedDB === "undefined") {
+      resolve();
+      return;
+    }
+    const request = indexedDB.deleteDatabase(name);
+    request.onsuccess = () => resolve();
+    request.onerror = () => resolve();
+    request.onblocked = () => resolve();
+  });
+}
+
+async function clearWalletIndexedDbState() {
+  if (typeof window === "undefined" || typeof indexedDB === "undefined") return;
+  const knownWalletDbs = ["beacon", "WALLET_CONNECT_V2_INDEXED_DB"];
+  let dbNames = knownWalletDbs;
+  try {
+    const databases =
+      typeof (indexedDB as any).databases === "function"
+        ? await (indexedDB as any).databases()
+        : [];
+    const discovered = databases
+      .map((db: { name?: string }) => db.name)
+      .filter((name: string | undefined): name is string => !!name)
+      .filter((name: string) => {
+        const normalized = name.toLowerCase();
+        return normalized.includes("beacon") || normalized.includes("wallet");
+      });
+    dbNames = Array.from(new Set([...knownWalletDbs, ...discovered]));
+  } catch {
+    // Some browsers do not expose indexedDB.databases(); known DB names still cover Beacon/WC.
+  }
+  await Promise.all(dbNames.map((name) => deleteIndexedDb(name)));
 }
 
 async function resetWalletConnectorState(options?: { clearPersistedSession?: boolean }) {
@@ -144,12 +241,34 @@ async function resetWalletConnectorState(options?: { clearPersistedSession?: boo
     }
   }
   clearStaleBeaconState();
+  await clearWalletIndexedDbState();
   if (options?.clearPersistedSession !== false) {
     persistWalletSession(null);
   }
   currentAdapter = null;
+  currentAdapterConfig = null;
   tezosToolkit = null;
+  tezosToolkitConfig = null;
   adapterInitPromise = null;
+  adapterInitConfig = null;
+}
+
+async function withWalletTimeout<T>(
+  task: Promise<T>,
+  message: string,
+  timeoutMs = WALLET_PERMISSION_TIMEOUT_MS,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      task,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 async function preflightOctezExtensionHandshake(
@@ -196,21 +315,29 @@ class BeaconLegacyAdapter implements WalletAdapter {
   name: WalletProviderName = "beacon";
   private wallet: any = null;
   private network: BeaconPreferredNetwork = "mainnet";
+  private rpcUrl = "";
 
-  async init(network: string, _rpcUrl: string) {
-    const { BeaconWallet } = await loadBeaconWallet();
+  async init(network: string, rpcUrl: string) {
+    const { BeaconWallet, BeaconEvent } = (await loadBeaconWallet()) as any;
     this.network = beaconPreferredNetwork(network);
+    this.rpcUrl = rpcUrl;
     this.wallet = new BeaconWallet({
       name: "WTF OS",
-      network: walletNetworkSpec(network),
+      network: walletNetworkSpec(network, rpcUrl),
       enableMetrics: false,
       // Cast: airgap vs ecad Beacon both use string enum values; TS types differ by major.
       preferredNetwork: this.network as any,
     });
+    await this.wallet.client.subscribeToEvent(
+      (BeaconEvent?.ACTIVE_ACCOUNT_SET ?? "ACTIVE_ACCOUNT_SET") as any,
+      async () => {},
+    );
   }
 
   async requestPermissions(): Promise<string> {
-    await this.wallet.requestPermissions();
+    await this.wallet.requestPermissions({
+      network: walletNetworkSpec(this.network, this.rpcUrl),
+    } as any);
     const account = await this.wallet.getPKH();
     return account;
   }
@@ -234,33 +361,41 @@ class OctezConnectAdapter implements WalletAdapter {
   private client: any = null;
   private _beaconWallet: any = null;
   private _beaconNetwork: string = "mainnet";
+  private _rpcUrl = "";
 
-  async init(network: string, _rpcUrl: string) {
+  async init(network: string, rpcUrl: string) {
     this._beaconNetwork = network;
-    const { DAppClient } = await loadOctezConnect();
+    this._rpcUrl = rpcUrl;
+    const { DAppClient, BeaconEvent } = await loadOctezConnect();
     const preferredNetwork = beaconPreferredNetwork(network);
     this.client = new (DAppClient as any)({
       name: "WTF OS",
-      network: walletNetworkSpec(network),
+      network: walletNetworkSpec(network, rpcUrl),
       preferredNetwork: preferredNetwork as any,
       enableMetrics: false,
       featuredWallets: OCTEZ_FEATURED_WALLETS,
     });
+    await this.client.subscribeToEvent(
+      ((BeaconEvent as any)?.ACTIVE_ACCOUNT_SET ?? "ACTIVE_ACCOUNT_SET") as any,
+      async (account: any) => {
+        await this.syncAccountToBeaconWallet(account);
+      },
+    );
   }
 
   private async ensureBeaconWallet(): Promise<any> {
     if (this._beaconWallet) return this._beaconWallet;
-    const { BeaconWallet } = await loadBeaconWallet();
+    const { BeaconWallet, BeaconEvent } = (await loadBeaconWallet()) as any;
     this._beaconWallet = new BeaconWallet({
       name: "WTF OS",
+      network: walletNetworkSpec(this._beaconNetwork, this._rpcUrl),
       preferredNetwork: beaconPreferredNetwork(this._beaconNetwork) as any,
+      enableMetrics: false,
     });
-    try {
-      await this._beaconWallet.client.subscribeToEvent(
-        "ACTIVE_ACCOUNT_SET",
-        async () => {},
-      );
-    } catch { /* v3/v4 differences */ }
+    await this._beaconWallet.client.subscribeToEvent(
+      (BeaconEvent?.ACTIVE_ACCOUNT_SET ?? "ACTIVE_ACCOUNT_SET") as any,
+      async () => {},
+    );
     return this._beaconWallet;
   }
 
@@ -278,9 +413,9 @@ class OctezConnectAdapter implements WalletAdapter {
     throw new Error("Wallet permissions granted but no active account address was returned");
   }
 
-  private async syncAccountToBeaconWallet() {
+  private async syncAccountToBeaconWallet(activeAccount?: any) {
     try {
-      const account = await this.client.getActiveAccount();
+      const account = activeAccount ?? await this.client.getActiveAccount();
       if (account) {
         const bw = await this.ensureBeaconWallet();
         await bw.client.setActiveAccount(account);
@@ -301,6 +436,12 @@ class OctezConnectAdapter implements WalletAdapter {
 
   async clearActiveAccount() {
     await this.client.clearActiveAccount();
+    if (typeof this.client.removeAllAccounts === "function") {
+      await this.client.removeAllAccounts();
+    }
+    if (typeof this.client.removeAllPeers === "function") {
+      await this.client.removeAllPeers(false);
+    }
     if (this._beaconWallet) {
       try {
         await this._beaconWallet.clearActiveAccount();
@@ -314,13 +455,10 @@ class OctezConnectAdapter implements WalletAdapter {
   }
 }
 
-async function createAdapter(): Promise<WalletAdapter> {
-  const network = getNetwork();
-  const rpcUrl = getRpcUrl();
-
+async function createAdapter(config: WalletNetworkConfig): Promise<WalletAdapter> {
   try {
     const octez = new OctezConnectAdapter();
-    await octez.init(network, rpcUrl);
+    await octez.init(config.network, config.rpcUrl);
     const active = await octez.getActiveAccount();
     console.log(`[WTF] Wallet provider: octez.connect${active ? " (active session)" : ""}`);
     return octez;
@@ -330,7 +468,7 @@ async function createAdapter(): Promise<WalletAdapter> {
 
   try {
     const beacon = new BeaconLegacyAdapter();
-    await beacon.init(network, rpcUrl);
+    await beacon.init(config.network, config.rpcUrl);
     const active = await beacon.getActiveAccount();
     console.log(`[WTF] Wallet provider: Beacon${active ? " (active session)" : " (fallback)"}`);
     return beacon;
@@ -341,27 +479,37 @@ async function createAdapter(): Promise<WalletAdapter> {
   throw new Error("No wallet provider available");
 }
 
-async function ensureAdapter(): Promise<WalletAdapter> {
-  if (currentAdapter) return currentAdapter;
-  if (adapterInitPromise) return adapterInitPromise;
+async function ensureAdapter(config = resolveWalletConfig()): Promise<WalletAdapter> {
+  if (currentAdapter && sameWalletConfig(currentAdapterConfig, config)) return currentAdapter;
+  if (adapterInitPromise && sameWalletConfig(adapterInitConfig, config)) return adapterInitPromise;
 
-  adapterInitPromise = createAdapter()
+  if (currentAdapter && !sameWalletConfig(currentAdapterConfig, config)) {
+    currentAdapter = null;
+    currentAdapterConfig = null;
+  }
+
+  adapterInitConfig = config;
+  adapterInitPromise = createAdapter(config)
     .then((adapter) => {
       currentAdapter = adapter;
+      currentAdapterConfig = config;
       return adapter;
     })
     .finally(() => {
       adapterInitPromise = null;
+      adapterInitConfig = null;
     });
 
   return adapterInitPromise;
 }
 
-export async function getTezos() {
-  if (tezosToolkit) return tezosToolkit;
+export async function getTezos(options: { network?: string; rpcUrl?: string } = {}) {
+  const config = resolveWalletConfig(options);
+  if (tezosToolkit && sameWalletConfig(tezosToolkitConfig, config)) return tezosToolkit;
   const { TezosToolkit } = await loadTaquito();
-  tezosToolkit = new TezosToolkit(getRpcUrl());
-  if (currentAdapter) {
+  tezosToolkit = new TezosToolkit(config.rpcUrl);
+  tezosToolkitConfig = config;
+  if (currentAdapter && sameWalletConfig(currentAdapterConfig, config)) {
     await currentAdapter.setAsTaquitoProvider(tezosToolkit);
   }
   return tezosToolkit;
@@ -369,19 +517,25 @@ export async function getTezos() {
 
 async function activateAdapterForSend(
   adapter: WalletAdapter,
+  config: WalletNetworkConfig,
   expectedAddress?: string,
   forcePermissions = false,
 ): Promise<WalletConnectionResult> {
+  const requestPermissions = () =>
+    withWalletTimeout(
+      adapter.requestPermissions(),
+      `${adapter.name} did not finish opening a wallet prompt. Clear the wallet connection and try again, or choose another Tezos wallet.`,
+    );
   const requestedAddress = forcePermissions
-    ? await adapter.requestPermissions()
-    : (await adapter.getActiveAccount())?.address ?? (await adapter.requestPermissions());
+    ? await requestPermissions()
+    : (await adapter.getActiveAccount())?.address ?? (await requestPermissions());
   const address = requestedAddress || (await adapter.getActiveAccount())?.address || "";
 
   if (!address) {
     throw new Error("Wallet connected, but no address is available");
   }
 
-  await getTezos();
+  await getTezos(config);
   await adapter.setAsTaquitoProvider(tezosToolkit);
   persistWalletSession({ address, providerName: adapter.name });
 
@@ -395,10 +549,11 @@ async function activateAdapterForSend(
 export async function ensureWalletProviderForSend(
   expectedAddress?: string,
 ): Promise<WalletConnectionResult> {
-  const adapter = await ensureAdapter();
+  const config = resolveWalletConfig();
+  const adapter = await ensureAdapter(config);
 
   try {
-    return await activateAdapterForSend(adapter, expectedAddress);
+    return await activateAdapterForSend(adapter, config, expectedAddress);
   } catch (err) {
     if (err instanceof WalletAccountMismatchError) {
       throw err;
@@ -411,31 +566,48 @@ export async function connectWallet(
   options: ConnectWalletOptions = {},
 ): Promise<WalletConnectionResult> {
   const { forcePermissions = false } = options;
-  if (connectPromise && !forcePermissions) return connectPromise;
+  const config = resolveWalletConfig(options);
+  if (connectPromise && !forcePermissions && sameWalletConfig(connectPromiseConfig, config)) {
+    return connectPromise;
+  }
 
   const task = (async () => {
     if (forcePermissions) {
       await resetWalletConnectorState();
     }
 
-    const adapter = await ensureAdapter();
+    const adapter = await ensureAdapter(config);
 
     try {
       if (forcePermissions) {
         // Auth and explicit reconnect flows must show Kukai/Temple/Umami picker.
-        return await activateAdapterForSend(adapter, undefined, true);
+        return await activateAdapterForSend(adapter, config, undefined, true);
       }
       // Reuse existing permission/session to avoid duplicate wallet proposals for sends.
-      return await activateAdapterForSend(adapter);
+      return await activateAdapterForSend(adapter, config);
     } catch (err) {
+      if (forcePermissions) {
+        await resetWalletConnectorState();
+      }
       throw new WalletProviderPreflightError(adapter.name, err);
     }
   })().finally(() => {
     connectPromise = null;
+    connectPromiseConfig = null;
   });
 
   connectPromise = task;
+  connectPromiseConfig = config;
   return task;
+}
+
+export async function connectAuthWallet(): Promise<WalletConnectionResult> {
+  const config = resolveAuthWalletConfig();
+  return connectWallet({
+    forcePermissions: true,
+    network: config.network,
+    rpcUrl: config.rpcUrl,
+  });
 }
 
 export async function disconnectWallet() {
@@ -459,9 +631,11 @@ export async function getActiveAccount(): Promise<{
 }
 
 export async function signPayload(
-  message: string
+  message: string,
+  options: { network?: string; rpcUrl?: string } = {},
 ): Promise<{ signature: string; publicKey: string }> {
-  const adapter = await ensureAdapter();
+  const config = resolveWalletConfig(options);
+  const adapter = await ensureAdapter(config);
 
   const payloadBytes = new TextEncoder().encode(message);
   const hex = Array.from(payloadBytes)
@@ -502,4 +676,10 @@ export async function signPayload(
     signature: result.signature,
     publicKey: account?.publicKey || "",
   };
+}
+
+export async function signAuthPayload(
+  message: string
+): Promise<{ signature: string; publicKey: string }> {
+  return signPayload(message, resolveAuthWalletConfig());
 }
