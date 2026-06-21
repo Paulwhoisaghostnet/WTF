@@ -29,6 +29,8 @@ const state = {
   skywireLiveStatus: null,
   skywireChatEnabled: true,
   skywireHandle: "wtf-admin.bsky.social",
+  welcomePending: false,
+  welcomeCompleteUnauthorized: false,
   wtfLiveSoundboard: { clips: [], armed: true, updatedAt: null },
   macaroniPackages: [],
   macaroniNextPackageId: 1,
@@ -153,6 +155,130 @@ function mockWtfDomainPlan(labelInput, targetAddress, includeSalt = false) {
     : body;
 }
 
+function accountDomainIdentity(user = currentAuthUser()) {
+  const label = siteSafeLabelForUser(user);
+  const host = `${label}.wtfos.me`;
+  return {
+    label,
+    host,
+    wtfTezHost: `${label}.wtf.tez`,
+    did: `did:web:${host}`,
+    pdsUrl: "https://pds.wtfos.me",
+    identityId: Number(user?.id || 1),
+  };
+}
+
+function mockIpfsPinningOverview(policy = null) {
+  const identity = accountDomainIdentity();
+  const hasSite = Boolean(state.wtfUserSiteClaimed);
+  const did = hasSite ? identity.did : null;
+  return {
+    organ: "ipfs-pinning",
+    role: {
+      roles: ["user", "wtf_pin_collector"],
+      canUsePinning: true,
+      hasPinCollectorRole: true,
+      permissionKey: "use_wtfos_pinning",
+      marketSku: "wtf-pin-collector-pass",
+      legacyAliasSku: "wtf-autopin-membership",
+    },
+    prerequisites: {
+      hasActivePdsRepo: hasSite,
+      hasWtfosSite: hasSite,
+      siteSuspended: false,
+      spineEnabled: true,
+    },
+    pds: hasSite
+      ? {
+          repoDid: did,
+          handle: identity.host,
+          pdsUrl: identity.pdsUrl,
+          identityId: identity.identityId,
+          hasRepo: true,
+        }
+      : null,
+    site: hasSite
+      ? {
+          id: 3001,
+          host: identity.host,
+          status: "active",
+          activeDid: did,
+          wtfosIdentityId: identity.identityId,
+          atprotoHandleClaimId: 77,
+          wellKnownUrl: `https://${identity.host}/.well-known/wtfos-pins`,
+        }
+      : null,
+    subdomainRefs: hasSite
+      ? [
+          { kind: "wtfos.me", host: identity.host },
+          { kind: "wtf.tez", host: identity.wtfTezHost, grantId: 88 },
+        ]
+      : [],
+    provider: {
+      key: "wtfos-porcupin-hetzner",
+      kind: "wtfos_porcupin_hetzner",
+      health: "configured",
+      enabled: true,
+      storageRoot: "/mnt/wtf-data/workers/porcupin",
+      hostedApiConfigured: true,
+      pinataFallbackConfigured: false,
+      lastCheckAt: null,
+      lastError: null,
+    },
+    storage: {
+      objectStorage: {
+        configured: true,
+        bucket: "wtfos-harness",
+        endpoint: "https://s3.eu-central-1.hetzner.cloud",
+        region: "eu-central",
+        uploadsProtected: true,
+      },
+      s3Access: {
+        ok: true,
+        bucket: "wtfos-harness",
+        endpoint: "https://s3.eu-central-1.hetzner.cloud",
+      },
+      storageBoxMirror: { configured: false, scope: "manifest_proofs_only" },
+    },
+    quota: {
+      usedBytes: 5242880,
+      quotaBytes: 10737418240,
+      remainingBytes: 10732175360,
+      jobs: 1,
+      pinnedJobs: 1,
+    },
+    policies: policy
+      ? [{ id: 99, scopeType: "wallet_full", scopeRef: policy.scopeRef ?? "tz1HarnessWallet", pdsStatus: "queued" }]
+      : [],
+    manifests: hasSite
+      ? [
+          {
+            id: 12,
+            scopeType: "wallet_full",
+            scopeRef: policy?.scopeRef ?? "tz1HarnessWallet",
+            walletAddress: policy?.walletAddress ?? "tz1HarnessWallet",
+            pdsRecordUri: `at://${did}/app.wtfos.media.pinManifest/harness`,
+            pdsStatus: "published",
+            createdAt: "2026-06-13T00:00:00.000Z",
+          },
+        ]
+      : [],
+    jobs: hasSite
+      ? [
+          {
+            id: 21,
+            cid: "bafybeiharnesspinningfixture",
+            source: "wallet_scan",
+            status: "pinned",
+            providerKey: "wtfos-porcupin-hetzner",
+            byteSize: 5242880,
+            pdsStatus: "published",
+          },
+        ]
+      : [],
+  };
+}
+
 function logRequest(req) {
   state.groupchatLog.push({ ts: Date.now(), path: req.originalUrl });
 }
@@ -189,6 +315,8 @@ app.post("/__test/state", (req, res) => {
   state.skywireLiveStatus = null;
   state.skywireChatEnabled = req.body?.skywireChatEnabled !== false;
   state.skywireHandle = String(req.body?.skywireHandle || "wtf-admin.bsky.social");
+  state.welcomePending = Boolean(req.body?.welcomePending);
+  state.welcomeCompleteUnauthorized = Boolean(req.body?.welcomeCompleteUnauthorized);
   state.wtfLiveSoundboard = { clips: [], armed: true, updatedAt: null };
   state.macaroniPackages = [];
   state.macaroniNextPackageId = 1;
@@ -199,7 +327,19 @@ app.post("/__test/state", (req, res) => {
   state.wtfLivePrivateMembers = [];
   state.wtfLiveOwnedStage = { id: "my-stage", title: "My Stage", kind: "stage", description: "Owned stage", liveUrl: "/live", source: "user", ownerUserId: 1, isPublic: true };
   resetHarnessMarketState();
-  res.json({ ok: true, state: { mode: state.mode, userRole: state.userRole, authUser: state.authUser, skywireChatEnabled: state.skywireChatEnabled, skywireHandle: state.skywireHandle } });
+  res.json({
+    ok: true,
+    state: {
+      mode: state.mode,
+      userRole: state.userRole,
+      authUser: state.authUser,
+      skywireChatEnabled: state.skywireChatEnabled,
+      skywireHandle: state.skywireHandle,
+      welcomePending: state.welcomePending,
+      welcomeCompleteUnauthorized: state.welcomeCompleteUnauthorized,
+      wtfUserSiteClaimed: state.wtfUserSiteClaimed,
+    },
+  });
 });
 
 app.get("/__test/state", (_req, res) => {
@@ -217,6 +357,9 @@ app.get("/__test/state", (_req, res) => {
     skywireLiveStatus: state.skywireLiveStatus,
     skywireChatEnabled: state.skywireChatEnabled,
     skywireHandle: state.skywireHandle,
+    welcomePending: state.welcomePending,
+    welcomeCompleteUnauthorized: state.welcomeCompleteUnauthorized,
+    wtfUserSiteClaimed: state.wtfUserSiteClaimed,
   });
 });
 
@@ -273,8 +416,8 @@ app.get("/api/auth/user", (_req, res) => {
     twitterHandle: "wtf_admin",
     twitterVerified: true,
     twitterPublic: true,
-    welcomedToWtfOs: true,
-    welcomedToWtfOsAt: "2026-01-01T00:00:00Z",
+    welcomedToWtfOs: !state.welcomePending,
+    welcomedToWtfOsAt: state.welcomePending ? null : "2026-01-01T00:00:00Z",
     gmWelcomeUtcDay: new Date().toISOString().slice(0, 10),
     gmWelcomeLastSeenAt: nowIso(),
     gmWelcome: null,
@@ -293,6 +436,12 @@ app.get("/api/auth/user", (_req, res) => {
 });
 
 app.post("/api/auth/welcome/complete", (_req, res) => {
+  if (state.welcomeCompleteUnauthorized) {
+    state.userRole = "anonymous";
+    state.authUser = null;
+    state.welcomePending = false;
+    return res.status(401).json({ error: "Not authenticated" });
+  }
   const authUser = currentAuthUser() || defaultAuthUserForRole("admin");
   res.json({
     id: authUser.id,
@@ -379,6 +528,8 @@ const desktopApps = {
   "game-studio": true,
   studio: true,
   gallery: true,
+  "ipfs-pinning": true,
+  "wtf-subdomains": true,
   skywire: true,
   "wtf-live": true,
   tz2at: true,
@@ -2428,180 +2579,22 @@ function apiMock(req, res) {
   if (pathName === "/api/telegram-digest/admin/announcements") return res.json({ announcements: [] });
   if (pathName === "/api/ipfs-pinning/policies" && req.method === "POST") {
     return res.status(201).json({
-      overview: {
-        organ: "ipfs-pinning",
-        role: {
-          roles: ["user", "wtf_pin_collector"],
-          canUsePinning: true,
-          hasPinCollectorRole: true,
-          permissionKey: "use_wtfos_pinning",
-          marketSku: "wtf-pin-collector-pass",
-          legacyAliasSku: "wtf-autopin-membership",
-        },
-        prerequisites: {
-          hasActivePdsRepo: true,
-          hasWtfosSite: true,
-          siteSuspended: false,
-          spineEnabled: true,
-        },
-        pds: {
-          repoDid: "did:plc:harnesspins",
-          handle: "pincollector.wtfos.me",
-          pdsUrl: "https://wtfos.me",
-          identityId: 4201,
-          hasRepo: true,
-        },
-        site: {
-          id: 3001,
-          host: "pincollector.wtfos.me",
-          status: "active",
-          activeDid: "did:plc:harnesspins",
-          wtfosIdentityId: 4201,
-          atprotoHandleClaimId: 77,
-          wellKnownUrl: "https://pincollector.wtfos.me/.well-known/wtfos-pins",
-        },
-        subdomainRefs: [{ kind: "wtfos.me", host: "pincollector.wtfos.me" }],
-        provider: {
-          key: "wtfos-porcupin-hetzner",
-          kind: "wtfos_porcupin_hetzner",
-          health: "configured",
-          enabled: true,
-          storageRoot: "/mnt/wtf-data/workers/porcupin",
-          hostedApiConfigured: true,
-          pinataFallbackConfigured: false,
-          lastCheckAt: null,
-          lastError: null,
-        },
-        storage: {
-          objectStorage: {
-            configured: true,
-            bucket: "wtfos-harness",
-            endpoint: "https://s3.eu-central-1.hetzner.cloud",
-            region: "eu-central",
-            uploadsProtected: true,
-          },
-          s3Access: {
-            ok: true,
-            bucket: "wtfos-harness",
-            endpoint: "https://s3.eu-central-1.hetzner.cloud",
-          },
-          storageBoxMirror: { configured: false, scope: "manifest_proofs_only" },
-        },
-        quota: {
-          usedBytes: 5242880,
-          quotaBytes: 10737418240,
-          remainingBytes: 10732175360,
-          jobs: 1,
-          pinnedJobs: 1,
-        },
-        policies: [{ id: 99, scopeType: "wallet_full", scopeRef: req.body?.scopeRef ?? "tz1HarnessWallet", pdsStatus: "queued" }],
-        manifests: [{ id: 12, scopeType: "wallet_full", scopeRef: req.body?.scopeRef ?? "tz1HarnessWallet", pdsStatus: "queued" }],
-        jobs: [],
-      },
+      overview: mockIpfsPinningOverview(req.body),
     });
   }
   if (pathName === "/api/ipfs-pinning/overview") {
-    return res.json({
-      organ: "ipfs-pinning",
-      role: {
-        roles: ["user", "wtf_pin_collector"],
-        canUsePinning: true,
-        hasPinCollectorRole: true,
-        permissionKey: "use_wtfos_pinning",
-        marketSku: "wtf-pin-collector-pass",
-        legacyAliasSku: "wtf-autopin-membership",
-      },
-      prerequisites: {
-        hasActivePdsRepo: true,
-        hasWtfosSite: true,
-        siteSuspended: false,
-        spineEnabled: true,
-      },
-      pds: {
-        repoDid: "did:plc:harnesspins",
-        handle: "pincollector.wtfos.me",
-        pdsUrl: "https://wtfos.me",
-        identityId: 4201,
-        hasRepo: true,
-      },
-      site: {
-        id: 3001,
-        host: "pincollector.wtfos.me",
-        status: "active",
-        activeDid: "did:plc:harnesspins",
-        wtfosIdentityId: 4201,
-        atprotoHandleClaimId: 77,
-        wellKnownUrl: "https://pincollector.wtfos.me/.well-known/wtfos-pins",
-      },
-      subdomainRefs: [
-        { kind: "wtfos.me", host: "pincollector.wtfos.me" },
-        { kind: "wtf.tez", host: "pincollector.wtf.tez", grantId: 88 },
-      ],
-      provider: {
-        key: "wtfos-porcupin-hetzner",
-        kind: "wtfos_porcupin_hetzner",
-        health: "configured",
-        enabled: true,
-        storageRoot: "/mnt/wtf-data/workers/porcupin",
-        hostedApiConfigured: true,
-        pinataFallbackConfigured: false,
-        lastCheckAt: null,
-        lastError: null,
-      },
-      storage: {
-        objectStorage: {
-          configured: true,
-          bucket: "wtfos-harness",
-          endpoint: "https://s3.eu-central-1.hetzner.cloud",
-          region: "eu-central",
-          uploadsProtected: true,
-        },
-        s3Access: {
-          ok: true,
-          bucket: "wtfos-harness",
-          endpoint: "https://s3.eu-central-1.hetzner.cloud",
-        },
-        storageBoxMirror: { configured: false, scope: "manifest_proofs_only" },
-      },
-      quota: {
-        usedBytes: 5242880,
-        quotaBytes: 10737418240,
-        remainingBytes: 10732175360,
-        jobs: 1,
-        pinnedJobs: 1,
-      },
-      policies: [],
-      manifests: [
-        {
-          id: 12,
-          scopeType: "wallet_full",
-          scopeRef: "tz1HarnessWallet",
-          walletAddress: "tz1HarnessWallet",
-          pdsRecordUri: "at://did:plc:harnesspins/app.wtfos.media.pinManifest/harness",
-          pdsStatus: "published",
-          createdAt: "2026-06-13T00:00:00.000Z",
-        },
-      ],
-      jobs: [
-        {
-          id: 21,
-          cid: "bafybeiharnesspinningfixture",
-          source: "wallet_scan",
-          status: "pinned",
-          providerKey: "wtfos-porcupin-hetzner",
-          byteSize: 5242880,
-          pdsStatus: "published",
-        },
-      ],
-    });
+    return res.json(mockIpfsPinningOverview());
   }
   if (pathName === "/api/wtf-subdomains/pins/summary") {
+    const identity = accountDomainIdentity();
     return res.json({
-      binding: {
-        host: "pincollector.wtfos.me",
-        status: "active",
-        manifestAtUri: "at://did:plc:harnesspins/app.wtfos.media.pinManifest/harness",
-      },
+      binding: state.wtfUserSiteClaimed
+        ? {
+            host: identity.host,
+            status: "active",
+            manifestAtUri: `at://${identity.did}/app.wtfos.media.pinManifest/harness`,
+          }
+        : null,
       manifests: [],
     });
   }

@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { api } from "./api";
+import { api, isAuthSessionInvalidError } from "./api";
 import { useAuth } from "./auth-context";
 import {
   readPersistedWalletSession,
@@ -152,11 +152,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // if the wallet is already in the user's linked-wallets list, which is the
   // common case on every refresh.
   useEffect(() => {
-    if (!user || !address) return;
+    if (!user) {
+      linkAttempted.current.clear();
+      return;
+    }
+    if (!address) return;
     const key = `${user.id}:${address}`;
     if (linkAttempted.current.has(key)) return;
     linkAttempted.current.add(key);
     linkWalletToUser(address, { allowSignatureLink: false }).catch((err) => {
+      if (isAuthSessionInvalidError(err)) return;
       console.warn("[WTF] wallet link attempt failed:", err);
       // Allow another attempt later (e.g. after disconnect/reconnect).
       linkAttempted.current.delete(key);

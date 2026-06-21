@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { api } from "../api";
+import { api, isAuthSessionInvalidError } from "../api";
 import { useAuth } from "../auth-context";
 import {
   connectEtherlinkWallet,
@@ -120,11 +120,16 @@ export function EtherlinkWalletProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    if (!user || !address || !chainId) return;
+    if (!user) {
+      linkAttempted.current.clear();
+      return;
+    }
+    if (!address || !chainId) return;
     const key = `${user.id}:${chainId}:${address.toLowerCase()}`;
     if (linkAttempted.current.has(key)) return;
     linkAttempted.current.add(key);
     linkWalletToUser(address, chainId).catch((err) => {
+      if (isAuthSessionInvalidError(err)) return;
       console.warn("[WTF] Etherlink wallet link attempt failed:", err);
       linkAttempted.current.delete(key);
     });

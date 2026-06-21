@@ -10,6 +10,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The live harness confirms each seeded account remains linked to its expected signer-backed wallet.",
   },
   {
+    id: "auth.stale-session-welcome-recovery",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "auth-session",
+    ownerSpec: "tests/playwright/inventory/auth-session.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/auth-session.spec.mjs",
+    userVisibleAssertion:
+      "If the welcome dialog has a cached user but the protected API session has expired, clicking a welcome action clears the stale user and returns to the public entry surface instead of trapping the modal behind a Not authenticated error.",
+    durableSideEffectAssertion:
+      "The focused harness expires the session on `/api/auth/welcome/complete`, verifies the client emits `auth.session.invalidated`, and confirms the welcome modal is removed after the protected 401.",
+  },
+  {
     id: "auth.wallet-challenge-login",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
     ownerSurfaceIds: ["hoard"],
@@ -54,6 +66,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "Settings opens a focused Subdomain Setup window where a signed-in wtfOS user can claim their username.wtfos.me host, see Macaroni readiness, and build wtf.tez commit/register setup plans with their connected wallet address.",
     durableSideEffectAssertion:
       "The inventory harness mutates the mocked /api/wtf-sites/claim state to a claimed site, verifies the windowed applet reflects the claimed host, and exercises the WTF Domains registrar commit and register plan endpoints with the same target wallet.",
+  },
+  {
+    id: "account.cobwebsaints-domain-advanced-readiness",
+    domain: "Wallets, Tokens, Portfolio, and On-Chain State",
+    ownerSurfaceIds: ["system-settings", "wtf-domains", "ipfs-pinning", "creation-tools"],
+    ownerSpec: "tests/playwright/inventory/cobwebsaints-account.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/cobwebsaints-account.spec.mjs",
+    userVisibleAssertion:
+      "The cobwebsaints account persona can claim cobwebsaints.wtfos.me, build cobwebsaints.wtf.tez commit/register plans with the connected wallet, see the same host and alias in IPFS Pinning, queue a wallet backup policy, and see Macaroni's trusted-creator wtfOS pin/publish affordance.",
+    durableSideEffectAssertion:
+      "The focused harness derives WTF Domains and IPFS Pinning identity from the signed-in username, mutates the mocked wtfOS site claim state for cobwebsaints, verifies the pinning policy queue success against the same host, and asserts Macaroni's iframe enables hosted pin/publish access for the trusted_creator role.",
   },
   {
     id: "broot.media-open-import",

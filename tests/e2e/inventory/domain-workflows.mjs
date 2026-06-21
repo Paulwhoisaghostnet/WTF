@@ -11,6 +11,7 @@ export const DOMAIN_WORKFLOWS = [
       "auth.welcome.completed",
       "auth.gm_welcome.event",
       "auth.gm_welcome.completed",
+      "auth.session.invalidated",
       "profile.updated",
       "profile.avatar_media.saved",
       "notification.viewed",

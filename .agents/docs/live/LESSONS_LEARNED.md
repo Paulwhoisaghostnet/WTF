@@ -1,3 +1,23 @@
+## 2026-06-20 - Advanced feature harnesses must be account-specific
+
+**What happened**: The follow-up pass for `cobwebsaints` found that WTF Domains setup was covered with a generic `macaroni` user while IPFS Pinning always returned `pincollector.wtfos.me`, `pincollector.wtf.tez`, and a fixed harness DID. Generic tests could therefore pass even if an advanced surface showed the wrong user's domain identity.
+
+**Why it mattered**: User-site hosts, wtf.tez aliases, PDS-backed pin manifests, and Macaroni hosted publishing are all account identity surfaces. After an auth/onboarding scare, the smoothness proof has to show the reported account's own username-derived domains across the downstream tools, not only a happy-path fixture.
+
+**Rule**: Harness data for domain, PDS, pinning, and publishing flows must derive from the active signed-in test user unless a test explicitly seeds a legacy fixture. Add named persona coverage for user-reported account paths that span multiple advanced surfaces, and register that behavior assertion with every owning app surface.
+
+---
+
+## 2026-06-20 - Cached auth users must collapse on protected 401s
+
+**What happened**: The welcome modal could render a mutation-returned/cached signed-in user even after the protected Passport session was missing. Clicking any welcome action briefly showed saving, then `/api/auth/welcome/complete` returned `Not authenticated`, while passive wallet reconciliation also tried `/api/wallets` and logged repeated 401 warnings.
+
+**Why it mattered**: First-run onboarding sat between account creation and the desktop. If the browser rejected, lost, or stopped sending the session cookie, the client still looked signed in but every protected action failed, trapping users behind the welcome dialog and making the eggplant look like the source of truth.
+
+**Rule**: Treat protected API 401s as an auth-session boundary failure, not as a local component error. Clear the cached auth user, emit a canonical session-invalidation event, exempt public login/register/wallet-auth failures from global sign-out, suppress passive wallet-link warning loops for expected stale-session 401s, and add a focused harness test for stale cached-user onboarding paths.
+
+---
+
 ## 2026-06-18 - Mobile-visible tool rows need explicit grid tracks
 
 **What happened**: Broot's mobile tabs were shown through a breakpoint while the shell grid still declared only four rows. The extra visible toolbar row was implicitly placed, which let the canvas workspace overlap the layer/tool controls and intercept creation-tool clicks during the mobile-focused Playwright smoke.

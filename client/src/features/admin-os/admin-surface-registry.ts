@@ -776,6 +776,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     behaviorAssertionIds: [
       "ipfs-pinning.pds-backed-wallet-backup",
       "settings.subdomain-setup-applet",
+      "account.cobwebsaints-domain-advanced-readiness",
       "macaroni.shadownet-rpc-wallet-setup",
     ],
   },
@@ -977,6 +978,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "broot.ffmpeg-glfx-layer-ops",
       "broot.wallet-hen-mint",
       "ipfs-pinning.pds-backed-wallet-backup",
+      "account.cobwebsaints-domain-advanced-readiness",
       "skullzarmy.fafolab-integration-contracts",
       "macaroni.shadownet-rpc-wallet-setup",
       "macaroni.wtfos-package-source",
@@ -1035,6 +1037,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     ],
     behaviorAssertionIds: [
       "ipfs-pinning.pds-backed-wallet-backup",
+      "account.cobwebsaints-domain-advanced-readiness",
       "macaroni.wtfos-package-source",
       "skullzarmy.fafolab-integration-contracts",
     ],
@@ -1382,7 +1385,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "system_settings.opened",
       "app.interaction.tracked",
     ],
-    behaviorAssertionIds: ["settings.subdomain-setup-applet"],
+    behaviorAssertionIds: [
+      "settings.subdomain-setup-applet",
+      "account.cobwebsaints-domain-advanced-readiness",
+    ],
   },
   {
     id: "browser-boundaries",

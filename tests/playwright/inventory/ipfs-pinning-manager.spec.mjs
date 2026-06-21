@@ -1,7 +1,14 @@
 import { test, expect } from "@playwright/test";
 
 async function setHarnessRole(request, role) {
-  const res = await request.post("/__test/state", { data: { userRole: role } });
+  const res = await request.post("/__test/state", {
+    data: {
+      userRole: role,
+      username: "pincollector",
+      displayName: "Pin Collector",
+      wtfUserSiteClaimed: true,
+    },
+  });
   expect(res.ok()).toBeTruthy();
 }
 
@@ -15,14 +22,17 @@ test.describe("interaction inventory — IPFS Pinning Manager", () => {
     await page.goto("/ipfs-pinning", { waitUntil: "domcontentloaded" });
 
     await expect(page.getByRole("heading", { name: "IPFS Pinning Manager" })).toBeVisible();
-    await expect(page.getByText("did:plc:harnesspins").first()).toBeVisible();
+    await expect(page.getByText("did:web:pincollector.wtfos.me").first()).toBeVisible();
     await expect(page.getByText("pincollector.wtfos.me").first()).toBeVisible();
     await expect(page.getByText("/mnt/wtf-data/workers/porcupin").first()).toBeVisible();
 
+    const walletBackup = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "Wallet Backup" }),
+    });
     const enableButton = page.getByRole("button", { name: /enable wallet backup/i });
     await expect(enableButton).toBeDisabled();
 
-    await page.getByPlaceholder("tz1...").fill("tz1HarnessWallet");
+    await walletBackup.locator('input[placeholder="tz1..."]').fill("tz1HarnessWallet");
     await expect(enableButton).toBeDisabled();
 
     await page

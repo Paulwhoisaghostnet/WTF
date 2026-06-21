@@ -1,10 +1,12 @@
 import {
   createContext,
   useContext,
+  useEffect,
   type ReactNode,
 } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "./api";
+import { AUTH_SESSION_INVALID_EVENT, api } from "./api";
+import { logClientSystemEvent } from "./system-log";
 import {
   canParticipate as roleCanParticipate,
   isAdmin as roleIsAdmin,
@@ -105,6 +107,29 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
+
+  useEffect(() => {
+    const clearStaleSession = (event: Event) => {
+      const detail =
+        event instanceof CustomEvent && event.detail && typeof event.detail === "object"
+          ? (event.detail as Record<string, unknown>)
+          : {};
+      logClientSystemEvent({
+        eventType: "auth.session.invalidated",
+        severity: "warn",
+        message: "Protected API returned unauthenticated; clearing cached session.",
+        metadata: {
+          path: detail.path,
+          requestId: detail.requestId,
+        },
+      });
+      qc.setQueryData(["auth", "user"], null);
+    };
+    window.addEventListener(AUTH_SESSION_INVALID_EVENT, clearStaleSession);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_INVALID_EVENT, clearStaleSession);
+    };
+  }, [qc]);
 
   const { data: user, isLoading } = useQuery<User | null>({
     queryKey: ["auth", "user"],

@@ -5,8 +5,53 @@ import {
 
 const BASE = "";
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const PUBLIC_AUTH_401_PATHS = new Set([
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/wallet/challenge",
+  "/api/auth/wallet/verify",
+  "/api/auth/wallet/register",
+]);
+export const AUTH_SESSION_INVALID_EVENT = "wtf:auth-session-invalid";
 let csrfToken: string | null = null;
 let csrfBoundaryInstalled = false;
+
+export class ApiRequestError extends Error {
+  status: number;
+  path: string;
+  requestId: string;
+
+  constructor(message: string, status: number, path: string, requestId: string) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+    this.path = path;
+    this.requestId = requestId;
+  }
+}
+
+export function isApiRequestError(err: unknown): err is ApiRequestError {
+  return err instanceof ApiRequestError;
+}
+
+export function isAuthSessionInvalidError(err: unknown): boolean {
+  return isApiRequestError(err) && err.status === 401 && shouldSignalAuthSessionInvalid(err.path, err.status);
+}
+
+function shouldSignalAuthSessionInvalid(path: string, status: number): boolean {
+  if (status !== 401) return false;
+  const normalizedPath = path.split("?", 1)[0] || path;
+  return !PUBLIC_AUTH_401_PATHS.has(normalizedPath);
+}
+
+function signalAuthSessionInvalid(path: string, requestId: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(AUTH_SESSION_INVALID_EVENT, {
+      detail: { path, requestId },
+    })
+  );
+}
 
 async function getCsrfToken(fetchImpl: typeof fetch = fetch): Promise<string> {
   if (csrfToken) return csrfToken;
@@ -106,10 +151,14 @@ async function request<T>(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
+    const message = err.error || `Request failed: ${res.status}`;
+    if (shouldSignalAuthSessionInvalid(path, res.status)) {
+      signalAuthSessionInvalid(path, requestId);
+    }
     logClientSystemEvent({
       eventType: "api_error",
       severity: res.status >= 500 ? "error" : "warn",
-      message: err.error || `Request failed: ${res.status}`,
+      message,
       metadata: {
         requestId,
         path,
@@ -117,7 +166,7 @@ async function request<T>(
         status: res.status,
       },
     });
-    throw new Error(err.error || `Request failed: ${res.status}`);
+    throw new ApiRequestError(message, res.status, path, requestId);
   }
 
   return res.json();
