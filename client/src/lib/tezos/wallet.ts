@@ -316,17 +316,15 @@ async function preflightOctezExtensionHandshake(
 class BeaconLegacyAdapter implements WalletAdapter {
   name: WalletProviderName = "beacon";
   private wallet: any = null;
-  private network: BeaconPreferredNetwork = "mainnet";
 
   async init(network: string, rpcUrl: string) {
     const { BeaconWallet, BeaconEvent } = (await loadBeaconWallet()) as any;
-    this.network = beaconPreferredNetwork(network);
     this.wallet = new BeaconWallet({
       name: "WTF OS",
       network: walletNetworkSpec(network, rpcUrl),
       enableMetrics: false,
       // Cast: airgap vs ecad Beacon both use string enum values; TS types differ by major.
-      preferredNetwork: this.network as any,
+      preferredNetwork: beaconPreferredNetwork(network) as any,
     });
     await this.wallet.client.subscribeToEvent(
       (BeaconEvent?.ACTIVE_ACCOUNT_SET ?? "ACTIVE_ACCOUNT_SET") as any,
@@ -670,7 +668,7 @@ export async function signPayload(
 
   if (adapter.name === "octez.connect") {
     const octezAdapter = adapter as any;
-    const result = await withWalletTimeout(
+    const result = await withWalletTimeout<{ signature: string }>(
       octezAdapter.client.requestSignPayload(payload),
       "Wallet signing did not finish. Clear the wallet connection and try again, or choose another Tezos wallet.",
       WALLET_SIGN_TIMEOUT_MS,
@@ -683,7 +681,7 @@ export async function signPayload(
   }
 
   const beaconAdapter = adapter as any;
-  const result = await withWalletTimeout(
+  const result = await withWalletTimeout<{ signature: string }>(
     beaconAdapter.wallet.client.requestSignPayload(payload),
     "Wallet signing did not finish. Clear the wallet connection and try again, or choose another Tezos wallet.",
     WALLET_SIGN_TIMEOUT_MS,
