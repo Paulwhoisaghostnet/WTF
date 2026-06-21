@@ -22,6 +22,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused harness expires the session on `/api/auth/welcome/complete`, verifies the client emits `auth.session.invalidated`, and confirms the welcome modal is removed after the protected 401.",
   },
   {
+    id: "profile.x-oauth-expected-account",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "profile-social",
+    ownerSpec:
+      "server/features/w/x-connect-onboarding-policy.test.ts, client/src/pages/profile-social-link-policy.test.ts",
+    verificationCommand:
+      "npx tsx --test server/features/w/x-connect-onboarding-policy.test.ts client/src/pages/profile-social-link-policy.test.ts",
+    userVisibleAssertion:
+      "When a user types an intended X handle before connecting, Profile sends that handle into OAuth and shows a wrong-account recovery message if X authorizes a different logged-in account.",
+    durableSideEffectAssertion:
+      "The server stores the expected X handle in the OAuth session and rejects mismatched callbacks before updating twitterId/twitterHandle/token fields or running X onboarding.",
+  },
+  {
     id: "auth.wallet-challenge-login",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
     ownerSurfaceIds: ["hoard"],

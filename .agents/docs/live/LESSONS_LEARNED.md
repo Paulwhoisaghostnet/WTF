@@ -5287,3 +5287,13 @@
 **Why it mattered**: A readiness endpoint is the operator contract for "is the site up." If it performs heavyweight observability work on every request, monitoring and verification can create false outages and drown out real wallet/auth findings.
 
 **Rule**: Keep public readiness checks cheap, indexed, and bounded to known live surfaces. Use registered job names plus latest-row indexes for scheduler health, and reserve whole-table audit/reporting queries for operator dashboards or background jobs.
+
+---
+
+## 2026-06-21 - Social OAuth must bind the account the user meant to link
+
+**What happened**: Profile X linking could reuse the browser's current X session and proceed toward linking `wtfgameshow` even when the profile field indicated the user meant to connect a personal handle. The same report also showed that a failed wallet login could leave username/password fields looking populated, making the recovery path feel like a password-login failure instead of a wallet-auth failure.
+
+**Why it mattered**: External OAuth providers optimize for the currently signed-in browser account, not the user's in-app intent. Without a server-side expected-handle check, one shared or stale X session can silently attach the wrong social identity; without login-field cleanup, a failed wallet attempt can make users chase invalid password credentials.
+
+**Rule**: Profile social OAuth must store the intended handle in the server session, compare it with the provider's returned identity before token persistence or onboarding, and report a clear switch-account error on mismatch. Wallet auth screens must clear stale credential fields before wallet login and submit password login from real named form fields.

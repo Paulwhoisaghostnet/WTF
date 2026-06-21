@@ -252,6 +252,16 @@ function oauthStartUrl(path: string): string {
   return `${window.location.origin}${path}`;
 }
 
+function normalizeProfileTwitterHandle(raw: string): string {
+  const cleaned = raw
+    .trim()
+    .replace(/^@+/, "")
+    .replace(/^https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/@?/i, "")
+    .split(/[/?#]/, 1)[0]
+    .trim();
+  return /^[A-Za-z0-9_]{1,15}$/.test(cleaned) ? cleaned.toLowerCase() : "";
+}
+
 interface PfpCandidate {
   id: number;
   tokenContract: string;
@@ -408,6 +418,15 @@ export function Profile() {
         message:
           `X issued a token but did not grant: ${missing}. ` +
           "For profile linking, the X app must allow tweet.read and users.read. Save User authentication settings in console.x.com and reconnect.",
+      });
+    } else if (err === "twitter_oauth2_wrong_account") {
+      const expected = params.get("expected") || twitterHandle || "the handle you entered";
+      const actual = params.get("actual") || "a different X account";
+      setOauthFlash({
+        kind: "err",
+        message:
+          `X authorised @${actual}, but this profile is trying to link @${expected}. ` +
+          "Switch accounts on x.com, then reconnect from this Profile screen.",
       });
     } else if (err && err.startsWith("twitter_oauth2_me")) {
       const bucket = err.slice("twitter_oauth2_me".length).replace(/^_/, "");
@@ -778,6 +797,13 @@ export function Profile() {
   const markDirty = () => {
     if (!socialDirty) setSocialDirty(true);
   };
+
+  const expectedTwitterHandle = normalizeProfileTwitterHandle(twitterHandle);
+  const twitterConnectLabel = expectedTwitterHandle
+    ? `${social?.twitterVerified ? "Reconnect" : "Connect"} @${expectedTwitterHandle}`
+    : social?.twitterVerified
+      ? "Reconnect X"
+      : "Connect X";
 
   /* ── PFP editor ────────────────────────────────────────────────────────── */
 
@@ -1197,14 +1223,19 @@ export function Profile() {
               size="sm"
               disabled={disconnectSocialMutation.isPending}
               onClick={() => {
+                const params = new URLSearchParams({
+                  tier: "profile",
+                  returnTo: "profile",
+                });
+                if (expectedTwitterHandle) {
+                  params.set("expectedHandle", expectedTwitterHandle);
+                }
                 window.location.assign(
-                  oauthStartUrl(
-                    "/api/auth/twitter-oauth2?tier=profile&returnTo=profile"
-                  )
+                  oauthStartUrl(`/api/auth/twitter-oauth2?${params.toString()}`)
                 );
               }}
             >
-              {social?.twitterVerified ? "Reconnect X" : "Connect X"}
+              {twitterConnectLabel}
             </UiButton>
           ) : (
             <span

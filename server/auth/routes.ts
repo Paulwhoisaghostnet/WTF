@@ -241,7 +241,7 @@ function twitterOAuth2Redirect(target: string | undefined, query: string): strin
   return base ? `${base}${fullPath}` : fullPath;
 }
 
-const X_OAUTH2_AUTH_URL = "https://twitter.com/i/oauth2/authorize";
+const X_OAUTH2_AUTH_URL = "https://x.com/i/oauth2/authorize";
 const X_OAUTH2_TOKEN_URL = "https://api.x.com/2/oauth2/token";
 // /2/users/me specifically requires BOTH tweet.read AND users.read per
 // X API v2 auth docs (https://docs.x.com/fundamentals/authentication/guides/v2-authentication-mapping).
@@ -300,6 +300,19 @@ function selectedTwitterScopes(rawTier: unknown, rawScopes: unknown): string[] {
   if (!scopes.includes("users.read")) scopes.push("users.read");
   if (tier !== "read" && !scopes.includes("offline.access")) scopes.push("offline.access");
   return scopes;
+}
+
+function normalizeTwitterOAuth2Handle(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const cleaned = raw
+    .trim()
+    .replace(/^@+/, "")
+    .replace(/^https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/@?/i, "")
+    .split(/[/?#]/, 1)[0]
+    .trim();
+  if (!cleaned) return null;
+  if (!/^[A-Za-z0-9_]{1,15}$/.test(cleaned)) return null;
+  return cleaned.toLowerCase();
 }
 
 async function exchangeTwitterOAuth2Code(params: {
@@ -1228,6 +1241,7 @@ router.get("/api/auth/twitter-oauth2", isAuthenticated, (req, res) => {
       typeof req.query.returnTo === "string" && req.query.returnTo in TWITTER_OAUTH2_RETURN_TARGETS
         ? req.query.returnTo
         : "profile";
+    const expectedHandle = normalizeTwitterOAuth2Handle(req.query.expectedHandle);
 
     (req.session as any).twitterOauth2 = {
       state,
@@ -1236,6 +1250,7 @@ router.get("/api/auth/twitter-oauth2", isAuthenticated, (req, res) => {
       createdAt: Date.now(),
       returnTo,
       redirectUri,
+      expectedHandle,
     };
 
     const query = new URLSearchParams({
@@ -1280,6 +1295,7 @@ router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res
     const code = String(req.query.code || "");
     const createdAt = Number(sessionState?.createdAt || 0);
     const storedRedirectUri = String(sessionState?.redirectUri || twitterOAuth2CallbackUrl());
+    const expectedHandle = normalizeTwitterOAuth2Handle(sessionState?.expectedHandle);
 
     delete (req.session as any).twitterOauth2;
 
@@ -1399,6 +1415,19 @@ router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res
     const expiresAt = token.expires_in
       ? new Date(Date.now() + Number(token.expires_in) * 1000)
       : null;
+    const actualHandle = normalizeTwitterOAuth2Handle(me?.username || "");
+    if (expectedHandle && expectedHandle !== actualHandle) {
+      const actualLabel = actualHandle || "unknown";
+      console.warn(
+        `[auth] twitter oauth2 wrong account: user=${user?.id} expected=@${expectedHandle} actual=@${actualLabel}`
+      );
+      return res.redirect(
+        twitterOAuth2Redirect(
+          returnTo,
+          `error=twitter_oauth2_wrong_account&expected=${encodeURIComponent(expectedHandle)}&actual=${encodeURIComponent(actualLabel)}`
+        )
+      );
+    }
 
     // Profile and W store tokens in the same columns. Without this guard,
     // a Profile re-link (narrow scopes: tweet.read users.read) would

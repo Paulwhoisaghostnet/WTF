@@ -138,10 +138,15 @@ export function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const submittedUsername = String(formData.get("username") ?? username).trim();
+    const submittedPassword = String(formData.get("password") ?? password);
+    setUsername(submittedUsername);
+    setPassword(submittedPassword);
     setError("");
     setLoading(true);
     try {
-      await login(username, password);
+      await login(submittedUsername, submittedPassword);
       setLocation("/", { replace: true });
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Login failed"));
@@ -152,6 +157,8 @@ export function Login() {
 
   const handleWalletLogin = async () => {
     setError("");
+    setUsername("");
+    setPassword("");
     setWalletLoading(true);
     try {
       const result = await withWalletLoginTimeout(walletLogin());
@@ -197,8 +204,10 @@ export function Login() {
           <Form onSubmit={handleSubmit}>
             <GroupBox label="Account password">
               <Field>
-                <label>Username</label>
+                <label htmlFor="wtfos-login-username">Username</label>
                 <TextInput
+                  id="wtfos-login-username"
+                  name="username"
                   value={username}
                   onChange={(e: any) => setUsername(e.target.value)}
                   placeholder="Enter username"
@@ -210,8 +219,10 @@ export function Login() {
                 />
               </Field>
               <Field style={{ marginTop: 8 }}>
-                <label>Password</label>
+                <label htmlFor="wtfos-login-password">Password</label>
                 <TextInput
+                  id="wtfos-login-password"
+                  name="password"
                   type="password"
                   value={password}
                   onChange={(e: any) => setPassword(e.target.value)}

@@ -50,7 +50,8 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-304 | Verified | Codex wallet live full-send | 2026-06-21 | Auth / Tezos wallet sign-in | P0 | 14 | 3 | 3 | 5 | 1 | Production wallet sign-in could hang on `Connecting...` after a fresh-cache retry because the login lane reused app wallet state and did not force a mainnet auth provider lifecycle; fixed with fresh Beacon/WalletConnect auth clearing, Octez-primary mainnet login, ACTIVE_ACCOUNT_SET subscriptions, bounded wallet/login timeouts, and Octez RPC deploy defaults; verified live on `wtfos.app` |
+| WTF-BB-304 | Fixed | Codex wallet/X auth full-send | 2026-06-21 | Auth / Tezos wallet sign-in | P0 | 14 | 3 | 3 | 5 | 1 | Production wallet sign-in could hang on `Connecting...` or bounce back to login after wallet connect; source preserves the live wallet lifecycle hardening, clears stale username/password state before wallet auth, binds real login form names/labels, and keeps wallet waits bounded; pending production deploy and fresh live smoke |
+| WTF-BB-308 | Fixed | Codex wallet/X auth full-send | 2026-06-21 | Auth / X OAuth account binding | P1 | 12 | 7 | 3 | 4 | 1 | Profile X linking can authorize the wrong current browser X account such as shared `wtfgameshow`; source now stores the intended handle in session, rejects mismatched callbacks before token persistence, and returns a clear switch-account error; pending production deploy and live smoke |
 | WTF-BB-305 | Verified | Codex wallet live full-send | 2026-06-21 | Operations / production health | P0 | 13 | 4 | 3 | 5 | 0 | Live `/api/health` could intermittently return 503 because scheduler audit used a whole-table latest-run query that timed out under production audit volume; fixed by querying only registered job names through indexed lateral latest-row lookups plus a production index; verified live on `wtfos.app` |
 | WTF-BB-296 | Verified | Codex cobwebsaints domain readiness pass | 2026-06-20 | WTF Domains / account-specific advanced feature coverage | P2 | 8 | 14 | 2 | 3 | 0 | Domain/pinning harness data hardcoded `pincollector.wtfos.me`, so account-specific readiness for `cobwebsaints` could pass generic checks while advanced surfaces showed another user's host; fixed with signed-in-user-derived harness domains, Cobweb persona coverage across Settings, WTF Domains, IPFS Pinning, and Macaroni trusted creator access, plus full inventory verification |
 | WTF-BB-295 | Verified | Codex stale welcome auth repair | 2026-06-20 | Auth / welcome session recovery | P1 | 12 | 7 | 3 | 5 | 0 | Welcome dialog could retain a cached signed-in user after the protected API session was gone, so every welcome/profile/diary action returned `Not authenticated` and passive wallet reconciliation logged repeated 401s; fixed with protected-401 session invalidation, auth cache clearing, passive wallet warning suppression, and focused/full inventory verification |
@@ -5840,13 +5841,14 @@ Priority labels:
 
 - Category: Auth / Tezos wallet sign-in
 - Status: Fixed
-- Owner/Session: Codex wallet live full-send
+- Owner/Session: Codex wallet/X auth full-send
 - Score: C3 + F5 + S1 + P0(5) = 14
 - Evidence:
   - Live `https://wtfos.app/login` was retried from a fresh Chromium profile with cookies, local/session storage, IndexedDB, and Cache Storage cleared before any fix work.
   - The wallet login button still stayed on `Connecting...` on production, while the console reported an active Beacon account without an `ACTIVE_ACCOUNT_SET` subscription.
   - Live health was otherwise OK but reported `chain.tezosRpcUrl:"https://rpc.tzkt.io/mainnet"`, so the host runtime env could preserve an old public RPC default even after source defaults changed.
   - Auth wallet identity is intentionally Tezos mainnet wallet ownership; Shadownet is for deliberate app/contract flows, not the primary wtfOS login vector.
+  - 2026-06-21 follow-up user report: wallet connect can return the user to the login page, and after a failed wallet attempt the username/password fields can be populated even though the user never used password login; submitting those fields gives `Invalid credentials`.
 - Why it matters:
   - Wallet sign-in is a primary account entry path. A stuck provider prompt blocks users from logging in, registering wallet-backed accounts, and reaching role-permitted surfaces.
   - Mixing app-local Shadownet preferences into login would make auth identity ambiguous and can make wallet providers reject or stall requests.
@@ -5855,12 +5857,34 @@ Priority labels:
   - Force fresh Beacon/WalletConnect auth state for explicit login retries by clearing relevant localStorage and IndexedDB entries before requesting permissions.
   - Subscribe to `ACTIVE_ACCOUNT_SET` before permission requests for Octez Connect and Beacon, keep Octez Connect as primary with Beacon/Taquito as backup, and bound permission requests with a retryable timeout.
   - Add a login-screen timeout and best-effort wallet disconnect so the UI recovers even if a provider handoff promise never settles after browser timers fire.
+  - Clear username/password state before wallet auth begins, read submitted username/password from the real form fields instead of stale React state, and give the login inputs stable `id`/`name`/`htmlFor` wiring so browser/password-manager autofill cannot masquerade as a wallet credential fallback.
+  - Preserve the explicit Beacon permission network when the fallback provider is used so it stays on the same named auth lane as initialization.
   - Move source defaults and deploy-time known-default migration to Octez-hosted mainnet/shadownet RPCs while retaining TzKT as the indexer/API fallback.
   - Update interaction inventory and behavior assertions so future auth changes preserve the mainnet-login lane and do not confuse it with Shadownet app flows.
 - Verification:
+  - 2026-06-21 local follow-up verification passed focused auth/profile policy coverage, TypeScript, inventory coverage, and full inventory E2E before deployment.
   - GitHub `Deploy to Hetzner` run `27914410198` and `Quality Gates` run `27914410209` completed successfully for commit `595d7c0`.
   - Live `https://wtfos.app/api/health` reported `status:"ok"`, DB OK, chain OK, `network:"mainnet"`, `tezosRpcUrl:"https://tezos-mainnet.octez.io/"`, TzKT API fallback, 31 registered jobs, scheduler audit reachable, and zero recent errors.
   - Clean-profile live wallet smoke on `https://wtfos.app/login` cleared cookies/local/session storage, IndexedDB, and Cache Storage before retrying; the button reached `Connecting...`, then recovered to enabled `Connect Tezos Wallet` with the retryable timeout message instead of staying stuck.
+
+### WTF-BB-308 - X OAuth can link the wrong current browser account
+
+- Category: Auth / X OAuth account binding
+- Status: Fixed
+- Owner/Session: Codex wallet/X auth full-send
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - 2026-06-21 user report: Profile X linking always attempted to connect the shared `wtfgameshow` X account instead of the user's personal account, with no clear way to change the account being authorized.
+  - The Profile X OAuth start flow did not bind the intended profile handle to the OAuth session, so a browser already signed in to the shared X account could authorize that account and continue toward token storage.
+- Why it matters:
+  - X linking is identity evidence for verification and onboarding. Accepting the browser's current X account without checking the intended handle can silently attach the wrong social identity to a user profile.
+- Fix:
+  - Profile sends the normalized intended X handle as `expectedHandle` when starting OAuth and labels the connect button with that handle when one is present.
+  - The OAuth2 server session stores the expected handle, uses the current documented `https://x.com/i/oauth2/authorize` endpoint, fetches `/users/me`, and rejects mismatched accounts before token persistence or onboarding.
+  - The Profile UI reports the expected and actual handles and tells the user to switch accounts on `x.com` before retrying.
+- Verification:
+  - Local verification passed `npx tsx --test server/features/w/x-connect-onboarding-policy.test.ts client/src/pages/profile-social-link-policy.test.ts` plus the combined auth/profile policy suite, TypeScript, inventory coverage, and full inventory E2E before deployment.
+  - Production deploy and live smoke pending.
 
 ### WTF-BB-305 - Public health intermittently returned 503 from scheduler audit timeout
 

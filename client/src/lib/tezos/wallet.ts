@@ -316,15 +316,19 @@ async function preflightOctezExtensionHandshake(
 class BeaconLegacyAdapter implements WalletAdapter {
   name: WalletProviderName = "beacon";
   private wallet: any = null;
+  private network: BeaconPreferredNetwork = "mainnet";
+  private rpcUrl = "";
 
   async init(network: string, rpcUrl: string) {
     const { BeaconWallet, BeaconEvent } = (await loadBeaconWallet()) as any;
+    this.network = beaconPreferredNetwork(network);
+    this.rpcUrl = rpcUrl;
     this.wallet = new BeaconWallet({
       name: "WTF OS",
       network: walletNetworkSpec(network, rpcUrl),
       enableMetrics: false,
       // Cast: airgap vs ecad Beacon both use string enum values; TS types differ by major.
-      preferredNetwork: beaconPreferredNetwork(network) as any,
+      preferredNetwork: this.network as any,
     });
     await this.wallet.client.subscribeToEvent(
       (BeaconEvent?.ACTIVE_ACCOUNT_SET ?? "ACTIVE_ACCOUNT_SET") as any,
@@ -333,7 +337,9 @@ class BeaconLegacyAdapter implements WalletAdapter {
   }
 
   async requestPermissions(): Promise<string> {
-    await this.wallet.requestPermissions();
+    await this.wallet.requestPermissions({
+      network: walletNetworkSpec(this.network, this.rpcUrl),
+    } as any);
     const account = await this.wallet.getPKH();
     return account;
   }

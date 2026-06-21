@@ -32,20 +32,14 @@ test("explicit identity wallet connect always requests fresh mainnet wallet perm
   );
 });
 
-test("wallet login screen recovers from provider handoff hangs", () => {
-  assert.match(
-    loginSource,
-    /WALLET_LOGIN_TIMEOUT_MS\s*=\s*38_000/,
-    "the login button needs a UI-level timeout independent of wallet SDK internals"
-  );
-  assert.match(
-    loginSource,
-    /withWalletLoginTimeout\(walletLogin\(\)\)/,
-    "walletLogin must be bounded at the screen boundary so the button cannot stay on Connecting forever"
-  );
-  assert.match(
-    loginSource,
-    /void disconnectWallet\(\)\.catch\(\(\) => undefined\)/,
-    "provider state cleanup should be non-blocking so a stalled SDK disconnect cannot keep the button spinning"
-  );
+test("login page bounds wallet auth and uses real password-field names", () => {
+  assert.match(loginSource, /withWalletLoginTimeout\(walletLogin\(\)\)/);
+  assert.match(loginSource, /void disconnectWallet\(\)\.catch/);
+  assert.match(loginSource, /setUsername\(""\)/);
+  assert.match(loginSource, /setPassword\(""\)/);
+  assert.match(loginSource, /new FormData\(e\.currentTarget as HTMLFormElement\)/);
+  assert.match(loginSource, /htmlFor="wtfos-login-username"/);
+  assert.match(loginSource, /name="username"/);
+  assert.match(loginSource, /htmlFor="wtfos-login-password"/);
+  assert.match(loginSource, /name="password"/);
 });
