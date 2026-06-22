@@ -156,6 +156,31 @@ router.get("/api/profile/social", isAuthenticated, async (req, res) => {
   }
 });
 
+/* ── GET /api/profile/account  ───────────────────────────────────────────── */
+router.get("/api/profile/account", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const [row] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        role: users.role,
+        experiencePoints: users.experiencePoints,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
+
+    if (!row) return res.status(404).json({ error: "User not found" });
+    res.json(row);
+  } catch (err) {
+    console.error("GET /api/profile/account error:", err);
+    res.status(500).json({ error: "Failed to fetch profile account" });
+  }
+});
+
 /* ── PUT /api/profile/account  ──────────────────────────────────────────── */
 router.put("/api/profile/account", isAuthenticated, async (req, res) => {
   try {

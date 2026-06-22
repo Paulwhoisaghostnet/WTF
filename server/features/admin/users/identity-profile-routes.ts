@@ -339,6 +339,13 @@ export function registerAdminUserIdentityProfileRoutes(
           return res.status(400).json({ error: "Invalid curse key" });
         }
 
+        const [target] = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.id, targetId))
+          .limit(1);
+        if (!target) return res.status(404).json({ error: "User not found" });
+
         const curses = await setUserCurse({
           userId: targetId,
           curseKey,

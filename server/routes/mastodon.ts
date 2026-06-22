@@ -29,6 +29,15 @@ function userId(req: any): number {
   return Number(req.user?.id);
 }
 
+function isMissingRelationError(err: unknown): boolean {
+  const candidate = err as { code?: string; cause?: { code?: string } } | null;
+  return candidate?.code === "42P01" || candidate?.cause?.code === "42P01";
+}
+
+function sendMastodonUnavailable(res: any) {
+  return res.status(503).json({ error: "Mastodon integration is not configured" });
+}
+
 router.get("/api/mastodon/account", isAuthenticated, async (req, res) => {
   try {
     const [account] = await db
@@ -45,6 +54,7 @@ router.get("/api/mastodon/account", isAuthenticated, async (req, res) => {
     res.json(account ?? null);
   } catch (err) {
     console.error("[mastodon] account fetch failed", err);
+    if (isMissingRelationError(err)) return sendMastodonUnavailable(res);
     res.status(500).json({ error: "Failed to fetch Mastodon account" });
   }
 });
@@ -140,6 +150,7 @@ router.get("/api/mastodon/timeline", isAuthenticated, async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("[mastodon] timeline failed", err);
+    if (isMissingRelationError(err)) return sendMastodonUnavailable(res);
     res.status(500).json({ error: "Failed to load timeline" });
   }
 });
@@ -153,6 +164,7 @@ router.get("/api/mastodon/preferences", isAuthenticated, async (req, res) => {
       .limit(1);
     res.json(prefs ?? { showInFeed: true, autoCrosspost: false });
   } catch (err) {
+    if (isMissingRelationError(err)) return sendMastodonUnavailable(res);
     res.status(500).json({ error: "Failed to load preferences" });
   }
 });
@@ -187,6 +199,7 @@ router.put("/api/mastodon/preferences", isAuthenticated, async (req, res) => {
     res.json(prefs);
   } catch (err) {
     console.error("[mastodon] prefs update failed", err);
+    if (isMissingRelationError(err)) return sendMastodonUnavailable(res);
     res.status(500).json({ error: "Failed to update preferences" });
   }
 });
