@@ -34,3 +34,47 @@ test("static fallback does not turn missing API routes into SPA HTML", async (t)
   assert.equal(response.headers.get("content-type")?.startsWith("application/json"), true);
   assert.deepEqual(await response.json(), { error: "API route not found" });
 });
+
+test("static discovery routes return metadata instead of SPA HTML", async (t) => {
+  const previousPublicSiteUrl = process.env.PUBLIC_SITE_URL;
+  process.env.PUBLIC_SITE_URL = "https://www.wtfgameshow.app";
+  t.after(() => {
+    if (previousPublicSiteUrl === undefined) {
+      delete process.env.PUBLIC_SITE_URL;
+    } else {
+      process.env.PUBLIC_SITE_URL = previousPublicSiteUrl;
+    }
+  });
+
+  const app = express();
+  serveStatic(app);
+  const server = await listen(app);
+  t.after(server.close);
+
+  const robots = await fetch(server.baseUrl + "/robots.txt");
+  assert.equal(robots.status, 200);
+  assert.equal(robots.headers.get("content-type")?.startsWith("text/plain"), true);
+  const robotsBody = await robots.text();
+  assert.match(robotsBody, /^User-agent: \*/m);
+  assert.match(robotsBody, /Sitemap: https:\/\/wtfos\.app\/sitemap\.xml/);
+  assert.doesNotMatch(robotsBody, /<!DOCTYPE html>/i);
+
+  const sitemap = await fetch(server.baseUrl + "/sitemap.xml");
+  assert.equal(sitemap.status, 200);
+  assert.equal(sitemap.headers.get("content-type")?.startsWith("application/xml"), true);
+  const sitemapBody = await sitemap.text();
+  assert.match(sitemapBody, /<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/);
+  assert.match(sitemapBody, /<loc>https:\/\/wtfos\.app\/<\/loc>/);
+  assert.doesNotMatch(sitemapBody, /<!DOCTYPE html>/i);
+
+  const manifest = await fetch(server.baseUrl + "/manifest.json");
+  assert.equal(manifest.status, 200);
+  assert.equal(manifest.headers.get("content-type")?.startsWith("application/manifest+json"), true);
+  const manifestBody = await manifest.text();
+  assert.doesNotMatch(manifestBody, /<!DOCTYPE html>/i);
+  const parsed = JSON.parse(manifestBody) as { name: string; short_name: string; start_url: string; display: string };
+  assert.equal(parsed.name, "WTF OS");
+  assert.equal(parsed.short_name, "wtfOS");
+  assert.equal(parsed.start_url, "/");
+  assert.equal(parsed.display, "standalone");
+});

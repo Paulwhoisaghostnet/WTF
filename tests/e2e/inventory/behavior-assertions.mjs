@@ -1,5 +1,16 @@
 export const CORE_BEHAVIOR_ASSERTIONS = [
   {
+    id: "public.static-discovery-metadata",
+    domain: "Public Data, Embeds, APIs, Agents, and Automation",
+    platformOwner: "public-static-discovery",
+    ownerSpec: "server/static.test.ts",
+    verificationCommand: "npx tsx --test server/static.test.ts",
+    userVisibleAssertion:
+      "Crawlers, install surfaces, and metadata clients can request /robots.txt, /sitemap.xml, and /manifest.json and receive typed metadata instead of the SPA HTML shell.",
+    durableSideEffectAssertion:
+      "The static server regression asserts robots.txt advertises the canonical sitemap, sitemap.xml contains canonical wtfos.app URLs, manifest.json parses as install metadata, and none of the responses contain <!DOCTYPE html>.",
+  },
+  {
     id: "auth.password-session-linked-wallet",
     domain: "Entry, Authentication, and Account Identity",
     platformOwner: "auth-session",

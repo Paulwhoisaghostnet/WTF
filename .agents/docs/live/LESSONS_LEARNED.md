@@ -5337,3 +5337,13 @@
 **Why it mattered**: Without rebuilding, a correct source fix can look broken and push debugging toward false event-handling theories. This is especially easy to miss when the harness starts cleanly on a fresh port but still serves stale built assets.
 
 **Rule**: Before rerunning browser specs that use the built harness, rebuild the client bundle or run the script that performs the build. Treat a passing source check as separate from the rendered asset under test.
+
+---
+
+## 2026-06-22 - Static discovery paths must beat the SPA fallback
+
+**What happened**: The live user-story sweep found that `/robots.txt`, `/sitemap.xml`, and `/manifest.json` all returned HTTP 200 with `text/html` and the React app shell. The generic static server had no explicit discovery handlers, so crawler/install metadata paths fell through to `index.html` like normal client routes.
+
+**Why it mattered**: A successful 200 HTML response is worse than a clear miss for crawlers, link unfurlers, and browser install surfaces because it looks intentional while carrying the wrong contract. Existing route smoke did not catch it because these paths are not normal app routes.
+
+**Rule**: Public metadata routes such as robots, sitemap, web manifest, well-known files, and crawler previews need explicit handlers or explicit 404/410 responses before the SPA fallback. Register a platform-owned behavior assertion when the path is outside PAGE_DEFS so inventory coverage knows who owns the contract.

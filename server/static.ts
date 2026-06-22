@@ -1,5 +1,77 @@
 import express from "express";
 import path from "path";
+import { WTFOS_PLATFORM_LONG_NAME, resolvePublicSiteOrigin } from "@shared/platform-branding";
+
+const DISCOVERY_ROUTES = [
+  "/",
+  "/skywire",
+  "/live",
+  "/wim",
+  "/tv",
+  "/arcade",
+  "/gallery",
+  "/links",
+  "/faq",
+];
+
+function publicOrigin(): string {
+  return resolvePublicSiteOrigin(process.env.PUBLIC_SITE_URL);
+}
+
+function publicUrl(pathname: string): string {
+  return new URL(pathname, publicOrigin() + "/").toString();
+}
+
+function sendDiscoveryMetadata(
+  res: express.Response,
+  contentType: string,
+  body: string
+) {
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.setHeader("Content-Type", contentType);
+  res.send(body);
+}
+
+function robotsTxt(): string {
+  return [
+    "User-agent: *",
+    "Allow: /",
+    "",
+    "Sitemap: " + publicUrl("/sitemap.xml"),
+    "",
+  ].join("\n");
+}
+
+function sitemapXml(): string {
+  const urls = DISCOVERY_ROUTES.map((route) =>
+    "  <url><loc>" + publicUrl(route) + "</loc></url>"
+  ).join("\n");
+  return [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
+    urls,
+    "</urlset>",
+    "",
+  ].join("\n");
+}
+
+function webManifest(): string {
+  return JSON.stringify(
+    {
+      name: WTFOS_PLATFORM_LONG_NAME,
+      short_name: "wtfOS",
+      description: "WTF OS platform desktop, live rooms, creation tools, and social apps.",
+      start_url: "/",
+      scope: "/",
+      display: "standalone",
+      background_color: "#101820",
+      theme_color: "#f047a6",
+      categories: ["social", "entertainment", "productivity"],
+    },
+    null,
+    2
+  ) + "\n";
+}
 
 export function serveStatic(app: express.Express) {
   const distPath = path.resolve(process.cwd(), "dist/public");
@@ -61,6 +133,18 @@ export function serveStatic(app: express.Express) {
       },
     })
   );
+
+  app.get("/robots.txt", (_req, res) => {
+    sendDiscoveryMetadata(res, "text/plain; charset=utf-8", robotsTxt());
+  });
+
+  app.get("/sitemap.xml", (_req, res) => {
+    sendDiscoveryMetadata(res, "application/xml; charset=utf-8", sitemapXml());
+  });
+
+  app.get("/manifest.json", (_req, res) => {
+    sendDiscoveryMetadata(res, "application/manifest+json; charset=utf-8", webManifest());
+  });
 
   app.use("/assets", express.static(path.join(distPath, "assets")));
   app.get(/^\/assets\/.*/, (req, res) => {
