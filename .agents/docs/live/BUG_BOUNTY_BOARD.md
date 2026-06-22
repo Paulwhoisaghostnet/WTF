@@ -50,7 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-301 | Fixed | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 18 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, pending production deploy and live retest |
+| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 18 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
 | WTF-BB-304 | Verified | Codex wallet/X auth full-send | 2026-06-21 | Auth / Tezos wallet sign-in | P0 | 14 | 3 | 3 | 5 | 1 | Production wallet sign-in could hang on `Connecting...` or bounce back to login after wallet connect; fixed by preserving live wallet lifecycle hardening, clearing stale username/password state before wallet auth, binding real login form names/labels, and keeping wallet waits bounded; verified live on `wtfos.app` commit `069b96b` |
 | WTF-BB-308 | Verified | Codex wallet/X auth full-send | 2026-06-21 | Auth / X OAuth account binding | P1 | 12 | 7 | 3 | 4 | 1 | Profile X linking can authorize the wrong current browser X account such as shared `wtfgameshow`; fixed by storing the intended handle in session, rejecting mismatched callbacks before token persistence, canonicalizing legacy platform OAuth callback origins to `wtfos.app`, and returning a clear switch-account error; verified live on `wtfos.app` commit `8d994c9` |
 | WTF-BB-309 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / owner control UX | P1 | 11 | 8 | 2 | 5 | 0 | Independent live user-story probe found owner-created rooms/stages could fall out of sync after mutations; fixed in `7df41dd` by synchronously merging returned owner-control state into React Query caches and verified on live `https://wtfos.app` with the 4/4 owned-surface probe |
@@ -6510,7 +6510,7 @@ Priority labels:
 ### WTF-BB-301 - SEO/PWA static discovery paths fall through to SPA HTML
 
 - Category: Public site / SEO and installability
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex live user-story gap loop
 - Score: C1 + F2 + S0 + P2(3) = 6
 - Evidence:
@@ -6523,7 +6523,8 @@ Priority labels:
   - Hetzner focused regression passed: `npx tsx --test server/static.test.ts`.
   - Hetzner inventory coverage passed: `npm run test:e2e:inventory:coverage`.
   - Hetzner full TypeScript check remains blocked by `WTF-BB-310` missing dev dependencies (`three`, `@atproto/api`, AWS SDK, MCP SDK, `viem`); no static-discovery-specific error appeared before the known dependency failures.
-  - Pending production deploy and live retest of `/robots.txt`, `/sitemap.xml`, and `/manifest.json`.
+  - Production deploy `6fb5351` completed successfully through GitHub Deploy to Hetzner run `27984725390`; live health reported `status:"ok"` and `commitRef:"6fb5351"`.
+  - Live post-fix retest passed for `https://wtfos.app/robots.txt`, `/sitemap.xml`, and `/manifest.json`: each returned HTTP 200, the intended content type (`text/plain`, `application/xml`, `application/manifest+json`), expected canonical `wtfos.app` metadata, and no SPA `<!DOCTYPE html>` shell.
 
 ---
 
