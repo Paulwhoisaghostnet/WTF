@@ -1,3 +1,13 @@
+## 2026-06-22 - Public discovery manifests must canonicalize deploy env hosts
+
+**What happened**: The canonical live host `https://wtfos.app/api/access` returned `origin` and `mcp.endpoint` values on the legacy `wtfgameshow.app` domain because the access route trusted `PUBLIC_SITE_URL` and `MCP_PUBLIC_ENDPOINT` literally. Lower-level canonical-domain tests were green, but this public discovery route never called those helpers.
+
+**Why it mattered**: Browser automation, installers, and paired-agent discovery treat the access manifest as the platform entrypoint. Echoing a legacy domain from the canonical host can send clients, support steps, and OAuth-adjacent metadata back to a deprecated origin even while the site itself redirects correctly.
+
+**Rule**: Any public manifest, metadata, OAuth, installer, or agent-discovery endpoint that emits a platform origin or platform URL must canonicalize legacy WTF Gameshow and `www.wtfos.app` values through the shared platform-domain helpers at the route boundary, and it needs a route-level regression for the exact deploy-env variable it reads.
+
+---
+
 ## 2026-06-20 - Advanced feature harnesses must be account-specific
 
 **What happened**: The follow-up pass for `cobwebsaints` found that WTF Domains setup was covered with a generic `macaroni` user while IPFS Pinning always returned `pincollector.wtfos.me`, `pincollector.wtf.tez`, and a fixed harness DID. Generic tests could therefore pass even if an advanced surface showed the wrong user's domain identity.

@@ -56,6 +56,7 @@ Priority labels:
 | WTF-BB-309 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / owner control UX | P1 | 11 | 8 | 2 | 5 | 0 | Independent live user-story probe found owner-created rooms/stages could fall out of sync after mutations; fixed in `7df41dd` by synchronously merging returned owner-control state into React Query caches and verified on live `https://wtfos.app` with the 4/4 owned-surface probe |
 | WTF-BB-312 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / Show Kit cooldown UX | P2 | 8 | 14 | 1 | 4 | 0 | Expanded independent live Show Kit relay probe found an immediate second trigger after a clip send could leave stale `sent` status; fixed in `7f5d0d7` by starting cooldown after successful relay completion and verified with the 2/2 live realtime/Show Kit probe |
 | WTF-BB-314 | Verified | Codex live user-story gap loop | 2026-06-22 | WIM / settings dialog keyboard UX | P2 | 8 | 14 | 1 | 4 | 0 | Independent live WIM probe found the settings dialog could stay open after creating a custom list because Escape was only handled on the popover node; fixed in `f09feec` with capture-phase Escape handling and verified on live `https://wtfos.app` with the WIM modular roster/DM probe |
+| WTF-BB-299 | Fixed | Codex live user-story gap loop | 2026-06-22 | Platform domains / access manifest | P1 | 12 | 7 | 2 | 4 | 2 | `/api/access` advertised legacy `wtfgameshow.app` origin on canonical `wtfos.app`; source now canonicalizes access-manifest origin and MCP endpoint, pending production deploy/live curl before Verified |
 | WTF-BB-305 | Verified | Codex wallet live full-send | 2026-06-21 | Operations / production health | P0 | 13 | 4 | 3 | 5 | 0 | Live `/api/health` could intermittently return 503 because scheduler audit used a whole-table latest-run query that timed out under production audit volume; fixed by querying only registered job names through indexed lateral latest-row lookups plus a production index; verified live on `wtfos.app` |
 | WTF-BB-296 | Verified | Codex cobwebsaints domain readiness pass | 2026-06-20 | WTF Domains / account-specific advanced feature coverage | P2 | 8 | 14 | 2 | 3 | 0 | Domain/pinning harness data hardcoded `pincollector.wtfos.me`, so account-specific readiness for `cobwebsaints` could pass generic checks while advanced surfaces showed another user's host; fixed with signed-in-user-derived harness domains, Cobweb persona coverage across Settings, WTF Domains, IPFS Pinning, and Macaroni trusted creator access, plus full inventory verification |
 | WTF-BB-295 | Verified | Codex stale welcome auth repair | 2026-06-20 | Auth / welcome session recovery | P1 | 12 | 7 | 3 | 5 | 0 | Welcome dialog could retain a cached signed-in user after the protected API session was gone, so every welcome/profile/diary action returned `Not authenticated` and passive wallet reconciliation logged repeated 401s; fixed with protected-401 session invalidation, auth cache clearing, passive wallet warning suppression, and focused/full inventory verification |
@@ -6544,3 +6545,20 @@ Copy this when adding a new issue:
 - Likely correction direction:
 - Verification idea:
 ```
+
+
+### WTF-BB-299 - `/api/access` advertises legacy `wtfgameshow.app` origin on canonical `wtfos.app`
+
+- Status: Fixed
+- Category: Platform domains / access manifest
+- Priority: P1
+- Points: 12
+- Owner/Session: Codex live user-story gap loop
+- Last touched: 2026-06-22
+- Evidence:
+  - 2026-06-22 live production `https://wtfos.app/api/access` returned `origin: "https://wtfgameshow.app"` and `mcp.endpoint: "https://wtfgameshow.app/mcp"`.
+  - Source fix: `server/routes/access.ts` now resolves the origin with canonical-domain helpers and canonicalizes `MCP_PUBLIC_ENDPOINT`; `server/routes/access.test.ts` covers legacy env and preview-host fallback.
+- Why it matters: Browser automation, installers, and paired MCP agents use this public manifest as their canonical entrypoint. Returning the old domain from the canonical host causes route discovery, OAuth-adjacent metadata, and user support instructions to drift back to the deprecated brand/origin.
+- Likely correction direction: Canonicalize access-manifest origin and configured MCP endpoint with the platform-domain helpers so legacy deploy env values collapse to `https://wtfos.app` while non-WTF preview hosts remain intact.
+- Verification idea: Add a route-level regression for legacy `PUBLIC_SITE_URL`/`MCP_PUBLIC_ENDPOINT`, then curl `https://wtfos.app/api/access` after deploy and assert both `origin` and MCP endpoint use `https://wtfos.app`.
+- Local verification: `./node_modules/.bin/tsx --test server/routes/access.test.ts server/lib/canonical-domain.test.ts server/static.test.ts` passed 10/10; `npm run test:e2e:inventory:coverage` passed; `npm run check -- --pretty false` remains blocked by `WTF-BB-310` missing Hetzner dev dependencies, not by this access-route change.

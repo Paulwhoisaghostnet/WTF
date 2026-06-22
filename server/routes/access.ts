@@ -1,21 +1,28 @@
 import { Router, type Request } from "express";
 import { defaultPublicSiteHost } from "@shared/platform-branding";
+import { canonicalizePlatformUrl, resolveCanonicalPublicOrigin } from "../lib/canonical-domain";
 import { buildWtfAccessManifest } from "../lib/wtf-access";
 import { getDesktopAppConfig } from "../lib/desktop-apps";
 
 const router = Router();
 
-function originForRequest(req: Request): string {
-  const configured = String(process.env.PUBLIC_SITE_URL || "").trim();
-  if (configured) return configured.replace(/\/+$/, "");
+export function originForRequest(req: Request): string {
   const proto = req.protocol || "https";
   const host = req.get("host") || defaultPublicSiteHost();
-  return `${proto}://${host}`;
+  return resolveCanonicalPublicOrigin(
+    {
+      NODE_ENV: process.env.NODE_ENV,
+      WTFOS_PUBLIC_BASE_URL: process.env.WTFOS_PUBLIC_BASE_URL,
+      CANONICAL_PUBLIC_ORIGIN: process.env.CANONICAL_PUBLIC_ORIGIN,
+      PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL,
+    },
+    `${proto}://${host}`
+  );
 }
 
-function mcpEndpointForOrigin(req: Request, origin: string): string {
+export function mcpEndpointForOrigin(req: Request, origin: string): string {
   const configured = String(process.env.MCP_PUBLIC_ENDPOINT || "").trim();
-  if (configured) return configured;
+  if (configured) return canonicalizePlatformUrl(configured) || configured.replace(/\/+$/, "");
   return `${origin}/mcp`;
 }
 
