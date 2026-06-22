@@ -97,6 +97,8 @@ type SoundboardSettingsResponse = WtfLiveSoundboardSettings & {
   storage?: string;
 };
 type WtfLiveStage = WtfLiveRoom & { liveUrl?: string | null };
+type WtfLiveRoomsResponse = { rooms?: WtfLiveRoom[]; [key: string]: unknown };
+type WtfLiveStagesResponse = { stages?: WtfLiveStage[]; [key: string]: unknown };
 
 type WtfLiveRoomAccessMember = {
   userId: number;
@@ -223,6 +225,36 @@ function shareCountLabel(presence: Required<WtfLiveRoomPresence>): string {
   if (presence.cameraShareCount) return `${presence.cameraShareCount} cam`;
   if (presence.audioOpenCount) return `${presence.audioOpenCount} mic`;
   return "No shares";
+}
+
+function mergeRoomResponse(current: WtfLiveRoomsResponse | undefined, room: WtfLiveRoom): WtfLiveRoomsResponse {
+  const rooms = current?.rooms ?? [];
+  return {
+    ...(current ?? {}),
+    rooms: [...rooms.filter((candidate) => candidate.id !== room.id), room],
+  };
+}
+
+function removeRoomResponse(current: WtfLiveRoomsResponse | undefined, roomId: string): WtfLiveRoomsResponse {
+  return {
+    ...(current ?? {}),
+    rooms: (current?.rooms ?? []).filter((candidate) => candidate.id !== roomId),
+  };
+}
+
+function mergeStageResponse(current: WtfLiveStagesResponse | undefined, stage: WtfLiveStage): WtfLiveStagesResponse {
+  const stages = current?.stages ?? [];
+  return {
+    ...(current ?? {}),
+    stages: [...stages.filter((candidate) => candidate.id !== stage.id), stage],
+  };
+}
+
+function removeStageResponse(current: WtfLiveStagesResponse | undefined, stageId: string): WtfLiveStagesResponse {
+  return {
+    ...(current ?? {}),
+    stages: (current?.stages ?? []).filter((candidate) => candidate.id !== stageId),
+  };
 }
 
 function CreateDialog({
@@ -455,6 +487,41 @@ export function WtfLiveApp() {
     }
   }, [accessListQuery.data?.members, selectedRoom]);
 
+  function mergeRoomCache(room: WtfLiveRoom) {
+    qc.setQueryData<WtfLiveRoomsResponse>(["wtf-live", "rooms", "mine"], (current) => mergeRoomResponse(current, room));
+    if (room.accessMode === "private") {
+      qc.setQueryData<WtfLiveRoomsResponse>(["wtf-live", "rooms", "private"], (current) => mergeRoomResponse(current, room));
+    } else if (room.isPublic === false) {
+      qc.setQueryData<WtfLiveRoomsResponse>(["wtf-live", "rooms"], (current) => removeRoomResponse(current, room.id));
+    } else {
+      qc.setQueryData<WtfLiveRoomsResponse>(["wtf-live", "rooms"], (current) => mergeRoomResponse(current, room));
+    }
+  }
+
+  function removeRoomCache(roomIdToRemove: string) {
+    qc.setQueryData<WtfLiveRoomsResponse>(["wtf-live", "rooms"], (current) => removeRoomResponse(current, roomIdToRemove));
+    qc.setQueryData<WtfLiveRoomsResponse>(["wtf-live", "rooms", "mine"], (current) => removeRoomResponse(current, roomIdToRemove));
+    qc.setQueryData<WtfLiveRoomsResponse>(["wtf-live", "rooms", "private"], (current) => removeRoomResponse(current, roomIdToRemove));
+  }
+
+  function mergeStageCache(stage: WtfLiveStage) {
+    qc.setQueryData<WtfLiveStagesResponse>(["wtf-live", "stages", "mine"], (current) => mergeStageResponse(current, stage));
+    if (stage.isPublic === false) {
+      qc.setQueryData<WtfLiveStagesResponse>(["wtf-live", "stages"], (current) => removeStageResponse(current, stage.id));
+    } else {
+      qc.setQueryData<WtfLiveStagesResponse>(["wtf-live", "stages"], (current) => mergeStageResponse(current, stage));
+    }
+  }
+
+  function removeStageCache(stageIdToRemove: string) {
+    qc.setQueryData<WtfLiveStagesResponse>(["wtf-live", "stages"], (current) => removeStageResponse(current, stageIdToRemove));
+    qc.setQueryData<WtfLiveStagesResponse>(["wtf-live", "stages", "mine"], (current) => removeStageResponse(current, stageIdToRemove));
+  }
+
+  function actionErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error && error.message ? error.message : fallback;
+  }
+
   const createRoom = useMutation({
     mutationFn: () =>
       api.post<{ room?: WtfLiveRoom; missingUsernames?: string[] }>("/api/wtf-live/rooms", {
@@ -469,19 +536,7 @@ export function WtfLiveApp() {
       setCreateRoomAccessMode("public");
       setCreateAccessList("");
       if (data?.room?.id) {
-        const mergeRoom = (current: { rooms?: WtfLiveRoom[]; [key: string]: unknown } | undefined) => {
-          const rooms = current?.rooms ?? [];
-          return {
-            ...(current ?? {}),
-            rooms: [...rooms.filter((room) => room.id !== data.room!.id), data.room!],
-          };
-        };
-        qc.setQueryData(["wtf-live", "rooms", "mine"], mergeRoom);
-        if (data.room.accessMode === "private") {
-          qc.setQueryData(["wtf-live", "rooms", "private"], mergeRoom);
-        } else {
-          qc.setQueryData(["wtf-live", "rooms"], mergeRoom);
-        }
+        mergeRoomCache(data.room);
         setRoomId(data.room.id);
         setTab("rooms");
         setCopyStatus(
@@ -511,6 +566,7 @@ export function WtfLiveApp() {
       setCreateDescription("");
       setCreateLiveUrl("");
       if (data?.stage?.id) {
+        mergeStageCache(data.stage);
         setStageId(data.stage.id);
         setTab("stages");
       }
@@ -542,20 +598,28 @@ export function WtfLiveApp() {
       api.patch<{ room?: WtfLiveRoom }>(`/api/wtf-live/rooms/${encodeURIComponent(room.id)}`, { isPublic }),
     onSuccess: (data: { room?: WtfLiveRoom }, variables) => {
       const room = data?.room ?? variables.room;
+      mergeRoomCache({ ...room, isPublic: variables.isPublic });
       setCopyStatus(`${room.title} is ${variables.isPublic ? "open" : "closed"} to guests.`);
       qc.invalidateQueries({ queryKey: ["wtf-live", "rooms"] });
       qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "mine"] });
       qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "private"] });
+    },
+    onError: (error: unknown) => {
+      setCopyStatus(actionErrorMessage(error, "Could not update room visibility."));
     },
   });
   const deleteRoom = useMutation({
     mutationFn: (room: WtfLiveRoom) => api.delete<{ ok: true; roomId: string }>(`/api/wtf-live/rooms/${encodeURIComponent(room.id)}`),
     onSuccess: (_data: { ok: true; roomId: string }, room: WtfLiveRoom) => {
       if (roomId === room.id) setRoomId("wtf-live");
+      removeRoomCache(room.id);
       setCopyStatus(`${room.title} deleted.`);
       qc.invalidateQueries({ queryKey: ["wtf-live", "rooms"] });
       qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "mine"] });
       qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "private"] });
+    },
+    onError: (error: unknown) => {
+      setCopyStatus(actionErrorMessage(error, "Could not delete room."));
     },
   });
   const updateStageVisibility = useMutation({
@@ -563,18 +627,26 @@ export function WtfLiveApp() {
       api.patch<{ stage?: WtfLiveStage }>(`/api/wtf-live/stages/${encodeURIComponent(stage.id)}`, { isPublic }),
     onSuccess: (data: { stage?: WtfLiveStage }, variables) => {
       const stage = data?.stage ?? variables.stage;
+      mergeStageCache({ ...stage, isPublic: variables.isPublic });
       setCopyStatus(`${stage.title} is ${variables.isPublic ? "open" : "closed"} for stage broadcasts.`);
       qc.invalidateQueries({ queryKey: ["wtf-live", "stages"] });
       qc.invalidateQueries({ queryKey: ["wtf-live", "stages", "mine"] });
+    },
+    onError: (error: unknown) => {
+      setCopyStatus(actionErrorMessage(error, "Could not update stage visibility."));
     },
   });
   const deleteStage = useMutation({
     mutationFn: (stage: WtfLiveStage) => api.delete<{ ok: true; stageId: string }>(`/api/wtf-live/stages/${encodeURIComponent(stage.id)}`),
     onSuccess: (_data: { ok: true; stageId: string }, stage: WtfLiveStage) => {
       if (stageId === stage.id) setStageId("wtf-stage");
+      removeStageCache(stage.id);
       setCopyStatus(`${stage.title} deleted.`);
       qc.invalidateQueries({ queryKey: ["wtf-live", "stages"] });
       qc.invalidateQueries({ queryKey: ["wtf-live", "stages", "mine"] });
+    },
+    onError: (error: unknown) => {
+      setCopyStatus(actionErrorMessage(error, "Could not delete stage."));
     },
   });
   const sendRoom = useMutation({

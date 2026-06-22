@@ -5307,3 +5307,13 @@
 **Why it mattered**: OAuth state and cookies are origin-sensitive. A correct account-mismatch guard can still fail if the provider callback returns to a different platform host than the tab that started the flow, and operators may not notice because the legacy host still resolves.
 
 **Rule**: All platform OAuth callback helpers must canonicalize legacy `wtfgameshow.app` / `www` / `new` origins to `https://wtfos.app` before building provider URLs or diagnostics. Keep custom preview/local origins intact, but never let stale legacy platform env leak into production callback URLs.
+
+---
+
+## 2026-06-22 - Owner-control mutations must merge returned state immediately
+
+**What happened**: Independent live WTF LIVE user-story probes created real owner rooms and stages on production. The server state changed, but the UI relied mostly on query invalidation after owner mutations. A created stage existed through `/api/wtf-live/stages/mine` while the Stages tab stayed selected on the default stage, and a room close/reopen flow could leave the card/status stuck on the closed state.
+
+**Why it mattered**: Hosts use these controls while coordinating live rooms. Waiting for background refetches, or hiding mutation errors behind stale success text, makes the show-control surface feel unreliable even when the API writes succeeded.
+
+**Rule**: For owner-control UI mutations that return the updated room/stage record, merge that returned record into every relevant React Query cache before invalidating. Create, update, and delete flows should also remove stale entries synchronously and show explicit action-status errors on mutation failure.
