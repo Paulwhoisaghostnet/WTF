@@ -99,8 +99,12 @@ test.describe("interaction inventory — WIM desktop widgets", () => {
     await page.getByRole("button", { name: "Open WIM settings" }).click();
     await expect(page.getByRole("dialog", { name: "WIM settings" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Open WIM settings" })).toHaveAttribute("aria-expanded", "true");
+    const settingsDialog = page.getByRole("dialog", { name: "WIM settings" });
+    await page.getByLabel("New WIM list name").fill("Inventory Probe");
+    await page.getByRole("button", { name: "Create WIM list" }).click();
+    await expect(settingsDialog.getByText("Inventory Probe", { exact: true }).first()).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog", { name: "WIM settings" })).toHaveCount(0);
+    await expect(settingsDialog).toHaveCount(0);
 
     await buddyWindow.locator('[data-wim-chat-open="2"]').first().click();
     const chatWindow = page.locator('[data-wim-window-kind="chat"]');

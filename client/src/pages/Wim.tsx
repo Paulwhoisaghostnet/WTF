@@ -2584,6 +2584,18 @@ export function Wim() {
 
   useEffect(() => {
     if (!settingsOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setSettingsOpen(false);
+      window.setTimeout(() => settingsButtonRef.current?.focus(), 0);
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [settingsOpen]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
       if (!target) return;

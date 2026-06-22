@@ -54,6 +54,7 @@ Priority labels:
 | WTF-BB-308 | Verified | Codex wallet/X auth full-send | 2026-06-21 | Auth / X OAuth account binding | P1 | 12 | 7 | 3 | 4 | 1 | Profile X linking can authorize the wrong current browser X account such as shared `wtfgameshow`; fixed by storing the intended handle in session, rejecting mismatched callbacks before token persistence, canonicalizing legacy platform OAuth callback origins to `wtfos.app`, and returning a clear switch-account error; verified live on `wtfos.app` commit `8d994c9` |
 | WTF-BB-309 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / owner control UX | P1 | 11 | 8 | 2 | 5 | 0 | Independent live user-story probe found owner-created rooms/stages could fall out of sync after mutations; fixed in `7df41dd` by synchronously merging returned owner-control state into React Query caches and verified on live `https://wtfos.app` with the 4/4 owned-surface probe |
 | WTF-BB-312 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / Show Kit cooldown UX | P2 | 8 | 14 | 1 | 4 | 0 | Expanded independent live Show Kit relay probe found an immediate second trigger after a clip send could leave stale `sent` status; fixed in `7f5d0d7` by starting cooldown after successful relay completion and verified with the 2/2 live realtime/Show Kit probe |
+| WTF-BB-314 | In Progress | Codex live user-story gap loop | 2026-06-22 | WIM / settings dialog keyboard UX | P2 | 8 | 14 | 1 | 4 | 0 | Independent live WIM probe found the settings dialog can stay open after creating a custom list because Escape was only handled on the popover node; source fix and local regression pass are in place, pending production deploy and live retest |
 | WTF-BB-305 | Verified | Codex wallet live full-send | 2026-06-21 | Operations / production health | P0 | 13 | 4 | 3 | 5 | 0 | Live `/api/health` could intermittently return 503 because scheduler audit used a whole-table latest-run query that timed out under production audit volume; fixed by querying only registered job names through indexed lateral latest-row lookups plus a production index; verified live on `wtfos.app` |
 | WTF-BB-296 | Verified | Codex cobwebsaints domain readiness pass | 2026-06-20 | WTF Domains / account-specific advanced feature coverage | P2 | 8 | 14 | 2 | 3 | 0 | Domain/pinning harness data hardcoded `pincollector.wtfos.me`, so account-specific readiness for `cobwebsaints` could pass generic checks while advanced surfaces showed another user's host; fixed with signed-in-user-derived harness domains, Cobweb persona coverage across Settings, WTF Domains, IPFS Pinning, and Macaroni trusted creator access, plus full inventory verification |
 | WTF-BB-295 | Verified | Codex stale welcome auth repair | 2026-06-20 | Auth / welcome session recovery | P1 | 12 | 7 | 3 | 5 | 0 | Welcome dialog could retain a cached signed-in user after the protected API session was gone, so every welcome/profile/diary action returned `Not authenticated` and passive wallet reconciliation logged repeated 401s; fixed with protected-401 session invalidation, auth cache clearing, passive wallet warning suppression, and focused/full inventory verification |
@@ -6477,6 +6478,29 @@ Priority labels:
   - Inventory coverage passed: `node node_modules/tsx/dist/cli.mjs tests/e2e/inventory/coverage.ts`.
   - GitHub Deploy to Hetzner run `27981179749` succeeded and live health returned `commitRef:"7f5d0d7"`.
   - Expanded independent live realtime/Show Kit probe passed 2/2 on `https://wtfos.app`: `tmp/live-user-story-probes/wtf-live-realtime-results.json`.
+
+### WTF-BB-314 - WIM settings dialog Escape fails after custom-list creation
+
+- Category: WIM / settings dialog keyboard UX
+- Status: In Progress
+- Owner/Session: Codex live user-story gap loop
+- Score: C1 + F4 + S0 + P2(3) = 8
+- Evidence:
+  - Independent production WIM probe `tmp/live-user-story-probes/wim-live-results.json` opened signed-in `/wim`, created a `Live Probe` custom buddy list, pressed Escape, and the `role="dialog"` settings surface remained open for the full Playwright expectation timeout.
+  - The rendered failure screenshot shows the WIM settings dialog still visible after the Escape key path, while the dialog also exposes an explicit close button.
+  - Source inspection found Escape was handled only by `SettingsPopover.onKeyDown`, so the close path depended on focus staying inside the popover after list creation.
+- Why it matters:
+  - WIM is a windowed desktop messaging surface. Dialogs need predictable keyboard recovery, especially after creating or editing local buddy-list organization.
+  - Existing inventory coverage only proved Escape immediately after opening settings; it did not cover the post-submit focus state found by the live user-story loop.
+- Correction:
+  - Keep the popover-local handler, and add a settings-open capture-phase keydown listener that closes the dialog on Escape even if an inner control or focus change prevents the popover handler from seeing the key.
+  - Expand the WIM inventory regression to create a custom list before pressing Escape.
+- Verification:
+  - Local TypeScript passed: `node node_modules/typescript/bin/tsc --noEmit --pretty false`.
+  - Inventory coverage passed: `node node_modules/tsx/dist/cli.mjs tests/e2e/inventory/coverage.ts`.
+  - Local Vite client build passed: `node node_modules/vite/bin/vite.js build`.
+  - Focused WIM inventory regression passed after rebuilding the client bundle: `HARNESS_PORT=4186 node node_modules/.bin/playwright test tests/playwright/inventory/wim-owner-controls.spec.mjs --reporter=list`.
+  - Pending production deploy and live `tmp/live-user-story-probes/wim-live.spec.mjs` retest.
 
 ---
 

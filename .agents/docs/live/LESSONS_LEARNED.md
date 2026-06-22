@@ -5327,3 +5327,13 @@
 **Why it mattered**: A show host needs immediate, truthful feedback when a cue is throttled. Cooldowns that run during hidden preparation work can make a control feel ignored or make duplicate cue sends unpredictable.
 
 **Rule**: For async media controls, mark the cue as in-flight while preparation/relay work runs, clear that state on failure, and start the visible cooldown from successful send completion rather than from the pre-await click timestamp.
+
+---
+
+## 2026-06-22 - Browser harnesses that serve `dist/public` need a rebuild before UI retests
+
+**What happened**: A WIM settings-dialog fix compiled and TypeScript passed, but the focused Playwright inventory test kept failing because `tests/playwright/harness.mjs` serves `dist/public`. The test was exercising the previously built WIM chunk until the Vite client bundle was rebuilt.
+
+**Why it mattered**: Without rebuilding, a correct source fix can look broken and push debugging toward false event-handling theories. This is especially easy to miss when the harness starts cleanly on a fresh port but still serves stale built assets.
+
+**Rule**: Before rerunning browser specs that use the built harness, rebuild the client bundle or run the script that performs the build. Treat a passing source check as separate from the rendered asset under test.
