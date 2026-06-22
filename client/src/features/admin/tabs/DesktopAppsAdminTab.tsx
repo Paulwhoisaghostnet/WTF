@@ -63,7 +63,7 @@ export function DesktopAppsAdminTab({
     <>
       <h3>Desktop and Start Menu Apps</h3>
       <Intro>
-        Toggle launchable apps, refresh doc registries, and issue install keys. Disabled or doc-stale apps stay hidden from normal users, but admins and trusted creators can still open the surface for repair.
+        Toggle launchable apps, refresh doc registries, and issue install keys. Disabled apps stay hidden from normal users; doc freshness and install keys are registration health signals.
       </Intro>
       {!desktopApps ? (
         <Hourglass size={32} />
@@ -76,7 +76,7 @@ export function DesktopAppsAdminTab({
                 <TableHeadCell>Key</TableHeadCell>
                 <TableHeadCell>Docs</TableHeadCell>
                 <TableHeadCell>Install Key</TableHeadCell>
-                <TableHeadCell>Status</TableHeadCell>
+                <TableHeadCell>Launcher</TableHeadCell>
                 <TableHeadCell>Actions</TableHeadCell>
               </TableRow>
             </TableHead>
@@ -97,8 +97,11 @@ export function DesktopAppsAdminTab({
                       Expires {formatStamp(row.installKeyExpiresAt)}
                     </MetaLine>
                   </TableDataCell>
-                  <TableDataCell style={{ color: row.installable ? "#0a6f0a" : "#8a1f1f" }}>
-                    {row.installable ? "Installable" : "Blocked"}
+                  <TableDataCell style={{ color: row.enabled ? "#0a6f0a" : "#8a1f1f" }}>
+                    <div>{row.enabled ? "Shown" : "Hidden"}</div>
+                    <MetaLine>
+                      {row.installable ? "Registration healthy" : "Registration attention"}
+                    </MetaLine>
                   </TableDataCell>
                   <TableDataCell>
                     <ActionRow>

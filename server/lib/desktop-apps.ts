@@ -13,6 +13,7 @@ import { getDesktopAppDocumentation } from "@shared/desktop-apps";
 import { db } from "../db";
 import { desktopAppSettings } from "@shared/schema";
 import { inArray } from "drizzle-orm";
+import { isDesktopAppRuntimeAvailable } from "./desktop-app-runtime";
 
 export {
   DEFAULT_DESKTOP_APP_CONFIG,
@@ -259,7 +260,7 @@ export async function getDesktopAppConfig(): Promise<DesktopAppConfig> {
   for (const row of rows) {
     if (!isDesktopAppKey(row.appKey)) continue;
     const registration = buildRegistrationView(row.appKey, row, now);
-    merged[row.appKey] = registration.installable;
+    merged[row.appKey] = isDesktopAppRuntimeAvailable(registration);
   }
   return merged;
 }
@@ -319,7 +320,7 @@ export async function getDesktopAppRegistrations(): Promise<DesktopAppsResponse>
   const apps: DesktopAppConfig = { ...DEFAULT_DESKTOP_APP_CONFIG };
   const list = DESKTOP_APPS.map((appKey) => {
     const registration = registrationMap.get(appKey) ?? buildDefaultRegistrationView(appKey, now);
-    apps[appKey] = registration.installable;
+    apps[appKey] = isDesktopAppRuntimeAvailable(registration);
     return registration;
   });
   return { apps, list };

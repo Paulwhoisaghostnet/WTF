@@ -79,12 +79,6 @@ router.put(
           : null;
       const installKeyMaterial = issueInstallKey ? createInstallKeyMaterial(appKey) : null;
 
-      if (enabled && resolvedDocStatus !== "registered" && !issueInstallKey) {
-        return res.status(400).json({
-          error: "Apps must be doc-registered before they can be enabled",
-        });
-      }
-
       await db
         .insert(desktopAppSettings)
         .values({
