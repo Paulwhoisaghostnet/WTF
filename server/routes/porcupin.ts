@@ -33,6 +33,15 @@ function userId(req: any): number {
   return Number(req.user?.id);
 }
 
+function isMissingRelationError(err: unknown): boolean {
+  const candidate = err as { code?: string; cause?: { code?: string } } | null;
+  return candidate?.code === "42P01" || candidate?.cause?.code === "42P01";
+}
+
+function sendPorcupinUnavailable(res: any) {
+  return res.status(503).json({ error: "Porcupin integration is not configured" });
+}
+
 async function fetchWtfBalance(walletAddress: string): Promise<number> {
   const tzktBase = getTzktBase();
   const wtfToken = getServerWtfToken();
@@ -84,6 +93,7 @@ router.get("/api/porcupin/connection", isAuthenticated, async (req, res) => {
     res.json(conn ?? null);
   } catch (err) {
     console.error("[porcupin] connection fetch failed", err);
+    if (isMissingRelationError(err)) return sendPorcupinUnavailable(res);
     res.status(500).json({ error: "Failed to fetch connection" });
   }
 });
@@ -167,6 +177,7 @@ router.delete("/api/porcupin/connection", isAuthenticated, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error("[porcupin] disconnect failed", err);
+    if (isMissingRelationError(err)) return sendPorcupinUnavailable(res);
     res.status(500).json({ error: "Disconnect failed" });
   }
 });
@@ -220,6 +231,7 @@ router.get("/api/porcupin/status", isAuthenticated, async (req, res) => {
     }
   } catch (err) {
     console.error("[porcupin] status failed", err);
+    if (isMissingRelationError(err)) return sendPorcupinUnavailable(res);
     res.status(500).json({ error: "Status check failed" });
   }
 });
@@ -289,6 +301,7 @@ router.get("/api/porcupin/premium-eligibility", isAuthenticated, async (req, res
     res.json(result);
   } catch (err) {
     console.error("[porcupin] eligibility failed", err);
+    if (isMissingRelationError(err)) return sendPorcupinUnavailable(res);
     res.status(500).json({ error: "Eligibility check failed" });
   }
 });
