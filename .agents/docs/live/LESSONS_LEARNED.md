@@ -5317,3 +5317,13 @@
 **Why it mattered**: Hosts use these controls while coordinating live rooms. Waiting for background refetches, or hiding mutation errors behind stale success text, makes the show-control surface feel unreliable even when the API writes succeeded.
 
 **Rule**: For owner-control UI mutations that return the updated room/stage record, merge that returned record into every relevant React Query cache before invalidating. Create, update, and delete flows should also remove stale entries synchronously and show explicit action-status errors on mutation failure.
+
+---
+
+## 2026-06-22 - Cooldowns must start from visible send completion
+
+**What happened**: The live Show Kit relay probe saved a server-backed soundboard clip, sent it to an audience room, then clicked the same clip again immediately after the UI reported `sent`. Because the runtime set the cooldown timestamp before awaiting audio decode/injection, a short 500ms cooldown could expire before the user saw the successful send status, leaving the second click stuck on stale `sent` text instead of cooldown feedback.
+
+**Why it mattered**: A show host needs immediate, truthful feedback when a cue is throttled. Cooldowns that run during hidden preparation work can make a control feel ignored or make duplicate cue sends unpredictable.
+
+**Rule**: For async media controls, mark the cue as in-flight while preparation/relay work runs, clear that state on failure, and start the visible cooldown from successful send completion rather than from the pre-await click timestamp.

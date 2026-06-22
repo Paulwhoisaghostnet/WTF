@@ -4099,11 +4099,18 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     const now = Date.now();
     const readyAt = soundboardCooldownRef.current.get(clip.id) ?? 0;
     if (readyAt > now) {
+      if (readyAt === Number.POSITIVE_INFINITY) {
+        setSoundboardStatus(`${clip.label} is already being sent.`);
+        return;
+      }
       const seconds = Math.max(1, Math.ceil((readyAt - now) / 1000));
       setSoundboardStatus(`${clip.label} is cooling down for ${seconds}s.`);
       return;
     }
-    soundboardCooldownRef.current.set(clip.id, now + Math.max(0, clip.cooldownMs));
+    const cooldownMs = Math.max(0, clip.cooldownMs);
+    if (cooldownMs > 0) {
+      soundboardCooldownRef.current.set(clip.id, Number.POSITIVE_INFINITY);
+    }
     await playSoundboardClip(clip, true);
     const sent = sendRoomSocket({
       type: "wtf_live_soundboard_clip",
@@ -4111,8 +4118,12 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       delivery: "webrtc",
     });
     if (!sent) {
+      soundboardCooldownRef.current.delete(clip.id);
       setSoundboardStatus("Soundboard relay is not connected.");
       return;
+    }
+    if (cooldownMs > 0) {
+      soundboardCooldownRef.current.set(clip.id, Date.now() + cooldownMs);
     }
     const suffix = source === "shortcut" && clip.shortcut ? ` via ${clip.shortcut}` : "";
     setSoundboardStatus(`${clip.label} sent${suffix}.`);

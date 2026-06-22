@@ -52,7 +52,8 @@ Priority labels:
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-304 | Verified | Codex wallet/X auth full-send | 2026-06-21 | Auth / Tezos wallet sign-in | P0 | 14 | 3 | 3 | 5 | 1 | Production wallet sign-in could hang on `Connecting...` or bounce back to login after wallet connect; fixed by preserving live wallet lifecycle hardening, clearing stale username/password state before wallet auth, binding real login form names/labels, and keeping wallet waits bounded; verified live on `wtfos.app` commit `069b96b` |
 | WTF-BB-308 | Verified | Codex wallet/X auth full-send | 2026-06-21 | Auth / X OAuth account binding | P1 | 12 | 7 | 3 | 4 | 1 | Profile X linking can authorize the wrong current browser X account such as shared `wtfgameshow`; fixed by storing the intended handle in session, rejecting mismatched callbacks before token persistence, canonicalizing legacy platform OAuth callback origins to `wtfos.app`, and returning a clear switch-account error; verified live on `wtfos.app` commit `8d994c9` |
-| WTF-BB-309 | In Progress | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / owner control UX | P1 | 11 | 8 | 2 | 5 | 0 | Independent live user-story probe found owner-created rooms/stages can fall out of sync after mutations: a closed room showed Reopen but did not reopen in the same UI flow, and a newly created stage existed via `/api/wtf-live/stages/mine` but the Stages UI stayed on the default stage; fixing client query-cache merges and owner-control error feedback, then retesting on live |
+| WTF-BB-309 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / owner control UX | P1 | 11 | 8 | 2 | 5 | 0 | Independent live user-story probe found owner-created rooms/stages could fall out of sync after mutations; fixed in `7df41dd` by synchronously merging returned owner-control state into React Query caches and verified on live `https://wtfos.app` with the 4/4 owned-surface probe |
+| WTF-BB-312 | In Progress | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / Show Kit cooldown UX | P2 | 8 | 14 | 1 | 4 | 0 | Expanded independent live Show Kit relay probe found an immediate second trigger after a clip send can leave the status stuck on `sent` instead of showing cooldown feedback when audio injection takes longer than the configured cooldown |
 | WTF-BB-305 | Verified | Codex wallet live full-send | 2026-06-21 | Operations / production health | P0 | 13 | 4 | 3 | 5 | 0 | Live `/api/health` could intermittently return 503 because scheduler audit used a whole-table latest-run query that timed out under production audit volume; fixed by querying only registered job names through indexed lateral latest-row lookups plus a production index; verified live on `wtfos.app` |
 | WTF-BB-296 | Verified | Codex cobwebsaints domain readiness pass | 2026-06-20 | WTF Domains / account-specific advanced feature coverage | P2 | 8 | 14 | 2 | 3 | 0 | Domain/pinning harness data hardcoded `pincollector.wtfos.me`, so account-specific readiness for `cobwebsaints` could pass generic checks while advanced surfaces showed another user's host; fixed with signed-in-user-derived harness domains, Cobweb persona coverage across Settings, WTF Domains, IPFS Pinning, and Macaroni trusted creator access, plus full inventory verification |
 | WTF-BB-295 | Verified | Codex stale welcome auth repair | 2026-06-20 | Auth / welcome session recovery | P1 | 12 | 7 | 3 | 5 | 0 | Welcome dialog could retain a cached signed-in user after the protected API session was gone, so every welcome/profile/diary action returned `Not authenticated` and passive wallet reconciliation logged repeated 401s; fixed with protected-401 session invalidation, auth cache clearing, passive wallet warning suppression, and focused/full inventory verification |
@@ -6439,7 +6440,7 @@ Priority labels:
 ### WTF-BB-309 - WTF LIVE owner controls can desync after live mutations
 
 - Category: WTF LIVE / owner control UX
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex live user-story gap loop
 - Score: C2 + F5 + S0 + P1(4) = 11
 - Evidence:
@@ -6449,13 +6450,32 @@ Priority labels:
 - Why it matters:
   - Room and stage ownership controls are core WTF LIVE logistics. A host needs immediate, trustworthy UI state after creating, closing, reopening, and deleting live spaces, especially during a show.
 - Correction:
-  - Keep client query caches in sync with mutation responses for created/updated/deleted rooms and stages.
-  - Surface owner-control mutation failures in the action status instead of leaving stale success text onscreen.
+  - Fixed in `7df41dd` by keeping client query caches in sync with mutation responses for created/updated/deleted rooms and stages, and surfacing owner-control mutation failures in the action status instead of leaving stale success text onscreen.
 - Verification:
   - Local TypeScript passed: `node node_modules/typescript/bin/tsc --noEmit --pretty false`.
   - Local inventory coverage passed: `node node_modules/tsx/dist/cli.mjs tests/e2e/inventory/coverage.ts`.
   - Focused WTF LIVE owner-control Playwright passed 14/14: `node node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs --reporter=list`.
-  - Live verification pending deploy of this fix.
+  - GitHub Deploy to Hetzner run `27979556159` succeeded and live health returned `commitRef:"7df41dd"`.
+  - Independent live owned-surface probe passed 4/4 on `https://wtfos.app`: `tmp/live-user-story-probes/wtf-live-owned-results.json`.
+
+### WTF-BB-312 - WTF LIVE Show Kit cooldown feedback can be skipped after live relay
+
+- Category: WTF LIVE / Show Kit cooldown UX
+- Status: In Progress
+- Owner/Session: Codex live user-story gap loop
+- Score: C1 + F4 + S0 + P2(3) = 8
+- Evidence:
+  - Expanded independent production user-story probe `tmp/live-user-story-probes/wtf-live-realtime-results.json` against `https://wtfos.app` passed realtime room chat/media behavior, then failed the Show Kit relay story because a second immediate trigger after `Relay Sting ... sent.` never changed status to cooldown feedback.
+  - The runtime code set `soundboardCooldownRef` before awaiting audio decode/injection. On live, the async audio path can outlast a short configured cooldown such as 500ms, so a second click after the first visible `sent` status is treated as ready instead of cooling down.
+- Why it matters:
+  - Show hosts need clear feedback that a soundboard clip was intentionally throttled. Silent repeat-click acceptance or stale `sent` text makes it look like the button ignored the click or sent a second cue unpredictably.
+- Correction:
+  - Track a clip as in-flight while the send path is preparing audio, clear that in-flight state on relay failure, and start the user-visible cooldown from the successful send time.
+- Verification:
+  - Local TypeScript passed: `node node_modules/typescript/bin/tsc --noEmit --pretty false`.
+  - Focused Show Kit Playwright passed: `node node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "Show Kit soundboard" --reporter=list`.
+  - Inventory coverage passed: `node node_modules/tsx/dist/cli.mjs tests/e2e/inventory/coverage.ts`.
+  - Live retest pending deploy.
 
 ---
 
