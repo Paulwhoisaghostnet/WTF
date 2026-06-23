@@ -215,6 +215,30 @@ function countLabel(count, singular, plural) {
   return `${count} ${countWord(count, singular, plural)}`;
 }
 
+function storageNatToNumber(value) {
+  if (value == null || value === false) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (typeof value.toNumber === "function") {
+    const n = value.toNumber();
+    return Number.isFinite(n) ? n : null;
+  }
+  if (value.Some != null) return storageNatToNumber(value.Some);
+  if (value.some != null) return storageNatToNumber(value.some);
+  if (value.value != null) return storageNatToNumber(value.value);
+  if (value.int != null) return storageNatToNumber(value.int);
+  if (value.prim === "Some" && Array.isArray(value.args)) return storageNatToNumber(value.args[0]);
+  return null;
+}
+
+function maxPerWalletFromStage(stage) {
+  const n = storageNatToNumber(stage?.max_per_wallet ?? stage?.maxPerWallet);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 function walletTokensHeadingText(count) {
   const n = Number(count || 0);
   return n > 0 ? `Your ${countLabel(n, "drop token", "drop tokens")}` : "Your drop tokens";
@@ -1207,14 +1231,17 @@ async function preflightMint(stage, amount) {
     syncMintQuantityUi(stage);
     throw new Error(`only ${max} ${countWord(max, "mint is", "mints are")} currently available for this wallet`);
   }
-  const tezos = MD.getToolkit();
-  const c = await tezos.wallet.at(CFG.contract);
   const total = stage.priceMutez * amount;
-  const estimate = await MD.estimateWalletOp(
-    c.methodsObject.mint(amount),
-    { amount: total, mutez: true },
-    { gasPerUnit: 480_000, units: amount }
-  );
+  const { c, estimate } = await MD.withRpcFallback(async () => {
+    const tezos = MD.getToolkit();
+    const contract = await tezos.wallet.at(CFG.contract);
+    const limits = await MD.estimateWalletOp(
+      contract.methodsObject.mint(amount),
+      { amount: total, mutez: true },
+      { gasPerUnit: 480_000, units: amount, throwOnRecoverableRpcError: true }
+    );
+    return { c: contract, estimate: limits };
+  });
   const required = total + (estimate.fee || 0) + (estimate.storageFeeMutez || 0);
   const estimateText =
     `Mint cost: ${MD.fmtTez(total)}` +
@@ -1294,7 +1321,7 @@ async function refresh() {
         start: new Date(v.start),
         priceMutez: Number(v.price),
         useAllowlist: !!v.use_allowlist,
-        maxPerWallet: v.max_per_wallet != null ? Number(v.max_per_wallet) : null,
+        maxPerWallet: maxPerWalletFromStage(v),
       });
     if (sm && typeof sm.forEach === "function") sm.forEach((v, k) => push(k, v));
     stages.sort((a, b) => a.id - b.id);

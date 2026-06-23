@@ -145,6 +145,20 @@
         });
       }
 
+      configure(options) {
+        const opts = options || {};
+        this.options = { ...this.options, ...opts };
+        if (opts.network) this.setClientValue("network", opts.network);
+        if (opts.preferredNetwork) this.setClientValue("preferredNetwork", opts.preferredNetwork);
+        if (opts.featuredWallets) this.setClientValue("featuredWallets", opts.featuredWallets);
+        this.clients().forEach(disableMetrics);
+        return this;
+      }
+
+      subscribeToEvent(eventName, handler) {
+        this.clients().forEach((client) => callIf(client, "subscribeToEvent", [eventName, handler]));
+      }
+
       makeClientFacade() {
         const wallet = this;
         const facade = {
@@ -177,6 +191,7 @@
           clearActiveAccount: () => wallet.clearActiveAccount(),
           setActivePeer: (peer) => wallet.setActivePeer(peer),
           setTransport: (transport) => wallet.setTransport(transport),
+          subscribeToEvent: (eventName, handler) => wallet.subscribeToEvent(eventName, handler),
           requestPermissions: (input) => wallet.requestPermissions(input),
           requestOperation: (input) => callIf(wallet.activeClient(), "requestOperation", [input]),
           requestSignPayload: (input) => callIf(wallet.activeClient(), "requestSignPayload", [input]),

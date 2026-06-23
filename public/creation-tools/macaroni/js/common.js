@@ -8,11 +8,13 @@ const MD = (() => {
     mainnet: {
       label: "Mainnet",
       rpc: "https://tezos-mainnet.octez.io/",
+      rpcFallbacks: ["https://tcinfra.net/rpc/tezos/mainnet"],
       beaconNetwork: "mainnet",
     },
     shadownet: {
       label: "Shadownet (test)",
       rpc: "https://tezos-shadownet.octez.io/",
+      rpcFallbacks: ["https://tcinfra.net/rpc/tezos/shadownet"],
       beaconNetwork: "shadownet",
     },
   };
@@ -38,6 +40,9 @@ const MD = (() => {
   let netKey = null;
   let rpcUrl = null;
   let connectPromise = null;
+  let customRpcOverride = false;
+  let octezWalletInstalled = false;
+  const subscribedWalletClients = new WeakSet();
 
   function walletSessionKey() {
     const path = typeof location !== "undefined" ? `${location.origin}${location.pathname}` : "local";
@@ -78,13 +83,29 @@ const MD = (() => {
 
   function setupToolkit(networkKey, customRpc) {
     netKey = networkKey;
+    customRpcOverride = Boolean(customRpc && normalizedRpc(customRpc) !== normalizedRpc(NETWORKS[networkKey].rpc));
     rpcUrl = customRpc || NETWORKS[networkKey].rpc;
-    tezos = new TZ.TezosToolkit(rpcUrl);
+    tezos = configureToolkit(new TZ.TezosToolkit(rpcUrl));
     if (wallet) {
       configureWalletClient(wallet);
       tezos.setWalletProvider(wallet);
     }
     return tezos;
+  }
+
+  function configureToolkit(tk) {
+    if (
+      tk &&
+      typeof tk.setPackerProvider === "function" &&
+      typeof TZ.MichelCodecPacker === "function"
+    ) {
+      try {
+        tk.setPackerProvider(new TZ.MichelCodecPacker());
+      } catch (_) {
+        /* static bundles without the local packer fall back to RPC packing */
+      }
+    }
+    return tk;
   }
 
   function getToolkit() {
@@ -102,7 +123,7 @@ const MD = (() => {
     if (!expected) return; // custom aliases stay opt-in for exploratory dev RPCs
     let actual;
     try {
-      actual = await getToolkit().rpc.getChainId();
+      actual = await withRpcFallback(() => getToolkit().rpc.getChainId());
     } catch (e) {
       if (!strict) return; // re-checked strictly before every operation
       throw new Error(
@@ -125,6 +146,48 @@ const MD = (() => {
 
   function normalizedRpc(value) {
     return String(value || "").replace(/\/+$/, "");
+  }
+
+  function rpcFallbackUrls() {
+    if (customRpcOverride) return [];
+    const net = NETWORKS[netKey];
+    const primary = normalizedRpc(net?.rpc);
+    const current = normalizedRpc(rpcUrl);
+    return (net?.rpcFallbacks || [])
+      .filter((url) => normalizedRpc(url) !== current)
+      .filter((url) => normalizedRpc(url) !== primary || current !== primary);
+  }
+
+  function isRecoverableRpcError(err) {
+    const msg = String((err && (err.message || err.name || err.stack)) || err || "").toLowerCase();
+    return /access-control|cors|failed to fetch|load failed|networkerror|err_failed|pack_data|rpc|timeout/.test(msg);
+  }
+
+  function switchRpcFallback(err) {
+    const next = rpcFallbackUrls()[0];
+    if (!next || !isRecoverableRpcError(err)) return false;
+    rpcUrl = next;
+    tezos = configureToolkit(new TZ.TezosToolkit(rpcUrl));
+    if (wallet) {
+      configureWalletClient(wallet);
+      tezos.setWalletProvider(wallet);
+    }
+    console.warn(`[Macaroni] Switched Tezos RPC to fallback ${rpcUrl}:`, err);
+    return true;
+  }
+
+  async function withRpcFallback(fn) {
+    let lastErr;
+    const maxAttempts = rpcFallbackUrls().length + 1;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastErr = err;
+        if (!switchRpcFallback(err)) throw err;
+      }
+    }
+    throw lastErr;
   }
 
   function accountNeedsNetworkSync(acc) {
@@ -203,8 +266,53 @@ const MD = (() => {
     client.sendMetrics = () => {};
   }
 
+  function activeAccountEventName() {
+    const root = typeof window !== "undefined" ? window : {};
+    const sources = [TZ, root.MacaroniOctezConnect, root.beacon].filter(Boolean);
+    for (const source of sources) {
+      const eventName = source.BeaconEvent && source.BeaconEvent.ACTIVE_ACCOUNT_SET;
+      if (eventName) return eventName;
+    }
+    return "ACTIVE_ACCOUNT_SET";
+  }
+
+  function updateActiveAccountFromEvent(account) {
+    const active = account && account.account ? account.account : account;
+    activeAccount = active && active.address ? active.address : null;
+    if (activeAccount) saveWalletSession(activeAccount);
+    else clearWalletSession();
+  }
+
+  function subscribeWalletClient(client) {
+    if (!client || subscribedWalletClients.has(client) || typeof client.subscribeToEvent !== "function") return;
+    subscribedWalletClients.add(client);
+    try {
+      client.subscribeToEvent(activeAccountEventName(), updateActiveAccountFromEvent);
+    } catch (err) {
+      subscribedWalletClients.delete(client);
+      console.warn("[Macaroni] Could not subscribe to wallet active-account events:", err);
+    }
+  }
+
+  function subscribeWalletClients(w) {
+    if (!w) return;
+    if (typeof w.clients === "function") {
+      w.clients().forEach(subscribeWalletClient);
+      return;
+    }
+    subscribeWalletClient(w.client);
+  }
+
   function configureWalletClient(w) {
     const network = beaconNetworkSpec();
+    if (typeof w.configure === "function") {
+      w.configure({
+        network,
+        preferredNetwork: beaconPreferredNetwork(),
+        enableMetrics: false,
+        featuredWallets: ["kukai", "temple", "umami"],
+      });
+    }
     // Beacon's DAppClient is a singleton: after a network switch the new
     // constructor options can be ignored, so force the client network to
     // match before any permission or operation request (kiln pattern).
@@ -212,13 +320,20 @@ const MD = (() => {
     w.client.preferredNetwork = beaconPreferredNetwork();
     w.client.featuredWallets = ["kukai", "temple", "umami"];
     disableBeaconMetrics(w.client);
+    subscribeWalletClients(w);
     return w;
+  }
+
+  function ensureOctezWalletInstalled() {
+    if (octezWalletInstalled) return;
+    if (typeof TZ.installOctezPrimaryWallet === "function") TZ.installOctezPrimaryWallet();
+    octezWalletInstalled = true;
   }
 
   function makeWallet(appName, options) {
     const resetClient = !(options && options.resetClient === false);
     const network = beaconNetworkSpec();
-    if (typeof TZ.installOctezPrimaryWallet === "function") TZ.installOctezPrimaryWallet();
+    ensureOctezWalletInstalled();
     const WalletClass = TZ.OctezPrimaryWallet || TZ.BeaconWallet;
     const w = new WalletClass({
       name: appName || "Macaroni",
@@ -229,6 +344,13 @@ const MD = (() => {
       featuredWallets: ["kukai", "temple", "umami"],
     });
     return configureWalletClient(w);
+  }
+
+  function ensureWallet(appName, options) {
+    if (!wallet) wallet = makeWallet(appName, options);
+    else configureWalletClient(wallet);
+    tezos.setWalletProvider(wallet);
+    return wallet;
   }
 
   // A pairing left over from a previous session can be expired; Beacon then
@@ -278,7 +400,6 @@ const MD = (() => {
       }
     }
     clearBeaconStorage({ preserveIdentity: true });
-    wallet = null;
     activeAccount = null;
   }
 
@@ -289,8 +410,7 @@ const MD = (() => {
       await assertRpcChainId();
       const doConnect = async () => {
         await resetBeaconPickerState();
-        wallet = makeWallet(appName);
-        tezos.setWalletProvider(wallet);
+        ensureWallet(appName);
         // Network is fixed on the client (constructor + realignment above);
         // current Beacon SDKs reject a `network` property here.
         await wallet.requestPermissions();
@@ -303,7 +423,6 @@ const MD = (() => {
       } catch (e) {
         if (!/expired/i.test(e && e.message ? e.message : String(e))) throw e;
         clearBeaconStorage({ preserveIdentity: true });
-        wallet = null;
         return doConnect();
       }
     })();
@@ -324,11 +443,9 @@ const MD = (() => {
     const stored = readWalletSession();
     if (!stored || stored.network !== netKey || !stored.address) return null;
     if (!wallet) {
-      wallet = makeWallet(appName, { resetClient: false });
-      tezos.setWalletProvider(wallet);
+      ensureWallet(appName, { resetClient: false });
     } else {
-      configureWalletClient(wallet);
-      tezos.setWalletProvider(wallet);
+      ensureWallet(appName, { resetClient: false });
     }
     let acc = null;
     try {
@@ -665,7 +782,7 @@ const MD = (() => {
     let fee;
     let estimated = false;
     try {
-      const est = await tezos.estimate.transfer(params);
+      const est = await withRpcFallback(() => getToolkit().estimate.transfer(params));
       gasLimit = Math.min(
         1_040_000,
         Math.ceil(est.gasLimit * (opts.gasBuffer || 1.65)) + (opts.gasPad || 40_000)
@@ -675,7 +792,8 @@ const MD = (() => {
       const paddedFeeFloor = feeFloorForGasLimit(gasLimit, est, opts);
       fee = Math.max(estimateFee, paddedFeeFloor || 0);
       estimated = true;
-    } catch (_) {
+    } catch (err) {
+      if (opts.throwOnRecoverableRpcError && isRecoverableRpcError(err)) throw err;
       const units = opts.units || 1;
       gasLimit = gasLimit || Math.min(1_040_000, (opts.gasPerUnit || 380_000) * units);
       storageLimit = storageLimit || 200 + units * (opts.storagePerUnit || 120);
@@ -698,7 +816,7 @@ const MD = (() => {
       storageLimit: limits.storageLimit,
     };
     if (limits.fee != null) sendOpts.fee = limits.fee;
-    return method.send(sendOpts);
+    return withRpcFallback(() => method.send(sendOpts));
   }
 
   async function fetchOwnedTokenIds(networkKey, kt, holder) {
@@ -869,6 +987,7 @@ const MD = (() => {
     explorerUrl,
     objktUrl,
     fetchContractStatus,
+    withRpcFallback,
     estimateWalletOp,
     sendWalletOp,
     fetchOwnedTokenIds,
