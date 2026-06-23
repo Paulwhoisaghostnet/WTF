@@ -11,6 +11,17 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The static server regression asserts robots.txt advertises the canonical sitemap, sitemap.xml contains canonical wtfos.app URLs, manifest.json parses as install metadata, and none of the responses contain <!DOCTYPE html>.",
   },
   {
+    id: "public.access-manifest-canonical-origin",
+    domain: "Public Data, Embeds, APIs, Agents, and Automation",
+    platformOwner: "public-access-manifest",
+    ownerSpec: "server/routes/access.test.ts",
+    verificationCommand: "npx tsx --test server/routes/access.test.ts",
+    userVisibleAssertion:
+      "Agents, installers, and browser-boundary clients can request /api/access from the canonical host and receive WTF OS discovery metadata whose origin and MCP endpoint stay on https://wtfos.app instead of the legacy WTF Gameshow domain.",
+    durableSideEffectAssertion:
+      "The route regression sets legacy PUBLIC_SITE_URL and MCP_PUBLIC_ENDPOINT values, asserts the access manifest helpers canonicalize both to https://wtfos.app, and keeps non-WTF preview host fallback behavior intact.",
+  },
+  {
     id: "auth.password-session-linked-wallet",
     domain: "Entry, Authentication, and Account Identity",
     platformOwner: "auth-session",
@@ -112,9 +123,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/cobwebsaints-account.spec.mjs",
     userVisibleAssertion:
-      "The cobwebsaints account persona can claim cobwebsaints.wtfos.me, build cobwebsaints.wtf.tez commit/register plans with the connected wallet, see the same host and alias in IPFS Pinning, queue a wallet backup policy, and see Macaroni's trusted-creator wtfOS pin/publish affordance.",
+      "The cobwebsaints account persona has a bespoke non-admin full-user role, can claim cobwebsaints.wtfos.me, build cobwebsaints.wtf.tez commit/register plans with the connected wallet, see the same host and alias in IPFS Pinning, queue a wallet backup policy, and see Macaroni's wtfOS pin/publish affordance.",
     durableSideEffectAssertion:
-      "The focused harness derives WTF Domains and IPFS Pinning identity from the signed-in username, mutates the mocked wtfOS site claim state for cobwebsaints, verifies the pinning policy queue success against the same host, and asserts Macaroni's iframe enables hosted pin/publish access for the trusted_creator role.",
+      "The focused harness derives WTF Domains and IPFS Pinning identity from the signed-in username, mutates the mocked wtfOS site claim state for cobwebsaints, verifies the pinning policy queue success against the same host, and asserts Macaroni's iframe enables hosted pin/publish access for the cobwebsaints_full_user role.",
   },
   {
     id: "broot.media-open-import",
@@ -265,11 +276,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "desktop.settings-events-pet",
     domain: "Desktop OS, Navigation, and Personal Environment",
     ownerSurfaceIds: ["desktop-appearance", "desktop-pet"],
-    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
-    verificationCommand: "npm run test:e2e:live:puppets",
+    ownerSpec:
+      "client/src/features/desktop/pet/waterCarePolicy.test.ts, tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "npx tsx --test client/src/features/desktop/pet/waterCarePolicy.test.ts && npm run test:e2e:live:puppets",
     userVisibleAssertion: "A contestant can update desktop appearance grammar, colors, layout, WX weather, and use desktop pet actions.",
     durableSideEffectAssertion:
-      "The harness writes desktop settings, reloads them through a fresh read, records a desktop event with an event id, and confirms the pet action appears in live pet event history.",
+      "The harness writes desktop settings, reloads them through a fresh read, records a desktop event with an event id, confirms the pet action appears in live pet event history, and focused policy coverage keeps water care hydrating thirsty pets before bath/clean care.",
   },
   {
     id: "desktop.font-pack.updated",
@@ -392,6 +405,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "Contestants can see at least ten daily social/creative side quests with XP and WTF rewards, including the messageboard check-in.",
     durableSideEffectAssertion:
       "The live harness seeds canonical side quests, creates a temporary board channel, posts as a contestant, verifies the daily check-in is ready to claim for the current UTC day, claims it, verifies XP action completion, verifies a queued WTF reward ledger row, and removes the temporary channel.",
+  },
+  {
+    id: "dedrooms.mud-core-flow",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSurfaceIds: ["dedrooms"],
+    ownerSpec: "server/features/green-room/engine.test.ts, tests/playwright/inventory/dedrooms.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/features/green-room/engine.test.ts && npm run build && npx playwright test tests/playwright/inventory/dedrooms.spec.mjs",
+    userVisibleAssertion:
+      "A signed-in user can open the DedRooms AppWindow at /dedrooms, read the terminal transcript and status rail, see anchored map summary, coordinate, known authoritative passages, inspectable room objects, resources, character sheet summary, and room presence, submit commands including look, inspect, sheet, roll, map, doors, listen/overhear, go <listed passage>, combine three matching items, inspect Lily's shoe clues, encounter expanded ant/aubergine/uranium/sheep/cult/cat/Yellow Knight/splendor plus Tezos bread-art display-case mirror lore with baker-bankers, crumb custody rewards, bread pinning, case polishing, and crumb-split minigames, verify THNG/Governance/Herb/Trilla-tek/Tyranny Force anchors in map state while player spawns avoid anchors and the Green Room is absent until triggered, and receive the exact departed message after intro campaign qualification.",
+    durableSideEffectAssertion:
+      "The service persists player stasis location, anchored authored-map state, unique room placement/linking, inventory stacks/weights, command transcript events, Lily inspection flags, relationship/alliance state, shared milestone progress, delayed Green Room placement, role grants, Season 3 contestant rows, and myth-mode no-grant behavior while WebSocket events remain presence/fan-out only.",
   },
   {
     id: "club-dues.compile-membership-preflight",

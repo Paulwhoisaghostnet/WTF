@@ -24,6 +24,7 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/dues": "dues-manager",
   "/console": "console",
   "/game-studio": "game-studio",
+  "/dedrooms": "dedrooms",
   "/studio": "studio",
   "/tools/ch-ease": "ch-ease",
   "/tools/macaroni-packager": "ch-ease",

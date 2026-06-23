@@ -5,6 +5,7 @@ import {
   resolveAvailability,
   type RegistrationAvailabilityInput,
 } from "./availability";
+import { COBWEBSAINTS_FULL_USER_ROLE } from "@shared/types";
 
 const FP = "fp-1";
 
@@ -21,9 +22,10 @@ function baseInput(overrides: Partial<RegistrationAvailabilityInput> = {}): Regi
   };
 }
 
-test("alpha cohort = test_subject / trusted_creator (admin & host override)", () => {
+test("alpha cohort = test_subject / trusted_creator / bespoke publisher roles (admin & host override)", () => {
   assert.equal(isAlphaCohortMember(["test_subject"]), true);
   assert.equal(isAlphaCohortMember(["trusted_creator"]), true);
+  assert.equal(isAlphaCohortMember([COBWEBSAINTS_FULL_USER_ROLE]), true);
   assert.equal(isAlphaCohortMember(["admin"]), true);
   assert.equal(isAlphaCohortMember(["host"]), true);
   assert.equal(isAlphaCohortMember(["witness"]), false);

@@ -29,6 +29,81 @@ export function puppetCredentialsPath() {
   );
 }
 
+function isLocalHostname(hostname) {
+  return [
+    "localhost",
+    "127.0.0.1",
+    "::1",
+    "0.0.0.0",
+    "postgres",
+    "db",
+  ].includes(String(hostname || "").toLowerCase());
+}
+
+function hostnameFromDatabaseDescriptor(database) {
+  if (!database || typeof database !== "object") return "";
+  if (database.hostname) return String(database.hostname);
+  if (database.host) return String(database.host).split(":")[0];
+  return "";
+}
+
+function hostnameFromUrl(rawUrl) {
+  if (!rawUrl) return "";
+  try {
+    return new URL(String(rawUrl)).hostname;
+  } catch {
+    return "";
+  }
+}
+
+export function assertPuppetCredentialsMatchTarget(
+  credentials,
+  filePath,
+  options = {}
+) {
+  const targetBaseUrl =
+    options.targetBaseUrl ??
+    process.env.WTF_E2E_LIVE_BASE_URL ??
+    process.env.E2E_BASE_URL ??
+    "";
+  if (!targetBaseUrl) return;
+
+  const allowLocalCredentialsOnRemote =
+    options.allowLocalCredentialsOnRemote ??
+    process.env.WTF_E2E_ALLOW_LOCAL_CREDENTIALS_ON_REMOTE === "1";
+  if (allowLocalCredentialsOnRemote) return;
+
+  const targetHostname = hostnameFromUrl(targetBaseUrl);
+  if (!targetHostname) return;
+
+  const credentialTargetHostname = hostnameFromUrl(
+    credentials?.targetBaseUrl || credentials?.target?.baseUrl
+  );
+  if (
+    credentialTargetHostname &&
+    credentialTargetHostname === targetHostname &&
+    !isLocalHostname(targetHostname)
+  ) {
+    return;
+  }
+
+  const credentialHostname = hostnameFromDatabaseDescriptor(credentials?.database);
+  if (
+    targetHostname &&
+    !isLocalHostname(targetHostname) &&
+    isLocalHostname(credentialHostname)
+  ) {
+    throw new Error(
+      [
+        `Refusing to use local puppet credentials from ${filePath} against ${targetBaseUrl}.`,
+        `The credential file was generated for database host ${credentialHostname}, so live password logins would fail or test the wrong environment.`,
+        "Export or seed production puppet credentials intentionally, set WTF_E2E_PUPPET_CREDENTIALS_PATH to that secret file, then rerun the live suite.",
+        "For Hetzner access, first make scripts/wtf-ssh.sh --check pass in this Codex session.",
+      ].join(" ")
+    );
+  }
+}
+
 export async function readPuppetCredentials() {
   const filePath = puppetCredentialsPath();
   if (!existsSync(filePath)) {
@@ -40,6 +115,7 @@ export async function readPuppetCredentials() {
   if (parsed?.version !== 1 || !Array.isArray(parsed?.actors)) {
     throw new Error(`Unsupported puppet credentials file: ${filePath}`);
   }
+  assertPuppetCredentialsMatchTarget(parsed, filePath);
   return parsed;
 }
 

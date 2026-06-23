@@ -49,6 +49,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   "dues-manager": false,
   console: true,
   "game-studio": true,
+  dedrooms: true,
   studio: true,
   "ch-ease": true,
   "pasta-protocol": true,

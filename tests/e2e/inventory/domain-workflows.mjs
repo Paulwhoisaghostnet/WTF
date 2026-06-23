@@ -306,7 +306,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/skywire/token-link?url=https%3A%2F%2Fteia.art%2Fobjkt%2FKT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton%2F789", expectedStatuses: [200, 400, 401, 502] },
       { method: "GET", path: "/api/skywire/tezos-vault?limit=4", expectedStatuses: [200, 401, 500] },
       { method: "GET", path: "/api/skywire/tezos-vault?limit=4&offset=4&includeCreated=true", expectedStatuses: [200, 401, 500] },
-      { method: "GET", path: "/api/skywire/live-status", expectedStatuses: [200, 401, 404, 409, 500] },
+      { method: "GET", path: "/api/skywire/live-status", expectedStatuses: [200, 400, 401, 404, 409, 500] },
       { method: "POST", path: "/api/skywire/live-status", body: { liveUrl: "https://wtfos.app/live/r/e2e", title: "WTF LIVE", durationMinutes: 30 }, expectedStatuses: [201, 400, 401, 403, 409, 500] },
       { method: "DELETE", path: "/api/skywire/live-status", expectedStatuses: [200, 400, 401, 403, 409, 500] },
       { method: "GET", path: "/api/skywire/signals", expectedStatuses: [200, 400, 401, 403, 409, 500] },

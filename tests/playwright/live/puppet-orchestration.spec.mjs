@@ -244,9 +244,9 @@ function uniqueCatalogSlugs(payload) {
 
 async function signChallenge(actor, message) {
   const { stdout } = await execFileAsync(
-    "npx",
+    process.execPath,
     [
-      "tsx",
+      process.env.WTF_E2E_TSX_CLI || "node_modules/tsx/dist/cli.mjs",
       "tests/e2e/puppets/sign-challenge.ts",
       "--wallet-id",
       actor.walletId,

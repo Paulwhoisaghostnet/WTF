@@ -42,10 +42,13 @@ build/
 .agents/docs/archive/claude-config/skills/**
 .claude/skills/
 .codex/skills/
+.codex/machine-ssh.env
 .playwright-cli/
 **/.playwright-cli/
 test-results/
 playwright-report/
+output/
+outputs/
 .e2e/
 e2e-puppets*.json
 *.puppet-credentials.json

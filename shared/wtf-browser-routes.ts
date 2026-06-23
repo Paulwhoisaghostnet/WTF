@@ -1,4 +1,5 @@
 import type { BrowserRouteMeta } from "./wtf-browser-route-access";
+import { COBWEBSAINTS_FULL_USER_ROLE } from "./types";
 
 /**
  * Browser route metadata shared by the web router and CLI access checks.
@@ -46,8 +47,9 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/dues", auth: false, title: "Club Dues Manager" },
   { pattern: "/console", auth: true, title: "WTF Console" },
   { pattern: "/game-studio", auth: true, title: "Game Studio" },
-  { pattern: "/tools/ch-ease", auth: true, roles: ["admin", "host", "cohost", "trusted_creator"], title: "CH-EASE" },
-  { pattern: "/tools/macaroni-packager", auth: true, roles: ["admin", "host", "cohost", "trusted_creator"], title: "CH-EASE" },
+  { pattern: "/dedrooms", auth: true, title: "DedRooms" },
+  { pattern: "/tools/ch-ease", auth: true, roles: ["admin", "host", "cohost", "trusted_creator", COBWEBSAINTS_FULL_USER_ROLE], title: "CH-EASE" },
+  { pattern: "/tools/macaroni-packager", auth: true, roles: ["admin", "host", "cohost", "trusted_creator", COBWEBSAINTS_FULL_USER_ROLE], title: "CH-EASE" },
   { pattern: "/tools/colander", auth: true, title: "Colander" },
   { pattern: "/tools/broot", auth: true, title: "Broot" },
   { pattern: "/tools/particle-painter", auth: true, title: "Particle Painter" },
@@ -57,7 +59,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/tools/kandinsky-composer", auth: true, title: "Kandinsky Composer" },
   { pattern: "/tools/pixel-patterns", auth: true, title: "PixelPatterns" },
   { pattern: "/tools/penrose-backgrounds", auth: true, title: "PenRose Backgrounds" },
-  { pattern: "/tools/macaroni", auth: true, roles: ["admin", "host", "cohost", "trusted_creator"], title: "Macaroni" },
+  { pattern: "/tools/macaroni", auth: true, roles: ["admin", "host", "cohost", "trusted_creator", COBWEBSAINTS_FULL_USER_ROLE], title: "Macaroni" },
   { pattern: "/tools/spaghetti", auth: true, title: "Spaghetti" },
   { pattern: "/tools/gnocchi", auth: true, title: "Gnocchi" },
   { pattern: "/tools/ravioli", auth: true, title: "Ravioli" },

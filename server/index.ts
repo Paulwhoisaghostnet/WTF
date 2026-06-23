@@ -39,9 +39,14 @@ async function main() {
 
   setupWebSocket(server);
 
-  if (process.env.NODE_ENV === "production") {
+  const serveBuiltAssets =
+    process.env.NODE_ENV === "production" || process.env.WTFOS_STATIC_DEMO === "1";
+
+  if (serveBuiltAssets) {
     serveStatic(app);
-    startBackgroundJobs();
+    if (process.env.NODE_ENV === "production") {
+      startBackgroundJobs();
+    }
   } else {
     await setupVite(app, server);
   }

@@ -133,6 +133,7 @@ const DESKTOP_APP_DOMAIN_KEYS: Partial<Record<DesktopAppKey, keyof typeof WTF_DO
   "dues-manager": "commerceAndWallets",
   console: "arcadeConsoleGameStudio",
   "game-studio": "arcadeConsoleGameStudio",
+  dedrooms: "wtfOs",
   studio: "mediaTvStudio",
   gallery: "mediaTvStudio",
   "pasta-protocol": "pastaProtocol",

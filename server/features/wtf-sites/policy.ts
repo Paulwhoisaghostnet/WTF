@@ -4,6 +4,7 @@ import {
   WTF_USER_SITE_PARENT_DOMAIN,
   type WtfUserSiteDidSource,
 } from "@shared/wtf-user-sites";
+import { COBWEBSAINTS_FULL_USER_ROLE } from "@shared/types";
 import { RESERVED_HANDLES } from "../atproto-spine/config";
 
 export const WTF_USER_SITE_DID_ROLES = new Set([
@@ -12,6 +13,7 @@ export const WTF_USER_SITE_DID_ROLES = new Set([
   "cohost",
   "resident_wizard",
   "trusted_creator",
+  COBWEBSAINTS_FULL_USER_ROLE,
 ]);
 
 const EXTRA_RESERVED_LABELS = [

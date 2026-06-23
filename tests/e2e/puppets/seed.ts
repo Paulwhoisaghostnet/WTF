@@ -184,6 +184,14 @@ function databaseDescriptor(rawUrl: string) {
   };
 }
 
+function credentialTargetBaseUrl(): string | undefined {
+  return (
+    process.env.WTF_E2E_LIVE_BASE_URL?.trim() ||
+    process.env.E2E_BASE_URL?.trim() ||
+    undefined
+  );
+}
+
 function isLocalDatabase(rawUrl: string): boolean {
   const { hostname } = databaseDescriptor(rawUrl);
   return (
@@ -342,6 +350,28 @@ async function createWalletIfMissing(
     role: platformWalletRoleSchema.parse("testing"),
     network: input.network,
   });
+}
+
+async function verifyWalletSignerUsable(
+  keyring: PlatformWalletKeyring,
+  input: {
+    actorId: string;
+    wallet: PlatformWalletPublic;
+  }
+) {
+  const signerHandle = await keyring.getSigner(input.wallet.id);
+  const signerAddress = await signerHandle.signer.publicKeyHash();
+  if (signerAddress !== input.wallet.address) {
+    throw new Error(
+      `Puppet ${input.actorId} wallet ${input.wallet.id} signer address mismatch: expected ${input.wallet.address}, got ${signerAddress}`
+    );
+  }
+  const signerPublicKey = await signerHandle.signer.publicKey();
+  if (input.wallet.publicKey && signerPublicKey !== input.wallet.publicKey) {
+    throw new Error(
+      `Puppet ${input.actorId} wallet ${input.wallet.id} signer public key mismatch`
+    );
+  }
 }
 
 async function upsertPuppetUser(input: {
@@ -657,11 +687,13 @@ async function main() {
     flags.credentials ||
     process.env.WTF_E2E_PUPPET_CREDENTIALS_PATH ||
     defaultCredentialsPath;
+  const targetBaseUrl = credentialTargetBaseUrl();
 
   if (flags["dry-run"]) {
     const plan = {
       ok: true,
       dryRun: true,
+      targetBaseUrl,
       database: databaseDescriptor(dbUrl),
       keyringPath:
         flags.keyring || process.env.WTF_PLATFORM_KEYRING_PATH || defaultKeyringPath,
@@ -695,6 +727,10 @@ async function main() {
       id: actor.walletId,
       label: `${actor.displayName} E2E Puppet`,
       network,
+    });
+    await verifyWalletSignerUsable(keyring, {
+      actorId: actor.id,
+      wallet,
     });
     const password =
       !flags["rotate-passwords"] && existingCredentials.get(actor.id)?.password
@@ -738,6 +774,7 @@ async function main() {
   const credentialFile = {
     version: 1,
     generatedAt: new Date().toISOString(),
+    targetBaseUrl,
     database: databaseDescriptor(dbUrl),
     keyringPath: env.WTF_PLATFORM_KEYRING_PATH,
     rpcUrl: env.WTF_OPERATOR_SIGNER_RPC,
@@ -761,6 +798,7 @@ async function main() {
     credentialsPath,
     keyringPath: env.WTF_PLATFORM_KEYRING_PATH,
     rpcUrl: env.WTF_OPERATOR_SIGNER_RPC,
+    targetBaseUrl,
     database: databaseDescriptor(dbUrl),
   };
   console.log(JSON.stringify(result, null, 2));

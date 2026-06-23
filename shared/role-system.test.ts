@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  COBWEBSAINTS_FULL_USER_ROLE,
   ROLE_ORDER,
   canOpenAppsForRole,
   canParticipate,
@@ -23,6 +24,22 @@ test("user roles are canonical additive memberships", () => {
     normalizeUserRoles(["badge:first_win", "witness", "builder_tools"]),
     ["witness", "badge:first_win", "builder_tools"]
   );
+});
+
+test("cobwebsaints full user is a primary non-admin creator route role", () => {
+  assert.deepEqual(
+    normalizeUserRoles(["badge:first_win", "contestant", COBWEBSAINTS_FULL_USER_ROLE]),
+    [COBWEBSAINTS_FULL_USER_ROLE, "contestant", "badge:first_win"]
+  );
+  assert.equal(isAdmin(COBWEBSAINTS_FULL_USER_ROLE), false);
+  assert.equal(canParticipate(COBWEBSAINTS_FULL_USER_ROLE), true);
+
+  const admin = PAGE_DEFS.find((def) => def.pattern === "/admin");
+  const macaroni = PAGE_DEFS.find((def) => def.pattern === "/tools/macaroni");
+  assert.ok(admin);
+  assert.ok(macaroni);
+  assert.equal(canOpenPageDef(admin, COBWEBSAINTS_FULL_USER_ROLE, []), false);
+  assert.equal(canOpenPageDef(macaroni, COBWEBSAINTS_FULL_USER_ROLE, []), true);
 });
 
 test("WTF OS surface grants can unlock registered experimental routes", () => {

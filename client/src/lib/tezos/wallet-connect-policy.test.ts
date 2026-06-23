@@ -38,6 +38,8 @@ test("Octez Connect is the primary wallet path with valid featured wallet prefix
   assert.match(source, /WALLET_SIGN_TIMEOUT_MS/);
   assert.match(source, /Wallet connection did not finish opening a provider/);
   assert.match(source, /Wallet signing did not finish/);
+  assert.match(source, /NAMED_WALLET_NETWORKS/);
+  assert.match(source, /spec\.type = "custom"/);
   assert.match(source, /clearWalletIndexedDbState/);
   assert.match(source, /WalletAccountMismatchError/);
   assert.match(source, /WalletProviderPreflightError/);

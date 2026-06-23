@@ -15,6 +15,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/rounds", path: "/rounds", title: "Rounds", domain: "gameshow", subdomain: "Rounds", auth: true },
   { pattern: "/challenges", path: "/challenges", title: "Challenges", domain: "gameshow", subdomain: "Challenges", auth: true },
   { pattern: "/side-quests", path: "/side-quests", title: "Side Quests", domain: "gameshow", subdomain: "Side quests", auth: true },
+  { pattern: "/dedrooms", path: "/dedrooms", title: "DedRooms", domain: "gameshow", subdomain: "DedRooms MUD and intro campaign", auth: true },
   { pattern: "/messages", path: "/messages", title: "Inbox", domain: "social", subdomain: "Direct messages", auth: true },
   { pattern: "/messages/dms/:id", path: "/messages/dms/1", title: "Inbox", domain: "social", subdomain: "Direct messages", auth: true },
   { pattern: "/mail", path: "/mail", title: "WTF Mail", domain: "social", subdomain: "Mail", auth: true },

@@ -76,7 +76,7 @@ test("Mission Control health summarizes production chain and job fields", () => 
     chain: {
       ok: true,
       network: "mainnet",
-      tezosRpcUrl: "https://rpc.tzkt.io/mainnet",
+      tezosRpcUrl: "https://tezos-mainnet.octez.io/",
     },
     jobs: {
       ok: true,
@@ -90,7 +90,7 @@ test("Mission Control health summarizes production chain and job fields", () => 
     system: "OK",
     db: "OK",
     chain: "mainnet ready",
-    rpc: "https://rpc.tzkt.io/mainnet",
+    rpc: "https://tezos-mainnet.octez.io/",
     jobs: "26 job(s), 1 running, 0 recent error(s)",
     recentErrors: 0,
   });

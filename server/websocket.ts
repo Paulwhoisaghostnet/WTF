@@ -17,6 +17,7 @@ import {
 import { resolveStudioAccess } from "./lib/studio/access";
 import { getSessionSecret } from "./auth/session-secret";
 import { canAccessWtfLiveRoom } from "./features/wtf-live/registry";
+import { GREEN_ROOM_ROOM_BY_ID } from "./features/green-room/world";
 
 const MAX_CHAT_CONTENT_LENGTH = 10_000;
 const MAX_WTF_LIVE_CHAT_TEXT_LENGTH = 1_200;
@@ -108,11 +109,12 @@ interface WsClient {
   studioFileId?: number;
   username: string;
   role: UserRole;
-  publicSocket?: "wtf-live";
+  publicSocket?: "wtf-live" | "dedrooms";
   wtfLiveRoomId?: string;
   wtfLivePeerId?: string;
   wtfLiveGuestName?: string;
   wtfLiveMediaState?: WtfLiveMediaState;
+  greenRoomLocationId?: string;
 }
 
 const clients = new Set<WsClient>();
@@ -144,10 +146,12 @@ export function getWtfLiveRoomPresence(roomId: string): WtfLiveRoomPresence {
 export type WebSocketStats = {
   total: number;
   wtfLive: number;
+  greenRoom: number;
   board: number;
   studio: number;
   authenticated: number;
   activeWtfLiveRooms: number;
+  activeGreenRoomLocations: number;
 };
 
 /**
@@ -158,10 +162,12 @@ export type WebSocketStats = {
 export function getWebSocketStats(): WebSocketStats {
   let total = 0;
   let wtfLive = 0;
+  let greenRoom = 0;
   let board = 0;
   let studio = 0;
   let authenticated = 0;
   const rooms = new Set<string>();
+  const greenRoomLocations = new Set<string>();
   for (const client of clients) {
     if (client.ws.readyState !== WebSocket.OPEN) continue;
     total += 1;
@@ -169,6 +175,9 @@ export function getWebSocketStats(): WebSocketStats {
     if (client.publicSocket === "wtf-live") {
       wtfLive += 1;
       if (client.wtfLiveRoomId) rooms.add(client.wtfLiveRoomId);
+    } else if (client.publicSocket === "dedrooms") {
+      greenRoom += 1;
+      if (client.greenRoomLocationId) greenRoomLocations.add(client.greenRoomLocationId);
     } else if (client.studioProjectId || client.studioFileId) {
       studio += 1;
     } else if (client.channelId) {
@@ -178,10 +187,12 @@ export function getWebSocketStats(): WebSocketStats {
   return {
     total,
     wtfLive,
+    greenRoom,
     board,
     studio,
     authenticated,
     activeWtfLiveRooms: rooms.size,
+    activeGreenRoomLocations: greenRoomLocations.size,
   };
 }
 
@@ -338,6 +349,28 @@ function installHeartbeat(ws: WebSocket) {
 function sendJson(ws: WebSocket, payload: Record<string, unknown>) {
   if (ws.readyState !== WebSocket.OPEN) return;
   ws.send(JSON.stringify(payload));
+}
+
+function normalizeGreenRoomLocationId(value: unknown): string | null {
+  const locationId = String(value || "").trim();
+  if (!/^[a-z0-9][a-z0-9_:-]{0,119}$/i.test(locationId)) return null;
+  if (!GREEN_ROOM_ROOM_BY_ID.has(locationId)) return null;
+  return locationId;
+}
+
+function snapshotGreenRoomPresence(locationId: string, exclude?: WsClient) {
+  return [...clients]
+    .filter((client) =>
+      client.publicSocket === "dedrooms" &&
+      client.greenRoomLocationId === locationId &&
+      client !== exclude &&
+      client.ws.readyState === WebSocket.OPEN
+    )
+    .map((client) => ({
+      userId: client.userId,
+      username: client.username,
+      role: client.role,
+    }));
 }
 
 function normalizeWtfLiveRoomId(value: unknown): string | null {
@@ -512,7 +545,7 @@ export function setupWebSocket(server: Server) {
 
   server.on("upgrade", (req, socket, head) => {
     const pathname = pathnameForRequest(req);
-    if (pathname !== "/ws" && pathname !== "/ws/wtf-live") return;
+    if (pathname !== "/ws" && pathname !== "/ws/wtf-live" && pathname !== "/ws/dedrooms") return;
 
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit("connection", ws, req);
@@ -548,6 +581,38 @@ export function setupWebSocket(server: Server) {
       });
       ws.on("close", () => cleanupClient(client));
       sendJson(ws, { type: "wtf_live_connected", peerId: client.wtfLivePeerId });
+      return;
+    }
+
+    if (pathname === "/ws/dedrooms") {
+      const auth = await resolveSessionUser(req).catch(() => null);
+      if (!auth) {
+        sendJson(ws, { type: "error", message: "Unauthorized DedRooms websocket session" });
+        ws.close(1008, "unauthorized");
+        return;
+      }
+      const client: WsClient = {
+        ws,
+        userId: auth.userId,
+        username: auth.username,
+        role: auth.role,
+        publicSocket: "dedrooms",
+      };
+      clients.add(client);
+      installHeartbeat(ws);
+
+      ws.on("message", (raw) => {
+        void (async () => {
+          try {
+            const msg = JSON.parse(raw.toString()) as Record<string, unknown>;
+            await handleMessage(client, msg);
+          } catch {
+            sendJson(ws, { type: "error", message: "Invalid message" });
+          }
+        })();
+      });
+      ws.on("close", () => cleanupClient(client));
+      sendJson(ws, { type: "ded_rooms_connected", userId: client.userId, username: client.username });
       return;
     }
 
@@ -613,6 +678,46 @@ export function setupWebSocket(server: Server) {
 
 async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
   switch (msg.type) {
+    case "ded_rooms_join": {
+      if (client.publicSocket !== "dedrooms") {
+        sendJson(client.ws, { type: "error", message: "Use the DedRooms socket." });
+        return;
+      }
+      const locationId = normalizeGreenRoomLocationId(msg.locationId);
+      if (!locationId) {
+        sendJson(client.ws, { type: "error", message: "Invalid DedRooms location" });
+        return;
+      }
+      if (client.greenRoomLocationId && client.greenRoomLocationId !== locationId) {
+        leaveGreenRoomLocation(client);
+      }
+      client.greenRoomLocationId = locationId;
+      sendJson(client.ws, {
+        type: "ded_rooms_presence_snapshot",
+        locationId,
+        peers: snapshotGreenRoomPresence(locationId, client),
+      });
+      broadcastToGreenRoomLocation(
+        locationId,
+        {
+          type: "ded_rooms_peer_joined",
+          locationId,
+          peer: {
+            userId: client.userId,
+            username: client.username,
+            role: client.role,
+          },
+        },
+        client,
+      );
+      break;
+    }
+
+    case "ded_rooms_leave": {
+      leaveGreenRoomLocation(client);
+      break;
+    }
+
     case "wtf_live_join_room": {
       if (client.publicSocket !== "wtf-live") {
         sendJson(client.ws, { type: "error", message: "Use the public WTF LIVE room socket." });
@@ -1099,6 +1204,42 @@ function broadcastToWtfLiveRoom(
   }
 }
 
+function broadcastToGreenRoomLocation(
+  locationId: string,
+  message: Record<string, unknown>,
+  exclude?: WsClient
+) {
+  const payload = JSON.stringify(message);
+  for (const c of clients) {
+    if (
+      c.publicSocket === "dedrooms" &&
+      c.greenRoomLocationId === locationId &&
+      c !== exclude &&
+      c.ws.readyState === WebSocket.OPEN
+    ) {
+      c.ws.send(payload);
+    }
+  }
+}
+
+function leaveGreenRoomLocation(client: WsClient) {
+  if (!client.greenRoomLocationId) return;
+  const locationId = client.greenRoomLocationId;
+  client.greenRoomLocationId = undefined;
+  broadcastToGreenRoomLocation(
+    locationId,
+    {
+      type: "ded_rooms_peer_left",
+      locationId,
+      peer: {
+        userId: client.userId,
+        username: client.username,
+      },
+    },
+    client
+  );
+}
+
 function leaveWtfLiveRoom(client: WsClient) {
   if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
   const roomId = client.wtfLiveRoomId;
@@ -1141,6 +1282,9 @@ function cleanupClient(client: WsClient) {
   }
   if (client.wtfLiveRoomId) {
     leaveWtfLiveRoom(client);
+  }
+  if (client.greenRoomLocationId) {
+    leaveGreenRoomLocation(client);
   }
 }
 
@@ -1197,6 +1341,11 @@ export function broadcastStudioEvent(
   payload: Record<string, unknown>
 ) {
   broadcastToStudioProject(projectId, { type: eventType, projectId, ...payload });
+}
+
+export function broadcastDedRoomsEvent(locationId: string, payload: Record<string, unknown>) {
+  if (!GREEN_ROOM_ROOM_BY_ID.has(locationId)) return;
+  broadcastToGreenRoomLocation(locationId, payload);
 }
 
 /** Who is currently present in a Studio project and what they're viewing. */

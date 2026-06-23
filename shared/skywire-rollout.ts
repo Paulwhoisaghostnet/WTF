@@ -1,4 +1,10 @@
-import { canOpenAppsForRole, normalizeUserRoles, type UserRole, type UserRoleInput } from "./types";
+import {
+  COBWEBSAINTS_FULL_USER_ROLE,
+  canOpenAppsForRole,
+  normalizeUserRoles,
+  type UserRole,
+  type UserRoleInput,
+} from "./types";
 
 export type SkywireRolloutMode = "staff_alpha" | "all_users" | "disabled";
 
@@ -8,6 +14,7 @@ export const SKYWIRE_STAFF_ALPHA_ROLES = [
   "host",
   "cohost",
   "resident_wizard",
+  COBWEBSAINTS_FULL_USER_ROLE,
   "test_subject",
 ] as const satisfies readonly UserRole[];
 

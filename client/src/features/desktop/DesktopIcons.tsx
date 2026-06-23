@@ -142,6 +142,16 @@ const GameStudioDeskIcon = styled(ConsoleDeskIcon)`
   }
 `;
 
+const DedRoomsDeskIcon = styled(ConsoleDeskIcon)`
+  background: linear-gradient(180deg, #1c3f2d 0%, #111814 100%);
+  color: #baffcf;
+  font-size: 13px;
+
+  &::after {
+    background: #1c3f2d;
+  }
+`;
+
 const ArcadeDeskIcon = styled(ConsoleDeskIcon)`
   background: linear-gradient(180deg, #432719 0%, #141014 100%);
   color: #ffcb5c;
@@ -652,6 +662,7 @@ export type DesktopAppAvailability = {
   "dues-manager": boolean;
   console: boolean;
   "game-studio": boolean;
+  dedrooms: boolean;
   studio: boolean;
   gallery: boolean;
   "ipfs-pinning": boolean;
@@ -880,6 +891,15 @@ export function buildDesktopIconDefs(
       defaultY: 364,
       enabled: canOpenApps && (apps["game-studio"] || canOpenDisabledApps),
       openPath: "/game-studio",
+    },
+    {
+      key: "dedrooms",
+      label: "DedRooms",
+      icon: <DedRoomsDeskIcon>DR</DedRoomsDeskIcon>,
+      defaultX: 332,
+      defaultY: 364,
+      enabled: canOpenApps && (apps.dedrooms || canOpenDisabledApps),
+      openPath: "/dedrooms",
     },
     {
       key: "studio",

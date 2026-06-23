@@ -2,7 +2,6 @@ import { useEffect, type Dispatch, type SetStateAction } from "react";
 import {
   type DesktopWorldEdge,
   type DesktopWorldFoodSmell,
-  type HamsterAction,
   type HamsterState,
 } from "@shared/desktop";
 import { clampFloatingPosition } from "../geometry";
@@ -31,6 +30,10 @@ import {
 import type { PetToyState } from "../toys";
 import type { DesktopItemState } from "../items/model";
 import { applyPetItemInteractions } from "./itemInteractions";
+import {
+  needsWaterCare,
+  selectWaterCareRequest,
+} from "./waterCarePolicy";
 import {
   isAtEdgeForTarget,
   isOffscreenTarget,
@@ -143,12 +146,8 @@ export function useDesktopPetLocomotion({
       const hungryDrop =
         pet.hunger < 92 ? liveDrops.find((drop) => drop.kind === "food") : undefined;
       const waterDrop = liveDrops.find((drop) => drop.kind === "water");
-      const bathDrop =
-        waterDrop && (pet.poopExposure > 0 || pet.sick || pet.hygiene < 62)
-          ? waterDrop
-          : undefined;
-      const thirstyDrop = !bathDrop && pet.thirst < 92 ? waterDrop : undefined;
-      const pursuit = hungryDrop ?? bathDrop ?? thirstyDrop;
+      const waterCareDrop = waterDrop && needsWaterCare(pet) ? waterDrop : undefined;
+      const pursuit = hungryDrop ?? waterCareDrop;
       const pillowDrop =
         !pursuit && pet.energy < 74
           ? liveDrops.find((drop) => drop.kind === "pillow")
@@ -225,17 +224,12 @@ export function useDesktopPetLocomotion({
         dropsRef.current = remainingDrops;
         setDrops(remainingDrops);
         // Ants ration desktop food into 20 crumbs; non-ant pets eat the whole plate once.
-        const action: HamsterAction =
+        const request =
           pursuit.kind === "food"
             ? "feed"
-            : bathDrop && pursuit.id === bathDrop.id
-              ? "clean"
-              : "water";
-        mutatePetActionRef.current(
-          action === "clean"
-            ? { action, metadata: { cleanSource: "desktop_water_drop" } }
-            : action
-        );
+            : selectWaterCareRequest(pet, "desktop_water_drop");
+        const action = typeof request === "string" ? request : request.action;
+        mutatePetActionRef.current(request);
         if (action === "clean") sicknessExposureRef.current.nextAt = 0;
         if (pursuit.kind === "food") {
           const digestion = digestionRef.current;

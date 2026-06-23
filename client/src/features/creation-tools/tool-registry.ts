@@ -1,4 +1,4 @@
-import type { UserRole } from "@shared/types";
+import { COBWEBSAINTS_FULL_USER_ROLE, type UserRole } from "@shared/types";
 
 export type CreationToolDomain =
   | "visual-art"
@@ -193,7 +193,7 @@ export const CREATION_TOOLS = [
       "/creation-tools/macaroni/vendor/tezos.js",
       "/creation-tools/macaroni/contract/mydrop.contract.json",
     ],
-    roles: ["admin", "host", "cohost", "trusted_creator"],
+    roles: ["admin", "host", "cohost", "trusted_creator", COBWEBSAINTS_FULL_USER_ROLE],
     provenance: {
       creatorName: "WTF OS",
     },

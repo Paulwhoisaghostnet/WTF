@@ -14,6 +14,7 @@ import { WebSocket, WebSocketServer } from "ws";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, "../../dist/public");
 const PORT = Number(process.env.HARNESS_PORT || 4173);
+const COBWEBSAINTS_FULL_USER_ROLE = "cobwebsaints_full_user";
 
 const state = {
   mode: "normal", // "normal" | "rate-limited" | "cold-rate-limited" | "ok-after-rate-limit"
@@ -55,6 +56,10 @@ function defaultAuthUserForRole(role) {
 function currentAuthUser() {
   if (state.userRole === "anonymous") return null;
   return state.authUser || defaultAuthUserForRole(state.userRole);
+}
+
+function isCobwebsaintsUser(user = currentAuthUser()) {
+  return String(user?.username || "").toLowerCase() === "cobwebsaints";
 }
 
 function siteSafeLabelForUser(user = currentAuthUser()) {
@@ -413,7 +418,8 @@ app.get("/api/auth/user", (_req, res) => {
     username: authUser.username,
     displayName: authUser.displayName,
     role: state.userRole,
-    twitterHandle: "wtf_admin",
+    roles: [state.userRole],
+    twitterHandle: isCobwebsaintsUser(authUser) ? "unitedsaints" : "wtf_admin",
     twitterVerified: true,
     twitterPublic: true,
     welcomedToWtfOs: !state.welcomePending,
@@ -431,6 +437,18 @@ app.get("/api/auth/user", (_req, res) => {
             manage_gameshow: true,
             manage_rewards: true,
           }
+        : state.userRole === COBWEBSAINTS_FULL_USER_ROLE
+          ? {
+              edit_own_profile: true,
+              link_wallets: true,
+              trusted_arcade_creator: true,
+              trusted_console_creator: true,
+              trusted_tv_creator: true,
+              trusted_market_creator: true,
+              use_wtfos_pinning: true,
+              access_admin_panel: false,
+              manage_roles: false,
+            }
         : {},
   });
 });
@@ -448,6 +466,7 @@ app.post("/api/auth/welcome/complete", (_req, res) => {
     username: authUser.username,
     displayName: authUser.displayName,
     role: state.userRole,
+    roles: [state.userRole],
     welcomedToWtfOs: true,
     welcomedToWtfOsAt: nowIso(),
     gmWelcomeUtcDay: new Date().toISOString().slice(0, 10),
@@ -1071,6 +1090,20 @@ const harnessRoleCatalog = [
     isAssignable: true,
   },
   {
+    slug: COBWEBSAINTS_FULL_USER_ROLE,
+    label: "Cobwebsaints Full User",
+    category: "builder",
+    purpose: "Non-admin full user role reserved for cobwebsaints.",
+    description: "Harness role that grants creator, social, market, and pinning affordances without admin authority.",
+    accessLevel: 45,
+    sortOrder: 55,
+    color: "#8b5cf6",
+    icon: "sparkles",
+    defaultWtfOsAccess: true,
+    isSystem: false,
+    isAssignable: false,
+  },
+  {
     slug: "contestant",
     label: "Contestant",
     category: "gameshow",
@@ -1389,10 +1422,10 @@ function apiMock(req, res) {
       enabled: true,
       account: {
         id: 1,
-        did: "did:plc:skywiretest",
-        handle: state.skywireHandle,
-        pdsUrl: "https://bsky.social",
-        displayName: "WTF Admin",
+        did: isCobwebsaintsUser() ? "did:plc:hlwiidixnd2bcc65tkvsmfs2" : "did:plc:skywiretest",
+        handle: isCobwebsaintsUser() ? "cobwebsaints.bsky.social" : state.skywireHandle,
+        pdsUrl: isCobwebsaintsUser() ? "https://stropharia.us-west.host.bsky.network" : "https://bsky.social",
+        displayName: isCobwebsaintsUser() ? "Cobweb" : "WTF Admin",
         avatarUrl: null,
         description: "Inventory harness Skywire account",
         hasEncryptedTokens: true,
@@ -2780,16 +2813,17 @@ function apiMock(req, res) {
   if (pathName.startsWith("/api/leaderboard")) return res.json([]);
   if (/^\/api\/users\/[^/]+$/.test(pathName)) {
     const username = decodeURIComponent(pathName.split("/").pop() || "wtf-admin");
+    const isCobwebsaintsProfile = username.toLowerCase() === "cobwebsaints";
     return res.json({
       id: username === "wtf-admin" ? 1 : 2,
       username,
-      displayName: username === "wtf-admin" ? "WTF Admin" : "WTF User",
-      role: username === "wtf-admin" ? "admin" : "user",
+      displayName: username === "wtf-admin" ? "WTF Admin" : isCobwebsaintsProfile ? "Cobweb" : "WTF User",
+      role: username === "wtf-admin" ? "admin" : isCobwebsaintsProfile ? COBWEBSAINTS_FULL_USER_ROLE : "user",
       experiencePoints: 420,
       bio: "Inventory harness public profile",
       pfpImageUrl: null,
-      twitterHandle: username === "wtf-admin" ? "wtf_admin" : null,
-      twitterVerified: username === "wtf-admin",
+      twitterHandle: username === "wtf-admin" ? "wtf_admin" : isCobwebsaintsProfile ? "unitedsaints" : null,
+      twitterVerified: username === "wtf-admin" || isCobwebsaintsProfile,
       discordHandle: null,
       discordVerified: false,
       wallets: ["tz1-test-wallet"],
@@ -3921,6 +3955,15 @@ function apiMock(req, res) {
       admin: { access_admin_panel: true, manage_roles: true, manage_desktop_apps: true },
       host: {},
       cohost: {},
+      [COBWEBSAINTS_FULL_USER_ROLE]: {
+        trusted_arcade_creator: true,
+        trusted_console_creator: true,
+        trusted_tv_creator: true,
+        trusted_market_creator: true,
+        use_wtfos_pinning: true,
+        access_admin_panel: false,
+        manage_roles: false,
+      },
       contestant: {},
       viewer: {},
     });

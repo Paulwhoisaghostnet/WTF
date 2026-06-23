@@ -10,6 +10,7 @@ import {
   pageSlugForRequestPath,
   validateUserSiteLabel,
 } from "./policy";
+import { COBWEBSAINTS_FULL_USER_ROLE } from "@shared/types";
 
 test("username labels are derived strictly from valid DNS usernames", () => {
   assert.deepEqual(validateUserSiteLabel("Ernie", "wtfos.me"), {
@@ -54,6 +55,7 @@ test("site slugs are bounded to root plus named pages", () => {
 test("WTF DID issuance roles are explicit", () => {
   assert.equal(canIssueWtfDidForRoles(["witness", "contestant"]), false);
   assert.equal(canIssueWtfDidForRoles(["trusted_creator"]), true);
+  assert.equal(canIssueWtfDidForRoles([COBWEBSAINTS_FULL_USER_ROLE]), true);
   assert.equal(canIssueWtfDidForRoles(["resident_wizard"]), true);
 });
 

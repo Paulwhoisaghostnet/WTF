@@ -50,17 +50,29 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 18 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
 | WTF-BB-304 | Verified | Codex wallet/X auth full-send | 2026-06-21 | Auth / Tezos wallet sign-in | P0 | 14 | 3 | 3 | 5 | 1 | Production wallet sign-in could hang on `Connecting...` or bounce back to login after wallet connect; fixed by preserving live wallet lifecycle hardening, clearing stale username/password state before wallet auth, binding real login form names/labels, and keeping wallet waits bounded; verified live on `wtfos.app` commit `069b96b` |
+| WTF-BB-306 | Fixed | Codex desktop pet water repair | 2026-06-21 | Desktop pet / care tool UX | P1 | 10 | 10 | 2 | 4 | 0 | Water tool can clean instead of hydrate a thirsty sick/dirty pet, leaving the Water/thirst meter stuck at 0 despite repeated water care; fixed with water-first care policy and focused tests, pending unrelated inventory coverage blocker |
+| WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 14 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
 | WTF-BB-308 | Verified | Codex wallet/X auth full-send | 2026-06-21 | Auth / X OAuth account binding | P1 | 12 | 7 | 3 | 4 | 1 | Profile X linking can authorize the wrong current browser X account such as shared `wtfgameshow`; fixed by storing the intended handle in session, rejecting mismatched callbacks before token persistence, canonicalizing legacy platform OAuth callback origins to `wtfos.app`, and returning a clear switch-account error; verified live on `wtfos.app` commit `8d994c9` |
-| WTF-BB-309 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / owner control UX | P1 | 11 | 8 | 2 | 5 | 0 | Independent live user-story probe found owner-created rooms/stages could fall out of sync after mutations; fixed in `7df41dd` by synchronously merging returned owner-control state into React Query caches and verified on live `https://wtfos.app` with the 4/4 owned-surface probe |
+| WTF-BB-309 | Verified | Codex live feature loop | 2026-06-22 | E2E / live puppet ops | P1 | 12 | 7 | 2 | 4 | 2 | Production live puppet suite was blocked by localhost puppet credentials; repaired by using the Hetzner secret path, production-scoped credential metadata, keyring decrypt/sign verification, route/API hotfixes, and a stable live `https://wtfos.app` puppet retest with 141/141 passing on commit `12cbaf6` |
+| WTF-BB-310 | Open | - | 2026-06-22 | Ops / Hetzner verification dependencies | P2 | 9 | 12 | 2 | 3 | 1 | Hetzner production repo worktree cannot run the full TypeScript check because dev dependencies such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem` are missing; production hotfix verification had to rely on focused tests, GitHub deploy, live health, and live puppet proof |
+| WTF-BB-311 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / owner control UX | P1 | 11 | 8 | 2 | 5 | 0 | Independent live user-story probe found owner-created rooms/stages could fall out of sync after mutations; fixed in `7df41dd` by synchronously merging returned owner-control state into React Query caches and verified on live `https://wtfos.app` with the 4/4 owned-surface probe |
 | WTF-BB-312 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / Show Kit cooldown UX | P2 | 8 | 14 | 1 | 4 | 0 | Expanded independent live Show Kit relay probe found an immediate second trigger after a clip send could leave stale `sent` status; fixed in `7f5d0d7` by starting cooldown after successful relay completion and verified with the 2/2 live realtime/Show Kit probe |
+| WTF-BB-313 | Blocked | Codex live user-story gap loop | 2026-06-22 | Skywire / live AT puppet coverage | P1 | 11 | 8 | 2 | 4 | 1 | Connected Skywire live-status, signal publishing, and OAuth permission-sync stories cannot be fully tested on production because no live puppet has a connected AT Protocol account and deployed env files expose only public AT config, not a dedicated AT puppet credential |
 | WTF-BB-314 | Verified | Codex live user-story gap loop | 2026-06-22 | WIM / settings dialog keyboard UX | P2 | 8 | 14 | 1 | 4 | 0 | Independent live WIM probe found the settings dialog could stay open after creating a custom list because Escape was only handled on the popover node; fixed in `f09feec` with capture-phase Escape handling and verified on live `https://wtfos.app` with the WIM modular roster/DM probe |
+| WTF-BB-315 | Verified | Codex Macaroni exported drop wallet repair | 2026-06-23 | Macaroni / exported drop wallet and stage config | P0 | 15 | 2 | 3 | 5 | 2 | Exported Macaroni drop pages can create duplicate Octez/Beacon wallet clients, misdisplay max-per-wallet stage caps, and hit browser-blocked Octez RPC packing from third-party drop origins; fixed in `1ad5b57` and verified live on `https://wtfos.app` |
 | WTF-BB-316 | Verified | Codex Macaroni share/calendar repair | 2026-06-23 | Macaroni / exported drop sharing and sale reminders | P1 | 10 | 10 | 2 | 4 | 0 | Exported Macaroni drop share copy could exceed the standard X 280-character post limit and sale stages lacked prefilled add-to-calendar actions; fixed in `50083c5` and verified live on `https://wtfos.app` |
+| WTF-BB-298 | Open | - | 2026-06-21 | API / app gates and information disclosure | P1 | 14 | 3 | 3 | 4 | 3 | Disabled app APIs still serve public data and CRP status leaks internal topology |
+| WTF-BB-297 | Verified | Codex live user-story gap loop | 2026-06-22 | Desktop OS / production app gates | P0 | 14 | 3 | 3 | 5 | 1 | Production app gate doc freshness disables core public apps; fixed in `44e556f` by decoupling runtime launcher availability from stale doc/install-key health, verified on `https://wtfos.app` with `/api/apps/desktop` showing `wtf-live` and `skywire` launchable while stale plus 3/3 independent WTF LIVE user-story probes passing |
 | WTF-BB-299 | Verified | Codex live user-story gap loop | 2026-06-22 | Platform domains / access manifest | P1 | 12 | 7 | 2 | 4 | 2 | `/api/access` advertised legacy `wtfgameshow.app` origin on canonical `wtfos.app`; fixed in `e4770ad` and verified live on `https://wtfos.app` with canonical origin plus MCP endpoint |
+| WTF-BB-303 | Open | - | 2026-06-21 | Security / CSP hardening | P2 | 11 | 8 | 3 | 2 | 3 | Main app and user-site CSP policies remain broad for script/connect sources |
+| WTF-BB-300 | Open | - | 2026-06-21 | Desktop OS / route contract | P1 | 10 | 10 | 2 | 4 | 0 | Map Lab public route contract drifts between registries and renders an empty desktop |
+| WTF-BB-302 | Open | - | 2026-06-21 | Observability / public information disclosure | P2 | 9 | 12 | 2 | 2 | 2 | Public health endpoint exposes verbose runtime and chain topology |
+| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 18 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
 | WTF-BB-305 | Verified | Codex wallet live full-send | 2026-06-21 | Operations / production health | P0 | 13 | 4 | 3 | 5 | 0 | Live `/api/health` could intermittently return 503 because scheduler audit used a whole-table latest-run query that timed out under production audit volume; fixed by querying only registered job names through indexed lateral latest-row lookups plus a production index; verified live on `wtfos.app` |
 | WTF-BB-296 | Verified | Codex cobwebsaints domain readiness pass | 2026-06-20 | WTF Domains / account-specific advanced feature coverage | P2 | 8 | 14 | 2 | 3 | 0 | Domain/pinning harness data hardcoded `pincollector.wtfos.me`, so account-specific readiness for `cobwebsaints` could pass generic checks while advanced surfaces showed another user's host; fixed with signed-in-user-derived harness domains, Cobweb persona coverage across Settings, WTF Domains, IPFS Pinning, and Macaroni trusted creator access, plus full inventory verification |
 | WTF-BB-295 | Verified | Codex stale welcome auth repair | 2026-06-20 | Auth / welcome session recovery | P1 | 12 | 7 | 3 | 5 | 0 | Welcome dialog could retain a cached signed-in user after the protected API session was gone, so every welcome/profile/diary action returned `Not authenticated` and passive wallet reconciliation logged repeated 401s; fixed with protected-401 session invalidation, auth cache clearing, passive wallet warning suppression, and focused/full inventory verification |
+| WTF-BB-294 | Verified | Codex DedRooms local playtest repair | 2026-06-19 | DedRooms / MUD navigation and room affordances | P1 | 12 | 7 | 3 | 5 | 0 | DedRooms allowed unlisted cardinal travel, could spawn players into anchor rooms such as THNG, and hid real room affordances behind flavor text; fixed with authored-passage enforcement, non-anchor spawn targets, actionable `look` output, and verified by focused engine tests, typecheck, and local server smoke |
 | WTF-BB-215 | Verified | Codex Skywire new OAuth outage repair | 2026-06-06 | Skywire / AT OAuth new-session connect | P0 | 17 | 1 | 4 | 5 | 3 | New Skywire OAuth connections to Bluesky fail while existing sessions continue working; fixed with durable app+SDK OAuth state persistence and verified live on wtfos.app |
 | WTF-BB-216 | Verified | Codex Skywire platform actor OAuth repair | 2026-06-06 | Skywire / AT OAuth platform actor intent | P0 | 16 | 1 | 3 | 5 | 3 | Skywire permission picker silently refused intentional `wtfgameshow.bsky.social` OAuth before browser navigation; fixed with explicit platform actor intent, callback identity checks, and verified by `npx tsx --test server/features/atproto/skywire-policy.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` |
 | WTF-BB-217 | Verified | Codex Rat Race tz2at capability pass | 2026-06-06 | Rat Race / tz2at rolling replay scan | P1 | 12 | 7 | 3 | 5 | 0 | Rat Race still auto-refreshes and default-scans only a tiny slice of tz2at replay, making the rolling stream look like it can only find the same few tokens; fixed with manual reload policy, smaller replay chunks, split retry recovery, scan coverage diagnostics, and verified by focused tests, TypeScript, inventory coverage/E2E, plus live tz2at replay probes |
@@ -802,7 +814,7 @@ Priority labels:
 ### WTF-BB-207 - Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity
 
 - Category: Platform domains / AT OAuth identity boundary
-- Status: Verified
+- Status: Fixed
 - Owner/Session: Codex Skywire canonical-domain OAuth repair
 - Score: C3 + F5 + S5 + P0(5) = 16
 - Evidence:
@@ -1248,7 +1260,7 @@ Priority labels:
 ### WTF-BB-191 - tz2at listing signals can suppress Objkt direct-buy purchase keys
 
 - Category: Rat Race / marketplace wallet sends
-- Status: Verified
+- Status: Fixed
 - Owner/Session: Codex Rat Race direct-buy hotfix
 - Score: C1 + F4 + S3 + P1(5) = 13
 - Evidence:
@@ -2337,7 +2349,7 @@ Priority labels:
 ### WTF-BB-127 - Side-quest auto-verification schema includes unimplemented reward handles
 
 - Category: Rewards / side quest automation
-- Status: In Progress
+- Status: Fixed
 - Owner/Session: Codex side quests reward-account deploy
 - Score: C2 + F4 + S1 + P1(4) = 11
 - Evidence:
@@ -5218,7 +5230,7 @@ Priority labels:
 ### WTF-BB-221 - tz2at ecosystem analytics outlived live-puppet workflow budget
 
 - Category: tz2at / ecosystem analytics reliability
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex full-send verification repair
 - Score: C2 + F4 + S0 + P1(4) = 10
 - Evidence:
@@ -5239,7 +5251,7 @@ Priority labels:
 ### WTF-BB-222 - public leaderboard profile alias hydration spent the public-data budget
 
 - Category: Public leaderboard / profile alias hydration
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex full-send verification repair
 - Score: C2 + F4 + S0 + P1(4) = 10
 - Evidence:
@@ -5319,7 +5331,7 @@ Priority labels:
 ### WTF-BB-240 - Macaroni Shadownet Kukai pairing opens a blank or wrong tab
 
 - Category: Macaroni / Beacon Kukai Shadownet pairing
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Macaroni Kukai Shadownet handoff pass
 - Score: C2 + F5 + S0 + P1(4) = 11
 - Evidence:
@@ -5457,7 +5469,7 @@ Priority labels:
 ### WTF-BB-255 - Macaroni Beacon reconnect and treasury default regression
 
 - Category: Macaroni / Beacon connect lifecycle and treasury defaults
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex Macaroni wallet regression repair
 - Score: C3 + F5 + S1 + P0(5) = 14
 - Evidence:
@@ -5578,7 +5590,7 @@ Priority labels:
 ### WTF-BB-266 - Macaroni wtfOS publish returns a dead `.me` user-site link
 
 - Category: Macaroni / PDS-backed user-site serving
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex Macaroni PDS user-site publish investigation
 - Score: C4 + F5 + S1 + P1(4) = 14
 - Evidence:
@@ -5842,92 +5854,6 @@ Priority labels:
   - Hetzner deploy for commit `da79c63` completed successfully and live health reported `commitRef:"da79c63"` with `status:"ok"`.
   - Live Airporters verification passed on `https://paulwhoisaghost.wtfos.me/airporters-vol-1`: HTTP 200 user-site surface, Octez/Beacon CSP websocket/frame allowances present, `vendor/octez-connect.js` before `js/octez-wallet.js`, the wrapper before `installOctezPrimaryWallet({ patchBeacon: true })`, the patch before `macaroniCommonJs`, Beacon fallback runtime present, and no `{ type: net.beaconNetwork, rpcUrl }` leak.
   - Live Macaroni static assets verified on `https://wtfos.app/creation-tools/macaroni/drop.html`, `studio.html`, `js/octez-wallet.js`, and `vendor/octez-connect.js`: Octez assets load before `common.js`, the wrapper exposes `providerName = "octez.connect"` plus `beaconBackup`, and the vendor bundle exposes `MacaroniOctezConnect` plus `getDAppClientInstance`.
-
-### WTF-BB-304 - Production wallet sign-in could hang on `Connecting...`
-
-- Category: Auth / Tezos wallet sign-in
-- Status: Verified
-- Owner/Session: Codex wallet/X auth full-send
-- Score: C3 + F5 + S1 + P0(5) = 14
-- Evidence:
-  - Live `https://wtfos.app/login` was retried from a fresh Chromium profile with cookies, local/session storage, IndexedDB, and Cache Storage cleared before any fix work.
-  - The wallet login button still stayed on `Connecting...` on production, while the console reported an active Beacon account without an `ACTIVE_ACCOUNT_SET` subscription.
-  - Live health was otherwise OK but reported `chain.tezosRpcUrl:"https://rpc.tzkt.io/mainnet"`, so the host runtime env could preserve an old public RPC default even after source defaults changed.
-  - Auth wallet identity is intentionally Tezos mainnet wallet ownership; Shadownet is for deliberate app/contract flows, not the primary wtfOS login vector.
-  - 2026-06-21 follow-up user report: wallet connect can return the user to the login page, and after a failed wallet attempt the username/password fields can be populated even though the user never used password login; submitting those fields gives `Invalid credentials`.
-- Why it matters:
-  - Wallet sign-in is a primary account entry path. A stuck provider prompt blocks users from logging in, registering wallet-backed accounts, and reaching role-permitted surfaces.
-  - Mixing app-local Shadownet preferences into login would make auth identity ambiguous and can make wallet providers reject or stall requests.
-- Fix:
-  - Split the auth wallet lane from app wallet network preferences with explicit mainnet `connectAuthWallet()` and `signAuthPayload()` helpers.
-  - Force fresh Beacon/WalletConnect auth state for explicit login retries by clearing relevant localStorage and IndexedDB entries before requesting permissions.
-  - Subscribe to `ACTIVE_ACCOUNT_SET` before permission requests for Octez Connect and Beacon, keep Octez Connect as primary with Beacon/Taquito as backup, and bound permission requests with a retryable timeout.
-  - Add a login-screen timeout and best-effort wallet disconnect so the UI recovers even if a provider handoff promise never settles after browser timers fire.
-  - Clear username/password state before wallet auth begins, read submitted username/password from the real form fields instead of stale React state, and give the login inputs stable `id`/`name`/`htmlFor` wiring so browser/password-manager autofill cannot masquerade as a wallet credential fallback.
-  - Preserve the explicit Beacon permission network when the fallback provider is used so it stays on the same named auth lane as initialization.
-  - Move source defaults and deploy-time known-default migration to Octez-hosted mainnet/shadownet RPCs while retaining TzKT as the indexer/API fallback.
-  - Update interaction inventory and behavior assertions so future auth changes preserve the mainnet-login lane and do not confuse it with Shadownet app flows.
-- Verification:
-  - 2026-06-21 local follow-up verification passed focused auth/profile policy coverage, TypeScript, inventory coverage, and full inventory E2E before deployment.
-  - GitHub `Deploy to Hetzner` run `27914410198` and `Quality Gates` run `27914410209` completed successfully for commit `595d7c0`.
-  - Live `https://wtfos.app/api/health` reported `status:"ok"`, DB OK, chain OK, `network:"mainnet"`, `tezosRpcUrl:"https://tezos-mainnet.octez.io/"`, TzKT API fallback, 31 registered jobs, scheduler audit reachable, and zero recent errors.
-  - Clean-profile live wallet smoke on `https://wtfos.app/login` cleared cookies/local/session storage, IndexedDB, and Cache Storage before retrying; the button reached `Connecting...`, then recovered to enabled `Connect Tezos Wallet` with the retryable timeout message instead of staying stuck.
-  - 2026-06-21 full-send follow-up commit `069b96b4` deployed through GitHub `Quality Gates` run `27917843184` and `Deploy to Hetzner` run `27917843189`.
-  - Live `https://wtfos.app/api/health` reported `commitRef:"069b96b"`, `status:"ok"`, DB OK, chain OK, `network:"mainnet"`, `tezosRpcUrl:"https://tezos-mainnet.octez.io/"`, 31 registered jobs, scheduler audit reachable, and zero recent errors.
-  - Live `https://wtfos.app/login` returned HTTP 200, and the deployed login bundle contains `new FormData(i.currentTarget)`, stable `wtfos-login-username` / `wtfos-login-password` field IDs and `name` attributes, the wallet UI timeout message, and the wallet button state clearing before wallet auth.
-  - The live wallet bundle contains bounded wallet connection/signing messages plus Beacon permission requests with the explicit network object, confirming the fallback provider is deployed on the intended auth lane.
-
-### WTF-BB-308 - X OAuth can link the wrong current browser account
-
-- Category: Auth / X OAuth account binding
-- Status: Verified
-- Owner/Session: Codex wallet/X auth full-send
-- Score: C3 + F4 + S1 + P1(4) = 12
-- Evidence:
-  - 2026-06-21 user report: Profile X linking always attempted to connect the shared `wtfgameshow` X account instead of the user's personal account, with no clear way to change the account being authorized.
-  - The Profile X OAuth start flow did not bind the intended profile handle to the OAuth session, so a browser already signed in to the shared X account could authorize that account and continue toward token storage.
-  - 2026-06-21 full-send live smoke showed `/api/auth/social/config` still reported `publicSiteUrl:"https://wtfgameshow.app"` on `wtfos.app`, and the OAuth base helper used raw `PUBLIC_SITE_URL` for provider callback URLs.
-- Why it matters:
-  - X linking is identity evidence for verification and onboarding. Accepting the browser's current X account without checking the intended handle can silently attach the wrong social identity to a user profile.
-- Fix:
-  - Profile sends the normalized intended X handle as `expectedHandle` when starting OAuth and labels the connect button with that handle when one is present.
-  - The OAuth2 server session stores the expected handle, uses the current documented `https://x.com/i/oauth2/authorize` endpoint, fetches `/users/me`, and rejects mismatched accounts before token persistence or onboarding.
-  - OAuth callback helpers canonicalize legacy `wtfgameshow.app`, `www.wtfgameshow.app`, `new.wtfgameshow.app`, and `www.wtfos.app` origins to `https://wtfos.app` while preserving custom preview/local origins, callback paths, query strings, and hash fragments.
-  - The Profile UI reports the expected and actual handles and tells the user to switch accounts on `x.com` before retrying.
-- Verification:
-  - Local verification passed `npx tsx --test server/features/w/x-connect-onboarding-policy.test.ts client/src/pages/profile-social-link-policy.test.ts` plus the combined auth/profile policy suite, TypeScript, inventory coverage, and full inventory E2E before deployment.
-  - 2026-06-21 full-send commit `069b96b4` deployed through GitHub `Quality Gates` run `27917843184` and `Deploy to Hetzner` run `27917843189`.
-  - Live `https://wtfos.app/api/health` reported `commitRef:"069b96b"` and `status:"ok"`.
-  - Live `https://wtfos.app/api/auth/social/config` reports `twitterOauth2:true`, and the deployed route manifest points Profile to `Profile-wtf2-Ck_hc8Xf.js`.
-  - The live Profile bundle contains the normalized `expectedHandle` OAuth start parameter, handle-specific `Connect @...` / `Reconnect @...` button logic, the `twitter_oauth2_wrong_account` error branch, and the `Switch accounts on x.com` recovery copy.
-  - The deployed server source for commit `069b96b4` uses `https://x.com/i/oauth2/authorize`, stores `expectedHandle` in the OAuth session, compares it with `/users/me`, and redirects before token persistence if the returned account does not match.
-  - 2026-06-21 callback-origin follow-up passed `npx tsx --test server/auth/oauth-base.test.ts server/features/w/x-connect-onboarding-policy.test.ts client/src/pages/profile-social-link-policy.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and exact-commit full inventory E2E from `/tmp/wtf-auth-fullsend-verify-8d994c9e` with 352/352 passing.
-  - GitHub `Quality Gates` run `27918597491` and `Deploy to Hetzner` run `27918597506` completed successfully for commit `8d994c9e`.
-  - Live `https://wtfos.app/api/health` reported `commitRef:"8d994c9"`, `status:"ok"`, DB OK, chain OK, mainnet Octez RPC, 31 registered jobs, scheduler audit reachable, and zero recent errors.
-  - Live `https://wtfos.app/api/auth/social/config` now reports `twitterOauth2:true` and `publicSiteUrl:"https://wtfos.app"` even though the pre-fix production env had surfaced the legacy `wtfgameshow.app` origin.
-  - Live `https://wtfos.app/login` returned HTTP 200 after the deploy.
-
-### WTF-BB-305 - Public health intermittently returned 503 from scheduler audit timeout
-
-- Category: Operations / production health
-- Status: Verified
-- Owner/Session: Codex wallet live full-send
-- Score: C3 + F5 + S0 + P0(5) = 13
-- Evidence:
-  - After final wallet deploy, `https://wtfos.app/api/health` repeatedly alternated between HTTP 200 and HTTP 503 while serving commit `e78a15a`.
-  - Captured failing body showed `status:"degraded"`, DB OK, chain OK, Octez mainnet RPC OK, `recentErrors:0`, and `jobs.error:"scheduler audit check timed out after 2000ms"`.
-  - The scheduler audit query used `SELECT DISTINCT ON (job_name) ... FROM sync_runs ORDER BY job_name, started_at DESC`, which can sweep the growing production audit table.
-- Why it matters:
-  - The public health endpoint is the deployment and operator readiness contract. Intermittent 503s make production look down and can mask the difference between an app outage and a slow diagnostics query.
-  - Wallet/login reassurance depends on a stable live readiness endpoint after deploy, not just a green browser smoke.
-- Fix:
-  - Rewrite scheduler `latestPerJob()` to query the known registered scheduler job names and fetch one latest row per job through a `LEFT JOIN LATERAL` lookup.
-  - Add `idx_sync_runs_job_started_desc` on `(job_name, started_at DESC)` so latest-row audit reads match the query order.
-  - Add a policy test preventing the health scheduler audit from drifting back to a whole-table `DISTINCT ON` scan.
-- Verification:
-  - GitHub `Deploy to Hetzner` run `27914410198` applied the deploy path successfully for commit `595d7c0`; `Quality Gates` run `27914410209` also completed successfully.
-  - Live public stability probe ran 40 consecutive JSON-parsed requests against `https://wtfos.app/api/health`; all 40 returned HTTP 200 with top-level `ok:true`, `status:"ok"`, commit `595d7c0`, and `jobs.ok:true`.
-  - Follow-up health read reported scheduler audit reachable, 31 registered jobs, zero recent errors, DB OK, chain OK, and Octez mainnet RPC.
 
 ### WTF-BB-274 - Macaroni V2 contract versions, editions, and minter royalties
 
@@ -6330,19 +6256,20 @@ Priority labels:
 - Owner/Session: Codex Skywire standalone OVOID UX pass
 - Score: C4 + F5 + S0 + P1(4) = 13
 - Evidence:
-  - `/skywire` was marked auth-required in PageDef, shared browser-route metadata, access inventory, and E2E fixtures.
-  - `/api/atproto/oauth/start` required an existing wtfOS session and the callback rejected pending OAuth state without a user id.
-  - `skywire.wtfos.app` had no first-class standalone route behavior, so anonymous users got the wtfOS landing/login flow instead of a Skywire-branded AT Protocol login.
-  - The current Skywire UI still used the heavier desktop/retro shell where OVOID.at presents a focused dark, centered AT login surface.
+  - `/skywire` is currently marked auth-required in PageDef, shared browser-route metadata, access inventory, and E2E fixtures.
+  - `/api/atproto/oauth/start` requires an existing wtfOS session and the callback rejects pending OAuth state without a user id.
+  - `skywire.wtfos.app` has no first-class standalone route behavior, so anonymous users get the wtfOS landing/login flow instead of a Skywire-branded AT Protocol login.
+  - The current Skywire UI still uses the heavier desktop/retro shell where OVOID.at presents a focused dark, centered AT login surface.
 - Why it matters:
   - Skywire should be usable as an AT Protocol client entrypoint, not only as an app inside an existing WTF OS session.
   - A subdomain-specific AT login lets creators share Skywire as a clean product surface while still relying on the existing Skywire server permissions after OAuth.
 - Correction:
-  - Made Skywire's browser route public enough to show a standalone login shell while keeping mutation/feed APIs protected.
-  - Added a Skywire standalone OAuth lane that creates or resumes a server user from the returned AT DID and establishes a normal browser session after callback.
-  - Reworked the standalone shell toward OVOID's focused task model: compact top navigation, primary actions exposed first, secondary tools behind a More disclosure, and less persistent chrome.
-  - Registered `skywire.wtfos.app` as an allowed OAuth return origin and added inventory coverage for the public standalone login state.
+  - Make Skywire’s browser route public enough to show a standalone login shell while keeping mutation/feed APIs protected.
+  - Add a Skywire standalone OAuth lane that creates or resumes a server user from the returned AT DID and establishes a normal browser session after callback.
+  - Rework the standalone shell toward OVOID's focused task model: compact top navigation, primary actions exposed first, secondary tools behind a More disclosure, and less persistent chrome.
+  - Register `skywire.wtfos.app` as an allowed OAuth return origin and add inventory coverage for the public standalone login state.
 - Verification:
+  - Run focused AT/Skywire policy tests, TypeScript, inventory coverage, and focused Skywire Playwright asserting the standalone login UI and OAuth-start handoff.
   - Verified with `npm run check -- --pretty false`, `npm run build`, `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` with 354/354 passing.
   - Captured local Playwright walkthrough screenshots under `output/playwright/skywire-standalone-walkthrough/`, including `08-ux-redesign-feed-polished.png` and `10-ux-redesign-signals-polished.png`.
 
@@ -6441,7 +6368,323 @@ Priority labels:
   - Passed full inventory route/domain coverage for Pasta inside `PATH=/opt/homebrew/bin:/usr/local/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory`; the overall suite remained red only on pre-existing Broot and Skywire failures unrelated to Pasta.
   - Production verified on 2026-06-18: GitHub Quality Gates `27738002649` passed, Deploy to Hetzner `27738002671` passed, live health returned `commitRef:"64674a8"`, and deployed Pasta route/static smoke confirmed the suite assets are reachable.
 
-### WTF-BB-309 - WTF LIVE owner controls can desync after live mutations
+### WTF-BB-295 - Welcome stale auth recovery
+
+- Category: Auth / welcome session recovery
+- Status: Verified
+- Owner/Session: Codex stale welcome auth repair
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report on 2026-06-20 shows the welcome modal rendering `Welcome to wtfOS, cobwebsaints` while every button briefly enters `Saving...` and then returns `Not authenticated`.
+  - Browser console screenshot shows repeated 401 API failures plus `[WTF] wallet link attempt failed: Error: Not authenticated` from `client/src/lib/wallet-context.tsx`.
+  - Code inspection found `AuthProvider` caches mutation-returned users while protected writes rely on the cookie-backed Passport session; a stale or rejected session cookie can therefore leave the client in a signed-in UI state while `/api/auth/welcome/complete` and `/api/wallets` are unauthenticated.
+- Why it matters:
+  - New users can get trapped behind the first-run modal and cannot reach Profile or dismiss the welcome, making account creation look broken even though the account row may exist.
+- Correction:
+  - Treat protected API 401s as an auth-session boundary failure, clear cached auth state, avoid passive wallet-link warning loops, and browser-test the stale-user welcome path.
+- Verification:
+  - Added `AUTH_SESSION_INVALID_EVENT` and `ApiRequestError` handling so protected API 401s clear the cached auth user while public login/register/wallet-auth failures do not globally invalidate the session.
+  - Suppressed expected stale-session 401 warnings in passive Tezos and Etherlink wallet reconciliation.
+  - Added `auth.session.invalidated` inventory and behavior assertion coverage plus a focused Playwright harness scenario for stale welcome completion.
+  - Passed `PATH=/opt/homebrew/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npx tsx --test client/src/lib/auth-session-policy.test.ts client/src/lib/wallet-context-policy.test.ts client/src/lib/auth-wallet-login-policy.test.ts`.
+  - Passed `PATH=/opt/homebrew/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory:coverage`.
+  - Passed `PATH=/opt/homebrew/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npm run check -- --pretty false`.
+  - Passed `PATH=/opt/homebrew/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npx playwright test tests/playwright/inventory/auth-session.spec.mjs`.
+  - Passed `PATH=/opt/homebrew/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (355/355).
+
+### WTF-BB-296 - Cobwebsaints domain and advanced feature readiness coverage
+
+- Category: WTF Domains / account-specific advanced feature coverage
+- Status: Verified
+- Owner/Session: Codex cobwebsaints domain readiness pass
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - Follow-up to the 2026-06-20 user report asked for the `cobwebsaints` account path to be smooth through domain claiming and advanced features.
+  - Existing focused Settings coverage used a generic `macaroni` persona, while the IPFS Pinning harness hardcoded `pincollector.wtfos.me`, `pincollector.wtf.tez`, and `did:plc:harnesspins` regardless of the signed-in user.
+  - That made it possible for account-specific domain readiness to pass generic route/action checks while advanced preservation surfaces displayed another user's host identity.
+- Why it matters:
+  - Domain claiming, PDS-backed pinning, and Macaroni hosted publishing all depend on stable per-account host identity. A user recovering from first-run auth trouble needs every advanced surface to reflect their own username-derived domain, not a fixture account.
+- Correction:
+  - Derive WTF Domains/IPFS Pinning harness identity from the active auth user, expose `wtf-subdomains` and `ipfs-pinning` in the desktop app-gate mock, seed existing IPFS coverage explicitly, and add a `cobwebsaints` trusted-creator persona spec.
+- Verification:
+  - Added `tests/playwright/inventory/cobwebsaints-account.spec.mjs`, which proves `cobwebsaints` can claim `cobwebsaints.wtfos.me`, build `cobwebsaints.wtf.tez` plans with the connected wallet, see the same host/alias in IPFS Pinning, queue a wallet backup policy, and see Macaroni's trusted-creator wtfOS pin/publish affordance.
+  - Registered `account.cobwebsaints-domain-advanced-readiness` in the behavior assertion registry and owner surfaces for System Settings, WTF Domains, IPFS Pinning, and Creation Tools.
+  - Passed `PATH=/opt/homebrew/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npx playwright test tests/playwright/inventory/cobwebsaints-account.spec.mjs tests/playwright/inventory/settings-subdomain-setup.spec.mjs tests/playwright/inventory/ipfs-pinning-manager.spec.mjs`.
+  - Passed `PATH=/opt/homebrew/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory:coverage`.
+  - Passed `PATH=/opt/homebrew/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npm run check -- --pretty false`.
+  - Passed `PATH=/opt/homebrew/bin:/Applications/Codex.app/Contents/Resources:/usr/bin:/bin:/usr/sbin:/sbin npm run test:e2e:inventory` (356/356).
+
+### WTF-BB-297 - Production app gate doc freshness disables core public apps
+
+- Category: Desktop OS / production app gates
+- Status: In Progress
+- Owner/Session: Codex live user-story gap loop
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - 2026-06-21 production audit of `https://wtfos.app/api/apps/desktop` returned a top-level `apps` map with 21 app gates false, including `skywire`, `arcade`, `gallery`, `wtf-live`, `tv`, `w`, `studio`, `game-studio`, `console`, `crp-nominations`, and `dues-manager`.
+  - The same response's `list` entries still reported many of those app rows as `enabled: true` but `docStatus: "stale"` with expired docs/install keys, so the runtime availability map is using doc/installability freshness as user-facing app availability.
+  - Fresh anonymous browser checks showed public routes `/skywire`, `/arcade`, `/dues`, `/gallery`, `/gallery/token/KT1E2eHarness/3`, `/token/KT1E2eHarness/3`, and `/discord/*` rendering disabled-by-admin windows on desktop and mobile.
+- Why it matters:
+  - Public entry points and core OS apps can disappear from production because registry documentation freshness expired, even when operators did not intentionally turn the feature off.
+- Correction:
+  - Split operator app enablement from documentation/install-key freshness. Runtime desktop app availability now follows the explicit `enabled` launcher flag; stale doc status and install-key health remain visible admin registration metadata.
+  - Removed the admin API rejection that prevented operators from re-showing an enabled app when doc status was stale.
+  - Updated admin copy/status text so stale docs read as registration health attention instead of "blocked" launchability.
+- Verification:
+  - Local: `/Users/joshuafarnworth/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/tsx/dist/cli.mjs --test server/lib/desktop-app-runtime.test.ts`.
+  - Local: `/Users/joshuafarnworth/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/tsx/dist/cli.mjs tests/e2e/inventory/coverage.ts`.
+  - Local: `/Users/joshuafarnworth/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/typescript/bin/tsc --noEmit --pretty false`.
+  - Hetzner: `npx tsx --test server/lib/desktop-app-runtime.test.ts`.
+  - Hetzner: `npx tsx tests/e2e/inventory/coverage.ts`.
+  - Production deploy: `44e556f` deployed successfully; `https://wtfos.app/api/health` reported `commitRef: "44e556f"` and healthy DB.
+  - Production app gate: `https://wtfos.app/api/apps/desktop` returned `wtf-live.apps=true`, `wtf-live.enabled=true`, `wtf-live.installable=false`, `wtf-live.docStatus="stale"` and the same launchable/stale split for `skywire`.
+  - Production user-story retest: `tmp/live-user-story-probes/wtf-live-results.json` passed 3/3 independent WTF LIVE probes covering mobile-first room controls, mic diagnostic, room join/window controls, panel pop-outs, and signed-in lobby presence after a public room joins.
+
+### WTF-BB-298 - Disabled app APIs still serve public data and leak internal CRP status
+
+- Category: API / app gates and information disclosure
+- Status: Open
+- Owner/Session: -
+- Score: C3 + F4 + S3 + P1(4) = 14
+- Evidence:
+  - 2026-06-21 production audit found `/api/access` marking app-gated public APIs as `enabled:false` while direct requests still returned 200.
+  - Examples: `/api/arcade/games`, `/api/arcade/stats`, `/api/game-studio/templates`, `/api/game-studio/assets`, `/api/crp-nominations/categories`, and `/api/crp-nominations/status`.
+  - `/api/crp-nominations/status` exposed internal deployment details including a private PDS URL shaped like `http://10.0.0.3:3001` while the `crp-nominations` gate was disabled.
+- Why it matters:
+  - The UI and manifest claim app gates are closed, but the underlying APIs remain open. This weakens operator controls and exposes internal service topology through public endpoints.
+- Likely correction direction:
+  - Enforce app gates in API middleware for every route with an `appGate`, and redact internal topology from public status payloads.
+- Verification idea:
+  - Add route-level tests that disabled app gates return 403 or a redacted public fallback for browser and API access; include CRP status redaction assertions.
+
+### WTF-BB-299 - `/api/access` advertises legacy `wtfgameshow.app` origin on canonical `wtfos.app`
+
+- Category: Platform domains / access manifest
+- Status: Verified
+- Owner/Session: Codex live user-story gap loop
+- Score: C2 + F4 + S2 + P1(4) = 12
+- Evidence:
+  - 2026-06-21 production `https://wtfos.app/api/access` returned `origin: "https://wtfgameshow.app"` and `mcp.endpoint: "https://wtfgameshow.app/mcp"`.
+  - Caddy redirects `wtfgameshow.app` to `wtfos.app`, and `.env.example` documents `PUBLIC_SITE_URL` production as `https://wtfos.app`.
+  - Source fix: `server/routes/access.ts` now resolves the origin with canonical-domain helpers and canonicalizes `MCP_PUBLIC_ENDPOINT`; `server/routes/access.test.ts` covers legacy env and preview-host fallback.
+  - Production verification: GitHub Deploy to Hetzner run `27985961351` and Quality Gates run `27985961357` both completed `success` for `e4770ad`; live `/api/health` reported `commit: "e4770ad"`; live `/api/access` returned `origin: "https://wtfos.app"`, `mcp.endpoint: "https://wtfos.app/mcp"`, and no `wtfgameshow.app` values.
+- Why it matters:
+  - CLI/MCP clients and paired agents can cache or call the wrong canonical origin, and support/debug output contradicts the live platform domain.
+- Likely correction direction:
+  - Correct production `PUBLIC_SITE_URL` and `MCP_PUBLIC_ENDPOINT`, and add a live/canonical host assertion for `/api/access`.
+- Verification idea:
+  - Curl `https://wtfos.app/api/access` after deploy and assert both `origin` and MCP endpoint use `https://wtfos.app`.
+- Local verification:
+  - `./node_modules/.bin/tsx --test server/routes/access.test.ts server/lib/canonical-domain.test.ts server/static.test.ts` passed 10/10; `npm run test:e2e:inventory:coverage` passed; `npm run check -- --pretty false` remains blocked by `WTF-BB-310` missing Hetzner dev dependencies, not by this access-route change.
+
+### WTF-BB-300 - Map Lab public route contract drifts between registries and renders an empty desktop
+
+- Category: Desktop OS / route contract
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - Local registry comparison on 2026-06-21 found `/map-lab` as `auth:true` in `client/src/routes/page-defs.ts` and `tests/e2e/inventory/route-fixtures.mjs`, but `auth:false` in `shared/wtf-browser-routes.ts`.
+  - Production `/api/cli/routes` lists `/map-lab` for anonymous callers, and `/api/access` advertises it public.
+  - Mobile browser smoke of `https://wtfos.app/map-lab` returned 200 but showed only the desktop, a Map Lab icon/taskbar entry, and no visible Map Lab window or demo content.
+- Why it matters:
+  - The recently fixed public Map Lab demo can look reachable to CLI/manifests while failing the actual anonymous visual task, and the current dirty registry state could redeploy the wrong auth contract.
+- Likely correction direction:
+  - Decide whether `/map-lab` remains public demo or signed-in app, sync every route registry, and ensure direct anonymous navigation opens the demo surface visibly on desktop and mobile.
+- Verification idea:
+  - Add focused Playwright for anonymous `/map-lab` with a rendered demo marker, route metadata sync, no horizontal overflow, and CLI/access manifest parity.
+
+### WTF-BB-315 - Exported Macaroni drop pages create duplicate wallet clients and drift from stage config
+
+- Category: Macaroni / exported drop wallet and stage config
+- Status: Verified
+- Owner/Session: Codex Macaroni exported drop wallet repair
+- Score: C3 + F5 + S2 + P0(5) = 15
+- Evidence:
+  - 2026-06-23 user/webidente screenshots from an exported Macaroni drop deployed on `mint.cobwebsaints.art` show the share/drop summary saying `Wallet limit: no per-wallet cap` while the stage config contains `max_per_wallet: 5`.
+  - The same report shows Notj and Dex hitting a wallet error that the request is for a different network than the device currently selected, while Chrome with Kukai works.
+  - Browser console screenshot shows `[OCTEZ.CONNECT] It looks like you created multiple octez.connect SDK Client instances` and `An active account has been received, but no active subscription was found for BeaconEvent.ACTIVE_ACCOUNT_SET`.
+  - The console also shows browser CORS failures against `https://tezos-mainnet.octez.io/chains/main/blocks/head/helpers/scripts/pack_data` from the third-party drop origin.
+- Why it matters:
+  - Creators export Macaroni drop pages and copy them to their own sites. If the exported artifact contains duplicate wallet-client lifecycle, stale network metadata, or browser-hostile RPC packing, downstream creators carry the bug even when wtfOS itself is healthy.
+- Likely correction direction:
+  - Reuse/reconfigure the existing exported-page wallet instance instead of nulling and recreating it during connect, subscribe to `ACTIVE_ACCOUNT_SET` before permission/account-return flows, normalize both snake_case and camelCase stage cap config into every display/preflight path, and use a browser-safe packing/RPC strategy for exported pages.
+- Verification idea:
+  - Add source-policy tests for singleton wallet reuse, mandatory active-account subscription, stage cap normalization, and local/browser-safe packing. Then syntax-check the Macaroni static bundle and run focused Macaroni policy/live harness coverage.
+- Correction:
+  - Updated the Macaroni exported runtime to keep the wallet object alive through reconnect/reset flows, reconfigure existing Octez/Beacon clients, subscribe each SDK client to `ACTIVE_ACCOUNT_SET`, expose subscription/reconfiguration through the Octez bridge, normalize option-like `max_per_wallet` storage before status/share/preflight display, and retry recoverable RPC/`pack_data` failures through the configured Tezos fallback RPC.
+  - Updated the Tezos wallet skill and checklist/playbook with Octez Connect and Beacon active-account subscription, singleton-client, and browser RPC packing rules.
+  - Added the exported drop-page collector flow to the canonical interaction inventory and linked it to the Macaroni behavior assertion.
+- Verification:
+  - `node --check public/creation-tools/macaroni/js/common.js`
+  - `node --check public/creation-tools/macaroni/js/drop.js`
+  - `node --check public/creation-tools/macaroni/js/octez-wallet.js`
+  - `./node_modules/.bin/tsx --test server/routes/macaroni-policy.test.ts` passed 20/20.
+  - `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts` passed with 176 inventory rows and 817 unique handles.
+  - Live Cobweb contract storage for `KT19uFFj9TJC4uRXv5mky1eQKnPurjAPRT3d` was checked through TzKT and stage 0 currently reports `max_per_wallet: "5"`.
+  - Production commit `1ad5b57` was pushed to `main`; GitHub `Deploy to Hetzner` run `28049971647` completed successfully with health check, and `Quality Gates` run `28049972099` completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"` with `version.commitRef:"1ad5b57"`.
+  - Live static assets contain the repaired markers: `common.js` has `rpcFallbacks`, `ACTIVE_ACCOUNT_SET`, `ensureWallet`, and no `clearBeaconStorage(...); wallet = null`/expired reconnect nulling pattern; `drop.js` has `maxPerWalletFromStage` plus `throwOnRecoverableRpcError`; `octez-wallet.js` has `configure(options)` and `subscribeToEvent(eventName, handler)`.
+  - Live browser smoke of `https://wtfos.app/creation-tools/macaroni/drop.html` returned HTTP 200, rendered connect/disconnect controls, and produced no console/page errors on initial load.
+
+### WTF-BB-316 - Exported Macaroni drop sharing exceeds X limits and lacks sale reminders
+
+- Category: Macaroni / exported drop sharing and sale reminders
+- Status: Verified
+- Owner/Session: Codex Macaroni share/calendar repair
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - Follow-up user report on 2026-06-23 asked whether Macaroni's preconfigured share message was still inaccurate about max-per-wallet limits, whether X/Twitter share text fits the free-tier 280-character post limit, whether token image sharing is possible, and whether sale stages can ship with add-to-calendar configuration.
+  - Current exported drop share text includes title, creator, stage label, cost, wallet limit, access, supply, mint page, and cover image, which can exceed X's standard 280-character limit once title/creator/URLs are populated.
+  - Sale schedule rows render stage start/price/tags but do not provide prefilled calendar handoff links.
+- Why it matters:
+  - Creators rely on exported drop pages to market live sales. Overlong X share text can fail or require manual editing at the moment collectors/creators are trying to promote the mint, and missing calendar links makes stage reminders a manual chore.
+- Correction:
+  - Keep X share text bounded against the standard 280-character post limit while preserving mint/token image URLs where possible, keep Bluesky share summaries richer, and add prefilled `.ics` plus Google Calendar links to every sale stage row.
+- Verification:
+  - Add source-policy checks for X 280-character trimming, URL weighting, token/cover media URL preservation, sale-stage calendar generation, and mobile-safe stage-row layout.
+  - Local source checks passed: `node --check public/creation-tools/macaroni/js/drop.js`, `./node_modules/.bin/tsx --test server/routes/macaroni-policy.test.ts`, `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts`, and `git diff --check` for the touched Macaroni/inventory docs.
+  - Rendered static-drop harness passed with a fake copied-page storage shape using `max_per_wallet: "5"`: the sale row and X compose text both showed `max 5/wallet`, the X post weighted to 236/280 while preserving the mint URL and cover URL, `.ics` and Google Calendar links rendered, and `macaroni.drop_shared` / `macaroni.drop_calendar_added` click handles fired.
+  - GitHub Deploy to Hetzner completed for `50083c5`, and live `https://wtfos.app` smoke verified the exported drop sharing/calendar behavior.
+
+### WTF-BB-301 - SEO/PWA static discovery paths fall through to SPA HTML
+
+- Category: Public site / SEO and installability
+- Status: Verified
+- Owner/Session: Codex live user-story gap loop
+- Score: C1 + F2 + S0 + P2(3) = 6
+- Evidence:
+  - 2026-06-21 production requests for `/robots.txt`, `/sitemap.xml`, and `/manifest.json` all returned status 200 with `text/html` and the SPA shell instead of robots, sitemap, or web manifest content.
+- Why it matters:
+  - Crawlers and install surfaces receive misleading successful responses. This hurts search/discovery and makes missing platform metadata harder to detect.
+- Correction:
+  - Added explicit static-discovery handlers before the SPA fallback for robots, sitemap, and web manifest metadata.
+- Verification:
+  - Hetzner focused regression passed: `npx tsx --test server/static.test.ts`.
+  - Hetzner inventory coverage passed: `npm run test:e2e:inventory:coverage`.
+  - Hetzner full TypeScript check remained blocked by `WTF-BB-310` missing dev dependencies (`three`, `@atproto/api`, AWS SDK, MCP SDK, `viem`); no static-discovery-specific error appeared before the known dependency failures.
+  - Production deploy `6fb5351` completed successfully through GitHub Deploy to Hetzner run `27984725390`; Quality Gates run `27984725366` completed successfully; live health reported `status:"ok"` and `commitRef:"6fb5351"`.
+  - Live post-fix retest passed for `https://wtfos.app/robots.txt`, `/sitemap.xml`, and `/manifest.json`: each returned HTTP 200, the intended content type (`text/plain`, `application/xml`, `application/manifest+json`), expected canonical `wtfos.app` metadata, and no SPA `<!DOCTYPE html>` shell.
+
+### WTF-BB-302 - Public health endpoint exposes verbose runtime and chain topology
+
+- Category: Observability / public information disclosure
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F2 + S2 + P2(3) = 9
+- Evidence:
+  - 2026-06-21 production `/api/health` returned runtime details including Node version, platform, arch, pid, memory usage, DB latency, Tezos RPC URL, TzKT base, and contract addresses.
+- Why it matters:
+  - Public health is useful, but detailed runtime and topology data lowers the cost of targeted abuse and makes operational internals visible to unauthenticated callers.
+- Likely correction direction:
+  - Split public liveness from privileged diagnostics. Keep public health to `ok`, service, timestamp, and commit; move runtime/job/chain detail to admin or signed operational endpoints.
+- Verification idea:
+  - Add policy tests for public health redaction plus an admin-only diagnostics endpoint that preserves current operator detail.
+
+### WTF-BB-303 - Main app and user-site CSP policies remain broad for script/connect sources
+
+- Category: Security / CSP hardening
+- Status: Open
+- Owner/Session: -
+- Score: C3 + F2 + S3 + P2(3) = 11
+- Evidence:
+  - 2026-06-21 production main app CSP includes `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://static.cloudflareinsights.com` and broad `connect-src ... https: wss: ws:`.
+  - User-site CSP on `paulwhoisaghost.wtfos.me` uses `script-src 'self' 'unsafe-inline' https: data: blob:` and broad HTTPS media/style allowances, even though user sites remove cookies and use `frame-ancestors 'none'`.
+- Why it matters:
+  - The current policy is compatible with wallet/generated-site flows but leaves a wide blast radius if stored content or third-party script inclusion is abused, especially on wallet-connecting mint pages.
+- Likely correction direction:
+  - Move toward nonce/hash-based scripts for app and generated sites, enumerate wallet/gateway origins, and keep a documented exception list for unavoidable wallet SDK constraints.
+- Verification idea:
+  - Add CSP snapshot tests for production and user-site headers, then run wallet/connect/mint smoke under strict and legacy CSP modes.
+
+### WTF-BB-304 - Live wallet sign-in can hang on `Connecting...`
+
+- Category: Auth / Tezos wallet sign-in
+- Status: Verified
+- Owner/Session: Codex wallet/X auth full-send
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - 2026-06-21 production-only browser smoke of `https://wtfos.app/login` clicked `Connect Tezos Wallet`.
+  - The live page loaded wallet bundles and contacted Beacon/OCTEZ nodes plus WalletConnect verification without request failures, but the UI stayed on `Connecting...` for 25 seconds with no wallet picker, popup, dialog, retry, or visible error.
+  - Console output included `An active account has been received, but no active subscription was found for BeaconEvent.ACTIVE_ACCOUNT_SET.` and `[WTF] Wallet provider: octez.connect`.
+  - Fresh-profile retest after clearing cookies, localStorage, sessionStorage, IndexedDB, and Cache Storage reproduced the same hang, proving it was not caused by a cached login/session.
+- Why it matters:
+  - Wallet-based sign-in is a primary account path. A stuck pending state can prevent new or returning users from logging in, and it resembles the Beacon lifecycle issue previously documented for Macaroni wallet flows.
+- Correction:
+  - Source fix prepared: `client/src/lib/tezos/wallet.ts` now clears Beacon/WalletConnect localStorage and IndexedDB before forced auth connects, subscribes Octez and Beacon clients to `ACTIVE_ACCOUNT_SET` before permission requests, forces wallet login/link/register ownership proof through an explicit mainnet auth lane, keeps Shadownet available only for app flows that deliberately select it, passes explicit network/RPC config to Beacon/Taquito, and returns a bounded visible timeout if a wallet prompt never completes.
+  - RPC defaults were moved to TriliTech Octez-hosted mainnet/shadownet endpoints across core client/server config, operator/domain tooling, static Macaroni/Particle Painter wallet surfaces, runbooks, and harness defaults while keeping TzKT as indexer/API fallback.
+  - 2026-06-21 follow-up fix restored that live-proven wallet hardening on the active branch, clears username/password state before wallet auth begins, reads submitted username/password from the real form fields instead of stale React state, and gives the login inputs stable accessible names so browser/password-manager autofill cannot masquerade as a wallet credential fallback.
+- Verification:
+  - 2026-06-21 local verification passed `npx tsx --test client/src/lib/auth-wallet-login-policy.test.ts client/src/lib/tezos/wallet-connect-policy.test.ts client/src/lib/tezos/wallet-shadownet-preflight-policy.test.ts client/src/pages/profile-wallet-link-policy.test.ts server/features/w/x-connect-onboarding-policy.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory`.
+  - Production smoke showed the wallet path no longer stayed on `Connecting...`, kept the login form fields cleared on wallet-auth failure, and live health reported the fixed deploy at `wtfos.app` commit `069b96b`.
+
+### WTF-BB-308 - X OAuth can link the wrong current browser account
+
+- Category: Auth / X and wallet social OAuth cache loop
+- Status: Verified
+- Owner/Session: Codex wallet/X auth full-send
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - 2026-06-21 user report: Profile X linking always attempted to connect the shared `wtfgameshow` X account instead of the user's personal account, with no clear way to change the account being authorized.
+  - The Profile X OAuth start flow did not bind the intended profile handle to the OAuth session, so a browser already signed in to the shared X account could authorize that account and continue toward token storage.
+- Why it matters:
+  - X linking is identity evidence for verification and onboarding. Accepting the browser's current X account without checking the intended handle can silently attach the wrong social identity to a user profile.
+- Correction:
+  - Profile now sends the normalized intended X handle as `expectedHandle` when starting OAuth.
+  - The OAuth2 server session stores that expected handle, uses the current documented `https://x.com/i/oauth2/authorize` endpoint, fetches `/users/me`, and rejects mismatched accounts before token persistence or onboarding.
+  - The Profile UI reports the expected and actual handles and tells the user to switch accounts on `x.com` before retrying.
+- Verification:
+  - Passed `npx tsx --test server/auth/oauth-base.test.ts server/features/w/x-connect-onboarding-policy.test.ts client/src/pages/profile-social-link-policy.test.ts`.
+  - Passed the combined auth/profile policy suite, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory`.
+  - Production OAuth smoke verified wrong-account X linking is rejected before token persistence and live health reported the canonical callback fix on `wtfos.app` commit `8d994c9`.
+
+### WTF-BB-309 - Production live puppet credentials are blocked behind local secrets and SSH access
+
+- Category: E2E / live puppet ops
+- Status: Verified
+- Owner/Session: Codex live feature loop
+- Score: C2 + F4 + S2 + P1(4) = 12
+- Evidence:
+  - Live production run command: `WTF_E2E_LIVE_BASE_URL=https://wtfos.app playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs --reporter=list,json`.
+  - Result: the first authenticated live puppet setup failed on `e2e_bert` with HTTP 401 `Invalid credentials`, so 140 authenticated/admin route, workflow, API, and behavior checks did not run.
+  - The available credential file reports `database.hostname=localhost` and was generated for `localhost:5432`, while `https://wtfos.app/api/leaderboard/xp?limit=100` shows production does have `e2e_*` puppet users with different live user ids.
+  - `scripts/wtf-ssh.sh --check` failed because the Codex-visible SSH agent does not have `/Users/joshuafarnworth/.ssh/id_ed25519` loaded, so Codex cannot currently export/repair production puppet credentials from Hetzner.
+  - Anonymous production smoke passed after the probe list was aligned to real public API contracts: 17/17 public routes and 12/12 public APIs passed on `https://wtfos.app`.
+  - Follow-up repair found the working Hetzner identity at `/Users/joshuafarnworth/.ssh/github_actions_hetzner` and recorded the safe local pointer in `/Users/joshuafarnworth/.codex/secure/wtf-keyring.env`.
+  - Production puppet credential and platform keyring files were copied from `/home/paul/.wtf-gameshow/` to local secret storage under `/Users/joshuafarnworth/.wtf-gameshow/`, with production target metadata set to `https://wtfos.app`.
+  - Initial full live puppet run reached production and exposed six real logistical/API failures: local `npx` signer lookup, missing `/api/profile/account`, Skywire status expectation drift, admin curse 500 on absent user id, optional Mastodon table 500, and optional Porcupin table 500 on focused rerun.
+- Why it matters:
+  - The canonical user-story loop depends on actor-backed live coverage for auth, roles, wallets, rewards, admin tooling, persistence, and cross-domain workflows. Local secrets against production produce false 401 failures and leave the high-risk behavior surface untested.
+- Correction:
+  - Added a live-target guard in `tests/e2e/puppets/runtime.mjs` so local puppet credentials are refused against remote base URLs with a clear instruction to seed/export production credentials and make `scripts/wtf-ssh.sh --check` pass.
+  - Allowed production Docker-network credential metadata when the stored `targetBaseUrl` matches the live target.
+  - Fixed the live signer helper to invoke repo-local `tsx` through `process.execPath` instead of assuming `npx` exists in the Codex shell.
+  - Added `/api/profile/account`, normalized the Skywire unlinked-account workflow expectation, changed admin user-curse updates to return controlled 404s for missing targets, and made optional Mastodon/Porcupin routes fail closed with 503 when their optional tables are absent.
+  - Seeded/exported production puppet credentials from the Hetzner path, forced the platform keyring master into the one-off seed container, verified signer decrypt with `sign-challenge`, and added seeder-side signer usability verification before writing credentials.
+- Verification:
+  - `node --test tests/e2e/puppets/runtime.test.mjs`
+  - `WTF_E2E_LIVE_BASE_URL=https://wtfos.app node tmp/live-public-smoke.mjs`
+  - `DATABASE_URL=postgres://localhost/wtf_test node node_modules/tsx/dist/cli.mjs tests/e2e/puppets/seed.ts --dry-run`
+  - Focused production reruns passed after repair: `tmp/live-puppet-final-failed-rerun-results.json` and `tmp/live-puppet-final-two-rerun-results.json`.
+  - Stable final production retest passed: `tmp/live-puppet-full-stable-postfix-results.json` reports 141/141 passed against `https://wtfos.app` on live commit `12cbaf6`.
+
+### WTF-BB-310 - Hetzner worktree cannot run full TypeScript verification
+
+- Category: Ops / Hetzner verification dependencies
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Evidence:
+  - During the production hotfix pass, the remote Hetzner repo at `/opt/platform/repos/wtf-app` could run focused policy tests and inventory coverage, but `npm run check -- --pretty false` failed before checking the hotfix because dependencies such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem` were missing from that worktree.
+  - The deploy path still completed and live health verified commit `12cbaf6`, so this is a remote verification-tooling gap rather than a production runtime outage.
+- Why it matters:
+  - Emergency production fixes need a trustworthy remote verification path. If the server worktree cannot run the same TypeScript check as CI, agents can either over-trust narrow focused tests or spend time debugging dependency drift unrelated to the fix.
+- Correction:
+  - Define whether Hetzner should keep a dev-dependency capable verification checkout, delegate all full checks to GitHub Actions only, or expose a documented containerized check command with the same dependency graph as CI.
+- Verification:
+  - Run the chosen command on Hetzner and confirm it can complete a full TypeScript check without missing-module failures.
+
+### WTF-BB-311 - WTF LIVE owner controls can desync after live mutations
 
 - Category: WTF LIVE / owner control UX
 - Status: Verified
@@ -6481,75 +6724,106 @@ Priority labels:
   - Inventory coverage passed: `node node_modules/tsx/dist/cli.mjs tests/e2e/inventory/coverage.ts`.
   - GitHub Deploy to Hetzner run `27981179749` succeeded and live health returned `commitRef:"7f5d0d7"`.
   - Expanded independent live realtime/Show Kit probe passed 2/2 on `https://wtfos.app`: `tmp/live-user-story-probes/wtf-live-realtime-results.json`.
+  - Later expanded independent WTF LIVE realtime/Show Kit/WIM/tip probe passed 3/3 on `https://wtfos.app` with the same Show Kit cooldown story still green.
+
+### WTF-BB-313 - Skywire connected-account live stories lack an AT Protocol puppet
+
+- Category: Skywire / live AT puppet coverage
+- Status: Blocked
+- Owner/Session: Codex live user-story gap loop
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - Independent production Skywire probe `tmp/live-user-story-probes/skywire-live-results.json` passed 3/3 for anonymous standalone login, backend standalone OAuth start, legacy `wtfgameshow.app` canonical redirect, and signed-in market-feed token previews.
+  - The same probe confirmed the rollout-eligible host puppet has no connected AT Protocol account: `/api/atproto/me` returns `account: null`.
+  - Production `/api/skywire/live-status` and `/api/skywire/signals` return `400` with `Connect an AT Protocol account first` for the rollout-eligible host puppet.
+  - Hetzner env-file key-name search found only public/platform AT config such as `ATPROTO_SPINE_ENABLED`, `WTFOS_ATPROTO_NETWORK_DOMAIN`, `WTFOS_PRIMARY_ATPROTO_DID`, `WTFOS_PRIMARY_ATPROTO_HANDLE`, and `W_DIGEST_ATPROTO_USER_ID`; no dedicated live AT puppet credential key was visible.
+- Why it matters:
+  - The canonical user-story loop cannot honestly mark Skywire live status, signal publishing, or OAuth original-window permission sync as complete without a real connected AT account on production.
+  - Existing local/harness tests cover the behavior shape, but they do not prove the live OAuth callback/session, repo-write, actor-status, or chat-upgrade path with real production credentials.
+- Likely correction direction:
+  - Provision or connect a dedicated low-risk live AT Protocol puppet account for the e2e host/admin actor.
+  - Store the credential/session export outside worktrees, document the env/keyring slug, and keep secret values out of GitHub, logs, and workbook artifacts.
+  - Add a live Skywire connected-account probe that can set/clear actor status, publish a starter signal, and complete or simulate the real OAuth permission upgrade against the connected puppet account.
+- Verification idea:
+  - Rerun `tmp/live-user-story-probes/skywire-live.spec.mjs` after provisioning and expect the connected-account blocker test to be replaced by live status set/clear, signal publish, and permission-sync tests.
 
 ### WTF-BB-314 - WIM settings dialog Escape fails after custom-list creation
 
 - Category: WIM / settings dialog keyboard UX
-- Status: Verified
+- Status: In Progress
 - Owner/Session: Codex live user-story gap loop
 - Score: C1 + F4 + S0 + P2(3) = 8
 - Evidence:
   - Independent production WIM probe `tmp/live-user-story-probes/wim-live-results.json` opened signed-in `/wim`, created a `Live Probe` custom buddy list, pressed Escape, and the `role="dialog"` settings surface remained open for the full Playwright expectation timeout.
   - The rendered failure screenshot shows the WIM settings dialog still visible after the Escape key path, while the dialog also exposes an explicit close button.
-  - Source inspection found Escape was handled only by `SettingsPopover.onKeyDown`, so the close path depended on focus staying inside the popover after list creation.
+  - Source inspection found Escape was handled only by `SettingsPopover.onKeyDown`, so the close path depends on focus staying inside the popover after list creation.
 - Why it matters:
   - WIM is a windowed desktop messaging surface. Dialogs need predictable keyboard recovery, especially after creating or editing local buddy-list organization.
   - Existing inventory coverage only proved Escape immediately after opening settings; it did not cover the post-submit focus state found by the live user-story loop.
 - Correction:
-  - Keep the popover-local handler, and add a settings-open capture-phase keydown listener that closes the dialog on Escape even if an inner control or focus change prevents the popover handler from seeing the key.
+  - Keep the popover-local handler, and add a settings-open lifecycle keydown listener that closes the dialog on Escape even if focus has moved out of the popover after a list mutation.
   - Expand the WIM inventory regression to create a custom list before pressing Escape.
 - Verification:
   - Local TypeScript passed: `node node_modules/typescript/bin/tsc --noEmit --pretty false`.
   - Inventory coverage passed: `node node_modules/tsx/dist/cli.mjs tests/e2e/inventory/coverage.ts`.
   - Local Vite client build passed: `node node_modules/vite/bin/vite.js build`.
   - Focused WIM inventory regression passed after rebuilding the client bundle: `HARNESS_PORT=4186 node node_modules/.bin/playwright test tests/playwright/inventory/wim-owner-controls.spec.mjs --reporter=list`.
-  - Production deploy `f09feec` completed successfully through GitHub Deploy to Hetzner run `27983593125`; Quality Gates run `27983593163` also completed successfully.
-  - Live health on `https://wtfos.app/api/health` reported `status:"ok"` and `commitRef:"f09feec"`.
-  - Post-fix production WIM user-story probe passed 1/1 with 0 unexpected failures on `https://wtfos.app`, covering signed-in WIM, custom list creation, Escape dialog close, roster friend add, rich DM send, and persisted DM style metadata.
+  - GitHub Deploy to Hetzner run `27983593125` succeeded and live health returned `commitRef:"f09feec"`.
+  - Production WIM user-story retest passed on `https://wtfos.app`: `tmp/live-user-story-probes/wim-live-results.json` reports 1/1 expected, 0 unexpected.
 
----
+### WTF-BB-305 - Live health can timeout under scheduler audit volume
 
-### WTF-BB-316 - Exported Macaroni drop sharing exceeds X limits and lacks sale reminders
+- Category: Operations / production health
+- Status: Verified
+- Owner/Session: Codex wallet live full-send
+- Score: C3 + F5 + S0 + P0(5) = 13
+- Evidence:
+  - Live `/api/health` could intermittently return 503 when the scheduler audit summary queried the whole latest-run table under production volume.
+- Why it matters:
+  - The deploy workflow and production smoke checks use `/api/health` as the gate for safe promotion, so intermittent health failures can block or mask otherwise healthy deploys.
+- Correction:
+  - Query only registered job names through indexed lateral latest-row lookups and add the supporting production index.
+- Verification:
+  - Verified live on `wtfos.app`; `/api/health` returned `status:"ok"` after the scheduler query/index fix.
 
-- Category: Macaroni / exported drop sharing and sale reminders
+### WTF-BB-306 - Water tool can clean instead of hydrate a thirsty pet
+
+- Category: Desktop pet / care tool UX
 - Status: Fixed
-- Owner/Session: Codex Macaroni share/calendar repair
+- Owner/Session: Codex desktop pet water repair
 - Score: C2 + F4 + S0 + P1(4) = 10
 - Evidence:
-  - Follow-up user report on 2026-06-23 asked whether Macaroni's preconfigured share message was still inaccurate about max-per-wallet limits, whether X/Twitter share text fits the free-tier 280-character post limit, whether token image sharing is possible, and whether sale stages can ship with add-to-calendar configuration.
-  - Current exported drop share text includes title, creator, stage label, cost, wallet limit, access, supply, mint page, and cover image, which can exceed X's standard 280-character limit once title/creator/URLs are populated.
-  - Sale schedule rows render stage start/price/tags but do not provide prefilled calendar handoff links.
+  - 2026-06-21 user report: giving a pet water leaves the Water/thirst meter at 0 no matter how much water is given.
+  - Source trace showed the Water tool's direct pet click always posts `clean`, and desktop water drops prioritize `clean` while the pet is sick/dirty before considering thirst. A sick pet can therefore consume repeated water drops as cleaning actions without increasing thirst.
 - Why it matters:
-  - Creators rely on exported drop pages to market live sales. Overlong X share text can fail or require manual editing at the moment collectors/creators are trying to promote the mint, and missing calendar links makes stage reminders a manual chore.
+  - Water is the visible label for the thirst meter and one of the core survival actions. If it can silently perform a different care action, users cannot recover an urgent thirst state.
 - Correction:
-  - Keep X share text bounded against the standard 280-character post limit while preserving mint/token image URLs where possible, keep Bluesky share summaries richer, and add prefilled `.ics` plus Google Calendar links to every sale stage row.
+  - Added a shared client water-care policy so direct Water-tool pet clicks and desktop water drops hydrate first whenever thirst is below the drinking threshold.
+  - Water is used as bath/clean care only after thirst is satisfied and the pet still needs cleaning.
 - Verification:
-  - Local source checks passed: `node --check public/creation-tools/macaroni/js/drop.js`, `./node_modules/.bin/tsx --test server/routes/macaroni-policy.test.ts`, `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts`, and `git diff --check` for the touched Macaroni/inventory docs.
-  - Rendered static-drop harness passed with a fake copied-page storage shape using `max_per_wallet: "5"`: the sale row and X compose text both showed `max 5/wallet`, the X post weighted to 236/280 while preserving the mint URL and cover URL, `.ics` and Google Calendar links rendered, and `macaroni.drop_shared` / `macaroni.drop_calendar_added` click handles fired.
-  - Production commit `50083c5` was pushed to `main`; GitHub `Deploy to Hetzner` run `28052421966` and `Quality Gates` run `28052421974` both completed successfully.
-  - Live `https://wtfos.app/api/health` returned `status:"ok"` with `version.commitRef:"50083c5"`, and live `drop.js`/`theme.css` contain the X limit, calendar generation, and canonical share/calendar handle markers.
-  - Live-origin Playwright smoke of `https://wtfos.app/creation-tools/macaroni/drop.html?v=50083c53` with fake stage storage rendered `max 5/wallet`, generated X compose text weighted at 236/280 with mint and cover URLs preserved, rendered ICS plus Google Calendar links, and emitted `macaroni.drop_shared` plus `macaroni.drop_calendar_added` with no browser errors.
+  - Passed `./node_modules/.bin/tsx --test client/src/features/desktop/pet/waterCarePolicy.test.ts shared/desktop.test.ts`.
+  - Passed `./node_modules/.bin/tsc --noEmit`.
+  - `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts` is blocked by the pre-existing unrelated registry error: `hoard must register behavior assertion 'auth.wallet-provider-login-lifecycle'`.
 
-### WTF-BB-301 - SEO/PWA static discovery paths fall through to SPA HTML
+### WTF-BB-307 - Codex local SSH must use this Mac's wtf alias and agent
 
-- Category: Public site / SEO and installability
-- Status: Verified
-- Owner/Session: Codex live user-story gap loop
-- Score: C1 + F2 + S0 + P2(3) = 6
+- Category: Ops / local SSH access
+- Status: Fixed
+- Owner/Session: Codex local SSH bootstrap pass
+- Score: C2 + F3 + S0 + P2(3) = 8
 - Evidence:
-  - Live first-pass on `https://wtfos.app` confirmed `/robots.txt`, `/sitemap.xml`, and `/manifest.json` return HTTP 200 with `content-type: text/html; charset=utf-8` and the SPA `<!DOCTYPE html>` shell.
-- Why it matters:
-  - Crawlers, link unfurlers, and install surfaces receive misleading successful HTML responses instead of robots, sitemap, or web manifest metadata.
+  - User report on 2026-06-21 clarified that shell SSH from this Mac is simply `ssh wtf`, while the GitHub publish path uses a different key.
+  - Exact `ssh wtf` from the Codex tool prompted for `/Users/joshuafarnworth/.ssh/id_ed25519`, and `ssh-add -l` showed Codex's visible agent lacked that required identity.
+  - Retrying with deploy/GitHub-oriented assumptions or `BatchMode` cannot repair a missing local agent identity.
 - Correction:
-  - Add explicit static-discovery handlers before the SPA fallback for robots, sitemap, and web manifest metadata.
+  - Added ignored `.codex/machine-ssh.env` for machine-local SSH settings.
+  - Added tracked `scripts/wtf-ssh.sh`, which sources the local env, uses the `wtf` alias, verifies the configured identity fingerprint is loaded, and refuses to prompt for passphrases inside Codex.
+  - Added `.codex/PROJECT_RULES.md` guidance so future agents use the wrapper instead of publish/deploy keys for local server checks.
 - Verification:
-  - Hetzner focused regression passed: `npx tsx --test server/static.test.ts`.
-  - Hetzner inventory coverage passed: `npm run test:e2e:inventory:coverage`.
-  - Hetzner full TypeScript check remains blocked by `WTF-BB-310` missing dev dependencies (`three`, `@atproto/api`, AWS SDK, MCP SDK, `viem`); no static-discovery-specific error appeared before the known dependency failures.
-  - Production deploy `6fb5351` completed successfully through GitHub Deploy to Hetzner run `27984725390`; live health reported `status:"ok"` and `commitRef:"6fb5351"`.
-  - Live post-fix retest passed for `https://wtfos.app/robots.txt`, `/sitemap.xml`, and `/manifest.json`: each returned HTTP 200, the intended content type (`text/plain`, `application/xml`, `application/manifest+json`), expected canonical `wtfos.app` metadata, and no SPA `<!DOCTYPE html>` shell.
-
----
+  - Passed `bash -n scripts/wtf-ssh.sh`.
+  - Verified `.codex/machine-ssh.env` is ignored by `.gitignore`.
+  - Verified `scripts/wtf-ssh.sh --doctor` reports the current visible agent and required identity fingerprint.
+  - Verified `scripts/wtf-ssh.sh --check` exits 78 with the local agent/env fix instead of opening an SSH passphrase prompt.
 
 ## Backlog Intake Template
 
@@ -6567,21 +6841,3 @@ Copy this when adding a new issue:
 - Likely correction direction:
 - Verification idea:
 ```
-
-
-### WTF-BB-299 - `/api/access` advertises legacy `wtfgameshow.app` origin on canonical `wtfos.app`
-
-- Status: Verified
-- Category: Platform domains / access manifest
-- Priority: P1
-- Points: 12
-- Owner/Session: Codex live user-story gap loop
-- Last touched: 2026-06-22
-- Evidence:
-  - 2026-06-22 live production `https://wtfos.app/api/access` returned `origin: "https://wtfgameshow.app"` and `mcp.endpoint: "https://wtfgameshow.app/mcp"`.
-  - Source fix: `server/routes/access.ts` now resolves the origin with canonical-domain helpers and canonicalizes `MCP_PUBLIC_ENDPOINT`; `server/routes/access.test.ts` covers legacy env and preview-host fallback.
-- Why it matters: Browser automation, installers, and paired MCP agents use this public manifest as their canonical entrypoint. Returning the old domain from the canonical host causes route discovery, OAuth-adjacent metadata, and user support instructions to drift back to the deprecated brand/origin.
-- Likely correction direction: Canonicalize access-manifest origin and configured MCP endpoint with the platform-domain helpers so legacy deploy env values collapse to `https://wtfos.app` while non-WTF preview hosts remain intact.
-- Verification idea: Add a route-level regression for legacy `PUBLIC_SITE_URL`/`MCP_PUBLIC_ENDPOINT`, then curl `https://wtfos.app/api/access` after deploy and assert both `origin` and MCP endpoint use `https://wtfos.app`.
-- Local verification: `./node_modules/.bin/tsx --test server/routes/access.test.ts server/lib/canonical-domain.test.ts server/static.test.ts` passed 10/10; `npm run test:e2e:inventory:coverage` passed; `npm run check -- --pretty false` remains blocked by `WTF-BB-310` missing Hetzner dev dependencies, not by this access-route change.
-- Production verification: GitHub Deploy to Hetzner run `27985961351` and Quality Gates run `27985961357` both completed `success` for `e4770ad`; live `/api/health` reported `commit: "e4770ad"`; live `/api/access` returned `origin: "https://wtfos.app"`, `mcp.endpoint: "https://wtfos.app/mcp"`, and no `wtfgameshow.app` values.

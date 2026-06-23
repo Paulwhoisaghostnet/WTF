@@ -3,6 +3,7 @@ import {
   isInstallable,
   type LifecycleState,
 } from "./lifecycle";
+import { COBWEBSAINTS_FULL_USER_ROLE } from "@shared/types";
 import { isAppKeyValid, satisfiesKeyRequirement, type AppKeyState } from "./key-policy";
 import { fingerprintMatches } from "./fingerprint";
 
@@ -16,8 +17,8 @@ import { fingerprintMatches } from "./fingerprint";
  * false and `installable` reflects only `enabled` for back-compat reporting.
  */
 
-/** Alpha cohort = test_subject / trusted_creator. Admin & host always qualify. */
-export const ALPHA_COHORT_ROLES = ["test_subject", "trusted_creator"] as const;
+/** Alpha cohort = test_subject / trusted_creator / special full-user publishing roles. Admin & host always qualify. */
+export const ALPHA_COHORT_ROLES = ["test_subject", "trusted_creator", COBWEBSAINTS_FULL_USER_ROLE] as const;
 const ALPHA_OVERRIDE_ROLES = ["admin", "host"] as const;
 
 export function isAlphaCohortMember(roles: readonly string[]): boolean {

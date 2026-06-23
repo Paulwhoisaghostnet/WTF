@@ -4,6 +4,7 @@ import {
   type LazyExoticComponent,
 } from "react";
 import {
+  COBWEBSAINTS_FULL_USER_ROLE,
   normalizeUserRoles,
   type DesktopAppKey,
   type UserRole,
@@ -115,6 +116,9 @@ const WtfMapLabPage = lazy(() =>
 );
 const GameStudioPage = lazy(() =>
   import("../pages/GameStudio").then((m) => ({ default: m.GameStudio }))
+);
+const DedRoomsPage = lazy(() =>
+  import("../pages/DedRooms").then((m) => ({ default: m.DedRooms }))
 );
 const CreationToolPage = lazy(() =>
   import("../pages/CreationTool").then((m) => ({ default: m.CreationTool }))
@@ -456,11 +460,12 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/dues", component: DuesManagerPage, auth: false, title: "Club Dues Manager", group: "market", startMenu: true, desktopIcon: true },
   { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "gaming", startMenu: true, desktopIcon: true },
   { pattern: "/game-studio", component: GameStudioPage, auth: true, title: "Game Studio", group: "gaming", startMenu: true, desktopIcon: true },
+  { pattern: "/dedrooms", component: DedRoomsPage, auth: true, title: "DedRooms", group: "gameshow", startMenu: true, desktopIcon: true },
   {
     pattern: "/tools/ch-ease",
     component: MacaroniPackagerPage,
     auth: true,
-    roles: ["admin", "host", "cohost", "trusted_creator"],
+    roles: ["admin", "host", "cohost", "trusted_creator", COBWEBSAINTS_FULL_USER_ROLE],
     title: "CH-EASE",
     group: "create",
     startMenu: true,
@@ -469,7 +474,7 @@ export const PAGE_DEFS: PageDef[] = [
     pattern: "/tools/macaroni-packager",
     component: MacaroniPackagerPage,
     auth: true,
-    roles: ["admin", "host", "cohost", "trusted_creator"],
+    roles: ["admin", "host", "cohost", "trusted_creator", COBWEBSAINTS_FULL_USER_ROLE],
     title: "CH-EASE",
     group: "create",
   },

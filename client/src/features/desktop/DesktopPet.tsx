@@ -53,6 +53,7 @@ import {
   useDesktopItemSimulation,
   type DesktopItemState,
 } from "./items";
+import { selectWaterCareRequest } from "./pet/waterCarePolicy";
 
 export type { DesktopObstacle } from "./DesktopPetModel";
 
@@ -473,11 +474,11 @@ export function DesktopPet({
   const handlePetClick = async (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     if (activeTool === "water") {
-      sicknessExposureRef.current.nextAt = 0;
-      actionMutation.mutate({
-        action: "clean",
-        metadata: { cleanSource: "water_tool" },
-      });
+      const request = selectWaterCareRequest(pet, "water_tool");
+      if (typeof request !== "string" && request.action === "clean") {
+        sicknessExposureRef.current.nextAt = 0;
+      }
+      actionMutation.mutate(request);
       return;
     }
     if (activeTool === "medicine") {

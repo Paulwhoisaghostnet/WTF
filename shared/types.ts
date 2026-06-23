@@ -173,6 +173,11 @@ export type UserRole = string;
 export type UserRoleInput = UserRole | readonly UserRole[] | null | undefined;
 
 export const ADMIN_PANEL_ROLES: UserRole[] = ["admin", "host", "cohost"];
+export const COBWEBSAINTS_FULL_USER_ROLE = "cobwebsaints_full_user" as const;
+
+const SPECIAL_ROLE_SORT_RANKS: Record<string, number> = {
+  [COBWEBSAINTS_FULL_USER_ROLE]: 3.5,
+};
 
 export const ROLE_CATEGORIES = [
   "access",
@@ -268,6 +273,20 @@ export const DEFAULT_ROLE_CATALOG: RoleDefinition[] = [
     isAssignable: true,
   },
   {
+    slug: COBWEBSAINTS_FULL_USER_ROLE,
+    label: "Cobwebsaints Full User",
+    category: "builder",
+    purpose: "Non-admin full user role reserved for cobwebsaints.",
+    description: "Grants creator, pinning, social, market, and standard participant permissions without moderation or admin authority.",
+    accessLevel: 45,
+    sortOrder: 55,
+    color: "#8b5cf6",
+    icon: "sparkles",
+    defaultWtfOsAccess: true,
+    isSystem: false,
+    isAssignable: false,
+  },
+  {
     slug: "wtf_pin_collector",
     label: "WTF Pin Collector",
     category: "builder",
@@ -291,6 +310,20 @@ export const DEFAULT_ROLE_CATALOG: RoleDefinition[] = [
     color: "#7a4b00",
     icon: "flask",
     defaultWtfOsAccess: false,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
+    slug: "season_3_contestant",
+    label: "Season 3 Contestant",
+    category: "gameshow",
+    purpose: "Additive badge/access role granted by departing through the Search for the Green Room intro labyrinth.",
+    description: "Marks a user as qualified for Season 3 through the Green Room campaign without replacing broader account roles.",
+    accessLevel: 32,
+    sortOrder: 68,
+    color: "#16a34a",
+    icon: "door-open",
+    defaultWtfOsAccess: true,
     isSystem: true,
     isAssignable: true,
   },
@@ -355,10 +388,12 @@ export function normalizeUserRoles(role: UserRoleInput): UserRole[] {
   }
   return [...unique].sort(
     (a, b) => {
-      const aRank = (SYSTEM_ROLE_ORDER as readonly string[]).indexOf(a);
-      const bRank = (SYSTEM_ROLE_ORDER as readonly string[]).indexOf(b);
-      if (aRank !== -1 || bRank !== -1) {
-        return (aRank === -1 ? 10_000 : aRank) - (bRank === -1 ? 10_000 : bRank);
+      const aSystemRank = (SYSTEM_ROLE_ORDER as readonly string[]).indexOf(a);
+      const bSystemRank = (SYSTEM_ROLE_ORDER as readonly string[]).indexOf(b);
+      const aRank = aSystemRank === -1 ? SPECIAL_ROLE_SORT_RANKS[a] : aSystemRank;
+      const bRank = bSystemRank === -1 ? SPECIAL_ROLE_SORT_RANKS[b] : bSystemRank;
+      if (aRank !== undefined || bRank !== undefined) {
+        return (aRank ?? 10_000) - (bRank ?? 10_000);
       }
       return a.localeCompare(b);
     }
@@ -384,11 +419,16 @@ export function getRoleRank(role: UserRole): number {
   return (SYSTEM_ROLE_ORDER as readonly string[]).indexOf(role);
 }
 
+function getComparableRoleRank(role: UserRole): number {
+  if (role === COBWEBSAINTS_FULL_USER_ROLE) return getRoleRank("trusted_creator");
+  return getRoleRank(role);
+}
+
 export function hasAtLeastRole(role: UserRoleInput, required: UserRole): boolean {
-  const requiredRank = getRoleRank(required);
+  const requiredRank = getComparableRoleRank(required);
   if (requiredRank < 0) return false;
   return normalizeUserRoles(role).some((candidate) => {
-    const roleRank = getRoleRank(candidate);
+    const roleRank = getComparableRoleRank(candidate);
     return roleRank >= 0 && roleRank <= requiredRank;
   });
 }
@@ -410,6 +450,7 @@ export function canParticipate(role: UserRoleInput): boolean {
     candidate === "cohost" ||
     candidate === "resident_wizard" ||
     candidate === "trusted_creator" ||
+    candidate === COBWEBSAINTS_FULL_USER_ROLE ||
     candidate === "contestant"
   );
 }
@@ -428,6 +469,7 @@ export const DESKTOP_APPS = [
   "dues-manager",
   "console",
   "game-studio",
+  "dedrooms",
   "studio",
   "ch-ease",
   "pasta-protocol",
@@ -458,6 +500,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   "dues-manager": "Club Dues Manager",
   console: "WTF Console",
   "game-studio": "Game Studio",
+  dedrooms: "DedRooms",
   studio: "Studio",
   "ch-ease": "CH-EASE",
   "pasta-protocol": "Pasta Protocol",
@@ -479,6 +522,7 @@ export const EXPERIMENTAL_DESKTOP_APPS = [
   "mail",
   "dues-manager",
   "rat-race",
+  "dedrooms",
 ] as const satisfies readonly DesktopAppKey[];
 
 const EXPERIMENTAL_DESKTOP_APP_SET = new Set<string>(EXPERIMENTAL_DESKTOP_APPS);
@@ -664,7 +708,8 @@ export function canManageMultipleTvChannels(role: UserRole): boolean {
     role === "admin" ||
     role === "host" ||
     role === "cohost" ||
-    role === "trusted_creator"
+    role === "trusted_creator" ||
+    role === COBWEBSAINTS_FULL_USER_ROLE
   );
 }
 
@@ -797,6 +842,15 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
     "trusted_market_creator",
   ],
+  [COBWEBSAINTS_FULL_USER_ROLE]: [
+    "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
+    "view_rounds", "view_challenges", "submit_challenges", "view_side_quests", "complete_side_quests",
+    "trusted_arcade_creator", "trusted_console_creator",
+    "send_dms", "read_message_board", "post_message_board", "react_messages", "create_tv_channel",
+    "access_studio", "create_studio_projects", "trusted_tv_creator",
+    "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
+    "trusted_market_creator", "use_wtfos_pinning",
+  ],
   wtf_pin_collector: [
     "view_dashboard", "edit_own_profile", "link_wallets", "view_gallery",
     "view_marketplace", "use_swap", "use_wtfos_pinning",
@@ -809,6 +863,13 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     "view_marketplace", "use_swap",
   ],
   contestant: [
+    "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
+    "view_rounds", "view_challenges", "submit_challenges", "view_side_quests", "complete_side_quests",
+    "send_dms", "read_message_board", "post_message_board", "react_messages", "create_tv_channel",
+    "access_studio", "create_studio_projects",
+    "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
+  ],
+  season_3_contestant: [
     "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
     "view_rounds", "view_challenges", "submit_challenges", "view_side_quests", "complete_side_quests",
     "send_dms", "read_message_board", "post_message_board", "react_messages", "create_tv_channel",

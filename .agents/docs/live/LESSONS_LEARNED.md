@@ -1,3 +1,13 @@
+## 2026-06-23 - Full-send promotions must quarantine unfinished drafts
+
+**What happened**: A full-send cherry-pick carried the verified feature commit cleanly, but unrelated beta-route and spec-test draft files resurfaced as untracked/unstaged work during conflict resolution. One beta route hunk referenced a page file that was intentionally not ready and would have broken TypeScript if it slipped into the production commit.
+
+**Why it mattered**: Full send means pushing `main` live. Unfinished local drafts can accidentally attach to a production promotion when resolving a large cherry-pick, especially if they live near touched route or spec files.
+
+**Rule**: Before continuing a full-send cherry-pick, check for `UU`, `AM`, `MM`, and `??` status separately. Stash or otherwise quarantine unrelated draft files and dangling route/spec references with `--keep-index` as needed, then rerun TypeScript, inventory coverage, build, and full inventory E2E on the final clean commit.
+
+---
+
 ## 2026-06-22 - Public discovery manifests must canonicalize deploy env hosts
 
 **What happened**: The canonical live host `https://wtfos.app/api/access` returned `origin` and `mcp.endpoint` values on the legacy `wtfgameshow.app` domain because the access route trusted `PUBLIC_SITE_URL` and `MCP_PUBLIC_ENDPOINT` literally. Lower-level canonical-domain tests were green, but this public discovery route never called those helpers.
@@ -5,6 +15,26 @@
 **Why it mattered**: Browser automation, installers, and paired-agent discovery treat the access manifest as the platform entrypoint. Echoing a legacy domain from the canonical host can send clients, support steps, and OAuth-adjacent metadata back to a deprecated origin even while the site itself redirects correctly.
 
 **Rule**: Any public manifest, metadata, OAuth, installer, or agent-discovery endpoint that emits a platform origin or platform URL must canonicalize legacy WTF Gameshow and `www.wtfos.app` values through the shared platform-domain helpers at the route boundary, and it needs a route-level regression for the exact deploy-env variable it reads.
+
+---
+
+## 2026-06-21 - Local SSH and publish SSH are different paths
+
+**What happened**: Codex repeatedly failed Hetzner SSH checks by treating the GitHub publish/deploy key path as interchangeable with this Mac's normal `ssh wtf` path. In the Codex subprocess, the required local identity was not loaded in the visible SSH agent, so exact `ssh wtf` prompted for the passphrase and automated checks stalled.
+
+**Why it mattered**: Production inspection and model-capacity checks depend on reliable host access. Retrying with `BatchMode`, deploy keys, or alternate identities burns time and hides the actual local-agent boundary.
+
+**Rule**: For this repo, Codex must use `scripts/wtf-ssh.sh` for local Hetzner shell access. Keep `.codex/machine-ssh.env` local and ignored, use the `wtf` host alias, verify the configured identity fingerprint is loaded before connecting, and fail with an agent/env fix instead of prompting for passphrases inside Codex.
+
+---
+
+## 2026-06-21 - Water care must hydrate before bathing
+
+**What happened**: The desktop pet Water tool had two effects. Directly clicking the pet with Water selected always posted a `clean` action, and desktop water drops prioritized `clean` while the pet was sick or dirty before checking thirst. A sick thirsty pet could therefore consume repeated water care as bath/clean care while the Water/thirst meter stayed at 0.
+
+**Why it mattered**: Water is the visible label for the thirst meter and a core survival action. A secondary cleaning interpretation must not silently block recovery of the stat the user is trying to fix.
+
+**Rule**: Multi-effect pet care tools must prioritize the urgent stat named by the control before secondary effects. Keep the action-selection policy centralized and cover mixed-state edge cases such as sick, dirty, and critically thirsty pets.
 
 ---
 
@@ -25,6 +55,56 @@
 **Why it mattered**: First-run onboarding sat between account creation and the desktop. If the browser rejected, lost, or stopped sending the session cookie, the client still looked signed in but every protected action failed, trapping users behind the welcome dialog and making the eggplant look like the source of truth.
 
 **Rule**: Treat protected API 401s as an auth-session boundary failure, not as a local component error. Clear the cached auth user, emit a canonical session-invalidation event, exempt public login/register/wallet-auth failures from global sign-out, suppress passive wallet-link warning loops for expected stale-session 401s, and add a focused harness test for stale cached-user onboarding paths.
+
+---
+
+## 2026-06-19 - UI concept labs need structural concepts, not skins
+
+**What happened**: The first React-only future wtfOS shell lab reused the same sidebar/card/page architecture across multiple named options, so several "concepts" were mostly color, spacing, and corner-radius variants. The correction pass also exposed a shared flex alignment rule that made some supposedly distinct work surfaces collapse or shrink until browser metrics caught it.
+
+**Why it mattered**: When the goal is to move beyond the React95 bowl, a prototype must explore new operating models: navigation, work surface, object hierarchy, action grammar, mobile interaction, and recovery behavior. A design lab that only changes visual treatment gives false confidence and wastes review time.
+
+**Rule**: For multi-concept wtfOS shell demos, each option must vary at least one primary structural choice: information architecture, navigation model, work canvas, interaction metaphor, or role/task flow. Verify every concept with a rendered marker, desktop screenshot/metric pass, mobile proof where relevant, hash/deep-link behavior, and no horizontal overflow before presenting it as a distinct design.
+
+---
+
+## 2026-06-19 - Future shell prototypes must prove available icon APIs and real canvas geometry
+
+**What happened**: The first React-only future wtfOS shell pass used a lucide icon export that was not available in the installed package version, and the first desktop screenshot showed the right-side proof panels clipped inside a three-column stage even though the page had no body-level horizontal overflow.
+
+**Why it mattered**: Prototype shells can pass the wrong checks if verification only looks for a successful render, no console errors, or no page overflow. A future wtfOS shell has to prove its working canvas is genuinely usable inside the surrounding selector/sidebar context, and visual dependency choices must match the installed library version.
+
+**Rule**: For local shell labs, build before browser smoke to catch package export drift, and measure both body overflow and internal stage/panel overflow. Prefer two working columns plus lower proof panels when the shell already has a persistent command rail or concept selector.
+
+---
+
+## 2026-06-19 - Local React95 prototype shells need the production prop filter and screenshot proof
+
+**What happened**: A standalone local Modern wtfOS React95 demo built successfully, but the first browser smoke exposed React 19 DOM prop warnings from React95/styled-components and a squeezed desktop layout where selector tabs and three-column preview panes competed for width after the command rail.
+
+**Why it mattered**: Local prototype apps can still mislead design decisions if they do not use the same styled-components prop-filter boundary as the production app or if verification stops at a clean build. React95 controls are compact by default, and long modern product labels can become cramped quickly inside desktop-style chrome.
+
+**Rule**: Standalone React95 demos should wrap the app in the same `StyleSheetManager` prop filter used by production and must include desktop plus narrow Playwright screenshot checks before calling the concept usable. When a command rail or persistent side panel is present, keep the main preview to one or two working columns unless the viewport is proven wide enough.
+
+---
+
+## 2026-06-19 - Parser tests must narrow command unions before reading verb-specific fields
+
+**What happened**: The Green Room weirdness expansion added minigame parser assertions that read `parsed.key` directly from the full `GreenRoomCommand` union. Runtime tests passed, but TypeScript correctly rejected the test because only the `minigame` variant owns `key`.
+
+**Why it mattered**: Parser tests are part of the product contract for command discovery. If tests bypass the same narrowing application code needs, the suite can either fail compilation or normalize bad habits around command handling.
+
+**Rule**: When asserting parser output for discriminated unions, first assert/narrow the `verb`, then read variant-specific fields. Prefer a small test helper over casts so command type safety stays visible.
+
+---
+
+## 2026-06-19 - Lore-critical clue wording needs executable assertions
+
+**What happened**: The Green Room Lily track seed covered the taxi-like tire tracks but initially phrased the off-path clue too loosely, omitting the requested "offroading" signal until the focused parser/content test caught it.
+
+**Why it mattered**: In a text MUD, exact clue copy is gameplay state. A small wording drift can make a puzzle, lore branch, or player-shared clue feel missing even when the engine and room graph are otherwise working.
+
+**Rule**: For puzzle and lore acceptance details, add focused content assertions for required clue terms before calling the narrative complete, especially when the clue unlocks investigation or shared theorycrafting.
 
 ---
 
@@ -5250,6 +5330,26 @@
 
 ---
 
+## 2026-06-19 - Route renames need fresh dist and widened literal types
+
+**What happened**: The DedRooms rename passed source-level TypeScript after the app route was changed, but the first focused Playwright run still loaded the old desktop bundle from `dist/public` and never opened the new `/dedrooms` AppWindow. The new anchor-room Set also inferred a narrow union of the five anchor IDs, which made generic string membership checks fail TypeScript.
+
+**Why it mattered**: Inventory Playwright uses the built harness output, not live source, so route/page renames can appear broken until the bundle is refreshed. Literal inference is useful for authored content, but exported Sets used as membership guards need to accept arbitrary candidate strings.
+
+**Rule**: After route, app-key, or lazy-page renames, rebuild `dist/public` before Playwright inventory runs. Export membership Sets as `Set<string>` when callers check dynamic IDs, and keep exact anchor tuples separate for authored metadata.
+
+---
+
+## 2026-06-19 - Local static demos need development auth semantics
+
+**What happened**: The local DedRooms demo could serve the built app in production mode, but localhost auth was blocked by production-only cookie domain, secure-cookie, CORS, and background job behavior. Normal development mode could not boot because the local Vite/Rolldown native binding failed signature validation on this machine.
+
+**Why it mattered**: A playable localhost demo needs the built frontend when Vite is unavailable, but it must keep development-mode auth semantics so browser registration/login and session cookies work on `localhost`.
+
+**Rule**: For local static demos, use an explicit static-serving switch under `NODE_ENV=development` instead of running the server in production mode. Verify auth, the feature API, and the browser-rendered app route before handing the user a play URL.
+
+---
+
 ## 2026-06-19 - UX references are task models, not palette swatches
 
 **What happened**: The first Skywire OVOID pass borrowed the dark color vocabulary and login veneer but kept Skywire's crowded navigation rail, status wall, and retro fieldset chrome. The Playwright walkthrough also caught route/query behavior that source-level checks did not cover, plus duplicate live-status action labels that made the app harder to scan.
@@ -5260,63 +5360,113 @@
 
 ---
 
+## 2026-06-19 - MUD flavor text must line up with commandable reality
+
+**What happened**: DedRooms generated every cardinal direction as a traversable door even when the room's authored exits listed only east/west, so players could travel through nonexistent north/south doors. Later spawns could also land directly in anchor rooms like THNG, and `look` did not clearly identify passages, inspectable objects, resources, NPCs, or minigames.
+
+**Why it mattered**: In a text-first MUD, the transcript is the UI. If room prose, exit lists, and command resolution disagree, players stop treating the world as authored and start treating it as random noise.
+
+**Rule**: MUD command handlers must treat listed room affordances as the source of truth: travel only through authored passages or legitimate back-links, spawn players outside discovery anchors, and make `look` enumerate the concrete things a player can inspect, gather, talk to, play, or use.
+
+---
+
 ## 2026-06-21 - Wallet connect hangs need a fresh-profile retry before code blame
 
-**What happened**: Production wallet login was reported as stuck on `Connecting...`. Before patching wallet code, the live app was retried from a fresh Chromium profile with cookies, localStorage, sessionStorage, IndexedDB, and Cache Storage cleared, and the hang reproduced.
+**What happened**: Live `wtfos.app` wallet sign-in stayed on `Connecting...` after loading the Octez/Beacon/WalletConnect bundles. A fresh Chromium profile with cookies, localStorage, sessionStorage, IndexedDB, and Cache Storage cleared reproduced the same hang and logged `An active account has been received, but no active subscription was found for BeaconEvent.ACTIVE_ACCOUNT_SET.`
 
-**Why it mattered**: Wallet SDKs persist Beacon, WalletConnect, and active-account state across reloads. Without a clean-profile retry, it is easy to misdiagnose a stale local session as a live production regression or to ship a fix that only masks cached state.
+**Why it mattered**: Wallet auth is an account entry path, so a cached-session theory is not enough. The app's forced auth connect cleared only part of Beacon state, Octez's DAppClient was not subscribed to the mandatory active-account event before permission flow, Shadownet normalized to mainnet in the wallet helper, and RPC defaults still pointed wallet/server paths at TzKT instead of the project-preferred Octez endpoints.
 
-**Rule**: Before editing wallet-connect or wallet-login code, reproduce the live behavior once from an empty browser profile/storage state, record provider console warnings, then make forced auth reconnects clear only wallet SDK auth caches before requesting permissions.
+**Rule**: Before changing wallet code, reproduce live from an empty browser profile. For Beacon/octez.connect v4 flows, subscribe `ACTIVE_ACCOUNT_SET` on the actual DAppClient before `requestPermissions`, clear Beacon and WalletConnect localStorage plus IndexedDB for explicit auth reconnects, preserve the selected network exactly, keep Octez-hosted RPC defaults primary, and bound wallet permission waits with a user-visible timeout.
 
 ---
 
 ## 2026-06-21 - Wallet auth identity is mainnet even when apps rehearse on Shadownet
 
-**What happened**: A wallet-login repair initially preserved app-local Shadownet preferences too broadly. The platform's actual auth identity is Tezos mainnet wallet ownership, while Shadownet is used by specific creation, contract, and rehearsal apps.
+**What happened**: A live wallet-login repair note said the fix preserved Shadownet, but the platform login contract is mainnet wallet ownership. The low-level wallet helper could inherit `localStorage["wtf:network"]`, so a Shadownet-capable app preference could bleed into primary wallet login or wallet-ownership challenge signing.
 
-**Why it mattered**: Treating login as network-flexible can make the primary account boundary ambiguous and can send wallet providers a Shadownet permission request when the user is only trying to sign into wtfOS. That breaks the login mental model and risks signing challenges on the wrong lane.
+**Why it mattered**: Shadownet is a rehearsal and app-operation lane, not the identity root for wtfOS login. If auth follows app-local network state, a user can see the wrong wallet network during sign-in, policy notes become misleading, and production login confidence gets mixed up with testnet contract confidence.
 
-**Rule**: Keep `connectAuthWallet()` and auth challenge signing pinned to mainnet unless the product explicitly creates a separate testnet-login feature. App wallets may use Shadownet or other configured networks, but primary account login must ignore app-local network overrides.
-
----
-
-## 2026-06-21 - Wallet provider timeouts also need a visible UI boundary
-
-**What happened**: Production served a wallet helper bundle containing provider and signing timeouts, and browser instrumentation confirmed the timeout timers fired, but the login button still stayed on `Connecting...` because the screen awaited the wallet-login promise without its own recovery boundary.
-
-**Why it mattered**: Wallet SDKs can leave provider handoff promises unresolved in ways that are hard to unwind from inside the adapter layer. Users judge the product by the visible login control, so the screen must always return to a retryable state even if the connector internals stall.
-
-**Rule**: Any primary wallet-auth button must race the whole login/linking action against a UI-level timeout, trigger non-blocking connector cleanup on timeout, and show a retryable error. Adapter-level timeouts are necessary but not sufficient for production login reassurance.
+**Rule**: Keep wallet identity and app operation lanes separate. Wallet login, registration, and account wallet-link proof must force the mainnet auth wallet config for both permission and challenge signing. Shadownet-capable apps may still select Shadownet for deliberate contract flows, guarded by chain/RPC preflight.
 
 ---
 
-## 2026-06-21 - Public health checks must not run table-sweeping observability queries
+## 2026-06-21 - Social-login bypasses must seed the whole identity graph
 
-**What happened**: After a successful live deploy, `/api/health` intermittently returned HTTP 503 even though the app, DB, chain config, and Octez mainnet RPC were healthy. The failing payload showed the scheduler audit query timed out after 2000ms because the latest-job read swept the growing `sync_runs` audit table.
+**What happened**: Cobwebsaints needed trusted non-admin access because X/Kukai social-login loops blocked normal social verification. Granting only a creator-like role or only a `username.wtfos.me` host would have left other surfaces reading stale social state, missing AT account rows, or lacking verified hosted-handle proof.
 
-**Why it mattered**: A readiness endpoint is the operator contract for "is the site up." If it performs heavyweight observability work on every request, monitoring and verification can create false outages and drown out real wallet/auth findings.
+**Why it mattered**: WTF Domains, IPFS Pinning, Macaroni, Skywire, profile/social defaults, and public user-site serving read different parts of the account identity graph. A trusted manual override must be explicit and coherent, not a one-table shortcut that lets the next surface fail in a different way.
 
-**Rule**: Keep public readiness checks cheap, indexed, and bounded to known live surfaces. Use registered job names plus latest-row indexes for scheduler health, and reserve whole-table audit/reporting queries for operator dashboards or background jobs.
+**Rule**: When bypassing broken social OAuth for a trusted account, seed the user social fields, active AT account, WTF identity, hosted handle claim, user site, wtf.tez grant, and bespoke non-admin role together. Do not fabricate OAuth tokens; store only verified handles/DIDs and keep the role non-assignable and admin-denied by policy tests.
 
 ---
 
 ## 2026-06-21 - Social OAuth must bind the account the user meant to link
 
-**What happened**: Profile X linking could reuse the browser's current X session and proceed toward linking `wtfgameshow` even when the profile field indicated the user meant to connect a personal handle. The same report also showed that a failed wallet login could leave username/password fields looking populated, making the recovery path feel like a password-login failure instead of a wallet-auth failure.
+**What happened**: Profile X linking could reuse the browser's current X session and proceed toward linking `wtfgameshow` even when the profile field indicated the user meant to connect a personal handle. In the same auth pass, the active branch also needed to preserve the live-proven wallet timeout/network guards and clear stale username/password fields before wallet login starts.
 
-**Why it mattered**: External OAuth providers optimize for the currently signed-in browser account, not the user's in-app intent. Without a server-side expected-handle check, one shared or stale X session can silently attach the wrong social identity; without login-field cleanup, a failed wallet attempt can make users chase invalid password credentials.
+**Why it mattered**: External OAuth providers optimize for the currently signed-in browser account, not the user's in-app intent. Without a server-side expected-handle check, one shared or stale X session can silently attach the wrong social identity; without login-field cleanup, a failed wallet attempt can look like a password-login problem.
 
-**Rule**: Profile social OAuth must store the intended handle in the server session, compare it with the provider's returned identity before token persistence or onboarding, and report a clear switch-account error on mismatch. Wallet auth screens must clear stale credential fields before wallet login and submit password login from real named form fields.
+**Rule**: Profile social OAuth must store the intended handle in the server session, compare it with the provider's returned identity before token persistence or onboarding, and report a clear switch-account error on mismatch. Wallet auth changes must preserve bounded connect/sign waits, named-network Beacon specs, and stale credential cleanup on the login page.
 
 ---
 
-## 2026-06-21 - OAuth callback origins must canonicalize legacy platform env
+## 2026-06-22 - Live puppet suites need production-scoped credentials
 
-**What happened**: After deploying the X expected-handle guard, live smoke on `wtfos.app` still showed `/api/auth/social/config` reporting `PUBLIC_SITE_URL` as the legacy `https://wtfgameshow.app` origin. The OAuth helper used that raw env value when deriving callback and return URLs, so a stale production environment could send X callbacks through the legacy domain even though the product is canonical on `wtfos.app`.
+**What happened**: The feature-audit loop was first pointed at the local inventory harness, then correctly switched to `https://wtfos.app`. The production puppet suite immediately failed on `e2e_bert` with HTTP 401 because Codex only had `~/.wtf-gameshow/e2e-puppets.local.json`, whose metadata showed it was generated for `localhost:5432`. Production did contain `e2e_*` users, but not with the local password file. Hetzner credential export/repair was also blocked because `scripts/wtf-ssh.sh --check` could not see the required local SSH identity in Codex's agent.
 
-**Why it mattered**: OAuth state and cookies are origin-sensitive. A correct account-mismatch guard can still fail if the provider callback returns to a different platform host than the tab that started the flow, and operators may not notice because the legacy host still resolves.
+**Why it mattered**: A local puppet credential file against production creates false auth failures and prevents the live loop from testing the risky surfaces: roles, admin screens, wallet binding, rewards, persistence, and cross-domain workflows. Without a clear guard, the suite looks like the app rejected valid test users when the real issue is environment scope.
 
-**Rule**: All platform OAuth callback helpers must canonicalize legacy `wtfgameshow.app` / `www` / `new` origins to `https://wtfos.app` before building provider URLs or diagnostics. Keep custom preview/local origins intact, but never let stale legacy platform env leak into production callback URLs.
+**Rule**: When running `playwright.live.config.mjs` against a non-local base URL, first confirm the puppet credential file was generated for that target environment. Do not reuse `e2e-puppets.local.json` for `wtfos.app`. Make `scripts/wtf-ssh.sh --check` pass or provide an explicit production `WTF_E2E_PUPPET_CREDENTIALS_PATH`, then run the full live puppet suite. Keep public live smoke separate from authenticated puppet coverage in the tracker.
+
+---
+
+## 2026-06-22 - Production puppet seeding must prove wallet decrypt/signing
+
+**What happened**: After production puppet credentials were exported from Hetzner, the first focused rerun still failed wallet-login stories because the platform wallet keyring listed public puppet wallets but could not decrypt the private keys with the active master key. The seed/export step looked successful until `sign-challenge` tried to load a signer.
+
+**Why it mattered**: Public wallet metadata is not proof that the encrypted key material can be used. A live puppet suite can pass password login and still fail every wallet-owned behavior if the keyring master in the seed container, local secret file, and runtime signer path are not the same secret.
+
+**Rule**: Every production puppet seed or keyring rotation must immediately verify signer usability for each puppet wallet before writing/using credentials. Force the intended `WTF_PLATFORM_KEYRING_MASTER_KEY` or master-key file into one-off Docker seed containers, then run at least one `sign-challenge` proof against the copied keyring before launching the full live suite.
+
+---
+
+## 2026-06-22 - Do not dump unredacted compose configuration while hunting secrets
+
+**What happened**: During Hetzner credential discovery, `docker compose config` printed fully expanded production environment values, including secrets, into the terminal output while trying to understand the deploy/runtime environment.
+
+**Why it mattered**: Even in a trusted repair session, unredacted environment dumps widen the blast radius of secrets and make the transcript harder to safely review. The goal was to locate the puppet credential path and keyring wiring, not to expose every production variable.
+
+**Rule**: For production secret discovery, use targeted path, variable-name, and existence probes. Prefer `printenv | cut -d= -f1`, explicit file metadata, or redacted `KEY=<set>` checks. Do not run unredacted compose/config/env dumps unless the user explicitly asks for a full secret audit in a controlled channel.
+
+---
+
+## 2026-06-22 - Hetzner DB tasks need the app Docker network, not host localhost
+
+**What happened**: A production puppet seeding attempt from the host failed with `ECONNREFUSED` against `localhost:5432`. The same database is reachable from the app Docker network as `postgres:5432`, so the production seed needed to run in a one-off compose container with the repo mounted and the correct Docker-network database URL.
+
+**Why it mattered**: Diagnosing the host connection as a schema or seed-data bug wastes time and can lead to unnecessary app changes. Hetzner's production database topology is container-network scoped, while the live app and seed container can reach the database by service name.
+
+**Rule**: For production DB repairs on Hetzner, identify whether the command is running on the host or inside the compose network before interpreting connection errors. Use a one-off app-network container for seed/migration scripts that expect `postgres:5432`, and verify with a minimal DB connection before running data mutation.
+
+---
+
+## 2026-06-22 - Optional integration schema absence should fail closed, not 500
+
+**What happened**: The full production puppet workflow hit 500s from optional Mastodon and Porcupin routes because the production database did not have those optional integration tables. Those surfaces were allowed to be unavailable, but the routes treated missing relations like unexpected server errors.
+
+**Why it mattered**: Optional integrations need a clear unavailable state so live route/workflow coverage can distinguish a configured-off feature from a broken server. A 500 makes users and tests believe the app crashed; a 503 with a specific integration-not-configured message preserves the contract.
+
+**Rule**: Routes backed by optional tables or deploy-time integration modules must catch missing-relation errors and return a deliberate unavailable response. Keep workflow expected statuses aligned with the product contract, but do not normalize unexpected 500s as acceptable test outcomes.
+
+---
+
+## 2026-06-22 - Runtime app gates must not depend on doc freshness
+
+**What happened**: The independent live user-story probe for WTF LIVE found that signed-in `/live` rendered the disabled-app shell even though the public room route still worked. Production `GET /api/apps/desktop` showed `wtf-live` and `skywire` were `enabled: true` but `installable: false` because doc/install-key metadata was stale, and the runtime `apps` map incorrectly used that installability value as the user-facing app gate.
+
+**Why it mattered**: Documentation freshness is an operator health signal, not an intentional feature-off switch. Letting stale docs hide production launchers can make core apps disappear from Start Menu, direct routes, and route access manifests while the product owner never disabled the feature.
+
+**Rule**: Keep app enablement and registration health separate. Runtime launchability should follow the explicit `enabled` flag unless there is a deliberate app gate, while doc status and install keys remain admin metadata. Live user-story probes should verify the public API split: an enabled stale app can be launchable and still show registration attention.
 
 ---
 
@@ -5357,6 +5507,16 @@
 **Why it mattered**: A successful 200 HTML response is worse than a clear miss for crawlers, link unfurlers, and browser install surfaces because it looks intentional while carrying the wrong contract. Existing route smoke did not catch it because these paths are not normal app routes.
 
 **Rule**: Public metadata routes such as robots, sitemap, web manifest, well-known files, and crawler previews need explicit handlers or explicit 404/410 responses before the SPA fallback. Register a platform-owned behavior assertion when the path is outside PAGE_DEFS so inventory coverage knows who owns the contract.
+
+---
+
+## 2026-06-23 - Macaroni export bugs must be tested as copied static drops
+
+**What happened**: A creator copied a Macaroni Studio-exported drop page to a third-party host and collectors hit wallet/runtime issues there: duplicate Octez/Beacon clients, missing active-account subscription warnings, browser RPC packing failures, and share/status copy saying there was no per-wallet cap even though live stage storage had `max_per_wallet: 5`.
+
+**Why it mattered**: The bug belonged to our exported runtime, not only the creator's host. Testing the Studio surface or local app shell alone can miss the exact artifact collectors use after export, especially when wallet clients, browser CORS, and Michelson storage shapes interact on a copied static page.
+
+**Rule**: For Macaroni drop fixes, verify the generated/copied static drop page path directly. Reuse/reconfigure one wallet client per page lifecycle, subscribe to `ACTIVE_ACCOUNT_SET` before account/permission APIs, normalize option-like chain storage before user-facing copy, and include browser-safe RPC packing fallback or local packing guidance before claiming the export is safe.
 
 ---
 

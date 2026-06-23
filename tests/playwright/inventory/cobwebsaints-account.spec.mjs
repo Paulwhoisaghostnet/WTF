@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
 
 const HARNESS_WALLET = "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY";
+const COBWEBSAINTS_FULL_USER_ROLE = "cobwebsaints_full_user";
 
 async function seedCobwebsaints(request, { wtfUserSiteClaimed = false } = {}) {
   const res = await request.post("/__test/state", {
     data: {
       userId: 4242,
-      userRole: "trusted_creator",
+      userRole: COBWEBSAINTS_FULL_USER_ROLE,
       username: "cobwebsaints",
       displayName: "Cobweb",
       wtfUserSiteClaimed,
@@ -16,11 +17,24 @@ async function seedCobwebsaints(request, { wtfUserSiteClaimed = false } = {}) {
 }
 
 test.describe("interaction inventory - cobwebsaints account readiness", () => {
-  test("domain claiming and trusted-creator surfaces stay account-specific", async ({
+  test("domain claiming and bespoke full-user surfaces stay account-specific", async ({
     page,
     request,
   }) => {
     await seedCobwebsaints(request);
+    const authUser = await request.get("/api/auth/user").then((res) => res.json());
+    expect(authUser.role).toBe(COBWEBSAINTS_FULL_USER_ROLE);
+    expect(authUser.roles).toContain(COBWEBSAINTS_FULL_USER_ROLE);
+    expect(authUser.twitterHandle).toBe("unitedsaints");
+    expect(authUser.twitterVerified).toBe(true);
+    expect(authUser.effectivePermissions.trusted_market_creator).toBe(true);
+    expect(authUser.effectivePermissions.use_wtfos_pinning).toBe(true);
+    expect(authUser.effectivePermissions.access_admin_panel).toBe(false);
+
+    const atprotoMe = await request.get("/api/atproto/me").then((res) => res.json());
+    expect(atprotoMe.account.handle).toBe("cobwebsaints.bsky.social");
+    expect(atprotoMe.account.did).toBe("did:plc:hlwiidixnd2bcc65tkvsmfs2");
+
     await page.addInitScript((walletAddress) => {
       window.localStorage.setItem(
         "wtf:wallet-session",

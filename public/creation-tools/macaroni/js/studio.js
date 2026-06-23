@@ -440,7 +440,7 @@ function hasWtfosPinningAccess(user) {
       ? [user.role]
       : [];
   return roles.some((role) =>
-    ["admin", "host", "cohost", "trusted_creator", "trusted_market_creator"].includes(String(role))
+    ["admin", "host", "cohost", "trusted_creator", "trusted_market_creator", "cobwebsaints_full_user"].includes(String(role))
   );
 }
 

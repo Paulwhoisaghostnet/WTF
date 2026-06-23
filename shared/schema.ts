@@ -54,6 +54,14 @@ import {
   studioProjectMembers,
   studioProjects,
 } from "./schema-studio";
+import {
+  greenRoomAdminAudits,
+  greenRoomAllianceMembers,
+  greenRoomEvents,
+  greenRoomInventoryItems,
+  greenRoomPlayers,
+  greenRoomRelationships,
+} from "./schema-green-room";
 import { macaroniPackages } from "./schema-macaroni";
 import { tvChannels } from "./schema-tv";
 import {
@@ -76,6 +84,7 @@ export * from "./schema-challenge-automation";
 export * from "./schema-casino";
 export * from "./schema-club-dues";
 export * from "./schema-game-studio";
+export * from "./schema-green-room";
 export * from "./schema-liveops";
 export * from "./schema-wtf-live";
 export * from "./schema-console";
@@ -125,6 +134,15 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   studioMemberships: many(studioProjectMembers),
   studioFilesUploaded: many(studioFiles),
   studioAnnotations: many(studioAnnotations),
+  greenRoomPlayer: one(greenRoomPlayers, {
+    fields: [users.id],
+    references: [greenRoomPlayers.userId],
+  }),
+  greenRoomInventoryItems: many(greenRoomInventoryItems),
+  greenRoomRelationships: many(greenRoomRelationships),
+  greenRoomAllianceMemberships: many(greenRoomAllianceMembers),
+  greenRoomEvents: many(greenRoomEvents),
+  greenRoomAdminAudits: many(greenRoomAdminAudits),
   macaroniPackages: many(macaroniPackages),
   desktopSettings: one(userDesktopSettings, {
     fields: [users.id],

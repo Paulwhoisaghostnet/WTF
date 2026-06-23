@@ -40,6 +40,7 @@ import casinoRoutes from "./routes/casino";
 import clubDuesRoutes from "./routes/club-dues";
 import consoleRoutes from "./routes/console";
 import gameStudioRoutes from "./routes/game-studio";
+import dedRoomsRoutes from "./routes/dedrooms";
 import studioRoutes from "./routes/studio";
 import studioFilesRoutes from "./routes/studio-files";
 import studioAnnotationsRoutes from "./routes/studio-annotations";
@@ -298,6 +299,7 @@ export function registerRoutes(app: Express) {
   app.use(clubDuesRoutes);
   app.use(consoleRoutes);
   app.use(gameStudioRoutes);
+  app.use(dedRoomsRoutes);
   app.use(studioRoutes);
   app.use(studioFilesRoutes);
   app.use(studioAnnotationsRoutes);
