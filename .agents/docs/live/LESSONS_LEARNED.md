@@ -5357,3 +5357,13 @@
 **Why it mattered**: A successful 200 HTML response is worse than a clear miss for crawlers, link unfurlers, and browser install surfaces because it looks intentional while carrying the wrong contract. Existing route smoke did not catch it because these paths are not normal app routes.
 
 **Rule**: Public metadata routes such as robots, sitemap, web manifest, well-known files, and crawler previews need explicit handlers or explicit 404/410 responses before the SPA fallback. Register a platform-owned behavior assertion when the path is outside PAGE_DEFS so inventory coverage knows who owns the contract.
+
+---
+
+## 2026-06-23 - Exported drop sharing must be tested against platform limits
+
+**What happened**: The Macaroni exported drop page could compose rich X share text with title, creator, sale status, price, wallet limit, access, supply, mint URL, and media URL, but that full copy could exceed X's standard post limit. Sale stages also had visible schedule rows without prefilled calendar handoff links.
+
+**Why it mattered**: Share and reminder controls are part of the collector acquisition path. If a generated post fails platform limits or makes the user manually rebuild the sale reminder, the exported drop is technically present but operationally clumsy at exactly the moment promotion matters.
+
+**Rule**: Macaroni exported-page tests must render the static artifact with realistic stage storage, decode compose-intent text, apply X URL-weight counting against the 280-character limit, verify mint/media URL preservation where possible, and assert prefilled ICS plus Google Calendar links for every sale stage.

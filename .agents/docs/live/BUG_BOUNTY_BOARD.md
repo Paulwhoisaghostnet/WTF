@@ -56,6 +56,7 @@ Priority labels:
 | WTF-BB-309 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / owner control UX | P1 | 11 | 8 | 2 | 5 | 0 | Independent live user-story probe found owner-created rooms/stages could fall out of sync after mutations; fixed in `7df41dd` by synchronously merging returned owner-control state into React Query caches and verified on live `https://wtfos.app` with the 4/4 owned-surface probe |
 | WTF-BB-312 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / Show Kit cooldown UX | P2 | 8 | 14 | 1 | 4 | 0 | Expanded independent live Show Kit relay probe found an immediate second trigger after a clip send could leave stale `sent` status; fixed in `7f5d0d7` by starting cooldown after successful relay completion and verified with the 2/2 live realtime/Show Kit probe |
 | WTF-BB-314 | Verified | Codex live user-story gap loop | 2026-06-22 | WIM / settings dialog keyboard UX | P2 | 8 | 14 | 1 | 4 | 0 | Independent live WIM probe found the settings dialog could stay open after creating a custom list because Escape was only handled on the popover node; fixed in `f09feec` with capture-phase Escape handling and verified on live `https://wtfos.app` with the WIM modular roster/DM probe |
+| WTF-BB-316 | Fixed | Codex Macaroni share/calendar repair | 2026-06-23 | Macaroni / exported drop sharing and sale reminders | P1 | 10 | 10 | 2 | 4 | 0 | Exported Macaroni drop share copy can exceed the standard X 280-character post limit and sale stages lack prefilled add-to-calendar actions; source now bounds X copy, preserves mint/media URLs where possible, and adds prefilled ICS/Google Calendar links pending production verification |
 | WTF-BB-299 | Verified | Codex live user-story gap loop | 2026-06-22 | Platform domains / access manifest | P1 | 12 | 7 | 2 | 4 | 2 | `/api/access` advertised legacy `wtfgameshow.app` origin on canonical `wtfos.app`; fixed in `e4770ad` and verified live on `https://wtfos.app` with canonical origin plus MCP endpoint |
 | WTF-BB-305 | Verified | Codex wallet live full-send | 2026-06-21 | Operations / production health | P0 | 13 | 4 | 3 | 5 | 0 | Live `/api/health` could intermittently return 503 because scheduler audit used a whole-table latest-run query that timed out under production audit volume; fixed by querying only registered job names through indexed lateral latest-row lookups plus a production index; verified live on `wtfos.app` |
 | WTF-BB-296 | Verified | Codex cobwebsaints domain readiness pass | 2026-06-20 | WTF Domains / account-specific advanced feature coverage | P2 | 8 | 14 | 2 | 3 | 0 | Domain/pinning harness data hardcoded `pincollector.wtfos.me`, so account-specific readiness for `cobwebsaints` could pass generic checks while advanced surfaces showed another user's host; fixed with signed-in-user-derived harness domains, Cobweb persona coverage across Settings, WTF Domains, IPFS Pinning, and Macaroni trusted creator access, plus full inventory verification |
@@ -6507,6 +6508,24 @@ Priority labels:
   - Post-fix production WIM user-story probe passed 1/1 with 0 unexpected failures on `https://wtfos.app`, covering signed-in WIM, custom list creation, Escape dialog close, roster friend add, rich DM send, and persisted DM style metadata.
 
 ---
+
+### WTF-BB-316 - Exported Macaroni drop sharing exceeds X limits and lacks sale reminders
+
+- Category: Macaroni / exported drop sharing and sale reminders
+- Status: Fixed
+- Owner/Session: Codex Macaroni share/calendar repair
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - Follow-up user report on 2026-06-23 asked whether Macaroni's preconfigured share message was still inaccurate about max-per-wallet limits, whether X/Twitter share text fits the free-tier 280-character post limit, whether token image sharing is possible, and whether sale stages can ship with add-to-calendar configuration.
+  - Current exported drop share text includes title, creator, stage label, cost, wallet limit, access, supply, mint page, and cover image, which can exceed X's standard 280-character limit once title/creator/URLs are populated.
+  - Sale schedule rows render stage start/price/tags but do not provide prefilled calendar handoff links.
+- Why it matters:
+  - Creators rely on exported drop pages to market live sales. Overlong X share text can fail or require manual editing at the moment collectors/creators are trying to promote the mint, and missing calendar links makes stage reminders a manual chore.
+- Correction:
+  - Keep X share text bounded against the standard 280-character post limit while preserving mint/token image URLs where possible, keep Bluesky share summaries richer, and add prefilled `.ics` plus Google Calendar links to every sale stage row.
+- Verification:
+  - Local source checks passed: `node --check public/creation-tools/macaroni/js/drop.js`, `./node_modules/.bin/tsx --test server/routes/macaroni-policy.test.ts`, `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts`, and `git diff --check` for the touched Macaroni/inventory docs.
+  - Rendered static-drop harness passed with a fake copied-page storage shape using `max_per_wallet: "5"`: the sale row and X compose text both showed `max 5/wallet`, the X post weighted to 236/280 while preserving the mint URL and cover URL, `.ics` and Google Calendar links rendered, and `macaroni.drop_shared` / `macaroni.drop_calendar_added` click handles fired.
 
 ### WTF-BB-301 - SEO/PWA static discovery paths fall through to SPA HTML
 

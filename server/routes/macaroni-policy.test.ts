@@ -133,12 +133,21 @@ test("Macaroni social share presets include creator handles and token media URLs
   assert.match(dropSource, /function tokenShareMediaUrl\(meta\)/);
   assert.match(dropSource, /tokenArtifactUri\(meta\) \|\| tokenPreviewUri\(meta\)/);
   assert.match(dropSource, /function collectionCoverUrl\(\)/);
+  assert.match(dropSource, /const X_POST_LIMIT = 280/);
+  assert.match(dropSource, /const X_URL_WEIGHT = 23/);
+  assert.match(dropSource, /function weightedXCharCount\(text\)/);
+  assert.match(dropSource, /function trimForXPost\(text\)/);
   assert.match(dropSource, /function shareIntentUrl\(service, text\)/);
+  assert.match(dropSource, /service === "x" \? trimForXPost\(text\) : compactShareText\(text\)/);
   assert.match(dropSource, /function shareTemplateFor\(service\)/);
   assert.match(dropSource, /function ensureShareMedia\(text, media\)/);
   assert.match(dropSource, /function mintShareText\(service, meta, id\)/);
+  assert.match(dropSource, /function dropXShareText\(stage, statusText\)/);
+  assert.match(dropSource, /if \(service === "x"\) return dropXShareText\(stage, statusText\)/);
   assert.match(dropSource, /function dropShareText\(service, stage, statusText\)/);
   assert.match(dropSource, /function updateDropShareLinks\(stage, statusText\)/);
+  assert.match(dropSource, /macaroni\.drop_shared/);
+  assert.match(dropSource, /data-macaroni-handle/);
   assert.match(dropSource, /creator: creatorShareIdentity\(service, meta\)/);
   assert.match(dropSource, /media,/);
   assert.match(dropSource, /mintShareText\(service, meta, id\)/);
@@ -151,6 +160,31 @@ test("Macaroni social share presets include creator handles and token media URLs
   assert.match(dropSource, /https:\/\/x\.com\/intent\/post/);
   assert.match(dropSource, /https:\/\/bsky\.app\/intent\/compose/);
   assert.doesNotMatch(dropSource, /api\.twitter\.com|api\.bsky\.app|com\.atproto\.repo\.createRecord/);
+});
+
+test("Macaroni generated sale stages have bounded X share text and calendar links", () => {
+  const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
+  const themeSource = readFileSync("public/creation-tools/macaroni/css/theme.css", "utf8");
+
+  assert.match(dropSource, /const X_POST_LIMIT = 280/);
+  assert.match(dropSource, /function compactShareText\(text\)/);
+  assert.match(dropSource, /function weightedXCharCount\(text\)/);
+  assert.match(dropSource, /while \(body && weightedXCharCount\(`\$\{body\}\$\{marker\}\$\{suffix\}`\) > X_POST_LIMIT\)/);
+  assert.match(dropSource, /function dropXShareText\(stage, statusText\)/);
+  assert.match(dropSource, /max \$\{stage\.maxPerWallet\}\/wallet/);
+  assert.match(dropSource, /function stageCalendarLinks\(stage\)/);
+  assert.match(dropSource, /https:\/\/calendar\.google\.com\/calendar\/render/);
+  assert.match(dropSource, /data:text\/calendar;charset=utf-8/);
+  assert.match(dropSource, /BEGIN:VCALENDAR/);
+  assert.match(dropSource, /Add to calendar/);
+  assert.match(dropSource, /macaroni\.drop_calendar_added/);
+  assert.match(dropSource, /new CustomEvent\("macaroni:interaction"/);
+  assert.match(dropSource, /download="\$\{esc\(calendar\.filename\)\}"/);
+  assert.match(dropSource, /stageCalendarDescription\(stage\)/);
+  assert.match(dropSource, /Mint page: \$\{shareDropUrl\(\)\}/);
+  assert.match(themeSource, /\.stage-row-actions/);
+  assert.match(themeSource, /\.stage-calendar-row/);
+  assert.match(themeSource, /\.stage-calendar/);
 });
 
 test("Macaroni exposes practical media limits in Studio and server pinning", () => {

@@ -125,6 +125,23 @@ function ensureDropAccessibility() {
 
 ensureDropAccessibility();
 
+document.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-macaroni-handle]");
+  if (!target) return;
+  try {
+    window.dispatchEvent(new CustomEvent("macaroni:interaction", {
+      detail: {
+        handle: target.dataset.macaroniHandle,
+        service: target.dataset.shareService || "",
+        stage: target.dataset.stage || "",
+        href: target.href || "",
+      },
+    }));
+  } catch (_) {
+    // Static exports must keep sharing/calendar handoffs working even in older browsers.
+  }
+});
+
 // ---------- config ----------
 let CFG = window.DROP_CONFIG || null;
 if (new URLSearchParams(location.search).get("preview")) {
@@ -335,6 +352,53 @@ function tokenDisplayName(meta, id) {
   return String(meta?.name || "#" + (id + 1));
 }
 
+const X_POST_LIMIT = 280;
+const X_URL_WEIGHT = 23;
+const URL_IN_TEXT_RE = /https?:\/\/[^\s]+/g;
+
+function compactShareText(text) {
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
+function uniqueUrls(text) {
+  return [...new Set((String(text || "").match(URL_IN_TEXT_RE) || []).map((url) => url.replace(/[),.;]+$/, "")))];
+}
+
+function weightedXCharCount(text) {
+  const raw = String(text || "");
+  let count = 0;
+  let cursor = 0;
+  for (const match of raw.matchAll(URL_IN_TEXT_RE)) {
+    count += Array.from(raw.slice(cursor, match.index)).length;
+    count += X_URL_WEIGHT;
+    cursor = match.index + match[0].length;
+  }
+  count += Array.from(raw.slice(cursor)).length;
+  return count;
+}
+
+function trimForXPost(text) {
+  const clean = compactShareText(text);
+  if (weightedXCharCount(clean) <= X_POST_LIMIT) return clean;
+
+  const urls = uniqueUrls(clean).slice(-2);
+  const suffix = urls.length ? `\n${urls.join("\n")}` : "";
+  let body = clean
+    .replace(URL_IN_TEXT_RE, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+  const marker = body ? "..." : "";
+  while (body && weightedXCharCount(`${body}${marker}${suffix}`) > X_POST_LIMIT) {
+    body = body.slice(0, -1).trimEnd();
+  }
+  return `${body}${marker}${suffix}`.trim();
+}
+
 function normalizeShareHandle(value) {
   let text = String(value || "").trim();
   text = text
@@ -423,8 +487,9 @@ function collectionCoverUrl() {
 }
 
 function shareIntentUrl(service, text) {
-  if (service === "bsky") return `https://bsky.app/intent/compose?${new URLSearchParams({ text }).toString()}`;
-  return `https://x.com/intent/post?${new URLSearchParams({ text }).toString()}`;
+  const shareText = service === "x" ? trimForXPost(text) : compactShareText(text);
+  if (service === "bsky") return `https://bsky.app/intent/compose?${new URLSearchParams({ text: shareText }).toString()}`;
+  return `https://x.com/intent/post?${new URLSearchParams({ text: shareText }).toString()}`;
 }
 
 function mintShareText(service, meta, id) {
@@ -483,7 +548,31 @@ function dropStageShareLines(stage, statusText) {
   return lines;
 }
 
+function dropXShareText(stage, statusText) {
+  const cover = collectionCoverUrl();
+  const title = CFG.title || "this blind mint drop";
+  const creator = creatorShareIdentity("x", null);
+  const lines = [`${title} blind mint${creator ? ` by ${creator}` : ""}.`];
+  if (stage) {
+    const live = stage.start <= new Date();
+    lines.push(live ? "Minting now." : `Opens ${stage.start.toLocaleString()}.`);
+    lines.push([
+      `${MD.fmtTez(stage.priceMutez)} each`,
+      stage.maxPerWallet ? `max ${stage.maxPerWallet}/wallet` : "",
+      stage.useAllowlist ? "allowlist" : "public",
+    ].filter(Boolean).join(" · "));
+  } else if (statusText) {
+    lines.push(statusText);
+  }
+  const supplyLine = dropSupplyShareLine();
+  if (supplyLine) lines.push(supplyLine);
+  lines.push(shareDropUrl());
+  if (cover) lines.push(cover);
+  return trimForXPost(lines.join("\n"));
+}
+
 function dropShareText(service, stage, statusText) {
+  if (service === "x") return dropXShareText(stage, statusText);
   const cover = collectionCoverUrl();
   const title = CFG.title || "this blind mint drop";
   const creator = creatorShareIdentity(service, null);
@@ -496,6 +585,79 @@ function dropShareText(service, stage, statusText) {
   return lines.filter(Boolean).join("\n");
 }
 
+function calendarDateStamp(date) {
+  return new Date(date).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function calendarEscape(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n");
+}
+
+function stageCalendarSummary(stage) {
+  return `${CFG.title || "Macaroni"} ${stagePositionText(stage)} opens`;
+}
+
+function stageCalendarDescription(stage) {
+  return [
+    `${CFG.title || "Macaroni"} sale reminder`,
+    ...dropStageShareLines(stage, ""),
+    `Mint page: ${shareDropUrl()}`,
+  ].filter(Boolean).join("\n");
+}
+
+function stageCalendarEnd(stage) {
+  return new Date(new Date(stage.start).getTime() + 60 * 60 * 1000);
+}
+
+function stageCalendarFilename(stage) {
+  const title = String(CFG.title || "macaroni")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40) || "macaroni";
+  return `${title}-stage-${stage.id + 1}.ics`;
+}
+
+function stageCalendarLinks(stage) {
+  const start = new Date(stage.start);
+  const end = stageCalendarEnd(stage);
+  const summary = stageCalendarSummary(stage);
+  const description = stageCalendarDescription(stage);
+  const url = shareDropUrl();
+  const dates = `${calendarDateStamp(start)}/${calendarDateStamp(end)}`;
+  const google = new URL("https://calendar.google.com/calendar/render");
+  google.searchParams.set("action", "TEMPLATE");
+  google.searchParams.set("text", summary);
+  google.searchParams.set("dates", dates);
+  google.searchParams.set("details", description);
+  google.searchParams.set("location", url);
+  const uidSource = `${CFG.contract || location.host}-${stage.id}-${calendarDateStamp(start)}`;
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Macaroni//Drop Sale Stage//EN",
+    "BEGIN:VEVENT",
+    `UID:${calendarEscape(uidSource)}@macaroni`,
+    `DTSTAMP:${calendarDateStamp(new Date())}`,
+    `DTSTART:${calendarDateStamp(start)}`,
+    `DTEND:${calendarDateStamp(end)}`,
+    `SUMMARY:${calendarEscape(summary)}`,
+    `DESCRIPTION:${calendarEscape(description)}`,
+    `URL:${calendarEscape(url)}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+  return {
+    google: google.toString(),
+    ics: `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`,
+    filename: stageCalendarFilename(stage),
+  };
+}
+
 function updateDropShareLinks(stage, statusText) {
   const title = CFG.title || "this blind mint";
   const x = $("dropShareX");
@@ -503,10 +665,14 @@ function updateDropShareLinks(stage, statusText) {
   if (!x && !bsky) return;
   if (x) {
     x.href = shareIntentUrl("x", dropShareText("x", stage, statusText));
+    x.dataset.macaroniHandle = "macaroni.drop_shared";
+    x.dataset.shareService = "x";
     x.setAttribute("aria-label", `Share ${title} blind mint on X`);
   }
   if (bsky) {
     bsky.href = shareIntentUrl("bsky", dropShareText("bsky", stage, statusText));
+    bsky.dataset.macaroniHandle = "macaroni.drop_shared";
+    bsky.dataset.shareService = "bsky";
     bsky.setAttribute("aria-label", `Share ${title} blind mint on Bluesky`);
   }
 }
@@ -518,6 +684,8 @@ function makeMintShareLink(service, label, meta, id) {
   link.target = "_blank";
   link.rel = "noopener";
   link.textContent = label;
+  link.dataset.macaroniHandle = "macaroni.drop_shared";
+  link.dataset.shareService = service;
   link.setAttribute("aria-label", `Share ${tokenDisplayName(meta, id)} on ${label}`);
   return link;
 }
@@ -1376,12 +1544,19 @@ function render() {
     .map((s) => {
       const isActive = s.id === act;
       const when = s.start.toLocaleString();
+      const calendar = stageCalendarLinks(s);
       const tags =
         (s.useAllowlist ? '<span class="pill warn">allowlist</span> ' : "") +
         (s.maxPerWallet ? `<span class="pill">max ${s.maxPerWallet}/wallet</span>` : "");
       return `<div class="stage-row ${isActive ? "active" : ""}">
         <div><strong>Stage ${s.id + 1}</strong> · ${when}</div>
-        <div>${tags} <strong>${MD.fmtTez(s.priceMutez)}</strong></div>
+        <div class="stage-row-actions">
+          <div>${tags} <strong>${MD.fmtTez(s.priceMutez)}</strong></div>
+          <div class="mint-share-row stage-calendar-row">
+            <a class="mint-share stage-calendar" href="${esc(calendar.ics)}" download="${esc(calendar.filename)}" data-macaroni-handle="macaroni.drop_calendar_added" data-stage="${s.id + 1}">Add to calendar</a>
+            <a class="mint-share stage-calendar" href="${esc(calendar.google)}" target="_blank" rel="noopener" data-macaroni-handle="macaroni.drop_calendar_added" data-stage="${s.id + 1}">Google</a>
+          </div>
+        </div>
       </div>`;
     })
     .join("") || '<div class="muted">no stages configured</div>';
