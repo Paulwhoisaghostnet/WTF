@@ -56,7 +56,7 @@ Priority labels:
 | WTF-BB-309 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / owner control UX | P1 | 11 | 8 | 2 | 5 | 0 | Independent live user-story probe found owner-created rooms/stages could fall out of sync after mutations; fixed in `7df41dd` by synchronously merging returned owner-control state into React Query caches and verified on live `https://wtfos.app` with the 4/4 owned-surface probe |
 | WTF-BB-312 | Verified | Codex live user-story gap loop | 2026-06-22 | WTF LIVE / Show Kit cooldown UX | P2 | 8 | 14 | 1 | 4 | 0 | Expanded independent live Show Kit relay probe found an immediate second trigger after a clip send could leave stale `sent` status; fixed in `7f5d0d7` by starting cooldown after successful relay completion and verified with the 2/2 live realtime/Show Kit probe |
 | WTF-BB-314 | Verified | Codex live user-story gap loop | 2026-06-22 | WIM / settings dialog keyboard UX | P2 | 8 | 14 | 1 | 4 | 0 | Independent live WIM probe found the settings dialog could stay open after creating a custom list because Escape was only handled on the popover node; fixed in `f09feec` with capture-phase Escape handling and verified on live `https://wtfos.app` with the WIM modular roster/DM probe |
-| WTF-BB-316 | Fixed | Codex Macaroni share/calendar repair | 2026-06-23 | Macaroni / exported drop sharing and sale reminders | P1 | 10 | 10 | 2 | 4 | 0 | Exported Macaroni drop share copy can exceed the standard X 280-character post limit and sale stages lack prefilled add-to-calendar actions; source now bounds X copy, preserves mint/media URLs where possible, and adds prefilled ICS/Google Calendar links pending production verification |
+| WTF-BB-316 | Verified | Codex Macaroni share/calendar repair | 2026-06-23 | Macaroni / exported drop sharing and sale reminders | P1 | 10 | 10 | 2 | 4 | 0 | Exported Macaroni drop share copy could exceed the standard X 280-character post limit and sale stages lacked prefilled add-to-calendar actions; fixed in `50083c5` and verified live on `https://wtfos.app` |
 | WTF-BB-299 | Verified | Codex live user-story gap loop | 2026-06-22 | Platform domains / access manifest | P1 | 12 | 7 | 2 | 4 | 2 | `/api/access` advertised legacy `wtfgameshow.app` origin on canonical `wtfos.app`; fixed in `e4770ad` and verified live on `https://wtfos.app` with canonical origin plus MCP endpoint |
 | WTF-BB-305 | Verified | Codex wallet live full-send | 2026-06-21 | Operations / production health | P0 | 13 | 4 | 3 | 5 | 0 | Live `/api/health` could intermittently return 503 because scheduler audit used a whole-table latest-run query that timed out under production audit volume; fixed by querying only registered job names through indexed lateral latest-row lookups plus a production index; verified live on `wtfos.app` |
 | WTF-BB-296 | Verified | Codex cobwebsaints domain readiness pass | 2026-06-20 | WTF Domains / account-specific advanced feature coverage | P2 | 8 | 14 | 2 | 3 | 0 | Domain/pinning harness data hardcoded `pincollector.wtfos.me`, so account-specific readiness for `cobwebsaints` could pass generic checks while advanced surfaces showed another user's host; fixed with signed-in-user-derived harness domains, Cobweb persona coverage across Settings, WTF Domains, IPFS Pinning, and Macaroni trusted creator access, plus full inventory verification |
@@ -1248,7 +1248,7 @@ Priority labels:
 ### WTF-BB-191 - tz2at listing signals can suppress Objkt direct-buy purchase keys
 
 - Category: Rat Race / marketplace wallet sends
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Rat Race direct-buy hotfix
 - Score: C1 + F4 + S3 + P1(5) = 13
 - Evidence:
@@ -6526,6 +6526,9 @@ Priority labels:
 - Verification:
   - Local source checks passed: `node --check public/creation-tools/macaroni/js/drop.js`, `./node_modules/.bin/tsx --test server/routes/macaroni-policy.test.ts`, `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts`, and `git diff --check` for the touched Macaroni/inventory docs.
   - Rendered static-drop harness passed with a fake copied-page storage shape using `max_per_wallet: "5"`: the sale row and X compose text both showed `max 5/wallet`, the X post weighted to 236/280 while preserving the mint URL and cover URL, `.ics` and Google Calendar links rendered, and `macaroni.drop_shared` / `macaroni.drop_calendar_added` click handles fired.
+  - Production commit `50083c5` was pushed to `main`; GitHub `Deploy to Hetzner` run `28052421966` and `Quality Gates` run `28052421974` both completed successfully.
+  - Live `https://wtfos.app/api/health` returned `status:"ok"` with `version.commitRef:"50083c5"`, and live `drop.js`/`theme.css` contain the X limit, calendar generation, and canonical share/calendar handle markers.
+  - Live-origin Playwright smoke of `https://wtfos.app/creation-tools/macaroni/drop.html?v=50083c53` with fake stage storage rendered `max 5/wallet`, generated X compose text weighted at 236/280 with mint and cover URLs preserved, rendered ICS plus Google Calendar links, and emitted `macaroni.drop_shared` plus `macaroni.drop_calendar_added` with no browser errors.
 
 ### WTF-BB-301 - SEO/PWA static discovery paths fall through to SPA HTML
 
