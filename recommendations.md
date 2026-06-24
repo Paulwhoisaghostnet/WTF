@@ -8,8 +8,9 @@ Date: 2026-06-24
 - Creator Workspace second
 - Operating System underneath
 - The Count as the admin/liveops puppet
-- Product-home first screen with persona choice, one next move, live proof, and compact route actions before audit boards
-- Simulated 5/5 A+ design-critic gate using fictional product, enterprise, modern-web, accessibility, and conversion lenses
+- Product-home first screen with a distinctive playable-world hero, persona choice, EXP/passport/questline state, one next move, live proof, and compact route actions before audit boards
+- Five-step quest-stage ribbon in the first action console so side quests, proof, unlocks, and returns feel like a route-owned game loop
+- Demoted 60-second answer strip and simulated 5/5 A+ design-critic gate below launch actions so evidence stays available without making the first screen read like a report
 - EXP, levels, side quests, challenges, rewards, and roles as progression context
 - Admin authority gated by explicit permissions, never by EXP alone
 - Discovery trails as the first relationship layer between now signals and deeper app details

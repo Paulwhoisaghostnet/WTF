@@ -1,3 +1,13 @@
+## 2026-06-24 - Beta product proof must not become the product surface
+
+**What happened**: The beta home had the right ingredients, but the first viewport still carried too much evidence posture: Q&A blocks, simulated critic proof, report language, and long stacked launch surfaces made the redesign feel closer to a reference page than a human-facing product.
+
+**Why it mattered**: WTFOS beta needs users to feel the loop before they study it. EXP, roles, side quests, route gates, and Count review should appear as an actionable progression surface first, with audit evidence available after the user sees what to do.
+
+**Rule**: Keep the first beta viewport product-led: visual identity, role choice, EXP/passport state, one current quest, route-owned stage buttons, visible people/activity proof, and compact launch actions. Move Q&A, simulated review gates, audits, maps, and governance evidence below the first action surface unless they directly help the user choose the next click.
+
+---
+
 ## 2026-06-24 - Beta must open as a product, not an audit report
 
 **What happened**: The beta shell had accurate route maps, puppet evidence, return loops, and Count runbooks, but the first impression read like a dense reference page. Adding more explanatory boards made the experience more correct on paper while making it less attractive and less human-facing.

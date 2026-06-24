@@ -4,9 +4,9 @@ Date: 2026-06-24
 
 ## P1 Onboarding
 
-The beta first screen has been corrected from audit-board density toward a human-facing product home. It now leads with a role picker, one selected next move, proof and return routes, live-signal counts, and six compact launch actions for questing, people, collecting, creating, tomorrow catch-up, and The Count admin review before exposing the deeper audit boards.
+The beta first screen has been corrected from audit-board density toward a human-facing product home. It now leads with a distinctive dark visual hero, a clear "playable Tezos world" promise, a role picker, a visible EXP level/passport/questline card, one selected next move, a five-step quest-stage route ribbon, proof and return routes, live-signal counts, and six compact launch actions for questing, people, collecting, creating, tomorrow catch-up, and The Count admin review before exposing the deeper audit boards.
 
-The beta home now includes the design-critic gauntlet as a compact simulated 5/5 A+ gate, using five fictional lenses for aesthetics, usability, modernity, accessibility, and the return loop. This keeps the critique process visible without pretending real company employees reviewed the product or turning the first screen back into a report.
+The beta home now demotes the 60-second Q&A and simulated 5/5 A+ design-critic gate below the launch actions. This keeps the critique and answer evidence visible without pretending real company employees reviewed the product or turning the first screen back into a report.
 
 The beta first viewport answers what WTFOS is, what users can do, what to do first, what to do next, and why to return tomorrow. The next improvement was not more explanation; it was visible proof of people and activity.
 

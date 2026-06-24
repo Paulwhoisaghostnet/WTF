@@ -741,6 +741,13 @@ export function BetaWtfos() {
   const returnStep = selectedJourneyCommand.steps.find((step) => step.key === "return") ?? currentStep;
   const liveSignalCount = nowSignals.filter((signal) => signal.state === "Live").length;
   const designCriticAPlusCount = designCriticReviews.filter((review) => review.grade === "A+").length;
+  const personaOrdinal = Math.max(0, BETA_PERSONAS.findIndex((item) => item.key === personaKey));
+  const selectedXpLevel = BETA_XP_LEVELS[Math.min(personaOrdinal, BETA_XP_LEVELS.length - 1)] ?? BETA_XP_LEVELS[0];
+  const nextXpLevel = BETA_XP_LEVELS[Math.min(personaOrdinal + 1, BETA_XP_LEVELS.length - 1)] ?? selectedXpLevel;
+  const selectedQuestline = BETA_UNLOCK_QUESTLINES.find((questline) => questline.key === personaKey) ?? BETA_UNLOCK_QUESTLINES[0];
+  const selectedPassport = BETA_UNLOCK_PASSPORTS.find((passport) => passport.key === personaKey) ?? BETA_UNLOCK_PASSPORTS[0];
+  const progressPercent = Math.min(92, 18 + personaOrdinal * 13);
+  const questlineStages = selectedQuestline.stages.slice(0, 5);
   const homeActions: Array<{
     key: string;
     eyebrow: string;
@@ -754,7 +761,7 @@ export function BetaWtfos() {
       key: "quest",
       eyebrow: "Start",
       title: "Earn your first level",
-      copy: "Pick one small side quest. No wallet-heavy move first.",
+      copy: "Take the starter quest and watch EXP move before any wallet-heavy step.",
       route: "/side-quests",
       access: "session",
       action: "Start quest",
@@ -763,7 +770,7 @@ export function BetaWtfos() {
       key: "people",
       eyebrow: "People",
       title: "See who is moving",
-      copy: "Open the social pulse before WTFOS feels empty.",
+      copy: "Open the pulse so WTFOS feels inhabited before it feels technical.",
       route: "/w",
       access: "session",
       action: "Find people",
@@ -772,7 +779,7 @@ export function BetaWtfos() {
       key: "collect",
       eyebrow: "Collect",
       title: "Browse fresh objects",
-      copy: "Start public, then choose whether market context matters.",
+      copy: "Find one object worth caring about, then decide if market context matters.",
       route: "/gallery",
       access: "public",
       action: "Browse art",
@@ -781,7 +788,7 @@ export function BetaWtfos() {
       key: "create",
       eyebrow: "Create",
       title: "Recover a project",
-      copy: "Studio points to the next creator tool without changing it.",
+      copy: "Start from the workspace, then follow the next creator dependency.",
       route: "/studio",
       access: "session",
       action: "Open studio",
@@ -790,7 +797,7 @@ export function BetaWtfos() {
       key: "return",
       eyebrow: "Tomorrow",
       title: "Catch up fast",
-      copy: "Notifications and Digest show what changed while you were gone.",
+      copy: "Notifications and Digest make tomorrow feel like a continuation.",
       route: "/notifications",
       access: "session",
       action: "Check changes",
@@ -799,7 +806,7 @@ export function BetaWtfos() {
       key: "count",
       eyebrow: "The Count",
       title: "Run liveops cleanly",
-      copy: "Admin stays explicit. EXP is evidence, not authority.",
+      copy: "EXP is evidence, not authority. Manage unlock loops without operator drift.",
       route: "/admin",
       access: "admin",
       action: "Review admin",
@@ -825,12 +832,26 @@ export function BetaWtfos() {
       <Hero id="beta-start" data-beta-product-home>
         <HeroCopy>
           <Kicker><Compass size={16} /> wtfOS beta home</Kicker>
-          <h1>Pick a path. Do one thing. Come back to movement.</h1>
-          <p>WTFOS is a Tezos-native social OS. Beta makes it playable: choose a role, take a safe first action, then follow the proof to the next app.</p>
+          <h1>WTFOS is a playable Tezos world.</h1>
+          <p>Choose who you are today, clear one side quest, earn EXP, and unlock the next route through proof The Count can actually manage.</p>
+          <HeroSignalStrip data-beta-product-pulse aria-label="Beta product pulse">
+            <HeroSignal>
+              <strong>{selectedXpLevel.label}</strong>
+              <span>{compactNumber(selectedXpLevel.minXp)} EXP floor</span>
+            </HeroSignal>
+            <HeroSignal>
+              <strong>{liveSignalCount}</strong>
+              <span>live signals right now</span>
+            </HeroSignal>
+            <HeroSignal>
+              <strong>{selectedQuestline.label}</strong>
+              <span>{selectedPassport.identity}</span>
+            </HeroSignal>
+          </HeroSignalStrip>
           <Actions>
             <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>Do my next thing</Primary>
             <Ghost type="button" onClick={() => navigate("/gallery")}>Browse public art</Ghost>
-            <Ghost type="button" onClick={() => jumpToBetaSection("beta-atlas")}>Open full map</Ghost>
+            <Ghost type="button" onClick={() => jumpToBetaSection("beta-people")}>See people</Ghost>
           </Actions>
           <MobileStartRail data-beta-mobile-start-rail aria-label="Fast mobile starts">
             {homeActions.filter((item) => ["quest", "collect", "people"].includes(item.key)).map((item) => (
@@ -846,18 +867,10 @@ export function BetaWtfos() {
               </MobileStartButton>
             ))}
           </MobileStartRail>
-          <ProductAnswerGrid>
-            {answers.map(([question, answer]) => (
-              <ProductAnswer key={question} data-beta-answer>
-                <Small>{question}</Small>
-                <span>{answer}</span>
-              </ProductAnswer>
-            ))}
-          </ProductAnswerGrid>
         </HeroCopy>
         <ProductConsole aria-label="Beta path picker">
           <ConsoleHeader>
-            <Small>Choose your lane</Small>
+            <Small>Choose your character</Small>
             <strong>{persona.label}</strong>
             <span>{persona.promise}</span>
           </ConsoleHeader>
@@ -876,10 +889,44 @@ export function BetaWtfos() {
               </PersonaChip>
             ))}
           </PersonaDeck>
+          <ProgressionCard data-beta-progression-card>
+            <ProgressLead>
+              <LevelDisc>
+                <span>Level</span>
+                <strong>{personaOrdinal + 1}</strong>
+              </LevelDisc>
+              <span>
+                <Small>{selectedXpLevel.label} to {nextXpLevel.label}</Small>
+                <strong>{selectedPassport.identity}</strong>
+                <em>{selectedQuestline.sideQuest}</em>
+              </span>
+            </ProgressLead>
+            <ProgressTrack aria-label={`${persona.label} progression meter`}>
+              <span style={{ width: `${progressPercent}%` }} />
+            </ProgressTrack>
+            <ProgressFacts>
+              <span><b>Challenge</b>{selectedQuestline.challenge}</span>
+              <span><b>Unlock rule</b>{selectedQuestline.roleOrPermission}</span>
+            </ProgressFacts>
+          </ProgressionCard>
           <PathNowCard data-beta-product-current-path>
             <Small>Next move</Small>
             <h2>{currentStep.label}</h2>
             <p>{currentStep.action}</p>
+            <QuestStageRibbon data-beta-product-quest-ribbon aria-label={`${selectedQuestline.label} quest stages`}>
+              {questlineStages.map((stage) => (
+                <QuestStagePill
+                  key={stage.key}
+                  type="button"
+                  data-beta-product-quest-stage
+                  data-beta-product-quest-stage-key={stage.key}
+                  onClick={() => openKnownRoute(stage.route, stage.access)}
+                >
+                  <b>{stage.label}</b>
+                  <span>{stage.route}</span>
+                </QuestStagePill>
+              ))}
+            </QuestStageRibbon>
             <PathSteps>
               <span><strong>{proofStep.label}</strong>{proofStep.route}</span>
               <span><strong>{returnStep.label}</strong>{returnStep.route}</span>
@@ -903,18 +950,6 @@ export function BetaWtfos() {
               <span>Count console</span>
             </SignalTile>
           </SignalTicker>
-          <DesignCriticGate data-beta-design-critic-gate aria-label="Simulated design critic review score">
-            <strong>{designCriticAPlusCount}/{designCriticReviews.length} A+</strong>
-            <span>Simulated critic gate across usability, accessibility, aesthetics, and modernity.</span>
-            <CriticStampRow>
-              {designCriticReviews.map((review) => (
-                <CriticStamp key={review.key} data-beta-design-critic-review title={`${review.lens}: ${review.verdict}`}>
-                  <b>{review.grade}</b>
-                  <span>{review.focus}</span>
-                </CriticStamp>
-              ))}
-            </CriticStampRow>
-          </DesignCriticGate>
         </ProductConsole>
       </Hero>
 
@@ -936,6 +971,28 @@ export function BetaWtfos() {
           </HomeActionCard>
         ))}
       </HomeActionDock>
+      <ProductAnswerGrid data-beta-answer-dock aria-label="60-second beta answers">
+        {answers.map(([question, answer]) => (
+          <ProductAnswer key={question} data-beta-answer>
+            <Small>{question}</Small>
+            <span>{answer}</span>
+          </ProductAnswer>
+        ))}
+      </ProductAnswerGrid>
+      <ReviewGateBand>
+        <DesignCriticGate data-beta-design-critic-gate aria-label="Simulated design critic review score">
+          <strong>{designCriticAPlusCount}/{designCriticReviews.length} A+</strong>
+          <span>Internal simulated product checks. The user-facing work stays in the path picker above.</span>
+          <CriticStampRow>
+            {designCriticReviews.map((review) => (
+              <CriticStamp key={review.key} data-beta-design-critic-review title={`${review.lens}: ${review.verdict}`}>
+                <b>{review.grade}</b>
+                <span>{review.focus}</span>
+              </CriticStamp>
+            ))}
+          </CriticStampRow>
+        </DesignCriticGate>
+      </ReviewGateBand>
 
       <Band id="beta-wayfinder" data-beta-wayfinder>
         <SectionHead>
@@ -2594,19 +2651,27 @@ function AppCard({ app, openRoute }: { app: BetaAppCatalogEntry; openRoute: (app
 }
 
 const Shell = styled.main`
-  --ink: #172033;
-  --muted: #536170;
-  --line: #d8e0ea;
-  --blue: #2358d6;
-  --teal: #007f7a;
-  --green: #1b7f43;
-  --rose: #b23a5b;
-  --amber: #b56a00;
+  --ink: #18161f;
+  --muted: #5f6470;
+  --line: #d8dedf;
+  --blue: #2858d9;
+  --teal: #00816f;
+  --green: #247a43;
+  --rose: #c13d62;
+  --amber: #bc7300;
+  --night: #121217;
+  --paper: #f6f7f1;
   min-height: 100vh;
   overflow-x: hidden;
   color: var(--ink);
-  background: linear-gradient(135deg, rgba(35, 88, 214, 0.08), transparent 36%), linear-gradient(315deg, rgba(0, 127, 122, 0.08), transparent 40%), #f8fafc;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    linear-gradient(90deg, rgba(24, 22, 31, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(24, 22, 31, 0.035) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(40, 88, 217, 0.08), transparent 34%),
+    linear-gradient(315deg, rgba(0, 129, 111, 0.1), transparent 38%),
+    var(--paper);
+  background-size: 34px 34px, 34px 34px, auto, auto, auto;
+  font-family: "Avenir Next", "Trebuchet MS", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   *, *::before, *::after { box-sizing: border-box; }
 `;
 const TopBar = styled.header`
@@ -2617,8 +2682,9 @@ const TopBar = styled.header`
   justify-content: space-between;
   gap: 14px;
   padding: 12px clamp(16px, 4vw, 48px);
-  border-bottom: 1px solid rgba(23, 32, 51, 0.12);
-  background: rgba(248, 250, 252, 0.93);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  background: rgba(18, 18, 23, 0.94);
   backdrop-filter: blur(14px);
   @media (max-width: 720px) { position: relative; flex-direction: column; }
 `;
@@ -2626,9 +2692,9 @@ const Brand = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
-  img { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 5px; }
+  img { width: 36px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 8px; background: #fff; padding: 5px; }
   strong, span { display: block; }
-  span { color: var(--muted); font-size: 12px; font-weight: 700; }
+  span { color: rgba(255, 255, 255, 0.68); font-size: 12px; font-weight: 700; }
 `;
 const Actions = styled.div`display: flex; gap: 10px; flex-wrap: wrap;`;
 const LoopConsole = styled.section`display: grid; grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr); gap: 16px; align-items: stretch; @media (max-width: 940px) { grid-template-columns: 1fr; }`;
@@ -3337,20 +3403,47 @@ const SectionCompassLead = styled.div`
   }
 `;
 const Button = styled.button`
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; border-radius: 8px; padding: 0 14px; font: inherit; font-size: 13px; font-weight: 850; cursor: pointer; border: 1px solid transparent;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; border-radius: 8px; padding: 0 15px; font: inherit; font-size: 13px; font-weight: 850; cursor: pointer; border: 1px solid transparent;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+  &:hover { transform: translateY(-1px); }
+  &:focus-visible { outline: 3px solid rgba(40, 88, 217, 0.34); outline-offset: 2px; }
 `;
-const Primary = styled(Button)`color: #fff; background: linear-gradient(135deg, var(--blue), var(--teal));`;
-const Ghost = styled(Button)`color: var(--ink); background: #fff; border-color: var(--line);`;
+const Primary = styled(Button)`color: #fff; background: linear-gradient(135deg, var(--rose), var(--blue) 54%, var(--teal)); box-shadow: 0 10px 26px rgba(40, 88, 217, 0.24);`;
+const Ghost = styled(Button)`color: var(--ink); background: rgba(255, 255, 255, 0.94); border-color: rgba(24, 22, 31, 0.16);`;
 const Hero = styled.section`
+  position: relative;
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1.1fr);
   gap: 24px;
-  padding: 58px clamp(16px, 4vw, 48px) 24px;
+  padding: 44px clamp(16px, 4vw, 48px) 28px;
   scroll-margin-top: 86px;
+  color: #fff;
+  background:
+    linear-gradient(110deg, rgba(193, 61, 98, 0.24), transparent 34%),
+    linear-gradient(290deg, rgba(0, 129, 111, 0.28), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    var(--night);
+  background-size: auto, auto, 42px 42px, 42px 42px, auto;
+  border-bottom: 1px solid rgba(18, 18, 23, 0.18);
+  &::before {
+    content: "WTFOS";
+    position: absolute;
+    right: clamp(-28px, 3vw, 34px);
+    bottom: -34px;
+    color: rgba(255, 255, 255, 0.045);
+    font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    font-size: clamp(96px, 17vw, 230px);
+    font-weight: 900;
+    line-height: 0.8;
+    pointer-events: none;
+  }
+  > * { position: relative; z-index: 1; }
   @media (max-width: 940px) {
     grid-template-columns: 1fr;
     gap: 14px;
-    padding-top: 28px;
+    padding-top: 24px;
   }
 `;
 const HeroCopy = styled.div`
@@ -3358,13 +3451,13 @@ const HeroCopy = styled.div`
   h1 {
     margin: 0;
     max-width: 840px;
-    color: var(--ink);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #fff;
+    font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
     font-size: 64px;
     line-height: 0.98;
     letter-spacing: 0;
   }
-  p { margin: 0; max-width: 720px; color: var(--muted); font-size: 18px; line-height: 1.45; }
+  p { margin: 0; max-width: 720px; color: rgba(255, 255, 255, 0.76); font-size: 18px; line-height: 1.45; }
   @media (max-width: 940px) {
     h1 { font-size: 46px; line-height: 1.03; }
     p { font-size: 16px; }
@@ -3375,7 +3468,31 @@ const HeroCopy = styled.div`
     p { font-size: 15px; line-height: 1.42; }
   }
 `;
-const Kicker = styled.div`display: flex; align-items: center; gap: 8px; color: var(--green); font-size: 13px; font-weight: 900; text-transform: uppercase;`;
+const Kicker = styled.div`display: flex; align-items: center; gap: 8px; color: #89f2ca; font-size: 13px; font-weight: 900; text-transform: uppercase;`;
+const HeroSignalStrip = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 780px;
+  @media (max-width: 700px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+`;
+const HeroSignal = styled.div`
+  min-width: 0;
+  min-height: 78px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.075);
+  strong, span { display: block; min-width: 0; overflow-wrap: anywhere; }
+  strong { color: #fff; font-size: 20px; line-height: 1.08; }
+  span { margin-top: 7px; color: rgba(255, 255, 255, 0.68); font-size: 12px; line-height: 1.25; font-weight: 850; text-transform: uppercase; }
+  @media (max-width: 520px) {
+    min-height: 70px;
+    padding: 8px;
+    strong { font-size: 14px; }
+    span { margin-top: 5px; font-size: 9px; line-height: 1.18; }
+  }
+`;
 const MobileStartRail = styled.div`
   display: none;
   gap: 8px;
@@ -3390,36 +3507,37 @@ const MobileStartButton = styled.button`
   gap: 5px;
   min-width: 0;
   min-height: 66px;
-  border: 1px solid rgba(35, 88, 214, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
   padding: 8px 6px;
-  color: var(--ink);
-  background: #fff;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
   font: inherit;
   font-size: 11px;
   font-weight: 900;
   line-height: 1.15;
   cursor: pointer;
-  svg { color: var(--blue); }
+  svg { color: #89f2ca; }
   span { overflow-wrap: anywhere; text-align: center; }
-  &:focus-visible { outline: 3px solid rgba(35, 88, 214, 0.28); outline-offset: 2px; }
+  &:focus-visible { outline: 3px solid rgba(137, 242, 202, 0.34); outline-offset: 2px; }
 `;
 const ProductAnswerGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 8px;
-  max-width: 780px;
-  @media (max-width: 700px) { display: none; }
+  padding: 0 clamp(16px, 4vw, 48px) 10px;
+  @media (max-width: 680px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 360px) { grid-template-columns: 1fr; }
 `;
 const ProductAnswer = styled.div`
   display: grid;
   gap: 4px;
   min-width: 0;
-  min-height: 84px;
-  border: 1px solid rgba(35, 88, 214, 0.18);
+  min-height: 74px;
+  border: 1px solid rgba(40, 88, 217, 0.14);
   border-radius: 8px;
-  padding: 11px;
-  background: rgba(255, 255, 255, 0.78);
+  padding: 10px 11px;
+  background: rgba(255, 255, 255, 0.76);
   span:last-child {
     color: var(--ink);
     font-size: 13px;
@@ -3432,18 +3550,19 @@ const ProductConsole = styled.aside`
   align-content: start;
   gap: 12px;
   min-width: 0;
-  border: 1px solid rgba(23, 32, 51, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
-  padding: 14px;
-  background: #fff;
-  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+  padding: 12px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
 `;
 const ConsoleHeader = styled.div`
   display: grid;
   gap: 5px;
   strong {
     color: var(--ink);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
     font-size: 34px;
     line-height: 1.05;
   }
@@ -3453,11 +3572,82 @@ const ConsoleHeader = styled.div`
     span { font-size: 13px; }
   }
 `;
+const ProgressionCard = styled.article`
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid rgba(193, 61, 98, 0.24);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(193, 61, 98, 0.1), transparent 48%),
+    linear-gradient(315deg, rgba(188, 115, 0, 0.12), transparent 52%),
+    #fffaf7;
+`;
+const ProgressLead = styled.div`
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  > span { display: grid; gap: 5px; min-width: 0; }
+  strong { color: var(--ink); font-size: 17px; line-height: 1.16; overflow-wrap: anywhere; }
+  em { color: var(--muted); font-size: 12px; line-height: 1.32; font-style: normal; overflow-wrap: anywhere; }
+  @media (max-width: 420px) { grid-template-columns: 56px minmax(0, 1fr); }
+`;
+const LevelDisc = styled.span`
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  color: #fff;
+  background: conic-gradient(from 210deg, var(--rose), var(--amber), var(--teal), var(--blue), var(--rose));
+  box-shadow: inset 0 0 0 6px rgba(18, 18, 23, 0.12);
+  span { color: rgba(255, 255, 255, 0.78); font-size: 10px; line-height: 1; font-weight: 900; text-transform: uppercase; }
+  strong { color: #fff; font-size: 25px; line-height: 1; }
+  @media (max-width: 420px) {
+    width: 56px;
+    height: 56px;
+  }
+`;
+const ProgressTrack = styled.div`
+  overflow: hidden;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(24, 22, 31, 0.1);
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--rose), var(--amber), var(--teal));
+  }
+`;
+const ProgressFacts = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  span {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    border: 1px solid rgba(24, 22, 31, 0.1);
+    border-radius: 8px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.74);
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+  b { color: var(--ink); font-size: 10px; line-height: 1; text-transform: uppercase; }
+  @media (max-width: 520px) { display: none; }
+`;
 const PersonaDeck = styled.div`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
-  @media (max-width: 520px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 520px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 340px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 `;
 const PersonaChip = styled.button<{ $active: boolean }>`
   min-width: 0;
@@ -3485,7 +3675,7 @@ const PathNowCard = styled.article`
   h2 {
     margin: 0;
     color: var(--ink);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
     font-size: 28px;
     line-height: 1.05;
   }
@@ -3494,6 +3684,40 @@ const PathNowCard = styled.article`
     padding: 12px;
     h2 { font-size: 22px; }
     p { font-size: 13px; }
+  }
+`;
+const QuestStageRibbon = styled.div`
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  @media (max-width: 560px) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+`;
+const QuestStagePill = styled.button`
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 58px;
+  border: 1px solid rgba(0, 129, 111, 0.24);
+  border-radius: 8px;
+  padding: 7px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  b { color: var(--teal); font-size: 12px; line-height: 1.1; }
+  span { color: var(--muted); font-size: 10px; line-height: 1.15; overflow-wrap: anywhere; }
+  &:hover { border-color: rgba(0, 129, 111, 0.48); background: #f7fffc; }
+  &:focus-visible { outline: 3px solid rgba(0, 129, 111, 0.26); outline-offset: 2px; }
+  @media (max-width: 560px) {
+    min-height: 48px;
+    padding: 6px 4px;
+    b { font-size: 10px; }
+    span { font-size: 9px; }
   }
 `;
 const PathSteps = styled.div`
@@ -3570,7 +3794,15 @@ const HomeActionDock = styled.section`
   gap: 10px;
   padding: 0 clamp(16px, 4vw, 48px) 14px;
   @media (max-width: 1180px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  @media (max-width: 680px) { grid-template-columns: 1fr; }
+  @media (max-width: 680px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 360px) { grid-template-columns: 1fr; }
+`;
+const ReviewGateBand = styled.section`
+  padding: 0 clamp(16px, 4vw, 48px) 10px;
+  ${DesignCriticGate} {
+    max-width: 920px;
+  }
+  @media (max-width: 520px) { display: none; }
 `;
 const HomeActionCard = styled.button`
   display: grid;
@@ -3602,6 +3834,12 @@ const HomeActionCard = styled.button`
   }
   &:hover { border-color: rgba(35, 88, 214, 0.46); background: #f8fbff; }
   &:focus-visible { outline: 3px solid rgba(35, 88, 214, 0.28); outline-offset: 2px; }
+  @media (max-width: 680px) {
+    min-height: 154px;
+    padding: 11px;
+    strong { font-size: 15px; }
+    span { font-size: 12px; }
+  }
 `;
 const HomeActionGlyph = styled.span`
   display: grid;

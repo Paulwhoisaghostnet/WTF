@@ -11,9 +11,16 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await page.goto("/beta", { waitUntil: "domcontentloaded" });
 
     await expect(page.locator("[data-beta-wtfos]")).toBeVisible();
-    await expect(page.locator("[data-beta-product-home]")).toContainText("Pick a path. Do one thing. Come back to movement.");
+    await expect(page.locator("[data-beta-product-home]")).toContainText("WTFOS is a playable Tezos world.");
+    await expect(page.locator("[data-beta-product-pulse]")).toContainText("EXP floor");
     await expect(page.locator("[data-beta-product-path]")).toHaveCount(6);
+    await expect(page.locator("[data-beta-progression-card]")).toContainText("Challenge");
+    await expect(page.locator("[data-beta-progression-card]")).toContainText("Unlock rule");
     await expect(page.locator("[data-beta-product-current-path]")).toContainText("Next move");
+    await expect(page.locator("[data-beta-product-quest-stage]")).toHaveCount(5);
+    for (const label of ["Notice", "Act", "Prove", "Unlock", "Return"]) {
+      await expect(page.locator("[data-beta-product-quest-ribbon]")).toContainText(label);
+    }
     await expect(page.locator("[data-beta-product-signal-strip]")).toContainText("live public signals");
     await expect(page.locator("[data-beta-mobile-start-action]")).toHaveCount(3);
     await expect(page.locator("[data-beta-design-critic-gate]")).toContainText("5/5 A+");
