@@ -30,17 +30,19 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-progression-card]")).toContainText("Challenge");
     await expect(page.locator("[data-beta-progression-card]")).toContainText("Unlock rule");
     await expect(page.locator("[data-beta-product-current-path]")).toContainText("Next move");
+    await expect(page.locator("[data-beta-product-current-path]")).toContainText("Launch Quest");
     await expect(page.locator("[data-beta-product-quest-stage]")).toHaveCount(5);
     for (const label of ["Notice", "Act", "Prove", "Unlock", "Return"]) {
       await expect(page.locator("[data-beta-product-quest-ribbon]")).toContainText(label);
     }
     await expect(page.locator("[data-beta-product-signal-strip]")).toContainText("live public signals");
-    await expect(page.locator("[data-beta-first-screen-loop]")).toContainText("Today's loop");
-    await expect(page.locator("[data-beta-first-screen-loop]")).toContainText("Take one quest");
+    await expect(page.locator("[data-beta-session-console]")).toContainText("Session command");
+    await expect(page.locator("[data-beta-first-screen-loop]")).toContainText("Launch Quest");
     await expect(page.locator("[data-beta-first-screen-loop-action]")).toHaveCount(3);
     for (const label of ["Play", "People", "Return"]) {
       await expect(page.locator("[data-beta-first-screen-loop]")).toContainText(label);
     }
+    await expect(page.locator("[data-beta-hero-world-stage]")).toContainText("People moving");
     await expect(page.locator("[data-beta-hero-world-pulse-cell]")).toHaveCount(3);
     for (const label of ["People moving", "Fresh object", "Return hook"]) {
       await expect(page.locator("[data-beta-hero-world-pulse]")).toContainText(label);

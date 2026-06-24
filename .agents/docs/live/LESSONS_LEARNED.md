@@ -5747,3 +5747,13 @@
 **Why it mattered**: The beta is supposed to make WTFOS feel alive, human-facing, and game-like without changing app logic. When the primary route/progression surface looks like a report card, users read instead of act, and the whole experience falls back toward Wikipedia.
 
 **Rule**: Keep the first-screen role, progression, and next-move controls inside a cohesive mission-deck treatment. On mobile, avoid duplicate action rows before the character/path choice; let the Play/People/Return loop carry the immediate action.
+
+---
+
+## 2026-06-24 - Beta must open like an OS session, not a website hero
+
+**What happened**: Sub-agent design critics agreed that even after the mission deck pass, the first beta viewport still behaved partly like a landing page: a large explanatory headline competed with duplicated quest CTAs and split attention away from the operating-system session model.
+
+**Why it mattered**: WTFOS is meant to feel like an operating system. The beta shell should start from active identity, current command, signal state, return route, and launcher status, then explain the world around that session. A website hero can be attractive while still teaching the wrong product model.
+
+**Rule**: First-screen beta copy and controls must prioritize session state and launchable commands. Keep "what is WTFOS" visible, but do not let marketing-style hero copy or duplicated CTA rows outrank the active role, current quest, people signal, and return loop.

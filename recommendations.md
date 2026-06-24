@@ -9,6 +9,8 @@ Date: 2026-06-24
 - Operating System underneath
 - The Count as the admin/liveops puppet
 - Product-home first screen with a distinctive playable-world hero, persona choice, EXP/passport/questline state, one next move, live proof, and compact route actions before audit boards
+- OS session-home framing: active persona, current command, signal count, return route, and launcher state before any website-style explanation
+- One dominant Launch Quest command before status/detail panels so the shell feels like an operating session with an active task, not parallel CTA blocks
 - Dark mission deck treatment for first-screen role/progression/next-move controls so beta feels like a playable command surface instead of a white documentation panel
 - Icon-led role deck with level and path hints so choosing a persona feels like entering a playable system instead of selecting a form tab
 - First-screen Play/People/Return loop inside the hero so users can act before they reach the deeper desk or research deck

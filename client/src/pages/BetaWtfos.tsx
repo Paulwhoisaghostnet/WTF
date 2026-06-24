@@ -917,60 +917,62 @@ export function BetaWtfos() {
           </div>
         </Brand>
         <Actions>
-          <Ghost type="button" onClick={() => navigate("/gallery")}>Public Discovery</Ghost>
-          <Primary type="button" onClick={() => navigate(user ? "/side-quests" : "/login")}>Start Questing</Primary>
+          <Ghost type="button" onClick={() => navigate("/gallery")}>Open Gallery</Ghost>
+          <Primary type="button" onClick={() => navigate(user ? "/side-quests" : "/login")}>Launch Quest</Primary>
         </Actions>
       </TopBar>
 
       <Hero id="beta-start" data-beta-product-home>
         <HeroCopy>
-          <Kicker><Compass size={16} /> wtfOS beta home</Kicker>
-          <h1>WTFOS is a playable Tezos world.</h1>
-          <p>Choose who you are today, clear one side quest, earn EXP, and unlock the next route through proof The Count can actually manage.</p>
-          <HeroSignalStrip data-beta-product-pulse aria-label="Beta product pulse">
-            <HeroSignal>
-              <strong>{selectedXpLevel.label}</strong>
-              <span>{compactNumber(selectedXpLevel.minXp)} EXP floor</span>
-            </HeroSignal>
-            <HeroSignal>
-              <strong>{liveSignalCount}</strong>
-              <span>live signals right now</span>
-            </HeroSignal>
-            <HeroSignal>
-              <strong>{selectedQuestline.label}</strong>
-              <span>{selectedPassport.identity}</span>
-            </HeroSignal>
-          </HeroSignalStrip>
-          <HeroActions data-beta-hero-primary-actions>
-            <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>Do my next thing</Primary>
-            <Ghost type="button" onClick={() => navigate("/gallery")}>Browse public art</Ghost>
-            <Ghost type="button" onClick={() => jumpToBetaSection("beta-people")}>See people</Ghost>
-          </HeroActions>
-          <FirstScreenLoop data-beta-first-screen-loop aria-label="First screen playable loop">
+          <Kicker><Compass size={16} /> WTFOS OS session</Kicker>
+          <h1>{persona.label} session is ready.</h1>
+          <p>WTFOS is a playable Tezos world. Launch one quest, see people moving, and return when the system has new proof.</p>
+          <FirstScreenLoop data-beta-first-screen-loop data-beta-session-console aria-label="First screen playable loop">
             <span>
-              <Small>Today&apos;s loop</Small>
-              <strong>{currentStep.label}</strong>
+              <Small>Session command</Small>
+              <strong>Launch Quest</strong>
               <em>{selectedQuestline.sideQuest}</em>
             </span>
             <FirstScreenButtons>
               <button type="button" data-beta-first-screen-loop-action onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>
                 <Compass size={15} />
                 <b>Play</b>
+                <small>ready</small>
               </button>
               <button type="button" data-beta-first-screen-loop-action onClick={() => openKnownRoute(featuredNowSignal.route ?? featuredNowSignal.source.route, featuredNowSignal.source.access === "public" ? "public" : "session")}>
                 <Users size={15} />
                 <b>People</b>
+                <small>{featuredNowSignal.state}</small>
               </button>
               <button type="button" data-beta-first-screen-loop-action onClick={() => openKnownRoute(returnStep.route, returnStep.access)}>
                 <Bell size={15} />
                 <b>Return</b>
+                <small>armed</small>
               </button>
             </FirstScreenButtons>
           </FirstScreenLoop>
-          <HeroWorldPulse data-beta-hero-world-pulse aria-label="Live WTFOS world pulse">
+          <HeroSignalStrip data-beta-product-pulse aria-label="Beta product pulse">
+            <HeroSignal>
+              <strong>{selectedXpLevel.label}</strong>
+              <span>{persona.label} · {compactNumber(selectedXpLevel.minXp)} EXP floor</span>
+            </HeroSignal>
+            <HeroSignal>
+              <strong>{liveSignalCount}</strong>
+              <span>world signals online</span>
+            </HeroSignal>
+            <HeroSignal>
+              <strong>{returnStep.label}</strong>
+              <span>return route · {returnStep.route}</span>
+            </HeroSignal>
+          </HeroSignalStrip>
+          <HeroWorldPulse data-beta-hero-world-pulse data-beta-hero-world-stage aria-label="Live WTFOS world pulse">
             {heroWorldPulse.map((item) => (
               <HeroWorldPulseCell key={item.key} data-beta-hero-world-pulse-cell data-beta-hero-world-pulse-key={item.key}>
-                {item.key === "people" ? <Users size={16} /> : item.key === "object" ? <Compass size={16} /> : <Bell size={16} />}
+                <HeroPulseGlyph aria-hidden="true" $tone={item.key}>
+                  {item.key === "people" ? <Users size={16} /> : item.key === "object" ? <Compass size={16} /> : <Bell size={16} />}
+                  <strong>{heroPulseGlyphLabel(item.value)}</strong>
+                  <i />
+                </HeroPulseGlyph>
                 <span>
                   <Small>{item.eyebrow}</Small>
                   <strong>{item.value}</strong>
@@ -1049,7 +1051,7 @@ export function BetaWtfos() {
               <span><strong>{returnStep.label}</strong>{returnStep.route}</span>
             </PathSteps>
             <Actions>
-              <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>Open {currentStep.label}</Primary>
+              <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>Launch Quest</Primary>
               <Ghost type="button" onClick={() => jumpToBetaSection("beta-paths")}>See path</Ghost>
             </Actions>
           </PathNowCard>
@@ -2760,6 +2762,14 @@ function displayHeroPeoplePulse(signal: BetaRenderedNowSignal): string {
   }
 }
 
+function heroPulseGlyphLabel(value: string): string {
+  const cleaned = value.replace(/[^a-z0-9 ]/gi, " ").trim();
+  if (!cleaned) return "W";
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? "W"}${parts[1][0] ?? ""}`.toUpperCase();
+}
+
 function personaRoleHint(key: BetaPersonaKey): string {
   switch (key) {
     case "new-tezos-user":
@@ -3701,27 +3711,22 @@ const HeroCopy = styled.div`
   display: grid; gap: 12px; align-content: start;
   h1 {
     margin: 0;
-    max-width: 840px;
+    max-width: 620px;
     color: #fff;
     font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
-    font-size: 54px;
-    line-height: 0.98;
+    font-size: 38px;
+    line-height: 1.04;
     letter-spacing: 0;
   }
-  p { margin: 0; max-width: 720px; color: rgba(255, 255, 255, 0.76); font-size: 16px; line-height: 1.4; }
+  p { margin: 0; max-width: 620px; color: rgba(255, 255, 255, 0.76); font-size: 15px; line-height: 1.42; }
   @media (max-width: 940px) {
-    h1 { font-size: 38px; line-height: 1.03; }
-    p { font-size: 16px; }
+    h1 { font-size: 34px; line-height: 1.04; }
+    p { font-size: 15px; }
   }
   @media (max-width: 520px) {
     gap: 11px;
-    h1 { font-size: 30px; line-height: 1.05; }
+    h1 { font-size: 26px; line-height: 1.08; }
     p { font-size: 14px; line-height: 1.38; }
-  }
-`;
-const HeroActions = styled(Actions)`
-  @media (max-width: 520px) {
-    display: none;
   }
 `;
 const Kicker = styled.div`display: flex; align-items: center; gap: 8px; color: #89f2ca; font-size: 13px; font-weight: 900; text-transform: uppercase;`;
@@ -3758,24 +3763,60 @@ const HeroWorldPulse = styled.div`
     gap: 6px;
   }
 `;
-const HeroWorldPulseCell = styled.div`
+const HeroPulseGlyph = styled.div<{ $tone: string }>`
+  position: relative;
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 7px;
-  align-items: start;
-  min-width: 0;
-  min-height: 82px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  padding: 9px;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid ${({ $tone }) => $tone === "object" ? "rgba(193, 61, 98, 0.5)" : $tone === "tomorrow" ? "rgba(188, 115, 0, 0.44)" : "rgba(137, 242, 202, 0.5)"};
+  border-radius: 50%;
   color: #fff;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.055)),
-    rgba(7, 10, 16, 0.22);
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.32), transparent 24%),
+    ${({ $tone }) => $tone === "object"
+      ? "linear-gradient(135deg, rgba(193, 61, 98, 0.82), rgba(35, 88, 214, 0.54))"
+      : $tone === "tomorrow"
+        ? "linear-gradient(135deg, rgba(188, 115, 0, 0.8), rgba(193, 61, 98, 0.54))"
+        : "linear-gradient(135deg, rgba(0, 127, 122, 0.86), rgba(35, 88, 214, 0.54))"};
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
   svg {
-    margin-top: 2px;
-    color: #89f2ca;
+    position: absolute;
+    left: 6px;
+    top: 6px;
+    color: rgba(255, 255, 255, 0.74);
   }
+  strong {
+    color: #fff;
+    font-size: 13px;
+    line-height: 1;
+    font-weight: 950;
+  }
+  i {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 9px;
+    height: 9px;
+    border: 2px solid rgba(7, 10, 16, 0.84);
+    border-radius: 50%;
+    background: #89f2ca;
+  }
+`;
+const HeroWorldPulseCell = styled.div`
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  min-width: 0;
+  min-height: 90px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 10px;
+  color: #fff;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.055)),
+    rgba(7, 10, 16, 0.22);
   span {
     display: grid;
     gap: 3px;
@@ -3783,7 +3824,7 @@ const HeroWorldPulseCell = styled.div`
   }
   strong {
     color: #fff;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.14;
     overflow-wrap: anywhere;
   }
@@ -3795,10 +3836,15 @@ const HeroWorldPulseCell = styled.div`
     overflow-wrap: anywhere;
   }
   @media (max-width: 520px) {
-    grid-template-columns: 1fr;
-    min-height: 78px;
+    grid-template-columns: 34px minmax(0, 1fr);
+    min-height: 76px;
     padding: 8px;
-    svg { display: none; }
+    ${HeroPulseGlyph} {
+      width: 34px;
+      height: 34px;
+      svg { display: none; }
+      strong { font-size: 11px; }
+    }
     strong { font-size: 12px; }
     em { display: none; }
   }
@@ -3806,14 +3852,18 @@ const HeroWorldPulseCell = styled.div`
 const FirstScreenLoop = styled.div`
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
   max-width: 760px;
   border: 1px solid rgba(137, 242, 202, 0.24);
   border-radius: 8px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  padding: 12px;
+  background:
+    linear-gradient(90deg, rgba(137, 242, 202, 0.12), transparent 64%),
+    rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.18);
   > span {
     display: grid;
     gap: 3px;
@@ -3821,7 +3871,7 @@ const FirstScreenLoop = styled.div`
   }
   strong {
     color: #fff;
-    font-size: 22px;
+    font-size: 28px;
     line-height: 1.05;
     overflow-wrap: anywhere;
   }
@@ -3834,31 +3884,67 @@ const FirstScreenLoop = styled.div`
   }
   @media (max-width: 680px) {
     grid-template-columns: 1fr;
+    strong { font-size: 24px; }
   }
 `;
 const FirstScreenButtons = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, minmax(74px, 1fr));
+  grid-template-columns: repeat(3, minmax(92px, 1fr));
   gap: 6px;
   button {
-    display: inline-flex;
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    grid-template-areas:
+      "icon label"
+      "icon state";
     align-items: center;
-    justify-content: center;
-    gap: 5px;
-    min-height: 38px;
+    column-gap: 7px;
+    min-height: 48px;
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 8px;
-    padding: 0 9px;
+    padding: 7px 9px;
     color: #fff;
-    background: rgba(255, 255, 255, 0.1);
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.055)),
+      rgba(255, 255, 255, 0.08);
     font: inherit;
-    font-size: 12px;
-    font-weight: 950;
+    text-align: left;
     cursor: pointer;
   }
-  svg { color: #89f2ca; }
+  svg { grid-area: icon; color: #89f2ca; }
+  b {
+    grid-area: label;
+    min-width: 0;
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 950;
+    overflow-wrap: anywhere;
+  }
+  small {
+    grid-area: state;
+    min-width: 0;
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 9px;
+    line-height: 1;
+    font-weight: 900;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+  }
   button:hover { border-color: rgba(137, 242, 202, 0.5); background: rgba(137, 242, 202, 0.14); }
   button:focus-visible { outline: 3px solid rgba(137, 242, 202, 0.32); outline-offset: 2px; }
+  @media (max-width: 420px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    button {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "icon"
+        "label"
+        "state";
+      justify-items: center;
+      text-align: center;
+      padding-inline: 6px;
+    }
+  }
 `;
 const PlayableDesk = styled.section`
   display: grid;
