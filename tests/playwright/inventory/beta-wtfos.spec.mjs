@@ -22,13 +22,12 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-system-chrome]")).toContainText("Role");
     await expect(page.locator("[data-beta-system-chrome]")).toContainText("Signals");
     await expect(page.locator("[data-beta-system-command]")).toContainText("Sign In");
-    await expect(page.locator("[data-beta-product-home]")).toContainText("WTFOS is a playable Tezos world.");
-    await expect(page.locator("[data-beta-product-home]")).toContainText("Live now.");
-    await expect(page.locator("[data-beta-product-home]")).toContainText("Launch the quest");
+    await expect(page.locator("[data-beta-product-home]")).toContainText("WTFOS is moving.");
+    await expect(page.locator("[data-beta-product-home]")).toContainText("quest, people, object, return");
     await expect(page.locator("[data-beta-session-contract]")).toContainText("Guest preview");
-    await expect(page.locator("[data-beta-session-contract]")).toContainText("Next action");
+    await expect(page.locator("[data-beta-session-contract]")).toContainText("Launch");
     await expect(page.locator("[data-beta-session-contract]")).toContainText("Sign in to start");
-    await expect(page.locator("[data-beta-mission-deck]")).toContainText("Role dock");
+    await expect(page.locator("[data-beta-mission-deck]")).toContainText("Active window");
     await expect(page.locator("[data-beta-product-pulse]")).toContainText("EXP floor");
     await expect(page.locator("[data-beta-product-path]")).toHaveCount(6);
     await expect(page.locator("[data-beta-persona-role-deck]")).toContainText("Safe start");
@@ -37,8 +36,12 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-persona-role-deck]")).toContainText("Social path");
     await expect(page.locator("[data-beta-progression-card]")).toContainText("Challenge");
     await expect(page.locator("[data-beta-progression-card]")).toContainText("Unlock rule");
-    await expect(page.locator("[data-beta-product-current-path]")).toContainText("Next move");
+    await expect(page.locator("[data-beta-product-current-path]")).toContainText("Current command");
     await expect(page.locator("[data-beta-product-current-path]")).toContainText("Sign in to launch");
+    await expect(page.locator("[data-beta-command-pulse-action]")).toHaveCount(3);
+    for (const label of ["People moving", "Fresh object", "Return hook"]) {
+      await expect(page.locator("[data-beta-command-pulse]")).toContainText(label);
+    }
     await expect(page.locator("[data-beta-console-live-action]")).toHaveCount(3);
     for (const label of ["People moving", "Fresh object", "Return hook"]) {
       await expect(page.locator("[data-beta-console-live-rail]")).toContainText(label);

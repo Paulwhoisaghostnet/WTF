@@ -1,3 +1,13 @@
+## 2026-06-24 - Beta cockpit order must be source order, not only CSS order
+
+**What happened**: The beta home visually placed the active command window before the world-status rail on mobile, but the JSX still rendered the world-status panel first. A later mobile titlebar fix also put `grid-area: actions` on the shared `Actions` component, which leaked into nested action rows and caused the current-command card to auto-place into skinny implicit columns on phones.
+
+**Why it mattered**: A screen can look less like Wikipedia while still reading like Wikipedia to source-order checks, screen readers, `innerText`, and keyboard traversal. Shared layout primitives also become dangerous when route-level chrome styles are attached globally instead of scoped to the chrome instance.
+
+**Rule**: For beta first-screen work, make the active operating surface first in DOM/source order as well as visual order. Scope shell-only grid placement to shell-specific attributes or wrappers, never to shared action components used inside cards, docks, quest panels, or admin surfaces.
+
+---
+
 ## 2026-06-24 - Mobile beta context and action must share the first viewport
 
 **What happened**: A polish pass made the beta cockpit more product-like on desktop, but mobile initially placed the active console before the "Live now" context, then stacked the session HUD vertically after the context. That made phone users see either controls without the human promise or the promise without the primary quest action.

@@ -13,7 +13,7 @@ Date: 2026-06-24
 - OS session-home framing: active persona, current command, signal count, return route, and launcher state before any website-style explanation
 - Sticky system chrome that behaves like a shell bar: current role, live signal count, return route, Gallery command, and Launch Quest command
 - Explicit session contract before the first action: guest/signed-in mode, next action, human command result or sign-in gate, and continue state
-- Verb-object-result command labels such as Launch quest, Open people, Resume later, Inspect Path, and Inspect Unlocks
+- Verb-object-result command labels such as Launch quest, Open people, Resume later, Show route, and Inspect Unlocks
 - Human product outcomes in active UI, such as Quest board, Live users, Catch-up feed, proof step, and return/catch-up state; keep raw route paths out of the first viewport
 - Persistent return/status strip before the live desktop so resume, changed signals, and today's command are visible without reading a report
 - Dark OS workspace continuity below the hero; treat bright white page sections as a regression unless they are clearly framed as app windows

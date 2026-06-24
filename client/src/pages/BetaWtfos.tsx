@@ -971,10 +971,135 @@ export function BetaWtfos() {
       </TopBar>
 
       <Hero id="beta-start" data-beta-product-home>
+        <ProductConsole data-beta-mission-deck aria-label="Beta path picker">
+          <ConsoleHeader>
+            <Small>Active window</Small>
+            <strong>{currentStep.label}</strong>
+            <span>Role: {persona.label} · {selectedPassport.identity}</span>
+          </ConsoleHeader>
+          <PersonaDeck data-beta-persona-role-deck aria-label="Choose a WTFOS role path">
+            {BETA_PERSONAS.map((item, index) => (
+              <PersonaChip
+                key={item.key}
+                type="button"
+                data-beta-product-path
+                data-beta-product-path-key={item.key}
+                $active={item.key === personaKey}
+                aria-pressed={item.key === personaKey}
+                onClick={() => setPersonaKey(item.key)}
+              >
+                <i aria-hidden="true">{personaRoleGlyph(item.key)}</i>
+                <span>
+                  <b>{item.label}</b>
+                  <em>{personaRoleHint(item.key)}</em>
+                </span>
+                <small>Lv {index + 1}</small>
+              </PersonaChip>
+            ))}
+          </PersonaDeck>
+          <ProgressionCard data-beta-progression-card>
+            <ProgressLead>
+              <LevelDisc>
+                <span>Level</span>
+                <strong>{personaOrdinal + 1}</strong>
+              </LevelDisc>
+              <span>
+                <Small>{selectedXpLevel.label} to {nextXpLevel.label}</Small>
+                <strong>{selectedPassport.identity}</strong>
+                <em>{selectedQuestline.sideQuest}</em>
+              </span>
+            </ProgressLead>
+            <ProgressTrack aria-label={`${persona.label} progression meter`}>
+              <span style={{ width: `${progressPercent}%` }} />
+            </ProgressTrack>
+            <ProgressFacts>
+              <span><b>Challenge</b>{selectedQuestline.challenge}</span>
+              <span><b>Unlock rule</b>{selectedQuestline.roleOrPermission}</span>
+            </ProgressFacts>
+          </ProgressionCard>
+          <PathNowCard data-beta-product-current-path>
+            <Small>Current command</Small>
+            <h2>{currentStep.label}</h2>
+            <p>{currentStep.action}</p>
+            <PathPulseStrip data-beta-command-pulse aria-label="People object return quick status">
+              {heroWorldPulse.map((item) => (
+                <PathPulseButton
+                  key={item.key}
+                  type="button"
+                  data-beta-command-pulse-action
+                  data-beta-command-pulse-key={item.key}
+                  onClick={() => openKnownRoute(item.route, item.access)}
+                >
+                  <b>{item.eyebrow}</b>
+                  <strong>{item.value}</strong>
+                  <span>{item.action}</span>
+                </PathPulseButton>
+              ))}
+            </PathPulseStrip>
+            <QuestStageRibbon data-beta-product-quest-ribbon aria-label={`${selectedQuestline.label} quest stages`}>
+              {questlineStages.map((stage) => (
+                <QuestStagePill
+                  key={stage.key}
+                  type="button"
+                  data-beta-product-quest-stage
+                  data-beta-product-quest-stage-key={stage.key}
+                  onClick={() => openKnownRoute(stage.route, stage.access)}
+                >
+                  <b>{stage.label}</b>
+                  <span>{stageOutcome(stage.key)}</span>
+                </QuestStagePill>
+              ))}
+            </QuestStageRibbon>
+            <PathSteps>
+              <span><strong>{proofStep.label}</strong>Proof step</span>
+              <span><strong>{returnStep.label}</strong>{resumeResult}</span>
+            </PathSteps>
+            <Actions>
+              <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>{primaryCommandLabel}</Primary>
+              <Ghost type="button" onClick={() => jumpToBetaSection("beta-paths")}>Show route</Ghost>
+            </Actions>
+          </PathNowCard>
+          <ConsoleLiveRail data-beta-console-live-rail aria-label="World pulse controls">
+            {heroWorldPulse.map((item) => (
+              <ConsoleLiveButton
+                key={item.key}
+                type="button"
+                data-beta-console-live-action
+                data-beta-console-live-action-key={item.key}
+                onClick={() => openKnownRoute(item.route, item.access)}
+              >
+                <HeroPulseGlyph aria-hidden="true" $tone={item.key}>
+                  {item.key === "people" ? <Users size={16} /> : item.key === "object" ? <Compass size={16} /> : <Bell size={16} />}
+                  <strong>{heroPulseGlyphLabel(item.value)}</strong>
+                  <i />
+                </HeroPulseGlyph>
+                <span>
+                  <Small>{item.eyebrow}</Small>
+                  <strong>{item.value}</strong>
+                  <em>{item.action}</em>
+                </span>
+              </ConsoleLiveButton>
+            ))}
+          </ConsoleLiveRail>
+          <SignalTicker data-beta-product-signal-strip>
+            <SignalTile>
+              <strong>{liveSignalCount}/{nowSignals.length}</strong>
+              <span>live public signals</span>
+            </SignalTile>
+            <SignalTile>
+              <strong>{BETA_UNLOCK_QUESTLINES.length}</strong>
+              <span>unlock paths</span>
+            </SignalTile>
+            <SignalTile>
+              <strong>{isAdmin ? "Live" : "Locked"}</strong>
+              <span>Count console</span>
+            </SignalTile>
+          </SignalTicker>
+        </ProductConsole>
         <HeroCopy>
-          <Kicker><Compass size={16} /> Live rail</Kicker>
-          <h1>Live now.</h1>
-          <p>WTFOS is a playable Tezos world. Launch the quest, follow the people, and come back when the world changes.</p>
+          <Kicker><Compass size={16} /> World status</Kicker>
+          <h1>WTFOS is moving.</h1>
+          <p>Existing WTFOS routes are grouped into one live command surface: quest, people, object, return.</p>
           <HeroWorldPulse data-beta-hero-world-pulse data-beta-hero-world-stage aria-label="Live WTFOS world pulse">
             {heroWorldPulse.map((item) => (
               <HeroWorldPulseCell
@@ -999,17 +1124,17 @@ export function BetaWtfos() {
           </HeroWorldPulse>
           <SessionContract data-beta-session-contract aria-label="Current WTFOS beta session contract">
             <SessionContractCell>
-              <small>Current role</small>
+              <small>Role</small>
               <strong>{sessionState}</strong>
               <span>{persona.label}</span>
             </SessionContractCell>
             <SessionContractCell>
-              <small>Next action</small>
+              <small>Launch</small>
               <strong>{primaryCommandLabel}</strong>
               <span>{launchResult}</span>
             </SessionContractCell>
             <SessionContractCell>
-              <small>Continue</small>
+              <small>Return</small>
               <strong>{returnStep.label}</strong>
               <span>{resumeResult}</span>
             </SessionContractCell>
@@ -1053,116 +1178,6 @@ export function BetaWtfos() {
             </HeroSignal>
           </HeroSignalStrip>
         </HeroCopy>
-        <ProductConsole data-beta-mission-deck aria-label="Beta path picker">
-          <ConsoleHeader>
-            <Small>Active window · Role dock</Small>
-            <strong>{currentStep.label}</strong>
-            <span>{persona.label} · {selectedPassport.identity}</span>
-          </ConsoleHeader>
-          <PersonaDeck data-beta-persona-role-deck aria-label="Choose a WTFOS role path">
-            {BETA_PERSONAS.map((item, index) => (
-              <PersonaChip
-                key={item.key}
-                type="button"
-                data-beta-product-path
-                data-beta-product-path-key={item.key}
-                $active={item.key === personaKey}
-                aria-pressed={item.key === personaKey}
-                onClick={() => setPersonaKey(item.key)}
-              >
-                <i aria-hidden="true">{personaRoleGlyph(item.key)}</i>
-                <span>
-                  <b>{item.label}</b>
-                  <em>{personaRoleHint(item.key)}</em>
-                </span>
-                <small>Lv {index + 1}</small>
-              </PersonaChip>
-            ))}
-          </PersonaDeck>
-          <ProgressionCard data-beta-progression-card>
-            <ProgressLead>
-              <LevelDisc>
-                <span>Level</span>
-                <strong>{personaOrdinal + 1}</strong>
-              </LevelDisc>
-              <span>
-                <Small>{selectedXpLevel.label} to {nextXpLevel.label}</Small>
-                <strong>{selectedPassport.identity}</strong>
-                <em>{selectedQuestline.sideQuest}</em>
-              </span>
-            </ProgressLead>
-            <ProgressTrack aria-label={`${persona.label} progression meter`}>
-              <span style={{ width: `${progressPercent}%` }} />
-            </ProgressTrack>
-            <ProgressFacts>
-              <span><b>Challenge</b>{selectedQuestline.challenge}</span>
-              <span><b>Unlock rule</b>{selectedQuestline.roleOrPermission}</span>
-            </ProgressFacts>
-          </ProgressionCard>
-          <PathNowCard data-beta-product-current-path>
-            <Small>Next move</Small>
-            <h2>{currentStep.label}</h2>
-            <p>{currentStep.action}</p>
-            <QuestStageRibbon data-beta-product-quest-ribbon aria-label={`${selectedQuestline.label} quest stages`}>
-              {questlineStages.map((stage) => (
-                <QuestStagePill
-                  key={stage.key}
-                  type="button"
-                  data-beta-product-quest-stage
-                  data-beta-product-quest-stage-key={stage.key}
-                  onClick={() => openKnownRoute(stage.route, stage.access)}
-                >
-                  <b>{stage.label}</b>
-                  <span>{stageOutcome(stage.key)}</span>
-                </QuestStagePill>
-              ))}
-            </QuestStageRibbon>
-            <PathSteps>
-              <span><strong>{proofStep.label}</strong>Proof step</span>
-              <span><strong>{returnStep.label}</strong>{resumeResult}</span>
-            </PathSteps>
-            <Actions>
-              <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>{primaryCommandLabel}</Primary>
-              <Ghost type="button" onClick={() => jumpToBetaSection("beta-paths")}>Inspect Path</Ghost>
-            </Actions>
-          </PathNowCard>
-          <ConsoleLiveRail data-beta-console-live-rail aria-label="Live people object return controls">
-            {heroWorldPulse.map((item) => (
-              <ConsoleLiveButton
-                key={item.key}
-                type="button"
-                data-beta-console-live-action
-                data-beta-console-live-action-key={item.key}
-                onClick={() => openKnownRoute(item.route, item.access)}
-              >
-                <HeroPulseGlyph aria-hidden="true" $tone={item.key}>
-                  {item.key === "people" ? <Users size={16} /> : item.key === "object" ? <Compass size={16} /> : <Bell size={16} />}
-                  <strong>{heroPulseGlyphLabel(item.value)}</strong>
-                  <i />
-                </HeroPulseGlyph>
-                <span>
-                  <Small>{item.eyebrow}</Small>
-                  <strong>{item.value}</strong>
-                  <em>{item.action}</em>
-                </span>
-              </ConsoleLiveButton>
-            ))}
-          </ConsoleLiveRail>
-          <SignalTicker data-beta-product-signal-strip>
-            <SignalTile>
-              <strong>{liveSignalCount}/{nowSignals.length}</strong>
-              <span>live public signals</span>
-            </SignalTile>
-            <SignalTile>
-              <strong>{BETA_UNLOCK_QUESTLINES.length}</strong>
-              <span>unlock paths</span>
-            </SignalTile>
-            <SignalTile>
-              <strong>{isAdmin ? "Live" : "Locked"}</strong>
-              <span>Count console</span>
-            </SignalTile>
-          </SignalTicker>
-        </ProductConsole>
       </Hero>
 
       <PlayableDesk data-beta-playable-desk aria-label="Playable beta desk">
@@ -3082,6 +3097,7 @@ const TopBar = styled.header`
   z-index: 10;
   display: grid;
   grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1fr) auto;
+  grid-template-areas: "brand status actions";
   gap: 14px;
   align-items: center;
   padding: 10px clamp(16px, 4vw, 48px);
@@ -3110,11 +3126,26 @@ const TopBar = styled.header`
   }
   @media (max-width: 880px) {
     position: relative;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand actions"
+      "status status";
+    gap: 8px;
     align-items: stretch;
+  }
+  @media (max-width: 420px) {
+    padding: 8px 16px;
+    button {
+      min-height: 36px;
+      padding-inline: 10px;
+    }
+    button:last-child {
+      min-width: 132px;
+    }
   }
 `;
 const Brand = styled.div`
+  grid-area: brand;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -3140,6 +3171,7 @@ const ChromeLights = styled.span`
   @media (max-width: 420px) { display: none; }
 `;
 const ChromeStatusRail = styled.div`
+  grid-area: status;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -3182,7 +3214,18 @@ const ChromeStatus = styled.div`
     strong { font-size: 10px; }
   }
 `;
-const Actions = styled.div`display: flex; gap: 10px; flex-wrap: wrap;`;
+const Actions = styled.div`
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  &[data-beta-system-command] {
+    grid-area: actions;
+    justify-content: flex-end;
+  }
+  @media (max-width: 420px) {
+    gap: 8px;
+  }
+`;
 const LoopConsole = styled.section`display: grid; grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr); gap: 16px; align-items: stretch; @media (max-width: 940px) { grid-template-columns: 1fr; }`;
 const ScanGrid = styled.div`display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px;`;
 const MetricGrid = styled.div`display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; @media (max-width: 620px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }`;
@@ -3900,12 +3943,12 @@ const Hero = styled.section`
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(480px, 1.42fr) minmax(280px, 0.58fr);
+  grid-template-columns: minmax(520px, 1.58fr) minmax(260px, 0.42fr);
   grid-template-areas: "console rail";
-  gap: 16px;
+  gap: 14px;
   align-items: start;
-  min-height: min(790px, calc(100svh - 62px));
-  padding: 18px clamp(16px, 4vw, 48px) 30px;
+  min-height: 0;
+  padding: 16px clamp(16px, 4vw, 48px) 18px;
   scroll-margin-top: 86px;
   color: #fff;
   background:
@@ -3918,54 +3961,52 @@ const Hero = styled.section`
   background-size: auto, auto, auto, 42px 42px, 42px 42px, auto;
   border-bottom: 1px solid rgba(18, 18, 23, 0.18);
   &::before {
-    content: "PLAY";
-    position: absolute;
-    right: clamp(-28px, 3vw, 34px);
-    bottom: -34px;
-    color: rgba(255, 255, 255, 0.045);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: clamp(96px, 17vw, 230px);
-    font-weight: 900;
-    line-height: 0.8;
-    pointer-events: none;
+    content: none;
   }
   > * { position: relative; z-index: 1; }
   @media (max-width: 940px) {
     grid-template-columns: 1fr;
     grid-template-areas:
-      "rail"
-      "console";
+      "console"
+      "rail";
     gap: 14px;
     min-height: 0;
-    padding-top: 18px;
-    padding-bottom: 22px;
+    padding-top: 14px;
+    padding-bottom: 18px;
   }
 `;
 const HeroCopy = styled.div`
   grid-area: rail;
   display: grid;
-  gap: 9px;
+  gap: 10px;
   align-content: start;
   min-width: 0;
+  border: 1px solid rgba(137, 242, 202, 0.18);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.045)),
+    rgba(7, 10, 16, 0.42);
   h1 {
     margin: 0;
-    max-width: 620px;
+    max-width: 420px;
     color: #fff;
-    font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
-    font-size: 58px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 28px;
     font-weight: 850;
-    line-height: 0.94;
+    line-height: 1.02;
     letter-spacing: 0;
   }
-  p { margin: 0; max-width: 540px; color: rgba(255, 255, 255, 0.84); font-size: 16px; line-height: 1.38; }
+  p { margin: 0; max-width: 440px; color: rgba(255, 255, 255, 0.78); font-size: 13px; line-height: 1.35; }
   @media (max-width: 940px) {
-    h1 { font-size: 30px; line-height: 1; }
-    p { font-size: 15px; }
+    h1 { font-size: 22px; line-height: 1.04; }
+    p { font-size: 13px; }
   }
   @media (max-width: 520px) {
-    gap: 10px;
-    h1 { font-size: 28px; line-height: 1; }
-    p { font-size: 15px; line-height: 1.42; }
+    gap: 8px;
+    padding: 10px;
+    h1 { font-size: 20px; line-height: 1.05; }
+    p { font-size: 12px; line-height: 1.35; }
   }
 `;
 const Kicker = styled.div`display: flex; align-items: center; gap: 8px; color: #89f2ca; font-size: 13px; font-weight: 900; text-transform: uppercase;`;
@@ -4635,7 +4676,7 @@ const ProductConsole = styled.aside`
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 1.26fr) minmax(250px, 0.74fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.65fr);
   grid-template-areas:
     "header header"
     "path roles"
@@ -4646,15 +4687,15 @@ const ProductConsole = styled.aside`
   min-width: 0;
   border: 1px solid rgba(137, 242, 202, 0.22);
   border-radius: 8px;
-  padding: 13px;
+  padding: 12px;
   color: #fff;
   background:
     linear-gradient(135deg, rgba(137, 242, 202, 0.12), transparent 28%),
     linear-gradient(315deg, rgba(193, 61, 98, 0.18), transparent 36%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.032)),
     rgba(8, 10, 18, 0.9);
-  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.42);
-  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(14px);
   &::before {
     content: "";
     position: absolute;
@@ -4675,21 +4716,26 @@ const ProductConsole = styled.aside`
     grid-template-areas:
       "header"
       "path"
-      "live"
+      "roles"
       "progress"
-      "roles";
+      "live";
+  }
+  @media (max-width: 520px) {
+    gap: 9px;
+    padding: 10px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
   }
 `;
 const ConsoleHeader = styled.div`
   grid-area: header;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 8px 10px;
+  gap: 7px 10px;
   align-items: center;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  padding: 9px 10px;
-  background: rgba(255, 255, 255, 0.07);
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.065);
   &::before {
     content: "";
     display: block;
@@ -4710,7 +4756,7 @@ const ConsoleHeader = styled.div`
     min-width: 0;
     color: #fff;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 850;
     line-height: 1.05;
     overflow-wrap: anywhere;
@@ -4722,33 +4768,33 @@ const ConsoleHeader = styled.div`
     min-width: 0;
     max-width: 330px;
     color: rgba(255, 255, 255, 0.74);
-    font-size: 13px;
+    font-size: 12px;
     line-height: 1.25;
     text-align: right;
     overflow-wrap: anywhere;
   }
   @media (max-width: 520px) {
-    grid-template-columns: 1fr;
-    gap: 6px;
-    align-items: start;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 5px 9px;
+    align-items: center;
     &::before {
       grid-column: 1;
-      grid-row: auto;
+      grid-row: 1 / span 2;
     }
     > span:first-of-type,
     strong,
     > span:last-child {
-      grid-column: 1;
+      grid-column: 2;
       grid-row: auto;
       justify-self: start;
       max-width: none;
       text-align: left;
     }
-    strong { font-size: 22px; }
+    strong { font-size: 18px; }
     > span:first-of-type,
     > span:last-child {
-      font-size: 14px;
-      line-height: 1.32;
+      font-size: 11px;
+      line-height: 1.2;
     }
   }
 `;
@@ -4829,7 +4875,7 @@ const PersonaDeck = styled.div`
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   @media (max-width: 1120px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  @media (max-width: 520px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 520px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   @media (max-width: 340px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 `;
 const PersonaChip = styled.button<{ $active: boolean }>`
@@ -4893,23 +4939,23 @@ const PersonaChip = styled.button<{ $active: boolean }>`
   @media (max-width: 520px) {
     grid-template-columns: 1fr;
     justify-items: start;
-    min-height: 72px;
-    gap: 7px;
-    padding: 10px;
-    i { width: 28px; height: 28px; }
-    b { font-size: 13px; }
-    em { font-size: 11px; line-height: 1.2; }
+    min-height: 54px;
+    gap: 5px;
+    padding: 7px;
+    i { width: 24px; height: 24px; }
+    b { font-size: 11px; }
+    em { display: none; }
     small { display: none; }
   }
 `;
 const PathNowCard = styled.article`
   grid-area: path;
   display: grid;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
   border: 1px solid rgba(0, 127, 122, 0.36);
   border-radius: 8px;
-  padding: 16px;
+  padding: 14px;
   background:
     linear-gradient(135deg, rgba(0, 127, 122, 0.2), transparent 48%),
     rgba(255, 255, 255, 0.07);
@@ -4917,11 +4963,11 @@ const PathNowCard = styled.article`
     margin: 0;
     color: #fff;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 42px;
+    font-size: 36px;
     font-weight: 850;
     line-height: 1.05;
   }
-  p { margin: 0; color: rgba(255, 255, 255, 0.82); font-size: 16px; line-height: 1.42; overflow-wrap: anywhere; }
+  p { margin: 0; color: rgba(255, 255, 255, 0.82); font-size: 15px; line-height: 1.36; overflow-wrap: anywhere; }
   ${Primary} {
     min-height: 52px;
     min-width: 190px;
@@ -4933,9 +4979,65 @@ const PathNowCard = styled.article`
     background: rgba(255, 255, 255, 0.1);
   }
   @media (max-width: 520px) {
-    padding: 12px;
-    h2 { font-size: 30px; }
-    p { font-size: 15px; line-height: 1.42; }
+    padding: 11px;
+    gap: 9px;
+    h2 { font-size: 26px; line-height: 1.02; }
+    p { font-size: 13px; line-height: 1.34; }
+  }
+`;
+const PathPulseStrip = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  min-width: 0;
+  @media (max-width: 430px) {
+    gap: 5px;
+  }
+`;
+const PathPulseButton = styled.button`
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 64px;
+  border: 1px solid rgba(137, 242, 202, 0.22);
+  border-radius: 8px;
+  padding: 8px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.075);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  b {
+    color: #89f2ca;
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 950;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+  }
+  strong {
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.12;
+    overflow-wrap: anywhere;
+  }
+  span {
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 10px;
+    line-height: 1.1;
+    font-weight: 900;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+  }
+  &:hover { border-color: rgba(137, 242, 202, 0.5); background: rgba(137, 242, 202, 0.13); }
+  &:focus-visible { outline: 3px solid rgba(137, 242, 202, 0.3); outline-offset: 2px; }
+  @media (max-width: 520px) {
+    min-height: 54px;
+    padding: 6px;
+    b { font-size: 8px; }
+    strong { font-size: 11px; }
+    span { font-size: 8px; }
   }
 `;
 const ConsoleLiveRail = styled.div`
@@ -4948,7 +5050,7 @@ const ConsoleLiveRail = styled.div`
     display: grid;
   }
   @media (max-width: 520px) {
-    grid-template-columns: 1fr;
+    display: none;
   }
 `;
 const ConsoleLiveButton = styled.button`
