@@ -760,6 +760,17 @@ export function BetaWtfos() {
   const featuredProofCard = publicProofCards.find((card) => card.state === "Live") ?? publicProofCards[0];
   const featuredReturnLoop = BETA_DAILY_RETURN_LOOPS.find((loop) => loop.key === "quest") ?? BETA_DAILY_RETURN_LOOPS[0];
   const featuredCountCommand = BETA_COUNT_LIVEOPS_COMMANDS[0];
+  const sessionState = user ? "Signed in" : "Guest preview";
+  const launchResult = user ? "Quest board" : "Sign in to start";
+  const peopleResult = featuredNowSignal.state === "Live" ? "Live users" : "People map";
+  const resumeResult = user ? "Catch-up feed" : "Sign in to resume";
+  const stageOutcome = (stageKey: string) => {
+    if (stageKey === "notice") return "Find signal";
+    if (stageKey === "act") return "Do one move";
+    if (stageKey === "prove") return "Show proof";
+    if (stageKey === "unlock") return "Review gate";
+    return "Set return";
+  };
   const homeActions: Array<{
     key: string;
     eyebrow: string;
@@ -911,16 +922,31 @@ export function BetaWtfos() {
 
   return (
     <Shell data-beta-wtfos>
-      <TopBar>
+      <TopBar data-beta-system-chrome>
         <Brand>
+          <ChromeLights aria-hidden="true"><i /><i /><i /></ChromeLights>
           <img src="/cursors/tezos-current-logo.png" alt="" />
           <div>
             <strong>WTFOS Beta</strong>
             <span>beta.wtfos.app</span>
           </div>
         </Brand>
-        <Actions>
-          <Ghost type="button" onClick={() => navigate("/gallery")}>Open Gallery</Ghost>
+        <ChromeStatusRail data-beta-system-status>
+          <ChromeStatus>
+            <small>Role</small>
+            <strong>{persona.label}</strong>
+          </ChromeStatus>
+          <ChromeStatus>
+            <small>Signals</small>
+            <strong>{liveSignalCount}/{nowSignals.length} live</strong>
+          </ChromeStatus>
+          <ChromeStatus>
+            <small>Return</small>
+            <strong>{returnStep.label}</strong>
+          </ChromeStatus>
+        </ChromeStatusRail>
+        <Actions data-beta-system-command>
+          <Ghost type="button" onClick={() => navigate("/gallery")}>Gallery</Ghost>
           <Primary type="button" onClick={() => navigate(user ? "/side-quests" : "/login")}>Launch Quest</Primary>
         </Actions>
       </TopBar>
@@ -930,6 +956,23 @@ export function BetaWtfos() {
           <Kicker><Compass size={16} /> WTFOS OS session</Kicker>
           <h1>{persona.label} session is ready.</h1>
           <p>WTFOS is a playable Tezos world. One quest, visible people, and a reason to return.</p>
+          <SessionContract data-beta-session-contract aria-label="Current WTFOS beta session contract">
+            <SessionContractCell>
+              <small>Current role</small>
+              <strong>{sessionState}</strong>
+              <span>{persona.label}</span>
+            </SessionContractCell>
+            <SessionContractCell>
+              <small>Next action</small>
+              <strong>Launch quest</strong>
+              <span>{launchResult}</span>
+            </SessionContractCell>
+            <SessionContractCell>
+              <small>Continue</small>
+              <strong>{returnStep.label}</strong>
+              <span>{resumeResult}</span>
+            </SessionContractCell>
+          </SessionContract>
           <FirstScreenLoop data-beta-first-screen-loop data-beta-session-console aria-label="First screen playable loop">
             <span>
               <Small>Session command</Small>
@@ -939,18 +982,18 @@ export function BetaWtfos() {
             <FirstScreenButtons>
               <button type="button" data-beta-first-screen-loop-action onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>
                 <Compass size={15} />
-                <b>Play</b>
-                <small>ready</small>
+                <b>Launch quest</b>
+                <small>{launchResult}</small>
               </button>
               <button type="button" data-beta-first-screen-loop-action onClick={() => openKnownRoute(featuredNowSignal.route ?? featuredNowSignal.source.route, featuredNowSignal.source.access === "public" ? "public" : "session")}>
                 <Users size={15} />
-                <b>People</b>
-                <small>{featuredNowSignal.state}</small>
+                <b>Open people</b>
+                <small>{peopleResult}</small>
               </button>
               <button type="button" data-beta-first-screen-loop-action onClick={() => openKnownRoute(returnStep.route, returnStep.access)}>
                 <Bell size={15} />
-                <b>Return</b>
-                <small>armed</small>
+                <b>Resume later</b>
+                <small>{resumeResult}</small>
               </button>
             </FirstScreenButtons>
           </FirstScreenLoop>
@@ -965,7 +1008,7 @@ export function BetaWtfos() {
             </HeroSignal>
             <HeroSignal>
               <strong>{returnStep.label}</strong>
-              <span>return route · {returnStep.route}</span>
+              <span>continue from last visit</span>
             </HeroSignal>
           </HeroSignalStrip>
           <HeroWorldPulse data-beta-hero-world-pulse data-beta-hero-world-stage aria-label="Live WTFOS world pulse">
@@ -987,7 +1030,7 @@ export function BetaWtfos() {
         </HeroCopy>
         <ProductConsole data-beta-mission-deck aria-label="Beta path picker">
           <ConsoleHeader>
-            <Small>Choose your character</Small>
+            <Small>Role dock</Small>
             <strong>{persona.label}</strong>
             <span>{persona.promise}</span>
           </ConsoleHeader>
@@ -1045,17 +1088,17 @@ export function BetaWtfos() {
                   onClick={() => openKnownRoute(stage.route, stage.access)}
                 >
                   <b>{stage.label}</b>
-                  <span>{stage.route}</span>
+                  <span>{stageOutcome(stage.key)}</span>
                 </QuestStagePill>
               ))}
             </QuestStageRibbon>
             <PathSteps>
-              <span><strong>{proofStep.label}</strong>{proofStep.route}</span>
-              <span><strong>{returnStep.label}</strong>{returnStep.route}</span>
+              <span><strong>{proofStep.label}</strong>Proof step</span>
+              <span><strong>{returnStep.label}</strong>{resumeResult}</span>
             </PathSteps>
             <Actions>
               <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>Launch Quest</Primary>
-              <Ghost type="button" onClick={() => jumpToBetaSection("beta-paths")}>See path</Ghost>
+              <Ghost type="button" onClick={() => jumpToBetaSection("beta-paths")}>Inspect Path</Ghost>
             </Actions>
           </PathNowCard>
           <SignalTicker data-beta-product-signal-strip>
@@ -1097,6 +1140,23 @@ export function BetaWtfos() {
             </DeskStat>
           </DeskStats>
         </DeskHeader>
+        <ReturnStatusStrip data-beta-return-status aria-label="Beta return status">
+          <ReturnStatusItem>
+            <small>Resume</small>
+            <strong>{returnStep.label}</strong>
+            <span>{resumeResult}</span>
+          </ReturnStatusItem>
+          <ReturnStatusItem>
+            <small>What changed</small>
+            <strong>{liveSignalCount}/{nowSignals.length} signals</strong>
+            <span>{featuredNowSignal.source.label}</span>
+          </ReturnStatusItem>
+          <ReturnStatusItem>
+            <small>Today</small>
+            <strong>{currentStep.label}</strong>
+            <span>{launchResult}</span>
+          </ReturnStatusItem>
+        </ReturnStatusStrip>
         <LiveDesktopFrame data-beta-live-desktop>
           <HomeActionDock data-beta-home-actions aria-label="WTFOS launcher dock">
             {homeActions.map((item) => (
@@ -1121,15 +1181,15 @@ export function BetaWtfos() {
             <h3>{currentStep.label}</h3>
             <p>{currentStep.action}</p>
             <DeskQuestMeta>
-              <span><b>Proof</b>{proofStep.label} / {proofStep.route}</span>
-              <span><b>Return</b>{returnStep.label} / {returnStep.route}</span>
+              <span><b>Proof</b>{proofStep.label} proof step</span>
+              <span><b>Return</b>{returnStep.label} catch-up</span>
             </DeskQuestMeta>
             <ProgressTrack aria-label={`${persona.label} playable desk progress`}>
               <span style={{ width: `${progressPercent}%` }} />
             </ProgressTrack>
             <Actions>
-              <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>Play next move</Primary>
-              <Ghost type="button" onClick={() => jumpToBetaSection("beta-passports")}>Show unlocks</Ghost>
+              <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>Launch Quest</Primary>
+              <Ghost type="button" onClick={() => jumpToBetaSection("beta-passports")}>Inspect Unlocks</Ghost>
             </Actions>
           </DeskQuestPanel>
           <HumanPulsePanel data-beta-human-pulse aria-label="People visible in WTFOS beta">
@@ -2969,23 +3029,101 @@ const TopBar = styled.header`
   position: sticky;
   top: 0;
   z-index: 10;
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 12px clamp(16px, 4vw, 48px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: grid;
+  grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px clamp(16px, 4vw, 48px);
+  border-bottom: 1px solid rgba(137, 242, 202, 0.16);
   color: #fff;
-  background: rgba(18, 18, 23, 0.94);
-  backdrop-filter: blur(14px);
-  @media (max-width: 720px) { position: relative; flex-direction: column; }
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
+    rgba(12, 13, 18, 0.96);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(18px);
+  button {
+    min-height: 38px;
+    padding-inline: 13px;
+    border-radius: 8px;
+    font-size: 12px;
+  }
+  button:first-child {
+    color: rgba(255, 255, 255, 0.78);
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: none;
+  }
+  button:last-child {
+    min-width: 142px;
+    box-shadow: 0 12px 26px rgba(40, 88, 217, 0.34);
+  }
+  @media (max-width: 880px) {
+    position: relative;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
 `;
 const Brand = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
   img { width: 36px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 8px; background: #fff; padding: 5px; }
   strong, span { display: block; }
   span { color: rgba(255, 255, 255, 0.68); font-size: 12px; font-weight: 700; }
+`;
+const ChromeLights = styled.span`
+  display: grid;
+  grid-template-columns: repeat(3, 8px);
+  gap: 4px;
+  i {
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #89f2ca;
+    opacity: 0.9;
+  }
+  i:nth-child(2) { background: #bc7300; }
+  i:nth-child(3) { background: #c13d62; }
+  @media (max-width: 420px) { display: none; }
+`;
+const ChromeStatusRail = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  min-width: 0;
+  @media (max-width: 520px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+`;
+const ChromeStatus = styled.div`
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, 0.055);
+  small {
+    display: block;
+    color: #89f2ca;
+    font-size: 9px;
+    line-height: 1;
+    font-weight: 950;
+    text-transform: uppercase;
+  }
+  strong {
+    display: block;
+    margin-top: 4px;
+    min-width: 0;
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.12;
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 520px) {
+    padding: 6px;
+    strong { font-size: 10px; }
+  }
 `;
 const Actions = styled.div`display: flex; gap: 10px; flex-wrap: wrap;`;
 const LoopConsole = styled.section`display: grid; grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr); gap: 16px; align-items: stretch; @media (max-width: 940px) { grid-template-columns: 1fr; }`;
@@ -3705,9 +3843,9 @@ const Hero = styled.section`
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 0.82fr) minmax(340px, 1.18fr);
-  gap: 18px;
-  padding: 28px clamp(16px, 4vw, 48px) 42px;
+  grid-template-columns: minmax(0, 0.68fr) minmax(380px, 1.32fr);
+  gap: 16px;
+  padding: 20px clamp(16px, 4vw, 48px) 34px;
   scroll-margin-top: 86px;
   color: #fff;
   background:
@@ -3724,7 +3862,7 @@ const Hero = styled.section`
     right: clamp(-28px, 3vw, 34px);
     bottom: -34px;
     color: rgba(255, 255, 255, 0.045);
-    font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: clamp(96px, 17vw, 230px);
     font-weight: 900;
     line-height: 0.8;
@@ -3744,29 +3882,76 @@ const HeroCopy = styled.div`
     margin: 0;
     max-width: 620px;
     color: #fff;
-    font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
-    font-size: 38px;
-    line-height: 1.04;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 31px;
+    font-weight: 850;
+    line-height: 1.02;
     letter-spacing: 0;
   }
-  p { margin: 0; max-width: 620px; color: rgba(255, 255, 255, 0.76); font-size: 15px; line-height: 1.42; }
+  p { margin: 0; max-width: 540px; color: rgba(255, 255, 255, 0.84); font-size: 15px; line-height: 1.42; }
   @media (max-width: 940px) {
-    h1 { font-size: 34px; line-height: 1.04; }
+    h1 { font-size: 31px; line-height: 1.04; }
     p { font-size: 15px; }
   }
   @media (max-width: 520px) {
-    gap: 11px;
-    h1 { font-size: 26px; line-height: 1.08; }
-    p { font-size: 14px; line-height: 1.38; }
+    gap: 12px;
+    h1 { font-size: 25px; line-height: 1.1; }
+    p { font-size: 15px; line-height: 1.42; }
   }
 `;
 const Kicker = styled.div`display: flex; align-items: center; gap: 8px; color: #89f2ca; font-size: 13px; font-weight: 900; text-transform: uppercase;`;
+const SessionContract = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  max-width: 760px;
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+`;
+const SessionContractCell = styled.div`
+  min-width: 0;
+  border: 1px solid rgba(137, 242, 202, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(7, 10, 16, 0.26);
+  small {
+    display: block;
+    color: #89f2ca;
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 950;
+    text-transform: uppercase;
+  }
+  strong {
+    display: block;
+    margin-top: 5px;
+    color: #fff;
+    font-size: 15px;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+  span {
+    display: block;
+    margin-top: 4px;
+    color: rgba(255, 255, 255, 0.76);
+    font-size: 12px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 520px) {
+    padding: 11px;
+    strong { font-size: 16px; }
+    span { font-size: 14px; }
+  }
+`;
 const HeroSignalStrip = styled.div`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   max-width: 780px;
   @media (max-width: 700px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 520px) { display: none; }
 `;
 const HeroSignal = styled.div`
   min-width: 0;
@@ -3791,7 +3976,7 @@ const HeroWorldPulse = styled.div`
   gap: 8px;
   max-width: 760px;
   @media (max-width: 520px) {
-    gap: 6px;
+    display: none;
   }
 `;
 const HeroPulseGlyph = styled.div<{ $tone: string }>`
@@ -3882,9 +4067,9 @@ const HeroWorldPulseCell = styled.div`
 `;
 const FirstScreenLoop = styled.div`
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 1fr;
   gap: 12px;
-  align-items: center;
+  align-items: stretch;
   max-width: 760px;
   border: 1px solid rgba(137, 242, 202, 0.24);
   border-radius: 8px;
@@ -3902,7 +4087,7 @@ const FirstScreenLoop = styled.div`
   }
   strong {
     color: #fff;
-    font-size: 28px;
+    font-size: 32px;
     line-height: 1.05;
     overflow-wrap: anywhere;
   }
@@ -3914,14 +4099,14 @@ const FirstScreenLoop = styled.div`
     overflow-wrap: anywhere;
   }
   @media (max-width: 680px) {
-    grid-template-columns: 1fr;
-    strong { font-size: 24px; }
+    strong { font-size: 30px; }
+    em { font-size: 14px; line-height: 1.32; }
   }
 `;
 const FirstScreenButtons = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, minmax(92px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
   button {
     display: grid;
     grid-template-columns: 18px minmax(0, 1fr);
@@ -3930,14 +4115,12 @@ const FirstScreenButtons = styled.div`
       "icon state";
     align-items: center;
     column-gap: 7px;
-    min-height: 48px;
+    min-height: 60px;
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 8px;
     padding: 7px 9px;
     color: #fff;
-    background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.055)),
-      rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.075);
     font: inherit;
     text-align: left;
     cursor: pointer;
@@ -3946,7 +4129,7 @@ const FirstScreenButtons = styled.div`
   b {
     grid-area: label;
     min-width: 0;
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1;
     font-weight: 950;
     overflow-wrap: anywhere;
@@ -3955,7 +4138,7 @@ const FirstScreenButtons = styled.div`
     grid-area: state;
     min-width: 0;
     color: rgba(255, 255, 255, 0.62);
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1;
     font-weight: 900;
     text-transform: uppercase;
@@ -3974,6 +4157,7 @@ const FirstScreenButtons = styled.div`
       justify-items: center;
       text-align: center;
       padding-inline: 6px;
+      min-height: 64px;
     }
   }
 `;
@@ -3981,13 +4165,15 @@ const PlayableDesk = styled.section`
   display: grid;
   gap: 14px;
   margin: -32px clamp(16px, 4vw, 48px) 16px;
-  border: 1px solid rgba(18, 18, 23, 0.18);
+  border: 1px solid rgba(137, 242, 202, 0.18);
   border-radius: 8px;
   padding: 14px;
+  color: #fff;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(246, 247, 241, 0.92)),
-    #fff;
-  box-shadow: 0 26px 70px rgba(18, 18, 23, 0.16);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03)),
+    linear-gradient(110deg, rgba(40, 88, 217, 0.16), transparent 42%),
+    rgba(12, 13, 18, 0.96);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.24);
   @media (max-width: 720px) {
     margin-top: -8px;
     padding: 12px;
@@ -4000,16 +4186,17 @@ const DeskHeader = styled.div`
   align-items: end;
   h2 {
     margin: 5px 0 6px;
-    color: var(--ink);
-    font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
-    font-size: 44px;
-    line-height: 0.98;
+    color: #fff;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 36px;
+    font-weight: 850;
+    line-height: 1;
     letter-spacing: 0;
   }
   p {
     margin: 0;
     max-width: 760px;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.72);
     font-size: 15px;
     line-height: 1.45;
   }
@@ -4032,16 +4219,63 @@ const DeskStats = styled.div`
     }
   }
 `;
+const ReturnStatusStrip = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  border: 1px solid rgba(0, 127, 122, 0.18);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  @media (max-width: 680px) {
+    grid-template-columns: 1fr;
+  }
+`;
+const ReturnStatusItem = styled.div`
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  small {
+    display: block;
+    color: #89f2ca;
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 950;
+    text-transform: uppercase;
+  }
+  strong {
+    display: block;
+    margin-top: 5px;
+    color: #fff;
+    font-size: 15px;
+    line-height: 1.14;
+    overflow-wrap: anywhere;
+  }
+  span {
+    display: block;
+    margin-top: 4px;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 12px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 680px) {
+    strong { font-size: 16px; }
+    span { font-size: 14px; }
+  }
+`;
 const DeskStat = styled.div`
   min-width: 0;
   min-height: 72px;
-  border: 1px solid rgba(35, 88, 214, 0.18);
+  border: 1px solid rgba(137, 242, 202, 0.16);
   border-radius: 8px;
   padding: 10px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.08);
   strong, span { display: block; overflow-wrap: anywhere; }
-  strong { color: var(--blue); font-size: 18px; line-height: 1.05; }
-  span { margin-top: 7px; color: var(--muted); font-size: 11px; line-height: 1.25; font-weight: 900; text-transform: uppercase; }
+  strong { color: #fff; font-size: 18px; line-height: 1.05; }
+  span { margin-top: 7px; color: rgba(255, 255, 255, 0.68); font-size: 11px; line-height: 1.25; font-weight: 900; text-transform: uppercase; }
 `;
 const LiveDesktopFrame = styled.div`
   display: grid;
@@ -4051,13 +4285,13 @@ const LiveDesktopFrame = styled.div`
     "dock quest lanes";
   gap: 12px;
   min-width: 0;
-  border: 1px solid rgba(18, 18, 23, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   padding: 10px;
   background:
-    linear-gradient(180deg, rgba(18, 18, 23, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(18, 18, 23, 0.045) 1px, transparent 1px),
-    rgba(245, 247, 250, 0.88);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    rgba(7, 10, 16, 0.64);
   background-size: 30px 30px;
   @media (max-width: 980px) {
     grid-template-columns: 1fr;
@@ -4129,7 +4363,7 @@ const HumanPulsePanel = styled.article`
     #fff;
   > button {
     justify-self: start;
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 11px;
   }
 `;
@@ -4376,8 +4610,8 @@ const ConsoleHeader = styled.div`
   }
   span { color: rgba(255, 255, 255, 0.7); font-size: 14px; line-height: 1.4; }
   @media (max-width: 520px) {
-    strong { font-size: 24px; }
-    span { font-size: 13px; }
+    strong { font-size: 26px; }
+    span { font-size: 15px; line-height: 1.36; }
   }
 `;
 const ProgressionCard = styled.article`
@@ -4520,11 +4754,12 @@ const PersonaChip = styled.button<{ $active: boolean }>`
   @media (max-width: 520px) {
     grid-template-columns: 1fr;
     justify-items: start;
-    min-height: 58px;
-    gap: 5px;
-    i { width: 24px; height: 24px; }
-    b { font-size: 11px; }
-    em { font-size: 9px; }
+    min-height: 72px;
+    gap: 7px;
+    padding: 10px;
+    i { width: 28px; height: 28px; }
+    b { font-size: 13px; }
+    em { font-size: 11px; line-height: 1.2; }
     small { display: none; }
   }
 `;
@@ -4554,8 +4789,8 @@ const PathNowCard = styled.article`
   }
   @media (max-width: 520px) {
     padding: 12px;
-    h2 { font-size: 22px; }
-    p { font-size: 13px; }
+    h2 { font-size: 24px; }
+    p { font-size: 15px; line-height: 1.42; }
   }
 `;
 const QuestStageRibbon = styled.div`
@@ -4564,7 +4799,7 @@ const QuestStageRibbon = styled.div`
   gap: 6px;
   @media (max-width: 560px) {
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 4px;
+    gap: 5px;
   }
 `;
 const QuestStagePill = styled.button`
@@ -4586,9 +4821,9 @@ const QuestStagePill = styled.button`
   &:hover { border-color: rgba(137, 242, 202, 0.52); background: rgba(137, 242, 202, 0.12); }
   &:focus-visible { outline: 3px solid rgba(0, 129, 111, 0.26); outline-offset: 2px; }
   @media (max-width: 560px) {
-    min-height: 48px;
-    padding: 6px 4px;
-    b { font-size: 10px; }
+    min-height: 46px;
+    padding: 8px 5px;
+    b { font-size: 11px; }
     span { font-size: 9px; }
   }
 `;

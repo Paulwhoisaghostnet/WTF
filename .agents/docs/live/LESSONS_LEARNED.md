@@ -5767,3 +5767,13 @@
 **Why it mattered**: WTFOS is meant to feel like an operating system. The beta shell should start from active identity, current command, signal state, return route, and launcher status, then explain the world around that session. A website hero can be attractive while still teaching the wrong product model.
 
 **Rule**: First-screen beta copy and controls must prioritize session state and launchable commands. Keep "what is WTFOS" visible, but do not let marketing-style hero copy or duplicated CTA rows outrank the active role, current quest, people signal, and return loop.
+
+---
+
+## 2026-06-24 - Beta OS shells must not leak raw route syntax
+
+**What happened**: The beta shell gained system chrome and a session contract, but critic screenshots still showed route-looking outcomes such as `/side-quests`, `/notifications`, and a bright white desk section directly under the dark hero. The state was technically useful, yet it made the shell feel like developer documentation and broke the operating-system illusion.
+
+**Why it mattered**: New users need to understand what a command does without parsing internal route names. The beta mission permits better navigation and grouping, not exposing implementation details as the primary UX. A bright report-like section after the hero also makes the experience snap back into a page instead of a continuous product shell.
+
+**Rule**: Keep route paths available only where route maps, audits, or research decks explicitly need them. In the active first viewport, desktop, and mobile command surfaces, translate route destinations into human product outcomes such as Quest board, Live users, Catch-up feed, proof step, and return state. Keep the post-hero desk visually inside the OS workspace unless it is clearly framed as an app window.
