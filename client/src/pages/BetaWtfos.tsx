@@ -941,11 +941,11 @@ export function BetaWtfos() {
               <span>{selectedPassport.identity}</span>
             </HeroSignal>
           </HeroSignalStrip>
-          <Actions>
+          <HeroActions data-beta-hero-primary-actions>
             <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>Do my next thing</Primary>
             <Ghost type="button" onClick={() => navigate("/gallery")}>Browse public art</Ghost>
             <Ghost type="button" onClick={() => jumpToBetaSection("beta-people")}>See people</Ghost>
-          </Actions>
+          </HeroActions>
           <FirstScreenLoop data-beta-first-screen-loop aria-label="First screen playable loop">
             <span>
               <Small>Today&apos;s loop</Small>
@@ -980,7 +980,7 @@ export function BetaWtfos() {
             ))}
           </HeroWorldPulse>
         </HeroCopy>
-        <ProductConsole aria-label="Beta path picker">
+        <ProductConsole data-beta-mission-deck aria-label="Beta path picker">
           <ConsoleHeader>
             <Small>Choose your character</Small>
             <strong>{persona.label}</strong>
@@ -3719,6 +3719,11 @@ const HeroCopy = styled.div`
     p { font-size: 14px; line-height: 1.38; }
   }
 `;
+const HeroActions = styled(Actions)`
+  @media (max-width: 520px) {
+    display: none;
+  }
+`;
 const Kicker = styled.div`display: flex; align-items: center; gap: 8px; color: #89f2ca; font-size: 13px; font-weight: 900; text-transform: uppercase;`;
 const HeroSignalStrip = styled.div`
   display: grid;
@@ -4072,27 +4077,49 @@ const DeskFooter = styled.div`
   }
 `;
 const ProductConsole = styled.aside`
+  position: relative;
+  overflow: hidden;
   display: grid;
   align-content: start;
   gap: 12px;
   min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(137, 242, 202, 0.22);
   border-radius: 8px;
-  padding: 12px;
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
+  padding: 13px;
+  color: #fff;
+  background:
+    linear-gradient(135deg, rgba(137, 242, 202, 0.12), transparent 28%),
+    linear-gradient(315deg, rgba(193, 61, 98, 0.18), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.032)),
+    rgba(8, 10, 18, 0.9);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(18px);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.72), transparent 82%);
+  }
+  > * {
+    position: relative;
+    z-index: 1;
+  }
 `;
 const ConsoleHeader = styled.div`
   display: grid;
   gap: 5px;
   strong {
-    color: var(--ink);
+    color: #fff;
     font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
     font-size: 34px;
     line-height: 1.05;
   }
-  span { color: var(--muted); font-size: 14px; line-height: 1.4; }
+  span { color: rgba(255, 255, 255, 0.7); font-size: 14px; line-height: 1.4; }
   @media (max-width: 520px) {
     strong { font-size: 24px; }
     span { font-size: 13px; }
@@ -4102,13 +4129,13 @@ const ProgressionCard = styled.article`
   display: grid;
   gap: 10px;
   min-width: 0;
-  border: 1px solid rgba(193, 61, 98, 0.24);
+  border: 1px solid rgba(193, 61, 98, 0.32);
   border-radius: 8px;
   padding: 12px;
   background:
-    linear-gradient(135deg, rgba(193, 61, 98, 0.1), transparent 48%),
-    linear-gradient(315deg, rgba(188, 115, 0, 0.12), transparent 52%),
-    #fffaf7;
+    linear-gradient(135deg, rgba(193, 61, 98, 0.32), transparent 48%),
+    linear-gradient(315deg, rgba(188, 115, 0, 0.18), transparent 52%),
+    rgba(255, 255, 255, 0.07);
 `;
 const ProgressLead = styled.div`
   display: grid;
@@ -4116,8 +4143,8 @@ const ProgressLead = styled.div`
   gap: 10px;
   align-items: start;
   > span { display: grid; gap: 5px; min-width: 0; }
-  strong { color: var(--ink); font-size: 17px; line-height: 1.16; overflow-wrap: anywhere; }
-  em { color: var(--muted); font-size: 12px; line-height: 1.32; font-style: normal; overflow-wrap: anywhere; }
+  strong { color: #fff; font-size: 17px; line-height: 1.16; overflow-wrap: anywhere; }
+  em { color: rgba(255, 255, 255, 0.66); font-size: 12px; line-height: 1.32; font-style: normal; overflow-wrap: anywhere; }
   @media (max-width: 420px) { grid-template-columns: 56px minmax(0, 1fr); }
 `;
 const LevelDisc = styled.span`
@@ -4140,7 +4167,7 @@ const ProgressTrack = styled.div`
   overflow: hidden;
   height: 9px;
   border-radius: 999px;
-  background: rgba(24, 22, 31, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   span {
     display: block;
     height: 100%;
@@ -4156,16 +4183,16 @@ const ProgressFacts = styled.div`
     display: grid;
     gap: 4px;
     min-width: 0;
-    border: 1px solid rgba(24, 22, 31, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 8px;
     padding: 8px;
-    background: rgba(255, 255, 255, 0.74);
-    color: var(--muted);
+    background: rgba(255, 255, 255, 0.075);
+    color: rgba(255, 255, 255, 0.68);
     font-size: 11px;
     line-height: 1.3;
     overflow-wrap: anywhere;
   }
-  b { color: var(--ink); font-size: 10px; line-height: 1; text-transform: uppercase; }
+  b { color: #fff; font-size: 10px; line-height: 1; text-transform: uppercase; }
   @media (max-width: 520px) { display: none; }
 `;
 const PersonaDeck = styled.div`
@@ -4183,14 +4210,14 @@ const PersonaChip = styled.button<{ $active: boolean }>`
   gap: 7px;
   min-width: 0;
   min-height: 62px;
-  border: 1px solid ${({ $active }) => $active ? "rgba(35, 88, 214, 0.84)" : "rgba(24, 22, 31, 0.12)"};
+  border: 1px solid ${({ $active }) => $active ? "rgba(137, 242, 202, 0.48)" : "rgba(255, 255, 255, 0.1)"};
   border-radius: 8px;
   padding: 9px 8px;
-  color: var(--ink);
+  color: #fff;
   background: ${({ $active }) => $active
-    ? "linear-gradient(135deg, rgba(35, 88, 214, 0.98), rgba(0, 127, 122, 0.92))"
-    : "linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.9))"};
-  box-shadow: ${({ $active }) => $active ? "0 12px 28px rgba(35, 88, 214, 0.22)" : "inset 0 0 0 1px rgba(255, 255, 255, 0.72)"};
+    ? "linear-gradient(135deg, rgba(35, 88, 214, 0.96), rgba(0, 127, 122, 0.88))"
+    : "linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035))"};
+  box-shadow: ${({ $active }) => $active ? "0 14px 30px rgba(0, 127, 122, 0.22)" : "inset 0 0 0 1px rgba(255, 255, 255, 0.04)"};
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -4200,8 +4227,8 @@ const PersonaChip = styled.button<{ $active: boolean }>`
     width: 28px;
     height: 28px;
     border-radius: 999px;
-    color: ${({ $active }) => $active ? "#fff" : "var(--teal)"};
-    background: ${({ $active }) => $active ? "rgba(255, 255, 255, 0.16)" : "rgba(0, 127, 122, 0.1)"};
+    color: ${({ $active }) => $active ? "#fff" : "#89f2ca"};
+    background: ${({ $active }) => $active ? "rgba(255, 255, 255, 0.16)" : "rgba(137, 242, 202, 0.12)"};
     font-style: normal;
   }
   span {
@@ -4210,13 +4237,13 @@ const PersonaChip = styled.button<{ $active: boolean }>`
     min-width: 0;
   }
   b {
-    color: ${({ $active }) => $active ? "#fff" : "var(--ink)"};
+    color: #fff;
     font-size: 12px;
     line-height: 1.1;
     overflow-wrap: anywhere;
   }
   em {
-    color: ${({ $active }) => $active ? "rgba(255, 255, 255, 0.72)" : "var(--muted)"};
+    color: ${({ $active }) => $active ? "rgba(255, 255, 255, 0.72)" : "rgba(255, 255, 255, 0.6)"};
     font-size: 10px;
     line-height: 1.1;
     font-style: normal;
@@ -4227,7 +4254,7 @@ const PersonaChip = styled.button<{ $active: boolean }>`
     position: absolute;
     top: 6px;
     right: 7px;
-    color: ${({ $active }) => $active ? "rgba(255, 255, 255, 0.76)" : "rgba(35, 88, 214, 0.82)"};
+    color: ${({ $active }) => $active ? "rgba(255, 255, 255, 0.76)" : "rgba(137, 242, 202, 0.74)"};
     font-size: 9px;
     line-height: 1;
     font-weight: 950;
@@ -4248,18 +4275,25 @@ const PathNowCard = styled.article`
   display: grid;
   gap: 10px;
   min-width: 0;
-  border: 1px solid rgba(0, 127, 122, 0.28);
+  border: 1px solid rgba(0, 127, 122, 0.36);
   border-radius: 8px;
   padding: 14px;
-  background: #f2fbf9;
+  background:
+    linear-gradient(135deg, rgba(0, 127, 122, 0.2), transparent 48%),
+    rgba(255, 255, 255, 0.07);
   h2 {
     margin: 0;
-    color: var(--ink);
+    color: #fff;
     font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
     font-size: 28px;
     line-height: 1.05;
   }
-  p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+  p { margin: 0; color: rgba(255, 255, 255, 0.68); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+  ${Ghost} {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.1);
+  }
   @media (max-width: 520px) {
     padding: 12px;
     h2 { font-size: 22px; }
@@ -4281,17 +4315,17 @@ const QuestStagePill = styled.button`
   gap: 3px;
   min-width: 0;
   min-height: 58px;
-  border: 1px solid rgba(0, 129, 111, 0.24);
+  border: 1px solid rgba(137, 242, 202, 0.22);
   border-radius: 8px;
   padding: 7px;
-  color: var(--ink);
-  background: #fff;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  b { color: var(--teal); font-size: 12px; line-height: 1.1; }
-  span { color: var(--muted); font-size: 10px; line-height: 1.15; overflow-wrap: anywhere; }
-  &:hover { border-color: rgba(0, 129, 111, 0.48); background: #f7fffc; }
+  b { color: #89f2ca; font-size: 12px; line-height: 1.1; }
+  span { color: rgba(255, 255, 255, 0.56); font-size: 10px; line-height: 1.15; overflow-wrap: anywhere; }
+  &:hover { border-color: rgba(137, 242, 202, 0.52); background: rgba(137, 242, 202, 0.12); }
   &:focus-visible { outline: 3px solid rgba(0, 129, 111, 0.26); outline-offset: 2px; }
   @media (max-width: 560px) {
     min-height: 48px;
@@ -4308,16 +4342,16 @@ const PathSteps = styled.div`
     display: grid;
     gap: 4px;
     min-width: 0;
-    border: 1px solid rgba(0, 127, 122, 0.2);
+    border: 1px solid rgba(137, 242, 202, 0.18);
     border-radius: 8px;
     padding: 9px;
-    background: #fff;
-    color: var(--teal);
+    background: rgba(255, 255, 255, 0.06);
+    color: #89f2ca;
     font-size: 12px;
     font-weight: 850;
     overflow-wrap: anywhere;
   }
-  strong { color: var(--ink); font-size: 12px; line-height: 1.2; }
+  strong { color: #fff; font-size: 12px; line-height: 1.2; }
   @media (max-width: 520px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     span { padding: 8px; font-size: 11px; }
@@ -4334,12 +4368,12 @@ const SignalTile = styled.div`
   gap: 5px;
   min-width: 0;
   min-height: 74px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   padding: 10px;
-  background: #fff;
-  strong { color: var(--blue); font-size: 24px; line-height: 1; overflow-wrap: anywhere; }
-  span { color: var(--muted); font-size: 11px; line-height: 1.25; font-weight: 900; text-transform: uppercase; }
+  background: rgba(255, 255, 255, 0.07);
+  strong { color: #89f2ca; font-size: 24px; line-height: 1; overflow-wrap: anywhere; }
+  span { color: rgba(255, 255, 255, 0.62); font-size: 11px; line-height: 1.25; font-weight: 900; text-transform: uppercase; }
 `;
 const DesignCriticGate = styled.div`
   display: grid;

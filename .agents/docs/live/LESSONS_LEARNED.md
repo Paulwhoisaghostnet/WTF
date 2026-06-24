@@ -5737,3 +5737,13 @@
 **Why it mattered**: The beta promise is built around roles, EXP, side quests, and unlocks. If the role selector feels generic, users can understand the words while missing the sense that WTFOS is a designed system they can progress through.
 
 **Rule**: Keep persona selection as a compact path deck with visible state, icons, level/path hints, and keyboard-safe buttons. Do not let core role choice regress to unlabeled tabs or plain form buttons.
+
+---
+
+## 2026-06-24 - Beta hero panels must not look like documentation cards
+
+**What happened**: After the role deck pass, the first beta viewport still paired a dark playable-world hero with a large white right-side console. It contained useful role, EXP, quest, and route state, but visually it read like a documentation panel or form pasted onto the product.
+
+**Why it mattered**: The beta is supposed to make WTFOS feel alive, human-facing, and game-like without changing app logic. When the primary route/progression surface looks like a report card, users read instead of act, and the whole experience falls back toward Wikipedia.
+
+**Rule**: Keep the first-screen role, progression, and next-move controls inside a cohesive mission-deck treatment. On mobile, avoid duplicate action rows before the character/path choice; let the Play/People/Return loop carry the immediate action.

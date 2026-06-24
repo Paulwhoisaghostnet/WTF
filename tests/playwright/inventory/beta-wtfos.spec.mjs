@@ -20,6 +20,7 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
 
     await expect(page.locator("[data-beta-wtfos]")).toBeVisible();
     await expect(page.locator("[data-beta-product-home]")).toContainText("WTFOS is a playable Tezos world.");
+    await expect(page.locator("[data-beta-mission-deck]")).toContainText("Choose your character");
     await expect(page.locator("[data-beta-product-pulse]")).toContainText("EXP floor");
     await expect(page.locator("[data-beta-product-path]")).toHaveCount(6);
     await expect(page.locator("[data-beta-persona-role-deck]")).toContainText("Safe start");
