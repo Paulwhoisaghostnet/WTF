@@ -49,6 +49,7 @@ import {
   BETA_COUNT_ADMIN_WORKBENCH,
   BETA_COUNT_LIVEOPS_COMMANDS,
   BETA_COUNT_LIVEOPS_RECIPES,
+  BETA_CREATOR_PROJECT_PROOF_LADDER,
   BETA_DAILY_RETURN_LOOPS,
   BETA_DESKTOP_MODEL_REVIEW,
   BETA_FRICTION_QUEUE,
@@ -73,6 +74,7 @@ import {
   type BetaAttentionCadence,
   type BetaCountAdminSummaryKey,
   type BetaCountAdminSummarySource,
+  type BetaCreatorProjectProofStatus,
   type BetaPersonaKey,
   type BetaRelationshipActorKey,
   type BetaRouteGroupGuide,
@@ -876,6 +878,65 @@ export function BetaWtfos() {
             </ProofCard>
           ))}
         </ProofGrid>
+        <CreatorProofLadder data-beta-creator-proof-ladder>
+          <SectionHead>
+            <div>
+              <Title><Compass size={18} /> Creator Project Proof Ladder</Title>
+              <p>Creators should not have to guess whether Studio, Broot, Macaroni, IPFS Pinning, TV, Console, or Skywire is next. Beta names which proof is public, which proof must be inspected in the owner app, and which proof remains role-gated.</p>
+            </div>
+            <NowSummary>
+              <strong>{BETA_CREATOR_PROJECT_PROOF_LADDER.filter((step) => step.status === "visible").length}/{BETA_CREATOR_PROJECT_PROOF_LADDER.length}</strong>
+              <span>creator proofs visible</span>
+            </NowSummary>
+          </SectionHead>
+          <CreatorProofGrid>
+            {BETA_CREATOR_PROJECT_PROOF_LADDER.map((step) => {
+              const proofSignals = step.signalKeys
+                .map((sourceKey) => signalByKey.get(sourceKey))
+                .filter((signal): signal is BetaRenderedNowSignal => Boolean(signal));
+              return (
+                <CreatorProofCard
+                  key={step.key}
+                  data-beta-creator-proof-step
+                  data-beta-creator-proof-key={step.key}
+                  data-beta-creator-proof-status={step.status}
+                  $status={step.status}
+                >
+                  <CreatorProofLead>
+                    <Small>{creatorProofStatusLabel(step.status)} / {accessLabel(step.access)}</Small>
+                    <h3>{step.label}</h3>
+                    <strong>{step.userQuestion}</strong>
+                  </CreatorProofLead>
+                  <PeopleSignalStrip aria-label={`${step.label} creator proof signals`}>
+                    {proofSignals.map((signal) => (
+                      <PeopleSignalPill
+                        key={`${step.key}-${signal.source.key}`}
+                        type="button"
+                        data-beta-creator-proof-signal
+                        data-beta-creator-proof-signal-state={signal.state}
+                        $state={signal.state}
+                        onClick={() => openKnownRoute(signal.route ?? signal.source.route, signal.source.access)}
+                      >
+                        <span>{signal.source.label}</span>
+                        <strong>{signal.state}</strong>
+                      </PeopleSignalPill>
+                    ))}
+                  </PeopleSignalStrip>
+                  <Meta><strong>Owner surface</strong><span>{step.ownerSurface} / {step.route}</span></Meta>
+                  <Meta><strong>Visible proof</strong><span>{step.visibleProof}</span></Meta>
+                  <Meta><strong>Current limit</strong><span>{step.currentLimit}</span></Meta>
+                  <Meta><strong>Next dependency</strong><span>{step.nextDependency}</span></Meta>
+                  <Meta><strong>Gate boundary</strong><span>{step.gateBoundary}</span></Meta>
+                  <Meta><strong>No-write boundary</strong><span>{step.noWriteRule}</span></Meta>
+                  <ControlActions>
+                    <Primary type="button" onClick={() => openKnownRoute(step.route, step.access)}>Open owner surface</Primary>
+                    <Ghost type="button" onClick={() => setPersonaKey("creator")}>Show creator path</Ghost>
+                  </ControlActions>
+                </CreatorProofCard>
+              );
+            })}
+          </CreatorProofGrid>
+        </CreatorProofLadder>
       </Band>
 
       <Band id="beta-people" data-beta-people-discovery-board>
@@ -2084,6 +2145,12 @@ function peopleProofStatusLabel(status: BetaPeopleProofStatus): string {
   return "Weak proof";
 }
 
+function creatorProofStatusLabel(status: BetaCreatorProjectProofStatus): string {
+  if (status === "visible") return "Visible proof";
+  if (status === "inspect") return "Inspect in owner app";
+  return "Role-gated proof";
+}
+
 function relationshipActorLabel(actor: BetaRelationshipActorKey): string {
   if (actor === "the-count") return "The Count";
   if (actor === "all-users") return "All users";
@@ -2529,6 +2596,39 @@ const ProofCard = styled.article<{ $state: BetaSignalState }>`
   > strong { color: var(--ink); font-size: 18px; line-height: 1.22; }
   p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
   button { width: 100%; align-self: end; }
+`;
+const CreatorProofLadder = styled.section`
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+`;
+const CreatorProofGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(306px, 1fr));
+  gap: 12px;
+`;
+const CreatorProofCard = styled.article<{ $status: BetaCreatorProjectProofStatus }>`
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  min-height: 805px;
+  border: 1px solid ${({ $status }) => $status === "visible" ? "rgba(27, 127, 67, 0.30)" : $status === "inspect" ? "rgba(35, 88, 214, 0.26)" : "rgba(181, 106, 0, 0.38)"};
+  border-radius: 8px;
+  padding: 14px;
+  background: ${({ $status }) => $status === "visible" ? "#f7fcf8" : $status === "inspect" ? "#f7f9ff" : "#fffaf0"};
+  h3 { margin: 0; font-size: 20px; line-height: 1.14; overflow-wrap: anywhere; }
+  @media (max-width: 440px) { min-height: 0; }
+`;
+const CreatorProofLead = styled.div`
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 126px;
+  h3 { margin: 0; font-size: 20px; line-height: 1.14; overflow-wrap: anywhere; }
+  > strong { color: var(--ink); font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
 `;
 const PeopleDiscoveryGrid = styled.div`
   display: grid;

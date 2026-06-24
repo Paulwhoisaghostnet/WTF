@@ -15,6 +15,7 @@ Date: 2026-06-24
 - First-Minute Wayfinder that maps common arrival questions to existing beta sections, puppet paths, route-owned destinations, and atlas filters
 - Beta Section Compass that maps the expanded `/beta` page to fourteen question-led board jumps using only beta-local hash and scroll state
 - Public Proof Board that composes existing public object, creator-channel, play, and builder-output signals without adding write paths
+- Creator Project Proof Ladder that separates visible creator proof from private owner-app inspection and role-gated package proof across Studio, Broot, Macaroni, IPFS Pinning, TV, Console, and Skywire
 - People Discovery Board that maps existing signals to active users, new users, creators, collectors, builders, curators, collaborators, and interesting wallets without adding social graph logic
 - People Proof Gap Matrix that keeps social visibility weaknesses explicit by direct/routed/weak status, current proof, next beta move, quiet fallback, and no-write boundary
 - Attention Triage Board that turns public, protected, and admin-gated signals into seven route-owned next actions without adding notification or assistant logic
@@ -53,7 +54,8 @@ Date: 2026-06-24
 10. Use relationship-chain hesitation points to identify app pairs that need clearer handoff copy before recommending any app redesign.
 11. Use the Route Group Guide before adding more public snippets when a puppet is confused by several routes that sound related.
 12. Use the Puppet Memory Ledger before each beta iteration so confusion, hesitation, abandonment, delight, and remaining friction pick the next path to improve.
-13. Use Wayfinder and Journey Command Center click data or puppet retests to decide which path needs a deeper guided trail next.
+13. Keep the Creator Project Proof Ladder in watch mode and add deeper snippets only when an existing owner route exposes safe read proof without writes.
+14. Use Wayfinder and Journey Command Center click data or puppet retests to decide which path needs a deeper guided trail next.
 
 ## Do Not Do
 

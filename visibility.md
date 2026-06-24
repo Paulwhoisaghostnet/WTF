@@ -50,6 +50,8 @@ Implemented Count admin-summary pass: `/beta` now renders six Count summary card
 
 Implemented public proof-board pass: `/beta` now composes existing public now-signal reads into four first-minute proof cards: Fresh object, Creator channel, Playable project, and Builder output. Live cards show the returned public object or channel; quiet cards explain where Arcade or Console proof will appear when existing data returns. This improves gallery and creator/project discovery without adding endpoints, writing activity, or bypassing route gates.
 
+Implemented creator-proof-ladder pass: `/beta` now adds a Creator Project Proof Ladder under Public Proof. It separates visible public proof from signed-in inspection and role-gated package proof across Studio, Broot, Macaroni, IPFS Pinning, TV, Console, and Skywire, so creators see the next dependency without beta reading private drafts or writing publish state.
+
 Implemented notification-control pass: `/beta` now explains each notification loop through the existing action route, System Settings `/settings`, Digest `/digest`, and `/api/notifications/preferences`. This improves return-loop agency without adding endpoints, writing preferences, or bypassing Notification Center.
 
 Implemented puppet-retest pass: `/beta` now shows before/after timing snapshots for all six persistent agents across all six required discovery checkpoints. This makes visibility improvements accountable to time-to-understand, time-to-first-success, and next-step discovery instead of only reporting qualitative confidence.

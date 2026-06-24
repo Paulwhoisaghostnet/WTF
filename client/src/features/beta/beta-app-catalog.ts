@@ -229,6 +229,7 @@ export type BetaSectionCompassId =
 export type BetaSectionCompassAccess = BetaAppCatalogEntry["access"] | "mixed";
 export type BetaFrictionQueuePriority = "P1" | "P2" | "P3";
 export type BetaFrictionQueueStatus = "strengthen" | "watch" | "keep";
+export type BetaCreatorProjectProofStatus = "visible" | "inspect" | "gated";
 
 export interface BetaDailyReturnLoop {
   key: BetaDailyReturnLoopKey;
@@ -242,6 +243,22 @@ export interface BetaDailyReturnLoop {
   visibleProof: string;
   countControl: string;
   relatedRoutes: string[];
+}
+
+export interface BetaCreatorProjectProofStep {
+  key: string;
+  label: string;
+  status: BetaCreatorProjectProofStatus;
+  route: string;
+  access: BetaAppCatalogEntry["access"];
+  ownerSurface: string;
+  userQuestion: string;
+  visibleProof: string;
+  currentLimit: string;
+  nextDependency: string;
+  gateBoundary: string;
+  noWriteRule: string;
+  signalKeys: BetaNowSignalKey[];
 }
 
 export interface BetaUnlockQuestlineStage {
@@ -710,19 +727,127 @@ export const BETA_SECTION_COMPASS: BetaSectionCompassItem[] = [
   },
 ];
 
+export const BETA_CREATOR_PROJECT_PROOF_LADDER: BetaCreatorProjectProofStep[] = [
+  {
+    key: "workspace-draft",
+    label: "Workspace draft",
+    status: "inspect",
+    route: "/studio",
+    access: "session",
+    ownerSurface: "Studio",
+    userQuestion: "Is there a creator project or draft to recover first?",
+    visibleProof: "Beta can show surrounding profile, channel, and output signals, but private draft proof belongs inside the signed-in Studio workspace.",
+    currentLimit: "Anonymous beta must not read private draft state, project files, or recovery metadata from Studio.",
+    nextDependency: "Open Studio first; only then should beta recommend Broot, Macaroni, IPFS Pinning, TV, or Skywire as the next dependency.",
+    gateBoundary: "Sign-in step: Studio keeps private creator work behind the existing session gate.",
+    noWriteRule: "No beta write: beta never creates, edits, recovers, imports, or saves Studio projects.",
+    signalKeys: ["profile-activity", "tv-channels", "console-discovery"],
+  },
+  {
+    key: "asset-prep",
+    label: "Asset prep",
+    status: "inspect",
+    route: "/tools/broot",
+    access: "session",
+    ownerSurface: "Broot",
+    userQuestion: "Does the creator need to turn intent into a concrete asset?",
+    visibleProof: "Public creator and builder signals can suggest work is moving, but Broot owns the actual asset-prep evidence.",
+    currentLimit: "Beta cannot inspect local canvases, media edits, exports, or undo history from the asset tool.",
+    nextDependency: "Use Broot after Studio names the asset need, then decide whether the output should be packaged, pinned, aired, or promoted.",
+    gateBoundary: "Sign-in step: Broot opens through the existing creation-tool session gate.",
+    noWriteRule: "No beta write: beta never opens files, edits media, exports assets, or submits mint/publish work.",
+    signalKeys: ["profile-activity", "console-discovery", "tv-channels"],
+  },
+  {
+    key: "package-drop",
+    label: "Package drop",
+    status: "gated",
+    route: "/tools/macaroni",
+    access: "role",
+    ownerSurface: "Macaroni",
+    userQuestion: "Is the creator ready for a role-gated packaging or drop step?",
+    visibleProof: "Marketplace and trade-board proof can show objects and collector motion, but package readiness must be reviewed in Macaroni.",
+    currentLimit: "Beta must not treat public market motion as proof that a user has trusted-creator access or a publish-ready drop.",
+    nextDependency: "Open Macaroni only after Studio/Broot proof exists and The Count or existing role gates say the package path is appropriate.",
+    gateBoundary: "Role gated: EXP and levels are evidence for review, never automatic Macaroni authority.",
+    noWriteRule: "No beta write: beta never creates drops, deploys contracts, stages sale windows, grants roles, or signs wallet actions.",
+    signalKeys: ["market-listings", "market-trade-board", "notifications"],
+  },
+  {
+    key: "durable-pin",
+    label: "Durable media",
+    status: "inspect",
+    route: "/ipfs-pinning",
+    access: "session",
+    ownerSurface: "IPFS Pinning",
+    userQuestion: "Does the project need durable media proof before public discovery?",
+    visibleProof: "Beta can explain that durable media comes before public promotion, but pin state and hosted-publish details belong to IPFS Pinning.",
+    currentLimit: "Beta does not read or mutate pin jobs, hosted publishing state, domain setup, or storage decisions from this shell.",
+    nextDependency: "Use IPFS Pinning when the asset or package needs durability before Skywire, TV, Domains, or market discovery can depend on it.",
+    gateBoundary: "Sign-in step: pinning and hosted-publish context stay behind the existing session and app gates.",
+    noWriteRule: "No beta write: beta never pins files, changes gateways, publishes user sites, or updates domain configuration.",
+    signalKeys: ["profile-activity", "tv-channels", "notifications"],
+  },
+  {
+    key: "media-channel",
+    label: "Media channel",
+    status: "visible",
+    route: "/tv",
+    access: "session",
+    ownerSurface: "WTF TV",
+    userQuestion: "Is there public creator/media proof to watch before deeper tooling?",
+    visibleProof: "Public WTF TV channel reads can show creator/media presence before the session-gated TV app opens.",
+    currentLimit: "A public channel signal does not prove the current user owns the channel, can queue media, or has publish authority.",
+    nextDependency: "Use TV as creator proof, then route back to Studio, Broot, IPFS Pinning, or Skywire when a missing dependency appears.",
+    gateBoundary: "Sign-in step: public channel proof can be read, but the TV owner surface keeps its existing session gate.",
+    noWriteRule: "No beta write: beta never creates channels, queues videos, changes playlists, or alters TV ownership.",
+    signalKeys: ["tv-channels", "profile-activity", "notifications"],
+  },
+  {
+    key: "project-output",
+    label: "Project output",
+    status: "visible",
+    route: "/console",
+    access: "session",
+    ownerSurface: "WTF Console",
+    userQuestion: "Is there builder or project output that can be inspected?",
+    visibleProof: "Console discovery, Arcade discovery, and recent play can show output proof before the session-gated Console opens.",
+    currentLimit: "Public output proof does not create a build, grant deploy access, or prove the user owns the project.",
+    nextDependency: "Use Console when output needs inspection, then route to Arcade, Game Studio, W, or Skywire for play and feedback.",
+    gateBoundary: "Sign-in step: Console keeps inspection and project context behind its existing session gate.",
+    noWriteRule: "No beta write: beta never runs builds, changes project output, deploys code, or writes feedback posts.",
+    signalKeys: ["console-discovery", "arcade-discovery", "arcade-recent"],
+  },
+  {
+    key: "broadcast-signal",
+    label: "Broadcast signal",
+    status: "visible",
+    route: "/skywire",
+    access: "public",
+    ownerSurface: "Skywire",
+    userQuestion: "Is the creator ready to make progress visible outside the tool chain?",
+    visibleProof: "Creator channels, profile activity, and market context can become shareable public proof through Skywire.",
+    currentLimit: "Beta can explain the broadcast moment, but it cannot decide that a draft, pin, package, or wallet action is ready.",
+    nextDependency: "Use Skywire only after the owning creator surface has proof worth broadcasting, then return to W, TV, Gallery, or Notifications.",
+    gateBoundary: "Public route: Skywire remains optional guidance and never replaces the creator pipeline.",
+    noWriteRule: "No beta write: beta never posts, broadcasts, follows, links AT accounts, or changes external social state.",
+    signalKeys: ["tv-channels", "profile-activity", "market-listings"],
+  },
+];
+
 export const BETA_FRICTION_QUEUE: BetaFrictionQueueItem[] = [
   {
     key: "people-proof-gap",
     label: "People proof gap",
     priority: "P1",
-    status: "strengthen",
+    status: "watch",
     audience: "community-member",
     sectionId: "beta-people",
     route: "/w",
     access: "session",
-    evidence: "People Discovery, Visibility Radar, and puppet memory agree that seeing active users, creators, collectors, builders, curators, and collaborators is the fastest path from app-name browsing to caring.",
-    friction: "A new user can still understand the platform before they feel who is active, what those people are doing, and which human signal deserves the next click.",
-    nextUiMove: "Strengthen People Discovery cards with safe public or protected snippets from W, WTF LIVE, Digest, Notifications, Gallery, and creator proof before adding any assistant behavior.",
+    evidence: "People Discovery, the People Proof Gap Matrix, Visibility Radar, and puppet memory agree that seeing active users, creators, collectors, builders, curators, and collaborators is the fastest path from app-name browsing to caring.",
+    friction: "A new user can now see human-role proof, but the beta loop should keep watching whether active, curator, collaborator, and wallet signals still feel abstract when public data is quiet.",
+    nextUiMove: "Keep the People Discovery Board and People Proof Gap Matrix beside route-owned next actions, then strengthen only the weak or quiet roles that puppets still hesitate on.",
     successMeasure: "New user and community puppets can discover active people, a useful social route, and one return-worthy signal in under sixty seconds without external explanation.",
     noWriteRule: "No beta write: beta may group and explain existing people/activity signals, but it must not send messages, change follows, create rooms, or modify notification preferences.",
     relatedRoutes: ["/live", "/digest", "/notifications", "/gallery"],
@@ -731,14 +856,14 @@ export const BETA_FRICTION_QUEUE: BetaFrictionQueueItem[] = [
     key: "creator-project-proof",
     label: "Creator project proof",
     priority: "P1",
-    status: "strengthen",
+    status: "watch",
     audience: "creator",
     sectionId: "beta-proof",
     route: "/studio",
     access: "session",
-    evidence: "Creator puppets improved when Studio, Broot, Macaroni, IPFS Pinning, TV, Console, and Skywire were treated as one runway instead of isolated app names.",
-    friction: "The creator path still needs stronger proof that a draft, asset, package, pin, channel, or output exists before beta recommends specialized publish tools.",
-    nextUiMove: "Expand proof snippets only from existing safe reads in Public Proof, Discovery Trails, and Relationship Navigator so creators see a next dependency instead of a tool pile.",
+    evidence: "Creator puppets improved when Studio, Broot, Macaroni, IPFS Pinning, TV, Console, and Skywire were treated as one runway, and the Creator Project Proof Ladder now names the proof and gate for each step.",
+    friction: "The creator path now explains draft, asset, package, pin, channel, output, and broadcast states, but beta should keep watching whether private or role-gated proof is mistaken for public authority.",
+    nextUiMove: "Keep the Creator Project Proof Ladder beside Public Proof and Discovery Trails, then add only safe owner-read snippets when an existing route can prove a state without writes.",
     successMeasure: "Creator puppets can identify the current project state, choose the next creator tool, and understand what remains role-gated without asking The Count for authority.",
     noWriteRule: "No beta write: beta can route to creator surfaces and explain dependencies, but it must not create projects, pin media, publish drops, grant creator roles, or change wallet/contract behavior.",
     relatedRoutes: ["/tools/macaroni", "/ipfs-pinning", "/tv", "/console"],

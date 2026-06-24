@@ -37,6 +37,7 @@ import {
   BETA_COUNT_ADMIN_WORKBENCH,
   BETA_COUNT_LIVEOPS_COMMANDS,
   BETA_COUNT_LIVEOPS_RECIPES,
+  BETA_CREATOR_PROJECT_PROOF_LADDER,
   BETA_DAILY_RETURN_LOOPS,
   BETA_FRICTION_QUEUE,
   BETA_NOTIFICATION_CONTROL_GUIDE,
@@ -781,6 +782,46 @@ test("public proof board composes existing public sources into object, creator, 
   const freshObject = BETA_PUBLIC_PROOF_SOURCES.find((source) => source.key === "fresh-object");
   assert.ok(freshObject?.sourceKeys.includes("market-trade-board"));
   assert.ok(freshObject?.sourceKeys.includes("market-listings"));
+});
+
+test("creator project proof ladder separates public proof from private and role-gated creator state", () => {
+  assert.deepEqual(
+    BETA_CREATOR_PROJECT_PROOF_LADDER.map((step) => step.key),
+    ["workspace-draft", "asset-prep", "package-drop", "durable-pin", "media-channel", "project-output", "broadcast-signal"],
+  );
+
+  const catalogByRoute = new Map(BETA_APP_CATALOG.map((app) => [app.route, app]));
+  const signalKeys = new Set(BETA_NOW_SIGNAL_SOURCES.map((source) => source.key));
+  const statuses = new Set(["visible", "inspect", "gated"]);
+
+  for (const step of BETA_CREATOR_PROJECT_PROOF_LADDER) {
+    const app = catalogByRoute.get(step.route);
+    assert.ok(app, `${step.label} route ${step.route} missing from beta app catalog`);
+    assert.equal(app.access, step.access, `${step.label} access hint must match beta app catalog`);
+    assert.equal(statuses.has(step.status), true, `${step.label} status is unknown`);
+    assert.ok(step.ownerSurface.length > 3, `${step.label} needs an owner surface`);
+    assert.ok(step.userQuestion.endsWith("?"), `${step.label} needs a creator question`);
+    assert.ok(step.visibleProof.length > 80, `${step.label} needs visible proof copy`);
+    assert.ok(step.currentLimit.length > 75, `${step.label} needs current-limit copy`);
+    assert.ok(step.nextDependency.length > 85, `${step.label} needs next-dependency copy`);
+    assert.ok(step.gateBoundary.length > 55, `${step.label} needs gate-boundary copy`);
+    assert.match(step.noWriteRule, /No beta write/i, `${step.label} must preserve the no-write boundary`);
+    assert.equal(step.signalKeys.length, 3, `${step.label} should stay compact with exactly three proof signals`);
+    for (const signalKey of step.signalKeys) {
+      assert.equal(signalKeys.has(signalKey), true, `${step.label} signal ${signalKey} missing from now signals`);
+    }
+  }
+
+  const packageStep = BETA_CREATOR_PROJECT_PROOF_LADDER.find((step) => step.key === "package-drop");
+  assert.equal(packageStep?.route, "/tools/macaroni");
+  assert.equal(packageStep?.access, "role");
+  assert.equal(packageStep?.status, "gated");
+  assert.match(packageStep?.gateBoundary ?? "", /EXP and levels are evidence/i);
+
+  const tvStep = BETA_CREATOR_PROJECT_PROOF_LADDER.find((step) => step.key === "media-channel");
+  assert.equal(tvStep?.status, "visible");
+  assert.equal(tvStep?.access, "session");
+  assert.match(tvStep?.gateBoundary ?? "", /public channel proof can be read/i);
 });
 
 test("discovery trails turn signals into persona next steps", () => {

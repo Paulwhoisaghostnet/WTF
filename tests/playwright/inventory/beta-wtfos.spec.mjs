@@ -52,6 +52,21 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     }
     await expect(page.locator("[data-beta-public-proof-board]")).toContainText("Trade-board objects + Market listings");
     await expect(page.locator("[data-beta-public-proof-board]")).toContainText("Console discovery");
+    await expect(page.locator("[data-beta-creator-proof-ladder]")).toContainText("Creator Project Proof Ladder");
+    await expect(page.locator("[data-beta-creator-proof-step]")).toHaveCount(7);
+    await expect(page.locator("[data-beta-creator-proof-signal]")).toHaveCount(21);
+    await expect(page.locator('[data-beta-creator-proof-status="visible"]')).toHaveCount(3);
+    await expect(page.locator('[data-beta-creator-proof-status="inspect"]')).toHaveCount(3);
+    await expect(page.locator('[data-beta-creator-proof-status="gated"]')).toHaveCount(1);
+    for (const label of ["Workspace draft", "Asset prep", "Package drop", "Durable media", "Media channel", "Project output", "Broadcast signal"]) {
+      await expect(page.locator("[data-beta-creator-proof-ladder]")).toContainText(label);
+    }
+    for (const label of ["Current limit", "Next dependency", "Gate boundary", "No-write boundary", "Open owner surface"]) {
+      await expect(page.locator("[data-beta-creator-proof-ladder]")).toContainText(label);
+    }
+    await expect(page.locator('[data-beta-creator-proof-key="package-drop"]')).toContainText("Role gated");
+    await expect(page.locator('[data-beta-creator-proof-key="package-drop"]')).toContainText("EXP and levels are evidence");
+    await expect(page.locator('[data-beta-creator-proof-key="media-channel"]')).toContainText("public channel proof can be read");
     await expect(page.locator("[data-beta-people-discovery-board]")).toContainText("People Discovery Board");
     await expect(page.locator("[data-beta-people-discovery-card]")).toHaveCount(8);
     await expect(page.locator("[data-beta-people-discovery-signal]")).toHaveCount(24);
@@ -284,8 +299,8 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-retest-snapshots]")).toContainText("saved");
     await expect(page.locator("[data-beta-friction-queue]")).toContainText("Beta Friction Queue");
     await expect(page.locator("[data-beta-friction-queue-card]")).toHaveCount(7);
-    await expect(page.locator('[data-beta-friction-queue-status="strengthen"]')).toHaveCount(4);
-    await expect(page.locator('[data-beta-friction-queue-status="watch"]')).toHaveCount(2);
+    await expect(page.locator('[data-beta-friction-queue-status="strengthen"]')).toHaveCount(2);
+    await expect(page.locator('[data-beta-friction-queue-status="watch"]')).toHaveCount(4);
     await expect(page.locator('[data-beta-friction-queue-status="keep"]')).toHaveCount(1);
     for (const label of ["People proof gap", "Creator project proof", "Count authority boundary", "Route-name cluster", "Return-loop clarity", "Advanced app value", "Assistant threshold"]) {
       await expect(page.locator("[data-beta-friction-queue]")).toContainText(label);

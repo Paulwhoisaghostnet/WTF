@@ -68,6 +68,10 @@ Profile discovery safety note: beta links to public profiles, but its now-signal
 
 The beta shell now renders four public proof cards before the role trails: Fresh object, Creator channel, Playable project, and Builder output. Each card composes existing public now-signal reads and routes to the existing app that owns the next step: Gallery, TV, Arcade, or Console. Quiet proof remains visible with explanation copy so users understand the route still has value when current public rows are empty.
 
+## Creator Project Proof Ladder Addendum
+
+The beta shell now renders seven creator proof rows inside Public Proof: Workspace draft, Asset prep, Package drop, Durable media, Media channel, Project output, and Broadcast signal. Each row names the owner surface, existing route gate, visible proof, current limit, next dependency, and no-write boundary. Macaroni remains role-gated, Studio/Broot/IPFS/TV/Console remain behind their existing session gates, and Skywire remains the optional public broadcast route.
+
 ## People Discovery Board Addendum
 
 The beta shell now renders eight people-discovery cards after public proof: Active users, New users, Creators, Collectors, Builders, Curators, Collaborators, and Interesting wallets. Each card groups three existing now signals, explains why that kind of person matters, names the next action, and preserves a quiet fallback route. This directly addresses social visibility without adding people search, follow logic, messaging logic, profile-view writes, or new social APIs.
