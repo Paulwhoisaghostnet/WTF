@@ -5,6 +5,14 @@ async function setHarnessState(request, state = {}) {
   expect(res.ok()).toBeTruthy();
 }
 
+async function openResearchDeck(page) {
+  const vault = page.locator("[data-beta-research-vault]");
+  if ((await vault.getAttribute("open")) === null) {
+    await page.locator("[data-beta-research-open]").click();
+  }
+  await expect(vault).toHaveAttribute("open", "");
+}
+
 test.describe("interaction inventory - WTFOS beta hub", () => {
   test("answers first-minute questions and exposes the unlock loop", async ({ page, request }) => {
     await setHarnessState(request, { userRole: "anonymous" });
@@ -23,6 +31,17 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     }
     await expect(page.locator("[data-beta-product-signal-strip]")).toContainText("live public signals");
     await expect(page.locator("[data-beta-mobile-start-action]")).toHaveCount(3);
+    await expect(page.locator("[data-beta-playable-desk]")).toContainText("Pick a role, make one move");
+    await expect(page.locator("[data-beta-playable-stat]")).toHaveCount(3);
+    await expect(page.locator("[data-beta-playable-current-quest]")).toContainText("Play next move");
+    await expect(page.locator("[data-beta-world-lane]")).toHaveCount(5);
+    for (const label of ["Quest", "People", "Discover", "Tomorrow", "The Count"]) {
+      await expect(page.locator("[data-beta-world-lanes]")).toContainText(label);
+    }
+    await expect(page.locator("[data-beta-answer]")).toHaveCount(5);
+    await expect(page.locator("[data-beta-research-vault]")).not.toHaveAttribute("open", "");
+    await page.locator("[data-beta-research-open]").click();
+    await expect(page.locator("[data-beta-research-vault]")).toHaveAttribute("open", "");
     await expect(page.locator("[data-beta-design-critic-gate]")).toContainText("5/5 A+");
     await expect(page.locator("[data-beta-design-critic-review]")).toHaveCount(5);
     await expect(page.locator("[data-beta-home-action]")).toHaveCount(6);
@@ -253,6 +272,7 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
   test("uses The Count as the admin puppet for liveops stories", async ({ page, request }) => {
     await setHarnessState(request, { userRole: "admin", username: "the-count", displayName: "The Count" });
     await page.goto("/beta", { waitUntil: "domcontentloaded" });
+    await openResearchDeck(page);
 
     await expect(page.locator("[data-beta-count-puppet]")).toContainText("The Count");
     await expect(page.locator("[data-beta-count-admin-summary]")).toContainText("Count Admin Summary");
@@ -294,6 +314,7 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
   test("shows persistent agent loop metrics, visibility radar, and route bridges", async ({ page, request }) => {
     await setHarnessState(request, { userRole: "admin" });
     await page.goto("/beta", { waitUntil: "domcontentloaded" });
+    await openResearchDeck(page);
 
     await expect(page.locator("[data-beta-agent-loop]")).toContainText("Persistent Agent Loop");
     await expect(page.locator("[data-beta-agent-loop]")).toContainText("New User Agent");
@@ -356,6 +377,7 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
   test("stitches selected puppet paths into route-owned command steps", async ({ page, request }) => {
     await setHarnessState(request, { userRole: "admin", username: "the-count", displayName: "The Count" });
     await page.goto("/beta", { waitUntil: "domcontentloaded" });
+    await openResearchDeck(page);
 
     const commandCenter = page.locator("[data-beta-journey-command-center]");
     await expect(commandCenter).toContainText("Journey command center");
@@ -382,6 +404,7 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
   test("wayfinder jumps to existing sections and applies route-owned persona filters", async ({ page, request }) => {
     await setHarnessState(request, { userRole: "admin", username: "the-count", displayName: "The Count" });
     await page.goto("/beta", { waitUntil: "domcontentloaded" });
+    await openResearchDeck(page);
 
     await page.locator('[data-beta-wayfinder-action-key="creator-runway"]').getByRole("button", { name: "Show path" }).click();
     await expect(page.locator("[data-beta-journey-command-center]")).toHaveAttribute("data-beta-journey-persona", "creator");
@@ -407,6 +430,7 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
   test("filters the atlas to quest and market discovery surfaces", async ({ page, request }) => {
     await setHarnessState(request, { userRole: "admin" });
     await page.goto("/beta", { waitUntil: "domcontentloaded" });
+    await openResearchDeck(page);
 
     await expect(page.locator("[data-beta-app-atlas]")).toContainText("App Visibility Atlas");
     await expect(page.locator("[data-beta-app-atlas-tier-filter] button")).toHaveCount(6);

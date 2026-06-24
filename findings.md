@@ -6,7 +6,9 @@ Date: 2026-06-24
 
 The beta first screen has been corrected from audit-board density toward a human-facing product home. It now leads with a distinctive dark visual hero, a clear "playable Tezos world" promise, a role picker, a visible EXP level/passport/questline card, one selected next move, a five-step quest-stage route ribbon, proof and return routes, live-signal counts, and six compact launch actions for questing, people, collecting, creating, tomorrow catch-up, and The Count admin review before exposing the deeper audit boards.
 
-The beta home now demotes the 60-second Q&A and simulated 5/5 A+ design-critic gate below the launch actions. This keeps the critique and answer evidence visible without pretending real company employees reviewed the product or turning the first screen back into a report.
+The beta home now adds a playable desk before the long-form material. The desk gives the selected user one current quest, proof route, return route, EXP progress, five world lanes for quest/people/discovery/tomorrow/Count, visible 60-second answers, and a deliberate Research Deck opener. This makes the default experience feel like a product surface instead of a Wikipedia-style evidence page.
+
+The beta home now demotes the simulated 5/5 A+ design-critic gate and deeper audit boards into the collapsible Research Deck. This keeps critique and answer evidence available without pretending real company employees reviewed the product or turning the first screen back into a report.
 
 The beta first viewport answers what WTFOS is, what users can do, what to do first, what to do next, and why to return tomorrow. The next improvement was not more explanation; it was visible proof of people and activity.
 
@@ -14,9 +16,9 @@ The puppet retest snapshots now make the improvement claim inspectable on `/beta
 
 The Puppet Memory Ledger now keeps each persistent puppet's task, success condition, six checks, confusion, hesitation, abandonment risk, delight, unexpected discovery, remaining friction, and next route in one visible surface. That makes the beta loop easier to run because the next improvement can be chosen from observed puppet memory instead of scattered notes.
 
-The First-Minute Wayfinder now sits directly after the hero so the beta shell itself does not become another long-scroll maze. It maps eight common questions to existing sections, selected puppet paths, route-owned destinations, and atlas filters without creating a new assistant, changing rewards, or bypassing gates.
+The First-Minute Wayfinder now sits inside the Research Deck rather than interrupting the first product pass. It still maps eight common questions to existing sections, selected puppet paths, route-owned destinations, and atlas filters without creating a new assistant, changing rewards, or bypassing gates.
 
-The Beta Section Compass now sits after the Wayfinder to keep the expanded shell from becoming a second maze. It maps fourteen major beta boards to user questions, audience, stage, access boundary, use-when guidance, proof rationale, and next move while changing only beta-local hash/scroll state.
+The Beta Section Compass now stays in the same Research Deck so the expanded shell is available for admins and puppet review without becoming the default human experience. It maps fourteen major beta boards to user questions, audience, stage, access boundary, use-when guidance, proof rationale, and next move while changing only beta-local hash/scroll state.
 
 The Unlock Passport now gives each puppet one compact progression card before the deeper questline boards. It answers "what can I see, what should I do next, what proof matters, what can unlock, and what stays locked?" without asking the user to stitch Daily Return, Questlines, Governance, and The Count workbench together.
 

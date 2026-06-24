@@ -1,3 +1,13 @@
+## 2026-06-24 - Beta research must be behind an intentional door
+
+**What happened**: Even after the beta home became more product-led, the page still poured Q&A, critic proof, Wayfinder, Section Compass, and audit boards directly after the hero. The result was accurate but felt like a reference encyclopedia instead of a human-facing WTFOS product.
+
+**Why it mattered**: Discovery proof is necessary for admins and puppet testing, but default users need to feel a small playable loop first. If every map, report, and proof surface is visible immediately, the beta teaches users to read instead of act.
+
+**Rule**: Keep the default beta path in play mode: selected role, current quest, proof route, return route, visible people/activity lanes, compact first-minute answers, and route actions. Put Wayfinder, Section Compass, audit maps, Count runbooks, puppet evidence, app atlas, and simulated review gates behind an explicit Research Deck or equivalent intentional door.
+
+---
+
 ## 2026-06-24 - Beta product proof must not become the product surface
 
 **What happened**: The beta home had the right ingredients, but the first viewport still carried too much evidence posture: Q&A blocks, simulated critic proof, report language, and long stacked launch surfaces made the redesign feel closer to a reference page than a human-facing product.

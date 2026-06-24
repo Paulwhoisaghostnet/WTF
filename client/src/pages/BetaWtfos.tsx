@@ -301,6 +301,7 @@ export function BetaWtfos() {
   const [, navigate] = useLocation();
   const { user, isAdmin } = useAuth();
   const [personaKey, setPersonaKey] = useState<BetaPersonaKey>("new-tezos-user");
+  const [researchOpen, setResearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [atlasTier, setAtlasTier] = useState<BetaTier | "all">("all");
   const [atlasStage, setAtlasStage] = useState<BetaStage | "all">("all");
@@ -688,6 +689,7 @@ export function BetaWtfos() {
       (atlasPersona === "all" || app.personas.includes(atlasPersona)),
     );
   }, [atlasPersona, atlasStage, atlasTier, query]);
+  const openResearchDeck = () => setResearchOpen(true);
   const resetAtlasFilters = () => {
     setQuery("");
     setAtlasTier("all");
@@ -696,6 +698,7 @@ export function BetaWtfos() {
   };
 
   const runWayfinderAction = (action: BetaWayfinderAction) => {
+    openResearchDeck();
     if (action.persona) setPersonaKey(action.persona);
     if (action.atlasPersona !== undefined) setAtlasPersona(action.atlasPersona);
     if (action.atlasStage !== undefined) setAtlasStage(action.atlasStage);
@@ -708,6 +711,7 @@ export function BetaWtfos() {
   };
 
   const applyRouteGroupGuide = (group: BetaRouteGroupGuide) => {
+    openResearchDeck();
     setAtlasPersona(group.atlasPersona);
     setAtlasStage(group.atlasStage);
     setAtlasTier(group.atlasTier);
@@ -719,6 +723,7 @@ export function BetaWtfos() {
   };
 
   const jumpToBetaSection = (sectionId: string) => {
+    openResearchDeck();
     const targetUrl = `${window.location.pathname}${window.location.search}#${sectionId}`;
     window.history.replaceState(null, "", targetUrl);
     window.requestAnimationFrame(() => {
@@ -748,6 +753,10 @@ export function BetaWtfos() {
   const selectedPassport = BETA_UNLOCK_PASSPORTS.find((passport) => passport.key === personaKey) ?? BETA_UNLOCK_PASSPORTS[0];
   const progressPercent = Math.min(92, 18 + personaOrdinal * 13);
   const questlineStages = selectedQuestline.stages.slice(0, 5);
+  const featuredNowSignal = nowSignals.find((signal) => signal.state === "Live") ?? nowSignals[0];
+  const featuredProofCard = publicProofCards.find((card) => card.state === "Live") ?? publicProofCards[0];
+  const featuredReturnLoop = BETA_DAILY_RETURN_LOOPS.find((loop) => loop.key === "quest") ?? BETA_DAILY_RETURN_LOOPS[0];
+  const featuredCountCommand = BETA_COUNT_LIVEOPS_COMMANDS[0];
   const homeActions: Array<{
     key: string;
     eyebrow: string;
@@ -810,6 +819,67 @@ export function BetaWtfos() {
       route: "/admin",
       access: "admin",
       action: "Review admin",
+    },
+  ];
+  const worldLanes: Array<{
+    key: string;
+    eyebrow: string;
+    title: string;
+    metric: string;
+    copy: string;
+    route: string;
+    access: BetaAppCatalogEntry["access"];
+    action: string;
+  }> = [
+    {
+      key: "quest",
+      eyebrow: "Quest",
+      title: currentStep.label,
+      metric: selectedQuestline.sideQuest,
+      copy: currentStep.action,
+      route: currentStep.route,
+      access: currentStep.access,
+      action: "Play this step",
+    },
+    {
+      key: "people",
+      eyebrow: "People",
+      title: featuredNowSignal.source.label,
+      metric: featuredNowSignal.value,
+      copy: featuredNowSignal.detail,
+      route: featuredNowSignal.route ?? featuredNowSignal.source.route,
+      access: featuredNowSignal.source.access === "public" ? "public" : "session",
+      action: "Open pulse",
+    },
+    {
+      key: "object",
+      eyebrow: "Discover",
+      title: featuredProofCard.source.label,
+      metric: featuredProofCard.value,
+      copy: featuredProofCard.detail,
+      route: featuredProofCard.source.route,
+      access: "public",
+      action: "Inspect proof",
+    },
+    {
+      key: "return",
+      eyebrow: "Tomorrow",
+      title: featuredReturnLoop.label,
+      metric: featuredReturnLoop.question,
+      copy: featuredReturnLoop.tomorrowReason,
+      route: featuredReturnLoop.route,
+      access: featuredReturnLoop.access,
+      action: "Set return loop",
+    },
+    {
+      key: "count",
+      eyebrow: "The Count",
+      title: featuredCountCommand.label,
+      metric: "Admin only",
+      copy: featuredCountCommand.riskControl,
+      route: featuredCountCommand.route,
+      access: featuredCountCommand.access,
+      action: "Review queue",
     },
   ];
 
@@ -953,6 +1023,81 @@ export function BetaWtfos() {
         </ProductConsole>
       </Hero>
 
+      <PlayableDesk data-beta-playable-desk aria-label="Playable beta desk">
+        <DeskHeader>
+          <div>
+            <Kicker><Activity size={16} /> play mode</Kicker>
+            <h2>Pick a role, make one move, see the world answer.</h2>
+            <p>Beta now starts as a playable command desk. Reports, maps, and audit proof are still available, but they stay behind the research deck until someone asks for them.</p>
+          </div>
+          <DeskStats aria-label="Beta desk status">
+            <DeskStat data-beta-playable-stat>
+              <strong>{selectedXpLevel.label}</strong>
+              <span>{compactNumber(selectedXpLevel.minXp)} EXP floor</span>
+            </DeskStat>
+            <DeskStat data-beta-playable-stat>
+              <strong>{liveSignalCount}/{nowSignals.length}</strong>
+              <span>live public signals</span>
+            </DeskStat>
+            <DeskStat data-beta-playable-stat>
+              <strong>{isAdmin ? "Count live" : "Count locked"}</strong>
+              <span>admin boundary</span>
+            </DeskStat>
+          </DeskStats>
+        </DeskHeader>
+        <DeskBoard>
+          <DeskQuestPanel data-beta-playable-current-quest>
+            <Small>{persona.label} quest</Small>
+            <h3>{currentStep.label}</h3>
+            <p>{currentStep.action}</p>
+            <DeskQuestMeta>
+              <span><b>Proof</b>{proofStep.label} / {proofStep.route}</span>
+              <span><b>Return</b>{returnStep.label} / {returnStep.route}</span>
+            </DeskQuestMeta>
+            <ProgressTrack aria-label={`${persona.label} playable desk progress`}>
+              <span style={{ width: `${progressPercent}%` }} />
+            </ProgressTrack>
+            <Actions>
+              <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>Play next move</Primary>
+              <Ghost type="button" onClick={() => jumpToBetaSection("beta-passports")}>Show unlocks</Ghost>
+            </Actions>
+          </DeskQuestPanel>
+          <WorldLaneGrid data-beta-world-lanes>
+            {worldLanes.map((lane) => (
+              <WorldLane
+                key={lane.key}
+                type="button"
+                data-beta-world-lane
+                data-beta-world-lane-key={lane.key}
+                data-beta-world-lane-access={lane.access}
+                onClick={() => openKnownRoute(lane.route, lane.access)}
+              >
+                <span>
+                  {homeActionIcon(lane.key)}
+                  <b>{lane.eyebrow}</b>
+                </span>
+                <strong>{lane.title}</strong>
+                <em>{lane.metric}</em>
+                <small>{lane.copy}</small>
+                <i>{lane.action} <ArrowRight size={14} /></i>
+              </WorldLane>
+            ))}
+          </WorldLaneGrid>
+        </DeskBoard>
+        <DeskAnswerStrip data-beta-answer-dock aria-label="60-second beta answers">
+          {answers.map(([question, answer]) => (
+            <DeskAnswer key={question} data-beta-answer>
+              <Small>{question}</Small>
+              <span>{answer}</span>
+            </DeskAnswer>
+          ))}
+        </DeskAnswerStrip>
+        <DeskFooter>
+          <span>Need the map, puppet evidence, app atlas, or Count runbooks?</span>
+          <Ghost type="button" data-beta-research-open onClick={openResearchDeck}>Open research deck</Ghost>
+        </DeskFooter>
+      </PlayableDesk>
+
       <HomeActionDock data-beta-home-actions aria-label="Start actions">
         {homeActions.map((item) => (
           <HomeActionCard
@@ -971,30 +1116,35 @@ export function BetaWtfos() {
           </HomeActionCard>
         ))}
       </HomeActionDock>
-      <ProductAnswerGrid data-beta-answer-dock aria-label="60-second beta answers">
-        {answers.map(([question, answer]) => (
-          <ProductAnswer key={question} data-beta-answer>
-            <Small>{question}</Small>
-            <span>{answer}</span>
-          </ProductAnswer>
-        ))}
-      </ProductAnswerGrid>
-      <ReviewGateBand>
-        <DesignCriticGate data-beta-design-critic-gate aria-label="Simulated design critic review score">
-          <strong>{designCriticAPlusCount}/{designCriticReviews.length} A+</strong>
-          <span>Internal simulated product checks. The user-facing work stays in the path picker above.</span>
-          <CriticStampRow>
-            {designCriticReviews.map((review) => (
-              <CriticStamp key={review.key} data-beta-design-critic-review title={`${review.lens}: ${review.verdict}`}>
-                <b>{review.grade}</b>
-                <span>{review.focus}</span>
-              </CriticStamp>
-            ))}
-          </CriticStampRow>
-        </DesignCriticGate>
-      </ReviewGateBand>
+      <ResearchVault
+        data-beta-research-vault
+        open={researchOpen}
+        onToggle={(event) => setResearchOpen(event.currentTarget.open)}
+      >
+        <ResearchSummary data-beta-research-summary>
+          <span>
+            <b>Research deck</b>
+            <small>Route maps, puppet proof, app atlas, Count runbooks, and simulated review gates.</small>
+          </span>
+          <strong>{researchOpen ? "Close" : "Open"}</strong>
+        </ResearchSummary>
+        <ResearchDeckBody>
+          <ReviewGateBand>
+            <DesignCriticGate data-beta-design-critic-gate aria-label="Simulated design critic review score">
+              <strong>{designCriticAPlusCount}/{designCriticReviews.length} A+</strong>
+              <span>Internal simulated product checks. The user-facing work stays in the playable desk above.</span>
+              <CriticStampRow>
+                {designCriticReviews.map((review) => (
+                  <CriticStamp key={review.key} data-beta-design-critic-review title={`${review.lens}: ${review.verdict}`}>
+                    <b>{review.grade}</b>
+                    <span>{review.focus}</span>
+                  </CriticStamp>
+                ))}
+              </CriticStampRow>
+            </DesignCriticGate>
+          </ReviewGateBand>
 
-      <Band id="beta-wayfinder" data-beta-wayfinder>
+          <Band id="beta-wayfinder" data-beta-wayfinder>
         <SectionHead>
           <div>
             <Title><Compass size={18} /> First-Minute Wayfinder</Title>
@@ -2375,6 +2525,8 @@ export function BetaWtfos() {
         <Title>Desktop Review</Title>
         <CardGrid>{BETA_DESKTOP_MODEL_REVIEW.map((item) => <Info key={item.model}><h3>{item.model}</h3><p>{item.verdict}</p><Small>{item.risk}</Small></Info>)}</CardGrid>
       </Band>
+        </ResearchDeckBody>
+      </ResearchVault>
     </Shell>
   );
 }
@@ -3521,15 +3673,184 @@ const MobileStartButton = styled.button`
   span { overflow-wrap: anywhere; text-align: center; }
   &:focus-visible { outline: 3px solid rgba(137, 242, 202, 0.34); outline-offset: 2px; }
 `;
-const ProductAnswerGrid = styled.div`
+const PlayableDesk = styled.section`
+  display: grid;
+  gap: 14px;
+  margin: -10px clamp(16px, 4vw, 48px) 16px;
+  border: 1px solid rgba(18, 18, 23, 0.18);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(246, 247, 241, 0.92)),
+    #fff;
+  box-shadow: 0 26px 70px rgba(18, 18, 23, 0.16);
+  @media (max-width: 720px) {
+    margin-top: 0;
+    padding: 12px;
+  }
+`;
+const DeskHeader = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
+  gap: 14px;
+  align-items: end;
+  h2 {
+    margin: 5px 0 6px;
+    color: var(--ink);
+    font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    font-size: clamp(28px, 4.4vw, 56px);
+    line-height: 0.98;
+    letter-spacing: 0;
+  }
+  p {
+    margin: 0;
+    max-width: 760px;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+  }
+`;
+const DeskStats = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  @media (max-width: 460px) {
+    grid-template-columns: 1fr;
+  }
+`;
+const DeskStat = styled.div`
+  min-width: 0;
+  min-height: 72px;
+  border: 1px solid rgba(35, 88, 214, 0.18);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fff;
+  strong, span { display: block; overflow-wrap: anywhere; }
+  strong { color: var(--blue); font-size: 18px; line-height: 1.05; }
+  span { margin-top: 7px; color: var(--muted); font-size: 11px; line-height: 1.25; font-weight: 900; text-transform: uppercase; }
+`;
+const DeskBoard = styled.div`
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+  gap: 12px;
+  @media (max-width: 980px) {
+    grid-template-columns: 1fr;
+  }
+`;
+const DeskQuestPanel = styled.article`
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid rgba(193, 61, 98, 0.24);
+  border-radius: 8px;
+  padding: 16px;
+  color: #fff;
+  background:
+    linear-gradient(150deg, rgba(193, 61, 98, 0.78), rgba(40, 88, 217, 0.76) 54%, rgba(0, 129, 111, 0.78)),
+    var(--night);
+  h3 {
+    margin: 0;
+    color: #fff;
+    font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    font-size: clamp(28px, 4vw, 46px);
+    line-height: 1;
+  }
+  p { margin: 0; color: rgba(255, 255, 255, 0.78); font-size: 15px; line-height: 1.45; }
+  > span:first-child { color: #89f2ca; }
+  div[aria-label$="progress"] { background: rgba(255, 255, 255, 0.18); }
+  ${Ghost} { background: rgba(255, 255, 255, 0.12); color: #fff; border-color: rgba(255, 255, 255, 0.24); }
+`;
+const DeskQuestMeta = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  span {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    padding: 9px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 12px;
+    line-height: 1.28;
+    overflow-wrap: anywhere;
+  }
+  b { color: #fff; font-size: 10px; text-transform: uppercase; }
+  @media (max-width: 460px) {
+    grid-template-columns: 1fr;
+  }
+`;
+const WorldLaneGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  @media (max-width: 1180px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  @media (max-width: 680px) {
+    grid-template-columns: 1fr;
+  }
+`;
+const WorldLane = styled.button`
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  min-height: 226px;
+  border: 1px solid rgba(18, 18, 23, 0.12);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  > span {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--rose);
+    font-size: 11px;
+    font-weight: 950;
+    line-height: 1.15;
+    text-transform: uppercase;
+  }
+  svg { color: var(--teal); flex: 0 0 auto; }
+  strong { color: var(--ink); font-size: 18px; line-height: 1.12; overflow-wrap: anywhere; }
+  em { color: var(--blue); font-size: 13px; line-height: 1.24; font-style: normal; font-weight: 900; overflow-wrap: anywhere; }
+  small { color: var(--muted); font-size: 12px; line-height: 1.36; overflow-wrap: anywhere; }
+  i {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    align-self: end;
+    color: var(--teal);
+    font-size: 12px;
+    line-height: 1.15;
+    font-style: normal;
+    font-weight: 950;
+  }
+  &:hover { transform: translateY(-2px); border-color: rgba(0, 127, 122, 0.38); box-shadow: 0 18px 36px rgba(18, 18, 23, 0.1); }
+  &:focus-visible { outline: 3px solid rgba(0, 127, 122, 0.25); outline-offset: 2px; }
+  @media (max-width: 680px) {
+    min-height: 0;
+  }
+`;
+const DeskAnswerStrip = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 8px;
-  padding: 0 clamp(16px, 4vw, 48px) 10px;
   @media (max-width: 680px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   @media (max-width: 360px) { grid-template-columns: 1fr; }
 `;
-const ProductAnswer = styled.div`
+const DeskAnswer = styled.div`
   display: grid;
   gap: 4px;
   min-width: 0;
@@ -3543,6 +3864,20 @@ const ProductAnswer = styled.div`
     font-size: 13px;
     line-height: 1.35;
     overflow-wrap: anywhere;
+  }
+`;
+const DeskFooter = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(18, 18, 23, 0.1);
+  padding-top: 12px;
+  span { color: var(--muted); font-size: 13px; line-height: 1.35; font-weight: 750; }
+  @media (max-width: 560px) {
+    align-items: stretch;
+    button { width: 100%; }
   }
 `;
 const ProductConsole = styled.aside`
@@ -3803,6 +4138,62 @@ const ReviewGateBand = styled.section`
     max-width: 920px;
   }
   @media (max-width: 520px) { display: none; }
+`;
+const ResearchVault = styled.details`
+  margin: 0 clamp(16px, 4vw, 48px) 24px;
+  border: 1px solid rgba(18, 18, 23, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+  &[open] {
+    background: rgba(255, 255, 255, 0.94);
+  }
+`;
+const ResearchSummary = styled.summary`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 68px;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+  &::-webkit-details-marker { display: none; }
+  span {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+  }
+  b { color: var(--ink); font-size: 15px; line-height: 1.2; }
+  small { color: var(--muted); font-size: 12px; line-height: 1.3; overflow-wrap: anywhere; }
+  strong {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 68px;
+    min-height: 36px;
+    border: 1px solid rgba(35, 88, 214, 0.22);
+    border-radius: 8px;
+    color: var(--blue);
+    background: #fff;
+    font-size: 12px;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  &:focus-visible { outline: 3px solid rgba(35, 88, 214, 0.28); outline-offset: 2px; }
+  @media (max-width: 520px) {
+    align-items: stretch;
+    flex-direction: column;
+    strong { width: 100%; }
+  }
+`;
+const ResearchDeckBody = styled.div`
+  border-top: 1px solid rgba(18, 18, 23, 0.1);
+  padding-bottom: 18px;
+  > section {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
 `;
 const HomeActionCard = styled.button`
   display: grid;

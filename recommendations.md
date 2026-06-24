@@ -9,8 +9,10 @@ Date: 2026-06-24
 - Operating System underneath
 - The Count as the admin/liveops puppet
 - Product-home first screen with a distinctive playable-world hero, persona choice, EXP/passport/questline state, one next move, live proof, and compact route actions before audit boards
+- Playable desk immediately after the hero with current quest, proof route, return route, EXP progress, five world lanes, visible first-minute answers, and an explicit Research Deck opener
+- Collapsible Research Deck for Wayfinder, Section Compass, puppet evidence, app atlas, Count runbooks, reports, and simulated design checks so the default beta does not become an encyclopedia
 - Five-step quest-stage ribbon in the first action console so side quests, proof, unlocks, and returns feel like a route-owned game loop
-- Demoted 60-second answer strip and simulated 5/5 A+ design-critic gate below launch actions so evidence stays available without making the first screen read like a report
+- Demoted simulated 5/5 A+ design-critic gate so evidence stays available without making the first screen read like a report
 - EXP, levels, side quests, challenges, rewards, and roles as progression context
 - Admin authority gated by explicit permissions, never by EXP alone
 - Discovery trails as the first relationship layer between now signals and deeper app details
@@ -46,7 +48,7 @@ Date: 2026-06-24
 ## Improve Next
 
 1. Continue expanding proof snippets only when an existing public read can safely prove them without production writes.
-2. Use the Section Compass before adding another beta board so the page map remains understandable as the shell grows.
+2. Keep the Research Deck closed by default; use the Section Compass inside it before adding another beta board so the page map remains understandable without taking over the human-facing product.
 3. Use the People Discovery Board and People Proof Gap Matrix to decide which human role needs stronger proof before adding more notification or assistant behavior.
 4. Use the Attention Triage Board as the place to test new "what matters now?" grouping before adding any assistant behavior.
 5. Use the Count Admin Workbench before creating or promoting new sidequests, challenges, rewards, roles, market items, automation, or visibility changes.
