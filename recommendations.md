@@ -8,6 +8,7 @@ Date: 2026-06-24
 - Creator Workspace second
 - Operating System underneath
 - The Count as the admin/liveops puppet
+- Product-home first screen with persona choice, one next move, live proof, and compact route actions before audit boards
 - EXP, levels, side quests, challenges, rewards, and roles as progression context
 - Admin authority gated by explicit permissions, never by EXP alone
 - Discovery trails as the first relationship layer between now signals and deeper app details

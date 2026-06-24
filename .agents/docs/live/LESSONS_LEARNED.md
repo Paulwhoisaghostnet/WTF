@@ -1,3 +1,13 @@
+## 2026-06-24 - Beta must open as a product, not an audit report
+
+**What happened**: The beta shell had accurate route maps, puppet evidence, return loops, and Count runbooks, but the first impression read like a dense reference page. Adding more explanatory boards made the experience more correct on paper while making it less attractive and less human-facing.
+
+**Why it mattered**: New users need to feel what WTFOS is before they study how every subsystem relates. If the beta first screen is an encyclopedia, the app can technically answer the onboarding questions while still failing the emotional and interaction test.
+
+**Rule**: Beta must lead with a product-home experience: role choice, one clear next action, visible live proof, compact start actions, and route-owned handoffs. Keep audits, matrices, reports, and admin maps below or behind wayfinding, and do not add another explanatory board until the first-screen experience stays smooth on desktop and mobile.
+
+---
+
 ## 2026-06-24 - Beta proof routes must keep catalog access parity
 
 **What happened**: The People Proof Gap Matrix initially copied public-proof language onto creator and builder rows while their proof routes, `/tv` and `/console`, are session-gated in the beta app catalog. The new catalog guard caught the mismatch before browser verification.

@@ -11,6 +11,16 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await page.goto("/beta", { waitUntil: "domcontentloaded" });
 
     await expect(page.locator("[data-beta-wtfos]")).toBeVisible();
+    await expect(page.locator("[data-beta-product-home]")).toContainText("Pick a path. Do one thing. Come back to movement.");
+    await expect(page.locator("[data-beta-product-path]")).toHaveCount(6);
+    await expect(page.locator("[data-beta-product-current-path]")).toContainText("Next move");
+    await expect(page.locator("[data-beta-product-signal-strip]")).toContainText("live public signals");
+    await expect(page.locator("[data-beta-home-action]")).toHaveCount(6);
+    for (const label of ["Earn your first level", "See who is moving", "Browse fresh objects", "Recover a project", "Catch up fast", "Run liveops cleanly"]) {
+      await expect(page.locator("[data-beta-home-actions]")).toContainText(label);
+    }
+    await expect(page.locator('[data-beta-home-action-key="collect"]')).toContainText("Browse art");
+    await expect(page.locator('[data-beta-home-action-key="count"]')).toContainText("EXP is evidence, not authority.");
     await expect(page.getByText("What is WTFOS?")).toBeVisible();
     await expect(page.getByText("What can I do here?")).toBeVisible();
     await expect(page.getByText("What should I do first?", { exact: true })).toBeVisible();

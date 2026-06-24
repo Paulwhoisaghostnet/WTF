@@ -244,11 +244,11 @@ type BetaAdminSummaryCard = {
 };
 
 const answers = [
-  ["What is WTFOS?", "A Tezos-native social operating system for collecting, creating, publishing, playing, earning, and coordinating with the WTF community."],
-  ["What can I do here?", "Find people and art, complete side quests, earn EXP, unlock role-ready paths, join live rooms, make work, and return to what changed."],
-  ["What should I do first?", "Browse public discovery, or sign in and start with Side Quests plus Mission Control."],
-  ["What should I do next?", "Pick a puppet path. Each path opens an existing app, quest, challenge, or related tool."],
-  ["Why return tomorrow?", "EXP progress, side quests, notifications, live rooms, creator updates, market motion, challenges, and digest cards."],
+  ["What is WTFOS?", "A social OS for Tezos art, quests, tools, and people."],
+  ["What can I do here?", "Collect, create, play, publish, earn EXP, and find active people."],
+  ["What should I do first?", "Browse art, then take one side quest."],
+  ["What should I do next?", "Pick a role and follow the highlighted route."],
+  ["Why return tomorrow?", "New activity, quests, events, rewards, and creator progress."],
 ];
 
 export function BetaWtfos() {
@@ -690,6 +690,74 @@ export function BetaWtfos() {
     const nowSource = BETA_NOW_SIGNAL_SOURCES.find((source) => source.route === route);
     openRoute({ route, access: app?.access ?? accessHint ?? (nowSource?.access === "public" ? "public" : "session") });
   };
+  const currentStep = selectedJourneyCommand.steps.find((step) => step.key === "act") ?? selectedJourneyCommand.steps[0];
+  const proofStep = selectedJourneyCommand.steps.find((step) => step.key === "prove") ?? currentStep;
+  const returnStep = selectedJourneyCommand.steps.find((step) => step.key === "return") ?? currentStep;
+  const liveSignalCount = nowSignals.filter((signal) => signal.state === "Live").length;
+  const homeActions: Array<{
+    key: string;
+    eyebrow: string;
+    title: string;
+    copy: string;
+    route: string;
+    access: BetaAppCatalogEntry["access"];
+    action: string;
+  }> = [
+    {
+      key: "quest",
+      eyebrow: "Start",
+      title: "Earn your first level",
+      copy: "Pick one small side quest. No wallet-heavy move first.",
+      route: "/side-quests",
+      access: "session",
+      action: "Start quest",
+    },
+    {
+      key: "people",
+      eyebrow: "People",
+      title: "See who is moving",
+      copy: "Open the social pulse before WTFOS feels empty.",
+      route: "/w",
+      access: "session",
+      action: "Find people",
+    },
+    {
+      key: "collect",
+      eyebrow: "Collect",
+      title: "Browse fresh objects",
+      copy: "Start public, then choose whether market context matters.",
+      route: "/gallery",
+      access: "public",
+      action: "Browse art",
+    },
+    {
+      key: "create",
+      eyebrow: "Create",
+      title: "Recover a project",
+      copy: "Studio points to the next creator tool without changing it.",
+      route: "/studio",
+      access: "session",
+      action: "Open studio",
+    },
+    {
+      key: "return",
+      eyebrow: "Tomorrow",
+      title: "Catch up fast",
+      copy: "Notifications and Digest show what changed while you were gone.",
+      route: "/notifications",
+      access: "session",
+      action: "Check changes",
+    },
+    {
+      key: "count",
+      eyebrow: "The Count",
+      title: "Run liveops cleanly",
+      copy: "Admin stays explicit. EXP is evidence, not authority.",
+      route: "/admin",
+      access: "admin",
+      action: "Review admin",
+    },
+  ];
 
   return (
     <Shell data-beta-wtfos>
@@ -707,28 +775,93 @@ export function BetaWtfos() {
         </Actions>
       </TopBar>
 
-      <Hero id="beta-start">
+      <Hero id="beta-start" data-beta-product-home>
         <HeroCopy>
-          <Kicker><Compass size={16} /> Beta UX layer over existing WTFOS</Kicker>
-          <h1>Discover WTFOS by unlocking it.</h1>
-          <p>
-            Beta keeps app logic intact and turns navigation into a guided progression loop powered
-            by existing EXP, levels, roles, permissions, side quests, challenges, rewards, and admin controls.
-          </p>
+          <Kicker><Compass size={16} /> wtfOS beta home</Kicker>
+          <h1>Pick a path. Do one thing. Come back to movement.</h1>
+          <p>WTFOS is a Tezos-native social OS. Beta makes it playable: choose a role, take a safe first action, then follow the proof to the next app.</p>
           <Actions>
-            <Primary type="button" onClick={() => navigate("/gallery")}>Start with public discovery</Primary>
-            <Ghost type="button" onClick={() => navigate(user ? "/side-quests" : "/login")}>Find my first quest</Ghost>
+            <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>Do my next thing</Primary>
+            <Ghost type="button" onClick={() => navigate("/gallery")}>Browse public art</Ghost>
+            <Ghost type="button" onClick={() => jumpToBetaSection("beta-atlas")}>Open full map</Ghost>
           </Actions>
+          <ProductAnswerGrid>
+            {answers.map(([question, answer]) => (
+              <ProductAnswer key={question} data-beta-answer>
+                <Small>{question}</Small>
+                <span>{answer}</span>
+              </ProductAnswer>
+            ))}
+          </ProductAnswerGrid>
         </HeroCopy>
-        <AnswerGrid>
-          {answers.map(([question, answer]) => (
-            <Panel key={question} data-beta-answer>
-              <Small>{question}</Small>
-              <p>{answer}</p>
-            </Panel>
-          ))}
-        </AnswerGrid>
+        <ProductConsole aria-label="Beta path picker">
+          <ConsoleHeader>
+            <Small>Choose your lane</Small>
+            <strong>{persona.label}</strong>
+            <span>{persona.promise}</span>
+          </ConsoleHeader>
+          <PersonaDeck>
+            {BETA_PERSONAS.map((item) => (
+              <PersonaChip
+                key={item.key}
+                type="button"
+                data-beta-product-path
+                data-beta-product-path-key={item.key}
+                $active={item.key === personaKey}
+                aria-pressed={item.key === personaKey}
+                onClick={() => setPersonaKey(item.key)}
+              >
+                {item.label}
+              </PersonaChip>
+            ))}
+          </PersonaDeck>
+          <PathNowCard data-beta-product-current-path>
+            <Small>Next move</Small>
+            <h2>{currentStep.label}</h2>
+            <p>{currentStep.action}</p>
+            <PathSteps>
+              <span><strong>{proofStep.label}</strong>{proofStep.route}</span>
+              <span><strong>{returnStep.label}</strong>{returnStep.route}</span>
+            </PathSteps>
+            <Actions>
+              <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>Open {currentStep.label}</Primary>
+              <Ghost type="button" onClick={() => jumpToBetaSection("beta-paths")}>See path</Ghost>
+            </Actions>
+          </PathNowCard>
+          <SignalTicker data-beta-product-signal-strip>
+            <SignalTile>
+              <strong>{liveSignalCount}/{nowSignals.length}</strong>
+              <span>live public signals</span>
+            </SignalTile>
+            <SignalTile>
+              <strong>{BETA_UNLOCK_QUESTLINES.length}</strong>
+              <span>unlock paths</span>
+            </SignalTile>
+            <SignalTile>
+              <strong>{isAdmin ? "Live" : "Locked"}</strong>
+              <span>Count console</span>
+            </SignalTile>
+          </SignalTicker>
+        </ProductConsole>
       </Hero>
+
+      <HomeActionDock data-beta-home-actions aria-label="Start actions">
+        {homeActions.map((item) => (
+          <HomeActionCard
+            key={item.key}
+            type="button"
+            data-beta-home-action
+            data-beta-home-action-key={item.key}
+            data-beta-home-action-access={item.access}
+            onClick={() => openKnownRoute(item.route, item.access)}
+          >
+            <Small>{item.eyebrow}</Small>
+            <strong>{item.title}</strong>
+            <span>{item.copy}</span>
+            <em>{item.action} <ArrowRight size={14} /></em>
+          </HomeActionCard>
+        ))}
+      </HomeActionDock>
 
       <Band id="beta-wayfinder" data-beta-wayfinder>
         <SectionHead>
@@ -3125,14 +3258,209 @@ const Button = styled.button`
 `;
 const Primary = styled(Button)`color: #fff; background: linear-gradient(135deg, var(--blue), var(--teal));`;
 const Ghost = styled(Button)`color: var(--ink); background: #fff; border-color: var(--line);`;
-const Hero = styled.section`display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1.1fr); gap: 24px; padding: clamp(32px, 6vw, 72px) clamp(16px, 4vw, 48px) 24px; scroll-margin-top: 86px; @media (max-width: 940px) { grid-template-columns: 1fr; }`;
+const Hero = styled.section`
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1.1fr);
+  gap: 24px;
+  padding: 58px clamp(16px, 4vw, 48px) 24px;
+  scroll-margin-top: 86px;
+  @media (max-width: 940px) {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding-top: 28px;
+  }
+`;
 const HeroCopy = styled.div`
   display: grid; gap: 16px; align-content: start;
-  h1 { margin: 0; font-size: clamp(42px, 6vw, 82px); line-height: 0.98; letter-spacing: 0; }
-  p { margin: 0; max-width: 760px; color: var(--muted); font-size: clamp(17px, 2vw, 21px); line-height: 1.5; }
+  h1 {
+    margin: 0;
+    max-width: 840px;
+    color: var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 64px;
+    line-height: 0.98;
+    letter-spacing: 0;
+  }
+  p { margin: 0; max-width: 720px; color: var(--muted); font-size: 18px; line-height: 1.45; }
+  @media (max-width: 940px) {
+    h1 { font-size: 46px; line-height: 1.03; }
+    p { font-size: 16px; }
+  }
+  @media (max-width: 520px) {
+    gap: 13px;
+    h1 { font-size: 34px; line-height: 1.05; }
+    p { font-size: 15px; line-height: 1.42; }
+  }
 `;
 const Kicker = styled.div`display: flex; align-items: center; gap: 8px; color: var(--green); font-size: 13px; font-weight: 900; text-transform: uppercase;`;
-const AnswerGrid = styled.div`display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; @media (max-width: 620px) { grid-template-columns: 1fr; }`;
+const ProductAnswerGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 780px;
+  @media (max-width: 700px) { display: none; }
+`;
+const ProductAnswer = styled.div`
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  min-height: 84px;
+  border: 1px solid rgba(35, 88, 214, 0.18);
+  border-radius: 8px;
+  padding: 11px;
+  background: rgba(255, 255, 255, 0.78);
+  span:last-child {
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+`;
+const ProductConsole = styled.aside`
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid rgba(23, 32, 51, 0.16);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+`;
+const ConsoleHeader = styled.div`
+  display: grid;
+  gap: 5px;
+  strong {
+    color: var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 34px;
+    line-height: 1.05;
+  }
+  span { color: var(--muted); font-size: 14px; line-height: 1.4; }
+  @media (max-width: 520px) {
+    strong { font-size: 24px; }
+    span { font-size: 13px; }
+  }
+`;
+const PersonaDeck = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  @media (max-width: 520px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+`;
+const PersonaChip = styled.button<{ $active: boolean }>`
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid ${({ $active }) => $active ? "rgba(35, 88, 214, 0.72)" : "var(--line)"};
+  border-radius: 8px;
+  padding: 0 9px;
+  color: ${({ $active }) => $active ? "#fff" : "var(--ink)"};
+  background: ${({ $active }) => $active ? "var(--blue)" : "#f8fafc"};
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.15;
+  cursor: pointer;
+  &:focus-visible { outline: 3px solid rgba(35, 88, 214, 0.28); outline-offset: 2px; }
+`;
+const PathNowCard = styled.article`
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid rgba(0, 127, 122, 0.28);
+  border-radius: 8px;
+  padding: 14px;
+  background: #f2fbf9;
+  h2 {
+    margin: 0;
+    color: var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 28px;
+    line-height: 1.05;
+  }
+  p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+  @media (max-width: 520px) {
+    padding: 12px;
+    h2 { font-size: 22px; }
+    p { font-size: 13px; }
+  }
+`;
+const PathSteps = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  span {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    border: 1px solid rgba(0, 127, 122, 0.2);
+    border-radius: 8px;
+    padding: 9px;
+    background: #fff;
+    color: var(--teal);
+    font-size: 12px;
+    font-weight: 850;
+    overflow-wrap: anywhere;
+  }
+  strong { color: var(--ink); font-size: 12px; line-height: 1.2; }
+  @media (max-width: 520px) { grid-template-columns: 1fr; }
+`;
+const SignalTicker = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  @media (max-width: 520px) { display: none; }
+`;
+const SignalTile = styled.div`
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  min-height: 74px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fff;
+  strong { color: var(--blue); font-size: 24px; line-height: 1; overflow-wrap: anywhere; }
+  span { color: var(--muted); font-size: 11px; line-height: 1.25; font-weight: 900; text-transform: uppercase; }
+`;
+const HomeActionDock = styled.section`
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 clamp(16px, 4vw, 48px) 14px;
+  @media (max-width: 1180px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 680px) { grid-template-columns: 1fr; }
+`;
+const HomeActionCard = styled.button`
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  min-height: 180px;
+  border: 1px solid rgba(35, 88, 214, 0.18);
+  border-radius: 8px;
+  padding: 13px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  strong { font-size: 18px; line-height: 1.12; overflow-wrap: anywhere; }
+  span { color: var(--muted); font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; }
+  em {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    align-self: end;
+    color: var(--blue);
+    font-size: 12px;
+    line-height: 1.2;
+    font-style: normal;
+    font-weight: 950;
+  }
+  &:hover { border-color: rgba(35, 88, 214, 0.46); background: #f8fbff; }
+  &:focus-visible { outline: 3px solid rgba(35, 88, 214, 0.28); outline-offset: 2px; }
+`;
 const TwoCol = styled.section`
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.6fr);
