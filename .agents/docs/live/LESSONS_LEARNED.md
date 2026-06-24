@@ -1,3 +1,103 @@
+## 2026-06-24 - Beta subdomains need vhost plus rendered-bundle proof
+
+**What happened**: `https://wtfos.app/beta` returned HTML, but the deployed bundle still rendered the normal desktop and `https://beta.wtfos.app/` failed with Cloudflare 525 because the beta vhost/origin TLS path was not live. A local beta route alone was not enough to make the public beta host work.
+
+**Why it mattered**: The beta shell is supposed to be testable by users and puppets at `beta.wtfos.app`. SPA fallback HTML can hide missing client route deployment, and a missing Caddy host can make the subdomain fail before React loads.
+
+**Rule**: For beta host work, verify all three layers: local `/beta` render, deployed `/beta` rendered content, and `https://beta.wtfos.app/` origin TLS/vhost response. Keep Caddy host policy, CORS origin policy, browser route metadata, route fixtures, and rendered Playwright proof in the same pass.
+
+---
+
+## 2026-06-24 - Beta liveops recipes need standalone stage proof
+
+**What happened**: The Count Liveops Recipe Board initially had stage owner labels and proof/action copy that were readable only in context, such as short app-name owners and terse proof requirements.
+
+**Why it mattered**: Recipe cards are admin runbooks. If a Count stage button does not name the owner surface, action, proof, and route gate clearly on its own, an admin can misread EXP readiness as authority or miss the existing surface that owns the work.
+
+**Rule**: Beta liveops recipes must validate route ownership, access parity, standalone owner labels, Count action copy, proof requirements, anti-farm controls, and no-write boundaries. Strengthen recipe data when guards fail; do not loosen the copy-quality tests.
+
+---
+
+## 2026-06-24 - Beta route groups must mirror catalog gates and standalone copy
+
+**What happened**: The new Route Group Guide initially had route button copy that only made sense in context, and one guide route labeled Macaroni as session access while the beta catalog correctly treats `/tools/macaroni` as role-gated.
+
+**Why it mattered**: Beta route-group surfaces are meant to reduce app-name confusion. If route buttons use terse labels or access labels that disagree with the catalog, the beta shell teaches the wrong mental model before users open the existing app.
+
+**Rule**: Route-group and relationship surfaces must validate route ownership, catalog access parity, and standalone route-purpose copy. Strengthen data copy and gate labels when guards fail; do not loosen the tests.
+
+---
+
+## 2026-06-24 - Beta people routes must be catalog-owned and rebuilt
+
+**What happened**: The People Discovery Board initially pointed one related handoff at `/tezos-intel`, a real app route that was not owned by the beta catalog guard for that card. After the source fix, the first Playwright rerun still served the previous `dist/public` bundle until the client was rebuilt.
+
+**Why it mattered**: Beta relationship and people-discovery surfaces are only useful if every promised handoff is route-owned and visible in the exact bundle puppets test. A route that is real but not catalog-owned can become a confusing next step, and a stale harness bundle can make a fixed UI look broken.
+
+**Rule**: All beta relationship, people, attention, and daily-loop handoff routes must pass catalog ownership or an explicit route fixture before rendering as buttons. When a Playwright inventory spec serves `tests/playwright/harness.mjs`, rebuild `dist/public` after JSX or client-data edits before rerunning browser assertions.
+
+---
+
+## 2026-06-24 - Puppet memory needs standalone evidence copy
+
+**What happened**: The Puppet Memory Ledger rendered the right data shape, but the catalog guard caught one delight field that was too terse to explain the observed puppet outcome outside its original journey context.
+
+**Why it mattered**: Beta puppet memory is used to choose the next UI/UX improvement. If confusion, hesitation, delight, or remaining-friction fields read like slogans, reviewers can see that a puppet passed without understanding what changed or why the path should be kept.
+
+**Rule**: Treat every beta puppet memory field as standalone evidence. Keep executable length/copy-quality guards for task outcome fields, and strengthen the data copy instead of loosening the guard when a field cannot explain itself.
+
+---
+
+## 2026-06-24 - Beta first-minute copy needs exact text assertions
+
+**What happened**: The First-Minute Wayfinder intentionally reused the user question "What should I do first?" inside a longer prompt, which made an older loose Playwright `getByText` assertion ambiguous even though the UI rendered correctly.
+
+**Why it mattered**: Beta discovery surfaces repeat the same user questions across hero answers, wayfinder prompts, journey cards, and reports. Loose text lookups can fail for the test harness rather than because the product regressed.
+
+**Rule**: When beta UI repeats first-minute questions across multiple surfaces, use exact text assertions or scope the locator to the owning section. Add rendered tests for the new repeated surface separately so copy reuse stays intentional.
+
+---
+
+## 2026-06-24 - Beta command data needs copy-quality guards
+
+**What happened**: The Journey Command Center data rendered correctly, but the first catalog test run caught a few terse action/proof strings that were too short to explain the route handoff without surrounding context.
+
+**Why it mattered**: The beta shell is supposed to reduce cross-board stitching. If compact command cards depend on the user reading another section first, the UI passes route coverage while still leaving the next step under-explained.
+
+**Rule**: For beta journey/command data, keep executable guards that verify every route-owned step has meaningful action and proof copy. Run the catalog test before browser smoke so weak command text is caught while still cheap to fix.
+
+---
+
+## 2026-06-24 - JSX comparison arrows must be escaped
+
+**What happened**: The beta puppet retest snapshot UI used raw `->` text inside JSX copy. TypeScript parsed the `>` as JSX syntax and failed the page compile with `TS1382`.
+
+**Why it mattered**: Small evidence/readout copy can break the entire beta route even when the model tests pass, especially in dense metric rows where comparison arrows are common.
+
+**Rule**: In TSX text, render comparison arrows as string expressions such as `{" -> "}` or use safe words like `to`. Always rerun TypeScript after adding metric comparison copy.
+
+---
+
+## 2026-06-24 - Beta tab rows should wrap before they scroll sideways
+
+**What happened**: The beta notification-control browser smoke passed body-level overflow checks, but the mobile internal-bounds check still found persona tab buttons extending outside the viewport inside a horizontal tab scroller.
+
+**Why it mattered**: A first-minute beta shell should not depend on hidden horizontal scanning for core puppet choices. Even when the page itself has no horizontal overflow, offscreen tab buttons make the path picker feel unfinished on narrow screens.
+
+**Rule**: For beta hub role/persona/task selectors, prefer responsive wrapping grid tracks over horizontal scroll unless the interaction is explicitly a carousel with visible scroll affordances. Keep internal-bounds checks in the browser smoke after adding or editing selector rows.
+
+---
+
+## 2026-06-24 - Beta shell overflow checks must inspect internal panels
+
+**What happened**: The beta public proof-board pass had clean body-level horizontal overflow, but browser smoke at a 390px viewport exposed beta shell panels and tab rows extending beyond the viewport while the page-level `overflow-x: hidden` masked the problem.
+
+**Why it mattered**: A beta hub can appear to pass no-body-overflow checks while important first-minute surfaces are still clipped or depend on hidden horizontal scroll. That makes puppet navigation feel less reliable on mobile even when the new feature itself renders.
+
+**Rule**: For beta shell UI changes, measure internal element bounds as well as body scroll width. Keep the beta shell using descendant `box-sizing: border-box` and verify narrow viewports after adding new bands, cards, tabs, or panels.
+
+---
+
 ## 2026-06-23 - Full-send promotions must quarantine unfinished drafts
 
 **What happened**: A full-send cherry-pick carried the verified feature commit cleanly, but unrelated beta-route and spec-test draft files resurfaced as untracked/unstaged work during conflict resolution. One beta route hunk referenced a page file that was intentionally not ready and would have broken TypeScript if it slipped into the production commit.
@@ -5527,3 +5627,43 @@
 **Why it mattered**: Share and reminder controls are part of the collector acquisition path. If a generated post fails platform limits or makes the user manually rebuild the sale reminder, the exported drop is technically present but operationally clumsy at exactly the moment promotion matters.
 
 **Rule**: Macaroni exported-page tests must render the static artifact with realistic stage storage, decode compose-intent text, apply X URL-weight counting against the 280-character limit, verify mint/media URL preservation where possible, and assert prefilled ICS plus Google Calendar links for every sale stage.
+
+---
+
+## 2026-06-24 - Non-product examples need explicit blocked-flow specs
+
+**What happened**: The Pasta Protocol goal listed `CH-EASE -> Tortellini` as a cross-app example, while the current source and product notes say Tortellini is intentionally not a Pasta product. The first spec pass omitted Tortellini from the pair matrix but did not make the requested example visible as a blocked target.
+
+**Why it mattered**: Silent omission can look like incomplete coverage, and a future developer might incorrectly create a route, dossier, contract, or story set for an unapproved product just to satisfy the example.
+
+**Rule**: When a requested story/test example names a non-product or excluded target, add an explicit blocked-flow spec and manifest exclusion. Do not create implementation artifacts unless the owner first approves the product and the app, feature, pair, lifecycle, adversarial, and E2E specs are regenerated.
+
+---
+
+## 2026-06-24 - Beta discovery reads must avoid event-writing public endpoints
+
+**What happened**: The beta UI/UX shell needed public creator/person proof and the public profile endpoint looked like an obvious source, but `GET /api/users/:username` records `profile.public.viewed` events. Auto-fetching it from the beta hub would turn a discovery card into a production write.
+
+**Why it mattered**: The beta mission permits read-only observation and UI/UX routing, not accidental production data mutation. A route can be public and still have analytics or event side effects, so "public" does not automatically mean safe for anonymous beta polling.
+
+**Rule**: Before adding beta now-signal calls, inspect the route implementation for writes, event emission, telemetry, notifications, or counters. Prefer child/read-model endpoints such as `/api/users/:username/activity` when they provide enough proof without writing. Use a best-effort read-only fetch path for public beta probes so expected unavailable signals do not trigger client error logging writes, and document any avoided endpoint in the beta reports.
+
+---
+
+## 2026-06-24 - Beta progression copy must satisfy executable semantics, not vibes
+
+**What happened**: The Unlock Passport data rendered correctly, but the focused catalog copy guard caught rows where useful copy did not explicitly include the expected progression or return-loop language. The New Tezos User `unlocksNext` copy described destinations without naming next/progress semantics, and Builder return copy described a loop without saying return.
+
+**Why it mattered**: Beta UI/UX surfaces are supposed to reduce interpretation work for puppet users. If tests only check that cards exist, the shell can still force users to infer whether a card is about proof, unlocks, return loops, or authority boundaries.
+
+**Rule**: Keep beta progression and journey data guarded by semantic copy tests for visible-now, next action, proof, unlock, locked state, Count review, and return loops. Fix the copy when the guard fails instead of loosening assertions unless the guard itself misstates the user question.
+
+---
+
+## 2026-06-24 - Beta app relationship handoffs need executable copy, too
+
+**What happened**: The App Relationship Navigator rendered the correct chains and routes, but the focused catalog guard caught handoff lines that were too terse to teach a puppet user what actually happens after a step.
+
+**Why it mattered**: Relationship maps can look complete while still forcing users to infer why a route follows another route. The beta mission needs users to understand what comes before, what a tool consumes, what it feeds, and what to do next without external explanation.
+
+**Rule**: Guard beta relationship chains with copy-quality assertions for route existence, matching access gates, why-copy, and handoff-copy. When a handoff fails, strengthen the instruction instead of relaxing the guard.

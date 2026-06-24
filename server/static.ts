@@ -4,6 +4,7 @@ import { WTFOS_PLATFORM_LONG_NAME, resolvePublicSiteOrigin } from "@shared/platf
 
 const DISCOVERY_ROUTES = [
   "/",
+  "/beta",
   "/skywire",
   "/live",
   "/wim",

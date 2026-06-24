@@ -1,4 +1,5 @@
 export const ROUTE_FIXTURES = [
+  { pattern: "/beta", path: "/beta", title: "WTFOS Beta", domain: "public", subdomain: "Beta discovery hub", auth: false },
   { pattern: "/mission-control", path: "/mission-control", title: "Mission Control", domain: "desktop-os", subdomain: "Mission Control", auth: true },
   { pattern: "/command-palette", path: "/command-palette", title: "Command Palette", domain: "desktop-os", subdomain: "Command palette", auth: true },
   { pattern: "/recovery-mode", path: "/recovery-mode", title: "Recovery Mode", domain: "desktop-os", subdomain: "Recovery Mode", auth: true },

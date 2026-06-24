@@ -23,6 +23,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/auth/user" },
       { method: "GET", path: "/api/auth/social/config" },
       { method: "GET", path: "/api/profile/account" },
+      { method: "GET", path: "/api/users/wtf-admin/activity", expectedStatuses: [200, 404] },
       { method: "GET", path: "/api/notifications/preferences" },
     ],
   },

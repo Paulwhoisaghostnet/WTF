@@ -54,6 +54,11 @@ function isSkywireStandaloneHost(): boolean {
   return window.location.hostname === "skywire.wtfos.app";
 }
 
+function isBetaHost(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.hostname === "beta.wtfos.app";
+}
+
 function locationHasSkywireStandaloneFlag(location: string): boolean {
   const query =
     location.split("?")[1]?.split("#")[0] ||
@@ -442,6 +447,7 @@ function AppContent() {
   const showRegister = location === "/register";
   const showLanding = location === "/" && !user;
   const authOverlayActive = showLogin || showRegister || showLanding;
+  const betaHomeMatch = isBetaHost() && location === "/" ? matchPage("/beta") : null;
   const skywireStandaloneLocation = skywireStandaloneRouteLocation(location);
   const skywireStandaloneMatch = skywireStandaloneLocation
     ? matchPage(skywireStandaloneLocation)
@@ -484,6 +490,10 @@ function AppContent() {
       );
     }
     return <WtfOsCliShell />;
+  }
+
+  if (betaHomeMatch) {
+    return <FullscreenRouteRenderer match={betaHomeMatch} />;
   }
 
   if (skywireStandaloneMatch) {

@@ -6,6 +6,7 @@ import { COBWEBSAINTS_FULL_USER_ROLE } from "./types";
  * Keep in sync with `client/src/routes/page-defs.ts` patterns/auth/roles.
  */
 export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
+  { pattern: "/beta", auth: false, title: "WTFOS Beta" },
   { pattern: "/mission-control", auth: true, title: "Mission Control" },
   { pattern: "/command-palette", auth: true, title: "Command Palette" },
   { pattern: "/recovery-mode", auth: true, title: "Recovery Mode" },

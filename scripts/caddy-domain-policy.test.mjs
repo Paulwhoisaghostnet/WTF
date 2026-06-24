@@ -11,8 +11,8 @@ assert.match(
 
 assert.match(
   caddyfile,
-  /wtfos\.app,\s*skywire\.wtfos\.app,\s*dues\.wtfgameshow\.app\s*\{/,
-  "Caddyfile must serve the canonical wtfos.app host and Skywire product subdomain without the legacy wtfgameshow platform aliases",
+  /wtfos\.app,\s*skywire\.wtfos\.app,\s*beta\.wtfos\.app,\s*dues\.wtfgameshow\.app\s*\{/,
+  "Caddyfile must serve the canonical wtfos.app host plus Skywire and beta product subdomains without the legacy wtfgameshow platform aliases",
 );
 
 assert.match(

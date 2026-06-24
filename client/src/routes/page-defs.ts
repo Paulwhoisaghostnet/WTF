@@ -263,6 +263,9 @@ const BrowserPage = lazy(() =>
 const MusicPage = lazy(() =>
   import("../pages/Music").then((m) => ({ default: m.Music }))
 );
+const BetaWtfosPage = lazy(() =>
+  import("../pages/BetaWtfos").then((m) => ({ default: m.BetaWtfos }))
+);
 
 export interface PageDef {
   pattern: string;
@@ -317,6 +320,13 @@ const CREATION_TOOL_PAGE_DEFS: PageDef[] = CREATION_TOOLS.map((tool) => ({
 }));
 
 export const PAGE_DEFS: PageDef[] = [
+  {
+    pattern: "/beta",
+    component: BetaWtfosPage,
+    auth: false,
+    title: "WTFOS Beta",
+    group: "public",
+  },
   {
     pattern: "/mission-control",
     component: MissionControlPage,
@@ -619,7 +629,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
 ];
 
-export const FULLSCREEN_ROUTES = new Set(["/", "/login", "/register", "/cli", "/live/r/:roomId"]);
+export const FULLSCREEN_ROUTES = new Set(["/", "/beta", "/login", "/register", "/cli", "/live/r/:roomId"]);
 
 function patternToRegex(pattern: string): {
   regex: RegExp;

@@ -2830,7 +2830,31 @@ function apiMock(req, res) {
       createdAt: "2026-01-01T00:00:00Z",
     });
   }
-  if (/^\/api\/users\/[^/]+\/(trade-board|listings|activity)$/.test(pathName)) return res.json([]);
+  if (/^\/api\/users\/[^/]+\/trade-board$/.test(pathName)) {
+    return res.json([
+      {
+        id: 701,
+        tokenContract: "KT1-beta-trade",
+        tokenId: "7",
+        tokenName: "Signal Piece",
+        balance: "1",
+        creatorName: "WTF Studio",
+        collectionName: "Beta Proof",
+        tradeBoardQuantity: 1,
+      },
+    ]);
+  }
+  if (/^\/api\/users\/[^/]+\/listings$/.test(pathName)) return res.json([]);
+  if (/^\/api\/users\/[^/]+\/activity$/.test(pathName)) {
+    return res.json([
+      {
+        id: 8101,
+        amount: 15,
+        reason: "daily_loop:public_progress_check",
+        createdAt: "2026-06-23T12:00:00Z",
+      },
+    ]);
+  }
   if (/^\/api\/users\/[^/]+\/dm$/.test(pathName)) return res.json({ conversationId: null, messages: [] });
   if (pathName.startsWith("/api/gallery")) return res.json(emptyPage());
   if (pathName.startsWith("/api/profile/tokens")) return res.json({ items: [], total: 0 });
@@ -3475,6 +3499,26 @@ function apiMock(req, res) {
   if (pathName.startsWith("/api/game-studio/projects")) return res.json({ projects: [], builds: [] });
   if (pathName.startsWith("/api/studio/projects")) return res.json({ projects: [], items: [] });
   if (pathName.startsWith("/api/studio/")) return res.json({ ok: true, items: [] });
+  if (pathName === "/api/marketplace/trade-board") {
+    return res.json({
+      contractAddress: "KT1-beta-market",
+      items: [
+        {
+          ownerWallet: "tz1-test-wallet",
+          ownerUsername: "wtf-admin",
+          ownerDisplayName: "WTF Admin",
+          tokenContract: "KT1-beta-trade",
+          tokenId: "7",
+          tokenAmount: "1",
+          tradeBoardQuantity: 1,
+          tokenName: "Signal Piece",
+          collectionName: "Beta Proof",
+          creatorName: "WTF Studio",
+        },
+      ],
+      pagination: { limit: 4, offset: 0, count: 1, hasMore: false, nextOffset: 1 },
+    });
+  }
   if (pathName.startsWith("/api/marketplace") || pathName.startsWith("/api/barter")) return res.json({ listings: [], offers: [], items: [], tokens: [] });
   if (pathName === "/api/rat-race/hot-tokens") {
     return res.json({
