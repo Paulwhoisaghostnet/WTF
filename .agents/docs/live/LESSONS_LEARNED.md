@@ -5707,3 +5707,13 @@
 **Why it mattered**: Relationship maps can look complete while still forcing users to infer why a route follows another route. The beta mission needs users to understand what comes before, what a tool consumes, what it feeds, and what to do next without external explanation.
 
 **Rule**: Guard beta relationship chains with copy-quality assertions for route existence, matching access gates, why-copy, and handoff-copy. When a handoff fails, strengthen the instruction instead of relaxing the guard.
+
+---
+
+## 2026-06-24 - Beta play mode must beat the research deck
+
+**What happened**: The beta shell exposed audits, reports, relationship maps, and discovery data, but the first viewport still read too much like a reference document before users reached the playable sidequest loop.
+
+**Why it mattered**: The beta mission is not to make a nicer encyclopedia for WTFOS. New users, creators, collectors, and The Count need to see an immediate action model: pick a role, take a quest, find people or art, prove progress, and return later.
+
+**Rule**: Keep playable role/quest/people/return actions visible before expandable research material. Audit decks, reports, and maps should remain available as proof, but they must not be the first thing a puppet has to parse.

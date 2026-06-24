@@ -923,6 +923,27 @@ export function BetaWtfos() {
             <Ghost type="button" onClick={() => navigate("/gallery")}>Browse public art</Ghost>
             <Ghost type="button" onClick={() => jumpToBetaSection("beta-people")}>See people</Ghost>
           </Actions>
+          <FirstScreenLoop data-beta-first-screen-loop aria-label="First screen playable loop">
+            <span>
+              <Small>Today&apos;s loop</Small>
+              <strong>{currentStep.label}</strong>
+              <em>{selectedQuestline.sideQuest}</em>
+            </span>
+            <FirstScreenButtons>
+              <button type="button" data-beta-first-screen-loop-action onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>
+                <Compass size={15} />
+                <b>Play</b>
+              </button>
+              <button type="button" data-beta-first-screen-loop-action onClick={() => openKnownRoute(featuredNowSignal.route ?? featuredNowSignal.source.route, featuredNowSignal.source.access === "public" ? "public" : "session")}>
+                <Users size={15} />
+                <b>People</b>
+              </button>
+              <button type="button" data-beta-first-screen-loop-action onClick={() => openKnownRoute(returnStep.route, returnStep.access)}>
+                <Bell size={15} />
+                <b>Return</b>
+              </button>
+            </FirstScreenButtons>
+          </FirstScreenLoop>
           <MobileStartRail data-beta-mobile-start-rail aria-label="Fast mobile starts">
             {homeActions.filter((item) => ["quest", "collect", "people"].includes(item.key)).map((item) => (
               <MobileStartButton
@@ -3566,9 +3587,9 @@ const Hero = styled.section`
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1.1fr);
-  gap: 24px;
-  padding: 44px clamp(16px, 4vw, 48px) 28px;
+  grid-template-columns: minmax(0, 0.82fr) minmax(340px, 1.18fr);
+  gap: 18px;
+  padding: 28px clamp(16px, 4vw, 48px) 42px;
   scroll-margin-top: 86px;
   color: #fff;
   background:
@@ -3595,29 +3616,30 @@ const Hero = styled.section`
   @media (max-width: 940px) {
     grid-template-columns: 1fr;
     gap: 14px;
-    padding-top: 24px;
+    padding-top: 18px;
+    padding-bottom: 22px;
   }
 `;
 const HeroCopy = styled.div`
-  display: grid; gap: 16px; align-content: start;
+  display: grid; gap: 12px; align-content: start;
   h1 {
     margin: 0;
     max-width: 840px;
     color: #fff;
     font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
-    font-size: 64px;
+    font-size: 54px;
     line-height: 0.98;
     letter-spacing: 0;
   }
-  p { margin: 0; max-width: 720px; color: rgba(255, 255, 255, 0.76); font-size: 18px; line-height: 1.45; }
+  p { margin: 0; max-width: 720px; color: rgba(255, 255, 255, 0.76); font-size: 16px; line-height: 1.4; }
   @media (max-width: 940px) {
-    h1 { font-size: 46px; line-height: 1.03; }
+    h1 { font-size: 38px; line-height: 1.03; }
     p { font-size: 16px; }
   }
   @media (max-width: 520px) {
-    gap: 13px;
-    h1 { font-size: 34px; line-height: 1.05; }
-    p { font-size: 15px; line-height: 1.42; }
+    gap: 11px;
+    h1 { font-size: 30px; line-height: 1.05; }
+    p { font-size: 14px; line-height: 1.38; }
   }
 `;
 const Kicker = styled.div`display: flex; align-items: center; gap: 8px; color: #89f2ca; font-size: 13px; font-weight: 900; text-transform: uppercase;`;
@@ -3673,10 +3695,67 @@ const MobileStartButton = styled.button`
   span { overflow-wrap: anywhere; text-align: center; }
   &:focus-visible { outline: 3px solid rgba(137, 242, 202, 0.34); outline-offset: 2px; }
 `;
+const FirstScreenLoop = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  max-width: 760px;
+  border: 1px solid rgba(137, 242, 202, 0.24);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  > span {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+  }
+  strong {
+    color: #fff;
+    font-size: 22px;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+  }
+  em {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 12px;
+    line-height: 1.25;
+    font-style: normal;
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 680px) {
+    grid-template-columns: 1fr;
+  }
+`;
+const FirstScreenButtons = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(74px, 1fr));
+  gap: 6px;
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    padding: 0 9px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 950;
+    cursor: pointer;
+  }
+  svg { color: #89f2ca; }
+  button:hover { border-color: rgba(137, 242, 202, 0.5); background: rgba(137, 242, 202, 0.14); }
+  button:focus-visible { outline: 3px solid rgba(137, 242, 202, 0.32); outline-offset: 2px; }
+`;
 const PlayableDesk = styled.section`
   display: grid;
   gap: 14px;
-  margin: -10px clamp(16px, 4vw, 48px) 16px;
+  margin: -32px clamp(16px, 4vw, 48px) 16px;
   border: 1px solid rgba(18, 18, 23, 0.18);
   border-radius: 8px;
   padding: 14px;
@@ -3685,7 +3764,7 @@ const PlayableDesk = styled.section`
     #fff;
   box-shadow: 0 26px 70px rgba(18, 18, 23, 0.16);
   @media (max-width: 720px) {
-    margin-top: 0;
+    margin-top: -8px;
     padding: 12px;
   }
 `;
@@ -3698,7 +3777,7 @@ const DeskHeader = styled.div`
     margin: 5px 0 6px;
     color: var(--ink);
     font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
-    font-size: clamp(28px, 4.4vw, 56px);
+    font-size: 44px;
     line-height: 0.98;
     letter-spacing: 0;
   }
@@ -3711,6 +3790,7 @@ const DeskHeader = styled.div`
   }
   @media (max-width: 860px) {
     grid-template-columns: 1fr;
+    h2 { font-size: 32px; line-height: 1.04; }
   }
 `;
 const DeskStats = styled.div`
@@ -3718,7 +3798,13 @@ const DeskStats = styled.div`
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   @media (max-width: 460px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    > div {
+      min-height: 60px;
+      padding: 8px;
+      strong { font-size: 13px; }
+      span { margin-top: 5px; font-size: 9px; line-height: 1.18; }
+    }
   }
 `;
 const DeskStat = styled.div`
@@ -3794,7 +3880,7 @@ const WorldLaneGrid = styled.div`
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   @media (max-width: 680px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 `;
 const WorldLane = styled.button`
@@ -3802,7 +3888,7 @@ const WorldLane = styled.button`
   align-content: start;
   gap: 8px;
   min-width: 0;
-  min-height: 226px;
+  min-height: 206px;
   border: 1px solid rgba(18, 18, 23, 0.12);
   border-radius: 8px;
   padding: 12px;
@@ -3841,6 +3927,8 @@ const WorldLane = styled.button`
   &:focus-visible { outline: 3px solid rgba(0, 127, 122, 0.25); outline-offset: 2px; }
   @media (max-width: 680px) {
     min-height: 0;
+    strong { font-size: 15px; }
+    small { display: none; }
   }
 `;
 const DeskAnswerStrip = styled.div`

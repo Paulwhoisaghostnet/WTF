@@ -31,6 +31,12 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     }
     await expect(page.locator("[data-beta-product-signal-strip]")).toContainText("live public signals");
     await expect(page.locator("[data-beta-mobile-start-action]")).toHaveCount(3);
+    await expect(page.locator("[data-beta-first-screen-loop]")).toContainText("Today's loop");
+    await expect(page.locator("[data-beta-first-screen-loop]")).toContainText("Take one quest");
+    await expect(page.locator("[data-beta-first-screen-loop-action]")).toHaveCount(3);
+    for (const label of ["Play", "People", "Return"]) {
+      await expect(page.locator("[data-beta-first-screen-loop]")).toContainText(label);
+    }
     await expect(page.locator("[data-beta-playable-desk]")).toContainText("Pick a role, make one move");
     await expect(page.locator("[data-beta-playable-stat]")).toHaveCount(3);
     await expect(page.locator("[data-beta-playable-current-quest]")).toContainText("Play next move");
