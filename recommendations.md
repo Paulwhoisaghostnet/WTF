@@ -17,6 +17,9 @@ Date: 2026-06-24
 - Human product outcomes in active UI, such as Quest board, Live users, Catch-up feed, proof step, and return/catch-up state; keep raw route paths out of the first viewport
 - Persistent return/status strip before the live desktop so resume, changed signals, and today's command are visible without reading a report
 - Dark OS workspace continuity below the hero; treat bright white page sections as a regression unless they are clearly framed as app windows
+- Full-width live desktop band after the cockpit; treat floating page-section cards and long explanatory headers as a regression
+- Short launcher labels such as Quest, People, Gallery, Studio, Changes, and Admin when the surrounding context already explains the route
+- Presence-first people copy; default social proof should feel like users are here before it reads like a proof matrix
 - Mobile first-screen discipline: hide nonessential proof strips, keep command tap targets large, and make the active move readable before exposing dense evidence
 - One dominant Launch Quest command before status/detail panels so the shell feels like an operating session with an active task, not parallel CTA blocks
 - Dark mission deck treatment for first-screen role/progression/next-move controls so beta feels like a playable command surface instead of a white documentation panel

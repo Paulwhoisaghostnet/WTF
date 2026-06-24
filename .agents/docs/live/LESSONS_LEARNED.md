@@ -1,3 +1,13 @@
+## 2026-06-24 - Mobile beta context and action must share the first viewport
+
+**What happened**: A polish pass made the beta cockpit more product-like on desktop, but mobile initially placed the active console before the "Live now" context, then stacked the session HUD vertically after the context. That made phone users see either controls without the human promise or the promise without the primary quest action.
+
+**Why it mattered**: The beta must answer what WTFOS is and what to do first inside the same first mobile viewport. A mobile layout can pass overflow and tap-target checks while still failing the arrival moment if context and action are separated by tall status cards.
+
+**Rule**: On beta first-screen work, verify mobile ordering as a product journey: human promise, compact session state, active quest, and primary command must appear together before deeper live rails, proof, reports, or admin evidence. Compress status HUDs on narrow screens instead of stacking them into a report wall.
+
+---
+
 ## 2026-06-24 - Beta must open as a cockpit, not a readable map
 
 **What happened**: The beta shell had accurate data, route maps, puppet proof, and progression language, but the first visible experience still felt like a documentation system. Even after moving reports behind a drawer, duplicate status blocks and static proof strips made users read their way into WTFOS instead of entering an active quest.

@@ -785,56 +785,56 @@ export function BetaWtfos() {
     {
       key: "quest",
       eyebrow: "Start",
-      title: "Earn your first level",
+      title: "First level",
       copy: "Take the starter quest and watch EXP move before any wallet-heavy step.",
       route: "/side-quests",
       access: "session",
-      action: "Start quest",
+      action: "Quest",
     },
     {
       key: "people",
       eyebrow: "People",
-      title: "See who is moving",
+      title: "People moving",
       copy: "Open the pulse so WTFOS feels inhabited before it feels technical.",
       route: "/w",
       access: "session",
-      action: "Find people",
+      action: "People",
     },
     {
       key: "collect",
       eyebrow: "Collect",
-      title: "Browse fresh objects",
+      title: "Fresh objects",
       copy: "Find one object worth caring about, then decide if market context matters.",
       route: "/gallery",
       access: "public",
-      action: "Browse art",
+      action: "Gallery",
     },
     {
       key: "create",
       eyebrow: "Create",
-      title: "Recover a project",
+      title: "Project",
       copy: "Start from the workspace, then follow the next creator dependency.",
       route: "/studio",
       access: "session",
-      action: "Open studio",
+      action: "Studio",
     },
     {
       key: "return",
       eyebrow: "Tomorrow",
-      title: "Catch up fast",
+      title: "Tomorrow",
       copy: "Notifications and Digest make tomorrow feel like a continuation.",
       route: "/notifications",
       access: "session",
-      action: "Check changes",
+      action: "Changes",
     },
     {
       key: "count",
       eyebrow: "The Count",
-      title: "Run liveops cleanly",
+      title: "The Count",
       copy: "EXP is evidence, not authority. Manage unlock loops without operator drift.",
       route: "/admin",
       access: "admin",
-      action: "Review admin",
+      action: "Admin",
     },
   ];
   const worldLanes: Array<{
@@ -992,7 +992,7 @@ export function BetaWtfos() {
                 <span>
                   <Small>{item.eyebrow}</Small>
                   <strong>{item.value}</strong>
-                  <em>{item.action} · {item.detail}</em>
+                  <em>{item.action}</em>
                 </span>
               </HeroWorldPulseCell>
             ))}
@@ -1169,8 +1169,8 @@ export function BetaWtfos() {
         <DeskHeader>
           <div>
             <Kicker><Activity size={16} /> live desktop</Kicker>
-            <h2>Start with a person, a quest, and a reason to come back.</h2>
-            <p>No manuals first. Pick one object in the world and move it forward.</p>
+            <h2>Choose a door.</h2>
+            <p>Quest, people, object, project, tomorrow. One move is enough.</p>
           </div>
           <DeskStats aria-label="Beta desk status">
             <DeskStat data-beta-playable-stat>
@@ -1243,7 +1243,7 @@ export function BetaWtfos() {
             <PulsePanelHead>
               <span>
                 <Small>People present</Small>
-                <strong>Other users are already doing things.</strong>
+                <strong>People are here.</strong>
               </span>
               <b>{peopleDiscoveryCards.filter((card) => card.state === "Live").length}/{peopleDiscoveryCards.length}</b>
             </PulsePanelHead>
@@ -3081,16 +3081,16 @@ const TopBar = styled.header`
   top: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1fr) auto;
+  gap: 14px;
   align-items: center;
   padding: 10px clamp(16px, 4vw, 48px);
-  border-bottom: 1px solid rgba(137, 242, 202, 0.16);
+  border-bottom: 1px solid rgba(137, 242, 202, 0.18);
   color: #fff;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
-    rgba(12, 13, 18, 0.96);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+    rgba(9, 10, 15, 0.96);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(18px);
   button {
     min-height: 38px;
@@ -3140,20 +3140,24 @@ const ChromeLights = styled.span`
   @media (max-width: 420px) { display: none; }
 `;
 const ChromeStatusRail = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
   min-width: 0;
   @media (max-width: 520px) {
+    display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 `;
 const ChromeStatus = styled.div`
   min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 7px 9px;
-  background: rgba(255, 255, 255, 0.055);
+  min-height: 42px;
+  min-width: 166px;
+  border: 1px solid rgba(137, 242, 202, 0.16);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.06);
   small {
     display: block;
     color: #89f2ca;
@@ -3172,6 +3176,8 @@ const ChromeStatus = styled.div`
     overflow-wrap: anywhere;
   }
   @media (max-width: 520px) {
+    min-width: 0;
+    border-radius: 8px;
     padding: 6px;
     strong { font-size: 10px; }
   }
@@ -3898,17 +3904,18 @@ const Hero = styled.section`
   grid-template-areas: "console rail";
   gap: 16px;
   align-items: start;
-  min-height: min(820px, calc(100svh - 62px));
+  min-height: min(790px, calc(100svh - 62px));
   padding: 18px clamp(16px, 4vw, 48px) 30px;
   scroll-margin-top: 86px;
   color: #fff;
   background:
-    linear-gradient(110deg, rgba(193, 61, 98, 0.24), transparent 34%),
-    linear-gradient(290deg, rgba(0, 129, 111, 0.28), transparent 38%),
+    linear-gradient(110deg, rgba(193, 61, 98, 0.22), transparent 34%),
+    linear-gradient(290deg, rgba(0, 129, 111, 0.3), transparent 38%),
+    radial-gradient(ellipse at 74% 16%, rgba(137, 242, 202, 0.14), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
     var(--night);
-  background-size: auto, auto, 42px 42px, 42px 42px, auto;
+  background-size: auto, auto, auto, 42px 42px, 42px 42px, auto;
   border-bottom: 1px solid rgba(18, 18, 23, 0.18);
   &::before {
     content: "PLAY";
@@ -3926,8 +3933,8 @@ const Hero = styled.section`
   @media (max-width: 940px) {
     grid-template-columns: 1fr;
     grid-template-areas:
-      "console"
-      "rail";
+      "rail"
+      "console";
     gap: 14px;
     min-height: 0;
     padding-top: 18px;
@@ -3945,12 +3952,12 @@ const HeroCopy = styled.div`
     max-width: 620px;
     color: #fff;
     font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
-    font-size: 36px;
+    font-size: 58px;
     font-weight: 850;
     line-height: 0.94;
     letter-spacing: 0;
   }
-  p { margin: 0; max-width: 540px; color: rgba(255, 255, 255, 0.84); font-size: 15px; line-height: 1.38; }
+  p { margin: 0; max-width: 540px; color: rgba(255, 255, 255, 0.84); font-size: 16px; line-height: 1.38; }
   @media (max-width: 940px) {
     h1 { font-size: 30px; line-height: 1; }
     p { font-size: 15px; }
@@ -3968,7 +3975,7 @@ const SessionContract = styled.div`
   gap: 6px;
   max-width: 760px;
   @media (max-width: 420px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 `;
 const SessionContractCell = styled.div`
@@ -4002,9 +4009,11 @@ const SessionContractCell = styled.div`
     overflow-wrap: anywhere;
   }
   @media (max-width: 520px) {
-    padding: 8px;
-    strong { font-size: 13px; }
-    span { font-size: 11px; }
+    min-height: 70px;
+    padding: 7px;
+    small { font-size: 9px; }
+    strong { font-size: 11px; line-height: 1.12; }
+    span { font-size: 9px; line-height: 1.15; }
   }
 `;
 const HeroSignalStrip = styled.div`
@@ -4091,14 +4100,14 @@ const HeroWorldPulseCell = styled.button`
   align-items: center;
   width: 100%;
   min-width: 0;
-  min-height: 76px;
+  min-height: 82px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
   padding: 10px;
   color: #fff;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.055)),
-    rgba(7, 10, 16, 0.22);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.06)),
+    rgba(7, 10, 16, 0.18);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -4233,19 +4242,17 @@ const FirstScreenButtons = styled.div`
 const PlayableDesk = styled.section`
   display: grid;
   gap: 14px;
-  margin: 0 clamp(16px, 4vw, 48px) 16px;
-  border: 1px solid rgba(137, 242, 202, 0.18);
-  border-radius: 8px;
-  padding: 14px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 28px clamp(16px, 4vw, 48px) 22px;
   color: #fff;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03)),
-    linear-gradient(110deg, rgba(40, 88, 217, 0.16), transparent 42%),
-    rgba(12, 13, 18, 0.96);
-  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.24);
+    linear-gradient(180deg, rgba(13, 15, 23, 0.98), rgba(13, 15, 23, 0.92)),
+    linear-gradient(110deg, rgba(40, 88, 217, 0.14), transparent 42%);
+  box-shadow: none;
   @media (max-width: 720px) {
-    margin-top: -8px;
-    padding: 12px;
+    padding: 22px 16px;
   }
 `;
 const DeskHeader = styled.div`
@@ -4257,7 +4264,7 @@ const DeskHeader = styled.div`
     margin: 5px 0 6px;
     color: #fff;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 36px;
+    font-size: 42px;
     font-weight: 850;
     line-height: 1;
     letter-spacing: 0;
@@ -4266,7 +4273,7 @@ const DeskHeader = styled.div`
     margin: 0;
     max-width: 760px;
     color: rgba(255, 255, 255, 0.72);
-    font-size: 15px;
+    font-size: 16px;
     line-height: 1.45;
   }
   @media (max-width: 860px) {
@@ -4292,10 +4299,10 @@ const ReturnStatusStrip = styled.div`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  border: 1px solid rgba(0, 127, 122, 0.18);
+  border: 1px solid rgba(137, 242, 202, 0.14);
   border-radius: 8px;
   padding: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.045);
   @media (max-width: 680px) {
     grid-template-columns: 1fr;
   }
@@ -4338,13 +4345,16 @@ const ReturnStatusItem = styled.div`
 const DeskStat = styled.div`
   min-width: 0;
   min-height: 72px;
-  border: 1px solid rgba(137, 242, 202, 0.16);
-  border-radius: 8px;
+  border: 1px solid rgba(137, 242, 202, 0.15);
+  border-radius: 999px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.08);
   strong, span { display: block; overflow-wrap: anywhere; }
   strong { color: #fff; font-size: 18px; line-height: 1.05; }
   span { margin-top: 7px; color: rgba(255, 255, 255, 0.68); font-size: 11px; line-height: 1.25; font-weight: 900; text-transform: uppercase; }
+  @media (max-width: 460px) {
+    border-radius: 8px;
+  }
 `;
 const LiveDesktopFrame = styled.div`
   display: grid;

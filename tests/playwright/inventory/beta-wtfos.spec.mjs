@@ -62,14 +62,14 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     for (const label of ["Open people", "Inspect object", "Set return"]) {
       await expect(page.locator("[data-beta-hero-world-pulse]")).toContainText(label);
     }
-    await expect(page.locator("[data-beta-playable-desk]")).toContainText("Start with a person, a quest");
+    await expect(page.locator("[data-beta-playable-desk]")).toContainText("Choose a door.");
     await expect(page.locator("[data-beta-playable-stat]")).toHaveCount(3);
     await expect(page.locator("[data-beta-live-desktop]")).toBeVisible();
     await expect(page.locator("[data-beta-return-status]")).toContainText("Resume");
     await expect(page.locator("[data-beta-return-status]")).toContainText("What changed");
     await expect(page.locator("[data-beta-return-status]")).toContainText("Today");
     await expect(page.locator("[data-beta-playable-current-quest]")).toContainText("Sign in to launch");
-    await expect(page.locator("[data-beta-human-pulse]")).toContainText("Other users are already doing things");
+    await expect(page.locator("[data-beta-human-pulse]")).toContainText("People are here.");
     await expect(page.locator("[data-beta-human-pulse-card]")).toHaveCount(4);
     await expect(page.locator("[data-beta-world-lane]")).toHaveCount(5);
     for (const label of ["Quest", "People", "Discover", "Tomorrow", "The Count"]) {
@@ -83,11 +83,11 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-design-critic-gate]")).toContainText("5/5 A+");
     await expect(page.locator("[data-beta-design-critic-review]")).toHaveCount(5);
     await expect(page.locator("[data-beta-home-action]")).toHaveCount(6);
-    for (const label of ["Earn your first level", "See who is moving", "Browse fresh objects", "Recover a project", "Catch up fast", "Run liveops cleanly"]) {
+    for (const label of ["First level", "People moving", "Fresh objects", "Project", "Tomorrow", "The Count"]) {
       await expect(page.locator("[data-beta-home-actions]")).toContainText(label);
     }
-    await expect(page.locator('[data-beta-home-action-key="collect"]')).toContainText("Browse art");
-    await expect(page.locator('[data-beta-home-action-key="count"]')).toContainText("Review admin");
+    await expect(page.locator('[data-beta-home-action-key="collect"]')).toContainText("Gallery");
+    await expect(page.locator('[data-beta-home-action-key="count"]')).toContainText("Admin");
     await expect(page.getByText("What is WTFOS?")).toBeVisible();
     await expect(page.getByText("What can I do here?")).toBeVisible();
     await expect(page.getByText("What should I do first?", { exact: true })).toBeVisible();
