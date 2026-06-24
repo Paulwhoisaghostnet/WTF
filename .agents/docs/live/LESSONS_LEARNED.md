@@ -5717,3 +5717,13 @@
 **Why it mattered**: The beta mission is not to make a nicer encyclopedia for WTFOS. New users, creators, collectors, and The Count need to see an immediate action model: pick a role, take a quest, find people or art, prove progress, and return later.
 
 **Rule**: Keep playable role/quest/people/return actions visible before expandable research material. Audit decks, reports, and maps should remain available as proof, but they must not be the first thing a puppet has to parse.
+
+---
+
+## 2026-06-24 - Beta hero proof should not become a button wall
+
+**What happened**: After the beta hero gained a Play/People/Return loop, the mobile first viewport still showed a second fast-start row for questing, art, and people. The page was action-led, but the repeated controls made it feel less designed and more like a launcher stack.
+
+**Why it mattered**: New users need one obvious next move plus proof that WTFOS is inhabited. Too many start controls above the character picker split attention and make the beta feel busy before it feels purposeful.
+
+**Rule**: Keep the first beta viewport to one primary action loop. Use non-button world proof for social/activity/object/return context, and only add another action row if it owns a distinct decision that the first loop cannot cover.

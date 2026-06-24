@@ -754,6 +754,9 @@ export function BetaWtfos() {
   const progressPercent = Math.min(92, 18 + personaOrdinal * 13);
   const questlineStages = selectedQuestline.stages.slice(0, 5);
   const featuredNowSignal = nowSignals.find((signal) => signal.state === "Live") ?? nowSignals[0];
+  const featuredPeopleSignal = nowSignals.find((signal) =>
+    signal.state === "Live" && ["profile-activity", "live-room", "arcade-recent", "xp-leaders", "reward-earners"].includes(signal.source.key)
+  ) ?? nowSignals.find((signal) => ["profile-activity", "live-room", "arcade-recent", "xp-leaders", "reward-earners"].includes(signal.source.key)) ?? featuredNowSignal;
   const featuredProofCard = publicProofCards.find((card) => card.state === "Live") ?? publicProofCards[0];
   const featuredReturnLoop = BETA_DAILY_RETURN_LOOPS.find((loop) => loop.key === "quest") ?? BETA_DAILY_RETURN_LOOPS[0];
   const featuredCountCommand = BETA_COUNT_LIVEOPS_COMMANDS[0];
@@ -882,6 +885,26 @@ export function BetaWtfos() {
       action: "Review queue",
     },
   ];
+  const heroWorldPulse = [
+    {
+      key: "people",
+      eyebrow: "People moving",
+      value: featuredPeopleSignal.value,
+      detail: featuredPeopleSignal.source.label,
+    },
+    {
+      key: "object",
+      eyebrow: "Fresh object",
+      value: featuredProofCard.value,
+      detail: featuredProofCard.source.label,
+    },
+    {
+      key: "tomorrow",
+      eyebrow: "Return hook",
+      value: featuredReturnLoop.label,
+      detail: featuredReturnLoop.question,
+    },
+  ];
 
   return (
     <Shell data-beta-wtfos>
@@ -944,20 +967,18 @@ export function BetaWtfos() {
               </button>
             </FirstScreenButtons>
           </FirstScreenLoop>
-          <MobileStartRail data-beta-mobile-start-rail aria-label="Fast mobile starts">
-            {homeActions.filter((item) => ["quest", "collect", "people"].includes(item.key)).map((item) => (
-              <MobileStartButton
-                key={item.key}
-                type="button"
-                data-beta-mobile-start-action
-                data-beta-mobile-start-action-key={item.key}
-                onClick={() => openKnownRoute(item.route, item.access)}
-              >
-                {homeActionIcon(item.key)}
-                <span>{item.action}</span>
-              </MobileStartButton>
+          <HeroWorldPulse data-beta-hero-world-pulse aria-label="Live WTFOS world pulse">
+            {heroWorldPulse.map((item) => (
+              <HeroWorldPulseCell key={item.key} data-beta-hero-world-pulse-cell data-beta-hero-world-pulse-key={item.key}>
+                {item.key === "people" ? <Users size={16} /> : item.key === "object" ? <Compass size={16} /> : <Bell size={16} />}
+                <span>
+                  <Small>{item.eyebrow}</Small>
+                  <strong>{item.value}</strong>
+                  <em>{item.detail}</em>
+                </span>
+              </HeroWorldPulseCell>
             ))}
-          </MobileStartRail>
+          </HeroWorldPulse>
         </HeroCopy>
         <ProductConsole aria-label="Beta path picker">
           <ConsoleHeader>
@@ -3667,33 +3688,59 @@ const HeroSignal = styled.div`
     span { margin-top: 5px; font-size: 9px; line-height: 1.18; }
   }
 `;
-const MobileStartRail = styled.div`
-  display: none;
+const HeroWorldPulse = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  @media (max-width: 700px) {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 760px;
+  @media (max-width: 520px) {
+    gap: 6px;
   }
 `;
-const MobileStartButton = styled.button`
+const HeroWorldPulseCell = styled.div`
   display: grid;
-  place-items: center;
-  gap: 5px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 7px;
+  align-items: start;
   min-width: 0;
-  min-height: 66px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  min-height: 82px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
-  padding: 8px 6px;
+  padding: 9px;
   color: #fff;
-  background: rgba(255, 255, 255, 0.1);
-  font: inherit;
-  font-size: 11px;
-  font-weight: 900;
-  line-height: 1.15;
-  cursor: pointer;
-  svg { color: #89f2ca; }
-  span { overflow-wrap: anywhere; text-align: center; }
-  &:focus-visible { outline: 3px solid rgba(137, 242, 202, 0.34); outline-offset: 2px; }
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.055)),
+    rgba(7, 10, 16, 0.22);
+  svg {
+    margin-top: 2px;
+    color: #89f2ca;
+  }
+  span {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+  }
+  strong {
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.14;
+    overflow-wrap: anywhere;
+  }
+  em {
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 10px;
+    line-height: 1.22;
+    font-style: normal;
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+    min-height: 78px;
+    padding: 8px;
+    svg { display: none; }
+    strong { font-size: 12px; }
+    em { display: none; }
+  }
 `;
 const FirstScreenLoop = styled.div`
   display: grid;

@@ -10,6 +10,7 @@ Date: 2026-06-24
 - The Count as the admin/liveops puppet
 - Product-home first screen with a distinctive playable-world hero, persona choice, EXP/passport/questline state, one next move, live proof, and compact route actions before audit boards
 - First-screen Play/People/Return loop inside the hero so users can act before they reach the deeper desk or research deck
+- Non-button hero world pulse for people moving, fresh-object proof, and return-loop context so social visibility increases without turning mobile into a button wall
 - Playable desk immediately after the hero with current quest, proof route, return route, EXP progress, five world lanes, visible first-minute answers, and an explicit Research Deck opener
 - Collapsible Research Deck for Wayfinder, Section Compass, puppet evidence, app atlas, Count runbooks, reports, and simulated design checks so the default beta does not become an encyclopedia
 - Five-step quest-stage ribbon in the first action console so side quests, proof, unlocks, and returns feel like a route-owned game loop
