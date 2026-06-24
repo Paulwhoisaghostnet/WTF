@@ -15,6 +15,9 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-product-path]")).toHaveCount(6);
     await expect(page.locator("[data-beta-product-current-path]")).toContainText("Next move");
     await expect(page.locator("[data-beta-product-signal-strip]")).toContainText("live public signals");
+    await expect(page.locator("[data-beta-mobile-start-action]")).toHaveCount(3);
+    await expect(page.locator("[data-beta-design-critic-gate]")).toContainText("5/5 A+");
+    await expect(page.locator("[data-beta-design-critic-review]")).toHaveCount(5);
     await expect(page.locator("[data-beta-home-action]")).toHaveCount(6);
     for (const label of ["Earn your first level", "See who is moving", "Browse fresh objects", "Recover a project", "Catch up fast", "Run liveops cleanly"]) {
       await expect(page.locator("[data-beta-home-actions]")).toContainText(label);

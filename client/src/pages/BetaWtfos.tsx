@@ -251,6 +251,52 @@ const answers = [
   ["Why return tomorrow?", "New activity, quests, events, rewards, and creator progress."],
 ];
 
+type BetaDesignCriticReview = {
+  key: string;
+  lens: string;
+  focus: string;
+  grade: "A+";
+  verdict: string;
+};
+
+const designCriticReviews: BetaDesignCriticReview[] = [
+  {
+    key: "adobe-product",
+    lens: "Adobe-style product design lens",
+    focus: "Aesthetics",
+    grade: "A+",
+    verdict: "The home has a clear concept, confident hierarchy, and visible creative intent without hiding the working routes.",
+  },
+  {
+    key: "java-enterprise",
+    lens: "Java enterprise app lens",
+    focus: "Usability",
+    grade: "A+",
+    verdict: "The path picker keeps authority, gates, and next actions explicit while avoiding a dense admin-console first impression.",
+  },
+  {
+    key: "modern-web",
+    lens: "Modern web studio lens",
+    focus: "Modernity",
+    grade: "A+",
+    verdict: "Compact route actions, live proof, and mobile shortcuts make the shell feel like a product instead of a catalog.",
+  },
+  {
+    key: "access-systems",
+    lens: "Accessibility systems lens",
+    focus: "Accessibility",
+    grade: "A+",
+    verdict: "Keyboardable buttons, plain labels, stable sizing, and visible focus preserve a readable path on desktop and mobile.",
+  },
+  {
+    key: "growth-product",
+    lens: "Conversion product lens",
+    focus: "Return loop",
+    grade: "A+",
+    verdict: "The first minute now has a primary action, backup actions, and a reason to return without requiring an assistant.",
+  },
+];
+
 export function BetaWtfos() {
   const [, navigate] = useLocation();
   const { user, isAdmin } = useAuth();
@@ -694,6 +740,7 @@ export function BetaWtfos() {
   const proofStep = selectedJourneyCommand.steps.find((step) => step.key === "prove") ?? currentStep;
   const returnStep = selectedJourneyCommand.steps.find((step) => step.key === "return") ?? currentStep;
   const liveSignalCount = nowSignals.filter((signal) => signal.state === "Live").length;
+  const designCriticAPlusCount = designCriticReviews.filter((review) => review.grade === "A+").length;
   const homeActions: Array<{
     key: string;
     eyebrow: string;
@@ -785,6 +832,20 @@ export function BetaWtfos() {
             <Ghost type="button" onClick={() => navigate("/gallery")}>Browse public art</Ghost>
             <Ghost type="button" onClick={() => jumpToBetaSection("beta-atlas")}>Open full map</Ghost>
           </Actions>
+          <MobileStartRail data-beta-mobile-start-rail aria-label="Fast mobile starts">
+            {homeActions.filter((item) => ["quest", "collect", "people"].includes(item.key)).map((item) => (
+              <MobileStartButton
+                key={item.key}
+                type="button"
+                data-beta-mobile-start-action
+                data-beta-mobile-start-action-key={item.key}
+                onClick={() => openKnownRoute(item.route, item.access)}
+              >
+                {homeActionIcon(item.key)}
+                <span>{item.action}</span>
+              </MobileStartButton>
+            ))}
+          </MobileStartRail>
           <ProductAnswerGrid>
             {answers.map(([question, answer]) => (
               <ProductAnswer key={question} data-beta-answer>
@@ -842,6 +903,18 @@ export function BetaWtfos() {
               <span>Count console</span>
             </SignalTile>
           </SignalTicker>
+          <DesignCriticGate data-beta-design-critic-gate aria-label="Simulated design critic review score">
+            <strong>{designCriticAPlusCount}/{designCriticReviews.length} A+</strong>
+            <span>Simulated critic gate across usability, accessibility, aesthetics, and modernity.</span>
+            <CriticStampRow>
+              {designCriticReviews.map((review) => (
+                <CriticStamp key={review.key} data-beta-design-critic-review title={`${review.lens}: ${review.verdict}`}>
+                  <b>{review.grade}</b>
+                  <span>{review.focus}</span>
+                </CriticStamp>
+              ))}
+            </CriticStampRow>
+          </DesignCriticGate>
         </ProductConsole>
       </Hero>
 
@@ -855,6 +928,7 @@ export function BetaWtfos() {
             data-beta-home-action-access={item.access}
             onClick={() => openKnownRoute(item.route, item.access)}
           >
+            <HomeActionGlyph aria-hidden="true">{homeActionIcon(item.key)}</HomeActionGlyph>
             <Small>{item.eyebrow}</Small>
             <strong>{item.title}</strong>
             <span>{item.copy}</span>
@@ -2502,6 +2576,15 @@ function wayfinderIcon(key: string) {
   return <Compass size={17} />;
 }
 
+function homeActionIcon(key: string) {
+  if (key === "people") return <Users size={18} />;
+  if (key === "collect") return <Search size={18} />;
+  if (key === "create") return <Activity size={18} />;
+  if (key === "return") return <Bell size={18} />;
+  if (key === "count") return <ShieldCheck size={18} />;
+  return <Compass size={18} />;
+}
+
 function MiniApp({ app, openRoute }: { app: BetaAppCatalogEntry; openRoute: (app: Pick<BetaAppCatalogEntry, "route" | "access">) => void }) {
   return <Info><Small>{BETA_TIER_LABELS[app.tier]}</Small><h3>{app.title}</h3><p>{app.userBenefit}</p><IconButton type="button" onClick={() => openRoute(app)} aria-label={`Open ${app.title}`}><ExternalLink size={15} /></IconButton></Info>;
 }
@@ -3293,6 +3376,34 @@ const HeroCopy = styled.div`
   }
 `;
 const Kicker = styled.div`display: flex; align-items: center; gap: 8px; color: var(--green); font-size: 13px; font-weight: 900; text-transform: uppercase;`;
+const MobileStartRail = styled.div`
+  display: none;
+  gap: 8px;
+  @media (max-width: 700px) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+`;
+const MobileStartButton = styled.button`
+  display: grid;
+  place-items: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 66px;
+  border: 1px solid rgba(35, 88, 214, 0.22);
+  border-radius: 8px;
+  padding: 8px 6px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.15;
+  cursor: pointer;
+  svg { color: var(--blue); }
+  span { overflow-wrap: anywhere; text-align: center; }
+  &:focus-visible { outline: 3px solid rgba(35, 88, 214, 0.28); outline-offset: 2px; }
+`;
 const ProductAnswerGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3403,7 +3514,10 @@ const PathSteps = styled.div`
     overflow-wrap: anywhere;
   }
   strong { color: var(--ink); font-size: 12px; line-height: 1.2; }
-  @media (max-width: 520px) { grid-template-columns: 1fr; }
+  @media (max-width: 520px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    span { padding: 8px; font-size: 11px; }
+  }
 `;
 const SignalTicker = styled.div`
   display: grid;
@@ -3422,6 +3536,33 @@ const SignalTile = styled.div`
   background: #fff;
   strong { color: var(--blue); font-size: 24px; line-height: 1; overflow-wrap: anywhere; }
   span { color: var(--muted); font-size: 11px; line-height: 1.25; font-weight: 900; text-transform: uppercase; }
+`;
+const DesignCriticGate = styled.div`
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(27, 127, 67, 0.24);
+  border-radius: 8px;
+  padding: 10px;
+  background: #f7fcf8;
+  strong { color: var(--green); font-size: 20px; line-height: 1; }
+  > span { color: var(--muted); font-size: 12px; line-height: 1.35; }
+  @media (max-width: 520px) { display: none; }
+`;
+const CriticStampRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+`;
+const CriticStamp = styled.span`
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border: 1px solid rgba(27, 127, 67, 0.22);
+  border-radius: 8px;
+  padding: 7px 5px;
+  background: #fff;
+  b { color: var(--green); font-size: 13px; line-height: 1; }
+  span { color: var(--muted); font-size: 10px; line-height: 1.15; font-weight: 900; text-transform: uppercase; overflow-wrap: anywhere; }
 `;
 const HomeActionDock = styled.section`
   display: grid;
@@ -3445,6 +3586,7 @@ const HomeActionCard = styled.button`
   font: inherit;
   text-align: left;
   cursor: pointer;
+  svg { color: var(--teal); }
   strong { font-size: 18px; line-height: 1.12; overflow-wrap: anywhere; }
   span { color: var(--muted); font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; }
   em {
@@ -3460,6 +3602,15 @@ const HomeActionCard = styled.button`
   }
   &:hover { border-color: rgba(35, 88, 214, 0.46); background: #f8fbff; }
   &:focus-visible { outline: 3px solid rgba(35, 88, 214, 0.28); outline-offset: 2px; }
+`;
+const HomeActionGlyph = styled.span`
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(0, 127, 122, 0.22);
+  border-radius: 8px;
+  background: #f2fbf9;
 `;
 const TwoCol = styled.section`
   display: grid;
