@@ -16,6 +16,7 @@ Date: 2026-06-24
 - Beta Section Compass that maps the expanded `/beta` page to fourteen question-led board jumps using only beta-local hash and scroll state
 - Public Proof Board that composes existing public object, creator-channel, play, and builder-output signals without adding write paths
 - People Discovery Board that maps existing signals to active users, new users, creators, collectors, builders, curators, collaborators, and interesting wallets without adding social graph logic
+- People Proof Gap Matrix that keeps social visibility weaknesses explicit by direct/routed/weak status, current proof, next beta move, quiet fallback, and no-write boundary
 - Attention Triage Board that turns public, protected, and admin-gated signals into seven route-owned next actions without adding notification or assistant logic
 - Communication map for W Feed, WIM, WTF LIVE, Digest, Mail, and Skywire
 - Per-trail live proof snippets that show which current signal supports each role path
@@ -42,7 +43,7 @@ Date: 2026-06-24
 
 1. Continue expanding proof snippets only when an existing public read can safely prove them without production writes.
 2. Use the Section Compass before adding another beta board so the page map remains understandable as the shell grows.
-3. Use the People Discovery Board to decide which human role needs stronger proof before adding more notification or assistant behavior.
+3. Use the People Discovery Board and People Proof Gap Matrix to decide which human role needs stronger proof before adding more notification or assistant behavior.
 4. Use the Attention Triage Board as the place to test new "what matters now?" grouping before adding any assistant behavior.
 5. Use the Count Admin Workbench before creating or promoting new sidequests, challenges, rewards, roles, market items, automation, or visibility changes.
 6. Use the Count Liveops Recipe Board before staging a sidequest, challenge, reward, role, market, notification, or app-gate rollout for a puppet path.

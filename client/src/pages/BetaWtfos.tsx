@@ -35,7 +35,9 @@ import {
 import {
   BETA_COMMUNICATION_MAP,
   BETA_PEOPLE_DISCOVERY_BOARD,
+  BETA_PEOPLE_PROOF_GAPS,
   type BetaPeopleDiscoveryCard,
+  type BetaPeopleProofStatus,
 } from "../features/beta/beta-social-map";
 import {
   appsForPersona,
@@ -932,6 +934,65 @@ export function BetaWtfos() {
             </PeopleDiscoveryCard>
           ))}
         </PeopleDiscoveryGrid>
+        <PeopleProofMatrix data-beta-people-proof-gaps>
+          <SectionHead>
+            <div>
+              <Title><Users size={18} /> People Proof Gap Matrix</Title>
+              <p>Beta keeps the social visibility pressure explicit. Each row names the proof users can already see, the weakness that still causes hesitation, the next UI move, and the no-write boundary that keeps people discovery separate from app logic.</p>
+            </div>
+            <NowSummary>
+              <strong>{BETA_PEOPLE_PROOF_GAPS.filter((gap) => gap.status !== "weak").length}/{BETA_PEOPLE_PROOF_GAPS.length}</strong>
+              <span>people proofs routed</span>
+            </NowSummary>
+          </SectionHead>
+          <PeopleProofGrid>
+            {BETA_PEOPLE_PROOF_GAPS.map((gap) => {
+              const proofSignals = gap.relatedSignals
+                .map((sourceKey) => signalByKey.get(sourceKey))
+                .filter((signal): signal is BetaRenderedNowSignal => Boolean(signal));
+              return (
+                <PeopleProofCard
+                  key={gap.key}
+                  data-beta-people-proof-gap
+                  data-beta-people-proof-gap-key={gap.key}
+                  data-beta-people-proof-gap-status={gap.status}
+                  $status={gap.status}
+                >
+                  <PeopleDiscoveryLead>
+                    <Small>{peopleProofStatusLabel(gap.status)} / {accessLabel(gap.access)}</Small>
+                    <h3>{gap.label}</h3>
+                    <strong>{gap.userQuestion}</strong>
+                  </PeopleDiscoveryLead>
+                  <PeopleSignalStrip aria-label={`${gap.label} proof gap signals`}>
+                    {proofSignals.map((signal) => (
+                      <PeopleSignalPill
+                        key={`${gap.key}-${signal.source.key}`}
+                        type="button"
+                        data-beta-people-proof-gap-signal
+                        data-beta-people-proof-gap-signal-state={signal.state}
+                        $state={signal.state}
+                        onClick={() => openKnownRoute(signal.route ?? signal.source.route, signal.source.access)}
+                      >
+                        <span>{signal.source.label}</span>
+                        <strong>{signal.state}</strong>
+                      </PeopleSignalPill>
+                    ))}
+                  </PeopleSignalStrip>
+                  <Meta><strong>Visible proof</strong><span>{gap.visibleProof}</span></Meta>
+                  <Meta><strong>Why it matters</strong><span>{gap.whyItMatters}</span></Meta>
+                  <Meta><strong>Current weakness</strong><span>{gap.currentWeakness}</span></Meta>
+                  <Meta><strong>Next beta move</strong><span>{gap.nextBetaMove}</span></Meta>
+                  <Meta><strong>Quiet fallback</strong><span>{gap.quietFallback}</span></Meta>
+                  <Meta><strong>No-write boundary</strong><span>{gap.noWriteRule}</span></Meta>
+                  <ControlActions>
+                    <Primary type="button" onClick={() => openKnownRoute(gap.route, gap.access)}>Open proof route</Primary>
+                    <Ghost type="button" onClick={() => openKnownRoute(gap.route, gap.access)}>Review {gap.label}</Ghost>
+                  </ControlActions>
+                </PeopleProofCard>
+              );
+            })}
+          </PeopleProofGrid>
+        </PeopleProofMatrix>
       </Band>
 
       <Band id="beta-attention" data-beta-attention-triage-board>
@@ -2017,6 +2078,12 @@ function frictionStatusLabel(status: BetaFrictionQueueStatus): string {
   return "Keep current path";
 }
 
+function peopleProofStatusLabel(status: BetaPeopleProofStatus): string {
+  if (status === "direct") return "Direct proof";
+  if (status === "routed") return "Routed proof";
+  return "Weak proof";
+}
+
 function relationshipActorLabel(actor: BetaRelationshipActorKey): string {
   if (actor === "the-count") return "The Count";
   if (actor === "all-users") return "All users";
@@ -2513,6 +2580,34 @@ const PeopleSignalPill = styled.button<{ $state: BetaSignalState }>`
   span { color: var(--muted); font-size: 11px; line-height: 1.25; font-weight: 900; text-transform: uppercase; overflow-wrap: anywhere; }
   strong { color: var(--ink); font-size: 13px; line-height: 1.2; }
   &:focus-visible { outline: 3px solid rgba(35, 88, 214, 0.28); outline-offset: 2px; }
+`;
+const PeopleProofMatrix = styled.section`
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+`;
+const PeopleProofGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(304px, 1fr));
+  gap: 12px;
+`;
+const PeopleProofCard = styled.article<{ $status: BetaPeopleProofStatus }>`
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  min-height: 790px;
+  border: 1px solid ${({ $status }) => $status === "direct" ? "rgba(27, 127, 67, 0.30)" : $status === "routed" ? "rgba(35, 88, 214, 0.26)" : "rgba(181, 106, 0, 0.34)"};
+  border-radius: 8px;
+  padding: 14px;
+  background: ${({ $status }) => $status === "direct" ? "#f7fcf8" : $status === "routed" ? "#f7f9ff" : "#fffaf0"};
+  h3 { margin: 0; font-size: 20px; line-height: 1.14; overflow-wrap: anywhere; }
+  > strong { color: var(--ink); font-size: 15px; line-height: 1.28; }
+  @media (max-width: 440px) {
+    min-height: 0;
+  }
 `;
 const AttentionTriageGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(286px, 1fr)); gap: 12px; margin-top: 12px;`;
 const AttentionCard = styled.article<{ $cadence: BetaAttentionCadence }>`

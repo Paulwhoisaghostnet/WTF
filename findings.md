@@ -34,6 +34,8 @@ The visibility radar covers all requested signal types: active users, new users,
 
 The People Discovery Board now turns those signals into human roles: active users, new users, creators, collectors, builders, curators, collaborators, and interesting wallets. Each card answers who to look at, why the user should care, what proof exists, what to do next, and what route stays useful when the signal is quiet.
 
+The People Proof Gap Matrix now makes that social layer auditable. Active-user, newcomer, creator, collector, builder, curator, collaborator, and wallet proof are each marked direct, routed, or weak, with current weakness, next beta move, quiet fallback, and no-write boundary copy before the user opens the existing proof route.
+
 The new Attention Triage Board turns visibility into action. It groups first safe action, people moving now, collector heat, creator recovery, play/builder output, tomorrow catch-up, and Count hot queues into seven cards that show the linked signals, the existing owner route, the quiet fallback, and The Count/admin manageability note. This gives users a clearer "what matters now?" answer without creating notifications, writing preferences, or bypassing signed-in/admin gates.
 
 ## P4 App Discovery

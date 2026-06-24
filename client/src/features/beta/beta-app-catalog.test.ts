@@ -25,7 +25,7 @@ import {
   BETA_TRAIL_STATE_COPY,
   betaDiscoveryTrailRoutes,
 } from "./beta-discovery-trails";
-import { BETA_COMMUNICATION_MAP, BETA_PEOPLE_DISCOVERY_BOARD } from "./beta-social-map";
+import { BETA_COMMUNICATION_MAP, BETA_PEOPLE_DISCOVERY_BOARD, BETA_PEOPLE_PROOF_GAPS } from "./beta-social-map";
 import {
   appsForPersona,
   appsForTier,
@@ -885,6 +885,7 @@ test("people discovery board makes social roles visible through existing signals
   );
 
   const catalogRoutes = new Set(BETA_APP_CATALOG.map((app) => app.route));
+  const catalogByRoute = new Map(BETA_APP_CATALOG.map((app) => [app.route, app]));
   const signalKeys = new Set(BETA_NOW_SIGNAL_SOURCES.map((source) => source.key));
   const boardText = BETA_PEOPLE_DISCOVERY_BOARD.map((card) => Object.values(card).flat().join(" ")).join(" ");
   for (const expected of ["active", "new", "creator", "collector", "builder", "curator", "collaborator", "wallet"]) {
@@ -893,6 +894,7 @@ test("people discovery board makes social roles visible through existing signals
 
   for (const card of BETA_PEOPLE_DISCOVERY_BOARD) {
     assert.equal(catalogRoutes.has(card.route), true, `${card.label} route ${card.route} missing from beta app catalog`);
+    assert.equal(catalogByRoute.get(card.route)?.access, card.access, `${card.label} access hint must match catalog`);
     assert.ok(card.sourceKeys.length >= 3, `${card.label} needs at least three proof signals`);
     for (const sourceKey of card.sourceKeys) {
       assert.equal(signalKeys.has(sourceKey), true, `${card.label} signal ${sourceKey} missing from now signals`);
@@ -911,6 +913,44 @@ test("people discovery board makes social roles visible through existing signals
   const collaborator = BETA_PEOPLE_DISCOVERY_BOARD.find((card) => card.key === "collaborators");
   assert.equal(collaborator?.access, "session");
   assert.match(collaborator?.quietFallback ?? "", /Calendar and Digest/i);
+});
+
+test("people proof gap matrix tracks social visibility weaknesses without adding writes", () => {
+  assert.deepEqual(
+    BETA_PEOPLE_PROOF_GAPS.map((gap) => gap.key).sort(),
+    BETA_PEOPLE_DISCOVERY_BOARD.map((card) => card.key).sort(),
+  );
+
+  const boardByKey = new Map(BETA_PEOPLE_DISCOVERY_BOARD.map((card) => [card.key, card]));
+  const catalogByRoute = new Map(BETA_APP_CATALOG.map((app) => [app.route, app]));
+  const signalKeys = new Set(BETA_NOW_SIGNAL_SOURCES.map((source) => source.key));
+  const statuses = new Set(["direct", "routed", "weak"]);
+
+  for (const gap of BETA_PEOPLE_PROOF_GAPS) {
+    const boardCard = boardByKey.get(gap.key);
+    const catalogEntry = catalogByRoute.get(gap.route);
+    assert.ok(boardCard, `${gap.label} must match a people discovery card`);
+    assert.ok(catalogEntry, `${gap.label} route ${gap.route} missing from beta app catalog`);
+    assert.equal(catalogEntry.access, gap.access, `${gap.label} access hint must match catalog`);
+    assert.equal(statuses.has(gap.status), true, `${gap.label} status is unknown`);
+    assert.equal(boardCard?.route, gap.route, `${gap.label} proof route should match the primary people-discovery route`);
+    assert.equal(boardCard?.access, gap.access, `${gap.label} proof access should match the people-discovery access`);
+    assert.ok(gap.userQuestion.endsWith("?"), `${gap.label} needs a user question`);
+    assert.ok(gap.visibleProof.length > 70, `${gap.label} needs proof copy`);
+    assert.ok(gap.whyItMatters.length > 75, `${gap.label} needs why-it-matters copy`);
+    assert.ok(gap.currentWeakness.length > 85, `${gap.label} needs weakness copy`);
+    assert.ok(gap.nextBetaMove.length > 85, `${gap.label} needs next beta move copy`);
+    assert.ok(gap.quietFallback.length > 75, `${gap.label} needs quiet fallback copy`);
+    assert.match(gap.noWriteRule, /No beta write/i, `${gap.label} must preserve the no-write boundary`);
+    assert.equal(gap.relatedSignals.length, 3, `${gap.label} should stay compact with exactly three proof signals`);
+    for (const signalKey of gap.relatedSignals) {
+      assert.equal(signalKeys.has(signalKey), true, `${gap.label} signal ${signalKey} missing from now signals`);
+    }
+  }
+
+  assert.ok(BETA_PEOPLE_PROOF_GAPS.some((gap) => gap.status === "weak" && gap.key === "curators"), "curator weakness must stay visible until proof improves");
+  assert.ok(BETA_PEOPLE_PROOF_GAPS.some((gap) => gap.access === "session" && gap.key === "collaborators"), "collaboration gate must stay explicit");
+  assert.ok(BETA_PEOPLE_PROOF_GAPS.some((gap) => gap.noWriteRule.includes("never links wallets")), "wallet proof must not become wallet logic");
 });
 
 test("communication map explains the core social surfaces without replacing navigation", () => {

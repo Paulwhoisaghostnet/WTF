@@ -80,6 +80,8 @@ Implemented puppet-memory-ledger pass: `/beta` now shows six persistent puppet m
 
 Implemented people-discovery pass: `/beta` now groups existing now signals into eight human roles: active users, new users, creators, collectors, builders, curators, collaborators, and interesting wallets. This does not change raw signal scoring, but it improves social visibility by showing who the signal represents, why the user should care, what to do next, and which route remains useful when public data is quiet.
 
+Implemented people-proof-gap pass: `/beta` now adds a People Proof Gap Matrix under People Discovery. It classifies each human role as direct, routed, or weak proof, names the current proof and weakness, gives the next beta UI move, and repeats the no-write boundary before users open existing routes through their current gates.
+
 Implemented route-group guide pass: `/beta` now names seven overlapping route clusters before the full atlas: first win, collector economy, creator pipeline, builder output, curator signal, community comms, and Count liveops. This does not change raw public visibility scoring, but it improves visibility-to-route comprehension by explaining use-first, use-next, proof, quiet-rule, Count-watch, and existing route buttons for each cluster.
 
 Implemented section-compass pass: `/beta` now maps fourteen major beta boards to question-led section jumps after the Wayfinder. This does not change raw public visibility scoring, but it improves visibility-to-board comprehension by helping users find people proof, activity proof, return loops, governance, Count liveops, and atlas review without relying on long-scroll discovery.

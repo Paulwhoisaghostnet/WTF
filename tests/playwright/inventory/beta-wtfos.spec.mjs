@@ -63,6 +63,18 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     }
     await expect(page.locator('[data-beta-people-discovery-key="collaborators"]')).toContainText("Room presence");
     await expect(page.locator('[data-beta-people-discovery-key="creators"]')).toContainText("TV channels");
+    await expect(page.locator("[data-beta-people-proof-gaps]")).toContainText("People Proof Gap Matrix");
+    await expect(page.locator("[data-beta-people-proof-gap]")).toHaveCount(8);
+    await expect(page.locator("[data-beta-people-proof-gap-signal]")).toHaveCount(24);
+    await expect(page.locator('[data-beta-people-proof-gap-status="direct"]')).toHaveCount(4);
+    await expect(page.locator('[data-beta-people-proof-gap-status="routed"]')).toHaveCount(3);
+    await expect(page.locator('[data-beta-people-proof-gap-status="weak"]')).toHaveCount(1);
+    for (const label of ["Current weakness", "Next beta move", "No-write boundary", "No beta write", "Open proof route"]) {
+      await expect(page.locator("[data-beta-people-proof-gaps]")).toContainText(label);
+    }
+    await expect(page.locator('[data-beta-people-proof-gap-key="curators"]')).toContainText("least direct human signal");
+    await expect(page.locator('[data-beta-people-proof-gap-key="collaborators"]')).toContainText("Sign-in step");
+    await expect(page.locator('[data-beta-people-proof-gap-key="interesting-wallets"]')).toContainText("never links wallets");
     await expect(page.locator("[data-beta-attention-triage-board]")).toContainText("Attention Triage Board");
     await expect(page.locator("[data-beta-attention-card]")).toHaveCount(7);
     await expect(page.locator("[data-beta-attention-signal]")).toHaveCount(21);

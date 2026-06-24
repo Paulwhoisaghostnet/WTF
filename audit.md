@@ -28,6 +28,8 @@ Added a Puppet Memory Ledger to `/beta` so each persistent puppet's first task, 
 
 Added a People Discovery Board to `/beta` so users can see active users, new users, creators, collectors, builders, curators, collaborators, and interesting wallets as human roles with proof signals, why-care copy, next actions, quiet fallbacks, and related existing routes. This is a beta visibility/navigation layer only; it does not create social graph logic, write profile views, change W/WIM/LIVE/Skywire behavior, or bypass route gates.
 
+Added a People Proof Gap Matrix to `/beta` so the social visibility priority stays actionable instead of becoming vague. Each role now shows direct/routed/weak proof status, current proof, current weakness, next beta UI move, quiet fallback, and the no-write boundary before opening an existing proof route.
+
 Added a Route Group Guide to `/beta` so overlapping app clusters are named before users reach the full atlas: first win, collector economy, creator pipeline, builder output, curator signal, community comms, and Count liveops. Each group explains what to use first, what to use next, which proof to look for, what quiet data means, what The Count watches, and which existing route buttons carry the handoff. This is beta terminology/navigation only; it does not add routes, change access gates, write preferences, grant roles, settle rewards, or alter any app logic.
 
 Added a Count Liveops Recipe Board to `/beta` so The Count can translate user needs into starter, creator, collector, builder, curator, and community unlock blueprints. Each recipe names how EXP should be interpreted, which side quest and challenge shape the loop, where rewards and role/permission boundaries sit, which market or notification effect is allowed, which six existing route stages carry the work, and why beta must not write admin state.
@@ -40,7 +42,7 @@ The beta shell now answers the first-minute questions, exposes eight Wayfinder j
 
 The beta shell also exposes six Puppet Memory Ledger cards and 36 checkpoint pills, making the test loop's confusion, hesitation, delight, abandonment, and next-step evidence directly reviewable before the next UI/UX improvement is chosen.
 
-The beta shell now exposes eight People Discovery Board cards and 24 proof-signal pills, making the question "why should I care about other users?" answerable before the user enters W, LIVE, Gallery, TV, Console, Leaderboards, or wallet-adjacent surfaces.
+The beta shell now exposes eight People Discovery Board cards, eight People Proof Gap Matrix rows, and 48 combined people proof-signal pills, making the question "why should I care about other users?" answerable before the user enters W, LIVE, Gallery, TV, Console, Leaderboards, or wallet-adjacent surfaces.
 
 The beta shell now exposes seven Route Group Guide cards and 45 route buttons, making app clusters easier to distinguish before users browse the full atlas or ask whether similar-sounding routes are duplicates.
 

@@ -1,3 +1,13 @@
+## 2026-06-24 - Beta proof routes must keep catalog access parity
+
+**What happened**: The People Proof Gap Matrix initially copied public-proof language onto creator and builder rows while their proof routes, `/tv` and `/console`, are session-gated in the beta app catalog. The new catalog guard caught the mismatch before browser verification.
+
+**Why it mattered**: Beta can safely summarize public reads from an existing endpoint, but the route handoff still teaches users what gate they will hit. If proof copy and route access drift apart, beta makes a protected app look public and creates avoidable first-click confusion.
+
+**Rule**: Any beta proof, people, public, route-group, or relationship surface must validate route access against the beta app catalog. Public read evidence may be labeled as proof, but opening the owning app must preserve the app route's current public, session, role, or admin gate.
+
+---
+
 ## 2026-06-24 - Beta subdomains need vhost plus rendered-bundle proof
 
 **What happened**: `https://wtfos.app/beta` returned HTML, but the deployed bundle still rendered the normal desktop and `https://beta.wtfos.app/` failed with Cloudflare 525 because the beta vhost/origin TLS path was not live. A local beta route alone was not enough to make the public beta host work.

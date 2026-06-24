@@ -72,6 +72,10 @@ The beta shell now renders four public proof cards before the role trails: Fresh
 
 The beta shell now renders eight people-discovery cards after public proof: Active users, New users, Creators, Collectors, Builders, Curators, Collaborators, and Interesting wallets. Each card groups three existing now signals, explains why that kind of person matters, names the next action, and preserves a quiet fallback route. This directly addresses social visibility without adding people search, follow logic, messaging logic, profile-view writes, or new social APIs.
 
+## People Proof Gap Matrix Addendum
+
+The beta shell now renders eight proof-gap rows inside People Discovery. Each row marks the role as direct, routed, or weak proof, lists three existing now-signal sources, explains the current weakness, names the next beta UI move, preserves a quiet fallback, and repeats the no-write boundary before opening the existing proof route. Curator proof remains explicitly weak until Gallery, CRP nomination, Skywire, W, and Side Quest context can prove curation more clearly without app rewrites.
+
 ## Attention Triage Board Addendum
 
 The beta shell now renders seven attention triage cards after the public proof layer: First safe action, People moving now, Collector heat check, Creator recovery, Play or inspect output, Tomorrow catch-up, and Count hot queue. Each card maps three existing now-signal sources to one existing route, shows whether proof is live/protected/quiet, explains what to do next, names the quiet fallback, and states what The Count controls. This improves the "what should I do next?" answer without creating notification delivery, assistant behavior, reward settlement, role grants, or app rewrites.
