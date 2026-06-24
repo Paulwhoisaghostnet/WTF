@@ -1,3 +1,13 @@
+## 2026-06-24 - Beta must open as a cockpit, not a readable map
+
+**What happened**: The beta shell had accurate data, route maps, puppet proof, and progression language, but the first visible experience still felt like a documentation system. Even after moving reports behind a drawer, duplicate status blocks and static proof strips made users read their way into WTFOS instead of entering an active quest.
+
+**Why it mattered**: WTFOS beta is supposed to prove the ecosystem feels alive. New users need one active quest, visible people/object/return doors, and a clear next command before they see atlas/report material. Admin evidence matters, but it should not define the public product surface.
+
+**Rule**: The default beta path must start as an OS cockpit: active quest window, live controls, compact session HUD, and closed Admin Lab. Keep route maps, puppet proof, app atlas, Count runbooks, and review gates available, but never let them become the first-screen identity again.
+
+---
+
 ## 2026-06-24 - Beta launchers must feel like product controls, not article cards
 
 **What happened**: The beta home had moved research behind a drawer, but the visible product pass still used stacked explanatory card rows for start actions and first-minute answers. The result could satisfy route/proof coverage while still feeling like a Wikipedia index instead of a smooth human-facing OS.

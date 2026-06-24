@@ -9,6 +9,7 @@ Date: 2026-06-24
 - Operating System underneath
 - The Count as the admin/liveops puppet
 - Product-home first screen with a distinctive playable-world hero, persona choice, EXP/passport/questline state, one next move, live proof, and compact route actions before audit boards
+- Active OS cockpit first: selected quest window, live people/object/return doors, compact session HUD, and Admin Lab closed by default before any atlas/report material
 - OS session-home framing: active persona, current command, signal count, return route, and launcher state before any website-style explanation
 - Sticky system chrome that behaves like a shell bar: current role, live signal count, return route, Gallery command, and Launch Quest command
 - Explicit session contract before the first action: guest/signed-in mode, next action, human command result or sign-in gate, and continue state
@@ -21,10 +22,11 @@ Date: 2026-06-24
 - Dark mission deck treatment for first-screen role/progression/next-move controls so beta feels like a playable command surface instead of a white documentation panel
 - Icon-led role deck with level and path hints so choosing a persona feels like entering a playable system instead of selecting a form tab
 - First-screen Play/People/Return loop inside the hero so users can act before they reach the deeper desk or research deck
-- Non-button hero world pulse for people moving, fresh-object proof, and return-loop context so social visibility increases without turning mobile into a button wall
-- Live OS desktop immediately after the hero with a compact launcher dock, current quest, proof route, return route, EXP progress, people-present pulse, five world lanes, compact first-minute answers, and an explicit Research Deck opener
+- Clickable live rail for people moving, fresh-object proof, and return-loop context so social visibility becomes an entry path rather than another explanation block
+- Live OS desktop immediately after the cockpit with a compact launcher dock, current quest, proof route, return route, EXP progress, people-present pulse, five world lanes, compact first-minute answers, and an explicit Admin Lab opener
+- Mark the current quest stage visually, and keep Notice/Act/Prove/Unlock/Return from reading like taxonomy-only labels
 - Treat separate start-card rows as a regression; launch actions should feel like dock controls or in-world objects, not documentation cards
-- Collapsible Research Deck for Wayfinder, Section Compass, puppet evidence, app atlas, Count runbooks, reports, and simulated design checks so the default beta does not become an encyclopedia
+- Collapsible Admin Lab/Research Deck for Wayfinder, Section Compass, puppet evidence, app atlas, Count runbooks, reports, and design checks so the default beta does not become an encyclopedia
 - Five-step quest-stage ribbon in the first action console so side quests, proof, unlocks, and returns feel like a route-owned game loop
 - Demoted simulated 5/5 A+ design-critic gate so evidence stays available without making the first screen read like a report
 - EXP, levels, side quests, challenges, rewards, and roles as progression context

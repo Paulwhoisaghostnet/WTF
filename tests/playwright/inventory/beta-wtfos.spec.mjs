@@ -21,8 +21,10 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-wtfos]")).toBeVisible();
     await expect(page.locator("[data-beta-system-chrome]")).toContainText("Role");
     await expect(page.locator("[data-beta-system-chrome]")).toContainText("Signals");
-    await expect(page.locator("[data-beta-system-command]")).toContainText("Launch Quest");
+    await expect(page.locator("[data-beta-system-command]")).toContainText("Sign In");
     await expect(page.locator("[data-beta-product-home]")).toContainText("WTFOS is a playable Tezos world.");
+    await expect(page.locator("[data-beta-product-home]")).toContainText("Live now.");
+    await expect(page.locator("[data-beta-product-home]")).toContainText("Launch the quest");
     await expect(page.locator("[data-beta-session-contract]")).toContainText("Guest preview");
     await expect(page.locator("[data-beta-session-contract]")).toContainText("Next action");
     await expect(page.locator("[data-beta-session-contract]")).toContainText("Sign in to start");
@@ -36,21 +38,28 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-progression-card]")).toContainText("Challenge");
     await expect(page.locator("[data-beta-progression-card]")).toContainText("Unlock rule");
     await expect(page.locator("[data-beta-product-current-path]")).toContainText("Next move");
-    await expect(page.locator("[data-beta-product-current-path]")).toContainText("Launch Quest");
+    await expect(page.locator("[data-beta-product-current-path]")).toContainText("Sign in to launch");
+    await expect(page.locator("[data-beta-console-live-action]")).toHaveCount(3);
+    for (const label of ["People moving", "Fresh object", "Return hook"]) {
+      await expect(page.locator("[data-beta-console-live-rail]")).toContainText(label);
+    }
     await expect(page.locator("[data-beta-product-quest-stage]")).toHaveCount(5);
     for (const label of ["Notice", "Act", "Prove", "Unlock", "Return"]) {
       await expect(page.locator("[data-beta-product-quest-ribbon]")).toContainText(label);
     }
     await expect(page.locator("[data-beta-product-signal-strip]")).toContainText("live public signals");
-    await expect(page.locator("[data-beta-session-console]")).toContainText("Session command");
-    await expect(page.locator("[data-beta-first-screen-loop]")).toContainText("Launch Quest");
+    await expect(page.locator("[data-beta-session-console]")).toContainText("Command dock");
+    await expect(page.locator("[data-beta-first-screen-loop]")).toContainText("Sign in to launch");
     await expect(page.locator("[data-beta-first-screen-loop-action]")).toHaveCount(3);
-    for (const label of ["Launch quest", "Open people", "Resume later"]) {
+    for (const label of ["Sign in to launch", "Open people", "Resume later"]) {
       await expect(page.locator("[data-beta-first-screen-loop]")).toContainText(label);
     }
     await expect(page.locator("[data-beta-hero-world-stage]")).toContainText("People moving");
     await expect(page.locator("[data-beta-hero-world-pulse-cell]")).toHaveCount(3);
     for (const label of ["People moving", "Fresh object", "Return hook"]) {
+      await expect(page.locator("[data-beta-hero-world-pulse]")).toContainText(label);
+    }
+    for (const label of ["Open people", "Inspect object", "Set return"]) {
       await expect(page.locator("[data-beta-hero-world-pulse]")).toContainText(label);
     }
     await expect(page.locator("[data-beta-playable-desk]")).toContainText("Start with a person, a quest");
@@ -59,7 +68,7 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-return-status]")).toContainText("Resume");
     await expect(page.locator("[data-beta-return-status]")).toContainText("What changed");
     await expect(page.locator("[data-beta-return-status]")).toContainText("Today");
-    await expect(page.locator("[data-beta-playable-current-quest]")).toContainText("Launch Quest");
+    await expect(page.locator("[data-beta-playable-current-quest]")).toContainText("Sign in to launch");
     await expect(page.locator("[data-beta-human-pulse]")).toContainText("Other users are already doing things");
     await expect(page.locator("[data-beta-human-pulse-card]")).toHaveCount(4);
     await expect(page.locator("[data-beta-world-lane]")).toHaveCount(5);
@@ -70,6 +79,7 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-research-vault]")).not.toHaveAttribute("open", "");
     await page.locator("[data-beta-research-open]").click();
     await expect(page.locator("[data-beta-research-vault]")).toHaveAttribute("open", "");
+    await expect(page.locator("[data-beta-research-summary]")).toContainText("Admin lab");
     await expect(page.locator("[data-beta-design-critic-gate]")).toContainText("5/5 A+");
     await expect(page.locator("[data-beta-design-critic-review]")).toHaveCount(5);
     await expect(page.locator("[data-beta-home-action]")).toHaveCount(6);
