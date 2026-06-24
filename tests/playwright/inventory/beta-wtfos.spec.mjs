@@ -19,14 +19,15 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await page.goto("/beta", { waitUntil: "domcontentloaded" });
 
     await expect(page.locator("[data-beta-wtfos]")).toBeVisible();
-    await expect(page.locator("[data-beta-system-chrome]")).toContainText("Role");
+    await expect(page.locator("[data-beta-system-chrome]")).toContainText("Path");
+    await expect(page.locator("[data-beta-system-chrome]")).toContainText("Authority");
     await expect(page.locator("[data-beta-system-chrome]")).toContainText("Signals");
     await expect(page.locator("[data-beta-system-command]")).toContainText("Sign In");
     await expect(page.locator("[data-beta-product-home]")).toContainText("WTFOS://LIVEOPS");
-    await expect(page.locator("[data-beta-os-directive]")).toContainText("WTFOS boots as a quest OS");
+    await expect(page.locator("[data-beta-os-directive]")).toContainText("WTFOS is a Tezos command OS");
     await expect(page.locator("[data-beta-session-contract]")).toContainText("Guest preview");
     await expect(page.locator("[data-beta-session-contract]")).toContainText("Launch");
-    await expect(page.locator("[data-beta-session-contract]")).toContainText("Sign in to start");
+    await expect(page.locator("[data-beta-session-contract]")).toContainText("Public route");
     await expect(page.locator("[data-beta-mission-deck]")).toContainText("Active window");
     await expect(page.locator("[data-beta-product-pulse]")).toContainText("EXP floor");
     await expect(page.locator("[data-beta-product-path]")).toHaveCount(6);
@@ -36,14 +37,18 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-persona-role-deck]")).toContainText("Social path");
     await expect(page.locator("[data-beta-progression-card]")).toContainText("Challenge");
     await expect(page.locator("[data-beta-progression-card]")).toContainText("Unlock rule");
-    await expect(page.locator("[data-beta-product-current-path]")).toContainText("Current command");
-    await expect(page.locator("[data-beta-product-current-path]")).toContainText("Sign in to launch");
+    await expect(page.locator("[data-beta-product-current-path]")).toContainText("Current job");
+    await expect(page.locator("[data-beta-product-current-path]")).toContainText("Inspect Signal Piece");
+    await expect(page.locator("[data-beta-command-authority]")).toContainText("Can");
+    await expect(page.locator("[data-beta-command-authority]")).toContainText("Open now");
+    await expect(page.locator("[data-beta-command-authority]")).toContainText("Claim quest");
+    await expect(page.locator("[data-beta-social-reason]")).toContainText("signs of life");
     await expect(page.locator("[data-beta-command-pulse-action]")).toHaveCount(3);
-    for (const label of ["People moving", "Fresh object", "Return hook"]) {
+    for (const label of ["People moving", "Public object", "Check changed"]) {
       await expect(page.locator("[data-beta-command-pulse]")).toContainText(label);
     }
     await expect(page.locator("[data-beta-console-live-action]")).toHaveCount(3);
-    for (const label of ["People moving", "Fresh object", "Return hook"]) {
+    for (const label of ["People moving", "Public object", "Check changed"]) {
       await expect(page.locator("[data-beta-console-live-rail]")).toContainText(label);
     }
     await expect(page.locator("[data-beta-product-quest-stage]")).toHaveCount(5);
@@ -51,15 +56,10 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
       await expect(page.locator("[data-beta-product-quest-ribbon]")).toContainText(label);
     }
     await expect(page.locator("[data-beta-product-signal-strip]")).toContainText("live public signals");
-    await expect(page.locator("[data-beta-session-console]")).toContainText("Boot dock");
-    await expect(page.locator("[data-beta-first-screen-loop]")).toContainText("Sign in to launch");
-    await expect(page.locator("[data-beta-first-screen-loop-action]")).toHaveCount(3);
-    for (const label of ["Sign in to launch", "Open people", "Resume later"]) {
-      await expect(page.locator("[data-beta-first-screen-loop]")).toContainText(label);
-    }
+    await expect(page.locator("[data-beta-first-screen-loop]")).toHaveCount(0);
     await expect(page.locator("[data-beta-hero-world-stage]")).toContainText("People moving");
     await expect(page.locator("[data-beta-hero-world-pulse-cell]")).toHaveCount(3);
-    for (const label of ["People moving", "Fresh object", "Return hook"]) {
+    for (const label of ["People moving", "Public object", "Check changed"]) {
       await expect(page.locator("[data-beta-hero-world-pulse]")).toContainText(label);
     }
     for (const label of ["Open people", "Inspect object", "Set return"]) {
@@ -71,7 +71,7 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-return-status]")).toContainText("Resume");
     await expect(page.locator("[data-beta-return-status]")).toContainText("What changed");
     await expect(page.locator("[data-beta-return-status]")).toContainText("Today");
-    await expect(page.locator("[data-beta-playable-current-quest]")).toContainText("Sign in to launch");
+    await expect(page.locator("[data-beta-playable-current-quest]")).toContainText("Inspect Signal Piece");
     await expect(page.locator("[data-beta-human-pulse]")).toContainText("People are here.");
     await expect(page.locator("[data-beta-human-pulse-card]")).toHaveCount(4);
     await expect(page.locator("[data-beta-world-lane]")).toHaveCount(5);
@@ -83,7 +83,8 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await page.locator("[data-beta-research-open]").click();
     await expect(page.locator("[data-beta-research-vault]")).toHaveAttribute("open", "");
     await expect(page.locator("[data-beta-research-summary]")).toContainText("Admin lab");
-    await expect(page.locator("[data-beta-design-critic-gate]")).toContainText("5/5 A+");
+    await expect(page.locator("[data-beta-design-critic-gate]")).toContainText("Critic loop active");
+    await expect(page.locator("[data-beta-design-critic-gate]")).toContainText("earn A+");
     await expect(page.locator("[data-beta-design-critic-review]")).toHaveCount(5);
     await expect(page.locator("[data-beta-home-action]")).toHaveCount(6);
     for (const label of ["First level", "People moving", "Fresh objects", "Project", "Tomorrow", "The Count"]) {
@@ -307,6 +308,43 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator('[data-beta-count-liveops-recipe-key="collector-market-recipe"]')).toContainText("sale windows");
     await expect(page.locator('[data-beta-count-liveops-recipe-key="builder-surface-recipe"]')).toContainText("Admin only / /admin");
     await expect(page.locator('[data-beta-count-liveops-recipe-key="community-return-recipe"]')).toContainText("notification pressure");
+  });
+
+  test("keeps the anonymous mobile first command visible and tappable", async ({ page, request }) => {
+    await setHarnessState(request, { userRole: "anonymous" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/beta", { waitUntil: "domcontentloaded" });
+
+    const command = page.locator("[data-beta-product-current-path]");
+    const launch = command.getByRole("button", { name: "Inspect Signal Piece" });
+
+    await expect(command).toBeInViewport();
+    await expect(page.locator("[data-beta-command-authority]")).toBeInViewport();
+    await expect(page.locator("[data-beta-social-reason]")).toBeInViewport();
+    await expect(page.locator("[data-beta-social-reason]")).toContainText("signs of life");
+    await expect(launch).toBeInViewport();
+    await expect(page.locator("[data-beta-first-screen-loop]")).toHaveCount(0);
+    await expect(page.locator("[data-beta-design-critic-gate]")).not.toContainText("5/5 A+");
+    await expect(page.locator("[data-beta-system-command]").getByRole("button", { name: "Gallery" })).toBeHidden();
+
+    const launchBox = await launch.boundingBox();
+    expect(launchBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+    const layoutProof = await page.evaluate(() => {
+      const commandNode = document.querySelector("[data-beta-product-current-path]");
+      const launchNode = Array.from(document.querySelectorAll("[data-beta-product-current-path] button"))
+        .find((button) => /Inspect Signal Piece/.test(button.textContent || ""));
+      const firstRole = document.querySelector("[data-beta-product-path]");
+      return {
+        noHorizontalOverflow: document.documentElement.scrollWidth <= window.innerWidth,
+        commandBeforeRole: Boolean(commandNode && firstRole && (commandNode.compareDocumentPosition(firstRole) & Node.DOCUMENT_POSITION_FOLLOWING)),
+        launchBeforeRole: Boolean(launchNode && firstRole && (launchNode.compareDocumentPosition(firstRole) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      };
+    });
+
+    expect(layoutProof.noHorizontalOverflow).toBe(true);
+    expect(layoutProof.commandBeforeRole).toBe(true);
+    expect(layoutProof.launchBeforeRole).toBe(true);
   });
 
   test("uses The Count as the admin puppet for liveops stories", async ({ page, request }) => {

@@ -1,3 +1,13 @@
+## 2026-06-24 - Beta source-order fixes need a fresh harness bundle
+
+**What happened**: After moving the beta current-command window ahead of the path selector in JSX, the first Playwright rerun still validated the previous `dist/public` bundle and reported the old source/focus order.
+
+**Why it mattered**: The beta can look corrected in source while the harness still serves stale UI. That creates false critic evidence and can hide whether mobile users actually encounter action before taxonomy.
+
+**Rule**: After beta TSX/source-order edits, rebuild the Vite bundle before Playwright harness checks. Treat source-order, focus-order, mobile geometry, and no-overflow tests as rendered-bundle evidence, not just code-review evidence.
+
+---
+
 ## 2026-06-24 - Beta header selectors must survive added command readouts
 
 **What happened**: Adding the compact OS directive to the beta active-window header changed which child counted as `:last-child`. The role span lost its intended grid placement, the mobile header created a zero-width second column, and the command card was pushed far down the phone viewport until visual metrics caught it.

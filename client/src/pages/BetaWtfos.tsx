@@ -247,8 +247,9 @@ type BetaDesignCriticReview = {
   key: string;
   lens: string;
   focus: string;
-  grade: "A+";
-  verdict: string;
+  status: "Reviewing";
+  blocker: string;
+  evidence: string;
 };
 
 const designCriticReviews: BetaDesignCriticReview[] = [
@@ -256,36 +257,41 @@ const designCriticReviews: BetaDesignCriticReview[] = [
     key: "adobe-product",
     lens: "Adobe-style product design lens",
     focus: "Aesthetics",
-    grade: "A+",
-    verdict: "The home has a clear concept, confident hierarchy, and visible creative intent without hiding the working routes.",
+    status: "Reviewing",
+    blocker: "First-screen command must feel visually sovereign, not like another evidence panel.",
+    evidence: "Desktop and mobile screenshots must show one dominant command, readable people/object/return proof, and the admin lab closed.",
   },
   {
     key: "java-enterprise",
-    lens: "Java enterprise app lens",
+    lens: "Java/Sun systems UX lens",
     focus: "Usability",
-    grade: "A+",
-    verdict: "The path picker keeps authority, gates, and next actions explicit while avoiding a dense admin-console first impression.",
+    status: "Reviewing",
+    blocker: "Selected path and actual session authority must never be confused.",
+    evidence: "Anonymous and Count admin puppets must identify their path, authority, route owner, and next safe action in under 60 seconds.",
   },
   {
     key: "modern-web",
     lens: "Modern web studio lens",
     focus: "Modernity",
-    grade: "A+",
-    verdict: "Compact route actions, live proof, and mobile shortcuts make the shell feel like a product instead of a catalog.",
+    status: "Reviewing",
+    blocker: "Mobile must expose the launch action without forcing a long read through route taxonomy.",
+    evidence: "A 390px render must keep command, action, and social proof readable with no horizontal overflow.",
   },
   {
     key: "access-systems",
     lens: "Accessibility systems lens",
     focus: "Accessibility",
-    grade: "A+",
-    verdict: "Keyboardable buttons, plain labels, stable sizing, and visible focus preserve a readable path on desktop and mobile.",
+    status: "Reviewing",
+    blocker: "Tiny uppercase labels and color-heavy states cannot carry core meaning.",
+    evidence: "Keyboard order, focus rings, button names, and mobile touch targets must remain visible and readable.",
   },
   {
-    key: "growth-product",
-    lens: "Conversion product lens",
+    key: "liveops-product",
+    lens: "Liveops/game systems lens",
     focus: "Return loop",
-    grade: "A+",
-    verdict: "The first minute now has a primary action, backup actions, and a reason to return without requiring an assistant.",
+    status: "Reviewing",
+    blocker: "XP, sidequests, roles, and rewards must read as a manageable unlock loop, not a separate manual.",
+    evidence: "The Count puppet must find the queue, owner route, risk control, and player outcome without leaving the beta shell.",
   },
 ];
 
@@ -737,7 +743,6 @@ export function BetaWtfos() {
   const proofStep = selectedJourneyCommand.steps.find((step) => step.key === "prove") ?? currentStep;
   const returnStep = selectedJourneyCommand.steps.find((step) => step.key === "return") ?? currentStep;
   const liveSignalCount = nowSignals.filter((signal) => signal.state === "Live").length;
-  const designCriticAPlusCount = designCriticReviews.filter((review) => review.grade === "A+").length;
   const personaOrdinal = Math.max(0, BETA_PERSONAS.findIndex((item) => item.key === personaKey));
   const selectedXpLevel = BETA_XP_LEVELS[Math.min(personaOrdinal, BETA_XP_LEVELS.length - 1)] ?? BETA_XP_LEVELS[0];
   const nextXpLevel = BETA_XP_LEVELS[Math.min(personaOrdinal + 1, BETA_XP_LEVELS.length - 1)] ?? selectedXpLevel;
@@ -752,11 +757,26 @@ export function BetaWtfos() {
   const featuredProofCard = publicProofCards.find((card) => card.state === "Live") ?? publicProofCards[0];
   const featuredReturnLoop = BETA_DAILY_RETURN_LOOPS.find((loop) => loop.key === "quest") ?? BETA_DAILY_RETURN_LOOPS[0];
   const featuredCountCommand = BETA_COUNT_LIVEOPS_COMMANDS[0];
-  const sessionState = user ? "Signed in" : "Guest preview";
-  const launchResult = user ? "Quest board" : "Sign in to start";
-  const primaryCommandLabel = user ? "Launch quest" : "Sign in to launch";
+  const sessionState = isAdmin ? "Count admin" : user ? "Signed in" : "Guest preview";
+  const selectedPathLabel = persona.label;
+  const primaryRoute = user ? currentStep.route : featuredProofCard.source.route;
+  const primaryAccess: BetaAppCatalogEntry["access"] = user ? currentStep.access : "public";
+  const publicObjectLabel = featuredProofCard.value || "public object";
+  const commandTitle = user ? currentStep.label : `Inspect ${publicObjectLabel}`;
+  const commandAction = user
+    ? currentStep.action
+    : "Start with a live public object. No wallet, role, or admin power needed yet.";
+  const currentAccessLabel = user
+    ? betaAccessLabel(primaryAccess, Boolean(user), isAdmin)
+    : "Open now";
+  const afterSuccessLabel = user ? proofStep.label : "Claim quest";
+  const socialActorLabel = displayHeroPeoplePulse(featuredPeopleSignal).replace(/\s+(moved|active|posted)$/i, "").trim() || "Someone";
+  const socialReason = featuredPeopleSignal.state === "Live"
+    ? `${socialActorLabel} was active here. This route has signs of life.`
+    : "People, objects, and return hooks are surfaced before you commit to a route.";
+  const launchResult = user ? "Quest board" : "Public route";
+  const primaryCommandLabel = user ? "Launch quest" : `Inspect ${publicObjectLabel}`;
   const topCommandLabel = user ? "Quest" : "Sign In";
-  const peopleResult = featuredNowSignal.state === "Live" ? "Live users" : "People map";
   const resumeResult = user ? "Catch-up feed" : "Sign in to resume";
   const stageOutcome = (stageKey: string) => {
     if (stageKey === "notice") return "Find signal";
@@ -910,7 +930,7 @@ export function BetaWtfos() {
     },
     {
       key: "object",
-      eyebrow: "Fresh object",
+      eyebrow: "Public object",
       value: featuredProofCard.value,
       detail: featuredProofCard.source.label,
       route: featuredProofCard.source.route,
@@ -919,7 +939,7 @@ export function BetaWtfos() {
     },
     {
       key: "tomorrow",
-      eyebrow: "Return hook",
+      eyebrow: "Check changed",
       value: featuredReturnLoop.label,
       detail: featuredReturnLoop.question,
       route: featuredReturnLoop.route,
@@ -951,16 +971,16 @@ export function BetaWtfos() {
         </Brand>
         <ChromeStatusRail data-beta-system-status>
           <ChromeStatus>
-            <small>Role</small>
-            <strong>{persona.label}</strong>
+            <small>Path</small>
+            <strong>{selectedPathLabel}</strong>
+          </ChromeStatus>
+          <ChromeStatus>
+            <small>Authority</small>
+            <strong>{sessionState}</strong>
           </ChromeStatus>
           <ChromeStatus>
             <small>Signals</small>
             <strong>{liveSignalCount}/{nowSignals.length} live</strong>
-          </ChromeStatus>
-          <ChromeStatus>
-            <small>Return</small>
-            <strong>{returnStep.label}</strong>
           </ChromeStatus>
         </ChromeStatusRail>
         <Actions data-beta-system-command>
@@ -974,12 +994,63 @@ export function BetaWtfos() {
           <ConsoleHeader>
             <Small>Active window</Small>
             <strong>{currentStep.label}</strong>
-            <span>Role: {persona.label} · {selectedPassport.identity}</span>
+            <span>Selected path: {selectedPathLabel} · Authority: {sessionState}</span>
             <ConsoleDirective data-beta-os-directive>
-              WTFOS boots as a quest OS: pick a role, run one route, prove it, unlock next. XP is signal; roles stay gated.
+              WTFOS is a Tezos command OS: people move, objects surface, tools unlock. Pick one path, run one route, then return when the world changes.
             </ConsoleDirective>
           </ConsoleHeader>
-          <PersonaDeck data-beta-persona-role-deck aria-label="Choose a WTFOS role path">
+          <PathNowCard data-beta-product-current-path>
+            <Small>Current job</Small>
+            <h2>{commandTitle}</h2>
+            <p>{commandAction}</p>
+            <CommandMetaDeck data-beta-command-authority aria-label="Current command authority">
+              <span><b>You</b>{selectedPathLabel}</span>
+              <span><b>Can</b>{currentAccessLabel}</span>
+              <span><b>Next</b>{afterSuccessLabel}</span>
+            </CommandMetaDeck>
+            <SocialReason data-beta-social-reason>
+              <Users size={15} />
+              <span>{socialReason}</span>
+            </SocialReason>
+            <PathPulseStrip data-beta-command-pulse aria-label="People object return quick status">
+              {heroWorldPulse.map((item) => (
+                <PathPulseButton
+                  key={item.key}
+                  type="button"
+                  data-beta-command-pulse-action
+                  data-beta-command-pulse-key={item.key}
+                  onClick={() => openKnownRoute(item.route, item.access)}
+                >
+                  <b>{item.eyebrow}</b>
+                  <strong>{item.value}</strong>
+                  <span>{item.action}</span>
+                </PathPulseButton>
+              ))}
+            </PathPulseStrip>
+            <QuestStageRibbon data-beta-product-quest-ribbon aria-label={`${selectedQuestline.label} quest stages`}>
+              {questlineStages.map((stage) => (
+                <QuestStagePill
+                  key={stage.key}
+                  type="button"
+                  data-beta-product-quest-stage
+                  data-beta-product-quest-stage-key={stage.key}
+                  onClick={() => openKnownRoute(stage.route, stage.access)}
+                >
+                  <b>{stage.label}</b>
+                  <span>{stageOutcome(stage.key)}</span>
+                </QuestStagePill>
+              ))}
+            </QuestStageRibbon>
+            <PathSteps>
+              <span><strong>{proofStep.label}</strong>Proof step</span>
+              <span><strong>{returnStep.label}</strong>{resumeResult}</span>
+            </PathSteps>
+            <Actions>
+              <Primary type="button" onClick={() => openKnownRoute(primaryRoute, primaryAccess)}>{primaryCommandLabel}</Primary>
+              <Ghost type="button" onClick={() => jumpToBetaSection("beta-paths")}>Show route</Ghost>
+            </Actions>
+          </PathNowCard>
+          <PersonaDeck data-beta-persona-role-deck aria-label="Choose a WTFOS path preset">
             {BETA_PERSONAS.map((item, index) => (
               <PersonaChip
                 key={item.key}
@@ -1019,48 +1090,6 @@ export function BetaWtfos() {
               <span><b>Unlock rule</b>{selectedQuestline.roleOrPermission}</span>
             </ProgressFacts>
           </ProgressionCard>
-          <PathNowCard data-beta-product-current-path>
-            <Small>Current command</Small>
-            <h2>{currentStep.label}</h2>
-            <p>{currentStep.action}</p>
-            <PathPulseStrip data-beta-command-pulse aria-label="People object return quick status">
-              {heroWorldPulse.map((item) => (
-                <PathPulseButton
-                  key={item.key}
-                  type="button"
-                  data-beta-command-pulse-action
-                  data-beta-command-pulse-key={item.key}
-                  onClick={() => openKnownRoute(item.route, item.access)}
-                >
-                  <b>{item.eyebrow}</b>
-                  <strong>{item.value}</strong>
-                  <span>{item.action}</span>
-                </PathPulseButton>
-              ))}
-            </PathPulseStrip>
-            <QuestStageRibbon data-beta-product-quest-ribbon aria-label={`${selectedQuestline.label} quest stages`}>
-              {questlineStages.map((stage) => (
-                <QuestStagePill
-                  key={stage.key}
-                  type="button"
-                  data-beta-product-quest-stage
-                  data-beta-product-quest-stage-key={stage.key}
-                  onClick={() => openKnownRoute(stage.route, stage.access)}
-                >
-                  <b>{stage.label}</b>
-                  <span>{stageOutcome(stage.key)}</span>
-                </QuestStagePill>
-              ))}
-            </QuestStageRibbon>
-            <PathSteps>
-              <span><strong>{proofStep.label}</strong>Proof step</span>
-              <span><strong>{returnStep.label}</strong>{resumeResult}</span>
-            </PathSteps>
-            <Actions>
-              <Primary type="button" onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>{primaryCommandLabel}</Primary>
-              <Ghost type="button" onClick={() => jumpToBetaSection("beta-paths")}>Show route</Ghost>
-            </Actions>
-          </PathNowCard>
           <ConsoleLiveRail data-beta-console-live-rail aria-label="World pulse controls">
             {heroWorldPulse.map((item) => (
               <ConsoleLiveButton
@@ -1101,7 +1130,7 @@ export function BetaWtfos() {
         <HeroCopy>
           <Kicker><Compass size={16} /> System monitor</Kicker>
           <h1>WTFOS://LIVEOPS</h1>
-          <p>Role / sidequest / proof / unlock / return. Beta launches existing apps through existing gates.</p>
+          <p>People are active here: creating, collecting, building, and returning. Your move is one existing WTFOS route at a time.</p>
           <HeroWorldPulse data-beta-hero-world-pulse data-beta-hero-world-stage aria-label="Live WTFOS world pulse">
             {heroWorldPulse.map((item) => (
               <HeroWorldPulseCell
@@ -1126,9 +1155,9 @@ export function BetaWtfos() {
           </HeroWorldPulse>
           <SessionContract data-beta-session-contract aria-label="Current WTFOS beta session contract">
             <SessionContractCell>
-              <small>Role</small>
-              <strong>{sessionState}</strong>
-              <span>{persona.label}</span>
+              <small>Selected path</small>
+              <strong>{selectedPathLabel}</strong>
+              <span>{sessionState}</span>
             </SessionContractCell>
             <SessionContractCell>
               <small>Launch</small>
@@ -1141,30 +1170,6 @@ export function BetaWtfos() {
               <span>{resumeResult}</span>
             </SessionContractCell>
           </SessionContract>
-          <FirstScreenLoop data-beta-first-screen-loop data-beta-session-console aria-label="First screen playable loop">
-            <span>
-              <Small>Boot dock</Small>
-              <strong>{primaryCommandLabel}</strong>
-              <em>{selectedQuestline.sideQuest}</em>
-            </span>
-            <FirstScreenButtons>
-              <button type="button" data-beta-first-screen-loop-action onClick={() => openKnownRoute(currentStep.route, currentStep.access)}>
-                <Compass size={15} />
-                <b>{primaryCommandLabel}</b>
-                <small>{launchResult}</small>
-              </button>
-              <button type="button" data-beta-first-screen-loop-action onClick={() => openKnownRoute(featuredNowSignal.route ?? featuredNowSignal.source.route, featuredNowSignal.source.access === "public" ? "public" : "session")}>
-                <Users size={15} />
-                <b>Open people</b>
-                <small>{peopleResult}</small>
-              </button>
-              <button type="button" data-beta-first-screen-loop-action onClick={() => openKnownRoute(returnStep.route, returnStep.access)}>
-                <Bell size={15} />
-                <b>Resume later</b>
-                <small>{resumeResult}</small>
-              </button>
-            </FirstScreenButtons>
-          </FirstScreenLoop>
           <HeroSignalStrip data-beta-product-pulse aria-label="Beta product pulse">
             <HeroSignal>
               <strong>{selectedXpLevel.label}</strong>
@@ -1334,13 +1339,13 @@ export function BetaWtfos() {
         </ResearchSummary>
         <ResearchDeckBody>
           <ReviewGateBand>
-            <DesignCriticGate data-beta-design-critic-gate aria-label="Simulated design critic review score">
-              <strong>{designCriticAPlusCount}/{designCriticReviews.length} A+</strong>
-              <span>Internal simulated product checks. The default shell stays operational above.</span>
+            <DesignCriticGate data-beta-design-critic-gate aria-label="Design critic review loop status">
+              <strong>Critic loop active</strong>
+              <span>Five independent lenses stay in the lab until desktop, mobile, authority, accessibility, and liveops evidence earn A+.</span>
               <CriticStampRow>
                 {designCriticReviews.map((review) => (
-                  <CriticStamp key={review.key} data-beta-design-critic-review title={`${review.lens}: ${review.verdict}`}>
-                    <b>{review.grade}</b>
+                  <CriticStamp key={review.key} data-beta-design-critic-review title={`${review.lens}: ${review.blocker} Evidence: ${review.evidence}`}>
+                    <b>{review.status}</b>
                     <span>{review.focus}</span>
                   </CriticStamp>
                 ))}
@@ -2929,6 +2934,13 @@ function heroPulseGlyphLabel(value: string): string {
   return `${parts[0][0] ?? "W"}${parts[1][0] ?? ""}`.toUpperCase();
 }
 
+function betaAccessLabel(access: BetaAppCatalogEntry["access"], hasUser: boolean, isAdmin: boolean): string {
+  if (access === "public") return "Public route";
+  if (access === "admin") return isAdmin ? "Admin route" : "Admin locked";
+  if (access === "role") return "Role gated";
+  return hasUser ? "Signed-in route" : "Sign-in needed";
+}
+
 function personaRoleHint(key: BetaPersonaKey): string {
   switch (key) {
     case "new-tezos-user":
@@ -3138,11 +3150,14 @@ const TopBar = styled.header`
   @media (max-width: 420px) {
     padding: 8px 16px;
     button {
-      min-height: 36px;
+      min-height: 44px;
       padding-inline: 10px;
     }
+    button:first-child {
+      display: none;
+    }
     button:last-child {
-      min-width: 132px;
+      min-width: 118px;
     }
   }
 `;
@@ -3566,7 +3581,7 @@ const AttentionSignalPill = styled.button<{ $state: BetaSignalState }>`
   strong { color: var(--ink); font-size: 13px; line-height: 1.2; }
   &:focus-visible { outline: 3px solid rgba(35, 88, 214, 0.28); outline-offset: 2px; }
 `;
-const DailyReturnGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(286px, 1fr)); gap: 12px; margin-top: 12px;`;
+const DailyReturnGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(286px, 1fr)); gap: 12px; margin-top: 12px; @media (max-width: 520px) { grid-template-columns: 1fr; }`;
 const DailyReturnCard = styled.article`
   display: grid;
   align-content: start;
@@ -3580,7 +3595,7 @@ const DailyReturnCard = styled.article`
   > strong { color: var(--ink); font-size: 15px; line-height: 1.3; }
   button { width: 100%; align-self: end; }
 `;
-const PassportGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(302px, 1fr)); gap: 12px; margin-top: 12px;`;
+const PassportGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(302px, 1fr)); gap: 12px; margin-top: 12px; @media (max-width: 520px) { grid-template-columns: 1fr; }`;
 const PassportCard = styled.article`
   display: grid;
   align-content: start;
@@ -3603,7 +3618,7 @@ const PassportLead = styled.div`
   h3 { margin: 0; font-size: 20px; line-height: 1.15; }
   > strong { color: var(--ink); font-size: 15px; line-height: 1.32; overflow-wrap: anywhere; }
 `;
-const QuestlineGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 12px; margin-top: 12px;`;
+const QuestlineGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 12px; margin-top: 12px; @media (max-width: 520px) { grid-template-columns: 1fr; }`;
 const QuestlineCard = styled.article`
   display: grid;
   align-content: start;
@@ -3641,7 +3656,7 @@ const QuestStageButton = styled.button`
     em, code { grid-column: 1; }
   }
 `;
-const GovernanceGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(302px, 1fr)); gap: 12px; margin-top: 12px;`;
+const GovernanceGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(302px, 1fr)); gap: 12px; margin-top: 12px; @media (max-width: 520px) { grid-template-columns: 1fr; }`;
 const GovernanceCard = styled.article`
   display: grid;
   align-content: start;
@@ -3657,7 +3672,7 @@ const GovernanceCard = styled.article`
     min-height: 0;
   }
 `;
-const RelationshipGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(314px, 1fr)); gap: 12px; margin-top: 12px;`;
+const RelationshipGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(314px, 1fr)); gap: 12px; margin-top: 12px; @media (max-width: 520px) { grid-template-columns: 1fr; }`;
 const RelationshipCard = styled.article`
   display: grid;
   align-content: start;
@@ -3727,7 +3742,7 @@ const RelationshipStepButton = styled.button`
     grid-template-columns: 1fr;
   }
 `;
-const RouteGroupGrid = styled(RelationshipGrid)`grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));`;
+const RouteGroupGrid = styled(RelationshipGrid)`grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); @media (max-width: 520px) { grid-template-columns: 1fr; }`;
 const RouteGroupCard = styled(RelationshipCard)`
   min-height: 980px;
   border-color: rgba(0, 127, 122, 0.24);
@@ -4194,100 +4209,6 @@ const HeroWorldPulseCell = styled.button`
     em { font-size: 11px; }
   }
 `;
-const FirstScreenLoop = styled.div`
-  display: none;
-  grid-template-columns: 1fr;
-  gap: 10px;
-  align-items: stretch;
-  max-width: 760px;
-  border: 1px solid rgba(137, 242, 202, 0.24);
-  border-radius: 8px;
-  padding: 12px;
-  background:
-    linear-gradient(90deg, rgba(137, 242, 202, 0.12), transparent 64%),
-    rgba(255, 255, 255, 0.08);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 18px 36px rgba(0, 0, 0, 0.18);
-  > span {
-    display: grid;
-    gap: 3px;
-    min-width: 0;
-  }
-  strong {
-    color: #fff;
-    font-size: 26px;
-    line-height: 1.05;
-    overflow-wrap: anywhere;
-  }
-  em {
-    color: rgba(255, 255, 255, 0.72);
-    font-size: 12px;
-    line-height: 1.25;
-    font-style: normal;
-    overflow-wrap: anywhere;
-  }
-  @media (max-width: 680px) {
-    strong { font-size: 28px; }
-    em { font-size: 14px; line-height: 1.32; }
-  }
-`;
-const FirstScreenButtons = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-  button {
-    display: grid;
-    grid-template-columns: 18px minmax(0, 1fr);
-    grid-template-areas:
-      "icon label"
-      "icon state";
-    align-items: center;
-    column-gap: 7px;
-    min-height: 60px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 8px;
-    padding: 7px 9px;
-    color: #fff;
-    background: rgba(255, 255, 255, 0.075);
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-  }
-  svg { grid-area: icon; color: #89f2ca; }
-  b {
-    grid-area: label;
-    min-width: 0;
-    font-size: 13px;
-    line-height: 1;
-    font-weight: 950;
-    overflow-wrap: anywhere;
-  }
-  small {
-    grid-area: state;
-    min-width: 0;
-    color: rgba(255, 255, 255, 0.62);
-    font-size: 10px;
-    line-height: 1;
-    font-weight: 900;
-    text-transform: uppercase;
-    overflow-wrap: anywhere;
-  }
-  button:hover { border-color: rgba(137, 242, 202, 0.5); background: rgba(137, 242, 202, 0.14); }
-  button:focus-visible { outline: 3px solid rgba(137, 242, 202, 0.32); outline-offset: 2px; }
-  @media (max-width: 420px) {
-    button {
-      grid-template-columns: 18px minmax(0, 1fr);
-      grid-template-areas:
-        "icon label"
-        "icon state";
-      justify-items: start;
-      text-align: left;
-      padding-inline: 9px;
-      min-height: 60px;
-    }
-  }
-`;
 const PlayableDesk = styled.section`
   display: grid;
   gap: 14px;
@@ -4732,6 +4653,10 @@ const ProductConsole = styled.aside`
     gap: 9px;
     padding: 10px;
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+    grid-template-areas:
+      "header"
+      "path"
+      "roles";
   }
 `;
 const ConsoleHeader = styled.div`
@@ -4837,6 +4762,9 @@ const ProgressionCard = styled.article`
     linear-gradient(135deg, rgba(193, 61, 98, 0.32), transparent 48%),
     linear-gradient(315deg, rgba(188, 115, 0, 0.18), transparent 52%),
     rgba(255, 255, 255, 0.07);
+  @media (max-width: 520px) {
+    display: none;
+  }
 `;
 const ProgressLead = styled.div`
   display: grid;
@@ -5006,10 +4934,85 @@ const PathNowCard = styled.article`
     background: rgba(255, 255, 255, 0.1);
   }
   @media (max-width: 520px) {
-    padding: 11px;
-    gap: 9px;
-    h2 { font-size: 26px; line-height: 1.02; }
-    p { font-size: 13px; line-height: 1.34; }
+    padding: 10px;
+    gap: 7px;
+    h2 { font-size: 24px; line-height: 1.02; }
+    p { font-size: 12px; line-height: 1.28; }
+    ${Actions} {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.72fr);
+      gap: 7px;
+    }
+    ${Primary},
+    ${Ghost} {
+      width: 100%;
+      min-width: 0;
+      min-height: 44px;
+      padding-inline: 8px;
+      font-size: 12px;
+    }
+  }
+`;
+const CommandMetaDeck = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  span {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    border: 1px solid rgba(137, 242, 202, 0.16);
+    border-radius: 8px;
+    padding: 8px;
+    color: rgba(255, 255, 255, 0.82);
+    background: rgba(255, 255, 255, 0.07);
+    font-size: 11px;
+    line-height: 1.18;
+    font-weight: 850;
+    overflow-wrap: anywhere;
+  }
+  b {
+    color: #89f2ca;
+    font-size: 9px;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  @media (max-width: 520px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+    span:first-child { display: none; }
+    span {
+      min-height: 46px;
+      padding: 6px;
+      font-size: 10px;
+      line-height: 1.12;
+    }
+    b { font-size: 8px; }
+  }
+`;
+const SocialReason = styled.div`
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid rgba(137, 242, 202, 0.2);
+  border-radius: 8px;
+  padding: 8px 9px;
+  color: rgba(255, 255, 255, 0.78);
+  background:
+    linear-gradient(90deg, rgba(137, 242, 202, 0.12), transparent 64%),
+    rgba(255, 255, 255, 0.055);
+  font-size: 12px;
+  line-height: 1.3;
+  font-weight: 820;
+  span { min-width: 0; overflow-wrap: anywhere; }
+  svg { color: #89f2ca; }
+  @media (max-width: 520px) {
+    grid-template-columns: 18px minmax(0, 1fr);
+    padding: 7px;
+    font-size: 11px;
+    line-height: 1.2;
   }
 `;
 const PathPulseStrip = styled.div`
@@ -5062,9 +5065,9 @@ const PathPulseButton = styled.button`
   @media (max-width: 520px) {
     min-height: 54px;
     padding: 6px;
-    b { font-size: 8px; }
-    strong { font-size: 11px; }
-    span { font-size: 8px; }
+    b { font-size: 9px; line-height: 1.05; }
+    strong { font-size: 12px; }
+    span { display: none; }
   }
 `;
 const ConsoleLiveRail = styled.div`
@@ -5118,6 +5121,9 @@ const QuestStageRibbon = styled.div`
   @media (max-width: 560px) {
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 5px;
+  }
+  @media (max-width: 520px) {
+    display: none;
   }
 `;
 const QuestStagePill = styled.button`
@@ -5208,11 +5214,11 @@ const SignalTile = styled.div`
 const DesignCriticGate = styled.div`
   display: grid;
   gap: 8px;
-  border: 1px solid rgba(27, 127, 67, 0.24);
+  border: 1px solid rgba(188, 115, 0, 0.24);
   border-radius: 8px;
   padding: 10px;
-  background: #f7fcf8;
-  strong { color: var(--green); font-size: 20px; line-height: 1; }
+  background: #fffaf0;
+  strong { color: #4a3211; font-size: 20px; line-height: 1; }
   > span { color: var(--muted); font-size: 12px; line-height: 1.35; }
   @media (max-width: 520px) { display: none; }
 `;
@@ -5225,11 +5231,11 @@ const CriticStamp = styled.span`
   display: grid;
   gap: 3px;
   min-width: 0;
-  border: 1px solid rgba(27, 127, 67, 0.22);
+  border: 1px solid rgba(188, 115, 0, 0.2);
   border-radius: 8px;
   padding: 7px 5px;
   background: #fff;
-  b { color: var(--green); font-size: 13px; line-height: 1; }
+  b { color: #4a3211; font-size: 11px; line-height: 1; overflow-wrap: anywhere; }
   span { color: var(--muted); font-size: 10px; line-height: 1.15; font-weight: 900; text-transform: uppercase; overflow-wrap: anywhere; }
 `;
 const HomeActionDock = styled.section`
@@ -5520,7 +5526,7 @@ const ControlActions = styled.div`
   button { width: 100%; min-height: 38px; padding: 0 8px; font-size: 12px; }
   @media (max-width: 620px) { grid-template-columns: 1fr; }
 `;
-const Band = styled.section`padding: 34px clamp(16px, 4vw, 48px) 12px; scroll-margin-top: 86px;`;
+const Band = styled.section`padding: 34px clamp(16px, 4vw, 48px) 12px; scroll-margin-top: 86px; @media (max-width: 520px) { padding: 24px 8px 10px; }`;
 const SectionHead = styled.div`display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 480px); gap: 16px; align-items: end; p { margin: 0; color: var(--muted); line-height: 1.45; } @media (max-width: 860px) { grid-template-columns: 1fr; }`;
 const SectionSubhead = styled.div`margin-top: 24px; max-width: 980px; p { margin: 0; color: var(--muted); line-height: 1.45; }`;
 const LevelGrid = styled.div`display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;`;
@@ -5567,7 +5573,7 @@ const WorkbenchPanel = styled.section`
   padding: 16px;
   background: #fff;
 `;
-const WorkbenchGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(306px, 1fr)); gap: 12px;`;
+const WorkbenchGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(306px, 1fr)); gap: 12px; @media (max-width: 520px) { grid-template-columns: 1fr; }`;
 const WorkbenchCard = styled.article`
   display: grid;
   align-content: start;
@@ -5592,7 +5598,7 @@ const RecipePanel = styled.section`
   padding: 16px;
   background: #fff;
 `;
-const RecipeGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px;`;
+const RecipeGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; @media (max-width: 520px) { grid-template-columns: 1fr; }`;
 const RecipeCard = styled.article`
   display: grid;
   align-content: start;
