@@ -9,6 +9,7 @@ Date: 2026-06-24
 - Operating System underneath
 - The Count as the admin/liveops puppet
 - Product-home first screen with a distinctive playable-world hero, persona choice, EXP/passport/questline state, one next move, live proof, and compact route actions before audit boards
+- Icon-led role deck with level and path hints so choosing a persona feels like entering a playable system instead of selecting a form tab
 - First-screen Play/People/Return loop inside the hero so users can act before they reach the deeper desk or research deck
 - Non-button hero world pulse for people moving, fresh-object proof, and return-loop context so social visibility increases without turning mobile into a button wall
 - Playable desk immediately after the hero with current quest, proof route, return route, EXP progress, five world lanes, visible first-minute answers, and an explicit Research Deck opener

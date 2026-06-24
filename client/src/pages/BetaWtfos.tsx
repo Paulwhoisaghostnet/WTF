@@ -986,8 +986,8 @@ export function BetaWtfos() {
             <strong>{persona.label}</strong>
             <span>{persona.promise}</span>
           </ConsoleHeader>
-          <PersonaDeck>
-            {BETA_PERSONAS.map((item) => (
+          <PersonaDeck data-beta-persona-role-deck aria-label="Choose a WTFOS role path">
+            {BETA_PERSONAS.map((item, index) => (
               <PersonaChip
                 key={item.key}
                 type="button"
@@ -997,7 +997,12 @@ export function BetaWtfos() {
                 aria-pressed={item.key === personaKey}
                 onClick={() => setPersonaKey(item.key)}
               >
-                {item.label}
+                <i aria-hidden="true">{personaRoleGlyph(item.key)}</i>
+                <span>
+                  <b>{item.label}</b>
+                  <em>{personaRoleHint(item.key)}</em>
+                </span>
+                <small>Lv {index + 1}</small>
               </PersonaChip>
             ))}
           </PersonaDeck>
@@ -2755,6 +2760,40 @@ function displayHeroPeoplePulse(signal: BetaRenderedNowSignal): string {
   }
 }
 
+function personaRoleHint(key: BetaPersonaKey): string {
+  switch (key) {
+    case "new-tezos-user":
+      return "Safe start";
+    case "collector":
+      return "Object hunt";
+    case "creator":
+      return "Make path";
+    case "builder":
+      return "Ship path";
+    case "curator":
+      return "Signal path";
+    case "community-member":
+      return "Social path";
+  }
+}
+
+function personaRoleGlyph(key: BetaPersonaKey) {
+  switch (key) {
+    case "new-tezos-user":
+      return <Compass size={15} />;
+    case "collector":
+      return <Search size={15} />;
+    case "creator":
+      return <Activity size={15} />;
+    case "builder":
+      return <ShieldCheck size={15} />;
+    case "curator":
+      return <Bell size={15} />;
+    case "community-member":
+      return <Users size={15} />;
+  }
+}
+
 function displayListingName(entry: MarketplaceListing): string {
   return entry.tokenName || entry.title || entry.name || entry.sellerDisplayName || entry.sellerUsername || "Marketplace listing";
 }
@@ -4132,24 +4171,78 @@ const ProgressFacts = styled.div`
 const PersonaDeck = styled.div`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
+  gap: 8px;
   @media (max-width: 520px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   @media (max-width: 340px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 `;
 const PersonaChip = styled.button<{ $active: boolean }>`
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
   min-width: 0;
-  min-height: 42px;
-  border: 1px solid ${({ $active }) => $active ? "rgba(35, 88, 214, 0.72)" : "var(--line)"};
+  min-height: 62px;
+  border: 1px solid ${({ $active }) => $active ? "rgba(35, 88, 214, 0.84)" : "rgba(24, 22, 31, 0.12)"};
   border-radius: 8px;
-  padding: 0 9px;
-  color: ${({ $active }) => $active ? "#fff" : "var(--ink)"};
-  background: ${({ $active }) => $active ? "var(--blue)" : "#f8fafc"};
+  padding: 9px 8px;
+  color: var(--ink);
+  background: ${({ $active }) => $active
+    ? "linear-gradient(135deg, rgba(35, 88, 214, 0.98), rgba(0, 127, 122, 0.92))"
+    : "linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.9))"};
+  box-shadow: ${({ $active }) => $active ? "0 12px 28px rgba(35, 88, 214, 0.22)" : "inset 0 0 0 1px rgba(255, 255, 255, 0.72)"};
   font: inherit;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1.15;
+  text-align: left;
   cursor: pointer;
+  i {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    color: ${({ $active }) => $active ? "#fff" : "var(--teal)"};
+    background: ${({ $active }) => $active ? "rgba(255, 255, 255, 0.16)" : "rgba(0, 127, 122, 0.1)"};
+    font-style: normal;
+  }
+  span {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  b {
+    color: ${({ $active }) => $active ? "#fff" : "var(--ink)"};
+    font-size: 12px;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+  em {
+    color: ${({ $active }) => $active ? "rgba(255, 255, 255, 0.72)" : "var(--muted)"};
+    font-size: 10px;
+    line-height: 1.1;
+    font-style: normal;
+    font-weight: 850;
+    overflow-wrap: anywhere;
+  }
+  small {
+    position: absolute;
+    top: 6px;
+    right: 7px;
+    color: ${({ $active }) => $active ? "rgba(255, 255, 255, 0.76)" : "rgba(35, 88, 214, 0.82)"};
+    font-size: 9px;
+    line-height: 1;
+    font-weight: 950;
+  }
   &:focus-visible { outline: 3px solid rgba(35, 88, 214, 0.28); outline-offset: 2px; }
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    min-height: 58px;
+    gap: 5px;
+    i { width: 24px; height: 24px; }
+    b { font-size: 11px; }
+    em { font-size: 9px; }
+    small { display: none; }
+  }
 `;
 const PathNowCard = styled.article`
   display: grid;

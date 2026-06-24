@@ -5727,3 +5727,13 @@
 **Why it mattered**: New users need one obvious next move plus proof that WTFOS is inhabited. Too many start controls above the character picker split attention and make the beta feel busy before it feels purposeful.
 
 **Rule**: Keep the first beta viewport to one primary action loop. Use non-button world proof for social/activity/object/return context, and only add another action row if it owns a distinct decision that the first loop cannot cover.
+
+---
+
+## 2026-06-24 - Beta role choice should feel like choosing a path
+
+**What happened**: The beta character picker had the right six personas, but they rendered as plain rectangular tabs. The state worked, yet the first meaningful identity choice still felt like a form control instead of entering a playable WTFOS path.
+
+**Why it mattered**: The beta promise is built around roles, EXP, side quests, and unlocks. If the role selector feels generic, users can understand the words while missing the sense that WTFOS is a designed system they can progress through.
+
+**Rule**: Keep persona selection as a compact path deck with visible state, icons, level/path hints, and keyboard-safe buttons. Do not let core role choice regress to unlabeled tabs or plain form buttons.
