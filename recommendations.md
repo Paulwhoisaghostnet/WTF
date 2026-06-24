@@ -26,7 +26,7 @@ Date: 2026-06-24
 - Icon-led role deck with level and path hints so choosing a persona feels like entering a playable system instead of selecting a form tab
 - First-screen Play/People/Return loop inside the hero so users can act before they reach the deeper desk or research deck
 - Clickable live rail for people moving, fresh-object proof, and return-loop context so social visibility becomes an entry path rather than another explanation block
-- Live OS desktop immediately after the cockpit with a compact launcher dock, current quest, proof route, return route, EXP progress, people-present pulse, five world lanes, compact first-minute answers, and an explicit Admin Lab opener
+- Live OS desktop immediately after the cockpit with a compact launcher dock, current quest, proof route, return route, EXP progress, people-present pulse, five world lanes, compact OS boot readouts, and an explicit Admin Lab opener
 - Mark the current quest stage visually, and keep Notice/Act/Prove/Unlock/Return from reading like taxonomy-only labels
 - Treat separate start-card rows as a regression; launch actions should feel like dock controls or in-world objects, not documentation cards
 - Collapsible Admin Lab/Research Deck for Wayfinder, Section Compass, puppet evidence, app atlas, Count runbooks, reports, and design checks so the default beta does not become an encyclopedia
@@ -67,7 +67,7 @@ Date: 2026-06-24
 ## Improve Next
 
 1. Continue expanding proof snippets only when an existing public read can safely prove them without production writes.
-2. Keep the Research Deck closed by default; use the Section Compass inside it before adding another beta board so the page map remains understandable without taking over the human-facing product.
+2. Keep the Research Deck closed by default; use the Section Compass inside it before adding another beta board so the page map remains inspectable without taking over the operating shell.
 3. Use the People Discovery Board and People Proof Gap Matrix to decide which human role needs stronger proof before adding more notification or assistant behavior.
 4. Use the Attention Triage Board as the place to test new "what matters now?" grouping before adding any assistant behavior.
 5. Use the Count Admin Workbench before creating or promoting new sidequests, challenges, rewards, roles, market items, automation, or visibility changes.

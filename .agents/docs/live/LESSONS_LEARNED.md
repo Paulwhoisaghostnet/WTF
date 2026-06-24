@@ -1,3 +1,13 @@
+## 2026-06-24 - Beta header selectors must survive added command readouts
+
+**What happened**: Adding the compact OS directive to the beta active-window header changed which child counted as `:last-child`. The role span lost its intended grid placement, the mobile header created a zero-width second column, and the command card was pushed far down the phone viewport until visual metrics caught it.
+
+**Why it mattered**: The beta can stop reading like Wikipedia in copy while still failing as an operating surface if a small layout selector buries the active command. Mobile first-viewport proof must measure actual boxes after every header, status, or directive edit.
+
+**Rule**: Do not use fragile structural selectors such as `span:last-child` for beta command headers that may gain new readouts. Target stable child positions, components, or data attributes, then rerun mobile/narrow box metrics for directive, command, overflow, and top-bar crowding.
+
+---
+
 ## 2026-06-24 - Beta cockpit order must be source order, not only CSS order
 
 **What happened**: The beta home visually placed the active command window before the world-status rail on mobile, but the JSX still rendered the world-status panel first. A later mobile titlebar fix also put `grid-area: actions` on the shared `Actions` component, which leaked into nested action rows and caused the current-command card to auto-place into skinny implicit columns on phones.

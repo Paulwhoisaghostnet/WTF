@@ -243,14 +243,6 @@ type BetaAdminSummaryCard = {
   detail: string;
 };
 
-const answers = [
-  ["What is WTFOS?", "A social OS for Tezos art, quests, tools, and people."],
-  ["What can I do here?", "Collect, create, play, publish, earn EXP, and find active people."],
-  ["What should I do first?", "Browse art, then take one side quest."],
-  ["What should I do next?", "Pick a role and follow the highlighted route."],
-  ["Why return tomorrow?", "New activity, quests, events, rewards, and creator progress."],
-];
-
 type BetaDesignCriticReview = {
   key: string;
   lens: string;
@@ -935,6 +927,13 @@ export function BetaWtfos() {
       action: "Set return",
     },
   ];
+  const bootReadouts = [
+    { label: "OS", value: "Tezos social command OS" },
+    { label: "Run", value: "Collect / create / play / publish" },
+    { label: "First", value: selectedQuestline.sideQuest },
+    { label: "Next", value: currentStep.label },
+    { label: "Return", value: featuredReturnLoop.label },
+  ];
   const humanPulseCards = peopleDiscoveryCards
     .filter((card) => ["active-users", "creators", "collectors", "builders", "curators", "collaborators"].includes(card.source.key))
     .slice(0, 4);
@@ -976,6 +975,9 @@ export function BetaWtfos() {
             <Small>Active window</Small>
             <strong>{currentStep.label}</strong>
             <span>Role: {persona.label} · {selectedPassport.identity}</span>
+            <ConsoleDirective data-beta-os-directive>
+              WTFOS boots as a quest OS: pick a role, run one route, prove it, unlock next. XP is signal; roles stay gated.
+            </ConsoleDirective>
           </ConsoleHeader>
           <PersonaDeck data-beta-persona-role-deck aria-label="Choose a WTFOS role path">
             {BETA_PERSONAS.map((item, index) => (
@@ -1097,9 +1099,9 @@ export function BetaWtfos() {
           </SignalTicker>
         </ProductConsole>
         <HeroCopy>
-          <Kicker><Compass size={16} /> World status</Kicker>
-          <h1>WTFOS is moving.</h1>
-          <p>Existing WTFOS routes are grouped into one live command surface: quest, people, object, return.</p>
+          <Kicker><Compass size={16} /> System monitor</Kicker>
+          <h1>WTFOS://LIVEOPS</h1>
+          <p>Role / sidequest / proof / unlock / return. Beta launches existing apps through existing gates.</p>
           <HeroWorldPulse data-beta-hero-world-pulse data-beta-hero-world-stage aria-label="Live WTFOS world pulse">
             {heroWorldPulse.map((item) => (
               <HeroWorldPulseCell
@@ -1141,7 +1143,7 @@ export function BetaWtfos() {
           </SessionContract>
           <FirstScreenLoop data-beta-first-screen-loop data-beta-session-console aria-label="First screen playable loop">
             <span>
-              <Small>Command dock</Small>
+              <Small>Boot dock</Small>
               <strong>{primaryCommandLabel}</strong>
               <em>{selectedQuestline.sideQuest}</em>
             </span>
@@ -1184,8 +1186,8 @@ export function BetaWtfos() {
         <DeskHeader>
           <div>
             <Kicker><Activity size={16} /> live desktop</Kicker>
-            <h2>Choose a door.</h2>
-            <p>Quest, people, object, project, tomorrow. One move is enough.</p>
+            <h2>WTFOS BOOT DESK</h2>
+            <p>Pick one route. The existing WTFOS app takes over.</p>
           </div>
           <DeskStats aria-label="Beta desk status">
             <DeskStat data-beta-playable-stat>
@@ -1306,15 +1308,15 @@ export function BetaWtfos() {
           </WorldLaneGrid>
         </LiveDesktopFrame>
         <DeskAnswerStrip data-beta-answer-dock aria-label="60-second beta answers">
-          {answers.map(([question, answer]) => (
-            <DeskAnswer key={question} data-beta-answer>
-              <Small>{question}</Small>
-              <span>{answer}</span>
+          {bootReadouts.map((readout) => (
+            <DeskAnswer key={readout.label} data-beta-answer>
+              <Small>{readout.label}</Small>
+              <span>{readout.value}</span>
             </DeskAnswer>
           ))}
         </DeskAnswerStrip>
         <DeskFooter>
-          <span>Admin lab stays closed until proof, route maps, or Count controls are needed.</span>
+          <span>Admin lab stays sealed until route maps, puppet memory, or Count controls are needed.</span>
           <Ghost type="button" data-beta-research-open onClick={openResearchDeck}>Open admin lab</Ghost>
         </DeskFooter>
       </PlayableDesk>
@@ -1334,7 +1336,7 @@ export function BetaWtfos() {
           <ReviewGateBand>
             <DesignCriticGate data-beta-design-critic-gate aria-label="Simulated design critic review score">
               <strong>{designCriticAPlusCount}/{designCriticReviews.length} A+</strong>
-              <span>Internal simulated product checks. The user-facing work stays in the playable desk above.</span>
+              <span>Internal simulated product checks. The default shell stays operational above.</span>
               <CriticStampRow>
                 {designCriticReviews.map((review) => (
                   <CriticStamp key={review.key} data-beta-design-critic-review title={`${review.lens}: ${review.verdict}`}>
@@ -3153,6 +3155,12 @@ const Brand = styled.div`
   img { width: 36px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 8px; background: #fff; padding: 5px; }
   strong, span { display: block; }
   span { color: rgba(255, 255, 255, 0.68); font-size: 12px; font-weight: 700; }
+  @media (max-width: 420px) {
+    gap: 8px;
+    img { width: 32px; height: 32px; }
+    strong { font-size: 13px; line-height: 1.1; }
+    span { display: none; }
+  }
 `;
 const ChromeLights = styled.span`
   display: grid;
@@ -4761,7 +4769,7 @@ const ConsoleHeader = styled.div`
     line-height: 1.05;
     overflow-wrap: anywhere;
   }
-  > span:last-child {
+  > span:nth-of-type(2) {
     grid-column: 3;
     grid-row: 1 / span 2;
     justify-self: end;
@@ -4783,7 +4791,7 @@ const ConsoleHeader = styled.div`
     }
     > span:first-of-type,
     strong,
-    > span:last-child {
+    > span:nth-of-type(2) {
       grid-column: 2;
       grid-row: auto;
       justify-self: start;
@@ -4792,10 +4800,29 @@ const ConsoleHeader = styled.div`
     }
     strong { font-size: 18px; }
     > span:first-of-type,
-    > span:last-child {
+    > span:nth-of-type(2) {
       font-size: 11px;
       line-height: 1.2;
     }
+  }
+`;
+const ConsoleDirective = styled.p`
+  grid-column: 2 / -1;
+  margin: -3px 0 0;
+  max-width: 720px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  line-height: 1.28;
+  font-weight: 780;
+  overflow-wrap: anywhere;
+  @media (max-width: 520px) {
+    grid-column: 1 / -1;
+    margin-top: 2px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    max-width: none;
+    font-size: 11px;
+    line-height: 1.22;
   }
 `;
 const ProgressionCard = styled.article`
