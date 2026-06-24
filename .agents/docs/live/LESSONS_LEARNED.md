@@ -1,3 +1,13 @@
+## 2026-06-24 - Beta launchers must feel like product controls, not article cards
+
+**What happened**: The beta home had moved research behind a drawer, but the visible product pass still used stacked explanatory card rows for start actions and first-minute answers. The result could satisfy route/proof coverage while still feeling like a Wikipedia index instead of a smooth human-facing OS.
+
+**Why it mattered**: WTFOS beta must make the ecosystem feel alive before it explains the ecosystem. A user should see a current quest, other people, return hooks, and launch controls as usable objects, not read a series of panels that describe those objects.
+
+**Rule**: Keep the default beta path as a live OS desktop: compact launcher dock, active quest object, visible people pulse, proof/return routes, and a small answer strip. Long copy, maps, reports, proof gates, and admin runbooks belong in an intentional research drawer or deeper route.
+
+---
+
 ## 2026-06-24 - Beta research must be behind an intentional door
 
 **What happened**: Even after the beta home became more product-led, the page still poured Q&A, critic proof, Wayfinder, Section Compass, and audit boards directly after the hero. The result was accurate but felt like a reference encyclopedia instead of a human-facing WTFOS product.

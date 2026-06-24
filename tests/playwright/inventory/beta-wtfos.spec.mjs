@@ -47,9 +47,12 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     for (const label of ["People moving", "Fresh object", "Return hook"]) {
       await expect(page.locator("[data-beta-hero-world-pulse]")).toContainText(label);
     }
-    await expect(page.locator("[data-beta-playable-desk]")).toContainText("Pick a role, make one move");
+    await expect(page.locator("[data-beta-playable-desk]")).toContainText("Start with a person, a quest");
     await expect(page.locator("[data-beta-playable-stat]")).toHaveCount(3);
+    await expect(page.locator("[data-beta-live-desktop]")).toBeVisible();
     await expect(page.locator("[data-beta-playable-current-quest]")).toContainText("Play next move");
+    await expect(page.locator("[data-beta-human-pulse]")).toContainText("Other users are already doing things");
+    await expect(page.locator("[data-beta-human-pulse-card]")).toHaveCount(4);
     await expect(page.locator("[data-beta-world-lane]")).toHaveCount(5);
     for (const label of ["Quest", "People", "Discover", "Tomorrow", "The Count"]) {
       await expect(page.locator("[data-beta-world-lanes]")).toContainText(label);
@@ -65,7 +68,7 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
       await expect(page.locator("[data-beta-home-actions]")).toContainText(label);
     }
     await expect(page.locator('[data-beta-home-action-key="collect"]')).toContainText("Browse art");
-    await expect(page.locator('[data-beta-home-action-key="count"]')).toContainText("EXP is evidence, not authority.");
+    await expect(page.locator('[data-beta-home-action-key="count"]')).toContainText("Review admin");
     await expect(page.getByText("What is WTFOS?")).toBeVisible();
     await expect(page.getByText("What can I do here?")).toBeVisible();
     await expect(page.getByText("What should I do first?", { exact: true })).toBeVisible();

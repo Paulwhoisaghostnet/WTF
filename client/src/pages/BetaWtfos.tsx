@@ -905,6 +905,9 @@ export function BetaWtfos() {
       detail: featuredReturnLoop.question,
     },
   ];
+  const humanPulseCards = peopleDiscoveryCards
+    .filter((card) => ["active-users", "creators", "collectors", "builders", "curators", "collaborators"].includes(card.source.key))
+    .slice(0, 4);
 
   return (
     <Shell data-beta-wtfos>
@@ -926,7 +929,7 @@ export function BetaWtfos() {
         <HeroCopy>
           <Kicker><Compass size={16} /> WTFOS OS session</Kicker>
           <h1>{persona.label} session is ready.</h1>
-          <p>WTFOS is a playable Tezos world. Launch one quest, see people moving, and return when the system has new proof.</p>
+          <p>WTFOS is a playable Tezos world. One quest, visible people, and a reason to return.</p>
           <FirstScreenLoop data-beta-first-screen-loop data-beta-session-console aria-label="First screen playable loop">
             <span>
               <Small>Session command</Small>
@@ -1075,9 +1078,9 @@ export function BetaWtfos() {
       <PlayableDesk data-beta-playable-desk aria-label="Playable beta desk">
         <DeskHeader>
           <div>
-            <Kicker><Activity size={16} /> play mode</Kicker>
-            <h2>Pick a role, make one move, see the world answer.</h2>
-            <p>Beta now starts as a playable command desk. Reports, maps, and audit proof are still available, but they stay behind the research deck until someone asks for them.</p>
+            <Kicker><Activity size={16} /> live desktop</Kicker>
+            <h2>Start with a person, a quest, and a reason to come back.</h2>
+            <p>No manuals first. Pick one object in the world and move it forward.</p>
           </div>
           <DeskStats aria-label="Beta desk status">
             <DeskStat data-beta-playable-stat>
@@ -1094,7 +1097,25 @@ export function BetaWtfos() {
             </DeskStat>
           </DeskStats>
         </DeskHeader>
-        <DeskBoard>
+        <LiveDesktopFrame data-beta-live-desktop>
+          <HomeActionDock data-beta-home-actions aria-label="WTFOS launcher dock">
+            {homeActions.map((item) => (
+              <HomeActionCard
+                key={item.key}
+                type="button"
+                data-beta-home-action
+                data-beta-home-action-key={item.key}
+                data-beta-home-action-access={item.access}
+                title={item.copy}
+                onClick={() => openKnownRoute(item.route, item.access)}
+              >
+                <HomeActionGlyph aria-hidden="true">{homeActionIcon(item.key)}</HomeActionGlyph>
+                <Small>{item.eyebrow}</Small>
+                <strong>{item.title}</strong>
+                <span>{item.action}</span>
+              </HomeActionCard>
+            ))}
+          </HomeActionDock>
           <DeskQuestPanel data-beta-playable-current-quest>
             <Small>{persona.label} quest</Small>
             <h3>{currentStep.label}</h3>
@@ -1111,6 +1132,35 @@ export function BetaWtfos() {
               <Ghost type="button" onClick={() => jumpToBetaSection("beta-passports")}>Show unlocks</Ghost>
             </Actions>
           </DeskQuestPanel>
+          <HumanPulsePanel data-beta-human-pulse aria-label="People visible in WTFOS beta">
+            <PulsePanelHead>
+              <span>
+                <Small>People present</Small>
+                <strong>Other users are already doing things.</strong>
+              </span>
+              <b>{peopleDiscoveryCards.filter((card) => card.state === "Live").length}/{peopleDiscoveryCards.length}</b>
+            </PulsePanelHead>
+            <HumanPulseGrid>
+              {humanPulseCards.map((card, index) => (
+                <HumanPulseButton
+                  key={card.source.key}
+                  type="button"
+                  data-beta-human-pulse-card
+                  data-beta-human-pulse-key={card.source.key}
+                  data-beta-human-pulse-state={card.state}
+                  onClick={() => openKnownRoute(card.source.route, card.source.access)}
+                >
+                  <HumanAvatar aria-hidden="true" $index={index}>{card.source.role.slice(0, 1)}</HumanAvatar>
+                  <span>
+                    <b>{card.source.role}</b>
+                    <em>{card.value}</em>
+                  </span>
+                  <i>{card.state}</i>
+                </HumanPulseButton>
+              ))}
+            </HumanPulseGrid>
+            <Ghost type="button" onClick={() => jumpToBetaSection("beta-people")}>Open people map</Ghost>
+          </HumanPulsePanel>
           <WorldLaneGrid data-beta-world-lanes>
             {worldLanes.map((lane) => (
               <WorldLane
@@ -1132,7 +1182,7 @@ export function BetaWtfos() {
               </WorldLane>
             ))}
           </WorldLaneGrid>
-        </DeskBoard>
+        </LiveDesktopFrame>
         <DeskAnswerStrip data-beta-answer-dock aria-label="60-second beta answers">
           {answers.map(([question, answer]) => (
             <DeskAnswer key={question} data-beta-answer>
@@ -1142,29 +1192,10 @@ export function BetaWtfos() {
           ))}
         </DeskAnswerStrip>
         <DeskFooter>
-          <span>Need the map, puppet evidence, app atlas, or Count runbooks?</span>
+          <span>Research, puppet evidence, atlas, and Count runbooks stay in the drawer.</span>
           <Ghost type="button" data-beta-research-open onClick={openResearchDeck}>Open research deck</Ghost>
         </DeskFooter>
       </PlayableDesk>
-
-      <HomeActionDock data-beta-home-actions aria-label="Start actions">
-        {homeActions.map((item) => (
-          <HomeActionCard
-            key={item.key}
-            type="button"
-            data-beta-home-action
-            data-beta-home-action-key={item.key}
-            data-beta-home-action-access={item.access}
-            onClick={() => openKnownRoute(item.route, item.access)}
-          >
-            <HomeActionGlyph aria-hidden="true">{homeActionIcon(item.key)}</HomeActionGlyph>
-            <Small>{item.eyebrow}</Small>
-            <strong>{item.title}</strong>
-            <span>{item.copy}</span>
-            <em>{item.action} <ArrowRight size={14} /></em>
-          </HomeActionCard>
-        ))}
-      </HomeActionDock>
       <ResearchVault
         data-beta-research-vault
         open={researchOpen}
@@ -4012,15 +4043,33 @@ const DeskStat = styled.div`
   strong { color: var(--blue); font-size: 18px; line-height: 1.05; }
   span { margin-top: 7px; color: var(--muted); font-size: 11px; line-height: 1.25; font-weight: 900; text-transform: uppercase; }
 `;
-const DeskBoard = styled.div`
+const LiveDesktopFrame = styled.div`
   display: grid;
-  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+  grid-template-columns: 112px minmax(280px, 0.82fr) minmax(0, 1.18fr);
+  grid-template-areas:
+    "dock quest people"
+    "dock quest lanes";
   gap: 12px;
+  min-width: 0;
+  border: 1px solid rgba(18, 18, 23, 0.1);
+  border-radius: 8px;
+  padding: 10px;
+  background:
+    linear-gradient(180deg, rgba(18, 18, 23, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(18, 18, 23, 0.045) 1px, transparent 1px),
+    rgba(245, 247, 250, 0.88);
+  background-size: 30px 30px;
   @media (max-width: 980px) {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "dock"
+      "quest"
+      "people"
+      "lanes";
   }
 `;
 const DeskQuestPanel = styled.article`
+  grid-area: quest;
   display: grid;
   align-content: start;
   gap: 12px;
@@ -4066,7 +4115,113 @@ const DeskQuestMeta = styled.div`
     grid-template-columns: 1fr;
   }
 `;
+const HumanPulsePanel = styled.article`
+  grid-area: people;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+  border: 1px solid rgba(0, 127, 122, 0.22);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(137, 242, 202, 0.2), transparent 34%),
+    #fff;
+  > button {
+    justify-self: start;
+    min-height: 36px;
+    padding-inline: 11px;
+  }
+`;
+const PulsePanelHead = styled.div`
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  strong {
+    display: block;
+    margin-top: 2px;
+    color: var(--ink);
+    font-size: 18px;
+    line-height: 1.12;
+    overflow-wrap: anywhere;
+  }
+  b {
+    display: grid;
+    place-items: center;
+    min-width: 46px;
+    height: 34px;
+    border: 1px solid rgba(0, 127, 122, 0.2);
+    border-radius: 999px;
+    color: var(--teal);
+    background: #f2fbf9;
+    font-size: 13px;
+    line-height: 1;
+  }
+`;
+const HumanPulseGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  @media (max-width: 520px) { grid-template-columns: 1fr; }
+`;
+const HumanPulseButton = styled.button`
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  min-height: 66px;
+  border: 1px solid rgba(18, 18, 23, 0.12);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.86);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  span {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+  }
+  b { color: var(--ink); font-size: 13px; line-height: 1.12; overflow-wrap: anywhere; }
+  em { color: var(--muted); font-size: 11px; line-height: 1.18; font-style: normal; font-weight: 800; overflow-wrap: anywhere; }
+  i {
+    color: var(--blue);
+    font-size: 9px;
+    line-height: 1;
+    font-style: normal;
+    font-weight: 950;
+    text-transform: uppercase;
+  }
+  &:hover { border-color: rgba(0, 127, 122, 0.38); background: #f8fffd; }
+  &:focus-visible { outline: 3px solid rgba(0, 127, 122, 0.25); outline-offset: 2px; }
+  @media (max-width: 420px) {
+    grid-template-columns: 34px minmax(0, 1fr);
+    i { display: none; }
+  }
+`;
+const HumanAvatar = styled.span<{ $index: number }>`
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: #fff;
+  background: ${({ $index }) => [
+    "linear-gradient(135deg, var(--rose), var(--blue))",
+    "linear-gradient(135deg, var(--teal), var(--blue))",
+    "linear-gradient(135deg, var(--amber), var(--rose))",
+    "linear-gradient(135deg, #2b6b42, var(--teal))",
+  ][$index % 4]};
+  font-size: 14px;
+  font-weight: 950;
+  text-transform: uppercase;
+`;
 const WorldLaneGrid = styled.div`
+  grid-area: lanes;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
@@ -4082,7 +4237,7 @@ const WorldLane = styled.button`
   align-content: start;
   gap: 8px;
   min-width: 0;
-  min-height: 206px;
+  min-height: 168px;
   border: 1px solid rgba(18, 18, 23, 0.12);
   border-radius: 8px;
   padding: 12px;
@@ -4105,7 +4260,7 @@ const WorldLane = styled.button`
   svg { color: var(--teal); flex: 0 0 auto; }
   strong { color: var(--ink); font-size: 18px; line-height: 1.12; overflow-wrap: anywhere; }
   em { color: var(--blue); font-size: 13px; line-height: 1.24; font-style: normal; font-weight: 900; overflow-wrap: anywhere; }
-  small { color: var(--muted); font-size: 12px; line-height: 1.36; overflow-wrap: anywhere; }
+  small { color: var(--muted); font-size: 11px; line-height: 1.28; overflow-wrap: anywhere; }
   i {
     display: inline-flex;
     align-items: center;
@@ -4127,24 +4282,24 @@ const WorldLane = styled.button`
 `;
 const DeskAnswerStrip = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 8px;
-  @media (max-width: 680px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  @media (max-width: 820px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   @media (max-width: 360px) { grid-template-columns: 1fr; }
 `;
 const DeskAnswer = styled.div`
   display: grid;
   gap: 4px;
   min-width: 0;
-  min-height: 74px;
+  min-height: 58px;
   border: 1px solid rgba(40, 88, 217, 0.14);
   border-radius: 8px;
-  padding: 10px 11px;
+  padding: 8px 9px;
   background: rgba(255, 255, 255, 0.76);
   span:last-child {
     color: var(--ink);
-    font-size: 13px;
-    line-height: 1.35;
+    font-size: 12px;
+    line-height: 1.25;
     overflow-wrap: anywhere;
   }
 `;
@@ -4166,6 +4321,11 @@ const ProductConsole = styled.aside`
   position: relative;
   overflow: hidden;
   display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  grid-template-areas:
+    "header header"
+    "roles roles"
+    "progress path";
   align-content: start;
   gap: 12px;
   min-width: 0;
@@ -4195,8 +4355,17 @@ const ProductConsole = styled.aside`
     position: relative;
     z-index: 1;
   }
+  @media (max-width: 1120px) {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "roles"
+      "progress"
+      "path";
+  }
 `;
 const ConsoleHeader = styled.div`
+  grid-area: header;
   display: grid;
   gap: 5px;
   strong {
@@ -4212,6 +4381,7 @@ const ConsoleHeader = styled.div`
   }
 `;
 const ProgressionCard = styled.article`
+  grid-area: progress;
   display: grid;
   gap: 10px;
   min-width: 0;
@@ -4262,7 +4432,7 @@ const ProgressTrack = styled.div`
   }
 `;
 const ProgressFacts = styled.div`
-  display: grid;
+  display: none;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 7px;
   span {
@@ -4282,6 +4452,7 @@ const ProgressFacts = styled.div`
   @media (max-width: 520px) { display: none; }
 `;
 const PersonaDeck = styled.div`
+  grid-area: roles;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
@@ -4358,6 +4529,7 @@ const PersonaChip = styled.button<{ $active: boolean }>`
   }
 `;
 const PathNowCard = styled.article`
+  grid-area: path;
   display: grid;
   gap: 10px;
   min-width: 0;
@@ -4410,7 +4582,7 @@ const QuestStagePill = styled.button`
   text-align: left;
   cursor: pointer;
   b { color: #89f2ca; font-size: 12px; line-height: 1.1; }
-  span { color: rgba(255, 255, 255, 0.56); font-size: 10px; line-height: 1.15; overflow-wrap: anywhere; }
+  span { display: none; color: rgba(255, 255, 255, 0.56); font-size: 10px; line-height: 1.15; overflow-wrap: anywhere; }
   &:hover { border-color: rgba(137, 242, 202, 0.52); background: rgba(137, 242, 202, 0.12); }
   &:focus-visible { outline: 3px solid rgba(0, 129, 111, 0.26); outline-offset: 2px; }
   @media (max-width: 560px) {
@@ -4421,7 +4593,7 @@ const QuestStagePill = styled.button`
   }
 `;
 const PathSteps = styled.div`
-  display: grid;
+  display: none;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   span {
@@ -4444,7 +4616,8 @@ const PathSteps = styled.div`
   }
 `;
 const SignalTicker = styled.div`
-  display: grid;
+  grid-area: ticker;
+  display: none;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   @media (max-width: 520px) { display: none; }
@@ -4489,13 +4662,22 @@ const CriticStamp = styled.span`
   span { color: var(--muted); font-size: 10px; line-height: 1.15; font-weight: 900; text-transform: uppercase; overflow-wrap: anywhere; }
 `;
 const HomeActionDock = styled.section`
+  grid-area: dock;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-  padding: 0 clamp(16px, 4vw, 48px) 14px;
-  @media (max-width: 1180px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  @media (max-width: 680px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  @media (max-width: 360px) { grid-template-columns: 1fr; }
+  grid-template-columns: 1fr;
+  gap: 7px;
+  align-content: start;
+  min-width: 0;
+  border: 1px solid rgba(18, 18, 23, 0.12);
+  border-radius: 8px;
+  padding: 7px;
+  background: rgba(255, 255, 255, 0.74);
+  @media (max-width: 980px) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  @media (max-width: 680px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 `;
 const ReviewGateBand = styled.section`
   padding: 0 clamp(16px, 4vw, 48px) 10px;
@@ -4562,46 +4744,38 @@ const ResearchDeckBody = styled.div`
 `;
 const HomeActionCard = styled.button`
   display: grid;
-  align-content: start;
-  gap: 8px;
+  justify-items: center;
+  align-content: center;
+  gap: 5px;
   min-width: 0;
-  min-height: 180px;
+  min-height: 84px;
   border: 1px solid rgba(35, 88, 214, 0.18);
   border-radius: 8px;
-  padding: 13px;
+  padding: 8px 6px;
   color: var(--ink);
   background: #fff;
   font: inherit;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   svg { color: var(--teal); }
-  strong { font-size: 18px; line-height: 1.12; overflow-wrap: anywhere; }
-  span { color: var(--muted); font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; }
-  em {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    align-self: end;
-    color: var(--blue);
-    font-size: 12px;
-    line-height: 1.2;
-    font-style: normal;
-    font-weight: 950;
-  }
+  > span:nth-of-type(2) { color: var(--rose); font-size: 9px; line-height: 1; }
+  strong { font-size: 11px; line-height: 1.08; overflow-wrap: anywhere; }
+  > span:last-child { color: var(--blue); font-size: 10px; line-height: 1.12; font-weight: 950; overflow-wrap: anywhere; }
   &:hover { border-color: rgba(35, 88, 214, 0.46); background: #f8fbff; }
   &:focus-visible { outline: 3px solid rgba(35, 88, 214, 0.28); outline-offset: 2px; }
-  @media (max-width: 680px) {
-    min-height: 154px;
-    padding: 11px;
-    strong { font-size: 15px; }
-    span { font-size: 12px; }
+  @media (max-width: 980px) {
+    min-height: 76px;
+  }
+  @media (max-width: 420px) {
+    min-height: 70px;
+    > span:nth-of-type(2) { display: none; }
   }
 `;
 const HomeActionGlyph = styled.span`
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border: 1px solid rgba(0, 127, 122, 0.22);
   border-radius: 8px;
   background: #f2fbf9;
