@@ -889,7 +889,7 @@ export function BetaWtfos() {
     {
       key: "people",
       eyebrow: "People moving",
-      value: featuredPeopleSignal.value,
+      value: displayHeroPeoplePulse(featuredPeopleSignal),
       detail: featuredPeopleSignal.source.label,
     },
     {
@@ -2736,6 +2736,23 @@ function displayLeaderboardName(entry: LeaderboardEntry): string {
 
 function displayUserName(entry: { displayName?: string | null; username?: string | null }): string {
   return entry.displayName || entry.username || "WTFOS user";
+}
+
+function displayHeroPeoplePulse(signal: BetaRenderedNowSignal): string {
+  switch (signal.source.key) {
+    case "xp-leaders":
+      return "EXP leader active";
+    case "reward-earners":
+      return "Reward earner active";
+    case "live-room":
+      return "Live room available";
+    case "arcade-recent":
+      return "Recent play posted";
+    case "profile-activity":
+      return signal.value.length > 30 ? "Profile activity" : signal.value;
+    default:
+      return signal.value.length > 30 ? signal.source.label : signal.value;
+  }
 }
 
 function displayListingName(entry: MarketplaceListing): string {
