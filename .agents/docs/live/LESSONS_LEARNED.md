@@ -5827,3 +5827,13 @@
 **Why it mattered**: New users need to understand what a command does without parsing internal route names. The beta mission permits better navigation and grouping, not exposing implementation details as the primary UX. A bright report-like section after the hero also makes the experience snap back into a page instead of a continuous product shell.
 
 **Rule**: Keep route paths available only where route maps, audits, or research decks explicitly need them. In the active first viewport, desktop, and mobile command surfaces, translate route destinations into human product outcomes such as Quest board, Live users, Catch-up feed, proof step, and return state. Keep the post-hero desk visually inside the OS workspace unless it is clearly framed as an app window.
+
+---
+
+## 2026-06-25 - Fullscreen shells need their own scroll and least-gated launches
+
+**What happened**: The Gamma arcade shell rendered lower app cabinets in the DOM, but the fullscreen route did not give the shell its own vertical scroll container. Playwright and puppet reviewers could see the cabinets in snapshots yet could not click lower controls at normal desktop/mobile heights. The first Gamma communication links also targeted owner/gated surfaces (`/live`, `/skywire`) instead of the public room and standalone Skywire routes.
+
+**Why it mattered**: A shell can look complete while trapping critical navigation offscreen or behind avoidable gates. That violates the beta/gamma rule: improve discovery and routing around existing apps without changing app logic or misleading users into dead ends.
+
+**Rule**: Fullscreen UI shells must own reachable vertical scrolling, and launch routes should target the least-gated existing surface that satisfies the user intent. For communications, prefer public/standalone room surfaces when the goal is discovery; leave admin/owner surfaces as deeper actions.

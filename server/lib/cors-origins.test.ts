@@ -14,7 +14,7 @@ describe("CORS origin resolution", () => {
     assert.equal(normalizeOrigin("not a url"), null);
   });
 
-  it("includes the standalone Skywire, beta, colleKT, and dues module origins plus legacy aliases", () => {
+  it("includes the standalone Skywire, gamma, beta, colleKT, and dues module origins plus legacy aliases", () => {
     const origins = allowedOriginsForRuntime({
       NODE_ENV: "production",
       PUBLIC_SITE_URL: "https://wtfgameshow.app",
@@ -25,6 +25,7 @@ describe("CORS origin resolution", () => {
 
     assert.equal(origins.has("https://wtfos.app"), true);
     assert.equal(origins.has("https://skywire.wtfos.app"), true);
+    assert.equal(origins.has("https://gamma.wtfos.app"), true);
     assert.equal(origins.has("https://beta.wtfos.app"), true);
     assert.equal(origins.has("https://wtfgameshow.app"), true);
     assert.equal(origins.has("https://collekt.wtfos.app"), true);
