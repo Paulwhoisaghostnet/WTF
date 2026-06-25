@@ -1,3 +1,23 @@
+## 2026-06-25 - Gamma vote boards need unique actor labels
+
+**What happened**: Expanding the Gamma wallet puppet approval board from 5 to 12 actors introduced duplicate Playwright test titles for repeated personas such as witness and contestant. The suite failed during collection before any route proof could run.
+
+**Why it mattered**: A 12/12 approval gate must prove distinct wallet-backed voters, not collapsed role classes. Duplicate titles make the evidence ambiguous and can block the exact consensus check the stricter beta gate needs.
+
+**Rule**: When live puppet specs use cohorts with repeated roles or personas, include a stable actor id or username in each test title and assert both the expected board size and unique actor count before running browser actions.
+
+---
+
+## 2026-06-25 - Use the bundled Node runtime for Rolldown builds
+
+**What happened**: Running the Vite build with the Mac system Node hit a native Rolldown binding load failure caused by a local code-signing/team-id mismatch. The same build passed with the workspace bundled Codex Node runtime.
+
+**Why it mattered**: Gamma and beta rendered-bundle proof depends on a fresh Vite build. A host Node/native-binding mismatch can look like a product build break even when the source is valid.
+
+**Rule**: For this repo's Vite/Rolldown verification, use the workspace bundled Node runtime path reported by `load_workspace_dependencies` unless the repo explicitly pins another working runtime.
+
+---
+
 ## 2026-06-24 - Beta source-order fixes need a fresh harness bundle
 
 **What happened**: After moving the beta current-command window ahead of the path selector in JSX, the first Playwright rerun still validated the previous `dist/public` bundle and reported the old source/focus order.

@@ -20,9 +20,39 @@ const GAMMA_BOARD = [
     routes: ["/gallery", "/marketplace", "/arcade", "/leaderboard"],
   },
   {
+    actorId: "elmo",
+    persona: "witness",
+    routes: ["/gallery", "/leaderboard", "/w", "/live/r/wtf-live"],
+  },
+  {
+    actorId: "bigbird",
+    persona: "host",
+    routes: ["/w", "/wim", "/live/r/wtf-live", "/skywire?standalone=1"],
+  },
+  {
+    actorId: "thecount",
+    persona: "admin Count",
+    routes: ["/admin", "/side-quests", "/challenges", "/leaderboard"],
+  },
+  {
+    actorId: "snuffaluffagus",
+    persona: "cohost",
+    routes: ["/side-quests", "/challenges", "/w", "/live/r/wtf-live"],
+  },
+  {
+    actorId: "grover",
+    persona: "resident wizard",
+    routes: ["/gallery", "/arcade", "/w", "/leaderboard"],
+  },
+  {
     actorId: "cookiemonster",
     persona: "creator",
     routes: ["/studio", "/tools/broot", "/tools/macaroni", "/ipfs-pinning"],
+  },
+  {
+    actorId: "oscar",
+    persona: "witness",
+    routes: ["/gallery", "/tools/broot", "/wim", "/leaderboard"],
   },
   {
     actorId: "abbycadabby",
@@ -30,9 +60,14 @@ const GAMMA_BOARD = [
     routes: ["/w", "/wim", "/live/r/wtf-live", "/skywire?standalone=1"],
   },
   {
-    actorId: "thecount",
-    persona: "admin Count",
-    routes: ["/admin", "/side-quests", "/challenges", "/leaderboard"],
+    actorId: "zoe",
+    persona: "contestant",
+    routes: ["/gallery", "/arcade", "/w", "/leaderboard"],
+  },
+  {
+    actorId: "rosita",
+    persona: "contestant",
+    routes: ["/gallery", "/marketplace", "/live/r/wtf-live", "/leaderboard"],
   },
 ];
 
@@ -113,16 +148,18 @@ function pathnamePattern(route) {
   return new RegExp(`${route.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[?#])`);
 }
 
-test.describe("Gamma wallet puppet board", () => {
+test.describe("Gamma 12/12 wallet puppet approval board", () => {
   test.setTimeout(180_000);
 
   test.beforeAll(async () => {
     puppetCredentials = await readPuppetCredentials();
     await mkdir(authCacheDir, { recursive: true });
+    expect(GAMMA_BOARD).toHaveLength(12);
+    expect(new Set(GAMMA_BOARD.map((member) => member.actorId)).size).toBe(12);
   });
 
   for (const boardMember of GAMMA_BOARD) {
-    test(`${boardMember.persona} wallet puppet can launch Gamma stations`, async ({
+    test(`${boardMember.actorId} ${boardMember.persona} wallet puppet votes APPROVE by launching Gamma stations`, async ({
       playwright,
       browser,
       baseURL,
