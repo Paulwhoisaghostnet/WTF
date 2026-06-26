@@ -1,7 +1,7 @@
-import { useMemo, type CSSProperties } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import styled, { createGlobalStyle, keyframes } from "styled-components";
+import styled, { createGlobalStyle } from "styled-components";
 import {
   Crown,
   Gamepad2,
@@ -275,20 +275,19 @@ export function GammaWtfos() {
       data-gamma-wtfos
       data-gamma-style-contract
       data-color-budget="5"
-      data-gradient-budget="1"
-      data-gradient-stops="2"
-      data-hard-lines="0"
-      data-theme="tezos-dark"
+      data-gradient-budget="0"
+      data-hard-lines="thin-operational"
+      data-radius-max="6"
+      data-theme="gamma-editorial-os"
     >
       <GammaResponsiveStyle />
-      <GammaAtmosphere aria-hidden="true" />
       <GammaFrame>
         <TopStrip data-gamma-top-strip>
           <BrandLockup>
             <SignalDot />
             <div>
               <Kicker>WTFOS.GAMMA</Kicker>
-              <BrandTitle>WTFOS</BrandTitle>
+              <BrandTitle data-gamma-wordmark>WTFOS</BrandTitle>
             </div>
           </BrandLockup>
           <IdentityCluster>
@@ -311,6 +310,12 @@ export function GammaWtfos() {
               WTFOS is a live Tezos workspace where creation tools, galleries, arcade projects,
               rewards, roles, and conversation share the same floor.
             </HeroCopy>
+            <HeroLiveLine data-gamma-live-summary>
+              <i aria-hidden="true" />
+              <span>{peers.slice(0, 5).length} visible people</span>
+              <span>rooms open</span>
+              <span>XP moving</span>
+            </HeroLiveLine>
             <HeroArcadeStrip data-gamma-hero-arcade>
               {["Studio", "Broot", "Gallery", "Arcade", "WIM", "LIVE"].map((label) => (
                 <span key={label}>{label}</span>
@@ -353,7 +358,6 @@ export function GammaWtfos() {
                 onClick={() => handleLaunch(peer.route)}
                 data-gamma-peer
                 data-gamma-launch={peer.route}
-                style={{ "--orbit-delay": `${index * 0.4}s` } as CSSProperties}
               >
                 <span>{peer.name}</span>
                 <small>{peer.motion}</small>
@@ -490,22 +494,14 @@ export function GammaWtfos() {
   );
 }
 
-const drift = keyframes`
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(2rem, -1rem, 0) scale(1.03); }
-`;
-
-const float = keyframes`
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-0.7rem); }
-`;
-
 const GammaShell = styled.main`
-  --gamma-ink: #050712;
-  --gamma-panel: #10162f;
-  --gamma-tez: #2c7df7;
+  --gamma-ink: #070706;
+  --gamma-panel: #11110f;
+  --gamma-milk: #f2ead9;
   --gamma-cyan: #00d2ff;
-  --gamma-milk: #f4f8ff;
+  --gamma-live: #d6ff3f;
+  --gamma-line: color-mix(in srgb, var(--gamma-milk) 18%, transparent);
+  --gamma-muted: color-mix(in srgb, var(--gamma-milk) 68%, transparent);
   height: 100svh;
   min-height: 100svh;
   overflow-x: clip;
@@ -513,44 +509,35 @@ const GammaShell = styled.main`
   position: relative;
   background: var(--gamma-ink);
   color: var(--gamma-milk);
-  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
 
-  button {
+  :where(button) {
     all: unset;
     min-height: 2.75rem;
     cursor: pointer;
   }
 
-  button:focus-visible {
+  :where(button):focus-visible {
     outline: 2px solid var(--gamma-cyan);
     outline-offset: 0.35rem;
   }
 `;
 
-const GammaAtmosphere = styled.div`
-  position: fixed;
-  inset: -18% -10% 45% -10%;
-  pointer-events: none;
-  background: linear-gradient(120deg, var(--gamma-tez), var(--gamma-cyan));
-  opacity: 0.16;
-  filter: blur(5rem);
-  animation: ${drift} 13s ease-in-out infinite;
-`;
-
 const GammaFrame = styled.div`
   position: relative;
-  width: min(92rem, calc(100% - 2rem));
+  width: min(88rem, calc(100% - 2rem));
   margin: 0 auto;
-  padding: 1.25rem 0 4rem;
+  padding: 1rem 0 3.5rem;
 `;
 
 const TopStrip = styled.header`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 4.5rem;
+  min-height: 4rem;
   gap: 1rem;
+  border-bottom: 1px solid var(--gamma-line);
 `;
 
 const BrandLockup = styled.div`
@@ -560,21 +547,23 @@ const BrandLockup = styled.div`
 `;
 
 const SignalDot = styled.span`
-  width: 1.1rem;
-  height: 1.1rem;
-  background: var(--gamma-cyan);
+  width: 0.72rem;
+  height: 0.72rem;
+  background: var(--gamma-live);
   transform: rotate(45deg);
 `;
 
 const Kicker = styled.div`
   color: var(--gamma-cyan);
   font-size: 0.75rem;
+  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
   text-transform: uppercase;
 `;
 
 const BrandTitle = styled.div`
   color: var(--gamma-milk);
-  font-size: 1.35rem;
+  font-family: var(--wtf-pixel-font, "Pixelify Sans", var(--wtf-mono-font, ui-monospace, monospace));
+  font-size: 1rem;
   font-weight: 900;
 `;
 
@@ -597,11 +586,11 @@ const GhostButton = styled.button`
 
 const HeroGrid = styled.section`
   display: grid;
-  grid-template-columns: minmax(0, 1.02fr) minmax(20rem, 0.98fr);
+  grid-template-columns: minmax(0, 1.08fr) minmax(22rem, 0.92fr);
   align-items: center;
-  gap: 4rem;
-  min-height: calc(76svh - 5rem);
-  padding: 2.5rem 0 4.5rem;
+  gap: 3rem;
+  min-height: calc(65svh - 4rem);
+  padding: 2.25rem 0 3rem;
 `;
 
 const HeroStatement = styled.div`
@@ -610,16 +599,18 @@ const HeroStatement = styled.div`
   h1 {
     margin: 0;
     color: var(--gamma-milk);
-    font-size: 4.9rem;
-    line-height: 0.92;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 4.35rem;
+    line-height: 0.98;
     letter-spacing: 0;
-    font-weight: 950;
+    font-weight: 850;
   }
 `;
 
 const HeroEyebrow = styled.div`
   color: var(--gamma-cyan);
   font-size: 0.9rem;
+  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
   text-transform: uppercase;
   margin-bottom: 1.1rem;
 `;
@@ -627,10 +618,28 @@ const HeroEyebrow = styled.div`
 const HeroCopy = styled.p`
   max-width: 39rem;
   margin: 1.35rem 0 0;
-  color: var(--gamma-milk);
-  opacity: 0.78;
+  color: var(--gamma-muted);
   font-size: 1.08rem;
   line-height: 1.65;
+`;
+
+const HeroLiveLine = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.8rem;
+  margin-top: 1rem;
+  color: var(--gamma-muted);
+  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+
+  i {
+    width: 0.5rem;
+    height: 0.5rem;
+    background: var(--gamma-live);
+    transform: rotate(45deg);
+  }
 `;
 
 const HeroCommands = styled.div`
@@ -646,8 +655,10 @@ const CommandButton = styled.button`
   gap: 0.7rem;
   color: var(--gamma-milk);
   font-size: 1rem;
-  font-weight: 850;
-  padding: 0.35rem 0;
+  font-weight: 780;
+  padding: 0.62rem 0.85rem;
+  border: 1px solid var(--gamma-line);
+  border-radius: 4px;
 
   svg {
     color: var(--gamma-cyan);
@@ -661,85 +672,76 @@ const CommandButton = styled.button`
 const HeroArcadeStrip = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem 1.45rem;
+  gap: 0.55rem;
   margin-top: 1.55rem;
-  color: var(--gamma-tez);
-  font-size: 1rem;
-  font-weight: 900;
+  color: var(--gamma-muted);
+  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.82rem;
+  font-weight: 800;
   text-transform: uppercase;
 
   span {
-    color: var(--gamma-tez);
+    color: var(--gamma-muted);
+    border: 1px solid var(--gamma-line);
+    border-radius: 3px;
+    padding: 0.32rem 0.45rem;
+  }
+
+  span:last-child {
+    color: var(--gamma-live);
   }
 `;
 
 const PeerOrbit = styled.div`
-  min-height: 23rem;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  grid-template-rows: repeat(5, 4.3rem);
-  align-items: center;
+  gap: 0;
+  border: 1px solid var(--gamma-line);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--gamma-panel) 86%, var(--gamma-ink));
 `;
 
 const PeerSignal = styled.button`
-  display: flex;
-  flex-direction: column;
-  gap: 0.28rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 1rem;
+  row-gap: 0.18rem;
   min-width: 0;
+  min-height: 4.65rem;
   color: var(--gamma-milk);
+  padding: 0.75rem 0.9rem;
   overflow-wrap: anywhere;
-  animation: ${float} 5.5s ease-in-out infinite;
-  animation-delay: var(--orbit-delay);
+  border-bottom: 1px solid var(--gamma-line);
 
   span {
     color: var(--gamma-cyan);
-    font-size: 0.94rem;
-    font-weight: 850;
+    font-size: 1rem;
+    font-weight: 780;
   }
 
   small {
-    color: var(--gamma-milk);
-    opacity: 0.72;
-    font-size: 0.76rem;
+    grid-column: 1 / -1;
+    color: var(--gamma-muted);
+    font-size: 0.86rem;
   }
 
   b {
-    color: var(--gamma-tez);
+    color: var(--gamma-cyan);
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
     font-size: 0.72rem;
     font-weight: 900;
     text-transform: uppercase;
   }
 
-  &:nth-child(1) {
-    grid-column: 1 / 4;
-    grid-row: 1;
-  }
-
-  &:nth-child(2) {
-    grid-column: 4 / 7;
-    grid-row: 2;
-  }
-
-  &:nth-child(3) {
-    grid-column: 2 / 5;
-    grid-row: 3;
-  }
-
-  &:nth-child(4) {
-    grid-column: 4 / 7;
-    grid-row: 4;
-  }
-
-  &:nth-child(5) {
-    grid-column: 1 / 4;
-    grid-row: 5;
+  &:last-child {
+    border-bottom: 0;
   }
 `;
 
 const ArcadeFloor = styled.section`
   display: grid;
-  gap: 5rem;
-  padding: 0 0 5rem;
+  gap: 2.25rem;
+  padding: 0 0 3rem;
 `;
 
 const ArcadeLane = styled.section`
@@ -762,6 +764,7 @@ const LaneHeader = styled.div`
   small {
     color: var(--gamma-cyan);
     font-size: 0.82rem;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
     text-transform: uppercase;
   }
 `;
@@ -773,12 +776,16 @@ const StationRibbon = styled.div`
 `;
 
 const StationButton = styled.button`
-  min-height: 10rem;
+  min-height: 9.2rem;
   min-width: 0;
   display: grid;
   align-content: start;
   gap: 0.62rem;
   color: var(--gamma-milk);
+  padding: 0.9rem;
+  border: 1px solid var(--gamma-line);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--gamma-panel) 72%, var(--gamma-ink));
   overflow-wrap: anywhere;
 
   svg {
@@ -786,19 +793,19 @@ const StationButton = styled.button`
   }
 
   span {
-    font-size: 1.55rem;
-    font-weight: 950;
+    font-size: 1.28rem;
+    font-weight: 820;
   }
 
   small {
-    color: var(--gamma-milk);
-    opacity: 0.68;
+    color: var(--gamma-muted);
     font-size: 0.9rem;
     line-height: 1.45;
   }
 
   b {
-    color: var(--gamma-tez);
+    color: var(--gamma-cyan);
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
     font-size: 0.72rem;
     text-transform: uppercase;
   }
@@ -811,14 +818,18 @@ const StationButton = styled.button`
 const LowerBand = styled.section`
   display: grid;
   grid-template-columns: 1.1fr 0.9fr 0.78fr;
-  gap: 4rem;
+  gap: 1rem;
   align-items: start;
-  padding: 4rem 0 1rem;
+  padding: 1.25rem 0 1rem;
 `;
 
 const ProgressionVeil = styled.div`
   display: grid;
   gap: 1rem;
+  min-height: 100%;
+  padding: 1rem;
+  border: 1px solid var(--gamma-line);
+  border-radius: 6px;
 
   div {
     display: grid;
@@ -828,6 +839,7 @@ const ProgressionVeil = styled.div`
   span {
     color: var(--gamma-cyan);
     font-size: 0.85rem;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
     text-transform: uppercase;
   }
 
@@ -840,8 +852,7 @@ const ProgressionVeil = styled.div`
   p {
     max-width: 32rem;
     margin: 0;
-    color: var(--gamma-milk);
-    opacity: 0.72;
+    color: var(--gamma-muted);
     line-height: 1.65;
   }
 `;
@@ -850,14 +861,17 @@ const VeilPulse = styled.i`
   display: block;
   width: 7.5rem;
   height: 0.72rem;
-  background: var(--gamma-tez);
+  background: var(--gamma-cyan);
   transform: skewX(-22deg);
-  animation: ${float} 4s ease-in-out infinite;
 `;
 
 const CommsSpine = styled.div`
   display: grid;
   gap: 1.2rem;
+  min-height: 100%;
+  padding: 1rem;
+  border: 1px solid var(--gamma-line);
+  border-radius: 6px;
 `;
 
 const SpineHeader = styled.div`
@@ -882,15 +896,17 @@ const PeerLine = styled.div`
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--gamma-line);
 
   button {
     color: var(--gamma-cyan);
-    font-weight: 850;
+    font-weight: 780;
   }
 
   span {
-    color: var(--gamma-milk);
-    opacity: 0.7;
+    color: var(--gamma-muted);
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
     font-size: 0.82rem;
     text-transform: uppercase;
   }
@@ -899,6 +915,10 @@ const PeerLine = styled.div`
 const CountBooth = styled.aside`
   display: grid;
   gap: 1.1rem;
+  min-height: 100%;
+  padding: 1rem;
+  border: 1px solid var(--gamma-line);
+  border-radius: 6px;
 `;
 
 const CountButton = styled.button`
@@ -909,6 +929,8 @@ const CountButton = styled.button`
   row-gap: 0.12rem;
   min-width: 0;
   color: var(--gamma-milk);
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--gamma-line);
   overflow-wrap: anywhere;
 
   svg {
@@ -921,20 +943,11 @@ const CountButton = styled.button`
 
   small {
     grid-column: 2;
-    color: var(--gamma-milk);
-    opacity: 0.64;
+    color: var(--gamma-muted);
   }
 `;
 
 const GammaResponsiveStyle = createGlobalStyle`
-  @media (prefers-reduced-motion: reduce) {
-    ${GammaAtmosphere},
-    ${PeerSignal},
-    ${VeilPulse} {
-      animation: none;
-    }
-  }
-
   @media (max-width: 980px) {
     ${HeroGrid} {
       grid-template-columns: 1fr;
@@ -946,18 +959,6 @@ const GammaResponsiveStyle = createGlobalStyle`
     ${HeroStatement} h1 {
       font-size: 3.2rem;
       line-height: 0.96;
-    }
-
-    ${PeerOrbit} {
-      min-height: auto;
-      grid-template-columns: 1fr;
-      grid-template-rows: none;
-      gap: 1.3rem;
-    }
-
-    ${PeerSignal} {
-      grid-column: auto !important;
-      grid-row: auto !important;
     }
 
     ${StationRibbon},
@@ -972,11 +973,15 @@ const GammaResponsiveStyle = createGlobalStyle`
       padding-top: 0.8rem;
     }
 
-    ${TopStrip},
-    ${LaneHeader},
-    ${IdentityCluster} {
+    ${LaneHeader} {
       align-items: flex-start;
       flex-direction: column;
+    }
+
+    ${IdentityCluster} {
+      align-items: flex-end;
+      flex-direction: column;
+      gap: 0.35rem;
     }
 
     ${HeroStatement} h1 {

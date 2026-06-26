@@ -1,3 +1,13 @@
+## 2026-06-27 - Gamma shell resets must not override station controls
+
+**What happened**: The Gamma editorial restyle initially kept a shell-level `button { all: unset; }` reset. In styled-components that selector had enough specificity to override child station button styles, so the rendered controls lost their grid layout, borders, padding, and card geometry even though the component CSS looked correct in source.
+
+**Why it mattered**: Gamma's visual contract depends on bordered operational controls, not flattened text links. Source-level checks for palette and gradients were not enough; the issue only showed up in rendered desktop/mobile smoke.
+
+**Rule**: Use low-specificity resets such as `:where(button)` inside Gamma/fullscreen shells, and keep rendered tests that assert station controls retain grid display, 1px borders, and the 6px radius ceiling after any shell-level CSS change.
+
+---
+
 ## 2026-06-25 - Gamma vote boards need unique actor labels
 
 **What happened**: Expanding the Gamma wallet puppet approval board from 5 to 12 actors introduced duplicate Playwright test titles for repeated personas such as witness and contestant. The suite failed during collection before any route proof could run.
