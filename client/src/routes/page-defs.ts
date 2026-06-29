@@ -38,6 +38,9 @@ const SystemSettingsPage = lazy(() =>
 const BrowserBoundariesPage = lazy(() =>
   import("../pages/BrowserBoundaries").then((m) => ({ default: m.BrowserBoundaries }))
 );
+const AgentPage = lazy(() =>
+  import("../pages/Agent").then((m) => ({ default: m.Agent }))
+);
 const TerminalPage = lazy(() =>
   import("../pages/Terminal").then((m) => ({ default: m.Terminal }))
 );
@@ -386,6 +389,15 @@ export const PAGE_DEFS: PageDef[] = [
     component: BrowserBoundariesPage,
     auth: true,
     title: "Browser Boundaries",
+    group: "desktop-os",
+    startMenu: true,
+    desktopIcon: true,
+  },
+  {
+    pattern: "/agent",
+    component: AgentPage,
+    auth: true,
+    title: "Agent",
     group: "desktop-os",
     startMenu: true,
     desktopIcon: true,

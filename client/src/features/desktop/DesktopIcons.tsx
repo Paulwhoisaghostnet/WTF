@@ -672,6 +672,7 @@ export type DesktopAppAvailability = {
   "crp-nominations": boolean;
   "rat-race": boolean;
   "map-lab": boolean;
+  agent: boolean;
   mail: boolean;
 };
 
@@ -797,6 +798,15 @@ export function buildDesktopIconDefs(
       defaultY: 188,
       enabled: canOpenApps && (apps["map-lab"] || canOpenDisabledApps),
       openPath: "/map-lab",
+    },
+    {
+      key: "agent",
+      label: "Agent",
+      icon: <ConsoleDeskIcon>AI</ConsoleDeskIcon>,
+      defaultX: 572,
+      defaultY: 188,
+      enabled: canOpenApps && (apps.agent || canOpenDisabledApps),
+      openPath: "/agent",
     },
     {
       key: "mail",

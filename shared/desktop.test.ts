@@ -230,6 +230,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "crp-nominations",
     "rat-race",
     "map-lab",
+    "agent",
     "mail",
     "tv",
     "dicksword",

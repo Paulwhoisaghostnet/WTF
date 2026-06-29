@@ -40,9 +40,9 @@ export const WTF_DWELLINGS: readonly WtfDwelling[] = [
     label: "Projects",
     path: "WTF/Projects",
     route: "/studio",
-    owner: "Studio",
-    doctrineRole: "Creator project roots, bundle manifests, drafts, exports, and deploy notes.",
-    bundleDomains: ["studio", "game-studio", "exports", "deploy-notes"],
+    owner: "Studio / Agent",
+    doctrineRole: "Creator and Agent project roots, bundle manifests, drafts, AI workspace snapshots, exports, and deploy notes.",
+    bundleDomains: ["studio", "game-studio", "agent-workspaces", "exports", "deploy-notes"],
     access: "user",
   },
   {

@@ -20,6 +20,7 @@ Primary commands and launch paths:
 - File Manager
 - Settings
 - Browser Boundaries
+- Agent (`/agent`)
 - Terminal
 - CLI (`/cli`, native `@wtfos/cli`)
 - Notification Center
@@ -41,6 +42,8 @@ WTF OS MCP tools are the system-level companion to the shell and should remain s
 - `wtf_set_desktop_appearance`
 - `wtf_get_desktop_pet`
 - `wtf_keep_desktop_pet_alive`
+
+Agent consumes the same paired-token registry from `/agent`; it does not create a second MCP authority or proxy provider credentials through wtfOS. Its provider runtime speaks browser-direct to remote providers or local endpoints with user-owned session credentials, while MCP tokens remain scoped to the authenticated wtfOS user. The provider panel reviews detected capability profiles for OpenAI, Anthropic, Google, OpenRouter, Ollama, LM Studio, and OpenAI-compatible APIs, and lets users override advertised reasoning, multimodal, artifact, tool, embedding, local-inference, and custom-endpoint features without forking Agent into provider-specific apps. Portable Agent projects are stored as `WTF/Projects/Agent` snapshots containing files, plan items, reviewable generated actions, memory, provider metadata, messages, grants, local git branches, staged paths, extension manifests, and commit history, never provider secrets. The native workbench can create, rename, delete, search, diagnose, summarize, jump from code outline/search/diagnostic results to exact editor lines, stage, unstage, commit, and branch files inside the active project path before those snapshots are exported or restored. Its permissions panel previews the MCP resources, scopes, allowed tools, and blocked tool families produced by the current visible grants before a paired token is created. Provider replies and pasted drafts can propose file edits or allowlisted command actions, but the user must apply or dismiss them through visible write/filesystem or execute/terminal grants. Its extension registry lets users review core manifests and install, enable/disable, or remove user-owned provider, MCP-server, tool, personality, theme, and knowledge-pack manifests without granting runtime authority outside visible permissions. Its companion knowledge base and extension catalog are machine-readable registries derived from live route, admin-surface, provider, filesystem, project-bundle, MCP, permission, and extension manifests.
 
 Registry rule:
 

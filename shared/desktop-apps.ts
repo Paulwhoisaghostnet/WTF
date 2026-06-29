@@ -62,6 +62,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   "wtf-subdomains": true,
   "rat-race": false,
   "map-lab": true,
+  agent: true,
   mail: true,
 };
 

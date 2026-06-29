@@ -14,6 +14,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/file-manager", auth: true, title: "File Manager" },
   { pattern: "/settings", auth: true, title: "Settings" },
   { pattern: "/browser-boundaries", auth: true, title: "Browser Boundaries" },
+  { pattern: "/agent", auth: true, title: "Agent" },
   { pattern: "/terminal", auth: true, title: "Terminal" },
   { pattern: "/cli", auth: true, title: "CLI" },
   { pattern: "/backup-manager", auth: true, roles: ["admin"], title: "Backup Manager" },

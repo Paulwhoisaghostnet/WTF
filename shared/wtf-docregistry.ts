@@ -143,6 +143,7 @@ const DESKTOP_APP_DOMAIN_KEYS: Partial<Record<DesktopAppKey, keyof typeof WTF_DO
   "wtf-subdomains": "tezosPlatform",
   "rat-race": "commerceAndWallets",
   "map-lab": "wtfOs",
+  agent: "wtfOs",
   mail: "identityAndSocial",
 };
 

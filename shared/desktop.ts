@@ -566,6 +566,7 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "crp-nominations",
   "rat-race",
   "map-lab",
+  "agent",
   "mail",
   "tv",
   "dicksword",

@@ -482,6 +482,7 @@ export const DESKTOP_APPS = [
   "wtf-subdomains",
   "rat-race",
   "map-lab",
+  "agent",
   "mail",
 ] as const;
 export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
@@ -513,6 +514,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   "wtf-subdomains": "WTF Domains",
   "rat-race": "Rat Race",
   "map-lab": "WTF Map Lab",
+  agent: "Agent",
   mail: "WTF Mail",
 };
 

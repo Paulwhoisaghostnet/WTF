@@ -7,6 +7,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/file-manager", path: "/file-manager", title: "File Manager", domain: "desktop-os", subdomain: "File Manager", auth: true },
   { pattern: "/settings", path: "/settings", title: "Settings", domain: "desktop-os", subdomain: "System Settings", auth: true },
   { pattern: "/browser-boundaries", path: "/browser-boundaries", title: "Browser Boundaries", domain: "desktop-os", subdomain: "Browser Boundaries", auth: true },
+  { pattern: "/agent", path: "/agent", title: "Agent", domain: "desktop-os", subdomain: "Native AI workspace", auth: true },
   { pattern: "/terminal", path: "/terminal", title: "Terminal", domain: "desktop-os", subdomain: "Terminal", auth: true },
   { pattern: "/cli", path: "/cli", title: "CLI", domain: "desktop-os", subdomain: "CLI", auth: true },
   { pattern: "/theme-builder", path: "/theme-builder", title: "Theme Builder", domain: "desktop-os", subdomain: "Theme Builder", auth: true },

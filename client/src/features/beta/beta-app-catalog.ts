@@ -977,6 +977,7 @@ const desktopRoutes: Record<DesktopAppKey, string> = {
   "wtf-subdomains": "/wtf-subdomains",
   "rat-race": "/rat-race",
   "map-lab": "/map-lab",
+  agent: "/agent",
   mail: "/mail",
 };
 
@@ -1030,20 +1031,20 @@ const manualApps: BetaAppCatalogEntry[] = [
 const experimentalSet = new Set<DesktopAppKey>(EXPERIMENTAL_DESKTOP_APPS);
 function tierFor(appKey: DesktopAppKey): BetaTier {
   if (experimentalSet.has(appKey)) return 4;
-  if (["wtfiam", "tv", "console", "game-studio", "pasta-protocol", "tz2at", "crp-nominations"].includes(appKey)) return 2;
+  if (["wtfiam", "tv", "console", "game-studio", "pasta-protocol", "tz2at", "crp-nominations", "agent"].includes(appKey)) return 2;
   if (["map-lab", "casino", "ch-ease"].includes(appKey)) return 4;
   return 3;
 }
 function stageFor(appKey: DesktopAppKey): BetaStage {
   if (["wtfiam", "hoard", "gallery", "rat-race"].includes(appKey)) return "collect";
-  if (["studio", "game-studio", "pasta-protocol", "ch-ease"].includes(appKey)) return "create";
+  if (["studio", "game-studio", "pasta-protocol", "ch-ease", "agent"].includes(appKey)) return "create";
   if (["wim", "w", "tv", "dicksword", "i-hate-telegram", "skywire", "wtf-live", "mail"].includes(appKey)) return "connect";
   if (["arcade", "casino", "console", "dedrooms"].includes(appKey)) return "play";
   if (["ipfs-pinning", "wtf-subdomains"].includes(appKey)) return "publish";
   return "operate";
 }
 function personasFor(appKey: DesktopAppKey): BetaPersonaKey[] {
-  if (["studio", "game-studio", "pasta-protocol", "ch-ease", "ipfs-pinning"].includes(appKey)) return ["creator", "builder", "curator"];
+  if (["studio", "game-studio", "pasta-protocol", "ch-ease", "ipfs-pinning", "agent"].includes(appKey)) return ["creator", "builder", "curator"];
   if (["hoard", "gallery", "wtfiam", "rat-race"].includes(appKey)) return ["collector", "creator", "curator"];
   if (["w", "wim", "tv", "skywire", "wtf-live", "mail"].includes(appKey)) return ["community-member", "creator", "collector"];
   return allPersonas;

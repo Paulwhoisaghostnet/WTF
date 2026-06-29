@@ -92,6 +92,7 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   "wtf-subdomains": domainGuides.tezosPlatform,
   "rat-race": domainGuides.commerceAndWallets,
   "map-lab": domainGuides.wtfOs,
+  agent: domainGuides.wtfOs,
   mail: domainGuides.identityAndSocial,
 };
 
@@ -142,6 +143,7 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
   ],
   "rat-race": ["tz2at rolling market stream", "Objkt metadata/listing-key supplement", "Tezos wallet preflight"],
   "map-lab": ["AT Protocol repo reads", "AT Protocol firehose previews", "WTFOS repo save/restore"],
+  agent: ["AI providers (browser-direct BYOK)", "local inference endpoints", "MCP paired agents"],
   mail: ["Resend inbound email"],
 };
 
@@ -188,6 +190,16 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
   ],
   "rat-race": ["token_sales", "token_mint_events", "token_listings", "token_metadata", "contract_activity_logs"],
   "map-lab": ["system map documents", "local repo drafts", "read-only ingested path summaries", "system_events"],
+  agent: [
+    "agent browser workspace state",
+    "wtfos.agent.filesystem.projects.v1",
+    "browser session provider credentials",
+    "mcp_agent_tokens",
+    "Agent knowledge base and extension manifests",
+    "wtfOS project memory",
+    "Agent project plans and generated action queue",
+    "Agent native git branches, staged paths, and commit history",
+  ],
   mail: ["mailboxes", "mail_messages", "comms_items"],
 };
 

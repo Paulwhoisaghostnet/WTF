@@ -592,6 +592,7 @@ export function Desktop({
     "crp-nominations": sourceApps["crp-nominations"],
     "rat-race": sourceApps["rat-race"],
     "map-lab": sourceApps["map-lab"],
+    agent: sourceApps.agent,
     mail: sourceApps.mail,
   };
 
@@ -620,6 +621,7 @@ export function Desktop({
       apps["crp-nominations"],
       apps["rat-race"],
       apps["map-lab"],
+      apps.agent,
       apps.studio,
       apps.tv,
       apps.wim,
