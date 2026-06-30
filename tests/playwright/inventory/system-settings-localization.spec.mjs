@@ -52,6 +52,7 @@ test.describe("interaction inventory - System Settings localization", () => {
 
     await page.goto("/desktop-settings", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("Constructor de temas", { exact: true }).first()).toBeVisible();
+    await page.getByTestId("desktop-settings-tab-font").click();
     await expect(page.getByText("Valores de chat", { exact: true })).toBeVisible();
   });
 

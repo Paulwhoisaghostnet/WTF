@@ -18,6 +18,16 @@
 
 ---
 
+## 2026-06-30 - Appearance settings need persistent save-state affordances
+
+**What happened**: System Appearance kept background, typography, cursor, physics, pet, and agent controls in one long mixed scroll, with the profile-persisting Save control buried inside section toolbars. Users could change settings after a reset and miss that the draft still had not been recorded to their profile.
+
+**Why it mattered**: Desktop appearance is an OS-level recovery and personalization surface. If the persistent save action is visually tied to whichever section happens to be in view, users can assume instant preview means durable profile state and lose changes on reload or reset.
+
+**Rule**: Settings surfaces that use instant preview plus explicit persistence need both category-owned save controls and one always-visible profile save-state control. The global control must compare the current draft to the last recorded server settings, stay outside tab panels, and render an unmistakable dirty-vs-recorded state.
+
+---
+
 ## 2026-06-30 - Gamma promotion needs host isolation proof, not only Gamma proof
 
 **What happened**: The Gamma shell branch had local host-mapped proof and branch Quality Gates green, but the goal was not actually complete until the branch was promoted to `main`, Hetzner served commit `6e35117`, and live selectors proved direct Gamma routes no longer rendered the Classic desktop.

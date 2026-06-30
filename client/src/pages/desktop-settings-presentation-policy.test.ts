@@ -23,13 +23,19 @@ test("Theme Builder exposes Gamma presentation ownership without forking setting
 
 test("Theme Builder marks the settings surface regions the Gamma harness measures", () => {
   for (const region of [
+    "settings-nav",
+    "settings-tab",
+    "tab-panel",
     "appearance-panel",
     "style-button",
     "style-preview",
+    "font-panel",
     "font-pack-button",
     "chat-preset-button",
     "color-preset-button",
     "desktop-panel",
+    "cursor-panel",
+    "physics-panel",
     "source-button",
     "segment-button",
     "toolbar-button",
@@ -37,6 +43,8 @@ test("Theme Builder marks the settings surface regions the Gamma harness measure
     "stat-bar",
     "agent-panel",
     "token-row",
+    "global-save",
+    "global-save-button",
   ]) {
     assert.match(
       source,

@@ -12,7 +12,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Panel, Separator } from "react95";
 import {
   Apple,
+  Bot,
   Bold,
+  Brush,
   Clipboard,
   Droplets,
   Gamepad2,
@@ -21,10 +23,14 @@ import {
   Italic,
   KeyRound,
   Moon,
+  MousePointer2,
+  Palette,
   RotateCcw,
   Save,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
+  Type as TypeIcon,
   Underline,
   Unplug,
 } from "lucide-react";
@@ -109,6 +115,35 @@ type McpCreateTokenResponse = {
   warning: string;
 };
 
+type SettingsTabKey =
+  | "background"
+  | "appearance"
+  | "font"
+  | "cursor"
+  | "physics"
+  | "pet"
+  | "agent";
+
+type SettingsTabDefinition = {
+  key: SettingsTabKey;
+  label: string;
+  summary: string;
+  icon: ReactNode;
+};
+
+function stableSettingsString(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSettingsString(item)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, nested]) => `${JSON.stringify(key)}:${stableSettingsString(nested)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "undefined";
+}
+
 function reportDesktopSettingsEvent(payload: {
   eventType: string;
   objectId: string;
@@ -159,9 +194,16 @@ interface OwnedToken {
 }
 
 const Shell = styled.div`
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(220px, 0.85fr) minmax(280px, 1.15fr);
+  grid-template-columns: minmax(172px, 204px) minmax(0, 1fr);
+  grid-template-rows: minmax(420px, 1fr) auto;
+  grid-template-areas:
+    "nav content"
+    "nav save";
   gap: 10px;
+  align-items: start;
+  min-height: min(680px, calc(100vh - 140px));
 
   &[data-desktop-settings-presentation-host="gamma"] {
     color: #f2ead9;
@@ -193,7 +235,7 @@ const Shell = styled.div`
   }
 
   &[data-desktop-settings-presentation-host="gamma"]
-    :where([data-desktop-settings-region="surface"], [data-desktop-settings-region="appearance-panel"], [data-desktop-settings-region="desktop-panel"], [data-desktop-settings-region="pet-panel"], [data-desktop-settings-region="agent-panel"]) {
+    :where([data-desktop-settings-region="surface"], [data-desktop-settings-region="settings-nav"], [data-desktop-settings-region="tab-panel"], [data-desktop-settings-region="appearance-panel"], [data-desktop-settings-region="font-panel"], [data-desktop-settings-region="desktop-panel"], [data-desktop-settings-region="cursor-panel"], [data-desktop-settings-region="physics-panel"], [data-desktop-settings-region="pet-panel"], [data-desktop-settings-region="agent-panel"], [data-desktop-settings-region="global-save"]) {
     min-width: 0;
     border: 1px solid rgba(242, 234, 217, 0.16) !important;
     background: #11110f !important;
@@ -201,14 +243,14 @@ const Shell = styled.div`
   }
 
   &[data-desktop-settings-presentation-host="gamma"]
-    :where([data-desktop-settings-region="style-button"], [data-desktop-settings-region="font-pack-button"], [data-desktop-settings-region="chat-preset-button"], [data-desktop-settings-region="color-preset-button"], [data-desktop-settings-region="source-button"], [data-desktop-settings-region="toolbar-button"], [data-desktop-settings-region="chat-toggle"], [data-desktop-settings-region="chat-color"], [data-desktop-settings-region="segment-button"], [data-desktop-settings-region="token-row"]) {
+    :where([data-desktop-settings-region="settings-tab"], [data-desktop-settings-region="style-button"], [data-desktop-settings-region="font-pack-button"], [data-desktop-settings-region="chat-preset-button"], [data-desktop-settings-region="color-preset-button"], [data-desktop-settings-region="source-button"], [data-desktop-settings-region="toolbar-button"], [data-desktop-settings-region="chat-toggle"], [data-desktop-settings-region="chat-color"], [data-desktop-settings-region="segment-button"], [data-desktop-settings-region="token-row"]) {
     border: 1px solid rgba(242, 234, 217, 0.18) !important;
     background: #070706 !important;
     color: #f2ead9 !important;
   }
 
   &[data-desktop-settings-presentation-host="gamma"]
-    :where([data-desktop-settings-region="style-button"][aria-pressed="true"], [data-desktop-settings-region="font-pack-button"][aria-pressed="true"], [data-desktop-settings-region="chat-preset-button"][aria-pressed="true"], [data-desktop-settings-region="color-preset-button"][aria-pressed="true"], [data-desktop-settings-region="source-button"][aria-pressed="true"], [data-desktop-settings-region="segment-button"][aria-pressed="true"]) {
+    :where([data-desktop-settings-region="settings-tab"][aria-selected="true"], [data-desktop-settings-region="style-button"][aria-pressed="true"], [data-desktop-settings-region="font-pack-button"][aria-pressed="true"], [data-desktop-settings-region="chat-preset-button"][aria-pressed="true"], [data-desktop-settings-region="color-preset-button"][aria-pressed="true"], [data-desktop-settings-region="source-button"][aria-pressed="true"], [data-desktop-settings-region="segment-button"][aria-pressed="true"]) {
     border-color: rgba(0, 210, 255, 0.72) !important;
     color: #00d2ff !important;
   }
@@ -290,7 +332,160 @@ const Shell = styled.div`
 
   @media (max-width: 780px) {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "nav"
+      "content"
+      "save";
+    min-height: 0;
   }
+`;
+
+const SettingsNav = styled(Panel)`
+  grid-area: nav;
+  position: sticky;
+  top: 0;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  background: var(--wtf-window-color, #c0c0c0);
+  color: var(--wtf-text-color, #111);
+  z-index: 2;
+`;
+
+const NavTitle = styled.div`
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 800;
+  line-height: 1.15;
+`;
+
+const TabList = styled.div`
+  display: grid;
+  gap: 4px;
+`;
+
+const SettingsTab = styled.button<{ $active: boolean }>`
+  min-width: 0;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  padding: 6px 7px;
+  border: 2px solid;
+  border-color: ${(p) => (p.$active ? "#000 #fff #fff #000" : "#fff #404040 #404040 #fff")};
+  background: ${(p) => (p.$active ? "#ffffff" : "var(--wtf-button-face, #c0c0c0)")};
+  color: var(--wtf-text-color, #111);
+  text-align: left;
+  line-height: 1.12;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  strong,
+  span {
+    min-width: 0;
+  }
+
+  strong {
+    display: block;
+    font-size: var(--wtf-type-caption, 13px);
+  }
+
+  span {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    opacity: 0.78;
+  }
+`;
+
+const SettingsMain = styled.div`
+  grid-area: content;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+
+  > [hidden] {
+    display: none !important;
+  }
+`;
+
+const TabSaveBar = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(64, 64, 64, 0.45);
+`;
+
+const GlobalSaveDock = styled.div`
+  grid-area: save;
+  position: sticky;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 0;
+  pointer-events: none;
+`;
+
+const GlobalSaveButton = styled.button<{ $dirty: boolean }>`
+  && {
+    pointer-events: auto;
+    min-width: 132px;
+    min-height: 46px;
+    height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 18px;
+    border: 2px solid #111;
+    border-color: #ffffff #202020 #202020 #ffffff;
+    background: ${(p) => (p.$dirty ? "#c01824" : "#138a34")} !important;
+    color: #ffffff;
+    font-weight: 900;
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: 0;
+    box-shadow:
+      inset 1px 1px 0 rgba(255, 255, 255, 0.5),
+      2px 2px 0 rgba(0, 0, 0, 0.42) !important;
+  }
+
+  &&:disabled {
+    cursor: wait;
+    opacity: 0.82;
+  }
+
+  &&:focus-visible {
+    outline: 3px solid var(--wtf-highlight, #000080);
+    outline-offset: 2px;
+  }
+
+  && svg {
+    width: 18px;
+    height: 18px;
+  }
+`;
+
+const VisuallyHidden = styled.span`
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 `;
 
 const Group = styled(Panel)`
@@ -901,7 +1096,10 @@ export function DesktopSettings() {
   const qc = useQueryClient();
   const { t, formatDate } = useLocalization();
   const fileRef = useRef<HTMLInputElement>(null);
+  const initialSettingsLoadedRef = useRef(false);
+  const [activeTab, setActiveTab] = useState<SettingsTabKey>("background");
   const [draft, setDraft] = useState<DesktopAppearance>(DEFAULT_DESKTOP_APPEARANCE);
+  const [savedAppearance, setSavedAppearance] = useState<DesktopAppearance | null>(null);
   const [petDraft, setPetDraft] = useState<{ name: string; colorSchemeKey: string }>({
     name: "",
     colorSchemeKey: HAMSTER_COLOR_SCHEMES[0].key,
@@ -1021,22 +1219,26 @@ export function DesktopSettings() {
         updatedAt: settingsQuery.data?.updatedAt ?? null,
       }),
     onSuccess: (result) => {
-      qc.setQueryData(["desktop", "settings"], result);
+      const normalizedAppearance = normalizeDesktopAppearance(result.appearance);
+      const normalizedResult = { ...result, appearance: normalizedAppearance };
+      qc.setQueryData(["desktop", "settings"], normalizedResult);
+      setDraft(normalizedAppearance);
+      setSavedAppearance(normalizedAppearance);
       reportThemeBuilderEvent("desktop.appearance.updated", "save", {
-        appearanceStyleKey: result.appearance.appearanceStyleKey,
-        colorSchemeKey: result.appearance.colorSchemeKey,
-        fontPackKey: result.appearance.fontPackKey,
-        chatTypographyPresetKey: result.appearance.chatTypographyPresetKey,
-        wimChatFont: result.appearance.wimChatStyle.fontFamily,
-        wimChatSize: result.appearance.wimChatStyle.fontSize,
-        wtfLiveChatFont: result.appearance.wtfLiveChatStyle.font,
-        wtfLiveChatSize: result.appearance.wtfLiveChatStyle.size,
-        cursorStyle: result.appearance.cursorStyle,
-        backgroundFit: result.appearance.backgroundFit,
-        wallpaperSet: Boolean(result.appearance.backgroundImageUrl),
-        physicsEnabled: result.appearance.desktopPhysicsEnabled,
-        gravityMode: result.appearance.desktopGravityMode,
-        desktopPetEnabled: result.appearance.desktopPetEnabled,
+        appearanceStyleKey: normalizedAppearance.appearanceStyleKey,
+        colorSchemeKey: normalizedAppearance.colorSchemeKey,
+        fontPackKey: normalizedAppearance.fontPackKey,
+        chatTypographyPresetKey: normalizedAppearance.chatTypographyPresetKey,
+        wimChatFont: normalizedAppearance.wimChatStyle.fontFamily,
+        wimChatSize: normalizedAppearance.wimChatStyle.fontSize,
+        wtfLiveChatFont: normalizedAppearance.wtfLiveChatStyle.font,
+        wtfLiveChatSize: normalizedAppearance.wtfLiveChatStyle.size,
+        cursorStyle: normalizedAppearance.cursorStyle,
+        backgroundFit: normalizedAppearance.backgroundFit,
+        wallpaperSet: Boolean(normalizedAppearance.backgroundImageUrl),
+        physicsEnabled: normalizedAppearance.desktopPhysicsEnabled,
+        gravityMode: normalizedAppearance.desktopGravityMode,
+        desktopPetEnabled: normalizedAppearance.desktopPetEnabled,
       });
     },
   });
@@ -1128,9 +1330,11 @@ export function DesktopSettings() {
   const pet = petQuery.data?.pet;
 
   useEffect(() => {
-    if (settingsQuery.data?.appearance) {
-      setDraft(normalizeDesktopAppearance(settingsQuery.data.appearance));
-    }
+    if (!settingsQuery.data?.appearance || initialSettingsLoadedRef.current) return;
+    initialSettingsLoadedRef.current = true;
+    const normalizedAppearance = normalizeDesktopAppearance(settingsQuery.data.appearance);
+    setDraft(normalizedAppearance);
+    setSavedAppearance(normalizedAppearance);
   }, [settingsQuery.data?.appearance]);
 
   useEffect(() => {
@@ -1218,6 +1422,66 @@ export function DesktopSettings() {
           { action: "nap", label: t("themeBuilder.pet.action.nap"), icon: <Moon /> },
         ];
 
+  const draftSignature = useMemo(() => stableSettingsString(draft), [draft]);
+  const savedAppearanceSignature = useMemo(
+    () => stableSettingsString(savedAppearance),
+    [savedAppearance]
+  );
+  const hasUnsavedAppearanceChanges =
+    Boolean(savedAppearance) && draftSignature !== savedAppearanceSignature;
+  const saveStateText = saveMutation.isPending
+    ? t("themeBuilder.saveState.saving")
+    : hasUnsavedAppearanceChanges
+      ? t("themeBuilder.saveState.unsaved")
+      : t("themeBuilder.saveState.recorded");
+  const settingsTabs = useMemo<SettingsTabDefinition[]>(
+    () => [
+      {
+        key: "background",
+        label: t("themeBuilder.tab.background"),
+        summary: t("themeBuilder.tab.background.summary"),
+        icon: <ImageIcon />,
+      },
+      {
+        key: "appearance",
+        label: t("themeBuilder.tab.appearance"),
+        summary: t("themeBuilder.tab.appearance.summary"),
+        icon: <Palette />,
+      },
+      {
+        key: "font",
+        label: t("themeBuilder.tab.font"),
+        summary: t("themeBuilder.tab.font.summary"),
+        icon: <TypeIcon />,
+      },
+      {
+        key: "cursor",
+        label: t("themeBuilder.tab.cursor"),
+        summary: t("themeBuilder.tab.cursor.summary"),
+        icon: <MousePointer2 />,
+      },
+      {
+        key: "physics",
+        label: t("themeBuilder.tab.physics"),
+        summary: t("themeBuilder.tab.physics.summary"),
+        icon: <SlidersHorizontal />,
+      },
+      {
+        key: "pet",
+        label: t("themeBuilder.tab.pet"),
+        summary: t("themeBuilder.tab.pet.summary"),
+        icon: <Brush />,
+      },
+      {
+        key: "agent",
+        label: t("themeBuilder.tab.agent"),
+        summary: t("themeBuilder.tab.agent.summary"),
+        icon: <Bot />,
+      },
+    ],
+    [t]
+  );
+
   return (
     <AppWindow title={t("themeBuilder.title")}>
       <Shell
@@ -1225,7 +1489,41 @@ export function DesktopSettings() {
         data-desktop-settings-presentation-host={presentation.host}
         data-desktop-settings-region="surface"
       >
-        <Group variant="outside" data-desktop-settings-region="appearance-panel">
+        <SettingsNav variant="outside" data-desktop-settings-region="settings-nav">
+          <NavTitle>{t("themeBuilder.title")}</NavTitle>
+          <TabList role="tablist" aria-label={t("themeBuilder.title")}>
+            {settingsTabs.map((tab) => (
+              <SettingsTab
+                key={tab.key}
+                id={`desktop-settings-tab-${tab.key}`}
+                type="button"
+                role="tab"
+                $active={activeTab === tab.key}
+                aria-selected={activeTab === tab.key}
+                aria-controls={`desktop-settings-panel-${tab.key}`}
+                data-testid={`desktop-settings-tab-${tab.key}`}
+                data-desktop-settings-region="settings-tab"
+                onClick={() => setActiveTab(tab.key)}
+              >
+                <span aria-hidden>{tab.icon}</span>
+                <span>
+                  <strong>{tab.label}</strong>
+                  <span>{tab.summary}</span>
+                </span>
+              </SettingsTab>
+            ))}
+          </TabList>
+        </SettingsNav>
+
+        <SettingsMain data-desktop-settings-region="tab-panel">
+        <Group
+          variant="outside"
+          id="desktop-settings-panel-appearance"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-appearance"
+          hidden={activeTab !== "appearance"}
+          data-desktop-settings-region="appearance-panel"
+        >
           <GroupTitle data-desktop-settings-region="section-title">
             {t("themeBuilder.section.appearance")}
           </GroupTitle>
@@ -1247,6 +1545,95 @@ export function DesktopSettings() {
             ))}
           </StyleGrid>
           <Separator style={{ margin: "10px 0" }} />
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.colorSchemes")}
+          </GroupTitle>
+          <PresetGrid>
+            {DESKTOP_COLOR_SCHEMES.map((scheme) => (
+              <PresetButton
+                key={scheme.key}
+                type="button"
+                $active={draft.colorSchemeKey === scheme.key}
+                aria-pressed={draft.colorSchemeKey === scheme.key}
+                data-desktop-settings-region="color-preset-button"
+                onClick={() => setAppearanceDraft((prev) => applyScheme(prev, scheme.key))}
+              >
+                <Swatch
+                  $colors={[
+                    scheme.desktopColor,
+                    scheme.windowColor,
+                    scheme.activeTitleColor,
+                    scheme.textColor,
+                  ]}
+                  data-desktop-settings-region="swatch"
+                >
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </Swatch>
+                <span>{scheme.label}</span>
+              </PresetButton>
+            ))}
+          </PresetGrid>
+          <Separator style={{ margin: "10px 0" }} />
+          <FieldGrid>
+            <ColorField
+              label={t("themeBuilder.color.desktop")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.desktop") })}
+              value={draft.desktopColor}
+              onChange={(desktopColor) => patchDraft({ desktopColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.window")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.window") })}
+              value={draft.windowColor}
+              onChange={(windowColor) => patchDraft({ windowColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.activeFrame")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.activeFrame") })}
+              value={draft.activeTitleColor}
+              onChange={(activeTitleColor) => patchDraft({ activeTitleColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.inactiveFrame")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.inactiveFrame") })}
+              value={draft.inactiveTitleColor}
+              onChange={(inactiveTitleColor) => patchDraft({ inactiveTitleColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.text")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.text") })}
+              value={draft.textColor}
+              onChange={(textColor) => patchDraft({ textColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.highlight")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.highlight") })}
+              value={draft.highlightColor}
+              onChange={(highlightColor) => patchDraft({ highlightColor })}
+            />
+          </FieldGrid>
+          <TabSaveBar data-desktop-settings-region="toolbar">
+            <IconButton
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => saveMutation.mutate(draft)}
+              disabled={saveMutation.isPending}
+            >
+              <Save /> {t("common.save")}
+            </IconButton>
+          </TabSaveBar>
+        </Group>
+
+        <Group
+          variant="outside"
+          id="desktop-settings-panel-font"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-font"
+          hidden={activeTab !== "font"}
+          data-desktop-settings-region="font-panel"
+        >
           <GroupTitle data-desktop-settings-region="section-title">
             {t("themeBuilder.section.typography")}
           </GroupTitle>
@@ -1544,80 +1931,25 @@ export function DesktopSettings() {
               </ChatPreviewBubble>
             </ChatDefaultPanel>
           </ChatDefaultGrid>
-          <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle data-desktop-settings-region="section-title">
-            {t("themeBuilder.section.colorSchemes")}
-          </GroupTitle>
-          <PresetGrid>
-            {DESKTOP_COLOR_SCHEMES.map((scheme) => (
-              <PresetButton
-                key={scheme.key}
-                type="button"
-                $active={draft.colorSchemeKey === scheme.key}
-                aria-pressed={draft.colorSchemeKey === scheme.key}
-                data-desktop-settings-region="color-preset-button"
-                onClick={() => setAppearanceDraft((prev) => applyScheme(prev, scheme.key))}
-              >
-                <Swatch
-                  $colors={[
-                    scheme.desktopColor,
-                    scheme.windowColor,
-                    scheme.activeTitleColor,
-                    scheme.textColor,
-                  ]}
-                  data-desktop-settings-region="swatch"
-                >
-                  <i />
-                  <i />
-                  <i />
-                  <i />
-                </Swatch>
-                <span>{scheme.label}</span>
-              </PresetButton>
-            ))}
-          </PresetGrid>
-          <Separator style={{ margin: "10px 0" }} />
-          <FieldGrid>
-            <ColorField
-              label={t("themeBuilder.color.desktop")}
-              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.desktop") })}
-              value={draft.desktopColor}
-              onChange={(desktopColor) => patchDraft({ desktopColor })}
-            />
-            <ColorField
-              label={t("themeBuilder.color.window")}
-              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.window") })}
-              value={draft.windowColor}
-              onChange={(windowColor) => patchDraft({ windowColor })}
-            />
-            <ColorField
-              label={t("themeBuilder.color.activeFrame")}
-              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.activeFrame") })}
-              value={draft.activeTitleColor}
-              onChange={(activeTitleColor) => patchDraft({ activeTitleColor })}
-            />
-            <ColorField
-              label={t("themeBuilder.color.inactiveFrame")}
-              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.inactiveFrame") })}
-              value={draft.inactiveTitleColor}
-              onChange={(inactiveTitleColor) => patchDraft({ inactiveTitleColor })}
-            />
-            <ColorField
-              label={t("themeBuilder.color.text")}
-              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.text") })}
-              value={draft.textColor}
-              onChange={(textColor) => patchDraft({ textColor })}
-            />
-            <ColorField
-              label={t("themeBuilder.color.highlight")}
-              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.highlight") })}
-              value={draft.highlightColor}
-              onChange={(highlightColor) => patchDraft({ highlightColor })}
-            />
-          </FieldGrid>
+          <TabSaveBar data-desktop-settings-region="toolbar">
+            <IconButton
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => saveMutation.mutate(draft)}
+              disabled={saveMutation.isPending}
+            >
+              <Save /> {t("common.save")}
+            </IconButton>
+          </TabSaveBar>
         </Group>
 
-        <Group variant="outside" data-desktop-settings-region="desktop-panel">
+        <Group
+          variant="outside"
+          id="desktop-settings-panel-background"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-background"
+          hidden={activeTab !== "background"}
+          data-desktop-settings-region="desktop-panel"
+        >
           <GroupTitle data-desktop-settings-region="section-title">
             {t("themeBuilder.section.desktop")}
           </GroupTitle>
@@ -1756,8 +2088,25 @@ export function DesktopSettings() {
               ))}
             </SourceList>
           )}
+          <TabSaveBar data-desktop-settings-region="toolbar">
+            <IconButton
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => saveMutation.mutate(draft)}
+              disabled={saveMutation.isPending}
+            >
+              <Save /> {t("common.save")}
+            </IconButton>
+          </TabSaveBar>
+        </Group>
 
-          <Separator style={{ margin: "10px 0" }} />
+        <Group
+          variant="outside"
+          id="desktop-settings-panel-cursor"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-cursor"
+          hidden={activeTab !== "cursor"}
+          data-desktop-settings-region="cursor-panel"
+        >
           <GroupTitle data-desktop-settings-region="section-title">
             {t("themeBuilder.section.cursor")}
           </GroupTitle>
@@ -1775,8 +2124,25 @@ export function DesktopSettings() {
               </Button>
             ))}
           </SegmentGrid>
+          <TabSaveBar data-desktop-settings-region="toolbar">
+            <IconButton
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => saveMutation.mutate(draft)}
+              disabled={saveMutation.isPending}
+            >
+              <Save /> {t("common.save")}
+            </IconButton>
+          </TabSaveBar>
+        </Group>
 
-          <Separator style={{ margin: "10px 0" }} />
+        <Group
+          variant="outside"
+          id="desktop-settings-panel-physics"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-physics"
+          hidden={activeTab !== "physics"}
+          data-desktop-settings-region="physics-panel"
+        >
           <GroupTitle data-desktop-settings-region="section-title">
             {t("themeBuilder.section.physics")}
           </GroupTitle>
@@ -1841,7 +2207,10 @@ export function DesktopSettings() {
 
         <Group
           variant="outside"
-          style={{ gridColumn: "1 / -1" }}
+          id="desktop-settings-panel-pet"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-pet"
+          hidden={activeTab !== "pet"}
           data-desktop-settings-region="pet-panel"
         >
           <GroupTitle data-desktop-settings-region="section-title">
@@ -1951,11 +2320,23 @@ export function DesktopSettings() {
               </div>
             </PetBox>
           )}
+          <TabSaveBar data-desktop-settings-region="toolbar">
+            <IconButton
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => saveMutation.mutate(draft)}
+              disabled={saveMutation.isPending}
+            >
+              <Save /> {t("common.save")}
+            </IconButton>
+          </TabSaveBar>
         </Group>
 
         <Group
           variant="outside"
-          style={{ gridColumn: "1 / -1" }}
+          id="desktop-settings-panel-agent"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-agent"
+          hidden={activeTab !== "agent"}
           data-desktop-settings-region="agent-panel"
         >
           <GroupTitle data-desktop-settings-region="section-title">
@@ -2057,7 +2438,35 @@ export function DesktopSettings() {
               </TokenRow>
             ))
           )}
+          <TabSaveBar data-desktop-settings-region="toolbar">
+            <IconButton
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => saveMutation.mutate(draft)}
+              disabled={saveMutation.isPending}
+            >
+              <Save /> {t("common.save")}
+            </IconButton>
+          </TabSaveBar>
         </Group>
+        </SettingsMain>
+
+        <GlobalSaveDock data-desktop-settings-region="global-save">
+          <GlobalSaveButton
+            type="button"
+            $dirty={hasUnsavedAppearanceChanges}
+            data-testid="desktop-settings-global-save"
+            data-save-state={hasUnsavedAppearanceChanges ? "unsaved" : "recorded"}
+            data-desktop-settings-region="global-save-button"
+            aria-label={saveStateText}
+            title={saveStateText}
+            disabled={saveMutation.isPending}
+            onClick={() => saveMutation.mutate(draft)}
+          >
+            <Save aria-hidden />
+            <span>SAVE</span>
+            <VisuallyHidden aria-live="polite">{saveStateText}</VisuallyHidden>
+          </GlobalSaveButton>
+        </GlobalSaveDock>
       </Shell>
     </AppWindow>
   );

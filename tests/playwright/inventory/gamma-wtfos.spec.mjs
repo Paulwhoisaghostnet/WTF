@@ -1000,13 +1000,23 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       '[data-gamma-application-content] [data-desktop-settings-surface="theme-builder"]'
     );
     await expect(surface).toHaveAttribute("data-desktop-settings-presentation-host", "gamma");
+    await expect(surface.getByTestId("desktop-settings-tab-background")).toBeVisible();
+    await expect(surface.getByTestId("desktop-settings-global-save")).toHaveAttribute(
+      "data-save-state",
+      "recorded"
+    );
+    await surface.getByTestId("desktop-settings-tab-appearance").click();
     await expect(surface).toContainText("OS appearance");
+    await surface.getByTestId("desktop-settings-tab-font").click();
     await expect(surface).toContainText("System typography");
+    await surface.getByTestId("desktop-settings-tab-background").click();
     await expect(surface).toContainText("Gamma Snapshot");
     await expect(surface).toContainText("Gamma Token");
+    await surface.getByTestId("desktop-settings-tab-pet").click();
     await expect(surface).toContainText("Gamma Niblet");
-    await expect(surface).toContainText("Gamma Agent");
     await expect(surface.locator('[data-desktop-settings-region="pet-box"]')).toBeVisible();
+    await surface.getByTestId("desktop-settings-tab-agent").click();
+    await expect(surface).toContainText("Gamma Agent");
 
     const settingsMetrics = await surface.evaluate((root) => {
       const read = (selector) => {
@@ -1035,12 +1045,18 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       };
       return {
         surface: read('[data-desktop-settings-region="surface"]'),
+        settingsNav: read('[data-desktop-settings-region="settings-nav"]'),
+        settingsTab: read('[data-desktop-settings-region="settings-tab"]'),
+        tabPanel: read('[data-desktop-settings-region="tab-panel"]'),
         appearancePanel: read('[data-desktop-settings-region="appearance-panel"]'),
         styleButton: read('[data-desktop-settings-region="style-button"]'),
         stylePreview: read('[data-desktop-settings-region="style-preview"]'),
+        fontPanel: read('[data-desktop-settings-region="font-panel"]'),
         fontPackButton: read('[data-desktop-settings-region="font-pack-button"]'),
         chatPresetButton: read('[data-desktop-settings-region="chat-preset-button"]'),
         desktopPanel: read('[data-desktop-settings-region="desktop-panel"]'),
+        cursorPanel: read('[data-desktop-settings-region="cursor-panel"]'),
+        physicsPanel: read('[data-desktop-settings-region="physics-panel"]'),
         sourceButton: read('[data-desktop-settings-region="source-button"]'),
         segmentButton: read('[data-desktop-settings-region="segment-button"]'),
         toolbarButton: read('[data-desktop-settings-region="toolbar-button"]'),
@@ -1049,6 +1065,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
         statBar: read('[data-desktop-settings-region="stat-bar"]'),
         agentPanel: read('[data-desktop-settings-region="agent-panel"]'),
         tokenRow: read('[data-desktop-settings-region="token-row"]'),
+        globalSave: read('[data-desktop-settings-region="global-save"]'),
       };
     });
 
@@ -1063,6 +1080,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     }
     expect(settingsMetrics.stylePreview?.color).toBeTruthy();
 
+    await surface.getByTestId("desktop-settings-tab-font").click();
     await expect(surface.getByTestId("font-pack-wtfos-soft-system")).toHaveAttribute(
       "aria-pressed",
       "true"
@@ -1077,7 +1095,9 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       '[data-gamma-application-content] [data-desktop-settings-surface="theme-builder"]'
     );
     await expect(aliasSurface).toHaveAttribute("data-desktop-settings-presentation-host", "gamma");
+    await aliasSurface.getByTestId("desktop-settings-tab-background").click();
     await expect(aliasSurface).toContainText("Gamma Snapshot");
+    await aliasSurface.getByTestId("desktop-settings-tab-agent").click();
     await expect(aliasSurface).toContainText("Agent pairing");
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
   });
