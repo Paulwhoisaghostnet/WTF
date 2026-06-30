@@ -48,6 +48,16 @@
 
 ---
 
+## 2026-06-30 - Presentation host containment must include app-owner chrome
+
+**What happened**: Beta route containment was already green for the shell and shared React95 adapters, but many route-owner components only had Gamma-scoped visual selectors even though their rendered `data-*-presentation-host` markers received `beta` under the Beta shell.
+
+**Why it mattered**: A hostname shell can keep every route out of the Classic desktop while still letting app-owned panels, dialogs, utility regions, and dense controls keep legacy or previous-shell styling. That makes route proof look complete while the actual user surface is only partially re-presented.
+
+**Rule**: When extending a presentation shell to another hostname, prove both route containment and rendered app-owner chrome. Add host-aware boundary styling or per-owner selectors for `data-*-presentation-host="<host>"`, then test representative public, signed-in, utility, and dense surfaces after rebuilding the served bundle.
+
+---
+
 ## 2026-06-30 - Platform font resets must close every font ingress
 
 **What happened**: The wtfOS Soft System default could not be treated as only a new `fontPackKey` default. Existing users had persisted desktop appearance JSON, WIM chat font families, WTF LIVE chat style fonts, room-level localStorage defaults, realtime WebSocket payloads, and Playwright harness fixtures that could keep old font choices alive.
@@ -6787,3 +6797,13 @@
 **Why it mattered**: Route-containment and presentation-shell fixes can look broken, or falsely fixed, if the browser harness is reading stale assets. A passing source-policy test is not enough proof that the public bundle has the new navigation/session behavior.
 
 **Rule**: For presentation shell, route containment, and host-switching changes, rebuild before browser verification whenever the harness serves `dist/public`. If browser output contradicts current source, inspect the served bundle state before changing routing logic again.
+
+---
+
+## 2026-06-30 - Presentation shells must not count contained crashes as route coverage
+
+**What happened**: The first all-route Beta sweep accepted `[data-beta-route-error]` as a successful shell outcome. That proved the Beta boundary contained failures, but Dicksword, Profile, and Operator Wallet were still crashing under partial inventory harness payloads until their optional app data was normalized and the browser bundle was rebuilt.
+
+**Why it mattered**: A presentation shell can look contained while app-owned chrome is actually replaced by an error panel. For full-surface Beta/Gamma work, that misses the real requirement: shared routes must render inside the active shell with their app data, permissions, and controls intact.
+
+**Rule**: Inventory route sweeps for presentation shells should assert the shell boundary is present and assert route-error fallbacks are absent. When a route needs partial fixture data, normalize optional arrays/objects at the app boundary so empty-state UI renders instead of relying on the shell error boundary.

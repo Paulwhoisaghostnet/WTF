@@ -106,6 +106,66 @@ export interface WalletGraphPayload {
 
 /* ─── Presentation helpers ───────────────────────────────── */
 
+const EMPTY_DOSSIER_STATS: DossierStats = {
+  total: 0,
+  byType: {},
+  firstEventAt: null,
+  lastEventAt: null,
+};
+
+const EMPTY_WALLET_GRAPH_TOTALS: WalletGraphPayload["totals"] = {
+  wallets: 0,
+  tokens: 0,
+  domains: 0,
+  creators: 0,
+};
+
+function asArray<T>(value: T[] | unknown): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function asDossierStats(value: DossierStats | unknown): DossierStats {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return EMPTY_DOSSIER_STATS;
+  }
+  const stats = value as Partial<DossierStats>;
+  return {
+    total: typeof stats.total === "number" ? stats.total : 0,
+    byType:
+      stats.byType && typeof stats.byType === "object" && !Array.isArray(stats.byType)
+        ? stats.byType
+        : {},
+    firstEventAt: typeof stats.firstEventAt === "string" ? stats.firstEventAt : null,
+    lastEventAt: typeof stats.lastEventAt === "string" ? stats.lastEventAt : null,
+  };
+}
+
+function asWalletGraphTotals(value: WalletGraphPayload["totals"] | unknown): WalletGraphPayload["totals"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return EMPTY_WALLET_GRAPH_TOTALS;
+  }
+  const totals = value as Partial<WalletGraphPayload["totals"]>;
+  return {
+    wallets: typeof totals.wallets === "number" ? totals.wallets : 0,
+    tokens: typeof totals.tokens === "number" ? totals.tokens : 0,
+    domains: typeof totals.domains === "number" ? totals.domains : 0,
+    creators: typeof totals.creators === "number" ? totals.creators : 0,
+  };
+}
+
+function normalizeWalletDossier(value: WalletDossierPayload | unknown): WalletDossierPayload | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const wallet = value as Partial<WalletDossierPayload>;
+  const walletAddress = typeof wallet.walletAddress === "string" ? wallet.walletAddress : "";
+  if (!walletAddress) return null;
+  return {
+    walletAddress,
+    cursor: wallet.cursor ?? null,
+    stats: asDossierStats(wallet.stats),
+    events: asArray<DossierEvent>(wallet.events),
+  };
+}
+
 const EVENT_LABEL: Record<WalletEventType, string> = {
   token_transfer_in: "Received token",
   token_transfer_out: "Sent token",
@@ -411,35 +471,37 @@ export function WalletRelationshipGraph() {
 
   const nodesById = useMemo(() => {
     const map = new Map<string, WalletGraphNode>();
-    for (const node of data?.nodes ?? []) map.set(node.id, node);
+    for (const node of asArray<WalletGraphNode>(data?.nodes)) map.set(node.id, node);
     return map;
   }, [data?.nodes]);
+  const graphEdges = asArray<WalletGraphEdge>(data?.edges);
+  const graphTotals = asWalletGraphTotals(data?.totals);
 
   if (isLoading) return <Wrapper>Loading wallet graph…</Wrapper>;
   if (isError || !data)
     return <Wrapper>Unable to load wallet relationship graph.</Wrapper>;
-  if (data.totals.wallets === 0)
+  if (graphTotals.wallets === 0)
     return <Wrapper>Link a wallet to map account relationships.</Wrapper>;
 
-  const visibleEdges = data.edges.slice(0, 36);
+  const visibleEdges = graphEdges.slice(0, 36);
 
   return (
     <Wrapper>
       <StatGrid>
         <StatCell>
-          <strong>{data.totals.wallets}</strong>
+          <strong>{graphTotals.wallets}</strong>
           <span>Wallets</span>
         </StatCell>
         <StatCell>
-          <strong>{data.totals.tokens}</strong>
+          <strong>{graphTotals.tokens}</strong>
           <span>Indexed tokens</span>
         </StatCell>
         <StatCell>
-          <strong>{data.totals.domains}</strong>
+          <strong>{graphTotals.domains}</strong>
           <span>Tezos domains</span>
         </StatCell>
         <StatCell>
-          <strong>{data.totals.creators}</strong>
+          <strong>{graphTotals.creators}</strong>
           <span>Creator addresses</span>
         </StatCell>
       </StatGrid>
@@ -503,13 +565,18 @@ export function WalletDossier({ mode, userId, limit = 100 }: WalletDossierProps)
     },
   });
 
+  const wallets = asArray<unknown>(data?.wallets)
+    .map(normalizeWalletDossier)
+    .filter((wallet): wallet is WalletDossierPayload => Boolean(wallet));
+  const aggregate = asDossierStats(data?.aggregate);
+
   const resyncAllMutation = useMutation({
     mutationFn: () => {
       if (mode === "admin-user" && userId) {
         return api.post(`/api/admin/users/${userId}/resync`);
       }
       // "self" mode has no single endpoint; fire all in parallel.
-      const addrs = data?.wallets.map((w) => w.walletAddress) ?? [];
+      const addrs = wallets.map((w) => w.walletAddress);
       return Promise.all(addrs.map((a) => api.post(`/api/wallets/${a}/resync`)));
     },
     onSuccess: () => {
@@ -517,12 +584,10 @@ export function WalletDossier({ mode, userId, limit = 100 }: WalletDossierProps)
     },
   });
 
-  const aggregate = data?.aggregate;
-
   if (isLoading) return <Wrapper>Loading dossier…</Wrapper>;
   if (isError || !data)
     return <Wrapper>Unable to load dossier. Try again.</Wrapper>;
-  if (data.wallets.length === 0)
+  if (wallets.length === 0)
     return (
       <Wrapper>
         No wallets linked — nothing to surveil yet.
@@ -537,7 +602,7 @@ export function WalletDossier({ mode, userId, limit = 100 }: WalletDossierProps)
           <span>Events total</span>
         </StatCell>
         <StatCell>
-          <strong>{data.wallets.length}</strong>
+          <strong>{wallets.length}</strong>
           <span>Linked wallets</span>
         </StatCell>
         <StatCell>
@@ -576,7 +641,7 @@ export function WalletDossier({ mode, userId, limit = 100 }: WalletDossierProps)
         )}
       </div>
 
-      {data.wallets.map((w) => (
+      {wallets.map((w) => (
         <div key={w.walletAddress}>
           <WalletHeader>
             <span>

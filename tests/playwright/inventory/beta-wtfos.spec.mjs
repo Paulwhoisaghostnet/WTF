@@ -1,4 +1,9 @@
 import { chromium, expect, test } from "@playwright/test";
+import { ROUTE_FIXTURES } from "../../e2e/inventory/route-fixtures.mjs";
+
+const BETA_ROUTE_FIXTURES = ROUTE_FIXTURES.filter(
+  (fixture) => fixture.path !== "/beta" && fixture.path !== "/gamma"
+);
 
 async function setHarnessState(request, state = {}) {
   const res = await request.post("/__test/state", { data: state });
@@ -20,6 +25,74 @@ async function expectBetaRouteReady(page, routePath) {
   });
   await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
   await expect(page.locator("[data-beta-route-loading]")).toHaveCount(0, { timeout: 30_000 });
+}
+
+async function gotoBetaRoute(page, urlPath, routePath = urlPath) {
+  await page.goto(`/beta${urlPath}`, { waitUntil: "domcontentloaded" });
+  await expectBetaRouteReady(page, routePath);
+}
+
+async function expectBetaPresentationSkin(page, { route, selector, measuredSelector }) {
+  await gotoBetaRoute(page, route);
+  const surface = page.locator(`[data-beta-application-content] ${selector}`).first();
+  await expect(surface).toBeVisible({ timeout: 30_000 });
+
+  const metrics = await surface.evaluate((node, measuredSelectorArg) => {
+    const parsePx = (value) => Number.parseFloat(value || "0") || 0;
+    const hasShadow = (value) => value && value !== "none" && !/rgba?\(0,\s*0,\s*0,\s*0\)/.test(value);
+    const measured = [
+      ...Array.from(node.querySelectorAll(measuredSelectorArg)),
+      ...Array.from(node.querySelectorAll("button,input,textarea,select,fieldset,table,th,td,[role='tab']")),
+    ].filter((item, index, items) => items.indexOf(item) === index);
+    const rootStyle = window.getComputedStyle(node);
+    const target = node.querySelector(measuredSelectorArg) || node;
+    const targetStyle = window.getComputedStyle(target);
+    const maxBorderWidth = Math.max(
+      0,
+      ...measured.flatMap((item) => {
+        const style = window.getComputedStyle(item);
+        return [
+          style.borderTopWidth,
+          style.borderRightWidth,
+          style.borderBottomWidth,
+          style.borderLeftWidth,
+        ].map(parsePx);
+      })
+    );
+    const maxRadius = Math.max(
+      0,
+      ...measured.flatMap((item) => {
+        const style = window.getComputedStyle(item);
+        return [
+          style.borderTopLeftRadius,
+          style.borderTopRightRadius,
+          style.borderBottomRightRadius,
+          style.borderBottomLeftRadius,
+        ].map(parsePx);
+      })
+    );
+    return {
+      rootColor: rootStyle.color,
+      rootBackgroundImage: rootStyle.backgroundImage,
+      rootBoxShadow: rootStyle.boxShadow,
+      targetBackgroundImage: targetStyle.backgroundImage,
+      targetBoxShadow: targetStyle.boxShadow,
+      measuredCount: measured.length,
+      hasMeasuredBoxShadow: measured.some((item) => hasShadow(window.getComputedStyle(item).boxShadow)),
+      maxBorderWidth,
+      maxRadius,
+    };
+  }, measuredSelector);
+
+  expect(metrics.rootColor).toBe("rgb(244, 247, 248)");
+  expect(metrics.rootBackgroundImage).toBe("none");
+  expect(metrics.rootBoxShadow).toBe("none");
+  expect(metrics.targetBackgroundImage).toBe("none");
+  expect(metrics.targetBoxShadow).toBe("none");
+  expect(metrics.measuredCount).toBeGreaterThan(0);
+  expect(metrics.hasMeasuredBoxShadow).toBe(false);
+  expect(metrics.maxBorderWidth).toBeLessThanOrEqual(1);
+  expect(metrics.maxRadius).toBeLessThanOrEqual(8);
 }
 
 test.describe("interaction inventory - WTFOS beta hub", () => {
@@ -573,6 +646,39 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expectBetaRouteReady(page, "/leaderboard");
   });
 
+  test("renders representative route-owner chrome in the Beta presentation skin", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "admin",
+      username: "the-count",
+      displayName: "The Count",
+    });
+
+    for (const route of [
+      {
+        route: "/gallery",
+        selector: '[data-gallery-presentation-host="beta"]',
+        measuredSelector: "[data-gallery-region]",
+      },
+      {
+        route: "/dashboard",
+        selector: '[data-dashboard-presentation-host="beta"]',
+        measuredSelector: "[data-dashboard-region]",
+      },
+      {
+        route: "/recovery-mode",
+        selector: '[data-gamma-utility-presentation-host="beta"]',
+        measuredSelector: "[data-gamma-utility-region]",
+      },
+      {
+        route: "/settings",
+        selector: '[data-system-settings-presentation-host="beta"]',
+        measuredSelector: "[data-system-settings-region]",
+      },
+    ]) {
+      await expectBetaPresentationSkin(page, route);
+    }
+  });
+
   test("persists the Beta shell for same-session canonical route changes", async ({ page, request }) => {
     await setHarnessState(request, { userRole: "anonymous" });
     await page.goto("/beta", { waitUntil: "domcontentloaded" });
@@ -621,4 +727,36 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
       await browser.close();
     }
   });
+});
+
+test.describe("interaction inventory - WTFOS beta route fixture shell", () => {
+  for (const fixture of BETA_ROUTE_FIXTURES) {
+    test(`${fixture.domain} / ${fixture.subdomain} / ${fixture.pattern}`, async ({ page, request }) => {
+      await setHarnessState(request, {
+        userRole: "admin",
+        username: "the-count",
+        displayName: "The Count",
+      });
+
+      await gotoBetaRoute(page, fixture.path);
+      await expect(page.locator("[data-beta-route-content]")).toBeVisible();
+      await expect(page.locator("[data-beta-route-error]")).toHaveCount(0);
+      await expect(
+        page.locator(
+          "[data-beta-application-content], [data-beta-auth-content], [data-beta-route-gate], [data-beta-route-missing]"
+        ).first()
+      ).toBeAttached();
+      await expect(page.locator("[data-gamma-wtfos]")).toHaveCount(0);
+      await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+      await expect(page.locator("[data-beta-ux-switcher]")).toBeVisible();
+      await expect(page.locator("[data-beta-ux-switcher]").getByRole("link", { name: "Classic" })).toHaveAttribute(
+        "href",
+        `https://wtfos.app${fixture.path === "/" ? "/" : fixture.path}`
+      );
+      await expect(page.locator("[data-beta-ux-switcher]").getByRole("link", { name: "Gamma" })).toHaveAttribute(
+        "href",
+        `https://gamma.wtfos.app${fixture.path === "/" ? "/" : fixture.path}`
+      );
+    });
+  }
 });

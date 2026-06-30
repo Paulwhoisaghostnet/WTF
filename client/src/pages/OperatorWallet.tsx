@@ -339,18 +339,25 @@ export function OperatorWallet() {
   };
 
   const summary = summaryQuery.data;
-  const hasLow = (summary?.lowBalances?.length ?? 0) > 0;
-  const xtzBalance = summary?.balances.find((b) => b.assetKind === "xtz");
-  const wtfBalance = summary?.balances.find((b) => b.assetKind === "fa2");
+  const balances = Array.isArray(summary?.balances) ? summary.balances : [];
+  const lowBalances = Array.isArray(summary?.lowBalances) ? summary.lowBalances : [];
+  const recentRuns = Array.isArray(summary?.recentRuns) ? summary.recentRuns : [];
+  const unpaidRows = Array.isArray(unpaidQuery.data?.rows) ? unpaidQuery.data.rows : [];
+  const unpaidUniqueUsers =
+    typeof unpaidQuery.data?.uniqueUsers === "number" ? unpaidQuery.data.uniqueUsers : 0;
+  const unpaidTotalWtf =
+    typeof unpaidQuery.data?.totalWtf === "string" ? unpaidQuery.data.totalWtf : "0";
+  const hasLow = lowBalances.length > 0;
+  const xtzBalance = balances.find((b) => b.assetKind === "xtz");
+  const wtfBalance = balances.find((b) => b.assetKind === "fa2");
 
   const selectedLedgerTotal = useMemo(() => {
-    if (!unpaidQuery.data) return BigInt(0);
     let sum = BigInt(0);
-    for (const r of unpaidQuery.data.rows) {
+    for (const r of unpaidRows) {
       if (selectedLedgerIds.has(r.id)) sum += BigInt(r.amountWtf);
     }
     return sum;
-  }, [unpaidQuery.data, selectedLedgerIds]);
+  }, [unpaidRows, selectedLedgerIds]);
 
   if (!user) {
     return (
@@ -386,7 +393,7 @@ export function OperatorWallet() {
         {hasLow ? (
           <UiNotice tone="warning">
             <strong>Low balance:</strong>{" "}
-            {summary?.lowBalances
+            {lowBalances
               .map(
                 (b) =>
                   `${assetLabel(b)} at ${formatAmount(
@@ -428,8 +435,8 @@ export function OperatorWallet() {
                 </tr>
               </thead>
               <tbody>
-                {summary?.balances.length ? (
-                  summary.balances.map((b, i) => (
+                {balances.length ? (
+                  balances.map((b, i) => (
                   <tr key={i}>
                     <td>{assetLabel(b)}</td>
                     <td>
@@ -468,10 +475,10 @@ export function OperatorWallet() {
         <UiPanel title="Pending reward ledger" compact data-operator-wallet-region="panel">
           <Stack>
             <Row data-operator-wallet-region="row">
-              <strong>{unpaidQuery.data?.uniqueUsers ?? 0}</strong> unique users ·{" "}
-              <strong>{unpaidQuery.data?.rows.length ?? 0}</strong> rows ·{" "}
+              <strong>{unpaidUniqueUsers}</strong> unique users ·{" "}
+              <strong>{unpaidRows.length}</strong> rows ·{" "}
               <strong>
-                {formatAmount(unpaidQuery.data?.totalWtf ?? "0", 8)}
+                {formatAmount(unpaidTotalWtf, 8)}
               </strong>{" "}
               WTF outstanding
             </Row>
@@ -512,8 +519,8 @@ export function OperatorWallet() {
                   </tr>
                 </thead>
                 <tbody>
-                  {unpaidQuery.data?.rows.length ? (
-                    unpaidQuery.data.rows.map((r) => (
+                  {unpaidRows.length ? (
+                    unpaidRows.map((r) => (
                     <tr key={r.id}>
                       <td>
                         <Checkbox
@@ -757,8 +764,8 @@ export function OperatorWallet() {
               </tr>
             </thead>
             <tbody>
-              {summary?.recentRuns.length ? (
-                summary.recentRuns.map((r) => (
+              {recentRuns.length ? (
+                recentRuns.map((r) => (
                 <tr key={r.id}>
                   <td>{r.id}</td>
                   <td>{r.intent}</td>
