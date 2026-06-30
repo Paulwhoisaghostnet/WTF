@@ -2,7 +2,7 @@
 
 Last audited: 2026-06-30
 Release worktree: `/Users/joshuafarnworth/.config/superpowers/worktrees/WTF/codex-pasta-live-readiness`
-Release branch: `codex/pasta-live-readiness` is based on `origin/main` `2ad05152d2061dd545b2d8fce6d864af38522197` and currently carries two CI-green commits not yet live
+Release branch: `codex/pasta-live-readiness` is aligned with `origin/main` `c4ba55ff50612241869e92464504d2464f4aa9b4`
 Source checkout audited for stale/ongoing work: `/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF`
 Source checkout snapshot: `main` at `9d043fd1`, behind the original `origin/main` baseline `56955345` by 12 commits during the first audit pass
 
@@ -19,9 +19,9 @@ Target state remains:
 
 ## Post-Release Cleanup Note
 
-The live-release blockers documented below are historical for the initial Pasta pass. The current production authority is `origin/main` at `2ad05152d2061dd545b2d8fce6d864af38522197`, live `wtfos.app` reports `commitRef: "2ad0515"`, main Quality Gates run `28473951190` succeeded, and Deploy to Hetzner run `28473951272` succeeded.
+The live-release blockers documented below are historical for the initial Pasta pass. The current production authority is `origin/main` at `c4ba55ff50612241869e92464504d2464f4aa9b4`, live `wtfos.app` reports `commitRef: "c4ba55f"`, main Quality Gates run `28479148843` succeeded, and Deploy to Hetzner run `28479148838` succeeded.
 
-Current cleanup and remaining-scope findings are tracked in `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md`. In short: individual Macaroni Desktop installers and bundled Pasta Suite Desktop installers are live and verified, live Pasta static Tezos vendor bundles are refreshed to Taquito `25.0.0`, Macaroni's local Shadownet puppet confidence lane passes 5/5, and the old `WTF-pasta-deploy` checkout is superseded and unsafe to promote wholesale. The current branch also fixes a live static publisher runtime gap by exporting `window.MD` from all six Pasta `common.js` bundles, but that branch fix still needs production promotion and live asset proof. The broader product gap is executable Pasta Protocol workflow proof, especially actual Shadownet deploy/mint/collect/recovery, Colander discovery, and hosted artifact resolution.
+Current cleanup and remaining-scope findings are tracked in `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md`. In short: individual Macaroni Desktop installers and bundled Pasta Suite Desktop installers are live and verified, live Pasta static Tezos vendor bundles are refreshed to Taquito `25.0.0`, Macaroni's local Shadownet puppet confidence lane passes 5/5, and the old `WTF-pasta-deploy` checkout is superseded and unsafe to promote wholesale. The static publisher runtime gap is also closed on production: Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna live `common.js` bundles now export `window.MD`. The broader product gap is executable Pasta Protocol workflow proof, especially actual Shadownet deploy/mint/collect/recovery, Colander discovery, and hosted artifact resolution.
 
 ## Current Release Blockers
 
@@ -43,7 +43,7 @@ Probed on 2026-06-30 against `https://wtfos.app`.
 ### Health And Release Identity
 
 - `/api/health` returned HTTP 200 with `status: "ok"`.
-- Health reported `nodeEnv: "production"` and `version.commitRef: "2ad0515"`, matching the current `origin/main` short revision.
+- Health reported `nodeEnv: "production"` and `version.commitRef: "c4ba55f"`, matching the current `origin/main` short revision.
 - Health exposes verbose runtime and chain topology, matching the existing `WTF-BB-302` public-observability risk.
 
 ### Pasta Static Tool Availability
@@ -76,7 +76,7 @@ This proves the earlier live static vendor drift is resolved on production. It d
 
 ### Production Static Publisher Runtime Gap
 
-All six live Pasta `common.js` files expose `consumeCheaseHandoff()` and `loadPlatformCapabilities()`, but none expose `window.MD` yet:
+All six live Pasta `common.js` files expose `consumeCheaseHandoff()`, `loadPlatformCapabilities()`, and `window.MD`:
 
 - `/creation-tools/spaghetti/js/common.js`
 - `/creation-tools/gnocchi/js/common.js`
@@ -85,7 +85,7 @@ All six live Pasta `common.js` files expose `consumeCheaseHandoff()` and `loadPl
 - `/creation-tools/penne/js/common.js`
 - `/creation-tools/lasagna/js/common.js`
 
-The current `codex/pasta-live-readiness` branch adds `window.MD` to all six and passed branch Quality Gates `28476912686` plus focused browser proof. That fix is still pending production deploy and post-deploy live asset verification.
+The fix passed branch Quality Gates `28478213183`, main Quality Gates `28479148843`, Deploy to Hetzner `28479148838`, and post-deploy live asset verification on `wtfos.app` commit `c4ba55f`.
 
 ### Installer Exposure
 
