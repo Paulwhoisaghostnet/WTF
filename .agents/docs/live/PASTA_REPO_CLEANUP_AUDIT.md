@@ -6,15 +6,16 @@ Production focus: `https://wtfos.app`
 
 ## Current Production Authority
 
-- Authoritative production source is `origin/main` at `fd4afcd9f735b630ea87644582f44a928b432119`.
-- Live health reports `commitRef: "fd4afcd"` and `nodeEnv: "production"`.
-- Deploy to Hetzner run `28471646097` succeeded for commit `fd4afcd`.
-- Branch Quality Gates run `28470551711` succeeded for commit `fd4afcd`.
-- Main Quality Gates run `28471646096` succeeded for commit `fd4afcd`.
+- Authoritative production source is `origin/main` at `2ad05152d2061dd545b2d8fce6d864af38522197`.
+- Live health reports `commitRef: "2ad0515"` and `nodeEnv: "production"`.
+- Main Quality Gates run `28473951190` and Deploy to Hetzner run `28473951272` succeeded for commit `2ad05152`.
+- The release evidence branch `codex/pasta-live-readiness` is clean at `57c41636` and is exactly two commits ahead of `origin/main`: `aa53f206` (Macaroni Shadownet puppet lane) and `57c41636` (Pasta handoff publish choreography).
+- Branch Quality Gates run `28476912686` succeeded for `57c41636`; those two commits are not live on `wtfos.app` yet.
 - Macaroni Desktop `1.0.0` individual installers are published as release assets and passed public plus authenticated manifest/download verification for macOS, Windows, and Raspberry Pi.
 - Pasta Suite Desktop `1.0.0` bundled installers are published as release assets and passed public plus authenticated manifest/download verification for macOS, Windows, and Raspberry Pi.
 - Local Macaroni Shadownet puppet proof now passes 5/5 against a disposable Postgres database and `https://tezos-shadownet.octez.io/`, covering trusted-creator defaults, wallet chain safety, wtfOS publish gating, standalone mint-page wallet restore/disconnect, mismatched RPC blocking, and Shadownet Kukai handoff.
-- Live Pasta/Macaroni static wallet bundles for `macaroni`, `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna` passed stale-Taquito and Octez RPC marker probes.
+- Live Pasta/Macaroni static wallet bundles for `macaroni`, `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna` passed stale-Taquito probes: Taquito `24.3.0` is absent, Taquito `25.0.0` is present, and the old `rpc.shadownet.teztnets.com` marker is absent.
+- Live Pasta static publisher `common.js` files still lack the `window.MD` runtime export in `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna`. The current branch adds the export and has focused browser proof, but production will need a deploy and live asset probe before this handoff-runtime fix can be called live.
 
 ## Cleanup Performed
 
@@ -26,7 +27,7 @@ Production focus: `https://wtfos.app`
 
 | Worktree | Branch/Head | Dirty Count | Classification | Action |
 | --- | --- | ---: | --- | --- |
-| `.config/superpowers/worktrees/WTF/codex-pasta-live-readiness` | `codex/pasta-live-readiness` / `fd4afcd` | 0 | Valid current Pasta/live-readiness record | Keep until the broader goal is fully audited; it is the clean evidence branch. |
+| `.config/superpowers/worktrees/WTF/codex-pasta-live-readiness` | `codex/pasta-live-readiness` / `57c41636` | 0 | Valid current Pasta/live-readiness record | Keep until the broader goal is fully audited; it is the clean evidence branch and carries two CI-green commits not yet live. |
 | `Desktop/cursor-projects/Sandbox/WTF combo/WTF` | local `main` / `9d043fd` | 295 | Stale mixed scratch checkout | Do not deploy from it. It is behind `origin/main` and mixes Pasta, Gamma/Beta, apphost, Agent, localization, Skywire, WTF LIVE, Particle Painter, docs, and test churn. |
 | `Desktop/cursor-projects/Sandbox/WTF combo/WTF-pasta-deploy` | `pasta-protocol` / `f6256708` | 29 | Superseded Pasta prototype | Do not promote wholesale. See stale Pasta findings below. |
 | `Desktop/cursor-projects/Sandbox/WTF combo/WTF-macaroni-fullsend` | `codex/macaroni-direct-upload-lane` / `6706df2` | 0 | Historical Macaroni branch now ancestor of `origin/main` | Candidate for archival after user confirms no local notes are needed. |
@@ -49,6 +50,7 @@ Conclusion: mine this checkout only for human notes if needed. Do not apply its 
 
 ## Remaining Product Gaps
 
+- The current `codex/pasta-live-readiness` branch should be promoted through the normal main/deploy path before claiming the latest CH-EASE package-to-Pasta runtime fix on production. Post-deploy proof must check route-query preservation and `window.MD` export on the live six Pasta publisher bundles.
 - Pasta suite installer/download is now production-complete for the bundled native suite lane: `apps/pasta-suite-desktop`, the `pasta-suite-desktop-installers.yml` workflow, `/api/pasta/installers`, inventory coverage, package policy checks, GitHub release assets, production env, and the authenticated live verifier all passed for `pasta-suite-desktop-v1.0.0`.
 - Full Pasta contract/product workflow proof remains broader than static bundle availability and the now-green Macaroni Shadownet confidence lane: actual Shadownet origination, mint/collect, failure recovery, WTF.ME hosting, wtfOS pinning, and cross-app Colander management should remain open until executable evidence exists.
 - Local `main` at the original workspace should be fast-forwarded, reset, or archived only after the user confirms whether its dirty scratch content should be preserved.
@@ -70,8 +72,8 @@ Conclusion: mine this checkout only for human notes if needed. Do not apply its 
 - Local macOS build proof: `npm run dist:mac --prefix apps/pasta-suite-desktop` produced unsigned artifacts:
   - `apps/pasta-suite-desktop/release/Pasta-Suite-1.0.0-mac-universal.dmg` (`sha256 3b00d06229d2527294aac8f67e43e9437f5544846225e9688a345af9addf01e9`)
   - `apps/pasta-suite-desktop/release/Pasta-Suite-1.0.0-mac-universal.zip` (`sha256 812650e1e62d1bbe7332b84d6a437966ef9ddb2262977c8923429551a4e73f24`)
-- Branch Quality Gates run `28470551711` passed on `fd4afcd`.
-- Main Deploy to Hetzner run `28471646097` passed for `fd4afcd`; live health reported `commitRef: "fd4afcd"`.
+- Branch Quality Gates run `28470551711` passed on `fd4afcd`; the current release branch Quality Gates run `28476912686` passed on `57c41636`.
+- Main Deploy to Hetzner run `28471646097` passed for `fd4afcd`; the later main Deploy to Hetzner run `28473951272` passed for `2ad05152`, and live health currently reports `commitRef: "2ad0515"`.
 - Pasta Suite Desktop Installers workflow run `28471682307` passed and published release tag `pasta-suite-desktop-v1.0.0`.
 - Release asset proof from GitHub release metadata:
   - macOS DMG: `Pasta-Suite-1.0.0-mac-universal.dmg` (`sha256 1c62cfde5a019d0c5900476c9dc72d2fc60c25e8098b06be5a88b4e858dbf39f`)
@@ -82,6 +84,7 @@ Conclusion: mine this checkout only for human notes if needed. Do not apply its 
 
 ## Recommended Next Actions
 
-1. Extend the now-green Macaroni Shadownet lane into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
-2. After user confirmation, archive/delete merged historical Macaroni branches and clean checked-out worktrees that are ancestors of `origin/main`.
-3. Keep `WTF-BB-332` open until the stale `WTF-pasta-deploy` checkout is archived/reset or explicitly retained with a warning note.
+1. Promote `codex/pasta-live-readiness` through `main`, deploy to Hetzner, and verify live `window.MD` exports plus CH-EASE package query handoff on the six Pasta publisher bundles.
+2. Extend the now-green Macaroni Shadownet lane into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
+3. After user confirmation, archive/delete merged historical Macaroni branches and clean checked-out worktrees that are ancestors of `origin/main`.
+4. Keep `WTF-BB-332` open until the stale `WTF-pasta-deploy` checkout is archived/reset or explicitly retained with a warning note.

@@ -2,7 +2,7 @@
 
 Last audited: 2026-06-30
 Release worktree: `/Users/joshuafarnworth/.config/superpowers/worktrees/WTF/codex-pasta-live-readiness`
-Release branch: `codex/pasta-live-readiness` now aligned with `origin/main` `fd4afcd9f735b630ea87644582f44a928b432119`
+Release branch: `codex/pasta-live-readiness` is based on `origin/main` `2ad05152d2061dd545b2d8fce6d864af38522197` and currently carries two CI-green commits not yet live
 Source checkout audited for stale/ongoing work: `/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF`
 Source checkout snapshot: `main` at `9d043fd1`, behind the original `origin/main` baseline `56955345` by 12 commits during the first audit pass
 
@@ -19,9 +19,9 @@ Target state remains:
 
 ## Post-Release Cleanup Note
 
-The live-release blockers documented below are historical for the initial Pasta pass. The current production authority is `origin/main` at `fd4afcd9f735b630ea87644582f44a928b432119`, live `wtfos.app` reports `commitRef: "fd4afcd"`, Deploy to Hetzner run `28471646097` succeeded, branch Quality Gates run `28470551711` succeeded, and main Quality Gates run `28471646096` succeeded.
+The live-release blockers documented below are historical for the initial Pasta pass. The current production authority is `origin/main` at `2ad05152d2061dd545b2d8fce6d864af38522197`, live `wtfos.app` reports `commitRef: "2ad0515"`, main Quality Gates run `28473951190` succeeded, and Deploy to Hetzner run `28473951272` succeeded.
 
-Current cleanup and remaining-scope findings are tracked in `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md`. In short: individual Macaroni Desktop installers and bundled Pasta Suite Desktop installers are live and verified, live Pasta static bundles are refreshed, Macaroni's local Shadownet puppet confidence lane passes 5/5, and the old `WTF-pasta-deploy` checkout is superseded and unsafe to promote wholesale. The remaining product gap is executable Pasta Protocol workflow proof, especially actual Shadownet deploy/mint/collect/recovery, Colander discovery, and hosted artifact resolution.
+Current cleanup and remaining-scope findings are tracked in `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md`. In short: individual Macaroni Desktop installers and bundled Pasta Suite Desktop installers are live and verified, live Pasta static Tezos vendor bundles are refreshed to Taquito `25.0.0`, Macaroni's local Shadownet puppet confidence lane passes 5/5, and the old `WTF-pasta-deploy` checkout is superseded and unsafe to promote wholesale. The current branch also fixes a live static publisher runtime gap by exporting `window.MD` from all six Pasta `common.js` bundles, but that branch fix still needs production promotion and live asset proof. The broader product gap is executable Pasta Protocol workflow proof, especially actual Shadownet deploy/mint/collect/recovery, Colander discovery, and hosted artifact resolution.
 
 ## Current Release Blockers
 
@@ -32,7 +32,7 @@ The original source checkout is not a live-push candidate:
 - The dirty tree mixes Pasta/Macaroni, Tezos dependency upgrades, Gamma/Beta presentation work, apphost, Agent, localization, Skywire, Mail/Messages, WTF LIVE, Particle Painter assets, and test-result churn.
 - No changes are staged, so there is no commit boundary separating valid release work from stale or unrelated work.
 
-The safe path is now in progress on `codex/pasta-live-readiness`, a clean worktree rebased to latest `origin/main` with only the audited Pasta/Macaroni release slice applied.
+The safe path is now in progress on `codex/pasta-live-readiness`, a clean worktree based on latest `origin/main` with only the audited Pasta/Macaroni release slice applied.
 
 The historical initial-release blockers below are superseded by the current production authority above. The Pasta Suite installer lane is now live-complete for `1.0.0`: release assets exist for macOS, Windows, and Raspberry Pi; production `PASTA_SUITE_INSTALLER_*` URL/SHA/version values are configured; and `npm run pasta-suite:installers:live-check` passed against `https://wtfos.app` with an authenticated production puppet. Macaroni's Shadownet puppet confidence lane also passes locally, but the broader Pasta contract workflow proof still needs actual Shadownet deploy/mint/collect/recovery evidence beyond static bundle and installer availability.
 
@@ -43,7 +43,7 @@ Probed on 2026-06-30 against `https://wtfos.app`.
 ### Health And Release Identity
 
 - `/api/health` returned HTTP 200 with `status: "ok"`.
-- Health reported `nodeEnv: "production"` but `version.commitRef: "dev"`, so live commit identity is not strong enough to prove a specific git revision.
+- Health reported `nodeEnv: "production"` and `version.commitRef: "2ad0515"`, matching the current `origin/main` short revision.
 - Health exposes verbose runtime and chain topology, matching the existing `WTF-BB-302` public-observability risk.
 
 ### Pasta Static Tool Availability
@@ -60,9 +60,9 @@ All checked static Pasta/Macaroni tool pages returned HTTP 200:
 
 Observed page content confirms the Pasta publisher pages exist on production and expose Shadownet/wallet/contract-oriented flows, but this is reachability only. It does not prove successful deployment, minting, collecting, or recovery.
 
-### Production Tezos Vendor Drift
+### Production Tezos Vendor Status
 
-Every checked live vendor bundle still reports Taquito `24.3.0`:
+Every checked live vendor bundle now reports Taquito `25.0.0`, does not include Taquito `24.3.0`, and does not include the old `rpc.shadownet.teztnets.com` RPC marker:
 
 - `/creation-tools/macaroni/vendor/tezos.js`
 - `/creation-tools/spaghetti/vendor/tezos.js`
@@ -72,15 +72,26 @@ Every checked live vendor bundle still reports Taquito `24.3.0`:
 - `/creation-tools/penne/vendor/tezos.js`
 - `/creation-tools/lasagna/vendor/tezos.js`
 
-This contradicts a live-complete Pasta claim. Local policy expects the refreshed Taquito `25.0.0` / U025 / Octez baseline and passes locally, but production has not received that refresh.
+This proves the earlier live static vendor drift is resolved on production. It does not prove static publisher module runtime wiring or live Shadownet operations.
 
-Tracked as `WTF-BB-329`.
+### Production Static Publisher Runtime Gap
+
+All six live Pasta `common.js` files expose `consumeCheaseHandoff()` and `loadPlatformCapabilities()`, but none expose `window.MD` yet:
+
+- `/creation-tools/spaghetti/js/common.js`
+- `/creation-tools/gnocchi/js/common.js`
+- `/creation-tools/ravioli/js/common.js`
+- `/creation-tools/rotini/js/common.js`
+- `/creation-tools/penne/js/common.js`
+- `/creation-tools/lasagna/js/common.js`
+
+The current `codex/pasta-live-readiness` branch adds `window.MD` to all six and passed branch Quality Gates `28476912686` plus focused browser proof. That fix is still pending production deploy and post-deploy live asset verification.
 
 ### Installer Exposure
 
 - `/api/macaroni/installers` returned HTTP 401 to an unauthenticated request, which matches the authenticated endpoint contract.
 - Macaroni Studio production HTML/JS contains the installer download controls and the `/api/macaroni/installers` manifest fetch.
-- No authenticated production proof exists yet that installer URLs are configured or available.
+- Authenticated production verifiers have since proved both Macaroni Desktop and Pasta Suite Desktop installer manifests, HTTPS GitHub release URLs, SHA-256 checksums, and byte-range release downloads for macOS, Windows, and Raspberry Pi.
 
 ## Origin Main Baseline
 

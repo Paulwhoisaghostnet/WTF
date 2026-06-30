@@ -32,7 +32,9 @@ The report exceeds the 95% documentation/spec threshold required before any impl
 - Pasta Suite Desktop `1.0.0` bundled installers are live for macOS, Windows, and Raspberry Pi with authenticated manifest and byte-range release asset proof.
 - Macaroni Shadownet local puppet proof passed 5/5 against `https://tezos-shadownet.octez.io/`, covering Shadownet defaults, chain-verified wallet safety, trusted-creator publish gating, mint-page wallet restore/disconnect, mismatched RPC blocking, and Kukai handoff.
 - Local Spaghetti proof passed through the real `/tools/spaghetti?handoff=chease-package` shell after rebuilding, proving the CH-EASE handoff query reaches the iframe and the static publisher module receives its shared `window.MD` runtime before rehearsing the chain-guarded publish sequence.
-- Static Pasta tool bundles are live on `wtfos.app`, but static reachability does not prove Shadownet deploy, mint, collect, indexer, or hosted-page recovery workflows.
+- Static Pasta tool bundles are live on `wtfos.app`, and their Tezos vendor bundles now pass the Taquito `25.0.0` / no-`24.3.0` live marker probe.
+- The latest `window.MD` static-module runtime export fix is not live yet: production `common.js` for Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna still lacks the export, while `codex/pasta-live-readiness` has the fix and branch Quality Gates `28476912686` passed.
+- Static reachability and branch-level mocked choreography do not prove Shadownet deploy, mint, collect, indexer, or hosted-page recovery workflows.
 
 ## Risk Areas
 
