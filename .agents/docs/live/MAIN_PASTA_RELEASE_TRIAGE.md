@@ -2,7 +2,7 @@
 
 Last audited: 2026-06-30
 Release worktree: `/Users/joshuafarnworth/.config/superpowers/worktrees/WTF/codex-pasta-live-readiness`
-Release branch: `codex/pasta-live-readiness` based on `origin/main` `eda1db4b`
+Release branch: `codex/pasta-live-readiness` now aligned with `origin/main` `fd4afcd9f735b630ea87644582f44a928b432119`
 Source checkout audited for stale/ongoing work: `/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF`
 Source checkout snapshot: `main` at `9d043fd1`, behind the original `origin/main` baseline `56955345` by 12 commits during the first audit pass
 
@@ -19,9 +19,9 @@ Target state remains:
 
 ## Post-Release Cleanup Note
 
-The live-release blockers documented below are historical for the initial Pasta pass. The current production authority is `origin/main` at `455641f05f011134841a48617fc4a6d87be982c1`, live `wtfos.app` reports `commitRef: "455641f"`, Deploy to Hetzner run `28468017848` succeeded, and main Quality Gates run `28468017850` succeeded.
+The live-release blockers documented below are historical for the initial Pasta pass. The current production authority is `origin/main` at `fd4afcd9f735b630ea87644582f44a928b432119`, live `wtfos.app` reports `commitRef: "fd4afcd"`, Deploy to Hetzner run `28471646097` succeeded, branch Quality Gates run `28470551711` succeeded, and main Quality Gates run `28471646096` succeeded.
 
-Current cleanup and remaining-scope findings are tracked in `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md`. In short: individual Macaroni Desktop installers are live and verified, live Pasta static bundles are refreshed, the old `WTF-pasta-deploy` checkout is superseded and unsafe to promote wholesale, and the bundled Pasta Suite installer path is now scaffolded with local macOS artifact proof but still needs CI release artifacts, production env, and live manifest verification.
+Current cleanup and remaining-scope findings are tracked in `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md`. In short: individual Macaroni Desktop installers and bundled Pasta Suite Desktop installers are live and verified, live Pasta static bundles are refreshed, Macaroni's local Shadownet puppet confidence lane passes 5/5, and the old `WTF-pasta-deploy` checkout is superseded and unsafe to promote wholesale. The remaining product gap is executable Pasta Protocol workflow proof, especially actual Shadownet deploy/mint/collect/recovery, Colander discovery, and hosted artifact resolution.
 
 ## Current Release Blockers
 
@@ -34,12 +34,7 @@ The original source checkout is not a live-push candidate:
 
 The safe path is now in progress on `codex/pasta-live-readiness`, a clean worktree rebased to latest `origin/main` with only the audited Pasta/Macaroni release slice applied.
 
-The historical initial-release blockers below are superseded by the current production authority above. The current Pasta Suite release is still not live-complete because:
-
-- Pasta Suite Desktop release assets are not yet published for all platforms.
-- Production `PASTA_SUITE_INSTALLER_*` URLs, SHA-256 checksums, and version are not proven configured.
-- `npm run pasta-suite:installers:live-check` has not passed against `https://wtfos.app`.
-- The broader Pasta contract workflow proof still needs executable Shadownet deploy/mint/collect/recovery evidence beyond static bundle and installer availability.
+The historical initial-release blockers below are superseded by the current production authority above. The Pasta Suite installer lane is now live-complete for `1.0.0`: release assets exist for macOS, Windows, and Raspberry Pi; production `PASTA_SUITE_INSTALLER_*` URL/SHA/version values are configured; and `npm run pasta-suite:installers:live-check` passed against `https://wtfos.app` with an authenticated production puppet. Macaroni's Shadownet puppet confidence lane also passes locally, but the broader Pasta contract workflow proof still needs actual Shadownet deploy/mint/collect/recovery evidence beyond static bundle and installer availability.
 
 ## Live Production Baseline
 

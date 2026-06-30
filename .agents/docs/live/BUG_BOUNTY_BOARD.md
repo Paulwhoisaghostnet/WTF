@@ -58,7 +58,8 @@ Priority labels:
 | WTF-BB-330 | Verified | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated/live public download smoke on commit `f32dbe8` |
 | WTF-BB-331 | Verified | Codex Pasta live-readiness | 2026-06-30 | Deploy / production disk capacity | P0 | 13 | 5 | 2 | 5 | 1 | Pasta deploy disk exhaustion was cleared without touching app volumes, `scripts/server-deploy.sh` now has a 12 GiB free-space preflight, Deploy to Hetzner `28467035058` passed, and live health reports commit `f32dbe8` |
 | WTF-BB-332 | Open | - | 2026-06-30 | Repo hygiene / Pasta stale worktrees | P2 | 9 | 12 | 1 | 3 | 2 | Stale `WTF-pasta-deploy` checkout still contains dirty superseded Pasta/Macaroni work and installer-manifest regressions if replayed wholesale; keep production authority on `origin/main`/`codex/pasta-live-readiness` and archive/reset the stale checkout only after preserving any user-needed notes |
-| WTF-BB-333 | Fixed | Codex Pasta live-readiness | 2026-06-30 | Pasta Suite installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Bundled Pasta Suite Desktop installers were missing a production manifest, installer workflow, and live verifier; current branch adds the Electron suite package, `/api/pasta/installers`, inventory coverage, release workflow, release-aware manifest proof, and local macOS artifact proof, pending GitHub release and production manifest verification |
+| WTF-BB-333 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Suite installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Bundled Pasta Suite Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated live public download smoke on commit `fd4afcd` |
+| WTF-BB-334 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / Macaroni Shadownet proof harness | P2 | 9 | 12 | 2 | 4 | 0 | Macaroni Shadownet puppet proof drifted from the Octez active-account lifecycle; the harness now models accepted `octez.connect` session state, active-account events, restore/disconnect behavior, trusted-creator publish gating, and passed `npm run test:e2e:macaroni:shadownet` 5/5 against a disposable Shadownet puppet database |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -521,10 +522,31 @@ Priority labels:
   - Live `https://wtfos.app/api/health` returned `ok: true` with `commitRef: "f32dbe8"`.
   - Main Quality Gates run `28467035060` passed.
 
+### WTF-BB-334 - Macaroni Shadownet proof harness drifted from Octez active-account state
+
+- Category: E2E / Macaroni Shadownet proof harness
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - `npm run test:e2e:macaroni:shadownet` initially failed with the generated mint-page proof stuck in a split wallet state: balance read as connected while the top connect button returned to `Connect wallet`.
+  - The harness seeded a puppet Beacon account, but Macaroni installs `OctezPrimaryWallet` and prefers the Octez DAppClient facade when it is present.
+  - The trusted-creator Studio test also switched to the Page tab before asserting Drop-tab-only fields, and the intentionally blocked wtfOS publish gate logged an expected console error.
+- Why it matters:
+  - Shadownet proof is the staging gate before mainnet Pasta deployment claims. A stale wallet harness can make healthy product code look disconnected, or worse, let a weaker address-only proof pass without exercising the selected wallet provider lifecycle.
+  - Trusted-creator wtfOS publish affordances and standalone mint-page restore/disconnect behavior are part of the Macaroni contract-product workflow surface.
+- Correction:
+  - Updated the Playwright puppet to seed the accepted `octez.connect` provider name and install a deterministic Octez DAppClient facade with active-account get/set/clear plus `ACTIVE_ACCOUNT_SET` subscriptions.
+  - Kept the Studio test on the correct tab for Drop-only assertions and treated the intentionally triggered no-KT1 publish block as expected console output.
+- Verification:
+  - `node --check tests/playwright/live/macaroni-shadownet.spec.mjs` passed.
+  - `DATABASE_URL=postgresql://wtf:***@127.0.0.1:55432/wtf npm run db:push` passed against disposable local Postgres.
+  - `DATABASE_URL=postgresql://wtf:***@127.0.0.1:55432/wtf npm run test:e2e:macaroni:shadownet` passed 5/5, seeding 12 Shadownet puppet actors against `https://tezos-shadownet.octez.io/`.
+
 ### WTF-BB-333 - Pasta Suite Desktop installer release path was missing
 
 - Category: Pasta Suite installers / release ops
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Pasta live-readiness
 - Score: C2 + F5 + S2 + P1(4) = 13
 - Evidence:
@@ -545,7 +567,11 @@ Priority labels:
   - `npm run test:e2e:inventory:coverage` passed with 862 normalized handles and 16 domain workflows.
   - `npm run check -- --pretty false` passed.
   - `npm run dist:mac --prefix apps/pasta-suite-desktop` produced unsigned local macOS artifacts: `Pasta-Suite-1.0.0-mac-universal.dmg` sha256 `3b00d06229d2527294aac8f67e43e9437f5544846225e9688a345af9addf01e9`; `Pasta-Suite-1.0.0-mac-universal.zip` sha256 `812650e1e62d1bbe7332b84d6a437966ef9ddb2262977c8923429551a4e73f24`.
-  - Remaining target-environment proof: get the new workflow onto the default branch, run the suite installer workflow for all three platforms, publish `pasta-suite-desktop-v1.0.0`, configure production `PASTA_SUITE_INSTALLER_*` env from GitHub release digests, then pass `npm run pasta-suite:installers:live-check` against `https://wtfos.app` with an authenticated session.
+  - Branch Quality Gates run `28470551711` passed on `fd4afcd`.
+  - Main Deploy to Hetzner run `28471646097` passed, and live `https://wtfos.app/api/health` reported `commitRef: "fd4afcd"` with `nodeEnv: "production"`.
+  - Pasta Suite Desktop Installers workflow run `28471682307` passed and published stable release tag `pasta-suite-desktop-v1.0.0`.
+  - Published release assets expose GitHub SHA-256 digests for `Pasta-Suite-1.0.0-mac-universal.dmg` (`1c62cfde5a019d0c5900476c9dc72d2fc60c25e8098b06be5a88b4e858dbf39f`), `Pasta-Suite-1.0.0-win-x64.exe` (`5fb9c02531aa492a306928e89501eb3d628c61b4380720fb8a7e54fffa0c2f8a`), and `Pasta-Suite-1.0.0-linux-arm64.deb` (`bd15004c5a4233bf27280d9b2132e0408739f349ef7f0184af0cf665c5fe4a29`).
+  - Production `PASTA_SUITE_INSTALLER_*` env was configured from the release digests, the app container was recreated with the deploy temp-env pattern, and `npm run pasta-suite:installers:live-check` passed against `https://wtfos.app` as production puppet `e2e_bert`.
 
 ### WTF-BB-332 - Stale Pasta deploy checkout can regress installer hardening if replayed
 

@@ -81,13 +81,14 @@ async function actorPage(browser, baseURL, actor) {
       window.localStorage.setItem("wtf:network", "shadownet");
       window.localStorage.setItem(
         "wtf:wallet-session",
-        JSON.stringify({ address: walletAddress, providerName: "puppet-wallet" })
+        JSON.stringify({ address: walletAddress, providerName: "octez.connect" })
       );
 
       const installPuppetBeaconWallet = (tz) => {
         if (!tz || tz.__macaroniPuppetBeaconInstalled) return tz;
         const activeAccountKey = "macaroni-shadownet-puppet-active-account";
         const permissionCountKey = "macaroni-shadownet-puppet-permission-count";
+        const activeAccountEvent = "ACTIVE_ACCOUNT_SET";
         const readActiveAccount = () => {
           try {
             return JSON.parse(window.localStorage.getItem(activeAccountKey) || "null");
@@ -112,44 +113,138 @@ async function actorPage(browser, baseURL, actor) {
           }
         };
         let activeAccount = readActiveAccount();
+        const eventHandlers = new Map();
+        const network = () => ({ type: "shadownet" });
+        const account = () => ({
+          address: walletAddress,
+          publicKey: "edpkMacaroniPuppetWallet111111111111111111111111111",
+          network: network(),
+          scopes: ["operation_request"],
+          senderId: "macaroni-shadownet-puppet",
+          accountIdentifier: `macaroni-shadownet-puppet:${walletAddress}`,
+          origin: { type: "extension", id: "macaroni-shadownet-puppet" },
+          walletType: "implicit",
+          connectedAt: Date.now(),
+        });
+        const emit = async (eventName, payload) => {
+          const handlers = eventHandlers.get(eventName);
+          if (!handlers) return;
+          await Promise.all(
+            [...handlers].map((handler) =>
+              Promise.resolve()
+                .then(() => handler(payload))
+                .catch(() => {})
+            )
+          );
+        };
+        const setActiveAccount = async (nextAccount) => {
+          activeAccount = nextAccount || null;
+          writeActiveAccount(activeAccount);
+          await emit(activeAccountEvent, activeAccount);
+        };
+        const subscribeToEvent = (eventName, handler) => {
+          if (!eventHandlers.has(eventName)) eventHandlers.set(eventName, new Set());
+          eventHandlers.get(eventName).add(handler);
+          if (eventName === activeAccountEvent && activeAccount) {
+            Promise.resolve().then(() => handler(activeAccount)).catch(() => {});
+          }
+          return () => eventHandlers.get(eventName)?.delete(handler);
+        };
+        let puppetDappClient;
+        class PuppetDAppClient {
+          constructor(options = {}) {
+            this.options = options;
+            this.network = options.network || network();
+            this.preferredNetwork = options.preferredNetwork || "mainnet";
+            this.featuredWallets = options.featuredWallets || ["kukai", "temple", "umami"];
+            this.enableMetrics = false;
+          }
+          async getActiveAccount() {
+            return activeAccount;
+          }
+          async setActiveAccount(nextAccount) {
+            await setActiveAccount(nextAccount);
+            return activeAccount;
+          }
+          async clearActiveAccount() {
+            await setActiveAccount(null);
+          }
+          subscribeToEvent(eventName, handler) {
+            return subscribeToEvent(eventName, handler);
+          }
+          async setActivePeer() {}
+          async setTransport() {}
+          async requestPermissions() {
+            incrementPermissionCount();
+            await setActiveAccount(account());
+            return activeAccount;
+          }
+        }
+        const patchOctezConnect = (sdk) => {
+          if (!sdk || sdk.__macaroniPuppetOctezInstalled) return sdk;
+          const patched = sdk;
+          patched.BeaconEvent = {
+            ...(patched.BeaconEvent || {}),
+            ACTIVE_ACCOUNT_SET: activeAccountEvent,
+          };
+          patched.DAppClient = PuppetDAppClient;
+          patched.getDAppClientInstance = (options = {}, reset = false) => {
+            if (!puppetDappClient || reset) puppetDappClient = new PuppetDAppClient(options);
+            else Object.assign(puppetDappClient, {
+              options,
+              network: options.network || puppetDappClient.network,
+              preferredNetwork: options.preferredNetwork || puppetDappClient.preferredNetwork,
+              featuredWallets: options.featuredWallets || puppetDappClient.featuredWallets,
+            });
+            return puppetDappClient;
+          };
+          Object.defineProperty(patched, "__macaroniPuppetOctezInstalled", {
+            value: true,
+            configurable: true,
+          });
+          return patched;
+        };
+        let storedOctezConnect = window.MacaroniOctezConnect
+          ? patchOctezConnect(window.MacaroniOctezConnect)
+          : undefined;
+        Object.defineProperty(window, "MacaroniOctezConnect", {
+          configurable: true,
+          get() {
+            return storedOctezConnect;
+          },
+          set(value) {
+            storedOctezConnect = patchOctezConnect(value);
+          },
+        });
         class PuppetBeaconWallet {
           constructor(options = {}) {
             this.options = options;
             this.client = {
-              network: options.network || { type: "custom", name: "shadownet", rpcUrl },
+              network: options.network || network(),
               getActiveAccount: async () => activeAccount,
-              clearActiveAccount: async () => {
-                activeAccount = null;
-                writeActiveAccount(null);
-              },
-              setActiveAccount: async (account) => {
-                activeAccount = account || null;
-                writeActiveAccount(activeAccount);
-              },
+              clearActiveAccount: async () => setActiveAccount(null),
+              setActiveAccount,
+              subscribeToEvent,
             };
           }
           async requestPermissions() {
             incrementPermissionCount();
-            activeAccount = {
-              address: walletAddress,
-              publicKey: "edpkMacaroniPuppetWallet111111111111111111111111111",
-              network: this.client.network || {
-                type: "custom",
-                name: "shadownet",
-                rpcUrl,
-              },
-              scopes: ["operation_request"],
-              senderId: "macaroni-shadownet-puppet",
-            };
-            writeActiveAccount(activeAccount);
+            await setActiveAccount(account());
+            if (this.client && typeof this.client.setActiveAccount === "function") {
+              await this.client.setActiveAccount(activeAccount).catch(() => {});
+            }
           }
           async getPKH() {
             if (!activeAccount) await this.requestPermissions();
             return activeAccount.address;
           }
           async clearActiveAccount() {
-            activeAccount = null;
-            writeActiveAccount(null);
+            await setActiveAccount(null);
+            if (this.client && typeof this.client.clearActiveAccount === "function") {
+              await this.client.clearActiveAccount().catch(() => {});
+            } else if (this.client && typeof this.client.setActiveAccount === "function") {
+              await this.client.setActiveAccount(undefined).catch(() => {});
+            }
           }
         }
         tz.BeaconWallet = PuppetBeaconWallet;
@@ -193,7 +288,7 @@ async function waitForMacaroniStudio(frame) {
 function fatalErrors(errors) {
   return errors.filter(
     (error) =>
-      !/(favicon|ResizeObserver|WebGL|walletbeacon|beacon-node|walletconnect|Failed to load resource: the server responded with a status of 40[13])/i.test(
+      !/(favicon|ResizeObserver|WebGL|walletbeacon|beacon-node|walletconnect|created multiple octez\.connect SDK Client instances|wtfOS publish blocked: Deploy or resume a KT1 contract before publishing to wtfOS|Failed to load resource: the server responded with a status of 40[13])/i.test(
         error
       )
   );
@@ -248,7 +343,11 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(frame.locator("#netLabel")).toContainText(SHADOWNET_RPC);
       await expect(frame.locator('#pinKind option[value="wtfos"]')).toHaveCount(1);
       await expect(frame.locator("#pinKind")).toHaveValue("pinata");
+      await frame.locator("#tabPage").click();
       await expect(frame.locator("#btnPublishWtfOS")).toBeVisible();
+      await frame.locator("#btnPublishWtfOS").click();
+      await expect(frame.locator("#exportStatus")).toContainText(/KT1|contract/i);
+      await frame.locator("#tabDrop").click();
       await expect(frame.locator("#gateway")).toHaveValue("https://ipfs.fileship.xyz/");
       await expect(frame.getByText("Collection logo / cover (≤1 MB, square JPG/PNG)")).toBeVisible();
       await expect(frame.locator("#coverFile")).toHaveAttribute("accept", "image/png,image/jpeg");
@@ -292,7 +391,10 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(page.locator("#pinJwtWrap")).toBeVisible();
       await expect(page.locator("#btnPublishWtfOS")).toBeHidden();
       await expect(page.locator("#publishPathHint")).toContainText("own website");
+      await page.locator("#tabPage").click();
       await expect(page.locator("#installerGrid")).toBeVisible();
+      await expect(page.locator("#installerMacos")).toHaveAttribute("aria-disabled", "true");
+      await expect(page.locator("#installerStatus")).toContainText(/not published|unavailable/i);
       await expect(page.locator("#pageCss")).toHaveAttribute("type", "hidden");
       await expect(page.getByText("Custom CSS")).toHaveCount(0);
     } finally {
@@ -378,14 +480,17 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(page.locator("#walletBalance")).toContainText("restored");
       const alignedNetwork = await page.evaluate(async () => {
         await MD.assertOperationSafety();
+        const configuredRpc = MD.getNetworks().shadownet.rpc;
+        const chainId = await MD.getToolkit().rpc.getChainId();
         const account = JSON.parse(
           window.localStorage.getItem("macaroni-shadownet-puppet-active-account") || "null"
         );
-        return account?.network;
+        return { network: account?.network, configuredRpc, chainId };
       });
       expect(alignedNetwork).toEqual({
-        type: "shadownet",
-        rpcUrl: SHADOWNET_RPC,
+        network: { type: "shadownet" },
+        configuredRpc: SHADOWNET_RPC,
+        chainId: SHADOWNET_CHAIN_ID,
       });
 
       await page.getByRole("button", { name: "Disconnect" }).click();

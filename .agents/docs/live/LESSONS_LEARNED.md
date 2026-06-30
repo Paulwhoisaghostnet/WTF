@@ -1,3 +1,23 @@
+## 2026-06-30 - Octez wallet proof puppets must emit active-account events
+
+**What happened**: The Macaroni Shadownet proof patched the Beacon wallet class but not the Octez DAppClient lifecycle that `OctezPrimaryWallet` prefers. The mint-page test could briefly read a connected balance while the connect button fell back to `Connect wallet`, because the harness did not behave like an Octez client with `ACTIVE_ACCOUNT_SET` subscriptions.
+
+**Why it mattered**: A visible balance or stored wallet address is not enough wallet proof. Macaroni's signed-operation boundary depends on the active account held by the wallet client, the app session, and the UI controls all agreeing after connect, restore, and disconnect.
+
+**Rule**: Shadownet wallet puppets must model the selected provider, including accepted provider names, active-account get/set/clear, and active-account event emission. Keep expected non-contract publish blocks out of fatal console filters only when the test intentionally triggers that gate.
+
+---
+
+## 2026-06-30 - Runtime env edits need container reload proof
+
+**What happened**: After configuring production `PASTA_SUITE_INSTALLER_*` values in `/etc/wtf/wtf.env`, the first live installer verifier still saw `version: null` and unavailable installers because the running app container had not loaded the updated runtime environment.
+
+**Why it mattered**: Updating the host env file is not the same as proving the live Node process is serving those values. A release can have correct GitHub assets and correct production secrets but still expose an empty manifest until the app container is recreated through the deploy env-file path.
+
+**Rule**: After changing production runtime env, recreate or redeploy the app container with the same temp-env pattern used by the deploy script, then prove the running commit and affected endpoint from outside the server before marking the release live.
+
+---
+
 ## 2026-06-30 - Installer env examples are part of the release surface
 
 **What happened**: The first Pasta Suite installer manifest pass added `PASTA_SUITE_INSTALLER_*` runtime variables in code and docs, but `.env.example` still only documented the Macaroni installer variables. The manifest also initially treated a safe URL as enough to mark an installer available even if the SHA-256 was missing.

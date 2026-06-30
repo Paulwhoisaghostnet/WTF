@@ -22,8 +22,15 @@ The report exceeds the 95% documentation/spec threshold required before any impl
 
 - No missing validation test specifications remain for the current generated feature roster.
 - Executable Playwright/API runners still need to be implemented from the markdown and manifest validation cases in later coding passes.
-- Mainnet deployment tests are intentionally excluded until Shadownet proof is complete.
-- Standalone downloadable build checks need release artifacts before they can be executed.
+- Mainnet deployment tests are intentionally excluded until full Shadownet proof is complete. Macaroni now has a green Shadownet confidence lane, but that is not yet full protocol deploy/mint/collect proof.
+- Individual Macaroni Desktop and bundled Pasta Suite Desktop downloadable build checks now have release artifacts and live manifest verifiers. Future standalone app installers must follow the same release-asset, SHA-256, and authenticated-manifest proof pattern before being marked downloadable.
+
+## Current Live Evidence
+
+- Macaroni Desktop `1.0.0` individual installers are live for macOS, Windows, and Raspberry Pi with authenticated manifest and byte-range release asset proof.
+- Pasta Suite Desktop `1.0.0` bundled installers are live for macOS, Windows, and Raspberry Pi with authenticated manifest and byte-range release asset proof.
+- Macaroni Shadownet local puppet proof passed 5/5 against `https://tezos-shadownet.octez.io/`, covering Shadownet defaults, chain-verified wallet safety, trusted-creator publish gating, mint-page wallet restore/disconnect, mismatched RPC blocking, and Kukai handoff.
+- Static Pasta tool bundles are live on `wtfos.app`, but static reachability does not prove Shadownet deploy, mint, collect, indexer, or hosted-page recovery workflows.
 
 ## Risk Areas
 
@@ -43,5 +50,6 @@ The report exceeds the 95% documentation/spec threshold required before any impl
 5. Complete Gnocchi, Ravioli, and Rotini token-product publishers.
 6. Complete Penne and Lasagna contract-product publishers.
 7. Complete Colander adapters and relationship graph after publisher contracts stabilize.
-8. Convert this spec suite into executable inventory, Playwright, API, Shadownet, WTF.ME, WTFOS pinning, and puppet tests.
-9. Only after Shadownet and hosted-page proof, plan mainnet/full-send deployment work.
+8. Extend the Macaroni Shadownet puppet lane into executable deploy/mint/collect, WTF.ME, WTFOS pinning, and Colander discovery tests.
+9. Keep Macaroni and Pasta Suite installer verifiers as release gates while adding any future standalone Pasta installers.
+10. Only after Shadownet and hosted-page proof, plan mainnet/full-send deployment work.
