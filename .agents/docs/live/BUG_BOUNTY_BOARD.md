@@ -55,7 +55,7 @@ Priority labels:
 | WTF-BB-327 | Verified | Codex Inbox full-send | 2026-06-30 | Comms / Inbox read model | P1 | 12 | 7 | 3 | 5 | 0 | WTF Mail is now the Inbox hub with user-scoped unread counts, source-owned read writes, WIM/Studio coordination, message marks, drafts/templates, desktop badge coverage, and verified focused inventory/browser coverage |
 | WTF-BB-328 | Fixed | Codex Pasta installer hardening | 2026-06-30 | Macaroni installers / supply chain | P1 | 13 | 6 | 1 | 4 | 4 | Macaroni installer manifest accepted remote HTTP URLs, which could publish downgradeable installer links; fixed by allowing HTTPS remote URLs, same-origin relative paths, and loopback HTTP only outside production, clean branch gates passed, pending live release proof |
 | WTF-BB-329 | Fixed | Codex Pasta live-baseline audit | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 3 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles still serve Taquito `24.3.0`; U025/Octez refresh is isolated on `codex/pasta-live-readiness` with clean branch gates passing but has not been deployed to production |
-| WTF-BB-330 | In Progress | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop installer workflow now has branch artifact proof for macOS and Windows; first Raspberry Pi arm64 run failed on missing Debian package metadata, and `codex/pasta-live-readiness` now adds guarded `.deb` homepage, maintainer, package name, executable name, and desktop metadata before retry |
+| WTF-BB-330 | In Progress | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop installer workflow now has branch artifact proof for macOS, Windows, and Raspberry Pi on `codex/pasta-live-readiness`; stable release URLs, production env configuration, authenticated manifest proof, and public download smoke are still pending |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Open | - | 2026-06-29 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory and focused reruns fail Settings Subdomain Setup and cobwebsaints account readiness because the `wtf.tez target wallet` input remains blank instead of prefilled with the harness wallet |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -473,6 +473,7 @@ Priority labels:
   - 2026-06-30 GitHub API probes reported zero releases and zero runs for the Macaroni desktop installer workflow.
   - 2026-06-30 local `codex/pasta-live-readiness` proof built unsigned macOS universal artifacts with `npm run dist:mac --prefix apps/macaroni-desktop`.
   - 2026-06-30 branch workflow run `28458246772` produced `macaroni-desktop-macos` artifact `7986390894` and `macaroni-desktop-windows` artifact `7986389945`; Raspberry Pi arm64 failed before upload because electron-builder rejected the `.deb` without homepage/author email/maintainer metadata.
+  - 2026-06-30 branch workflow retry `28458796320` on commit `3dc2013a` succeeded for all matrix targets and uploaded `macaroni-desktop-macos` artifact `7986621165`, `macaroni-desktop-windows` artifact `7986637629`, and `macaroni-desktop-raspberry-pi` artifact `7986602158`.
 - Why it matters:
   - Source and CI definitions do not make software downloadable. The main Pasta release goal requires users to download individual installers or a suite from stable URLs.
 - Correction:
@@ -482,7 +483,8 @@ Priority labels:
 - Verification:
   - Local macOS artifact proof: `Macaroni-Studio-1.0.0-mac-universal.dmg` sha256 `9df90eef0fe40b784a642d8630a0b842c7c355224c212884bf3f69777c2b187f`; `Macaroni-Studio-1.0.0-mac-universal.zip` sha256 `9cb9ea4c38494bf2bf9fc160288fa1988ce7ea687efc06b5a1330b569a2fdcba`.
   - Local metadata guard: `npm run macaroni:desktop:check` passes with explicit Linux `.deb` metadata assertions.
-  - Required before closure: successful workflow run evidence for all three platforms, Raspberry Pi artifact proof, release/artifact URLs, configured production manifest, authenticated live proof, and public download smoke.
+  - Branch artifact proof: Macaroni Desktop Installers run `28458796320` passed macOS, Windows, and Raspberry Pi builds with `publish_release=false`.
+  - Required before closure: stable release/artifact URLs, configured production manifest, authenticated live proof, and public download smoke.
 
 ### WTF-BB-326 - Broad inventory social workflow timeout
 
