@@ -1,3 +1,13 @@
+## 2026-06-30 - Fresh FA2 proof may need big-map verification before token APIs
+
+**What happened**: The first signer-backed Spaghetti Shadownet run originated a contract, created token 0, minted supply, and transferred one edition, but the verifier waited on TzKT's high-level `/tokens` and `/tokens/balances` endpoints and got empty arrays. The same applied operations and ownership were already visible through contract storage, transaction diffs, and ledger/token_metadata big-map keys.
+
+**Why it mattered**: A fresh or custom FA2 contract can have valid on-chain state before a high-level token index endpoint exposes it as a marketplace-style token. Treating the empty token endpoint as failed chain behavior would misclassify a good deploy/mint/collect proof as broken.
+
+**Rule**: For newly originated FA2-style contracts, verify the operation status first, then contract storage and relevant big-map keys directly. Use high-level token endpoints only as an additional display/indexer proof, not as the sole ownership or metadata source.
+
+---
+
 ## 2026-06-30 - TzKT network labels are not raw chain ids
 
 **What happened**: The first Spaghetti Shadownet preflight expected TzKT `/v1/head` field `chain` to equal the raw chain id `NetXsqzbfFenSTS`, but TzKT reports `chain: "shadownet"` and carries the raw id separately as `chainId`.

@@ -14,8 +14,10 @@ Production focus: `https://wtfos.app`
 - Pasta Suite Desktop `1.0.0` bundled installers are published as release assets and passed public plus authenticated manifest/download verification for macOS, Windows, and Raspberry Pi.
 - Local Macaroni Shadownet puppet proof now passes 5/5 against a disposable Postgres database and `https://tezos-shadownet.octez.io/`, covering trusted-creator defaults, wallet chain safety, wtfOS publish gating, standalone mint-page wallet restore/disconnect, mismatched RPC blocking, and Shadownet Kukai handoff.
 - Local Spaghetti Shadownet preflight now passes against `https://tezos-shadownet.octez.io/` and Shadownet TzKT, covering the real RPC chain id, indexer head, contract artifact entrypoints, Colander adapter detection, package metadata, relationship metadata, token metadata, and origination storage payload shape before signer-backed injection.
+- Signer-backed Spaghetti Shadownet E2E now passes with keyring wallet `wtf-os-root`, originating `KT1LPXV5b83MU8LsvyVM76YCAH25JtNCBJPH`, creating token 0, minting supply, transferring one edition to collector wallet `arcade-treasury`, and proving TzKT storage/big-map ownership plus token metadata decoding.
 - Live Pasta/Macaroni static wallet bundles for `macaroni`, `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna` passed stale-Taquito probes: Taquito `24.3.0` is absent, Taquito `25.0.0` is present, and the old `rpc.shadownet.teztnets.com` marker is absent.
 - Live Pasta static publisher `common.js` files now expose the `window.MD` runtime export in `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna`, while retaining `consumeCheaseHandoff()` and `loadPlatformCapabilities()` markers.
+- App-by-app live-readiness status is tracked in `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md`; it allows proof-branch pushes but blocks any full-production Pasta deployment claim until signer, hosted-page, pinning, and Colander gates are green.
 
 ## Cleanup Performed
 
@@ -54,7 +56,7 @@ Conclusion: this checkout has been archived outside the repo for recovery/audit 
 
 - The CH-EASE package-to-Pasta static runtime fix is now production-deployed: post-deploy live probes confirm `window.MD` exports on the six Pasta publisher bundles.
 - Pasta suite installer/download is now production-complete for the bundled native suite lane: `apps/pasta-suite-desktop`, the `pasta-suite-desktop-installers.yml` workflow, `/api/pasta/installers`, inventory coverage, package policy checks, GitHub release assets, production env, and the authenticated live verifier all passed for `pasta-suite-desktop-v1.0.0`.
-- Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, and the new Spaghetti Shadownet preflight: actual signer-backed Shadownet origination, mint/collect, failure recovery, WTF.ME hosting, wtfOS pinning, and cross-app Colander management should remain open until executable evidence exists.
+- Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, the Spaghetti Shadownet preflight, and the signer-backed Spaghetti deploy/mint/collect proof: other publisher variants, failure recovery, WTF.ME hosting, wtfOS pinning, and cross-app Colander management should remain open until executable evidence exists. The exact app-by-app gate state is recorded in `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md`.
 - Local `main` at the original workspace should be fast-forwarded, reset, or archived only after the user confirms whether its dirty scratch content should be preserved.
 
 ## Current Macaroni Shadownet Proof
@@ -73,6 +75,16 @@ Conclusion: this checkout has been archived outside the repo for recovery/audit 
 - Artifact proof: `public/creation-tools/spaghetti/contract/pasta-standard-collection.contract.json` exposes FA2 plus standard collection entrypoints required by the Colander `standard_collection` adapter.
 - Payload proof: CH-EASE collection package validation, relationship metadata extraction, token metadata, and origination storage map planning all pass for a two-token Spaghetti publish rehearsal.
 - Scope note: this is an unsigned real-network preflight. It does not yet originate, mint, collect, or wait for TzKT-indexed token balances.
+
+## Current Spaghetti Shadownet E2E Proof
+
+- Local proof command: `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e`.
+- Funding proof: Shadownet faucet funded keyring wallet `wtf-os-root` through operations `onwDWf5LFoptz17tgvAZz6DqbEvQhUDp3rmGkFfcDrkz47uitMH` and `onzovQJ3NcfEe9G9CuAEwPNFmCXyqLvadGkHjXsiuV2afU2fhH1`.
+- Deployment proof: contract `KT1LPXV5b83MU8LsvyVM76YCAH25JtNCBJPH` originated on Shadownet by `tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM`.
+- Operation proof: origination `op3EUiVa4vLndQe49EMWUY3jQFGDtBmpDwHHAEpnM8uPAra2JMk`, create token `opEms2XFiRrS5s8wU8VA47BF8wQBBEpc373QW7zDpyDLZ38tbvh`, mint `oouZ5csYnV2KobvcwPdEfLbjLj5meD1ZpPSzBdnb53LMSx9i3Dr`, transfer/collect `ooicX8mNH4zJASga466CSbKxHtnSAVAvwHKFTT2w81x792mjnwJ`.
+- Indexer proof: TzKT storage indexed ledger big map `26723`, token metadata big map `26727`, collector ledger balance `1`, and decoded token metadata name `Spaghetti Proof Token` with relationship metadata intact.
+- Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-spaghetti-e2e-report.md`.
+- Scope note: this proves Spaghetti standard-collection deployment, token creation, minting, transfer/collect, metadata decoding, and ownership resolution. It does not yet prove WTF.ME page hosting, hosted wtfOS pinning, recovery, or every Pasta publisher variant.
 
 ## Current Suite Installer Proof
 
@@ -95,6 +107,7 @@ Conclusion: this checkout has been archived outside the repo for recovery/audit 
 
 ## Recommended Next Actions
 
-1. Extend the now-green Macaroni Shadownet lane into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
-2. After user confirmation, archive/delete merged historical Macaroni branches and clean checked-out worktrees that are ancestors of `origin/main`.
-3. Keep the removed `WTF-pasta-deploy` archive only as recovery evidence; do not mine it for implementation unless a future pass needs a specific historical note.
+1. Use `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` as the live-push checklist, starting with reusable signer-backed proofs for the remaining Pasta publishers.
+2. Extend the now-green Macaroni Shadownet lane into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
+3. After user confirmation, archive/delete merged historical Macaroni branches and clean checked-out worktrees that are ancestors of `origin/main`.
+4. Keep the removed `WTF-pasta-deploy` archive only as recovery evidence; do not mine it for implementation unless a future pass needs a specific historical note.
