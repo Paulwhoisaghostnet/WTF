@@ -1,3 +1,13 @@
+## 2026-06-30 - Zero-price open-edition mints can fail through treasury payout
+
+**What happened**: The first signer-backed Gnocchi Shadownet run originated an open-edition contract and created token 0, but the collector `open_mint` using a zero-mutez sale failed with `proto.024-PtTALLiN.contract.empty_transaction`.
+
+**Why it mattered**: A zero-price mint can still exercise a contract path that attempts a treasury payout. If that internal transfer amount is zero, the protocol rejects it even though the user-facing sale looks valid.
+
+**Rule**: For Gnocchi/open-edition Shadownet proof mints, use a tiny nonzero price such as 1 mutez so the paid mint path, treasury payout, supply, and collector ownership are all exercised without triggering an empty internal transaction.
+
+---
+
 ## 2026-06-30 - Fresh FA2 proof may need big-map verification before token APIs
 
 **What happened**: The first signer-backed Spaghetti Shadownet run originated a contract, created token 0, minted supply, and transferred one edition, but the verifier waited on TzKT's high-level `/tokens` and `/tokens/balances` endpoints and got empty arrays. The same applied operations and ownership were already visible through contract storage, transaction diffs, and ledger/token_metadata big-map keys.

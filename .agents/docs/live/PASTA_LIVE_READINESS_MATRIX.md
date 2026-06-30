@@ -12,6 +12,7 @@ This branch can safely claim:
 - Pasta Suite Desktop `1.0.0` bundled installers are published and production-verifiable.
 - Pasta static publisher bundles are reachable on `wtfos.app` and expose the shared `window.MD` runtime.
 - Spaghetti has one signer-backed Shadownet deploy/mint/collect proof with TzKT big-map ownership and metadata verification.
+- Gnocchi has one signer-backed Shadownet open-edition deploy/configure/collector-mint proof with TzKT sale, supply, ownership, and metadata verification.
 
 This branch must not claim:
 
@@ -35,7 +36,7 @@ This branch must not claim:
 | CH-EASE | Source package builder | PROVEN | PARTIAL | N/A | N/A | OPEN | PARTIAL | N/A | OPEN |
 | Macaroni | Existing drop publisher and individual desktop app | PROVEN | PROVEN | PARTIAL | OPEN | PARTIAL | OPEN | PROVEN | OPEN |
 | Spaghetti | Standard collection publisher | PROVEN | PROVEN | PROVEN | PROVEN | OPEN | PARTIAL | PARTIAL | OPEN |
-| Gnocchi | Open-edition token publisher | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
+| Gnocchi | Open-edition token publisher | PROVEN | PARTIAL | PROVEN | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
 | Ravioli | Bundle token publisher | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
 | Rotini | Generative collection publisher | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
 | Penne | Distribution contract product | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
@@ -60,7 +61,7 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 | Spaghetti real-network preflight | `npm run pasta:shadownet:preflight` verifies Shadownet RPC, TzKT head, artifact entrypoints, adapter detection, and metadata/storage payload shape. | PROVEN |
 | Spaghetti signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e` originated `KT1LPXV5b83MU8LsvyVM76YCAH25JtNCBJPH`, created token 0, minted supply, transferred one edition, decoded metadata, and verified collector ownership in TzKT big maps. | PROVEN |
 | Fresh FA2 ownership proof method | `.agents/docs/live/LESSONS_LEARNED.md` documents direct storage/big-map verification when high-level token endpoints lag. | PROVEN |
-| Gnocchi signer proof | None yet. | OPEN |
+| Gnocchi signer proof | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:gnocchi` originated `KT1FwS1JifrUakeGqFwGYmMHMmfjuwJABaax`, created token 0, configured the open-edition sale, collector-minted one edition for 1 mutez, decoded metadata, and verified sale state, total supply, and collector ownership in TzKT big maps. | PROVEN |
 | Ravioli signer proof | None yet. | OPEN |
 | Rotini signer proof | None yet. | OPEN |
 | Penne signer proof | None yet. | OPEN |
@@ -83,7 +84,7 @@ The safe next push target is the proof branch, not `main` production. A producti
 ## Next Implementation Order
 
 1. Generalize the Spaghetti E2E runner into reusable publisher proof helpers.
-2. Add Gnocchi and Ravioli signer-backed Shadownet proofs.
+2. Add Ravioli signer-backed Shadownet proof.
 3. Add Rotini signer-backed generated-edition proof.
 4. Add Penne and Lasagna contract-product deploy/configure proofs.
 5. Wire Colander real-contract discovery against the Shadownet proof contracts.
