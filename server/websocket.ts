@@ -31,9 +31,11 @@ const MAX_WTF_LIVE_SOUNDBOARD_BYTES = 1_200_000;
 const MAX_WTF_LIVE_SOUNDBOARD_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_SOUNDBOARD_BYTES * 1.4);
 const WTF_LIVE_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "video/mp4"]);
 const WTF_LIVE_SOUNDBOARD_TYPES = new Set(["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/mp4", "audio/webm"]);
-const WTF_LIVE_CHAT_FONTS = new Set(["mek-mono", "grout-display", "classic-95", "terminal", "serif-press"]);
+const WTF_LIVE_CHAT_FONTS = new Set(["classic-95", "terminal", "serif-press"]);
 const WTF_LIVE_LEGACY_CHAT_FONT_MAP: Record<string, string> = {
-  system: "mek-mono",
+  system: "classic-95",
+  "mek-mono": "classic-95",
+  "grout-display": "classic-95",
   mono: "terminal",
   serif: "serif-press",
   pixel: "classic-95",
@@ -58,7 +60,7 @@ type WtfLiveChatStyle = {
 };
 
 const DEFAULT_WTF_LIVE_CHAT_STYLE: WtfLiveChatStyle = {
-  font: "mek-mono",
+  font: "classic-95",
   color: "ink",
   size: 12,
   bold: false,
@@ -471,8 +473,9 @@ function normalizeWtfLiveChatAttachments(value: unknown) {
   });
 }
 
-function normalizeWtfLiveChatStyle(value: unknown): WtfLiveChatStyle {
-  const style = typeof value === "object" && value ? value as Record<string, unknown> : {};
+function normalizeWtfLiveChatStyle(value: unknown): WtfLiveChatStyle | undefined {
+  if (typeof value !== "object" || !value) return undefined;
+  const style = value as Record<string, unknown>;
   const rawSize = Number(style.size);
   const size = Number.isFinite(rawSize)
     ? Math.min(14, Math.max(8, Math.round(rawSize)))
@@ -821,7 +824,7 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
           peerId: client.wtfLivePeerId,
           guestName: wtfLivePeerDisplayName(client),
           text,
-          style,
+          ...(style ? { style } : {}),
           attachments,
           createdAt: new Date().toISOString(),
         },

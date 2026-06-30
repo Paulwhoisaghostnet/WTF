@@ -50,6 +50,9 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-320 | Verified | Codex WTF LIVE dockable bento pass | 2026-06-29 | WTF LIVE / dockable room workspace UX | P1 | 13 | 6 | 4 | 5 | 0 | WTF LIVE public room now exposes Connection, Sharing, Screens, Attendance, and Room chat as dockable bento tiles with sharing drawers, screen grids, receiver default chat fonts, and pop-in/pinned floating panels |
+| WTF-BB-319 | Verified | Codex WTF LIVE server font cleanup | 2026-06-29 | WTF LIVE / realtime chat typography | P2 | 8 | 14 | 1 | 4 | 0 | WTF LIVE client font cleanup removed MEK/GROUT from visible options, but the WebSocket chat-style sanitizer still accepted MEK/GROUT and defaulted missing realtime chat styles to MEK; fixed server normalization and added regression coverage |
+| WTF-BB-318 | Verified | Codex WTF LIVE input flash repair | 2026-06-29 | WTF LIVE / input rendering stability | P1 | 12 | 7 | 3 | 5 | 0 | Users report WTF LIVE flashes or flickers whenever mic input is enabled or chat text is typed; fixed by isolating the mic meter from the room render tree, caching stage stream wrappers, moving WTF LIVE to a Classic 95 font stack, removing MEK/GROUT from WTF LIVE chat font choices, and collapsing mic diagnostics into a compact drawer |
 | WTF-BB-304 | Verified | Codex wallet/X auth full-send | 2026-06-21 | Auth / Tezos wallet sign-in | P0 | 14 | 3 | 3 | 5 | 1 | Production wallet sign-in could hang on `Connecting...` or bounce back to login after wallet connect; fixed by preserving live wallet lifecycle hardening, clearing stale username/password state before wallet auth, binding real login form names/labels, and keeping wallet waits bounded; verified live on `wtfos.app` commit `069b96b` |
 | WTF-BB-306 | Fixed | Codex desktop pet water repair | 2026-06-21 | Desktop pet / care tool UX | P1 | 10 | 10 | 2 | 4 | 0 | Water tool can clean instead of hydrate a thirsty sick/dirty pet, leaving the Water/thirst meter stuck at 0 despite repeated water care; fixed with water-first care policy and focused tests, pending unrelated inventory coverage blocker |
 | WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 14 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
@@ -6824,6 +6827,58 @@ Priority labels:
   - Verified `.codex/machine-ssh.env` is ignored by `.gitignore`.
   - Verified `scripts/wtf-ssh.sh --doctor` reports the current visible agent and required identity fingerprint.
   - Verified `scripts/wtf-ssh.sh --check` exits 78 with the local agent/env fix instead of opening an SSH passphrase prompt.
+
+### WTF-BB-320 - WTF LIVE public room dockable bento workspace
+
+- Category: WTF LIVE / dockable room workspace UX
+- Status: Verified
+- Owner/Session: Codex WTF LIVE dockable bento pass
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - 2026-06-29 user request: WTF LIVE should stop forcing connection, sharing, testing, attendance, chat, settings, and screen surfaces into one monolithic window.
+  - Public room UX only detached chat and attendance before this pass.
+- Correction:
+  - Replaced the fixed room shell with Connection, Sharing, Screens, Attendance, and Room chat bento tiles.
+  - Hid Testing and Settings behind Sharing tray icon drawers.
+  - Added core-panel popouts with pop-in, resize/maximize, and always-on-top pin controls.
+  - Added mergeable screen grids with hover-only per-screen popout controls and receiver default chat-font selection for unstyled messages.
+- Verification:
+  - `node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs --project=chromium --reporter=list`
+  - `node_modules/.bin/tsx tests/e2e/inventory/coverage.ts`
+
+### WTF-BB-319 - WTF LIVE realtime chat sanitizer kept legacy MEK fonts
+
+- Category: WTF LIVE / realtime chat typography
+- Status: Verified
+- Owner/Session: Codex WTF LIVE server font cleanup
+- Score: C1 + F4 + S0 + P2(3) = 8
+- Evidence:
+  - The `/ws/wtf-live` sanitizer still allowed `mek-mono` and `grout-display` and defaulted invalid/missing chat styles to MEK after the client font cleanup.
+- Correction:
+  - Restricted realtime chat font styles to Classic 95, Terminal, and Serif Press.
+  - Mapped legacy `system`, `mek-mono`, `grout-display`, and `pixel` payloads to Classic 95.
+  - Preserved absent sender styles so receiver default fonts can apply.
+  - Added `server/websocket-wtf-live-font-policy.test.ts`.
+- Verification:
+  - `node_modules/.bin/tsx --test server/websocket-wtf-live-font-policy.test.ts`
+
+### WTF-BB-318 - WTF LIVE input-triggered screen flash and MEK typography complaints
+
+- Category: WTF LIVE / input rendering stability
+- Status: Verified
+- Owner/Session: Codex WTF LIVE input flash repair
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report: WTF LIVE flashes whenever mic input is enabled or users type in chat, and users dislike the MEK font in WTF LIVE.
+- Correction:
+  - Moved the mic analyser into a local meter component.
+  - Cached track-filtered stage `MediaStream` wrappers so unrelated input state does not reset video `srcObject`.
+  - Set WTF LIVE to a Classic 95-style font stack and removed MEK/GROUT from WTF LIVE chat font choices/defaults.
+  - Collapsed mic diagnostics into a compact drawer.
+- Verification:
+  - `node_modules/.bin/vite build`
+  - `node_modules/.bin/tsc --noEmit --pretty false`
+  - `node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs --project=chromium --reporter=list`
 
 ## Backlog Intake Template
 

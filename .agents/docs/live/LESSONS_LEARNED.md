@@ -5867,3 +5867,13 @@
 **Why it mattered**: A shell can look complete while trapping critical navigation offscreen or behind avoidable gates. That violates the beta/gamma rule: improve discovery and routing around existing apps without changing app logic or misleading users into dead ends.
 
 **Rule**: Fullscreen UI shells must own reachable vertical scrolling, and launch routes should target the least-gated existing surface that satisfies the user intent. For communications, prefer public/standalone room surfaces when the goal is discovery; leave admin/owner surfaces as deeper actions.
+
+---
+
+## 2026-06-29 - WTF LIVE room relays must preserve unstyled chat across every harness
+
+**What happened**: The WTF LIVE client started using receiver-side default chat fonts for messages that have no sender-assigned style, but the server and Playwright `/ws/wtf-live` relays still normalized absent styles into a concrete legacy/default style. That made unstyled chat look styled before the receiver preference could apply.
+
+**Why it mattered**: Font removal and default-font settings are only end-to-end when every ingress path preserves intent. A room UI can remove MEK while the realtime relay quietly reintroduces old defaults, and the test harness can hide the production mismatch.
+
+**Rule**: For WTF LIVE chat typography changes, update client send/receive normalization, server WebSocket normalization, and the Playwright relay together. Missing `style` means "receiver decides"; only sanitize and attach a style object when the sender actually supplied one.

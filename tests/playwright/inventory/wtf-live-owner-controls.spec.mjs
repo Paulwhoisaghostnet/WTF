@@ -447,7 +447,8 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
         rail: box("[data-wtf-live-control-rail]"),
         railScrollHeight: railNode?.scrollHeight ?? 0,
         stage: box("[data-wtf-live-stage-area]"),
-        sidebar: box("[data-wtf-live-sidebar]"),
+        attendance: box("[data-wtf-live-bento-tile='attendance']"),
+        chat: box("[data-wtf-live-bento-tile='chat']"),
         composer: box("[data-wtf-live-chat-composer]"),
       };
     });
@@ -456,11 +457,13 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     expect(Math.max(mobileStack.documentScrollHeight, mobileStack.shellScrollHeight)).toBeGreaterThan(mobileStack.viewportHeight);
     expect(mobileStack.rail).not.toBeNull();
     expect(mobileStack.stage).not.toBeNull();
-    expect(mobileStack.sidebar).not.toBeNull();
+    expect(mobileStack.attendance).not.toBeNull();
+    expect(mobileStack.chat).not.toBeNull();
     expect(mobileStack.composer).not.toBeNull();
     expect(mobileStack.rail.height).toBeGreaterThanOrEqual(mobileStack.railScrollHeight - 2);
     expect(mobileStack.rail.bottom).toBeLessThanOrEqual(mobileStack.stage.top);
-    expect(mobileStack.stage.bottom).toBeLessThanOrEqual(mobileStack.sidebar.top);
+    expect(mobileStack.stage.bottom).toBeLessThanOrEqual(mobileStack.attendance.top);
+    expect(mobileStack.attendance.bottom).toBeLessThanOrEqual(mobileStack.chat.top);
     expect(Math.max(mobileStack.documentScrollHeight, mobileStack.shellScrollHeight)).toBeGreaterThanOrEqual(mobileStack.composer.bottom - 2);
     await page.locator("[data-wtf-live-attendance-toggle]").scrollIntoViewIfNeeded();
     const attendanceTapHandle = await page.evaluate(() => {
@@ -485,23 +488,38 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     await page.locator("[data-wtf-live-attendance-toggle]").click();
     const before = await page.evaluate(() => {
       const stage = document.querySelector("[data-wtf-live-stage-area]")?.getBoundingClientRect();
-      const sidebar = document.querySelector("[data-wtf-live-sidebar]")?.getBoundingClientRect();
-      return stage && sidebar ? { stageWidth: stage.width, sidebarWidth: sidebar.width } : null;
+      const attendance = document.querySelector("[data-wtf-live-bento-tile='attendance']")?.getBoundingClientRect();
+      const chat = document.querySelector("[data-wtf-live-bento-tile='chat']")?.getBoundingClientRect();
+      const tileCount = document.querySelectorAll("[data-wtf-live-bento-tile]").length;
+      return stage && attendance && chat
+        ? { stageWidth: stage.width, attendanceWidth: attendance.width, chatWidth: chat.width, tileCount }
+        : null;
     });
     expect(before).not.toBeNull();
 
+    await page.locator("[data-wtf-live-popout-chat]").click();
+    const chatPopoutPanel = page.locator("[data-wtf-live-panel-popout='chat']");
+    await expect(chatPopoutPanel).toBeVisible();
+    await expect(page.locator("[data-wtf-live-panel-popout='chat'] [data-wtf-live-chat-composer]")).toBeVisible();
+    const chatPopoutBox = await chatPopoutPanel.boundingBox();
+    expect(chatPopoutBox).not.toBeNull();
+    await page.mouse.move(chatPopoutBox.x + 20, chatPopoutBox.y + 16);
+    await page.mouse.down();
+    await page.mouse.move(720, chatPopoutBox.y + 16, { steps: 8 });
+    await page.mouse.up();
     await page.locator("[data-wtf-live-popout-attendance]").click();
     await expect(page.locator("[data-wtf-live-panel-popout='attendance']")).toBeVisible();
-    await expect(page.locator("[data-wtf-live-attendance-detached]")).toBeVisible();
-    await page.locator("[data-wtf-live-popout-chat]").click();
-    await expect(page.locator("[data-wtf-live-panel-popout='chat']")).toBeVisible();
-    await expect(page.locator("[data-wtf-live-sidebar]")).toHaveCount(0);
+    await expect(page.locator("[data-wtf-live-panel-popout='attendance'] [data-wtf-live-attendance-panel='popout']")).toBeVisible();
+    await expect(page.locator("[data-wtf-live-bento-tile='attendance']")).toHaveCount(0);
+    await expect(page.locator("[data-wtf-live-bento-tile='chat']")).toHaveCount(0);
     const after = await page.evaluate(() => {
       const stage = document.querySelector("[data-wtf-live-stage-area]")?.getBoundingClientRect();
-      return stage ? { stageWidth: stage.width } : null;
+      const tileCount = document.querySelectorAll("[data-wtf-live-bento-tile]").length;
+      return stage ? { stageWidth: stage.width, tileCount } : null;
     });
     expect(after).not.toBeNull();
-    expect(after.stageWidth).toBeGreaterThan(before.stageWidth + before.sidebarWidth * 0.5);
+    expect(after.stageWidth).toBeGreaterThan(before.stageWidth * 0.75);
+    expect(after.tileCount).toBe(before.tileCount - 2);
     expect(fatalErrors(errors)).toEqual([]);
   });
 
@@ -563,23 +581,32 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
 
     try {
       await unsupported.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+      await expect(unsupported.locator("[data-wtf-live-sharing-testing-drawer]")).toBeHidden();
+      await unsupported.locator("[data-wtf-live-sharing-testing-toggle]").click();
       await expect(unsupported.locator("[data-wtf-live-mic-test]")).toBeVisible();
+      await expect(unsupported.locator("[data-wtf-live-mic-test-details-toggle]")).toHaveAttribute("aria-expanded", "false");
+      await expect(unsupported.locator("[data-wtf-live-mic-test-details]")).toBeHidden();
       await unsupported.locator("[data-wtf-live-mic-test-button]").click();
       await expect(unsupported.locator("[data-wtf-live-mic-test]")).toHaveAttribute("data-wtf-live-mic-test-state", "unsupported");
       await expect(unsupported.locator("[data-wtf-live-mic-test-status]")).toContainText("browser does not expose microphone capture");
+      await unsupported.locator("[data-wtf-live-mic-test-details-toggle]").click();
       await expect(unsupported.locator("[data-wtf-live-mic-test-guidance]")).toContainText("privacy browsers");
 
       await denied.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+      await denied.locator("[data-wtf-live-sharing-testing-toggle]").click();
       await denied.locator("[data-wtf-live-mic-test-button]").click();
       await expect(denied.locator("[data-wtf-live-mic-test]")).toHaveAttribute("data-wtf-live-mic-test-state", "blocked");
+      await denied.locator("[data-wtf-live-mic-test-details-toggle]").click();
       await expect(denied.locator("[data-wtf-live-mic-test-permission]")).toContainText("denied");
       await expect(denied.locator("[data-wtf-live-mic-test-guidance]")).toContainText("operating-system microphone permission");
 
       await success.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+      await success.locator("[data-wtf-live-sharing-testing-toggle]").click();
       await expect(success.locator("[data-wtf-live-mic-test-button]")).toBeVisible();
       await success.locator("[data-wtf-live-mic-test-button]").click();
       await expect(success.locator("[data-wtf-live-mic-test]")).toHaveAttribute("data-wtf-live-mic-test-state", "ok");
       await expect(success.locator("[data-wtf-live-mic-test-status]")).toContainText("Mic test passed");
+      await success.locator("[data-wtf-live-mic-test-details-toggle]").click();
       await expect(success.locator("[data-wtf-live-mic-test-device]")).toContainText("Harness Mic");
       const mobileMetrics = await success.evaluate(() => {
         const panel = document.querySelector("[data-wtf-live-mic-test]")?.getBoundingClientRect();
@@ -680,7 +707,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       expect(metrics.stage).not.toBeNull();
       expect(metrics.composer).not.toBeNull();
       expect(metrics.toolbar).not.toBeNull();
-      expect(metrics.rail.visibleHeight).toBeGreaterThan(180);
+      expect(metrics.rail.visibleHeight).toBeGreaterThan(96);
       if (viewport.width <= 980) {
         expect(metrics.rail.height).toBeGreaterThanOrEqual(metrics.railScrollHeight - 2);
       }
@@ -694,6 +721,113 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
         expect.soft(target.right, `${target.handle} target right`).toBeLessThanOrEqual(metrics.toolbar.right + 1);
       }
     }
+
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("public room exposes core bento trays, screen grids, and receiver default font settings", async ({
+    page,
+    request,
+  }) => {
+    await setAnonymous(request);
+    const errors = [];
+    capturePageErrors(page, errors, "bento-popouts");
+    await installMediaMocks(page, "#0d6b57");
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
+    await page.getByPlaceholder("Display name").fill("Bento Guest");
+    await page.getByRole("button", { name: "Join Room" }).click();
+    await expect(page.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+
+    const workspace = page.locator("[data-wtf-live-bento-workspace]");
+    await expect(workspace).toBeVisible();
+    for (const panel of ["connection", "sharing", "screens", "attendance", "chat"]) {
+      await expect(page.locator(`[data-wtf-live-bento-tile='${panel}']`)).toBeVisible();
+    }
+    await expect(page.locator("[data-wtf-live-bento-tile='testing']")).toHaveCount(0);
+    await expect(page.locator("[data-wtf-live-bento-tile='settings']")).toHaveCount(0);
+    await expect(page.locator("[data-wtf-live-sharing-testing-toggle]")).toBeVisible();
+    await expect(page.locator("[data-wtf-live-sharing-settings-toggle]")).toBeVisible();
+    await expect(page.locator("[data-wtf-live-sharing-testing-drawer]")).toBeHidden();
+    await expect(page.locator("[data-wtf-live-sharing-settings-drawer]")).toBeHidden();
+
+    const metrics = await page.evaluate(() => {
+      const room = document.querySelector("[data-wtf-live-room-frame]")?.getBoundingClientRect();
+      const workspaceBox = document.querySelector("[data-wtf-live-bento-workspace]")?.getBoundingClientRect();
+      const tiles = Array.from(document.querySelectorAll("[data-wtf-live-bento-tile]")).map((node) => {
+        const rect = node.getBoundingClientRect();
+        return {
+          panel: node.getAttribute("data-wtf-live-bento-tile"),
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+        };
+      });
+      const uniqueColumns = new Set(tiles.map((tile) => Math.round(tile.left / 16))).size;
+      return {
+        roomBackground: room ? getComputedStyle(document.querySelector("[data-wtf-live-room-frame]")).backgroundColor : "",
+        roomWidth: room?.width ?? 0,
+        workspaceWidth: workspaceBox?.width ?? 0,
+        uniqueColumns,
+        tiles,
+      };
+    });
+    expect(metrics.roomWidth).toBeGreaterThan(900);
+    expect(metrics.workspaceWidth).toBeGreaterThan(880);
+    expect(metrics.uniqueColumns).toBeGreaterThan(1);
+    expect(metrics.roomBackground).toMatch(/rgba\(/);
+    for (const tile of metrics.tiles) {
+      expect.soft(tile.width, `${tile.panel} tile width`).toBeGreaterThan(180);
+      expect.soft(tile.height, `${tile.panel} tile height`).toBeGreaterThan(120);
+    }
+
+    await page.locator("[data-wtf-live-sharing-testing-toggle]").click();
+    await expect(page.locator("[data-wtf-live-sharing-testing-drawer]")).toBeVisible();
+    await page.locator("[data-wtf-live-sharing-settings-toggle]").click();
+    await expect(page.locator("[data-wtf-live-sharing-settings-drawer]")).toBeVisible();
+    const roomFontOptions = await page.locator("[data-wtf-live-room-default-font] option").evaluateAll((options) =>
+      options.map((option) => option.getAttribute("value")),
+    );
+    expect(roomFontOptions).not.toContain("mek-type");
+    await page.locator("[data-wtf-live-room-default-font]").selectOption("serif-press");
+    await page.locator("[data-wtf-live-chat-text]").fill("receiver default font");
+    await page.locator("[data-wtf-live-chat-send]").click();
+    const defaultFontMessage = page.locator("[data-wtf-live-chat-message]").filter({ hasText: "receiver default font" }).last();
+    await expect(defaultFontMessage).toBeVisible();
+    const defaultFontFamily = await defaultFontMessage.locator("[data-wtf-live-chat-message-text]").evaluate((node) =>
+      getComputedStyle(node).fontFamily.toLowerCase(),
+    );
+    expect(defaultFontFamily).toMatch(/georgia|times/);
+
+    await page.locator("[data-wtf-live-toggle-camera]").click();
+    await page.locator("[data-wtf-live-toggle-screen]").click();
+    const stageEntries = page.locator("[data-wtf-live-stage-entry]");
+    await expect(stageEntries).toHaveCount(2);
+    await stageEntries.nth(0).dragTo(stageEntries.nth(1));
+    const screenGrid = page.locator("[data-wtf-live-screen-grid]");
+    await expect(screenGrid).toBeVisible();
+    await expect(screenGrid.locator("[data-wtf-live-screen-grid-item]")).toHaveCount(2);
+    const gridPopout = screenGrid.locator("[data-wtf-live-grid-popout]").first();
+    await expect
+      .poll(async () => gridPopout.evaluate((node) => getComputedStyle(node).opacity))
+      .toBe("0");
+    await screenGrid.locator("[data-wtf-live-screen-grid-item]").first().hover();
+    await expect
+      .poll(async () => Number(await gridPopout.evaluate((node) => getComputedStyle(node).opacity)))
+      .toBeGreaterThan(0.8);
+
+    await page.locator("[data-wtf-live-popout-chat]").click();
+    const chatPopout = page.locator("[data-wtf-live-panel-popout='chat']");
+    await expect(chatPopout).toBeVisible();
+    await expect(page.locator("[data-wtf-live-bento-tile='chat']")).toHaveCount(0);
+    await page.locator("[data-wtf-live-popout-pin='panel-chat']").click();
+    await expect(chatPopout).toHaveAttribute("data-wtf-live-popout-pinned", "true");
+    await page.locator("[data-wtf-live-popout-popin='panel-chat']").click();
+    await expect(page.locator("[data-wtf-live-panel-popout='chat']")).toHaveCount(0);
+    await expect(page.locator("[data-wtf-live-bento-tile='chat']")).toBeVisible();
 
     expect(fatalErrors(errors)).toEqual([]);
   });
@@ -1054,8 +1188,8 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       const fontOptions = await alice.locator("[data-wtf-live-chat-font] option").evaluateAll((options) =>
         options.map((option) => option.getAttribute("value")),
       );
-      expect(fontOptions).toEqual(["mek-mono", "grout-display", "classic-95", "terminal", "serif-press"]);
-      await alice.locator("[data-wtf-live-chat-font]").selectOption("grout-display");
+      expect(fontOptions).toEqual(["classic-95", "terminal", "serif-press"]);
+      await alice.locator("[data-wtf-live-chat-font]").selectOption("terminal");
       await alice.locator("[data-wtf-live-chat-font-size]").selectOption("14");
       await alice.locator("[data-wtf-live-chat-color='red']").click();
       await alice.locator("[data-wtf-live-chat-bold]").click();
@@ -1082,7 +1216,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       expect(renderedStyle.fontSize).toBe("14px");
       expect(renderedStyle.fontStyle).toBe("italic");
       expect(renderedStyle.color).toBe("rgb(143, 29, 44)");
-      expect(renderedStyle.fontFamily.toLowerCase()).toContain("grout");
+      expect(renderedStyle.fontFamily.toLowerCase()).toMatch(/mono|consolas|courier/);
       const renderedWeight = renderedStyle.fontWeight === "bold" ? 700 : Number(renderedStyle.fontWeight);
       expect(renderedWeight).toBeGreaterThanOrEqual(600);
 
@@ -1190,16 +1324,29 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
 
 	      const layoutMetrics = await alice.evaluate(() => {
 	        const stage = document.querySelector("[data-wtf-live-stage-area]")?.getBoundingClientRect();
-	        const sidebar = document.querySelector("[data-wtf-live-sidebar]")?.getBoundingClientRect();
 	        const rail = document.querySelector("[data-wtf-live-control-rail]")?.getBoundingClientRect();
-	        return stage && sidebar && rail
-	          ? { stageWidth: stage.width, sidebarWidth: sidebar.width, railWidth: rail.width, sidebarX: sidebar.x, stageX: stage.x }
+	        const attendance = document.querySelector("[data-wtf-live-bento-tile='attendance']")?.getBoundingClientRect();
+	        const chat = document.querySelector("[data-wtf-live-bento-tile='chat']")?.getBoundingClientRect();
+	        const workspace = document.querySelector("[data-wtf-live-bento-workspace]")?.getBoundingClientRect();
+	        return stage && rail && attendance && chat && workspace
+	          ? {
+	              stageWidth: stage.width,
+	              railWidth: rail.width,
+	              attendanceWidth: attendance.width,
+	              chatWidth: chat.width,
+	              workspaceWidth: workspace.width,
+	              chatX: chat.x,
+	              railX: rail.x,
+	              stageX: stage.x,
+	            }
 	          : null;
 	      });
 	      expect(layoutMetrics).not.toBeNull();
-	      expect(layoutMetrics.stageWidth).toBeGreaterThan(layoutMetrics.sidebarWidth * 1.5);
-	      expect(layoutMetrics.stageWidth).toBeGreaterThan(layoutMetrics.railWidth * 2.2);
-	      expect(layoutMetrics.sidebarX).toBeGreaterThan(layoutMetrics.stageX);
+	      expect(layoutMetrics.stageWidth).toBeGreaterThan(layoutMetrics.attendanceWidth * 1.2);
+	      expect(layoutMetrics.stageWidth).toBeGreaterThan(layoutMetrics.railWidth * 1.2);
+	      expect(layoutMetrics.chatWidth).toBeGreaterThan(180);
+	      expect(layoutMetrics.railX).toBeLessThan(layoutMetrics.stageX);
+	      expect(layoutMetrics.chatX).toBeGreaterThan(layoutMetrics.stageX);
 
       const composerBox = await alice.locator("[data-wtf-live-chat-composer]").evaluate((node) => {
         const rect = node.getBoundingClientRect();

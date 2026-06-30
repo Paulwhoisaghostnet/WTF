@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, Bold, Camera, Check, ChevronDown, ChevronRight, Copy, ExternalLink, FileAudio, Gauge, Gift, Image as ImageIcon, Italic, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Music2, Paperclip, Pause, Play, Radio, RotateCcw, Send, Smile, Square, Type as TypeIcon, UserPlus, Users, Volume2, VolumeX, Wifi, WifiOff, X } from "lucide-react";
+import { Activity, Bold, Camera, Check, ChevronDown, ChevronRight, Copy, ExternalLink, FileAudio, Gauge, Gift, Image as ImageIcon, Italic, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Music2, Paperclip, Pause, Pin, Play, Radio, RotateCcw, Send, Smile, Square, Type as TypeIcon, UserPlus, Users, Volume2, VolumeX, Wifi, WifiOff, X } from "lucide-react";
 import styled from "styled-components";
 import { Button, Hourglass, TextField } from "react95";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
-import { getFontPack } from "../appearance/font-packs";
+import { FONT_PACKS, getFontPack } from "../appearance/font-packs";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
   DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS,
@@ -16,6 +16,7 @@ import {
   DESKTOP_WTF_LIVE_CHAT_SIZES,
   normalizeDesktopWtfLiveChatStyle,
   type DesktopAppearance,
+  type DesktopFontPackKey,
   type DesktopWtfLiveChatColor,
   type DesktopWtfLiveChatFont,
   type DesktopWtfLiveChatStyle,
@@ -166,6 +167,8 @@ type PeerDiagnostic = {
   updatedAt: number;
 };
 
+type BentoPanelId = "connection" | "sharing" | "screens" | "attendance" | "chat";
+
 type PopoutFrame =
   | {
       id: string;
@@ -179,6 +182,7 @@ type PopoutFrame =
       width: number;
       height: number;
       maximized: boolean;
+      pinned: boolean;
     }
   | {
       id: string;
@@ -190,17 +194,19 @@ type PopoutFrame =
       width: number;
       height: number;
       maximized: boolean;
+      pinned: boolean;
     }
   | {
       id: string;
       title: string;
       kind: "panel";
-      panel: "attendance" | "chat";
+      panel: BentoPanelId;
       x: number;
       y: number;
       width: number;
       height: number;
       maximized: boolean;
+      pinned: boolean;
     };
 
 type LiveChatAttachment = {
@@ -299,13 +305,13 @@ const MAX_LIVE_CHAT_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const MAX_LIVE_AVATAR_BYTES = 512 * 1024;
 const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(MAX_LIVE_AVATAR_BYTES * 1.4);
 const LIVE_CHAT_FONT_SIZES = DESKTOP_WTF_LIVE_CHAT_SIZES;
-const MEK_TYPE_FONT_PACK = getFontPack("mek-type");
+const WTF_LIVE_CHAT_DEFAULT_FONT_STORAGE_KEY = "wtf-live:room-default-font-pack";
+const WTF_LIVE_DEFAULT_FONT_PACK: DesktopFontPackKey = "classic-95";
+const WTF_LIVE_ROOM_FONT_PACKS = FONT_PACKS.filter((pack) => pack.key !== "mek-type");
 const CLASSIC_95_FONT_PACK = getFontPack("classic-95");
 const TERMINAL_FONT_PACK = getFontPack("terminal");
 const SERIF_PRESS_FONT_PACK = getFontPack("serif-press");
 const LIVE_CHAT_FONT_OPTIONS: Array<{ id: LiveChatFont; label: string; family: string }> = [
-  { id: "mek-mono", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["mek-mono"], family: MEK_TYPE_FONT_PACK.roles.mono },
-  { id: "grout-display", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["grout-display"], family: MEK_TYPE_FONT_PACK.roles.display },
   { id: "classic-95", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["classic-95"], family: CLASSIC_95_FONT_PACK.roles.app },
   { id: "terminal", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS.terminal, family: TERMINAL_FONT_PACK.roles.mono },
   { id: "serif-press", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["serif-press"], family: SERIF_PRESS_FONT_PACK.roles.app },
@@ -350,11 +356,20 @@ const LIVE_ROOM_REACTION_OPTIONS = [
 ] as const;
 const LIVE_ROOM_REACTION_EMOJIS = new Set<string>(LIVE_ROOM_REACTION_OPTIONS.map((option) => option.emoji));
 const DEFAULT_LIVE_CHAT_STYLE: LiveChatStyle = DEFAULT_DESKTOP_APPEARANCE.wtfLiveChatStyle;
+const WTF_LIVE_CLASSIC_FONT_STACK = `"MS Sans Serif", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif`;
 const PEER_CONNECTION_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:global.stun.twilio.com:3478" },
   ],
+};
+const BENTO_PANEL_ORDER: BentoPanelId[] = ["connection", "sharing", "screens", "attendance", "chat"];
+const BENTO_PANEL_LABELS: Record<BentoPanelId, string> = {
+  connection: "Connection",
+  sharing: "Sharing",
+  screens: "Screens",
+  attendance: "Attendance",
+  chat: "Room chat",
 };
 
 const GuestShell = styled.main`
@@ -368,6 +383,7 @@ const GuestShell = styled.main`
     #087f7b;
   background-size: 18px 18px;
   color: #07120f;
+  font-family: ${WTF_LIVE_CLASSIC_FONT_STACK};
   display: grid;
   place-items: stretch;
   padding: clamp(6px, 1vw, 14px);
@@ -392,9 +408,10 @@ const RoomFrame = styled.section`
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   border: 2px outset #fff;
-  background: #e9e9e9;
+  background: rgba(233, 233, 233, 0.64);
   box-shadow: 7px 9px 0 rgba(0, 0, 0, 0.38);
   overflow: hidden;
+  backdrop-filter: blur(2px);
 
   @media (max-width: 980px) {
     display: block;
@@ -502,23 +519,23 @@ const SettingsGroup = styled.div`
   min-width: 0;
 `;
 
-const RoomBody = styled.div<{ $sidebarDetached?: boolean }>`
+const BentoWorkspace = styled.div`
   display: grid;
-  grid-template-columns: ${({ $sidebarDetached }) =>
-    $sidebarDetached
-      ? "clamp(170px, 15vw, 235px) minmax(0, 1fr)"
-      : "clamp(170px, 15vw, 235px) minmax(0, 1fr) clamp(285px, 22vw, 360px)"};
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(168px, auto);
+  grid-auto-flow: dense;
   gap: 8px;
   padding: 8px;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
+  background: rgba(8, 127, 123, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
 
   @media (max-width: 980px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     min-height: auto;
     overflow: visible;
     ${ControlRail} {
-      order: 1;
       height: auto;
       min-height: auto;
       max-height: none;
@@ -527,20 +544,105 @@ const RoomBody = styled.div<{ $sidebarDetached?: boolean }>`
   }
 
   @media (max-width: 820px) {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
     min-height: auto;
     overflow: visible;
     padding: 6px;
 
     ${ControlRail} {
-      order: 1;
       height: auto;
       min-height: auto;
       max-height: none;
       overflow: visible;
     }
+  }
+`;
+
+const BentoTile = styled.section<{ $panel: BentoPanelId; $dragging?: boolean }>`
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 4px;
+  opacity: ${({ $dragging }) => ($dragging ? 0.62 : 1)};
+  transition: opacity 120ms ease, transform 120ms ease;
+  ${({ $panel }) => {
+    if ($panel === "connection") return "grid-column: 1; grid-row: 1;";
+    if ($panel === "sharing") return "grid-column: 1; grid-row: 2 / span 2;";
+    if ($panel === "screens") return "grid-column: 2 / span 2; grid-row: 1 / span 3;";
+    if ($panel === "chat") return "grid-column: 4; grid-row: 1 / span 3;";
+    return "grid-column: 1; grid-row: 4;";
+  }}
+
+  > [data-wtf-live-control-rail],
+  > [data-wtf-live-stage-area],
+  > [data-wtf-live-attendance-panel],
+  > [data-wtf-live-chat-column] {
+    height: 100%;
+  }
+
+  > [data-wtf-live-stage-area] {
+    min-height: 420px;
+  }
+
+  @media (max-width: 980px) {
+    grid-column: span 1;
+    grid-row: span 1;
+
+    > [data-wtf-live-stage-area] {
+      min-height: min(72vh, 620px);
+    }
+  }
+
+  @media (max-width: 820px) {
+    > [data-wtf-live-stage-area] {
+      min-height: 0;
+      height: clamp(280px, 48dvh, 430px);
+    }
+  }
+`;
+
+const BentoTileHeader = styled.div`
+  border: 2px outset #fff;
+  background: rgba(230, 230, 230, 0.86);
+  color: #07120f;
+  min-height: 30px;
+  padding: 3px 5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 700;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+`;
+
+const BentoTileActions = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  button {
+    min-width: 30px;
+    min-height: 28px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 `;
 
@@ -636,6 +738,57 @@ const StageGridShell = styled.div`
   overflow: hidden;
 `;
 
+const ScreenGridShell = styled.div`
+  border: 2px outset #2f4a43;
+  background: #050505;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  grid-auto-rows: minmax(180px, 1fr);
+  min-height: 240px;
+  padding: 4px;
+  overflow: auto;
+`;
+
+const ScreenGridItem = styled.div`
+  position: relative;
+  border: 1px solid #565656;
+  background: #090909;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+
+  &:hover [data-wtf-live-grid-popout],
+  &:focus-within [data-wtf-live-grid-popout] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+`;
+
+const ScreenGridPopoutButton = styled.button`
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 4;
+  width: 30px;
+  height: 30px;
+  border: 2px outset #fff;
+  background: #f2f2f2;
+  color: #07120f;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+
+  &:active {
+    border-style: inset;
+  }
+`;
+
 const ReactionBurstLayer = styled.div`
   position: absolute;
   inset: 0;
@@ -713,25 +866,6 @@ const StageGrid = styled.div<{ $count: number }>`
   @media (max-width: 640px) {
     grid-template-columns: 1fr;
     grid-auto-rows: minmax(220px, 1fr);
-  }
-`;
-
-const RoomSidebar = styled.aside`
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 8px;
-  min-height: 0;
-  min-width: 0;
-
-  @media (max-width: 980px) {
-    order: 2;
-    min-height: 480px;
-  }
-
-  @media (max-width: 820px) {
-    order: 3;
-    grid-template-rows: auto auto;
-    min-height: 0;
   }
 `;
 
@@ -823,6 +957,31 @@ const MediaButtonGrid = styled(GuestGrid)`
     button {
       min-height: 44px !important;
     }
+  }
+`;
+
+const SharingTrayActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+
+  button {
+    min-width: 32px;
+    min-height: 30px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+`;
+
+const SharingDrawer = styled.div`
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+
+  &[hidden] {
+    display: none;
   }
 `;
 
@@ -930,14 +1089,14 @@ const MediaDeckRange = styled.input`
 `;
 
 const MicTestPanel = styled.div<{ $status: MicDiagnosticStatus }>`
-  border: 2px inset #fff;
+  border: 2px outset #fff;
   background: ${({ $status }) =>
     $status === "ok" ? "#e6f8e8" :
       $status === "blocked" || $status === "unsupported" ? "#fff0d8" :
         $status === "warn" ? "#fff7c8" : "#f8f8f8"};
-  padding: 6px;
+  padding: 4px;
   display: grid;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
   font-size: var(--wtf-type-caption, 13px);
 `;
@@ -970,26 +1129,42 @@ const MicTestBadge = styled.span<{ $status: MicDiagnosticStatus }>`
 
 const MicTestActionRow = styled.div`
   display: grid;
-  grid-template-columns: minmax(92px, auto) minmax(0, 1fr);
-  gap: 6px;
+  grid-template-columns: minmax(74px, auto) minmax(0, 1fr) auto auto;
+  gap: 4px;
   align-items: center;
 
   button {
     min-height: 32px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
   }
 
   @media (max-width: 520px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
 
     button {
       min-height: 44px !important;
     }
+
+    ${MicTestHeader},
+    [data-wtf-live-mic-test-status] {
+      grid-column: 1 / -1;
+    }
   }
+`;
+
+const MicTestDrawer = styled.div<{ $expanded: boolean }>`
+  display: ${({ $expanded }) => ($expanded ? "grid" : "none")};
+  gap: 4px;
+  border-top: 1px solid #b8b8b8;
+  padding-top: 4px;
+  line-height: 1.28;
+  min-width: 0;
 `;
 
 const MicTestFacts = styled.div`
   display: grid;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 
   span {
@@ -1645,7 +1820,7 @@ const FloatingLayer = styled.div`
   z-index: 4000;
 `;
 
-const FloatingWindow = styled.section<{ $maximized?: boolean; $x: number; $y: number; $width: number; $height: number }>`
+const FloatingWindow = styled.section<{ $maximized?: boolean; $pinned?: boolean; $x: number; $y: number; $width: number; $height: number }>`
   pointer-events: auto;
   position: fixed;
   left: ${({ $maximized, $x }) => ($maximized ? "10px" : `${$x}px`)};
@@ -1656,10 +1831,20 @@ const FloatingWindow = styled.section<{ $maximized?: boolean; $x: number; $y: nu
   min-height: min(220px, calc(100vh - 20px));
   border: 2px outset #fff;
   background: #111;
-  box-shadow: 9px 11px 0 rgba(0, 0, 0, 0.35);
+  box-shadow: ${({ $pinned }) => ($pinned ? "0 0 0 2px #f5d45d, 9px 11px 0 rgba(0, 0, 0, 0.35)" : "9px 11px 0 rgba(0, 0, 0, 0.35)")};
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
+  z-index: ${({ $pinned }) => ($pinned ? 2 : 1)};
+
+  [data-wtf-live-presentation-host="gamma"] & {
+    border: 1px solid rgba(242, 234, 217, 0.24);
+    border-radius: 6px;
+    background: #11110f;
+    box-shadow: none;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
 `;
 
 const FloatingTitleBar = styled.div`
@@ -1679,6 +1864,16 @@ const FloatingTitleBar = styled.div`
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  [data-wtf-live-presentation-host="gamma"] & {
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    border-bottom: 1px solid rgba(242, 234, 217, 0.18);
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    letter-spacing: 0;
+    text-transform: uppercase;
   }
 `;
 
@@ -1725,15 +1920,11 @@ const FloatingPanelContent = styled.div`
     min-height: 0;
     height: 100%;
   }
-`;
 
-const DetachedPanelNotice = styled.div`
-  border: 2px inset #fff;
-  background: #f8f8f8;
-  padding: 8px;
-  display: grid;
-  gap: 6px;
-  font-size: var(--wtf-type-caption, 13px);
+  [data-wtf-live-presentation-host="gamma"] & {
+    background: #11110f;
+    color: #f2ead9;
+  }
 `;
 
 const FloatingVideo = styled.video`
@@ -1985,6 +2176,14 @@ function normalizeLiveChatStyle(value: unknown): LiveChatStyle {
   return normalizeDesktopWtfLiveChatStyle(value, DEFAULT_LIVE_CHAT_STYLE);
 }
 
+function sameLiveChatStyle(left: LiveChatStyle, right: LiveChatStyle): boolean {
+  return left.font === right.font &&
+    left.color === right.color &&
+    left.size === right.size &&
+    left.bold === right.bold &&
+    left.italic === right.italic;
+}
+
 function readStoredLiveChatStyle(): LiveChatStyle | null {
   try {
     const raw = localStorage.getItem("wtf-live:chat-style");
@@ -1994,13 +2193,23 @@ function readStoredLiveChatStyle(): LiveChatStyle | null {
   }
 }
 
-function liveChatTextStyle(value: unknown): CSSProperties {
+function readStoredRoomDefaultFontPack(): DesktopFontPackKey {
+  try {
+    const stored = localStorage.getItem(WTF_LIVE_CHAT_DEFAULT_FONT_STORAGE_KEY);
+    return WTF_LIVE_ROOM_FONT_PACKS.some((pack) => pack.key === stored) ? stored as DesktopFontPackKey : WTF_LIVE_DEFAULT_FONT_PACK;
+  } catch {
+    return WTF_LIVE_DEFAULT_FONT_PACK;
+  }
+}
+
+function liveChatTextStyle(value: unknown, fallbackFontFamily?: string): CSSProperties {
+  const hasAssignedFont = typeof value === "object" && value !== null && typeof (value as Record<string, unknown>).font === "string";
   const style = normalizeLiveChatStyle(value);
   const font = LIVE_CHAT_FONT_OPTIONS.find((option) => option.id === style.font) ?? LIVE_CHAT_FONT_OPTIONS[0];
   const color = LIVE_CHAT_COLOR_OPTIONS.find((option) => option.id === style.color) ?? LIVE_CHAT_COLOR_OPTIONS[0];
   return {
     color: color.value,
-    fontFamily: font.family,
+    fontFamily: hasAssignedFont ? font.family : fallbackFontFamily ?? font.family,
     fontSize: `${style.size}px`,
     fontStyle: style.italic ? "italic" : "normal",
     fontWeight: style.bold ? 700 : 400,
@@ -2077,6 +2286,29 @@ function streamSignature(stream: MediaStream | null): string {
   return (stream?.getTracks() ?? [])
     .map((track) => `${track.kind}:${track.id}:${track.readyState}:${track.enabled}`)
     .join("|");
+}
+
+type StageStreamCache = Map<string, { signature: string; stream: MediaStream | null }>;
+
+function cachedStageStream(
+  cache: StageStreamCache,
+  key: string,
+  baseStream: MediaStream | null,
+  mediaState: LiveMediaState,
+  source: StageSource,
+): MediaStream | null {
+  const signature = [
+    source,
+    mediaState.cameraTrackId,
+    mediaState.screenTrackId,
+    mediaState.mediaVideoTrackId,
+    streamSignature(baseStream),
+  ].join("|");
+  const existing = cache.get(key);
+  if (existing?.signature === signature) return existing.stream;
+  const stream = stageStreamFromMediaState(baseStream, mediaState, source);
+  cache.set(key, { signature, stream });
+  return stream;
 }
 
 function isNearScrollBottom(node: HTMLElement, padding = 96): boolean {
@@ -2313,7 +2545,13 @@ function AvatarMark({ name, avatarUrl, size = "large" }: { name: string; avatarU
   );
 }
 
-function StageParticipantTile({
+type StageParticipantTileProps = StageEntry & {
+  onOpen?: () => void;
+  onDragStart?: (entryId: string) => void;
+  onDropOn?: (entryId: string) => void;
+};
+
+const StageParticipantTile = memo(function StageParticipantTile({
   id,
   peerId,
   name,
@@ -2324,9 +2562,9 @@ function StageParticipantTile({
   connected,
   isSelf = false,
   onOpen,
-}: StageEntry & {
-  onOpen?: () => void;
-}) {
+  onDragStart,
+  onDropOn,
+}: StageParticipantTileProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamSignature = (stream?.getTracks() ?? [])
     .map((track) => `${track.kind}:${track.id}:${track.readyState}`)
@@ -2349,6 +2587,21 @@ function StageParticipantTile({
     <StageTile
       $hasVideo={hasVideo}
       onClick={hasVideo ? onOpen : undefined}
+      draggable={hasVideo}
+      onDragStart={hasVideo ? (event) => {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", id);
+        onDragStart?.(id);
+      } : undefined}
+      onDragOver={hasVideo ? (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+      } : undefined}
+      onDrop={hasVideo ? (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onDropOn?.(id);
+      } : undefined}
       data-wtf-live-stage-entry={id}
       data-wtf-live-stage-peer={peerId}
       data-wtf-live-stage-source={source}
@@ -2396,6 +2649,58 @@ function StageParticipantTile({
       </StageMeta>
     </StageTile>
   );
+}, (previous, next) =>
+  previous.id === next.id &&
+  previous.peerId === next.peerId &&
+  previous.name === next.name &&
+  previous.source === next.source &&
+  previous.title === next.title &&
+  previous.mediaState === next.mediaState &&
+  previous.stream === next.stream &&
+  previous.connected === next.connected &&
+  previous.isSelf === next.isSelf &&
+  previous.onOpen === next.onOpen &&
+  previous.onDragStart === next.onDragStart &&
+  previous.onDropOn === next.onDropOn
+);
+
+function ScreenGridEntryTile({ entry, onOpen }: { entry: StageEntry; onOpen: () => void }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const signature = streamSignature(entry.stream);
+  const hasVideo = Boolean(entry.stream?.getVideoTracks().some((track) => track.readyState === "live"));
+  useMediaStream(videoRef, hasVideo ? entry.stream : null, signature);
+  return (
+    <ScreenGridItem data-wtf-live-screen-grid-item={entry.id}>
+      {hasVideo ? (
+        <StageVideoFrame>
+          <StageVideo
+            ref={videoRef}
+            data-wtf-live-screen-grid-video={entry.id}
+            autoPlay
+            playsInline
+            muted={entry.isSelf}
+          />
+        </StageVideoFrame>
+      ) : (
+        <AvatarStage>
+          <AvatarMark name={entry.name} avatarUrl={entry.mediaState.avatarUrl} />
+        </AvatarStage>
+      )}
+      <ScreenGridPopoutButton
+        type="button"
+        aria-label={`Pop out ${entry.title}`}
+        title={`Pop out ${entry.title}`}
+        onClick={onOpen}
+        data-wtf-live-grid-popout={entry.id}
+      >
+        <Maximize2 size={14} aria-hidden />
+      </ScreenGridPopoutButton>
+      <StageMeta>
+        <strong>{entry.isSelf ? `${entry.name} (you)` : entry.name}</strong>
+        <span>{entry.source === "screen" ? "Screen" : entry.source === "camera" ? "Camera" : entry.mediaState.mediaName || "Media"}</span>
+      </StageMeta>
+    </ScreenGridItem>
+  );
 }
 
 function RemoteAudioSink({ peer }: { peer: LivePeer }) {
@@ -2405,11 +2710,79 @@ function RemoteAudioSink({ peer }: { peer: LivePeer }) {
   return <RemoteAudio ref={audioRef} data-wtf-live-remote-audio={peer.peerId} autoPlay />;
 }
 
+function MicLevelMeter({
+  micStream,
+  localAudioOpen,
+  pushToTalk,
+}: {
+  micStream: MediaStream | null;
+  localAudioOpen: boolean;
+  pushToTalk: boolean;
+}) {
+  const [micLevel, setMicLevel] = useState(0);
+  const animationRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!micStream) {
+      setMicLevel(0);
+      return;
+    }
+
+    const AudioContextCtor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) {
+      setMicLevel(0);
+      return;
+    }
+
+    const audioContext = new AudioContextCtor();
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    const source = audioContext.createMediaStreamSource(micStream);
+    source.connect(analyser);
+    const samples = new Uint8Array(analyser.fftSize);
+    audioContext.resume().catch(() => undefined);
+
+    const readLevel = () => {
+      analyser.getByteTimeDomainData(samples);
+      let sum = 0;
+      for (const sample of samples) {
+        const normalized = (sample - 128) / 128;
+        sum += normalized * normalized;
+      }
+      const rms = Math.sqrt(sum / samples.length);
+      const nextLevel = Math.min(1, rms * 5);
+      setMicLevel((current) => (Math.abs(current - nextLevel) > 0.015 ? nextLevel : current));
+      animationRef.current = requestAnimationFrame(readLevel);
+    };
+
+    readLevel();
+
+    return () => {
+      if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+      source.disconnect();
+      audioContext.close().catch(() => undefined);
+      setMicLevel(0);
+    };
+  }, [micStream]);
+
+  return (
+    <MicMeter aria-label={`Mic level ${Math.round(micLevel * 100)} percent`}>
+      <span>{pushToTalk ? "PTT" : "Mic"}</span>
+      <MicMeterTrack>
+        <MicMeterFill $level={localAudioOpen ? micLevel : 0} />
+      </MicMeterTrack>
+      <span>{localAudioOpen ? (micLevel > 0.04 ? "Live" : "Quiet") : micStream ? "Muted" : "Off"}</span>
+    </MicMeter>
+  );
+}
+
 function FloatingStreamWindow({
   frame,
   stream,
   onClose,
   onToggleMaximize,
+  onTogglePinned,
   onCycleSize,
   onDragStart,
 }: {
@@ -2417,6 +2790,7 @@ function FloatingStreamWindow({
   stream: MediaStream | null;
   onClose: (id: string) => void;
   onToggleMaximize: (id: string) => void;
+  onTogglePinned: (id: string) => void;
   onCycleSize: (id: string) => void;
   onDragStart: (event: ReactPointerEvent<HTMLElement>, frame: PopoutFrame) => void;
 }) {
@@ -2425,11 +2799,13 @@ function FloatingStreamWindow({
   return (
     <FloatingWindow
       $maximized={frame.maximized}
+      $pinned={frame.pinned}
       $x={frame.x}
       $y={frame.y}
       $width={frame.width}
       $height={frame.height}
       data-wtf-live-popout-frame={frame.id}
+      data-wtf-live-popout-pinned={frame.pinned ? "true" : "false"}
     >
       <FloatingTitleBar onPointerDown={(event) => onDragStart(event, frame)}>
         <Move size={14} aria-hidden />
@@ -2440,6 +2816,15 @@ function FloatingStreamWindow({
           </Button>
           <Button aria-label="Maximize popout" onClick={() => onToggleMaximize(frame.id)} data-wtf-live-popout-maximize={frame.id}>
             <Maximize2 size={14} aria-hidden />
+          </Button>
+          <Button
+            aria-label={frame.pinned ? "Unpin popout from top" : "Pin popout always on top"}
+            aria-pressed={frame.pinned}
+            title={frame.pinned ? "Unlock and let this popout move behind others" : "Lock this popout above other panels"}
+            onClick={() => onTogglePinned(frame.id)}
+            data-wtf-live-popout-pin={frame.id}
+          >
+            <Pin size={14} aria-hidden />
           </Button>
           <Button aria-label="Close popout" onClick={() => onClose(frame.id)} data-wtf-live-popout-close={frame.id}>
             <X size={14} aria-hidden />
@@ -2457,23 +2842,27 @@ function FloatingAttachmentWindow({
   frame,
   onClose,
   onToggleMaximize,
+  onTogglePinned,
   onCycleSize,
   onDragStart,
 }: {
   frame: Extract<PopoutFrame, { kind: "attachment" }>;
   onClose: (id: string) => void;
   onToggleMaximize: (id: string) => void;
+  onTogglePinned: (id: string) => void;
   onCycleSize: (id: string) => void;
   onDragStart: (event: ReactPointerEvent<HTMLElement>, frame: PopoutFrame) => void;
 }) {
   return (
     <FloatingWindow
       $maximized={frame.maximized}
+      $pinned={frame.pinned}
       $x={frame.x}
       $y={frame.y}
       $width={frame.width}
       $height={frame.height}
       data-wtf-live-popout-frame={frame.id}
+      data-wtf-live-popout-pinned={frame.pinned ? "true" : "false"}
       data-wtf-live-lightbox={frame.attachment.id}
     >
       <FloatingTitleBar onPointerDown={(event) => onDragStart(event, frame)}>
@@ -2485,6 +2874,15 @@ function FloatingAttachmentWindow({
           </Button>
           <Button aria-label="Maximize popout" onClick={() => onToggleMaximize(frame.id)} data-wtf-live-popout-maximize={frame.id}>
             <Maximize2 size={14} aria-hidden />
+          </Button>
+          <Button
+            aria-label={frame.pinned ? "Unpin popout from top" : "Pin popout always on top"}
+            aria-pressed={frame.pinned}
+            title={frame.pinned ? "Unlock and let this popout move behind others" : "Lock this popout above other panels"}
+            onClick={() => onTogglePinned(frame.id)}
+            data-wtf-live-popout-pin={frame.id}
+          >
+            <Pin size={14} aria-hidden />
           </Button>
           <Button aria-label="Close popout" onClick={() => onClose(frame.id)} data-wtf-live-popout-close={frame.id}>
             <X size={14} aria-hidden />
@@ -2507,6 +2905,7 @@ function FloatingPanelWindow({
   children,
   onClose,
   onToggleMaximize,
+  onTogglePinned,
   onCycleSize,
   onDragStart,
 }: {
@@ -2514,17 +2913,20 @@ function FloatingPanelWindow({
   children: ReactNode;
   onClose: (id: string) => void;
   onToggleMaximize: (id: string) => void;
+  onTogglePinned: (id: string) => void;
   onCycleSize: (id: string) => void;
   onDragStart: (event: ReactPointerEvent<HTMLElement>, frame: PopoutFrame) => void;
 }) {
   return (
     <FloatingWindow
       $maximized={frame.maximized}
+      $pinned={frame.pinned}
       $x={frame.x}
       $y={frame.y}
       $width={frame.width}
       $height={frame.height}
       data-wtf-live-popout-frame={frame.id}
+      data-wtf-live-popout-pinned={frame.pinned ? "true" : "false"}
       data-wtf-live-panel-popout={frame.panel}
     >
       <FloatingTitleBar onPointerDown={(event) => onDragStart(event, frame)}>
@@ -2537,8 +2939,23 @@ function FloatingPanelWindow({
           <Button aria-label="Maximize popout" onClick={() => onToggleMaximize(frame.id)} data-wtf-live-popout-maximize={frame.id}>
             <Maximize2 size={14} aria-hidden />
           </Button>
-          <Button aria-label="Close popout" onClick={() => onClose(frame.id)} data-wtf-live-popout-close={frame.id}>
-            <X size={14} aria-hidden />
+          <Button
+            aria-label={frame.pinned ? "Unpin popout from top" : "Pin popout always on top"}
+            aria-pressed={frame.pinned}
+            title={frame.pinned ? "Unlock and let this popout move behind others" : "Lock this popout above other panels"}
+            onClick={() => onTogglePinned(frame.id)}
+            data-wtf-live-popout-pin={frame.id}
+          >
+            <Pin size={14} aria-hidden />
+          </Button>
+          <Button
+            aria-label={`Pop ${frame.title} back into the bento`}
+            title={`Pop ${frame.title} back into the bento`}
+            onClick={() => onClose(frame.id)}
+            data-wtf-live-popout-popin={frame.id}
+            data-wtf-live-popout-close={frame.id}
+          >
+            <ChevronDown size={14} aria-hidden />
           </Button>
         </FloatingButtonRow>
       </FloatingTitleBar>
@@ -2575,7 +2992,9 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const [status, setStatus] = useState("");
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
   const [micDiagnostic, setMicDiagnostic] = useState<MicDiagnosticState>(INITIAL_MIC_DIAGNOSTIC);
-  const [micLevel, setMicLevel] = useState(0);
+  const [micDiagnosticExpanded, setMicDiagnosticExpanded] = useState(false);
+  const [sharingTestingOpen, setSharingTestingOpen] = useState(false);
+  const [sharingSettingsOpen, setSharingSettingsOpen] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const [soundboardOutputStream, setSoundboardOutputStream] = useState<MediaStream | null>(null);
@@ -2592,9 +3011,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const chatStyleOverriddenRef = useRef(false);
   const [chatStyle, setChatStyle] = useState<LiveChatStyle>(() => {
     const stored = readStoredLiveChatStyle();
-    chatStyleOverriddenRef.current = Boolean(stored);
+    chatStyleOverriddenRef.current = Boolean(stored && !sameLiveChatStyle(stored, DEFAULT_LIVE_CHAT_STYLE));
     return stored ?? DEFAULT_LIVE_CHAT_STYLE;
   });
+  const [roomDefaultFontPack, setRoomDefaultFontPack] = useState<DesktopFontPackKey>(() => readStoredRoomDefaultFontPack());
   const [soundboardSettings, setSoundboardSettings] = useState<WtfLiveSoundboardSettings>(() =>
     readWtfLiveSoundboardSettings(user?.id),
   );
@@ -2610,11 +3030,16 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const [tipStatus, setTipStatus] = useState("");
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [popoutFrames, setPopoutFrames] = useState<PopoutFrame[]>([]);
+  const [bentoOrder, setBentoOrder] = useState<BentoPanelId[]>(BENTO_PANEL_ORDER);
+  const [draggingBentoPanel, setDraggingBentoPanel] = useState<BentoPanelId | null>(null);
+  const [draggingStageEntryId, setDraggingStageEntryId] = useState<string | null>(null);
+  const [screenGridEntryIds, setScreenGridEntryIds] = useState<string[]>([]);
+  const popoutFrameCountRef = useRef(0);
   const cameraRef = useRef<HTMLVideoElement | null>(null);
   const screenRef = useRef<HTMLVideoElement | null>(null);
   const chatTextAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatLogRef = useRef<HTMLDivElement | null>(null);
-  const micAnimationRef = useRef<number | null>(null);
+  const stageStreamCacheRef = useRef<StageStreamCache>(new Map());
   const socketRef = useRef<WebSocket | null>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const remoteStreamsRef = useRef<Map<string, MediaStream>>(new Map());
@@ -2646,10 +3071,12 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     audioEnabled: false,
     avatarUrl: null as string | null,
   });
+  popoutFrameCountRef.current = popoutFrames.length;
   const room = roomQuery.data?.room;
   const joinMode = roomQuery.data?.joinMode ?? "guest_room_only";
   const defaultLiveChatStyle =
     desktopSettingsQuery.data?.appearance.wtfLiveChatStyle ?? DEFAULT_LIVE_CHAT_STYLE;
+  const roomDefaultChatFontFamily = getFontPack(roomDefaultFontPack).roles.app;
   const viewerUserId = normalizeLiveUserId(user?.id);
   const signedInUsername = user?.username?.trim() || "";
   const signedInDisplayName = signedInUsername || user?.displayName?.trim() || "";
@@ -2767,6 +3194,14 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   }, [chatStyle]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem(WTF_LIVE_CHAT_DEFAULT_FONT_STORAGE_KEY, roomDefaultFontPack);
+    } catch {
+      // Preference persistence is best-effort only.
+    }
+  }, [roomDefaultFontPack]);
+
+  useEffect(() => {
     localStreamsRef.current = {
       micStream,
       cameraStream,
@@ -2868,51 +3303,6 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    closeSoundboardGraph();
 	  }, []);
 
-  useEffect(() => {
-    if (!micStream) {
-      setMicLevel(0);
-      return;
-    }
-
-    const AudioContextCtor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) {
-      setMicLevel(0);
-      setStatus("Mic ready. Level meter is not supported in this browser.");
-      return;
-    }
-
-    const audioContext = new AudioContextCtor();
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    const source = audioContext.createMediaStreamSource(micStream);
-    source.connect(analyser);
-    const samples = new Uint8Array(analyser.fftSize);
-    audioContext.resume().catch(() => undefined);
-
-    const readLevel = () => {
-      analyser.getByteTimeDomainData(samples);
-      let sum = 0;
-      for (const sample of samples) {
-        const normalized = (sample - 128) / 128;
-        sum += normalized * normalized;
-      }
-      const rms = Math.sqrt(sum / samples.length);
-      const nextLevel = Math.min(1, rms * 5);
-      setMicLevel((current) => (Math.abs(current - nextLevel) > 0.015 ? nextLevel : current));
-      micAnimationRef.current = requestAnimationFrame(readLevel);
-    };
-
-    readLevel();
-
-    return () => {
-      if (micAnimationRef.current !== null) cancelAnimationFrame(micAnimationRef.current);
-      micAnimationRef.current = null;
-      source.disconnect();
-      audioContext.close().catch(() => undefined);
-      setMicLevel(0);
-    };
-  }, [micStream]);
-
   function sendRoomSocket(payload: Record<string, unknown>) {
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) return false;
@@ -2951,7 +3341,6 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    setSocketReady(false);
 	    setJoined(false);
 	    setPeerId(null);
-    setMicLevel(0);
     setStatus(nextStatus);
   }
 
@@ -3281,9 +3670,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     }
 
     if (event.type === "wtf_live_chat_message" && typeof event.message === "object" && event.message) {
+      const eventMessage = event.message as LiveChatMessage;
       const liveMessage = {
-        ...(event.message as LiveChatMessage),
-        style: normalizeLiveChatStyle((event.message as LiveChatMessage).style),
+        ...eventMessage,
+        style: eventMessage.style ? normalizeLiveChatStyle(eventMessage.style) : undefined,
       };
       setLiveMessages((current) => {
         if (current.some((message) => message.id === liveMessage.id)) return current;
@@ -4140,7 +4530,13 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       openTipTrayFromCommand(text);
       return;
     }
-    if (!socketReady || !sendRoomSocket({ type: "wtf_live_chat_message", text, attachments: chatAttachments, style: normalizeLiveChatStyle(chatStyle) })) {
+    const payload = {
+      type: "wtf_live_chat_message",
+      text,
+      attachments: chatAttachments,
+      ...(chatStyleOverriddenRef.current ? { style: normalizeLiveChatStyle(chatStyle) } : {}),
+    };
+    if (!socketReady || !sendRoomSocket(payload)) {
       setStatus("Room chat is not connected.");
       return;
     }
@@ -4183,25 +4579,28 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    setNewMessageCount((current) => Math.min(99, current + addedCount));
 	  }, [totalChatItems]);
 
-	  function frameBasePosition(offset = popoutFrames.length) {
-	    const width = Math.min(760, Math.max(360, Math.round(window.innerWidth * 0.54)));
-	    const height = Math.min(520, Math.max(260, Math.round(window.innerHeight * 0.48)));
-	    return {
-	      x: Math.max(12, Math.min(window.innerWidth - width - 12, 72 + offset * 22)),
-	      y: Math.max(12, Math.min(window.innerHeight - height - 12, 64 + offset * 18)),
-	      width,
-	      height,
-	      maximized: false,
-	    };
-	  }
+		  function frameBasePosition(offset = popoutFrameCountRef.current) {
+		    const width = Math.min(760, Math.max(360, Math.round(window.innerWidth * 0.54)));
+		    const height = Math.min(520, Math.max(260, Math.round(window.innerHeight * 0.48)));
+		    return {
+		      x: Math.max(12, Math.min(window.innerWidth - width - 12, 72 + offset * 22)),
+		      y: Math.max(12, Math.min(window.innerHeight - height - 12, 64 + offset * 18)),
+		      width,
+		      height,
+		      maximized: false,
+		      pinned: false,
+		    };
+		  }
 
-	  function upsertPopoutFrame(frame: PopoutFrame) {
-	    setPopoutFrames((current) => {
-	      const existing = current.find((item) => item.id === frame.id);
-	      if (existing) return [...current.filter((item) => item.id !== frame.id), { ...existing, title: frame.title }];
-	      return [...current, frame].slice(-4);
-	    });
-	  }
+		  function upsertPopoutFrame(frame: PopoutFrame) {
+		    setPopoutFrames((current) => {
+		      const existing = current.find((item) => item.id === frame.id);
+		      const next = existing
+		        ? [...current.filter((item) => item.id !== frame.id), { ...existing, title: frame.title }]
+		        : [...current, frame].slice(-8);
+		      return [...next.filter((item) => !item.pinned), ...next.filter((item) => item.pinned)];
+		    });
+		  }
 
 	  function openLocalPreview(source: "camera" | "screen") {
 	    const stream = source === "camera" ? cameraStream : screenStream;
@@ -4209,9 +4608,9 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	      setStatus(source === "camera" ? "Turn camera on before opening preview." : "Start screen share before opening preview.");
 	      return;
 	    }
-	    upsertPopoutFrame({
-	      id: `local-${source}`,
-	      title: source === "camera" ? "Local camera preview" : "Local screen preview",
+		    upsertPopoutFrame({
+		      id: `local-${source}`,
+		      title: source === "camera" ? "Local camera preview" : "Local screen preview",
 	      kind: "stream",
 	      streamScope: "local",
 	      source,
@@ -4227,10 +4626,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	      kind: "stream",
 	      streamScope: entry.isSelf ? "local" : "remote",
 	      source: entry.source,
-	      peerId: entry.isSelf ? undefined : entry.peerId,
-	      ...frameBasePosition(),
-	    });
-	  }
+		      peerId: entry.isSelf ? undefined : entry.peerId,
+		      ...frameBasePosition(),
+		    });
+		  }
 
 	  function openAttachmentPopout(attachment: LiveChatAttachment) {
 	    upsertPopoutFrame({
@@ -4238,32 +4637,48 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	      title: attachment.name,
 	      kind: "attachment",
 	      attachment,
-	      ...frameBasePosition(),
-	    });
-	  }
+		      ...frameBasePosition(),
+		    });
+		  }
 
-	  function openPanelPopout(panel: "attendance" | "chat") {
-	    const base = frameBasePosition(panel === "chat" ? 1 : 0);
-	    upsertPopoutFrame({
-	      id: `panel-${panel}`,
-	      title: panel === "chat" ? "Room chat" : "Attendance",
-	      kind: "panel",
-	      panel,
-	      ...base,
-	      width: panel === "chat" ? Math.min(window.innerWidth - 24, 520) : Math.min(window.innerWidth - 24, 420),
-	      height: Math.min(window.innerHeight - 24, 640),
-	    });
-	  }
+		  function openPanelPopout(panel: BentoPanelId) {
+		    const panelIndex = BENTO_PANEL_ORDER.indexOf(panel);
+		    const base = frameBasePosition(panelIndex >= 0 ? panelIndex : 0);
+		    const sizeByPanel: Record<BentoPanelId, { width: number; height: number }> = {
+		      connection: { width: 380, height: 360 },
+		      sharing: { width: 420, height: 720 },
+		      screens: { width: 980, height: 680 },
+		      attendance: { width: 420, height: 560 },
+		      chat: { width: 520, height: 640 },
+		    };
+		    const preferredSize = sizeByPanel[panel];
+		    upsertPopoutFrame({
+		      id: `panel-${panel}`,
+		      title: BENTO_PANEL_LABELS[panel],
+		      kind: "panel",
+		      panel,
+		      ...base,
+		      width: Math.min(window.innerWidth - 24, preferredSize.width),
+		      height: Math.min(window.innerHeight - 24, preferredSize.height),
+		    });
+		  }
 
 	  function closePopoutFrame(frameId: string) {
 	    setPopoutFrames((current) => current.filter((frame) => frame.id !== frameId));
 	  }
 
-	  function togglePopoutMaximize(frameId: string) {
-	    setPopoutFrames((current) =>
-	      current.map((frame) => frame.id === frameId ? { ...frame, maximized: !frame.maximized } : frame),
-	    );
-	  }
+		  function togglePopoutMaximize(frameId: string) {
+		    setPopoutFrames((current) =>
+		      current.map((frame) => frame.id === frameId ? { ...frame, maximized: !frame.maximized } : frame),
+		    );
+		  }
+
+		  function togglePopoutPinned(frameId: string) {
+		    setPopoutFrames((current) => {
+		      const next = current.map((frame) => frame.id === frameId ? { ...frame, pinned: !frame.pinned } : frame);
+		      return [...next.filter((frame) => !frame.pinned), ...next.filter((frame) => frame.pinned)];
+		    });
+		  }
 
 	  function cyclePopoutSize(frameId: string) {
 	    setPopoutFrames((current) =>
@@ -4279,9 +4694,9 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    );
 	  }
 
-	  function handlePopoutDragStart(event: ReactPointerEvent<HTMLElement>, frame: PopoutFrame) {
-	    if (frame.maximized || event.button !== 0) return;
-	    dragFrameRef.current = {
+		  function handlePopoutDragStart(event: ReactPointerEvent<HTMLElement>, frame: PopoutFrame) {
+		    if (frame.maximized || frame.pinned || event.button !== 0) return;
+		    dragFrameRef.current = {
 	      id: frame.id,
 	      startX: event.clientX,
 	      startY: event.clientY,
@@ -4306,13 +4721,203 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	      window.removeEventListener("pointerup", stopDrag);
 	    };
 	    window.addEventListener("pointermove", moveFrame);
-	    window.addEventListener("pointerup", stopDrag, { once: true });
-	  }
+		    window.addEventListener("pointerup", stopDrag, { once: true });
+		  }
+
+		  function handleBentoDragStart(event: ReactDragEvent<HTMLElement>, panel: BentoPanelId) {
+		    setDraggingBentoPanel(panel);
+		    event.dataTransfer.effectAllowed = "move";
+		    event.dataTransfer.setData("text/plain", panel);
+		  }
+
+		  function handleBentoDragOver(event: ReactDragEvent<HTMLElement>) {
+		    event.preventDefault();
+		    event.dataTransfer.dropEffect = "move";
+		  }
+
+		  function handleBentoDrop(event: ReactDragEvent<HTMLElement>, targetPanel: BentoPanelId) {
+		    event.preventDefault();
+		    const sourcePanel = event.dataTransfer.getData("text/plain") as BentoPanelId || draggingBentoPanel;
+		    if (!sourcePanel || sourcePanel === targetPanel || !BENTO_PANEL_ORDER.includes(sourcePanel)) {
+		      setDraggingBentoPanel(null);
+		      return;
+		    }
+		    setBentoOrder((current) => {
+		      const next = current.filter((panel) => panel !== sourcePanel);
+		      const targetIndex = Math.max(0, next.indexOf(targetPanel));
+		      next.splice(targetIndex, 0, sourcePanel);
+		      return next;
+		    });
+		    setDraggingBentoPanel(null);
+		  }
+
+  function addStageEntriesToScreenGrid(entryIds: string[]) {
+    const validIds = new Set(stageEntries.map((entry) => entry.id));
+    const nextIds = entryIds.filter((entryId) => validIds.has(entryId));
+    if (!nextIds.length) return;
+    setScreenGridEntryIds((current) => {
+      const next = [...current];
+      for (const entryId of nextIds) {
+        if (!next.includes(entryId)) next.push(entryId);
+      }
+      return next;
+    });
+  }
+
+  function handleStageEntryDragStart(entryId: string) {
+    setDraggingStageEntryId(entryId);
+  }
+
+  function handleStageEntryDropOn(targetEntryId: string) {
+    const sourceEntryId = draggingStageEntryId;
+    setDraggingStageEntryId(null);
+    if (!sourceEntryId || sourceEntryId === targetEntryId) return;
+    addStageEntriesToScreenGrid([sourceEntryId, targetEntryId]);
+  }
+
+  function handleScreenGridDrop(event: ReactDragEvent<HTMLElement>) {
+    event.preventDefault();
+    const sourceEntryId = event.dataTransfer.getData("text/plain") || draggingStageEntryId;
+    setDraggingStageEntryId(null);
+    if (!sourceEntryId) return;
+    addStageEntriesToScreenGrid([sourceEntryId]);
+  }
+
+  const messages = messagesQuery.data?.messages ?? [];
+  const canSendChat = joined && socketReady && (Boolean(chatText.trim()) || chatAttachments.length > 0);
+  const mediaDeckStream = mediaDeck?.stream ?? null;
+  const stageStreamCache = stageStreamCacheRef.current;
+  const localMediaState = useMemo(
+    () =>
+      mediaStateFromStreams({
+        micStream,
+        cameraStream,
+        screenStream,
+        mediaStream: mediaDeckStream,
+        mediaName: mediaDeck?.name ?? null,
+        soundboardStream: soundboardOutputStream,
+        activeVideoSource,
+        audioEnabled: localAudioOpen,
+        avatarUrl,
+      }),
+    [activeVideoSource, avatarUrl, cameraStream, localAudioOpen, mediaDeck?.name, mediaDeckStream, micStream, screenStream, soundboardOutputStream],
+  );
+  const localStageEntries: StageEntry[] = useMemo(
+    () =>
+      joined
+        ? ([
+            localMediaState.camera
+              ? {
+                  id: "self-camera",
+                  peerId: "self",
+                  name: attendeeDisplayName,
+                  source: "camera" as const,
+                  title: `${attendeeDisplayName} camera`,
+                  mediaState: localMediaState,
+                  stream: cachedStageStream(stageStreamCache, "self-camera", cameraStream, localMediaState, "camera"),
+                  connected: socketReady,
+                  isSelf: true,
+                }
+              : null,
+            localMediaState.screen
+              ? {
+                  id: "self-screen",
+                  peerId: "self",
+                  name: attendeeDisplayName,
+                  source: "screen" as const,
+                  title: `${attendeeDisplayName} screen`,
+                  mediaState: localMediaState,
+                  stream: cachedStageStream(stageStreamCache, "self-screen", screenStream, localMediaState, "screen"),
+                  connected: socketReady,
+                  isSelf: true,
+                }
+              : null,
+            localMediaState.mediaVideo || localMediaState.mediaAudio
+              ? {
+                  id: "self-media",
+                  peerId: "self",
+                  name: attendeeDisplayName,
+                  source: "media" as const,
+                  title: `${attendeeDisplayName} media`,
+                  mediaState: localMediaState,
+                  stream: cachedStageStream(stageStreamCache, "self-media", mediaDeckStream, localMediaState, "media"),
+                  connected: socketReady,
+                  isSelf: true,
+                }
+              : null,
+          ] as Array<StageEntry | null>).filter((entry): entry is StageEntry => Boolean(entry))
+        : [],
+    [attendeeDisplayName, cameraStream, joined, localMediaState, mediaDeckStream, screenStream, socketReady, stageStreamCache],
+  );
+  const remoteStageEntries: StageEntry[] = useMemo(
+    () =>
+      remotePeers.flatMap((peer) => {
+        const name = livePeerName(peer);
+        return ([
+          peer.mediaState.camera
+            ? {
+                id: `${peer.peerId}-camera`,
+                peerId: peer.peerId,
+                name,
+                source: "camera" as const,
+                title: `${name} camera`,
+                mediaState: peer.mediaState,
+                stream: cachedStageStream(stageStreamCache, `${peer.peerId}-camera`, peer.stream, peer.mediaState, "camera"),
+                connected: peer.connected,
+              }
+            : null,
+          peer.mediaState.screen
+            ? {
+                id: `${peer.peerId}-screen`,
+                peerId: peer.peerId,
+                name,
+                source: "screen" as const,
+                title: `${name} screen`,
+                mediaState: peer.mediaState,
+                stream: cachedStageStream(stageStreamCache, `${peer.peerId}-screen`, peer.stream, peer.mediaState, "screen"),
+                connected: peer.connected,
+              }
+            : null,
+          peer.mediaState.mediaVideo || peer.mediaState.mediaAudio
+            ? {
+                id: `${peer.peerId}-media`,
+                peerId: peer.peerId,
+                name,
+                source: "media" as const,
+                title: `${name} media`,
+                mediaState: peer.mediaState,
+                stream: cachedStageStream(stageStreamCache, `${peer.peerId}-media`, peer.stream, peer.mediaState, "media"),
+                connected: peer.connected,
+              }
+            : null,
+        ] as Array<StageEntry | null>).filter((entry): entry is StageEntry => Boolean(entry));
+      }),
+    [remotePeers, stageStreamCache],
+  );
+  const stageEntries = useMemo(() => [...localStageEntries, ...remoteStageEntries], [localStageEntries, remoteStageEntries]);
+  useEffect(() => {
+    const validIds = new Set(stageEntries.map((entry) => entry.id));
+    setScreenGridEntryIds((current) => current.filter((entryId) => validIds.has(entryId)));
+  }, [stageEntries]);
+  const stageCount = stageEntries.length;
+	  const participantCount = remotePeers.length + (joined ? 1 : 0);
+	  const openMicCount = remotePeers.filter((peer) => peer.mediaState.audioOpen).length + (localMediaState.audioOpen ? 1 : 0);
+  const sourceCountLabel = labelForMediaState(localMediaState);
+  const activeShareLabel = activeVideoSource === "screen"
+    ? "Screen focus"
+    : activeVideoSource === "camera"
+      ? "Camera focus"
+      : "No focus";
+  const connectionDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "connection");
+  const sharingDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "sharing");
+  const screensDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "screens");
+  const attendanceDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "attendance");
+  const chatDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "chat");
 
   if (roomQuery.isLoading) {
     return (
       <GuestShell>
-        <RoomFrame>
+	      <RoomFrame data-wtf-live-room-frame>
           <TitleBar>WTF LIVE</TitleBar>
           <Panel style={{ margin: 10, placeItems: "center" }}>
             <Hourglass size={32} />
@@ -4325,7 +4930,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   if (!room) {
     return (
       <GuestShell>
-        <RoomFrame>
+	      <RoomFrame data-wtf-live-room-frame="room">
           <TitleBar>WTF LIVE</TitleBar>
           <Panel style={{ margin: 10 }}>
             <strong>Room not found.</strong>
@@ -4335,118 +4940,6 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       </GuestShell>
     );
   }
-
-  const messages = messagesQuery.data?.messages ?? [];
-  const canSendChat = joined && socketReady && (Boolean(chatText.trim()) || chatAttachments.length > 0);
-  const mediaDeckStream = mediaDeck?.stream ?? null;
-  const localMediaState = mediaStateFromStreams({
-    micStream,
-    cameraStream,
-    screenStream,
-    mediaStream: mediaDeckStream,
-    mediaName: mediaDeck?.name ?? null,
-    soundboardStream: soundboardOutputStream,
-    activeVideoSource,
-    audioEnabled: localAudioOpen,
-    avatarUrl,
-  });
-  const localStageEntries: StageEntry[] = joined
-    ? ([
-        localMediaState.camera
-          ? {
-              id: "self-camera",
-              peerId: "self",
-              name: attendeeDisplayName,
-              source: "camera" as const,
-              title: `${attendeeDisplayName} camera`,
-              mediaState: localMediaState,
-              stream: stageStreamFromMediaState(cameraStream, localMediaState, "camera"),
-              connected: socketReady,
-              isSelf: true,
-            }
-          : null,
-        localMediaState.screen
-          ? {
-              id: "self-screen",
-              peerId: "self",
-              name: attendeeDisplayName,
-              source: "screen" as const,
-              title: `${attendeeDisplayName} screen`,
-              mediaState: localMediaState,
-              stream: stageStreamFromMediaState(screenStream, localMediaState, "screen"),
-              connected: socketReady,
-              isSelf: true,
-            }
-          : null,
-        localMediaState.mediaVideo || localMediaState.mediaAudio
-          ? {
-              id: "self-media",
-              peerId: "self",
-              name: attendeeDisplayName,
-              source: "media" as const,
-              title: `${attendeeDisplayName} media`,
-              mediaState: localMediaState,
-              stream: stageStreamFromMediaState(mediaDeckStream, localMediaState, "media"),
-              connected: socketReady,
-              isSelf: true,
-            }
-          : null,
-      ] as Array<StageEntry | null>).filter((entry): entry is StageEntry => Boolean(entry))
-    : [];
-  const remoteStageEntries: StageEntry[] = remotePeers.flatMap((peer) => {
-    const name = livePeerName(peer);
-    return ([
-      peer.mediaState.camera
-        ? {
-            id: `${peer.peerId}-camera`,
-            peerId: peer.peerId,
-            name,
-            source: "camera" as const,
-            title: `${name} camera`,
-            mediaState: peer.mediaState,
-            stream: stageStreamFromMediaState(peer.stream, peer.mediaState, "camera"),
-            connected: peer.connected,
-          }
-        : null,
-      peer.mediaState.screen
-        ? {
-            id: `${peer.peerId}-screen`,
-            peerId: peer.peerId,
-            name,
-            source: "screen" as const,
-            title: `${name} screen`,
-            mediaState: peer.mediaState,
-            stream: stageStreamFromMediaState(peer.stream, peer.mediaState, "screen"),
-            connected: peer.connected,
-          }
-        : null,
-      peer.mediaState.mediaVideo || peer.mediaState.mediaAudio
-        ? {
-            id: `${peer.peerId}-media`,
-            peerId: peer.peerId,
-            name,
-            source: "media" as const,
-            title: `${name} media`,
-            mediaState: peer.mediaState,
-            stream: stageStreamFromMediaState(peer.stream, peer.mediaState, "media"),
-            connected: peer.connected,
-        }
-        : null,
-    ] as Array<StageEntry | null>).filter((entry): entry is StageEntry => Boolean(entry));
-  });
-  const stageEntries = [...localStageEntries, ...remoteStageEntries];
-  const stageCount = stageEntries.length;
-	  const participantCount = remotePeers.length + (joined ? 1 : 0);
-	  const openMicCount = remotePeers.filter((peer) => peer.mediaState.audioOpen).length + (localMediaState.audioOpen ? 1 : 0);
-  const sourceCountLabel = labelForMediaState(localMediaState);
-  const activeShareLabel = activeVideoSource === "screen"
-    ? "Screen focus"
-    : activeVideoSource === "camera"
-      ? "Camera focus"
-      : "No focus";
-  const attendanceDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "attendance");
-  const chatDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "chat");
-  const sidebarDetached = attendanceDetached && chatDetached;
 
   function renderAttendeeRow(entry: {
     id: string;
@@ -4534,18 +5027,22 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     );
   }
 
-  function renderAttendancePanel(floating = false) {
-    return (
-      <AttendancePanel
-        open
-        data-wtf-live-attendance-panel={floating ? "popout" : undefined}
-      >
-        <summary data-wtf-live-attendance-toggle={floating ? undefined : ""}>
-          <LiveSectionHeader>
-            <span><Users size={15} aria-hidden /> Attendance</span>
-            <span>{participantCount} · {openMicCount} mic</span>
-          </LiveSectionHeader>
-        </summary>
+	  function renderAttendancePanel(floating = false) {
+	    return (
+	      <AttendancePanel
+	        open={floating ? true : attendanceOpen}
+	        onToggle={floating ? undefined : (event) => setAttendanceOpen(event.currentTarget.open)}
+	        data-wtf-live-attendance-panel={floating ? "popout" : "true"}
+	      >
+	        <summary data-wtf-live-attendance-toggle={floating ? undefined : ""}>
+	          <LiveSectionHeader>
+	            <span>
+	              {floating ? null : attendanceOpen ? <ChevronDown size={15} aria-hidden /> : <ChevronRight size={15} aria-hidden />}
+	              <Users size={15} aria-hidden /> Attendance
+	            </span>
+	            <span>{participantCount} · {openMicCount} mic</span>
+	          </LiveSectionHeader>
+	        </summary>
         <AttendanceList data-wtf-live-attendance-list={floating ? "popout" : undefined}>
           {joined ? (
             renderAttendeeRow({
@@ -4605,7 +5102,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
         <strong>{message.guestName}</strong>
         <span>{formatDate(message.createdAt)}</span>
         {message.text ? (
-          <ChatMessageText style={liveChatTextStyle(message.style)} data-wtf-live-chat-message-text>
+          <ChatMessageText style={liveChatTextStyle(message.style, roomDefaultChatFontFamily)} data-wtf-live-chat-message-text>
             {message.text}
           </ChatMessageText>
         ) : null}
@@ -4923,9 +5420,9 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     );
   }
 
-  function renderRoomReactionDock() {
-    return (
-      <RoomReactionDock role="toolbar" aria-label="Room reactions" data-wtf-live-room-reactions>
+	  function renderRoomReactionDock() {
+	    return (
+	      <RoomReactionDock role="toolbar" aria-label="Room reactions" data-wtf-live-room-reactions>
         {LIVE_ROOM_REACTION_OPTIONS.map((option) => (
           <RoomReactionButton
             key={option.emoji}
@@ -4939,29 +5436,435 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
             {option.emoji}
           </RoomReactionButton>
         ))}
-      </RoomReactionDock>
-    );
-  }
+	      </RoomReactionDock>
+	    );
+	  }
 
-  function renderChatPanel(floating = false) {
-    return (
-      <ChatColumn data-wtf-live-chat-column={floating ? "popout" : "true"}>
-        <LiveSectionHeader>
-          <span><MessageSquare size={15} aria-hidden /> Room chat</span>
-          <span>
-            {liveMessages.length + messages.length} messages
-            {!floating ? (
-              <Button
-                aria-label="Pop out chat"
-                title="Pop out chat"
-                onClick={() => openPanelPopout("chat")}
-                data-wtf-live-popout-chat
-              >
-                <ExternalLink size={13} aria-hidden />
-              </Button>
-            ) : null}
-          </span>
-        </LiveSectionHeader>
+	  function renderConnectionPanel(floating = false) {
+	    return (
+	      <ControlRail data-wtf-live-control-rail={floating ? "popout" : "true"}>
+	        <SettingsGroup>
+	          <LiveSectionHeader>
+	            <span><Radio size={15} aria-hidden /> Room</span>
+	            <ShareStatus>{participantCount} in room</ShareStatus>
+	          </LiveSectionHeader>
+	          {signedInUsername ? (
+	            <AccountJoinIdentity data-wtf-live-account-identity>
+	              <AvatarMark name={attendeeDisplayName} avatarUrl={avatarUrl} size="small" />
+	              <span>
+	                <strong>{signedInUsername}</strong>
+	                <span>wtfOS account</span>
+	              </span>
+	            </AccountJoinIdentity>
+	          ) : (
+	            <TextField
+	              aria-label="Guest display name"
+	              value={guestName}
+	              placeholder="Display name"
+	              fullWidth
+	              disabled={joined || authLoading}
+	              onChange={(event: ChangeEvent<HTMLInputElement>) => setGuestName(event.target.value)}
+	            />
+	          )}
+	          <RoomActionGrid>
+	            <Button primary aria-label="Join Room" disabled={joined || authLoading} onClick={joinRoom} data-wtf-live-join-room>
+	              {joined ? "Joined" : "Join"}
+	            </Button>
+	            <Button aria-label="Copy URL" onClick={copyRoomUrl}>
+	              <ButtonLabel><Copy size={16} aria-hidden /> Copy</ButtonLabel>
+	            </Button>
+	            <Button aria-label="Leave Room" disabled={!joined} onClick={leaveRoom} data-wtf-live-leave-room>
+	              <ButtonLabel><LogOut size={16} aria-hidden /> Leave</ButtonLabel>
+	            </Button>
+	            <Button aria-label="Close Room Tab" onClick={closeRoomWindow}>
+	              <ButtonLabel><X size={16} aria-hidden /> Close</ButtonLabel>
+	            </Button>
+	          </RoomActionGrid>
+	          <StatusLine aria-live="polite">{status}</StatusLine>
+	        </SettingsGroup>
+	      </ControlRail>
+	    );
+	  }
+
+	  function renderSharingPanel(floating = false) {
+	    return (
+	      <ControlRail data-wtf-live-control-rail={floating ? "popout" : "true"}>
+	        <SettingsGroup>
+	          <LiveSectionHeader>
+	            <span>Share</span>
+	            <ShareStatus>{sourceCountLabel}</ShareStatus>
+	          </LiveSectionHeader>
+	          <SharingTrayActions role="toolbar" aria-label="Sharing tools">
+	            <Button
+	              aria-label={sharingTestingOpen ? "Hide testing drawer" : "Show testing drawer"}
+	              aria-expanded={sharingTestingOpen}
+	              title="Testing"
+	              onClick={() => setSharingTestingOpen((open) => !open)}
+	              data-wtf-live-sharing-testing-toggle
+	            >
+	              <Gauge size={15} aria-hidden />
+	            </Button>
+	            <Button
+	              aria-label={sharingSettingsOpen ? "Hide settings drawer" : "Show settings drawer"}
+	              aria-expanded={sharingSettingsOpen}
+	              title="Settings"
+	              onClick={() => setSharingSettingsOpen((open) => !open)}
+	              data-wtf-live-sharing-settings-toggle
+	            >
+	              <TypeIcon size={15} aria-hidden />
+	            </Button>
+	          </SharingTrayActions>
+	          <MediaButtonGrid>
+	            <ControlButton
+	              disabled={!joined || !socketReady}
+	              $active={Boolean(micStream)}
+	              onClick={toggleMic}
+	              data-wtf-live-toggle-mic
+	            >
+	              {micStream ? <Square aria-hidden /> : <Mic aria-hidden />} Mic
+	            </ControlButton>
+	            <ControlButton
+	              disabled={!joined || !socketReady || !micStream}
+	              $active={pushToTalk}
+	              onClick={() => {
+	                setPushToTalk((current) => !current);
+	                setPushHeld(false);
+	              }}
+	              data-wtf-live-push-to-talk-toggle
+	            >
+	              <Mic aria-hidden /> PTT
+	            </ControlButton>
+	            <ControlButton
+	              disabled={!joined || !socketReady}
+	              $active={Boolean(cameraStream)}
+	              onClick={toggleCamera}
+	              data-wtf-live-toggle-camera
+	            >
+	              {cameraStream ? <Square aria-hidden /> : <Camera aria-hidden />} Camera
+	            </ControlButton>
+	            <ControlButton
+	              disabled={!joined || !socketReady}
+	              $active={Boolean(screenStream)}
+	              onClick={toggleScreen}
+	              data-wtf-live-toggle-screen
+	            >
+	              {screenStream ? <Square aria-hidden /> : <MonitorUp aria-hidden />} Screen
+	            </ControlButton>
+	          </MediaButtonGrid>
+	          <SharingDrawer hidden={!sharingTestingOpen} data-wtf-live-sharing-testing-drawer>
+	            <MicTestPanel $status={micDiagnostic.status} data-wtf-live-mic-test data-wtf-live-mic-test-state={micDiagnostic.status}>
+	            <MicTestActionRow>
+	              <MicTestHeader>
+	                <strong>Mic test</strong>
+	                <MicTestBadge $status={micDiagnostic.status} data-wtf-live-mic-test-badge>
+	                  {micDiagnostic.status === "checking" ? "checking" : micDiagnostic.status}
+	                </MicTestBadge>
+	              </MicTestHeader>
+	              <StatusLine aria-live="polite" data-wtf-live-mic-test-status>
+	                {micDiagnostic.headline}
+	              </StatusLine>
+	              <Button
+	                aria-label="Test microphone"
+	                disabled={micDiagnostic.status === "checking"}
+	                onClick={runMicDiagnostic}
+	                data-wtf-live-mic-test-button
+	              >
+	                <ButtonLabel><Gauge size={15} aria-hidden /> {micDiagnostic.status === "checking" ? "Testing" : "Test mic"}</ButtonLabel>
+	              </Button>
+	              <Button
+	                size="sm"
+	                aria-label={micDiagnosticExpanded ? "Hide microphone test details" : "Show microphone test details"}
+	                aria-expanded={micDiagnosticExpanded}
+	                onClick={() => setMicDiagnosticExpanded((expanded) => !expanded)}
+	                data-wtf-live-mic-test-details-toggle
+	              >
+	                Details
+	              </Button>
+	            </MicTestActionRow>
+	            <MicTestDrawer $expanded={micDiagnosticExpanded} data-wtf-live-mic-test-details>
+	              <MicTestFacts>
+	                <span data-wtf-live-mic-test-browser>{micDiagnostic.browserLabel}</span>
+	                <span data-wtf-live-mic-test-permission>{micDiagnostic.permissionLabel}</span>
+	                <span data-wtf-live-mic-test-device>{micDiagnostic.deviceLabel}</span>
+	              </MicTestFacts>
+	              <MicTestGuidance aria-live="polite" data-wtf-live-mic-test-guidance>
+	                {micDiagnostic.detail}
+	              </MicTestGuidance>
+	            </MicTestDrawer>
+	            </MicTestPanel>
+	          </SharingDrawer>
+	          <ControlButton
+	            disabled={!joined || !socketReady || !micStream || !pushToTalk}
+	            $active={pushHeld}
+	            onPointerDown={() => setPushHeld(true)}
+	            onPointerUp={() => setPushHeld(false)}
+	            onPointerCancel={() => setPushHeld(false)}
+	            onPointerLeave={() => setPushHeld(false)}
+	            onKeyDown={(event) => {
+	              if (event.key === " " || event.key === "Enter") setPushHeld(true);
+	            }}
+	            onKeyUp={() => setPushHeld(false)}
+	            data-wtf-live-push-to-talk-hold
+	          >
+	            Hold to talk
+	          </ControlButton>
+	          <SharePicker data-wtf-live-active-share={activeVideoSource ?? "none"}>
+	            <LiveSectionHeader>
+	              <span>Stage focus</span>
+	              <ShareStatus>{activeShareLabel}</ShareStatus>
+	            </LiveSectionHeader>
+	            <GuestGrid>
+	              <ControlButton
+	                disabled={!joined || !socketReady || !cameraStream}
+	                $active={activeVideoSource === "camera"}
+	                onClick={() => selectActiveVideoSource("camera")}
+	                data-wtf-live-share-camera
+	              >
+	                <Camera aria-hidden /> Camera
+	              </ControlButton>
+	              <ControlButton
+	                disabled={!joined || !socketReady || !screenStream}
+	                $active={activeVideoSource === "screen"}
+	                onClick={() => selectActiveVideoSource("screen")}
+	                data-wtf-live-share-screen
+	              >
+	                <MonitorUp aria-hidden /> Screen
+	              </ControlButton>
+	            </GuestGrid>
+	          </SharePicker>
+	          <MediaDeckPanel data-wtf-live-media-deck>
+	            <LiveSectionHeader>
+	              <span><FileAudio size={15} aria-hidden /> Media deck</span>
+	              <ShareStatus>{mediaDeck ? (mediaDeck.playing ? "Playing" : "Ready") : "Empty"}</ShareStatus>
+	            </LiveSectionHeader>
+	            <HiddenFileInput
+	              ref={mediaFileInputRef}
+	              data-wtf-live-media-file
+	              type="file"
+	              accept={LIVE_MEDIA_DECK_ACCEPT}
+	              onChange={handleMediaDeckInput}
+	            />
+	            <GuestGrid>
+	              <Button
+	                disabled={!joined || !socketReady}
+	                onClick={() => mediaFileInputRef.current?.click()}
+	                data-wtf-live-media-load
+	              >
+	                <ButtonLabel><FileAudio size={16} aria-hidden /> Load</ButtonLabel>
+	              </Button>
+	              <Button
+	                disabled={!joined || !socketReady || !mediaDeck}
+	                onClick={toggleMediaDeckPlayback}
+	                data-wtf-live-media-play
+	              >
+	                <ButtonLabel>{mediaDeck?.playing ? <Pause size={16} aria-hidden /> : <Play size={16} aria-hidden />} {mediaDeck?.playing ? "Pause" : "Play"}</ButtonLabel>
+	              </Button>
+	            </GuestGrid>
+	            {mediaDeck ? (
+	              <>
+	                <MediaDeckInfo data-wtf-live-media-deck-info>
+	                  <strong>{mediaDeck.name}</strong>
+	                  <span>{mediaDeck.kind} · {formatMediaTime(mediaDeck.currentTime)} / {formatMediaTime(mediaDeck.duration)}</span>
+	                </MediaDeckInfo>
+	                <MediaDeckControls>
+	                  <Button onClick={toggleMediaDeckLoop} data-wtf-live-media-loop>
+	                    {mediaDeck.loop ? "Loop on" : "Loop"}
+	                  </Button>
+	                  <Button onClick={toggleMediaDeckMuted} data-wtf-live-media-mute>
+	                    <ButtonLabel>{mediaDeck.muted ? <VolumeX size={15} aria-hidden /> : <Volume2 size={15} aria-hidden />} {mediaDeck.muted ? "Muted" : "Audio"}</ButtonLabel>
+	                  </Button>
+	                  <Button onClick={() => closeMediaDeck()} data-wtf-live-media-stop>
+	                    <ButtonLabel><Square size={15} aria-hidden /> Stop</ButtonLabel>
+	                  </Button>
+	                  <ShareStatus>{mediaDeck.volume}%</ShareStatus>
+	                </MediaDeckControls>
+	                <MediaDeckRange
+	                  aria-label="Media deck volume"
+	                  data-wtf-live-media-volume
+	                  type="range"
+	                  min="0"
+	                  max="100"
+	                  value={mediaDeck.volume}
+	                  onChange={(event) => setMediaDeckVolume(Number(event.currentTarget.value))}
+	                />
+	              </>
+	            ) : (
+	              <StatusLine data-wtf-live-media-deck-status>No media loaded.</StatusLine>
+	            )}
+	          </MediaDeckPanel>
+	        </SettingsGroup>
+
+	        {renderSoundboardRuntime()}
+
+	        <SharingDrawer hidden={!sharingSettingsOpen} data-wtf-live-sharing-settings-drawer>
+	        <SettingsGroup>
+	          <LiveSectionHeader>
+	            <span><ImageIcon size={15} aria-hidden /> Local</span>
+	            <ShareStatus>{labelForMediaState(localMediaState)}</ShareStatus>
+	          </LiveSectionHeader>
+	          <ChatStyleField>
+	            <span>Default chat font</span>
+	            <ChatToolSelect
+	              aria-label="Default room chat font"
+	              value={roomDefaultFontPack}
+	              onChange={(event) => setRoomDefaultFontPack(event.target.value as DesktopFontPackKey)}
+	              data-wtf-live-room-default-font
+	            >
+              {WTF_LIVE_ROOM_FONT_PACKS.map((pack) => (
+                <option key={pack.key} value={pack.key}>{pack.label}</option>
+              ))}
+	            </ChatToolSelect>
+	          </ChatStyleField>
+	          <AvatarSettings>
+	            <AvatarMark name={attendeeDisplayName} avatarUrl={avatarUrl} size="small" />
+	            <GuestGrid>
+	              <Button onClick={() => avatarInputRef.current?.click()} data-wtf-live-avatar-button>
+	                <ButtonLabel><ImageIcon size={16} aria-hidden /> Avatar</ButtonLabel>
+	              </Button>
+	              <Button disabled={!avatarUrl} onClick={clearAvatar} data-wtf-live-avatar-clear>
+	                <ButtonLabel><X size={16} aria-hidden /> Clear</ButtonLabel>
+	              </Button>
+	            </GuestGrid>
+	          </AvatarSettings>
+	          <HiddenFileInput
+	            ref={avatarInputRef}
+	            data-wtf-live-avatar-file
+	            type="file"
+	            accept="image/png,image/jpeg,image/gif,image/webp"
+	            onChange={handleAvatarInput}
+	          />
+	          {joined ? <MicLevelMeter micStream={micStream} localAudioOpen={localAudioOpen} pushToTalk={pushToTalk} /> : null}
+	          <LocalPreviewDock>
+	            <LiveSectionHeader>
+	              <span>Preview</span>
+	              <span>{sourceCountLabel}</span>
+	            </LiveSectionHeader>
+	            <PreviewGrid>
+	              <PreviewBox
+	                $active={Boolean(cameraStream)}
+	                data-wtf-live-local-preview="camera"
+	                onClick={() => openLocalPreview("camera")}
+	              >
+	                {cameraStream ? <PreviewVideo ref={cameraRef} muted autoPlay playsInline /> : <span>Camera</span>}
+	              </PreviewBox>
+	              <PreviewBox
+	                $active={Boolean(screenStream)}
+	                data-wtf-live-local-preview="screen"
+	                onClick={() => openLocalPreview("screen")}
+	              >
+	                {screenStream ? <PreviewVideo ref={screenRef} muted autoPlay playsInline /> : <span>Screen</span>}
+	              </PreviewBox>
+	            </PreviewGrid>
+	          </LocalPreviewDock>
+	        </SettingsGroup>
+	        </SharingDrawer>
+
+	        {remotePeers.length ? (
+	          <DiagnosticsPanel data-wtf-live-diagnostics-panel>
+	            <LiveSectionHeader>
+	              <span><Activity size={14} aria-hidden /> Transport</span>
+	              <ShareStatus>{remotePeers.length} peer{remotePeers.length === 1 ? "" : "s"}</ShareStatus>
+	            </LiveSectionHeader>
+	            {remotePeers.slice(0, 4).map((peer) => {
+	              const diagnostic = peerDiagnostics[peer.peerId];
+	              return (
+	                <DiagnosticRow key={peer.peerId} data-wtf-live-peer-diagnostic={peer.peerId}>
+	                  <span>{livePeerName(peer)}</span>
+	                  <HealthDot $health={diagnostic?.health ?? "connecting"} title={diagnosticSummary(diagnostic)}>
+	                    {healthLabel(diagnostic?.health ?? "connecting")}
+	                  </HealthDot>
+	                </DiagnosticRow>
+	              );
+	            })}
+	          </DiagnosticsPanel>
+	        ) : null}
+	      </ControlRail>
+	    );
+	  }
+
+	  function renderScreensPanel(floating = false) {
+	    const requestedGridIds = new Set(screenGridEntryIds);
+	    const requestedGridEntries = stageEntries.filter((entry) => requestedGridIds.has(entry.id));
+	    const hasScreenGrid = requestedGridEntries.length >= 2;
+	    const groupedEntryIds = new Set(hasScreenGrid ? requestedGridEntries.map((entry) => entry.id) : []);
+	    const looseEntries = stageEntries.filter((entry) => !groupedEntryIds.has(entry.id));
+	    const visibleStageItems = looseEntries.length + (hasScreenGrid ? 1 : 0);
+	    return (
+	      <StagePanel data-wtf-live-stage-area={floating ? "popout" : "true"}>
+	        <StageHeader>
+	          <span>Shared screens</span>
+	          <span>{stageCount ? `${stageCount} source${stageCount === 1 ? "" : "s"}` : "no sources shared"}</span>
+	        </StageHeader>
+	        {soundboardStatus ? (
+	          <SoundboardBroadcastStatus aria-live="polite" data-wtf-live-soundboard-received>
+	            <Music2 size={14} aria-hidden />
+	            <span>{soundboardStatus}</span>
+	          </SoundboardBroadcastStatus>
+	        ) : null}
+	        {renderRoomReactionDock()}
+	        <StageGridShell data-wtf-live-stage-grid-shell>
+	          <ReactionBurstLayer aria-live="polite" data-wtf-live-reaction-layer>
+	            {roomReactions.map((reaction, index) => (
+	              <ReactionBurst
+	                key={reaction.id}
+	                style={{
+	                  left: `${14 + (index % 5) * 18}%`,
+	                  animationDelay: `${(index % 3) * 40}ms`,
+	                }}
+	                aria-label={`${reaction.guestName} reacted ${reaction.label}`}
+	                data-wtf-live-reaction-burst={reaction.id}
+	                data-wtf-live-reaction-emoji={reaction.emoji}
+	              >
+	                <span aria-hidden>{reaction.emoji}</span>
+	                <small>{reaction.guestName}</small>
+	              </ReactionBurst>
+	            ))}
+	          </ReactionBurstLayer>
+	          <StageGrid $count={visibleStageItems} data-wtf-live-stage-grid>
+	            {hasScreenGrid ? (
+	              <ScreenGridShell
+	                data-wtf-live-screen-grid
+	                onDragOver={(event) => {
+	                  event.preventDefault();
+	                  event.dataTransfer.dropEffect = "move";
+	                }}
+	                onDrop={handleScreenGridDrop}
+	              >
+	                {requestedGridEntries.map((entry) => (
+	                  <ScreenGridEntryTile
+	                    key={entry.id}
+	                    entry={entry}
+	                    onOpen={() => openStagePopout(entry)}
+	                  />
+	                ))}
+	              </ScreenGridShell>
+	            ) : null}
+	            {looseEntries.map((entry) => (
+	              <StageParticipantTile
+	                key={entry.id}
+	                {...entry}
+	                onOpen={() => openStagePopout(entry)}
+	                onDragStart={handleStageEntryDragStart}
+	                onDropOn={handleStageEntryDropOn}
+	              />
+	            ))}
+	            {!stageCount ? <EmptyStage>No camera, screen, or media shared</EmptyStage> : null}
+	          </StageGrid>
+	        </StageGridShell>
+	        {remotePeers.map((peer) => (
+	          <RemoteAudioSink key={`audio-${peer.peerId}`} peer={peer} />
+	        ))}
+	      </StagePanel>
+	    );
+	  }
+
+	  function renderChatPanel(floating = false) {
+	    return (
+	      <ChatColumn data-wtf-live-chat-column={floating ? "popout" : "true"}>
+	        <LiveSectionHeader>
+	          <span><MessageSquare size={15} aria-hidden /> Room chat</span>
+	          <span>{liveMessages.length + messages.length} messages</span>
+	        </LiveSectionHeader>
         <MessageList
           ref={floating || !chatDetached ? chatLogRef : undefined}
           onScroll={handleChatScroll}
@@ -4988,13 +5891,76 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
           </NewMessagesButton>
         ) : null}
         {renderChatComposer()}
-      </ChatColumn>
-    );
-  }
+	      </ChatColumn>
+	    );
+	  }
 
-  return (
+	  function renderBentoPanelIcon(panel: BentoPanelId) {
+	    if (panel === "connection") return <Wifi size={15} aria-hidden />;
+	    if (panel === "sharing") return <Radio size={15} aria-hidden />;
+	    if (panel === "screens") return <MonitorUp size={15} aria-hidden />;
+	    if (panel === "attendance") return <Users size={15} aria-hidden />;
+	    return <MessageSquare size={15} aria-hidden />;
+	  }
+
+	  function isBentoPanelDetached(panel: BentoPanelId) {
+	    if (panel === "connection") return connectionDetached;
+	    if (panel === "sharing") return sharingDetached;
+	    if (panel === "screens") return screensDetached;
+	    if (panel === "attendance") return attendanceDetached;
+	    return chatDetached;
+	  }
+
+	  function renderBentoPanelContent(panel: BentoPanelId, floating = false) {
+	    if (panel === "connection") return renderConnectionPanel(floating);
+	    if (panel === "sharing") return renderSharingPanel(floating);
+	    if (panel === "screens") return renderScreensPanel(floating);
+	    if (panel === "attendance") return renderAttendancePanel(floating);
+	    return renderChatPanel(floating);
+	  }
+
+	  function renderBentoTile(panel: BentoPanelId) {
+	    if (isBentoPanelDetached(panel)) return null;
+	    const label = BENTO_PANEL_LABELS[panel];
+	    return (
+	      <BentoTile
+	        key={panel}
+	        $panel={panel}
+	        $dragging={draggingBentoPanel === panel}
+	        data-wtf-live-bento-tile={panel}
+	        onDragOver={handleBentoDragOver}
+	        onDrop={(event) => handleBentoDrop(event, panel)}
+	      >
+	        <BentoTileHeader
+	          draggable
+	          onDragStart={(event) => handleBentoDragStart(event, panel)}
+	          onDragEnd={() => setDraggingBentoPanel(null)}
+	          data-wtf-live-bento-drag-handle={panel}
+	        >
+	          <span>{renderBentoPanelIcon(panel)} {label}</span>
+	          <BentoTileActions onPointerDown={(event) => event.stopPropagation()}>
+	            <Button
+	              aria-label={`Pop out ${label}`}
+	              title={`Pop out ${label}`}
+	              onClick={() => openPanelPopout(panel)}
+	              data-wtf-live-popout-connection={panel === "connection" ? "" : undefined}
+	              data-wtf-live-popout-sharing={panel === "sharing" ? "" : undefined}
+	              data-wtf-live-popout-screens={panel === "screens" ? "" : undefined}
+	              data-wtf-live-popout-attendance={panel === "attendance" ? "" : undefined}
+	              data-wtf-live-popout-chat={panel === "chat" ? "" : undefined}
+	            >
+	              <ExternalLink size={13} aria-hidden />
+	            </Button>
+	          </BentoTileActions>
+	        </BentoTileHeader>
+	        {renderBentoPanelContent(panel)}
+	      </BentoTile>
+	    );
+	  }
+
+	  return (
     <GuestShell>
-      <RoomFrame>
+      <RoomFrame data-wtf-live-room-frame="room">
         <TitleBar>
           <RoomTitleBlock>
             <h1>{room.title}</h1>
@@ -5010,476 +5976,66 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	            </HeaderCloseButton>
 	          </HeaderStatus>
         </TitleBar>
-	        <RoomBody $sidebarDetached={sidebarDetached}>
-	          <ControlRail data-wtf-live-control-rail>
-	            <SettingsGroup>
-	              <LiveSectionHeader>
-	                <span><Radio size={15} aria-hidden /> Room</span>
-	                <ShareStatus>{participantCount} in room</ShareStatus>
-	              </LiveSectionHeader>
-	              {signedInUsername ? (
-	                <AccountJoinIdentity data-wtf-live-account-identity>
-	                  <AvatarMark name={attendeeDisplayName} avatarUrl={avatarUrl} size="small" />
-	                  <span>
-	                    <strong>{signedInUsername}</strong>
-	                    <span>wtfOS account</span>
-	                  </span>
-	                </AccountJoinIdentity>
-	              ) : (
-	                <TextField
-	                  aria-label="Guest display name"
-	                  value={guestName}
-	                  placeholder="Display name"
-	                  fullWidth
-	                  disabled={joined || authLoading}
-	                  onChange={(event: ChangeEvent<HTMLInputElement>) => setGuestName(event.target.value)}
-	                />
-	              )}
-	              <RoomActionGrid>
-	                <Button primary aria-label="Join Room" disabled={joined || authLoading} onClick={joinRoom} data-wtf-live-join-room>
-	                  {joined ? "Joined" : "Join"}
-	                </Button>
-	                <Button aria-label="Copy URL" onClick={copyRoomUrl}>
-	                  <ButtonLabel><Copy size={16} aria-hidden /> Copy</ButtonLabel>
-	                </Button>
-	                <Button aria-label="Leave Room" disabled={!joined} onClick={leaveRoom} data-wtf-live-leave-room>
-	                  <ButtonLabel><LogOut size={16} aria-hidden /> Leave</ButtonLabel>
-	                </Button>
-	                <Button aria-label="Close Room Tab" onClick={closeRoomWindow}>
-	                  <ButtonLabel><X size={16} aria-hidden /> Close</ButtonLabel>
-	                </Button>
-	              </RoomActionGrid>
-	              <StatusLine aria-live="polite">{status}</StatusLine>
-	            </SettingsGroup>
-
-	            <SettingsGroup>
-	              <LiveSectionHeader>
-	                <span>Share</span>
-	                <ShareStatus>{sourceCountLabel}</ShareStatus>
-	              </LiveSectionHeader>
-	              <MediaButtonGrid>
-	                <ControlButton
-	                  disabled={!joined || !socketReady}
-	                  $active={Boolean(micStream)}
-	                  onClick={toggleMic}
-	                  data-wtf-live-toggle-mic
-	                >
-	                  {micStream ? <Square aria-hidden /> : <Mic aria-hidden />} Mic
-	                </ControlButton>
-	                <ControlButton
-	                  disabled={!joined || !socketReady || !micStream}
-	                  $active={pushToTalk}
-	                  onClick={() => {
-	                    setPushToTalk((current) => !current);
-	                    setPushHeld(false);
-	                  }}
-	                  data-wtf-live-push-to-talk-toggle
-	                >
-	                  <Mic aria-hidden /> PTT
-	                </ControlButton>
-	                <ControlButton
-	                  disabled={!joined || !socketReady}
-	                  $active={Boolean(cameraStream)}
-	                  onClick={toggleCamera}
-	                  data-wtf-live-toggle-camera
-	                >
-	                  {cameraStream ? <Square aria-hidden /> : <Camera aria-hidden />} Camera
-	                </ControlButton>
-	                <ControlButton
-	                  disabled={!joined || !socketReady}
-	                  $active={Boolean(screenStream)}
-	                  onClick={toggleScreen}
-	                  data-wtf-live-toggle-screen
-	                >
-	                  {screenStream ? <Square aria-hidden /> : <MonitorUp aria-hidden />} Screen
-	                </ControlButton>
-	              </MediaButtonGrid>
-	              <MicTestPanel $status={micDiagnostic.status} data-wtf-live-mic-test data-wtf-live-mic-test-state={micDiagnostic.status}>
-	                <MicTestHeader>
-	                  <strong>Mic test</strong>
-	                  <MicTestBadge $status={micDiagnostic.status} data-wtf-live-mic-test-badge>
-	                    {micDiagnostic.status === "checking" ? "checking" : micDiagnostic.status}
-	                  </MicTestBadge>
-	                </MicTestHeader>
-	                <MicTestActionRow>
-	                  <Button
-	                    aria-label="Test microphone"
-	                    disabled={micDiagnostic.status === "checking"}
-	                    onClick={runMicDiagnostic}
-	                    data-wtf-live-mic-test-button
-	                  >
-	                    <ButtonLabel><Gauge size={15} aria-hidden /> {micDiagnostic.status === "checking" ? "Testing" : "Test mic"}</ButtonLabel>
-	                  </Button>
-	                  <StatusLine aria-live="polite" data-wtf-live-mic-test-status>
-	                    {micDiagnostic.headline}
-	                  </StatusLine>
-	                </MicTestActionRow>
-	                <MicTestFacts>
-	                  <span data-wtf-live-mic-test-browser>{micDiagnostic.browserLabel}</span>
-	                  <span data-wtf-live-mic-test-permission>{micDiagnostic.permissionLabel}</span>
-	                  <span data-wtf-live-mic-test-device>{micDiagnostic.deviceLabel}</span>
-	                </MicTestFacts>
-	                <MicTestGuidance aria-live="polite" data-wtf-live-mic-test-guidance>
-	                  {micDiagnostic.detail}
-	                </MicTestGuidance>
-	              </MicTestPanel>
-	              <ControlButton
-	                disabled={!joined || !socketReady || !micStream || !pushToTalk}
-	                $active={pushHeld}
-	                onPointerDown={() => setPushHeld(true)}
-	                onPointerUp={() => setPushHeld(false)}
-	                onPointerCancel={() => setPushHeld(false)}
-	                onPointerLeave={() => setPushHeld(false)}
-	                onKeyDown={(event) => {
-	                  if (event.key === " " || event.key === "Enter") setPushHeld(true);
-	                }}
-	                onKeyUp={() => setPushHeld(false)}
-	                data-wtf-live-push-to-talk-hold
-	              >
-	                Hold to talk
-	              </ControlButton>
-	              <SharePicker data-wtf-live-active-share={activeVideoSource ?? "none"}>
-	                <LiveSectionHeader>
-	                  <span>Stage focus</span>
-	                  <ShareStatus>{activeShareLabel}</ShareStatus>
-	                </LiveSectionHeader>
-	                <GuestGrid>
-	                  <ControlButton
-	                    disabled={!joined || !socketReady || !cameraStream}
-	                    $active={activeVideoSource === "camera"}
-	                    onClick={() => selectActiveVideoSource("camera")}
-	                    data-wtf-live-share-camera
-	                  >
-	                    <Camera aria-hidden /> Camera
-	                  </ControlButton>
-	                  <ControlButton
-	                    disabled={!joined || !socketReady || !screenStream}
-	                    $active={activeVideoSource === "screen"}
-	                    onClick={() => selectActiveVideoSource("screen")}
-	                    data-wtf-live-share-screen
-	                  >
-	                    <MonitorUp aria-hidden /> Screen
-	                  </ControlButton>
-	                </GuestGrid>
-	              </SharePicker>
-	              <MediaDeckPanel data-wtf-live-media-deck>
-	                <LiveSectionHeader>
-	                  <span><FileAudio size={15} aria-hidden /> Media deck</span>
-	                  <ShareStatus>{mediaDeck ? (mediaDeck.playing ? "Playing" : "Ready") : "Empty"}</ShareStatus>
-	                </LiveSectionHeader>
-	                <HiddenFileInput
-	                  ref={mediaFileInputRef}
-	                  data-wtf-live-media-file
-	                  type="file"
-	                  accept={LIVE_MEDIA_DECK_ACCEPT}
-	                  onChange={handleMediaDeckInput}
-	                />
-	                <GuestGrid>
-	                  <Button
-	                    disabled={!joined || !socketReady}
-	                    onClick={() => mediaFileInputRef.current?.click()}
-	                    data-wtf-live-media-load
-	                  >
-	                    <ButtonLabel><FileAudio size={16} aria-hidden /> Load</ButtonLabel>
-	                  </Button>
-	                  <Button
-	                    disabled={!joined || !socketReady || !mediaDeck}
-	                    onClick={toggleMediaDeckPlayback}
-	                    data-wtf-live-media-play
-	                  >
-	                    <ButtonLabel>{mediaDeck?.playing ? <Pause size={16} aria-hidden /> : <Play size={16} aria-hidden />} {mediaDeck?.playing ? "Pause" : "Play"}</ButtonLabel>
-	                  </Button>
-	                </GuestGrid>
-	                {mediaDeck ? (
-	                  <>
-	                    <MediaDeckInfo data-wtf-live-media-deck-info>
-	                      <strong>{mediaDeck.name}</strong>
-	                      <span>{mediaDeck.kind} · {formatMediaTime(mediaDeck.currentTime)} / {formatMediaTime(mediaDeck.duration)}</span>
-	                    </MediaDeckInfo>
-	                    <MediaDeckControls>
-	                      <Button onClick={toggleMediaDeckLoop} data-wtf-live-media-loop>
-	                        {mediaDeck.loop ? "Loop on" : "Loop"}
-	                      </Button>
-	                      <Button onClick={toggleMediaDeckMuted} data-wtf-live-media-mute>
-	                        <ButtonLabel>{mediaDeck.muted ? <VolumeX size={15} aria-hidden /> : <Volume2 size={15} aria-hidden />} {mediaDeck.muted ? "Muted" : "Audio"}</ButtonLabel>
-	                      </Button>
-	                      <Button onClick={() => closeMediaDeck()} data-wtf-live-media-stop>
-	                        <ButtonLabel><Square size={15} aria-hidden /> Stop</ButtonLabel>
-	                      </Button>
-	                      <ShareStatus>{mediaDeck.volume}%</ShareStatus>
-	                    </MediaDeckControls>
-	                    <MediaDeckRange
-	                      aria-label="Media deck volume"
-	                      data-wtf-live-media-volume
-	                      type="range"
-	                      min="0"
-	                      max="100"
-	                      value={mediaDeck.volume}
-	                      onChange={(event) => setMediaDeckVolume(Number(event.currentTarget.value))}
-	                    />
-	                  </>
-	                ) : (
-	                  <StatusLine data-wtf-live-media-deck-status>No media loaded.</StatusLine>
-	                )}
-	              </MediaDeckPanel>
-	            </SettingsGroup>
-
-	            {renderSoundboardRuntime()}
-
-	            <SettingsGroup>
-	              <LiveSectionHeader>
-	                <span><ImageIcon size={15} aria-hidden /> Local</span>
-	                <ShareStatus>{labelForMediaState(localMediaState)}</ShareStatus>
-	              </LiveSectionHeader>
-	              <AvatarSettings>
-	                <AvatarMark name={attendeeDisplayName} avatarUrl={avatarUrl} size="small" />
-	                <GuestGrid>
-	                  <Button onClick={() => avatarInputRef.current?.click()} data-wtf-live-avatar-button>
-	                    <ButtonLabel><ImageIcon size={16} aria-hidden /> Avatar</ButtonLabel>
-	                  </Button>
-	                  <Button disabled={!avatarUrl} onClick={clearAvatar} data-wtf-live-avatar-clear>
-	                    <ButtonLabel><X size={16} aria-hidden /> Clear</ButtonLabel>
-	                  </Button>
-	                </GuestGrid>
-	              </AvatarSettings>
-	              <HiddenFileInput
-	                ref={avatarInputRef}
-	                data-wtf-live-avatar-file
-	                type="file"
-	                accept="image/png,image/jpeg,image/gif,image/webp"
-	                onChange={handleAvatarInput}
-	              />
-	              {joined ? (
-	                <MicMeter aria-label={`Mic level ${Math.round(micLevel * 100)} percent`}>
-	                  <span>{pushToTalk ? "PTT" : "Mic"}</span>
-	                  <MicMeterTrack>
-	                    <MicMeterFill $level={localAudioOpen ? micLevel : 0} />
-	                  </MicMeterTrack>
-	                  <span>{localAudioOpen ? (micLevel > 0.04 ? "Live" : "Quiet") : micStream ? "Muted" : "Off"}</span>
-	                </MicMeter>
-	              ) : null}
-	              <LocalPreviewDock>
-	                <LiveSectionHeader>
-	                  <span>Preview</span>
-	                  <span>{sourceCountLabel}</span>
-	                </LiveSectionHeader>
-	                <PreviewGrid>
-	                  <PreviewBox
-	                    $active={Boolean(cameraStream)}
-	                    data-wtf-live-local-preview="camera"
-	                    onClick={() => openLocalPreview("camera")}
-	                  >
-	                    {cameraStream ? <PreviewVideo ref={cameraRef} muted autoPlay playsInline /> : <span>Camera</span>}
-	                  </PreviewBox>
-	                  <PreviewBox
-	                    $active={Boolean(screenStream)}
-	                    data-wtf-live-local-preview="screen"
-	                    onClick={() => openLocalPreview("screen")}
-	                  >
-	                    {screenStream ? <PreviewVideo ref={screenRef} muted autoPlay playsInline /> : <span>Screen</span>}
-	                  </PreviewBox>
-	                </PreviewGrid>
-	              </LocalPreviewDock>
-	            </SettingsGroup>
-
-	            {remotePeers.length ? (
-	              <DiagnosticsPanel data-wtf-live-diagnostics-panel>
-	                <LiveSectionHeader>
-	                  <span><Activity size={14} aria-hidden /> Transport</span>
-	                  <ShareStatus>{remotePeers.length} peer{remotePeers.length === 1 ? "" : "s"}</ShareStatus>
-	                </LiveSectionHeader>
-	                {remotePeers.slice(0, 4).map((peer) => {
-	                  const diagnostic = peerDiagnostics[peer.peerId];
-	                  return (
-	                    <DiagnosticRow key={peer.peerId} data-wtf-live-peer-diagnostic={peer.peerId}>
-	                      <span>{livePeerName(peer)}</span>
-	                      <HealthDot $health={diagnostic?.health ?? "connecting"} title={diagnosticSummary(diagnostic)}>
-	                        {healthLabel(diagnostic?.health ?? "connecting")}
-	                      </HealthDot>
-	                    </DiagnosticRow>
-	                  );
-	                })}
-	              </DiagnosticsPanel>
-	            ) : null}
-	          </ControlRail>
-
-	          <StagePanel data-wtf-live-stage-area>
-	            <StageHeader>
-	              <span>Stage sources</span>
-	              <span>{stageCount ? `${stageCount} source${stageCount === 1 ? "" : "s"}` : "no sources shared"}</span>
-	            </StageHeader>
-	            {soundboardStatus ? (
-	              <SoundboardBroadcastStatus aria-live="polite" data-wtf-live-soundboard-received>
-	                <Music2 size={14} aria-hidden />
-	                <span>{soundboardStatus}</span>
-	              </SoundboardBroadcastStatus>
-	            ) : null}
-	            {renderRoomReactionDock()}
-	            <StageGridShell data-wtf-live-stage-grid-shell>
-	              <ReactionBurstLayer aria-live="polite" data-wtf-live-reaction-layer>
-	                {roomReactions.map((reaction, index) => (
-	                  <ReactionBurst
-	                    key={reaction.id}
-	                    style={{
-	                      left: `${14 + (index % 5) * 18}%`,
-	                      animationDelay: `${(index % 3) * 40}ms`,
-	                    }}
-	                    aria-label={`${reaction.guestName} reacted ${reaction.label}`}
-	                    data-wtf-live-reaction-burst={reaction.id}
-	                    data-wtf-live-reaction-emoji={reaction.emoji}
-	                  >
-	                    <span aria-hidden>{reaction.emoji}</span>
-	                    <small>{reaction.guestName}</small>
-	                  </ReactionBurst>
-	                ))}
-	              </ReactionBurstLayer>
-	              <StageGrid $count={stageCount} data-wtf-live-stage-grid>
-	                {stageEntries.map((entry) => (
-                    <StageParticipantTile
-                      key={entry.id}
-                      {...entry}
-                      onOpen={() => openStagePopout(entry)}
-                    />
-                  ))}
-	                {!stageCount ? <EmptyStage>No camera, screen, or media shared</EmptyStage> : null}
-	              </StageGrid>
-	            </StageGridShell>
-		            {remotePeers.map((peer) => (
-		              <RemoteAudioSink key={`audio-${peer.peerId}`} peer={peer} />
-		            ))}
-		          </StagePanel>
-
-	          {!sidebarDetached ? (
-	          <RoomSidebar data-wtf-live-sidebar>
-	            {attendanceDetached ? (
-	              <DetachedPanelNotice data-wtf-live-attendance-detached>
-	                <strong>Attendance is popped out</strong>
-	                <span>Close the floating attendance window to dock it here again.</span>
-	              </DetachedPanelNotice>
-	            ) : (
-	            <AttendancePanel
-	              open={attendanceOpen}
-	              onToggle={(event) => setAttendanceOpen(event.currentTarget.open)}
-	              data-wtf-live-attendance-panel
-	            >
-	              <summary data-wtf-live-attendance-toggle>
-	                <LiveSectionHeader>
-	                  <span>
-	                    {attendanceOpen ? <ChevronDown size={15} aria-hidden /> : <ChevronRight size={15} aria-hidden />}
-	                    <Users size={15} aria-hidden /> Attendance
-	                  </span>
-	                  <span>
-	                    {participantCount} · {openMicCount} mic
-	                    <Button
-	                      aria-label="Pop out attendance"
-	                      title="Pop out attendance"
-	                      onClick={(event) => {
-	                        event.preventDefault();
-	                        event.stopPropagation();
-	                        openPanelPopout("attendance");
-	                      }}
-	                      data-wtf-live-popout-attendance
-	                    >
-	                      <ExternalLink size={13} aria-hidden />
-	                    </Button>
-	                  </span>
-	                </LiveSectionHeader>
-	              </summary>
-	              <AttendanceList data-wtf-live-attendance-list>
-	                {joined ? (
-	                  renderAttendeeRow({
-	                    id: "self",
-	                    name: attendeeDisplayName,
-	                    userId: viewerUserId,
-	                    username: signedInUsername || null,
-	                    isWtfUser: Boolean(viewerUserId && signedInUsername),
-	                    avatarUrl,
-	                    mediaState: localMediaState,
-	                    self: true,
-	                  })
-	                ) : null}
-	                {remotePeers.map((peer) => {
-	                  const diagnostic = peerDiagnostics[peer.peerId];
-	                  return renderAttendeeRow({
-	                    id: peer.peerId,
-	                    name: livePeerName(peer),
-	                    userId: peer.userId,
-	                    username: peer.username,
-	                    isWtfUser: peer.isWtfUser,
-	                    avatarUrl: peer.mediaState.avatarUrl,
-	                    mediaState: peer.mediaState,
-	                    connected: peer.connected,
-	                    diagnostic,
-	                    peer,
-	                  });
-	                })}
-	                {!joined && !remotePeers.length ? <span>Join to appear here.</span> : null}
-	              </AttendanceList>
-	            </AttendancePanel>
-	            )}
-	            {chatDetached ? (
-	              <DetachedPanelNotice data-wtf-live-chat-detached>
-	                <strong>Chat is popped out</strong>
-	                <span>Close the floating chat window to dock it here again.</span>
-	              </DetachedPanelNotice>
-	            ) : (
-	            <>
-	              {renderChatPanel(false)}
-	            </>
-	            )}
-          </RoomSidebar>
-	          ) : null}
-	        </RoomBody>
+        <BentoWorkspace
+          data-wtf-live-bento-workspace
+          data-wtf-live-bento-order={bentoOrder.join(",")}
+        >
+          {bentoOrder.map((panel) => renderBentoTile(panel))}
+        </BentoWorkspace>
 	      </RoomFrame>
 	      {popoutFrames.length ? (
-	        <FloatingLayer data-wtf-live-popout-layer>
+	        <FloatingLayer data-wtf-live-popout-layer data-wtf-live-presentation-host="classic">
 	          {popoutFrames.map((frame) => {
 	            if (frame.kind === "panel") {
 	              return (
 	                <FloatingPanelWindow
 	                  key={frame.id}
 	                  frame={frame}
-	                  onClose={closePopoutFrame}
-	                  onToggleMaximize={togglePopoutMaximize}
-	                  onCycleSize={cyclePopoutSize}
-	                  onDragStart={handlePopoutDragStart}
-	                >
-	                  {frame.panel === "chat" ? renderChatPanel(true) : renderAttendancePanel(true)}
-	                </FloatingPanelWindow>
+		                  onClose={closePopoutFrame}
+		                  onToggleMaximize={togglePopoutMaximize}
+		                  onTogglePinned={togglePopoutPinned}
+		                  onCycleSize={cyclePopoutSize}
+		                  onDragStart={handlePopoutDragStart}
+		                >
+		                  {renderBentoPanelContent(frame.panel, true)}
+		                </FloatingPanelWindow>
 	              );
 	            }
 	            if (frame.kind === "attachment") {
 	              return (
 	                <FloatingAttachmentWindow
 	                  key={frame.id}
-	                  frame={frame}
-	                  onClose={closePopoutFrame}
-	                  onToggleMaximize={togglePopoutMaximize}
-	                  onCycleSize={cyclePopoutSize}
-	                  onDragStart={handlePopoutDragStart}
-	                />
+		                  frame={frame}
+		                  onClose={closePopoutFrame}
+		                  onToggleMaximize={togglePopoutMaximize}
+		                  onTogglePinned={togglePopoutPinned}
+		                  onCycleSize={cyclePopoutSize}
+		                  onDragStart={handlePopoutDragStart}
+		                />
 	              );
 	            }
 	            const stream = frame.streamScope === "local"
 	              ? frame.source === "camera"
-	                ? stageStreamFromMediaState(cameraStream, localMediaState, "camera")
+	                ? cachedStageStream(stageStreamCache, "popout-self-camera", cameraStream, localMediaState, "camera")
 	                : frame.source === "screen"
-	                  ? stageStreamFromMediaState(screenStream, localMediaState, "screen")
-	                  : stageStreamFromMediaState(mediaDeckStream, localMediaState, "media")
+	                  ? cachedStageStream(stageStreamCache, "popout-self-screen", screenStream, localMediaState, "screen")
+	                  : cachedStageStream(stageStreamCache, "popout-self-media", mediaDeckStream, localMediaState, "media")
 	              : (() => {
 	                  const peer = remotePeers.find((item) => item.peerId === frame.peerId);
-	                  return peer ? stageStreamFromMediaState(peer.stream, peer.mediaState, frame.source === "active" ? peer.mediaState.activeVideo ?? "camera" : frame.source) : null;
+	                  const source = frame.source === "active" ? peer?.mediaState.activeVideo ?? "camera" : frame.source;
+	                  return peer ? cachedStageStream(stageStreamCache, `popout-${peer.peerId}-${source}`, peer.stream, peer.mediaState, source) : null;
 	                })();
 	            return (
 	              <FloatingStreamWindow
 	                key={frame.id}
 	                frame={frame}
-	                stream={stream}
-	                onClose={closePopoutFrame}
-	                onToggleMaximize={togglePopoutMaximize}
-	                onCycleSize={cyclePopoutSize}
-	                onDragStart={handlePopoutDragStart}
-	              />
+		                stream={stream}
+		                onClose={closePopoutFrame}
+		                onToggleMaximize={togglePopoutMaximize}
+		                onTogglePinned={togglePopoutPinned}
+		                onCycleSize={cyclePopoutSize}
+		                onDragStart={handlePopoutDragStart}
+		              />
 	            );
 	          })}
 	        </FloatingLayer>

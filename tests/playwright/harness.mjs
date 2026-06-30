@@ -508,7 +508,7 @@ const desktopAppearance = {
     underline: false,
   },
   wtfLiveChatStyle: {
-    font: "mek-mono",
+    font: "classic-95",
     color: "ink",
     size: 12,
     bold: false,
@@ -4511,9 +4511,11 @@ const server = app.listen(PORT, () => {
 const livePeers = new Map();
 const liveWss = new WebSocketServer({ server, path: "/ws/wtf-live" });
 const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(512 * 1024 * 1.4);
-const LIVE_CHAT_FONTS = new Set(["mek-mono", "grout-display", "classic-95", "terminal", "serif-press"]);
+const LIVE_CHAT_FONTS = new Set(["classic-95", "terminal", "serif-press"]);
 const LIVE_LEGACY_CHAT_FONT_MAP = {
-  system: "mek-mono",
+  system: "classic-95",
+  "mek-mono": "classic-95",
+  "grout-display": "classic-95",
   mono: "terminal",
   serif: "serif-press",
   pixel: "classic-95",
@@ -4636,13 +4638,14 @@ function liveNormalizeMediaState(value) {
 }
 
 function liveNormalizeChatStyle(value) {
-  const style = value && typeof value === "object" ? value : {};
+  if (!value || typeof value !== "object") return undefined;
+  const style = value;
   const rawSize = Number(style.size);
   const size = Number.isFinite(rawSize) ? Math.min(14, Math.max(8, Math.round(rawSize))) : 12;
   const font = String(style.font || "");
   const color = String(style.color || "");
   return {
-    font: LIVE_CHAT_FONTS.has(font) ? font : LIVE_LEGACY_CHAT_FONT_MAP[font] || "mek-mono",
+    font: LIVE_CHAT_FONTS.has(font) ? font : LIVE_LEGACY_CHAT_FONT_MAP[font] || "classic-95",
     color: LIVE_CHAT_COLORS.has(color) ? color : "ink",
     size,
     bold: Boolean(style.bold),
@@ -4776,7 +4779,7 @@ liveWss.on("connection", (ws) => {
           peerId: client.peerId,
           guestName: client.guestName,
           text,
-          style,
+          ...(style ? { style } : {}),
           attachments,
           createdAt: new Date().toISOString(),
         },
