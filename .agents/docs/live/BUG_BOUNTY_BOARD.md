@@ -57,7 +57,7 @@ Priority labels:
 | WTF-BB-329 | Verified | Codex Pasta live-readiness | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 3 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles no longer serve Taquito `24.3.0`; all seven live creation-tool bundles passed stale-marker and Octez RPC marker probes on commit `f32dbe8` |
 | WTF-BB-330 | Verified | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated/live public download smoke on commit `f32dbe8` |
 | WTF-BB-331 | Verified | Codex Pasta live-readiness | 2026-06-30 | Deploy / production disk capacity | P0 | 13 | 5 | 2 | 5 | 1 | Pasta deploy disk exhaustion was cleared without touching app volumes, `scripts/server-deploy.sh` now has a 12 GiB free-space preflight, Deploy to Hetzner `28467035058` passed, and live health reports commit `f32dbe8` |
-| WTF-BB-332 | Open | - | 2026-06-30 | Repo hygiene / Pasta stale worktrees | P2 | 9 | 12 | 1 | 3 | 2 | Stale `WTF-pasta-deploy` checkout still contains dirty superseded Pasta/Macaroni work and installer-manifest regressions if replayed wholesale; keep production authority on `origin/main`/`codex/pasta-live-readiness` and archive/reset the stale checkout only after preserving any user-needed notes |
+| WTF-BB-332 | Verified | Codex Pasta live-readiness cleanup | 2026-06-30 | Repo hygiene / Pasta stale worktrees | P2 | 9 | 12 | 1 | 3 | 2 | Stale `WTF-pasta-deploy` checkout was archived outside the repo with tracked diff, untracked tarball, refs, status, and checksums, then the worktree and zero-unique-commit local `pasta-protocol` branch were removed; production authority remains `origin/main`/`codex/pasta-live-readiness` |
 | WTF-BB-333 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Suite installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Bundled Pasta Suite Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated live public download smoke on commit `fd4afcd` |
 | WTF-BB-334 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / Macaroni Shadownet proof harness | P2 | 9 | 12 | 2 | 4 | 0 | Macaroni Shadownet puppet proof drifted from the Octez active-account lifecycle; the harness now models accepted `octez.connect` session state, active-account events, restore/disconnect behavior, trusted-creator publish gating, and passed `npm run test:e2e:macaroni:shadownet` 5/5 against a disposable Shadownet puppet database |
 | WTF-BB-335 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Protocol / CH-EASE handoff and static publisher runtime | P1 | 12 | 7 | 2 | 5 | 1 | Pasta publisher handoffs could open `/tools/spaghetti?handoff=...` while the iframe dropped the query, and the six Pasta ES-module studios read `window.MD` even though their shared common helpers only declared lexical `const MD`; fixed by forwarding creation-tool route queries to all static iframes, exporting `window.MD` in Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna, adding policy guards, passing focused Spaghetti CH-EASE handoff plus mocked Shadownet publish choreography proof, promoting to main, and verifying live `wtfos.app` commit `c4ba55f` exposes `window.MD`, `consumeCheaseHandoff()`, and `loadPlatformCapabilities()` across all six Pasta publisher bundles |
@@ -577,21 +577,26 @@ Priority labels:
 ### WTF-BB-332 - Stale Pasta deploy checkout can regress installer hardening if replayed
 
 - Category: Repo hygiene / Pasta stale worktrees
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness cleanup
 - Score: C1 + F3 + S2 + P2(3) = 9
 - Evidence:
-  - `git worktree list` still shows `/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF-pasta-deploy` on branch `pasta-protocol` at `f6256708` with 29 dirty entries after the clean Pasta live-readiness release.
+  - Pre-cleanup `git worktree list` still showed `/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF-pasta-deploy` on branch `pasta-protocol` at `f6256708` with 29 dirty entries after the clean Pasta live-readiness release.
   - Comparing that checkout to current `origin/main` shows most Pasta surfaces are already promoted, `drizzle/0103_macaroni_packages.sql` is superseded by `0104`, and `server/features/pasta-protocol` contains only `.gitkeep`.
   - Its dirty `server/routes/macaroni.ts` would remove installer SHA-256 manifest fields, advertise the stale Windows `.msi` filename, and allow remote plaintext installer URLs again.
+  - The checkout was 105 commits behind `origin/main` with zero unique commits: `git -C .../WTF-pasta-deploy rev-list --left-right --count origin/main...HEAD` returned `105 0`.
+  - Archive created at `/Users/joshuafarnworth/.codex/archives/WTF-pasta-deploy-2026-06-30-2c8a346` with `status.txt`, `tracked-diff.patch`, `tracked-diff.stat.txt`, `untracked-files.txt`, `untracked-files.list0`, `untracked-files.tgz`, `README.txt`, and `SHA256SUMS`.
 - Why it matters:
   - The stale checkout looks Pasta-relevant, but replaying it wholesale after live verification would undo supply-chain hardening and confuse the production source of truth.
 - Correction:
   - Keep production authority on `origin/main` / `codex/pasta-live-readiness`.
-  - Mine the stale checkout only for explicit human notes, then archive/reset/delete it after user confirmation.
+  - Mine the stale checkout only for explicit human notes from the archive.
   - Do not apply its patch wholesale to main.
 - Verification:
-  - `git worktree list --porcelain` no longer lists the stale checkout, or the checkout is explicitly retained with a warning note.
+  - `tar -tzf /Users/joshuafarnworth/.codex/archives/WTF-pasta-deploy-2026-06-30-2c8a346/untracked-files.tgz` listed the archived untracked Pasta files.
+  - `shasum -a 256 -c /Users/joshuafarnworth/.codex/archives/WTF-pasta-deploy-2026-06-30-2c8a346/SHA256SUMS` returned `OK` for every archive member.
+  - `git worktree remove --force .../WTF-pasta-deploy`, `git worktree prune -v`, and `git branch -D pasta-protocol` completed.
+  - Current `git worktree list --porcelain` no longer lists the stale checkout, and `git branch --list pasta-protocol` returns no local branch.
   - `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md` remains current.
   - `scripts/check-macaroni-installers-live.mjs` and installer manifest policy still prove HTTPS URLs, checksums, and actual release asset filenames.
 

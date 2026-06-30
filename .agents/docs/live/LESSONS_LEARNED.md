@@ -1,3 +1,13 @@
+## 2026-06-30 - Stale worktree deletion needs restore evidence
+
+**What happened**: The old `WTF-pasta-deploy` checkout was clearly superseded by `origin/main`, but it still contained dirty Pasta files that could look useful later. Deleting it without an archive would have cleaned the worktree list while erasing the evidence needed to prove it had zero unique commits and contained installer-manifest regressions.
+
+**Why it mattered**: Repo hygiene is part of release safety. A stale checkout can be both dangerous to replay and still valuable as historical evidence. Future agents need to see exactly what was removed without keeping the stale tree active beside production work.
+
+**Rule**: Before removing a stale dirty worktree, archive refs, status, tracked diff, untracked files, and checksums outside the repo. Verify the archive, then remove the worktree and any zero-unique local branch. Record the archive path and warning in the audit/bounty docs.
+
+---
+
 ## 2026-06-30 - Static publisher handoffs must prove iframe query and module runtime wiring
 
 **What happened**: The Pasta source policy said CH-EASE opened `/tools/spaghetti?handoff=chease-package`, and the Spaghetti iframe rendered visually, but the creation-tool wrapper only forwarded query strings for Macaroni. After fixing that, the handoff still did not import because the six Pasta static studios are ES modules that read `window.MD`, while their shared `common.js` files declared lexical `const MD` without exporting it onto `window`.
