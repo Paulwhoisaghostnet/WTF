@@ -1,3 +1,13 @@
+## 2026-06-30 - Inventory workflows need workload-proportional timeouts
+
+**What happened**: Gamma branch Quality Gates twice failed in broad inventory smoke after `451` checks passed because the `social post to reward automation loop` domain workflow hit the default 60-second Playwright test timeout. The workflow was healthy in focused local proof, but it owns `122` API probes, `130` normalized event posts, and `15` representative routes, so a slow GitHub runner could exhaust the fixed per-test budget.
+
+**Why it mattered**: A fixed timeout makes large inventory workflows look broken even when every probe, event, and route is progressing. That can be misread as a Gamma route regression, even though the failure is in cross-domain inventory scheduling.
+
+**Rule**: Domain-interoperability tests should set timeout budgets from the workflow's API probe, event-handle, and route counts. When a broad inventory timeout happens, rerun the named workflow focused before changing app code; if the workflow passes near the default limit, fix the harness budget rather than weakening route assertions.
+
+---
+
 ## 2026-06-30 - Gamma presentation markers need the real TypeScript gate
 
 **What happened**: The isolated Gamma branch passed source-policy tests, production build, inventory coverage, and the rendered Gamma browser suite, but branch CI failed at `npm run check` because `styled-components.attrs()` rejected untyped custom `data-tezos-intel-region` attrs and the marketplace route's new presentation-only `surfaceVariant` prop was missing from `MarketplaceProps`.
