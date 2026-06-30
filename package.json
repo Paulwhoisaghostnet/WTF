@@ -79,6 +79,7 @@
     "pasta:shadownet:preflight": "tsx scripts/pasta-protocol/shadownet-preflight.ts",
     "pasta:shadownet:e2e": "tsx scripts/pasta-protocol/shadownet-spaghetti-e2e.ts",
     "pasta:shadownet:e2e:gnocchi": "tsx scripts/pasta-protocol/shadownet-gnocchi-e2e.ts",
+    "pasta:shadownet:e2e:ravioli": "tsx scripts/pasta-protocol/shadownet-ravioli-e2e.ts",
     "check": "tsc --noEmit",
     "wtfos:cli:build": "npm run build --prefix packages/wtfos-cli",
     "wtfos:cli:test": "npm run test --prefix packages/wtfos-cli",

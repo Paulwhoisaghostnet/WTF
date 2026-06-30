@@ -13,6 +13,7 @@ This branch can safely claim:
 - Pasta static publisher bundles are reachable on `wtfos.app` and expose the shared `window.MD` runtime.
 - Spaghetti has one signer-backed Shadownet deploy/mint/collect proof with TzKT big-map ownership and metadata verification.
 - Gnocchi has one signer-backed Shadownet open-edition deploy/configure/collector-mint proof with TzKT sale, supply, ownership, and metadata verification.
+- Ravioli has one signer-backed Shadownet bundle deploy/create/mint/transfer/redeem proof with TzKT bundle, redeemed, supply, ownership, and metadata verification.
 
 This branch must not claim:
 
@@ -37,7 +38,7 @@ This branch must not claim:
 | Macaroni | Existing drop publisher and individual desktop app | PROVEN | PROVEN | PARTIAL | OPEN | PARTIAL | OPEN | PROVEN | OPEN |
 | Spaghetti | Standard collection publisher | PROVEN | PROVEN | PROVEN | PROVEN | OPEN | PARTIAL | PARTIAL | OPEN |
 | Gnocchi | Open-edition token publisher | PROVEN | PARTIAL | PROVEN | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
-| Ravioli | Bundle token publisher | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
+| Ravioli | Bundle token publisher | PROVEN | PARTIAL | PROVEN | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
 | Rotini | Generative collection publisher | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
 | Penne | Distribution contract product | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
 | Lasagna | Exhibition contract product | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
@@ -62,7 +63,7 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 | Spaghetti signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e` originated `KT1LPXV5b83MU8LsvyVM76YCAH25JtNCBJPH`, created token 0, minted supply, transferred one edition, decoded metadata, and verified collector ownership in TzKT big maps. | PROVEN |
 | Fresh FA2 ownership proof method | `.agents/docs/live/LESSONS_LEARNED.md` documents direct storage/big-map verification when high-level token endpoints lag. | PROVEN |
 | Gnocchi signer proof | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:gnocchi` originated `KT1FwS1JifrUakeGqFwGYmMHMmfjuwJABaax`, created token 0, configured the open-edition sale, collector-minted one edition for 1 mutez, decoded metadata, and verified sale state, total supply, and collector ownership in TzKT big maps. | PROVEN |
-| Ravioli signer proof | None yet. | OPEN |
+| Ravioli signer proof | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:ravioli` originated `KT1CeJYHodXy8dvmNFgXxk4zh6SjVB5KYLaG`, created token 0, minted three editions, transferred two to the collector, redeemed one, decoded metadata, and verified bundle config, redeemed count, total supply, and collector ownership in TzKT big maps. | PROVEN |
 | Rotini signer proof | None yet. | OPEN |
 | Penne signer proof | None yet. | OPEN |
 | Lasagna signer proof | None yet. | OPEN |
@@ -84,10 +85,9 @@ The safe next push target is the proof branch, not `main` production. A producti
 ## Next Implementation Order
 
 1. Generalize the Spaghetti E2E runner into reusable publisher proof helpers.
-2. Add Ravioli signer-backed Shadownet proof.
-3. Add Rotini signer-backed generated-edition proof.
-4. Add Penne and Lasagna contract-product deploy/configure proofs.
-5. Wire Colander real-contract discovery against the Shadownet proof contracts.
-6. Add WTF.ME hosted page checks for the proven contracts/tokens.
-7. Add wtfOS artifact/metadata pinning and recovery checks.
-8. Re-run production readiness checks and only then evaluate a main/full-send.
+2. Add Rotini signer-backed generated-edition proof.
+3. Add Penne and Lasagna contract-product deploy/configure proofs.
+4. Wire Colander real-contract discovery against the Shadownet proof contracts.
+5. Add WTF.ME hosted page checks for the proven contracts/tokens.
+6. Add wtfOS artifact/metadata pinning and recovery checks.
+7. Re-run production readiness checks and only then evaluate a main/full-send.
