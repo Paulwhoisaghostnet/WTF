@@ -28,6 +28,10 @@ import {
   setInterfaceMode,
 } from "../features/wtfos-cli/interface-mode";
 import { useAuth } from "../lib/auth-context";
+import {
+  presentationRouteHref,
+  usePresentationShell,
+} from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 
 type SettingCard = {
@@ -44,6 +48,79 @@ const Shell = styled.div`
   display: grid;
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
+
+  &[data-system-settings-presentation-host="gamma"] {
+    color: var(--gamma-milk, #f2ead9);
+    background: #070706;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-system-settings-presentation-host="gamma"],
+  &[data-system-settings-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region] {
+    background-image: none;
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+  }
+
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="panel"],
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="card"],
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="status-cell"] {
+    color: var(--gamma-milk, #f2ead9);
+    background: rgba(17, 17, 15, 0.86);
+    border: 1px solid rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="separator"] {
+    height: 1px;
+    overflow: hidden;
+    border: 0;
+    background: rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="icon"] {
+    color: var(--gamma-cyan, #00d2ff);
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="actions"] {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &[data-system-settings-presentation-host="gamma"] h2,
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="card-title"],
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="status-value"] {
+    color: var(--gamma-milk, #f2ead9);
+    letter-spacing: 0;
+  }
+
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="status-label"],
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="card-meta"] {
+    color: rgba(242, 234, 217, 0.68);
+  }
+
+  &[data-system-settings-presentation-host="gamma"] button {
+    color: var(--gamma-cyan, #00d2ff);
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-system-settings-presentation-host="gamma"] button[aria-pressed="true"],
+  &[data-system-settings-presentation-host="gamma"] button[data-system-settings-active="true"] {
+    color: #070706;
+    background: var(--gamma-cyan, #00d2ff);
+    border-color: var(--gamma-cyan, #00d2ff);
+  }
 `;
 
 const StatusGrid = styled.div`
@@ -177,6 +254,7 @@ export function SystemSettings() {
     t,
   } = useLocalization();
   const [, setLocation] = useLocation();
+  const presentation = usePresentationShell();
   const isAdmin = user?.role === "admin";
 
   const settings = useMemo<SettingCard[]>(
@@ -319,7 +397,7 @@ export function SystemSettings() {
       eventType: "system_settings.opened",
       metadata: { setting: setting.id, route: setting.route },
     });
-    setLocation(setting.route);
+    setLocation(presentationRouteHref(setting.route, presentation.host));
   }
 
   function chooseInterfaceMode(mode: "desktop" | "cli") {
@@ -329,10 +407,10 @@ export function SystemSettings() {
       metadata: { mode },
     });
     if (mode === "cli") {
-      setLocation("/cli");
+      setLocation(presentationRouteHref("/cli", presentation.host));
       return;
     }
-    setLocation("/mission-control");
+    setLocation(presentationRouteHref("/mission-control", presentation.host));
   }
 
   function chooseLocale(nextLocale: string) {
@@ -345,46 +423,53 @@ export function SystemSettings() {
 
   return (
     <AppWindow title={t("systemSettings.title")}>
-      <Shell data-testid="system-settings">
-        <StatusGrid>
-          <StatusCell>
-            <StatusLabel>{t("systemSettings.status.role")}</StatusLabel>
-            <StatusValue>{user?.role ?? "session"}</StatusValue>
+      <Shell
+        data-testid="system-settings"
+        data-system-settings-presentation-host={presentation.host}
+        data-system-settings-surface="settings"
+        data-system-settings-region="surface"
+      >
+        <StatusGrid data-system-settings-region="status-grid">
+          <StatusCell data-system-settings-region="status-cell">
+            <StatusLabel data-system-settings-region="status-label">{t("systemSettings.status.role")}</StatusLabel>
+            <StatusValue data-system-settings-region="status-value">{user?.role ?? "session"}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>{t("systemSettings.status.visible")}</StatusLabel>
-            <StatusValue>{visibleSettings.length}</StatusValue>
+          <StatusCell data-system-settings-region="status-cell">
+            <StatusLabel data-system-settings-region="status-label">{t("systemSettings.status.visible")}</StatusLabel>
+            <StatusValue data-system-settings-region="status-value">{visibleSettings.length}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>{t("systemSettings.status.admin")}</StatusLabel>
-            <StatusValue>
+          <StatusCell data-system-settings-region="status-cell">
+            <StatusLabel data-system-settings-region="status-label">{t("systemSettings.status.admin")}</StatusLabel>
+            <StatusValue data-system-settings-region="status-value">
               {isAdmin ? t("systemSettings.admin.enabled") : t("systemSettings.admin.hidden")}
             </StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>{t("systemSettings.status.mode")}</StatusLabel>
-            <StatusValue>{interfaceMode}</StatusValue>
+          <StatusCell data-system-settings-region="status-cell">
+            <StatusLabel data-system-settings-region="status-label">{t("systemSettings.status.mode")}</StatusLabel>
+            <StatusValue data-system-settings-region="status-value">{interfaceMode}</StatusValue>
           </StatusCell>
         </StatusGrid>
 
-        <Separator />
+        <div data-system-settings-region="separator">
+          <Separator />
+        </div>
 
-        <UiPanel title={t("systemSettings.panel.system")} compact>
-          <CardGrid>
+        <UiPanel title={t("systemSettings.panel.system")} compact data-system-settings-region="panel">
+          <CardGrid data-system-settings-region="card-grid">
             {visibleSettings.map((setting) => {
               const Icon = setting.icon;
               return (
-                <Card key={setting.id}>
-                  <IconBox>
+                <Card key={setting.id} data-system-settings-region="card" data-system-settings-card={setting.id}>
+                  <IconBox data-system-settings-region="icon">
                     <Icon size={17} aria-hidden />
                   </IconBox>
                   <div>
-                    <CardTitle>{setting.label}</CardTitle>
-                    <CardMeta>
+                    <CardTitle data-system-settings-region="card-title">{setting.label}</CardTitle>
+                    <CardMeta data-system-settings-region="card-meta">
                       {setting.owner} - {setting.detail}
                     </CardMeta>
                   </div>
-                  <OpenButton onClick={() => openSetting(setting)}>
+                  <OpenButton onClick={() => openSetting(setting)} data-system-settings-region="open-button">
                     <MonitorCog size={14} aria-hidden />
                     {t("systemSettings.openSetting", { label: setting.label })}
                   </OpenButton>
@@ -394,18 +479,18 @@ export function SystemSettings() {
           </CardGrid>
         </UiPanel>
 
-        <UiPanel title={t("systemSettings.panel.language")} compact>
-          <Card>
-            <IconBox>
+        <UiPanel title={t("systemSettings.panel.language")} compact data-system-settings-region="panel" data-system-settings-panel="language">
+          <Card data-system-settings-region="card" data-system-settings-card="language-region">
+            <IconBox data-system-settings-region="icon">
               <Globe2 size={17} aria-hidden />
             </IconBox>
             <div>
-              <CardTitle>{t("systemSettings.language.title")}</CardTitle>
-              <CardMeta>
+              <CardTitle data-system-settings-region="card-title">{t("systemSettings.language.title")}</CardTitle>
+              <CardMeta data-system-settings-region="card-meta">
                 {t("systemSettings.language.detail")}
               </CardMeta>
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div data-system-settings-region="actions">
               <LanguageControl>
                 <span>{t("systemSettings.language.label")}</span>
                 <select
@@ -426,26 +511,32 @@ export function SystemSettings() {
           </Card>
         </UiPanel>
 
-        <UiPanel title={t("systemSettings.panel.interface")} compact>
-          <Card>
-            <IconBox>
+        <UiPanel title={t("systemSettings.panel.interface")} compact data-system-settings-region="panel" data-system-settings-panel="interface">
+          <Card data-system-settings-region="card" data-system-settings-card="interface">
+            <IconBox data-system-settings-region="icon">
               <TerminalSquare size={17} aria-hidden />
             </IconBox>
             <div>
-              <CardTitle>{t("systemSettings.interface.title")}</CardTitle>
-              <CardMeta>
+              <CardTitle data-system-settings-region="card-title">{t("systemSettings.interface.title")}</CardTitle>
+              <CardMeta data-system-settings-region="card-meta">
                 {t("systemSettings.interface.detail")}
               </CardMeta>
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div data-system-settings-region="actions">
               <OpenButton
                 active={interfaceMode === "desktop"}
+                aria-pressed={interfaceMode === "desktop"}
+                data-system-settings-active={interfaceMode === "desktop" ? "true" : "false"}
+                data-system-settings-region="mode-button"
                 onClick={() => chooseInterfaceMode("desktop")}
               >
                 {t("systemSettings.interface.desktop")}
               </OpenButton>
               <OpenButton
                 active={interfaceMode === "cli"}
+                aria-pressed={interfaceMode === "cli"}
+                data-system-settings-active={interfaceMode === "cli" ? "true" : "false"}
+                data-system-settings-region="mode-button"
                 onClick={() => chooseInterfaceMode("cli")}
               >
                 {t("systemSettings.interface.cli")}
@@ -454,18 +545,19 @@ export function SystemSettings() {
           </Card>
         </UiPanel>
 
-        <UiPanel title={t("systemSettings.panel.boundary")} compact tone="info">
-          <Card>
-            <IconBox>
+        <UiPanel title={t("systemSettings.panel.boundary")} compact tone="info" data-system-settings-region="panel" data-system-settings-panel="boundary">
+          <Card data-system-settings-region="card" data-system-settings-card="boundary">
+            <IconBox data-system-settings-region="icon">
               <ShieldCheck size={17} aria-hidden />
             </IconBox>
             <div>
-              <CardTitle>{t("systemSettings.boundary.title")}</CardTitle>
-              <CardMeta>
+              <CardTitle data-system-settings-region="card-title">{t("systemSettings.boundary.title")}</CardTitle>
+              <CardMeta data-system-settings-region="card-meta">
                 {t("systemSettings.boundary.detail")}
               </CardMeta>
             </div>
             <OpenButton
+              data-system-settings-region="open-button"
               onClick={() =>
                 openSetting({
                   id: "mission",

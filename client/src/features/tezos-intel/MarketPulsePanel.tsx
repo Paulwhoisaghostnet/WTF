@@ -19,7 +19,7 @@ export function MarketPulsePanel() {
 
   return (
     <PanelStack>
-      <Panel>
+      <Panel data-tezos-intel-panel="market-pulse">
         <PanelTitle>Market Pulse</PanelTitle>
         {isLoading && <Muted>Loading pulse...</Muted>}
         {error && <Muted>{(error as Error).message}</Muted>}
@@ -56,7 +56,7 @@ export function MarketPulsePanel() {
         )}
       </Panel>
 
-      <Panel>
+      <Panel data-tezos-intel-panel="sources">
         <PanelTitle>Imported Sources</PanelTitle>
         {importedSources.map((source) => (
           <Muted key={source.name}>

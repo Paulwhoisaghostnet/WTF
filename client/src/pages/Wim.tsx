@@ -37,6 +37,7 @@ import { UiEmptyState, UiNotice } from "../components/wtfos-ui";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { resolveTokenThumbnail } from "../lib/media-resolve";
+import { usePresentationShell } from "../lib/presentation-shell";
 import { useWindowManager, WindowPathContext } from "../lib/window-context";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
@@ -317,6 +318,74 @@ const Shell = styled.div<{ $hidden: boolean }>`
     background: transparent;
   }
 
+  &[data-wim-presentation-host="gamma"] {
+    --wim-navy: #00d2ff;
+    --wim-blue: #00d2ff;
+    --wim-cyan: #00d2ff;
+    --wim-mint: #d6ff3f;
+    --wim-yellow: #d6ff3f;
+    --wim-silver: #11110f;
+    --wim-smoke: #151512;
+    --wim-ink: #f2ead9;
+    --wim-panel: #11110f;
+    --wim-row: #171715;
+    --wim-row-active: #102d33;
+    --wim-divider: rgba(242, 234, 217, 0.22);
+    --wim-soft-shadow: none;
+    --wim-titlebar: #070706;
+    --wim-titlebar-active: #070706;
+    --wtf-window-color: #11110f;
+    --wtf-window-border: 1px solid rgba(242, 234, 217, 0.24);
+    --wtf-window-radius: 6px;
+    --wtf-window-shadow: none;
+    --wtf-window-outline: 0;
+    --wtf-active-title: #00d2ff;
+    --wtf-inactive-title: rgba(242, 234, 217, 0.28);
+    --wtf-active-title-text: #f2ead9;
+    --wtf-inactive-title-text: rgba(242, 234, 217, 0.68);
+    --wtf-titlebar-font: Inter, ui-sans-serif, system-ui, sans-serif;
+    --wtf-titlebar-height: 34px;
+    --wtf-titlebar-padding: 5px 6px;
+    --wtf-control-radius: 3px;
+  }
+
+  &[data-wim-presentation-host="gamma"],
+  &[data-wim-presentation-host="gamma"] * {
+    box-shadow: none !important;
+    filter: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-wim-presentation-host="gamma"] * {
+    background-image: none !important;
+  }
+
+  &[data-wim-presentation-host="gamma"] [data-wim-window-kind] {
+    background: #11110f !important;
+    border-color: rgba(242, 234, 217, 0.24);
+  }
+
+  &[data-wim-presentation-host="gamma"] [data-window-control="true"],
+  &[data-wim-presentation-host="gamma"] [data-compact-control="true"] {
+    color: #f2ead9;
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.28);
+    border-radius: 3px;
+  }
+
+  &[data-wim-presentation-host="gamma"] [role="tab"] {
+    color: #f2ead9;
+    background: #151512 !important;
+    border-color: rgba(242, 234, 217, 0.22);
+    border-radius: 4px 4px 0 0;
+  }
+
+  &[data-wim-presentation-host="gamma"] [role="tab"][aria-selected="true"] {
+    color: #00d2ff;
+    background: #11110f !important;
+    border-bottom-color: #11110f;
+  }
+
   @media (max-width: 760px) {
     min-height: 0;
   }
@@ -422,6 +491,14 @@ const WindowTitlebar = styled.div<{ $focused?: boolean }>`
 
   &:active {
     cursor: grabbing;
+  }
+
+  [data-wim-presentation-host="gamma"] & {
+    color: ${(p) => (p.$focused ? "#f2ead9" : "rgba(242, 234, 217, 0.7)")};
+    background: #070706;
+    border-bottom: 1px solid rgba(242, 234, 217, 0.18);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
   }
 `;
 
@@ -1407,6 +1484,30 @@ const PopupStack = styled.div`
     left: 8px;
     bottom: 42px;
   }
+
+  &[data-wim-presentation-host="gamma"] {
+    --wim-blue: #00d2ff;
+    --wim-navy: #00d2ff;
+    --wim-ink: #f2ead9;
+  }
+
+  &[data-wim-presentation-host="gamma"],
+  &[data-wim-presentation-host="gamma"] * {
+    box-shadow: none !important;
+    filter: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-wim-presentation-host="gamma"] * {
+    background-image: none !important;
+  }
+
+  &[data-wim-presentation-host="gamma"] [data-wim-offline-popup="true"] {
+    color: #f2ead9;
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.24);
+    border-radius: 6px;
+  }
 `;
 
 const PopupCard = styled(Panel).attrs({ variant: "well" })`
@@ -2227,6 +2328,7 @@ function ChatWindowPane({
 
 export function Wim() {
   const { user } = useAuth();
+  const presentation = usePresentationShell();
   const wm = useWindowManager();
   const routePath = useContext(WindowPathContext) || "/wim";
   const routeWindowState = wm.getWindow(routePath);
@@ -3559,6 +3661,7 @@ export function Wim() {
         ref={surfaceRef}
         $hidden={routeMinimized}
         data-wim-desktop-surface="true"
+        data-wim-presentation-host={presentation.host}
         style={{ zIndex: routeZ }}
       >
         {conversationDragActive ? (
@@ -3589,7 +3692,7 @@ export function Wim() {
       </Shell>
       {typeof document !== "undefined" && unreadPopups.length
         ? createPortal(
-            <PopupStack aria-live="polite">
+            <PopupStack aria-live="polite" data-wim-presentation-host={presentation.host}>
               {unreadPopups.map((popup) => (
                 <PopupCard key={popup.key} data-wim-offline-popup="true">
                   <PopupHeader>

@@ -25,14 +25,19 @@ export function CreatorComparePanel() {
   const creators = data?.creators ?? [];
 
   return (
-    <Panel>
+    <Panel data-tezos-intel-panel="creator-compare">
       <PanelTitle>Creator Market Compare</PanelTitle>
       <TextArea
         value={draft}
+        data-tezos-intel-control="compare-input"
         onChange={(e) => setDraft(e.target.value)}
         placeholder="One creator address per line"
       />
-      <Button onClick={() => setSubmitted(addresses)} disabled={addresses.length === 0}>
+      <Button
+        data-tezos-intel-control="compare-button"
+        onClick={() => setSubmitted(addresses)}
+        disabled={addresses.length === 0}
+      >
         Compare
       </Button>
       {isFetching && <Muted>Comparing market signals...</Muted>}

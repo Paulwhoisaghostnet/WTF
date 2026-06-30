@@ -32,6 +32,7 @@ import {
   TokenDetailModal as SharedTokenDetailModal,
   type TokenCardAction,
 } from "./TokenCard";
+import { usePresentationShell } from "../lib/presentation-shell";
 import type { ConsoleTokenProvenance } from "@shared/console-provenance";
 import {
   provenanceCreatorLabel,
@@ -265,6 +266,11 @@ const DetailOverlay = styled.div`
   align-items: center;
   justify-content: center;
   padding: 16px;
+
+  &[data-token-detail-presentation-host="gamma"] {
+    background: rgba(7, 7, 6, 0.82);
+    color: #f2ead9;
+  }
 `;
 
 const DetailWindow = styled.div`
@@ -275,6 +281,15 @@ const DetailWindow = styled.div`
   width: 100%;
   max-height: 85vh;
   overflow-y: auto;
+
+  [data-token-detail-presentation-host="gamma"] & {
+    background: #11110f;
+    color: #f2ead9;
+    border: 1px solid rgba(242, 234, 217, 0.24);
+    border-radius: 6px;
+    box-shadow: none;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
 `;
 
 const DetailTitleBar = styled.div`
@@ -286,10 +301,24 @@ const DetailTitleBar = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
+
+  [data-token-detail-presentation-host="gamma"] & {
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    border-bottom: 1px solid rgba(242, 234, 217, 0.18);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13px;
+    letter-spacing: 0;
+  }
 `;
 
 const DetailBody = styled.div`
   padding: 12px;
+
+  [data-token-detail-presentation-host="gamma"] & {
+    padding: 14px;
+  }
 `;
 
 const DetailImage = styled.div`
@@ -302,6 +331,12 @@ const DetailImage = styled.div`
   border: 2px inset #808080;
   margin-bottom: 10px;
   img { max-width: 100%; max-height: 360px; object-fit: contain; }
+
+  [data-token-detail-presentation-host="gamma"] & {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 4px;
+  }
 `;
 
 const DetailRow = styled.div`
@@ -310,6 +345,20 @@ const DetailRow = styled.div`
   font-size: var(--wtf-type-caption, 13px);
   margin-bottom: 4px;
   strong { min-width: 80px; color: #444; }
+
+  [data-token-detail-presentation-host="gamma"] & {
+    color: rgba(242, 234, 217, 0.9);
+    line-height: 1.45;
+
+    strong {
+      color: rgba(242, 234, 217, 0.62);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+  }
 `;
 
 const LinkRow = styled.div`
@@ -319,6 +368,10 @@ const LinkRow = styled.div`
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid #808080;
+
+  [data-token-detail-presentation-host="gamma"] & {
+    border-top-color: rgba(242, 234, 217, 0.18);
+  }
 `;
 
 // ─── Helpers ─────────────────────────────────────────────
@@ -369,13 +422,24 @@ export function TokenDetailModal({
       ? shortAddr(value)
       : value;
   });
+  const presentation = usePresentationShell();
+  const displayName = token.name || `Token #${token.tokenId}`;
 
   return (
-    <DetailOverlay onClick={onClose}>
-      <DetailWindow onClick={(e: any) => e.stopPropagation()}>
+    <DetailOverlay
+      data-token-detail-modal="true"
+      data-token-detail-presentation-host={presentation.host}
+      onClick={onClose}
+    >
+      <DetailWindow
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Token details: ${displayName}`}
+        onClick={(e: any) => e.stopPropagation()}
+      >
         <DetailTitleBar>
           <span>🖼️</span>
-          {token.name || `Token #${token.tokenId}`} — Properties
+          {displayName} — Properties
         </DetailTitleBar>
         <DetailBody>
           <DetailImage>

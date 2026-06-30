@@ -28,6 +28,14 @@ const ToggleWrap = styled.div<{ $tone: "light" | "dark" }>`
     p.$tone === "dark"
       ? "rgba(0, 20, 10, 0.45)"
       : "var(--wtf-app-surface-raised, #e0e0e0)"};
+
+  [data-my-videos-presentation-host="gamma"] & {
+    background: #0b0b0a;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+    color: #f2ead9;
+  }
 `;
 
 const ToggleRow = styled.label<{ $tone: "light" | "dark"; $disabled?: boolean }>`
@@ -46,12 +54,26 @@ const ToggleRow = styled.label<{ $tone: "light" | "dark"; $disabled?: boolean }>
     height: 18px;
     accent-color: #22aa55;
   }
+
+  [data-my-videos-presentation-host="gamma"] & {
+    color: rgba(242, 234, 217, 0.78);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  [data-my-videos-presentation-host="gamma"] & input {
+    accent-color: #d6ff3f;
+  }
 `;
 
 const ErrorText = styled.div<{ $tone: "light" | "dark" }>`
   color: ${(p) => (p.$tone === "dark" ? "#ff8877" : "#c00000")};
   font-size: var(--wtf-type-caption, 13px);
   line-height: 1.25;
+
+  [data-my-videos-presentation-host="gamma"] & {
+    color: #ff9d8c;
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+  }
 `;
 
 export function hasMediaBumperAssignment(
@@ -87,7 +109,7 @@ export function BumperAssignmentToggles({
   const isDisabled = disabled || pending;
 
   return (
-    <ToggleWrap $tone={tone}>
+    <ToggleWrap $tone={tone} data-my-videos-region="bumper-toggle">
       <ToggleRow $tone={tone} $disabled={isDisabled}>
         <input
           type="checkbox"

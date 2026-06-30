@@ -37,6 +37,7 @@ import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { WtfOsCliShell } from "./features/wtfos-cli/WtfOsCliShell";
 import { getInterfaceMode } from "./features/wtfos-cli/interface-mode";
+import { readPresentationHostFromSession } from "./lib/presentation-shell";
 import {
   getPageAccessState,
   type DesktopAppAvailability,
@@ -63,6 +64,16 @@ function isBetaHost(): boolean {
 function isGammaHost(): boolean {
   if (typeof window === "undefined") return false;
   return window.location.hostname === "gamma.wtfos.app";
+}
+
+function isGammaShellLocation(location: string): boolean {
+  if (isGammaHost()) return true;
+  const pathname = location.split("?")[0]?.split("#")[0] ?? location;
+  if (pathname === "/gamma" || pathname.startsWith("/gamma/")) return true;
+  if (pathname === "/beta" || pathname.startsWith("/beta/")) return false;
+  if (readPresentationHostFromSession() !== "gamma") return false;
+  if (pathname === "/") return true;
+  return Boolean(matchPage(location));
 }
 
 function locationHasSkywireStandaloneFlag(location: string): boolean {
@@ -113,7 +124,9 @@ function WindowCrashFallback({
         }}
       >
         <strong>{t("appWindow.renderErrorTitle")}</strong>
-        <span>{t("appWindow.renderErrorBody")}</span>
+        <span>
+          {t("appWindow.renderErrorBody")}
+        </span>
         {isDev && error ? (
           <pre
             style={{
@@ -454,7 +467,7 @@ function AppContent() {
   const showRegister = location === "/register";
   const showLanding = location === "/" && !user;
   const authOverlayActive = showLogin || showRegister || showLanding;
-  const gammaHomeMatch = isGammaHost() && location === "/" ? matchPage("/gamma") : null;
+  const gammaShellMatch = isGammaShellLocation(location) ? matchPage("/gamma") : null;
   const betaHomeMatch = isBetaHost() && location === "/" ? matchPage("/beta") : null;
   const skywireStandaloneLocation = skywireStandaloneRouteLocation(location);
   const skywireStandaloneMatch = skywireStandaloneLocation
@@ -480,6 +493,10 @@ function AppContent() {
     }
   }, [authOverlayActive, isLoading, location, setLocation, user]);
 
+  if (gammaShellMatch) {
+    return <FullscreenRouteRenderer match={gammaShellMatch} />;
+  }
+
   if (location === "/cli") {
     if (isLoading || !user) {
       return (
@@ -498,10 +515,6 @@ function AppContent() {
       );
     }
     return <WtfOsCliShell />;
-  }
-
-  if (gammaHomeMatch) {
-    return <FullscreenRouteRenderer match={gammaHomeMatch} />;
   }
 
   if (betaHomeMatch) {

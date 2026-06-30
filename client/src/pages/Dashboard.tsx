@@ -24,6 +24,7 @@ import { OwnedTokensGallery } from "../components/OwnedTokensGallery";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
+import { usePresentationShell } from "../lib/presentation-shell";
 import { formatWtf } from "@shared/types";
 import { useLocation } from "wouter";
 import { DiscoveryCard } from "../features/discovery/DiscoveryCard";
@@ -89,7 +90,114 @@ function relTime(iso: string | null): string {
   return `${Math.round(days / 365)}y ago`;
 }
 
-const TabPanel = styled.div`
+const dashboardRegionAttrs = (region: string): any => ({
+  "data-dashboard-region": region,
+});
+
+const DashboardSurface = styled.div.attrs(dashboardRegionAttrs("surface"))`
+  display: grid;
+  gap: 8px;
+
+  &[data-dashboard-presentation-host="gamma"] {
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+  }
+
+  &[data-dashboard-presentation-host="gamma"],
+  &[data-dashboard-presentation-host="gamma"] * {
+    box-shadow: none !important;
+    letter-spacing: 0 !important;
+    text-shadow: none !important;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] * {
+    background-image: none !important;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] :where(button, input, textarea, select, p, span, strong, div, section, article, nav, h1, h2, h3, h4, label, legend, fieldset, table, th, td) {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] :where(p, span, div, td, th, label, legend) {
+    color: #f2ead9 !important;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] :where(code, pre) {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace !important;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region] {
+    border-color: rgba(242, 234, 217, 0.2) !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="panel"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="metric"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="wallet-row"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="activity-row"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="passport-card"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="avatar"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="thumb"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="fieldset"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="table"] {
+    background: #0b0b0a !important;
+    border: 1px solid rgba(242, 234, 217, 0.2) !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="tabs"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="tab-panel"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="overview-grid"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="portfolio-metric-grid"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="quick-actions"],
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="discovery"] {
+    background: transparent !important;
+    border-color: transparent !important;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] [data-dashboard-region="pnl"] {
+    background: #11110f !important;
+    border: 1px solid #00d2ff !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] button:not(:disabled),
+  &[data-dashboard-presentation-host="gamma"] input:not([type="checkbox"]):not([type="radio"]),
+  &[data-dashboard-presentation-host="gamma"] select,
+  &[data-dashboard-presentation-host="gamma"] textarea {
+    background: #11110f !important;
+    border-color: rgba(242, 234, 217, 0.28) !important;
+    border-radius: 6px !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] button[aria-selected="true"],
+  &[data-dashboard-presentation-host="gamma"] button[aria-pressed="true"] {
+    border-color: #00d2ff !important;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] th,
+  &[data-dashboard-presentation-host="gamma"] td {
+    background: #0b0b0a !important;
+    border-color: rgba(242, 234, 217, 0.18) !important;
+  }
+
+  &[data-dashboard-presentation-host="gamma"] a {
+    color: #00d2ff !important;
+  }
+`;
+
+const DashboardGroupBox = styled(GroupBox).attrs(dashboardRegionAttrs("panel"))``;
+const DashboardFieldset = styled(Fieldset).attrs(dashboardRegionAttrs("fieldset"))``;
+const DashboardTable = styled(Table).attrs(dashboardRegionAttrs("table"))``;
+
+const TabPanel = styled.div.attrs(dashboardRegionAttrs("tab-panel"))`
   padding: 8px 0;
   min-height: 200px;
 `;
@@ -108,7 +216,7 @@ const QuickAction = styled(Button)`
 // Compact 3-column grid for the Quick Actions menu — cuts the vertical
 // footprint of the dashboard in ~1/3 vs the original stacked full-width
 // buttons.  Falls back to 2 columns on narrow viewports.
-const QuickActionGrid = styled.div`
+const QuickActionGrid = styled.div.attrs(dashboardRegionAttrs("quick-actions"))`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
@@ -126,7 +234,7 @@ const CompactAction = styled(Button)`
 
 // ── Portfolio analytics card styling ───────────────────────────────
 
-const PortfolioMetricGrid = styled.div`
+const PortfolioMetricGrid = styled.div.attrs(dashboardRegionAttrs("portfolio-metric-grid"))`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
@@ -135,7 +243,7 @@ const PortfolioMetricGrid = styled.div`
   }
 `;
 
-const PortfolioMetric = styled.div`
+const PortfolioMetric = styled.div.attrs(dashboardRegionAttrs("metric"))`
   border: 1px solid #808080;
   background: #dfdfdf;
   padding: 4px 6px;
@@ -162,7 +270,7 @@ const MetricSub = styled.div`
   color: #404040;
 `;
 
-const PnlBadge = styled.span<{ $positive?: boolean; $negative?: boolean }>`
+const PnlBadge = styled.span.attrs(dashboardRegionAttrs("pnl"))<{ $positive?: boolean; $negative?: boolean }>`
   display: inline-block;
   padding: 1px 6px;
   border: 1px solid
@@ -176,7 +284,7 @@ const PnlBadge = styled.span<{ $positive?: boolean; $negative?: boolean }>`
   font-weight: bold;
 `;
 
-const WalletRow = styled.div`
+const WalletRow = styled.div.attrs(dashboardRegionAttrs("wallet-row"))`
   display: grid;
   grid-template-columns: minmax(0, 2fr) 1fr 1fr 1fr 1fr;
   gap: 6px;
@@ -197,7 +305,7 @@ const WalletRowHead = styled(WalletRow)`
   color: #404040;
 `;
 
-const ActivityRow = styled.div`
+const ActivityRow = styled.div.attrs(dashboardRegionAttrs("activity-row"))`
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) minmax(0, 0.9fr) auto;
   gap: 6px;
@@ -210,7 +318,7 @@ const ActivityRow = styled.div`
   }
 `;
 
-const Thumb = styled.div`
+const Thumb = styled.div.attrs(dashboardRegionAttrs("thumb"))`
   width: 36px;
   height: 36px;
   border: 1px solid #808080;
@@ -222,13 +330,13 @@ const Thumb = styled.div`
   }
 `;
 
-const PassportCard = styled.div`
+const PassportCard = styled.div.attrs(dashboardRegionAttrs("passport-card"))`
   display: flex;
   gap: 10px;
   align-items: center;
 `;
 
-const Avatar = styled.div`
+const Avatar = styled.div.attrs(dashboardRegionAttrs("avatar"))`
   width: 54px;
   height: 54px;
   border: 2px solid #808080;
@@ -244,7 +352,7 @@ const Avatar = styled.div`
   }
 `;
 
-const OverviewGrid = styled.div`
+const OverviewGrid = styled.div.attrs(dashboardRegionAttrs("overview-grid"))`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
@@ -256,6 +364,7 @@ const OverviewGrid = styled.div`
 export function Dashboard() {
   const { user } = useAuth();
   const { address } = useWallet();
+  const presentation = usePresentationShell();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState(0);
@@ -382,19 +491,25 @@ export function Dashboard() {
 
   return (
     <AppWindow title={`Dashboard - ${user?.displayName || user?.username}`}>
-      <Tabs value={activeTab} onChange={(v: number) => setActiveTab(v)}>
-        <Tab value={0}>Overview</Tab>
-        <Tab value={1}>Holdings</Tab>
-        <Tab value={2}>Activity</Tab>
-        <Tab value={3}>Collections</Tab>
-        <Tab value={4}>Sync</Tab>
-        <Tab value={5}>Wallets</Tab>
-      </Tabs>
-      <TabBody>
+      <DashboardSurface
+        data-dashboard-surface="cockpit"
+        data-dashboard-presentation-host={presentation.host}
+      >
+      <div data-dashboard-region="tabs">
+        <Tabs value={activeTab} onChange={(v: number) => setActiveTab(v)}>
+          <Tab value={0}>Overview</Tab>
+          <Tab value={1}>Holdings</Tab>
+          <Tab value={2}>Activity</Tab>
+          <Tab value={3}>Collections</Tab>
+          <Tab value={4}>Sync</Tab>
+          <Tab value={5}>Wallets</Tab>
+        </Tabs>
+      </div>
+      <TabBody data-dashboard-region="tab-body">
         {activeTab === 0 && (
           <TabPanel>
             <OverviewGrid>
-              <GroupBox label="Passport">
+              <DashboardGroupBox label="Passport">
                 <PassportCard>
                   <Avatar>
                     {user?.pfpImageUrl || user?.avatarUrl ? (
@@ -433,9 +548,9 @@ export function Dashboard() {
                     </Button>
                   )}
                 </div>
-              </GroupBox>
+              </DashboardGroupBox>
 
-              <GroupBox label="WTF Balance">
+              <DashboardGroupBox label="WTF Balance">
                 <StatValue>
                   {balance ? formatWtf(balance.balance) : "---"} WTF
                 </StatValue>
@@ -450,11 +565,11 @@ export function Dashboard() {
                     {portfolioSummary.pagination.total} indexed token position(s)
                   </p>
                 )}
-              </GroupBox>
+              </DashboardGroupBox>
 
-              <GroupBox label="Cockpit summary">
+              <DashboardGroupBox label="Cockpit summary">
                 {overview ? (
-                  <Fieldset label="Holdings">
+                  <DashboardFieldset label="Holdings">
                     <div style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>
                       Tokens:{" "}
                       <strong>{overview.holdings?.totalTokens ?? 0}</strong>
@@ -462,13 +577,13 @@ export function Dashboard() {
                       Contracts:{" "}
                       <strong>{overview.holdings?.totalContracts ?? 0}</strong>
                     </div>
-                  </Fieldset>
+                  </DashboardFieldset>
                 ) : (
                   <Hourglass size={24} />
                 )}
-              </GroupBox>
+              </DashboardGroupBox>
 
-              <GroupBox label="Current Season">
+              <DashboardGroupBox label="Current Season">
                 {activeSeason ? (
                   <>
                     <StatValue>{activeSeason.name}</StatValue>
@@ -480,9 +595,9 @@ export function Dashboard() {
                 ) : (
                   <p>No active season</p>
                 )}
-              </GroupBox>
+              </DashboardGroupBox>
 
-              <GroupBox label="Active Challenges">
+              <DashboardGroupBox label="Active Challenges">
                 <StatValue>{openChallenges.length}</StatValue>
                 {openChallenges.slice(0, 3).map((c: any) => (
                   <div key={c.id} style={{ marginBottom: 4 }}>
@@ -498,9 +613,9 @@ export function Dashboard() {
                 <QuickAction onClick={() => setLocation("/challenges")}>
                   All Challenges
                 </QuickAction>
-              </GroupBox>
+              </DashboardGroupBox>
 
-              <GroupBox label="Portfolio overview">
+              <DashboardGroupBox label="Portfolio overview">
                 {!portfolio ? (
                   <Hourglass size={24} />
                 ) : portfolio.totals.wallets === 0 ? (
@@ -634,9 +749,9 @@ export function Dashboard() {
                     </p>
                   </>
                 )}
-              </GroupBox>
+              </DashboardGroupBox>
 
-              <GroupBox label="By wallet">
+              <DashboardGroupBox label="By wallet">
                 {!portfolio ? (
                   <Hourglass size={24} />
                 ) : portfolio.perWallet.length === 0 ? (
@@ -691,9 +806,9 @@ export function Dashboard() {
                     })}
                   </div>
                 )}
-              </GroupBox>
+              </DashboardGroupBox>
 
-              <GroupBox label="Recent acquisitions">
+              <DashboardGroupBox label="Recent acquisitions">
                 {!recentAcq ? (
                   <Hourglass size={24} />
                 ) : recentAcq.rows.length === 0 ? (
@@ -741,9 +856,9 @@ export function Dashboard() {
                     ))}
                   </div>
                 )}
-              </GroupBox>
+              </DashboardGroupBox>
 
-              <GroupBox label="Recent sales (realised P&amp;L)">
+              <DashboardGroupBox label="Recent sales (realised P&amp;L)">
                 {!recentSales ? (
                   <Hourglass size={24} />
                 ) : recentSales.rows.length === 0 ? (
@@ -804,11 +919,11 @@ export function Dashboard() {
                     })}
                   </div>
                 )}
-              </GroupBox>
+              </DashboardGroupBox>
 
               <YearProgressWidget />
 
-              <GroupBox label="Quick Actions">
+              <DashboardGroupBox label="Quick Actions">
                 <QuickActionGrid>
                   <CompactAction onClick={() => setLocation("/w")}>
                     W Feed
@@ -838,10 +953,10 @@ export function Dashboard() {
                     Profile
                   </CompactAction>
                 </QuickActionGrid>
-              </GroupBox>
+              </DashboardGroupBox>
             </OverviewGrid>
 
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+            <div data-dashboard-region="discovery" style={{ marginTop: 10, display: "grid", gap: 10 }}>
               <DiscoveryCard />
             </div>
           </TabPanel>
@@ -849,7 +964,7 @@ export function Dashboard() {
 
         {activeTab === 1 && (
           <TabPanel>
-            <GroupBox label="Indexed holdings">
+            <DashboardGroupBox label="Indexed holdings">
               <p style={{ fontSize: DASHBOARD_CAPTION_TYPE, marginBottom: 8 }}>
                 Same data as Profile / Hoard — sourced from `wallet_holdings` + shared
                 metadata cache.
@@ -859,19 +974,19 @@ export function Dashboard() {
                 userWallets={wallets?.map((w) => w.walletAddress)}
                 pageSize={48}
               />
-            </GroupBox>
+            </DashboardGroupBox>
           </TabPanel>
         )}
 
         {activeTab === 2 && (
           <TabPanel>
-            <GroupBox label="Recent wallet events">
+            <DashboardGroupBox label="Recent wallet events">
               {!activity ? (
                 <Hourglass size={24} />
               ) : activity.items?.length === 0 ? (
                 <p style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>No events indexed yet.</p>
               ) : (
-                <Table>
+                <DashboardTable>
                   <TableHead>
                     <TableRow>
                       <TableHeadCell>Time</TableHeadCell>
@@ -899,21 +1014,21 @@ export function Dashboard() {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                </DashboardTable>
               )}
-            </GroupBox>
+            </DashboardGroupBox>
           </TabPanel>
         )}
 
         {activeTab === 3 && (
           <TabPanel>
-            <GroupBox label="Collections">
+            <DashboardGroupBox label="Collections">
               {!cockpitCollections ? (
                 <Hourglass size={24} />
               ) : cockpitCollections.collections?.length === 0 ? (
                 <p style={{ fontSize: DASHBOARD_CAPTION_TYPE }}>No collections yet.</p>
               ) : (
-                <Table>
+                <DashboardTable>
                   <TableHead>
                     <TableRow>
                       <TableHeadCell>Title</TableHeadCell>
@@ -936,19 +1051,19 @@ export function Dashboard() {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                </DashboardTable>
               )}
-            </GroupBox>
+            </DashboardGroupBox>
           </TabPanel>
         )}
 
         {activeTab === 4 && (
           <TabPanel>
-            <GroupBox label="Scheduler health">
+            <DashboardGroupBox label="Scheduler health">
               {!syncStatus ? (
                 <Hourglass size={24} />
               ) : (
-                <Table>
+                <DashboardTable>
                   <TableHead>
                     <TableRow>
                       <TableHeadCell>Job</TableHeadCell>
@@ -974,10 +1089,10 @@ export function Dashboard() {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                </DashboardTable>
               )}
               <Separator />
-              <Fieldset label="Sync one wallet now">
+              <DashboardFieldset label="Sync one wallet now">
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                   {wallets?.map((w) => (
                     <Button
@@ -990,15 +1105,15 @@ export function Dashboard() {
                     </Button>
                   ))}
                 </div>
-              </Fieldset>
-            </GroupBox>
+              </DashboardFieldset>
+            </DashboardGroupBox>
           </TabPanel>
         )}
 
         {activeTab === 5 && (
           <TabPanel>
-            <GroupBox label="Linked wallets">
-              <Table>
+            <DashboardGroupBox label="Linked wallets">
+              <DashboardTable>
                 <TableHead>
                   <TableRow>
                     <TableHeadCell>Address</TableHeadCell>
@@ -1047,20 +1162,21 @@ export function Dashboard() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+              </DashboardTable>
               <Separator />
-              <Fieldset label="Add a wallet">
+              <DashboardFieldset label="Add a wallet">
                 <p style={{ fontSize: DASHBOARD_CAPTION_TYPE, marginBottom: 6 }}>
                   New wallets require a signed proof on the Profile page.
                 </p>
                 <Button size="sm" onClick={() => setLocation("/profile")}>
                   Open Profile → Wallets
                 </Button>
-              </Fieldset>
-            </GroupBox>
+              </DashboardFieldset>
+            </DashboardGroupBox>
           </TabPanel>
         )}
       </TabBody>
+      </DashboardSurface>
     </AppWindow>
   );
 }

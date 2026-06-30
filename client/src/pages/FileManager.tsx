@@ -27,7 +27,12 @@ import {
 import { buildWtfIpfsGatewayPolicy } from "@shared/ipfs-gateways";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UiButton, UiEmptyState, UiPanel } from "../components/wtfos-ui";
+import {
+  agentFilesystemStats,
+  readAgentProjectSnapshots,
+} from "../features/agent/agent-filesystem";
 import { api } from "../lib/api";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 import {
   asFileManagerArray,
@@ -72,6 +77,70 @@ const Shell = styled.div`
   display: grid;
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
+
+  &[data-gamma-utility-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"],
+  &[data-gamma-utility-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region] {
+    min-width: 0;
+    background-image: none;
+    border-radius: 6px;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="status-cell"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="panel"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="dwelling-row"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="bundle-row"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="service-row"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="recent-row"] {
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    background: #11110f;
+    color: #f2ead9;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="label"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="meta"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="purpose"] {
+    color: rgba(242, 234, 217, 0.7);
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="label"] {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="icon"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="badge"] {
+    border: 1px solid rgba(0, 210, 255, 0.5);
+    background: #070706;
+    color: #00d2ff;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"] {
+    border: 1px solid rgba(0, 210, 255, 0.58);
+    border-radius: 4px;
+    background: transparent;
+    color: #00d2ff;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"]:hover,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"]:focus-visible {
+    border-color: #00d2ff;
+    color: #f2ead9;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
 `;
 
 const StatusGrid = styled.div`
@@ -311,6 +380,7 @@ const DWELLING_ICONS: Record<WtfDwellingKey, typeof Folder> = {
 };
 
 export function FileManager() {
+  const presentation = usePresentationShell();
   const [, setLocation] = useLocation();
 
   const mediaQuery = useQuery({
@@ -349,19 +419,24 @@ export function FileManager() {
   );
   const mediaServiceJobsByName = new Map(mediaServiceJobs.map((job) => [job.name, job]));
   const ipfsGatewayPolicy = resolveIpfsGatewayPolicy(ipfsGatewayQuery.data);
+  const agentSnapshots = useMemo(() => readAgentProjectSnapshots(), []);
+  const agentStats = useMemo(() => agentFilesystemStats(agentSnapshots), [agentSnapshots]);
   const mediaBytes = mediaItems.reduce((sum, item) => sum + itemBytes(item), 0);
   const projectBytes = projects.reduce((sum, project) => sum + Number(project.storageUsedBytes ?? 0), 0);
+  const totalProjectBytes = projectBytes + agentStats.contentBytes;
   const imageCount = mediaItems.filter((item) => item.mediaCategory === "image").length;
   const videoCount = mediaItems.filter((item) => item.mediaCategory === "video").length;
   const audioCount = mediaItems.filter((item) => item.mediaCategory === "audio").length;
   const projectFileCount = projects.reduce((sum, project) => sum + Number(project.fileCount ?? 0), 0);
+  const totalProjectFileCount = projectFileCount + agentStats.fileCount;
+  const totalProjectCount = projects.length + agentStats.snapshotCount;
 
   const dwellings = useMemo<Dwelling[]>(
     () =>
       WTF_DWELLINGS.map((dwelling) => {
         const counts: Record<WtfDwellingKey, string> = {
           desktop: "layout",
-          projects: `${projects.length} projects`,
+          projects: `${totalProjectCount} projects`,
           media: `${mediaItems.length} items`,
           documents: "journal",
           downloads: `${formatBytes(mediaBytes)}`,
@@ -372,7 +447,7 @@ export function FileManager() {
           shared: "social",
         };
         const details: Partial<Record<WtfDwellingKey, string>> = {
-          projects: `${projectFileCount} files, ${formatBytes(projectBytes)}`,
+          projects: `${totalProjectFileCount} files, ${formatBytes(totalProjectBytes)}, ${agentStats.snapshotCount} Agent snapshots`,
           media: `${imageCount} images, ${videoCount} videos, ${audioCount} audio`,
         };
         return {
@@ -382,7 +457,17 @@ export function FileManager() {
           icon: DWELLING_ICONS[dwelling.key],
         };
       }),
-    [audioCount, imageCount, mediaBytes, mediaItems.length, projectBytes, projectFileCount, projects.length, videoCount]
+    [
+      agentStats.snapshotCount,
+      audioCount,
+      imageCount,
+      mediaBytes,
+      mediaItems.length,
+      totalProjectBytes,
+      totalProjectCount,
+      totalProjectFileCount,
+      videoCount,
+    ]
   );
 
   useEffect(() => {
@@ -401,7 +486,7 @@ export function FileManager() {
       eventType: "file_manager.opened",
       metadata: { dwelling: row.key, route: row.route },
     });
-    setLocation(row.route);
+    setLocation(presentationRouteHref(row.route, presentation.host));
   }
 
   function openBundleSection(section: WtfProjectBundleSection) {
@@ -413,7 +498,7 @@ export function FileManager() {
         dwelling: section.dwelling,
       },
     });
-    setLocation(section.route);
+    setLocation(presentationRouteHref(section.route, presentation.host));
   }
 
   function openMediaServiceCapability(capability: WtfMediaServiceCapability) {
@@ -425,7 +510,7 @@ export function FileManager() {
         accessPolicy: capability.accessPolicy,
       },
     });
-    setLocation(capability.route);
+    setLocation(presentationRouteHref(capability.route, presentation.host));
   }
 
   const loading = mediaQuery.isLoading || studioQuery.isLoading;
@@ -435,38 +520,43 @@ export function FileManager() {
 
   return (
     <AppWindow title="File Manager">
-      <Shell data-testid="file-manager">
-        <StatusGrid>
-          <StatusCell>
-            <StatusLabel>Dwellings</StatusLabel>
+      <Shell
+        data-testid="file-manager"
+        data-gamma-utility-surface="file-manager"
+        data-gamma-utility-presentation-host={presentation.host}
+        data-gamma-utility-region="surface"
+      >
+        <StatusGrid data-gamma-utility-region="status-grid">
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Dwellings</StatusLabel>
             <StatusValue>{dwellings.length}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Media</StatusLabel>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Media</StatusLabel>
             <StatusValue>{mediaQuery.isLoading ? "..." : `${mediaItems.length}`}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Projects</StatusLabel>
-            <StatusValue>{studioQuery.isError ? "locked" : projects.length}</StatusValue>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Projects</StatusLabel>
+            <StatusValue>{studioQuery.isError ? "locked" : totalProjectCount}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Bundle Sections</StatusLabel>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Bundle Sections</StatusLabel>
             <StatusValue>{bundleQuery.isError ? "local" : projectBundleSections.length}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Media Duties</StatusLabel>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Media Duties</StatusLabel>
             <StatusValue>{mediaServiceQuery.isError ? "local" : mediaServiceCapabilities.length}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Media Jobs</StatusLabel>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Media Jobs</StatusLabel>
             <StatusValue>{mediaServiceQuery.isError ? "local" : mediaServiceJobs.length}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>IPFS Gateways</StatusLabel>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">IPFS Gateways</StatusLabel>
             <StatusValue>{ipfsGatewayQuery.isError ? "local" : ipfsGatewayPolicy.gateways.length}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Changed</StatusLabel>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Changed</StatusLabel>
             <StatusValue>{latestLabel([...mediaItems, ...projects])}</StatusValue>
           </StatusCell>
         </StatusGrid>
@@ -474,28 +564,28 @@ export function FileManager() {
         <Separator />
 
         {loading ? (
-          <UiPanel title="WTF dwellings" compact>
+          <UiPanel title="WTF dwellings" compact data-gamma-utility-region="panel">
             <Hourglass size={30} />
           </UiPanel>
         ) : (
-          <UiPanel title="WTF dwellings" compact>
+          <UiPanel title="WTF dwellings" compact data-gamma-utility-region="panel">
             <DwellingGrid>
               {dwellings.map((row) => {
                 const Icon = row.icon;
                 return (
-                  <DwellingRow key={row.key}>
-                    <IconBox>
+                  <DwellingRow key={row.key} data-gamma-utility-region="dwelling-row">
+                    <IconBox data-gamma-utility-region="icon">
                       <Icon size={17} aria-hidden />
                     </IconBox>
                     <div>
                       <RowTitle>
                         {row.label} <span style={{ fontWeight: "normal" }}>{row.path}</span>
                       </RowTitle>
-                      <RowMeta>
+                      <RowMeta data-gamma-utility-region="meta">
                         {row.owner} · {row.count} · {row.detail}
                       </RowMeta>
                     </div>
-                    <OpenButton onClick={() => openDwelling(row)}>
+                    <OpenButton data-gamma-utility-region="button" onClick={() => openDwelling(row)}>
                       <FolderOpen size={14} aria-hidden />
                       Open {row.label}
                     </OpenButton>
@@ -506,18 +596,18 @@ export function FileManager() {
           </UiPanel>
         )}
 
-        <UiPanel title={`Project bundles: ${projectBundleManifest.rootPath}`} compact>
+        <UiPanel title={`Project bundles: ${projectBundleManifest.rootPath}`} compact data-gamma-utility-region="panel">
           <BundleGrid>
             {projectBundleSections.map((section) => (
-              <BundleRow key={section.key}>
+              <BundleRow key={section.key} data-gamma-utility-region="bundle-row">
                 <div>
                   <RowTitle>{section.label}</RowTitle>
-                  <BundlePurpose>
+                  <BundlePurpose data-gamma-utility-region="purpose">
                     {section.owner} · {section.dwelling} · {section.requiredArtifacts.length} artifacts ·{" "}
                     {section.purpose}
                   </BundlePurpose>
                 </div>
-                <OpenButton onClick={() => openBundleSection(section)}>
+                <OpenButton data-gamma-utility-region="button" onClick={() => openBundleSection(section)}>
                   <FolderOpen size={14} aria-hidden />
                   Open {section.label}
                 </OpenButton>
@@ -526,27 +616,27 @@ export function FileManager() {
           </BundleGrid>
         </UiPanel>
 
-        <UiPanel title="Media service" compact>
+        <UiPanel title="Media service" compact data-gamma-utility-region="panel">
           <ServiceGrid>
             {mediaServiceCapabilities.map((capability) => (
-              <ServiceRow key={capability.key}>
+              <ServiceRow key={capability.key} data-gamma-utility-region="service-row">
                 <RowTitle>
                   {capability.label}
-                  <PolicyBadge>{capability.accessPolicy}</PolicyBadge>
+                  <PolicyBadge data-gamma-utility-region="badge">{capability.accessPolicy}</PolicyBadge>
                 </RowTitle>
-                <BundlePurpose>
+                <BundlePurpose data-gamma-utility-region="purpose">
                   {capability.owner} · {capability.dwelling} · {capability.outputs.length} outputs
                 </BundlePurpose>
-                <BundlePurpose>{capability.purpose}</BundlePurpose>
+                <BundlePurpose data-gamma-utility-region="purpose">{capability.purpose}</BundlePurpose>
                 {capability.jobNames && capability.jobNames.length > 0 && (
-                  <BundlePurpose>
+                  <BundlePurpose data-gamma-utility-region="purpose">
                     Jobs:{" "}
                     {capability.jobNames
                       .map((name) => `${name} (${jobStatusLabel(mediaServiceJobsByName.get(name))})`)
                       .join(", ")}
                   </BundlePurpose>
                 )}
-                <OpenButton onClick={() => openMediaServiceCapability(capability)}>
+                <OpenButton data-gamma-utility-region="button" onClick={() => openMediaServiceCapability(capability)}>
                   <FolderOpen size={14} aria-hidden />
                   Open {capability.label}
                 </OpenButton>
@@ -555,24 +645,24 @@ export function FileManager() {
           </ServiceGrid>
         </UiPanel>
 
-        <UiPanel title="IPFS rendering" compact>
+        <UiPanel title="IPFS rendering" compact data-gamma-utility-region="panel">
           <RecentList>
-            <RecentRow>
+            <RecentRow data-gamma-utility-region="recent-row">
               <span>Primary gateway</span>
               <span>{ipfsGatewayPolicy.primaryGateway}</span>
             </RecentRow>
-            <RecentRow>
+            <RecentRow data-gamma-utility-region="recent-row">
               <span>Final fallback</span>
               <span>{ipfsGatewayPolicy.finalFallbackGateway}</span>
             </RecentRow>
-            <RecentRow>
+            <RecentRow data-gamma-utility-region="recent-row">
               <span>Gateway candidates</span>
               <span>{ipfsGatewayPolicy.gateways.length}</span>
             </RecentRow>
           </RecentList>
         </UiPanel>
 
-        <UiPanel title="Recent media" compact>
+        <UiPanel title="Recent media" compact data-gamma-utility-region="panel">
           <RecentList>
             {recentMedia.length === 0 ? (
               <UiEmptyState title="No recent media">
@@ -582,7 +672,7 @@ export function FileManager() {
               </UiEmptyState>
             ) : (
               recentMedia.map((item) => (
-                <RecentRow key={item.id}>
+                <RecentRow key={item.id} data-gamma-utility-region="recent-row">
                   <span>{item.title}</span>
                   <span>
                     {item.mediaCategory} · {formatBytes(itemBytes(item))}

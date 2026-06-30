@@ -4518,10 +4518,10 @@ app.use("/api", (req, res) => {
 });
 
 // ── Static client + SPA fallback ────────────────────────────────
-app.use(express.static(DIST_DIR, { fallthrough: true, index: false }));
+app.use(express.static(DIST_DIR, { dotfiles: "allow", fallthrough: true, index: false }));
 // Express 5 renamed wildcard from "*" to "/*splat".
 app.get(/.*/, (_req, res) => {
-  res.sendFile(path.join(DIST_DIR, "index.html"));
+  res.sendFile(path.join(DIST_DIR, "index.html"), { dotfiles: "allow" });
 });
 
 const server = app.listen(PORT, () => {

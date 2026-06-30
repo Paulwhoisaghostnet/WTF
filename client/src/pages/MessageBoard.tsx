@@ -6,6 +6,7 @@ import {
 } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
+import { usePresentationShell } from "../lib/presentation-shell";
 import type {
   Category,
   Channel,
@@ -28,6 +29,7 @@ import {
   MainCol,
   MobileBackButton,
   MsgActions,
+  BoardSurface,
   Shell,
   StatusText,
   TopicText,
@@ -41,6 +43,7 @@ import {
 
 export function MessageBoard() {
   const { user } = useAuth();
+  const presentation = usePresentationShell();
   const isMod = !!user && ["admin", "host", "cohost"].includes(user.role);
   const initialRouteTargetRef = useRef<{ channelId: number | null; messageId: number | null } | null>(null);
 
@@ -209,177 +212,194 @@ export function MessageBoard() {
 
   return (
     <AppWindow title="Message Board">
-      <Shell>
-        {/* ─── sidebar ──────────────────────── */}
-        <BoardSidebar
-          activeChannelId={activeChannelId}
-          catChannels={catChannels}
-          catList={catList}
-          channels={channels}
-          collapsedCats={collapsedCats}
-          isMod={isMod}
-          mobileSidebar={mobileSidebar}
-          newCatName={newCatName}
-          newChCatId={newChCatId}
-          newChTitle={newChTitle}
-          newChType={newChType}
-          onCreateCategory={() => createCatMut.mutate()}
-          onCreateChannel={() => createChMut.mutate()}
-          onManageCategory={(category) => {
-            setCategoryManageTarget(category);
-            setCategoryRenameInput(category.name);
-          }}
-          onManageChannel={setChannelManageTarget}
-          onOpenChannel={(channelId) => {
-            setActiveChannelId(channelId);
-            setMobileSidebar(false);
-          }}
-          onToggleCategory={toggleCat}
-          setNewCatName={setNewCatName}
-          setNewChCatId={setNewChCatId}
-          setNewChTitle={setNewChTitle}
-          setNewChType={setNewChType}
-          setShowNewCat={setShowNewCat}
-          setShowNewCh={setShowNewCh}
-          showNewCat={showNewCat}
-          showNewCh={showNewCh}
-          uncategorized={uncategorized}
-        />
+      <BoardSurface
+        data-board-surface="messageboard"
+        data-board-presentation-host={presentation.host}
+      >
+        <Shell data-board-region="shell">
+          {/* ─── sidebar ──────────────────────── */}
+          <BoardSidebar
+            activeChannelId={activeChannelId}
+            catChannels={catChannels}
+            catList={catList}
+            channels={channels}
+            collapsedCats={collapsedCats}
+            isMod={isMod}
+            mobileSidebar={mobileSidebar}
+            newCatName={newCatName}
+            newChCatId={newChCatId}
+            newChTitle={newChTitle}
+            newChType={newChType}
+            onCreateCategory={() => createCatMut.mutate()}
+            onCreateChannel={() => createChMut.mutate()}
+            onManageCategory={(category) => {
+              setCategoryManageTarget(category);
+              setCategoryRenameInput(category.name);
+            }}
+            onManageChannel={setChannelManageTarget}
+            onOpenChannel={(channelId) => {
+              setActiveChannelId(channelId);
+              setMobileSidebar(false);
+            }}
+            onToggleCategory={toggleCat}
+            setNewCatName={setNewCatName}
+            setNewChCatId={setNewChCatId}
+            setNewChTitle={setNewChTitle}
+            setNewChType={setNewChType}
+            setShowNewCat={setShowNewCat}
+            setShowNewCh={setShowNewCh}
+            showNewCat={showNewCat}
+            showNewCh={showNewCh}
+            uncategorized={uncategorized}
+          />
 
-        {/* ─── main area ────────────────────── */}
-        <MainCol $mobileHidden={mobileSidebar}>
-          {!ch && (
-            <EmptyCenter>
-              <span style={{ fontSize: 28 }}>📋</span>
-              <span>Select a channel</span>
-            </EmptyCenter>
-          )}
+          {/* ─── main area ────────────────────── */}
+          <MainCol $mobileHidden={mobileSidebar}>
+            {!ch && (
+              <EmptyCenter>
+                <span style={{ fontSize: 28 }}>📋</span>
+                <span>Select a channel</span>
+              </EmptyCenter>
+            )}
 
-          {ch && (
-            <>
-              {/* channel header */}
-              <ChanHeader>
-                <MobileBackButton
-                  size="sm"
-                  onClick={() => setMobileSidebar(true)}
-                >
-                  ←
-                </MobileBackButton>
-                <ChanIcon style={{ fontSize: 16 }}>
-                  {ch.locked ? "🔒" : CHANNEL_ICONS[ch.channelType] || "#"}
-                </ChanIcon>
-                <ChanTitleBig>{ch.title}</ChanTitleBig>
-                {ch.topic && (
-                  <>
-                    <Separator orientation="vertical" style={{ height: 16 }} />
-                    <TopicText title={ch.topic}>{ch.topic}</TopicText>
-                  </>
-                )}
-                <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
-                  {ch.canManage && (
+            {ch && (
+              <>
+                {/* channel header */}
+                <ChanHeader data-board-region="channel-header">
+                  <MobileBackButton
+                    size="sm"
+                    onClick={() => setMobileSidebar(true)}
+                  >
+                    ←
+                  </MobileBackButton>
+                  <ChanIcon style={{ fontSize: 16 }}>
+                    {ch.locked ? "🔒" : CHANNEL_ICONS[ch.channelType] || "#"}
+                  </ChanIcon>
+                  <ChanTitleBig>{ch.title}</ChanTitleBig>
+                  {ch.topic && (
                     <>
-                      <Button size="sm" onClick={() => modChMut.mutate({ id: ch.id, pinned: !ch.pinned })}>
-                        {ch.pinned ? "Unpin" : "📌"}
-                      </Button>
-                      <Button size="sm" onClick={() => modChMut.mutate({ id: ch.id, locked: !ch.locked })}>
-                        {ch.locked ? "🔓" : "🔒"}
-                      </Button>
-                      <Button size="sm" onClick={() => setShowSettings(true)}>
-                        ⚙️
-                      </Button>
+                      <Separator orientation="vertical" style={{ height: 16 }} />
+                      <TopicText title={ch.topic}>{ch.topic}</TopicText>
                     </>
                   )}
-                </div>
-              </ChanHeader>
+                  <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+                    {ch.canManage && (
+                      <>
+                        <Button
+                          aria-label={ch.pinned ? "Unpin channel" : "Pin channel"}
+                          size="sm"
+                          onClick={() => modChMut.mutate({ id: ch.id, pinned: !ch.pinned })}
+                        >
+                          {ch.pinned ? "Unpin" : "📌"}
+                        </Button>
+                        <Button
+                          aria-label={ch.locked ? "Unlock channel" : "Lock channel"}
+                          size="sm"
+                          onClick={() => modChMut.mutate({ id: ch.id, locked: !ch.locked })}
+                        >
+                          {ch.locked ? "🔓" : "🔒"}
+                        </Button>
+                        <Button
+                          aria-label="Open channel settings"
+                          size="sm"
+                          onClick={() => setShowSettings(true)}
+                        >
+                          ⚙️
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </ChanHeader>
 
-              {ch.slowModeSeconds > 0 && (
-                <StatusText>
-                  🐌 Slow mode: {ch.slowModeSeconds}s between messages
-                </StatusText>
-              )}
+                {ch.slowModeSeconds > 0 && (
+                  <StatusText>
+                    🐌 Slow mode: {ch.slowModeSeconds}s between messages
+                  </StatusText>
+                )}
 
-              {/* messages */}
-              <BoardMessageList
-                channel={ch}
-                composeRef={composeRef}
-                highlightReplyId={highlightReplyId}
-                isMod={isMod}
-                messageById={messageById}
-                messages={messages}
-                msgEndRef={msgEndRef}
-                onDeleteMessage={setDeleteMessageTarget}
-                onEditMessage={(message) => {
-                  setEditingMessageTarget(message);
-                  setEditingMessageText(message.content);
-                }}
-                onJumpToReply={jumpToReply}
-                onReact={(msgId, emoji) => reactMut.mutate({ msgId, emoji })}
-                onReplyTo={setReplyTo}
-                onToggleEmojiPicker={(messageId) =>
-                  setShowEmojiFor(showEmojiFor === messageId ? null : messageId)
-                }
-                onTogglePin={(id, pinned) => pinMsgMut.mutate({ id, pinned })}
-                showEmojiFor={showEmojiFor}
-                user={user}
-              />
+                {/* messages */}
+                <BoardMessageList
+                  channel={ch}
+                  composeRef={composeRef}
+                  highlightReplyId={highlightReplyId}
+                  isMod={isMod}
+                  messageById={messageById}
+                  messages={messages}
+                  msgEndRef={msgEndRef}
+                  onDeleteMessage={setDeleteMessageTarget}
+                  onEditMessage={(message) => {
+                    setEditingMessageTarget(message);
+                    setEditingMessageText(message.content);
+                  }}
+                  onJumpToReply={jumpToReply}
+                  onReact={(msgId, emoji) => reactMut.mutate({ msgId, emoji })}
+                  onReplyTo={setReplyTo}
+                  onToggleEmojiPicker={(messageId) =>
+                    setShowEmojiFor(showEmojiFor === messageId ? null : messageId)
+                  }
+                  onTogglePin={(id, pinned) => pinMsgMut.mutate({ id, pinned })}
+                  showEmojiFor={showEmojiFor}
+                  user={user}
+                />
 
-              {/* compose */}
-              <BoardComposer
-                attachUrl={attachUrl}
-                channel={ch}
-                composeRef={composeRef}
-                isSending={sendMsgMut.isPending}
-                msgText={msgText}
-                onAttachUrlChange={setAttachUrl}
-                onCancelReply={() => setReplyTo(null)}
-                onJumpToReply={jumpToReply}
-                onMsgTextChange={setMsgText}
-                onSend={(payload) => sendMsgMut.mutate(payload)}
-                replyTo={replyTo}
-                sendError={
-                  sendMsgMut.error instanceof Error
-                    ? sendMsgMut.error.message
-                    : sendMsgMut.error
-                      ? "Could not send message"
-                      : null
-                }
-                setShowComposeEmoji={setShowComposeEmoji}
-                showComposeEmoji={showComposeEmoji}
-                user={user}
-              />
-            </>
-          )}
-        </MainCol>
-      </Shell>
+                {/* compose */}
+                <BoardComposer
+                  attachUrl={attachUrl}
+                  channel={ch}
+                  composeRef={composeRef}
+                  isSending={sendMsgMut.isPending}
+                  msgText={msgText}
+                  onAttachUrlChange={setAttachUrl}
+                  onCancelReply={() => setReplyTo(null)}
+                  onJumpToReply={jumpToReply}
+                  onMsgTextChange={setMsgText}
+                  onSend={(payload) => sendMsgMut.mutate(payload)}
+                  replyTo={replyTo}
+                  sendError={
+                    sendMsgMut.error instanceof Error
+                      ? sendMsgMut.error.message
+                      : sendMsgMut.error
+                        ? "Could not send message"
+                        : null
+                  }
+                  setShowComposeEmoji={setShowComposeEmoji}
+                  showComposeEmoji={showComposeEmoji}
+                  user={user}
+                />
+              </>
+            )}
+          </MainCol>
+        </Shell>
 
-      {/* settings modal */}
-      {showSettings && ch && (
-        <BoardChannelSettings
-          channel={ch}
-          onClose={() => setShowSettings(false)}
+        {/* settings modal */}
+        {showSettings && ch && (
+          <BoardChannelSettings
+            channel={ch}
+            onClose={() => setShowSettings(false)}
+          />
+        )}
+
+        <BoardManagementDialogs
+          categoryManageTarget={categoryManageTarget}
+          categoryRenameInput={categoryRenameInput}
+          channelManageTarget={channelManageTarget}
+          deleteCatMut={deleteCatMut}
+          deleteChMut={deleteChMut}
+          deleteMessageTarget={deleteMessageTarget}
+          deleteMsgMut={deleteMsgMut}
+          editMsgMut={editMsgMut}
+          editingMessageTarget={editingMessageTarget}
+          editingMessageText={editingMessageText}
+          modChMut={modChMut}
+          renameCatMut={renameCatMut}
+          setCategoryManageTarget={setCategoryManageTarget}
+          setCategoryRenameInput={setCategoryRenameInput}
+          setChannelManageTarget={setChannelManageTarget}
+          setDeleteMessageTarget={setDeleteMessageTarget}
+          setEditingMessageTarget={setEditingMessageTarget}
+          setEditingMessageText={setEditingMessageText}
         />
-      )}
-
-      <BoardManagementDialogs
-        categoryManageTarget={categoryManageTarget}
-        categoryRenameInput={categoryRenameInput}
-        channelManageTarget={channelManageTarget}
-        deleteCatMut={deleteCatMut}
-        deleteChMut={deleteChMut}
-        deleteMessageTarget={deleteMessageTarget}
-        deleteMsgMut={deleteMsgMut}
-        editMsgMut={editMsgMut}
-        editingMessageTarget={editingMessageTarget}
-        editingMessageText={editingMessageText}
-        modChMut={modChMut}
-        renameCatMut={renameCatMut}
-        setCategoryManageTarget={setCategoryManageTarget}
-        setCategoryRenameInput={setCategoryRenameInput}
-        setChannelManageTarget={setChannelManageTarget}
-        setDeleteMessageTarget={setDeleteMessageTarget}
-        setEditingMessageTarget={setEditingMessageTarget}
-        setEditingMessageText={setEditingMessageText}
-      />
+      </BoardSurface>
     </AppWindow>
   );
 }

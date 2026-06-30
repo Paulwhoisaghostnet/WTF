@@ -15,6 +15,7 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { TokenCard as SharedTokenCard, TokenDetailModal, TokenGrid, type TokenCardData, type TokenCardAction } from "../components/TokenCard";
 import { api } from "../lib/api";
 import { getTokenMimeType, isPlayableMime, cacheProxyUrl } from "../lib/media-resolve";
+import { usePresentationShell } from "../lib/presentation-shell";
 import {
   provenanceCreatorLabel,
   provenanceSupportLinks,
@@ -115,12 +116,45 @@ interface OwnedToken {
 
 /* ─── Styles ─────────────────────────────────────────── */
 
+const gammaMyVideosScope = `[data-my-videos-presentation-host="gamma"]`;
+
 const Content = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
   height: 100%;
   min-height: 0;
+
+  &[data-my-videos-presentation-host="gamma"] {
+    background: #080807;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 4px;
+  }
+
+  &[data-my-videos-presentation-host="gamma"] [data-my-videos-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-my-videos-presentation-host="gamma"] button,
+  &[data-my-videos-presentation-host="gamma"] input,
+  &[data-my-videos-presentation-host="gamma"] select {
+    font-family: inherit;
+  }
+
+  &[data-my-videos-presentation-host="gamma"] fieldset {
+    background: rgba(17, 17, 15, 0.96);
+    border: 1px solid rgba(242, 234, 217, 0.2);
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  &[data-my-videos-presentation-host="gamma"] legend {
+    color: #00d2ff;
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+  }
 `;
 
 const ToolBar = styled.div`
@@ -128,6 +162,13 @@ const ToolBar = styled.div`
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+
+  ${gammaMyVideosScope} & {
+    background: rgba(12, 12, 11, 0.86);
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    padding: 6px;
+  }
 `;
 
 const MediaCard = styled.div`
@@ -138,6 +179,14 @@ const MediaCard = styled.div`
   cursor: pointer;
   box-shadow: 1px 1px 0 #000;
   overflow: hidden;
+
+  ${gammaMyVideosScope} & {
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    color: #f2ead9;
+    box-shadow: none;
+  }
 `;
 
 const MediaThumb = styled.div`
@@ -149,6 +198,11 @@ const MediaThumb = styled.div`
   justify-content: center;
   overflow: hidden;
   video, img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+  ${gammaMyVideosScope} & {
+    background: #050505;
+    border-bottom: 1px solid rgba(242, 234, 217, 0.14);
+  }
 `;
 
 const MediaInfo = styled.div`
@@ -162,6 +216,11 @@ const MediaTitle = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  ${gammaMyVideosScope} & {
+    color: #f8f1df;
+    font-weight: 700;
+  }
 `;
 
 const MediaMeta = styled.div`
@@ -169,6 +228,15 @@ const MediaMeta = styled.div`
   color: var(--wtf-app-muted, #4b5563);
   line-height: 1.3;
   margin-top: 3px;
+
+  ${gammaMyVideosScope} & {
+    color: rgba(242, 234, 217, 0.66);
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+  }
+
+  ${gammaMyVideosScope} & a {
+    color: #00d2ff;
+  }
 `;
 
 const CardActions = styled.div`
@@ -181,10 +249,20 @@ const CardActions = styled.div`
     min-height: 32px;
     font-size: var(--wtf-type-caption, 13px);
   }
+
+  ${gammaMyVideosScope} & {
+    border-top: 1px solid rgba(242, 234, 217, 0.14);
+    padding-top: 6px;
+  }
 `;
 
 const BumperWrap = styled.div`
   margin-top: 8px;
+
+  ${gammaMyVideosScope} & {
+    border-top: 1px solid rgba(242, 234, 217, 0.12);
+    padding-top: 8px;
+  }
 `;
 
 const InlinePanel = styled.div`
@@ -195,6 +273,13 @@ const InlinePanel = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
+
+  ${gammaMyVideosScope} & {
+    background: #0d0d0b;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
 const HintText = styled.p`
@@ -202,6 +287,10 @@ const HintText = styled.p`
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted, #4b5563);
   line-height: 1.35;
+
+  ${gammaMyVideosScope} & {
+    color: rgba(242, 234, 217, 0.68);
+  }
 `;
 
 const EmptyText = styled.p`
@@ -210,12 +299,21 @@ const EmptyText = styled.p`
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted, #4b5563);
   line-height: 1.35;
+
+  ${gammaMyVideosScope} & {
+    color: rgba(242, 234, 217, 0.68);
+  }
 `;
 
 const InlineMeta = styled.span`
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted, #4b5563);
   white-space: nowrap;
+
+  ${gammaMyVideosScope} & {
+    color: rgba(242, 234, 217, 0.68);
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+  }
 `;
 
 const ChannelUsageRow = styled.div`
@@ -251,6 +349,11 @@ const StateText = styled.p<{ $tone?: "danger" | "success" }>`
       ? "var(--wtf-app-success, #166534)"
       : "var(--wtf-app-danger, #b00020)"};
   line-height: 1.35;
+
+  ${gammaMyVideosScope} & {
+    color: ${(p) => (p.$tone === "success" ? "#d6ff3f" : "#ff9d8c")};
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+  }
 `;
 
 const LibGrid = styled.div`
@@ -260,6 +363,10 @@ const LibGrid = styled.div`
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+
+  ${gammaMyVideosScope} & {
+    gap: 10px;
+  }
 `;
 
 const UploadArea = styled.div`
@@ -279,6 +386,19 @@ const UploadArea = styled.div`
   &:hover {
     background: var(--wtf-app-surface-raised, #e8e8e8);
   }
+
+  ${gammaMyVideosScope} & {
+    background: #0b0b0a;
+    border: 1px dashed rgba(0, 210, 255, 0.54);
+    border-radius: 6px;
+    color: #f2ead9;
+    min-height: 128px;
+  }
+
+  ${gammaMyVideosScope} &:hover {
+    background: #10100e;
+    border-color: #00d2ff;
+  }
 `;
 
 const ScrollWrap = styled.div`
@@ -287,12 +407,24 @@ const ScrollWrap = styled.div`
   overflow-y: auto;
 `;
 
+const PanelSurface = styled.div`
+  min-height: 0;
+
+  ${gammaMyVideosScope} & {
+    background: rgba(8, 8, 7, 0.78);
+    border: 1px solid rgba(242, 234, 217, 0.12);
+    border-radius: 6px;
+    padding: 6px;
+  }
+`;
+
 const MAX_UPLOAD_MB = 25;
 
 /* ─── Component ──────────────────────────────────────── */
 
 export function MyVideos() {
   const qc = useQueryClient();
+  const presentation = usePresentationShell();
   const [tab, setTab] = useState(0);
   const [channelTab, setChannelTab] = useState(0);
   const [search, setSearch] = useState("");
@@ -630,7 +762,10 @@ export function MyVideos() {
 
   return (
     <AppWindow title="📼 My Videos">
-      <Content>
+      <Content
+        data-my-videos-presentation-host={presentation.host}
+        data-my-videos-region="content"
+      >
         <Tabs value={tab} onChange={(v: number) => setTab(v)}>
           <Tab value={0}>Library</Tab>
           <Tab value={1}>Channels</Tab>
@@ -638,7 +773,7 @@ export function MyVideos() {
           <Tab value={3}>Import from Tokens</Tab>
           <Tab value={4}>Upload</Tab>
         </Tabs>
-        <TabBody>
+        <TabBody data-my-videos-region="tab-body">
           {/* ─── Library tab ─── */}
           {tab === 0 && (
             <>
@@ -651,7 +786,7 @@ export function MyVideos() {
                   No videos in your library yet. Import from tokens or upload directly.
                 </EmptyText>
               ) : (
-                <LibGrid>
+                <LibGrid data-my-videos-region="library-grid">
                   {mediaItems.map((item) => {
                     const isAddOpen = addTargetId === item.id;
                     const isManageOpen = manageTargetId === item.id;
@@ -663,8 +798,8 @@ export function MyVideos() {
                     const provenance = readEmbeddedProvenance(item);
                     const supportLink = provenanceSupportLinks(provenance)[0] || null;
                     return (
-                      <MediaCard key={item.id}>
-                        <MediaThumb>
+                      <MediaCard key={item.id} data-my-videos-region="media-card">
+                        <MediaThumb data-my-videos-region="media-thumb">
                           <video
                             src={getMediaPlaybackUrl(item)}
                             muted
@@ -673,7 +808,7 @@ export function MyVideos() {
                             style={{ pointerEvents: "none" }}
                           />
                         </MediaThumb>
-                        <MediaInfo>
+                        <MediaInfo data-my-videos-region="media-info">
                           <MediaTitle>{item.title}</MediaTitle>
                           <MediaMeta>
                             {item.mimeType}
@@ -709,7 +844,7 @@ export function MyVideos() {
                               )}
                             </MediaMeta>
                           )}
-                          <CardActions>
+                          <CardActions data-my-videos-region="card-actions">
                             <Button
                               size="sm"
                               disabled={!canAdd}
@@ -771,7 +906,7 @@ export function MyVideos() {
                               </Button>
                             )}
                           </CardActions>
-                          <BumperWrap>
+                          <BumperWrap data-my-videos-region="bumper-wrap">
                             <BumperAssignmentToggles
                               mediaItemId={item.id}
                               assignments={bumperAssignments}
@@ -784,7 +919,7 @@ export function MyVideos() {
                             />
                           </BumperWrap>
                           {isEditOpen && (
-                            <InlinePanel>
+                            <InlinePanel data-my-videos-region="inline-panel">
                               <TextInput
                                 aria-label={`Title for ${item.title}`}
                                 value={editTitle}
@@ -830,7 +965,7 @@ export function MyVideos() {
                             </InlinePanel>
                           )}
                           {isAddOpen && (
-                            <InlinePanel>
+                            <InlinePanel data-my-videos-region="inline-panel">
                               <Select
                                 aria-label={`Channel for ${item.title}`}
                                 value={addChannelId ?? undefined}
@@ -874,7 +1009,7 @@ export function MyVideos() {
                             </InlinePanel>
                           )}
                           {isManageOpen && (
-                            <InlinePanel>
+                            <InlinePanel data-my-videos-region="inline-panel">
                               <HintText>
                                 Remove this item from a channel without deleting
                                 it from your library. This also removes it from
@@ -956,46 +1091,50 @@ export function MyVideos() {
 
           {/* ─── Channels tab ─── */}
           {tab === 1 && (
-            <ChannelBucketsPanel
-              channels={myChannels}
-              channelTab={channelTab}
-              setChannelTab={setChannelTab}
-              isLoading={myChannelDetailsQuery.isLoading}
-              selectedChannelDetail={selectedChannelDetail}
-              mediaById={mediaById}
-              bumperAssignments={bumperAssignments}
-              bumperErrors={bumperErrors}
-              bumperTogglePending={toggleMediaBumper.isPending}
-              removeVideoPending={removeVideoFromChannel.isPending}
-              removeVideoError={
-                removeVideoFromChannel.isError
-                  ? (removeVideoFromChannel.error as Error)?.message ||
-                    "Failed to remove from channel"
-                  : null
-              }
-              onToggleBumper={handleBumperToggle}
-              onRemoveVideo={(channelId, videoId) =>
-                removeVideoFromChannel.mutate({ channelId, videoId })
-              }
-            />
+            <PanelSurface data-my-videos-region="channel-surface">
+              <ChannelBucketsPanel
+                channels={myChannels}
+                channelTab={channelTab}
+                setChannelTab={setChannelTab}
+                isLoading={myChannelDetailsQuery.isLoading}
+                selectedChannelDetail={selectedChannelDetail}
+                mediaById={mediaById}
+                bumperAssignments={bumperAssignments}
+                bumperErrors={bumperErrors}
+                bumperTogglePending={toggleMediaBumper.isPending}
+                removeVideoPending={removeVideoFromChannel.isPending}
+                removeVideoError={
+                  removeVideoFromChannel.isError
+                    ? (removeVideoFromChannel.error as Error)?.message ||
+                      "Failed to remove from channel"
+                    : null
+                }
+                onToggleBumper={handleBumperToggle}
+                onRemoveVideo={(channelId, videoId) =>
+                  removeVideoFromChannel.mutate({ channelId, videoId })
+                }
+              />
+            </PanelSurface>
           )}
 
           {/* ─── Community Bumpers tab ─── */}
           {tab === 2 && (
-            <CommunityBumpersPanel
-              isLoading={myBumpersQuery.isLoading}
-              mediaItems={mediaItems}
-              bumperAssignments={bumperAssignments}
-              bumperErrors={bumperErrors}
-              bumperTogglePending={toggleMediaBumper.isPending}
-              onToggleBumper={handleBumperToggle}
-            />
+            <PanelSurface data-my-videos-region="community-bumper-surface">
+              <CommunityBumpersPanel
+                isLoading={myBumpersQuery.isLoading}
+                mediaItems={mediaItems}
+                bumperAssignments={bumperAssignments}
+                bumperErrors={bumperErrors}
+                bumperTogglePending={toggleMediaBumper.isPending}
+                onToggleBumper={handleBumperToggle}
+              />
+            </PanelSurface>
           )}
 
           {/* ─── Import from Tokens tab ─── */}
           {tab === 3 && (
             <>
-              <ToolBar>
+              <ToolBar data-my-videos-region="token-toolbar">
                 <TextInput
                   aria-label="Search video tokens"
                   value={search}
@@ -1018,7 +1157,7 @@ export function MyVideos() {
                   No video tokens found in your wallets. Sync your wallet in Profile.
                 </EmptyText>
               ) : (
-                <ScrollWrap>
+                <ScrollWrap data-my-videos-region="token-scroll">
                   <TokenGrid $size="md">
                     {filteredTokens.map((token) => (
                       <SharedTokenCard
@@ -1036,8 +1175,8 @@ export function MyVideos() {
 
           {/* ─── Upload tab ─── */}
           {tab === 4 && (
-            <GroupBox label="Upload Video">
-              <UploadForm>
+            <GroupBox label="Upload Video" data-my-videos-region="upload-panel">
+              <UploadForm data-my-videos-region="upload-form">
                 <TextInput
                   aria-label="Video upload title"
                   value={uploadTitle}
@@ -1058,6 +1197,7 @@ export function MyVideos() {
                   <strong>from your media</strong>.
                 </HintText>
                 <UploadArea
+                  data-my-videos-region="upload-area"
                   role="button"
                   tabIndex={0}
                   onClick={() => document.getElementById("video-upload-input")?.click()}
@@ -1122,6 +1262,11 @@ const ModalBackdrop = styled.div`
   align-items: center;
   justify-content: center;
   z-index: 99999;
+
+  &[data-media-delete-presentation-host="gamma"] {
+    background: rgba(7, 7, 6, 0.82);
+    color: #f2ead9;
+  }
 `;
 const ModalBox = styled.div`
   background: var(--wtf-app-surface-raised, #c0c0c0);
@@ -1132,11 +1277,38 @@ const ModalBox = styled.div`
   font-size: var(--wtf-type-body, 14px);
   line-height: 1.35;
   box-shadow: 2px 2px 0 #000;
+
+  [data-media-delete-presentation-host="gamma"] & {
+    background: #11110f;
+    color: #f2ead9;
+    border: 1px solid rgba(242, 234, 217, 0.24);
+    border-radius: 6px;
+    box-shadow: none;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    h3 {
+      margin: 0 0 8px;
+      color: #f2ead9;
+      font-size: 16px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+
+    ul {
+      color: rgba(242, 234, 217, 0.82);
+    }
+  }
 `;
 
 const ModalWarning = styled.p`
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted, #4b5563);
+
+  [data-media-delete-presentation-host="gamma"] & {
+    color: #d6ff3f;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    letter-spacing: 0;
+  }
 `;
 
 const ModalActions = styled.div`
@@ -1170,14 +1342,24 @@ function DeleteCascadeModal({
   onCancel,
   onConfirm,
 }: DeleteCascadeModalProps) {
+  const presentation = usePresentationShell();
   if (!item) return null;
   const channelCount = usage?.summary.channels ?? 0;
   const playlistCount = usage?.summary.playlists ?? 0;
   const bumperCount = usage?.summary.bumpers ?? 0;
   return (
-    <ModalBackdrop onClick={onCancel}>
-      <ModalBox onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ margin: "0 0 6px" }}>
+    <ModalBackdrop
+      data-media-delete-modal="true"
+      data-media-delete-presentation-host={presentation.host}
+      onClick={onCancel}
+    >
+      <ModalBox
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Delete video: ${item.title}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3>
           Delete &ldquo;{item.title}&rdquo; from your library?
         </h3>
         {isLoading ? (

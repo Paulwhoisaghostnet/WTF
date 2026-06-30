@@ -15,6 +15,7 @@ import {
 } from "../components/wtfos-ui";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { usePresentationShell } from "../lib/presentation-shell";
 
 // WTF Operator Wallet — Phase 9.
 //
@@ -33,6 +34,57 @@ const Stack = styled.div`
   flex-direction: column;
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
+
+  &[data-operator-wallet-presentation-host="gamma"] {
+    padding: 16px;
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-operator-wallet-presentation-host="gamma"],
+  &[data-operator-wallet-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-operator-wallet-presentation-host="gamma"] [data-operator-wallet-region] {
+    background-image: none;
+    border-radius: 6px;
+  }
+
+  &[data-operator-wallet-presentation-host="gamma"] :where(fieldset, table, pre, [data-operator-wallet-region="panel"]) {
+    color: #f2ead9;
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-operator-wallet-presentation-host="gamma"] :where(input, select) {
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 6px;
+  }
+
+  &[data-operator-wallet-presentation-host="gamma"] :where(button) {
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(0, 210, 255, 0.54);
+    border-radius: 6px;
+  }
+
+  &[data-operator-wallet-presentation-host="gamma"] :where(button:hover, button:focus-visible, input:focus-visible, select:focus-visible) {
+    color: #070706;
+    background: #00d2ff;
+    outline: 2px solid #00d2ff;
+    outline-offset: 2px;
+  }
+
+  &[data-operator-wallet-presentation-host="gamma"] a {
+    color: #00d2ff;
+  }
 `;
 
 const Row = styled.div`
@@ -183,6 +235,7 @@ function assetLabel(row: { assetKind: string; assetContract?: string | null; ass
 }
 
 export function OperatorWallet() {
+  const presentation = usePresentationShell();
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -302,16 +355,26 @@ export function OperatorWallet() {
   if (!user) {
     return (
       <AppWindow title="Operator Wallet">
-        <UiPanel title="Operator Wallet" compact>
-          <Muted>Sign in as an operator to use the Operator Wallet.</Muted>
-        </UiPanel>
+        <Stack
+          data-operator-wallet-surface="operator-wallet"
+          data-operator-wallet-presentation-host={presentation.host}
+          data-operator-wallet-region="surface"
+        >
+          <UiPanel title="Operator Wallet" compact data-operator-wallet-region="panel">
+            <Muted>Sign in as an operator to use the Operator Wallet.</Muted>
+          </UiPanel>
+        </Stack>
       </AppWindow>
     );
   }
 
   return (
     <AppWindow title="Operator Wallet">
-      <Stack>
+      <Stack
+        data-operator-wallet-surface="operator-wallet"
+        data-operator-wallet-presentation-host={presentation.host}
+        data-operator-wallet-region="surface"
+      >
         {errorMsg ? <UiNotice tone="danger">{errorMsg}</UiNotice> : null}
         {summary && !summary.signerConfigured ? (
           <UiNotice tone="warning">
@@ -341,9 +404,9 @@ export function OperatorWallet() {
           </UiNotice>
         ) : null}
 
-        <UiPanel title="Balances" compact>
+        <UiPanel title="Balances" compact data-operator-wallet-region="panel">
           <Stack>
-            <Row>
+            <Row data-operator-wallet-region="row">
               <strong>Operator wallet:</strong>{" "}
               <InlineCode>{summary?.operatorWallet ?? "not configured"}</InlineCode>
               <UiButton
@@ -354,8 +417,8 @@ export function OperatorWallet() {
                 Refresh balances via TzKT
               </UiButton>
             </Row>
-            <TableWrap>
-              <Table>
+            <TableWrap data-operator-wallet-region="table-wrap">
+              <Table data-operator-wallet-region="table">
               <thead>
                 <tr>
                   <th>Asset</th>
@@ -402,9 +465,9 @@ export function OperatorWallet() {
           </Stack>
         </UiPanel>
 
-        <UiPanel title="Pending reward ledger" compact>
+        <UiPanel title="Pending reward ledger" compact data-operator-wallet-region="panel">
           <Stack>
-            <Row>
+            <Row data-operator-wallet-region="row">
               <strong>{unpaidQuery.data?.uniqueUsers ?? 0}</strong> unique users ·{" "}
               <strong>{unpaidQuery.data?.rows.length ?? 0}</strong> rows ·{" "}
               <strong>
@@ -412,7 +475,7 @@ export function OperatorWallet() {
               </strong>{" "}
               WTF outstanding
             </Row>
-            <Row>
+            <Row data-operator-wallet-region="actions">
               <UiButton
                 onClick={() =>
                   previewMutation.mutate({ scope: "pending_ledger" })
@@ -436,8 +499,8 @@ export function OperatorWallet() {
                 Selected total: {formatAmount(selectedLedgerTotal.toString(), 8)} WTF
               </Muted>
             </Row>
-            <ScrollArea>
-              <Table>
+            <ScrollArea data-operator-wallet-region="scroll-area">
+              <Table data-operator-wallet-region="table">
                 <thead>
                   <tr>
                     <th></th>
@@ -489,9 +552,9 @@ export function OperatorWallet() {
         </UiPanel>
 
         {preview ? (
-          <UiPanel title="Review and sign" compact tone="warning">
+          <UiPanel title="Review and sign" compact tone="warning" data-operator-wallet-region="panel">
             <Stack>
-              <Row>
+              <Row data-operator-wallet-region="row">
                 <strong>{preview.deliverableCount}</strong> recipients ·{" "}
                 <strong>{formatAmount(preview.totalWtf, 8)}</strong> WTF total
                 {preview.missingWallets.length ? (
@@ -501,8 +564,8 @@ export function OperatorWallet() {
                   </Muted>
                 ) : null}
               </Row>
-              <TableWrap>
-                <Table>
+              <TableWrap data-operator-wallet-region="table-wrap">
+                <Table data-operator-wallet-region="table">
                 <thead>
                   <tr>
                     <th>User</th>
@@ -529,7 +592,7 @@ export function OperatorWallet() {
                 </tbody>
                 </Table>
               </TableWrap>
-              <Row>
+              <Row data-operator-wallet-region="actions">
                 <UiButton
                   uiVariant="primary"
                   onClick={() =>
@@ -556,11 +619,13 @@ export function OperatorWallet() {
           </UiPanel>
         ) : null}
 
-        <Separator />
+        <div data-operator-wallet-region="separator">
+          <Separator />
+        </div>
 
-        <UiPanel title="Buyback controls" compact>
+        <UiPanel title="Buyback controls" compact data-operator-wallet-region="panel">
           <Stack>
-            <Row>
+            <Row data-operator-wallet-region="row">
               <ControlLabel>Buyback contract</ControlLabel>
               <TextInput
                 value={buybackContract}
@@ -572,7 +637,7 @@ export function OperatorWallet() {
                 style={{ width: 360 }}
               />
             </Row>
-            <Row>
+            <Row data-operator-wallet-region="row">
               <ControlLabel>Fund with mutez</ControlLabel>
               <TextInput
                 value={buybackFundMutez}
@@ -602,7 +667,7 @@ export function OperatorWallet() {
                 Fund buyback
               </UiButton>
             </Row>
-            <Row>
+            <Row data-operator-wallet-region="row">
               <ControlLabel>Withdraw WTF nat</ControlLabel>
               <TextInput
                 value={buybackWithdrawWtf}
@@ -643,7 +708,7 @@ export function OperatorWallet() {
                 Withdraw leftover XTZ
               </UiButton>
             </Row>
-            <Row>
+            <Row data-operator-wallet-region="actions">
               <UiButton
                 onClick={() =>
                   buybackMutation.mutate({
@@ -676,9 +741,9 @@ export function OperatorWallet() {
           </Stack>
         </UiPanel>
 
-        <UiPanel title="Recent signer runs" compact>
-          <TableWrap>
-            <Table>
+        <UiPanel title="Recent signer runs" compact data-operator-wallet-region="panel">
+          <TableWrap data-operator-wallet-region="table-wrap">
+            <Table data-operator-wallet-region="table">
             <thead>
               <tr>
                 <th>ID</th>
@@ -744,8 +809,8 @@ export function OperatorWallet() {
         </UiPanel>
 
         {runOutput ? (
-          <UiPanel title="Last signer response" compact>
-            <Pre>{JSON.stringify(runOutput, null, 2)}</Pre>
+          <UiPanel title="Last signer response" compact data-operator-wallet-region="panel">
+            <Pre data-operator-wallet-region="output">{JSON.stringify(runOutput, null, 2)}</Pre>
           </UiPanel>
         ) : null}
       </Stack>

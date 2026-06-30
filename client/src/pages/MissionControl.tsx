@@ -9,6 +9,7 @@ import { WalletButton } from "../components/WalletButton";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 import { customerChallengeTitle } from "./challenge-display";
 import {
@@ -103,6 +104,93 @@ const Shell = styled.div`
   display: grid;
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
+
+  &[data-mission-control-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-mission-control-presentation-host="gamma"],
+  &[data-mission-control-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region],
+  &[data-mission-control-presentation-host="gamma"] fieldset {
+    min-width: 0;
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+  }
+
+  &[data-mission-control-presentation-host="gamma"] fieldset {
+    padding: 12px;
+  }
+
+  &[data-mission-control-presentation-host="gamma"] legend,
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="label"] {
+    color: rgba(242, 234, 217, 0.7);
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="value"],
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="row-title"] {
+    color: #f2ead9;
+  }
+
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="detail"],
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="row-meta"] {
+    color: rgba(242, 234, 217, 0.68);
+  }
+
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="actions"] {
+    border: 1px solid rgba(242, 234, 217, 0.14);
+    border-radius: 6px;
+    padding: 8px;
+    background: #11110f;
+  }
+
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="metric"],
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="row"],
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="progress"] {
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    background: #11110f;
+    background-image: none;
+  }
+
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="button"] {
+    border: 1px solid rgba(0, 210, 255, 0.58);
+    border-radius: 4px;
+    background: transparent;
+    color: #00d2ff;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="button"]:hover,
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="button"]:focus-visible {
+    border-color: #00d2ff;
+    color: #f2ead9;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
+
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="meter"] {
+    border-color: rgba(242, 234, 217, 0.22);
+    background: #070706;
+  }
+
+  &[data-mission-control-presentation-host="gamma"] [data-mission-control-region="meter-fill"] {
+    background: #00d2ff;
+  }
 `;
 
 const StatusGrid = styled.div`
@@ -259,6 +347,7 @@ function relativeTime(iso: string | null | undefined) {
 export function MissionControl() {
   const { user } = useAuth();
   const { address, providerName } = useWallet();
+  const presentation = usePresentationShell();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -277,9 +366,9 @@ export function MissionControl() {
         eventType: "mission_control.action_opened",
         metadata: { path, intent },
       });
-      setLocation(path);
+      setLocation(presentationRouteHref(path, presentation.host));
     },
-    [setLocation]
+    [presentation.host, setLocation]
   );
 
   const walletsQuery = useQuery({
@@ -368,26 +457,31 @@ export function MissionControl() {
 
   return (
     <AppWindow title="Mission Control">
-      <Shell data-testid="mission-control">
-        <StatusGrid>
-          <Metric data-testid="mission-control-location">
-            <Label>Where am I?</Label>
-            <Value>{user?.displayName || user?.username || "WTF OS"}</Value>
-            <Detail>{user ? `${user.role} account` : "signed out"}</Detail>
+      <Shell
+        data-testid="mission-control"
+        data-mission-control-presentation-host={presentation.host}
+        data-mission-control-surface="mission-control"
+        data-mission-control-region="surface"
+      >
+        <StatusGrid data-mission-control-region="status-grid">
+          <Metric data-testid="mission-control-location" data-mission-control-region="metric">
+            <Label data-mission-control-region="label">Where am I?</Label>
+            <Value data-mission-control-region="value">{user?.displayName || user?.username || "WTF OS"}</Value>
+            <Detail data-mission-control-region="detail">{user ? `${user.role} account` : "signed out"}</Detail>
           </Metric>
-          <Metric data-testid="mission-control-wallet">
-            <Label>Active wallet</Label>
-            <Value>{shortAddress(activeWallet)}</Value>
-            <Detail>{providerName || primaryWallet?.tezDomain || "wallet not connected"}</Detail>
+          <Metric data-testid="mission-control-wallet" data-mission-control-region="metric">
+            <Label data-mission-control-region="label">Active wallet</Label>
+            <Value data-mission-control-region="value">{shortAddress(activeWallet)}</Value>
+            <Detail data-mission-control-region="detail">{providerName || primaryWallet?.tezDomain || "wallet not connected"}</Detail>
           </Metric>
-          <Metric data-testid="mission-control-system">
-            <Label>System</Label>
-            <Value>{healthQuery.data ? health.system : loading ? "Checking" : "Attention"}</Value>
-            <Detail>DB {health.db} / Chain {health.chain}</Detail>
+          <Metric data-testid="mission-control-system" data-mission-control-region="metric">
+            <Label data-mission-control-region="label">System</Label>
+            <Value data-mission-control-region="value">{healthQuery.data ? health.system : loading ? "Checking" : "Attention"}</Value>
+            <Detail data-mission-control-region="detail">DB {health.db} / Chain {health.chain}</Detail>
           </Metric>
-          <Metric data-testid="mission-control-next">
-            <Label>Next</Label>
-            <Value>
+          <Metric data-testid="mission-control-next" data-mission-control-region="metric">
+            <Label data-mission-control-region="label">Next</Label>
+            <Value data-mission-control-region="value">
               {counts.claimableRewards > 0
                 ? `${counts.claimableRewards} reward`
                 : counts.openDailyLoops > 0
@@ -396,7 +490,7 @@ export function MissionControl() {
                   ? `${counts.openChallenges} challenge`
                   : "steady"}
             </Value>
-            <Detail>
+            <Detail data-mission-control-region="detail">
               {counts.failedJobs > 0
                 ? `${counts.failedJobs} job needs review`
                 : `${counts.unreadNotifications} unread change(s)`}
@@ -404,55 +498,55 @@ export function MissionControl() {
           </Metric>
         </StatusGrid>
 
-        <Actions>
-          <ActionButton onClick={() => openMissionRoute("/dashboard", "dashboard")}>
+        <Actions data-mission-control-region="actions">
+          <ActionButton data-mission-control-region="button" onClick={() => openMissionRoute("/dashboard", "dashboard")}>
             Open dashboard
           </ActionButton>
-          <ActionButton onClick={() => openMissionRoute("/challenges", "challenges")}>
+          <ActionButton data-mission-control-region="button" onClick={() => openMissionRoute("/challenges", "challenges")}>
             Open challenges
           </ActionButton>
-          <ActionButton onClick={() => openMissionRoute("/side-quests", "side_quests")}>
+          <ActionButton data-mission-control-region="button" onClick={() => openMissionRoute("/side-quests", "side_quests")}>
             Open side quests
           </ActionButton>
-          <ActionButton onClick={() => openMissionRoute("/messages", "inbox")}>
+          <ActionButton data-mission-control-region="button" onClick={() => openMissionRoute("/messages", "inbox")}>
             Open inbox
           </ActionButton>
-          <ActionButton onClick={() => openMissionRoute("/profile", "profile")}>
+          <ActionButton data-mission-control-region="button" onClick={() => openMissionRoute("/profile", "profile")}>
             Open profile
           </ActionButton>
-          <ActionButton onClick={() => openMissionRoute("/hoard", "hoard")}>
+          <ActionButton data-mission-control-region="button" onClick={() => openMissionRoute("/hoard", "hoard")}>
             Open Hoard
           </ActionButton>
         </Actions>
 
-        <PanelGrid>
+        <PanelGrid data-mission-control-region="panel-grid">
           <GroupBox label="Side Quests">
             <Rows>
-              <ProgressLine>
+              <ProgressLine data-mission-control-region="progress">
                 <div>
-                  <RowTitle>
+                  <RowTitle data-mission-control-region="row-title">
                     {completedDailyLoops}/{dailyLoops.length || 10} claimed today
                   </RowTitle>
-                  <RowMeta>
+                  <RowMeta data-mission-control-region="row-meta">
                     {incompleteDailyLoops[0]
                       ? incompleteDailyLoops[0].claimableToday
                         ? `${incompleteDailyLoops[0].title}: ready to claim`
                         : `${incompleteDailyLoops[0].title}: ${incompleteDailyLoops[0].description || "open quest"}`
                       : "Daily social and creative side quests are claimed."}
                   </RowMeta>
-                  <MiniMeter>
-                    <MiniMeterFill $pct={dailyLoopPct} />
+                  <MiniMeter data-mission-control-region="meter">
+                    <MiniMeterFill $pct={dailyLoopPct} data-mission-control-region="meter-fill" />
                   </MiniMeter>
                 </div>
-                <ActionButton size="sm" onClick={() => openMissionRoute("/side-quests", "side_quests")}>
+                <ActionButton data-mission-control-region="button" size="sm" onClick={() => openMissionRoute("/side-quests", "side_quests")}>
                   Open side quests
                 </ActionButton>
               </ProgressLine>
               {previewDailyLoops.map((loop) => (
-                <Row key={loop.id}>
+                <Row key={loop.id} data-mission-control-region="row">
                   <div>
-                    <RowTitle>{loop.title}</RowTitle>
-                    <RowMeta>
+                    <RowTitle data-mission-control-region="row-title">{loop.title}</RowTitle>
+                    <RowMeta data-mission-control-region="row-meta">
                       {loop.completedToday || loop.claimedToday
                         ? `Claimed today${loop.completedByCount ? ` by ${loop.completedByCount}` : ""}`
                         : loop.claimableToday
@@ -465,6 +559,7 @@ export function MissionControl() {
                     </RowMeta>
                   </div>
                   <ActionButton
+                    data-mission-control-region="button"
                     size="sm"
                     onClick={() =>
                       openMissionRoute(
@@ -485,32 +580,32 @@ export function MissionControl() {
               <Hourglass size={24} />
             ) : (
               <Rows>
-                <Row>
+                <Row data-mission-control-region="row">
                   <div>
-                    <RowTitle>Active challenges and side quests</RowTitle>
-                    <RowMeta>
+                    <RowTitle data-mission-control-region="row-title">Active challenges and side quests</RowTitle>
+                    <RowMeta data-mission-control-region="row-meta">
                       {counts.openChallenges} challenge(s), {counts.openDailyLoops} side quest(s) waiting
                     </RowMeta>
                   </div>
-                  <ActionButton size="sm" onClick={() => openMissionRoute("/challenges", "active_challenges")}>
+                  <ActionButton data-mission-control-region="button" size="sm" onClick={() => openMissionRoute("/challenges", "active_challenges")}>
                     Open challenges
                   </ActionButton>
                 </Row>
-                <Row>
+                <Row data-mission-control-region="row">
                   <div>
-                    <RowTitle>Wallet-linked work</RowTitle>
-                    <RowMeta>
+                    <RowTitle data-mission-control-region="row-title">Wallet-linked work</RowTitle>
+                    <RowMeta data-mission-control-region="row-meta">
                       {wallets.length} linked wallet(s), {shortAddress(activeWallet)} active
                     </RowMeta>
                   </div>
                   <WalletButton />
                 </Row>
-                <Row>
+                <Row data-mission-control-region="row">
                   <div>
-                    <RowTitle>System jobs</RowTitle>
-                    <RowMeta>{health.jobs} / {counts.failedJobs} cockpit failed</RowMeta>
+                    <RowTitle data-mission-control-region="row-title">System jobs</RowTitle>
+                    <RowMeta data-mission-control-region="row-meta">{health.jobs} / {counts.failedJobs} cockpit failed</RowMeta>
                   </div>
-                  <ActionButton size="sm" onClick={() => openMissionRoute("/dashboard", "sync_jobs")}>
+                  <ActionButton data-mission-control-region="button" size="sm" onClick={() => openMissionRoute("/dashboard", "sync_jobs")}>
                     Open sync jobs
                   </ActionButton>
                 </Row>
@@ -521,26 +616,26 @@ export function MissionControl() {
           <GroupBox label="Rewards">
             <Rows>
               {claimableRewards.length === 0 ? (
-                <Row>
+                <Row data-mission-control-region="row">
                   <div>
-                    <RowTitle>No claimable challenge rewards</RowTitle>
-                    <RowMeta>Reward flags will appear here when staff marks them claimable.</RowMeta>
+                    <RowTitle data-mission-control-region="row-title">No claimable challenge rewards</RowTitle>
+                    <RowMeta data-mission-control-region="row-meta">Reward flags will appear here when staff marks them claimable.</RowMeta>
                   </div>
-                  <ActionButton size="sm" onClick={() => openMissionRoute("/challenges", "reward_check")}>
+                  <ActionButton data-mission-control-region="button" size="sm" onClick={() => openMissionRoute("/challenges", "reward_check")}>
                     Check rewards
                   </ActionButton>
                 </Row>
               ) : (
                 claimableRewards.slice(0, 4).map((reward) => (
-                  <Row key={reward.id}>
+                  <Row key={reward.id} data-mission-control-region="row">
                     <div>
-                      <RowTitle>{reward.challengeTitle || "Challenge reward"}</RowTitle>
-                      <RowMeta>
+                      <RowTitle data-mission-control-region="row-title">{reward.challengeTitle || "Challenge reward"}</RowTitle>
+                      <RowMeta data-mission-control-region="row-meta">
                         {reward.rewardType || "reward"}
                         {reward.rewardAmountWtf ? ` / ${reward.rewardAmountWtf} WTF` : ""}
                       </RowMeta>
                     </div>
-                    <ActionButton size="sm" onClick={() => openMissionRoute("/challenges", "reward_claim")}>
+                    <ActionButton data-mission-control-region="button" size="sm" onClick={() => openMissionRoute("/challenges", "reward_claim")}>
                       Claim reward
                     </ActionButton>
                   </Row>
@@ -550,29 +645,29 @@ export function MissionControl() {
           </GroupBox>
         </PanelGrid>
 
-        <PanelGrid>
+        <PanelGrid data-mission-control-region="panel-grid">
           <GroupBox label="What failed">
             <Rows>
               {failedJobs.length === 0 ? (
-                <Row>
+                <Row data-mission-control-region="row">
                   <div>
-                    <RowTitle>No failed cockpit jobs</RowTitle>
-                    <RowMeta>
+                    <RowTitle data-mission-control-region="row-title">No failed cockpit jobs</RowTitle>
+                    <RowMeta data-mission-control-region="row-meta">
                       Health commit {healthQuery.data?.version?.commitRef || "unknown"}
                     </RowMeta>
                   </div>
-                  <ActionButton size="sm" onClick={() => healthQuery.refetch()}>
+                  <ActionButton data-mission-control-region="button" size="sm" onClick={() => healthQuery.refetch()}>
                     Refresh health
                   </ActionButton>
                 </Row>
               ) : (
                 failedJobs.slice(0, 4).map((job) => (
-                  <Row key={job.name}>
+                  <Row key={job.name} data-mission-control-region="row">
                     <div>
-                      <RowTitle>{job.name}</RowTitle>
-                      <RowMeta>{job.latest?.error || job.latest?.status || "failed"}</RowMeta>
+                      <RowTitle data-mission-control-region="row-title">{job.name}</RowTitle>
+                      <RowMeta data-mission-control-region="row-meta">{job.latest?.error || job.latest?.status || "failed"}</RowMeta>
                     </div>
-                    <ActionButton size="sm" onClick={() => openMissionRoute("/dashboard", "failed_job")}>
+                    <ActionButton data-mission-control-region="button" size="sm" onClick={() => openMissionRoute("/dashboard", "failed_job")}>
                       Inspect job
                     </ActionButton>
                   </Row>
@@ -584,26 +679,26 @@ export function MissionControl() {
           <GroupBox label="What changed">
             <Rows>
               {recentChanges.length === 0 ? (
-                <Row>
+                <Row data-mission-control-region="row">
                   <div>
-                    <RowTitle>No recent notifications</RowTitle>
-                    <RowMeta>Inbox is clear for this account.</RowMeta>
+                    <RowTitle data-mission-control-region="row-title">No recent notifications</RowTitle>
+                    <RowMeta data-mission-control-region="row-meta">Inbox is clear for this account.</RowMeta>
                   </div>
-                  <ActionButton size="sm" onClick={() => openMissionRoute("/messages", "notification_inbox")}>
+                  <ActionButton data-mission-control-region="button" size="sm" onClick={() => openMissionRoute("/messages", "notification_inbox")}>
                     Open inbox
                   </ActionButton>
                 </Row>
               ) : (
                 recentChanges.slice(0, 4).map((item) => (
-                  <Row key={item.id}>
+                  <Row key={item.id} data-mission-control-region="row">
                     <div>
-                      <RowTitle>{item.title}</RowTitle>
-                      <RowMeta>
+                      <RowTitle data-mission-control-region="row-title">{item.title}</RowTitle>
+                      <RowMeta data-mission-control-region="row-meta">
                         {relativeTime(item.createdAt)}
                         {item.read ? "" : " / unread"}
                       </RowMeta>
                     </div>
-                    <ActionButton size="sm" onClick={() => openMissionRoute("/messages", "notification_open")}>
+                    <ActionButton data-mission-control-region="button" size="sm" onClick={() => openMissionRoute("/messages", "notification_open")}>
                       Open notification
                     </ActionButton>
                   </Row>
@@ -613,27 +708,27 @@ export function MissionControl() {
           </GroupBox>
         </PanelGrid>
 
-        <PanelGrid>
+        <PanelGrid data-mission-control-region="panel-grid">
           <GroupBox label="What happens next">
             <Rows>
               {activeChallenges.slice(0, 4).map((challenge) => (
-                <Row key={challenge.id}>
+                <Row key={challenge.id} data-mission-control-region="row">
                   <div>
-                    <RowTitle>{customerChallengeTitle(challenge.title)}</RowTitle>
-                    <RowMeta>{challenge.rewardType || "challenge"} reward path</RowMeta>
+                    <RowTitle data-mission-control-region="row-title">{customerChallengeTitle(challenge.title)}</RowTitle>
+                    <RowMeta data-mission-control-region="row-meta">{challenge.rewardType || "challenge"} reward path</RowMeta>
                   </div>
-                  <ActionButton size="sm" onClick={() => openMissionRoute("/challenges", "next_challenge")}>
+                  <ActionButton data-mission-control-region="button" size="sm" onClick={() => openMissionRoute("/challenges", "next_challenge")}>
                     Work challenge
                   </ActionButton>
                 </Row>
               ))}
               {activeChallenges.length === 0 && (
-                <Row>
+                <Row data-mission-control-region="row">
                   <div>
-                    <RowTitle>No active challenge queue</RowTitle>
-                    <RowMeta>Rounds, side quests, and wallet activity are still available.</RowMeta>
+                    <RowTitle data-mission-control-region="row-title">No active challenge queue</RowTitle>
+                    <RowMeta data-mission-control-region="row-meta">Rounds, side quests, and wallet activity are still available.</RowMeta>
                   </div>
-                  <ActionButton size="sm" onClick={() => openMissionRoute("/rounds", "rounds")}>
+                  <ActionButton data-mission-control-region="button" size="sm" onClick={() => openMissionRoute("/rounds", "rounds")}>
                     Open rounds
                   </ActionButton>
                 </Row>
@@ -643,27 +738,27 @@ export function MissionControl() {
 
           <GroupBox label="Transaction costs">
             <Rows>
-              <Row>
+              <Row data-mission-control-region="row">
                 <div>
-                  <RowTitle>Wallet preflight</RowTitle>
-                  <RowMeta>
+                  <RowTitle data-mission-control-region="row-title">Wallet preflight</RowTitle>
+                  <RowMeta data-mission-control-region="row-meta">
                     Writes stay bound to the active account before chain prompts open.
                   </RowMeta>
                 </div>
-                <ActionButton size="sm" onClick={() => openMissionRoute("/swap", "wallet_preflight")}>
+                <ActionButton data-mission-control-region="button" size="sm" onClick={() => openMissionRoute("/swap", "wallet_preflight")}>
                   Open swap
                 </ActionButton>
               </Row>
-              <Row>
+              <Row data-mission-control-region="row">
                 <div>
-                  <RowTitle>Primary wallet sync</RowTitle>
-                  <RowMeta>
+                  <RowTitle data-mission-control-region="row-title">Primary wallet sync</RowTitle>
+                  <RowMeta data-mission-control-region="row-meta">
                     {primaryWallet
                       ? `Last sync ${relativeTime(primaryWallet.lastSyncedAt)}`
                       : "No linked primary wallet"}
                   </RowMeta>
                 </div>
-                <ActionButton size="sm" onClick={() => openMissionRoute("/profile", "wallets")}>
+                <ActionButton data-mission-control-region="button" size="sm" onClick={() => openMissionRoute("/profile", "wallets")}>
                   Open wallets
                 </ActionButton>
               </Row>
@@ -672,7 +767,7 @@ export function MissionControl() {
         </PanelGrid>
 
         <Separator />
-        <Detail>
+        <Detail data-mission-control-region="detail">
           Network {healthQuery.data?.chain?.network || "unknown"} / RPC {health.rpc} / version{" "}
           {healthQuery.data?.version?.packageVersion || "unknown"}
         </Detail>

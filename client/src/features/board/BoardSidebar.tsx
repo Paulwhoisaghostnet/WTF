@@ -115,7 +115,7 @@ export function BoardSidebar({
 
   return (
     <Sidebar $mobileHidden={!mobileSidebar}>
-      <SideHeader>
+      <SideHeader data-board-region="side-header">
         <span>Channels</span>
         {isMod && (
           <div style={{ display: "flex", gap: 3 }}>

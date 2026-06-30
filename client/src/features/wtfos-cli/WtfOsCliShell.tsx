@@ -8,7 +8,11 @@ import type { DesktopAppKey } from "@shared/types";
 import { api } from "../../lib/api";
 import { WtfOsCliPanel } from "./WtfOsCliPanel";
 
-export function WtfOsCliShell() {
+type WtfOsCliShellProps = {
+  makePresentationRoute?: (path: string) => string;
+};
+
+export function WtfOsCliShell({ makePresentationRoute }: WtfOsCliShellProps = {}) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const desktopAppsQuery = useQuery({
@@ -22,6 +26,13 @@ export function WtfOsCliShell() {
     logClientSystemEvent({ eventType: "cli.viewed" });
   }, []);
 
+  const navigateWithinShell = useCallback(
+    (path: string) => {
+      setLocation(makePresentationRoute ? makePresentationRoute(path) : path);
+    },
+    [makePresentationRoute, setLocation]
+  );
+
   return (
     <WtfOsCliPanel
       variant="fullscreen"
@@ -29,7 +40,7 @@ export function WtfOsCliShell() {
       prompt="wtf>"
       eventPrefix="cli"
       bootMessage="wtfOS CLI shell ready. Type `help` or `banner`."
-      navigate={setLocation}
+      navigate={navigateWithinShell}
       setInterfaceMode={setInterfaceMode}
       getInterfaceMode={getInterfaceMode}
       username={user?.username ?? null}

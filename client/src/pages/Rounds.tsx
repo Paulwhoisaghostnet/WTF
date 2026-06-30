@@ -13,9 +13,96 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { RoundInfoCard } from "../components/RoundInfoCard";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { deriveRoundsLaunchState } from "./rounds-model";
 
-const RoundCard = styled(GroupBox)`
+const roundRegionAttrs = (region: string): any => ({
+  "data-rounds-region": region,
+});
+
+const RoundsSurface = styled.div`
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+
+  &[data-rounds-presentation-host="gamma"] {
+    color: var(--gamma-milk, #f2ead9);
+    font-family:
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
+  }
+
+  &[data-rounds-presentation-host="gamma"],
+  &[data-rounds-presentation-host="gamma"] * {
+    letter-spacing: 0;
+  }
+
+  &[data-rounds-presentation-host="gamma"] [data-rounds-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-rounds-presentation-host="gamma"] :where(fieldset, section, [data-rounds-region]) {
+    border-color: var(--gamma-line, rgba(242, 234, 217, 0.18));
+    border-radius: 6px;
+  }
+
+  &[data-rounds-presentation-host="gamma"] fieldset,
+  &[data-rounds-presentation-host="gamma"] [data-rounds-region="season-panel"],
+  &[data-rounds-presentation-host="gamma"] [data-rounds-region="launch-board"],
+  &[data-rounds-presentation-host="gamma"] [data-rounds-region="round-card"],
+  &[data-rounds-presentation-host="gamma"] [data-rounds-region="launch-metric"] {
+    background: color-mix(in srgb, var(--gamma-panel, #11110f) 82%, var(--gamma-ink, #070706));
+    color: var(--gamma-milk, #f2ead9);
+    border: 1px solid var(--gamma-line, rgba(242, 234, 217, 0.18));
+  }
+
+  &[data-rounds-presentation-host="gamma"] legend,
+  &[data-rounds-presentation-host="gamma"] [data-rounds-region="launch-label"],
+  &[data-rounds-presentation-host="gamma"] [data-rounds-region="season-picker-label"] {
+    color: var(--gamma-cyan, #00d2ff);
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 0.76rem;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  &[data-rounds-presentation-host="gamma"] [data-rounds-region="launch-value"],
+  &[data-rounds-presentation-host="gamma"] h3,
+  &[data-rounds-presentation-host="gamma"] p {
+    color: var(--gamma-milk, #f2ead9);
+  }
+
+  &[data-rounds-presentation-host="gamma"] [data-rounds-region="status-badge"] {
+    background: transparent;
+    color: var(--gamma-cyan, #00d2ff);
+    border: 1px solid var(--gamma-cyan, #00d2ff);
+  }
+
+  &[data-rounds-presentation-host="gamma"] [data-rounds-status="active"] {
+    color: var(--gamma-live, #c6ff4f);
+    border-color: var(--gamma-live, #c6ff4f);
+  }
+
+  &[data-rounds-presentation-host="gamma"] [data-rounds-region="launch-actions"],
+  &[data-rounds-presentation-host="gamma"] [data-rounds-region="season-picker"] {
+    align-items: center;
+  }
+
+  &[data-rounds-presentation-host="gamma"] button:not(:disabled),
+  &[data-rounds-presentation-host="gamma"] select {
+    border-color: var(--gamma-line, rgba(242, 234, 217, 0.18));
+    border-radius: 5px;
+  }
+`;
+
+const RoundCard = styled(GroupBox).attrs(roundRegionAttrs("round-card"))`
   margin-bottom: 8px;
   cursor: pointer;
 
@@ -102,6 +189,9 @@ const LaunchButton = styled(Button)`
 export function Rounds() {
   const { isAdmin } = useAuth();
   const [, setLocation] = useLocation();
+  const presentation = usePresentationShell();
+  const goToRoute = (route: string) =>
+    setLocation(presentationRouteHref(route, presentation.host));
 
   const { data: seasons, isLoading } = useQuery({
     queryKey: ["seasons"],
@@ -136,95 +226,111 @@ export function Rounds() {
 
   return (
     <AppWindow title="Seasons & Rounds">
-      {seasons && seasons.length > 0 && (
-        <div style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
-          <label>Season:</label>
-          <Select
-            value={activeSeason?.id}
-            onChange={(e: any) => setSelectedSeason(e.value)}
-            options={seasons.map((s: any) => ({
-              label: `Season ${s.number}: ${s.name}`,
-              value: s.id,
-            }))}
-            width={300}
-          />
-        </div>
-      )}
-
-      {activeSeason && (
-        <GroupBox label={`Season ${activeSeason.number}: ${activeSeason.name}`}>
-          <p>{activeSeason.description || "No description"}</p>
-          <StatusBadge $status={activeSeason.status}>
-            {activeSeason.status.toUpperCase()}
-          </StatusBadge>
-        </GroupBox>
-      )}
-
-      <section data-testid="gameshow-launch-board">
-        <GroupBox label="Gameshow launch board">
-          <LaunchGrid>
-            <LaunchMetric>
-              <LaunchLabel>Season</LaunchLabel>
-              <LaunchValue>{launchState.seasonLabel}</LaunchValue>
-            </LaunchMetric>
-            <LaunchMetric>
-              <LaunchLabel>Status</LaunchLabel>
-              <LaunchValue>{launchState.launchStatus}</LaunchValue>
-            </LaunchMetric>
-            <LaunchMetric>
-              <LaunchLabel>Open work</LaunchLabel>
-              <LaunchValue>
-                {launchState.activeRounds} live / {launchState.openChallenges} challenges
-              </LaunchValue>
-            </LaunchMetric>
-            <LaunchMetric>
-              <LaunchLabel>Next round</LaunchLabel>
-              <LaunchValue>{launchState.nextRoundLabel}</LaunchValue>
-            </LaunchMetric>
-          </LaunchGrid>
-          <LaunchActions>
-            <LaunchButton onClick={() => setLocation("/mission-control")}>
-              Mission Control
-            </LaunchButton>
-            <LaunchButton onClick={() => setLocation("/side-quests")}>
-              Side Quests
-            </LaunchButton>
-            <LaunchButton onClick={() => setLocation("/challenges")}>
-              Challenges
-            </LaunchButton>
-            <LaunchButton onClick={() => setLocation("/calendar")}>
-              Calendar
-            </LaunchButton>
-          </LaunchActions>
-        </GroupBox>
-      </section>
-
-      <Separator style={{ margin: "12px 0" }} />
-
-      <h3>Rounds</h3>
-      <Grid>
-        {rounds?.map((round: any) => (
-          <RoundCard
-            key={round.id}
-            label={`Round ${round.number}`}
-            onClick={() => setLocation(`/rounds/${round.id}`)}
+      <RoundsSurface
+        data-rounds-presentation-host={presentation.host}
+        data-rounds-surface="rounds"
+        data-rounds-region="surface"
+      >
+        {seasons && seasons.length > 0 && (
+          <div
+            style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}
+            data-rounds-region="season-picker"
           >
-            <RoundInfoCard
-              round={round}
-              seasonLabel={activeSeason ? `Season ${activeSeason.number}` : undefined}
+            <label data-rounds-region="season-picker-label">Season:</label>
+            <Select
+              value={activeSeason?.id}
+              onChange={(e: any) => setSelectedSeason(e.value)}
+              options={seasons.map((s: any) => ({
+                label: `Season ${s.number}: ${s.name}`,
+                value: s.id,
+              }))}
+              width={300}
             />
-          </RoundCard>
-        ))}
-        {(!rounds || rounds.length === 0) && <p>No rounds yet.</p>}
-      </Grid>
+          </div>
+        )}
 
-      {isAdmin && (
-        <div style={{ marginTop: 12 }}>
-          <Button onClick={() => setLocation("/admin")}>
-            Manage Seasons & Rounds
-          </Button>
-        </div>
-      )}
+        {activeSeason && (
+          <GroupBox
+            label={`Season ${activeSeason.number}: ${activeSeason.name}`}
+            data-rounds-region="season-panel"
+          >
+            <p>{activeSeason.description || "No description"}</p>
+            <StatusBadge
+              $status={activeSeason.status}
+              data-rounds-region="status-badge"
+              data-rounds-status={activeSeason.status}
+            >
+              {activeSeason.status.toUpperCase()}
+            </StatusBadge>
+          </GroupBox>
+        )}
+
+        <section data-testid="gameshow-launch-board" data-rounds-region="launch-board">
+          <GroupBox label="Gameshow launch board">
+            <LaunchGrid data-rounds-region="launch-grid">
+              <LaunchMetric data-rounds-region="launch-metric">
+                <LaunchLabel data-rounds-region="launch-label">Season</LaunchLabel>
+                <LaunchValue data-rounds-region="launch-value">{launchState.seasonLabel}</LaunchValue>
+              </LaunchMetric>
+              <LaunchMetric data-rounds-region="launch-metric">
+                <LaunchLabel data-rounds-region="launch-label">Status</LaunchLabel>
+                <LaunchValue data-rounds-region="launch-value">{launchState.launchStatus}</LaunchValue>
+              </LaunchMetric>
+              <LaunchMetric data-rounds-region="launch-metric">
+                <LaunchLabel data-rounds-region="launch-label">Open work</LaunchLabel>
+                <LaunchValue data-rounds-region="launch-value">
+                  {launchState.activeRounds} live / {launchState.openChallenges} challenges
+                </LaunchValue>
+              </LaunchMetric>
+              <LaunchMetric data-rounds-region="launch-metric">
+                <LaunchLabel data-rounds-region="launch-label">Next round</LaunchLabel>
+                <LaunchValue data-rounds-region="launch-value">{launchState.nextRoundLabel}</LaunchValue>
+              </LaunchMetric>
+            </LaunchGrid>
+            <LaunchActions data-rounds-region="launch-actions">
+              <LaunchButton onClick={() => goToRoute("/mission-control")}>
+                Mission Control
+              </LaunchButton>
+              <LaunchButton onClick={() => goToRoute("/side-quests")}>
+                Side Quests
+              </LaunchButton>
+              <LaunchButton onClick={() => goToRoute("/challenges")}>
+                Challenges
+              </LaunchButton>
+              <LaunchButton onClick={() => goToRoute("/calendar")}>
+                Calendar
+              </LaunchButton>
+            </LaunchActions>
+          </GroupBox>
+        </section>
+
+        <Separator style={{ margin: "12px 0" }} />
+
+        <h3>Rounds</h3>
+        <Grid data-rounds-region="round-grid">
+          {rounds?.map((round: any) => (
+            <RoundCard
+              key={round.id}
+              label={`Round ${round.number}`}
+              onClick={() => goToRoute(`/rounds/${round.id}`)}
+            >
+              <RoundInfoCard
+                round={round}
+                seasonLabel={activeSeason ? `Season ${activeSeason.number}` : undefined}
+              />
+            </RoundCard>
+          ))}
+          {(!rounds || rounds.length === 0) && <p>No rounds yet.</p>}
+        </Grid>
+
+        {isAdmin && (
+          <div style={{ marginTop: 12 }} data-rounds-region="admin-actions">
+            <Button onClick={() => goToRoute("/admin")}>
+              Manage Seasons & Rounds
+            </Button>
+          </div>
+        )}
+      </RoundsSurface>
     </AppWindow>
   );
 }

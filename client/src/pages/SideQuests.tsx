@@ -15,6 +15,7 @@ import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 
 type DailySideQuest = {
@@ -71,10 +72,30 @@ type SideQuestCompletion = {
   xpAwarded?: number | null;
 };
 
+const gammaProgressionScope = `[data-progression-presentation-host="gamma"]`;
+
 const Shell = styled.div`
   display: grid;
   gap: 12px;
   min-width: 0;
+
+  &[data-progression-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-progression-presentation-host="gamma"] [data-progression-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-progression-presentation-host="gamma"] button,
+  &[data-progression-presentation-host="gamma"] input,
+  &[data-progression-presentation-host="gamma"] textarea {
+    letter-spacing: 0;
+  }
 `;
 
 const IntroPanel = styled.div`
@@ -86,6 +107,14 @@ const IntroPanel = styled.div`
   border: 1px solid #808080;
   background: var(--wtf-app-warning-bg, #e7e1cb);
   box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
+
+  ${gammaProgressionScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: #0d0d0b;
+    color: #f2ead9;
+    padding: 12px;
+  }
 
   @media (max-width: 720px) {
     grid-template-columns: 1fr;
@@ -105,6 +134,10 @@ const PageCopy = styled.p`
   margin: 4px 0 0;
   font-size: var(--wtf-type-body, 15px);
   line-height: 1.4;
+
+  ${gammaProgressionScope} & {
+    color: rgba(242, 234, 217, 0.72);
+  }
 `;
 
 const ProgressWrap = styled.div`
@@ -125,16 +158,34 @@ const ProgressTrack = styled.div`
   border: 1px solid #808080;
   background: #ffffff;
   box-shadow: inset 1px 1px 0 #bdbdbd;
+
+  ${gammaProgressionScope} & {
+    height: 12px;
+    border-color: rgba(0, 210, 255, 0.72);
+    border-radius: 6px;
+    background: #070706;
+  }
 `;
 
 const ProgressFill = styled.div<{ $pct: number }>`
   width: ${(p) => Math.max(0, Math.min(100, p.$pct))}%;
   height: 100%;
   background: linear-gradient(90deg, #008000, #00a45c);
+
+  ${gammaProgressionScope} & {
+    background: #00d2ff;
+    border-radius: inherit;
+  }
 `;
 
 const AccountPanel = styled(GroupBox)`
   margin: 0;
+
+  ${gammaProgressionScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: #10100e;
+  }
 `;
 
 const AccountGrid = styled.div`
@@ -154,11 +205,22 @@ const AccountMetric = styled.div`
   background: var(--wtf-app-surface-raised, #f7f3dc);
   padding: 6px;
 
+  ${gammaProgressionScope} & {
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 5px;
+    background: #0a0a09;
+    color: rgba(242, 234, 217, 0.7);
+  }
+
   strong {
     display: block;
     margin-top: 3px;
     font-size: 15px;
     overflow-wrap: anywhere;
+
+    ${gammaProgressionScope} & {
+      color: #f2ead9;
+    }
   }
 `;
 
@@ -183,6 +245,12 @@ const QuestGrid = styled.div`
 
 const QuestCard = styled(GroupBox)`
   min-width: 0;
+
+  ${gammaProgressionScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: #10100e;
+  }
 `;
 
 const QuestHeader = styled.div`
@@ -202,6 +270,10 @@ const QuestDescription = styled.p`
   margin: 6px 0 0;
   font-size: var(--wtf-type-body, 15px);
   line-height: 1.35;
+
+  ${gammaProgressionScope} & {
+    color: rgba(242, 234, 217, 0.72);
+  }
 `;
 
 const QuestMeta = styled.div`
@@ -230,6 +302,25 @@ const Chip = styled.span<{ $tone?: "green" | "blue" | "gold" | "gray" | "red" }>
   font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   color: #202020;
+
+  ${gammaProgressionScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 4px;
+    background: transparent;
+    color: ${(p) =>
+      p.$tone === "green"
+        ? "#d6ff3f"
+        : p.$tone === "blue"
+          ? "#00d2ff"
+          : p.$tone === "gold"
+            ? "#f2ead9"
+            : p.$tone === "red"
+              ? "#ff7a7a"
+              : "rgba(242, 234, 217, 0.68)"};
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 12px;
+    text-transform: uppercase;
+  }
 `;
 
 const QuestFooter = styled.div`
@@ -245,6 +336,10 @@ const SmallNote = styled.div`
   line-height: 1.35;
   color: var(--wtf-app-muted-text, #404040);
   overflow-wrap: anywhere;
+
+  ${gammaProgressionScope} & {
+    color: rgba(242, 234, 217, 0.68);
+  }
 `;
 
 const MarketNudge = styled.div`
@@ -259,11 +354,22 @@ const MarketNudge = styled.div`
   font-size: var(--wtf-type-caption, 13px);
   line-height: 1.35;
 
+  ${gammaProgressionScope} & {
+    border-color: rgba(0, 210, 255, 0.42);
+    border-radius: 5px;
+    background: #0a0a09;
+    color: rgba(242, 234, 217, 0.76);
+  }
+
   a {
     color: #1f6b25;
     font-weight: bold;
     text-decoration: underline;
     white-space: nowrap;
+
+    ${gammaProgressionScope} & {
+      color: #00d2ff;
+    }
   }
 
   button {
@@ -273,6 +379,10 @@ const MarketNudge = styled.div`
     font-size: 14px;
     padding: 0 2px;
     color: #808080;
+
+    ${gammaProgressionScope} & {
+      color: #00d2ff;
+    }
   }
 `;
 
@@ -288,6 +398,13 @@ const EmptyState = styled.div`
   border: 1px dashed #777777;
   background: #f6f6f6;
   font-size: 13px;
+
+  ${gammaProgressionScope} & {
+    border-color: rgba(242, 234, 217, 0.24);
+    border-radius: 6px;
+    background: #0a0a09;
+    color: rgba(242, 234, 217, 0.7);
+  }
 `;
 
 const VERIFY_LABELS: Record<string, string> = {
@@ -335,6 +452,7 @@ function completionLabel(count: number | undefined, noun = "claimed") {
 
 export function SideQuests() {
   const { user, canParticipate } = useAuth();
+  const presentation = usePresentationShell();
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState(0);
@@ -449,11 +567,19 @@ export function SideQuests() {
   const cashoutMinimumWtf = rewardAccount?.cashout?.minimumWtf ?? 20;
   const canCashOutRewardWtf =
     availableRewardWtf >= cashoutMinimumWtf && Boolean(rewardAccount?.primaryWallet);
+  const navigateInPresentation = (route: string) => {
+    setLocation(presentationRouteHref(route, presentation.host));
+  };
+  const marketHref = presentationRouteHref("/wtfiam", presentation.host);
 
   return (
     <AppWindow title="Side Quests">
-      <Shell>
-        <IntroPanel>
+      <Shell
+        data-progression-presentation-host={presentation.host}
+        data-progression-surface="side-quests"
+        data-progression-region="shell"
+      >
+        <IntroPanel data-progression-region="intro-panel">
           <TitleBlock>
             <PageTitle>Side Quests</PageTitle>
             <PageCopy>
@@ -465,8 +591,8 @@ export function SideQuests() {
               <span>{claimedTodayCount}/{dailyLoops.length || 0} claimed</span>
               <span>00:00 UTC reset</span>
             </ProgressLabel>
-            <ProgressTrack aria-label="Daily side quest claim progress">
-              <ProgressFill $pct={dailyProgressPct} />
+            <ProgressTrack aria-label="Daily side quest claim progress" data-progression-region="progress-track">
+              <ProgressFill $pct={dailyProgressPct} data-progression-region="progress-fill" />
             </ProgressTrack>
             <SmallNote>
               {claimableTodayCount > 0
@@ -477,25 +603,25 @@ export function SideQuests() {
         </IntroPanel>
 
         {user && (
-          <AccountPanel label="Reward Account">
-            <AccountGrid>
-              <AccountMetric>
+          <AccountPanel label="Reward Account" data-progression-region="reward-account">
+            <AccountGrid data-progression-region="account-grid">
+              <AccountMetric data-progression-region="account-metric">
                 Total earned
                 <strong>{rewardAccount?.balances?.totalEarnedWtf ?? 0} WTF</strong>
               </AccountMetric>
-              <AccountMetric>
+              <AccountMetric data-progression-region="account-metric">
                 Available
                 <strong>{availableRewardWtf} WTF</strong>
               </AccountMetric>
-              <AccountMetric>
+              <AccountMetric data-progression-region="account-metric">
                 Pending cashout
                 <strong>{rewardAccount?.balances?.pendingCashoutWtf ?? 0} WTF</strong>
               </AccountMetric>
-              <AccountMetric>
+              <AccountMetric data-progression-region="account-metric">
                 Already paid
                 <strong>{rewardAccount?.balances?.alreadyPaidWtf ?? 0} WTF</strong>
               </AccountMetric>
-              <AccountMetric>
+              <AccountMetric data-progression-region="account-metric">
                 Market spent
                 <strong>{rewardAccount?.balances?.marketSpentWtf ?? 0} WTF</strong>
               </AccountMetric>
@@ -528,21 +654,25 @@ export function SideQuests() {
             <Tab value={1}>Special</Tab>
             <Tab value={2}>Rewards</Tab>
           </Tabs>
-          <TabBody>
+          <TabBody data-progression-region="tab-body">
             {tab === 0 && (
               <>
                 {claimError && (
                   <p style={{ color: "#8a1a1a", marginTop: 0 }}>{claimError}</p>
                 )}
                 {dailyLoops.length > 0 ? (
-                  <QuestGrid>
+                  <QuestGrid data-progression-region="quest-grid">
                     {dailyLoops.map((quest) => {
                       const status = statusForDailyQuest(quest);
                       const isClaiming =
                         claimMutation.isPending && claimMutation.variables === quest.id;
                       const routeLabel = quest.actionLabel || "Open";
                       return (
-                        <QuestCard key={quest.id} label={quest.category === "creative" ? "Creative" : "Social"}>
+                        <QuestCard
+                          key={quest.id}
+                          label={quest.category === "creative" ? "Creative" : "Social"}
+                          data-progression-region="quest-card"
+                        >
                           <QuestHeader>
                             <div>
                               <QuestTitle>{quest.title}</QuestTitle>
@@ -580,7 +710,7 @@ export function SideQuests() {
                             ) : (
                               <Button
                                 size="sm"
-                                onClick={() => setLocation(quest.route || "/side-quests")}
+                                onClick={() => navigateInPresentation(quest.route || "/side-quests")}
                               >
                                 {routeLabel}
                               </Button>
@@ -590,7 +720,13 @@ export function SideQuests() {
                             <MarketNudge>
                               <span>
                                 You earned WTF! Unlock new features at the{" "}
-                                <a href="/wtfiam" onClick={(e) => { e.preventDefault(); setLocation("/wtfiam"); }}>
+                                <a
+                                  href={marketHref}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    navigateInPresentation("/wtfiam");
+                                  }}
+                                >
                                   Market &rarr;
                                 </a>
                               </span>
@@ -623,7 +759,7 @@ export function SideQuests() {
                 {activeQuests.length === 0 && completedQuests.length === 0 ? (
                   <EmptyState>No special side quests are active right now.</EmptyState>
                 ) : (
-                  <QuestGrid>
+                  <QuestGrid data-progression-region="quest-grid">
                     {[...activeQuests, ...completedQuests].map((quest) => {
                       const myComp = completionMap.get(quest.id);
                       const isAutoVerify =
@@ -652,7 +788,11 @@ export function SideQuests() {
                                 : "Open";
 
                       return (
-                        <QuestCard key={quest.id} label={quest.persistent ? "Recurring" : "Special"}>
+                        <QuestCard
+                          key={quest.id}
+                          label={quest.persistent ? "Recurring" : "Special"}
+                          data-progression-region="quest-card"
+                        >
                           <QuestHeader>
                             <div>
                               <QuestTitle>{quest.title}</QuestTitle>
@@ -774,7 +914,7 @@ export function SideQuests() {
 
             {tab === 2 && (
               <QuestGrid>
-                <QuestCard label="WTF">
+                <QuestCard label="WTF" data-progression-region="quest-card">
                   <QuestTitle>{availableRewardWtf} WTF available</QuestTitle>
                   <QuestDescription>
                     Total earned: {rewardAccount?.balances?.totalEarnedWtf ?? 0} WTF
@@ -789,7 +929,7 @@ export function SideQuests() {
                     <Chip>{rewardAccount?.balances?.marketSpentWtf ?? 0} WTF spent</Chip>
                   </QuestMeta>
                 </QuestCard>
-                <QuestCard label="XP">
+                <QuestCard label="XP" data-progression-region="quest-card">
                   <QuestTitle>XP stays in WTF OS</QuestTitle>
                   <QuestDescription>
                     XP records platform activity and never gets sent to a wallet.

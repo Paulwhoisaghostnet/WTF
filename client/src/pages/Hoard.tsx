@@ -1,10 +1,12 @@
 import { useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Hourglass } from "react95";
+import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
 import { getCanvasFont } from "../features/appearance/get-canvas-font";
+import { usePresentationShell } from "../lib/presentation-shell";
 
 interface TokenSummary {
   name: string;
@@ -61,6 +63,126 @@ const BOUNCE = 0.25;
 const FRICTION = 0.88;
 const COIN_R = 2.5;
 const DRAGON_FRAME_SRCS = Array.from({ length: 9 }, (_, i) => `/game-studio-assets/hoard/dragon-idle-hover-frames/frame-${String(i).padStart(2, "0")}.png`);
+const gammaHoardScope = `[data-hoard-presentation-host="gamma"]`;
+
+const HoardSurface = styled.div`
+  min-height: 100%;
+
+  &[data-hoard-presentation-host="gamma"] {
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    display: grid;
+    gap: 12px;
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  }
+`;
+
+const HoardStatusPanel = styled.div`
+  text-align: center;
+  padding: 32px;
+
+  ${gammaHoardScope} & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+    color: #f2ead9;
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    min-height: 180px;
+    place-content: center;
+    text-shadow: none;
+  }
+`;
+
+const HoardStatusText = styled.p`
+  font-size: 14px;
+  margin: 0;
+
+  ${gammaHoardScope} & {
+    color: rgba(242, 234, 217, 0.78);
+    font-size: 15px;
+    line-height: 1.45;
+  }
+`;
+
+const HoardLoadingText = styled.p`
+  font-size: 12px;
+  margin: 8px 0 0;
+
+  ${gammaHoardScope} & {
+    color: rgba(242, 234, 217, 0.68);
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+    margin: 0;
+  }
+`;
+
+const HoardMetaBar = styled.div`
+  display: none;
+
+  ${gammaHoardScope} & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+    color: rgba(242, 234, 217, 0.72);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+    padding: 10px 12px;
+  }
+`;
+
+const HoardMetaItem = styled.span`
+  ${gammaHoardScope} & {
+    color: rgba(242, 234, 217, 0.72);
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  ${gammaHoardScope} &[data-hoard-meta-tone="live"] {
+    color: #d6ff3f;
+  }
+`;
+
+const HoardStage = styled.div`
+  background: #000;
+  padding: 0;
+  line-height: 0;
+
+  ${gammaHoardScope} & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid #00d2ff;
+    border-radius: 6px;
+    box-shadow: none;
+    line-height: 0;
+    overflow: hidden;
+    padding: 0;
+  }
+`;
+
+const HoardCanvas = styled.canvas`
+  width: 100%;
+  height: auto;
+  display: block;
+  image-rendering: pixelated;
+
+  ${gammaHoardScope} & {
+    background: #070706;
+    border-radius: 6px;
+    max-height: min(70vh, 700px);
+    object-fit: contain;
+  }
+`;
 
 function runScene(
   canvas: HTMLCanvasElement,
@@ -818,6 +940,7 @@ export function Hoard() {
   const stopRef = useRef(false);
   const startedRef = useRef(false);
   const { address } = useWallet();
+  const presentation = usePresentationShell();
 
   const { data, isLoading } = useQuery({
     queryKey: ["hoard-tokens"],
@@ -863,29 +986,49 @@ export function Hoard() {
 
   return (
     <AppWindow title="HOARD! — Red Jeff's Treasure Chamber">
-      {isLoading ? (
-        <div style={{ textAlign: "center", padding: 32 }}>
-          <Hourglass size={32} />
-          <p style={{ fontSize: 12, marginTop: 8 }}>Loading your hoard...</p>
-        </div>
-      ) : tokens.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 32 }}>
-          <p style={{ fontSize: 14 }}>
-            {address
-              ? "No tokens found in your wallet. Sync your wallet first."
-              : "Connect your wallet to see your hoard!"}
-          </p>
-        </div>
-      ) : (
-        <div style={{ background: "#000", padding: 0, lineHeight: 0 }}>
-          <canvas
-            ref={canvasRef}
-            width={1200}
-            height={700}
-            style={{ width: "100%", height: "auto", display: "block", imageRendering: "pixelated" }}
-          />
-        </div>
-      )}
+      <HoardSurface
+        data-hoard-surface="treasure-chamber"
+        data-hoard-presentation-host={presentation.host}
+        data-hoard-region="surface"
+      >
+        {isLoading ? (
+          <HoardStatusPanel data-hoard-region="loading-state">
+            <Hourglass size={32} />
+            <HoardLoadingText>Loading your hoard...</HoardLoadingText>
+          </HoardStatusPanel>
+        ) : tokens.length === 0 ? (
+          <HoardStatusPanel data-hoard-region="empty-state">
+            <HoardStatusText>
+              {address
+                ? "No tokens found in your wallet. Sync your wallet first."
+                : "Connect your wallet to see your hoard!"}
+            </HoardStatusText>
+          </HoardStatusPanel>
+        ) : (
+          <>
+            <HoardMetaBar data-hoard-region="meta-bar">
+              <HoardMetaItem data-hoard-region="meta-item" data-hoard-meta-tone="live">
+                {totalCoins} editions
+              </HoardMetaItem>
+              <HoardMetaItem data-hoard-region="meta-item">
+                {tokens.length} token types
+              </HoardMetaItem>
+              <HoardMetaItem data-hoard-region="meta-item">
+                Source: wallet holdings
+              </HoardMetaItem>
+            </HoardMetaBar>
+            <HoardStage data-hoard-region="stage">
+              <HoardCanvas
+                ref={canvasRef}
+                width={1200}
+                height={700}
+                aria-label={`Animated Hoard chamber showing ${totalCoins} editions across ${tokens.length} token types`}
+                data-hoard-region="canvas"
+              />
+            </HoardStage>
+          </>
+        )}
+      </HoardSurface>
     </AppWindow>
   );
 }

@@ -8,6 +8,7 @@ import { UiButton, UiPanel } from "../components/wtfos-ui";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { useEtherlinkWallet } from "../lib/etherlink";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { WALLET_SESSION_KEY } from "../lib/tezos";
 import { ETHERLINK_SESSION_KEY } from "../lib/etherlink";
 import { WINDOW_SESSION_STORAGE_KEY } from "../lib/window-state";
@@ -26,6 +27,66 @@ const Shell = styled.div`
   display: grid;
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
+
+  &[data-gamma-utility-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"],
+  &[data-gamma-utility-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region] {
+    min-width: 0;
+    background-image: none;
+    border-radius: 6px;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="status-cell"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="panel"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="row"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="message"] {
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    background: #11110f;
+    color: #f2ead9;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="status-badge"] {
+    border: 1px solid rgba(0, 210, 255, 0.58);
+    background: #11110f;
+    color: #00d2ff;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="label"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="detail"] {
+    color: rgba(242, 234, 217, 0.7);
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="label"] {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"] {
+    border: 1px solid rgba(0, 210, 255, 0.58);
+    border-radius: 4px;
+    background: transparent;
+    color: #00d2ff;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"]:hover,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"]:focus-visible {
+    border-color: #00d2ff;
+    color: #f2ead9;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
 `;
 
 const HeaderGrid = styled.div`
@@ -223,6 +284,7 @@ export function RecoveryMode() {
   const { user } = useAuth();
   const wallet = useWallet();
   const etherlink = useEtherlinkWallet();
+  const presentation = usePresentationShell();
   const [, setLocation] = useLocation();
   const [revision, setRevision] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
@@ -285,7 +347,7 @@ export function RecoveryMode() {
       eventType: "recovery_mode.action_opened",
       metadata: { actionId, path },
     });
-    setLocation(path);
+    setLocation(presentationRouteHref(path, presentation.host));
   }
 
   async function runAction(actionId: string) {
@@ -366,61 +428,74 @@ export function RecoveryMode() {
 
   return (
     <AppWindow title="Recovery Mode">
-      <Shell data-testid="recovery-mode">
+      <Shell
+        data-testid="recovery-mode"
+        data-gamma-utility-surface="recovery-mode"
+        data-gamma-utility-presentation-host={presentation.host}
+        data-gamma-utility-region="surface"
+      >
         <HeaderGrid>
           <Lead>
             Recovery Mode is the user-safe OS repair surface: clear broken local sessions,
             export evidence, and route operator-only repairs to admin gates without exposing
             privileged controls to regular accounts.
           </Lead>
-          <StatusBadge $severity={status.severity} data-testid="recovery-severity">
+          <StatusBadge
+            $severity={status.severity}
+            data-testid="recovery-severity"
+            data-gamma-utility-region="status-badge"
+          >
             {loading ? <Hourglass size={18} /> : status.severity}
           </StatusBadge>
         </HeaderGrid>
 
-        {message ? <Message data-testid="recovery-message">{message}</Message> : null}
+        {message ? (
+          <Message data-testid="recovery-message" data-gamma-utility-region="message">
+            {message}
+          </Message>
+        ) : null}
 
-        <MetaGrid>
-          <Meta>
-            <MetaLabel>Tezos wallet</MetaLabel>
+        <MetaGrid data-gamma-utility-region="status-grid">
+          <Meta data-gamma-utility-region="status-cell">
+            <MetaLabel data-gamma-utility-region="label">Tezos wallet</MetaLabel>
             <MetaValue>{shortAddress(wallet.address)}</MetaValue>
           </Meta>
-          <Meta>
-            <MetaLabel>Etherlink wallet</MetaLabel>
+          <Meta data-gamma-utility-region="status-cell">
+            <MetaLabel data-gamma-utility-region="label">Etherlink wallet</MetaLabel>
             <MetaValue>{shortAddress(etherlink.address)}</MetaValue>
           </Meta>
-          <Meta>
-            <MetaLabel>Networks</MetaLabel>
+          <Meta data-gamma-utility-region="status-cell">
+            <MetaLabel data-gamma-utility-region="label">Networks</MetaLabel>
             <MetaValue>
               {localState.tezosNetwork} / {localState.etherlinkNetwork}
             </MetaValue>
           </Meta>
-          <Meta>
-            <MetaLabel>TV cache</MetaLabel>
+          <Meta data-gamma-utility-region="status-cell">
+            <MetaLabel data-gamma-utility-region="label">TV cache</MetaLabel>
             <MetaValue>{formatCache(diskQuery.data)}</MetaValue>
           </Meta>
         </MetaGrid>
 
         <Grid>
-          <UiPanel title="Incidents" compact>
+          <UiPanel title="Incidents" compact data-gamma-utility-region="panel">
             <Rows>
               {status.incidents.length === 0 ? (
-                <Row>
+                <Row data-gamma-utility-region="row">
                   <div>
                     <Title>No recovery incidents detected</Title>
-                    <Detail>Health, wallet, network, and shell checks are currently quiet.</Detail>
+                    <Detail data-gamma-utility-region="detail">Health, wallet, network, and shell checks are currently quiet.</Detail>
                   </div>
                 </Row>
               ) : (
                 status.incidents.map((incident) => (
-                  <Row key={incident.id}>
+                  <Row key={incident.id} data-gamma-utility-region="row">
                     <div>
                       <Title>{incident.title}</Title>
-                      <Detail>
+                      <Detail data-gamma-utility-region="detail">
                         {incident.severity.toUpperCase()}: {incident.detail}
                       </Detail>
                     </div>
-                    <ActionButton onClick={() => runAction(incident.actionId)}>
+                    <ActionButton data-gamma-utility-region="button" onClick={() => runAction(incident.actionId)}>
                       {incident.actionId === "open-profile"
                         ? "Open profile"
                         : incident.actionId === "open-mission-control"
@@ -433,11 +508,12 @@ export function RecoveryMode() {
             </Rows>
           </UiPanel>
 
-          <UiPanel title="Local repairs" compact>
+          <UiPanel title="Local repairs" compact data-gamma-utility-region="panel">
             <Actions>
               {status.actions.map((action) => (
                 <ActionButton
                   key={action.id}
+                  data-gamma-utility-region="button"
                   disabled={!action.enabled || Boolean(busyAction)}
                   onClick={() => runAction(action.id)}
                   title={action.detail}
@@ -445,23 +521,28 @@ export function RecoveryMode() {
                   {busyAction === action.id ? "Working..." : action.label}
                 </ActionButton>
               ))}
-              <ActionButton onClick={() => window.location.assign("/recovery-mode")}>
+              <ActionButton
+                data-gamma-utility-region="button"
+                onClick={() => window.location.assign(presentationRouteHref("/recovery-mode", presentation.host))}
+              >
                 Reload OS
               </ActionButton>
               <ActionButton
+                data-gamma-utility-region="button"
                 onClick={() => openRecoveryRoute("/mission-control", "mission-control")}
               >
                 Open Mission Control
               </ActionButton>
-              <ActionButton onClick={() => openRecoveryRoute("/profile", "profile")}>
+              <ActionButton data-gamma-utility-region="button" onClick={() => openRecoveryRoute("/profile", "profile")}>
                 Open profile
               </ActionButton>
               <ActionButton
+                data-gamma-utility-region="button"
                 onClick={() => openRecoveryRoute("/desktop-settings", "appearance")}
               >
                 Open appearance settings
               </ActionButton>
-              <ActionButton onClick={() => openRecoveryRoute("/terminal", "terminal")}>
+              <ActionButton data-gamma-utility-region="button" onClick={() => openRecoveryRoute("/terminal", "terminal")}>
                 Open terminal
               </ActionButton>
             </Actions>
@@ -470,17 +551,18 @@ export function RecoveryMode() {
 
         <Separator />
 
-        <UiPanel title="Operator-only repairs" compact tone="warning">
+        <UiPanel title="Operator-only repairs" compact tone="warning" data-gamma-utility-region="panel">
           <Rows>
             {status.operatorActions.map((action) => (
-              <Row key={action.id}>
+              <Row key={action.id} data-gamma-utility-region="row">
                 <div>
                   <Title>{action.label}</Title>
-                  <Detail>
+                  <Detail data-gamma-utility-region="detail">
                     {action.detail} {action.enabled ? "Current role can open Admin." : "Operator role required."}
                   </Detail>
                 </div>
                 <ActionButton
+                  data-gamma-utility-region="button"
                   disabled={!action.enabled}
                   onClick={() =>
                     openRecoveryRoute(recoveryOperatorActionRoute(action.id), action.id)

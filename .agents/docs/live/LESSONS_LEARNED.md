@@ -1,20 +1,570 @@
-## 2026-06-29 - Gamma mobile first viewport must survive CI font metrics
+## 2026-06-30 - Gamma isolated worktrees need harness dotfile serving and companion markers
 
-**What happened**: The full inventory GitHub runner failed Gamma's 390x760 first-viewport smoke even though the focused local macOS check passed. Linux/browser font metrics made the hero copy and primary actions taller, pushing the first comms action below the first mobile viewport.
+**What happened**: The isolated Gamma branch lived under `~/.config/superpowers/worktrees`, and the Playwright harness served `dist/public/index.html` through Express `sendFile`. Express/send treated the `.config` path component as hidden and returned `NotFoundError` for every SPA fallback, so rendered Gamma tests failed before React loaded. The first transplant also copied top-level Gamma shell tests without several companion child-component marker files, leaving source-policy gaps in Message Board, TV, Tezos Intel, Mint Portal, Skywire, and marketplace route owner chrome.
 
-**Why it mattered**: Gamma's public arrival contract depends on seeing creation, gallery, and communication actions together before scrolling. A local-only viewport pass can miss CI font metric drift and leave `main` with a red Quality Gates run after production deploy.
+**Why it mattered**: A route-containment failure can be caused by the test harness path, not the app shell. If we report those failures as Gamma regressions, we lose time in the wrong layer. Likewise, Gamma presentation coverage is measured through rendered child regions, so copying only route/page files can create false gaps or hide real missing handoff hooks.
 
-**Rule**: For Gamma hero/mobile edits, keep the narrow breakpoint compact enough that the live summary, gallery action, Broot action, and first comms action all fit at 390x760 under CI metrics. Verify the focused Gamma mobile spec and the full inventory smoke when that contract blocks deployment.
+**Rule**: When a Playwright harness runs from a hidden directory, allow dot-directory paths in `express.static` and SPA `sendFile`, or place the worktree somewhere non-hidden. For Gamma production-base transplants, copy or reapply the companion rendered-region files alongside each route owner, then prove the result with source policy, Vite build, inventory coverage, and the full Gamma browser spec before estimating remaining passes.
+
+---
+
+## 2026-06-30 - Gamma live repair needs a production-base branch
+
+**What happened**: The public Gamma fallback was traced to live commit `de0acb6`, whose built bundle still only routed `gamma.wtfos.app/` into Gamma. The current checkout had the complete route-shell work locally, but it was a dirty branch behind `origin/main` with many unrelated changes.
+
+**Why it mattered**: Deploying from a dirty, behind checkout would risk dragging unrelated work into the shared production app. Gamma is a separate presentation layer, but it still shares the production deployment path with Classic unless the deploy is isolated and reviewed.
+
+**Rule**: When a live Gamma bug is a missing deployed client shell and the active checkout is dirty or behind production, prepare the live fix on an isolated branch from `origin/main`. Cherry-pick or reapply only the Gamma presentation runtime/test slice, then verify local host-mapped Gamma and public live selectors after deploy.
+
+---
+
+## 2026-06-30 - Gamma local hostname proof is not live deployment proof
+
+**What happened**: Local Gamma source policy and Chromium host-mapped proof showed `gamma.wtfos.app/gallery` and `/leaderboard` staying inside the Gamma shell, but the real public `https://gamma.wtfos.app/gallery` and `/leaderboard` rendered the Classic desktop while only the live Gamma home route rendered the Gamma landing shell.
+
+**Why it mattered**: The Gamma mission is hostname-based and user-facing. A local host-resolver proof catches routing regressions before deploy, but it cannot prove the deployed asset/build or live server routing has caught up.
+
+**Rule**: Keep the local host-mapped proof, but every Gamma completion pass must also run a live public hostname selector probe. Pass estimates must split local route-containment remaining work from live delivery/routing remaining work when those numbers differ.
+
+---
+
+## 2026-06-30 - Gamma hostname mode needs its own proof
+
+**What happened**: The Gamma suite had strong local `/gamma/...` containment coverage and source helpers for `presentationRouteHref`, but direct production-host routes such as `gamma.wtfos.app/gallery` were not rendered under a browser hostname proof. The code handled exact `gamma.wtfos.app` routing, but the evidence still depended mostly on the local harness prefix.
+
+**Why it mattered**: Gamma is defined by hostname, not by a development-only path prefix. A future router refactor could keep `/gamma/gallery` green while accidentally sending `gamma.wtfos.app/gallery` through the Classic desktop path.
+
+**Rule**: Keep source guards for host-vs-prefix routing and at least one browser proof that maps `gamma.wtfos.app` to the local harness, opens a direct route without `/gamma`, navigates again, and confirms `[data-gamma-wtfos]` is present while `[data-wtf-desktop]` is absent.
+
+---
+
+## 2026-06-30 - Gamma exclusions need direct shell proof before route accounting can close
+
+**What happened**: The Gamma containment ledger still listed 8 raw uncovered fixture paths as documented exclusions after the app-containment backlog hit zero. A direct audit showed those routes could be proved inside the Gamma shell without changing application logic, so leaving them excluded understated the true requirement for "every route remains Gamma" and made the pass estimate depend on a policy exception.
+
+**Why it mattered**: Gamma is supposed to be a complete presentation layer, not only a shell for obvious app routes. Static pages, nested detail routes, and console utilities can still create Classic fallback risk if they are not exercised inside `[data-gamma-application-content]`.
+
+**Rule**: Before reporting zero remaining Gamma route-containment passes, convert any raw uncovered fixture path into a rendered Gamma proof or record a separate explicit product exception. Pass estimates must be based on the raw uncovered route count, not only on the app-containment backlog.
+
+---
+
+## 2026-06-30 - Gamma wallet proofs must seed the accepted wallet provider
+
+**What happened**: The Gamma Swap DEX proof seeded `wtf:wallet-session` with `providerName: "beacon"`, but the current Tezos wallet reader intentionally accepts only `providerName: "octez.connect"`. The Swap app was healthy, but the rendered proof stayed in the disconnected state and the submit button read `Connect Wallet`.
+
+**Why it mattered**: Gamma route containment depends on proving meaningful app states, not just page load. A stale harness wallet seed can make a presentation shell look broken, encourage unnecessary app changes, or force broad suites to exclude an otherwise-contained route.
+
+**Rule**: When a browser proof relies on wallet rehydration, seed the same persisted wallet session shape that `readPersistedWalletSession()` currently accepts. Add a source guard tying the proof seed to the accepted provider so future wallet-transport migrations update the proof with the reader.
+
+---
+
+## 2026-06-30 - Gamma final-route proof needs rendered control hooks and active-tab metrics
+
+**What happened**: The final mixed Gamma bucket initially failed because a Club Dues action still carried a 2px Classic border, Tezos Intel's shared styled input `attrs` overwrote panel-specific `data-tezos-intel-region` markers, and the public-profile proof tried to measure an Activity table after the test had switched to the Messages tab.
+
+**Why it mattered**: Gamma containment is a rendered DOM contract, not just source intent. Shared styled-component attrs can erase route-specific measurement hooks, and tabbed surfaces only expose the currently active panel. Tests that measure hidden panels create false failures, while 2px legacy borders show actual Classic chrome leaking through.
+
+**Rule**: For Gamma route-owner proofs, use separate rendered control markers when shared styled components already own generic region attrs. Force Gamma-scoped measured regions to 1px borders, and measure tab/panel chrome while that tab is active or restrict final metrics to the current visible state.
+
+---
+
+## 2026-06-30 - Gamma gameshow containment needs rendered markers, not CSS intent
+
+**What happened**: The gameshow route pass added Gamma CSS for DedRooms admin chrome and the source policy saw the `admin-panel` string, but the actual rendered `AdminPanel` element did not carry `data-dedrooms-region="admin-panel"`. The first focused browser proof failed on that missing region even though the source-level policy and build were otherwise healthy.
+
+**Why it mattered**: Gamma route containment is a rendered shell contract. CSS selectors and policy strings can show intent, but only the browser proof confirms the app owner exposes measurable regions inside `[data-gamma-application-content]` without falling back to Classic desktop behavior.
+
+**Rule**: For Gamma route-owner passes, put region markers on the rendered owner elements themselves, not only in Gamma CSS selectors. Keep the source policy as a guard, but close each route only after Playwright finds the surface and critical regions in the rendered app.
+
+---
+
+## 2026-06-30 - Gamma native admin routes close through route owners
+
+**What happened**: The remaining admin backlog was not just the central `/admin` suite. `/control-board`, `/backup-manager`, `/contract-factory`, `/operator-wallet`, and `/dev/ux-lab` are separate owner surfaces with separate API and risk boundaries: gameshow operations, backup proof, Kiln/factory deployment, signer-mediated operator wallet actions, and portfolio/collection UX testing. The first rendered proof also loaded a stale built Control Board chunk until the client was rebuilt.
+
+**Why it mattered**: A generic admin wrapper would have hidden the differences between backup safety, contract origination, signer intents, and gameshow state changes. Gamma needed to own the visual shell and route handoffs while leaving `/api/control-board/*`, `/api/cockpit/backup/restore-proof`, `/api/factory/*`, `/api/operator-wallet/*`, and portfolio/collection APIs shared and raw.
+
+**Rule**: For Gamma admin containment, split by route owner and prove each strict-admin surface inside `[data-gamma-application-content]` with The Count. Apply presentation-aware routing only to browser handoffs, keep signer/contract/backup/gameshow APIs untouched, rebuild after TSX route-owner edits before browser proof, and reduce the remaining-pass estimate when the admin bucket reaches zero.
+
+---
+
+## 2026-06-30 - Gamma native social surfaces close as separate app owners
+
+**What happened**: The remaining social routes after Digest/W were not aliases of one shared surface. Dear Diary owns private CRUD and index behavior, CRP Nominations owns AppView resolve/submit/share/event behavior, and I Hate Telegram owns Telegram digest reader, FART tracking, and staff curation behavior. The right Gamma pass was to add host markers, measured regions, and Gamma-scoped visual rules in each owner while keeping diary APIs, CRP AppView APIs/events/share intents, and Telegram digest APIs raw.
+
+**Why it mattered**: A generic social wrapper would have hidden important task ownership and risked changing CRP or Telegram behavior just to make the route look native. Each route needed enough rendered proof to show it stayed in Gamma without becoming a rewrite of the app.
+
+**Rule**: For native social Gamma containment, split by owner surface. Prove meaningful visible states for each route, including at least one loaded item or admin/staff panel where the app has one, and update the loop estimate immediately when a domain bucket reaches zero.
 
 ---
 
 ## 2026-06-29 - Vite/Rolldown builds may need Homebrew Node in Codex desktop
 
-**What happened**: The Codex desktop app session exposed a Node runtime that could run package binaries, but the local Vite build failed before app transforms because the Rolldown native binding could not load under that runtime. Re-running the same repo-local Vite binary with `/opt/homebrew/bin/node` completed the build without source changes.
+**What happened**: The wtfOS Soft System typography pass first ran `./node_modules/.bin/vite build` through the Codex app's bundled Node. Vite failed before transforming app code because Rolldown's native `@rolldown/binding-darwin-arm64` binary was rejected by macOS with a code-signature Team ID mismatch. The same client build passed when invoked with `/opt/homebrew/bin/node ./node_modules/.bin/vite build`.
 
-**Why it mattered**: Treating that native-binding failure as an application build break would have sent the font rollout down a dependency churn path. The failure was environmental, while the same lockfile and source passed with the host Node/npm toolchain now placed on the universal shell path.
+**Why it mattered**: Treating this as a typography or Vite source regression would waste time and risk unnecessary dependency churn. The failure was in the local runtime/native-binding boundary, while TypeScript, focused Playwright, and the Homebrew-Node Vite build all passed.
 
 **Rule**: When a Codex desktop Vite build fails with Rolldown native-binding code-signature or optional-dependency errors before app transforms begin, retry the same local binary with `/opt/homebrew/bin/node` before changing source or dependencies. Keep the original failure in the verification notes.
+
+---
+
+## 2026-06-29 - Gamma social aliases close through owners and route-boundary handoffs
+
+**What happened**: The social backlog looked like one cluster, but `/digest`, W route aliases, Dear Diary, CRP nominations, and Telegram digest are separate owners. Digest needed Gamma host chrome and presentation-aware browser navigation at its route exits, while `/w/post/:id`, `/w/chat`, `/w/groupchat/:id`, `/chat`, and `/chat/:id` already shared the W digest shell and needed rendered alias proof rather than app rewrites. The full Gamma suite later failed only on an unrelated Swap wallet-seed drift, so that blocker was tracked separately as `WTF-BB-322` instead of mixing Swap repair into the social pass.
+
+**Why it mattered**: Treating every social route as one implementation would either miss owner-specific chrome or push changes into app behavior. Digest has comms APIs and read-state mutations that must remain raw, while W aliases intentionally preserve digest-mode capabilities and external X exits.
+
+**Rule**: For Gamma social route work, map the actual route owner before editing. Apply `presentationRouteHref` only at browser navigation boundaries, keep shared APIs/raw external exits untouched, prove every alias inside `[data-gamma-application-content]`, and update the remaining-pass estimate from the uncovered route buckets after each loop.
+
+---
+
+## 2026-06-29 - Gamma media detail routes close through owners and fresh proof
+
+**What happened**: The Gallery token routes looked like detail pages, but both `/gallery/token/:contract/:tokenId` and `/token/:contract/:tokenId` are currently owned by the static public Gallery route. The right Gamma pass was to add Gallery-owned host and region chrome around the existing survival-token grid/slideshow, while colleKT needed a separate bridge host around profile source, wallet list, fallback, launch, and iframe regions. A direct full-inventory attempt later collapsed with repeated `ECONNREFUSED 127.0.0.1:4173` after the shared harness died, even though the touched Gamma proof and full Gamma suite passed on a fresh harness port.
+
+**Why it mattered**: Adding real token-detail fetching to close a route-containment gap would have changed public Gallery behavior and route purpose. Treating the broad `ECONNREFUSED` cascade as a media regression would also send future agents into unrelated Beta/Broot/domain code instead of recognizing the existing inventory harness instability tracked by `WTF-BB-238`.
+
+**Rule**: For Gamma route aliases, first identify the actual route owner and close presentation containment at that owner without inventing missing app behavior. When full inventory fails with cross-suite `ECONNREFUSED`, preserve the failed-run evidence, reference `WTF-BB-238`, rerun the touched Gamma proof and full Gamma suite on a fresh `HARNESS_PORT`, and report the full-inventory blocker separately from route containment status.
+
+---
+
+## 2026-06-29 - WTF LIVE font cleanup must include realtime sanitizers
+
+**What happened**: The WTF LIVE client removed MEK/GROUT from visible chat font choices and defaulted the room shell to Classic 95, but the WebSocket chat-style sanitizer still accepted `mek-mono` and `grout-display` and fell back to `mek-mono` for missing or invalid realtime chat payloads.
+
+**Why it mattered**: Realtime chat is a separate ingress path from the Theme Builder and room UI controls. If the server sanitizer keeps stale font defaults, old localStorage payloads, harness payloads, or crafted socket messages can reintroduce typography the feature intentionally removed.
+
+**Rule**: Any WTF LIVE typography removal must update every ingress and persistence layer in the same pass: shared defaults, client option lists, client legacy normalization, Playwright harness normalization, and `server/websocket.ts` realtime chat-style sanitization. Add a server-side source policy guard whenever the sanitizer's allowlist changes.
+
+---
+
+## 2026-06-29 - Gamma media infrastructure closes through owner chrome, not API rewrites
+
+**What happened**: The remaining media infrastructure gap mixed two kinds of routes: TezosBeats player surfaces (`/music`, `/tezamp`) and the shared IPFS Pinning/Porcupin manager (`/ipfs-pinning`, `/apps/porcupin-setup`, `/apps/porcupin-dashboard`). The right fix was not to normalize the apps into one component or change storage/player behavior, but to give each owner surface Gamma host markers, region markers, and scoped no-gradient/no-shadow/thin-border chrome.
+
+**Why it mattered**: These routes sit on live media, playlist, PDS, pinning, and storage contracts. Gamma must look and navigate like its own shell while leaving TzKT reads, `/api/media/mine?category=audio`, `/api/music/*`, `/api/ipfs-pinning/*`, policy payloads, job retries, PDS records, and Porcupin storage paths shared and raw.
+
+**Rule**: For Gamma media infrastructure passes, split by owner surface before editing: player chrome gets player markers and visualizer overrides; preservation/admin chrome gets operational status/section/table markers and handoff proof. Count a route as closed only after rendered Gamma proof on the actual route or alias, and keep shared media/pinning hooks untouched unless the user assigns a separate feature fix.
+
+---
+
+## 2026-06-29 - Gamma CH-EASE handoffs belong at the presentation boundary
+
+**What happened**: CH-EASE already had strong package behavior coverage, but the native packager route still rendered with Classic-style local chrome inside Gamma and opened internal destinations such as Studio, IPFS Pinning, Macaroni, and Pasta publishers with raw paths. The first rendered proof also showed that Playwright can serve the previous built chunk until Vite is rebuilt after TSX changes, and the first Gamma styling pass left CH-EASE's old 4px left rails in place.
+
+**Why it mattered**: CH-EASE is a package-routing surface, so its whole job is cross-app handoff. Gamma must keep those handoffs in the Gamma shell without touching package APIs, CSV/export downloads, Macaroni source checks, sessionStorage handoff payloads, package mapping, or event semantics.
+
+**Rule**: For Gamma-native package or bridge surfaces, keep event/API/export paths raw and apply `presentationRouteHref` only at browser navigation boundaries. Rebuild the client before rendered Gamma proof when TSX app code changes, and override old thick operational rails to one-pixel Gamma grouping borders.
+
+---
+
+## 2026-06-29 - Gamma media iframe suites should close as clusters
+
+**What happened**: The remaining media creation-tool routes looked like eight separate Gamma gaps, but they were all static iframe tools owned by the same creation-tool wrapper. The correct pass was to prove the shared wrapper with The Count admin puppet across PArticle Painter, INDUSTR1ALIZER, Paul's Particles V1.0, Nikshumika Paint, Kandinsky Composer, Macaroni, PixelPatterns, and PenRose Backgrounds instead of editing each embedded app.
+
+**Why it mattered**: Reworking iframe apps would risk changing vendored creator tools, Macaroni wallet behavior, static assets, or contract-adjacent flows. The actual Gamma requirement was shell containment: readable host chrome, route-local wrapper markers, preserved iframe sources, and no React95 desktop fallback.
+
+**Rule**: For Gamma-hosted static tool suites, first check whether the routes share a presentation wrapper. If they do, add one rendered cluster proof driven by an appropriate puppet, update route accounting from the fixture parser, and leave embedded app runtime, assets, wallets, APIs, and contracts raw.
+
+---
+
+## 2026-06-29 - Gamma Pasta suites need wrapper proof plus native console proof
+
+**What happened**: Pasta Protocol looked like seven separate uncovered Gamma routes, but six routes were static publisher iframes already owned by the shared creation-tool wrapper, while Colander was a native React control panel with wallet, contract, adapter, and event behavior. The right pass was to prove the shared wrapper across all six static publishers and patch only Colander's presentation shell and internal handoff routing.
+
+**Why it mattered**: Treating every Pasta route as a separate app rewrite would duplicate UI work and risk touching publisher/wallet/contract logic. Treating the whole cluster as only iframe-wrapper work would leave Colander's native management surface looking and navigating like Classic inside Gamma.
+
+**Rule**: For Gamma route clusters, split static iframe apps from native React consoles before editing. Reuse the shared iframe wrapper for static tools, add one rendered proof that covers every sibling route, and give native consoles their own host markers, region markers, scoped Gamma chrome, and `presentationRouteHref` handoffs while leaving wallet, contract, adapter, storage, static asset, and event contracts raw.
+
+---
+
+## 2026-06-29 - Gamma Map Lab containment must stay presentation-only
+
+**What happened**: The Map Lab Gamma pass intersected an older bounty about `/map-lab` auth/public-route drift. The correct Gamma fix was to contain the existing graph workspace and demo mode inside Gamma chrome, not to rewrite route auth, graph persistence, storage keys, event handles, or demo data while doing presentation work.
+
+**Why it mattered**: Gamma is an operating-system skin over shared WTFOS behavior. Fixing a shell escape by changing shared route policy would violate the host-architecture boundary and risk production behavior, even when the same route has a tracked non-Gamma contract issue.
+
+**Rule**: For Gamma containment passes, add host-scoped presentation markers, browser proof, inventory notes, and source-policy tests around the existing app. Keep shared auth, route registries, storage keys, normalized handles, graph logic, API calls, and demo seeds raw unless the user explicitly assigns a separate route-contract fix.
+
+---
+
+## 2026-06-29 - WTF LIVE input meters must not rebuild stage streams
+
+**What happened**: WTF LIVE kept mic-level analyzer state and chat draft state in the public room parent, so every mic frame or keystroke re-rendered the full room. Those renders created fresh filtered `MediaStream` wrapper objects for the same underlying tracks, which made stage video elements reset `srcObject` and flash. The same pass also showed that removing MEK from chat font choices was not enough because WTF LIVE shell chrome still inherited the global display pack, and the mic diagnostic panel occupied too much first-screen space.
+
+**Why it mattered**: Mic enablement and chat typing are the hottest live-room interactions. They must not churn stage media objects or make the screen flicker, and WTF LIVE needs plain Classic 95 typography plus compact diagnostics that can collapse into a drawer.
+
+**Rule**: Keep high-frequency input meters local to the smallest component, cache track-filtered `MediaStream` wrappers by source and track signature, and never create new stream objects in render when the underlying tracks are stable. When removing a disliked font from a feature, update option lists, defaults, legacy normalization, and feature shell font stacks. Mic/device diagnostics should default to a compact row with an explicit details drawer and mobile geometry proof.
+
+---
+
+## 2026-06-29 - Gamma Agent markers need static attrs and optional-pane proof
+
+**What happened**: The Agent Gamma containment pass first used dynamic styled-components `attrs` callbacks for markers on transient props like `$tone`, `$role`, `$active`, and `$enabled`. Source-policy tests passed, but TypeScript rejected the overloads. The first browser proof also treated the permissions copy-once token preview as always present, even though that pane only appears after a token creation action.
+
+**Why it mattered**: Agent is a dense local workspace with provider, filesystem, git, MCP, permission, and memory surfaces. Gamma needs stable measurement hooks without changing those shared behaviors, and the proof must distinguish always-visible containment chrome from state-dependent panels.
+
+**Rule**: For Gamma Agent shell markers, prefer static `attrs(agentRegionAttrs(...))` on styled components and put prop-specific styling in CSS variables or normal styled interpolations. In browser proofs, measure only chrome that is visible in the driven state; assert optional panes by first driving the action that makes them appear.
+
+---
+
+## 2026-06-29 - Gamma settings aliases need dual-entry and thumbnail proof
+
+**What happened**: `/theme-builder` and `/desktop-settings` share the same desktop settings surface, so proving only the canonical route would leave the legacy alias as an unmeasured Gamma escape risk. While adding region markers, the first pass also put media thumbnails under the same `data-desktop-settings-region` selector that strips `background-image`, which would have made saved media and token-art previews disappear in Gamma.
+
+**Why it mattered**: Theme Builder is a dense shell-control surface for appearance, chat typography, wallpaper/token art, pet care, and MCP pairing. Gamma needs to own the surrounding settings chrome on both entry paths without changing the shared desktop/media/profile/pet/MCP APIs or hiding user-selected artwork previews.
+
+**Rule**: For shared settings surfaces with canonical and legacy routes, prove both entry paths in the Gamma harness. Do not apply broad no-background region selectors to dynamic media thumbnails; use a separate marker for thumbnail chrome so the container can be measured while the preview image still renders.
+
+---
+
+## 2026-06-29 - Gamma CLI containment belongs at the navigation service boundary
+
+**What happened**: `/cli` rendered through Gamma, but the full-screen CLI shell delegated command-driven route opens directly to Wouter's raw `setLocation`. That meant a command such as `open /mission-control` had no route-level proof that it would preserve the Gamma presentation prefix, even though the shared CLI kernel correctly kept auth and route gates centralized.
+
+**Why it mattered**: CLI and Terminal are system utilities, not independent app rewrites. Rewriting the shared command kernel would risk browser/native CLI parity, while leaving raw navigation at the fullscreen shell boundary could let a Gamma session fall back into Classic after an otherwise valid command.
+
+**Rule**: For Gamma-hosted command or utility surfaces, keep shared command logic raw and inject presentation-aware navigation at the shell boundary. Prove both the rendered utility chrome and at least one command-driven route handoff in the Playwright harness.
+
+---
+
+## 2026-06-29 - Broad Gamma inventory failures need touched-surface isolation
+
+**What happened**: After the Gamma Swap containment pass, the full inventory suite passed the new Swap Gamma proof, `/swap` route smoke, and Swap subdomain inventory, but a later CH-EASE test failed on a single 404 console error immediately after the harness logged a missing `dist/public/index.html` artifact warning. The isolated CH-EASE rerun passed on a fresh harness port.
+
+**Why it mattered**: A broad Playwright run can surface unrelated artifact instability while the touched Gamma surface is already proven clean. Treating that as a Swap regression would waste time and risk changing unrelated code.
+
+**Rule**: When a full inventory failure occurs outside the touched surface after an artifact warning, first verify the touched proof, route smoke, and subdomain checks passed, then rerun the failing spec fresh with a new `HARNESS_PORT`. Reference the existing artifact-stability bounty (`WTF-BB-238`) unless a new root cause appears.
+
+---
+
+## 2026-06-29 - TSX presentation helper tests need the TSX runner
+
+**What happened**: A broad presentation-policy command used `node --test` and failed only on `client/src/lib/presentation-shell.test.ts` because that test imports a TSX helper module. The same helper test passed under the repo-local `tsx --test` runner, and the Mail presentation policy itself passed under `node --test` because it is source-text based.
+
+**Why it mattered**: The wrong test runner can make healthy Gamma presentation-helper tests look broken, wasting time and inviting unnecessary source changes around a working presentation boundary.
+
+**Rule**: Use `node --test` for source-text policy tests that do not import TSX app modules. Use `./node_modules/.bin/tsx --test` whenever a TS/TSX test imports app helpers, JSX, or TSX modules.
+
+---
+
+## 2026-06-29 - Agent workbench search inputs need explicit names
+
+**What happened**: The Agent file-workbench browser proof could create a file, but the content-search input was only identified by placeholder text. Label-driven automation could not find `Search content`, and the same pattern was present on the file search and terminal command controls.
+
+**Why it mattered**: Agent is an IDE-like surface where keyboard users, assistive tech, and test automation all need stable control names. Placeholder-only search fields are especially fragile in dense side rails because the placeholder disappears once the user types.
+
+**Rule**: Every Agent workbench input needs an explicit programmatic name, even when it sits under a titled panel or icon. Use visible labels for form fields and `aria-label` for compact toolbar/search controls, then prove the interaction with label-based browser selectors.
+
+---
+
+## 2026-06-29 - Agent knowledge answers need boundary-first ranking
+
+**What happened**: The first machine-readable Agent knowledge search could answer an MCP permission question with the generic Network permission entry before the actual MCP paired-token boundary. The data was present, but the companion answer ranked a broad permission match ahead of the specific security boundary the user asked about.
+
+**Why it mattered**: Agent is supposed to teach wtfOS safely. For MCP, wallet, filesystem, and provider questions, a technically present but lower-signal answer can obscure the permission model users need before granting power to an agent.
+
+**Rule**: For Agent companion search, privilege explicit boundary entries when the question names a boundary such as MCP, wallet, filesystem, provider credentials, or chain policy. Tests should assert answer content, not only that a knowledge entry exists.
+
+---
+
+## 2026-06-29 - Agent filesystem panels need side-rail layout proof
+
+**What happened**: The first Agent filesystem snapshot panel worked functionally, but the browser smoke screenshot showed long `WTF/Projects/Agent/...` paths squeezed into a narrow right rail and wrapping as skinny vertical text. Unit tests and the production build passed, so only rendered proof caught the usability issue.
+
+**Why it mattered**: Agent is meant to feel like a native workspace, not a bolted-on web form. Project persistence controls live beside the editor and terminal, where columns can be narrow; long filesystem paths, snapshot metadata, and action buttons need their own compact layout instead of reusing wider dashboard rows.
+
+**Rule**: For Agent workbench side panels, prove desktop and mobile rendering after adding status grids, long paths, or action rows. Put long namespace strings on full-width metadata lines, use one-column rows in narrow rails, and check scroll metrics plus screenshots before considering the interaction finished.
+
+---
+
+## 2026-06-29 - Gamma Arcade proofs must drive provenance before play
+
+**What happened**: The first Gamma Arcade browser proof clicked a Tezos-token-backed Arcade game and expected the playable iframe immediately, but the existing shared Console logic correctly routed the cartridge through the creator provenance gate because token contract and token ID imply attribution is required.
+
+**Why it mattered**: The provenance gate is product behavior, not presentation chrome. A Gamma containment proof that skips it would either fail for the wrong reason or tempt a future pass to remove meaningful creator attribution just to reach the iframe state faster.
+
+**Rule**: For Gamma Arcade/Console play proofs, keep token provenance data realistic and drive the existing card -> provenance -> PLAY -> runtime path. Only use demo/console token IDs when the proof is specifically about no-provenance cartridges.
+
+---
+
+## 2026-06-29 - Gamma workbench markers should not inherit the wrong styled attrs
+
+**What happened**: Game Studio's Gamma proof initially rendered the project list and workbench, but the browser could not find a `project-card` region because `ProjectButton` inherited from `TemplateButton`, which already owned the `template-card` styled-component attrs. A second proof also showed the source editor correctly opening on `index.html`, so the test needed to drive the existing file picker to `game.js` instead of assuming active-file state.
+
+**Why it mattered**: Gamma containment proofs depend on actual DOM markers, not source intent. Inherited styled-component attrs can silently preserve the parent region and make app-owned chrome unmeasurable, while tests that assume internal state can push agents toward changing application behavior instead of proving presentation containment.
+
+**Rule**: For Gamma workbench/list surfaces, give semantically different repeated items their own styled component or explicit DOM marker that is verified in the rendered bundle. Browser proofs should operate the existing UI to reach the target state rather than changing shared app state defaults for presentation tests.
+
+---
+
+## 2026-06-28 - Gamma creator workspaces need list-to-room proof
+
+**What happened**: Studio rendered through the Gamma route shell, but the project list, Drive panel, project cards, file tree, preview/annotation stage, chat, members, and invite search had no Studio-owned Gamma host boundary. The first browser proof also caught a CSS ordering issue where the broad `[data-studio-region]` Gamma border rule overrode the acid-lime presence chip border, muting the live/online indicator.
+
+**Why it mattered**: Studio is a primary creator workspace launched from Gamma's first-screen action set. Opening a project must keep the user inside Gamma from `/studio` to `/studio/:id`, while preserving shared `/api/studio/*`, Drive OAuth, raw file URLs, realtime socket behavior, file mutations, chat, annotations, and permissions.
+
+**Rule**: For primary Gamma workspaces, prove both the index/list surface and the active room/project surface, including the route handoff between them. Scope broad region styling carefully so semantic indicators such as live/online lime status keep their intended color, and use harness-shaped project data for rendered proof instead of changing shared Studio logic.
+
+---
+
+## 2026-06-28 - Gamma iframe apps need wrapper ownership, not iframe rewrites
+
+**What happened**: Creation-tool routes launched from Gamma Home used the shared vendored iframe frame with no Gamma host boundary, so Broot and sibling tools could enter from Gamma while their surrounding header, provenance, and iframe chrome looked presentation-neutral. The correct fix was to give the wrapper shell host markers and Gamma-scoped chrome, not to modify the vendored/static iframe applications.
+
+**Why it mattered**: Gamma must feel like the active operating-system skin around embedded creation tools while preserving static tool code, wallet behavior, iframe sandboxing, provenance links, and support links. Rewriting iframe apps would risk application logic and blur the boundary between presentation work and feature work.
+
+**Rule**: For embedded, static, or iframe applications, add host-scoped wrapper, header, provenance, and iframe markers plus Gamma chrome; keep iframe `src`, sandbox, static assets, API calls, wallet flows, and external exits raw; and prove both wrapper metrics and the canonical iframe workflow in the inventory harness.
+
+---
+
+## 2026-06-27 - Gamma analytics surfaces need dense-card and chart proof
+
+**What happened**: Tz2at rendered through Gamma, but its app-owned market analytics, identity proof steps, metrics, readouts, chart tracks, and firehose cards used classic-neutral panels with no active host marker. The typed styled-components attrs also rejected dashed `data-*` props until the marker helper centralized the cast, and the first browser proof caught a classic-only 3px interpretation callout border that needed a Gamma-scoped reset.
+
+**Why it mattered**: Tz2at connects Tezos/Etherlink activity, AT identity, wallet proofs, firehose search, and market/liquidity analytics. Gamma must preserve shared `/api/tz2at/*`, CSRF fetches, OAuth starts, and client event logging while making dense analytics panes native to the Gamma presentation layer.
+
+**Rule**: For Gamma analytics/identity surfaces, add one active host marker, mark repeated metrics/cards/charts/readouts/steps, scope dense-card styling to the host only, keep data/API/OAuth/logging raw, and prove both the default analytics view and identity-proof view in the rebuilt inventory harness.
+
+---
+
+## 2026-06-27 - Gamma social bridge surfaces need rollout-eligible host proof
+
+**What happened**: Skywire rendered inside Gamma only after its app-owned header, status badges, navigation rail, compose box, live banner, and feed cards received a Gamma host marker plus nested region markers. The first rendered proof used a plain signed-in user and correctly hit Skywire's shared staff-alpha rollout gate instead of mounting the app, because `/skywire` remains governed by shared access policy even when Gamma owns the presentation shell.
+
+**Why it mattered**: Skywire is the social bridge for AT identity, feeds, live status, signals, chat, Tezos vault handoffs, and downstream reward/event pipelines. Gamma must make those surfaces feel native without relaxing rollout gates, changing OAuth/API behavior, or hiding the fact that app availability and role policy still belong to the shared platform.
+
+**Rule**: For Gamma social bridge surfaces, scope app-owned social chrome under one active host marker, expose rendered markers for header, nav, content, compose, feed, live, vault, chat, and preview regions, use a rollout-eligible non-admin puppet such as `test_subject` for browser proof, keep `/api/atproto/*` and `/api/skywire/*` raw, and run the dedicated Skywire inventory tests plus the full inventory suite before claiming containment.
+
+---
+
+## 2026-06-27 - Gamma profile surfaces need identity and avatar modal proof
+
+**What happened**: Profile rendered inside the Gamma route shell and shared AppWindow adapter, but its account panels, social rows, wallet sections, avatar upload control, PFP picker, and PFP editor still owned app-local chrome without a Profile host marker. The profile route also mounts wallet-adjacent panels, so a rendered proof needed to stub shared wallet/profile/Etherlink reads without changing the actual account, wallet, avatar, OAuth, or Skywire behavior.
+
+**Why it mattered**: Profile is the session identity cockpit for display names, passwords, social verification, Skywire linking, wallet linking, owned tokens, and avatar state. If Profile modals or account sections feel like Classic inside Gamma, users lose the presentation layer at exactly the point where they manage who they are.
+
+**Rule**: For Gamma identity/account surfaces, scope account, social, wallet, avatar upload, picker, editor, toolbar, and canvas regions under an active host marker; keep `/api/profile/*`, `/api/wallets`, `/api/auth/*`, `/api/media/upload`, OAuth starts, and Skywire handoffs shared; and prove both rendered Profile chrome and avatar modal/editor chrome in the rebuilt inventory harness.
+
+---
+
+## 2026-06-27 - Gamma wallet collection chambers need canvas and host proof
+
+**What happened**: Hoard rendered inside the Gamma route shell, but its loading, empty, metadata, and canvas-stage wrappers were inline or classic-neutral surfaces with no active host marker. The animated chamber itself was working, but Gamma had no rendered evidence that wallet/collection chrome belonged to the active presentation layer or that the canvas still drew after the wrapper pass.
+
+**Why it mattered**: Hoard is wallet-adjacent collection context for collectors and creator-market handoffs. Gamma must preserve the shared `/api/profile/tokens` read, wallet context, and canvas simulation while making the surrounding chamber chrome feel native to the active shell.
+
+**Rule**: For Gamma wallet/collection surfaces, scope loading, empty, metadata, stage, and canvas regions under one active host marker; leave wallet hooks, token query keys, API paths, and scene/canvas logic untouched; and prove both Gamma chrome metrics and nonblank canvas pixels in the rebuilt Playwright harness.
+
+---
+
+## 2026-06-27 - Gamma economy surfaces need rebuilt harness proof and adapter-aware state markers
+
+**What happened**: WTFIAM rendered inside the Gamma shell, but its app-owned storefront, category rail, item cards, cart, currency selector, and received-tip ledger still carried classic beige/outset market chrome. While adding rendered proof, Playwright initially kept reading stale button markup because the inventory harness serves the built `dist/public` bundle, not live TSX, and the Gamma React95 button adapter applied inline styles while filtering/owning some button props.
+
+**Why it mattered**: WTFIAM is the user-facing economy loop for EXP, earned WTF, inventory, tips, and market sinks. Gamma needs that loop to feel native without touching `/api/in-app-market/*`, Tezos checkout, EXP checkout, reward-WTF checkout, or tip redemption behavior. Rendered proof must also test the actual built bundle that users and puppets see.
+
+**Rule**: For Gamma economy/storefront surfaces, scope storefront, tabs, item cards, cart state, currency state, and tip ledger under one active host marker; keep market hooks, wallet calls, and checkout endpoints untouched; use wrapper-owned data markers for active state when React95 adapter buttons own inline styles or prop forwarding; and rebuild the client bundle before Playwright harness assertions that depend on changed app code.
+
+---
+
+## 2026-06-27 - Gamma admin suites need Count-owned chrome and harness-shaped data proof
+
+**What happened**: `/gamma/admin` rendered inside the Gamma shell, but the Admin route's app-owned suite frame, live-inventory overview, section navigation, active-panel header, tab body, nested tables, forms, and admin panels still carried classic light panels, inset shadows, and multi-accent navigation until the route added a Gamma host marker and rendered admin region markers. The rendered proof also exposed a local Playwright harness mismatch where `/api/admin/challenge-automation/registry` returned legacy `actions` instead of the production `rewardActions` key.
+
+**Why it mattered**: The Count's strict-admin surface is where user management, roles, permissions, sidequests, challenges, rewards, in-app market control, app gates, and automation live. Gamma must make that management suite feel native to the active presentation layer while preserving every shared admin API, mutation, permission, and data contract.
+
+**Rule**: For Gamma admin/control surfaces, scope the route-owned frame, overview, nav, active section header, tab body, tables, forms, and nested admin panels under one active host marker; prove at least role, market, and automation lanes with The Count as the admin puppet; leave shared admin queries and mutations untouched; and keep harness data shaped like the production API or track the mismatch as a harness parity bug.
+
+---
+
+## 2026-06-27 - Gamma progression surfaces need route-preserving quest proof
+
+**What happened**: Side Quests and Challenges rendered inside the Gamma route shell, but their app-owned intro panels, reward account cards, progress meters, quest cards, challenge stat cards, activity detail panels, and submission boxes still carried classic React95-era inset/outset treatment. Side Quest task buttons also used direct route pushes that needed explicit presentation-aware mapping for the local `/gamma/...` harness.
+
+**Why it mattered**: Progression is where EXP, rewards, roles, side quests, challenges, and The Count's review loop become legible to users. Gamma must make those surfaces feel native to the active operating-system skin while preserving the shared `/api/challenge-automation/*`, `/api/side-quests/*`, `/api/rewards/*`, and `/api/challenges/*` behavior.
+
+**Rule**: For Gamma progression surfaces, scope quest, reward, stat, detail, and submission chrome under one active presentation host marker; route app-owned task handoffs through the presentation route helper; leave claim, cashout, submit, reward, and challenge APIs untouched; and prove both visual containment and a Side Quest task handoff inside the rendered Gamma harness with The Count as the admin puppet when relevant.
+
+---
+
+## 2026-06-27 - Gamma video libraries need channel and bumper chrome proof
+
+**What happened**: My Videos rendered inside the Gamma route shell and its delete modal was already Gamma-hosted, but the app-owned video cards, thumbnail frames, bumper assignment toggles, inline channel/credit panels, channel bucket cards, community bumper cards, and upload drop zone still carried classic light/outset/inset panel treatment until the route and nested media-library components added Gamma host and rendered region markers.
+
+**Why it mattered**: My Videos is both a personal media library and a TV programming surface. Gamma must preserve shared `/api/media/*`, `/api/profile/tokens`, `/api/tv/channels`, `/api/tv/bumpers`, and channel/bumper mutation behavior while making the library, channel, bumper, and upload chrome belong to the active presentation layer.
+
+**Rule**: For Gamma video/media programming surfaces, scope the route shell, nested channel buckets, bumper toggles, library cards, inline panels, and upload zones under one active host marker; leave media, TV channel, bumper, token import, and delete APIs untouched; and prove library, channel, bumper, and upload states in the rendered Gamma harness.
+
+---
+
+## 2026-06-27 - Gamma audio libraries need host-scoped toolbar and track proof
+
+**What happened**: My Music rendered inside the Gamma route shell, but its app-owned search/upload row, GroupBox library frame, track cards, metadata, and audio player region still inherited classic light-panel chrome until the route added a Gamma host marker and explicit audio-library region markers.
+
+**Why it mattered**: Audio libraries are personal creator media surfaces. Gamma must preserve shared `/api/media/mine?category=audio` reads and `/api/media/upload` audio uploads while making search, upload, and playback inventory feel like part of the active operating-system skin.
+
+**Rule**: For Gamma audio or music surfaces, scope toolbar, upload controls, library frames, track cards, metadata, and player regions under the active host; keep media API calls and file validation unchanged; and prove a populated audio-library state in the rendered Gamma harness.
+
+---
+
+## 2026-06-27 - Gamma personal media libraries need app-owned card and upload proof
+
+**What happened**: My Photos rendered inside the Gamma route shell, but its app-owned library cards, thumbnail frames, metadata rows, upload panel, and upload drop zone still carried classic desktop borders, shadows, and light panel treatment until the route added a Gamma presentation host marker and explicit media-library region markers.
+
+**Why it mattered**: Personal media libraries are creator/collector work surfaces. Gamma must preserve the shared media upload, token import, delete, and token-detail behavior while making the library and upload chrome belong to the active presentation layer for the whole session.
+
+**Rule**: For Gamma personal media surfaces, add host-scoped region markers around library cards, thumbnails, toolbars, token import regions, and upload zones; keep `/api/media/*` and `/api/profile/tokens` behavior untouched; and prove both a populated library state and an alternate tab or upload state in the rendered Gamma harness.
+
+---
+
+## 2026-06-27 - Gamma urgency commerce surfaces need host-scoped card and meter proof
+
+**What happened**: Rat Race stayed in the Gamma route shell, but its app-owned Shell, Header, Card, Stat, Thumb, Action, and Meter chrome still carried classic gradients, beige panels, shadows, and a hot-meter gradient until route-level host markers and Gamma-rendered region overrides were added.
+
+**Why it mattered**: Rat Race is collector/market discovery. Gamma must keep the presentation layer intact while leaving telemetry, external OBJKT/market links, and `purchaseRatRaceListing` wallet/Tezos behavior untouched.
+
+**Rule**: For Gamma commerce urgency or analytics surfaces, add route-level host markers, explicit rendered regions for cards, diagnostics, meters, and actions, override visual chrome from the active host, keep external market exits and contract calls raw, and use a signed-in actor when route auth requires it.
+
+---
+
+## 2026-06-27 - Gamma commerce cards need signed-in rendered proof and host markers
+
+**What happened**: The on-chain marketplace stayed inside the Gamma route shell, but its reusable listing cards, titlebars, token image frames, action rows, and selected-token previews still owned classic desktop gradients, outset borders, and black pixel shadows. The first rendered proof used an anonymous actor and correctly hit the shared `/marketplace` auth gate instead of mounting the market surface.
+
+**Why it mattered**: Commerce surfaces are high-trust collector routes. Gamma must make the marketplace feel like the active operating-system skin without changing listings, offers, auctions, wallet actions, Tezos contract calls, or route access policy. Protected-route presentation proofs also have to use an actor that satisfies the real shared gate.
+
+**Rule**: For Gamma commerce surfaces, add a route-level presentation host marker, put reusable card/chrome regions behind explicit `data-*` markers, scope Gamma visual overrides from that host, preserve shared marketplace hooks/actions untouched, and use a signed-in puppet for rendered proof when the route definition requires auth.
+
+---
+
+## 2026-06-27 - Gamma media players need rendered region overrides, not only component-local scope
+
+**What happened**: WTF TV received a Gamma host marker and component-scoped Gamma styles, but the rendered screen bezel still computed the original gradient inside Gamma until explicit host-anchored `data-tv-region` overrides were added for the live cabinet, bezel, screen, controls, OSD, overlay, and menu regions.
+
+**Why it mattered**: Media/player apps can own deeply nested chrome where visual fallback survives route containment and normal scoped CSS. Gamma must prove the actual rendered player regions stay inside the active presentation layer while playback, telemetry, embeds, and external OBJKT links continue using shared behavior.
+
+**Rule**: For Gamma media/player surfaces, add explicit rendered region markers, anchor Gamma overrides from the active host to those regions, preserve raw external media/API/OBJKT exits, and verify computed styles in Playwright after rebuilding the Vite bundle.
+
+---
+
+## 2026-06-27 - Gamma feed apps need host-scoped content cards, not just shell containment
+
+**What happened**: W stayed inside the Gamma route shell and the shared AppWindow already rendered as a Gamma inline surface, but W's own digest wrapper, nav strip, badge, main surface, and timeline/embed cards still carried app-local gradients, radius 8 panels, shadows, and legacy typography. The route was hosted correctly while the actual feed content could still look like a separate mini-theme.
+
+**Why it mattered**: Feed and digest apps are daily-return surfaces. Gamma users should not feel dumped into a different visual operating system when they open a social timeline, and the fix must preserve X links, X intent popups, OAuth/API starts, query behavior, and shared W data contracts.
+
+**Rule**: For Gamma feed surfaces, add an app-owned host marker below the shared window shell, scope card/nav/content overrides to `data-*-presentation-host="gamma"`, keep external social/API exits raw, and prove both source policy and rendered post-card chrome in the Gamma route.
+
+---
+
+## 2026-06-27 - Gamma social identity apps need app-owned chrome skins too
+
+**What happened**: Dicksword stayed inside the Gamma route shell, but its custom Discord identity, avatar preview, role mapping, command, and activity panels still owned classic OS-style chrome through app-local styled components. The route was contained, while the visual system could still fracture inside a social identity/admin surface.
+
+**Why it mattered**: Gamma has to behave like a complete operating-system skin for the whole WTFOS session. Social identity surfaces are high-trust areas, so Discord/OAuth/API starts should remain shared and raw while the app-owned panels, avatar stage, and admin chrome adopt the active presentation host.
+
+**Rule**: For Gamma social identity apps, add an app-surface host marker, scope Gamma-only styles under that marker, preserve Classic/Beta defaults, leave API/OAuth/external exits untouched, and prove both source policy and rendered chrome before considering the route contained.
+
+---
+
+## 2026-06-27 - Gamma must skin app-owned chrome, not only app-owned modals
+
+**What happened**: Message Board stayed inside the Gamma route shell and used the React95 adapter for package primitives, but its custom sidebar, channel header, composer, reaction picker, and settings dialogs still carried classic colors, gradients, and border treatment from app-local styled components. The route was contained, yet the operating-system skin visually fractured inside a core social app.
+
+**Why it mattered**: Gamma is a presentation layer for the whole platform. A complete shell cannot rely only on route containment and package-level adapters because shared applications often own their own chrome, popovers, and dialogs outside React95.
+
+**Rule**: When auditing Gamma, inspect each app's custom styled surfaces separately from React95 imports. Add an active-host marker at the app surface, scope Gamma-only chrome under that marker, preserve Classic/Beta defaults, and prove rendered dialogs plus core app chrome with Playwright before claiming the app stays in Gamma.
+
+---
+
+## 2026-06-27 - Gamma new-tab app handoffs need presentation-aware URLs too
+
+**What happened**: WTF LIVE room cards and public-room controls already stayed inside shared LIVE logic, but `window.open("/live/r/...")`, Show Kit, and WTFIAM tip links still emitted raw local paths. In Gamma, those new tabs could open the default route instead of the `/gamma/...` harness mirror or the Gamma hostname shell. The first browser rerun also used a stale Vite bundle and correctly exposed the old raw URL until the bundle was rebuilt.
+
+**Why it mattered**: Gamma containment is not only same-tab routing. Any app-owned new tab, popup, or public-room utility handoff that points at another WTFOS route must preserve the active presentation layer while external URLs, API/OAuth starts, and explicit interface switches remain allowed exits.
+
+**Rule**: Wrap internal `window.open` route handoffs with `presentationRouteHref(...)` when a shared app can run inside Gamma, and add rendered proof for the popup/new-tab URL plus shell presence. After TSX presentation edits, rebuild the Vite bundle before Playwright harness checks so rendered evidence is current.
+
+---
+
+## 2026-06-27 - Gamma rendered proofs must satisfy shared access gates
+
+**What happened**: The WTF LIVE Gamma dialog regression initially tried to open `/gamma/live?tab=stages` as a generic `user`, but the shared WTF LIVE rollout gate only admits eligible staff-alpha roles such as admin/host/cohost/test roles. Gamma correctly rendered the route gate, so the dialog proof failed before the app mounted.
+
+**Why it mattered**: Gamma must preserve shared authentication, role, app-gate, and rollout policy while changing only presentation. A test that uses an ineligible actor can look like a Gamma shell regression even when the route gate is doing exactly what production policy requires.
+
+**Rule**: Rendered Gamma proofs for protected app chrome must use the same eligible puppet role the real route requires, preferably The Count/admin for admin creation surfaces. Do not bypass or relax route gates to test presentation; align the harness actor with the shared access model and keep separate tests for denied states.
+
+---
+
+## 2026-06-27 - Gamma communication app dialogs need host-scoped chrome
+
+**What happened**: WTF LIVE already stayed inside the Gamma route shell, but its stage creation dialog came from shared app styles with a fixed overlay and classic outset card. Because the dialog was app-owned rather than React95-owned, the package adapter could not make it look or behave like a Gamma shell dialog.
+
+**Why it mattered**: Communication surfaces are first-class in Gamma. If creating a stage opens a classic-looking modal, users still see the presentation layer fracture even though routing, permissions, and API behavior remain shared and correct.
+
+**Rule**: Treat create/edit dialogs inside shared communication apps as shell-owned presentation surfaces. Pass the active host into the dialog root, scope Gamma styling to `data-*-presentation-host="gamma"`, preserve Classic/Beta defaults, and add rendered Gamma proof for the real dialog trigger.
+
+---
+
+## 2026-06-27 - Gamma shared modals need shell ownership markers
+
+**What happened**: Gamma had route containment and a React95 adapter, but shared token detail dialogs and media confirmation dialogs still owned fixed overlays, classic titlebars or 2px outset borders, and shadowed windows directly. Gallery, marketplace, photos, videos, and older owned-token paths could therefore open a modal that visually fell back to the classic desktop while the page URL still stayed under Gamma.
+
+**Why it mattered**: A presentation shell is not complete if dialogs and detail inspectors bypass it. Users experience modals as shell-level objects, so Gamma must host them with Gamma chrome without changing token, wallet, marketplace, or media-library logic.
+
+**Rule**: Audit custom shared modals separately from route shells and package adapters. Add a host marker such as `data-token-detail-presentation-host="gamma"` or `data-media-delete-presentation-host="gamma"`, keep Gamma-only styling scoped to that marker, preserve Classic/Beta defaults, and include rendered Gamma modal proof when the route can be mocked safely.
+
+---
+
+## 2026-06-27 - Gamma custom app chrome needs host markers too
+
+**What happened**: The React95 adapter covered shared app imports, but WIM also owns bespoke draggable windows, titlebars, tabs, footer chrome, and body-level popups. Those surfaces could still look like a classic desktop when rendered inside Gamma because they were not React95 components.
+
+**Why it mattered**: Gamma cannot be proven as a complete presentation shell by package-level adaptation alone. Shared apps may have custom chrome, portals, or local desktop metaphors that need host-scoped styling while preserving their behavior and Classic/Beta appearance.
+
+**Rule**: After adding a presentation adapter, audit custom app chrome and portals separately. Give app-owned surfaces a host marker such as `data-wim-presentation-host="gamma"`, scope visual overrides to that marker, and add browser assertions for no gradient/shadow fallback inside Gamma.
+
+---
+
+## 2026-06-27 - Gamma hard route jumps need presentation-aware hrefs
+
+**What happened**: Gamma route rendering and link interception kept normal clicks inside the Gamma shell, but several shared apps still used `window.location.href` or `window.location.assign` for WTFOS app-to-app handoffs such as Skywire to WTF LIVE, Profile to Skywire, Recovery Mode reload, and Discord Linked Roles to Dicksword. On the local Gamma harness these hard jumps could bypass the `/gamma/...` mirror even though OAuth/API starts needed to remain untouched.
+
+**Why it mattered**: Gamma is an operating-system skin, not a landing page. If app-owned hard navigations fall back to canonical local paths or the wrong hostname, users can lose the presentation layer while the underlying feature technically still works.
+
+**Rule**: Route-to-route programmatic navigation inside shared apps should pass through a presentation-aware route helper. Keep `/api/*`, OAuth starts, downloads, and unknown external URLs raw; prove local Gamma hard jumps normalize back to `/gamma/...` while Beta routes ignore stored Gamma session state.
+
+---
+
+## 2026-06-27 - Gamma needs a package-level UI adapter, not per-app React95 rewrites
+
+**What happened**: Gamma could keep routes inside its shell, but shared app internals still imported React95 primitives directly. Rewriting every app would have forked presentation concerns across business surfaces and made Classic/Beta regression risk much higher than the actual UI problem required.
+
+**Why it mattered**: Gamma is supposed to be an interchangeable presentation layer over shared application logic. A single exact-match `react95` runtime adapter lets existing app code keep its imports and behavior while Gamma receives native Gamma windows, buttons, inputs, tabs, and tables. Classic and Beta continue delegating to the real React95 package.
+
+**Rule**: For host-specific presentation swaps, prefer a narrow adapter boundary over per-app rewrites. Keep TypeScript pointed at the original package API, alias only the exact runtime import, and prove Gamma primitives render in representative auth, data, and app-content routes while full inventory proves Classic/Beta parity.
+
+---
+
+## 2026-06-27 - Gamma shell controls must not blanket-reset app content
+
+**What happened**: Gamma's route shell correctly intercepted internal app links, but a shell-level `button { all: unset; }` reset leaked into shared WTF Domains content. The embedded hack.tez "Open in new window" control ended up intercepting pointer events over the `/user/skllzrmy` link, so the browser proof could see the link but could not click it.
+
+**Why it mattered**: Gamma must be a complete presentation shell around existing applications without mutating their app-owned layout behavior. A hostname shell that captures routes but distorts embedded app controls can still create dead links, blocked navigation, and false confidence about app usability.
+
+**Rule**: Scope Gamma visual resets to Gamma-owned controls or style those controls explicitly. Do not use blanket descendant resets inside shell containers that also host shared app content; add Playwright coverage that clicks an internal app-content link and proves it remains inside Gamma.
+
+---
+
+## 2026-06-27 - Gamma app content must not cover shell navigation
+
+**What happened**: The first Gamma route-shell pass rendered `/gamma/gallery` inside the Gamma workspace, but the shared Gallery app content could still overlap the sticky side rail's pointer layer. Playwright proved the shell was present, then timed out trying to open Broot because Gallery's Slideshow button intercepted the side-rail click.
+
+**Why it mattered**: A host-owned shell is not complete if embedded app content can steal shell navigation. Gamma must keep breadcrumbs, side rails, UX switching, search, and permission gates operational no matter which shared route is mounted in the content region.
+
+**Rule**: Give Gamma-owned chrome an explicit stacking layer above shared route content, and keep a browser test that launches from Gamma home into an app route, then navigates again from shell chrome while asserting `[data-wtf-desktop]` never appears.
 
 ---
 
@@ -5890,13 +6440,213 @@
 
 ---
 
+## 2026-06-28 - Gamma signed-in cockpits need nested discovery proof
+
+**What happened**: Dashboard rendered inside the Gamma shell, but its app-owned passport, balance, season, challenge, portfolio, per-wallet, activity, quick-action, and nested Discovery card chrome had no active host marker. The nested Discovery card also carried its own decorative gradient fallback, so Dashboard needed a host-scoped subtree reset rather than only styling the top-level GroupBoxes.
+
+**Why it mattered**: Dashboard is the signed-in cockpit that connects identity, wallets, rewards, seasons, challenges, portfolio analytics, sync health, and discovery. Gamma must make that cockpit native while preserving shared wallet, cockpit, portfolio, season, challenge, and discovery APIs and keeping wallet mutations untouched.
+
+**Rule**: For Gamma cockpit/home surfaces, add one active host marker, mark passport/metrics/wallet rows/activity rows/tables/discovery/quick actions, neutralize nested app-local gradients inside the host only, preserve all shared queries and wallet mutations, and prove populated portfolio plus discovery content in the rebuilt inventory harness.
+
+---
+
+## 2026-06-28 - Gamma progression routes need round-to-route handoff proof
+
+**What happened**: Side Quests and Challenges had Gamma containment, but the neighboring Rounds and Round Detail surfaces still rendered app-owned launch metrics, round cards, shared round info panels, and challenge detail cards without a Gamma host boundary. Their in-app buttons also used raw `setLocation` route strings for Mission Control, Side Quests, Challenges, Calendar, Admin, sibling round routes, and back navigation.
+
+**Why it mattered**: Rounds are the season-level context that explains why challenges, rewards, EXP, and The Count's review loop exist. If Rounds visually falls back to Classic or sends users through raw route handoffs, the progression system feels fragmented even though the underlying gameshow APIs are shared and correct.
+
+**Rule**: For Gamma progression neighbor routes, scope the season picker, launch board, metrics, round cards, round detail cards, and challenge handoffs under one active host marker; route app-owned buttons through `presentationRouteHref`; preserve `/api/seasons`, `/api/rounds`, and `/api/challenges`; and prove both list and detail routes plus at least one cross-app handoff in the rebuilt inventory harness.
+
+---
+
+## 2026-06-28 - Gamma communication routes need typed JSX markers
+
+**What happened**: The Messages/Notification Center Gamma pass initially put `data-messages-region` into `styled(Panel).attrs()`. The browser behavior was conceptually right, but React95's `Panel` attrs type rejected arbitrary `data-*` keys during `tsc`.
+
+**Why it mattered**: Gamma containment relies on stable DOM region markers for rendered proof, but those markers must not fight shared component types or tempt app-specific type casts. The communication surface also had Studio notification and room handoffs that could silently re-enter the Classic window manager without a route-preserving helper.
+
+**Rule**: For React95-backed Gamma surfaces, put `data-*` proof markers on JSX instances unless the component type already accepts the attr object. Keep host-scoped styling in styled components, route app-owned cross-app actions through one presentation-aware helper, and prove both the visual containment and the route handoff in the inventory harness.
+
+---
+
+## 2026-06-28 - Gamma rendered metrics must sample root nodes explicitly
+
+**What happened**: The Casino Gamma proof queried `[data-casino-region="surface"]` with `surface.querySelector(...)`, which cannot match the root element being evaluated. The first rendered proof also assumed React95 `GroupBox` would forward arbitrary data attributes, so the browser test sampled a missing app region even though the child content rendered correctly.
+
+**Why it mattered**: Gamma containment needs browser proof that real rendered chrome follows the shell's visual contract. Missing selectors make the proof noisy and can hide whether the problem is a styling regression, a DOM marker issue, or a wrapper component swallowing attributes.
+
+**Rule**: When a rendered Gamma proof samples the active root surface, compute metrics from that root node directly. For React95-backed wrappers, avoid relying on forwarded `data-*` attributes; put stable markers on explicit child DOM regions and name missing samples in assertions.
+
+---
+
+## 2026-06-28 - Gamma launchers need adjacent route containment proof
+
+**What happened**: The Casino lobby preserved `/gamma/casino/:table` handoffs, but the individual WTF Button, Rug Pull, and Guinea Pig Raceway table routes still owned their own classic panels, gradients, shadows, and raw Casino return buttons until each table gained a Gamma host marker, scoped chrome, and presentation-aware lobby navigation.
+
+**Why it mattered**: A Gamma launcher can be correct while the next screen still visually re-enters Classic. Users experience that as a broken session even if the URL stays under Gamma and the shared Casino APIs continue to work.
+
+**Rule**: When a Gamma pass contains an app launcher, audit at least the immediate destination routes in the same domain. Add host markers and route-preserving back navigation on those destination surfaces, keep shared table/API mutations untouched, and include rendered proof that launcher destinations and their return controls stay inside Gamma.
+
+---
+
+## 2026-06-28 - Gamma proof must wait for the shell loading boundary
+
+**What happened**: The full Gamma Playwright proof became flaky after it grew into a broad route audit. Focused app proofs passed, but the monolithic run could assert app-owned markers while the Gamma shell was still showing its `data-gamma-route-loading` fallback for lazy shared routes.
+
+**Why it mattered**: A loading fallback inside Gamma is not a Classic escape. Treating that state as an app-containment failure wastes debugging time and can push agents toward unnecessary product changes when the rendered session is still correctly hosted by Gamma.
+
+**Rule**: Rendered Gamma route proofs must first assert the Gamma root, route marker, and absence of `[data-wtf-desktop]`, then wait for `[data-gamma-route-loading]` to clear before sampling app-owned regions or visual metrics. Use fresh harness ports for broad reruns when diagnosing stateful Playwright failures.
+
+---
+
+## 2026-06-29 - Native app launches need typed state and registry proof together
+
+**What happened**: The first Agent pass wired the app across the desktop registry, Start Menu, admin surfaces, package acceptance, docs, and inventory, but the chat submit handler created the typed assistant message before its reply text existed. The focused Start Menu suite also exposed an older expected-label list that omitted the already-registered DedRooms gaming entry.
+
+**Why it mattered**: First-class native apps touch many registries at once, so small local TypeScript ordering mistakes and stale launcher expectations can look like platform integration failures. A route smoke is not enough unless the typed app state, desktop launch surfaces, inventory rows, admin ownership, and built bundle all agree.
+
+**Rule**: For new native desktop apps, keep message/state objects explicitly typed after their derived values are built, update launcher expectations to match the canonical route model, and verify with focused model tests, desktop/admin registry tests, inventory coverage, a rebuilt inventory Playwright pass, and a direct rendered route smoke.
+
+---
+
+## 2026-06-29 - Dense Agent panels need container-aware grids
+
+**What happened**: The Agent provider runtime browser smoke proved the client-direct chat path, but the screenshot exposed the Project State cards using viewport breakpoints inside a narrow side column. At desktop width the grid stayed four columns wide even though the container was only a sidebar, so labels like `Branch` and long `wtfos://` paths wrapped into letter-stacked text.
+
+**Why it mattered**: Native IDE-style apps place dense status panels inside resizable columns, not only full-page sections. Viewport media queries can pass a mobile smoke while still failing inside an app-window pane, which makes the workspace feel brittle.
+
+**Rule**: For Agent and other dense AppWindow tools, size repeated status cards with container-friendly tracks such as `repeat(auto-fit, minmax(min(100%, Npx), 1fr))`; verify the rendered app-window screenshot after provider/workbench interactions, not only the default route load.
+
+---
+
+## 2026-06-29 - Gamma rendered proof needs a fresh client bundle
+
+**What happened**: The Trade Boards Gamma source and TypeScript checks passed, but the first rendered Playwright proof still saw `data-marketplace-surface="marketplace"` on `/gamma/trade-boards`. The harness was serving `dist/public` from before the route shim gained `surfaceVariant="trade-boards"`, so the browser snapshot was stale even though source tests were correct.
+
+**Why it mattered**: Gamma containment is judged by what users and puppets see in the browser. A stale built bundle can mimic a presentation regression and waste debugging time unless the test operator recognizes the harness boundary.
+
+**Rule**: Before rendered Gamma inventory proofs, rebuild the client bundle with the local Vite binary whenever source presentation code changed. If source policy passes but browser DOM disagrees, check `dist/public` before changing product code.
+
+---
+
+## 2026-06-29 - Agent generated actions need fail-closed paths
+
+**What happened**: Agent could parse provider-generated file actions, but restored `codeActions` normalized their target paths directly. A malformed stored action could throw during workspace restore, and an absolute `wtfos://` path outside the active project was too permissive for generated edits.
+
+**Why it mattered**: Agent is meant to let providers propose edits, not silently expand their authority. Pasted, provider-returned, imported, or restored actions must not crash the workspace and must not become a path escape from the active project.
+
+**Rule**: Generated Agent file actions must reject relative traversal and absolute `wtfos://` paths outside the active project, catch invalid restored action paths, and keep malformed actions out of workspace state. Cover both parser input and snapshot/local-storage normalization in focused tests before browser proof.
+
+---
+
+## 2026-06-29 - Gamma proofs should filter repeated cards after creating state
+
+**What happened**: The Calendar Gamma proof created a personal calendar entry after loading a public event, so the route correctly rendered two `event-card` regions. The first assertion used a strict repeated-card locator and failed even though the product behavior and Gamma containment were correct.
+
+**Why it mattered**: Gamma route-owned card regions are expected to repeat after add/create interactions. Unfiltered strict assertions can make a healthy shared app look broken and waste time on product code instead of the test selector.
+
+**Rule**: When a rendered Gamma proof creates or adds repeated items, filter by the created item's text or stable key before asserting. Keep repeated region markers broad for coverage, but make stateful assertions target the specific object under test.
+
+---
+
+## 2026-06-29 - Express route params need explicit normalization
+
+**What happened**: A repo-wide TypeScript gate failed on an apphost route because Express exposed `req.params.id` as `string | string[]`, while the route passed it directly into URL encoding for several proxy paths.
+
+**Why it mattered**: Broad verification can be blocked by new route files outside the current feature. Treating route params as plain strings hides array and missing-value cases, and can produce accidental comma-joined IDs if the code falls back to generic string coercion.
+
+**Rule**: Normalize Express route params through a small helper before encoding or forwarding them. Prefer typed `Response`/`Request` surfaces over `any`, and rerun the full type gate after touching route files.
+
+---
+
+## 2026-06-29 - Inventory coverage should trigger Gamma ownership review
+
+**What happened**: While verifying the Gamma Settings pass, inventory coverage failed because `/applications` existed in the route registry and route fixtures but was not fully represented in the interaction inventory. That route also had no Gamma-owned presentation boundary, so a documentation-only fix would have left the shell goal weaker.
+
+**Why it mattered**: Gamma completion depends on every registered WTFOS route staying inside the active presentation layer. A coverage miss can be evidence of a real presentation gap, especially for new system or utility routes that were added outside the Gamma loop.
+
+**Rule**: When inventory coverage reports a route/documentation drift during Gamma work, inspect the route for Gamma host markers before only updating docs. If the route is user-facing and unowned by Gamma, add scoped presentation markers, source policy, rendered proof, and inventory text in the same pass.
+
+---
+
+## 2026-06-29 - Gamma route-hub proofs must rebuild before DOM-marker assertions
+
+**What happened**: Mission Control source gained Gamma host markers and `presentationRouteHref` route handoffs, and source tests passed, but the first rendered Playwright proof could not find `data-mission-control-surface` because the inventory harness was still serving the previous `dist/public` bundle.
+
+**Why it mattered**: Route hubs are exactly where Gamma can fall back into Classic if a handoff is wrong. A stale bundle can falsely imply that the app surface lacks host markers, while a repeated-action label can then hide the real proof target once the bundle is current.
+
+**Rule**: For Gamma route-hub passes, rebuild `dist/public` before asserting DOM markers, then scope route-action clicks to the owning action region when labels repeat in summary panels and detail rows.
+
+---
+
+## 2026-06-29 - Agent permission panels must fail closed on partial data
+
+**What happened**: The Agent MCP access preview passed model tests and TypeScript, but the rendered permissions tab crashed because the token query returned a data object without a `tokens` array. The new preview helpers also accepted only normalized permission arrays, leaving the same class of legacy/local-storage state edge too close to render code.
+
+**Why it mattered**: Agent is a security and permission surface. A partial API response or old workspace snapshot should never crash the entire native app window, and missing permission data must resolve to a normalized, least-surprising default instead of trusting caller shape.
+
+**Rule**: Treat Agent API responses, saved workspace state, and provider/imported state as untrusted at render boundaries. Normalize permission grants inside MCP scope/preview helpers, guard optional arrays before filtering or mapping, and prove the permissions tab in a real browser after rebuilding the client bundle.
+
+---
+
+## 2026-06-29 - Gamma command proofs need command identity selectors
+
+**What happened**: The Command Palette Gamma proof searched for `/browser-boundaries` after filtering the palette, but three commands legitimately shared that route. Playwright strict mode failed because path alone did not identify whether the app, system, or route command was under test.
+
+**Why it mattered**: Gamma route hubs often expose multiple ways to reach the same destination. Treating shared destinations as unique can turn a healthy command surface into a false failure, and can hide whether the intended handoff is actually presentation-aware.
+
+**Rule**: For rendered Gamma command or launcher proofs, select the command row by stable command identity, action region, or command category before asserting text or clicking. Use route paths to verify the resulting navigation, not to uniquely identify the source control when a hub can expose duplicate destinations.
+
+---
+
+## 2026-06-29 - Gamma utility routes need direct ownership proof
+
+**What happened**: Browser Boundaries was already reachable through a Gamma-preserving Command Palette handoff, but the desktop utility pass still needed direct `/gamma/browser-boundaries` proof because the route's own status cells, boundary rows, and action buttons had not yet been shown as Gamma-owned chrome. The same pass covered Recovery Mode, File Manager, Terminal, and Task Manager as a utility cluster instead of treating each route as unrelated.
+
+**Why it mattered**: A route can be reachable through Gamma without its app-owned surface belonging to Gamma. For operating-system utilities, the surrounding chrome is part of the trust model: recovery actions, access boundaries, file dwellings, safe CLI commands, and task controls must all stay visually and navigationally inside the active shell.
+
+**Rule**: Count a Gamma route as directly contained only after its own route surface exposes an active presentation host marker, Gamma-scoped operational regions, and rendered proof of at least one local handoff or state change where applicable. Use hub reachability as supporting evidence, not as a substitute for route-owned containment.
+
+---
+
+## 2026-06-29 - Agent extension installs need render-owned notices
+
+**What happened**: The Agent extension manifest install worked and the manifest appeared, but the browser proof initially timed out waiting for `Installed Local Linter` because the notice text was derived inside a React state updater and rendered as `Installed .`.
+
+**Why it mattered**: Native Agent trust surfaces must give clear feedback when a user installs an extension. A successful but unclear install makes extension review feel brittle, especially when permissions are deliberately disabled until review.
+
+**Rule**: For Agent extension, provider, and workspace install flows, derive notice copy from validated input or returned model values outside React state updaters, keep state updaters pure, and browser-prove the exact success notice plus resulting row state after rebuilding.
+
+---
+
+## 2026-06-29 - Tezos package upgrades must rebuild shipped browser bundles
+
+**What happened**: The Taquito/Octez audit found root package manifests were only part of the wallet surface. Macaroni, Pasta, and Particle Painter shipped tracked browser bundles that still contained Taquito `24.3.0`, Tallinn default protocol constants, and a stale `tezostaquito.io` icon URL even after source code used Octez RPC defaults.
+
+**Why it mattered**: Static creator tools can keep old wallet, transport, and protocol behavior in production while `package.json` looks current. That is especially risky around protocol activations such as U025/Ushuaia and wallet transport migrations.
+
+**Rule**: When updating Tezos wallet/transaction dependencies, audit both lockfiles and every tracked browser bundle that embeds Taquito, Beacon, Octez Connect, or wallet service code. Regenerate those bundles from the upgraded packages, assert the active protocol hash/version in policy tests, and keep fresh-work defaults on Octez mainnet/Shadownet endpoints rather than legacy Ghostnet or Tez.ie fallbacks.
+
+---
+
 ## 2026-06-29 - WTF LIVE room relays must preserve unstyled chat across every harness
 
-**What happened**: The WTF LIVE client started using receiver-side default chat fonts for messages that have no sender-assigned style, but the server and Playwright `/ws/wtf-live` relays still normalized absent styles into a concrete legacy/default style. That made unstyled chat look styled before the receiver preference could apply.
+**What happened**: The public-room UI gained a receiver default font selector for unstyled room chat, and the real `/ws/wtf-live` server stopped forcing a style object onto messages without a sender-assigned font. The first focused browser proof still rendered the message in Classic 95 because the Playwright WTF LIVE relay in `tests/playwright/harness.mjs` had its own chat-style normalizer that always injected a default style.
 
-**Why it mattered**: Font removal and default-font settings are only end-to-end when every ingress path preserves intent. A room UI can remove MEK while the realtime relay quietly reintroduces old defaults, and the test harness can hide the production mismatch.
+**Why it mattered**: WTF LIVE has separate realtime relays in production and in the inventory harness. If only the production socket preserves unstyled messages, local proof can fail for the wrong reason or, worse, future harness behavior can hide a production drift. Receiver-side font defaults only work when every relay preserves the distinction between sender-assigned style and no style.
 
-**Rule**: For WTF LIVE chat typography changes, update client send/receive normalization, server WebSocket normalization, and the Playwright relay together. Missing `style` means "receiver decides"; only sanitize and attach a style object when the sender actually supplied one.
+**Rule**: When changing WTF LIVE socket semantics, patch `server/websocket.ts` and `tests/playwright/harness.mjs` together, then add source-policy coverage for both. For UI that moves controls into drawers or grids, update the focused browser tests to open the drawer and install media mocks before asserting downstream controls.
+
+---
+
+## 2026-06-29 - Octez Connect must own the wallet transport layer
+
+**What happened**: The first Tezos dependency refresh upgraded Taquito and Octez packages but still let the active app adapter sync Octez accounts into a Taquito `BeaconWallet`, and Particle Painter still depended directly on `@ecadlabs/beacon-types` plus `@taquito/beacon-wallet`.
+
+**Why it mattered**: Package currency is not the same as provider alignment. If Octez Connect is the chosen wallet transport, a hidden Beacon provider bridge can keep deprecated provider assumptions alive even while RPC defaults and protocol packages look current.
+
+**Rule**: For Tezos wallet passes, split the layers explicitly: Octez Connect owns wallet/account/session transport, Taquito owns Tezos operation construction and RPC reads, and ECAD packages should appear only as Taquito dependencies or fenced static-bundle compatibility. Add source-policy guards that fail on active `BeaconWallet` bridges or direct ECAD Beacon dependencies in app-owned wallet services.
 
 ---
 

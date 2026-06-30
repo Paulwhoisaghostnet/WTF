@@ -1,5 +1,7 @@
 import styled, { keyframes, css } from "styled-components";
 
+const gammaTVScope = `[data-tv-presentation-host="gamma"]`;
+
 /* ------------------------------------------------------------------ */
 /*  Animations                                                         */
 /* ------------------------------------------------------------------ */
@@ -28,6 +30,59 @@ export const TVWrapper = styled.div`
   margin: -8px;
   display: flex;
   box-sizing: border-box;
+
+  &[data-tv-presentation-host="gamma"] {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    background: #070706;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-tv-presentation-host="gamma"] [data-tv-region="cabinet"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="screen-bezel"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="crt-screen"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="control-panel"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="osd"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="mtv-overlay"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="menu-overlay"] {
+    background-image: none !important;
+    border-width: 1px !important;
+    box-shadow: none !important;
+  }
+
+  &[data-tv-presentation-host="gamma"] [data-tv-region="cabinet"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="screen-bezel"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="crt-screen"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="mtv-overlay"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="menu-overlay"] {
+    border-radius: 6px !important;
+  }
+
+  &[data-tv-presentation-host="gamma"] [data-tv-region="cabinet"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="crt-screen"] {
+    background: #070706 !important;
+  }
+
+  &[data-tv-presentation-host="gamma"] [data-tv-region="screen-bezel"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="control-panel"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="mtv-overlay"],
+  &[data-tv-presentation-host="gamma"] [data-tv-region="menu-overlay"] {
+    background: #11110f !important;
+  }
+
+  &[data-tv-presentation-host="gamma"] [data-tv-region="osd"] {
+    background: #11110f !important;
+    border-radius: 4px !important;
+    color: #00d2ff !important;
+    text-shadow: none !important;
+  }
+
+  &[data-tv-presentation-host="gamma"] [data-tv-region="menu-overlay"] {
+    animation: none !important;
+    color: #f2ead9 !important;
+  }
 `;
 
 export const Cabinet = styled.div`
@@ -72,6 +127,16 @@ export const Cabinet = styled.div`
   flex-direction: column;
   overflow: hidden;
   position: relative;
+
+  ${gammaTVScope} & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+    color: #f2ead9;
+    padding: clamp(8px, 1.4vw, 14px);
+  }
 `;
 
 export const BrandStrip = styled.div`
@@ -80,6 +145,12 @@ export const BrandStrip = styled.div`
   justify-content: space-between;
   padding: 2px 10px 8px;
   flex-shrink: 0;
+
+  ${gammaTVScope} & {
+    border-bottom: 1px solid rgba(242, 234, 217, 0.18);
+    margin-bottom: 10px;
+    padding: 0 0 10px;
+  }
 `;
 
 export const BrandName = styled.div`
@@ -94,6 +165,13 @@ export const BrandName = styled.div`
     0 0 7px rgba(120, 74, 20, 0.35);
   text-transform: uppercase;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
+
+  ${gammaTVScope} & {
+    color: #00d2ff;
+    filter: none;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    text-shadow: none;
+  }
 `;
 
 export const ModelLabel = styled.div`
@@ -102,6 +180,10 @@ export const ModelLabel = styled.div`
   color: #7a5a30;
   letter-spacing: 0;
   opacity: 0.8;
+
+  ${gammaTVScope} & {
+    color: rgba(242, 234, 217, 0.58);
+  }
 `;
 
 export const BodyRow = styled.div`
@@ -121,6 +203,15 @@ export const ScreenBay = styled.div`
   min-height: 0;
   display: flex;
   flex-direction: column;
+
+  ${gammaTVScope} & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+    padding: clamp(8px, 1.5vw, 14px);
+  }
 `;
 
 export const ScreenBezel = styled.div`
@@ -175,6 +266,14 @@ export const CRTScreen = styled.div<{ $on: boolean }>`
     css`
       box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.5);
     `}
+
+  ${gammaTVScope} & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+  }
 `;
 
 export const ScanLines = styled.div`
@@ -190,6 +289,10 @@ export const ScanLines = styled.div`
   );
   z-index: 10;
   border-radius: 12px / 10px;
+
+  ${gammaTVScope} & {
+    display: none;
+  }
 `;
 
 export const CRTCurve = styled.div`
@@ -208,6 +311,10 @@ export const CRTCurve = styled.div`
     inset 0 0 100px 20px rgba(0, 0, 0, 0.25),
     inset 0 0 6px rgba(0, 0, 0, 0.5);
   z-index: 11;
+
+  ${gammaTVScope} & {
+    display: none;
+  }
 
   &::after {
     content: "";
@@ -279,6 +386,15 @@ export const SkipNoticeBanner = styled.div`
     0 0 24px rgba(245, 233, 198, 0.08);
   animation: skipNoticeFade 2600ms ease-out forwards;
 
+  ${gammaTVScope} & {
+    background: #11110f;
+    border: 1px solid rgba(0, 210, 255, 0.38);
+    border-radius: 4px;
+    box-shadow: none;
+    color: #00d2ff;
+    letter-spacing: 0;
+  }
+
   @keyframes skipNoticeFade {
     0% { opacity: 0; transform: translate(-50%, 6px); }
     10% { opacity: 0.95; transform: translate(-50%, 0); }
@@ -298,6 +414,10 @@ export const PowerOnFlash = styled.div`
   );
   animation: ${powerOnGlow} 0.6s ease-out forwards;
   z-index: 8;
+
+  ${gammaTVScope} & {
+    display: none;
+  }
 `;
 
 export const OffScreen = styled.div`
@@ -310,6 +430,11 @@ export const OffScreen = styled.div`
   justify-content: center;
   flex-direction: column;
   gap: 8px;
+
+  ${gammaTVScope} & {
+    background: #070706;
+    background-image: none;
+  }
 `;
 
 export const OffScreenLabel = styled.div`
@@ -318,6 +443,10 @@ export const OffScreenLabel = styled.div`
   color: #1a2a35;
   text-transform: uppercase;
   letter-spacing: 0;
+
+  ${gammaTVScope} & {
+    color: rgba(242, 234, 217, 0.42);
+  }
 `;
 
 export const PowerDot = styled.div<{ $on: boolean }>`
@@ -334,6 +463,13 @@ export const PowerDot = styled.div<{ $on: boolean }>`
       ? "0 0 6px #44dd44, 0 0 14px rgba(68,221,68,0.25), inset 0 -1px 2px rgba(0,0,0,0.3)"
       : "inset 0 1px 2px rgba(0,0,0,0.3)"};
   transition: all 0.4s;
+
+  ${gammaTVScope} & {
+    background: ${({ $on }) => ($on ? "#d6ff3f" : "#11110f")};
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    box-shadow: none;
+  }
 `;
 
 export const MediaVideo = styled.video`
@@ -391,6 +527,15 @@ export const OSD = styled.div`
   overflow: hidden;
   text-overflow: ellipsis;
   text-shadow: 0 0 6px rgba(100, 180, 240, 0.6);
+
+  ${gammaTVScope} & {
+    background: #11110f;
+    border: 1px solid rgba(0, 210, 255, 0.36);
+    border-radius: 4px;
+    box-shadow: none;
+    color: #00d2ff;
+    text-shadow: none;
+  }
 `;
 
 /* ---------- MTV-style metadata overlay ------------------------------
@@ -424,6 +569,15 @@ export const mtvOverlayCardCss = css<{ $visible: boolean }>`
   opacity: ${({ $visible }) => ($visible ? 1 : 0)};
   transform: translateY(${({ $visible }) => ($visible ? "0" : "6px")});
   transition: opacity 420ms ease, transform 420ms ease;
+
+  ${gammaTVScope} & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(0, 210, 255, 0.36);
+    border-radius: 6px;
+    box-shadow: none;
+    color: #f2ead9;
+  }
 `;
 
 export const MtvOverlay = styled.div<{ $visible: boolean }>`
@@ -441,6 +595,11 @@ export const MtvOverlayLink = styled.a<{ $visible: boolean }>`
     border-color: rgba(255, 255, 255, 0.72);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
   }
+
+  ${gammaTVScope} &:hover {
+    border-color: #00d2ff;
+    box-shadow: none;
+  }
 `;
 
 export const MtvEyebrow = styled.div`
@@ -450,6 +609,11 @@ export const MtvEyebrow = styled.div`
   text-transform: uppercase;
   color: #ffdb4d;
   text-shadow: 0 0 4px rgba(255, 219, 77, 0.4);
+
+  ${gammaTVScope} & {
+    color: #00d2ff;
+    text-shadow: none;
+  }
 `;
 
 export const MtvTitle = styled.div`
@@ -462,6 +626,12 @@ export const MtvTitle = styled.div`
   overflow: hidden;
   text-overflow: ellipsis;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+
+  ${gammaTVScope} & {
+    color: #f2ead9;
+    letter-spacing: 0;
+    text-shadow: none;
+  }
 `;
 
 export const MtvCreator = styled.div`
@@ -471,6 +641,10 @@ export const MtvCreator = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  ${gammaTVScope} & {
+    color: rgba(242, 234, 217, 0.82);
+  }
 `;
 
 export const MtvSubline = styled.div`
@@ -482,6 +656,10 @@ export const MtvSubline = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  ${gammaTVScope} & {
+    color: rgba(242, 234, 217, 0.62);
+  }
 `;
 
 export const MtvWallet = styled.div`
@@ -492,13 +670,19 @@ export const MtvWallet = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  ${gammaTVScope} & {
+    color: rgba(242, 234, 217, 0.72);
+  }
 `;
 
 /* ------------------------------------------------------------------ */
 /*  On-Screen Menu (rendered inside the CRT)                           */
 /* ------------------------------------------------------------------ */
 
-export const MenuOverlay = styled.div`
+export const MenuOverlay = styled.div.attrs<{ "data-tv-region"?: string }>({
+  "data-tv-region": "menu-overlay",
+})`
   position: absolute;
   inset: 0;
   z-index: 15;
@@ -513,6 +697,20 @@ export const MenuOverlay = styled.div`
 
   scrollbar-width: thin;
   scrollbar-color: #2a5a3a #0a1a0e;
+
+  ${gammaTVScope} & {
+    animation: none;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    color: #f2ead9;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    scrollbar-color: rgba(0, 210, 255, 0.55) #11110f;
+  }
+
+  ${gammaTVScope} & a {
+    color: #00d2ff !important;
+  }
 `;
 
 export const MenuTitle = styled.div`
@@ -526,6 +724,12 @@ export const MenuTitle = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  ${gammaTVScope} & {
+    border-bottom: 1px solid rgba(242, 234, 217, 0.18);
+    color: #00d2ff;
+    text-shadow: none;
+  }
 `;
 
 export const MenuItem = styled.div<{ $selected?: boolean; $disabled?: boolean }>`
@@ -546,6 +750,18 @@ export const MenuItem = styled.div<{ $selected?: boolean; $disabled?: boolean }>
     background: ${({ $disabled }) =>
       $disabled ? "transparent" : "rgba(136,255,170,0.08)"};
   }
+
+  ${gammaTVScope} & {
+    background: ${({ $selected }) => ($selected ? "rgba(0, 210, 255, 0.12)" : "transparent")};
+    border: 1px solid ${({ $selected }) => ($selected ? "rgba(0, 210, 255, 0.38)" : "transparent")};
+    border-radius: 4px;
+    color: ${({ $disabled }) => ($disabled ? "rgba(242, 234, 217, 0.36)" : "#f2ead9")};
+  }
+
+  ${gammaTVScope} &:hover {
+    background: ${({ $disabled }) => ($disabled ? "transparent" : "rgba(242, 234, 217, 0.08)")};
+    color: ${({ $disabled }) => ($disabled ? "rgba(242, 234, 217, 0.36)" : "#00d2ff")};
+  }
 `;
 
 export const MenuRow = styled.div`
@@ -557,6 +773,10 @@ export const MenuRow = styled.div`
 export const MenuLabel = styled.span`
   font-size: clamp(13px, 1.4vw, 15px);
   color: #55aa77;
+
+  ${gammaTVScope} & {
+    color: rgba(242, 234, 217, 0.64);
+  }
 `;
 
 export const MenuInput = styled.input`
@@ -578,6 +798,23 @@ export const MenuInput = styled.input`
   &::placeholder {
     color: #2a5a3a;
   }
+
+  ${gammaTVScope} & {
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 4px;
+    box-shadow: none;
+    color: #f2ead9;
+  }
+
+  ${gammaTVScope} &:focus {
+    border-color: #00d2ff;
+    box-shadow: none;
+  }
+
+  ${gammaTVScope} &::placeholder {
+    color: rgba(242, 234, 217, 0.44);
+  }
 `;
 
 export const MenuSelect = styled.select`
@@ -593,6 +830,19 @@ export const MenuSelect = styled.select`
   &:focus {
     border-color: #44cc66;
     box-shadow: 0 0 6px rgba(68, 204, 102, 0.3);
+  }
+
+  ${gammaTVScope} & {
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 4px;
+    box-shadow: none;
+    color: #f2ead9;
+  }
+
+  ${gammaTVScope} &:focus {
+    border-color: #00d2ff;
+    box-shadow: none;
   }
 `;
 
@@ -619,11 +869,27 @@ export const MenuBtn = styled.button<{ $accent?: boolean }>`
     opacity: 0.4;
     cursor: default;
   }
+
+  ${gammaTVScope} & {
+    background: ${({ $accent }) => ($accent ? "#00d2ff" : "#11110f")};
+    background-image: none;
+    border: 1px solid ${({ $accent }) => ($accent ? "#00d2ff" : "rgba(242, 234, 217, 0.22)")};
+    border-radius: 4px;
+    color: ${({ $accent }) => ($accent ? "#070706" : "#f2ead9")};
+  }
+
+  ${gammaTVScope} &:hover {
+    background: ${({ $accent }) => ($accent ? "#00d2ff" : "rgba(242, 234, 217, 0.08)")};
+  }
 `;
 
 export const MenuDivider = styled.div`
   border-top: 1px solid rgba(136, 255, 170, 0.12);
   margin: clamp(8px, 1.4%, 16px) 0;
+
+  ${gammaTVScope} & {
+    border-top: 1px solid rgba(242, 234, 217, 0.18);
+  }
 `;
 
 export const MenuScrollList = styled.div`
@@ -637,6 +903,13 @@ export const MenuScrollList = styled.div`
 
   scrollbar-width: thin;
   scrollbar-color: #2a5a3a #0a1a0e;
+
+  ${gammaTVScope} & {
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 4px;
+    scrollbar-color: rgba(0, 210, 255, 0.55) #11110f;
+  }
 `;
 
 export const MenuTokenGrid = styled.div`
@@ -648,6 +921,10 @@ export const MenuTokenGrid = styled.div`
 
   scrollbar-width: thin;
   scrollbar-color: #2a5a3a #0a1a0e;
+
+  ${gammaTVScope} & {
+    scrollbar-color: rgba(0, 210, 255, 0.55) #11110f;
+  }
 `;
 
 export const MenuTokenCard = styled.div`
@@ -667,6 +944,18 @@ export const MenuTokenCard = styled.div`
     border-color: #44cc66;
     background: rgba(68, 204, 102, 0.1);
   }
+
+  ${gammaTVScope} & {
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 4px;
+    color: #f2ead9;
+  }
+
+  ${gammaTVScope} &:hover {
+    background: rgba(242, 234, 217, 0.08);
+    border-color: #00d2ff;
+  }
 `;
 
 export const TokenPreview = styled.div`
@@ -679,6 +968,13 @@ export const TokenPreview = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+
+  ${gammaTVScope} & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 4px;
+  }
 `;
 
 export const TokenPreviewMedia = styled.img`
@@ -729,6 +1025,13 @@ export const ControlPanel = styled.div`
   position: relative;
   box-shadow: inset 1px 0 4px rgba(0, 0, 0, 0.3);
 
+  ${gammaTVScope} & {
+    background: #11110f;
+    background-image: none;
+    border-left: 1px solid rgba(242, 234, 217, 0.18);
+    box-shadow: none;
+  }
+
   @media (max-width: 700px) {
     width: 100%;
     flex-direction: row;
@@ -737,6 +1040,11 @@ export const ControlPanel = styled.div`
     border-left: none;
     border-top: 3px solid #1a1008;
     box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.3);
+
+    ${gammaTVScope} & {
+      border-top: 1px solid rgba(242, 234, 217, 0.18);
+      box-shadow: none;
+    }
   }
 `;
 
@@ -754,6 +1062,11 @@ export const KnobLabel = styled.div`
   color: #a08050;
   text-transform: uppercase;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+
+  ${gammaTVScope} & {
+    color: rgba(242, 234, 217, 0.58);
+    text-shadow: none;
+  }
 `;
 
 export const Knob = styled.button<{ $active?: boolean; $color?: string }>`
@@ -818,6 +1131,27 @@ export const Knob = styled.button<{ $active?: boolean; $color?: string }>`
       inset 0 1px 3px rgba(0, 0, 0, 0.3),
       0 1px 3px rgba(0, 0, 0, 0.4);
   }
+
+  ${gammaTVScope} & {
+    background: ${({ $active, $color }) =>
+      $active ? "#00d2ff" : $color === "red" ? "#11110f" : "#070706"};
+    background-image: none;
+    border: 1px solid ${({ $active, $color }) =>
+      $active ? "#00d2ff" : $color === "red" ? "rgba(214, 255, 63, 0.58)" : "rgba(242, 234, 217, 0.24)"};
+    border-radius: 6px;
+    box-shadow: none;
+    color: ${({ $active }) => ($active ? "#070706" : "#f2ead9")};
+  }
+
+  ${gammaTVScope} &::before,
+  ${gammaTVScope} &::after {
+    display: none;
+  }
+
+  ${gammaTVScope} &:active {
+    transform: scale(0.98);
+    box-shadow: none;
+  }
 `;
 
 export const KnobText = styled.div`
@@ -856,6 +1190,13 @@ export const VolumeSlider = styled.input`
     border: 1px solid #0a0a0a;
   }
 
+  ${gammaTVScope} &::-webkit-slider-track {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.24);
+    border-radius: 4px;
+  }
+
   &::-webkit-slider-thumb {
     appearance: none;
     width: 18px;
@@ -866,11 +1207,25 @@ export const VolumeSlider = styled.input`
     cursor: pointer;
   }
 
+  ${gammaTVScope} &::-webkit-slider-thumb {
+    background: #00d2ff;
+    background-image: none;
+    border: 1px solid #00d2ff;
+    border-radius: 4px;
+  }
+
   &::-moz-range-track {
     width: 4px;
     background: linear-gradient(180deg, #3a3020, #1a1008);
     border-radius: 2px;
     border: 1px solid #0a0a0a;
+  }
+
+  ${gammaTVScope} &::-moz-range-track {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.24);
+    border-radius: 4px;
   }
 
   &::-moz-range-thumb {
@@ -880,6 +1235,13 @@ export const VolumeSlider = styled.input`
     border: 1px solid #3a3020;
     border-radius: 2px;
     cursor: pointer;
+  }
+
+  ${gammaTVScope} &::-moz-range-thumb {
+    background: #00d2ff;
+    background-image: none;
+    border: 1px solid #00d2ff;
+    border-radius: 4px;
   }
 
   @media (max-width: 700px) {
@@ -935,6 +1297,19 @@ export const SpeakerGrill = styled.div`
     width: 40px;
     height: 40px;
   }
+
+  ${gammaTVScope} & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  ${gammaTVScope} &::before,
+  ${gammaTVScope} &::after {
+    display: none;
+  }
 `;
 
 export const FootStrip = styled.div`
@@ -943,6 +1318,10 @@ export const FootStrip = styled.div`
   align-items: flex-end;
   padding: 4px 20px 0;
   flex-shrink: 0;
+
+  ${gammaTVScope} & {
+    display: none;
+  }
 `;
 
 export const Foot = styled.div`
@@ -972,4 +1351,14 @@ export const ChannelDisplay = styled.div`
   box-shadow:
     inset 0 1px 4px rgba(0, 0, 0, 0.6),
     0 1px 0 rgba(80, 55, 30, 0.1);
+
+  ${gammaTVScope} & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 4px;
+    box-shadow: none;
+    color: #00d2ff;
+    text-shadow: none;
+  }
 `;

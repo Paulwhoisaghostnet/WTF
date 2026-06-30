@@ -83,7 +83,7 @@ export function BoardComposer({
   };
 
   return (
-    <Compose>
+    <Compose data-board-region="composer">
       {!user ? (
         <StatusText>Log in to post messages.</StatusText>
       ) : !channel.canPost ? (

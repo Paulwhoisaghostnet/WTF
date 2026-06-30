@@ -11,6 +11,7 @@ import { Window, WindowHeader, WindowContent, Button } from "react95";
 import { useWindowManager, WindowPathContext } from "../../lib/window-context";
 import { useAuth } from "../../lib/auth-context";
 import { useLocalization } from "../../lib/localization";
+import { usePresentationShell } from "../../lib/presentation-shell";
 import { NativeAdminPanel } from "../../features/admin-os/NativeAdminPanel";
 import { findAdminSurfaceForPath } from "../../features/admin-os/admin-surface-registry";
 import { MOBILE_BP, MOBILE } from "../../global-styles";
@@ -288,6 +289,69 @@ const ResizeHandle = styled.div`
   }
 `;
 
+const GammaInlineWindow = styled.section`
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  color: var(--gamma-milk, #f2ead9);
+  background: color-mix(in srgb, var(--gamma-panel, #11110f) 74%, var(--gamma-ink, #070706));
+  border: 1px solid var(--gamma-line, rgba(242, 234, 217, 0.18));
+  border-radius: 6px;
+  overflow: hidden;
+`;
+
+const GammaInlineHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3rem;
+  padding: 0.72rem 0.9rem;
+  border-bottom: 1px solid var(--gamma-line, rgba(242, 234, 217, 0.18));
+  color: var(--gamma-milk, #f2ead9);
+  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+`;
+
+const GammaInlineControls = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+`;
+
+const GammaInlineControl = styled.button`
+  min-height: 2.2rem;
+  color: var(--gamma-cyan, #00d2ff);
+  border: 1px solid var(--gamma-line, rgba(242, 234, 217, 0.18));
+  border-radius: 4px;
+  padding: 0 0.6rem;
+  font: inherit;
+  cursor: pointer;
+`;
+
+const GammaInlineToolbar = styled.div`
+  border-bottom: 1px solid var(--gamma-line, rgba(242, 234, 217, 0.18));
+`;
+
+const GammaInlineBody = styled.div`
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem;
+  color: var(--gamma-milk, #f2ead9);
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+
+  > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+`;
+
 interface AppWindowProps {
   title: string;
   children: ReactNode;
@@ -297,6 +361,7 @@ interface AppWindowProps {
 export function AppWindow({ title, children, toolbar }: AppWindowProps) {
   const pagePath = useContext(WindowPathContext);
   const wm = useWindowManager();
+  const presentation = usePresentationShell();
   const { t, translateSystemText } = useLocalization();
   const isMobile = useIsMobile();
   const { user } = useAuth();
@@ -377,6 +442,43 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
   );
 
   const effectiveMaximized = isMobile || state.maximized;
+
+  if (presentation.host === "gamma") {
+    return (
+      <GammaInlineWindow data-gamma-inline-app-window data-wtf-app-surface="true">
+        <GammaInlineHeader>
+          <span>{localizedTitle}</span>
+          {isStrictAdmin && adminSurface && (
+            <GammaInlineControls>
+              <GammaInlineControl
+                type="button"
+                data-compact-control="true"
+                aria-label={t("appWindow.adminSettings", {
+                  label: localizedAdminLabel,
+                })}
+                onClick={() => setAdminPanelOpen((open) => !open)}
+                title={t("appWindow.adminSettings", {
+                  label: localizedAdminLabel,
+                })}
+              >
+                ADM
+              </GammaInlineControl>
+            </GammaInlineControls>
+          )}
+        </GammaInlineHeader>
+        {toolbar ? <GammaInlineToolbar>{toolbar}</GammaInlineToolbar> : null}
+        <GammaInlineBody data-wtf-app-scroll="true">
+          {adminPanelOpen && (
+            <NativeAdminPanel
+              path={pagePath}
+              onClose={() => setAdminPanelOpen(false)}
+            />
+          )}
+          {children}
+        </GammaInlineBody>
+      </GammaInlineWindow>
+    );
+  }
 
   return (
     <FloatingWindow

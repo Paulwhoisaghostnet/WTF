@@ -16,11 +16,13 @@ import {
   useSavePinPolicy,
   type IpfsPinningOverview,
 } from "./useIpfsPinning";
+import { usePresentationShell } from "../../lib/presentation-shell";
 
 type BackupMode = "wallet_full" | "wallet_collection" | "token";
 
 export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "dashboard" }) {
   const wm = useWindowManager();
+  const presentation = usePresentationShell();
   const overviewQ = useIpfsPinningOverview();
   const savePolicy = useSavePinPolicy();
   const retryJob = useRetryPinningJob();
@@ -52,45 +54,50 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
   }, [overview]);
 
   return (
-    <Shell>
-      <Header>
-        <TitleBlock>
-          <Kicker>{legacyMode ? "Porcupin alias" : "wtfOS organ"}</Kicker>
+    <Shell
+      data-ipfs-pinning-surface="manager"
+      data-ipfs-pinning-presentation-host={presentation.host}
+      data-ipfs-pinning-mode={legacyMode ?? "manager"}
+      data-ipfs-pinning-region="shell"
+    >
+      <Header data-ipfs-pinning-region="header">
+        <TitleBlock data-ipfs-pinning-region="title-block">
+          <Kicker data-ipfs-pinning-region="kicker">{legacyMode ? "Porcupin alias" : "wtfOS organ"}</Kicker>
           <h1>IPFS Pinning Manager</h1>
           <p>
             Hosted Porcupin, Hetzner Object Storage, and public PDS pin records for Tezos media preservation.
           </p>
         </TitleBlock>
-        <HeaderActions>
-          <IconButton onClick={() => overviewQ.refetch()} title="Refresh pinning status">
+        <HeaderActions data-ipfs-pinning-region="header-actions">
+          <IconButton data-ipfs-pinning-region="icon-button" onClick={() => overviewQ.refetch()} title="Refresh pinning status">
             <RefreshCcw size={16} />
           </IconButton>
-          <IconButton onClick={() => wm.openPage("/wtf-subdomains")} title="Open WTF Domains">
+          <IconButton data-ipfs-pinning-region="icon-button" onClick={() => wm.openPage("/wtf-subdomains")} title="Open WTF Domains">
             <ExternalLink size={16} />
           </IconButton>
         </HeaderActions>
       </Header>
 
       {overviewQ.isLoading ? (
-        <Loading>Loading pinning manager...</Loading>
+        <Loading data-ipfs-pinning-region="loading">Loading pinning manager...</Loading>
       ) : overviewQ.isError || !overview ? (
-        <Notice $tone="danger">Could not load the pinning manager.</Notice>
+        <Notice data-ipfs-pinning-region="notice" $tone="danger">Could not load the pinning manager.</Notice>
       ) : (
         <>
           {!overview.role.canUsePinning && (
-            <Notice $tone="locked">
+            <Notice data-ipfs-pinning-region="notice" $tone="locked">
               <ShoppingBag size={18} />
               <span>
                 WTF Pin Collector is required for hosted pinning. The market pass grants only pinning access.
               </span>
-              <TextButton onClick={() => wm.openPage("/wtfiam?category=preservation")}>
+              <TextButton data-ipfs-pinning-region="text-button" onClick={() => wm.openPage("/wtfiam?category=preservation")}>
                 <ShoppingBag size={15} />
                 Market
               </TextButton>
             </Notice>
           )}
 
-          <StatusGrid>
+          <StatusGrid data-ipfs-pinning-region="status-grid">
             <StatusTile label="Role" value={overview.role.canUsePinning ? "Pin Collector ready" : "Locked"} tone={overview.role.canUsePinning ? "ok" : "warn"} />
             <StatusTile label="PDS repo" value={overview.prerequisites.hasActivePdsRepo ? overview.pds?.repoDid || "active" : "setup needed"} tone={overview.prerequisites.hasActivePdsRepo ? "ok" : "warn"} />
             <StatusTile label="Pin home" value={overview.site?.host || "claim wtfos.me"} tone={overview.site?.host && !overview.prerequisites.siteSuspended ? "ok" : "warn"} />
@@ -99,21 +106,21 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
             <StatusTile label="Storage Box" value={overview.storage.storageBoxMirror.configured ? "manifest mirror" : "manifest mirror off"} tone="neutral" />
           </StatusGrid>
 
-          <MainGrid>
-            <Section>
-              <SectionHeader>
+          <MainGrid data-ipfs-pinning-region="main-grid">
+            <Section data-ipfs-pinning-region="section">
+              <SectionHeader data-ipfs-pinning-region="section-header">
                 <Wallet size={18} />
                 <h2>Wallet Backup</h2>
               </SectionHeader>
-              <ModeRow>
-                <ModeButton $active={mode === "wallet_full"} onClick={() => setMode("wallet_full")}>Whole wallet</ModeButton>
-                <ModeButton $active={mode === "wallet_collection"} onClick={() => setMode("wallet_collection")}>Selected collection</ModeButton>
-                <ModeButton $active={mode === "token"} onClick={() => setMode("token")}>Selected item</ModeButton>
+              <ModeRow data-ipfs-pinning-region="mode-row">
+                <ModeButton data-ipfs-pinning-region="mode-button" $active={mode === "wallet_full"} onClick={() => setMode("wallet_full")}>Whole wallet</ModeButton>
+                <ModeButton data-ipfs-pinning-region="mode-button" $active={mode === "wallet_collection"} onClick={() => setMode("wallet_collection")}>Selected collection</ModeButton>
+                <ModeButton data-ipfs-pinning-region="mode-button" $active={mode === "token"} onClick={() => setMode("token")}>Selected item</ModeButton>
               </ModeRow>
               {mode !== "wallet_full" && (
-                <Notice $tone="neutral">Selected collection and item flows use the same PDS record contracts and will attach to this manager next.</Notice>
+                <Notice data-ipfs-pinning-region="notice" $tone="neutral">Selected collection and item flows use the same PDS record contracts and will attach to this manager next.</Notice>
               )}
-              <Field>
+              <Field data-ipfs-pinning-region="field">
                 <label>Wallet address</label>
                 <input
                   value={walletAddress}
@@ -121,7 +128,7 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
                   placeholder="tz1..."
                 />
               </Field>
-              <CheckRow>
+              <CheckRow data-ipfs-pinning-region="check-row">
                 <input
                   type="checkbox"
                   checked={includeFuture}
@@ -129,7 +136,7 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
                 />
                 <span>Keep future scans enabled for this wallet.</span>
               </CheckRow>
-              <CheckRow>
+              <CheckRow data-ipfs-pinning-region="check-row">
                 <input
                   type="checkbox"
                   checked={publicDiscovery}
@@ -137,7 +144,7 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
                 />
                 <span>Publish the well-known pointer at the wtfos.me host.</span>
               </CheckRow>
-              <Disclosure>
+              <Disclosure data-ipfs-pinning-region="disclosure">
                 <input
                   type="checkbox"
                   checked={ackPublic}
@@ -148,15 +155,15 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
                 </span>
               </Disclosure>
               {!overview.prerequisites.hasActivePdsRepo || !overview.prerequisites.hasWtfosSite ? (
-                <Notice $tone="warn">
+                <Notice data-ipfs-pinning-region="notice" $tone="warn">
                   Broad wallet backup needs an active wtfos.me repo and host before publishing pin records.
-                  <TextButton onClick={() => wm.openPage("/wtf-subdomains/setup")}>
+                  <TextButton data-ipfs-pinning-region="text-button" onClick={() => wm.openPage("/wtf-subdomains/setup")}>
                     <ExternalLink size={15} />
                     Setup
                   </TextButton>
                 </Notice>
               ) : null}
-              <PrimaryButton disabled={submitDisabled} onClick={() => {
+              <PrimaryButton data-ipfs-pinning-region="primary-button" disabled={submitDisabled} onClick={() => {
                 savePolicy.mutate({
                   scopeType: "wallet_full",
                   scopeRef: walletAddress.trim(),
@@ -170,16 +177,16 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
                 <Archive size={16} />
                 Enable Wallet Backup
               </PrimaryButton>
-              {savePolicy.isError && <Notice $tone="danger">{savePolicy.error.message}</Notice>}
-              {savePolicy.isSuccess && <Notice $tone="ok">Wallet backup policy queued for PDS publishing.</Notice>}
+              {savePolicy.isError && <Notice data-ipfs-pinning-region="notice" $tone="danger">{savePolicy.error.message}</Notice>}
+              {savePolicy.isSuccess && <Notice data-ipfs-pinning-region="notice" $tone="ok">Wallet backup policy queued for PDS publishing.</Notice>}
             </Section>
 
-            <Section>
-              <SectionHeader>
+            <Section data-ipfs-pinning-region="section">
+              <SectionHeader data-ipfs-pinning-region="section-header">
                 <FileText size={18} />
                 <h2>PDS And Restore</h2>
               </SectionHeader>
-              <DetailList>
+              <DetailList data-ipfs-pinning-region="detail-list">
                 <dt>Repo DID</dt>
                 <dd>{overview.pds?.repoDid || "No active repo"}</dd>
                 <dt>Host</dt>
@@ -191,7 +198,7 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
                 <dt>Quota</dt>
                 <dd>{formatBytes(overview.quota.usedBytes)} / {formatBytes(overview.quota.quotaBytes)}</dd>
               </DetailList>
-              <CounterGrid>
+              <CounterGrid data-ipfs-pinning-region="counter-grid">
                 <MiniCounter label="Discovered" value={estimate.discovered} />
                 <MiniCounter label="Pinned" value={estimate.pinned} />
                 <MiniCounter label="Queued" value={estimate.queued} />
@@ -200,17 +207,17 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
             </Section>
           </MainGrid>
 
-          <Section>
-            <SectionHeader>
+          <Section data-ipfs-pinning-region="section">
+            <SectionHeader data-ipfs-pinning-region="section-header">
               <Archive size={18} />
               <h2>Jobs</h2>
             </SectionHeader>
             <JobTable overview={overview} retryJob={(id) => retryJob.mutate(id)} retrying={retryJob.isPending} />
           </Section>
 
-          <FooterStrip>
+          <FooterStrip data-ipfs-pinning-region="footer">
             <span>Hosted cache root: {overview.provider.storageRoot}</span>
-            <TextButton onClick={() => wm.openPage("/apps/porcupin-setup")}>
+            <TextButton data-ipfs-pinning-region="text-button" onClick={() => wm.openPage("/apps/porcupin-setup")}>
               <ExternalLink size={15} />
               Own-node setup
             </TextButton>
@@ -227,9 +234,9 @@ function JobTable({ overview, retryJob, retrying }: {
   retrying: boolean;
 }) {
   const jobs = overview.jobs.slice(0, 12);
-  if (jobs.length === 0) return <Empty>No pinning jobs yet.</Empty>;
+  if (jobs.length === 0) return <Empty data-ipfs-pinning-region="empty-state">No pinning jobs yet.</Empty>;
   return (
-    <Table>
+    <Table data-ipfs-pinning-region="job-table">
       <thead>
         <tr>
           <th>CID</th>
@@ -250,7 +257,7 @@ function JobTable({ overview, retryJob, retrying }: {
             <td>{formatBytes(Number(job.byteSize || 0))}</td>
             <td>
               {job.status === "failed" ? (
-                <IconButton disabled={retrying} onClick={() => retryJob(Number(job.id))} title="Retry pin">
+                <IconButton data-ipfs-pinning-region="icon-button" disabled={retrying} onClick={() => retryJob(Number(job.id))} title="Retry pin">
                   <RotateCcw size={15} />
                 </IconButton>
               ) : null}
@@ -264,7 +271,7 @@ function JobTable({ overview, retryJob, retrying }: {
 
 function StatusTile({ label, value, tone }: { label: string; value: string; tone: "ok" | "warn" | "danger" | "neutral" }) {
   return (
-    <Tile $tone={tone}>
+    <Tile data-ipfs-pinning-region="status-tile" $tone={tone}>
       <span>{label}</span>
       <strong title={value}>{value}</strong>
     </Tile>
@@ -273,7 +280,7 @@ function StatusTile({ label, value, tone }: { label: string; value: string; tone
 
 function MiniCounter({ label, value }: { label: string; value: number }) {
   return (
-    <Counter>
+    <Counter data-ipfs-pinning-region="counter">
       <strong>{value}</strong>
       <span>{label}</span>
     </Counter>
@@ -300,13 +307,40 @@ const Shell = styled.div`
   display: grid;
   gap: 14px;
   align-content: start;
+
+  &[data-ipfs-pinning-presentation-host="gamma"] {
+    padding: 4px;
+    background: #070706;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-ipfs-pinning-presentation-host="gamma"] [data-ipfs-pinning-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-ipfs-pinning-presentation-host="gamma"] button,
+  &[data-ipfs-pinning-presentation-host="gamma"] input {
+    font-family: inherit;
+  }
 `;
+
+const gammaIpfsScope = `[data-ipfs-pinning-presentation-host="gamma"]`;
 
 const Header = styled.header`
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+
+  ${gammaIpfsScope} & {
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    padding: 10px;
+    background: rgba(12, 12, 11, 0.86);
+  }
 `;
 
 const TitleBlock = styled.div`
@@ -321,6 +355,15 @@ const TitleBlock = styled.div`
     max-width: 760px;
     color: #46534d;
   }
+
+  ${gammaIpfsScope} & h1 {
+    color: #f2ead9;
+    font-size: clamp(22px, 4vw, 28px);
+  }
+
+  ${gammaIpfsScope} & p {
+    color: rgba(242, 234, 217, 0.72);
+  }
 `;
 
 const Kicker = styled.div`
@@ -328,6 +371,12 @@ const Kicker = styled.div`
   font-size: 11px;
   font-weight: 800;
   color: #1f7a5b;
+
+  ${gammaIpfsScope} & {
+    color: #00d2ff;
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+    letter-spacing: 0;
+  }
 `;
 
 const HeaderActions = styled.div`
@@ -345,6 +394,13 @@ const IconButton = styled.button`
   color: #111;
   cursor: pointer;
 
+  ${gammaIpfsScope} & {
+    border: 1px solid rgba(0, 210, 255, 0.58);
+    border-radius: 6px;
+    background: #11110f;
+    color: #00d2ff;
+  }
+
   &:disabled {
     opacity: 0.45;
     cursor: default;
@@ -361,6 +417,13 @@ const TextButton = styled.button`
   color: #111;
   font-weight: 800;
   cursor: pointer;
+
+  ${gammaIpfsScope} & {
+    border: 1px solid rgba(0, 210, 255, 0.58);
+    border-radius: 6px;
+    background: #11110f;
+    color: #00d2ff;
+  }
 `;
 
 const PrimaryButton = styled.button`
@@ -375,6 +438,13 @@ const PrimaryButton = styled.button`
   font-weight: 900;
   cursor: pointer;
 
+  ${gammaIpfsScope} & {
+    border: 1px solid rgba(0, 210, 255, 0.68);
+    border-radius: 6px;
+    background: #00d2ff;
+    color: #070706;
+  }
+
   &:disabled {
     background: #b8c3bd;
     color: #516159;
@@ -386,6 +456,13 @@ const Loading = styled.div`
   padding: 32px;
   background: #fff;
   border: 1px solid #d8e0dc;
+
+  ${gammaIpfsScope} & {
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: #11110f;
+    color: #f2ead9;
+  }
 `;
 
 const Notice = styled.div<{ $tone: "ok" | "warn" | "danger" | "locked" | "neutral" }>`
@@ -398,6 +475,13 @@ const Notice = styled.div<{ $tone: "ok" | "warn" | "danger" | "locked" | "neutra
       $tone === "danger" ? "#8d1f28" : $tone === "ok" ? "#1f7a5b" : $tone === "locked" ? "#9a6b1a" : "#9aa6a0"};
   background: ${({ $tone }) =>
     $tone === "danger" ? "#fff0f1" : $tone === "ok" ? "#eefaf3" : $tone === "locked" ? "#fff8e8" : "#ffffff"};
+
+  ${gammaIpfsScope} & {
+    border: 1px solid ${({ $tone }) => ($tone === "danger" ? "rgba(255, 116, 116, 0.72)" : "rgba(242, 234, 217, 0.2)")};
+    border-radius: 6px;
+    background: #11110f;
+    color: #f2ead9;
+  }
 `;
 
 const StatusGrid = styled.div`
@@ -419,6 +503,13 @@ const Tile = styled.div<{ $tone: "ok" | "warn" | "danger" | "neutral" }>`
   align-content: center;
   gap: 5px;
 
+  ${gammaIpfsScope} & {
+    border: 1px solid ${({ $tone }) => ($tone === "danger" ? "rgba(255, 116, 116, 0.72)" : $tone === "ok" ? "rgba(0, 210, 255, 0.54)" : "rgba(242, 234, 217, 0.18)")};
+    border-radius: 6px;
+    background: #11110f;
+    color: #f2ead9;
+  }
+
   span {
     color: #59655f;
     font-size: 12px;
@@ -426,11 +517,21 @@ const Tile = styled.div<{ $tone: "ok" | "warn" | "danger" | "neutral" }>`
     text-transform: uppercase;
   }
 
+  ${gammaIpfsScope} & span {
+    color: rgba(242, 234, 217, 0.64);
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+    letter-spacing: 0;
+  }
+
   strong {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 14px;
+  }
+
+  ${gammaIpfsScope} & strong {
+    color: #f2ead9;
   }
 `;
 
@@ -450,6 +551,12 @@ const Section = styled.section`
   padding: 14px;
   display: grid;
   gap: 12px;
+
+  ${gammaIpfsScope} & {
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: #11110f;
+  }
 `;
 
 const SectionHeader = styled.div`
@@ -461,6 +568,14 @@ const SectionHeader = styled.div`
     margin: 0;
     font-size: 18px;
     letter-spacing: 0;
+  }
+
+  ${gammaIpfsScope} & {
+    color: #00d2ff;
+  }
+
+  ${gammaIpfsScope} & h2 {
+    color: #f2ead9;
   }
 `;
 
@@ -477,6 +592,13 @@ const ModeButton = styled.button<{ $active: boolean }>`
   color: ${({ $active }) => ($active ? "#fff" : "#111")};
   font-weight: 800;
   cursor: pointer;
+
+  ${gammaIpfsScope} & {
+    border: 1px solid ${({ $active }) => ($active ? "rgba(0, 210, 255, 0.8)" : "rgba(242, 234, 217, 0.2)")};
+    border-radius: 6px;
+    background: ${({ $active }) => ($active ? "rgba(0, 210, 255, 0.14)" : "#11110f")};
+    color: ${({ $active }) => ($active ? "#00d2ff" : "#f2ead9")};
+  }
 `;
 
 const Field = styled.div`
@@ -489,11 +611,24 @@ const Field = styled.div`
     text-transform: uppercase;
   }
 
+  ${gammaIpfsScope} & label {
+    color: rgba(242, 234, 217, 0.76);
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+    letter-spacing: 0;
+  }
+
   input {
     min-height: 38px;
     border: 1px solid #99a7a0;
     padding: 0 10px;
     font: inherit;
+  }
+
+  ${gammaIpfsScope} & input {
+    border: 1px solid rgba(242, 234, 217, 0.24);
+    border-radius: 6px;
+    background: #070706;
+    color: #f2ead9;
   }
 `;
 
@@ -501,6 +636,10 @@ const CheckRow = styled.label`
   display: flex;
   gap: 8px;
   align-items: center;
+
+  ${gammaIpfsScope} & {
+    color: rgba(242, 234, 217, 0.82);
+  }
 `;
 
 const Disclosure = styled(CheckRow)`
@@ -508,6 +647,12 @@ const Disclosure = styled(CheckRow)`
   border: 1px solid #9a6b1a;
   background: #fff8e8;
   align-items: flex-start;
+
+  ${gammaIpfsScope} & {
+    border: 1px solid rgba(242, 234, 217, 0.24);
+    border-radius: 6px;
+    background: #0d0d0c;
+  }
 `;
 
 const DetailList = styled.dl`
@@ -521,9 +666,18 @@ const DetailList = styled.dl`
     font-weight: 800;
   }
 
+  ${gammaIpfsScope} & dt {
+    color: rgba(242, 234, 217, 0.62);
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+  }
+
   dd {
     margin: 0;
     overflow-wrap: anywhere;
+  }
+
+  ${gammaIpfsScope} & dd {
+    color: #f2ead9;
   }
 `;
 
@@ -548,6 +702,21 @@ const Counter = styled.div`
     color: #59655f;
     font-size: 12px;
   }
+
+  ${gammaIpfsScope} & {
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    background: #0d0d0c;
+  }
+
+  ${gammaIpfsScope} & strong {
+    color: #00d2ff;
+  }
+
+  ${gammaIpfsScope} & span {
+    color: rgba(242, 234, 217, 0.66);
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+  }
 `;
 
 const Table = styled.table`
@@ -571,6 +740,21 @@ const Table = styled.table`
     color: #59655f;
   }
 
+  ${gammaIpfsScope} & {
+    color: #f2ead9;
+  }
+
+  ${gammaIpfsScope} & th,
+  ${gammaIpfsScope} & td {
+    border-bottom: 1px solid rgba(242, 234, 217, 0.16);
+  }
+
+  ${gammaIpfsScope} & th {
+    color: rgba(242, 234, 217, 0.62);
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+    letter-spacing: 0;
+  }
+
   .mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
@@ -580,6 +764,12 @@ const Empty = styled.div`
   padding: 16px;
   border: 1px dashed #aeb9b3;
   color: #59655f;
+
+  ${gammaIpfsScope} & {
+    border: 1px dashed rgba(242, 234, 217, 0.26);
+    border-radius: 6px;
+    color: rgba(242, 234, 217, 0.72);
+  }
 `;
 
 const FooterStrip = styled.div`
@@ -591,6 +781,13 @@ const FooterStrip = styled.div`
   border: 1px solid #d8e0dc;
   background: #fff;
   color: #46534d;
+
+  ${gammaIpfsScope} & {
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: #11110f;
+    color: rgba(242, 234, 217, 0.72);
+  }
 
   @media (max-width: 700px) {
     align-items: flex-start;

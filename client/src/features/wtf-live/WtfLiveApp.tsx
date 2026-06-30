@@ -4,6 +4,7 @@ import { Button, GroupBox, Hourglass, TextField } from "react95";
 import { ArrowDown, ArrowUp, Copy, ExternalLink, Keyboard, Lock, LogIn, Music2, Play, Power, Radio, Trash2, Upload, Users } from "lucide-react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
+import { presentationRouteHref, usePresentationShell } from "../../lib/presentation-shell";
 import { skywirePermissionTierLabel, type SkywirePermissionTier } from "@shared/atproto-permissions";
 import {
   ActionGrid,
@@ -270,9 +271,20 @@ function CreateDialog({
   onSubmit: () => void;
   busy: boolean;
 }) {
+  const presentation = usePresentationShell();
   return (
-    <DialogOverlay role="presentation" onClick={onClose}>
-      <DialogCard role="dialog" onClick={(event) => event.stopPropagation()}>
+    <DialogOverlay
+      role="presentation"
+      data-wtf-live-dialog="true"
+      data-wtf-live-presentation-host={presentation.host}
+      onClick={onClose}
+    >
+      <DialogCard
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(event) => event.stopPropagation()}
+      >
         <strong>{title}</strong>
         {fields}
         <Stack style={{ gridTemplateColumns: "1fr 1fr" }}>
@@ -685,11 +697,11 @@ export function WtfLiveApp() {
   }
 
   function openPublicRoom(room: WtfLiveRoom) {
-    window.open(publicRoomPath(room.id), "_blank", "noopener,noreferrer");
+    window.open(presentationRouteHref(publicRoomPath(room.id)), "_blank", "noopener,noreferrer");
   }
 
   function joinPublicRoom(room: WtfLiveRoom) {
-    window.open(publicRoomPath(room.id), "_blank", "noopener,noreferrer");
+    window.open(presentationRouteHref(publicRoomPath(room.id)), "_blank", "noopener,noreferrer");
     setCopyStatus(`Opened ${room.title} in a new browser tab.`);
   }
 
@@ -1235,7 +1247,7 @@ export function WtfLiveApp() {
                 <strong>Stages</strong>
                 <span>{canStages ? "Granted" : "Upgrade Skywire permissions"}</span>
               </FeedItem>
-              <Button onClick={() => { window.location.href = SKYWIRE_SETTINGS_PATH; }}>
+              <Button onClick={() => { window.location.href = presentationRouteHref(SKYWIRE_SETTINGS_PATH); }}>
                 Open Skywire Settings
               </Button>
             </Stack>

@@ -21,6 +21,65 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { UserLink } from "../components/UserLink";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { usePresentationShell } from "../lib/presentation-shell";
+
+const PublicProfileShell = styled.div`
+  min-height: 100%;
+
+  &[data-public-profile-presentation-host="gamma"] {
+    min-height: 100%;
+    padding: 16px;
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    font-family: var(--wtf-sans-font, Inter, "Segoe UI", system-ui, sans-serif);
+  }
+
+  &[data-public-profile-presentation-host="gamma"],
+  &[data-public-profile-presentation-host="gamma"] * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-public-profile-presentation-host="gamma"] [data-public-profile-region] {
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.16) !important;
+    border-width: 1px !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-public-profile-presentation-host="gamma"] :where(fieldset, table, thead, tbody, tr, th, td, input, button) {
+    background-image: none !important;
+    background-color: #11110f !important;
+    color: #f2ead9 !important;
+    border-color: rgba(242, 234, 217, 0.18) !important;
+    border-width: 1px !important;
+    border-radius: 6px !important;
+    font-family: inherit !important;
+  }
+
+  &[data-public-profile-presentation-host="gamma"] :where(a) {
+    color: #00d2ff !important;
+  }
+
+  &[data-public-profile-presentation-host="gamma"] :where(button:hover, input:focus) {
+    border-color: #00d2ff !important;
+    outline: 1px solid rgba(0, 210, 255, 0.5);
+    outline-offset: 1px;
+  }
+
+  &[data-public-profile-presentation-host="gamma"] [data-public-profile-region="verified-badge"] {
+    background: #d6ff3f !important;
+    color: #070706 !important;
+  }
+
+  &[data-public-profile-presentation-host="gamma"] [data-public-profile-region="token-title"] {
+    background: #0d0d0b !important;
+    color: #fff7e8 !important;
+    border-bottom: 1px solid rgba(0, 210, 255, 0.45);
+  }
+`;
 
 const Section = styled(GroupBox)`
   margin-bottom: 12px;
@@ -191,6 +250,7 @@ export function PublicProfile({ username: propUsername }: { username?: string })
   const [activeTab, setActiveTab] = useState(0);
   const [dmText, setDmText] = useState("");
   const { user } = useAuth();
+  const presentation = usePresentationShell();
   const qc = useQueryClient();
   const isOwnProfile = user && username && user.username.toLowerCase() === username.toLowerCase();
 
@@ -245,38 +305,70 @@ export function PublicProfile({ username: propUsername }: { username?: string })
     },
   });
 
-  if (isLoading) return <AppWindow title="Profile"><p>Loading...</p></AppWindow>;
+  if (isLoading) {
+    return (
+      <AppWindow title="Profile">
+        <PublicProfileShell
+          data-public-profile-surface="public-profile"
+          data-public-profile-presentation-host={presentation.host}
+          data-public-profile-region="surface"
+        >
+          <p data-public-profile-region="status-line">Loading...</p>
+        </PublicProfileShell>
+      </AppWindow>
+    );
+  }
   if (error || !profile)
-    return <AppWindow title="Profile"><p>User not found.</p></AppWindow>;
+    return (
+      <AppWindow title="Profile">
+        <PublicProfileShell
+          data-public-profile-surface="public-profile"
+          data-public-profile-presentation-host={presentation.host}
+          data-public-profile-region="surface"
+        >
+          <p data-public-profile-region="status-line">User not found.</p>
+        </PublicProfileShell>
+      </AppWindow>
+    );
 
   const showDmTab = !!user && !isOwnProfile;
 
   return (
     <AppWindow title={`${profile.displayName || profile.username}'s Profile`}>
-      <Tabs value={activeTab} onChange={(val: number) => setActiveTab(val)}>
-        <Tab value={0}>About</Tab>
-        <Tab value={1}>Trade Board</Tab>
-        <Tab value={2}>Listings</Tab>
-        <Tab value={3}>Activity</Tab>
-        {showDmTab && <Tab value={4}>Messages</Tab>}
-      </Tabs>
+      <PublicProfileShell
+        data-public-profile-surface="public-profile"
+        data-public-profile-presentation-host={presentation.host}
+        data-public-profile-region="surface"
+      >
+        <Tabs
+          value={activeTab}
+          data-public-profile-region="tabs"
+          onChange={(val: number) => setActiveTab(val)}
+        >
+          <Tab data-public-profile-region="tab" value={0}>About</Tab>
+          <Tab data-public-profile-region="tab" value={1}>Trade Board</Tab>
+          <Tab data-public-profile-region="tab" value={2}>Listings</Tab>
+          <Tab data-public-profile-region="tab" value={3}>Activity</Tab>
+          {showDmTab && <Tab data-public-profile-region="tab" value={4}>Messages</Tab>}
+        </Tabs>
 
-      <TabBody>
-        {activeTab === 0 && <AboutTab profile={profile} />}
-        {activeTab === 1 && <TradeBoardTab tokens={tradeBoard} />}
-        {activeTab === 2 && <ListingsTab listings={listings} />}
-        {activeTab === 3 && <ActivityTab events={activity} />}
-        {activeTab === 4 && showDmTab && (
-          <DmTab
-            messages={dmData?.messages || []}
-            dmText={dmText}
-            setDmText={setDmText}
-            onSend={() => { if (dmText.trim()) sendDm.mutate(dmText.trim()); }}
-            sending={sendDm.isPending}
-            sendError={sendDm.error instanceof Error ? sendDm.error.message : null}
-          />
-        )}
-      </TabBody>
+        <TabBody data-public-profile-region="tab-body">
+          {activeTab === 0 && <AboutTab profile={profile} />}
+          {activeTab === 1 && <TradeBoardTab tokens={tradeBoard} />}
+          {activeTab === 2 && <ListingsTab listings={listings} />}
+          {activeTab === 3 && <ActivityTab events={activity} />}
+          {activeTab === 4 && showDmTab && (
+            <DmTab
+              messages={dmData?.messages || []}
+              dmText={dmText}
+              setDmText={setDmText}
+              onSend={() => { if (dmText.trim()) sendDm.mutate(dmText.trim()); }}
+              sending={sendDm.isPending}
+              sendError={sendDm.error instanceof Error ? sendDm.error.message : null}
+            />
+          )}
+        </TabBody>
+      </PublicProfileShell>
     </AppWindow>
   );
 }
@@ -286,9 +378,9 @@ function AboutTab({ profile }: { profile: PublicUser }) {
 
   return (
     <>
-      <Section label="About">
-        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-          <PfpCircle $hasImage={!!profile.pfpImageUrl}>
+      <Section label="About" data-public-profile-region="about-panel">
+        <div data-public-profile-region="identity-layout" style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+          <PfpCircle $hasImage={!!profile.pfpImageUrl} data-public-profile-region="avatar">
             {profile.pfpImageUrl ? (
               <img src={profile.pfpImageUrl} alt="pfp" />
             ) : (
@@ -312,7 +404,7 @@ function AboutTab({ profile }: { profile: PublicUser }) {
       </Section>
 
       {(profile.email || profile.twitterHandle || profile.discordHandle || profile.atprotoHandle) && (
-        <Section label="Contact & Social">
+        <Section label="Contact & Social" data-public-profile-region="social-panel">
           {profile.email && (
             <Field>
               <strong>Email:</strong>{" "}
@@ -329,13 +421,13 @@ function AboutTab({ profile }: { profile: PublicUser }) {
               >
                 @{profile.twitterHandle}
               </SocialLink>
-              {profile.twitterVerified && <VerifiedBadge>Verified</VerifiedBadge>}
+              {profile.twitterVerified && <VerifiedBadge data-public-profile-region="verified-badge">Verified</VerifiedBadge>}
             </Field>
           )}
           {profile.discordHandle && (
             <Field>
               <strong>Discord:</strong> {profile.discordHandle}
-              {profile.discordVerified && <VerifiedBadge>Verified</VerifiedBadge>}
+              {profile.discordVerified && <VerifiedBadge data-public-profile-region="verified-badge">Verified</VerifiedBadge>}
             </Field>
           )}
           {profile.atprotoHandle && (
@@ -348,16 +440,16 @@ function AboutTab({ profile }: { profile: PublicUser }) {
               >
                 @{profile.atprotoHandle}
               </SocialLink>
-              <VerifiedBadge>Connected</VerifiedBadge>
+              <VerifiedBadge data-public-profile-region="verified-badge">Connected</VerifiedBadge>
             </Field>
           )}
         </Section>
       )}
 
       {wallets.length > 0 && (
-        <Section label="Wallets">
+        <Section label="Wallets" data-public-profile-region="wallet-panel">
           {wallets.map((w) => (
-            <Field key={w}>
+            <Field key={w} data-public-profile-region="wallet-row">
               <a
                 href={`https://tzkt.io/${w}`}
                 target="_blank"
@@ -376,16 +468,16 @@ function AboutTab({ profile }: { profile: PublicUser }) {
 
 function TradeBoardTab({ tokens }: { tokens?: TradeBoardToken[] }) {
   if (!tokens) return <Hourglass size={32} />;
-  if (tokens.length === 0) return <Meta>No tokens on trade board.</Meta>;
+  if (tokens.length === 0) return <Meta data-public-profile-region="empty-state">No tokens on trade board.</Meta>;
   return (
-    <TokenGrid>
+    <TokenGrid data-public-profile-region="trade-board-grid">
       {tokens.map((t) => (
-        <TokenCard key={t.id}>
-          <CardTitleBar>
+        <TokenCard key={t.id} data-public-profile-region="token-card">
+          <CardTitleBar data-public-profile-region="token-title">
             <span>📋</span>
             {t.tokenName}
           </CardTitleBar>
-          <Thumb>
+          <Thumb data-public-profile-region="token-thumb">
             {t.thumbnail ? (
               <img src={t.thumbnail} alt={t.tokenName} />
             ) : (
@@ -403,9 +495,9 @@ function TradeBoardTab({ tokens }: { tokens?: TradeBoardToken[] }) {
 
 function ListingsTab({ listings }: { listings?: Listing[] }) {
   if (!listings) return <Hourglass size={32} />;
-  if (listings.length === 0) return <Meta>No active marketplace listings.</Meta>;
+  if (listings.length === 0) return <Meta data-public-profile-region="empty-state">No active marketplace listings.</Meta>;
   return (
-    <Table>
+    <Table data-public-profile-region="listings-table">
       <TableHead>
         <TableRow>
           <TableHeadCell>Token</TableHeadCell>
@@ -434,9 +526,9 @@ function ListingsTab({ listings }: { listings?: Listing[] }) {
 
 function ActivityTab({ events }: { events?: XpEvent[] }) {
   if (!events) return <Hourglass size={32} />;
-  if (events.length === 0) return <Meta>No recent activity.</Meta>;
+  if (events.length === 0) return <Meta data-public-profile-region="empty-state">No recent activity.</Meta>;
   return (
-    <Table>
+    <Table data-public-profile-region="activity-table">
       <TableHead>
         <TableRow>
           <TableHeadCell>Date</TableHeadCell>
@@ -477,11 +569,11 @@ function DmTab({
   sendError: string | null;
 }) {
   return (
-    <div>
-      <div style={{ maxHeight: 320, overflowY: "auto", marginBottom: 8 }}>
+    <div data-public-profile-region="dm-panel">
+      <div data-public-profile-region="dm-messages" style={{ maxHeight: 320, overflowY: "auto", marginBottom: 8 }}>
         {messages.length === 0 && <Meta>No messages yet. Say hello!</Meta>}
         {messages.map((m) => (
-          <MsgRow key={m.id}>
+          <MsgRow key={m.id} data-public-profile-region="dm-message">
             <Meta>
               <strong><UserLink username={m.username} displayName={m.displayName} /></strong>{" "}
               {new Date(m.createdAt).toLocaleString()}
@@ -490,15 +582,16 @@ function DmTab({
           </MsgRow>
         ))}
       </div>
-      <div style={{ display: "flex", gap: 6 }}>
+      <div data-public-profile-region="dm-composer" style={{ display: "flex", gap: 6 }}>
         <TextInput
           value={dmText}
+          data-public-profile-region="dm-input"
           onChange={(e: any) => setDmText(e.target.value)}
           placeholder="Type a message..."
           style={{ flex: 1 }}
           onKeyDown={(e: any) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }}
         />
-        <Button onClick={onSend} disabled={sending || !dmText.trim()} size="sm">
+        <Button data-public-profile-region="dm-send-button" onClick={onSend} disabled={sending || !dmText.trim()} size="sm">
           Send
         </Button>
       </div>

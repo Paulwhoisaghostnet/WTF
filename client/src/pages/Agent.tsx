@@ -29,6 +29,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UiButton, UiPanel, UiToolbar } from "../components/wtfos-ui";
 import { api } from "../lib/api";
+import { usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 import {
   AGENT_PROVIDER_ADAPTERS,
@@ -167,18 +168,146 @@ type SessionCredentialState = Partial<
 
 type SendStatus = "idle" | "sending" | "error";
 
-const Shell = styled.div`
+const agentRegionAttrs = (region: string): any => ({
+  "data-agent-region": region,
+});
+
+const Shell = styled.div.attrs(agentRegionAttrs("surface"))`
   display: grid;
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
+
+  &[data-agent-presentation-host="gamma"] {
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-agent-presentation-host="gamma"],
+  &[data-agent-presentation-host="gamma"] * {
+    box-shadow: none !important;
+    letter-spacing: 0 !important;
+    text-shadow: none !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] * {
+    background-image: none !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] :where(button, input, textarea, select, p, span, strong, div, section, article, nav, h1, h2, h3, h4, label, legend, fieldset) {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] :where(code, pre),
+  &[data-agent-presentation-host="gamma"] [data-agent-region="header-meta"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="status-label"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="editor"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="diff-pane"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="terminal-pane"] {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] :where(p, span, div, label, legend, strong) {
+    color: #f2ead9 !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] [data-agent-region] {
+    border-radius: 6px !important;
+    min-width: 0;
+  }
+
+  &[data-agent-presentation-host="gamma"] section,
+  &[data-agent-presentation-host="gamma"] [data-agent-region="header"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="status-cell"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="action-row"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="permission-row"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="capability-option"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="chat-bubble"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="file-button"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="preview-pane"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="notice-pane"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="diff-pane"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="terminal-pane"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="image-preview"] {
+    background: #11110f !important;
+    border: 1px solid rgba(242, 234, 217, 0.16) !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] [data-agent-region="tabs"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="tab"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="row-list"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="panel-grid"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="side-column"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="badge-row"] {
+    background: transparent !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] [data-agent-region="agent-mark"] {
+    background: #070706 !important;
+    border: 1px solid #00d2ff !important;
+    color: #00d2ff !important;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] [data-agent-region="badge"] {
+    background: #070706 !important;
+    border: 1px solid var(--agent-badge-gamma-border, rgba(242, 234, 217, 0.22)) !important;
+    color: var(--agent-badge-gamma-color, #f2ead9) !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] [data-agent-region="badge"][data-agent-tone="ok"] {
+    border-color: #d6ff3f !important;
+    color: #d6ff3f !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] [data-agent-region="badge"][data-agent-tone="info"],
+  &[data-agent-presentation-host="gamma"] a {
+    border-color: rgba(0, 210, 255, 0.58) !important;
+    color: #00d2ff !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] [data-agent-region="status-label"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="row-meta"],
+  &[data-agent-presentation-host="gamma"] [data-agent-region="header-meta"] {
+    color: rgba(242, 234, 217, 0.68) !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] button:not(:disabled),
+  &[data-agent-presentation-host="gamma"] input:not([type="checkbox"]):not([type="radio"]),
+  &[data-agent-presentation-host="gamma"] select,
+  &[data-agent-presentation-host="gamma"] textarea {
+    background: #070706 !important;
+    border: 1px solid rgba(242, 234, 217, 0.28) !important;
+    border-color: rgba(242, 234, 217, 0.28) !important;
+    border-radius: 6px !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] button[aria-selected="true"],
+  &[data-agent-presentation-host="gamma"] button[aria-pressed="true"] {
+    border-color: #00d2ff !important;
+    color: #00d2ff !important;
+  }
+
+  &[data-agent-presentation-host="gamma"] button:hover,
+  &[data-agent-presentation-host="gamma"] button:focus-visible,
+  &[data-agent-presentation-host="gamma"] input:focus-visible,
+  &[data-agent-presentation-host="gamma"] select:focus-visible,
+  &[data-agent-presentation-host="gamma"] textarea:focus-visible {
+    outline: 1px solid #00d2ff !important;
+    outline-offset: 2px;
+  }
 `;
 
-const HeaderBar = styled(UiToolbar)`
+const HeaderBar = styled(UiToolbar).attrs(agentRegionAttrs("header"))`
   align-items: stretch;
   justify-content: space-between;
 `;
 
-const HeaderIdentity = styled.div`
+const HeaderIdentity = styled.div.attrs(agentRegionAttrs("header-identity"))`
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
   gap: var(--wtf-space-2, 8px);
@@ -186,7 +315,7 @@ const HeaderIdentity = styled.div`
   min-width: min(100%, 420px);
 `;
 
-const AgentMark = styled.div`
+const AgentMark = styled.div.attrs(agentRegionAttrs("agent-mark"))`
   width: 34px;
   height: 34px;
   display: grid;
@@ -206,14 +335,14 @@ const HeaderTitle = styled.h1`
   color: var(--wtf-app-text, #111);
 `;
 
-const HeaderMeta = styled.div`
+const HeaderMeta = styled.div.attrs(agentRegionAttrs("header-meta"))`
   margin-top: 2px;
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted-text, #384352);
   overflow-wrap: anywhere;
 `;
 
-const HeaderControls = styled.div`
+const HeaderControls = styled.div.attrs(agentRegionAttrs("header-controls"))`
   display: flex;
   flex-wrap: wrap;
   gap: var(--wtf-space-2, 8px);
@@ -221,7 +350,7 @@ const HeaderControls = styled.div`
   align-items: center;
 `;
 
-const Select = styled.select`
+const Select = styled.select.attrs(agentRegionAttrs("select"))`
   min-height: 32px;
   padding: 4px 8px;
   border: 1px solid var(--wtf-app-border, #808080);
@@ -230,7 +359,7 @@ const Select = styled.select`
   font: inherit;
 `;
 
-const Input = styled.input`
+const Input = styled.input.attrs(agentRegionAttrs("input"))`
   width: 100%;
   min-height: 32px;
   padding: 5px 8px;
@@ -240,7 +369,7 @@ const Input = styled.input`
   font: inherit;
 `;
 
-const TextArea = styled.textarea`
+const TextArea = styled.textarea.attrs(agentRegionAttrs("textarea"))`
   width: 100%;
   min-height: 108px;
   padding: 8px;
@@ -252,20 +381,20 @@ const TextArea = styled.textarea`
   resize: vertical;
 `;
 
-const Tabs = styled.div`
+const Tabs = styled.div.attrs(agentRegionAttrs("tabs"))`
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
 `;
 
-const TabButton = styled(UiButton)<{ $active: boolean }>`
+const TabButton = styled(UiButton).attrs(agentRegionAttrs("tab"))<{ $active: boolean }>`
   min-width: 108px;
   justify-content: center;
   font-weight: ${(p) => (p.$active ? 800 : 600)};
   box-shadow: ${(p) => (p.$active ? "inset 0 3px 0 var(--wtf-app-primary, #000080)" : undefined)};
 `;
 
-const StatusGrid = styled.div`
+const StatusGrid = styled.div.attrs(agentRegionAttrs("status-grid"))`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 128px), 1fr));
   gap: var(--wtf-space-2, 8px);
@@ -275,7 +404,7 @@ const StatusGrid = styled.div`
   }
 `;
 
-const StatusCell = styled.div`
+const StatusCell = styled.div.attrs(agentRegionAttrs("status-cell"))`
   min-height: 66px;
   padding: var(--wtf-space-2, 8px);
   border: 1px solid var(--wtf-app-border, #808080);
@@ -283,20 +412,20 @@ const StatusCell = styled.div`
   min-width: 0;
 `;
 
-const StatusLabel = styled.div`
+const StatusLabel = styled.div.attrs(agentRegionAttrs("status-label"))`
   font-size: var(--wtf-type-caption, 13px);
   font-weight: 800;
   color: var(--wtf-app-muted-text, #384352);
 `;
 
-const StatusValue = styled.div`
+const StatusValue = styled.div.attrs(agentRegionAttrs("status-value"))`
   margin-top: 4px;
   font-size: var(--wtf-type-body, 15px);
   font-weight: 800;
   overflow-wrap: anywhere;
 `;
 
-const SplitLayout = styled.div`
+const SplitLayout = styled.div.attrs(agentRegionAttrs("split-layout"))`
   display: grid;
   grid-template-columns: minmax(250px, 0.78fr) minmax(0, 1.4fr) minmax(260px, 0.88fr);
   gap: var(--wtf-space-3, 12px);
@@ -311,19 +440,19 @@ const SplitLayout = styled.div`
   }
 `;
 
-const SideColumn = styled.div`
+const SideColumn = styled.div.attrs(agentRegionAttrs("side-column"))`
   display: grid;
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
 `;
 
-const PanelGrid = styled.div`
+const PanelGrid = styled.div.attrs(agentRegionAttrs("panel-grid"))`
   display: grid;
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
 `;
 
-const ProviderGrid = styled.div`
+const ProviderGrid = styled.div.attrs(agentRegionAttrs("provider-grid"))`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--wtf-space-2, 8px);
@@ -333,7 +462,7 @@ const ProviderGrid = styled.div`
   }
 `;
 
-const Field = styled.label`
+const Field = styled.label.attrs(agentRegionAttrs("field"))`
   display: grid;
   gap: 4px;
   font-size: var(--wtf-type-caption, 13px);
@@ -341,14 +470,22 @@ const Field = styled.label`
   color: var(--wtf-app-text, #111);
 `;
 
-const BadgeRow = styled.div`
+const BadgeRow = styled.div.attrs(agentRegionAttrs("badge-row"))`
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
   min-width: 0;
 `;
 
-const Badge = styled.span<{ $tone?: "ok" | "warn" | "info" | "idle" }>`
+const Badge = styled.span.attrs(agentRegionAttrs("badge"))<{ $tone?: "ok" | "warn" | "info" | "idle" }>`
+  --agent-badge-gamma-border: ${(p) =>
+    p.$tone === "ok"
+      ? "#d6ff3f"
+      : p.$tone === "info"
+        ? "rgba(0, 210, 255, 0.58)"
+        : "rgba(242, 234, 217, 0.22)"};
+  --agent-badge-gamma-color: ${(p) =>
+    p.$tone === "ok" ? "#d6ff3f" : p.$tone === "info" ? "#00d2ff" : "#f2ead9"};
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -369,7 +506,7 @@ const Badge = styled.span<{ $tone?: "ok" | "warn" | "info" | "idle" }>`
   line-height: 1.2;
 `;
 
-const ChatLog = styled.div`
+const ChatLog = styled.div.attrs(agentRegionAttrs("chat-log"))`
   display: grid;
   gap: 8px;
   max-height: 454px;
@@ -377,7 +514,7 @@ const ChatLog = styled.div`
   padding-right: 2px;
 `;
 
-const ChatBubble = styled.div<{ $role: "user" | "assistant" | "system" }>`
+const ChatBubble = styled.div.attrs(agentRegionAttrs("chat-bubble"))<{ $role: "user" | "assistant" | "system" }>`
   justify-self: ${(p) => (p.$role === "user" ? "end" : "stretch")};
   width: ${(p) => (p.$role === "user" ? "min(86%, 620px)" : "100%")};
   padding: 8px;
@@ -397,7 +534,7 @@ const ChatBubble = styled.div<{ $role: "user" | "assistant" | "system" }>`
   white-space: pre-wrap;
 `;
 
-const Composer = styled.form`
+const Composer = styled.form.attrs(agentRegionAttrs("composer"))`
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
@@ -408,7 +545,7 @@ const Composer = styled.form`
   }
 `;
 
-const FileSearch = styled.div`
+const FileSearch = styled.div.attrs(agentRegionAttrs("file-search"))`
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr);
   align-items: center;
@@ -416,14 +553,14 @@ const FileSearch = styled.div`
   margin-bottom: 8px;
 `;
 
-const FileList = styled.div`
+const FileList = styled.div.attrs(agentRegionAttrs("file-list"))`
   display: grid;
   gap: 5px;
   max-height: 320px;
   overflow: auto;
 `;
 
-const FileButton = styled.button<{ $active: boolean }>`
+const FileButton = styled.button.attrs(agentRegionAttrs("file-button"))<{ $active: boolean }>`
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr);
   gap: 6px;
@@ -438,19 +575,19 @@ const FileButton = styled.button<{ $active: boolean }>`
   cursor: pointer;
 `;
 
-const FilePath = styled.span`
+const FilePath = styled.span.attrs(agentRegionAttrs("file-path"))`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 `;
 
-const EditorFrame = styled.div`
+const EditorFrame = styled.div.attrs(agentRegionAttrs("editor-frame"))`
   display: grid;
   gap: 8px;
   min-width: 0;
 `;
 
-const EditorTextArea = styled.textarea`
+const EditorTextArea = styled.textarea.attrs(agentRegionAttrs("editor"))`
   width: 100%;
   min-height: 386px;
   resize: vertical;
@@ -464,7 +601,7 @@ const EditorTextArea = styled.textarea`
   tab-size: 2;
 `;
 
-const PreviewPane = styled.div`
+const PreviewPane = styled.div.attrs(agentRegionAttrs("preview-pane"))`
   min-height: 180px;
   padding: 10px;
   border: 1px solid var(--wtf-app-border, #808080);
@@ -474,7 +611,7 @@ const PreviewPane = styled.div`
   line-height: 1.45;
 `;
 
-const NoticePane = styled.div`
+const NoticePane = styled.div.attrs(agentRegionAttrs("notice-pane"))`
   padding: 8px;
   border: 1px solid var(--wtf-app-border, #808080);
   background: var(--wtf-app-surface-raised, #ffffff);
@@ -483,7 +620,7 @@ const NoticePane = styled.div`
   overflow-wrap: anywhere;
 `;
 
-const DiffPane = styled.pre`
+const DiffPane = styled.pre.attrs(agentRegionAttrs("diff-pane"))`
   min-height: 164px;
   max-height: 260px;
   margin: 0;
@@ -498,7 +635,7 @@ const DiffPane = styled.pre`
   white-space: pre-wrap;
 `;
 
-const TerminalPane = styled.pre`
+const TerminalPane = styled.pre.attrs(agentRegionAttrs("terminal-pane"))`
   min-height: 164px;
   max-height: 240px;
   margin: 0;
@@ -513,12 +650,12 @@ const TerminalPane = styled.pre`
   white-space: pre-wrap;
 `;
 
-const RowList = styled.div`
+const RowList = styled.div.attrs(agentRegionAttrs("row-list"))`
   display: grid;
   gap: 7px;
 `;
 
-const ActionRow = styled.div`
+const ActionRow = styled.div.attrs(agentRegionAttrs("action-row"))`
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
@@ -537,17 +674,17 @@ const SnapshotRow = styled(ActionRow)`
   grid-template-columns: 1fr;
 `;
 
-const SnapshotActions = styled(UiToolbar)`
+const SnapshotActions = styled(UiToolbar).attrs(agentRegionAttrs("toolbar"))`
   justify-content: flex-start;
 `;
 
-const RowTitle = styled.div`
+const RowTitle = styled.div.attrs(agentRegionAttrs("row-title"))`
   font-size: var(--wtf-type-body, 15px);
   font-weight: 800;
   overflow-wrap: anywhere;
 `;
 
-const RowMeta = styled.div`
+const RowMeta = styled.div.attrs(agentRegionAttrs("row-meta"))`
   margin-top: 2px;
   color: var(--wtf-app-muted-text, #384352);
   font-size: var(--wtf-type-caption, 13px);
@@ -555,7 +692,7 @@ const RowMeta = styled.div`
   overflow-wrap: anywhere;
 `;
 
-const PermissionGrid = styled.div`
+const PermissionGrid = styled.div.attrs(agentRegionAttrs("permission-grid"))`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -565,7 +702,7 @@ const PermissionGrid = styled.div`
   }
 `;
 
-const PermissionRow = styled.label`
+const PermissionRow = styled.label.attrs(agentRegionAttrs("permission-row"))`
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
@@ -575,7 +712,7 @@ const PermissionRow = styled.label`
   background: var(--wtf-app-surface-raised, #ffffff);
 `;
 
-const CapabilityGrid = styled.div`
+const CapabilityGrid = styled.div.attrs(agentRegionAttrs("capability-grid"))`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -585,7 +722,7 @@ const CapabilityGrid = styled.div`
   }
 `;
 
-const CapabilityOption = styled.label<{ $enabled: boolean }>`
+const CapabilityOption = styled.label.attrs(agentRegionAttrs("capability-option"))<{ $enabled: boolean }>`
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
@@ -600,7 +737,7 @@ const CapabilityOption = styled.label<{ $enabled: boolean }>`
   min-width: 0;
 `;
 
-const MemoryGrid = styled.div`
+const MemoryGrid = styled.div.attrs(agentRegionAttrs("memory-grid"))`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -610,7 +747,7 @@ const MemoryGrid = styled.div`
   }
 `;
 
-const ImagePreview = styled.div`
+const ImagePreview = styled.div.attrs(agentRegionAttrs("image-preview"))`
   min-height: 190px;
   display: grid;
   place-items: center;
@@ -754,6 +891,7 @@ function providerAuthMethods(providerId: AgentProviderId): AgentAuthMethod[] {
 
 export function Agent() {
   const queryClient = useQueryClient();
+  const presentation = usePresentationShell();
   const snapshotImportRef = useRef<HTMLInputElement | null>(null);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const [workspace, setWorkspace] = useState<AgentWorkspaceState>(() => readWorkspace());
@@ -3271,7 +3409,12 @@ export function Agent() {
 
   return (
     <AppWindow title="Agent">
-      <Shell data-testid="wtfos-agent" data-agent-provider={workspace.activeProviderId}>
+      <Shell
+        data-testid="wtfos-agent"
+        data-agent-surface="workspace"
+        data-agent-presentation-host={presentation.host}
+        data-agent-provider={workspace.activeProviderId}
+      >
         <HeaderBar>
           <HeaderIdentity>
             <AgentMark>AI</AgentMark>
@@ -3314,6 +3457,8 @@ export function Agent() {
               type="button"
               role="tab"
               aria-selected={activeTab === tab}
+              aria-pressed={activeTab === tab}
+              data-agent-tab={tab}
               $active={activeTab === tab}
               onClick={() => setActiveTab(tab)}
             >

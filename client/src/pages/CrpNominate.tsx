@@ -5,6 +5,7 @@ import { Button, GroupBox, Hourglass, TextField } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
+import { usePresentationShell } from "../lib/presentation-shell";
 import type { CrpCategory } from "@shared/crp-categories";
 
 type NomineeBundle = {
@@ -58,6 +59,80 @@ type ShareIntent = {
 const Stack = styled.div`
   display: grid;
   gap: 12px;
+
+  &[data-crp-presentation-host="gamma"] {
+    padding: 16px;
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.12);
+    border-radius: 6px;
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  &[data-crp-presentation-host="gamma"],
+  &[data-crp-presentation-host="gamma"] * {
+    letter-spacing: 0 !important;
+    text-shadow: none !important;
+  }
+
+  &[data-crp-presentation-host="gamma"] [data-crp-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-crp-presentation-host="gamma"] :where(fieldset, [data-crp-region="card"], [data-crp-region="nomination-card"], [data-crp-region="result-panel"]) {
+    background: #11110f !important;
+    color: #f2ead9 !important;
+    border-color: rgba(242, 234, 217, 0.16) !important;
+    border-width: 1px !important;
+  }
+
+  &[data-crp-presentation-host="gamma"] :where(legend, label, p, span, strong, code, div) {
+    color: #f2ead9;
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  &[data-crp-presentation-host="gamma"] :where(input, textarea, select) {
+    background: #070706 !important;
+    color: #f2ead9 !important;
+    border: 1px solid rgba(242, 234, 217, 0.24) !important;
+    border-radius: 6px !important;
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif !important;
+  }
+
+  &[data-crp-presentation-host="gamma"] :where(button) {
+    background: #11110f !important;
+    color: #f2ead9 !important;
+    border-color: rgba(0, 210, 255, 0.42) !important;
+    border-width: 1px !important;
+    border-radius: 6px !important;
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif !important;
+  }
+
+  &[data-crp-presentation-host="gamma"] :where(button:hover, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visible) {
+    border-color: #00d2ff !important;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
+
+  &[data-crp-presentation-host="gamma"] [data-crp-region="resolve-button"],
+  &[data-crp-presentation-host="gamma"] [data-crp-region="submit-button"],
+  &[data-crp-presentation-host="gamma"] [data-crp-region="share-button"] {
+    color: #00d2ff !important;
+    border-color: #00d2ff !important;
+  }
+
+  &[data-crp-presentation-host="gamma"] [data-crp-region="source-pill"] {
+    background: #070706;
+    color: rgba(242, 234, 217, 0.74);
+    border-color: rgba(0, 210, 255, 0.32);
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
+
+  &[data-crp-presentation-host="gamma"] a {
+    color: #00d2ff;
+  }
 `;
 
 const Row = styled.div`
@@ -119,6 +194,7 @@ async function openTrackedShare(input: {
 }
 
 export function CrpNominate() {
+  const presentation = usePresentationShell();
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [selectedBundleId, setSelectedBundleId] = useState<string | null>(null);
@@ -242,21 +318,27 @@ export function CrpNominate() {
 
   return (
     <AppWindow title="CRP Nominations">
-      <Stack>
-        <GroupBox label="Nominate for Tezos CRP">
-          <Stack>
-            <p style={{ margin: 0, fontSize: 12 }}>
+      <Stack
+        data-crp-surface="nomination-appview"
+        data-crp-presentation-host={presentation.host}
+        data-crp-region="surface"
+      >
+        <GroupBox label="Nominate for Tezos CRP" data-crp-region="resolve-panel">
+          <Stack data-crp-region="resolve-stack">
+            <p style={{ margin: 0, fontSize: 12 }} data-crp-region="intro-copy">
               Enter a Tezos wallet, .tez domain, X handle, or Bluesky handle. wtfOS merges Objkt,
               TzKT, Tezos Domains, tz2at, tzbsky, and linked wtfOS identity data into one pick list.
             </p>
             <TextField
+              data-crp-region="query-input"
               value={query}
               onChange={(event: React.ChangeEvent<HTMLInputElement>) => setQuery(event.target.value)}
               placeholder="tz1…, melon.tez, @builder, or name.bsky.social"
               fullWidth
             />
-            <Row>
+            <Row data-crp-region="resolve-actions">
               <Button
+                data-crp-region="resolve-button"
                 disabled={!query.trim() || resolveMutation.isPending}
                 onClick={() => resolveMutation.mutate()}
               >
@@ -271,15 +353,16 @@ export function CrpNominate() {
         </GroupBox>
 
         {resolveMutation.data ? (
-          <GroupBox label="Refine nominee identity">
-            <Stack>
+          <GroupBox label="Refine nominee identity" data-crp-region="result-panel">
+            <Stack data-crp-region="result-stack">
               {resolvedBundles.length === 0 ? (
                 <span>No linked wallets or social handles were found for that query.</span>
               ) : (
                 resolvedBundles.map((bundle) => (
-                  <Card key={bundle.id}>
-                    <Row>
+                  <Card key={bundle.id} data-crp-region="card">
+                    <Row data-crp-region="nominee-row">
                       <input
+                        data-crp-region="nominee-radio"
                         type="radio"
                         name="crp-bundle"
                         checked={selectedBundleId === bundle.id}
@@ -287,15 +370,17 @@ export function CrpNominate() {
                       />
                       <strong>{bundle.displayName || "Unknown nominee"}</strong>
                     </Row>
-                    <div style={{ fontSize: 12 }}>
+                    <div style={{ fontSize: 12 }} data-crp-region="nominee-facts">
                       {bundle.tezosAddress ? <div>Wallet: {bundle.tezosAddress}</div> : null}
                       {bundle.tezosDomain ? <div>Domain: {bundle.tezosDomain}</div> : null}
                       {bundle.xHandle ? <div>X: @{bundle.xHandle}</div> : null}
                       {bundle.bskyHandle ? <div>Bluesky: {bundle.bskyHandle}</div> : null}
                     </div>
-                    <div>
+                    <div data-crp-region="source-list">
                       {(Array.isArray(bundle.sources) ? bundle.sources : []).map((source) => (
-                        <SourcePill key={`${bundle.id}-${source}`}>{source}</SourcePill>
+                        <SourcePill key={`${bundle.id}-${source}`} data-crp-region="source-pill">
+                          {source}
+                        </SourcePill>
                       ))}
                     </div>
                   </Card>
@@ -305,9 +390,10 @@ export function CrpNominate() {
           </GroupBox>
         ) : null}
 
-        <GroupBox label="Category and justification">
-          <Stack>
+        <GroupBox label="Category and justification" data-crp-region="category-panel">
+          <Stack data-crp-region="category-stack">
             <select
+              data-crp-region="category-select"
               value={categoryId}
               onChange={(event) => setCategoryId(event.target.value)}
               style={{ maxWidth: 420 }}
@@ -320,19 +406,25 @@ export function CrpNominate() {
               ))}
             </select>
             <WinTextArea
+              data-crp-region="summary-input"
               value={summary}
               onChange={(event) => setSummary(event.target.value)}
               placeholder="Optional summary of why this person deserves the nomination."
               rows={4}
             />
             <WinTextArea
+              data-crp-region="links-input"
               value={linksText}
               onChange={(event) => setLinksText(event.target.value)}
               placeholder="Optional proof links, one per line."
               rows={3}
             />
-            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}>
+            <label
+              style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}
+              data-crp-region="anonymous-toggle"
+            >
               <input
+                data-crp-region="anonymous-input"
                 type="checkbox"
                 checked={anonymous}
                 onChange={(event) => setAnonymous(event.target.checked)}
@@ -340,6 +432,7 @@ export function CrpNominate() {
               Submit anonymously (not linked to your profile or My nominations)
             </label>
             <Button
+              data-crp-region="submit-button"
               disabled={
                 !selectedBundle?.tezosAddress ||
                 !categoryId ||
@@ -352,16 +445,17 @@ export function CrpNominate() {
             </Button>
             {submitMutation.isError ? <span>{(submitMutation.error as Error).message}</span> : null}
             {submitMutation.isSuccess && lastSubmit ? (
-              <Stack>
+              <Stack data-crp-region="submit-result">
                 <span>
                   {lastSubmit.anonymous
                     ? "Anonymous nomination queued on the AT spine. Share it now — it will not appear under My nominations."
                     : "Nomination queued on the AT spine. Share it below or from My nominations."}
                 </span>
-                <Row>
+                <Row data-crp-region="share-actions">
                   {lastSubmit.nominationUri ? (
                     <>
                       <Button
+                        data-crp-region="share-button"
                         onClick={() =>
                           void openTrackedShare({
                             uri: lastSubmit.nominationUri!,
@@ -373,6 +467,7 @@ export function CrpNominate() {
                         Share on X
                       </Button>
                       <Button
+                        data-crp-region="share-button"
                         onClick={() =>
                           void openTrackedShare({
                             uri: lastSubmit.nominationUri!,
@@ -386,8 +481,12 @@ export function CrpNominate() {
                     </>
                   ) : (
                     <>
-                      <Button onClick={() => openShareIntent(lastSubmit.share.x)}>Share on X</Button>
-                      <Button onClick={() => openShareIntent(lastSubmit.share.bsky)}>Share on Bluesky</Button>
+                      <Button data-crp-region="share-button" onClick={() => openShareIntent(lastSubmit.share.x)}>
+                        Share on X
+                      </Button>
+                      <Button data-crp-region="share-button" onClick={() => openShareIntent(lastSubmit.share.bsky)}>
+                        Share on Bluesky
+                      </Button>
                     </>
                   )}
                 </Row>
@@ -396,15 +495,15 @@ export function CrpNominate() {
           </Stack>
         </GroupBox>
 
-        <GroupBox label="My nominations">
+        <GroupBox label="My nominations" data-crp-region="mine-panel">
           {mineQuery.isLoading ? <Hourglass size={16} /> : null}
           {anonymousNominationCredits > 0 ? (
-            <div style={{ fontSize: 12, marginBottom: 8 }}>
+            <div style={{ fontSize: 12, marginBottom: 8 }} data-crp-region="anonymous-count">
               Anonymous nominations submitted: {anonymousNominationCredits}
             </div>
           ) : null}
           {nominations.length ? (
-            <Stack>
+            <Stack data-crp-region="nomination-list">
               {nominations.map((row) => (
                 <NominationCard key={row.uri} row={row} />
               ))}
@@ -430,7 +529,7 @@ function NominationCard({ row }: { row: NominationRow }) {
 
   const nominee = row.value.nominee;
   return (
-    <Card>
+    <Card data-crp-region="nomination-card">
       <strong>{row.value.categoryLabel}</strong>
       <div style={{ fontSize: 12 }}>
         {nominee.displayName || nominee.tezosDomain || nominee.tezosAddress}
@@ -445,9 +544,10 @@ function NominationCard({ row }: { row: NominationRow }) {
           </a>
         </div>
       ) : null}
-      <Mono>{row.uri}</Mono>
-      <Row>
+      <Mono data-crp-region="nomination-uri">{row.uri}</Mono>
+      <Row data-crp-region="share-actions">
         <Button
+          data-crp-region="share-button"
           disabled={!shareQuery.data?.x}
           onClick={() =>
             void openTrackedShare({
@@ -460,6 +560,7 @@ function NominationCard({ row }: { row: NominationRow }) {
           Share on X
         </Button>
         <Button
+          data-crp-region="share-button"
           disabled={!shareQuery.data?.bsky}
           onClick={() =>
             void openTrackedShare({

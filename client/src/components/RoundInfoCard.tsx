@@ -4,6 +4,14 @@ import { UiPanel } from "./wtfos-ui";
 
 const Shell = styled(UiPanel)`
   margin-bottom: 10px;
+
+  [data-rounds-presentation-host="gamma"] & {
+    background: color-mix(in srgb, var(--gamma-panel, #11110f) 82%, var(--gamma-ink, #070706));
+    color: var(--gamma-milk, #f2ead9);
+    border: 1px solid var(--gamma-line, rgba(242, 234, 217, 0.18));
+    border-radius: 6px;
+    box-shadow: none;
+  }
 `;
 
 const Header = styled.div`
@@ -17,11 +25,19 @@ const Header = styled.div`
 const Title = styled.div`
   font-weight: 700;
   font-size: 16px;
+
+  [data-rounds-presentation-host="gamma"] & {
+    color: var(--gamma-milk, #f2ead9);
+  }
 `;
 
 const Muted = styled.span`
   color: var(--wtf-app-muted-text, #444);
   font-size: var(--wtf-type-caption, 13px);
+
+  [data-rounds-presentation-host="gamma"] & {
+    color: var(--gamma-muted, rgba(242, 234, 217, 0.66));
+  }
 `;
 
 const MetaGrid = styled.div`
@@ -36,16 +52,34 @@ const Meta = styled.div`
   background: var(--wtf-app-surface-raised, #ffffff);
   padding: 7px;
   min-height: 34px;
+
+  [data-rounds-presentation-host="gamma"] & {
+    background: color-mix(in srgb, var(--gamma-panel-2, #181813) 72%, var(--gamma-ink, #070706));
+    border: 1px solid var(--gamma-line, rgba(242, 234, 217, 0.18));
+    border-radius: 6px;
+    box-shadow: none;
+  }
 `;
 
 const Label = styled.div`
   color: var(--wtf-app-muted-text, #444);
   font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
+
+  [data-rounds-presentation-host="gamma"] & {
+    color: var(--gamma-cyan, #00d2ff);
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+  }
 `;
 
 const Value = styled.div`
   font-weight: 700;
+
+  [data-rounds-presentation-host="gamma"] & {
+    color: var(--gamma-milk, #f2ead9);
+  }
 `;
 
 const PillRow = styled.div`
@@ -61,6 +95,13 @@ const Pill = styled.span`
   padding: 3px 7px;
   font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
+
+  [data-rounds-presentation-host="gamma"] & {
+    background: transparent;
+    color: var(--gamma-cyan, #00d2ff);
+    border: 1px solid var(--gamma-cyan, #00d2ff);
+    border-radius: 6px;
+  }
 `;
 
 const Columns = styled.div`
@@ -76,11 +117,19 @@ const MiniList = styled.ol`
   color: var(--wtf-app-text, #111);
   font-size: var(--wtf-type-caption, 13px);
   line-height: 1.35;
+
+  [data-rounds-presentation-host="gamma"] & {
+    color: var(--gamma-milk, #f2ead9);
+  }
 `;
 
 const SectionTitle = styled.div`
   font-weight: 700;
   margin-bottom: 4px;
+
+  [data-rounds-presentation-host="gamma"] & {
+    color: var(--gamma-cyan, #00d2ff);
+  }
 `;
 
 const BodyText = styled.p`
@@ -88,6 +137,10 @@ const BodyText = styled.p`
   color: var(--wtf-app-text, #111);
   font-size: var(--wtf-type-caption, 13px);
   line-height: 1.4;
+
+  [data-rounds-presentation-host="gamma"] & {
+    color: var(--gamma-milk, #f2ead9);
+  }
 `;
 
 function asArray(value: unknown): any[] {
@@ -140,31 +193,31 @@ export function RoundInfoCard({
   const schedule = round.calendarEvent ?? round;
 
   return (
-    <Shell title={`Round ${round.number}`} compact>
-      <Header>
+    <Shell title={`Round ${round.number}`} compact data-rounds-region="info-card">
+      <Header data-rounds-region="info-header">
         <div>
-          <Title>{round.name}</Title>
+          <Title data-rounds-region="info-title">{round.name}</Title>
           <Muted>{seasonLabel || "Library round"} · {round.status}</Muted>
         </div>
         {action}
       </Header>
 
-      <MetaGrid>
-        <Meta>
-          <Label>Competing</Label>
-          <Value>{round.startingContestants || 0}</Value>
+      <MetaGrid data-rounds-region="info-meta-grid">
+        <Meta data-rounds-region="info-meta">
+          <Label data-rounds-region="info-label">Competing</Label>
+          <Value data-rounds-region="info-value">{round.startingContestants || 0}</Value>
         </Meta>
-        <Meta>
-          <Label>Eliminated</Label>
-          <Value>{round.eliminatedAtEnd || 0}</Value>
+        <Meta data-rounds-region="info-meta">
+          <Label data-rounds-region="info-label">Eliminated</Label>
+          <Value data-rounds-region="info-value">{round.eliminatedAtEnd || 0}</Value>
         </Meta>
-        <Meta>
-          <Label>XP</Label>
-          <Value>{round.rewardXp || 0}</Value>
+        <Meta data-rounds-region="info-meta">
+          <Label data-rounds-region="info-label">XP</Label>
+          <Value data-rounds-region="info-value">{round.rewardXp || 0}</Value>
         </Meta>
-        <Meta>
-          <Label>Schedule</Label>
-          <Value>{formatDate(schedule.startsAt ?? round.startDate)}</Value>
+        <Meta data-rounds-region="info-meta">
+          <Label data-rounds-region="info-label">Schedule</Label>
+          <Value data-rounds-region="info-value">{formatDate(schedule.startsAt ?? round.startDate)}</Value>
           {(schedule.endsAt ?? round.endDate) && (
             <Muted>to {formatDate(schedule.endsAt ?? round.endDate)}</Muted>
           )}
@@ -181,18 +234,18 @@ export function RoundInfoCard({
       )}
 
       {platforms.length > 0 && (
-        <PillRow>
+        <PillRow data-rounds-region="info-pill-row">
           {platforms.map((platform, index) => (
-            <Pill key={`${labelFor(platform)}-${index}`}>{labelFor(platform)}</Pill>
+            <Pill key={`${labelFor(platform)}-${index}`} data-rounds-region="info-pill">{labelFor(platform)}</Pill>
           ))}
         </PillRow>
       )}
 
-      <Columns>
+      <Columns data-rounds-region="info-columns">
         <div>
-          <SectionTitle>Prizes</SectionTitle>
+          <SectionTitle data-rounds-region="info-section-title">Prizes</SectionTitle>
           {prizes.length ? (
-            <MiniList>
+            <MiniList data-rounds-region="mini-list">
               {prizes.map((item, index) => (
                 <li key={index}>{labelFor(item)}</li>
               ))}
@@ -202,9 +255,9 @@ export function RoundInfoCard({
           )}
         </div>
         <div>
-          <SectionTitle>Previous Winners</SectionTitle>
+          <SectionTitle data-rounds-region="info-section-title">Previous Winners</SectionTitle>
           {previousWinners.length ? (
-            <MiniList>
+            <MiniList data-rounds-region="mini-list">
               {previousWinners.map((item, index) => (
                 <li key={index}>{labelFor(item)}</li>
               ))}
@@ -214,9 +267,9 @@ export function RoundInfoCard({
           )}
         </div>
         <div>
-          <SectionTitle>Top 10 Leaderboard</SectionTitle>
+          <SectionTitle data-rounds-region="info-section-title">Top 10 Leaderboard</SectionTitle>
           {leaderboard.length ? (
-            <MiniList>
+            <MiniList data-rounds-region="mini-list">
               {leaderboard.map((item, index) => {
                 const score = scoreFor(item);
                 return (
@@ -232,9 +285,9 @@ export function RoundInfoCard({
           )}
         </div>
         <div>
-          <SectionTitle>Elimination History</SectionTitle>
+          <SectionTitle data-rounds-region="info-section-title">Elimination History</SectionTitle>
           {eliminated.length ? (
-            <MiniList>
+            <MiniList data-rounds-region="mini-list">
               {eliminated.map((item, index) => (
                 <li key={index}>{labelFor(item)}</li>
               ))}

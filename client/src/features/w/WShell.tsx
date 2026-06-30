@@ -3,6 +3,7 @@ import { Moon, RefreshCcw, Sun } from "lucide-react";
 import { Button } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../../components/layout/AppWindow";
+import { usePresentationShell } from "../../lib/presentation-shell";
 import type { WFollowsSummaryResponse, WView } from "./types";
 
 type WNavItem = {
@@ -40,6 +41,8 @@ type WShellProps = {
   xProfile: WFollowsSummaryResponse["profile"] | null;
 };
 
+const gammaWScope = `[data-w-presentation-host="gamma"]`;
+
 const Shell = styled.div<{ $night: boolean }>`
   background: ${({ $night }) =>
     $night
@@ -49,6 +52,15 @@ const Shell = styled.div<{ $night: boolean }>`
   color: ${({ $night }) => ($night ? "#e7edf7" : "#10161e")};
   padding: 10px;
 
+  &[data-w-presentation-host="gamma"] {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
   textarea,
   select,
   input {
@@ -57,9 +69,23 @@ const Shell = styled.div<{ $night: boolean }>`
     border: 1px solid ${({ $night }) => ($night ? "#4c6788" : "#9cabbb")};
   }
 
+  &[data-w-presentation-host="gamma"] textarea,
+  &[data-w-presentation-host="gamma"] select,
+  &[data-w-presentation-host="gamma"] input {
+    background: #11110f;
+    color: #f2ead9;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 4px;
+  }
+
   textarea::placeholder,
   input::placeholder {
     color: ${({ $night }) => ($night ? "#8ea2bd" : "#647486")};
+  }
+
+  &[data-w-presentation-host="gamma"] textarea::placeholder,
+  &[data-w-presentation-host="gamma"] input::placeholder {
+    color: rgba(242, 234, 217, 0.52);
   }
 
   option {
@@ -67,12 +93,28 @@ const Shell = styled.div<{ $night: boolean }>`
     color: ${({ $night }) => ($night ? "#e8f0fb" : "#111")};
   }
 
+  &[data-w-presentation-host="gamma"] option {
+    background: #11110f;
+    color: #f2ead9;
+  }
+
   fieldset {
     color: ${({ $night }) => ($night ? "#dbe7f7" : "#10161e")};
   }
 
+  &[data-w-presentation-host="gamma"] fieldset {
+    color: #f2ead9;
+  }
+
   legend {
     color: #10161e;
+  }
+
+  &[data-w-presentation-host="gamma"] legend {
+    color: #00d2ff;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    letter-spacing: 0;
+    text-transform: uppercase;
   }
 
   p,
@@ -81,12 +123,26 @@ const Shell = styled.div<{ $night: boolean }>`
     color: ${({ $night }) => ($night ? "#dbe7f7" : "#10161e")};
   }
 
+  &[data-w-presentation-host="gamma"] p,
+  &[data-w-presentation-host="gamma"] label,
+  &[data-w-presentation-host="gamma"] li {
+    color: #f2ead9;
+  }
+
   code {
     color: ${({ $night }) => ($night ? "#ffdcae" : "#4b2b00")};
   }
 
+  &[data-w-presentation-host="gamma"] code {
+    color: #d6ff3f;
+  }
+
   a {
     color: ${({ $night }) => ($night ? "#9ec5ff" : "#0b4da6")};
+  }
+
+  &[data-w-presentation-host="gamma"] a {
+    color: #00d2ff;
   }
 `;
 
@@ -96,6 +152,12 @@ const HeaderBar = styled.div`
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 12px;
+
+  ${gammaWScope} & {
+    border-bottom: 1px solid rgba(242, 234, 217, 0.18);
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+  }
 `;
 
 const HeaderLeft = styled.div`
@@ -119,6 +181,15 @@ const WBadge = styled.div<{ $night: boolean }>`
   box-shadow:
     inset 0 0 0 1px ${({ $night }) => ($night ? "#252525" : "#444")},
     3px 3px 0 ${({ $night }) => ($night ? "#6b4b1d" : "#c0c0c0")};
+
+  ${gammaWScope} & {
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.24);
+    border-radius: 4px;
+    box-shadow: none;
+    color: #00d2ff;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  }
 `;
 
 const TitleWrap = styled.div`
@@ -129,12 +200,21 @@ const Title = styled.div`
   font-weight: 700;
   font-size: 17px;
   letter-spacing: 0;
+
+  ${gammaWScope} & {
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
 `;
 
 const Subtitle = styled.div<{ $night: boolean }>`
   font-size: 11px;
   margin-top: 2px;
   color: ${({ $night }) => ($night ? "#aebfd8" : "#3f4b57")};
+
+  ${gammaWScope} & {
+    color: rgba(242, 234, 217, 0.68);
+  }
 `;
 
 const Row = styled.div`
@@ -153,6 +233,13 @@ const ViewNav = styled.div<{ $night: boolean }>`
   padding: 6px;
   border: 1px solid ${({ $night }) => ($night ? "#353535" : "#a8adaf")};
   background: ${({ $night }) => ($night ? "#0a0a0a" : "#ece9de")};
+
+  ${gammaWScope} & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+  }
 `;
 
 const MainSurface = styled.div<{ $night: boolean }>`
@@ -164,11 +251,25 @@ const MainSurface = styled.div<{ $night: boolean }>`
   min-height: 360px;
   box-shadow: ${({ $night }) =>
     $night ? "inset 0 0 0 1px #15191e" : "inset 0 0 0 1px #ffffff"};
+
+  ${gammaWScope} & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+    color: #f2ead9;
+  }
 `;
 
 const Small = styled.span<{ $night?: boolean }>`
   font-size: 11px;
   color: ${({ $night }) => ($night ? "#b8c5da" : "#3c4956")};
+
+  ${gammaWScope} & {
+    color: rgba(242, 234, 217, 0.68);
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  }
 `;
 
 const Avatar = styled.div<{ $night: boolean }>`
@@ -185,6 +286,13 @@ const Avatar = styled.div<{ $night: boolean }>`
   font-weight: 700;
   overflow: hidden;
   flex-shrink: 0;
+
+  ${gammaWScope} & {
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.24);
+    border-radius: 6px;
+    color: #00d2ff;
+  }
 `;
 
 function formatCount(value: number | null | undefined): string {
@@ -212,10 +320,16 @@ export function WShell({
   source,
   xProfile,
 }: WShellProps) {
+  const presentation = usePresentationShell();
+
   return (
     <AppWindow title="W">
-      <Shell $night={nightMode}>
-        <HeaderBar>
+      <Shell
+        $night={nightMode}
+        data-w-presentation-host={presentation.host}
+        data-w-surface="w-shell"
+      >
+        <HeaderBar data-w-region="header">
           <HeaderLeft>
             {xProfile?.profileImageUrl ? (
               <Avatar $night={nightMode} title={`@${xProfile.username || "x"} on X`} style={{ width: 32, height: 32 }}>
@@ -229,7 +343,7 @@ export function WShell({
               <WBadge $night={nightMode}>W</WBadge>
             )}
             <TitleWrap>
-              <Title>W Tezos digest</Title>
+              <Title data-w-region="title">W Tezos digest</Title>
               <Subtitle $night={nightMode}>
                 {xProfile?.username
                   ? `@${xProfile.username}`
@@ -286,7 +400,7 @@ export function WShell({
           </p>
         )}
 
-        <ViewNav $night={nightMode}>
+        <ViewNav $night={nightMode} data-w-region="view-nav">
           {navItems.map((item) => (
             <Button
               key={item.key}
@@ -300,7 +414,7 @@ export function WShell({
           ))}
         </ViewNav>
 
-        <MainSurface $night={nightMode}>
+        <MainSurface $night={nightMode} data-w-region="main-surface">
           {oauthFlash && (
             <div
               role="status"

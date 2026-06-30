@@ -11,6 +11,7 @@ import styled, { css, keyframes } from "styled-components";
 import { Button, Checkbox, GroupBox, TextField } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
+import { usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 
 type NodeKind =
@@ -815,7 +816,11 @@ const pulseRoute = keyframes`
   to { stroke-dashoffset: 0; }
 `;
 
-const Shell = styled.div`
+const mapLabRegionAttrs = (region: string): any => ({
+  "data-map-lab-region": region,
+});
+
+const Shell = styled.div.attrs(mapLabRegionAttrs("surface"))`
   width: 100%;
   height: 100%;
   min-height: 590px;
@@ -825,6 +830,121 @@ const Shell = styled.div`
   gap: 10px;
   color: #101827;
 
+  &[data-map-lab-presentation-host="gamma"] {
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-map-lab-presentation-host="gamma"],
+  &[data-map-lab-presentation-host="gamma"] * {
+    box-shadow: none !important;
+    filter: none !important;
+    letter-spacing: 0 !important;
+    text-shadow: none !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] * {
+    background-image: none !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] :where(button, input, textarea, select, p, span, strong, div, section, article, h1, h2, h3, h4, label, legend, fieldset) {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] :where(code, pre),
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="zoom"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="status-pill"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="small"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="node-top"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="node-meta"] {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] :where(p, span, div, label, legend, strong) {
+    color: #f2ead9 !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region] {
+    border-radius: 6px !important;
+    min-width: 0;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] fieldset,
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="panel"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="toolbar"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="viewport"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="node-card"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="template-button"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="route-list-item"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="run-metric"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="minimap"] {
+    background: #11110f !important;
+    border: 1px solid rgba(242, 234, 217, 0.16) !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="board"] {
+    background: #070706 !important;
+    border: 1px solid rgba(0, 210, 255, 0.34) !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-node="true"] {
+    border-color: rgba(0, 210, 255, 0.5) !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="status-pill"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="pending-badge"] {
+    background: #070706 !important;
+    border: 1px solid rgba(0, 210, 255, 0.58) !important;
+    color: #00d2ff !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="run-metric"] strong {
+    color: #d6ff3f !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="node-meta"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="node-description"],
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="small"] {
+    color: rgba(242, 234, 217, 0.68) !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] button,
+  &[data-map-lab-presentation-host="gamma"] input,
+  &[data-map-lab-presentation-host="gamma"] select,
+  &[data-map-lab-presentation-host="gamma"] textarea {
+    background: #070706 !important;
+    border: 1px solid rgba(242, 234, 217, 0.28) !important;
+    border-radius: 6px !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] button:not(:disabled):hover,
+  &[data-map-lab-presentation-host="gamma"] button:focus-visible,
+  &[data-map-lab-presentation-host="gamma"] input:focus-visible,
+  &[data-map-lab-presentation-host="gamma"] select:focus-visible,
+  &[data-map-lab-presentation-host="gamma"] textarea:focus-visible,
+  &[data-map-lab-presentation-host="gamma"] [data-map-lab-region="viewport"]:focus {
+    outline: 1px solid #00d2ff !important;
+    outline-offset: 2px;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] button:not(:disabled) {
+    border-color: rgba(0, 210, 255, 0.58) !important;
+    color: #00d2ff !important;
+  }
+
+  &[data-map-lab-presentation-host="gamma"] button:disabled,
+  &[data-map-lab-presentation-host="gamma"] input:disabled,
+  &[data-map-lab-presentation-host="gamma"] select:disabled,
+  &[data-map-lab-presentation-host="gamma"] textarea:disabled {
+    color: rgba(242, 234, 217, 0.42) !important;
+    opacity: 1 !important;
+  }
+
   @media (max-width: 920px) {
     height: auto;
     min-height: 0;
@@ -832,7 +952,7 @@ const Shell = styled.div`
   }
 `;
 
-const Panel = styled.div`
+const Panel = styled.div.attrs(mapLabRegionAttrs("panel"))`
   background: #f7f7ef;
   border: 1px solid #4b5563;
   box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9ca3af;
@@ -846,7 +966,7 @@ const Panel = styled.div`
   }
 `;
 
-const Workspace = styled.div`
+const Workspace = styled.div.attrs(mapLabRegionAttrs("workspace"))`
   min-width: 0;
   min-height: 0;
   display: grid;
@@ -860,7 +980,7 @@ const Workspace = styled.div`
   }
 `;
 
-const CanvasToolbar = styled.div`
+const CanvasToolbar = styled.div.attrs(mapLabRegionAttrs("toolbar"))`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -872,21 +992,21 @@ const CanvasToolbar = styled.div`
   padding: 8px;
 `;
 
-const ToolGroup = styled.div`
+const ToolGroup = styled.div.attrs(mapLabRegionAttrs("tool-group"))`
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
 `;
 
-const ZoomReadout = styled.span`
+const ZoomReadout = styled.span.attrs(mapLabRegionAttrs("zoom"))`
   min-width: 46px;
   text-align: center;
   font-size: 12px;
   font-weight: 700;
 `;
 
-const PendingBadge = styled.span`
+const PendingBadge = styled.span.attrs(mapLabRegionAttrs("pending-badge"))`
   border: 1px solid #0f766e;
   background: #dcfce7;
   color: #064e3b;
@@ -895,7 +1015,7 @@ const PendingBadge = styled.span`
   font-weight: 700;
 `;
 
-const WorkspaceFrame = styled.div<{ $panning: boolean }>`
+const WorkspaceFrame = styled.div.attrs(mapLabRegionAttrs("viewport"))<{ $panning: boolean }>`
   position: relative;
   min-height: 0;
   overflow: auto;
@@ -917,7 +1037,7 @@ const WorkspaceFrame = styled.div<{ $panning: boolean }>`
   }
 `;
 
-const BoardSpace = styled.div<{ $zoom: number }>`
+const BoardSpace = styled.div.attrs(mapLabRegionAttrs("board-space"))<{ $zoom: number }>`
   position: relative;
   width: ${(p) => BOARD_WIDTH * p.$zoom}px;
   min-width: ${(p) => BOARD_WIDTH * p.$zoom}px;
@@ -925,7 +1045,7 @@ const BoardSpace = styled.div<{ $zoom: number }>`
   height: ${(p) => BOARD_HEIGHT * p.$zoom}px;
 `;
 
-const Board = styled.div<{ $zoom: number }>`
+const Board = styled.div.attrs(mapLabRegionAttrs("board"))<{ $zoom: number }>`
   position: relative;
   width: ${BOARD_WIDTH}px;
   min-width: ${BOARD_WIDTH}px;
@@ -942,14 +1062,14 @@ const Board = styled.div<{ $zoom: number }>`
   background-size: 28px 28px, 28px 28px, 140px 140px, 140px 140px;
 `;
 
-const WireSvg = styled.svg`
+const WireSvg = styled.svg.attrs(mapLabRegionAttrs("wire-svg"))`
   position: absolute;
   inset: 0;
   width: ${BOARD_WIDTH}px;
   height: ${BOARD_HEIGHT}px;
 `;
 
-const RoutePath = styled.path<{ $active: boolean; $selected: boolean }>`
+const RoutePath = styled.path.attrs(mapLabRegionAttrs("route-path"))<{ $active: boolean; $selected: boolean }>`
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -965,7 +1085,7 @@ const RoutePath = styled.path<{ $active: boolean; $selected: boolean }>`
     `}
 `;
 
-const RouteHitPath = styled.path`
+const RouteHitPath = styled.path.attrs(mapLabRegionAttrs("route-hit-path"))`
   fill: none;
   stroke: transparent;
   stroke-width: 18;
@@ -973,7 +1093,7 @@ const RouteHitPath = styled.path`
   cursor: pointer;
 `;
 
-const NodeCard = styled.div<{ $x: number; $y: number; $kind: NodeKind; $selected: boolean; $locked: boolean; $dragging: boolean }>`
+const NodeCard = styled.div.attrs(mapLabRegionAttrs("node-card"))<{ $x: number; $y: number; $kind: NodeKind; $selected: boolean; $locked: boolean; $dragging: boolean }>`
   position: absolute;
   left: ${(p) => p.$x}px;
   top: ${(p) => p.$y}px;
@@ -1011,7 +1131,7 @@ const NodeCard = styled.div<{ $x: number; $y: number; $kind: NodeKind; $selected
   }
 `;
 
-const NodeTop = styled.div`
+const NodeTop = styled.div.attrs(mapLabRegionAttrs("node-top"))`
   display: flex;
   justify-content: space-between;
   gap: 8px;
@@ -1020,7 +1140,7 @@ const NodeTop = styled.div`
   color: #475569;
 `;
 
-const NodeLabel = styled.div`
+const NodeLabel = styled.div.attrs(mapLabRegionAttrs("node-label"))`
   margin-top: 7px;
   font-size: 14px;
   font-weight: 800;
@@ -1028,13 +1148,13 @@ const NodeLabel = styled.div`
   word-break: break-word;
 `;
 
-const NodeMeta = styled.div`
+const NodeMeta = styled.div.attrs(mapLabRegionAttrs("node-meta"))`
   margin-top: 6px;
   font-size: 11px;
   color: #334155;
 `;
 
-const NodeDescription = styled.div`
+const NodeDescription = styled.div.attrs(mapLabRegionAttrs("node-description"))`
   margin-top: 6px;
   color: #475569;
   font-size: 10px;
@@ -1045,7 +1165,7 @@ const NodeDescription = styled.div`
   overflow: hidden;
 `;
 
-const StatusPill = styled.span<{ $status: NodeStatus | RouteStatus }>`
+const StatusPill = styled.span.attrs(mapLabRegionAttrs("status-pill"))<{ $status: NodeStatus | RouteStatus }>`
   display: inline-flex;
   align-items: center;
   min-height: 17px;
@@ -1067,7 +1187,7 @@ const StatusPill = styled.span<{ $status: NodeStatus | RouteStatus }>`
   text-transform: uppercase;
 `;
 
-const PortRail = styled.div<{ $side: "left" | "right" }>`
+const PortRail = styled.div.attrs(mapLabRegionAttrs("port-rail"))<{ $side: "left" | "right" }>`
   position: absolute;
   top: 36px;
   ${(p) => (p.$side === "left" ? "left: -11px;" : "right: -11px;")}
@@ -1076,7 +1196,7 @@ const PortRail = styled.div<{ $side: "left" | "right" }>`
   z-index: 3;
 `;
 
-const PortButton = styled.button<{ $kind: PortKind; $active: boolean; $dataType: PortDataType; $compatibility: PortCompatibility }>`
+const PortButton = styled.button.attrs(mapLabRegionAttrs("port"))<{ $kind: PortKind; $active: boolean; $dataType: PortDataType; $compatibility: PortCompatibility }>`
   width: 20px;
   height: 20px;
   border: ${(p) =>
@@ -1118,39 +1238,39 @@ const PortButton = styled.button<{ $kind: PortKind; $active: boolean; $dataType:
   }
 `;
 
-const Stack = styled.div`
+const Stack = styled.div.attrs(mapLabRegionAttrs("stack"))`
   display: grid;
   gap: 8px;
 `;
 
-const Row = styled.div`
+const Row = styled.div.attrs(mapLabRegionAttrs("row"))`
   display: flex;
   gap: 6px;
   align-items: center;
   flex-wrap: wrap;
 `;
 
-const Small = styled.p`
+const Small = styled.p.attrs(mapLabRegionAttrs("small"))`
   margin: 0;
   color: #475569;
   font-size: 12px;
   line-height: 1.35;
 `;
 
-const Label = styled.label`
+const Label = styled.label.attrs(mapLabRegionAttrs("field-label"))`
   display: grid;
   gap: 3px;
   font-size: 12px;
   font-weight: 700;
 `;
 
-const Select = styled.select`
+const Select = styled.select.attrs(mapLabRegionAttrs("select"))`
   min-height: 28px;
   background: #ffffff;
   border: 1px solid #111827;
 `;
 
-const TextArea = styled.textarea`
+const TextArea = styled.textarea.attrs(mapLabRegionAttrs("textarea"))`
   min-height: 82px;
   resize: vertical;
   border: 1px solid #111827;
@@ -1158,7 +1278,7 @@ const TextArea = styled.textarea`
   font-family: inherit;
 `;
 
-const ColorDot = styled.button<{ $color: string; $active: boolean }>`
+const ColorDot = styled.button.attrs(mapLabRegionAttrs("color-dot"))<{ $color: string; $active: boolean }>`
   width: 22px;
   height: 22px;
   border: ${(p) => (p.$active ? "3px solid #111827" : "1px solid #111827")};
@@ -1166,13 +1286,13 @@ const ColorDot = styled.button<{ $color: string; $active: boolean }>`
   cursor: pointer;
 `;
 
-const TemplateGrid = styled.div`
+const TemplateGrid = styled.div.attrs(mapLabRegionAttrs("template-grid"))`
   display: grid;
   grid-template-columns: 1fr;
   gap: 6px;
 `;
 
-const TemplateButton = styled.button`
+const TemplateButton = styled.button.attrs(mapLabRegionAttrs("template-button"))`
   display: grid;
   gap: 3px;
   text-align: left;
@@ -1199,7 +1319,7 @@ const TemplateButton = styled.button`
   }
 `;
 
-const RouteListButton = styled.button<{ $active: boolean }>`
+const RouteListButton = styled.button.attrs(mapLabRegionAttrs("route-list-item"))<{ $active: boolean }>`
   width: 100%;
   display: grid;
   grid-template-columns: 12px 1fr auto;
@@ -1213,27 +1333,27 @@ const RouteListButton = styled.button<{ $active: boolean }>`
   cursor: pointer;
 `;
 
-const RouteSwatch = styled.span<{ $color: string }>`
+const RouteSwatch = styled.span.attrs(mapLabRegionAttrs("route-swatch"))<{ $color: string }>`
   width: 10px;
   height: 10px;
   border: 1px solid #111827;
   background: ${(p) => p.$color};
 `;
 
-const MiniMapBox = styled.div`
+const MiniMapBox = styled.div.attrs(mapLabRegionAttrs("minimap"))`
   height: 112px;
   border: 1px solid #334155;
   background: #e2e8f0;
   overflow: hidden;
 `;
 
-const RunMetricGrid = styled.div`
+const RunMetricGrid = styled.div.attrs(mapLabRegionAttrs("run-metric-grid"))`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 `;
 
-const RunMetric = styled.div`
+const RunMetric = styled.div.attrs(mapLabRegionAttrs("run-metric"))`
   border: 1px solid #64748b;
   background: #ffffff;
   padding: 5px;
@@ -1530,6 +1650,7 @@ function portsCompatible(fromPort: NodePort | undefined, toPort: NodePort | unde
 
 export function WtfMapLab() {
   const { user, isAdmin, hasPermission } = useAuth();
+  const presentation = usePresentationShell();
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const dragMovedRef = useRef(false);
   const [doc, setDoc] = useState<MapDoc>(() => loadDoc());
@@ -2085,7 +2206,13 @@ export function WtfMapLab() {
 
   return (
     <AppWindow title="WTF Map Lab">
-      <Shell data-map-lab-shell="true" data-map-lab-mode={mapMode} data-map-lab-readonly={isDemoMap ? "true" : "false"}>
+      <Shell
+        data-map-lab-shell="true"
+        data-map-lab-surface="workspace"
+        data-map-lab-presentation-host={presentation.host}
+        data-map-lab-mode={mapMode}
+        data-map-lab-readonly={isDemoMap ? "true" : "false"}
+      >
         <Panel>
           <Stack>
             <GroupBox label="Workflow map">

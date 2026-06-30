@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { Button, Hourglass, TextField } from "react95";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
+import { presentationRouteHref, usePresentationShell } from "../../lib/presentation-shell";
 import { FONT_PACKS, getFontPack } from "../appearance/font-packs";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
@@ -2966,6 +2967,7 @@ function FloatingPanelWindow({
 
 export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const qc = useQueryClient();
+  const presentation = usePresentationShell();
   const { user, isLoading: authLoading } = useAuth();
   const roomQuery = useQuery<PublicRoomResponse>({
     queryKey: ["wtf-live", "public-room", roomId],
@@ -5305,7 +5307,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
           <Button onClick={() => stopSoundboardAudio()} data-wtf-live-soundboard-stop>
             <ButtonLabel><VolumeX size={16} aria-hidden /> Stop</ButtonLabel>
           </Button>
-          <Button onClick={() => window.open("/live?tab=show-kit", "_blank", "noopener,noreferrer")} data-wtf-live-soundboard-open-settings>
+          <Button onClick={() => window.open(presentationRouteHref("/live?tab=show-kit", presentation.host), "_blank", "noopener,noreferrer")} data-wtf-live-soundboard-open-settings>
             Show Kit
           </Button>
         </GuestGrid>
@@ -5366,7 +5368,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
           >
             <ButtonLabel><Gift size={16} aria-hidden /> Send Tip</ButtonLabel>
           </Button>
-          <Button onClick={() => window.open("/wtfiam?category=wtf_live", "_blank", "noopener,noreferrer")}>
+          <Button onClick={() => window.open(presentationRouteHref("/wtfiam?category=wtf_live", presentation.host), "_blank", "noopener,noreferrer")}>
             Buy Tips
           </Button>
         </GuestGrid>
@@ -5984,7 +5986,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
         </BentoWorkspace>
 	      </RoomFrame>
 	      {popoutFrames.length ? (
-	        <FloatingLayer data-wtf-live-popout-layer data-wtf-live-presentation-host="classic">
+	        <FloatingLayer data-wtf-live-popout-layer data-wtf-live-presentation-host={presentation.host}>
 	          {popoutFrames.map((frame) => {
 	            if (frame.kind === "panel") {
 	              return (

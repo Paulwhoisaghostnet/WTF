@@ -53,11 +53,12 @@ test("marketplace feature modules own tabs data actions types and helpers", () =
 });
 
 test("marketplace extraction preserves route compatibility and query keys", () => {
-  assert.match(tradeBoards, /<Marketplace initialTab=\{2\} \/>/);
+  assert.match(tradeBoards, /<Marketplace initialTab=\{2\} surfaceVariant="trade-boards" \/>/);
   assert.match(dataHook, /queryKey: \["marketplace", "onchain"\]/);
   assert.match(dataHook, /queryKey: \["marketplace", "trade-board", boardSearch\]/);
   assert.match(dataHook, /queryKey: \["wallets"\]/);
   assert.match(dataHook, /queryKey: \["marketplace", "external", "mine"\]/);
+  assert.doesNotMatch(dataHook, /\/api\/gamma/);
 });
 
 test("marketplace wallet actions stay centralized behind the action hook", () => {

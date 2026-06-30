@@ -22,6 +22,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { MOBILE } from "../global-styles";
 import { api, fetchWithCsrf } from "../lib/api";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 import type { PastaAppId } from "@shared/pasta-protocol";
 import {
@@ -177,6 +178,135 @@ const Shell = styled.div`
   min-height: 0;
   height: 100%;
   overflow: auto;
+
+  &[data-chease-presentation-host="gamma"] {
+    min-height: 100%;
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-chease-presentation-host="gamma"],
+  &[data-chease-presentation-host="gamma"] * {
+    box-sizing: border-box;
+  }
+
+  &[data-chease-presentation-host="gamma"] :where(button, input, textarea, select, p, span, strong, div, section, article, label, h1, h2, h3, h4) {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+    text-shadow: none;
+  }
+
+  &[data-chease-presentation-host="gamma"] :where(code, pre),
+  &[data-chease-presentation-host="gamma"] [data-chease-region="status"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="chip"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="fact-row"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="summary-label"] {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
+
+  &[data-chease-presentation-host="gamma"] [data-chease-region] {
+    border-color: rgba(0, 210, 255, 0.28);
+    background-image: none;
+    box-shadow: none;
+    text-shadow: none;
+    border-radius: 0;
+  }
+
+  &[data-chease-presentation-host="gamma"] [data-chease-region="header"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="toolbar"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="action-strip"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="target-strip"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="handoff-strip"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="pasta-toolbar"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="panel"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="empty-state"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="drop-editor"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="drop-preview"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="preview-meta"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="warning-list"] {
+    background: #11110f;
+    color: #f2ead9;
+    border: 1px solid rgba(0, 210, 255, 0.28);
+    border-radius: 6px;
+  }
+
+  &[data-chease-presentation-host="gamma"] [data-chease-region="panel-header"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="step"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="target-button"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="package-row"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="media-card"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="segment-button"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="toggle-card"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="preview-tab"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="mini-token"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="summary-item"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="chip"] {
+    background: #070706;
+    color: #f2ead9;
+    border: 1px solid rgba(0, 210, 255, 0.28);
+    border-radius: 6px;
+  }
+
+  &[data-chease-presentation-host="gamma"] [data-chease-region="brand-badge"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="primary-button"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="meter-fill"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="chip"][data-chease-tone="ok"] {
+    background: #00d2ff;
+    color: #070706;
+    border-color: #00d2ff;
+  }
+
+  &[data-chease-presentation-host="gamma"] [data-chease-region="button"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="upload-button"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="field-control"],
+  &[data-chease-presentation-host="gamma"] :where(input, textarea, select) {
+    background: #070706;
+    color: #f2ead9;
+    border: 1px solid rgba(0, 210, 255, 0.36);
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  &[data-chease-presentation-host="gamma"] :where(button:not(:disabled), a) {
+    color: #00d2ff;
+  }
+
+  &[data-chease-presentation-host="gamma"] [data-chease-region="title"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="token-title"] {
+    color: #f2ead9;
+  }
+
+  &[data-chease-presentation-host="gamma"] [data-chease-region="muted"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="subtitle"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="field-help"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="status"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="step-state"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="summary-label"] {
+    color: rgba(242, 234, 217, 0.72);
+  }
+
+  &[data-chease-presentation-host="gamma"] [data-chease-region="preview"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="large-preview"] {
+    background: #000;
+    border: 1px solid rgba(0, 210, 255, 0.28);
+    border-radius: 6px;
+  }
+
+  &[data-chease-presentation-host="gamma"] [data-chease-region="meter-track"] {
+    background: #070706;
+    border-color: rgba(0, 210, 255, 0.28);
+    border-radius: 6px;
+  }
+
+  &[data-chease-presentation-host="gamma"] [data-chease-region="field-help"][data-chease-error="true"],
+  &[data-chease-presentation-host="gamma"] [data-chease-region="status"][data-chease-error="true"] {
+    color: #f2ead9;
+    border-color: rgba(0, 210, 255, 0.52);
+  }
 `;
 
 const AppHeader = styled.section`
@@ -1090,6 +1220,7 @@ async function readJson<T>(res: Response): Promise<T> {
 }
 
 export function MacaroniPackager() {
+  const presentation = usePresentationShell();
   const [packages, setPackages] = useState<PackageSummary[]>([]);
   const [activePackage, setActivePackage] = useState<PackageSummary | null>(null);
   const [items, setItems] = useState<PackageItem[]>([]);
@@ -1363,7 +1494,7 @@ export function MacaroniPackager() {
 
   function openHandoff(destination: string, path: string) {
     logHandoff(destination, path);
-    window.open(path, "_blank", "noopener");
+    window.open(presentationRouteHref(path, presentation.host), "_blank", "noopener");
   }
 
   function downloadTargetPackage() {
@@ -1469,7 +1600,7 @@ export function MacaroniPackager() {
         path,
       },
     });
-    window.open(path, "_blank", "noopener");
+    window.open(presentationRouteHref(path, presentation.host), "_blank", "noopener");
     setStatus(`Opening ${pastaTarget} with CH-EASE package context`);
   }
 
@@ -1494,7 +1625,7 @@ export function MacaroniPackager() {
     try {
       await api.get(`/api/macaroni/packages/${activePackage.id}/source`);
       logHandoff("macaroni-studio-source", path);
-      window.open(path, "_blank", "noopener");
+      window.open(presentationRouteHref(path, presentation.host), "_blank", "noopener");
       setStatus("Macaroni package source loaded");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load Macaroni package source");
@@ -1526,45 +1657,50 @@ export function MacaroniPackager() {
 
   return (
     <AppWindow title={APP_NAME}>
-      <Shell data-testid="chease-packager">
-        <AppHeader aria-labelledby="chease-title">
+      <Shell
+        data-testid="chease-packager"
+        data-chease-surface="packager"
+        data-chease-presentation-host={presentation.host}
+        data-chease-region="surface"
+      >
+        <AppHeader aria-labelledby="chease-title" data-chease-region="header">
           <BrandRow>
-            <BrandBadge aria-hidden="true">{APP_BADGE}</BrandBadge>
+            <BrandBadge aria-hidden="true" data-chease-region="brand-badge">{APP_BADGE}</BrandBadge>
             <BrandCopy>
-              <AppTitle id="chease-title">{APP_NAME}</AppTitle>
-              <Acronym>{APP_ACRONYM}</Acronym>
-              <PanelSubtitle>Pre-mint packaging studio for wtfOS-stored media, metadata, and drop-page handoffs.</PanelSubtitle>
+              <AppTitle id="chease-title" data-chease-region="title">{APP_NAME}</AppTitle>
+              <Acronym data-chease-region="subtitle">{APP_ACRONYM}</Acronym>
+              <PanelSubtitle data-chease-region="subtitle">Pre-mint packaging studio for wtfOS-stored media, metadata, and drop-page handoffs.</PanelSubtitle>
             </BrandCopy>
           </BrandRow>
-          <SummaryRail aria-label={`${APP_NAME} package summary`}>
-            <SummaryItem>
-              <SummaryValue>{packages.length}</SummaryValue>
-              <SummaryLabel>packages</SummaryLabel>
+          <SummaryRail aria-label={`${APP_NAME} package summary`} data-chease-region="summary-rail">
+            <SummaryItem data-chease-region="summary-item">
+              <SummaryValue data-chease-region="summary-value">{packages.length}</SummaryValue>
+              <SummaryLabel data-chease-region="summary-label">packages</SummaryLabel>
             </SummaryItem>
-            <SummaryItem>
-              <SummaryValue>{items.length}</SummaryValue>
-              <SummaryLabel>media items</SummaryLabel>
+            <SummaryItem data-chease-region="summary-item">
+              <SummaryValue data-chease-region="summary-value">{items.length}</SummaryValue>
+              <SummaryLabel data-chease-region="summary-label">media items</SummaryLabel>
             </SummaryItem>
-            <SummaryItem>
-              <SummaryValue>{currentTarget.label}</SummaryValue>
-              <SummaryLabel>export target</SummaryLabel>
+            <SummaryItem data-chease-region="summary-item">
+              <SummaryValue data-chease-region="summary-value">{currentTarget.label}</SummaryValue>
+              <SummaryLabel data-chease-region="summary-label">export target</SummaryLabel>
             </SummaryItem>
           </SummaryRail>
         </AppHeader>
-        <Toolbar>
+        <Toolbar data-chease-region="toolbar">
           <Field>
             Package title
-            <Input value={title} onChange={(event) => setTitle(event.target.value)} />
+            <Input data-chease-region="field-control" value={title} onChange={(event) => setTitle(event.target.value)} />
           </Field>
           <Field>
             Package note
-            <Input value={description} onChange={(event) => setDescription(event.target.value)} />
+            <Input data-chease-region="field-control" value={description} onChange={(event) => setDescription(event.target.value)} />
           </Field>
-          <PrimaryButton type="button" onClick={createPackage} disabled={busy}>
+          <PrimaryButton type="button" onClick={createPackage} disabled={busy} data-chease-region="primary-button">
             <PackagePlus aria-hidden="true" />
             Create CH-EASE package
           </PrimaryButton>
-          <UploadButtonLabel $disabled={!hasActivePackage || busy}>
+          <UploadButtonLabel $disabled={!hasActivePackage || busy} data-chease-region="upload-button">
             <UploadCloud aria-hidden="true" />
             Add media
             <HiddenFileInput
@@ -1579,36 +1715,36 @@ export function MacaroniPackager() {
               }}
             />
           </UploadButtonLabel>
-          <Button type="button" onClick={finalizePackage} disabled={!canFinalize} title={finalizeDisabledReason || undefined}>
+          <Button type="button" onClick={finalizePackage} disabled={!canFinalize} title={finalizeDisabledReason || undefined} data-chease-region="button">
             <CheckCircle2 aria-hidden="true" />
             Finalize package
           </Button>
         </Toolbar>
 
-        <ActionStrip aria-label="CH-EASE readiness path">
-          <Step $state={activePackage ? "done" : "active"}>
+        <ActionStrip aria-label="CH-EASE readiness path" data-chease-region="action-strip">
+          <Step $state={activePackage ? "done" : "active"} data-chease-region="step">
             <StepLabel>Package</StepLabel>
-            <StepState>{activePackage ? activeTitle : "Not created"}</StepState>
+            <StepState data-chease-region="step-state">{activePackage ? activeTitle : "Not created"}</StepState>
           </Step>
-          <Step $state={items.length ? "done" : activePackage ? "active" : "idle"}>
+          <Step $state={items.length ? "done" : activePackage ? "active" : "idle"} data-chease-region="step">
             <StepLabel>Media</StepLabel>
-            <StepState>{items.length ? `${items.length} stored as numbered files` : "Waiting for files"}</StepState>
+            <StepState data-chease-region="step-state">{items.length ? `${items.length} stored as numbered files` : "Waiting for files"}</StepState>
           </Step>
-          <Step $state={blockedCount ? "blocked" : items.length ? "done" : "idle"}>
+          <Step $state={blockedCount ? "blocked" : items.length ? "done" : "idle"} data-chease-region="step">
             <StepLabel>Metadata</StepLabel>
-            <StepState>{items.length ? `${readyCount}/${items.length} mint-ready` : "No tokens yet"}</StepState>
+            <StepState data-chease-region="step-state">{items.length ? `${readyCount}/${items.length} mint-ready` : "No tokens yet"}</StepState>
           </Step>
-          <Step $state={!activePackage ? "idle" : configDirty ? "active" : "done"}>
+          <Step $state={!activePackage ? "idle" : configDirty ? "active" : "done"} data-chease-region="step">
             <StepLabel>Drop page</StepLabel>
-            <StepState>{activePackage ? (configDirty ? "Unsaved page config" : currentLayout.label) : "Create package first"}</StepState>
+            <StepState data-chease-region="step-state">{activePackage ? (configDirty ? "Unsaved page config" : currentLayout.label) : "Create package first"}</StepState>
           </Step>
-          <Step $state={activePackage?.status === "finalized" ? "done" : finalizeDisabledReason ? "blocked" : "active"}>
+          <Step $state={activePackage?.status === "finalized" ? "done" : finalizeDisabledReason ? "blocked" : "active"} data-chease-region="step">
             <StepLabel>Export</StepLabel>
-            <StepState>{activePackage?.status === "finalized" ? `${currentTarget.label} package staged` : finalizeDisabledReason || "Ready to finalize"}</StepState>
+            <StepState data-chease-region="step-state">{activePackage?.status === "finalized" ? `${currentTarget.label} package staged` : finalizeDisabledReason || "Ready to finalize"}</StepState>
           </Step>
         </ActionStrip>
 
-        <TargetStrip aria-label="CH-EASE export targets">
+        <TargetStrip aria-label="CH-EASE export targets" data-chease-region="target-strip">
           {EXPORT_TARGETS.map((target) => (
             <TargetButton
               key={target.id}
@@ -1616,20 +1752,28 @@ export function MacaroniPackager() {
               $active={dropConfig.exportTarget === target.id}
               aria-pressed={dropConfig.exportTarget === target.id}
               onClick={() => updateDropConfig({ exportTarget: target.id })}
+              data-chease-region="target-button"
             >
-              <TokenTitle>Package for {target.label}</TokenTitle>
-              <Muted>{target.description}</Muted>
-              <Chip $tone={dropConfig.exportTarget === target.id ? "ok" : "muted"}>{target.requirement}</Chip>
+              <TokenTitle data-chease-region="token-title">Package for {target.label}</TokenTitle>
+              <Muted data-chease-region="muted">{target.description}</Muted>
+              <Chip
+                $tone={dropConfig.exportTarget === target.id ? "ok" : "muted"}
+                data-chease-region="chip"
+                data-chease-tone={dropConfig.exportTarget === target.id ? "ok" : "muted"}
+              >
+                {target.requirement}
+              </Chip>
             </TargetButton>
           ))}
         </TargetStrip>
 
-        <HandoffStrip aria-label="CH-EASE wtfOS handoffs">
+        <HandoffStrip aria-label="CH-EASE wtfOS handoffs" data-chease-region="handoff-strip">
           <Button
             type="button"
             onClick={openMacaroniPackageSource}
             disabled={!activePackage || activePackage.status !== "finalized" || handoffBusy === "macaroni"}
             title={activePackage?.status === "finalized" ? undefined : "Finalize this package before loading it in Macaroni"}
+            data-chease-region="button"
           >
             <PackageCheck aria-hidden="true" />
             Load package in Macaroni
@@ -1639,31 +1783,33 @@ export function MacaroniPackager() {
             disabled={!activePackage || activePackage.status !== "finalized"}
             onClick={downloadTargetPackage}
             title={activePackage?.status === "finalized" ? undefined : "Finalize this package before downloading a platform export"}
+            data-chease-region="button"
           >
             <Download aria-hidden="true" />
             Download {currentTarget.label} CSV
           </Button>
-          <Button type="button" onClick={() => openHandoff("studio", "/studio")}>
+          <Button type="button" onClick={() => openHandoff("studio", "/studio")} data-chease-region="button">
             <FolderOpen aria-hidden="true" />
             Open Studio
           </Button>
-          <Button type="button" onClick={() => openHandoff("wtf-domains", "/wtf-subdomains/setup")}>
+          <Button type="button" onClick={() => openHandoff("wtf-domains", "/wtf-subdomains/setup")} data-chease-region="button">
             <Globe2 aria-hidden="true" />
             WTF Domains
           </Button>
-          <Button type="button" onClick={() => openHandoff("ipfs-storage", "/ipfs-pinning")}>
+          <Button type="button" onClick={() => openHandoff("ipfs-storage", "/ipfs-pinning")} data-chease-region="button">
             <HardDrive aria-hidden="true" />
             IPFS storage
           </Button>
         </HandoffStrip>
 
-        <Toolbar aria-label="CH-EASE Pasta Protocol export">
+        <Toolbar aria-label="CH-EASE Pasta Protocol export" data-chease-region="pasta-toolbar">
           <Field>
             Pasta app
             <Input
               as="select"
               value={pastaTarget}
               onChange={(event) => selectPastaTarget(event.target.value as PastaAppId)}
+              data-chease-region="field-control"
             >
               {PASTA_EXPORT_APPS.map((app) => (
                 <option key={app.id} value={app.id}>
@@ -1678,6 +1824,7 @@ export function MacaroniPackager() {
               as="select"
               value={pastaKind}
               onChange={(event) => setPastaKind(event.target.value as "collection" | "single_token")}
+              data-chease-region="field-control"
             >
               <option value="collection">Collection</option>
               <option value="single_token">Single token</option>
@@ -1688,6 +1835,7 @@ export function MacaroniPackager() {
             onClick={exportPastaPackage}
             disabled={!activePackage || items.length === 0}
             title="Download a wtfos.pasta.chease-package.v1 file for a Pasta Protocol publisher app"
+            data-chease-region="button"
           >
             <Download aria-hidden="true" />
             Export Pasta package
@@ -1697,6 +1845,7 @@ export function MacaroniPackager() {
             onClick={openPastaPublisher}
             disabled={!activePackage || items.length === 0}
             title="Open the selected Pasta Protocol app with this package as a same-browser handoff"
+            data-chease-region="button"
           >
             <PackageCheck aria-hidden="true" />
             Open in Pasta app
@@ -1704,13 +1853,13 @@ export function MacaroniPackager() {
         </Toolbar>
 
         <Body>
-          <Panel aria-label="CH-EASE package queue">
-            <PanelHeader>
+          <Panel aria-label="CH-EASE package queue" data-chease-region="panel">
+            <PanelHeader data-chease-region="panel-header">
               <PanelTitle>
                 Packages
-                <PanelSubtitle>{activeTitle}</PanelSubtitle>
+                <PanelSubtitle data-chease-region="subtitle">{activeTitle}</PanelSubtitle>
               </PanelTitle>
-              <Chip $tone="muted">{packages.length}</Chip>
+              <Chip $tone="muted" data-chease-region="chip" data-chease-tone="muted">{packages.length}</Chip>
             </PanelHeader>
             <Scroll>
               {packages.length ? packages.map((pkg) => (
@@ -1719,31 +1868,32 @@ export function MacaroniPackager() {
                   key={pkg.id}
                   $active={activePackage?.id === pkg.id}
                   onClick={() => loadPackage(pkg.id)}
+                  data-chease-region="package-row"
                 >
-                  <TokenTitle>{pkg.title}</TokenTitle>
-                  <Muted>{pkg.status} · {pkg.itemCount} item(s)</Muted>
-                  <Muted>avg {formatBytes(pkg.averageBytes)}</Muted>
+                  <TokenTitle data-chease-region="token-title">{pkg.title}</TokenTitle>
+                  <Muted data-chease-region="muted">{pkg.status} · {pkg.itemCount} item(s)</Muted>
+                  <Muted data-chease-region="muted">avg {formatBytes(pkg.averageBytes)}</Muted>
                 </PackageButton>
               )) : (
-                <EmptyState>
-                  <TokenTitle>No CH-EASE packages yet</TokenTitle>
-                  <Muted>Create a package to start a Macaroni handoff.</Muted>
+                <EmptyState data-chease-region="empty-state">
+                  <TokenTitle data-chease-region="token-title">No CH-EASE packages yet</TokenTitle>
+                  <Muted data-chease-region="muted">Create a package to start a Macaroni handoff.</Muted>
                 </EmptyState>
               )}
             </Scroll>
           </Panel>
 
-          <Panel aria-label="CH-EASE media grid">
-            <PanelHeader>
+          <Panel aria-label="CH-EASE media grid" data-chease-region="panel">
+            <PanelHeader data-chease-region="panel-header">
               <PanelTitle>
                 Media
-                <PanelSubtitle>Numbered storage files, original token titles preserved.</PanelSubtitle>
+                <PanelSubtitle data-chease-region="subtitle">Numbered storage files, original token titles preserved.</PanelSubtitle>
               </PanelTitle>
               <ReadinessBlock>
                 <Chips>
-                  <Chip $tone={items.length ? "ok" : "muted"}>{items.length} item(s)</Chip>
-                  <Chip $tone={readyCount === items.length && items.length ? "ok" : "warn"}>{readyCount}/{items.length} ready</Chip>
-                  <Chip $tone={activePackage?.status === "finalized" ? "ok" : "muted"}>{activeStatus}</Chip>
+                  <Chip $tone={items.length ? "ok" : "muted"} data-chease-region="chip" data-chease-tone={items.length ? "ok" : "muted"}>{items.length} item(s)</Chip>
+                  <Chip $tone={readyCount === items.length && items.length ? "ok" : "warn"} data-chease-region="chip" data-chease-tone={readyCount === items.length && items.length ? "ok" : "warn"}>{readyCount}/{items.length} ready</Chip>
+                  <Chip $tone={activePackage?.status === "finalized" ? "ok" : "muted"} data-chease-region="chip" data-chease-tone={activePackage?.status === "finalized" ? "ok" : "muted"}>{activeStatus}</Chip>
                 </Chips>
                 <MeterTrack
                   role="meter"
@@ -1751,8 +1901,9 @@ export function MacaroniPackager() {
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={readyPercent}
+                  data-chease-region="meter-track"
                 >
-                  <MeterFill $percent={readyPercent} />
+                  <MeterFill $percent={readyPercent} data-chease-region="meter-fill" />
                 </MeterTrack>
               </ReadinessBlock>
             </PanelHeader>
@@ -1766,15 +1917,16 @@ export function MacaroniPackager() {
                       $active={selectedItem?.id === item.id}
                       onClick={() => setSelectedItemId(item.id)}
                       aria-label={`Edit token ${item.tokenId}: ${item.tokenName}`}
+                      data-chease-region="media-card"
                     >
-                      <Preview>{mediaPreview(item)}</Preview>
+                      <Preview data-chease-region="preview">{mediaPreview(item)}</Preview>
                       <CardBody>
-                        <TokenTitle>{item.tokenId}. {item.tokenName}</TokenTitle>
-                        <Muted>{item.normalizedFilename} · {formatBytes(item.sizeBytes)}</Muted>
+                        <TokenTitle data-chease-region="token-title">{item.tokenId}. {item.tokenName}</TokenTitle>
+                        <Muted data-chease-region="muted">{item.normalizedFilename} · {formatBytes(item.sizeBytes)}</Muted>
                         <Chips>
-                          <Chip $tone={item.readiness.hasMedia ? "ok" : "bad"}>media stored</Chip>
-                          <Chip $tone={item.readiness.hasMetadata ? "ok" : "warn"}>metadata</Chip>
-                          <Chip $tone={item.readiness.readyForMint ? "ok" : "warn"}>
+                          <Chip $tone={item.readiness.hasMedia ? "ok" : "bad"} data-chease-region="chip" data-chease-tone={item.readiness.hasMedia ? "ok" : "bad"}>media stored</Chip>
+                          <Chip $tone={item.readiness.hasMetadata ? "ok" : "warn"} data-chease-region="chip" data-chease-tone={item.readiness.hasMetadata ? "ok" : "warn"}>metadata</Chip>
+                          <Chip $tone={item.readiness.readyForMint ? "ok" : "warn"} data-chease-region="chip" data-chease-tone={item.readiness.readyForMint ? "ok" : "warn"}>
                             {item.readiness.readyForMint ? "ready" : "needs review"}
                           </Chip>
                         </Chips>
@@ -1794,13 +1946,14 @@ export function MacaroniPackager() {
                     onDragOver={(event) => event.preventDefault()}
                     onDragLeave={() => setDragActive(false)}
                     onDrop={handleUploadDrop}
+                    data-chease-region="upload-zone"
                   >
-                    <UploadGlyph aria-hidden="true">
+                    <UploadGlyph aria-hidden="true" data-chease-region="upload-glyph">
                       <UploadCloud />
                     </UploadGlyph>
                     <UploadText>
-                      <TokenTitle>{uploadHint}</TokenTitle>
-                      <Muted>Original names become token titles; storage files become 1.ext, 2.ext, 3.ext.</Muted>
+                      <TokenTitle data-chease-region="token-title">{uploadHint}</TokenTitle>
+                      <Muted data-chease-region="muted">Original names become token titles; storage files become 1.ext, 2.ext, 3.ext.</Muted>
                     </UploadText>
                     <HiddenFileInput
                       aria-label="Drop media into CH-EASE"
@@ -1814,49 +1967,49 @@ export function MacaroniPackager() {
                       }}
                     />
                   </UploadZone>
-                  <EmptyState>
-                    <TokenTitle>{activePackage ? "No media stored" : "Create a package first"}</TokenTitle>
-                    <Muted>{activePackage ? "Store media to build the package grid." : "CH-EASE needs a package before media can be stored."}</Muted>
+                  <EmptyState data-chease-region="empty-state">
+                    <TokenTitle data-chease-region="token-title">{activePackage ? "No media stored" : "Create a package first"}</TokenTitle>
+                    <Muted data-chease-region="muted">{activePackage ? "Store media to build the package grid." : "CH-EASE needs a package before media can be stored."}</Muted>
                   </EmptyState>
                 </>
               )}
             </Scroll>
           </Panel>
 
-          <Panel aria-label="CH-EASE metadata editor">
-            <PanelHeader>
+          <Panel aria-label="CH-EASE metadata editor" data-chease-region="panel">
+            <PanelHeader data-chease-region="panel-header">
               <PanelTitle>
                 Inspector
-                <PanelSubtitle>{selectedItem ? `${selectedItem.originalTitle} · drop page config` : "Token preview and drop page config"}</PanelSubtitle>
+                <PanelSubtitle data-chease-region="subtitle">{selectedItem ? `${selectedItem.originalTitle} · drop page config` : "Token preview and drop page config"}</PanelSubtitle>
               </PanelTitle>
-              {selectedItem ? <Chip $tone="muted">#{selectedItem.tokenId}</Chip> : null}
+              {selectedItem ? <Chip $tone="muted" data-chease-region="chip" data-chease-tone="muted">#{selectedItem.tokenId}</Chip> : null}
             </PanelHeader>
             <Scroll>
               <InspectorStack>
                 <PreviewPane aria-label="CH-EASE token preview">
                   <PanelTitle>
                     Token preview
-                    <PanelSubtitle>{selectedItem ? "How this item will read in downstream marketplaces." : "Select media to preview token metadata."}</PanelSubtitle>
+                    <PanelSubtitle data-chease-region="subtitle">{selectedItem ? "How this item will read in downstream marketplaces." : "Select media to preview token metadata."}</PanelSubtitle>
                   </PanelTitle>
                   {selectedItem ? (
                     <>
-                      <LargePreview>{mediaPreview(selectedItem)}</LargePreview>
-                      <PreviewMeta>
-                        <TokenTitle>{selectedItem.tokenName}</TokenTitle>
-                        <Muted>{selectedItem.tokenDescription || "No description yet."}</Muted>
+                      <LargePreview data-chease-region="large-preview">{mediaPreview(selectedItem)}</LargePreview>
+                      <PreviewMeta data-chease-region="preview-meta">
+                        <TokenTitle data-chease-region="token-title">{selectedItem.tokenName}</TokenTitle>
+                        <Muted data-chease-region="muted">{selectedItem.tokenDescription || "No description yet."}</Muted>
                         <Chips>
-                          <Chip $tone="ok">{selectedItem.normalizedFilename}</Chip>
-                          <Chip $tone="muted">{selectedItem.mimeType}</Chip>
-                          <Chip $tone={selectedItem.readiness.readyForMint ? "ok" : "warn"}>
+                          <Chip $tone="ok" data-chease-region="chip" data-chease-tone="ok">{selectedItem.normalizedFilename}</Chip>
+                          <Chip $tone="muted" data-chease-region="chip" data-chease-tone="muted">{selectedItem.mimeType}</Chip>
+                          <Chip $tone={selectedItem.readiness.readyForMint ? "ok" : "warn"} data-chease-region="chip" data-chease-tone={selectedItem.readiness.readyForMint ? "ok" : "warn"}>
                             {selectedItem.readiness.readyForMint ? "ready for export" : "needs review"}
                           </Chip>
                         </Chips>
                       </PreviewMeta>
                     </>
                   ) : (
-                    <EmptyState>
-                      <TokenTitle>Select a media item</TokenTitle>
-                      <Muted>Metadata editing appears after a stored file is selected.</Muted>
+                    <EmptyState data-chease-region="empty-state">
+                      <TokenTitle data-chease-region="token-title">Select a media item</TokenTitle>
+                      <Muted data-chease-region="muted">Metadata editing appears after a stored file is selected.</Muted>
                     </EmptyState>
                   )}
                 </PreviewPane>
@@ -1865,24 +2018,25 @@ export function MacaroniPackager() {
                   <InspectorForm onSubmit={saveSelectedMetadata}>
                     <PanelTitle>
                       Token metadata
-                      <PanelSubtitle>Original filenames become token titles; stored files stay numbered for platform imports.</PanelSubtitle>
+                      <PanelSubtitle data-chease-region="subtitle">Original filenames become token titles; stored files stay numbered for platform imports.</PanelSubtitle>
                     </PanelTitle>
                     <Field>
                       Token name
-                      <Input value={draftName} onChange={(event) => setDraftName(event.target.value)} />
+                      <Input data-chease-region="field-control" value={draftName} onChange={(event) => setDraftName(event.target.value)} />
                     </Field>
                     <Field>
                       Description
-                      <TextArea value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} />
+                      <TextArea data-chease-region="field-control" value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} />
                     </Field>
                     <Field>
                       Tags
-                      <Input value={draftTags} onChange={(event) => setDraftTags(event.target.value)} placeholder="tag; tag" />
+                      <Input data-chease-region="field-control" value={draftTags} onChange={(event) => setDraftTags(event.target.value)} placeholder="tag; tag" />
                     </Field>
                     <Field>
                       Attributes JSON
                       <TextArea
                         id="chease-attributes-json"
+                        data-chease-region="field-control"
                         value={draftAttributes}
                         onChange={(event) => setDraftAttributes(event.target.value)}
                         placeholder='[{"name":"palette","value":"green"}]'
@@ -1890,61 +2044,61 @@ export function MacaroniPackager() {
                         aria-invalid={Boolean(attributesError)}
                         aria-describedby="chease-attributes-help"
                       />
-                      <FieldHelp id="chease-attributes-help" $error={Boolean(attributesError)}>
+                      <FieldHelp id="chease-attributes-help" $error={Boolean(attributesError)} data-chease-region="field-help" data-chease-error={Boolean(attributesError)}>
                         {attributesError || "Use an array of trait objects, for example palette or medium."}
                       </FieldHelp>
                     </Field>
                     <MetadataFacts>
-                      <FactRow>
-                        <Muted>Original</Muted>
+                      <FactRow data-chease-region="fact-row">
+                        <Muted data-chease-region="muted">Original</Muted>
                         <span>{selectedItem.originalFilename}</span>
                       </FactRow>
-                      <FactRow>
-                        <Muted>Stored as</Muted>
+                      <FactRow data-chease-region="fact-row">
+                        <Muted data-chease-region="muted">Stored as</Muted>
                         <span>{selectedItem.normalizedFilename}</span>
                       </FactRow>
-                      <FactRow>
-                        <Muted>Media CID</Muted>
+                      <FactRow data-chease-region="fact-row">
+                        <Muted data-chease-region="muted">Media CID</Muted>
                         <span>{selectedItem.mediaCid}</span>
                       </FactRow>
                     </MetadataFacts>
                     <Chips>
-                      <Chip $tone="ok">
+                      <Chip $tone="ok" data-chease-region="chip" data-chease-tone="ok">
                         <FileSpreadsheet aria-hidden="true" size={14} />
                         OBJKT title preserved
                       </Chip>
-                      {selectedItem.metadataCid ? <Chip $tone="ok">metadata CID</Chip> : <Chip $tone="warn">metadata pending</Chip>}
+                      {selectedItem.metadataCid ? <Chip $tone="ok" data-chease-region="chip" data-chease-tone="ok">metadata CID</Chip> : <Chip $tone="warn" data-chease-region="chip" data-chease-tone="warn">metadata pending</Chip>}
                     </Chips>
                     {selectedItem.readiness.warnings.length ? (
-                      <WarningList>
+                      <WarningList data-chease-region="warning-list">
                         {selectedItem.readiness.warnings.map((warning) => (
                           <span key={warning}>{warning}</span>
                         ))}
                       </WarningList>
                     ) : null}
-                    <PrimaryButton type="submit" disabled={busy || Boolean(attributesError)}>
+                    <PrimaryButton type="submit" disabled={busy || Boolean(attributesError)} data-chease-region="primary-button">
                       <Save aria-hidden="true" />
                       Save token metadata
                     </PrimaryButton>
                   </InspectorForm>
                 ) : null}
 
-                <DropEditor aria-label="CH-EASE drop page editor" onSubmit={saveDropConfig}>
+                <DropEditor aria-label="CH-EASE drop page editor" onSubmit={saveDropConfig} data-chease-region="drop-editor">
                   <PanelTitle>
                     Drop page editor
-                    <PanelSubtitle>Stored with the package for Macaroni, drop.art, or future publishing apps.</PanelSubtitle>
+                    <PanelSubtitle data-chease-region="subtitle">Stored with the package for Macaroni, drop.art, or future publishing apps.</PanelSubtitle>
                   </PanelTitle>
                   <Field>
                     Drop page headline
-                    <Input value={dropConfig.headline} onChange={(event) => updateDropConfig({ headline: event.target.value })} />
+                    <Input data-chease-region="field-control" value={dropConfig.headline} onChange={(event) => updateDropConfig({ headline: event.target.value })} />
                   </Field>
                   <Field>
                     Drop page intro
-                    <TextArea value={dropConfig.intro} onChange={(event) => updateDropConfig({ intro: event.target.value })} />
+                    <TextArea data-chease-region="field-control" value={dropConfig.intro} onChange={(event) => updateDropConfig({ intro: event.target.value })} />
                   </Field>
                   <Field>
                     Call to action
-                    <Input value={dropConfig.callToAction} onChange={(event) => updateDropConfig({ callToAction: event.target.value })} />
+                    <Input data-chease-region="field-control" value={dropConfig.callToAction} onChange={(event) => updateDropConfig({ callToAction: event.target.value })} />
                   </Field>
                   <Field>
                     Page theme
@@ -1952,6 +2106,7 @@ export function MacaroniPackager() {
                       as="select"
                       value={dropConfig.theme}
                       onChange={(event) => updateDropConfig({ theme: event.target.value as DropTheme })}
+                      data-chease-region="field-control"
                     >
                       <option value="gallery-white">Gallery white</option>
                       <option value="dark-room">Dark room</option>
@@ -1962,7 +2117,7 @@ export function MacaroniPackager() {
 
                   <PanelTitle>
                     Format preset
-                    <PanelSubtitle>Choose how the saved page config should be interpreted downstream.</PanelSubtitle>
+                    <PanelSubtitle data-chease-region="subtitle">Choose how the saved page config should be interpreted downstream.</PanelSubtitle>
                   </PanelTitle>
                   <Segmented role="group" aria-label="Drop page layout presets">
                     {LAYOUT_PRESETS.map((layout) => {
@@ -1974,10 +2129,11 @@ export function MacaroniPackager() {
                           $active={dropConfig.layout === layout.id}
                           aria-pressed={dropConfig.layout === layout.id}
                           onClick={() => updateDropConfig({ layout: layout.id })}
+                          data-chease-region="segment-button"
                         >
                           <LayoutIcon aria-hidden="true" />
-                          <TokenTitle>{layout.label}</TokenTitle>
-                          <Muted>{layout.description}</Muted>
+                          <TokenTitle data-chease-region="token-title">{layout.label}</TokenTitle>
+                          <Muted data-chease-region="muted">{layout.description}</Muted>
                         </SegmentButton>
                       );
                     })}
@@ -1985,13 +2141,13 @@ export function MacaroniPackager() {
 
                   <PanelTitle>
                     Optional modules
-                    <PanelSubtitle>Modules are saved as config; downstream apps decide which become live.</PanelSubtitle>
+                    <PanelSubtitle data-chease-region="subtitle">Modules are saved as config; downstream apps decide which become live.</PanelSubtitle>
                   </PanelTitle>
                   <ToggleGrid>
                     {MODULE_OPTIONS.map((module) => {
                       const ModuleIcon = module.icon;
                       return (
-                        <ToggleCard key={module.id} $enabled={dropConfig.modules[module.id]}>
+                        <ToggleCard key={module.id} $enabled={dropConfig.modules[module.id]} data-chease-region="toggle-card">
                           <input
                             type="checkbox"
                             checked={dropConfig.modules[module.id]}
@@ -2000,42 +2156,42 @@ export function MacaroniPackager() {
                           />
                           <span>
                             <ModuleIcon aria-hidden="true" />
-                            <TokenTitle>{module.label}</TokenTitle>
-                            <Muted>{module.description}</Muted>
+                            <TokenTitle data-chease-region="token-title">{module.label}</TokenTitle>
+                            <Muted data-chease-region="muted">{module.description}</Muted>
                           </span>
                         </ToggleCard>
                       );
                     })}
                   </ToggleGrid>
 
-                  <DropPreview aria-label="CH-EASE drop page preview" $theme={dropConfig.theme} $layout={dropConfig.layout}>
+                  <DropPreview aria-label="CH-EASE drop page preview" $theme={dropConfig.theme} $layout={dropConfig.layout} data-chease-region="drop-preview">
                     <Chips>
-                      <Chip $tone="muted">{currentTarget.label}</Chip>
-                      <Chip $tone="muted">{currentLayout.label}</Chip>
-                      <Chip $tone={configDirty ? "warn" : "ok"}>{configDirty ? "unsaved config" : "config stored"}</Chip>
+                      <Chip $tone="muted" data-chease-region="chip" data-chease-tone="muted">{currentTarget.label}</Chip>
+                      <Chip $tone="muted" data-chease-region="chip" data-chease-tone="muted">{currentLayout.label}</Chip>
+                      <Chip $tone={configDirty ? "warn" : "ok"} data-chease-region="chip" data-chease-tone={configDirty ? "warn" : "ok"}>{configDirty ? "unsaved config" : "config stored"}</Chip>
                     </Chips>
-                    <TokenTitle>{dropConfig.headline}</TokenTitle>
-                    <Muted>{dropConfig.intro}</Muted>
+                    <TokenTitle data-chease-region="token-title">{dropConfig.headline}</TokenTitle>
+                    <Muted data-chease-region="muted">{dropConfig.intro}</Muted>
                     {dropConfig.layout !== "single-page" ? (
                       <PreviewNav aria-label="Drop page preview navigation">
-                        {["Story", "Mint", "Gallery", "Completion"].map((tab) => <PreviewTab key={tab}>{tab}</PreviewTab>)}
+                        {["Story", "Mint", "Gallery", "Completion"].map((tab) => <PreviewTab key={tab} data-chease-region="preview-tab">{tab}</PreviewTab>)}
                       </PreviewNav>
                     ) : null}
                     {dropConfig.modules.tokenGrid || dropConfig.modules.mintGallery ? (
                       <MiniTokenGrid aria-hidden="true">
                         {(items.length ? items.slice(0, 6) : [1, 2, 3, 4, 5, 6]).map((item, index) => (
-                          <MiniToken key={typeof item === "number" ? item : item.id}>
+                          <MiniToken key={typeof item === "number" ? item : item.id} data-chease-region="mini-token">
                             {typeof item === "number" ? index + 1 : item.tokenId}
                           </MiniToken>
                         ))}
                       </MiniTokenGrid>
                     ) : null}
                     <Chips>
-                      {enabledModules.map((module) => <Chip key={module.id} $tone="ok">{module.label}</Chip>)}
+                      {enabledModules.map((module) => <Chip key={module.id} $tone="ok" data-chease-region="chip" data-chease-tone="ok">{module.label}</Chip>)}
                     </Chips>
                   </DropPreview>
 
-                  <PrimaryButton type="submit" disabled={busy || !activePackage}>
+                  <PrimaryButton type="submit" disabled={busy || !activePackage} data-chease-region="primary-button">
                     <Save aria-hidden="true" />
                     Save drop page config
                   </PrimaryButton>
@@ -2044,7 +2200,7 @@ export function MacaroniPackager() {
             </Scroll>
           </Panel>
         </Body>
-        <StatusLine role="status" aria-live="polite" $error={Boolean(error)}>
+        <StatusLine role="status" aria-live="polite" $error={Boolean(error)} data-chease-region="status" data-chease-error={Boolean(error)}>
           {error || status}
         </StatusLine>
       </Shell>

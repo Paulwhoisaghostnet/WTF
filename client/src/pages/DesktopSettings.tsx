@@ -32,6 +32,7 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { HamsterPixelSprite } from "../components/layout/HamsterPixelSprite";
 import { api } from "../lib/api";
 import { useLocalization, type TranslateFn } from "../lib/localization";
+import { usePresentationShell } from "../lib/presentation-shell";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
   DESKTOP_APPEARANCE_STYLES,
@@ -155,6 +156,131 @@ const Shell = styled.div`
   display: grid;
   grid-template-columns: minmax(220px, 0.85fr) minmax(280px, 1.15fr);
   gap: 10px;
+
+  &[data-desktop-settings-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family:
+      Inter, "IBM Plex Sans", "Neue Haas Grotesk Text", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+    letter-spacing: 0;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"],
+  &[data-desktop-settings-presentation-host="gamma"] * {
+    box-sizing: border-box;
+    text-shadow: none !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"]
+    :where(button, input, select, textarea, label, span, strong, div) {
+    font-family:
+      Inter, "IBM Plex Sans", "Neue Haas Grotesk Text", Arial, sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"]
+    :where([data-desktop-settings-region="surface"], [data-desktop-settings-region="appearance-panel"], [data-desktop-settings-region="desktop-panel"], [data-desktop-settings-region="pet-panel"], [data-desktop-settings-region="agent-panel"]) {
+    min-width: 0;
+    border: 1px solid rgba(242, 234, 217, 0.16) !important;
+    background: #11110f !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"]
+    :where([data-desktop-settings-region="style-button"], [data-desktop-settings-region="font-pack-button"], [data-desktop-settings-region="chat-preset-button"], [data-desktop-settings-region="color-preset-button"], [data-desktop-settings-region="source-button"], [data-desktop-settings-region="toolbar-button"], [data-desktop-settings-region="chat-toggle"], [data-desktop-settings-region="chat-color"], [data-desktop-settings-region="segment-button"], [data-desktop-settings-region="token-row"]) {
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    background: #070706 !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"]
+    :where([data-desktop-settings-region="style-button"][aria-pressed="true"], [data-desktop-settings-region="font-pack-button"][aria-pressed="true"], [data-desktop-settings-region="chat-preset-button"][aria-pressed="true"], [data-desktop-settings-region="color-preset-button"][aria-pressed="true"], [data-desktop-settings-region="source-button"][aria-pressed="true"], [data-desktop-settings-region="segment-button"][aria-pressed="true"]) {
+    border-color: rgba(0, 210, 255, 0.72) !important;
+    color: #00d2ff !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="style-preview"] {
+    border: 1px solid rgba(0, 210, 255, 0.58) !important;
+    background: #070706 !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="style-preview"]::before {
+    content: "";
+    display: block;
+    height: 9px;
+    border-bottom: 1px solid rgba(0, 210, 255, 0.58);
+    background: #00d2ff;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"]
+    :where([data-desktop-settings-region="section-title"], [data-desktop-settings-region="mcp-endpoint"]) {
+    color: #00d2ff;
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"]
+    :where(input, select, textarea) {
+    border: 1px solid rgba(242, 234, 217, 0.22) !important;
+    border-radius: 4px !important;
+    background: #070706 !important;
+    color: #f2ead9 !important;
+    box-shadow: none !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] input[type="color"] {
+    min-height: 34px;
+    padding: 2px;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="help"],
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="summary"] {
+    color: rgba(242, 234, 217, 0.68) !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="chat-preview"] {
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    background: #070706 !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="swatch"] {
+    border: 1px solid rgba(242, 234, 217, 0.26) !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-thumb="true"] {
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="stat-bar"] {
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    background: #070706 !important;
+    box-shadow: none !important;
+    border-radius: 4px !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="toolbar-button"]:hover,
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="toolbar-button"]:focus-visible,
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="segment-button"]:hover,
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="segment-button"]:focus-visible {
+    border-color: #00d2ff !important;
+    color: #00d2ff !important;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
 
   @media (max-width: 780px) {
     grid-template-columns: 1fr;
@@ -651,8 +777,6 @@ function applyScheme(appearance: DesktopAppearance, key: string): DesktopAppeara
 
 function liveChatFontFamily(font: DesktopWtfLiveChatFont): string {
   switch (font) {
-    case "grout-display":
-      return getFontPack("mek-type").roles.display;
     case "classic-95":
       return getFontPack("classic-95").roles.app;
     case "terminal":
@@ -660,7 +784,7 @@ function liveChatFontFamily(font: DesktopWtfLiveChatFont): string {
     case "serif-press":
       return getFontPack("serif-press").roles.app;
     default:
-      return getFontPack("mek-type").roles.mono;
+      return getFontPack("classic-95").roles.app;
   }
 }
 
@@ -765,6 +889,7 @@ function PetStats({ pet, t }: { pet: HamsterState; t: TranslateFn }) {
 }
 
 export function DesktopSettings() {
+  const presentation = usePresentationShell();
   const qc = useQueryClient();
   const { t, formatDate } = useLocalization();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -1088,6 +1213,7 @@ export function DesktopSettings() {
     <AppWindow title={t("themeBuilder.title")}>
       <Shell
         data-desktop-settings-surface="theme-builder"
+        data-desktop-settings-presentation-host={presentation.host}
         data-desktop-settings-region="surface"
       >
         <Group variant="outside" data-desktop-settings-region="appearance-panel">

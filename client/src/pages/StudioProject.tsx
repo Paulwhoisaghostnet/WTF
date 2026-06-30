@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { Hourglass } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
+import { usePresentationShell } from "../lib/presentation-shell";
 import { useWindowManager } from "../lib/window-context";
 import {
   STUDIO_ANNOTATION_KINDS,
@@ -64,6 +65,7 @@ export function StudioProject({ projectId }: StudioProjectProps) {
   const validProjectId = Number.isInteger(numericProjectId) && numericProjectId > 0;
 
   const { user } = useAuth();
+  const presentation = usePresentationShell();
   const wm = useWindowManager();
 
   const [activeFileId, setActiveFileId] = useState<number | null>(null);
@@ -234,14 +236,28 @@ export function StudioProject({ projectId }: StudioProjectProps) {
   if (!validProjectId) {
     return (
       <AppWindow title="Studio">
-        <div style={{ padding: 16 }}>Invalid project id.</div>
+        <div
+          data-studio-presentation-host={presentation.host}
+          data-studio-surface="project-guard"
+          data-studio-region="guard"
+          style={{ padding: 16 }}
+        >
+          Invalid project id.
+        </div>
       </AppWindow>
     );
   }
   if (!user) {
     return (
       <AppWindow title="Studio">
-        <div style={{ padding: 16 }}>Sign in to view this project.</div>
+        <div
+          data-studio-presentation-host={presentation.host}
+          data-studio-surface="project-guard"
+          data-studio-region="guard"
+          style={{ padding: 16 }}
+        >
+          Sign in to view this project.
+        </div>
       </AppWindow>
     );
   }
@@ -249,6 +265,9 @@ export function StudioProject({ projectId }: StudioProjectProps) {
     return (
       <AppWindow title="Studio">
         <div
+          data-studio-presentation-host={presentation.host}
+          data-studio-surface="project-loading"
+          data-studio-region="loading"
           style={{
             display: "flex",
             alignItems: "center",
@@ -264,7 +283,10 @@ export function StudioProject({ projectId }: StudioProjectProps) {
   if (projectQuery.isError || !projectQuery.data?.project) {
     return (
       <AppWindow title="Studio">
-        <ErrorBanner>
+        <ErrorBanner
+          data-studio-presentation-host={presentation.host}
+          data-studio-surface="project-error"
+        >
           {(projectQuery.error as Error)?.message ||
             "Unable to load this Studio project."}
         </ErrorBanner>
@@ -289,7 +311,11 @@ export function StudioProject({ projectId }: StudioProjectProps) {
 
   return (
     <AppWindow title={`Studio: ${project.name}`}>
-      <Shell>
+      <Shell
+        data-studio-presentation-host={presentation.host}
+        data-studio-surface="project-workspace"
+        data-studio-project-id={project.id}
+      >
         {/* ─── LEFT PANEL: Tree / files / upload ─── */}
         <StudioLeftColumn
           activeFileId={activeFileId}

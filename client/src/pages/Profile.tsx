@@ -36,6 +36,10 @@ import { ProfileShareCard } from "../features/profile/ProfileShareCard";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
+import {
+  presentationRouteHref,
+  usePresentationShell,
+} from "../lib/presentation-shell";
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 import { getCanvasFont } from "../features/appearance/get-canvas-font";
 
@@ -43,8 +47,127 @@ import { getCanvasFont } from "../features/appearance/get-canvas-font";
 
 const PROFILE_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
 const PROFILE_MONO_FONT = "var(--wtf-mono-font)";
+const profileRegion = (region: string): Record<string, string> => ({
+  "data-profile-region": region,
+});
 
-const Section = styled(UiPanel)`
+const ProfileSurface = styled.div`
+  display: grid;
+  gap: var(--wtf-space-3, 12px);
+  min-width: 0;
+
+  &[data-profile-presentation-host="gamma"] {
+    --wtf-app-surface: #0b0b0a;
+    --wtf-app-surface-raised: #11110f;
+    --wtf-app-border: rgba(242, 234, 217, 0.2);
+    --wtf-app-control-border: rgba(242, 234, 217, 0.28);
+    --wtf-app-control-bg: #11110f;
+    --wtf-app-text: #f2ead9;
+    --wtf-app-muted-text: #a99f8f;
+    --wtf-app-link: #00d2ff;
+    --wtf-app-primary: #00d2ff;
+    --wtf-app-accent-text: #070706;
+    --wtf-app-success: #d6ff3f;
+    --wtf-panel-radius: 6px;
+    --wtf-control-radius: 6px;
+    --wtf-button-radius: 6px;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="section"],
+  &[data-profile-presentation-host="gamma"] [data-profile-region="modal-window"] {
+    background: #0b0b0a;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="section"] h2 {
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 18px;
+    letter-spacing: normal;
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="identity-cluster"] {
+    align-items: stretch;
+    border-top: 1px solid rgba(0, 210, 255, 0.22);
+    padding-top: var(--wtf-space-2, 8px);
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="avatar-button"] {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(0, 210, 255, 0.55);
+    box-shadow: none;
+    color: #f2ead9;
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="avatar-upload"] {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.26);
+    border-radius: 6px;
+    box-shadow: none;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="social-row"] {
+    border-top: 1px solid rgba(242, 234, 217, 0.12);
+    padding-top: var(--wtf-space-2, 8px);
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="wallet-table"] {
+    width: 100%;
+    border: 1px solid rgba(242, 234, 217, 0.2);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="pfp-overlay"] {
+    background: rgba(7, 7, 6, 0.82);
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="pfp-grid"] {
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    background: #070706;
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="pfp-candidate"] {
+    background: #11110f;
+    background-image: none;
+    border-width: 1px;
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="pfp-badge"] {
+    background: #d6ff3f;
+    color: #070706;
+    border-radius: 0 0 4px 0;
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="editor-toolbar"] {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.2);
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  &[data-profile-presentation-host="gamma"] [data-profile-region="editor-canvas"] {
+    background: #070706;
+    border: 1px solid rgba(0, 210, 255, 0.48);
+    border-radius: 6px;
+    box-shadow: none;
+  }
+`;
+
+const Section = styled(UiPanel).attrs(profileRegion("section"))`
   margin-bottom: var(--wtf-space-3, 12px);
 `;
 
@@ -54,23 +177,25 @@ const Field = styled(UiField)`
 
 const TokenCountBadge = styled(UiStatusPill).attrs({ $tone: "info" as const })``;
 
-const SocialRow = styled.div`
+const SocialRow = styled.div.attrs(profileRegion("social-row"))`
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
+  flex-wrap: wrap;
 `;
 
 const VerifiedBadge = styled(UiStatusPill).attrs({ $tone: "success" as const })``;
 
-const PfpContainer = styled.div`
+const PfpContainer = styled.div.attrs(profileRegion("identity-cluster"))`
   display: flex;
   align-items: flex-start;
   gap: 16px;
   margin-bottom: 12px;
+  flex-wrap: wrap;
 `;
 
-const PfpCircle = styled.button<{ $hasImage: boolean }>`
+const PfpCircle = styled.button.attrs(profileRegion("avatar-button"))<{ $hasImage: boolean }>`
   width: 96px;
   height: 96px;
   border-radius: 50%;
@@ -101,7 +226,7 @@ const PfpCircle = styled.button<{ $hasImage: boolean }>`
   }
 `;
 
-const AvatarUploadLabel = styled.label<{ $disabled?: boolean }>`
+const AvatarUploadLabel = styled.label.attrs(profileRegion("avatar-upload"))<{ $disabled?: boolean }>`
   display: inline-flex;
   align-items: center;
   min-height: var(--wtf-control-min-height, 32px);
@@ -124,14 +249,14 @@ const AvatarUploadLabel = styled.label<{ $disabled?: boolean }>`
   }
 `;
 
-const AvatarUploadStatus = styled.div`
+const AvatarUploadStatus = styled.div.attrs(profileRegion("avatar-upload-status"))`
   margin-top: 4px;
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted-text, #384352);
   max-width: 260px;
 `;
 
-const Overlay = styled.div`
+const Overlay = styled.div.attrs(profileRegion("pfp-overlay"))`
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
@@ -141,7 +266,11 @@ const Overlay = styled.div`
   z-index: 999;
 `;
 
-const PfpGrid = styled.div`
+const ProfileModalWindow = styled(Window).attrs(profileRegion("modal-window"))`
+  color: var(--wtf-app-text, #111);
+`;
+
+const PfpGrid = styled.div.attrs(profileRegion("pfp-grid"))`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   gap: 8px;
@@ -150,7 +279,7 @@ const PfpGrid = styled.div`
   padding: 4px;
 `;
 
-const PfpCandidate = styled.button<{ $isPfp: boolean }>`
+const PfpCandidate = styled.button.attrs(profileRegion("pfp-candidate"))<{ $isPfp: boolean }>`
   width: 80px;
   height: 80px;
   border: 2px solid
@@ -182,7 +311,7 @@ const PfpCandidate = styled.button<{ $isPfp: boolean }>`
   }
 `;
 
-const PfpBadge = styled.span`
+const PfpBadge = styled.span.attrs(profileRegion("pfp-badge"))`
   position: absolute;
   top: 2px;
   left: 2px;
@@ -192,7 +321,7 @@ const PfpBadge = styled.span`
   padding: 0 3px;
 `;
 
-const EditorCanvas = styled.canvas`
+const EditorCanvas = styled.canvas.attrs(profileRegion("editor-canvas"))`
   border: 1px solid var(--wtf-app-border, #808080);
   cursor: crosshair;
   max-width: 100%;
@@ -309,6 +438,7 @@ const STICKERS_CLASSIC = ["★", "♥", "✦", "☀", "⚡", "🔥", "💎", "�
 export function Profile() {
   const { user } = useAuth();
   const { address, connect, isConnecting } = useWallet();
+  const presentation = usePresentationShell();
   const qc = useQueryClient();
   const [walletLinkFlash, setWalletLinkFlash] = useState<{
     kind: "ok" | "err";
@@ -912,8 +1042,13 @@ export function Profile() {
 
   return (
     <AppWindow title="My Profile">
+      <ProfileSurface
+        data-profile-surface="account-home"
+        data-profile-presentation-host={presentation.host}
+        data-profile-region="surface"
+      >
       {/* ── Profile picture + Account Info ── */}
-      <Section title="Account profile">
+      <Section title="Account profile" data-profile-section="account">
         <PfpContainer>
           <PfpCircle
             $hasImage={!!pfpUrl}
@@ -1014,7 +1149,10 @@ export function Profile() {
       </Section>
 
       {/* ── Password ── */}
-      <Section title={user?.hasPassword ? "Change Password" : "Set Password"}>
+      <Section
+        title={user?.hasPassword ? "Change Password" : "Set Password"}
+        data-profile-section="password"
+      >
         <HelperText style={{ marginBottom: 8 }}>
           {user?.hasPassword
             ? "Update the password used to sign in with your username. If you signed in with a temporary password, enter it as your current password. For your safety, changing your password will log you out of any other devices."
@@ -1128,7 +1266,7 @@ export function Profile() {
       </Section>
 
       {/* ── Social & Contact ── */}
-      <Section title="Social & Contact">
+      <Section title="Social & Contact" data-profile-section="social">
         {oauthFlash && (
           <UiNotice
             tone={oauthFlash.kind === "ok" ? "success" : "danger"}
@@ -1184,7 +1322,7 @@ export function Profile() {
           <UiButton
             size="sm"
             onClick={() => {
-              window.location.assign("/skywire");
+              window.location.assign(presentationRouteHref("/skywire"));
             }}
           >
             {social?.atprotoHandle ? "Open Skywire" : "Connect Skywire"}
@@ -1346,7 +1484,7 @@ export function Profile() {
       ) : null}
 
       {/* ── Connected Wallet ── */}
-      <Section title="Connected Wallet">
+      <Section title="Connected Wallet" data-profile-section="connected-wallet">
         <WalletButton />
         {address && (
           <p style={{ fontSize: PROFILE_CAPTION_TYPE, marginTop: 4, fontFamily: PROFILE_MONO_FONT }}>
@@ -1356,14 +1494,14 @@ export function Profile() {
       </Section>
 
       {/* ── Linked Wallets ── */}
-      <Section title="Linked Wallets">
+      <Section title="Linked Wallets" data-profile-section="linked-wallets">
         <HelperText style={{ fontSize: PROFILE_CAPTION_TYPE, marginBottom: 8 }}>
           Link your Tezos wallets to track your WTF balance and participate in
           the leaderboard.
         </HelperText>
 
         {wallets && wallets.length > 0 ? (
-          <Table>
+          <Table data-profile-region="wallet-table">
             <TableHead>
               <TableRow>
                 <TableHeadCell>Address</TableHeadCell>
@@ -1483,13 +1621,14 @@ export function Profile() {
       </Section>
 
       {/* ── Etherlink Wallets ── */}
-      <Section title="Etherlink Wallets">
+      <Section title="Etherlink Wallets" data-profile-section="etherlink-wallets">
         <EtherlinkWalletsPanel />
       </Section>
 
       {/* ── Owned Tokens ── */}
       <Section
         title={`Owned Tokens${totalTokens > 0 ? ` (${totalTokens})` : ""}`}
+        data-profile-section="owned-tokens"
       >
         <HelperText style={{ marginBottom: 8 }}>
           Select tokens and click <strong>+ Trade Board</strong> to make them
@@ -1508,7 +1647,7 @@ export function Profile() {
       </Section>
 
       {/* ── On-Chain Activity ── */}
-      <Section title="Wallet Relationship Graph">
+      <Section title="Wallet Relationship Graph" data-profile-section="wallet-graph">
         {wallets && wallets.length > 0 ? (
           <WalletRelationshipGraph />
         ) : (
@@ -1520,7 +1659,7 @@ export function Profile() {
       </Section>
 
       {/* ── On-Chain Activity ── */}
-      <Section title="On-Chain Activity">
+      <Section title="On-Chain Activity" data-profile-section="on-chain-activity">
         <HelperText style={{ marginBottom: 8 }}>
           Live timeline of what your linked wallets have done on Tezos —
           token transfers, XTZ movements, contract calls, delegations, and
@@ -1538,7 +1677,7 @@ export function Profile() {
       {/* ── Profile picture picker modal ── */}
       {showPfpPicker && !pfpEditorToken && (
         <Overlay onClick={() => { setShowPfpPicker(false); setPfpSearch(""); setPfpPage(0); }}>
-          <Window
+          <ProfileModalWindow
             style={{ width: 560, maxWidth: "95vw" }}
             onClick={(e: any) => e.stopPropagation()}
           >
@@ -1667,14 +1806,14 @@ export function Profile() {
                 </UiButton>
               </div>
             </WindowContent>
-          </Window>
+          </ProfileModalWindow>
         </Overlay>
       )}
 
       {/* ── Profile picture editor modal ── */}
       {pfpEditorToken && (
         <Overlay onClick={() => setPfpEditorToken(null)}>
-          <Window
+          <ProfileModalWindow
             style={{ width: 440, maxWidth: "95vw" }}
             onClick={(e: any) => e.stopPropagation()}
           >
@@ -1684,7 +1823,7 @@ export function Profile() {
               </span>
             </WindowHeader>
             <WindowContent>
-              <UiToolbar style={{ marginBottom: 6 }}>
+              <UiToolbar data-profile-region="editor-toolbar" style={{ marginBottom: 6 }}>
                 <UiButton
                   size="sm"
                   active={editorTool === "draw"}
@@ -1829,9 +1968,10 @@ export function Profile() {
                 </UiButton>
               </div>
             </WindowContent>
-          </Window>
+          </ProfileModalWindow>
         </Overlay>
       )}
+      </ProfileSurface>
     </AppWindow>
   );
 }

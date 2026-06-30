@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import styled, { keyframes } from "styled-components";
 import { loadGameFromZip, type GameBundle } from "../lib/zip-loader";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import type { ConsoleTokenProvenance } from "@shared/console-provenance";
 import {
   formatProvenancePrice,
@@ -227,6 +228,10 @@ const REPORT_CATEGORIES = [
 type LibrarySortMode = "popular" | "players" | "title";
 type ConsoleSurface = "console" | "arcade";
 
+function consoleRegionAttrs(region: string): any {
+  return { "data-arcade-console-region": region };
+}
+
 function normalizeLibraryCategory(category: string | null | undefined): string {
   const normalized = String(category || "general").trim().toLowerCase();
   return normalized || "general";
@@ -296,9 +301,140 @@ const Wrapper = styled.div`
   justify-content: center;
   background: #1a1a2e;
   overflow: hidden;
+
+  &[data-arcade-console-presentation-host="gamma"] {
+    align-items: stretch;
+    justify-content: stretch;
+    background: #070706;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"],
+  &[data-arcade-console-presentation-host="gamma"] * {
+    letter-spacing: 0 !important;
+    text-shadow: none !important;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    border-color: rgba(242, 234, 217, 0.16);
+    border-width: 1px !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"]
+    :where(button, input, select, textarea, p, span, strong, div, section, aside, h2, label, em, a) {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"]
+    :where([data-arcade-console-region="wordmark"], [data-arcade-console-region="library-title"], [data-arcade-console-region="rail-header"], [data-arcade-console-region="hud-pill"], [data-arcade-console-region="badge-row"], [data-arcade-console-region="control-bar"], [data-arcade-console-region="d-pad"], [data-arcade-console-region="bottom-strip"]) {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="chassis"] {
+    background: #070706 !important;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    max-width: min(1180px, 100%);
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="top-strip"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="control-bar"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="bottom-strip"] {
+    background: #11110f !important;
+    border-color: rgba(242, 234, 217, 0.16);
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="wordmark"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="library-title"] {
+    color: #00d2ff;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="cart-slot"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="screen"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="catalog-pane"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="rail-section"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="game-card"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="game-art"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="player-panel"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="report-dialog"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="payment-window"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="provenance-pane"] {
+    background: #11110f !important;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="screen"] {
+    border-width: 1px;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="cart-slot-fill"][data-arcade-console-active="true"] {
+    background: #00d2ff !important;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="cart-slot-fill"][data-arcade-console-active="false"] {
+    background: transparent !important;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="stat-chip"] strong,
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="rail-header"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="game-title"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="hud-pill"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="source-line"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="provenance-link"] {
+    color: #00d2ff;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="stat-chip"] span,
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="game-description"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="empty"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="control-idle"] {
+    color: rgba(242, 234, 217, 0.62) !important;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] :where(input, select, textarea) {
+    background: #070706 !important;
+    border: 1px solid rgba(242, 234, 217, 0.2) !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] :where(button) {
+    border-color: rgba(0, 210, 255, 0.42) !important;
+    background: transparent !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] :where(button:hover, button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible) {
+    border-color: #00d2ff !important;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="game-card"]:hover,
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="discovery-card"]:hover,
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="champion-card"]:hover,
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="top-player-card"]:hover,
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="recent-score-card"]:hover {
+    border-color: #00d2ff !important;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="runtime-hud"],
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="hud-pill"] {
+    color: #f2ead9;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="payment-desktop"] {
+    background: #070706 !important;
+  }
+
+  &[data-arcade-console-presentation-host="gamma"] [data-arcade-console-region="payment-title-bar"] {
+    background: #00d2ff !important;
+    color: #070706 !important;
+  }
 `;
 
-const Chassis = styled.div<{ $wide?: boolean }>`
+const Chassis = styled.div.attrs(consoleRegionAttrs("chassis"))<{ $wide?: boolean }>`
   width: 100%;
   max-width: ${(p) => (p.$wide ? "1180px" : "800px")};
   height: 100%;
@@ -314,7 +450,7 @@ const Chassis = styled.div<{ $wide?: boolean }>`
   position: relative;
 `;
 
-const TopStrip = styled.div`
+const TopStrip = styled.div.attrs(consoleRegionAttrs("top-strip"))`
   height: 32px;
   flex-shrink: 0;
   display: flex;
@@ -325,7 +461,7 @@ const TopStrip = styled.div`
   gap: 8px;
 `;
 
-const ConsoleName = styled.span`
+const ConsoleName = styled.span.attrs(consoleRegionAttrs("wordmark"))`
   font-family: var(--wtf-mono-font);
   font-weight: bold;
   font-size: 14px;
@@ -335,7 +471,7 @@ const ConsoleName = styled.span`
   text-shadow: 0 0 8px rgba(123, 143, 255, 0.4);
 `;
 
-const CartSlot = styled.div`
+const CartSlot = styled.div.attrs(consoleRegionAttrs("cart-slot"))`
   margin-left: auto;
   width: 60px;
   height: 10px;
@@ -346,7 +482,7 @@ const CartSlot = styled.div`
   overflow: hidden;
 `;
 
-const CartSlotFill = styled.div<{ $active: boolean }>`
+const CartSlotFill = styled.div.attrs(consoleRegionAttrs("cart-slot-fill"))<{ $active: boolean }>`
   position: absolute;
   inset: 0;
   background: ${(p) =>
@@ -356,7 +492,7 @@ const CartSlotFill = styled.div<{ $active: boolean }>`
   transition: background 0.3s;
 `;
 
-const ScreenArea = styled.div`
+const ScreenArea = styled.div.attrs(consoleRegionAttrs("screen"))`
   flex: 1;
   margin: 8px 12px;
   border-radius: 4px;
@@ -369,14 +505,14 @@ const ScreenArea = styled.div`
   flex-direction: column;
 `;
 
-const GameIframe = styled.iframe`
+const GameIframe = styled.iframe.attrs(consoleRegionAttrs("game-frame"))`
   width: 100%;
   height: 100%;
   border: none;
   background: #000;
 `;
 
-const RuntimeHud = styled.div`
+const RuntimeHud = styled.div.attrs(consoleRegionAttrs("runtime-hud"))`
   position: absolute;
   left: 8px;
   right: 8px;
@@ -391,7 +527,7 @@ const RuntimeHud = styled.div`
   color: #dfe6ff;
 `;
 
-const HudPill = styled.div`
+const HudPill = styled.div.attrs(consoleRegionAttrs("hud-pill"))`
   min-height: 22px;
   padding: 4px 7px;
   border: 1px solid rgba(123, 143, 255, 0.45);
@@ -406,7 +542,7 @@ const bootGlow = keyframes`
   100% { opacity: 0; }
 `;
 
-const LoadingScreen = styled.div`
+const LoadingScreen = styled.div.attrs(consoleRegionAttrs("loading"))`
   position: absolute;
   inset: 0;
   display: flex;
@@ -426,7 +562,7 @@ const LoadDot = styled.span`
 
 /* ── Library Screen ────────────────────────────────── */
 
-const LibraryScreen = styled.div`
+const LibraryScreen = styled.div.attrs(consoleRegionAttrs("library"))`
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -435,7 +571,7 @@ const LibraryScreen = styled.div`
   min-height: 0;
 `;
 
-const LibHeader = styled.div`
+const LibHeader = styled.div.attrs(consoleRegionAttrs("library-header"))`
   padding: 12px 16px 8px;
   display: flex;
   align-items: center;
@@ -444,7 +580,7 @@ const LibHeader = styled.div`
   flex-wrap: wrap;
 `;
 
-const LibTitle = styled.h2`
+const LibTitle = styled.h2.attrs(consoleRegionAttrs("library-title"))`
   font-family: var(--wtf-mono-font);
   font-size: 16px;
   color: #7b8fff;
@@ -453,7 +589,7 @@ const LibTitle = styled.h2`
   margin: 0;
 `;
 
-const LibrarySearchInput = styled.input`
+const LibrarySearchInput = styled.input.attrs(consoleRegionAttrs("library-search"))`
   min-width: 120px;
   max-width: 190px;
   height: 32px;
@@ -468,7 +604,7 @@ const LibrarySearchInput = styled.input`
   outline: none;
 `;
 
-const LibrarySortSelect = styled.select`
+const LibrarySortSelect = styled.select.attrs(consoleRegionAttrs("library-select"))`
   height: 32px;
   border: 1px solid #2a2a50;
   background: #08081a;
@@ -480,7 +616,7 @@ const LibrarySortSelect = styled.select`
   outline: none;
 `;
 
-const ConsoleStatsStrip = styled.div`
+const ConsoleStatsStrip = styled.div.attrs(consoleRegionAttrs("stats-strip"))`
   flex-shrink: 0;
   border-top: 1px solid #111136;
   border-bottom: 1px solid #111136;
@@ -495,7 +631,7 @@ const ConsoleStatsStrip = styled.div`
   }
 `;
 
-const ConsoleStatChip = styled.div`
+const ConsoleStatChip = styled.div.attrs(consoleRegionAttrs("stat-chip"))`
   min-height: 36px;
   border: 1px solid #2a2a50;
   background: #10102a;
@@ -523,7 +659,7 @@ const ConsoleStatChip = styled.div`
   }
 `;
 
-const TabBtn = styled.button<{ $active?: boolean }>`
+const TabBtn = styled.button.attrs(consoleRegionAttrs("tab-button"))<{ $active?: boolean }>`
   min-height: 32px;
   font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
@@ -538,7 +674,7 @@ const TabBtn = styled.button<{ $active?: boolean }>`
   }
 `;
 
-const CartGrid = styled.div`
+const CartGrid = styled.div.attrs(consoleRegionAttrs("game-grid"))`
   flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -551,7 +687,7 @@ const CartGrid = styled.div`
   scrollbar-color: #2a2a50 #08081a;
 `;
 
-const ArcadeLibraryBody = styled.div`
+const ArcadeLibraryBody = styled.div.attrs(consoleRegionAttrs("arcade-layout"))`
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
@@ -565,7 +701,7 @@ const ArcadeLibraryBody = styled.div`
   }
 `;
 
-const ArcadeCatalogPane = styled.div`
+const ArcadeCatalogPane = styled.div.attrs(consoleRegionAttrs("catalog-pane"))`
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -573,7 +709,7 @@ const ArcadeCatalogPane = styled.div`
   background: rgba(8, 8, 26, 0.18);
 `;
 
-const ArcadeRailPane = styled.aside`
+const ArcadeRailPane = styled.aside.attrs(consoleRegionAttrs("activity-rail"))`
   min-height: 0;
   overflow-y: auto;
   display: grid;
@@ -583,7 +719,7 @@ const ArcadeRailPane = styled.aside`
   scrollbar-color: #2a2a50 #08081a;
 `;
 
-const ArcadeRailSection = styled.section`
+const ArcadeRailSection = styled.section.attrs(consoleRegionAttrs("rail-section"))`
   border: 1px solid #24244e;
   background: rgba(10, 10, 30, 0.72);
   padding: 8px;
@@ -591,7 +727,7 @@ const ArcadeRailSection = styled.section`
   gap: 7px;
 `;
 
-const ArcadeRailHeader = styled.div<{ $tone?: "gold" | "green" | "orange" | "blue" }>`
+const ArcadeRailHeader = styled.div.attrs(consoleRegionAttrs("rail-header"))<{ $tone?: "gold" | "green" | "orange" | "blue" }>`
   font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   letter-spacing: 0;
@@ -605,7 +741,7 @@ const ArcadeRailHeader = styled.div<{ $tone?: "gold" | "green" | "orange" | "blu
           : "#88d7ff"};
 `;
 
-const ArcadeRailList = styled.div`
+const ArcadeRailList = styled.div.attrs(consoleRegionAttrs("rail-list"))`
   display: grid;
   gap: 6px;
 
@@ -616,7 +752,7 @@ const ArcadeRailList = styled.div`
   }
 `;
 
-const ChampionsStrip = styled.div`
+const ChampionsStrip = styled.div.attrs(consoleRegionAttrs("champions-strip"))`
   flex-shrink: 0;
   border-top: 1px solid #111136;
   border-bottom: 1px solid #111136;
@@ -637,7 +773,7 @@ const ChampionsLabel = styled.div`
   color: #ffcb5c;
 `;
 
-const ChampionChip = styled.button`
+const ChampionChip = styled.button.attrs(consoleRegionAttrs("champion-card"))`
   min-width: 152px;
   max-width: 176px;
   border: 1px solid #4c4460;
@@ -674,7 +810,7 @@ const ChampionChip = styled.button`
   }
 `;
 
-const ChampionScore = styled.div`
+const ChampionScore = styled.div.attrs(consoleRegionAttrs("champion-score"))`
   font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   color: #ffcb5c;
@@ -689,7 +825,7 @@ const DiscoveryLabel = styled(ChampionsLabel)`
   color: #88d7ff;
 `;
 
-const DiscoveryChip = styled.button`
+const DiscoveryChip = styled.button.attrs(consoleRegionAttrs("discovery-card"))`
   min-width: 150px;
   max-width: 184px;
   border: 1px solid #284462;
@@ -735,7 +871,7 @@ const DiscoveryChip = styled.button`
   }
 `;
 
-const PlayerLeaderboardStrip = styled.div`
+const PlayerLeaderboardStrip = styled.div.attrs(consoleRegionAttrs("player-leaderboard-strip"))`
   flex-shrink: 0;
   border-bottom: 1px solid #111136;
   padding: 8px 16px;
@@ -752,7 +888,7 @@ const PlayerLeaderboardLabel = styled(ChampionsLabel)`
   color: #57f0be;
 `;
 
-const PlayerLeaderboardChip = styled.button`
+const PlayerLeaderboardChip = styled.button.attrs(consoleRegionAttrs("top-player-card"))`
   min-width: 146px;
   max-width: 172px;
   border: 1px solid #284c55;
@@ -789,14 +925,14 @@ const PlayerLeaderboardChip = styled.button`
   }
 `;
 
-const PlayerLeaderboardRank = styled.div`
+const PlayerLeaderboardRank = styled.div.attrs(consoleRegionAttrs("top-player-rank"))`
   grid-row: span 2;
   min-width: 24px;
   color: #57f0be;
   font-size: var(--wtf-type-caption, 13px);
 `;
 
-const RecentScoresStrip = styled.div`
+const RecentScoresStrip = styled.div.attrs(consoleRegionAttrs("recent-scores-strip"))`
   flex-shrink: 0;
   border-bottom: 1px solid #111136;
   padding: 8px 16px;
@@ -813,7 +949,7 @@ const RecentScoresLabel = styled(ChampionsLabel)`
   color: #ff8d5c;
 `;
 
-const RecentScoreChip = styled.button`
+const RecentScoreChip = styled.button.attrs(consoleRegionAttrs("recent-score-card"))`
   min-width: 154px;
   max-width: 190px;
   border: 1px solid #51324b;
@@ -849,7 +985,7 @@ const RecentScoreChip = styled.button`
   }
 `;
 
-const PlayerPanel = styled.form`
+const PlayerPanel = styled.form.attrs(consoleRegionAttrs("player-panel"))`
   flex-shrink: 0;
   border-bottom: 1px solid #111136;
   padding: 8px 16px;
@@ -858,13 +994,13 @@ const PlayerPanel = styled.form`
   background: rgba(8, 8, 26, 0.35);
 `;
 
-const PlayerSearchRow = styled.div`
+const PlayerSearchRow = styled.div.attrs(consoleRegionAttrs("player-search-row"))`
   display: flex;
   gap: 7px;
   align-items: center;
 `;
 
-const PlayerInput = styled.input`
+const PlayerInput = styled.input.attrs(consoleRegionAttrs("player-search"))`
   min-width: 0;
   flex: 1;
   height: 32px;
@@ -877,7 +1013,7 @@ const PlayerInput = styled.input`
   font-size: var(--wtf-type-caption, 13px);
 `;
 
-const MiniButton = styled.button`
+const MiniButton = styled.button.attrs(consoleRegionAttrs("mini-button"))`
   min-height: 32px;
   border: 1px solid #7b8fff;
   background: rgba(123, 143, 255, 0.15);
@@ -894,7 +1030,7 @@ const MiniButton = styled.button`
   }
 `;
 
-const PlayerStatsGrid = styled.div`
+const PlayerStatsGrid = styled.div.attrs(consoleRegionAttrs("player-stats"))`
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
@@ -904,7 +1040,7 @@ const PlayerStatsGrid = styled.div`
   }
 `;
 
-const PlayerStat = styled.div`
+const PlayerStat = styled.div.attrs(consoleRegionAttrs("player-stat"))`
   border: 1px solid #2a2a50;
   background: #10102a;
   border-radius: 3px;
@@ -923,13 +1059,13 @@ const PlayerStat = styled.div`
   }
 `;
 
-const PlayerGames = styled.div`
+const PlayerGames = styled.div.attrs(consoleRegionAttrs("player-games"))`
   display: flex;
   gap: 6px;
   overflow-x: auto;
 `;
 
-const PlayerGameChip = styled.button`
+const PlayerGameChip = styled.button.attrs(consoleRegionAttrs("player-game-card"))`
   min-width: 136px;
   border: 1px solid #2a2a50;
   background: #10102a;
@@ -959,7 +1095,7 @@ const PlayerGameChip = styled.button`
   }
 `;
 
-const CartCard = styled.div`
+const CartCard = styled.div.attrs(consoleRegionAttrs("game-card"))`
   width: 100%;
   min-width: 0;
   border: 1px solid #2a2a50;
@@ -979,7 +1115,7 @@ const CartCard = styled.div`
   }
 `;
 
-const CartArt = styled.div`
+const CartArt = styled.div.attrs(consoleRegionAttrs("game-art"))`
   width: 100%;
   aspect-ratio: 1;
   border-radius: 4px;
@@ -1003,7 +1139,7 @@ const CartArtFallback = styled.div`
   opacity: 0.4;
 `;
 
-const CartTitle = styled.div`
+const CartTitle = styled.div.attrs(consoleRegionAttrs("game-title"))`
   font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
@@ -1013,7 +1149,7 @@ const CartTitle = styled.div`
   white-space: nowrap;
 `;
 
-const CartDesc = styled.div`
+const CartDesc = styled.div.attrs(consoleRegionAttrs("game-description"))`
   font-family: var(--wtf-mono-font);
   font-size: var(--wtf-type-caption, 13px);
   color: #555580;
@@ -1022,7 +1158,7 @@ const CartDesc = styled.div`
   white-space: nowrap;
 `;
 
-const SourceLine = styled.a`
+const SourceLine = styled.a.attrs(consoleRegionAttrs("source-line"))`
   min-height: 32px;
   display: inline-flex;
   align-items: center;
@@ -1040,7 +1176,7 @@ const SourceLine = styled.a`
   }
 `;
 
-const ProvenanceCardLine = styled.div`
+const ProvenanceCardLine = styled.div.attrs(consoleRegionAttrs("provenance-card-line"))`
   display: grid;
   gap: 2px;
   min-height: 24px;
@@ -1072,7 +1208,7 @@ const DemoBadge = styled.span`
   text-transform: uppercase;
 `;
 
-const BadgeRow = styled.div`
+const BadgeRow = styled.div.attrs(consoleRegionAttrs("badge-row"))`
   display: flex;
   align-items: center;
   gap: 5px;
@@ -1094,7 +1230,7 @@ const PlaysBadge = styled.span`
   color: #6f84ff;
 `;
 
-const ReportButton = styled.button`
+const ReportButton = styled.button.attrs(consoleRegionAttrs("report-button"))`
   border: 1px solid #5a3150;
   background: #241127;
   color: #f0a5c8;
@@ -1106,7 +1242,7 @@ const ReportButton = styled.button`
   cursor: pointer;
 `;
 
-const ReportOverlay = styled.div`
+const ReportOverlay = styled.div.attrs(consoleRegionAttrs("report-overlay"))`
   position: absolute;
   inset: 0;
   z-index: 8;
@@ -1116,7 +1252,7 @@ const ReportOverlay = styled.div`
   padding: 16px;
 `;
 
-const ReportDialog = styled.div`
+const ReportDialog = styled.div.attrs(consoleRegionAttrs("report-dialog"))`
   width: min(360px, 100%);
   border: 1px solid #7b8fff;
   background: #10102a;
@@ -1151,13 +1287,13 @@ const ReportDialog = styled.div`
   }
 `;
 
-const ReportActions = styled.div`
+const ReportActions = styled.div.attrs(consoleRegionAttrs("report-actions"))`
   display: flex;
   gap: 7px;
   justify-content: flex-end;
 `;
 
-const EmptyMsg = styled.div`
+const EmptyMsg = styled.div.attrs(consoleRegionAttrs("empty"))`
   font-family: var(--wtf-mono-font);
   font-size: 13px;
   color: #555580;
@@ -1165,7 +1301,7 @@ const EmptyMsg = styled.div`
   padding: 40px 20px;
 `;
 
-const ProvenancePane = styled.div`
+const ProvenancePane = styled.div.attrs(consoleRegionAttrs("provenance-pane"))`
   flex: 1;
   overflow-y: auto;
   padding: 22px;
@@ -1213,7 +1349,7 @@ const ProvenanceLinkGrid = styled.div`
   gap: 7px;
 `;
 
-const ProvenanceLinkButton = styled.a`
+const ProvenanceLinkButton = styled.a.attrs(consoleRegionAttrs("provenance-link"))`
   min-height: 32px;
   display: inline-flex;
   align-items: center;
@@ -1232,7 +1368,7 @@ const ProvenanceActions = styled.div`
   flex-wrap: wrap;
 `;
 
-const ArcadeErrorDesktop = styled.div`
+const ArcadeErrorDesktop = styled.div.attrs(consoleRegionAttrs("payment-desktop"))`
   flex: 1;
   display: grid;
   place-items: center;
@@ -1241,7 +1377,7 @@ const ArcadeErrorDesktop = styled.div`
   font-family: var(--wtf-mono-font);
 `;
 
-const ArcadeErrorWindow = styled.div`
+const ArcadeErrorWindow = styled.div.attrs(consoleRegionAttrs("payment-window"))`
   width: min(430px, 100%);
   border: 2px solid #0a0a0a;
   background: #c0c0c0;
@@ -1249,7 +1385,7 @@ const ArcadeErrorWindow = styled.div`
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.55);
 `;
 
-const ArcadeErrorTitleBar = styled.div`
+const ArcadeErrorTitleBar = styled.div.attrs(consoleRegionAttrs("payment-title-bar"))`
   height: 24px;
   display: flex;
   align-items: center;
@@ -1260,7 +1396,7 @@ const ArcadeErrorTitleBar = styled.div`
   font-weight: bold;
 `;
 
-const ArcadeErrorBody = styled.div`
+const ArcadeErrorBody = styled.div.attrs(consoleRegionAttrs("payment-body"))`
   padding: 16px;
   display: grid;
   gap: 12px;
@@ -1271,7 +1407,7 @@ const ArcadeErrorBody = styled.div`
   }
 `;
 
-const ArcadeErrorActions = styled.div`
+const ArcadeErrorActions = styled.div.attrs(consoleRegionAttrs("payment-actions"))`
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -1280,7 +1416,7 @@ const ArcadeErrorActions = styled.div`
 
 /* ── Control Bar ────────────────────────────────── */
 
-const ControlBar = styled.div`
+const ControlBar = styled.div.attrs(consoleRegionAttrs("control-bar"))`
   height: 44px;
   flex-shrink: 0;
   display: flex;
@@ -1292,7 +1428,7 @@ const ControlBar = styled.div`
   border-top: 2px solid #0a0a18;
 `;
 
-const CtrlBtn = styled.button<{ $color?: string; $size?: string }>`
+const CtrlBtn = styled.button.attrs(consoleRegionAttrs("control-button"))<{ $color?: string; $size?: string }>`
   width: ${(p) => (p.$size === "large" ? "48px" : "36px")};
   height: ${(p) => (p.$size === "large" ? "48px" : "36px")};
   border-radius: 50%;
@@ -1315,7 +1451,7 @@ const CtrlBtn = styled.button<{ $color?: string; $size?: string }>`
   }
 `;
 
-const DPad = styled.div`
+const DPad = styled.div.attrs(consoleRegionAttrs("d-pad"))`
   display: grid;
   grid-template:
     ". u ." 12px
@@ -1325,14 +1461,14 @@ const DPad = styled.div`
   gap: 1px;
 `;
 
-const DPadBtn = styled.div<{ $area: string }>`
+const DPadBtn = styled.div.attrs(consoleRegionAttrs("d-pad-cell"))<{ $area: string }>`
   grid-area: ${(p) => p.$area};
   background: #1e1e3a;
   border-radius: 2px;
   border: 1px solid #0a0a18;
 `;
 
-const BottomStrip = styled.div`
+const BottomStrip = styled.div.attrs(consoleRegionAttrs("bottom-strip"))`
   height: 8px;
   flex-shrink: 0;
   background: linear-gradient(180deg, #12122a 0%, #0a0a18 100%);
@@ -1344,6 +1480,7 @@ const BottomStrip = styled.div`
 /* ------------------------------------------------------------------ */
 
 export function Console({ surface = "console" }: { surface?: ConsoleSurface } = {}) {
+  const presentation = usePresentationShell();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isArcade = surface === "arcade";
@@ -1774,12 +1911,19 @@ export function Console({ surface = "console" }: { surface?: ConsoleSurface } = 
 
   return (
     <AppWindow title={isArcade ? "WTF Arcade" : "WTF Console"}>
-      <Wrapper>
+      <Wrapper
+        data-arcade-console-presentation-host={presentation.host}
+        data-arcade-console-surface={surface}
+        data-arcade-console-view={view}
+      >
         <Chassis $wide={isArcade}>
           <TopStrip>
             <ConsoleName>{isArcade ? "WTF ARCADE" : "WTF CONSOLE"}</ConsoleName>
             <CartSlot>
-              <CartSlotFill $active={view !== "library"} />
+              <CartSlotFill
+                $active={view !== "library"}
+                data-arcade-console-active={view !== "library" ? "true" : "false"}
+              />
             </CartSlot>
           </TopStrip>
 
@@ -1815,20 +1959,26 @@ export function Console({ surface = "console" }: { surface?: ConsoleSurface } = 
                     ))}
                   </LibrarySortSelect>
                   {isArcade ? (
-                    <TabBtn $active>ARCADE</TabBtn>
+                    <TabBtn $active data-arcade-console-active="true">ARCADE</TabBtn>
                   ) : (
                     <>
-                      <TabBtn $active={tab === "all"} onClick={() => setTab("all")}>
+                      <TabBtn
+                        $active={tab === "all"}
+                        data-arcade-console-active={tab === "all" ? "true" : "false"}
+                        onClick={() => setTab("all")}
+                      >
                         ALL
                       </TabBtn>
                       <TabBtn
                         $active={tab === "demos"}
+                        data-arcade-console-active={tab === "demos" ? "true" : "false"}
                         onClick={() => setTab("demos")}
                       >
                         STOCK
                       </TabBtn>
                       <TabBtn
                         $active={tab === "wallet"}
+                        data-arcade-console-active={tab === "wallet" ? "true" : "false"}
                         onClick={() => setTab("wallet")}
                       >
                         MY GAMES
@@ -2287,6 +2437,7 @@ export function Console({ surface = "console" }: { surface?: ConsoleSurface } = 
               </>
             ) : (
               <div
+                data-arcade-console-region="control-idle"
                 style={{
                   fontFamily: 'var(--wtf-mono-font)',
                   fontSize: "var(--wtf-type-caption, 13px)",
@@ -2511,8 +2662,10 @@ function ArcadePaymentGate({
   onBack: () => void;
   onRetry: () => void;
 }) {
+  const presentation = usePresentationShell();
   const feeLabel = payment?.feeWtfFormatted || "1.00";
-  const storeHref = "/wtfiam?category=arcade";
+  const storeHref = presentationRouteHref("/wtfiam?category=arcade", presentation.host);
+  const loginHref = presentationRouteHref("/login", presentation.host);
   const reason = prompt?.reason || "ticket";
   const message =
     prompt?.message ||
@@ -2545,7 +2698,7 @@ function ArcadePaymentGate({
           )}
           <ArcadeErrorActions>
             {reason === "login" ? (
-              <ProvenanceLinkButton href="/login">SIGN IN</ProvenanceLinkButton>
+              <ProvenanceLinkButton href={loginHref}>SIGN IN</ProvenanceLinkButton>
             ) : (
               <>
                 <ProvenanceLinkButton href={storeHref}>

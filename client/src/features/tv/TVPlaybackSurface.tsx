@@ -115,7 +115,7 @@ export function TVPlaybackSurface(props: TVPlaybackSurfaceProps) {
   } = props;
 
   return (
-    <CRTScreen $on={powerOn}>
+    <CRTScreen $on={powerOn} data-tv-region="crt-screen">
       {!powerOn && (
         <OffScreen>
           <OffScreenLabel>NO SIGNAL</OffScreenLabel>
@@ -362,6 +362,7 @@ export function TVPlaybackSurface(props: TVPlaybackSurfaceProps) {
               return (
                 <MtvOverlayLink
                   $visible={mtvOverlayVisible}
+                  data-tv-region="mtv-overlay"
                   data-testid="mtv-overlay"
                   href={currentItem.objktUrl}
                   target="_blank"
@@ -374,6 +375,7 @@ export function TVPlaybackSurface(props: TVPlaybackSurfaceProps) {
             return (
               <MtvOverlay
                 $visible={mtvOverlayVisible}
+                data-tv-region="mtv-overlay"
                 data-testid="mtv-overlay"
               >
                 {overlayBody}
@@ -483,7 +485,7 @@ export function TVPlaybackSurface(props: TVPlaybackSurfaceProps) {
         )}
 
       {powerOn && screenView === "tv" && (
-        <OSD>
+        <OSD data-tv-region="osd">
           {showBumper
             ? `▶ ${activeBumper?.credit || "bumper"}`
             : hasNoContent

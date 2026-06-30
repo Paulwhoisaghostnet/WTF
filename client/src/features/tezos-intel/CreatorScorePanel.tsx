@@ -20,14 +20,19 @@ export function CreatorScorePanel() {
   const { data, isFetching, error } = useCreatorScore(address);
 
   return (
-    <Panel>
+    <Panel data-tezos-intel-panel="creator-score">
       <PanelTitle>Creator Market Signals</PanelTitle>
       <TextInput
         value={draft}
+        data-tezos-intel-control="creator-input"
         onChange={(e) => setDraft(e.target.value)}
         placeholder="tz1 creator address"
       />
-      <Button onClick={() => setAddress(draft.trim())} disabled={!draft.trim()}>
+      <Button
+        data-tezos-intel-control="analyze-button"
+        onClick={() => setAddress(draft.trim())}
+        disabled={!draft.trim()}
+      >
         Analyze
       </Button>
       {isFetching && <Muted>Loading creator market signals...</Muted>}

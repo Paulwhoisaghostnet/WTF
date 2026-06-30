@@ -13,6 +13,7 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { useWindowManager } from "../lib/window-context";
 import { api } from "../lib/api";
+import { usePresentationShell } from "../lib/presentation-shell";
 import {
   STUDIO_MEMBER_ROLE_LABELS,
   STUDIO_STORAGE_BACKEND_LABELS,
@@ -23,15 +24,66 @@ import { MOBILE } from "../global-styles";
 
 /* ─── Styled ─────────────────────────────────────────── */
 
-const Layout = styled.div`
+const studioRegionAttrs = (region: string): any => ({
+  "data-studio-region": region,
+});
+
+const gammaStudioScope = `[data-studio-presentation-host="gamma"]`;
+
+const Layout = styled.div.attrs(studioRegionAttrs("project-list-surface"))`
   display: flex;
   flex-direction: column;
   gap: 10px;
   height: 100%;
   min-height: 0;
+
+  &[data-studio-presentation-host="gamma"] {
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-studio-presentation-host="gamma"],
+  &[data-studio-presentation-host="gamma"] * {
+    background-image: none !important;
+    box-shadow: none !important;
+    letter-spacing: 0 !important;
+    text-shadow: none !important;
+  }
+
+  &[data-studio-presentation-host="gamma"] :where(button, input, textarea, select, p, span, strong, div, section, article, h1, h2, h3, h4, label, legend, fieldset) {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  }
+
+  &[data-studio-presentation-host="gamma"] :where(code, pre) {
+    color: #00d2ff !important;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace !important;
+  }
+
+  &[data-studio-presentation-host="gamma"] :where(p, span, div, label, legend, strong) {
+    color: #f2ead9 !important;
+  }
+
+  &[data-studio-presentation-host="gamma"] :where(fieldset, [data-studio-region]) {
+    border-color: rgba(242, 234, 217, 0.2) !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-studio-presentation-host="gamma"] :where(fieldset) {
+    background: color-mix(in srgb, #11110f 82%, #070706) !important;
+  }
+
+  &[data-studio-presentation-host="gamma"] :where(legend) {
+    color: #00d2ff !important;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace !important;
+    font-size: 12px !important;
+    text-transform: uppercase;
+  }
 `;
 
-const HeaderRow = styled.div`
+const HeaderRow = styled.div.attrs(studioRegionAttrs("list-header"))`
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -39,7 +91,7 @@ const HeaderRow = styled.div`
   justify-content: space-between;
 `;
 
-const Intro = styled.div`
+const Intro = styled.div.attrs(studioRegionAttrs("intro"))`
   max-width: 520px;
   font-size: var(--wtf-type-body, 14px);
   color: var(--wtf-app-text, #111);
@@ -47,26 +99,45 @@ const Intro = styled.div`
   strong {
     color: var(--wtf-app-link, #000080);
   }
+
+  ${gammaStudioScope} & {
+    max-width: 680px;
+    color: rgba(242, 234, 217, 0.74);
+    line-height: 1.5;
+  }
+
+  ${gammaStudioScope} & strong {
+    color: #00d2ff;
+  }
 `;
 
-const CreatePanel = styled(Panel).attrs({ variant: "well" })`
+const CreatePanel = styled(Panel).attrs({
+  variant: "well",
+  ...studioRegionAttrs("create-panel"),
+})`
   padding: 8px;
+
+  ${gammaStudioScope} & {
+    background: color-mix(in srgb, #11110f 78%, #070706) !important;
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    color: #f2ead9;
+  }
 `;
 
-const CreateRow = styled.div`
+const CreateRow = styled.div.attrs(studioRegionAttrs("create-row"))`
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
 `;
 
-const ScrollGrid = styled.div`
+const ScrollGrid = styled.div.attrs(studioRegionAttrs("project-scroll"))`
   flex: 1;
   overflow-y: auto;
   min-height: 0;
 `;
 
-const Grid = styled.div`
+const Grid = styled.div.attrs(studioRegionAttrs("project-grid"))`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 8px;
@@ -77,7 +148,7 @@ const Grid = styled.div`
   }
 `;
 
-const ProjectCard = styled.button`
+const ProjectCard = styled.button.attrs(studioRegionAttrs("project-card"))`
   text-align: left;
   background: var(--wtf-app-surface-raised, #ffffff);
   border: 1px solid var(--wtf-app-border, #808080);
@@ -93,25 +164,48 @@ const ProjectCard = styled.button`
     background: var(--wtf-app-surface, #f4f4f4);
     border-color: var(--wtf-app-link, #000080);
   }
+
+  ${gammaStudioScope} & {
+    background: color-mix(in srgb, #11110f 78%, #070706);
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
+
+  ${gammaStudioScope} &:hover,
+  ${gammaStudioScope} &:focus-visible {
+    background: color-mix(in srgb, #11110f 72%, #00d2ff 8%);
+    border-color: #00d2ff;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
 `;
 
-const CardTitle = styled.div`
+const CardTitle = styled.div.attrs(studioRegionAttrs("project-title"))`
   font-size: 14px;
   font-weight: bold;
   display: flex;
   align-items: center;
   gap: 6px;
+
+  ${gammaStudioScope} & {
+    color: #f2ead9;
+  }
 `;
 
-const CardMeta = styled.div`
+const CardMeta = styled.div.attrs(studioRegionAttrs("project-meta"))`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted-text, #444);
+
+  ${gammaStudioScope} & {
+    color: rgba(242, 234, 217, 0.7);
+  }
 `;
 
-const Badge = styled.span<{ $kind?: "role" | "warn" | "info" }>`
+const Badge = styled.span.attrs(studioRegionAttrs("badge"))<{ $kind?: "role" | "warn" | "info" }>`
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -126,17 +220,34 @@ const Badge = styled.span<{ $kind?: "role" | "warn" | "info" }>`
       : p.$kind === "info"
       ? "color-mix(in srgb, var(--wtf-app-info, #175cd3) 16%, #ffffff)"
       : "var(--wtf-app-surface-raised, #ffffff)"};
+
+  ${gammaStudioScope} & {
+    background: ${(p) =>
+      p.$kind === "warn"
+        ? "color-mix(in srgb, #d6ff3f 12%, #11110f)"
+        : p.$kind === "info"
+        ? "color-mix(in srgb, #00d2ff 12%, #11110f)"
+        : "color-mix(in srgb, #11110f 84%, #070706)"};
+    border: 1px solid ${(p) => (p.$kind === "info" ? "#00d2ff" : "rgba(242, 234, 217, 0.2)")};
+    border-radius: 6px;
+    color: ${(p) => (p.$kind === "warn" ? "#d6ff3f" : "#f2ead9")} !important;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
 `;
 
-const QuotaWrap = styled.div`
+const QuotaWrap = styled.div.attrs(studioRegionAttrs("quota"))`
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted-text, #444);
+
+  ${gammaStudioScope} & {
+    color: rgba(242, 234, 217, 0.7);
+  }
 `;
 
-const EmptyState = styled.div`
+const EmptyState = styled.div.attrs(studioRegionAttrs("empty-state"))`
   padding: 40px 20px;
   text-align: center;
   color: var(--wtf-app-muted-text, #444);
@@ -145,24 +256,51 @@ const EmptyState = styled.div`
     margin: 0 0 6px;
     font-size: var(--wtf-type-body-strong, 15px);
   }
+
+  ${gammaStudioScope} & {
+    background: color-mix(in srgb, #11110f 68%, #070706);
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    color: rgba(242, 234, 217, 0.72);
+  }
+
+  ${gammaStudioScope} & h3 {
+    color: #00d2ff;
+  }
 `;
 
-const ErrorBanner = styled.div`
+const ErrorBanner = styled.div.attrs(studioRegionAttrs("error-banner"))`
   background: color-mix(in srgb, var(--wtf-app-danger, #b42318) 14%, #ffffff);
   border: 1px solid var(--wtf-app-danger, #b42318);
   padding: 6px 8px;
   font-size: var(--wtf-type-body, 14px);
   color: var(--wtf-app-text, #111);
+
+  ${gammaStudioScope} & {
+    background: color-mix(in srgb, #b42318 18%, #11110f);
+    border: 1px solid color-mix(in srgb, #b42318 70%, #f2ead9);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
-const DrivePanel = styled(Panel).attrs({ variant: "well" })`
+const DrivePanel = styled(Panel).attrs({
+  variant: "well",
+  ...studioRegionAttrs("drive-panel"),
+})`
   padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+
+  ${gammaStudioScope} & {
+    background: color-mix(in srgb, #11110f 78%, #070706) !important;
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    color: #f2ead9;
+  }
 `;
 
-const DriveHeader = styled.div`
+const DriveHeader = styled.div.attrs(studioRegionAttrs("drive-header"))`
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -170,22 +308,38 @@ const DriveHeader = styled.div`
   justify-content: space-between;
 `;
 
-const DriveStat = styled.div`
+const DriveStat = styled.div.attrs(studioRegionAttrs("drive-stat"))`
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted-text, #444);
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+
+  ${gammaStudioScope} & {
+    color: rgba(242, 234, 217, 0.72);
+  }
+
+  ${gammaStudioScope} & strong {
+    color: #d6ff3f !important;
+  }
 `;
 
-const DriveUsageWrap = styled.div`
+const DriveUsageWrap = styled.div.attrs(studioRegionAttrs("drive-usage"))`
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 200px;
   flex: 1;
   font-size: var(--wtf-type-caption, 13px);
+
+  ${gammaStudioScope} & {
+    color: rgba(242, 234, 217, 0.72);
+  }
+
+  ${gammaStudioScope} & strong {
+    color: #00d2ff !important;
+  }
 `;
 
 /* ─── Component ──────────────────────────────────────── */
@@ -250,6 +404,7 @@ export function Studio() {
   const { user, hasPermission } = useAuth();
   const wm = useWindowManager();
   const qc = useQueryClient();
+  const presentation = usePresentationShell();
 
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -367,7 +522,7 @@ export function Studio() {
   if (!user) {
     return (
       <AppWindow title="Studio">
-        <Layout>
+        <Layout data-studio-presentation-host={presentation.host} data-studio-surface="project-list">
           <EmptyState>
             <h3>Sign in to enter Studio</h3>
             <p>Studio is a private collaborative workspace for WTF creators.</p>
@@ -380,7 +535,7 @@ export function Studio() {
   if (!canAccess) {
     return (
       <AppWindow title="Studio">
-        <Layout>
+        <Layout data-studio-presentation-host={presentation.host} data-studio-surface="project-list">
           <EmptyState>
             <h3>Studio is invite-only for your current role</h3>
             <p>
@@ -394,7 +549,7 @@ export function Studio() {
 
   return (
     <AppWindow title="Studio">
-      <Layout>
+      <Layout data-studio-presentation-host={presentation.host} data-studio-surface="project-list">
         <HeaderRow>
           <Intro>
             <strong>Studio</strong> is the private creator room of WTF. Drop
@@ -667,6 +822,7 @@ export function Studio() {
                     <ProjectCard
                       key={project.id}
                       aria-label={`Open project ${project.name}`}
+                      data-studio-project-id={project.id}
                       onClick={() => wm.openPage(`/studio/${project.id}`)}
                     >
                       <CardTitle>

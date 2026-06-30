@@ -11,7 +11,13 @@ import type { OwnedToken } from "../components/OwnedTokensGallery";
 import { TokenDetailModal } from "../components/TokenCard";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { usePresentationShell } from "../lib/presentation-shell";
 import { useWallet } from "../lib/wallet-context";
+import {
+  MarketplaceErrorLine,
+  MarketplaceSummaryBar,
+  MarketplaceSurface,
+} from "../features/marketplace/MarketplaceChrome";
 import type {
   CreateFormState,
   MarketplaceProps,
@@ -27,9 +33,13 @@ import { OfferAcceptanceDialog } from "../features/marketplace/OfferAcceptanceDi
 import { useMarketplaceActions } from "../features/marketplace/useMarketplaceActions";
 import { useMarketplaceData } from "../features/marketplace/useMarketplaceData";
 
-export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
+export function Marketplace({
+  initialTab = 0,
+  surfaceVariant = "marketplace",
+}: MarketplaceProps) {
   const { user } = useAuth();
   const { address } = useWallet();
+  const presentation = usePresentationShell();
 
   const [errorMsg, setErrorMsg] = useState("");
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -192,163 +202,161 @@ export function Marketplace({ initialTab = 0 }: MarketplaceProps) {
 
   return (
     <AppWindow title="WTF On Chain Market + Trade Boards">
-      {pendingOfferAccept && (
-        <OfferAcceptanceDialog
-          pendingOfferAccept={pendingOfferAccept}
-          onCancel={() => setPendingOfferAccept(null)}
-          onConfirm={async (pending) => {
-            try {
-              await runAcceptOfferForToken(pending);
-              setPendingOfferAccept(null);
-            } catch (err: any) {
-              setErrorMsg(err?.message || "Accept offer failed");
-            }
-          }}
-        />
-      )}
-
-      <Tabs value={activeTab} onChange={(v: number) => setActiveTab(v)}>
-        <Tab value={0}>Listings</Tab>
-        <Tab value={1}>Auctions</Tab>
-        <Tab value={2}>Trade Boards</Tab>
-        <Tab value={3}>My Activity</Tab>
-      </Tabs>
-
-      <TabBody>
-        {(loadingOnchain || !onchain) && (
-          <div style={{ padding: 16 }}>
-            <Hourglass size={32} />
-          </div>
+      <MarketplaceSurface
+        data-marketplace-presentation-host={presentation.host}
+        data-marketplace-surface={surfaceVariant}
+        data-marketplace-active-tab={activeTab}
+      >
+        {pendingOfferAccept && (
+          <OfferAcceptanceDialog
+            pendingOfferAccept={pendingOfferAccept}
+            onCancel={() => setPendingOfferAccept(null)}
+            onConfirm={async (pending) => {
+              try {
+                await runAcceptOfferForToken(pending);
+                setPendingOfferAccept(null);
+              } catch (err: any) {
+                setErrorMsg(err?.message || "Accept offer failed");
+              }
+            }}
+          />
         )}
 
-        {onchain && activeTab === 0 && (
-          <>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 12,
-              }}
-            >
-              <span>
-                {onchain.counts.listings} active listing(s)
-                {onchain.paused ? " | Contract paused" : ""}
-              </span>
-              {user && (
-                <Button onClick={() => setShowCreate(!showCreate)}>
-                  {showCreate ? "Cancel" : "+ New Listing/Auction"}
-                </Button>
-              )}
-            </div>
+        <div data-marketplace-region="tabs">
+          <Tabs value={activeTab} onChange={(v: number) => setActiveTab(v)}>
+            <Tab value={0}>Listings</Tab>
+            <Tab value={1}>Auctions</Tab>
+            <Tab value={2}>Trade Boards</Tab>
+            <Tab value={3}>My Activity</Tab>
+          </Tabs>
+        </div>
 
-            {showCreate && (
-              <CreateMarketEntryPanel
-                createForm={createForm}
-                errorMsg={errorMsg}
-                hasLinkedWallets={!!wallets?.length}
-                isSubmitting={createMutation.isPending}
-                onClearSelectedToken={() => setSelectedToken(null)}
-                onFieldChange={updateField}
-                onListingTypeChange={(listingType) =>
-                  setCreateForm((f) => ({
-                    ...f,
-                    listingType,
-                  }))
-                }
-                onSubmit={handleCreateSubmit}
-                onTokenSelect={handleTokenSelect}
-                selectedToken={selectedToken}
-                walletOptions={walletOptions}
-              />
-            )}
-
-            {loadingOnchain ? (
+        <TabBody>
+          {(loadingOnchain || !onchain) && (
+            <div style={{ padding: 16 }}>
               <Hourglass size={32} />
-            ) : (
-              <MarketplaceListingsTab
-                address={address}
-                listings={onchain.listings}
-                offerInputs={offerInputs}
-                offersByToken={offersByToken}
-                onAcceptOffer={handleAcceptListingOffer}
-                onBuyListing={handleBuyListing}
-                onCancelListing={handleCancelListing}
-                onOfferInputChange={handleListingOfferInputChange}
-                onPlaceOffer={handlePlaceListingOffer}
-                onSelectToken={setDetailToken}
-              />
-            )}
-          </>
-        )}
-
-        {onchain && activeTab === 1 && (
-          <>
-            <div style={{ marginBottom: 12 }}>
-              {onchain.counts.auctions} active auction(s)
             </div>
-            <MarketplaceAuctionsTab
+          )}
+
+          {onchain && activeTab === 0 && (
+            <>
+              <MarketplaceSummaryBar>
+                <span>
+                  {onchain.counts.listings} active listing(s)
+                  {onchain.paused ? " | Contract paused" : ""}
+                </span>
+                {user && (
+                  <Button onClick={() => setShowCreate(!showCreate)}>
+                    {showCreate ? "Cancel" : "+ New Listing/Auction"}
+                  </Button>
+                )}
+              </MarketplaceSummaryBar>
+
+              {showCreate && (
+                <CreateMarketEntryPanel
+                  createForm={createForm}
+                  errorMsg={errorMsg}
+                  hasLinkedWallets={!!wallets?.length}
+                  isSubmitting={createMutation.isPending}
+                  onClearSelectedToken={() => setSelectedToken(null)}
+                  onFieldChange={updateField}
+                  onListingTypeChange={(listingType) =>
+                    setCreateForm((f) => ({
+                      ...f,
+                      listingType,
+                    }))
+                  }
+                  onSubmit={handleCreateSubmit}
+                  onTokenSelect={handleTokenSelect}
+                  selectedToken={selectedToken}
+                  walletOptions={walletOptions}
+                />
+              )}
+
+              {loadingOnchain ? (
+                <Hourglass size={32} />
+              ) : (
+                <MarketplaceListingsTab
+                  address={address}
+                  listings={onchain.listings}
+                  offerInputs={offerInputs}
+                  offersByToken={offersByToken}
+                  onAcceptOffer={handleAcceptListingOffer}
+                  onBuyListing={handleBuyListing}
+                  onCancelListing={handleCancelListing}
+                  onOfferInputChange={handleListingOfferInputChange}
+                  onPlaceOffer={handlePlaceListingOffer}
+                  onSelectToken={setDetailToken}
+                />
+              )}
+            </>
+          )}
+
+          {onchain && activeTab === 1 && (
+            <>
+              <MarketplaceSummaryBar>
+                <span>{onchain.counts.auctions} active auction(s)</span>
+              </MarketplaceSummaryBar>
+              <MarketplaceAuctionsTab
+                address={address}
+                admin={onchain.admin}
+                auctionBidInputs={auctionBidInputs}
+                auctions={onchain.auctions}
+                nowMs={onNow}
+                onBidInputChange={handleAuctionBidInputChange}
+                onCancelAuction={handleCancelAuction}
+                onPlaceBid={handlePlaceAuctionBid}
+                onSelectToken={setDetailToken}
+                onSettleAuction={handleSettleAuction}
+              />
+            </>
+          )}
+
+          {activeTab === 2 && (
+            <MarketplaceTradeBoardsTab
               address={address}
-              admin={onchain.admin}
-              auctionBidInputs={auctionBidInputs}
-              auctions={onchain.auctions}
-              nowMs={onNow}
-              onBidInputChange={handleAuctionBidInputChange}
-              onCancelAuction={handleCancelAuction}
-              onPlaceBid={handlePlaceAuctionBid}
+              boardSearch={boardSearch}
+              items={tradeBoard?.items || []}
+              loadingBoard={loadingBoard}
+              mode={tradeBoardMode}
+              offerInputs={offerInputs}
+              onAcceptOffer={handleAcceptTradeBoardOffer}
+              onCancelOffer={handleCancelTradeBoardOffer}
+              onModeChange={setTradeBoardMode}
+              onOfferInputChange={handleListingOfferInputChange}
+              onPlaceOffer={handlePlaceTradeBoardOffer}
+              onRejectOffer={handleRejectTradeBoardOffer}
+              onSearchChange={setBoardSearch}
               onSelectToken={setDetailToken}
+            />
+          )}
+
+          {onchain && activeTab === 3 && (
+            <MarketplaceActivityTab
+              myAuctions={myAuctions}
+              externalListings={externalListings}
+              myListings={myListings}
+              myOffers={myOffers}
+              offersToMe={offersToMe}
+              onAcceptOffer={handleAcceptActivityOffer}
+              onCancelListing={handleCancelListing}
+              onCancelExternalListing={handleCancelExternalListing}
+              onCancelOffer={handleCancelOffer}
+              onRejectOffer={handleRejectOffer}
               onSettleAuction={handleSettleAuction}
             />
-          </>
-        )}
+          )}
 
-        {activeTab === 2 && (
-          <MarketplaceTradeBoardsTab
-            address={address}
-            boardSearch={boardSearch}
-            items={tradeBoard?.items || []}
-            loadingBoard={loadingBoard}
-            mode={tradeBoardMode}
-            offerInputs={offerInputs}
-            onAcceptOffer={handleAcceptTradeBoardOffer}
-            onCancelOffer={handleCancelTradeBoardOffer}
-            onModeChange={setTradeBoardMode}
-            onOfferInputChange={handleListingOfferInputChange}
-            onPlaceOffer={handlePlaceTradeBoardOffer}
-            onRejectOffer={handleRejectTradeBoardOffer}
-            onSearchChange={setBoardSearch}
-            onSelectToken={setDetailToken}
+          {errorMsg && <MarketplaceErrorLine>{errorMsg}</MarketplaceErrorLine>}
+        </TabBody>
+
+        {detailToken && (
+          <TokenDetailModal
+            token={detailToken}
+            onClose={() => setDetailToken(null)}
           />
         )}
-
-        {onchain && activeTab === 3 && (
-          <MarketplaceActivityTab
-            myAuctions={myAuctions}
-            externalListings={externalListings}
-            myListings={myListings}
-            myOffers={myOffers}
-            offersToMe={offersToMe}
-            onAcceptOffer={handleAcceptActivityOffer}
-            onCancelListing={handleCancelListing}
-            onCancelExternalListing={handleCancelExternalListing}
-            onCancelOffer={handleCancelOffer}
-            onRejectOffer={handleRejectOffer}
-            onSettleAuction={handleSettleAuction}
-          />
-        )}
-
-        {errorMsg && (
-          <p style={{ color: "red", fontSize: 12, marginTop: 10 }}>
-            {errorMsg}
-          </p>
-        )}
-      </TabBody>
-
-      {detailToken && (
-        <TokenDetailModal
-          token={detailToken}
-          onClose={() => setDetailToken(null)}
-        />
-      )}
+      </MarketplaceSurface>
     </AppWindow>
   );
 }

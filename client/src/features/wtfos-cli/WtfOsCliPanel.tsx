@@ -119,9 +119,14 @@ export function WtfOsCliPanelView({
   }
 
   return (
-    <Frame $themeId={themeId} $variant={variant} data-testid={testId}>
+    <Frame
+      $themeId={themeId}
+      $variant={variant}
+      data-testid={testId}
+      data-gamma-utility-region="cli-frame"
+    >
       {showStatusBar ? (
-        <StatusBar>
+        <StatusBar data-gamma-utility-region="cli-status">
           <span>wtfOS CLI · safe mode · no shell</span>
           <span>
             theme={theme.label} · commands={commandCount}
@@ -129,16 +134,23 @@ export function WtfOsCliPanelView({
         </StatusBar>
       ) : null}
 
-      <Output ref={outputRef} aria-live="polite">
+      <Output ref={outputRef} aria-live="polite" data-gamma-utility-region="cli-output">
         {entries.map((entry) => (
-          <Line key={entry.id} $kind={entry.kind} $themeId={themeId}>
+          <Line
+            key={entry.id}
+            $kind={entry.kind}
+            $themeId={themeId}
+            data-gamma-utility-region="cli-line"
+          >
             {entry.text}
           </Line>
         ))}
       </Output>
 
-      <Prompt onSubmit={submit}>
-        <PromptGlyph $themeId={themeId}>{prompt}</PromptGlyph>
+      <Prompt onSubmit={submit} data-gamma-utility-region="cli-prompt">
+        <PromptGlyph $themeId={themeId} data-gamma-utility-region="cli-glyph">
+          {prompt}
+        </PromptGlyph>
         <CommandInput
           $themeId={themeId}
           value={input}
@@ -146,8 +158,9 @@ export function WtfOsCliPanelView({
           disabled={busy}
           aria-label="CLI command"
           autoFocus={variant === "fullscreen"}
+          data-gamma-utility-region="cli-input"
         />
-        <Button type="submit" disabled={busy || input.trim().length === 0}>
+        <Button type="submit" disabled={busy || input.trim().length === 0} data-gamma-utility-region="button">
           {busy ? "Run..." : "Run"}
         </Button>
       </Prompt>

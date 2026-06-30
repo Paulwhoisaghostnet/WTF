@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
+import { usePresentationShell } from "../lib/presentation-shell";
 
 type GameStudioTemplate = {
   id: string;
@@ -152,6 +153,10 @@ const GAME_STUDIO_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
 const GAME_STUDIO_MONO_FONT = "var(--wtf-mono-font)";
 const GAME_STUDIO_APP_FONT = "var(--wtf-app-font)";
 
+const gameStudioRegionAttrs = (region: string): any => ({
+  "data-game-studio-region": region,
+});
+
 const visualKinds = new Set(["sprite", "tileset", "background", "ui"]);
 const MODEL_MIME_TYPES = new Set([
   "model/gltf-binary",
@@ -188,6 +193,7 @@ const LOCAL_ASSET_ACCEPT = [
 ];
 
 export function GameStudio() {
+  const presentation = usePresentationShell();
   const queryClient = useQueryClient();
   const templatesQuery = useQuery({
     queryKey: ["game-studio", "templates"],
@@ -696,7 +702,10 @@ export function GameStudio() {
 
   return (
     <AppWindow title="Game Studio">
-      <StudioShell>
+      <StudioShell
+        data-game-studio-presentation-host={presentation.host}
+        data-game-studio-surface="workspace"
+      >
         <TemplateRail>
           <RailHeader>
             <FolderOpen size={16} />
@@ -707,6 +716,8 @@ export function GameStudio() {
               <ProjectButton
                 key={project.id}
                 $active={project.id === activeProjectId}
+                data-game-studio-active={project.id === activeProjectId ? "true" : "false"}
+                data-game-studio-region="project-card"
                 onClick={() => openProject(project)}
               >
                 <strong>{project.title}</strong>
@@ -724,6 +735,7 @@ export function GameStudio() {
               <TemplateButton
                 key={template.id}
                 $active={template.id === selectedTemplate?.id}
+                data-game-studio-active={template.id === selectedTemplate?.id ? "true" : "false"}
                 onClick={() => selectTemplate(template.id)}
               >
                 <strong>{template.title}</strong>
@@ -775,6 +787,7 @@ export function GameStudio() {
                   type="button"
                   aria-label="Desktop preview"
                   $active={previewMode === "desktop"}
+                  data-game-studio-active={previewMode === "desktop" ? "true" : "false"}
                   onClick={() => setPreviewMode("desktop")}
                   title="Desktop preview"
                 >
@@ -784,6 +797,7 @@ export function GameStudio() {
                   type="button"
                   aria-label="Mobile preview"
                   $active={previewMode === "mobile"}
+                  data-game-studio-active={previewMode === "mobile" ? "true" : "false"}
                   onClick={() => setPreviewMode("mobile")}
                   title="Mobile preview"
                 >
@@ -849,6 +863,7 @@ export function GameStudio() {
                       key={file}
                       type="button"
                       $active={file === activeFilePath}
+                      data-game-studio-active={file === activeFilePath ? "true" : "false"}
                       onClick={() => setActiveFilePath(file)}
                     >
                       {file}
@@ -953,6 +968,7 @@ export function GameStudio() {
               <FilterButton
                 key={kind}
                 $active={assetKind === kind}
+                data-game-studio-active={assetKind === kind ? "true" : "false"}
                 onClick={() => setAssetKind(kind)}
               >
                 {kind}
@@ -1046,6 +1062,8 @@ export function GameStudio() {
                 key={asset.id}
                 $active={selectedAssetIds.includes(asset.id)}
                 $focused={focusedAsset?.id === asset.id}
+                data-game-studio-active={selectedAssetIds.includes(asset.id) ? "true" : "false"}
+                data-game-studio-focused={focusedAsset?.id === asset.id ? "true" : "false"}
                 onClick={() => toggleAsset(asset.id)}
               >
                 {visualKinds.has(asset.kind) ? (
@@ -1380,7 +1398,7 @@ function inferMimeType(name: string): string {
   return "text/plain";
 }
 
-const StudioShell = styled.div`
+const StudioShell = styled.div.attrs(gameStudioRegionAttrs("workspace"))`
   width: 100%;
   height: 100%;
   display: grid;
@@ -1390,6 +1408,103 @@ const StudioShell = styled.div`
   font-family: ${GAME_STUDIO_APP_FONT};
   overflow: hidden;
 
+  &[data-game-studio-presentation-host="gamma"] {
+    background: #070706 !important;
+    background-image: none !important;
+    color: #f2ead9 !important;
+    font-family:
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif !important;
+    letter-spacing: 0 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"],
+  &[data-game-studio-presentation-host="gamma"] * {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    letter-spacing: 0 !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"]
+    :where(button, input, textarea, select, p, span, strong, div, section, aside, main, label) {
+    font-family:
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"]
+    :where(code, pre, textarea, [data-game-studio-region="source-editor"], [data-game-studio-region="file-button"]) {
+    font-family:
+      "IBM Plex Mono",
+      "SFMono-Regular",
+      Consolas,
+      monospace !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"] :where([data-game-studio-region]) {
+    border-color: rgba(242, 234, 217, 0.18) !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"] :where(button, input, textarea, select, label, iframe, pre, code) {
+    border-color: rgba(242, 234, 217, 0.18) !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"] :where(button, input, textarea, select) {
+    background: #0d0d0b !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"]
+    :where([data-game-studio-region="template-rail"], [data-game-studio-region="asset-rail"], [data-game-studio-region="toolbar"], [data-game-studio-region="preview-toolbar"], [data-game-studio-region="file-list"]) {
+    background: #0d0d0b !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"]
+    :where([data-game-studio-region="preview-pane"], [data-game-studio-region="preview-stage"], [data-game-studio-region="source-editor"]) {
+    background: #070706 !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"]
+    :where([data-game-studio-region="template-card"], [data-game-studio-region="project-card"], [data-game-studio-region="asset-card"], [data-game-studio-region="snippet-card"], [data-game-studio-region="code-panel"], [data-game-studio-region="publish-panel"], [data-game-studio-region="asset-inspector"], [data-game-studio-region="snippet-panel"], [data-game-studio-region="upload-drop"], [data-game-studio-region="selection-bar"]) {
+    background: #11110f !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"]
+    :where([data-game-studio-active="true"], [data-game-studio-focused="true"]) {
+    border-color: #00d2ff !important;
+    background: rgba(0, 210, 255, 0.08) !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"]
+    :where([data-game-studio-region="rail-header"], [data-game-studio-region="panel-title"], [data-game-studio-region="toolbar-button"], [data-game-studio-region="asset-counter"], [data-game-studio-region="asset-action"], [data-game-studio-region="asset-link"], [data-game-studio-region="asset-glyph"]) {
+    color: #00d2ff !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"]
+    :where([data-game-studio-region="status"], [data-game-studio-region="asset-path"]) {
+    color: #d6ff3f !important;
+  }
+
+  &[data-game-studio-presentation-host="gamma"] img {
+    background: #070706 !important;
+  }
+
   @media (max-width: 980px) {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(420px, 1fr) auto;
@@ -1397,7 +1512,7 @@ const StudioShell = styled.div`
   }
 `;
 
-const TemplateRail = styled.aside`
+const TemplateRail = styled.aside.attrs(gameStudioRegionAttrs("template-rail"))`
   border-right: 1px solid #2a303b;
   background: #171b22;
   min-height: 0;
@@ -1405,7 +1520,7 @@ const TemplateRail = styled.aside`
   flex-direction: column;
 `;
 
-const AssetRail = styled.aside`
+const AssetRail = styled.aside.attrs(gameStudioRegionAttrs("asset-rail"))`
   border-left: 1px solid #2a303b;
   background: #171b22;
   min-height: 0;
@@ -1413,7 +1528,7 @@ const AssetRail = styled.aside`
   flex-direction: column;
 `;
 
-const RailHeader = styled.div`
+const RailHeader = styled.div.attrs(gameStudioRegionAttrs("rail-header"))`
   height: 46px;
   display: flex;
   align-items: center;
@@ -1424,14 +1539,14 @@ const RailHeader = styled.div`
   font-weight: 700;
 `;
 
-const TemplateList = styled.div`
+const TemplateList = styled.div.attrs(gameStudioRegionAttrs("template-list"))`
   padding: 10px;
   display: grid;
   gap: 8px;
   overflow-y: auto;
 `;
 
-const ProjectList = styled.div`
+const ProjectList = styled.div.attrs(gameStudioRegionAttrs("project-list"))`
   max-height: 180px;
   padding: 10px;
   display: grid;
@@ -1440,7 +1555,7 @@ const ProjectList = styled.div`
   border-bottom: 1px solid #2a303b;
 `;
 
-const TemplateButton = styled.button<{ $active?: boolean }>`
+const TemplateButton = styled.button.attrs(gameStudioRegionAttrs("template-card"))<{ $active?: boolean }>`
   text-align: left;
   border: 1px solid ${(p) => (p.$active ? "#57f0be" : "#303845")};
   background: ${(p) => (p.$active ? "#12352d" : "#10141b")};
@@ -1457,11 +1572,26 @@ const TemplateButton = styled.button<{ $active?: boolean }>`
   }
 `;
 
-const ProjectButton = styled(TemplateButton)`
+const ProjectButton = styled.button.attrs(gameStudioRegionAttrs("project-card"))<{ $active?: boolean }>`
+  text-align: left;
+  border: 1px solid ${(p) => (p.$active ? "#57f0be" : "#303845")};
+  background: ${(p) => (p.$active ? "#12352d" : "#10141b")};
+  color: #f6f7fb;
+  border-radius: 6px;
+  padding: 10px;
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+
   strong {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  span {
+    color: #9aa4b2;
+    font-size: ${GAME_STUDIO_CAPTION_TYPE};
   }
 `;
 
@@ -1471,14 +1601,14 @@ const RailNote = styled.div`
   padding: 6px 2px;
 `;
 
-const Workbench = styled.main`
+const Workbench = styled.main.attrs(gameStudioRegionAttrs("workbench"))`
   min-width: 0;
   min-height: 0;
   display: grid;
   grid-template-rows: 48px minmax(240px, 0.95fr) minmax(300px, 0.75fr);
 `;
 
-const Toolbar = styled.div`
+const Toolbar = styled.div.attrs(gameStudioRegionAttrs("toolbar"))`
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1515,7 +1645,7 @@ const ProjectTitleInput = styled.input`
   font-weight: 700;
 `;
 
-const ToolbarButton = styled.button`
+const ToolbarButton = styled.button.attrs(gameStudioRegionAttrs("toolbar-button"))`
   width: 34px;
   height: 32px;
   border: 1px solid #303845;
@@ -1533,21 +1663,21 @@ const ToolbarButton = styled.button`
   }
 `;
 
-const AssetCounter = styled.div`
+const AssetCounter = styled.div.attrs(gameStudioRegionAttrs("asset-counter"))`
   margin-left: auto;
   color: #99ffe0;
   font-size: ${GAME_STUDIO_CAPTION_TYPE};
   font-weight: 700;
 `;
 
-const PreviewPane = styled.section`
+const PreviewPane = styled.section.attrs(gameStudioRegionAttrs("preview-pane"))`
   min-height: 0;
   background: #080a10;
   display: grid;
   grid-template-rows: 38px minmax(0, 1fr);
 `;
 
-const PreviewToolbar = styled.div`
+const PreviewToolbar = styled.div.attrs(gameStudioRegionAttrs("preview-toolbar"))`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1563,7 +1693,7 @@ const PreviewModeGroup = styled.div`
   gap: 5px;
 `;
 
-const PreviewModeButton = styled.button<{ $active?: boolean }>`
+const PreviewModeButton = styled.button.attrs(gameStudioRegionAttrs("preview-mode"))<{ $active?: boolean }>`
   width: 32px;
   height: 32px;
   border: 1px solid ${(p) => (p.$active ? "#57f0be" : "#303845")};
@@ -1580,7 +1710,7 @@ const PreviewStat = styled.div`
   font-size: ${GAME_STUDIO_CAPTION_TYPE};
 `;
 
-const PreviewStage = styled.div<{ $mode: PreviewMode }>`
+const PreviewStage = styled.div.attrs(gameStudioRegionAttrs("preview-stage"))<{ $mode: PreviewMode }>`
   min-height: 0;
   display: grid;
   place-items: ${(p) => (p.$mode === "mobile" ? "center" : "stretch")};
@@ -1588,7 +1718,7 @@ const PreviewStage = styled.div<{ $mode: PreviewMode }>`
   overflow: hidden;
 `;
 
-const PreviewFrame = styled.iframe<{ $mode: PreviewMode }>`
+const PreviewFrame = styled.iframe.attrs(gameStudioRegionAttrs("preview-frame"))<{ $mode: PreviewMode }>`
   width: ${(p) => (p.$mode === "mobile" ? "min(390px, 92%)" : "100%")};
   height: ${(p) => (p.$mode === "mobile" ? "min(720px, 94%)" : "100%")};
   border: 0;
@@ -1608,7 +1738,7 @@ const PreviewEmpty = styled.div`
   color: #9aa4b2;
 `;
 
-const SourceStrip = styled.section`
+const SourceStrip = styled.section.attrs(gameStudioRegionAttrs("source-strip"))`
   border-top: 1px solid #2a303b;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 280px;
@@ -1619,7 +1749,7 @@ const SourceStrip = styled.section`
   }
 `;
 
-const CodePanel = styled.div`
+const CodePanel = styled.div.attrs(gameStudioRegionAttrs("code-panel"))`
   padding: 12px;
   min-width: 0;
   min-height: 0;
@@ -1629,7 +1759,7 @@ const CodePanel = styled.div`
   gap: 8px;
 `;
 
-const PublishPanel = styled.div`
+const PublishPanel = styled.div.attrs(gameStudioRegionAttrs("publish-panel"))`
   border-left: 1px solid #2a303b;
   padding: 12px;
   display: grid;
@@ -1649,7 +1779,7 @@ const PublishPanel = styled.div`
   }
 `;
 
-const PanelTitle = styled.div`
+const PanelTitle = styled.div.attrs(gameStudioRegionAttrs("panel-title"))`
   display: flex;
   align-items: center;
   gap: 7px;
@@ -1663,7 +1793,7 @@ const FileControls = styled.div`
   gap: 6px;
 `;
 
-const FileNameInput = styled.input`
+const FileNameInput = styled.input.attrs(gameStudioRegionAttrs("file-name-input"))`
   min-width: 0;
   height: 32px;
   border: 1px solid #303845;
@@ -1673,7 +1803,7 @@ const FileNameInput = styled.input`
   padding: 0 8px;
 `;
 
-const IconToolButton = styled.button`
+const IconToolButton = styled.button.attrs(gameStudioRegionAttrs("icon-tool-button"))`
   width: 32px;
   height: 32px;
   border: 1px solid #303845;
@@ -1690,7 +1820,7 @@ const IconToolButton = styled.button`
   }
 `;
 
-const EditorBody = styled.div`
+const EditorBody = styled.div.attrs(gameStudioRegionAttrs("editor-body"))`
   min-height: 0;
   display: grid;
   grid-template-columns: 170px minmax(0, 1fr);
@@ -1704,7 +1834,7 @@ const EditorBody = styled.div`
   }
 `;
 
-const FileList = styled.div`
+const FileList = styled.div.attrs(gameStudioRegionAttrs("file-list"))`
   min-height: 0;
   overflow: auto;
   background: #0d1118;
@@ -1715,7 +1845,7 @@ const FileList = styled.div`
   gap: 4px;
 `;
 
-const FileButton = styled.button<{ $active?: boolean }>`
+const FileButton = styled.button.attrs(gameStudioRegionAttrs("file-button"))<{ $active?: boolean }>`
   min-height: 32px;
   border: 1px solid ${(p) => (p.$active ? "#57f0be" : "transparent")};
   background: ${(p) => (p.$active ? "#12352d" : "transparent")};
@@ -1731,7 +1861,7 @@ const FileButton = styled.button<{ $active?: boolean }>`
   white-space: nowrap;
 `;
 
-const LocalAssetRow = styled.div`
+const LocalAssetRow = styled.div.attrs(gameStudioRegionAttrs("local-asset-row"))`
   min-height: 32px;
   border-top: 1px dashed #303845;
   color: #8e98a7;
@@ -1750,7 +1880,7 @@ const LocalAssetRow = styled.div`
   }
 `;
 
-const LocalAssetAction = styled.button`
+const LocalAssetAction = styled.button.attrs(gameStudioRegionAttrs("local-asset-action"))`
   width: 32px;
   height: 32px;
   border: 1px solid #303845;
@@ -1762,14 +1892,14 @@ const LocalAssetAction = styled.button`
   cursor: pointer;
 `;
 
-const EditorColumn = styled.div`
+const EditorColumn = styled.div.attrs(gameStudioRegionAttrs("editor-column"))`
   min-width: 0;
   min-height: 0;
   display: grid;
   grid-template-rows: 30px minmax(0, 1fr);
 `;
 
-const EditorMeta = styled.div`
+const EditorMeta = styled.div.attrs(gameStudioRegionAttrs("editor-meta"))`
   display: flex;
   align-items: center;
   padding: 0 9px;
@@ -1782,7 +1912,7 @@ const EditorMeta = styled.div`
   white-space: nowrap;
 `;
 
-const SourceEditor = styled.textarea`
+const SourceEditor = styled.textarea.attrs(gameStudioRegionAttrs("source-editor"))`
   min-width: 0;
   min-height: 0;
   width: 100%;
@@ -1799,7 +1929,7 @@ const SourceEditor = styled.textarea`
   outline: none;
 `;
 
-const FileInputLabel = styled.label`
+const FileInputLabel = styled.label.attrs(gameStudioRegionAttrs("file-input"))`
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1814,7 +1944,7 @@ const FileInputLabel = styled.label`
   }
 `;
 
-const ActionButton = styled.button`
+const ActionButton = styled.button.attrs(gameStudioRegionAttrs("action-button"))`
   height: 34px;
   border: 1px solid #57f0be;
   background: #12352d;
@@ -1832,19 +1962,19 @@ const ActionButton = styled.button`
   }
 `;
 
-const StatusText = styled.div`
+const StatusText = styled.div.attrs(gameStudioRegionAttrs("status"))`
   color: #ffcb5c;
   font-size: ${GAME_STUDIO_CAPTION_TYPE};
 `;
 
-const BuildList = styled.div`
+const BuildList = styled.div.attrs(gameStudioRegionAttrs("build-list"))`
   border-top: 1px solid #303845;
   padding-top: 8px;
   display: grid;
   gap: 5px;
 `;
 
-const BuildItem = styled.div`
+const BuildItem = styled.div.attrs(gameStudioRegionAttrs("build-item"))`
   min-height: 32px;
   display: grid;
   grid-template-columns: 36px 1fr auto;
@@ -1863,14 +1993,14 @@ const BuildItem = styled.div`
   }
 `;
 
-const FilterRow = styled.div`
+const FilterRow = styled.div.attrs(gameStudioRegionAttrs("filter-row"))`
   display: flex;
   gap: 6px;
   padding: 10px;
   overflow-x: auto;
 `;
 
-const FilterButton = styled.button<{ $active?: boolean }>`
+const FilterButton = styled.button.attrs(gameStudioRegionAttrs("filter-button"))<{ $active?: boolean }>`
   min-width: 32px;
   min-height: 32px;
   border: 1px solid ${(p) => (p.$active ? "#57f0be" : "#303845")};
@@ -1882,7 +2012,7 @@ const FilterButton = styled.button<{ $active?: boolean }>`
   cursor: pointer;
 `;
 
-const AssetSearchInput = styled.input`
+const AssetSearchInput = styled.input.attrs(gameStudioRegionAttrs("asset-search"))`
   display: block;
   width: calc(100% - 20px);
   margin: 0 10px 10px;
@@ -1897,7 +2027,7 @@ const AssetSearchInput = styled.input`
   outline: none;
 `;
 
-const SnippetPanel = styled.div`
+const SnippetPanel = styled.div.attrs(gameStudioRegionAttrs("snippet-panel"))`
   margin: 0 10px 10px;
   border: 1px solid #303845;
   border-radius: 6px;
@@ -1905,7 +2035,7 @@ const SnippetPanel = styled.div`
   overflow: hidden;
 `;
 
-const SnippetHeader = styled.div`
+const SnippetHeader = styled.div.attrs(gameStudioRegionAttrs("snippet-header"))`
   min-height: 34px;
   display: flex;
   align-items: center;
@@ -1917,7 +2047,7 @@ const SnippetHeader = styled.div`
   font-size: ${GAME_STUDIO_CAPTION_TYPE};
 `;
 
-const SnippetSearchInput = styled.input`
+const SnippetSearchInput = styled.input.attrs(gameStudioRegionAttrs("snippet-search"))`
   width: calc(100% - 16px);
   height: 32px;
   margin: 8px;
@@ -1930,7 +2060,7 @@ const SnippetSearchInput = styled.input`
   font-size: ${GAME_STUDIO_CAPTION_TYPE};
 `;
 
-const SnippetList = styled.div`
+const SnippetList = styled.div.attrs(gameStudioRegionAttrs("snippet-list"))`
   max-height: 176px;
   overflow-y: auto;
   padding: 0 8px 8px;
@@ -1938,7 +2068,7 @@ const SnippetList = styled.div`
   gap: 6px;
 `;
 
-const SnippetButton = styled.button`
+const SnippetButton = styled.button.attrs(gameStudioRegionAttrs("snippet-card"))`
   min-height: 48px;
   border: 1px solid #303845;
   background: #0d1118;
@@ -1978,7 +2108,7 @@ const SnippetEmpty = styled.div`
   padding: 2px 0 8px;
 `;
 
-const UploadDrop = styled.label`
+const UploadDrop = styled.label.attrs(gameStudioRegionAttrs("upload-drop"))`
   margin: 0 10px 10px;
   min-height: 42px;
   border: 1px dashed #586171;
@@ -1995,7 +2125,7 @@ const UploadDrop = styled.label`
   }
 `;
 
-const LocalUploadList = styled.div`
+const LocalUploadList = styled.div.attrs(gameStudioRegionAttrs("local-upload-list"))`
   margin: 0 10px 10px;
   border: 1px solid #303845;
   border-radius: 6px;
@@ -2005,7 +2135,7 @@ const LocalUploadList = styled.div`
   overflow: hidden;
 `;
 
-const LocalUploadItem = styled.div`
+const LocalUploadItem = styled.div.attrs(gameStudioRegionAttrs("local-upload-item"))`
   min-height: 32px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto 32px 32px 32px;
@@ -2027,7 +2157,7 @@ const LocalUploadItem = styled.div`
   }
 `;
 
-const LocalUploadAction = styled.button`
+const LocalUploadAction = styled.button.attrs(gameStudioRegionAttrs("local-upload-action"))`
   width: 32px;
   height: 32px;
   border: 1px solid #303845;
@@ -2039,7 +2169,7 @@ const LocalUploadAction = styled.button`
   cursor: pointer;
 `;
 
-const AssetGrid = styled.div`
+const AssetGrid = styled.div.attrs(gameStudioRegionAttrs("asset-grid"))`
   padding: 0 10px 10px;
   overflow-y: auto;
   flex: 1 1 auto;
@@ -2049,7 +2179,7 @@ const AssetGrid = styled.div`
   gap: 8px;
 `;
 
-const AssetButton = styled.button<{ $active?: boolean; $focused?: boolean }>`
+const AssetButton = styled.button.attrs(gameStudioRegionAttrs("asset-card"))<{ $active?: boolean; $focused?: boolean }>`
   min-height: 126px;
   border: 1px solid ${(p) => (p.$active ? "#57f0be" : "#303845")};
   background: ${(p) => (p.$active ? "#12352d" : "#10141b")};
@@ -2080,7 +2210,7 @@ const AssetButton = styled.button<{ $active?: boolean; $focused?: boolean }>`
   }
 `;
 
-const AssetInspector = styled.div`
+const AssetInspector = styled.div.attrs(gameStudioRegionAttrs("asset-inspector"))`
   margin: 0 10px 10px;
   border: 1px solid #303845;
   border-radius: 6px;
@@ -2100,7 +2230,7 @@ const AssetInspector = styled.div`
   }
 `;
 
-const AssetTags = styled.div`
+const AssetTags = styled.div.attrs(gameStudioRegionAttrs("asset-tags"))`
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
@@ -2115,7 +2245,7 @@ const AssetTags = styled.div`
   }
 `;
 
-const AssetPath = styled.code`
+const AssetPath = styled.code.attrs(gameStudioRegionAttrs("asset-path"))`
   border: 1px solid #303845;
   border-radius: 4px;
   padding: 4px 6px;
@@ -2127,7 +2257,7 @@ const AssetPath = styled.code`
   text-overflow: ellipsis;
 `;
 
-const AssetSnippet = styled.pre`
+const AssetSnippet = styled.pre.attrs(gameStudioRegionAttrs("asset-snippet"))`
   margin: 0;
   border: 1px solid #303845;
   border-radius: 5px;
@@ -2141,14 +2271,14 @@ const AssetSnippet = styled.pre`
   overflow-wrap: anywhere;
 `;
 
-const AssetInspectorActions = styled.div`
+const AssetInspectorActions = styled.div.attrs(gameStudioRegionAttrs("asset-actions"))`
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 `;
 
-const AssetActionButton = styled.button`
+const AssetActionButton = styled.button.attrs(gameStudioRegionAttrs("asset-action"))`
   min-height: 32px;
   border: 1px solid #57f0be;
   border-radius: 5px;
@@ -2162,7 +2292,7 @@ const AssetActionButton = styled.button`
   font-size: ${GAME_STUDIO_CAPTION_TYPE};
 `;
 
-const AssetLink = styled.a`
+const AssetLink = styled.a.attrs(gameStudioRegionAttrs("asset-link"))`
   min-height: 32px;
   display: inline-flex;
   align-items: center;
@@ -2171,7 +2301,7 @@ const AssetLink = styled.a`
   text-decoration: none;
 `;
 
-const AssetGlyph = styled.div`
+const AssetGlyph = styled.div.attrs(gameStudioRegionAttrs("asset-glyph"))`
   aspect-ratio: 1.7;
   border-radius: 4px;
   display: grid;
@@ -2181,7 +2311,7 @@ const AssetGlyph = styled.div`
   font-weight: 700;
 `;
 
-const SelectionBar = styled.div`
+const SelectionBar = styled.div.attrs(gameStudioRegionAttrs("selection-bar"))`
   margin: auto 10px 10px;
   border: 1px solid #303845;
   border-radius: 6px;

@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { usePresentationShell } from "../lib/presentation-shell";
 
 const Section = styled.div`
   margin-bottom: 16px;
@@ -82,6 +83,59 @@ const KV = styled.div`
   gap: 8px;
 `;
 
+const RecaptureShell = styled.div`
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 12px;
+
+  &[data-wtf-recapture-presentation-host="gamma"] {
+    background: #070706;
+    color: #f2ead9;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    font-family: var(--wtf-sans-font, "Inter", "Helvetica Neue", Arial, sans-serif);
+    padding: 12px;
+  }
+
+  &[data-wtf-recapture-presentation-host="gamma"],
+  &[data-wtf-recapture-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-wtf-recapture-presentation-host="gamma"] [data-wtf-recapture-region] {
+    background-image: none;
+    border-radius: 6px;
+  }
+
+  &[data-wtf-recapture-presentation-host="gamma"] :where(fieldset, input, textarea, select, button) {
+    color: #f2ead9;
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+  }
+
+  &[data-wtf-recapture-presentation-host="gamma"] :where(button:hover, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible) {
+    color: #070706;
+    background: #00d2ff;
+    outline: 2px solid #00d2ff;
+    outline-offset: 2px;
+  }
+
+  &[data-wtf-recapture-presentation-host="gamma"] code {
+    color: #00d2ff;
+    background: #070706;
+    border: 1px solid rgba(0, 210, 255, 0.28);
+    border-radius: 6px;
+  }
+
+  &[data-wtf-recapture-presentation-host="gamma"] [data-wtf-recapture-region="status-pill"] {
+    color: #070706;
+    background: #d6ff3f;
+  }
+`;
+
 type LeaderboardEntry = {
   userId: number | null;
   walletAddress: string;
@@ -153,6 +207,7 @@ function formatXtzMutez(mutez: string): string {
 
 export function WtfRecapture() {
   const { user } = useAuth();
+  const presentation = usePresentationShell();
   const qc = useQueryClient();
   const [tab, setTab] = useState<"leaderboard" | "buybacks" | "auctions" | "mine">(
     "leaderboard"
@@ -186,29 +241,51 @@ export function WtfRecapture() {
 
   return (
     <AppWindow title="WTF Recapture">
-      <Tabs>
+      <RecaptureShell
+        data-wtf-recapture-surface="recapture"
+        data-wtf-recapture-presentation-host={presentation.host}
+        data-wtf-recapture-region="surface"
+      >
+      <Tabs data-wtf-recapture-region="tabs">
         <Button
           active={tab === "leaderboard"}
+          aria-pressed={tab === "leaderboard"}
+          data-wtf-recapture-region="tab-button"
           onClick={() => setTab("leaderboard")}
         >
           Leaderboard
         </Button>
-        <Button active={tab === "buybacks"} onClick={() => setTab("buybacks")}>
+        <Button
+          active={tab === "buybacks"}
+          aria-pressed={tab === "buybacks"}
+          data-wtf-recapture-region="tab-button"
+          onClick={() => setTab("buybacks")}
+        >
           Buyback Windows
         </Button>
-        <Button active={tab === "auctions"} onClick={() => setTab("auctions")}>
+        <Button
+          active={tab === "auctions"}
+          aria-pressed={tab === "auctions"}
+          data-wtf-recapture-region="tab-button"
+          onClick={() => setTab("auctions")}
+        >
           WTF Auctions
         </Button>
         {user ? (
-          <Button active={tab === "mine"} onClick={() => setTab("mine")}>
+          <Button
+            active={tab === "mine"}
+            aria-pressed={tab === "mine"}
+            data-wtf-recapture-region="tab-button"
+            onClick={() => setTab("mine")}
+          >
             My Events
           </Button>
         ) : null}
       </Tabs>
 
       {tab === "leaderboard" && (
-        <Section>
-          <GroupBox label="Total WTF returned to the operator wallet">
+        <Section data-wtf-recapture-region="section">
+          <GroupBox label="Total WTF returned to the operator wallet" data-wtf-recapture-region="panel">
             {leaderboard?.operatorWallet ? (
               <div style={{ marginBottom: 8, fontSize: 12 }}>
                 Operator wallet:{" "}
@@ -219,14 +296,14 @@ export function WtfRecapture() {
               <Hourglass />
             ) : (
               <>
-                <LeaderHeader>
+                <LeaderHeader data-wtf-recapture-region="leader-header">
                   <div>#</div>
                   <div>Seller</div>
                   <div>Events</div>
                   <div>WTF returned</div>
                 </LeaderHeader>
                 {(leaderboard?.entries ?? []).map((e, i) => (
-                  <LeaderRow key={`${e.walletAddress}-${i}`}>
+                  <LeaderRow key={`${e.walletAddress}-${i}`} data-wtf-recapture-region="leader-row">
                     <div>{i + 1}</div>
                     <div>
                       {e.user?.displayName || e.user?.username || (
@@ -250,7 +327,7 @@ export function WtfRecapture() {
       )}
 
       {tab === "buybacks" && (
-        <Section>
+        <Section data-wtf-recapture-region="section">
           {winLoading ? (
             <Hourglass />
           ) : (
@@ -269,7 +346,7 @@ export function WtfRecapture() {
       )}
 
       {tab === "auctions" && (
-        <Section>
+        <Section data-wtf-recapture-region="section">
           {aucLoading ? (
             <Hourglass />
           ) : (
@@ -288,8 +365,8 @@ export function WtfRecapture() {
       )}
 
       {tab === "mine" && user && (
-        <Section>
-          <GroupBox label="My WTF → operator wallet">
+        <Section data-wtf-recapture-region="section">
+          <GroupBox label="My WTF → operator wallet" data-wtf-recapture-region="panel">
             {(mineData?.events ?? []).length === 0 ? (
               <div style={{ padding: 8, fontSize: 13 }}>
                 You haven&apos;t sent WTF to the operator wallet yet. Buybacks,
@@ -322,6 +399,7 @@ export function WtfRecapture() {
           </GroupBox>
         </Section>
       )}
+      </RecaptureShell>
     </AppWindow>
   );
 }
@@ -369,41 +447,42 @@ function BuybackWindowCard({ window: w }: { window: Window }) {
   const mine = eligibility?.eligibility?.[0] ?? null;
 
   return (
-    <WindowCard label={w.label}>
+    <WindowCard label={w.label} data-wtf-recapture-region="buyback-window">
       <div
+        data-wtf-recapture-region="buyback-header"
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
         }}
       >
-        <StatusPill $tone={w.status}>{w.status.toUpperCase()}</StatusPill>
+        <StatusPill $tone={w.status} data-wtf-recapture-region="status-pill" data-tone={w.status}>{w.status.toUpperCase()}</StatusPill>
         <SmallAddr>{w.contractAddress}</SmallAddr>
       </div>
-      <Grid>
-        <KV>
+      <Grid data-wtf-recapture-region="metrics-grid">
+        <KV data-wtf-recapture-region="metric">
           <span>Rate</span>
           <strong>{w.rateMutezPerWtf} µꜩ/WTF</strong>
         </KV>
-        <KV>
+        <KV data-wtf-recapture-region="metric">
           <span>Per-seller cap</span>
           <strong>{formatWtfRaw(w.perSellerCapWtf)} WTF</strong>
         </KV>
-        <KV>
+        <KV data-wtf-recapture-region="metric">
           <span>Total XTZ budget</span>
           <strong>{formatXtzMutez(w.totalXtzBudgetMutez)} XTZ</strong>
         </KV>
-        <KV>
+        <KV data-wtf-recapture-region="metric">
           <span>Recaptured so far</span>
           <strong>
             {formatWtfRaw(w.wtfRecaptured)} WTF · {w.swapsObserved} swap(s)
           </strong>
         </KV>
-        <KV>
+        <KV data-wtf-recapture-region="metric">
           <span>Opens</span>
           <strong>{new Date(w.opensAt).toLocaleString()}</strong>
         </KV>
-        <KV>
+        <KV data-wtf-recapture-region="metric">
           <span>Closes</span>
           <strong>{new Date(w.closesAt).toLocaleString()}</strong>
         </KV>
@@ -438,17 +517,20 @@ function BuybackWindowCard({ window: w }: { window: Window }) {
               >
                 <TextInput
                   placeholder="Amount WTF swapped (raw)"
+                  data-wtf-recapture-region="swap-amount-input"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                 />
                 <TextInput
                   placeholder="Op hash (ooXY…)"
+                  data-wtf-recapture-region="swap-op-input"
                   value={opHash}
                   onChange={(e) => setOpHash(e.target.value)}
                 />
               </div>
               <Button
                 disabled={!amount || !opHash || intentMut.isPending}
+                data-wtf-recapture-region="record-swap-button"
                 onClick={() =>
                   intentMut.mutate({
                     allowlistId: mine.id,
@@ -507,15 +589,16 @@ function WtfAuctionCard({ auction }: { auction: Auction }) {
   });
 
   return (
-    <AuctionCard label={auction.title}>
+    <AuctionCard label={auction.title} data-wtf-recapture-region="auction-card">
       <div
+        data-wtf-recapture-region="auction-header"
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
         }}
       >
-        <StatusPill $tone={auction.status}>
+        <StatusPill $tone={auction.status} data-wtf-recapture-region="status-pill" data-tone={auction.status}>
           {auction.status.toUpperCase()}
         </StatusPill>
         <span style={{ fontSize: 12 }}>Perk: {auction.perkKind}</span>
@@ -523,20 +606,20 @@ function WtfAuctionCard({ auction }: { auction: Auction }) {
       {auction.description && (
         <p style={{ fontSize: 12, marginTop: 8 }}>{auction.description}</p>
       )}
-      <Grid>
-        <KV>
+      <Grid data-wtf-recapture-region="metrics-grid">
+        <KV data-wtf-recapture-region="metric">
           <span>Opens</span>
           <strong>{new Date(auction.startsAt).toLocaleString()}</strong>
         </KV>
-        <KV>
+        <KV data-wtf-recapture-region="metric">
           <span>Closes</span>
           <strong>{new Date(auction.endsAt).toLocaleString()}</strong>
         </KV>
-        <KV>
+        <KV data-wtf-recapture-region="metric">
           <span>Min bid</span>
           <strong>{formatWtfRaw(auction.minBidWtf)} WTF</strong>
         </KV>
-        <KV>
+        <KV data-wtf-recapture-region="metric">
           <span>Increment</span>
           <strong>{formatWtfRaw(auction.bidIncrementWtf)} WTF</strong>
         </KV>
@@ -546,11 +629,13 @@ function WtfAuctionCard({ auction }: { auction: Auction }) {
         <div style={{ marginTop: 8 }}>
           <TextInput
             placeholder="Bid amount (raw WTF)"
+            data-wtf-recapture-region="auction-bid-input"
             value={bid}
             onChange={(e) => setBid(e.target.value)}
           />
           <Button
             disabled={!bid || bidMut.isPending}
+            data-wtf-recapture-region="auction-bid-button"
             onClick={() => bidMut.mutate(bid)}
             style={{ marginTop: 6 }}
           >

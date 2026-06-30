@@ -15,6 +15,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { usePresentationShell } from "../lib/presentation-shell";
 import { customerChallengeTitle } from "./challenge-display";
 
 type ChallengeRow = {
@@ -29,10 +30,30 @@ type ChallengeRow = {
   rewardXp?: number | null;
 };
 
+const gammaProgressionScope = `[data-progression-presentation-host="gamma"]`;
+
 const Shell = styled.div`
   display: grid;
   gap: 12px;
   min-width: 0;
+
+  &[data-progression-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-progression-presentation-host="gamma"] [data-progression-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-progression-presentation-host="gamma"] button,
+  &[data-progression-presentation-host="gamma"] input,
+  &[data-progression-presentation-host="gamma"] textarea {
+    letter-spacing: 0;
+  }
 `;
 
 const IntroPanel = styled.div`
@@ -44,6 +65,14 @@ const IntroPanel = styled.div`
   border: 1px solid #808080;
   background: var(--wtf-app-info-bg, #dce7e2);
   box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9a9a9a;
+
+  ${gammaProgressionScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: #0d0d0b;
+    color: #f2ead9;
+    padding: 12px;
+  }
 
   @media (max-width: 720px) {
     grid-template-columns: 1fr;
@@ -59,6 +88,10 @@ const PageCopy = styled.p`
   margin: 4px 0 0;
   font-size: var(--wtf-type-body, 15px);
   line-height: 1.4;
+
+  ${gammaProgressionScope} & {
+    color: rgba(242, 234, 217, 0.72);
+  }
 `;
 
 const StatStrip = styled.div`
@@ -79,10 +112,21 @@ const Stat = styled.div`
   padding: 6px;
   font-size: var(--wtf-type-caption, 13px);
 
+  ${gammaProgressionScope} & {
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 5px;
+    background: #0a0a09;
+    color: rgba(242, 234, 217, 0.68);
+  }
+
   strong {
     display: block;
     margin-top: 2px;
     font-size: 16px;
+
+    ${gammaProgressionScope} & {
+      color: #f2ead9;
+    }
   }
 `;
 
@@ -98,6 +142,12 @@ const ChallengeGrid = styled.div`
 
 const ChallengeCard = styled(GroupBox)`
   min-width: 0;
+
+  ${gammaProgressionScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: #10100e;
+  }
 `;
 
 const ChallengeHeader = styled.div`
@@ -117,6 +167,10 @@ const ChallengeCopy = styled.p`
   margin: 6px 0 0;
   font-size: var(--wtf-type-body, 15px);
   line-height: 1.35;
+
+  ${gammaProgressionScope} & {
+    color: rgba(242, 234, 217, 0.72);
+  }
 `;
 
 const ChipRow = styled.div`
@@ -145,6 +199,25 @@ const Chip = styled.span<{ $tone?: "green" | "blue" | "gold" | "gray" | "red" }>
   font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
   color: #202020;
+
+  ${gammaProgressionScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 4px;
+    background: transparent;
+    color: ${(p) =>
+      p.$tone === "green"
+        ? "#d6ff3f"
+        : p.$tone === "blue"
+          ? "#00d2ff"
+          : p.$tone === "gold"
+            ? "#f2ead9"
+            : p.$tone === "red"
+              ? "#ff7a7a"
+              : "rgba(242, 234, 217, 0.68)"};
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 12px;
+    text-transform: uppercase;
+  }
 `;
 
 const DetailNote = styled.div`
@@ -152,6 +225,10 @@ const DetailNote = styled.div`
   font-size: var(--wtf-type-caption, 13px);
   line-height: 1.4;
   color: var(--wtf-app-muted-text, #303030);
+
+  ${gammaProgressionScope} & {
+    color: rgba(242, 234, 217, 0.68);
+  }
 `;
 
 const Field = styled.div`
@@ -166,6 +243,13 @@ const SubmissionBox = styled.div`
   padding: 8px;
   background: #f0f0f0;
   border: 1px solid #999;
+
+  ${gammaProgressionScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 5px;
+    background: #0a0a09;
+    color: #f2ead9;
+  }
 `;
 
 const EmptyState = styled.div`
@@ -173,6 +257,13 @@ const EmptyState = styled.div`
   border: 1px dashed var(--wtf-app-border, #777777);
   background: var(--wtf-app-surface, #f6f6f6);
   font-size: var(--wtf-type-body, 15px);
+
+  ${gammaProgressionScope} & {
+    border-color: rgba(242, 234, 217, 0.24);
+    border-radius: 6px;
+    background: #0a0a09;
+    color: rgba(242, 234, 217, 0.7);
+  }
 `;
 
 function statusLabel(status: string | null | undefined) {
@@ -200,6 +291,7 @@ function rewardLabel(challenge: ChallengeRow) {
 
 export function Challenges() {
   const { user, canParticipate } = useAuth();
+  const presentation = usePresentationShell();
   const qc = useQueryClient();
   const [tab, setTab] = useState(0);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -256,24 +348,28 @@ export function Challenges() {
 
   return (
     <AppWindow title="Challenges">
-      <Shell>
-        <IntroPanel>
+      <Shell
+        data-progression-presentation-host={presentation.host}
+        data-progression-surface="challenges"
+        data-progression-region="shell"
+      >
+        <IntroPanel data-progression-region="intro-panel">
           <div>
             <PageTitle>Challenges</PageTitle>
             <PageCopy>
               Bigger missions that can span multiple side quests, submissions, or show events.
             </PageCopy>
           </div>
-          <StatStrip>
-            <Stat>
+          <StatStrip data-progression-region="stat-strip">
+            <Stat data-progression-region="stat">
               Open
               <strong>{activeChallenges.length}</strong>
             </Stat>
-            <Stat>
+            <Stat data-progression-region="stat">
               Complete
               <strong>{completedChallenges.length}</strong>
             </Stat>
-            <Stat>
+            <Stat data-progression-region="stat">
               Total
               <strong>{challengeRows.length}</strong>
             </Stat>
@@ -286,11 +382,11 @@ export function Challenges() {
             <Tab value={1}>Past</Tab>
             <Tab value={2}>All</Tab>
           </Tabs>
-          <TabBody>
+          <TabBody data-progression-region="tab-body">
             {visibleChallenges.length === 0 ? (
               <EmptyState>No challenges in this view.</EmptyState>
             ) : (
-              <ChallengeGrid>
+              <ChallengeGrid data-progression-region="challenge-grid">
                 {visibleChallenges.map((challenge) => {
                   const isExpanded = expandedId === challenge.id;
                   const displayTitle = customerChallengeTitle(challenge.title);
@@ -300,7 +396,11 @@ export function Challenges() {
                       : null;
 
                   return (
-                    <ChallengeCard key={challenge.id} label="Challenge">
+                    <ChallengeCard
+                      key={challenge.id}
+                      label="Challenge"
+                      data-progression-region="challenge-card"
+                    >
                       <ChallengeHeader>
                         <div>
                           <ChallengeTitle>{displayTitle}</ChallengeTitle>
@@ -342,6 +442,7 @@ export function Challenges() {
                         <Fieldset
                           label="Your activity stats"
                           style={{ marginTop: 10, fontSize: 12 }}
+                          data-progression-region="activity-stats"
                         >
                           <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
                             <li>
@@ -365,7 +466,7 @@ export function Challenges() {
                       )}
 
                       {isExpanded && mySub && (
-                        <SubmissionBox>
+                        <SubmissionBox data-progression-region="submission-box">
                           <strong>Your Submission</strong>
                           <Chip $tone={mySub.grade === "fail" ? "red" : mySub.grade === "pending" ? "gold" : "green"}>
                             {String(mySub.grade || "pending").toUpperCase()}

@@ -4,6 +4,7 @@ import { Button, GroupBox, Hourglass, Panel, TextInput } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
+import { usePresentationShell } from "../lib/presentation-shell";
 
 type BrowserPolicy = {
   allowed: boolean;
@@ -16,6 +17,56 @@ type BrowserPolicy = {
 const Shell = styled.div`
   display: grid;
   gap: 8px;
+
+  &[data-gamma-utility-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family:
+      Inter, "IBM Plex Sans", "Neue Haas Grotesk Text", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"],
+  &[data-gamma-utility-presentation-host="gamma"] * {
+    box-sizing: border-box;
+    letter-spacing: 0;
+    text-shadow: none;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region] {
+    background-image: none;
+    box-shadow: none;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"]
+    :where(button, input, p, span, strong, div, label, legend, fieldset) {
+    font-family:
+      Inter, "IBM Plex Sans", "Neue Haas Grotesk Text", Arial, sans-serif;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] fieldset,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="viewport"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="notice"] {
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: rgba(242, 234, 217, 0.035);
+    color: #f2ead9;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] legend,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="allowed-hosts"] {
+    color: #00d2ff;
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] :where(button, input) {
+    border-radius: 4px;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] button:not(:disabled) {
+    color: #f2ead9;
+  }
 `;
 
 const Toolbar = styled.div`
@@ -70,6 +121,7 @@ function initialUrlFromLocation() {
 }
 
 export function Browser() {
+  const presentation = usePresentationShell();
   const [draft, setDraft] = useState(initialUrlFromLocation());
   const [submitted, setSubmitted] = useState(initialUrlFromLocation());
   const policyQuery = useQuery({
@@ -93,9 +145,13 @@ export function Browser() {
 
   return (
     <AppWindow title="Browser">
-      <Shell>
-        <GroupBox label="Link Chamber">
-          <Toolbar>
+      <Shell
+        data-gamma-utility-surface="browser"
+        data-gamma-utility-presentation-host={presentation.host}
+        data-gamma-utility-region="surface"
+      >
+        <GroupBox label="Link Chamber" data-gamma-utility-region="panel">
+          <Toolbar data-gamma-utility-region="toolbar">
             <TextInput
               aria-label="Approved browser URL"
               value={draft}
@@ -106,14 +162,18 @@ export function Browser() {
               }}
               style={{ flex: 1 }}
             />
-            <Button onClick={submitDraft}>Open approved link</Button>
+            <Button data-gamma-utility-region="button" onClick={submitDraft}>
+              Open approved link
+            </Button>
           </Toolbar>
-          <AllowedHosts>Allowed hosts: {hosts || "loading allowlist..."}</AllowedHosts>
+          <AllowedHosts data-gamma-utility-region="allowed-hosts">
+            Allowed hosts: {hosts || "loading allowlist..."}
+          </AllowedHosts>
         </GroupBox>
 
-        <Viewport>
+        <Viewport data-gamma-utility-region="viewport">
           {policyQuery.isLoading ? (
-            <Notice>
+            <Notice data-gamma-utility-region="notice">
               <Hourglass size={28} />
             </Notice>
           ) : policy?.allowed ? (
@@ -125,19 +185,22 @@ export function Browser() {
               title="WTF controlled browser"
             />
           ) : submitted ? (
-            <Notice>
+            <Notice data-gamma-utility-region="notice">
               <div>
                 <h3>Blocked</h3>
                 <p>{policy?.reason || "This link is not approved for WTFOS browsing."}</p>
                 {policy?.externalOpenAllowed ? (
-                  <Button onClick={() => window.open(policy.url, "_blank", "noopener,noreferrer")}>
+                  <Button
+                    data-gamma-utility-region="button"
+                    onClick={() => window.open(policy.url, "_blank", "noopener,noreferrer")}
+                  >
                     Open link outside WTF OS
                   </Button>
                 ) : null}
               </div>
             </Notice>
           ) : (
-            <Notice>
+            <Notice data-gamma-utility-region="notice">
               <div>
                 <h3>Ready</h3>
                 <p>Open approved WTFOS source links here.</p>

@@ -12,6 +12,10 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import {
+  presentationRouteHref,
+  usePresentationShell,
+} from "../lib/presentation-shell";
 import { purchaseRatRaceListing } from "../lib/tezos";
 import { assertWalletLinkedToCurrentUser } from "../lib/tezos/wallet-ownership";
 import { useWallet } from "../lib/wallet-context";
@@ -755,6 +759,106 @@ const Shell = styled.div<{ $standalone?: boolean }>`
   color: var(--sky-text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   ${({ $standalone }) => ($standalone ? "min-height: 100vh; align-content: start;" : "")}
+
+  &[data-skywire-presentation-host="gamma"] {
+    --sky-bg: #070706;
+    --sky-panel: #0b0b0a;
+    --sky-panel-2: #11110f;
+    --sky-card: #11110f;
+    --sky-card-soft: #151512;
+    --sky-border: rgba(242, 234, 217, 0.2);
+    --sky-border-strong: rgba(242, 234, 217, 0.32);
+    --sky-text: #f2ead9;
+    --sky-muted: #a99f8f;
+    --sky-dim: #81786a;
+    --sky-cyan: #00d2ff;
+    --sky-teal: #d6ff3f;
+    --sky-rose: #f06b6b;
+    --sky-amber: #d6ff3f;
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    padding: 0;
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-feed-card="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-feed-media="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-token-preview="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-video-embed="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-chat-media="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-chat-quote="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-vault-token],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-vault-share-draft="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-live-banner="active"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-live-status],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-vault-created-group="true"] {
+    background: #0b0b0a !important;
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.2) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    color: #f2ead9;
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="header"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="content-body"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="sidebar"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="welcome-card"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="compose-box"] {
+    border: 1px solid rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="nav-button"] {
+    background: #11110f !important;
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.22) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="nav-button"][data-skywire-active="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-live-badge="active"] {
+    border-color: #00d2ff !important;
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="status-badge"] {
+    background: #11110f !important;
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.2);
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="status-badge"][data-skywire-tone="ready"] {
+    border-color: #d6ff3f;
+  }
+
+  &[data-skywire-presentation-host="gamma"] button:not(:disabled) {
+    background: #11110f !important;
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.28) !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-skywire-presentation-host="gamma"] input:not([type="checkbox"]):not([type="radio"]),
+  &[data-skywire-presentation-host="gamma"] textarea,
+  &[data-skywire-presentation-host="gamma"] select,
+  &[data-skywire-presentation-host="gamma"] div:has(> input:not([type="checkbox"]):not([type="radio"])),
+  &[data-skywire-presentation-host="gamma"] fieldset,
+  &[data-skywire-presentation-host="gamma"] legend {
+    background: #11110f !important;
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.24) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-feed-card="true"]::before {
+    background: #00d2ff;
+    background-image: none;
+    border-radius: 6px 0 0 6px;
+  }
 
   a {
     color: var(--sky-cyan);
@@ -3601,7 +3705,7 @@ function PipelinePanel({ post }: { post: SkywirePost | null }) {
                   >
                     {pendingPipelineId === pipeline.id ? "Queueing..." : `Send to ${pipeline.app}`}
                   </Button>
-                  <Button size="sm" onClick={() => window.open(pipeline.appRoute, "_self")}>
+                  <Button size="sm" onClick={() => window.open(presentationRouteHref(pipeline.appRoute), "_self")}>
                     Open App
                   </Button>
                 </Row>
@@ -4505,7 +4609,7 @@ function SkywireLiveStatusBanner({
         {status.createdAt ? <FinePrint>Set {formatDate(status.createdAt)}</FinePrint> : null}
       </LiveIndicatorBody>
       <Row>
-        <Button onClick={() => { window.location.href = liveUrl; }}>
+        <Button onClick={() => { window.location.href = presentationRouteHref(liveUrl); }}>
           Open WTF LIVE
         </Button>
         <Button onClick={onOpenSignals}>
@@ -5118,6 +5222,7 @@ function resolveInitialSkywireTab(explicitTab?: SkywireTab) {
 export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   const { isAdmin, user, isLoading: authLoading } = useAuth();
   const qc = useQueryClient();
+  const presentation = usePresentationShell();
   const standaloneSurface = isSkywireStandaloneSurface();
   const [tab, setTab] = useState<SkywireTab>(() => resolveInitialSkywireTab(initialTab).tab);
   const [selectedActor, setSelectedActor] = useState<SkywireActor | null>(null);
@@ -5367,7 +5472,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
     const params = new URLSearchParams({ tab: targetTab });
     if (targetTab === "rooms" && id) params.set("room", id);
     if (targetTab === "stages" && id) params.set("stage", id);
-    window.location.href = `/live?${params.toString()}`;
+    window.location.href = presentationRouteHref(`/live?${params.toString()}`);
   };
   const openRoomQuote = (quote: SkywireQuotePost) => handoffToWtfLive("rooms", quote);
   const openStageQuote = (quote: SkywireQuotePost) => handoffToWtfLive("stages", quote);
@@ -5402,8 +5507,12 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   }
 
   const skywireBody = (
-      <Shell $standalone={standaloneSurface}>
-        <SkywireHeader>
+      <Shell
+        $standalone={standaloneSurface}
+        data-skywire-surface="skywire-shell"
+        data-skywire-presentation-host={presentation.host}
+      >
+        <SkywireHeader data-skywire-region="header">
           <HeaderTitle>
             <h2>Skywire</h2>
             <p>
@@ -5432,16 +5541,29 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
             </HeaderActionRow>
           </HeaderTitle>
           <HeaderBadgeGrid>
-            <StatusBadge $tone={connectionTone} role="button" style={{ cursor: "pointer" }} onClick={openSettings}>
+            <StatusBadge
+              $tone={connectionTone}
+              data-skywire-region="status-badge"
+              data-skywire-tone={connectionTone}
+              role="button"
+              style={{ cursor: "pointer" }}
+              onClick={openSettings}
+            >
               <span>Identity</span>
               <strong>{me?.account ? `@${me.account.handle}` : "Connect AT"}</strong>
             </StatusBadge>
-            <StatusBadge $tone={connectionTone}>
+            <StatusBadge
+              $tone={connectionTone}
+              data-skywire-region="status-badge"
+              data-skywire-tone={connectionTone}
+            >
               <span>Session</span>
               <strong>{canUseAtprotoSession ? "Ready" : me?.account ? "Reconnect" : "Offline"}</strong>
             </StatusBadge>
             <StatusBadge
               $tone={activeLiveStatus ? "ready" : "quiet"}
+              data-skywire-region="status-badge"
+              data-skywire-tone={activeLiveStatus ? "ready" : "quiet"}
               role="button"
               tabIndex={0}
               style={{ cursor: "pointer" }}
@@ -5460,6 +5582,8 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
             </StatusBadge>
             <StatusBadge
               $tone={chatTone}
+              data-skywire-region="status-badge"
+              data-skywire-tone={chatTone}
               role="button"
               style={{ cursor: "pointer" }}
               onClick={canUseChat ? openSettings : enableChatAddOn}
@@ -5467,7 +5591,11 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
               <span>Chat</span>
               <strong>{canUseChat ? "DM add-on on" : "DM add-on off"}</strong>
             </StatusBadge>
-            <StatusBadge $tone={capabilityCount > 4 ? "ready" : me?.account ? "warn" : "quiet"}>
+            <StatusBadge
+              $tone={capabilityCount > 4 ? "ready" : me?.account ? "warn" : "quiet"}
+              data-skywire-region="status-badge"
+              data-skywire-tone={capabilityCount > 4 ? "ready" : me?.account ? "warn" : "quiet"}
+            >
               <span>Scope</span>
               <strong>{me?.account ? `${capabilityCount} grants` : "none"}</strong>
             </StatusBadge>
@@ -5493,7 +5621,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
               activeTab={tab}
               onSelect={selectTab}
               onOpenWtfLive={() => {
-                window.location.href = "/live";
+                window.location.href = presentationRouteHref("/live");
               }}
             />
           }
@@ -5509,7 +5637,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
             ) : null
           }
         >
-        <ContentBody>
+        <ContentBody data-skywire-region="content-body">
           {authLoading || meQuery.isLoading ? <Hourglass size={32} /> : null}
           {meQuery.isError ? <p>{(meQuery.error as Error).message}</p> : null}
           {me ? (

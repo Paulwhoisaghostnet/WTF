@@ -5,9 +5,12 @@ import { Button, GroupBox, Hourglass, Panel, Select } from "react95";
 import type { RatRaceHotToken, RatRaceHotTokensResponse } from "@shared/tezos-intel";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
+import { usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 import { useWallet } from "../lib/wallet-context";
 import { purchaseRatRaceListing } from "../lib/tezos";
+
+const gammaRatRaceScope = `[data-rat-race-presentation-host="gamma"]`;
 
 const Shell = styled.div`
   min-height: 100%;
@@ -18,6 +21,23 @@ const Shell = styled.div`
     linear-gradient(180deg, #d7d7d7 0%, #bdbdbd 100%);
   display: grid;
   gap: 10px;
+
+  &[data-rat-race-presentation-host="gamma"] {
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-rat-race-presentation-host="gamma"] [data-rat-race-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-rat-race-presentation-host="gamma"] a {
+    color: #00d2ff;
+  }
 `;
 
 const Header = styled(Panel).attrs({ variant: "well" })`
@@ -28,6 +48,13 @@ const Header = styled(Panel).attrs({ variant: "well" })`
   align-items: center;
   background: #f3e9b9;
 
+  ${gammaRatRaceScope} & {
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
+
   @media (max-width: 980px) {
     grid-template-columns: 1fr;
   }
@@ -37,6 +64,11 @@ const Title = styled.h2`
   margin: 0;
   font-size: 22px;
   letter-spacing: 0;
+
+  ${gammaRatRaceScope} & {
+    color: #00d2ff;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  }
 `;
 
 const ScanControls = styled.div`
@@ -44,6 +76,10 @@ const ScanControls = styled.div`
   flex-wrap: wrap;
   gap: 6px;
   align-items: end;
+
+  ${gammaRatRaceScope} & {
+    gap: 8px;
+  }
 `;
 
 const ScanField = styled.label`
@@ -52,12 +88,22 @@ const ScanField = styled.label`
   min-width: 118px;
   font-size: 11px;
   font-weight: 700;
+
+  ${gammaRatRaceScope} & {
+    color: rgba(242, 234, 217, 0.74);
+    font-size: 12px;
+  }
 `;
 
 const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: 10px;
+
+  ${gammaRatRaceScope} & {
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
 `;
 
 const Card = styled(Panel).attrs({ variant: "well" })`
@@ -65,6 +111,15 @@ const Card = styled(Panel).attrs({ variant: "well" })`
   padding: 8px;
   display: grid;
   gap: 8px;
+
+  ${gammaRatRaceScope} & {
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    color: #f2ead9;
+    gap: 10px;
+    padding: 10px;
+  }
 `;
 
 const ThumbFrame = styled.div`
@@ -74,6 +129,12 @@ const ThumbFrame = styled.div`
   display: grid;
   place-items: center;
   overflow: hidden;
+
+  ${gammaRatRaceScope} & {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+  }
 `;
 
 const Thumb = styled.img`
@@ -87,12 +148,21 @@ const Placeholder = styled.div`
   color: #fff;
   font-weight: 700;
   font-size: 32px;
+
+  ${gammaRatRaceScope} & {
+    color: rgba(242, 234, 217, 0.54);
+  }
 `;
 
 const CardTitle = styled.h3`
   margin: 0;
   font-size: 16px;
   line-height: 1.25;
+
+  ${gammaRatRaceScope} & {
+    color: #f2ead9;
+    font-size: 17px;
+  }
 `;
 
 const MetaGrid = styled.div`
@@ -106,40 +176,80 @@ const Stat = styled.div`
   background: #fff;
   padding: 6px;
   min-width: 0;
+
+  ${gammaRatRaceScope} & {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 4px;
+    color: #f2ead9;
+  }
 `;
 
 const StatLabel = styled.div`
   font-size: 11px;
   color: #333;
+
+  ${gammaRatRaceScope} & {
+    color: rgba(242, 234, 217, 0.58);
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 11px;
+  }
 `;
 
 const StatValue = styled.div`
   font-weight: 700;
   overflow-wrap: anywhere;
+
+  ${gammaRatRaceScope} & {
+    color: #f2ead9;
+  }
 `;
 
 const Meter = styled.div`
   height: 12px;
   border: 1px solid #111;
   background: #fff;
+
+  ${gammaRatRaceScope} & {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 4px;
+    height: 10px;
+    overflow: hidden;
+  }
 `;
 
 const MeterFill = styled.div<{ $pct: number }>`
   height: 100%;
   width: ${(p) => Math.max(0, Math.min(100, p.$pct))}%;
   background: linear-gradient(90deg, #009b72, #ffcf4a, #d02020);
+
+  ${gammaRatRaceScope} & {
+    background: #00d2ff;
+    background-image: none;
+  }
 `;
 
 const Actions = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+
+  ${gammaRatRaceScope} & {
+    gap: 8px;
+  }
 `;
 
 const Fine = styled.div`
   font-size: 11px;
   color: #343434;
   overflow-wrap: anywhere;
+
+  ${gammaRatRaceScope} & {
+    color: rgba(242, 234, 217, 0.68);
+    font-size: 12px;
+    line-height: 1.45;
+  }
 `;
 
 const DiagnosticGrid = styled.div`
@@ -147,12 +257,20 @@ const DiagnosticGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 6px;
   margin-top: 8px;
+
+  ${gammaRatRaceScope} & {
+    gap: 8px;
+  }
 `;
 
 const NearMissList = styled.ul`
   margin: 8px 0 0;
   padding-left: 18px;
   font-size: 12px;
+
+  ${gammaRatRaceScope} & {
+    color: rgba(242, 234, 217, 0.74);
+  }
 `;
 
 function formatMutez(value: string | null) {
@@ -311,32 +429,32 @@ function sameFilters(a: RatRaceFilters, b: RatRaceFilters) {
 
 function DiagnosticsSummary({ diagnostics }: { diagnostics: NonNullable<RatRaceHotTokensResponse["diagnostics"]> }) {
   return (
-    <DiagnosticGrid>
-      <Stat>
+    <DiagnosticGrid data-rat-race-region="diagnostic-grid">
+      <Stat data-rat-race-region="stat">
         <StatLabel>Source</StatLabel>
         <StatValue>{diagnostics.source}</StatValue>
       </Stat>
-      <Stat>
+      <Stat data-rat-race-region="stat">
         <StatLabel>Local rows</StatLabel>
         <StatValue>{diagnostics.localCandidateRows}</StatValue>
       </Stat>
-      <Stat>
+      <Stat data-rat-race-region="stat">
         <StatLabel>tz2at rows</StatLabel>
         <StatValue>{diagnostics.tz2atCandidateRows}</StatValue>
       </Stat>
-      <Stat>
+      <Stat data-rat-race-region="stat">
         <StatLabel>tz2at freshness</StatLabel>
         <StatValue>{freshnessLabel(diagnostics.sourceFreshness)}</StatValue>
       </Stat>
-      <Stat>
+      <Stat data-rat-race-region="stat">
         <StatLabel>tz2at scan</StatLabel>
         <StatValue>{replayScanLabel(diagnostics.replayScan)}</StatValue>
       </Stat>
-      <Stat>
+      <Stat data-rat-race-region="stat">
         <StatLabel>Supplements</StatLabel>
         <StatValue>{supplementLabel(diagnostics.supplementSources ?? [])}</StatValue>
       </Stat>
-      <Stat>
+      <Stat data-rat-race-region="stat">
         <StatLabel>Rejected</StatLabel>
         <StatValue>
           {diagnostics.rejectedByUnknownSupply} supply / {diagnostics.rejectedByNoActiveListing} listing /{" "}
@@ -351,6 +469,7 @@ function DiagnosticsSummary({ diagnostics }: { diagnostics: NonNullable<RatRaceH
 export function RatRace() {
   const queryClient = useQueryClient();
   const { address } = useWallet();
+  const presentation = usePresentationShell();
   const [error, setError] = useState("");
   const [filters, setFilters] = useState<RatRaceFilters>(DEFAULT_FILTERS);
   const [draftFilters, setDraftFilters] = useState<RatRaceFilters>(DEFAULT_FILTERS);
@@ -442,12 +561,16 @@ export function RatRace() {
 
   return (
     <AppWindow title="Rat Race">
-      <Shell>
-        <Header>
+      <Shell
+        data-rat-race-presentation-host={presentation.host}
+        data-rat-race-surface="rat-race"
+        data-rat-race-region="shell"
+      >
+        <Header data-rat-race-region="header">
           <div>
             <Title>Rat Race</Title>
           </div>
-          <ScanControls aria-label="Rat Race scan filters">
+          <ScanControls aria-label="Rat Race scan filters" data-rat-race-region="scan-controls">
             <ScanField>
               Sales
               <Select
@@ -540,34 +663,34 @@ export function RatRace() {
               </GroupBox>
             ) : null}
             <Grid>
-              {items.map((item) => (
-                <Card key={tokenRef(item)}>
-                  <ThumbFrame>
+            {items.map((item) => (
+                <Card key={tokenRef(item)} data-rat-race-region="card">
+                  <ThumbFrame data-rat-race-region="thumb-frame">
                     {item.tokenThumbnail ? <Thumb src={item.tokenThumbnail} alt="" /> : <Placeholder>RR</Placeholder>}
                   </ThumbFrame>
                   <div>
                     <CardTitle>{item.tokenName}</CardTitle>
                     <Fine>{item.tokenContract} #{item.tokenId}</Fine>
                   </div>
-                  <Meter>
-                    <MeterFill $pct={item.soldPercent} />
+                  <Meter data-rat-race-region="meter">
+                    <MeterFill $pct={item.soldPercent} data-rat-race-region="meter-fill" />
                   </Meter>
                   <MetaGrid>
-                    <Stat>
+                    <Stat data-rat-race-region="stat">
                       <StatLabel>Sold</StatLabel>
                       <StatValue>
                         {item.soldEditions}/{item.totalEditions}
                       </StatValue>
                     </Stat>
-                    <Stat>
+                    <Stat data-rat-race-region="stat">
                       <StatLabel>{activeFilters.windowHours}h sales</StatLabel>
                       <StatValue>{item.recentSaleCount}</StatValue>
                     </Stat>
-                    <Stat>
+                    <Stat data-rat-race-region="stat">
                       <StatLabel>Sellout ETA</StatLabel>
                       <StatValue>{selloutLabel(item)}</StatValue>
                     </Stat>
-                    <Stat>
+                    <Stat data-rat-race-region="stat">
                       <StatLabel>Floor</StatLabel>
                       <StatValue>{formatMutez(item.floorMutez)}</StatValue>
                     </Stat>
@@ -575,7 +698,7 @@ export function RatRace() {
                   <Fine>
                     {item.activeListingCount} active listing(s) | {item.purchaseIntent.marketplaceName || "external market"}
                   </Fine>
-                  <Actions>
+                  <Actions data-rat-race-region="actions">
                     <Button onClick={() => openMarket(item)}>Open listing</Button>
                     <Button
                       onClick={() => buyMutation.mutate(item)}

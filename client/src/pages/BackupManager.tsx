@@ -21,6 +21,10 @@ import {
   UiStatusPill,
 } from "../components/wtfos-ui";
 import { api } from "../lib/api";
+import {
+  presentationRouteHref,
+  usePresentationShell,
+} from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 
 type RestoreRequirement = {
@@ -83,6 +87,46 @@ const Shell = styled.div`
   display: grid;
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
+
+  &[data-backup-manager-presentation-host="gamma"] {
+    padding: 16px;
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-backup-manager-presentation-host="gamma"],
+  &[data-backup-manager-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-backup-manager-presentation-host="gamma"] [data-backup-manager-region] {
+    background-image: none;
+    border-radius: 6px;
+  }
+
+  &[data-backup-manager-presentation-host="gamma"] :where(fieldset, table, [data-backup-manager-region="status-cell"], [data-backup-manager-region="row"], [data-backup-manager-region="panel"]) {
+    color: #f2ead9;
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-backup-manager-presentation-host="gamma"] :where(button) {
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(0, 210, 255, 0.54);
+    border-radius: 6px;
+  }
+
+  &[data-backup-manager-presentation-host="gamma"] :where(button:hover, button:focus-visible) {
+    color: #070706;
+    background: #00d2ff;
+    outline: 2px solid #00d2ff;
+    outline-offset: 2px;
+  }
 `;
 
 const StatusGrid = styled.div`
@@ -243,6 +287,7 @@ function shortHash(value: string | null | undefined) {
 }
 
 export function BackupManager() {
+  const presentation = usePresentationShell();
   const [, setLocation] = useLocation();
   const proofQuery = useQuery({
     queryKey: ["backup-manager", "restore-proof"],
@@ -273,14 +318,19 @@ export function BackupManager() {
       eventType: "backup_manager.opened",
       metadata: { action, path },
     });
-    setLocation(path);
+    setLocation(presentationRouteHref(path, presentation.host));
   }
 
   if (proofQuery.isLoading) {
     return (
       <AppWindow title="Backup Manager">
-        <Shell data-testid="backup-manager">
-          <UiPanel title="Restore proof" compact>
+        <Shell
+          data-testid="backup-manager"
+          data-backup-manager-surface="restore-proof"
+          data-backup-manager-presentation-host={presentation.host}
+          data-backup-manager-region="surface"
+        >
+          <UiPanel title="Restore proof" compact data-backup-manager-region="panel">
             <Hourglass size={30} />
           </UiPanel>
         </Shell>
@@ -290,45 +340,52 @@ export function BackupManager() {
 
   return (
     <AppWindow title="Backup Manager">
-      <Shell data-testid="backup-manager">
-        <StatusGrid>
-          <StatusCell $tone={canClaimSafety ? "ok" : "warn"}>
+      <Shell
+        data-testid="backup-manager"
+        data-backup-manager-surface="restore-proof"
+        data-backup-manager-presentation-host={presentation.host}
+        data-backup-manager-region="surface"
+      >
+        <StatusGrid data-backup-manager-region="status-grid">
+          <StatusCell $tone={canClaimSafety ? "ok" : "warn"} data-backup-manager-region="status-cell">
             <StatusLabel>Safety Claim</StatusLabel>
             <StatusValue>{canClaimSafety ? "proven" : "not proven"}</StatusValue>
           </StatusCell>
-          <StatusCell $tone={latestRun?.status === "success" ? "ok" : "warn"}>
+          <StatusCell $tone={latestRun?.status === "success" ? "ok" : "warn"} data-backup-manager-region="status-cell">
             <StatusLabel>Backup Job</StatusLabel>
             <StatusValue>{latestRun?.status ?? "missing"}</StatusValue>
           </StatusCell>
-          <StatusCell $tone={proof?.restoreDrill?.status === "passed" ? "ok" : "warn"}>
+          <StatusCell $tone={proof?.restoreDrill?.status === "passed" ? "ok" : "warn"} data-backup-manager-region="status-cell">
             <StatusLabel>Restore Drill</StatusLabel>
             <StatusValue>{proof?.restoreDrill?.status ?? "missing"}</StatusValue>
           </StatusCell>
-          <StatusCell $tone={proofQuery.isError ? "error" : "ok"}>
+          <StatusCell $tone={proofQuery.isError ? "error" : "ok"} data-backup-manager-region="status-cell">
             <StatusLabel>Fetched</StatusLabel>
             <StatusValue>{formatDate(proofQuery.data?.fetchedAt)}</StatusValue>
           </StatusCell>
         </StatusGrid>
 
-        <Actions>
-          <ActionButton onClick={() => open("/recovery-mode", "recovery-mode")}>
+        <Actions data-backup-manager-region="actions">
+          <ActionButton data-backup-manager-region="button" onClick={() => open("/recovery-mode", "recovery-mode")}>
             <ArchiveRestore size={14} aria-hidden />
             Open Recovery Mode
           </ActionButton>
-          <ActionButton onClick={() => open("/admin", "admin")}>
+          <ActionButton data-backup-manager-region="button" onClick={() => open("/admin", "admin")}>
             <FileCheck2 size={14} aria-hidden />
             Open Admin logs
           </ActionButton>
-          <ActionButton onClick={() => proofQuery.refetch()}>
+          <ActionButton data-backup-manager-region="button" onClick={() => proofQuery.refetch()}>
             <HardDriveDownload size={14} aria-hidden />
             Refresh restore proof
           </ActionButton>
         </Actions>
 
-        <Separator />
+        <div data-backup-manager-region="separator">
+          <Separator />
+        </div>
 
         {proofQuery.isError ? (
-          <UiPanel title="Restore proof error" compact tone="danger">
+          <UiPanel title="Restore proof error" compact tone="danger" data-backup-manager-region="panel">
             <UiNotice tone="danger">
               <ShieldAlert size={16} aria-hidden />
               <div>
@@ -342,11 +399,11 @@ export function BackupManager() {
             </UiNotice>
           </UiPanel>
         ) : (
-          <DetailGrid>
-            <UiPanel title="Requirements" compact>
+          <DetailGrid data-backup-manager-region="detail-grid">
+            <UiPanel title="Requirements" compact data-backup-manager-region="panel">
               <Rows>
                 {(proof?.requirements ?? []).map((requirement) => (
-                  <Row key={requirement.key}>
+                  <Row key={requirement.key} data-backup-manager-region="row">
                     {requirement.ok ? (
                       <CheckCircle2 size={16} aria-hidden />
                     ) : (
@@ -362,9 +419,9 @@ export function BackupManager() {
               </Rows>
             </UiPanel>
 
-            <UiPanel title="Artifact" compact>
+            <UiPanel title="Artifact" compact data-backup-manager-region="panel">
               <Rows>
-                <Row>
+                <Row data-backup-manager-region="row">
                   <DatabaseBackup size={16} aria-hidden />
                   <div>
                     <RowTitle>{proof?.backup?.filename ?? "No backup artifact"}</RowTitle>
@@ -374,7 +431,7 @@ export function BackupManager() {
                   </div>
                   <Badge $ok={Boolean(proof?.backup?.sha256)}>sha</Badge>
                 </Row>
-                <Row>
+                <Row data-backup-manager-region="row">
                   <FileCheck2 size={16} aria-hidden />
                   <div>
                     <RowTitle>Checksum</RowTitle>
@@ -382,7 +439,7 @@ export function BackupManager() {
                   </div>
                   <Badge $ok={Boolean(proof?.backup?.sha256)}>proof</Badge>
                 </Row>
-                <Row>
+                <Row data-backup-manager-region="row">
                   <ArchiveRestore size={16} aria-hidden />
                   <div>
                     <RowTitle>Latest run</RowTitle>
@@ -399,7 +456,7 @@ export function BackupManager() {
           </DetailGrid>
         )}
 
-        <UiPanel title="Targets" compact>
+        <UiPanel title="Targets" compact data-backup-manager-region="panel">
           {(proof?.targets ?? []).length === 0 ? (
             <UiEmptyState title="No target proof">
               No successful local or off-host retention target was returned.
@@ -407,7 +464,7 @@ export function BackupManager() {
           ) : (
             <Rows>
               {proof!.targets.map((target) => (
-                <Row key={target.name}>
+                <Row key={target.name} data-backup-manager-region="row">
                   <HardDriveDownload size={16} aria-hidden />
                   <div>
                     <RowTitle>{target.name}</RowTitle>

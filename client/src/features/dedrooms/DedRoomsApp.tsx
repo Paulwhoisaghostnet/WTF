@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import { DoorOpen, RefreshCw, Save, Send, Settings } from "lucide-react";
 import { api } from "../../lib/api";
+import { usePresentationShell } from "../../lib/presentation-shell";
 
 type TranscriptEvent = {
   id: number;
@@ -145,6 +146,52 @@ const Container = styled.div`
   color: #e8ffe4;
   font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
   overflow: hidden;
+
+  &[data-dedrooms-presentation-host="gamma"] {
+    background: #070706;
+    color: #f2ead9;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+  }
+
+  &[data-dedrooms-presentation-host="gamma"],
+  &[data-dedrooms-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-dedrooms-presentation-host="gamma"] [data-dedrooms-region] {
+    background-image: none;
+    border-radius: 6px;
+  }
+
+  &[data-dedrooms-presentation-host="gamma"] [data-dedrooms-region="transcript"],
+  &[data-dedrooms-presentation-host="gamma"] [data-dedrooms-region="status-rail"],
+  &[data-dedrooms-presentation-host="gamma"] [data-dedrooms-region="prompt-bar"],
+  &[data-dedrooms-presentation-host="gamma"] [data-dedrooms-region="admin-panel"] {
+    color: #f2ead9;
+    background: #11110f;
+    border-color: rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-dedrooms-presentation-host="gamma"] :where(input, textarea, button) {
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(0, 210, 255, 0.54);
+    border-radius: 6px;
+  }
+
+  &[data-dedrooms-presentation-host="gamma"] :where(button:hover, button:focus-visible, input:focus-visible, textarea:focus-visible) {
+    color: #070706;
+    background: #00d2ff;
+    outline: 2px solid #00d2ff;
+    outline-offset: 2px;
+  }
+
+  &[data-dedrooms-presentation-host="gamma"] [data-dedrooms-region="prompt-mark"],
+  &[data-dedrooms-presentation-host="gamma"] [data-dedrooms-region="live-pill"] {
+    color: #d6ff3f;
+  }
 
   @media (max-width: 820px) {
     grid-template-columns: minmax(0, 1fr);
@@ -311,6 +358,13 @@ const Departed = styled.div`
   color: #e8ffe4;
   font-family: var(--wtf-mono-font, monospace);
   font-size: 20px;
+
+  &[data-dedrooms-presentation-host="gamma"] {
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+  }
 `;
 
 const AdminPanel = styled.section`
@@ -426,7 +480,7 @@ function AdminEditor({ enabled }: { enabled: boolean }) {
   if (!enabled) return null;
 
   return (
-    <AdminPanel aria-label="DedRooms admin editor">
+    <AdminPanel aria-label="DedRooms admin editor" data-dedrooms-region="admin-panel">
       <RailTitle>ADM</RailTitle>
       <AdminGrid>
         <AdminInput value={kind} onChange={(event) => setKind(event.target.value)} aria-label="Content kind" />
@@ -458,6 +512,7 @@ function AdminEditor({ enabled }: { enabled: boolean }) {
 }
 
 export function DedRoomsApp() {
+  const presentation = usePresentationShell();
   const queryClient = useQueryClient();
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -538,35 +593,58 @@ export function DedRoomsApp() {
   }
 
   if (stateQuery.isLoading) {
-    return <Departed>...</Departed>;
+    return (
+      <Departed
+        data-dedrooms-shell
+        data-dedrooms-surface="mud"
+        data-dedrooms-presentation-host={presentation.host}
+        data-dedrooms-region="loading"
+      >
+        ...
+      </Departed>
+    );
   }
 
   if (state?.departed) {
-    return <Departed>You have departed from this world.</Departed>;
+    return (
+      <Departed
+        data-dedrooms-shell
+        data-dedrooms-surface="mud"
+        data-dedrooms-presentation-host={presentation.host}
+        data-dedrooms-region="departed"
+      >
+        You have departed from this world.
+      </Departed>
+    );
   }
 
   return (
-    <Container data-dedrooms-shell>
-      <Transcript ref={transcriptRef}>
-        <HeaderLine>
-          <RoomTitle>{state?.room?.title || "DedRooms"}</RoomTitle>
-          <Region>{state?.room?.region || state?.campaign?.mode || ""}</Region>
+    <Container
+      data-dedrooms-shell
+      data-dedrooms-surface="mud"
+      data-dedrooms-presentation-host={presentation.host}
+      data-dedrooms-region="surface"
+    >
+      <Transcript ref={transcriptRef} data-dedrooms-region="transcript">
+        <HeaderLine data-dedrooms-region="header">
+          <RoomTitle data-dedrooms-region="room-title">{state?.room?.title || "DedRooms"}</RoomTitle>
+          <Region data-dedrooms-region="region">{state?.room?.region || state?.campaign?.mode || ""}</Region>
         </HeaderLine>
-        <RoomDescription>{state?.room?.description || "The room is loading its alibi."}</RoomDescription>
+        <RoomDescription data-dedrooms-region="room-description">{state?.room?.description || "The room is loading its alibi."}</RoomDescription>
         {transcript.map((event) => (
-          <EventLine key={`${event.id}:${event.createdAt}`} $muted={event.visibility !== "private"}>
+          <EventLine key={`${event.id}:${event.createdAt}`} $muted={event.visibility !== "private"} data-dedrooms-region="event-line">
             [{shortEventLabel(event.eventType)}] {event.message}
           </EventLine>
         ))}
-        {error ? <EventLine $muted>[error] {error}</EventLine> : null}
+        {error ? <EventLine $muted data-dedrooms-region="error">[error] {error}</EventLine> : null}
         <AdminEditor enabled={Boolean(state?.isAdmin)} />
       </Transcript>
 
-      <StatusRail>
-        <RailSection>
+      <StatusRail data-dedrooms-region="status-rail">
+        <RailSection data-dedrooms-region="rail-section">
           <RailTitle>State</RailTitle>
           <RailList>
-            <li><RailPill>{state?.campaign?.mode || "active"}</RailPill></li>
+            <li><RailPill data-dedrooms-region="live-pill">{state?.campaign?.mode || "active"}</RailPill></li>
             <li><RailPill>@ {coordLabel(state?.player?.coordinate || state?.map?.currentCoordinate)}</RailPill></li>
             <li><RailPill>{state?.campaign?.departureCount || 0}/{state?.campaign?.targetDepartures || 0} departed</RailPill></li>
             <li><RailPill>{state?.player?.attuned ? "attuned" : "unaligned"}</RailPill></li>
@@ -574,7 +652,7 @@ export function DedRoomsApp() {
             <li><RailPill>{state?.map?.greenRoomPlaced ? "green room placed" : "green room absent"}</RailPill></li>
           </RailList>
         </RailSection>
-        <RailSection>
+        <RailSection data-dedrooms-region="rail-section">
           <RailTitle>Sheet</RailTitle>
           <RailList>
             <li><RailPill>level {state?.player?.sheet?.level || 1}</RailPill></li>
@@ -583,7 +661,7 @@ export function DedRoomsApp() {
             ))}
           </RailList>
         </RailSection>
-        <RailSection>
+        <RailSection data-dedrooms-region="rail-section">
           <RailTitle>Here</RailTitle>
           <RailList>
             {(state?.npcs || []).map((npc) => <li key={npc.key}><RailPill>{npc.name}</RailPill></li>)}
@@ -591,7 +669,7 @@ export function DedRoomsApp() {
             {presence.map((peer) => <li key={`peer-${peer.userId}`}><RailPill>@{peer.username}</RailPill></li>)}
           </RailList>
         </RailSection>
-        <RailSection>
+        <RailSection data-dedrooms-region="rail-section">
           <RailTitle>Carry</RailTitle>
           <RailList>
             <li><RailPill>{state?.player?.inventoryWeight || 0}/{state?.player?.weightLimit || 0} wt</RailPill></li>
@@ -602,7 +680,7 @@ export function DedRoomsApp() {
             ))}
           </RailList>
         </RailSection>
-        <RailSection>
+        <RailSection data-dedrooms-region="rail-section">
           <RailTitle>Room</RailTitle>
           <RailList>
             {(state?.doors || state?.room?.doors || []).slice(0, 8).map((door) => (
@@ -612,7 +690,7 @@ export function DedRoomsApp() {
             {(state?.minigames || []).map((game) => <li key={game.key}><RailPill>{game.title}</RailPill></li>)}
           </RailList>
         </RailSection>
-        <RailSection>
+        <RailSection data-dedrooms-region="rail-section">
           <RailTitle>World</RailTitle>
           <RailList>
             <li><RailPill>{state?.map?.placedCount || 0} placed</RailPill></li>
@@ -626,13 +704,13 @@ export function DedRoomsApp() {
         </RailSection>
       </StatusRail>
 
-      <PromptBar onSubmit={submit}>
-        <PromptMark>&gt;</PromptMark>
-        <CommandInput value={input} onChange={(event) => setInput(event.target.value)} autoComplete="off" spellCheck={false} aria-label="DedRooms command" />
-        <IconButton type="submit" title="Send command" disabled={commandMutation.isPending}>
+      <PromptBar onSubmit={submit} data-dedrooms-region="prompt-bar">
+        <PromptMark data-dedrooms-region="prompt-mark">&gt;</PromptMark>
+        <CommandInput value={input} onChange={(event) => setInput(event.target.value)} autoComplete="off" spellCheck={false} aria-label="DedRooms command" data-dedrooms-region="command-input" />
+        <IconButton type="submit" title="Send command" disabled={commandMutation.isPending} data-dedrooms-region="command-button">
           <Send size={16} />
         </IconButton>
-        <IconButton type="button" title="Refresh" onClick={() => void stateQuery.refetch()}>
+        <IconButton type="button" title="Refresh" onClick={() => void stateQuery.refetch()} data-dedrooms-region="refresh-button">
           {state?.room?.id === "green_room_threshold" ? <DoorOpen size={16} /> : <RefreshCw size={16} />}
         </IconButton>
       </PromptBar>
