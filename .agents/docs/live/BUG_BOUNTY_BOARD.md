@@ -50,7 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-321 | Open | - | 2026-06-30 | Gamma / mobile first-viewport E2E | P1 | 10 | 10 | 2 | 4 | 0 | Quality Gates inventory smoke fails after the Soft System/default-shell update because the Gamma mobile viewport spec cannot see the first communications action in the viewport |
+| WTF-BB-321 | Fixed | Codex Soft System full-send | 2026-06-30 | Gamma / mobile first-viewport E2E | P1 | 10 | 10 | 2 | 4 | 0 | Quality Gates inventory smoke failed after the Soft System/default-shell update because the Gamma mobile viewport spec could not see the first communications action; fixed by compacting only the narrow mobile hero spacing and type scale, pending Quality Gates rerun proof |
 | WTF-BB-320 | Verified | Codex WTF LIVE dockable bento pass | 2026-06-29 | WTF LIVE / dockable room workspace UX | P1 | 13 | 6 | 4 | 5 | 0 | WTF LIVE public room now exposes Connection, Sharing, Screens, Attendance, and Room chat as dockable bento tiles with sharing drawers, screen grids, receiver default chat fonts, and pop-in/pinned floating panels |
 | WTF-BB-319 | Verified | Codex WTF LIVE server font cleanup | 2026-06-29 | WTF LIVE / realtime chat typography | P2 | 8 | 14 | 1 | 4 | 0 | WTF LIVE client font cleanup removed MEK/GROUT from visible options, but the WebSocket chat-style sanitizer still accepted MEK/GROUT and defaulted missing realtime chat styles to MEK; fixed server normalization and added regression coverage |
 | WTF-BB-318 | Verified | Codex WTF LIVE input flash repair | 2026-06-29 | WTF LIVE / input rendering stability | P1 | 12 | 7 | 3 | 5 | 0 | Users report WTF LIVE flashes or flickers whenever mic input is enabled or chat text is typed; fixed by isolating the mic meter from the room render tree, caching stage stream wrappers, moving WTF LIVE to a Classic 95 font stack, removing MEK/GROUT from WTF LIVE chat font choices, and collapsing mic diagnostics into a compact drawer |
@@ -359,8 +359,8 @@ Priority labels:
 ### WTF-BB-321 - Gamma mobile first viewport loses the first comms action
 
 - Category: Gamma / mobile first-viewport E2E
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex Soft System full-send
 - Score: C2 + F4 + S0 + P1(4) = 10
 - Evidence:
   - GitHub Quality Gates run `28415451363` for `f685989a` passed typecheck, Vite env policy, build, inventory coverage, and the localization browser tests, then failed in `Inventory Playwright smoke`.
@@ -369,9 +369,10 @@ Priority labels:
 - Why it matters:
   - The Gamma mobile arrival surface can regress out of the first viewport, and the broad release gate remains red even though production deploy health is green.
 - Likely correction:
-  - Inspect the Gamma mobile layout after the Soft System/default-shell font changes and compress or reorder the app-forward/comms controls so the first communications action is visible in the mobile first viewport without horizontal overflow.
+  - Fixed by compacting only the Gamma narrow mobile hero spacing, type scale, strip gaps, and primary command padding so the first communications action remains visible in the 390x760 first viewport without horizontal overflow.
 - Verification idea:
-  - Rerun `npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "keeps the first mobile viewport usable and app-forward"`, then rerun `npm run test:e2e:inventory`.
+  - Local proof: `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, and `HARNESS_PORT=4211 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs`.
+  - Pending target proof: rerun GitHub Quality Gates inventory smoke.
 
 ### WTF-BB-317 - Social reward automation inventory workflow times out
 

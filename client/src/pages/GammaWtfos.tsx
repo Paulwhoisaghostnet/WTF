@@ -973,6 +973,15 @@ const GammaResponsiveStyle = createGlobalStyle`
       padding-top: 0.8rem;
     }
 
+    ${TopStrip} {
+      min-height: 3.25rem;
+    }
+
+    ${HeroGrid} {
+      gap: 1.4rem;
+      padding: 1.15rem 0 2.2rem;
+    }
+
     ${LaneHeader} {
       align-items: flex-start;
       flex-direction: column;
@@ -984,23 +993,52 @@ const GammaResponsiveStyle = createGlobalStyle`
       gap: 0.35rem;
     }
 
+    ${HeroEyebrow} {
+      margin-bottom: 0.7rem;
+      font-size: 0.78rem;
+    }
+
     ${HeroStatement} h1 {
-      font-size: 2.42rem;
+      font-size: 2.1rem;
+      line-height: 0.98;
     }
 
     ${HeroCopy} {
-      font-size: 0.98rem;
+      margin-top: 0.75rem;
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    ${HeroLiveLine} {
+      gap: 0.35rem 0.55rem;
+      margin-top: 0.65rem;
+      font-size: 0.72rem;
+    }
+
+    ${HeroArcadeStrip} {
+      gap: 0.35rem;
+      margin-top: 0.75rem;
+      font-size: 0.68rem;
+    }
+
+    ${HeroArcadeStrip} span {
+      padding: 0.22rem 0.35rem;
     }
 
     ${HeroCommands} {
       flex-direction: column;
-      gap: 0.85rem;
+      gap: 0.55rem;
+      margin-top: 0.9rem;
     }
 
     ${CommandButton},
     ${StationButton},
     ${CountButton} {
-      min-height: 3rem;
+      min-height: 2.75rem;
+    }
+
+    ${CommandButton} {
+      padding: 0.42rem 0.7rem;
     }
 
     ${StationButton} span {

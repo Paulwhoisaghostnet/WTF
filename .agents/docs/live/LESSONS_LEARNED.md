@@ -1,3 +1,13 @@
+## 2026-06-29 - Gamma mobile first viewport must survive CI font metrics
+
+**What happened**: The full inventory GitHub runner failed Gamma's 390x760 first-viewport smoke even though the focused local macOS check passed. Linux/browser font metrics made the hero copy and primary actions taller, pushing the first comms action below the first mobile viewport.
+
+**Why it mattered**: Gamma's public arrival contract depends on seeing creation, gallery, and communication actions together before scrolling. A local-only viewport pass can miss CI font metric drift and leave `main` with a red Quality Gates run after production deploy.
+
+**Rule**: For Gamma hero/mobile edits, keep the narrow breakpoint compact enough that the live summary, gallery action, Broot action, and first comms action all fit at 390x760 under CI metrics. Verify the focused Gamma mobile spec and the full inventory smoke when that contract blocks deployment.
+
+---
+
 ## 2026-06-29 - Vite/Rolldown builds may need Homebrew Node in Codex desktop
 
 **What happened**: The Codex desktop app session exposed a Node runtime that could run package binaries, but the local Vite build failed before app transforms because the Rolldown native binding could not load under that runtime. Re-running the same repo-local Vite binary with `/opt/homebrew/bin/node` completed the build without source changes.
