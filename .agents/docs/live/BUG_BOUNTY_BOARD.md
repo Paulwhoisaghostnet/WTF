@@ -50,7 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-325 | In Progress | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes still fall back to Classic on live commit `de0acb6`; isolated branch `codex/gamma-live-shell` now has local production-base proof and branch Quality Gates `28420704957` green, so the remaining pass is deployment/promotion and live selector proof |
+| WTF-BB-325 | Verified | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes no longer fall back to Classic after promotion to commit `6e35117`; verified by Deploy to Hetzner `28421767405`, main Quality Gates `28421767416`, live health, Gamma `/gallery` and `/leaderboard` content selectors, Gamma auth gates for `/admin` and `/swap`, plus Classic/Beta host sanity checks |
 | WTF-BB-326 | Verified | Codex Gamma live verification pass | 2026-06-30 | E2E / inventory workflow timeout | P2 | 7 | 15 | 1 | 3 | 0 | Broad inventory smoke could time out the healthy `social post to reward automation loop` under the fixed 60s Playwright budget; verified fixed by workload-based timeout budgeting, local focused/full domain-interoperability proof, and branch Quality Gates `28420704957` |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Open | - | 2026-06-29 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory and focused reruns fail Settings Subdomain Setup and cobwebsaints account readiness because the `wtf.tez target wallet` input remains blank instead of prefilled with the harness wallet |
@@ -365,17 +365,18 @@ Priority labels:
 ### WTF-BB-325 - Public Gamma deep routes still fall back to Classic
 
 - Category: Gamma / live hostname route containment
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex Gamma live verification pass
 - Score: C3 + F4 + S0 + P1(4) = 11
 - Evidence:
   - Live `https://gamma.wtfos.app/` rendered `[data-gamma-wtfos]=1`, but direct live `https://gamma.wtfos.app/gallery` and `https://gamma.wtfos.app/leaderboard` rendered `[data-wtf-desktop]=1` with no Gamma workspace.
   - Live `/api/health` reported commit `de0acb6`; the deployed `index-wtf2-ChA9LqzT.js` bundle still contains the root-only Gamma branch and no broad `isGammaShellLocation` route branch.
-- Correction in progress:
+- Correction:
   - Created isolated branch `codex/gamma-live-shell` from `origin/main` and transplanted only the Gamma presentation shell/runtime/test slice.
   - Kept `/applications` out of the branch because it is not part of the current production-base route registry and would add a new surface.
   - Fixed hidden-worktree Playwright harness serving by allowing dot-directory paths when the worktree lives under `~/.config`.
   - Fixed branch-CI Typecheck blockers by typing Tezos Intel presentation markers and declaring the marketplace presentation-only `surfaceVariant` prop.
+  - Promoted the verified branch to `main` by fast-forward from `de0acb6` to `6e351170678cccb6a72228465d758c15420830cd`.
   - Preserved shared application logic, API contracts, data, wallet, contract, and auth behavior; changes are presentation shell, route containment, host-aware navigation, and test harness proof only.
 - Local verification:
   - `npm run check`: passed.
@@ -387,9 +388,12 @@ Priority labels:
   - `git diff --check`: passed.
 - Branch CI verification:
   - GitHub Quality Gates run `28420704957` passed for commit `04ccba794bfb2007222a7f1143df7be6123e05be`, including Typecheck, Vite env policy, Build, Inventory coverage, Inventory Playwright smoke, External link safety, and SmartPy V1.2 contract tests.
-- Remaining verification:
-  - Deploy/promote the branch, then rerun live `https://gamma.wtfos.app/`, `/gallery`, `/leaderboard`, and at least one auth-gated route selector proof.
-  - Do not mark this bounty Verified until public Gamma deep routes no longer render `[data-wtf-desktop]`.
+- Production verification:
+  - GitHub Deploy to Hetzner run `28421767405` passed for `main` commit `6e351170678cccb6a72228465d758c15420830cd`.
+  - GitHub Quality Gates run `28421767416` passed on `main`, including Typecheck, Vite env policy, Build, Inventory coverage, Inventory Playwright smoke, External link safety, and SmartPy V1.2 contract tests.
+  - Live `https://gamma.wtfos.app/api/health` and `https://wtfos.app/api/health` reported `commitRef:"6e35117"` with `status:"ok"`.
+  - Live selector proof: `https://gamma.wtfos.app/` rendered `[data-gamma-wtfos]=1`; `/gallery` and `/leaderboard` rendered `[data-gamma-wtfos]=1`, `[data-gamma-application-content]=1`, and `[data-wtf-desktop]=0`; `/admin` and `/swap` rendered Gamma route gates with `[data-wtf-desktop]=0`.
+  - Host isolation proof: live `https://wtfos.app/` rendered `[data-wtf-desktop]=1` and `[data-gamma-wtfos]=0`; live `https://beta.wtfos.app/` rendered Beta shell markers and `[data-gamma-wtfos]=0`.
 
 ### WTF-BB-326 - Broad inventory social workflow timeout
 

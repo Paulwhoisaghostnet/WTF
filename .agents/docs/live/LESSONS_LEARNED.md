@@ -1,3 +1,13 @@
+## 2026-06-30 - Gamma promotion needs host isolation proof, not only Gamma proof
+
+**What happened**: The Gamma shell branch had local host-mapped proof and branch Quality Gates green, but the goal was not actually complete until the branch was promoted to `main`, Hetzner served commit `6e35117`, and live selectors proved direct Gamma routes no longer rendered the Classic desktop.
+
+**Why it mattered**: Gamma shares the production deployment path with Classic and Beta. A live Gamma fix can be real while still accidentally leaking Gamma presentation into another hostname, so the final proof must include Classic/Beta negative checks alongside Gamma positive checks.
+
+**Rule**: For Gamma live completion, verify four layers before closing the loop: deploy run passed, main Quality Gates passed, live health reports the promoted commit, and browser selector proof shows Gamma routes have `[data-gamma-wtfos]` with no `[data-wtf-desktop]` while `wtfos.app` and `beta.wtfos.app` do not render Gamma markers.
+
+---
+
 ## 2026-06-30 - Inventory workflows need workload-proportional timeouts
 
 **What happened**: Gamma branch Quality Gates twice failed in broad inventory smoke after `451` checks passed because the `social post to reward automation loop` domain workflow hit the default 60-second Playwright test timeout. The workflow was healthy in focused local proof, but it owns `122` API probes, `130` normalized event posts, and `15` representative routes, so a slow GitHub runner could exhaust the fixed per-test budget.
