@@ -935,6 +935,13 @@ const BuddyPreview = styled.div`
   white-space: nowrap;
 `;
 
+const RecentGroupTitle = styled.div`
+  margin: 5px 4px 4px;
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 900;
+  color: #06135f;
+`;
+
 const BuddyFooter = styled.div`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1957,7 +1964,7 @@ function ChatWindowPane({
       setAttachments([]);
       setActivePicker(null);
       qc.invalidateQueries({ queryKey: ["wim", "messages", conversationId] });
-      qc.invalidateQueries({ queryKey: ["wim", "conversations", "direct"] });
+      qc.invalidateQueries({ queryKey: ["wim", "conversations"] });
     },
   });
 
@@ -1968,7 +1975,7 @@ function ChatWindowPane({
 
   useEffect(() => {
     if (!messagesQuery.data) return;
-    qc.invalidateQueries({ queryKey: ["wim", "conversations", "direct"] });
+    qc.invalidateQueries({ queryKey: ["wim", "conversations"] });
   }, [conversationId, messagesQuery.dataUpdatedAt, messagesQuery.data, qc]);
 
   const label = conversation
@@ -2366,8 +2373,8 @@ export function Wim() {
   });
 
   const conversationsQuery = useQuery({
-    queryKey: ["wim", "conversations", "direct"],
-    queryFn: () => api.get<DmConversation[]>("/api/messages/dms?type=direct"),
+    queryKey: ["wim", "conversations"],
+    queryFn: () => api.get<DmConversation[]>("/api/messages/dms"),
     refetchInterval: 15_000,
   });
 
@@ -2386,9 +2393,20 @@ export function Wim() {
       ),
     [conversationsQuery.data]
   );
+  const studioConversations = useMemo(
+    () =>
+      (conversationsQuery.data ?? []).filter(
+        (conversation) => conversation.conversationType === "studio"
+      ),
+    [conversationsQuery.data]
+  );
+  const allConversationRows = useMemo(
+    () => [...conversations, ...studioConversations],
+    [conversations, studioConversations]
+  );
   const conversationById = useMemo(
-    () => new Map(conversations.map((conversation) => [conversation.id, conversation])),
-    [conversations]
+    () => new Map(allConversationRows.map((conversation) => [conversation.id, conversation])),
+    [allConversationRows]
   );
   const wtfUsers = Array.isArray(usersQuery.data) ? usersQuery.data : [];
   const userById = useMemo(() => new Map(wtfUsers.map((item) => [item.id, item])), [wtfUsers]);
@@ -2435,12 +2453,12 @@ export function Wim() {
     })
   );
   const unreadTotal = useMemo(
-    () => conversations.reduce((total, conversation) => total + conversation.unreadCount, 0),
-    [conversations]
+    () => allConversationRows.reduce((total, conversation) => total + conversation.unreadCount, 0),
+    [allConversationRows]
   );
   const unreadPopups = useMemo(
     () =>
-      conversations
+      allConversationRows
         .filter((conversation) => {
           if (!conversation.unreadCount || !conversation.latestMessage) return false;
           if (openConversationIds.has(conversation.id)) return false;
@@ -2460,7 +2478,7 @@ export function Wim() {
             unreadCount: conversation.unreadCount,
           };
         }),
-    [conversations, dismissedPopupSet, openConversationIds, user?.id]
+    [allConversationRows, dismissedPopupSet, openConversationIds, user?.id]
   );
 
   const openChatMutation = useMutation({
@@ -2469,7 +2487,7 @@ export function Wim() {
     onSuccess: (conversation, targetUserId) => {
       setConversationPeerHints((current) => ({ ...current, [conversation.id]: targetUserId }));
       showConversation(conversation.id, targetUserId);
-      qc.invalidateQueries({ queryKey: ["wim", "conversations", "direct"] });
+      qc.invalidateQueries({ queryKey: ["wim", "conversations"] });
     },
   });
 
@@ -3213,39 +3231,52 @@ export function Wim() {
     );
   };
 
+  const renderRecentConversationGroup = (
+    title: string,
+    rows: DmConversation[],
+    labelPrefix: string
+  ) =>
+    rows.length ? (
+      <>
+        <RecentGroupTitle>{title}</RecentGroupTitle>
+        {rows.map((conversation) => {
+          const label = conversationLabel(conversation);
+          const peer = conversationPeerId(conversation);
+          const active =
+            openConversationIds.has(conversation.id) ||
+            (peer ? selectedBuddyId === peer : false);
+          return (
+            <RecentButton
+              key={conversation.id}
+              $active={active}
+              type="button"
+              aria-label={`Open recent ${labelPrefix} ${label}`}
+              onClick={() => (peer ? setSelectedBuddyId(peer) : openConversation(conversation))}
+              onDoubleClickCapture={() => openConversation(conversation)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                openConversation(conversation);
+              }}
+            >
+              <BuddyName>
+                {label}
+                {conversation.unreadCount ? ` (${conversation.unreadCount})` : ""}
+              </BuddyName>
+              {conversation.latestMessage?.content ? (
+                <BuddyPreview>{conversation.latestMessage.content}</BuddyPreview>
+              ) : null}
+            </RecentButton>
+          );
+        })}
+      </>
+    ) : null;
+
   const renderRecentChats = () => (
     <DirectoryPanel>
-      {conversations.map((conversation) => {
-        const label = conversationLabel(conversation);
-        const peer = conversationPeerId(conversation);
-        const active =
-          openConversationIds.has(conversation.id) ||
-          (peer ? selectedBuddyId === peer : false);
-        return (
-          <RecentButton
-            key={conversation.id}
-            $active={active}
-            type="button"
-            aria-label={`Open recent WIM chat ${label}`}
-            onClick={() => peer && setSelectedBuddyId(peer)}
-            onDoubleClickCapture={() => openConversation(conversation)}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" && event.key !== " ") return;
-              event.preventDefault();
-              openConversation(conversation);
-            }}
-          >
-            <BuddyName>
-              {label}
-              {conversation.unreadCount ? ` (${conversation.unreadCount})` : ""}
-            </BuddyName>
-            {conversation.latestMessage?.content ? (
-              <BuddyPreview>{conversation.latestMessage.content}</BuddyPreview>
-            ) : null}
-          </RecentButton>
-        );
-      })}
-      {conversations.length === 0 ? (
+      {renderRecentConversationGroup("Direct WIM chats", conversations, "WIM chat")}
+      {renderRecentConversationGroup("Studio project chats", studioConversations, "Studio project chat")}
+      {allConversationRows.length === 0 ? (
         <UiEmptyState title="No direct chats yet">No WIM history is waiting.</UiEmptyState>
       ) : null}
     </DirectoryPanel>
@@ -3289,7 +3320,7 @@ export function Wim() {
           data-compact-control="true"
           onClick={() => {
             qc.invalidateQueries({ queryKey: ["wim", "users"] });
-            qc.invalidateQueries({ queryKey: ["wim", "conversations", "direct"] });
+            qc.invalidateQueries({ queryKey: ["wim", "conversations"] });
           }}
         >
           <Users size={15} aria-hidden />
@@ -3472,7 +3503,7 @@ export function Wim() {
               </DirectoryPanel>
             ) : null}
 
-            {renderSectionToggle("recent", "Recent Direct Chats", conversations.length)}
+            {renderSectionToggle("recent", "Recent Chats", allConversationRows.length)}
             {sections.recent ? renderRecentChats() : null}
           </>
         )}

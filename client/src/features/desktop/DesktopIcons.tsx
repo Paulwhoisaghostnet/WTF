@@ -420,6 +420,7 @@ const IconGlyph = styled.div`
   min-height: 34px;
   display: flex;
   align-items: center;
+  position: relative;
 `;
 
 const IconLabel = styled.div`
@@ -454,6 +455,28 @@ const IconLabel = styled.div`
   }
 `;
 
+const IconBadge = styled.span`
+  position: absolute;
+  top: -7px;
+  right: -10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border: 1px solid #ffffff;
+  border-radius: 9px;
+  background: #d40000;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 16px;
+  text-align: center;
+  text-shadow: none;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.45),
+    1px 1px 0 rgba(0, 0, 0, 0.42);
+`;
+
 export interface DesktopIconDef {
   key: string;
   label: string;
@@ -462,6 +485,7 @@ export interface DesktopIconDef {
   defaultY: number;
   enabled: boolean;
   experimental?: boolean;
+  badgeCount?: number;
   openPath?: string;
 }
 
@@ -618,6 +642,8 @@ export function DraggableIcon({
     [onOpen]
   );
 
+  const badgeCount = def.badgeCount ?? 0;
+
   return (
     <DesktopIconRoot
       ref={rootRef}
@@ -641,7 +667,14 @@ export function DraggableIcon({
         onContextMenu?.(event, def);
       }}
     >
-      <IconGlyph>{def.icon}</IconGlyph>
+      <IconGlyph>
+        {def.icon}
+        {badgeCount > 0 ? (
+          <IconBadge aria-label={`${badgeCount} unread messages`}>
+            {badgeCount > 99 ? "99+" : badgeCount}
+          </IconBadge>
+        ) : null}
+      </IconGlyph>
       <IconLabel>{def.label}</IconLabel>
     </DesktopIconRoot>
   );
@@ -810,7 +843,7 @@ export function buildDesktopIconDefs(
     },
     {
       key: "mail",
-      label: "WTF Mail",
+      label: "Inbox",
       icon: <ConsoleDeskIcon>@</ConsoleDeskIcon>,
       defaultX: 252,
       defaultY: 100,

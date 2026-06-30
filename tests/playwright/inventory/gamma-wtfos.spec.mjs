@@ -295,7 +295,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       { path: "/discord/terms", title: "Discord Terms" },
       { path: "/discord/privacy", title: "Discord Privacy" },
       { path: "/discord/linked-roles", title: "Discord Linked Roles" },
-      { path: "/messages/dms/1", title: "Inbox" },
+      { path: "/messages/dms/1", title: "Messages" },
       { path: "/console", title: "WTF Console" },
     ];
 
@@ -6604,7 +6604,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(page.locator("[data-gamma-workspace]")).toHaveAttribute("data-gamma-route", "/messages");
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
 
-    const inboxSurface = page.locator('[data-gamma-application-content] [data-messages-surface="inbox"]');
+    const inboxSurface = page.locator('[data-gamma-application-content] [data-messages-surface="messages"]');
     await expect(inboxSurface).toHaveAttribute("data-messages-presentation-host", "gamma");
     await expect(inboxSurface).toContainText("Gamma Peer");
     await expect(inboxSurface).toContainText("Queued Gamma DM.");
@@ -6701,7 +6701,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
   });
 
-  test("hosts WTF Mail mailbox chrome in the Gamma presentation style", async ({ page, request }) => {
+  test("hosts Inbox mailbox chrome in the Gamma presentation style", async ({ page, request }) => {
     await setHarnessState(request, { userRole: "admin", username: "the-count", displayName: "The Count" });
 
     let sendPayload = null;
@@ -6770,12 +6770,18 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
 
     await gotoGammaRoute(page, "/mail");
 
-    const mailSurface = page.locator('[data-gamma-application-content] [data-mail-surface="mail"]');
+    const mailSurface = page.locator('[data-gamma-application-content] [data-mail-surface="inbox"]');
     await expect(mailSurface).toHaveAttribute("data-mail-presentation-host", "gamma");
     await expect(mailSurface.locator('[data-mail-region="mailbox-panel"]')).toContainText("the-count@mail.wtfgameshow.app");
     await expect(mailSurface.locator('[data-mail-region="messages-panel"]')).toContainText("Gamma mail containment");
+    const gammaMailRow = mailSurface
+      .locator('[data-mail-region="message-row"]')
+      .filter({ hasText: "Gamma mail containment" });
+    await gammaMailRow
+      .getByRole("button", { name: /Open User mail message: Gamma mail containment/ })
+      .click();
     await expect(mailSurface.locator('[data-mail-region="selected-panel"]')).toContainText("This external mail message stays inside the Gamma shell.");
-    await expect(mailSurface.locator('[data-mail-region="message-row"][data-mail-active="true"]')).toContainText("Gamma mail containment");
+    await expect(gammaMailRow).toHaveAttribute("data-mail-active", "false");
 
     const mailMetrics = await mailSurface.evaluate((surface) => {
       const read = (selector) => {
@@ -6804,14 +6810,13 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       };
       return {
         surface: read('[data-mail-region="surface"]'),
+        navPanel: read('[data-mail-region="nav-panel"]'),
         mailboxPanel: read('[data-mail-region="mailbox-panel"]'),
+        workspace: read('[data-mail-region="workspace"]'),
         messagesPanel: read('[data-mail-region="messages-panel"]'),
         messageRow: read('[data-mail-region="message-row"]'),
-        composePanel: read('[data-mail-region="compose-panel"]'),
         selectedPanel: read('[data-mail-region="selected-panel"]'),
         reader: read('[data-mail-region="reader"]'),
-        composeBody: read('[data-mail-region="compose-body"]'),
-        sendButton: read('[data-mail-region="send-button"]'),
       };
     });
 
@@ -6826,14 +6831,54 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     }
     expect(mailMetrics.messageRow?.color).not.toBe("rgb(0, 0, 0)");
 
+    await mailSurface.getByRole("button", { name: /Drafts/ }).click();
+    await page.getByLabel("Draft destination type").selectOption("mail");
+    const composeMetrics = await mailSurface.evaluate((surface) => {
+      const read = (selector) => {
+        const node = surface.querySelector(selector);
+        if (!node) return null;
+        const style = window.getComputedStyle(node);
+        return {
+          backgroundImage: style.backgroundImage,
+          borderWidth: Math.max(
+            Number.parseFloat(style.borderTopWidth || "0"),
+            Number.parseFloat(style.borderRightWidth || "0"),
+            Number.parseFloat(style.borderBottomWidth || "0"),
+            Number.parseFloat(style.borderLeftWidth || "0")
+          ),
+          boxShadow: style.boxShadow,
+          radius: Math.max(
+            Number.parseFloat(style.borderTopLeftRadius || "0"),
+            Number.parseFloat(style.borderTopRightRadius || "0"),
+            Number.parseFloat(style.borderBottomRightRadius || "0"),
+            Number.parseFloat(style.borderBottomLeftRadius || "0")
+          ),
+          textShadow: style.textShadow,
+        };
+      };
+      return {
+        composePanel: read('[data-mail-region="compose-panel"]'),
+        composeBody: read('[data-mail-region="compose-body"]'),
+        sendButton: read('[data-mail-region="send-button"]'),
+      };
+    });
+    for (const [key, region] of Object.entries(composeMetrics)) {
+      expect(region, `missing Inbox compose metric: ${key}`).not.toBeNull();
+      expect(region.backgroundImage).toBe("none");
+      expect(region.boxShadow).toBe("none");
+      expect(region.textShadow).toBe("none");
+      expect(region.radius).toBeLessThanOrEqual(6);
+      expect(region.borderWidth).toBeLessThanOrEqual(1);
+    }
+
     await page.getByLabel("Mail recipients").fill("gamma-peer@example.com");
-    await page.getByLabel("Mail subject").fill("Gamma follow-up");
-    await page.getByLabel("Mail message").fill("WTF Mail still sends through the shared endpoint.");
-    await page.getByRole("button", { name: "Send mail" }).click();
+    await page.getByLabel("Message subject").fill("Gamma follow-up");
+    await page.getByLabel("Message body").fill("Inbox Mail still sends through the shared endpoint.");
+    await page.getByRole("button", { name: "Send message" }).click();
     await expect.poll(() => sendPayload).toMatchObject({
       to: ["gamma-peer@example.com"],
       subject: "Gamma follow-up",
-      textBody: "WTF Mail still sends through the shared endpoint.",
+      textBody: "Inbox Mail still sends through the shared endpoint.",
     });
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
   });

@@ -508,6 +508,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/messages/users?limit=100&excludeSelf=1" },
       { method: "GET", path: "/api/comms/sources" },
       { method: "GET", path: "/api/comms/items" },
+      { method: "GET", path: "/api/comms/unread-count" },
       { method: "GET", path: "/api/comms/route-target?url=https%3A%2F%2Fobjkt.com" },
       { method: "GET", path: "/api/mail/status", expectedStatuses: [200, 401, 403] },
       { method: "GET", path: "/api/mail/messages", expectedStatuses: [200, 401, 403] },

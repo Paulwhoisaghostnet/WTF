@@ -465,7 +465,7 @@ interface DmConversation {
     content: string;
     createdAt: string;
   } | null;
-  conversationType?: "direct" | "studio_project";
+  conversationType?: "direct" | "studio";
   studioProjectId?: number | null;
   title?: string | null;
 }
@@ -519,13 +519,13 @@ interface NotificationListResponse {
 
 /**
  * Takes a DM conversation list and returns a { directs, studioRooms } split so
- * the Inbox can render each section separately.
+ * Messages can render each section separately.
  */
 function splitConversations(list: DmConversation[] | undefined) {
   const directs: DmConversation[] = [];
   const studioRooms: DmConversation[] = [];
   for (const c of list ?? []) {
-    if (c.conversationType === "studio_project") {
+    if (c.conversationType === "studio") {
       studioRooms.push(c);
     } else {
       directs.push(c);
@@ -732,10 +732,10 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
 
   if (dmLoading) {
     return (
-      <AppWindow title={initialTab === "notifications" ? "Notification Center" : "Inbox"}>
+      <AppWindow title={initialTab === "notifications" ? "Notification Center" : "Messages"}>
         <MessagesSurface
           data-messages-presentation-host={presentation.host}
-          data-messages-surface={initialTab === "notifications" ? "notifications" : "inbox"}
+          data-messages-surface={initialTab === "notifications" ? "notifications" : "messages"}
           data-messages-region="surface"
         >
           <Hourglass size={32} />
@@ -763,7 +763,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
   const { directs, studioRooms } = splitConversations(dmConversations);
 
   const currentStudioProjectId =
-    currentDm?.conversationType === "studio_project"
+    currentDm?.conversationType === "studio"
       ? currentDm.studioProjectId ?? null
       : null;
 
@@ -785,7 +785,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
       metadata: {
         notificationId: item.id,
         eventKey: item.eventKey,
-        target: "studio_project",
+        target: "studio",
         projectId,
       },
     });
@@ -797,7 +797,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
   };
 
   const renderConversationButton = (conversation: DmConversation) => {
-    const isStudio = conversation.conversationType === "studio_project";
+    const isStudio = conversation.conversationType === "studio";
     const peerNames =
       conversation.peers.length > 0
         ? conversation.peers
@@ -835,10 +835,10 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
   };
 
   return (
-    <AppWindow title={initialTab === "notifications" ? "Notification Center" : "Inbox"}>
+    <AppWindow title={initialTab === "notifications" ? "Notification Center" : "Messages"}>
       <MessagesSurface
         data-messages-presentation-host={presentation.host}
-        data-messages-surface={initialTab === "notifications" ? "notifications" : "inbox"}
+        data-messages-surface={initialTab === "notifications" ? "notifications" : "messages"}
         data-messages-region="surface"
       >
       <Tabs
@@ -927,7 +927,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
               <GroupBox
                 data-messages-region="conversation-meta"
                 label={
-                  currentDm?.conversationType === "studio_project"
+                  currentDm?.conversationType === "studio"
                     ? "Studio project chat"
                     : "Conversation"
                 }
@@ -943,7 +943,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                 >
                   <Meta>
                     {currentDm
-                      ? currentDm.conversationType === "studio_project"
+                      ? currentDm.conversationType === "studio"
                         ? `Project chat · ${
                             currentDm.title ||
                             currentDm.peers

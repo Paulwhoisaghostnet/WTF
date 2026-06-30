@@ -7,7 +7,7 @@ const messagesSource = readFileSync(new URL("./Messages.tsx", import.meta.url), 
 test("Messages and Notification Center chrome is presentation-host aware", () => {
   assert.match(messagesSource, /usePresentationShell/);
   assert.match(messagesSource, /data-messages-presentation-host=\{presentation\.host\}/);
-  assert.match(messagesSource, /data-messages-surface=\{initialTab === "notifications" \? "notifications" : "inbox"\}/);
+  assert.match(messagesSource, /data-messages-surface=\{initialTab === "notifications" \? "notifications" : "messages"\}/);
   assert.match(messagesSource, /data-messages-region="surface"/);
   assert.match(messagesSource, /data-messages-region="layout"/);
   assert.match(messagesSource, /data-messages-region="conversation-button"/);

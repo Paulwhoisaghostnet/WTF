@@ -591,10 +591,12 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "dear-diary",
   "arcade",
   "casino",
+  "dedrooms",
   "dues-manager",
   "console",
   "game-studio",
   "studio",
+  "ipfs-pinning",
   "my-gallery",
 ] as const;
 

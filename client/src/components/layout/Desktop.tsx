@@ -86,6 +86,13 @@ type DesktopSettingsResponse = {
   updatedAt: string | null;
 };
 
+type InboxUnreadCountResponse = {
+  total: number;
+  notifications: number;
+  dms: number;
+  mail: number;
+};
+
 type DesktopClientEventPayload = {
   eventType: string;
   objectId: string;
@@ -471,6 +478,13 @@ export function Desktop({
     !suspendDesktopEffects &&
     (customCursorStyle !== "system" || blangsCursed || invertedMouseCursed);
   const appAccessBlocked = !canOpenAppsForRole(user?.roles ?? user?.role ?? null);
+  const inboxUnreadQuery = useQuery({
+    queryKey: ["inbox", "unread-count"],
+    queryFn: () => api.get<InboxUnreadCountResponse>("/api/comms/unread-count"),
+    enabled: !!user && !appAccessBlocked,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
   const desktopPetEnabled = !suspendDesktopEffects && !!user && appearance.desktopPetEnabled;
   const desktopArtifacts = useDesktopArtifacts({
     enabled: !suspendDesktopEffects && !!user,
@@ -647,13 +661,18 @@ export function Desktop({
   const visibleIcons = useMemo(() => iconDefs.filter((icon) => icon.enabled), [iconDefs]);
   const renderedVisibleIcons = useMemo<DesktopIconDef[]>(
     () =>
-      blangsCursed
-        ? visibleIcons.map((icon) => ({
-            ...icon,
-            icon: <BlangDesktopIcon src="/cursors/blang-side-eye.png" alt="" draggable={false} />,
-          }))
-        : visibleIcons,
-    [blangsCursed, visibleIcons]
+      visibleIcons.map((icon) => {
+        const renderedIcon = blangsCursed
+          ? {
+              ...icon,
+              icon: <BlangDesktopIcon src="/cursors/blang-side-eye.png" alt="" draggable={false} />,
+            }
+          : icon;
+        return renderedIcon.key === "mail"
+          ? { ...renderedIcon, badgeCount: inboxUnreadQuery.data?.total ?? 0 }
+          : renderedIcon;
+      }),
+    [blangsCursed, inboxUnreadQuery.data?.total, visibleIcons]
   );
   const localizedRenderedVisibleIcons = useMemo<DesktopIconDef[]>(
     () =>

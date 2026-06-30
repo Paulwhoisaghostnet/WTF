@@ -52,6 +52,7 @@ Priority labels:
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-325 | Verified | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes no longer fall back to Classic after promotion to commit `6e35117`; verified by Deploy to Hetzner `28421767405`, main Quality Gates `28421767416`, live health, Gamma `/gallery` and `/leaderboard` content selectors, Gamma auth gates for `/admin` and `/swap`, plus Classic/Beta host sanity checks |
 | WTF-BB-326 | Verified | Codex Gamma live verification pass | 2026-06-30 | E2E / inventory workflow timeout | P2 | 7 | 15 | 1 | 3 | 0 | Broad inventory smoke could time out the healthy `social post to reward automation loop` under the fixed 60s Playwright budget; verified fixed by workload-based timeout budgeting, local focused/full domain-interoperability proof, and branch Quality Gates `28420704957` |
+| WTF-BB-327 | Verified | Codex Inbox full-send | 2026-06-30 | Comms / Inbox read model | P1 | 12 | 7 | 3 | 5 | 0 | WTF Mail is now the Inbox hub with user-scoped unread counts, source-owned read writes, WIM/Studio coordination, message marks, drafts/templates, desktop badge coverage, and verified focused inventory/browser coverage |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Open | - | 2026-06-29 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory and focused reruns fail Settings Subdomain Setup and cobwebsaints account readiness because the `wtf.tez target wallet` input remains blank instead of prefilled with the harness wallet |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -394,6 +395,32 @@ Priority labels:
   - Live `https://gamma.wtfos.app/api/health` and `https://wtfos.app/api/health` reported `commitRef:"6e35117"` with `status:"ok"`.
   - Live selector proof: `https://gamma.wtfos.app/` rendered `[data-gamma-wtfos]=1`; `/gallery` and `/leaderboard` rendered `[data-gamma-wtfos]=1`, `[data-gamma-application-content]=1`, and `[data-wtf-desktop]=0`; `/admin` and `/swap` rendered Gamma route gates with `[data-wtf-desktop]=0`.
   - Host isolation proof: live `https://wtfos.app/` rendered `[data-wtf-desktop]=1` and `[data-gamma-wtfos]=0`; live `https://beta.wtfos.app/` rendered Beta shell markers and `[data-gamma-wtfos]=0`.
+
+### WTF-BB-327 - Central Inbox must preserve source-owned privacy boundaries
+
+- Category: Comms / Inbox read model
+- Status: Verified
+- Owner/Session: Codex Inbox full-send
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - 2026-06-30 user request reimagined WTF Mail as Inbox, the central messaging hub for system, admin, user mail, WIM, invites, notification subscriptions, and Studio messages.
+  - The hub needs a permanent desktop badge and cross-app read-state sync, which can accidentally become a global or presentation-only read model if the Inbox aggregates private sources without preserving per-user target rows and source-owned write APIs.
+- Why it matters:
+  - Inbox is now the recovery surface for account, wallet, social-proof, safety, mail, WIM, Studio, and notification needs. If it globalizes read state or bypasses source routes, one user's unread badge or read action can become misleading or leak private activity.
+- Correction:
+  - Keep `/mail` as the Inbox owner surface while preserving Mail, WIM/DM, Studio, Notification Center, and Comms Kernel APIs by domain.
+  - Add a user-scoped `/api/comms/unread-count` for the permanent desktop badge.
+  - Publish DM comms rows to each participant instead of untargeted global rows.
+  - Let Inbox mark read through source-owned endpoints, and let WIM show Studio project conversations without adding Studio rooms to the buddy roster.
+- Verification:
+  - Passed `git diff --check`.
+  - Passed focused source/unit coverage: `node_modules/.bin/tsx --test client/src/pages/mail-presentation-policy.test.ts client/src/pages/messages-presentation-policy.test.ts client/src/pages/Wim.test.ts client/src/features/desktop/DesktopIcons.test.tsx server/routes/messages-user-roster-policy.test.ts`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run build`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed focused browser coverage: `node_modules/.bin/playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "documented static|Inbox and Notification|Inbox mailbox" --project=chromium --reporter=list`.
+  - Ran `npm run test:e2e:inventory`; Inbox, WIM, messages, `/mail`, `/messages`, `/messages/dms/:id`, `/wim`, social-domain comms probes, and Gamma Inbox checks passed inside the broad run. The broad run finished `439 passed` with unrelated route/WTF LIVE harness failures matching the existing `WTF-BB-238` instability bucket.
+  - Fresh focused reruns passed the unrelated broad-run failures: `HARNESS_PORT=4321 node_modules/.bin/playwright test tests/playwright/inventory/routes.spec.mjs -g "/tools/nikshumika-paint" --project=chromium --reporter=list` and `HARNESS_PORT=4323 node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs --project=chromium --reporter=list` (`15/15`).
 
 ### WTF-BB-326 - Broad inventory social workflow timeout
 

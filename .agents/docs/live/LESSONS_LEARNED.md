@@ -6707,3 +6707,13 @@
 **Why it mattered**: Language and region are distinct settings, but region defaults are still locale-coupled when the user changes only the display language. Keeping the old region creates surprising date/number behavior and can make persisted settings look internally inconsistent.
 
 **Rule**: When normalizing preference objects with related fields, detect when the primary field changes and no explicit dependent field was supplied. In that case, derive the dependent default from the new primary value instead of blindly carrying the fallback forward.
+
+---
+
+## 2026-06-30 - Inbox aggregators must not globalize private read models
+
+**What happened**: Reworking WTF Mail into Inbox touched Mail, WIM, Studio conversations, notifications, comms indexing, desktop badges, Gamma proofs, and admin/inventory registries. The tempting shortcut was to make the Inbox aggregate the presentation shape and unread badge directly from broad comms rows, but DMs, Studio rooms, and mail all have source-owned permissions and per-user read state.
+
+**Why it mattered**: A central message hub is useful only if it preserves source boundaries. Untargeted DM comms rows or a global unread aggregate can make private conversations visible in the wrong user's badge or mark messages read outside the owning app's contract.
+
+**Rule**: Central inbox surfaces may aggregate display cards, counts, and launch targets, but every read/write mutation must stay source-owned and user-scoped. DMs and Studio conversations need participant-targeted comms rows, unread badges need signed-in-user counts, and WIM can surface Studio rooms in recent conversations without mixing them into the buddy roster.

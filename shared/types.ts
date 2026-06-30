@@ -515,7 +515,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   "rat-race": "Rat Race",
   "map-lab": "WTF Map Lab",
   agent: "Agent",
-  mail: "WTF Mail",
+  mail: "Inbox",
 };
 
 export const EXPERIMENTAL_DESKTOP_APPS = [
