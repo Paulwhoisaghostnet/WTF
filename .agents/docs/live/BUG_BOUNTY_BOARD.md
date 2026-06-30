@@ -53,12 +53,12 @@ Priority labels:
 | WTF-BB-325 | Verified | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes no longer fall back to Classic after promotion to commit `6e35117`; verified by Deploy to Hetzner `28421767405`, main Quality Gates `28421767416`, live health, Gamma `/gallery` and `/leaderboard` content selectors, Gamma auth gates for `/admin` and `/swap`, plus Classic/Beta host sanity checks |
 | WTF-BB-326 | Verified | Codex Gamma live verification pass | 2026-06-30 | E2E / inventory workflow timeout | P2 | 7 | 15 | 1 | 3 | 0 | Broad inventory smoke could time out the healthy `social post to reward automation loop` under the fixed 60s Playwright budget; verified fixed by workload-based timeout budgeting, local focused/full domain-interoperability proof, and branch Quality Gates `28420704957` |
 | WTF-BB-327 | Verified | Codex Inbox full-send | 2026-06-30 | Comms / Inbox read model | P1 | 12 | 7 | 3 | 5 | 0 | WTF Mail is now the Inbox hub with user-scoped unread counts, source-owned read writes, WIM/Studio coordination, message marks, drafts/templates, desktop badge coverage, and verified focused inventory/browser coverage |
-| WTF-BB-328 | Fixed | Codex Pasta installer hardening | 2026-06-30 | Macaroni installers / supply chain | P1 | 13 | 6 | 1 | 4 | 4 | Macaroni installer manifest accepted remote HTTP URLs, which could publish downgradeable installer links; fixed by allowing HTTPS remote URLs, same-origin relative paths, and loopback HTTP only outside production, clean branch gates passed, pending live release proof |
-| WTF-BB-329 | Fixed | Codex Pasta live-baseline audit | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 3 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles still serve Taquito `24.3.0`; U025/Octez refresh is isolated on `codex/pasta-live-readiness` with clean branch gates passing but has not been deployed to production |
-| WTF-BB-330 | In Progress | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop installer workflow now has branch artifact proof for macOS, Windows, and Raspberry Pi on `codex/pasta-live-readiness`; stable release URLs, production env configuration, authenticated manifest proof, and public download smoke are still pending |
-| WTF-BB-331 | In Progress | Codex Pasta live-readiness | 2026-06-30 | Deploy / production disk capacity | P0 | 13 | 5 | 2 | 5 | 1 | Pasta main deploy `28466080627` failed after image build because production root had only 1.9 GB free and Docker could not write compose build metadata; disk was cleaned to 26 GB free and `scripts/server-deploy.sh` now has a disk preflight guard, pending redeploy/live proof |
+| WTF-BB-328 | Verified | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / supply chain | P1 | 13 | 6 | 1 | 4 | 4 | Macaroni installer manifest rejects unauthenticated callers, exposes only HTTPS GitHub release installer URLs with SHA-256 values after authenticated login, and passed live verifier proof on `wtfos.app` commit `f32dbe8` |
+| WTF-BB-329 | Verified | Codex Pasta live-readiness | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 3 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles no longer serve Taquito `24.3.0`; all seven live creation-tool bundles passed stale-marker and Octez RPC marker probes on commit `f32dbe8` |
+| WTF-BB-330 | Verified | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated/live public download smoke on commit `f32dbe8` |
+| WTF-BB-331 | Verified | Codex Pasta live-readiness | 2026-06-30 | Deploy / production disk capacity | P0 | 13 | 5 | 2 | 5 | 1 | Pasta deploy disk exhaustion was cleared without touching app volumes, `scripts/server-deploy.sh` now has a 12 GiB free-space preflight, Deploy to Hetzner `28467035058` passed, and live health reports commit `f32dbe8` |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
-| WTF-BB-323 | Fixed | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; focused fresh-harness proof passes, pending branch Quality Gates rerun |
+| WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
 | WTF-BB-321 | Verified | Codex Tezos provider currency audit | 2026-06-29 | Tezos / wallet dependencies and RPC defaults | P1 | 13 | 6 | 4 | 4 | 1 | Static creator-tool wallet bundles and package locks lagged Taquito U025 / Octez Connect 4.8.6 while fresh deploy/test defaults still pointed at legacy Ghostnet or Tez.ie paths; fixed with Taquito 25, Octez Connect 4.8.6, Shadownet-first defaults, regenerated browser bundles, and policy checks |
 | WTF-BB-322 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 14 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
@@ -429,8 +429,8 @@ Priority labels:
 ### WTF-BB-328 - Macaroni installer manifest accepted plaintext remote installer URLs
 
 - Category: Macaroni installers / supply chain
-- Status: Fixed
-- Owner/Session: Codex Pasta installer hardening
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
 - Score: C1 + F4 + S4 + P1(4) = 13
 - Evidence:
   - `/api/macaroni/installers` builds a downloadable native installer manifest from configured URLs.
@@ -443,13 +443,15 @@ Priority labels:
   - Allow loopback HTTP only outside production for local development.
 - Verification:
   - Clean branch `codex/pasta-live-readiness` passed focused `node --test server/routes/macaroni-policy.test.ts`, broad `npm run check -- --pretty false`, `npm run build`, and supporting release gates.
-  - Required before closure: live authenticated installer-manifest proof after deployment.
+  - Deploy to Hetzner run `28467035058` passed and live `https://wtfos.app/api/health` reported commit `f32dbe8`.
+  - Public live verifier passed: unauthenticated `/api/macaroni/installers` returned `401`, and macOS, Windows, and Raspberry Pi GitHub release assets accepted byte-range download probes.
+  - Authenticated live verifier passed as production puppet `e2e_bert`; manifest matched Macaroni Desktop `1.0.0`, stable GitHub release URLs, file names, HTTPS-only URLs, and SHA-256 values.
 
 ### WTF-BB-329 - Live Pasta/Macaroni static wallet bundles still serve stale Taquito
 
 - Category: Tezos / Pasta production deployment
-- Status: Fixed
-- Owner/Session: Codex Pasta live-baseline audit
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
 - Score: C2 + F5 + S3 + P1(4) = 14
 - Evidence:
   - 2026-06-30 live probes showed `https://wtfos.app/creation-tools/{macaroni,spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/vendor/tezos.js` still exposing Taquito `24.3.0`.
@@ -461,12 +463,14 @@ Priority labels:
   - After deploy, curl each shipped bundle and assert expected new markers are present and stale markers are absent.
 - Verification:
   - Clean branch `codex/pasta-live-readiness` passed `npm run security:tezos-rpc-defaults`, `npm run creation-tools:check`, broad `npm run check -- --pretty false`, and `npm run build`.
-  - Required before closure: production deploy and live bundle marker proof.
+  - Deploy to Hetzner run `28467035058` passed and live `https://wtfos.app/api/health` reported commit `f32dbe8`.
+  - Main Quality Gates run `28467035060` passed SmartPy, Typecheck, Vite env policy, Build, Inventory coverage, Inventory Playwright smoke, and External link safety.
+  - Live bundle probe passed for `macaroni`, `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna`: every `vendor/tezos.js` returned `200` with `staleTaquito=false`, and every `js/common.js` returned `200` with Octez mainnet and Shadownet RPC markers.
 
 ### WTF-BB-330 - Macaroni Desktop installer artifacts are not published
 
 - Category: Macaroni installers / release ops
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex Pasta live-readiness
 - Score: C2 + F5 + S2 + P1(4) = 13
 - Evidence:
@@ -485,12 +489,15 @@ Priority labels:
   - Local macOS artifact proof: `Macaroni-Studio-1.0.0-mac-universal.dmg` sha256 `9df90eef0fe40b784a642d8630a0b842c7c355224c212884bf3f69777c2b187f`; `Macaroni-Studio-1.0.0-mac-universal.zip` sha256 `9cb9ea4c38494bf2bf9fc160288fa1988ce7ea687efc06b5a1330b569a2fdcba`.
   - Local metadata guard: `npm run macaroni:desktop:check` passes with explicit Linux `.deb` metadata assertions.
   - Branch artifact proof: Macaroni Desktop Installers run `28458796320` passed macOS, Windows, and Raspberry Pi builds with `publish_release=false`.
-  - Required before closure: stable release/artifact URLs, configured production manifest, authenticated live proof, and public download smoke.
+  - Stable release proof: GitHub release `macaroni-desktop-v1.0.0` exposes macOS DMG sha256 `9c91ad656bd249d7d921084d429ba23f00692d68819937505aa3deec8e50f600`, Windows EXE sha256 `6b40525d524dd916ba3a46ab28bb36c3238c7cbffd993f2c1803f61f5063e1d4`, and Raspberry Pi arm64 DEB sha256 `6ed21c165f5b2c5f476b0c8ab23c78397de59a2990d3f4f21dfb741b5e7e6216`.
+  - Deploy to Hetzner run `28467035058` passed and live `https://wtfos.app/api/health` reported commit `f32dbe8`.
+  - Public live verifier passed unauthenticated manifest protection plus byte-range probes for all three release assets.
+  - Authenticated live verifier passed as production puppet `e2e_bert`; `/api/macaroni/installers` matched Macaroni Desktop `1.0.0`, expected filenames, stable GitHub release URLs, and SHA-256 values.
 
 ### WTF-BB-331 - Pasta main deploy failed on production disk exhaustion
 
 - Category: Deploy / production disk capacity
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex Pasta live-readiness
 - Score: C2 + F5 + S1 + P0(5) = 13
 - Evidence:
@@ -507,7 +514,10 @@ Priority labels:
 - Verification:
   - Passed `bash -n scripts/server-deploy.sh`.
   - Passed `node --test scripts/deploy-dry-run-policy.test.mjs scripts/production-migrations-policy.test.mjs scripts/check-kiln-production-posture.test.mjs`.
-  - Pending before closure: push/deploy the preflight guard, rerun Deploy to Hetzner, and verify live health reports the promoted commit.
+  - Production disk cleanup left root with `26G` free before redeploy and `24G` free after redeploy; Docker volumes were not pruned.
+  - Deploy to Hetzner run `28467035058` passed with the new disk preflight in `scripts/server-deploy.sh`.
+  - Live `https://wtfos.app/api/health` returned `ok: true` with `commitRef: "f32dbe8"`.
+  - Main Quality Gates run `28467035060` passed.
 
 ### WTF-BB-326 - Broad inventory social workflow timeout
 
@@ -552,8 +562,8 @@ Priority labels:
 ### WTF-BB-323 - Settings Subdomain Setup harness wallet prefill is blank
 
 - Category: E2E / WTF Domains Settings applet wallet prefill
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
 - Score: C2 + F3 + S0 + P2(3) = 8
 - Evidence:
   - `npm run test:e2e:inventory` on 2026-06-29 failed `tests/playwright/inventory/settings-subdomain-setup.spec.mjs:18` and `tests/playwright/inventory/cobwebsaints-account.spec.mjs:20` after a clean build.
@@ -569,7 +579,9 @@ Priority labels:
 - Verification:
   - Passed `./node_modules/.bin/tsx --test client/src/lib/tezos/wallet-connect-policy.test.ts`.
   - Passed `npm run test:e2e:inventory:coverage`.
-  - Passed focused fresh-harness Settings/Cobweb proof listed above; branch Quality Gates rerun still required before promotion.
+  - Passed focused fresh-harness Settings/Cobweb proof listed above.
+  - Passed branch Quality Gates run `28465190052`.
+  - Passed main Quality Gates run `28467035060` after promotion to commit `f32dbe8`.
 
 ### WTF-BB-267 - Macaroni generated drop pages reused collection covers for video previews
 
