@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-321 | Open | - | 2026-06-30 | Gamma / mobile first-viewport E2E | P1 | 10 | 10 | 2 | 4 | 0 | Quality Gates inventory smoke fails after the Soft System/default-shell update because the Gamma mobile viewport spec cannot see the first communications action in the viewport |
 | WTF-BB-320 | Verified | Codex WTF LIVE dockable bento pass | 2026-06-29 | WTF LIVE / dockable room workspace UX | P1 | 13 | 6 | 4 | 5 | 0 | WTF LIVE public room now exposes Connection, Sharing, Screens, Attendance, and Room chat as dockable bento tiles with sharing drawers, screen grids, receiver default chat fonts, and pop-in/pinned floating panels |
 | WTF-BB-319 | Verified | Codex WTF LIVE server font cleanup | 2026-06-29 | WTF LIVE / realtime chat typography | P2 | 8 | 14 | 1 | 4 | 0 | WTF LIVE client font cleanup removed MEK/GROUT from visible options, but the WebSocket chat-style sanitizer still accepted MEK/GROUT and defaulted missing realtime chat styles to MEK; fixed server normalization and added regression coverage |
 | WTF-BB-318 | Verified | Codex WTF LIVE input flash repair | 2026-06-29 | WTF LIVE / input rendering stability | P1 | 12 | 7 | 3 | 5 | 0 | Users report WTF LIVE flashes or flickers whenever mic input is enabled or chat text is typed; fixed by isolating the mic meter from the room render tree, caching stage stream wrappers, moving WTF LIVE to a Classic 95 font stack, removing MEK/GROUT from WTF LIVE chat font choices, and collapsing mic diagnostics into a compact drawer |
@@ -354,6 +355,23 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-321 - Gamma mobile first viewport loses the first comms action
+
+- Category: Gamma / mobile first-viewport E2E
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - GitHub Quality Gates run `28415451363` for `f685989a` passed typecheck, Vite env policy, build, inventory coverage, and the localization browser tests, then failed in `Inventory Playwright smoke`.
+  - The failing assertion was `tests/playwright/inventory/gamma-wtfos.spec.mjs:149`, where `locator('[data-gamma-comms-action]').first()` had viewport ratio `0` in `keeps the first mobile viewport usable and app-forward`.
+  - The same CI run also hit the already-tracked `WTF-BB-317` social reward automation timeout; localization tests passed as full-inventory tests 368-370.
+- Why it matters:
+  - The Gamma mobile arrival surface can regress out of the first viewport, and the broad release gate remains red even though production deploy health is green.
+- Likely correction:
+  - Inspect the Gamma mobile layout after the Soft System/default-shell font changes and compress or reorder the app-forward/comms controls so the first communications action is visible in the mobile first viewport without horizontal overflow.
+- Verification idea:
+  - Rerun `npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "keeps the first mobile viewport usable and app-forward"`, then rerun `npm run test:e2e:inventory`.
 
 ### WTF-BB-317 - Social reward automation inventory workflow times out
 
