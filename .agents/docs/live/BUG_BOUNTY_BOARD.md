@@ -50,7 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-325 | In Progress | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes still fall back to Classic on live commit `de0acb6`; isolated branch `codex/gamma-live-shell` now has local production-base proof green (`112/112` route fixtures, Gamma browser spec `61/61`), so the remaining pass is deployment/promotion plus live selector proof |
+| WTF-BB-325 | In Progress | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes still fall back to Classic on live commit `de0acb6`; isolated branch `codex/gamma-live-shell` now has local production-base proof green (`npm run check`, `112/112` route fixtures, Gamma browser spec `61/61`), so the remaining pass is fresh branch CI plus deployment/promotion and live selector proof |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Open | - | 2026-06-29 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory and focused reruns fail Settings Subdomain Setup and cobwebsaints account readiness because the `wtf.tez target wallet` input remains blank instead of prefilled with the harness wallet |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -374,13 +374,15 @@ Priority labels:
   - Created isolated branch `codex/gamma-live-shell` from `origin/main` and transplanted only the Gamma presentation shell/runtime/test slice.
   - Kept `/applications` out of the branch because it is not part of the current production-base route registry and would add a new surface.
   - Fixed hidden-worktree Playwright harness serving by allowing dot-directory paths when the worktree lives under `~/.config`.
+  - Fixed branch-CI Typecheck blockers by typing Tezos Intel presentation markers and declaring the marketplace presentation-only `surfaceVariant` prop.
   - Preserved shared application logic, API contracts, data, wallet, contract, and auth behavior; changes are presentation shell, route containment, host-aware navigation, and test harness proof only.
 - Local verification:
+  - `npm run check`: passed.
   - `tsx --test` presentation-policy sweep: `148/148` passed.
   - `npm run test:e2e:inventory:coverage`: route fixtures `112/112`, subdomain rows `195/195`, normalized handles `852/852`.
   - `/opt/homebrew/bin/node ./node_modules/.bin/vite build`: passed.
   - Focused rendered rerun for desktop utility handoffs and Message Board dialogs: `2/2` passed on `HARNESS_PORT=4319`.
-  - Full Gamma browser suite: `61/61` passed on `HARNESS_PORT=4320`, including production-hostname direct routes, The Count admin suite, native admin cluster, desktop utility CLI handoff, Message Board dialogs, social/media/TV routes, and mobile first viewport.
+  - Full Gamma browser suite: `61/61` passed on `HARNESS_PORT=4321`, including production-hostname direct routes, The Count admin suite, native admin cluster, desktop utility CLI handoff, Message Board dialogs, social/media/TV routes, and mobile first viewport.
   - `git diff --check`: passed.
 - Remaining verification:
   - Deploy/promote the branch, then rerun live `https://gamma.wtfos.app/`, `/gallery`, `/leaderboard`, and at least one auth-gated route selector proof.

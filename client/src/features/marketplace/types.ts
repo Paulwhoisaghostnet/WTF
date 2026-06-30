@@ -202,6 +202,7 @@ export interface ExternalMarketplaceListingsResponse {
 
 export interface MarketplaceProps {
   initialTab?: number;
+  surfaceVariant?: "marketplace" | "trade-boards";
 }
 
 export type CreateFormState = {

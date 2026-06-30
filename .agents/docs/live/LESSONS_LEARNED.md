@@ -1,3 +1,13 @@
+## 2026-06-30 - Gamma presentation markers need the real TypeScript gate
+
+**What happened**: The isolated Gamma branch passed source-policy tests, production build, inventory coverage, and the rendered Gamma browser suite, but branch CI failed at `npm run check` because `styled-components.attrs()` rejected untyped custom `data-tezos-intel-region` attrs and the marketplace route's new presentation-only `surfaceVariant` prop was missing from `MarketplaceProps`.
+
+**Why it mattered**: Source-policy tests can prove marker intent, but they do not typecheck every styled-component overload or route prop surface. A branch can be visually correct locally and still be blocked before build in CI if presentation-only markers are not typed as first-class props.
+
+**Rule**: After adding rendered Gamma markers or presentation-only route props, run `npm run check` before branch promotion. Keep marker prop typing local to the presentation component or feature type file, and do not treat a policy-test pass as a substitute for TypeScript.
+
+---
+
 ## 2026-06-30 - Gamma isolated worktrees need harness dotfile serving and companion markers
 
 **What happened**: The isolated Gamma branch lived under `~/.config/superpowers/worktrees`, and the Playwright harness served `dist/public/index.html` through Express `sendFile`. Express/send treated the `.config` path component as hidden and returned `NotFoundError` for every SPA fallback, so rendered Gamma tests failed before React loaded. The first transplant also copied top-level Gamma shell tests without several companion child-component marker files, leaving source-policy gaps in Message Board, TV, Tezos Intel, Mint Portal, Skywire, and marketplace route owner chrome.

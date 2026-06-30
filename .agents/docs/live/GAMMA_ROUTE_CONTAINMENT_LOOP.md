@@ -16,19 +16,20 @@ Root cause update: live `wtfos.app`/`gamma.wtfos.app` is serving commit `de0acb6
 
 ## Verification
 
+- TypeScript: `npm run check` passed after the branch CI Typecheck failure was narrowed to presentation-marker prop typing.
 - Focused board/desktop utility source policies after production-base transplant: `4 passed`
 - Focused Gamma shell plus presentation helper policies: `10 passed`
 - Presentation-policy sweep: `148/148 passed`
 - Vite build: passed with `/opt/homebrew/bin/node ./node_modules/.bin/vite build`
 - Hidden-worktree harness probe: after allowing `dotfiles: "allow"` in the local Playwright harness, `curl http://127.0.0.1:4317/gamma` and the built `index` asset returned `200`
 - Focused rendered rerun for the two previously failing buckets: desktop utility route handoffs plus Message Board chrome/dialogs `2/2 passed` on fresh `HARNESS_PORT=4319`
-- Full Gamma shell suite with static/nested audit, production-hostname proof, The Count admin suite, desktop utility CLI handoff, Message Board dialogs, TV, social, media, and mobile proof included: `61/61 passed` on fresh `HARNESS_PORT=4320`
+- Full Gamma shell suite with static/nested audit, production-hostname proof, The Count admin suite, desktop utility CLI handoff, Message Board dialogs, TV, social, media, and mobile proof included: `61/61 passed` on fresh `HARNESS_PORT=4321`
 - Full inventory coverage gate: complete for `112/112` registered route fixtures, `195/195` subdomain rows, and `852/852` normalized handles
 - `git diff --check`: passed
 - Live public hostname spot check: `https://gamma.wtfos.app/` rendered `[data-gamma-wtfos]=1`, but direct live `https://gamma.wtfos.app/gallery` and `https://gamma.wtfos.app/leaderboard` rendered `[data-wtf-desktop]=1` with no Gamma workspace or Gamma application content. Tracked as `WTF-BB-325`.
 - Live asset root cause probe: `https://gamma.wtfos.app/api/health` reported commit `de0acb6`, matching `origin/main`; `https://gamma.wtfos.app/assets/index-wtf2-ChA9LqzT.js` still contains a root-only Gamma host branch and no `isGammaShellLocation` broad-route branch. Public `/gamma/gallery` and `/gamma/leaderboard` also fell into Classic, proving this is a stale/incomplete deployed client shell rather than only a Caddy path rewrite issue.
 - Full inventory suite: not rerun in this pass because broad inventory currently has unrelated open blockers in the board, including WTF Domains Settings wallet prefill drift (`WTF-BB-323`) and Recovery Mode route-smoke auth noise (`WTF-BB-322`). Gamma Swap wallet-seed drift (`WTF-BB-324`) is now verified fixed and the broad Gamma spec passes with Swap, the static/nested route audit, and the production-hostname route proof included.
-- TypeScript: broad `tsc --noEmit --pretty false` remains a known inconclusive local gate from earlier passes because it stayed silent for several minutes and was terminated; focused source policy, Vite build, inventory coverage, and rendered Playwright proof passed.
+- Branch CI note: GitHub Quality Gates run `28419292561` failed at Typecheck before build because two presentation-only typings were missing. Local `npm run check` now passes after typing Tezos Intel `data-tezos-intel-region` attrs and adding the marketplace `surfaceVariant` prop; the follow-up commit still needs a fresh branch CI run.
 
 ## Route Accounting
 
