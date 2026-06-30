@@ -60,6 +60,7 @@ Conclusion: mine this checkout only for human notes if needed. Do not apply its 
   - `apps/pasta-suite-desktop/release/Pasta-Suite-1.0.0-mac-universal.dmg` (`sha256 3b00d06229d2527294aac8f67e43e9437f5544846225e9688a345af9addf01e9`)
   - `apps/pasta-suite-desktop/release/Pasta-Suite-1.0.0-mac-universal.zip` (`sha256 812650e1e62d1bbe7332b84d6a437966ef9ddb2262977c8923429551a4e73f24`)
 - This is not yet public download proof: Windows and Raspberry Pi still need CI artifacts, the GitHub release is not published, production env is not configured, and the live verifier has not passed.
+- GitHub refused `workflow_dispatch` for `.github/workflows/pasta-suite-desktop-installers.yml` while it exists only on `codex/pasta-live-readiness` (`HTTP 404: workflow ... not found on the default branch`), so CI artifact proof must happen after this workflow reaches the default branch or via an intentionally published release tag.
 
 ## Recommended Next Actions
 

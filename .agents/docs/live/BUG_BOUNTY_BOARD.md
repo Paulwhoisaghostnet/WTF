@@ -544,7 +544,7 @@ Priority labels:
   - `npm run test:e2e:inventory:coverage` passed with 862 normalized handles and 16 domain workflows.
   - `npm run check -- --pretty false` passed.
   - `npm run dist:mac --prefix apps/pasta-suite-desktop` produced unsigned local macOS artifacts: `Pasta-Suite-1.0.0-mac-universal.dmg` sha256 `3b00d06229d2527294aac8f67e43e9437f5544846225e9688a345af9addf01e9`; `Pasta-Suite-1.0.0-mac-universal.zip` sha256 `812650e1e62d1bbe7332b84d6a437966ef9ddb2262977c8923429551a4e73f24`.
-  - Remaining target-environment proof: run the suite installer workflow for all three platforms, publish `pasta-suite-desktop-v1.0.0`, configure production `PASTA_SUITE_INSTALLER_*` env from GitHub release digests, then pass `npm run pasta-suite:installers:live-check` against `https://wtfos.app` with an authenticated session.
+  - Remaining target-environment proof: get the new workflow onto the default branch, run the suite installer workflow for all three platforms, publish `pasta-suite-desktop-v1.0.0`, configure production `PASTA_SUITE_INSTALLER_*` env from GitHub release digests, then pass `npm run pasta-suite:installers:live-check` against `https://wtfos.app` with an authenticated session.
 
 ### WTF-BB-332 - Stale Pasta deploy checkout can regress installer hardening if replayed
 
