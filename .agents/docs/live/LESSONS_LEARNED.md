@@ -6727,3 +6727,13 @@
 **Why it mattered**: A central message hub is useful only if it preserves source boundaries. Untargeted DM comms rows or a global unread aggregate can make private conversations visible in the wrong user's badge or mark messages read outside the owning app's contract.
 
 **Rule**: Central inbox surfaces may aggregate display cards, counts, and launch targets, but every read/write mutation must stay source-owned and user-scoped. DMs and Studio conversations need participant-targeted comms rows, unread badges need signed-in-user counts, and WIM can surface Studio rooms in recent conversations without mixing them into the buddy roster.
+
+---
+
+## 2026-06-30 - Browser route proof must rebuild the served bundle
+
+**What happened**: The Beta route-shell browser proof kept opening Classic `/gallery` even after the source patch made Beta remember its presentation host and inline shared app windows. The harness was serving `dist/public`, so Playwright was exercising an old bundle until `npm run build` regenerated the client assets.
+
+**Why it mattered**: Route-containment and presentation-shell fixes can look broken, or falsely fixed, if the browser harness is reading stale assets. A passing source-policy test is not enough proof that the public bundle has the new navigation/session behavior.
+
+**Rule**: For presentation shell, route containment, and host-switching changes, rebuild before browser verification whenever the harness serves `dist/public`. If browser output contradicts current source, inspect the served bundle state before changing routing logic again.

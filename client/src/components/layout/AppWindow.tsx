@@ -11,7 +11,10 @@ import { Window, WindowHeader, WindowContent, Button } from "react95";
 import { useWindowManager, WindowPathContext } from "../../lib/window-context";
 import { useAuth } from "../../lib/auth-context";
 import { useLocalization } from "../../lib/localization";
-import { usePresentationShell } from "../../lib/presentation-shell";
+import {
+  readPresentationHostFromSession,
+  usePresentationShell,
+} from "../../lib/presentation-shell";
 import { NativeAdminPanel } from "../../features/admin-os/NativeAdminPanel";
 import { findAdminSurfaceForPath } from "../../features/admin-os/admin-surface-registry";
 import { MOBILE_BP, MOBILE } from "../../global-styles";
@@ -293,9 +296,13 @@ const GammaInlineWindow = styled.section`
   display: grid;
   min-width: 0;
   min-height: 0;
-  color: var(--gamma-milk, #f2ead9);
-  background: color-mix(in srgb, var(--gamma-panel, #11110f) 74%, var(--gamma-ink, #070706));
-  border: 1px solid var(--gamma-line, rgba(242, 234, 217, 0.18));
+  color: var(--presentation-text, var(--gamma-milk, #f2ead9));
+  background: color-mix(
+    in srgb,
+    var(--presentation-panel, var(--gamma-panel, #11110f)) 74%,
+    var(--presentation-bg, var(--gamma-ink, #070706))
+  );
+  border: 1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)));
   border-radius: 6px;
   overflow: hidden;
 `;
@@ -307,8 +314,8 @@ const GammaInlineHeader = styled.div`
   gap: 1rem;
   min-height: 3rem;
   padding: 0.72rem 0.9rem;
-  border-bottom: 1px solid var(--gamma-line, rgba(242, 234, 217, 0.18));
-  color: var(--gamma-milk, #f2ead9);
+  border-bottom: 1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)));
+  color: var(--presentation-text, var(--gamma-milk, #f2ead9));
   font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 0.82rem;
   font-weight: 900;
@@ -324,8 +331,8 @@ const GammaInlineControls = styled.div`
 
 const GammaInlineControl = styled.button`
   min-height: 2.2rem;
-  color: var(--gamma-cyan, #00d2ff);
-  border: 1px solid var(--gamma-line, rgba(242, 234, 217, 0.18));
+  color: var(--presentation-accent, var(--gamma-cyan, #00d2ff));
+  border: 1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)));
   border-radius: 4px;
   padding: 0 0.6rem;
   font: inherit;
@@ -333,7 +340,7 @@ const GammaInlineControl = styled.button`
 `;
 
 const GammaInlineToolbar = styled.div`
-  border-bottom: 1px solid var(--gamma-line, rgba(242, 234, 217, 0.18));
+  border-bottom: 1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)));
 `;
 
 const GammaInlineBody = styled.div`
@@ -341,7 +348,7 @@ const GammaInlineBody = styled.div`
   min-height: 0;
   overflow: auto;
   padding: 1rem;
-  color: var(--gamma-milk, #f2ead9);
+  color: var(--presentation-text, var(--gamma-milk, #f2ead9));
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
   overflow-wrap: anywhere;
@@ -362,6 +369,15 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
   const pagePath = useContext(WindowPathContext);
   const wm = useWindowManager();
   const presentation = usePresentationShell();
+  const storedPresentationHost = readPresentationHostFromSession();
+  const inlinePresentationHost =
+    presentation.host === "beta" || presentation.host === "gamma"
+      ? presentation.host
+      : storedPresentationHost === "beta" || storedPresentationHost === "gamma"
+        ? storedPresentationHost
+        : null;
+  const isInlinePresentation =
+    inlinePresentationHost === "beta" || inlinePresentationHost === "gamma";
   const { t, translateSystemText } = useLocalization();
   const isMobile = useIsMobile();
   const { user } = useAuth();
@@ -443,9 +459,13 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
 
   const effectiveMaximized = isMobile || state.maximized;
 
-  if (presentation.host === "gamma") {
+  if (isInlinePresentation) {
     return (
-      <GammaInlineWindow data-gamma-inline-app-window data-wtf-app-surface="true">
+      <GammaInlineWindow
+        data-gamma-inline-app-window={inlinePresentationHost === "gamma" ? true : undefined}
+        data-beta-inline-app-window={inlinePresentationHost === "beta" ? true : undefined}
+        data-wtf-app-surface="true"
+      >
         <GammaInlineHeader>
           <span>{localizedTitle}</span>
           {isStrictAdmin && adminSurface && (

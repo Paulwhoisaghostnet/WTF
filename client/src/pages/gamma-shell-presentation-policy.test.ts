@@ -58,8 +58,10 @@ test("React95 imports resolve through the presentation adapter for Gamma", () =>
   assert.match(viteSource, /client\/src\/lib\/react95-presentation\.tsx/);
   assert.match(react95PresentationSource, /import \* as React95 from "react95\/dist\/index\.mjs"/);
   assert.match(react95PresentationSource, /return usePresentationShell\(\)\.host === "gamma"/);
-  assert.match(react95PresentationSource, /if \(!isGamma\(\)\) return <Original\.Button/);
-  assert.match(react95PresentationSource, /if \(!isGamma\(\)\) return <Original\.Window/);
+  assert.match(react95PresentationSource, /function isPresentationShell\(\)/);
+  assert.match(react95PresentationSource, /presentation\.host === "beta" \|\| presentation\.host === "gamma"/);
+  assert.match(react95PresentationSource, /if \(!isPresentationShell\(\)\) return <Original\.Button/);
+  assert.match(react95PresentationSource, /if \(!isPresentationShell\(\)\) return <Original\.Window/);
   assert.match(react95PresentationSource, /data-gamma-ui="button"/);
   assert.match(react95PresentationSource, /data-gamma-ui="window"/);
   assert.match(react95PresentationSource, /data-gamma-ui="table"/);

@@ -68,10 +68,22 @@ function isGammaHost(): boolean {
 
 function isGammaShellLocation(location: string): boolean {
   if (isGammaHost()) return true;
+  if (isBetaHost()) return false;
   const pathname = location.split("?")[0]?.split("#")[0] ?? location;
   if (pathname === "/gamma" || pathname.startsWith("/gamma/")) return true;
   if (pathname === "/beta" || pathname.startsWith("/beta/")) return false;
   if (readPresentationHostFromSession() !== "gamma") return false;
+  if (pathname === "/") return true;
+  return Boolean(matchPage(location));
+}
+
+function isBetaShellLocation(location: string): boolean {
+  if (isBetaHost()) return true;
+  if (isGammaHost()) return false;
+  const pathname = location.split("?")[0]?.split("#")[0] ?? location;
+  if (pathname === "/beta" || pathname.startsWith("/beta/")) return true;
+  if (pathname === "/gamma" || pathname.startsWith("/gamma/")) return false;
+  if (readPresentationHostFromSession() !== "beta") return false;
   if (pathname === "/") return true;
   return Boolean(matchPage(location));
 }
@@ -468,7 +480,7 @@ function AppContent() {
   const showLanding = location === "/" && !user;
   const authOverlayActive = showLogin || showRegister || showLanding;
   const gammaShellMatch = isGammaShellLocation(location) ? matchPage("/gamma") : null;
-  const betaHomeMatch = isBetaHost() && location === "/" ? matchPage("/beta") : null;
+  const betaShellMatch = isBetaShellLocation(location) ? matchPage("/beta") : null;
   const skywireStandaloneLocation = skywireStandaloneRouteLocation(location);
   const skywireStandaloneMatch = skywireStandaloneLocation
     ? matchPage(skywireStandaloneLocation)
@@ -497,6 +509,10 @@ function AppContent() {
     return <FullscreenRouteRenderer match={gammaShellMatch} />;
   }
 
+  if (betaShellMatch) {
+    return <FullscreenRouteRenderer match={betaShellMatch} />;
+  }
+
   if (location === "/cli") {
     if (isLoading || !user) {
       return (
@@ -515,10 +531,6 @@ function AppContent() {
       );
     }
     return <WtfOsCliShell />;
-  }
-
-  if (betaHomeMatch) {
-    return <FullscreenRouteRenderer match={betaHomeMatch} />;
   }
 
   if (skywireStandaloneMatch) {

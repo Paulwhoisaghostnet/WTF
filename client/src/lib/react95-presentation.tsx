@@ -9,13 +9,16 @@ import {
   type ReactNode,
 } from "react";
 import * as React95 from "react95/dist/index.mjs";
-import { usePresentationShell } from "./presentation-shell";
+import {
+  readPresentationHostFromSession,
+  usePresentationShell,
+} from "./presentation-shell";
 
 const Original = React95 as any;
 
 const gammaBase: CSSProperties = {
   boxSizing: "border-box",
-  color: "var(--gamma-milk, #f2ead9)",
+  color: "var(--presentation-text, var(--gamma-milk, #f2ead9))",
   fontFamily:
     "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
   letterSpacing: 0,
@@ -28,8 +31,8 @@ const gammaMono: CSSProperties = {
 
 const gammaPanel: CSSProperties = {
   ...gammaBase,
-  background: "color-mix(in srgb, var(--gamma-panel, #11110f) 76%, var(--gamma-ink, #070706))",
-  border: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.18))",
+  background: "color-mix(in srgb, var(--presentation-panel, var(--gamma-panel, #11110f)) 76%, var(--presentation-bg, var(--gamma-ink, #070706)))",
+  border: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
   borderRadius: 6,
 };
 
@@ -37,6 +40,15 @@ type AnyProps = Record<string, any>;
 
 function isGamma() {
   return usePresentationShell().host === "gamma";
+}
+
+function isPresentationShell() {
+  const presentation = usePresentationShell();
+  if (presentation.host === "beta" || presentation.host === "gamma") {
+    return true;
+  }
+  const stored = readPresentationHostFromSession();
+  return stored === "beta" || stored === "gamma";
 }
 
 function mergeStyle(...styles: Array<CSSProperties | undefined>): CSSProperties {
@@ -71,7 +83,7 @@ export const Button = forwardRef<HTMLButtonElement, AnyProps>(function Button(
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.Button ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.Button ref={ref} {...props} />;
   const {
     children,
     className,
@@ -103,15 +115,15 @@ export const Button = forwardRef<HTMLButtonElement, AnyProps>(function Button(
           minHeight: square ? "2.5rem" : "2.45rem",
           padding: square ? 0 : "0.45rem 0.72rem",
           background: primary
-            ? "var(--gamma-cyan, #00d2ff)"
+            ? "var(--presentation-accent, var(--gamma-cyan, #00d2ff))"
             : "transparent",
           color: primary
-            ? "var(--gamma-ink, #070706)"
-            : "var(--gamma-cyan, #00d2ff)",
-          border: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.18))",
+            ? "var(--presentation-bg, var(--gamma-ink, #070706))"
+            : "var(--presentation-accent, var(--gamma-cyan, #00d2ff))",
+          border: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
           borderColor: primary
-            ? "var(--gamma-cyan, #00d2ff)"
-            : "var(--gamma-line, rgba(242, 234, 217, 0.18))",
+            ? "var(--presentation-accent, var(--gamma-cyan, #00d2ff))"
+            : "var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
           borderRadius: 5,
           font: "inherit",
           fontWeight: 800,
@@ -130,7 +142,7 @@ export const Anchor = forwardRef<HTMLAnchorElement, AnyProps>(function Anchor(
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.Anchor ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.Anchor ref={ref} {...props} />;
   return (
     <a
       ref={ref}
@@ -138,7 +150,7 @@ export const Anchor = forwardRef<HTMLAnchorElement, AnyProps>(function Anchor(
       {...props}
       style={mergeStyle(
         {
-          color: "var(--gamma-cyan, #00d2ff)",
+          color: "var(--presentation-accent, var(--gamma-cyan, #00d2ff))",
           textDecoration: "underline",
           textUnderlineOffset: "0.18em",
         },
@@ -152,7 +164,7 @@ export const GroupBox = forwardRef<HTMLFieldSetElement, AnyProps>(function Group
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.GroupBox ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.GroupBox ref={ref} {...props} />;
   const { children, className, label, style, ...rest } = props;
   return (
     <fieldset
@@ -175,7 +187,7 @@ export const GroupBox = forwardRef<HTMLFieldSetElement, AnyProps>(function Group
           style={{
             ...gammaMono,
             padding: "0 0.35rem",
-            color: "var(--gamma-cyan, #00d2ff)",
+            color: "var(--presentation-accent, var(--gamma-cyan, #00d2ff))",
             fontSize: "0.76rem",
             fontWeight: 900,
             textTransform: "uppercase",
@@ -192,7 +204,7 @@ export const GroupBox = forwardRef<HTMLFieldSetElement, AnyProps>(function Group
 export const Fieldset = GroupBox;
 
 export const Panel = forwardRef<HTMLDivElement, AnyProps>(function Panel(props, ref) {
-  if (!isGamma()) return <Original.Panel ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.Panel ref={ref} {...props} />;
   return (
     <div
       ref={ref}
@@ -214,7 +226,7 @@ export const Window = forwardRef<HTMLDivElement, AnyProps>(function Window(
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.Window ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.Window ref={ref} {...props} />;
   return (
     <section
       ref={ref}
@@ -235,7 +247,7 @@ export const Window = forwardRef<HTMLDivElement, AnyProps>(function Window(
 
 export const WindowHeader = forwardRef<HTMLDivElement, AnyProps>(
   function WindowHeader(props, ref) {
-    if (!isGamma()) return <Original.WindowHeader ref={ref} {...props} />;
+    if (!isPresentationShell()) return <Original.WindowHeader ref={ref} {...props} />;
     return (
       <header
         ref={ref}
@@ -249,8 +261,8 @@ export const WindowHeader = forwardRef<HTMLDivElement, AnyProps>(
             justifyContent: "space-between",
             minHeight: "2.9rem",
             padding: "0.65rem 0.8rem",
-            color: "var(--gamma-milk, #f2ead9)",
-            borderBottom: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.18))",
+            color: "var(--presentation-text, var(--gamma-milk, #f2ead9))",
+            borderBottom: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
             fontWeight: 900,
             textTransform: "uppercase",
           },
@@ -263,7 +275,7 @@ export const WindowHeader = forwardRef<HTMLDivElement, AnyProps>(
 
 export const WindowContent = forwardRef<HTMLDivElement, AnyProps>(
   function WindowContent(props, ref) {
-    if (!isGamma()) return <Original.WindowContent ref={ref} {...props} />;
+    if (!isPresentationShell()) return <Original.WindowContent ref={ref} {...props} />;
     return (
       <div
         ref={ref}
@@ -288,17 +300,17 @@ function inputStyle(fullWidth?: boolean): CSSProperties {
     width: fullWidth ? "100%" : undefined,
     minHeight: "2.35rem",
     padding: "0.42rem 0.55rem",
-    background: "var(--gamma-ink, #070706)",
-    color: "var(--gamma-milk, #f2ead9)",
-    border: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.18))",
+    background: "var(--presentation-bg, var(--gamma-ink, #070706))",
+    color: "var(--presentation-text, var(--gamma-milk, #f2ead9))",
+    border: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
     borderRadius: 4,
-    outlineColor: "var(--gamma-cyan, #00d2ff)",
+    outlineColor: "var(--presentation-accent, var(--gamma-cyan, #00d2ff))",
   };
 }
 
 export const TextInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, AnyProps>(
   function TextInput(props, ref) {
-    if (!isGamma()) return <Original.TextInput ref={ref as any} {...props} />;
+    if (!isPresentationShell()) return <Original.TextInput ref={ref as any} {...props} />;
     const { className, fullWidth, multiline, style, ...rest } = props;
     const Comp = multiline ? "textarea" : "input";
     return (
@@ -334,7 +346,7 @@ type GammaSelectProps<T = any> = AnyProps & {
 
 export const Select = forwardRef<HTMLSelectElement, GammaSelectProps>(
   function Select(props, ref) {
-    if (!isGamma()) return <Original.Select ref={ref as any} {...props} />;
+    if (!isPresentationShell()) return <Original.Select ref={ref as any} {...props} />;
     const {
       className,
       defaultValue,
@@ -399,7 +411,7 @@ export const Checkbox = forwardRef<HTMLInputElement, AnyProps>(function Checkbox
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.Checkbox ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.Checkbox ref={ref} {...props} />;
   const { className, label, style, ...rest } = props;
   return (
     <label
@@ -424,7 +436,7 @@ export const Checkbox = forwardRef<HTMLInputElement, AnyProps>(function Checkbox
         style={{
           width: "1rem",
           height: "1rem",
-          accentColor: "var(--gamma-cyan, #00d2ff)",
+          accentColor: "var(--presentation-accent, var(--gamma-cyan, #00d2ff))",
         }}
       />
       {label != null ? <span>{label}</span> : null}
@@ -436,7 +448,7 @@ export const Separator = forwardRef<HTMLHRElement, AnyProps>(function Separator(
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.Separator ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.Separator ref={ref} {...props} />;
   return (
     <hr
       ref={ref}
@@ -446,7 +458,7 @@ export const Separator = forwardRef<HTMLHRElement, AnyProps>(function Separator(
         {
           width: "100%",
           border: 0,
-          borderTop: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.18))",
+          borderTop: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
           margin: "0.65rem 0",
         },
         props.style
@@ -459,7 +471,7 @@ export const Hourglass = forwardRef<HTMLSpanElement, AnyProps>(function Hourglas
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.Hourglass ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.Hourglass ref={ref} {...props} />;
   const { size, style, ...rest } = props;
   const dimension = typeof size === "number" ? size : 28;
   return (
@@ -477,8 +489,8 @@ export const Hourglass = forwardRef<HTMLSpanElement, AnyProps>(function Hourglas
           justifyContent: "center",
           width: dimension,
           height: dimension,
-          color: "var(--gamma-cyan, #00d2ff)",
-          border: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.18))",
+          color: "var(--presentation-accent, var(--gamma-cyan, #00d2ff))",
+          border: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
           borderRadius: 4,
           fontSize: Math.max(11, Math.floor(dimension * 0.38)),
           fontWeight: 900,
@@ -493,7 +505,7 @@ export const Hourglass = forwardRef<HTMLSpanElement, AnyProps>(function Hourglas
 
 export const ProgressBar = forwardRef<HTMLDivElement, AnyProps>(
   function ProgressBar(props, ref) {
-    if (!isGamma()) return <Original.ProgressBar ref={ref} {...props} />;
+    if (!isPresentationShell()) return <Original.ProgressBar ref={ref} {...props} />;
     const value = Number(props.value ?? 0);
     return (
       <div
@@ -509,8 +521,8 @@ export const ProgressBar = forwardRef<HTMLDivElement, AnyProps>(
             height: "0.82rem",
             minWidth: "8rem",
             overflow: "hidden",
-            background: "var(--gamma-ink, #070706)",
-            border: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.18))",
+            background: "var(--presentation-bg, var(--gamma-ink, #070706))",
+            border: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
             borderRadius: 4,
           },
           props.style
@@ -521,7 +533,7 @@ export const ProgressBar = forwardRef<HTMLDivElement, AnyProps>(
             display: "block",
             width: `${Math.max(0, Math.min(100, value))}%`,
             height: "100%",
-            background: "var(--gamma-cyan, #00d2ff)",
+            background: "var(--presentation-progress, var(--presentation-accent, var(--gamma-cyan, #00d2ff)))",
           }}
         />
       </div>
@@ -533,7 +545,7 @@ export const AppBar = forwardRef<HTMLDivElement, AnyProps>(function AppBar(
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.AppBar ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.AppBar ref={ref} {...props} />;
   return (
     <div
       ref={ref}
@@ -557,7 +569,7 @@ export const Toolbar = forwardRef<HTMLDivElement, AnyProps>(function Toolbar(
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.Toolbar ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.Toolbar ref={ref} {...props} />;
   return (
     <div
       ref={ref}
@@ -571,7 +583,7 @@ export const Toolbar = forwardRef<HTMLDivElement, AnyProps>(function Toolbar(
           gap: "0.45rem",
           minHeight: "2.75rem",
           padding: "0.4rem",
-          border: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.18))",
+          border: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
           borderRadius: 6,
         },
         props.style
@@ -584,7 +596,7 @@ export const MenuList = forwardRef<HTMLUListElement, AnyProps>(function MenuList
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.MenuList ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.MenuList ref={ref} {...props} />;
   return (
     <ul
       ref={ref}
@@ -608,7 +620,7 @@ export const MenuList = forwardRef<HTMLUListElement, AnyProps>(function MenuList
 
 export const MenuListItem = forwardRef<HTMLLIElement, AnyProps>(
   function MenuListItem(props, ref) {
-    if (!isGamma()) return <Original.MenuListItem ref={ref} {...props} />;
+    if (!isPresentationShell()) return <Original.MenuListItem ref={ref} {...props} />;
     return (
       <li
         ref={ref}
@@ -632,7 +644,7 @@ export const MenuListItem = forwardRef<HTMLLIElement, AnyProps>(
 );
 
 export const Tabs = forwardRef<HTMLDivElement, AnyProps>(function Tabs(props, ref) {
-  if (!isGamma()) return <Original.Tabs ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.Tabs ref={ref} {...props} />;
   const { children, onChange, value, ...rest } = props;
   const enhanced = Children.map(children, (child) => {
     if (!isValidElement(child)) return child;
@@ -656,7 +668,7 @@ export const Tabs = forwardRef<HTMLDivElement, AnyProps>(function Tabs(props, re
           display: "flex",
           flexWrap: "wrap",
           gap: "0.35rem",
-          borderBottom: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.18))",
+          borderBottom: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
         },
         props.style
       )}
@@ -667,7 +679,7 @@ export const Tabs = forwardRef<HTMLDivElement, AnyProps>(function Tabs(props, re
 });
 
 export const Tab = forwardRef<HTMLButtonElement, AnyProps>(function Tab(props, ref) {
-  if (!isGamma()) return <Original.Tab ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.Tab ref={ref} {...props} />;
   const { children, style, ...rest } = props;
   const selected = Boolean(props["aria-selected"]);
   return (
@@ -683,15 +695,15 @@ export const Tab = forwardRef<HTMLButtonElement, AnyProps>(function Tab(props, r
           minHeight: "2.4rem",
           padding: "0.45rem 0.7rem",
           background: selected
-            ? "var(--gamma-cyan, #00d2ff)"
+            ? "var(--presentation-accent, var(--gamma-cyan, #00d2ff))"
             : "transparent",
           color: selected
-            ? "var(--gamma-ink, #070706)"
-            : "var(--gamma-cyan, #00d2ff)",
-          border: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.18))",
+            ? "var(--presentation-bg, var(--gamma-ink, #070706))"
+            : "var(--presentation-accent, var(--gamma-cyan, #00d2ff))",
+          border: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
           borderBottomColor: selected
-            ? "var(--gamma-cyan, #00d2ff)"
-            : "var(--gamma-line, rgba(242, 234, 217, 0.18))",
+            ? "var(--presentation-accent, var(--gamma-cyan, #00d2ff))"
+            : "var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
           borderRadius: "5px 5px 0 0",
           cursor: "pointer",
           fontWeight: 900,
@@ -708,7 +720,7 @@ export const TabBody = forwardRef<HTMLDivElement, AnyProps>(function TabBody(
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.TabBody ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.TabBody ref={ref} {...props} />;
   return (
     <div
       ref={ref}
@@ -738,7 +750,7 @@ export const Table = forwardRef<HTMLTableElement, AnyProps>(function Table(
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.Table ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.Table ref={ref} {...props} />;
   return (
     <table
       ref={ref}
@@ -747,7 +759,7 @@ export const Table = forwardRef<HTMLTableElement, AnyProps>(function Table(
       style={tableDisplay(props, "table", {
         width: "100%",
         borderCollapse: "collapse",
-        border: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.18))",
+        border: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
       })}
     />
   );
@@ -755,14 +767,14 @@ export const Table = forwardRef<HTMLTableElement, AnyProps>(function Table(
 
 export const TableHead = forwardRef<HTMLTableSectionElement, AnyProps>(
   function TableHead(props, ref) {
-    if (!isGamma()) return <Original.TableHead ref={ref} {...props} />;
+    if (!isPresentationShell()) return <Original.TableHead ref={ref} {...props} />;
     return <thead ref={ref} data-gamma-ui="table-head" {...omitPresentationProps(props)} style={tableDisplay(props, "table-header-group")} />;
   }
 );
 
 export const TableBody = forwardRef<HTMLTableSectionElement, AnyProps>(
   function TableBody(props, ref) {
-    if (!isGamma()) return <Original.TableBody ref={ref} {...props} />;
+    if (!isPresentationShell()) return <Original.TableBody ref={ref} {...props} />;
     return <tbody ref={ref} data-gamma-ui="table-body" {...omitPresentationProps(props)} style={tableDisplay(props, "table-row-group")} />;
   }
 );
@@ -771,13 +783,13 @@ export const TableRow = forwardRef<HTMLTableRowElement, AnyProps>(function Table
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.TableRow ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.TableRow ref={ref} {...props} />;
   return <tr ref={ref} data-gamma-ui="table-row" {...omitPresentationProps(props)} style={tableDisplay(props, "table-row")} />;
 });
 
 export const TableHeadCell = forwardRef<HTMLTableCellElement, AnyProps>(
   function TableHeadCell(props, ref) {
-    if (!isGamma()) return <Original.TableHeadCell ref={ref} {...props} />;
+    if (!isPresentationShell()) return <Original.TableHeadCell ref={ref} {...props} />;
     return (
       <th
         ref={ref}
@@ -787,8 +799,8 @@ export const TableHeadCell = forwardRef<HTMLTableCellElement, AnyProps>(
           {
             ...gammaMono,
             padding: "0.52rem 0.6rem",
-            color: "var(--gamma-cyan, #00d2ff)",
-            borderBottom: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.18))",
+            color: "var(--presentation-accent, var(--gamma-cyan, #00d2ff))",
+            borderBottom: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.18)))",
             fontSize: "0.76rem",
             fontWeight: 900,
             textAlign: "left",
@@ -803,7 +815,7 @@ export const TableHeadCell = forwardRef<HTMLTableCellElement, AnyProps>(
 
 export const TableDataCell = forwardRef<HTMLTableCellElement, AnyProps>(
   function TableDataCell(props, ref) {
-    if (!isGamma()) return <Original.TableDataCell ref={ref} {...props} />;
+    if (!isPresentationShell()) return <Original.TableDataCell ref={ref} {...props} />;
     return (
       <td
         ref={ref}
@@ -813,7 +825,7 @@ export const TableDataCell = forwardRef<HTMLTableCellElement, AnyProps>(
           {
             ...gammaBase,
             padding: "0.52rem 0.6rem",
-            borderTop: "1px solid var(--gamma-line, rgba(242, 234, 217, 0.12))",
+            borderTop: "1px solid var(--presentation-line, var(--gamma-line, rgba(242, 234, 217, 0.12)))",
             verticalAlign: "top",
           },
           props.style
@@ -827,7 +839,7 @@ export const Tooltip = forwardRef<HTMLSpanElement, AnyProps>(function Tooltip(
   props,
   ref
 ) {
-  if (!isGamma()) return <Original.Tooltip ref={ref} {...props} />;
+  if (!isPresentationShell()) return <Original.Tooltip ref={ref} {...props} />;
   const { children, text, style, ...rest } = props;
   return (
     <span
