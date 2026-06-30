@@ -10,6 +10,7 @@ import styled from "styled-components";
 import { Window, WindowHeader, WindowContent, Button } from "react95";
 import { useWindowManager, WindowPathContext } from "../../lib/window-context";
 import { useAuth } from "../../lib/auth-context";
+import { useLocalization } from "../../lib/localization";
 import { NativeAdminPanel } from "../../features/admin-os/NativeAdminPanel";
 import { findAdminSurfaceForPath } from "../../features/admin-os/admin-surface-registry";
 import { MOBILE_BP, MOBILE } from "../../global-styles";
@@ -296,6 +297,7 @@ interface AppWindowProps {
 export function AppWindow({ title, children, toolbar }: AppWindowProps) {
   const pagePath = useContext(WindowPathContext);
   const wm = useWindowManager();
+  const { t, translateSystemText } = useLocalization();
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
@@ -305,10 +307,14 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
   const isFocused = wm.focusedPath === windowKey;
   const isStrictAdmin = user?.role === "admin";
   const adminSurface = findAdminSurfaceForPath(pagePath);
+  const localizedTitle = translateSystemText(title);
+  const localizedAdminLabel = adminSurface
+    ? translateSystemText(adminSurface.label)
+    : "";
 
   useEffect(() => {
-    wm.setTitle(windowKey, title);
-  }, [windowKey, title]);
+    wm.setTitle(windowKey, localizedTitle);
+  }, [windowKey, localizedTitle]);
 
   const handleFocus = useCallback(() => {
     if (wm.focusedPath !== windowKey) wm.focus(windowKey);
@@ -388,18 +394,22 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
         onMouseDown={handleDragStart}
         onDoubleClick={() => !isMobile && wm.toggleMaximize(windowKey)}
       >
-        <TitleText>{title}</TitleText>
+        <TitleText>{localizedTitle}</TitleText>
         <HeaderButtons>
           {isStrictAdmin && adminSurface && (
             <WinButton
               size="sm"
               data-compact-control="true"
-              aria-label={`${adminSurface.label} admin settings`}
+              aria-label={t("appWindow.adminSettings", {
+                label: localizedAdminLabel,
+              })}
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
                 setAdminPanelOpen((open) => !open);
               }}
-              title={`${adminSurface.label} admin settings`}
+              title={t("appWindow.adminSettings", {
+                label: localizedAdminLabel,
+              })}
             >
               ADM
             </WinButton>
@@ -409,8 +419,8 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
               <WinButton
                 size="sm"
                 data-compact-control="true"
-                aria-label={`Minimize ${title}`}
-                title={`Minimize ${title}`}
+                aria-label={t("appWindow.minimize", { title: localizedTitle })}
+                title={t("appWindow.minimize", { title: localizedTitle })}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   wm.minimize(windowKey);
@@ -421,8 +431,16 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
               <WinButton
                 size="sm"
                 data-compact-control="true"
-                aria-label={`${state.maximized ? "Restore" : "Maximize"} ${title}`}
-                title={`${state.maximized ? "Restore" : "Maximize"} ${title}`}
+                aria-label={
+                  state.maximized
+                    ? t("appWindow.restore", { title: localizedTitle })
+                    : t("appWindow.maximize", { title: localizedTitle })
+                }
+                title={
+                  state.maximized
+                    ? t("appWindow.restore", { title: localizedTitle })
+                    : t("appWindow.maximize", { title: localizedTitle })
+                }
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   wm.toggleMaximize(windowKey);
@@ -435,8 +453,8 @@ export function AppWindow({ title, children, toolbar }: AppWindowProps) {
           <WinButton
             size="sm"
             data-compact-control="true"
-            aria-label={`Close ${title}`}
-            title={`Close ${title}`}
+            aria-label={t("appWindow.close", { title: localizedTitle })}
+            title={t("appWindow.close", { title: localizedTitle })}
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
               wm.close(windowKey);

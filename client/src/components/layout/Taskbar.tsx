@@ -7,6 +7,7 @@ import { MusicMiniPlayer } from "../../features/music/MusicMiniPlayer";
 import { useSharedMusicPlayer } from "../../features/music/MusicPlayerContext";
 import { useWallet } from "../../lib/wallet-context";
 import { useWindowManager } from "../../lib/window-context";
+import { useLocalization } from "../../lib/localization";
 import { StartMenu } from "./StartMenu";
 import { Win95ContextMenu, type Win95ContextMenuEntry } from "./Win95ContextMenu";
 import { MOBILE } from "../../global-styles";
@@ -323,6 +324,7 @@ export function Taskbar({
   const musicPlayer = useSharedMusicPlayer();
   const { address, isConnecting, connect, disconnect } = useWallet();
   const wm = useWindowManager();
+  const { t, translateSystemText, formatDate } = useLocalization();
   const popupRef = useRef<HTMLDivElement>(null);
   const weatherPopupRef = useRef<HTMLDivElement>(null);
 
@@ -385,18 +387,18 @@ export function Taskbar({
       y: event.clientY,
       entries: [
         {
-          label: minimized ? "Restore" : "Focus",
+          label: minimized ? t("taskbar.context.restore") : t("taskbar.context.focus"),
           disabled: focused,
           onSelect: () => (minimized ? wm.restore(path) : wm.focus(path)),
         },
         {
-          label: "Minimize",
+          label: t("taskbar.context.minimize"),
           disabled: minimized,
           onSelect: () => wm.minimize(path),
         },
         { kind: "separator" },
         {
-          label: "Close",
+          label: t("taskbar.context.close"),
           onSelect: () => wm.close(path),
         },
       ],
@@ -411,23 +413,28 @@ export function Taskbar({
           <StartButton
             onClick={() => setStartOpen(!startOpen)}
             active={startOpen ? true : undefined}
-            aria-label="Open Stuffs menu"
+            aria-label={t("taskbar.openStart")}
             size="sm"
           >
-            Stuffs
+            {t("taskbar.start")}
           </StartButton>
 
           <WindowButtons>
             {wm.openPages.map((path) => {
-              const title = wm.titles[path] || path.replace(/^\//, "") || "Window";
+              const title = translateSystemText(
+                wm.titles[path] || path.replace(/^\//, "") || "Window"
+              );
               const isActive = wm.focusedPath === path && !wm.isMinimized(path);
+              const action = isActive
+                ? t("taskbar.windowAction.minimize")
+                : t("taskbar.windowAction.focus");
               return (
                 <WindowButton
                   key={path}
                   size="sm"
                   $active={isActive}
                   active={isActive ? true : undefined}
-                  title={`${title} - click to ${isActive ? "minimize" : "focus"}, middle-click to close`}
+                  title={t("taskbar.windowTitle", { title, action })}
                   onClick={(event: ReactMouseEvent) => {
                     if (event.shiftKey) {
                       openWindowContextMenu(event, path);
@@ -450,9 +457,9 @@ export function Taskbar({
               data-compact-control="true"
               size="sm"
               active={wm.allWindowsMinimized ? true : undefined}
-              aria-label={wm.allWindowsMinimized ? "Restore windows" : "Show desktop"}
+              aria-label={wm.allWindowsMinimized ? t("taskbar.restoreWindows") : t("taskbar.showDesktop")}
               aria-pressed={wm.allWindowsMinimized}
-              title={wm.allWindowsMinimized ? "Restore windows" : "Show desktop"}
+              title={wm.allWindowsMinimized ? t("taskbar.restoreWindows") : t("taskbar.showDesktop")}
               onClick={() => {
                 setStartOpen(false);
                 setWalletPopupOpen(false);
@@ -472,9 +479,9 @@ export function Taskbar({
                 data-compact-control="true"
                 size="sm"
                 active={hamsterCareOpen ? true : undefined}
-                aria-label="Pet care"
+                aria-label={t("taskbar.petCare")}
                 aria-pressed={hamsterCareOpen}
-                title="Pet care"
+                title={t("taskbar.petCare")}
                 onClick={() => {
                   setWalletPopupOpen(false);
                   setWeatherPopupOpen(false);
@@ -490,10 +497,10 @@ export function Taskbar({
                 data-weather-tray-toggle="true"
                 size="sm"
                 active={weatherPopupOpen || weatherRule !== "off" ? true : undefined}
-                aria-label="Desktop weather"
+                aria-label={t("taskbar.weather")}
                 aria-expanded={weatherPopupOpen}
                 aria-pressed={weatherRule !== "off"}
-                title={`Desktop weather: ${weatherRule}`}
+                title={t("taskbar.weatherState", { rule: weatherRule })}
                 onClick={() => {
                   setWalletPopupOpen(false);
                   setWeatherPopupOpen((open) => !open);
@@ -506,18 +513,18 @@ export function Taskbar({
               type="button"
               data-wallet-tray-toggle="true"
               $connected={!!address}
-              aria-label={address ? "Open wallet tray" : "Open wallet connection tray"}
+              aria-label={address ? t("taskbar.walletTrayOpen") : t("taskbar.walletConnectionTrayOpen")}
               aria-expanded={walletPopupOpen}
               onClick={() => {
                 setWeatherPopupOpen(false);
                 setWalletPopupOpen((v) => !v);
               }}
-              title={address ? `Connected: ${address}` : "Wallet not connected"}
+              title={address ? t("taskbar.walletConnectedTitle", { address }) : t("taskbar.walletDisconnectedTitle")}
             >
               {address ? "📶" : "📡"}
             </WifiIcon>
             <Clock>
-              {time.toLocaleTimeString([], {
+              {formatDate(time, {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
@@ -529,10 +536,10 @@ export function Taskbar({
       {walletPopupOpen && (
         <WalletPopup ref={popupRef as any}>
           <WindowHeader style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "var(--wtf-type-caption, 13px)" }}>Wallet</span>
+            <span style={{ fontSize: "var(--wtf-type-caption, 13px)" }}>{t("taskbar.wallet")}</span>
             <TrayPopupCloseButton
               size="sm"
-              aria-label="Close wallet tray"
+              aria-label={t("taskbar.walletTrayClose")}
               onClick={() => setWalletPopupOpen(false)}
             >
               ✕
@@ -542,7 +549,7 @@ export function Taskbar({
             {address ? (
               <>
                 <div style={{ fontSize: "var(--wtf-type-caption, 13px)", marginBottom: 6, color: "#008000", fontWeight: "bold" }}>
-                  Connected
+                  {t("taskbar.walletConnected")}
                 </div>
                 <div style={{ fontSize: "var(--wtf-type-caption, 13px)", fontFamily: "var(--wtf-mono-font)", wordBreak: "break-all", marginBottom: 8 }}>
                   {address}
@@ -555,13 +562,13 @@ export function Taskbar({
                     setWalletPopupOpen(false);
                   }}
                 >
-                  Disconnect Wallet
+                  {t("taskbar.walletDisconnect")}
                 </Button>
               </>
             ) : (
               <>
                 <div style={{ fontSize: "var(--wtf-type-caption, 13px)", marginBottom: 6, color: "#808080" }}>
-                  No wallet connected
+                  {t("taskbar.walletNoConnection")}
                 </div>
                 <Button
                   size="sm"
@@ -572,7 +579,7 @@ export function Taskbar({
                     setWalletPopupOpen(false);
                   }}
                 >
-                  {isConnecting ? "Connecting..." : "Connect Wallet"}
+                  {isConnecting ? t("taskbar.walletConnecting") : t("taskbar.walletConnect")}
                 </Button>
               </>
             )}
@@ -585,7 +592,7 @@ export function Taskbar({
             <span style={{ fontSize: "var(--wtf-type-caption, 13px)" }}>WX</span>
             <TrayPopupCloseButton
               size="sm"
-              aria-label="Close desktop weather"
+              aria-label={t("taskbar.weatherClose")}
               onClick={() => setWeatherPopupOpen(false)}
             >
               ✕
@@ -594,7 +601,12 @@ export function Taskbar({
           <WeatherPopupContent>
             {DESKTOP_WEATHER_RULES.map((rule) => {
               const active = weatherRule === rule;
-              const label = rule === "off" ? "Off" : rule === "gentle" ? "Gentle" : "Stormy";
+              const label =
+                rule === "off"
+                  ? t("taskbar.weather.off")
+                  : rule === "gentle"
+                    ? t("taskbar.weather.gentle")
+                    : t("taskbar.weather.stormy");
               return (
                 <WeatherOptionButton
                   key={rule}
@@ -602,7 +614,7 @@ export function Taskbar({
                   size="sm"
                   $active={active}
                   active={active ? true : undefined}
-                  aria-label={`Set desktop weather to ${label}`}
+                  aria-label={t("taskbar.weatherSet", { label })}
                   onClick={() => onWeatherRuleChange(rule)}
                 >
                   {label}

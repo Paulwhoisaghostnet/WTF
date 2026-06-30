@@ -5887,3 +5887,13 @@
 **Why it mattered**: Font removal and default-font settings are only end-to-end when every ingress path preserves intent. A room UI can remove MEK while the realtime relay quietly reintroduces old defaults, and the test harness can hide the production mismatch.
 
 **Rule**: For WTF LIVE chat typography changes, update client send/receive normalization, server WebSocket normalization, and the Playwright relay together. Missing `style` means "receiver decides"; only sanitize and attach a style object when the sender actually supplied one.
+
+---
+
+## 2026-06-29 - Locale-only updates must reset locale-coupled defaults
+
+**What happened**: The first localization normalizer accepted `{ locale: "es" }` but kept the previous fallback region, so a Spanish-only update normalized to `es-ES` with region `US` instead of Spain's default `ES`. Focused unit coverage caught it before the browser proof.
+
+**Why it mattered**: Language and region are distinct settings, but region defaults are still locale-coupled when the user changes only the display language. Keeping the old region creates surprising date/number behavior and can make persisted settings look internally inconsistent.
+
+**Rule**: When normalizing preference objects with related fields, detect when the primary field changes and no explicit dependent field was supplied. In that case, derive the dependent default from the new primary value instead of blindly carrying the fallback forward.

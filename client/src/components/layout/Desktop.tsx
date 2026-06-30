@@ -72,11 +72,18 @@ import {
   type DesktopAppearance,
   type DesktopIconLayout,
 } from "@shared/desktop";
+import {
+  DEFAULT_LOCALIZATION_SETTINGS,
+  type LocalizationSettings,
+} from "@shared/localization";
 import type { DesktopAppsResponse } from "@shared/desktop-apps";
+import { useLocalization } from "../../lib/localization";
 
 type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
   iconLayout: DesktopIconLayout;
+  localization: LocalizationSettings;
+  updatedAt: string | null;
 };
 
 type DesktopClientEventPayload = {
@@ -378,6 +385,7 @@ export function Desktop({
 }) {
   const wm = useWindowManager();
   const { user } = useAuth();
+  const { t, translateSystemText } = useLocalization();
   const qc = useQueryClient();
   const contentRef = useRef<HTMLDivElement>(null);
   const hotCornerTimer = useRef<number | null>(null);
@@ -432,6 +440,12 @@ export function Desktop({
           previous?.appearance ??
           DEFAULT_DESKTOP_APPEARANCE,
         iconLayout: payload.iconLayout ?? current?.iconLayout ?? previous?.iconLayout ?? {},
+        localization:
+          payload.localization ??
+          current?.localization ??
+          previous?.localization ??
+          DEFAULT_LOCALIZATION_SETTINGS,
+        updatedAt: current?.updatedAt ?? previous?.updatedAt ?? null,
       }));
       return { previous, revision };
     },
@@ -640,6 +654,14 @@ export function Desktop({
           }))
         : visibleIcons,
     [blangsCursed, visibleIcons]
+  );
+  const localizedRenderedVisibleIcons = useMemo<DesktopIconDef[]>(
+    () =>
+      renderedVisibleIcons.map((icon) => ({
+        ...icon,
+        label: translateSystemText(icon.label),
+      })),
+    [renderedVisibleIcons, translateSystemText]
   );
   const shortcutIconDefs = useMemo<DesktopIconDef[]>(
     () =>
@@ -985,14 +1007,14 @@ export function Desktop({
       event.stopPropagation();
       const entries: Win95ContextMenuEntry[] = [
         {
-          label: "Open",
+          label: t("desktop.context.open"),
           disabled: !def.openPath || appAccessBlocked,
           onSelect: () => handleDesktopIconOpen(def),
         },
       ];
       if (def.openPath && !appAccessBlocked) {
         entries.push({
-          label: "Create Shortcut",
+          label: t("desktop.context.createShortcut"),
           onSelect: () =>
             addDesktopShortcut(
               {
@@ -1008,7 +1030,7 @@ export function Desktop({
       entries.push(
         { kind: "separator" },
         {
-          label: "Properties",
+          label: t("desktop.context.properties"),
           disabled: true,
           onSelect: () => {},
         }
@@ -1022,7 +1044,7 @@ export function Desktop({
         metadata: { label: def.label },
       });
     },
-    [addDesktopShortcut, appAccessBlocked, handleDesktopIconOpen, reportDesktopEvent]
+    [addDesktopShortcut, appAccessBlocked, handleDesktopIconOpen, reportDesktopEvent, t]
   );
 
   const openShortcutContextMenu = useCallback(
@@ -1037,7 +1059,7 @@ export function Desktop({
         y: event.clientY,
         entries: [
           {
-            label: "Open",
+            label: t("desktop.context.open"),
             disabled: appAccessBlocked,
             onSelect: () => {
               if (appAccessBlocked) return;
@@ -1053,7 +1075,7 @@ export function Desktop({
           },
           { kind: "separator" },
           {
-            label: "Delete Shortcut",
+            label: t("desktop.context.deleteShortcut"),
             onSelect: () => {
               setDesktopShortcuts((current) => current.filter((item) => item.id !== shortcut.id));
               reportDesktopEvent({
@@ -1066,7 +1088,7 @@ export function Desktop({
             },
           },
           {
-            label: "Properties",
+            label: t("desktop.context.properties"),
             disabled: true,
             onSelect: () => {},
           },
@@ -1080,7 +1102,7 @@ export function Desktop({
         metadata: { label: shortcut.label, path: shortcut.path },
       });
     },
-    [appAccessBlocked, reportDesktopEvent, wm]
+    [appAccessBlocked, reportDesktopEvent, t, wm]
   );
 
   const openDesktopItemContextMenu = useCallback(
@@ -1108,14 +1130,14 @@ export function Desktop({
           },
           { kind: "separator" },
           {
-            label: "Remove from Desktop",
+            label: t("desktop.context.removeFromDesktop"),
             onSelect: () => {
               desktopArtifacts.removeDesktopItem(item.id);
               handleDesktopItemInteract(item, "context_remove");
             },
           },
           {
-            label: "Properties",
+            label: t("desktop.context.properties"),
             disabled: true,
             onSelect: () => {},
           },
@@ -1129,7 +1151,7 @@ export function Desktop({
         metadata: { label },
       });
     },
-    [desktopArtifacts, handleDesktopItemInteract, reportDesktopEvent]
+    [desktopArtifacts, handleDesktopItemInteract, reportDesktopEvent, t]
   );
 
   const handleShortcutMove = useCallback(
@@ -1239,19 +1261,19 @@ export function Desktop({
         y: event.clientY,
         entries: [
           {
-            label: "Refresh",
+            label: t("desktop.context.refresh"),
             onSelect: () => {
               void qc.invalidateQueries({ queryKey: ["desktop", "apps"] });
               void qc.invalidateQueries({ queryKey: DESKTOP_SETTINGS_QUERY_KEY });
             },
           },
           {
-            label: "Reset Native Icons",
+            label: t("desktop.context.resetNativeIcons"),
             onSelect: resetNativeIconLayout,
           },
           { kind: "separator" },
           {
-            label: "System Appearance",
+            label: t("desktop.context.systemAppearance"),
             disabled: appAccessBlocked,
             onSelect: () => wm.openPage("/desktop-settings"),
           },
@@ -1265,7 +1287,7 @@ export function Desktop({
         metadata: { source: "surface" },
       });
     },
-    [appAccessBlocked, qc, reportDesktopEvent, resetNativeIconLayout, targetOwnsDesktopInteraction, wm]
+    [appAccessBlocked, qc, reportDesktopEvent, resetNativeIconLayout, targetOwnsDesktopInteraction, t, wm]
   );
 
   const handleDesktopPointerDown = useCallback(
@@ -1358,7 +1380,7 @@ export function Desktop({
         {!suspendDesktopEffects ? (
           <>
             <DesktopSurface>
-              {renderedVisibleIcons.map((def) => (
+              {localizedRenderedVisibleIcons.map((def) => (
                 <DraggableIcon
                   key={def.key}
                   def={def}

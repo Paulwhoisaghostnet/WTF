@@ -31,6 +31,7 @@ import {
 import { AppWindow } from "../components/layout/AppWindow";
 import { HamsterPixelSprite } from "../components/layout/HamsterPixelSprite";
 import { api } from "../lib/api";
+import { useLocalization, type TranslateFn } from "../lib/localization";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
   DESKTOP_APPEARANCE_STYLES,
@@ -51,21 +52,26 @@ import {
   DESKTOP_WTF_LIVE_CHAT_SIZES,
   HAMSTER_COLOR_SCHEMES,
   HAMSTER_CORE_STAT_KEYS,
-  HAMSTER_CORE_STAT_LABELS,
   mediaLibraryWallpaperUrl,
   tokenWallpaperUrl,
   type DesktopAppearance,
+  type HamsterCoreStatKey,
   type DesktopIconLayout,
   type DesktopWtfLiveChatFont,
   type HamsterAction,
   type HamsterState,
 } from "@shared/desktop";
+import {
+  DEFAULT_LOCALIZATION_SETTINGS,
+  type LocalizationSettings,
+} from "@shared/localization";
 import { getTokenMimeType, isImageMime } from "../lib/media-resolve";
 import { FONT_PACKS, getFontPack } from "../features/appearance/font-packs";
 
 type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
   iconLayout: DesktopIconLayout;
+  localization: LocalizationSettings;
   updatedAt: string | null;
 };
 
@@ -661,17 +667,19 @@ function liveChatFontFamily(font: DesktopWtfLiveChatFont): string {
 function ColorField({
   label,
   value,
+  ariaLabel,
   onChange,
 }: {
   label: string;
   value: string;
+  ariaLabel: string;
   onChange: (value: string) => void;
 }) {
   return (
     <Field>
       <span>{label}</span>
       <input
-        aria-label={`${label} color`}
+        aria-label={ariaLabel}
         type="color"
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -685,18 +693,29 @@ function formatBytes(bytes: number) {
   return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
 }
 
-function PetStats({ pet }: { pet: HamsterState }) {
+const HAMSTER_CORE_STAT_MESSAGE_IDS: Record<HamsterCoreStatKey, Parameters<TranslateFn>[0]> = {
+  metabolism: "themeBuilder.pet.gene.metabolism",
+  speed: "themeBuilder.pet.gene.speed",
+  strength: "themeBuilder.pet.gene.strength",
+  intelligence: "themeBuilder.pet.gene.intelligence",
+  stamina: "themeBuilder.pet.gene.stamina",
+  sociability: "themeBuilder.pet.gene.sociability",
+  grit: "themeBuilder.pet.gene.grit",
+  luck: "themeBuilder.pet.gene.luck",
+};
+
+function PetStats({ pet, t }: { pet: HamsterState; t: TranslateFn }) {
   const rows = [
-    ["Food", pet.hunger],
-    ["Water", pet.thirst],
-    ["Fun", pet.happiness],
-    ["Clean", pet.hygiene],
-    ["Energy", pet.energy],
-    ["Happy Index", pet.happinessIndexScore],
-    ["Trauma", pet.trauma],
+    [t("themeBuilder.pet.stat.food"), pet.hunger],
+    [t("themeBuilder.pet.stat.water"), pet.thirst],
+    [t("themeBuilder.pet.stat.fun"), pet.happiness],
+    [t("themeBuilder.pet.stat.clean"), pet.hygiene],
+    [t("themeBuilder.pet.stat.energy"), pet.energy],
+    [t("themeBuilder.pet.stat.happyIndex"), pet.happinessIndexScore],
+    [t("themeBuilder.pet.stat.trauma"), pet.trauma],
   ] as const;
   const geneRows = HAMSTER_CORE_STAT_KEYS.map((key) => [
-    HAMSTER_CORE_STAT_LABELS[key],
+    t(HAMSTER_CORE_STAT_MESSAGE_IDS[key]),
     pet.genetics.effectiveStats[key],
   ] as const);
 
@@ -706,15 +725,19 @@ function PetStats({ pet }: { pet: HamsterState }) {
         {rows.map(([label, value]) => (
           <Fragment key={label}>
             <span>{label}</span>
-            <StatBar $value={value} />
+            <StatBar $value={value} data-desktop-settings-region="stat-bar" />
             <span>{value}</span>
           </Fragment>
         ))}
       </StatRows>
       <GenePanel>
         <div>
-          Gen {pet.genetics.generation} · Bond L{pet.bondLevel} ·{" "}
-          {pet.genetics.rarityTier.toUpperCase()} · {pet.genetics.phenotype.sizeClass}
+          {t("themeBuilder.pet.geneLine", {
+            generation: pet.genetics.generation,
+            bondLevel: pet.bondLevel,
+            rarity: pet.genetics.rarityTier.toUpperCase(),
+            size: pet.genetics.phenotype.sizeClass,
+          })}
         </div>
         <TraitRow>
           {pet.genetics.attributes.length > 0 ? (
@@ -724,14 +747,14 @@ function PetStats({ pet }: { pet: HamsterState }) {
               </TraitChip>
             ))
           ) : (
-            <span>No rare traits</span>
+            <span>{t("themeBuilder.pet.noRareTraits")}</span>
           )}
         </TraitRow>
         <StatRows>
           {geneRows.map(([label, value]) => (
             <Fragment key={label}>
               <span>{label}</span>
-              <StatBar $value={value} />
+              <StatBar $value={value} data-desktop-settings-region="stat-bar" />
               <span>{value}</span>
             </Fragment>
           ))}
@@ -743,6 +766,7 @@ function PetStats({ pet }: { pet: HamsterState }) {
 
 export function DesktopSettings() {
   const qc = useQueryClient();
+  const { t, formatDate } = useLocalization();
   const fileRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<DesktopAppearance>(DEFAULT_DESKTOP_APPEARANCE);
   const [petDraft, setPetDraft] = useState<{ name: string; colorSchemeKey: string }>({
@@ -803,12 +827,16 @@ export function DesktopSettings() {
         qc.setQueryData(["desktop", "settings"], (current: DesktopSettingsResponse | undefined) => ({
           appearance: next,
           iconLayout: current?.iconLayout ?? settingsQuery.data?.iconLayout ?? {},
+          localization:
+            current?.localization ??
+            settingsQuery.data?.localization ??
+            DEFAULT_LOCALIZATION_SETTINGS,
           updatedAt: current?.updatedAt ?? settingsQuery.data?.updatedAt ?? null,
         }));
         return next;
       });
     },
-    [qc, settingsQuery.data?.iconLayout]
+    [qc, settingsQuery.data?.iconLayout, settingsQuery.data?.localization, settingsQuery.data?.updatedAt]
   );
 
   const patchDraft = useCallback(
@@ -893,7 +921,7 @@ export function DesktopSettings() {
       });
     },
     onError: (error) => {
-      setFileError(error instanceof Error ? error.message : "Upload failed.");
+      setFileError(error instanceof Error ? error.message : t("themeBuilder.upload.failed"));
     },
   });
 
@@ -989,11 +1017,15 @@ export function DesktopSettings() {
     setFileError("");
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setFileError("Image files only.");
+      setFileError(t("themeBuilder.upload.imagesOnly"));
       return;
     }
     if (file.size > DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES) {
-      setFileError(`Pick an image under ${formatBytes(DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES)}.`);
+      setFileError(
+        t("themeBuilder.upload.tooLarge", {
+          size: formatBytes(DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES),
+        })
+      );
       return;
     }
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -1041,22 +1073,27 @@ export function DesktopSettings() {
   );
   const petActions: Array<{ action: HamsterAction; label: string; icon: ReactNode }> =
     pet?.alive === false
-      ? [{ action: "revive", label: "Adopt", icon: <Heart /> }]
+      ? [{ action: "revive", label: t("themeBuilder.pet.action.adopt"), icon: <Heart /> }]
       : [
-          { action: "feed", label: "Feed", icon: <Apple /> },
-          { action: "water", label: "Water", icon: <Droplets /> },
-          { action: "play", label: "Play", icon: <Gamepad2 /> },
-          { action: "pet", label: "Pet", icon: <Heart /> },
-          { action: "clean", label: "Clean", icon: <Sparkles /> },
-          { action: "scoop", label: "Scoop", icon: <Trash2 /> },
-          { action: "nap", label: "Nap", icon: <Moon /> },
+          { action: "feed", label: t("themeBuilder.pet.action.feed"), icon: <Apple /> },
+          { action: "water", label: t("themeBuilder.pet.action.water"), icon: <Droplets /> },
+          { action: "play", label: t("themeBuilder.pet.action.play"), icon: <Gamepad2 /> },
+          { action: "pet", label: t("themeBuilder.pet.action.pet"), icon: <Heart /> },
+          { action: "clean", label: t("themeBuilder.pet.action.clean"), icon: <Sparkles /> },
+          { action: "scoop", label: t("themeBuilder.pet.action.scoop"), icon: <Trash2 /> },
+          { action: "nap", label: t("themeBuilder.pet.action.nap"), icon: <Moon /> },
         ];
 
   return (
-    <AppWindow title="Theme Builder">
-      <Shell>
-        <Group variant="outside">
-          <GroupTitle>OS appearance</GroupTitle>
+    <AppWindow title={t("themeBuilder.title")}>
+      <Shell
+        data-desktop-settings-surface="theme-builder"
+        data-desktop-settings-region="surface"
+      >
+        <Group variant="outside" data-desktop-settings-region="appearance-panel">
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.appearance")}
+          </GroupTitle>
           <StyleGrid>
             {DESKTOP_APPEARANCE_STYLES.map((style) => (
               <StyleButton
@@ -1064,18 +1101,22 @@ export function DesktopSettings() {
                 type="button"
                 $active={draft.appearanceStyleKey === style.key}
                 $styleKey={style.key}
+                aria-pressed={draft.appearanceStyleKey === style.key}
+                data-desktop-settings-region="style-button"
                 onClick={() => patchDraft({ appearanceStyleKey: style.key })}
               >
-                <StylePreview $styleKey={style.key} />
+                <StylePreview $styleKey={style.key} data-desktop-settings-region="style-preview" />
                 <StyleName>{style.label}</StyleName>
-                <StyleSummary>{style.summary}</StyleSummary>
+                <StyleSummary data-desktop-settings-region="summary">{style.summary}</StyleSummary>
               </StyleButton>
             ))}
           </StyleGrid>
           <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>System typography</GroupTitle>
-          <HelpText style={{ marginBottom: 8 }}>
-            Font packs apply instantly across the desktop shell and app windows.
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.typography")}
+          </GroupTitle>
+          <HelpText style={{ marginBottom: 8 }} data-desktop-settings-region="help">
+            {t("themeBuilder.typography.help")}
           </HelpText>
           <FontPackGrid>
             {FONT_PACKS.map((pack) => (
@@ -1086,6 +1127,7 @@ export function DesktopSettings() {
                 aria-pressed={draft.fontPackKey === pack.key}
                 aria-label={`Font pack ${pack.label}`}
                 data-testid={`font-pack-${pack.key}`}
+                data-desktop-settings-region="font-pack-button"
                 onClick={() => {
                   patchDraft({ fontPackKey: pack.key });
                   reportThemeBuilderEvent("desktop.font_pack.updated", "select", {
@@ -1094,7 +1136,10 @@ export function DesktopSettings() {
                 }}
               >
                 <FontPackLabel $fontFamily={pack.roles.display}>{pack.label}</FontPackLabel>
-                <span style={{ fontSize: "var(--wtf-type-caption, 13px)", lineHeight: 1.18 }}>
+                <span
+                  style={{ fontSize: "var(--wtf-type-caption, 13px)", lineHeight: 1.18 }}
+                  data-desktop-settings-region="summary"
+                >
                   {pack.description}
                 </span>
                 <FontPackPreview
@@ -1110,10 +1155,11 @@ export function DesktopSettings() {
             ))}
           </FontPackGrid>
           <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>Chat defaults</GroupTitle>
-          <HelpText>
-            These presets seed WIM messages and WTF LIVE room chat while keeping each composer inside
-            its own font and size window.
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.chatDefaults")}
+          </GroupTitle>
+          <HelpText data-desktop-settings-region="help">
+            {t("themeBuilder.chatDefaults.help")}
           </HelpText>
           <ChatPresetGrid>
             {DESKTOP_CHAT_TYPOGRAPHY_PRESETS.map((preset) => (
@@ -1121,7 +1167,9 @@ export function DesktopSettings() {
                 key={preset.key}
                 type="button"
                 $active={draft.chatTypographyPresetKey === preset.key}
+                aria-pressed={draft.chatTypographyPresetKey === preset.key}
                 aria-label={`Chat typography preset ${preset.label}`}
+                data-desktop-settings-region="chat-preset-button"
                 onClick={() => {
                   setAppearanceDraft((prev) => ({
                     ...prev,
@@ -1139,7 +1187,7 @@ export function DesktopSettings() {
                 }}
               >
                 <ChatPresetName>{preset.label}</ChatPresetName>
-                <ChatPresetSummary>{preset.summary}</ChatPresetSummary>
+                <ChatPresetSummary data-desktop-settings-region="summary">{preset.summary}</ChatPresetSummary>
                 <ChatPreviewStrip aria-hidden>
                   <ChatPreviewBubble
                     $fontFamily={preset.wim.fontFamily}
@@ -1148,6 +1196,7 @@ export function DesktopSettings() {
                     $bold={preset.wim.bold}
                     $italic={preset.wim.italic}
                     $underline={preset.wim.underline}
+                    data-desktop-settings-region="chat-preview"
                   >
                     WIM lorem ipsum
                   </ChatPreviewBubble>
@@ -1157,6 +1206,7 @@ export function DesktopSettings() {
                     $color={DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES[preset.wtfLive.color]}
                     $bold={preset.wtfLive.bold}
                     $italic={preset.wtfLive.italic}
+                    data-desktop-settings-region="chat-preview"
                   >
                     LIVE lorem ipsum
                   </ChatPreviewBubble>
@@ -1165,16 +1215,16 @@ export function DesktopSettings() {
             ))}
           </ChatPresetGrid>
           <ChatDefaultGrid>
-            <ChatDefaultPanel>
+            <ChatDefaultPanel data-desktop-settings-region="chat-default-panel">
               <ChatDefaultTitle>
-                <span>WIM messages</span>
+                <span>{t("themeBuilder.chat.wimMessages")}</span>
                 <span>{draft.wimChatStyle.fontSize}px</span>
               </ChatDefaultTitle>
               <FieldGrid>
                 <Field>
-                  <span>Font</span>
+                  <span>{t("themeBuilder.field.font")}</span>
                   <select
-                    aria-label="Default WIM font"
+                    aria-label={t("themeBuilder.chat.defaultWimFont")}
                     value={draft.wimChatStyle.fontFamily}
                     onChange={(e) =>
                       patchWimChatStyle({
@@ -1190,9 +1240,9 @@ export function DesktopSettings() {
                   </select>
                 </Field>
                 <Field>
-                  <span>Size</span>
+                  <span>{t("themeBuilder.field.size")}</span>
                   <select
-                    aria-label="Default WIM font size"
+                    aria-label={t("themeBuilder.chat.defaultWimFontSize")}
                     value={draft.wimChatStyle.fontSize}
                     onChange={(e) =>
                       patchWimChatStyle({
@@ -1210,20 +1260,21 @@ export function DesktopSettings() {
               </FieldGrid>
               <Inline>
                 <Field style={{ minWidth: 96 }}>
-                  <span>Color</span>
+                  <span>{t("themeBuilder.field.color")}</span>
                   <input
-                    aria-label="Default WIM text color"
+                    aria-label={t("themeBuilder.chat.defaultWimTextColor")}
                     type="color"
                     value={draft.wimChatStyle.color}
                     onChange={(e) => patchWimChatStyle({ color: e.target.value })}
                   />
                 </Field>
-                <ChatToggleRow aria-label="Default WIM emphasis">
+                <ChatToggleRow aria-label={t("themeBuilder.chat.defaultWimEmphasis")}>
                   <ChatToggleButton
                     type="button"
                     $active={draft.wimChatStyle.bold}
-                    aria-label="Default WIM bold"
+                    aria-label={t("themeBuilder.chat.defaultWimBold")}
                     aria-pressed={draft.wimChatStyle.bold}
+                    data-desktop-settings-region="chat-toggle"
                     onClick={() => patchWimChatStyle({ bold: !draft.wimChatStyle.bold })}
                   >
                     <Bold aria-hidden />
@@ -1231,8 +1282,9 @@ export function DesktopSettings() {
                   <ChatToggleButton
                     type="button"
                     $active={draft.wimChatStyle.italic}
-                    aria-label="Default WIM italic"
+                    aria-label={t("themeBuilder.chat.defaultWimItalic")}
                     aria-pressed={draft.wimChatStyle.italic}
+                    data-desktop-settings-region="chat-toggle"
                     onClick={() => patchWimChatStyle({ italic: !draft.wimChatStyle.italic })}
                   >
                     <Italic aria-hidden />
@@ -1240,8 +1292,9 @@ export function DesktopSettings() {
                   <ChatToggleButton
                     type="button"
                     $active={draft.wimChatStyle.underline}
-                    aria-label="Default WIM underline"
+                    aria-label={t("themeBuilder.chat.defaultWimUnderline")}
                     aria-pressed={draft.wimChatStyle.underline}
+                    data-desktop-settings-region="chat-toggle"
                     onClick={() => patchWimChatStyle({ underline: !draft.wimChatStyle.underline })}
                   >
                     <Underline aria-hidden />
@@ -1255,20 +1308,21 @@ export function DesktopSettings() {
                 $bold={draft.wimChatStyle.bold}
                 $italic={draft.wimChatStyle.italic}
                 $underline={draft.wimChatStyle.underline}
+                data-desktop-settings-region="chat-preview"
               >
                 WIM preview: Lorem ipsum dolor sit amet.
               </ChatPreviewBubble>
             </ChatDefaultPanel>
-            <ChatDefaultPanel>
+            <ChatDefaultPanel data-desktop-settings-region="chat-default-panel">
               <ChatDefaultTitle>
-                <span>WTF LIVE room chat</span>
+                <span>{t("themeBuilder.chat.liveRoomChat")}</span>
                 <span>{draft.wtfLiveChatStyle.size}px</span>
               </ChatDefaultTitle>
               <FieldGrid>
                 <Field>
-                  <span>Font</span>
+                  <span>{t("themeBuilder.field.font")}</span>
                   <select
-                    aria-label="Default WTF LIVE chat font"
+                    aria-label={t("themeBuilder.chat.defaultLiveFont")}
                     value={draft.wtfLiveChatStyle.font}
                     onChange={(e) =>
                       patchWtfLiveChatStyle({
@@ -1284,9 +1338,9 @@ export function DesktopSettings() {
                   </select>
                 </Field>
                 <Field>
-                  <span>Size</span>
+                  <span>{t("themeBuilder.field.size")}</span>
                   <select
-                    aria-label="Default WTF LIVE chat font size"
+                    aria-label={t("themeBuilder.chat.defaultLiveFontSize")}
                     value={draft.wtfLiveChatStyle.size}
                     onChange={(e) =>
                       patchWtfLiveChatStyle({
@@ -1303,26 +1357,30 @@ export function DesktopSettings() {
                 </Field>
               </FieldGrid>
               <Inline>
-                <ChatColorStrip role="group" aria-label="Default WTF LIVE chat color">
+                <ChatColorStrip role="group" aria-label={t("themeBuilder.chat.defaultLiveColor")}>
                   {DESKTOP_WTF_LIVE_CHAT_COLORS.map((color) => (
                     <ChatColorButton
-                      key={color}
-                      type="button"
-                      $color={DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES[color]}
-                      $active={draft.wtfLiveChatStyle.color === color}
-                      title={DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS[color]}
-                      aria-label={`Default WTF LIVE chat color ${DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS[color]}`}
-                      aria-pressed={draft.wtfLiveChatStyle.color === color}
-                      onClick={() => patchWtfLiveChatStyle({ color })}
-                    />
+                    key={color}
+                    type="button"
+                    $color={DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES[color]}
+                    $active={draft.wtfLiveChatStyle.color === color}
+                    title={DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS[color]}
+                    aria-label={t("themeBuilder.chat.defaultLiveColorChoice", {
+                      color: DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS[color],
+                    })}
+                    aria-pressed={draft.wtfLiveChatStyle.color === color}
+                    data-desktop-settings-region="chat-color"
+                    onClick={() => patchWtfLiveChatStyle({ color })}
+                  />
                   ))}
                 </ChatColorStrip>
-                <ChatToggleRow aria-label="Default WTF LIVE emphasis">
+                <ChatToggleRow aria-label={t("themeBuilder.chat.defaultLiveEmphasis")}>
                   <ChatToggleButton
                     type="button"
                     $active={draft.wtfLiveChatStyle.bold}
-                    aria-label="Default WTF LIVE bold"
+                    aria-label={t("themeBuilder.chat.defaultLiveBold")}
                     aria-pressed={draft.wtfLiveChatStyle.bold}
+                    data-desktop-settings-region="chat-toggle"
                     onClick={() => patchWtfLiveChatStyle({ bold: !draft.wtfLiveChatStyle.bold })}
                   >
                     <Bold aria-hidden />
@@ -1330,8 +1388,9 @@ export function DesktopSettings() {
                   <ChatToggleButton
                     type="button"
                     $active={draft.wtfLiveChatStyle.italic}
-                    aria-label="Default WTF LIVE italic"
+                    aria-label={t("themeBuilder.chat.defaultLiveItalic")}
                     aria-pressed={draft.wtfLiveChatStyle.italic}
+                    data-desktop-settings-region="chat-toggle"
                     onClick={() => patchWtfLiveChatStyle({ italic: !draft.wtfLiveChatStyle.italic })}
                   >
                     <Italic aria-hidden />
@@ -1344,19 +1403,24 @@ export function DesktopSettings() {
                 $color={DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES[draft.wtfLiveChatStyle.color]}
                 $bold={draft.wtfLiveChatStyle.bold}
                 $italic={draft.wtfLiveChatStyle.italic}
+                data-desktop-settings-region="chat-preview"
               >
                 LIVE preview: Lorem ipsum in the room.
               </ChatPreviewBubble>
             </ChatDefaultPanel>
           </ChatDefaultGrid>
           <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>Color schemes</GroupTitle>
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.colorSchemes")}
+          </GroupTitle>
           <PresetGrid>
             {DESKTOP_COLOR_SCHEMES.map((scheme) => (
               <PresetButton
                 key={scheme.key}
                 type="button"
                 $active={draft.colorSchemeKey === scheme.key}
+                aria-pressed={draft.colorSchemeKey === scheme.key}
+                data-desktop-settings-region="color-preset-button"
                 onClick={() => setAppearanceDraft((prev) => applyScheme(prev, scheme.key))}
               >
                 <Swatch
@@ -1366,6 +1430,7 @@ export function DesktopSettings() {
                     scheme.activeTitleColor,
                     scheme.textColor,
                   ]}
+                  data-desktop-settings-region="swatch"
                 >
                   <i />
                   <i />
@@ -1378,21 +1443,53 @@ export function DesktopSettings() {
           </PresetGrid>
           <Separator style={{ margin: "10px 0" }} />
           <FieldGrid>
-            <ColorField label="Desktop" value={draft.desktopColor} onChange={(desktopColor) => patchDraft({ desktopColor })} />
-            <ColorField label="Window" value={draft.windowColor} onChange={(windowColor) => patchDraft({ windowColor })} />
-            <ColorField label="Active frame" value={draft.activeTitleColor} onChange={(activeTitleColor) => patchDraft({ activeTitleColor })} />
-            <ColorField label="Inactive frame" value={draft.inactiveTitleColor} onChange={(inactiveTitleColor) => patchDraft({ inactiveTitleColor })} />
-            <ColorField label="Text" value={draft.textColor} onChange={(textColor) => patchDraft({ textColor })} />
-            <ColorField label="Highlight" value={draft.highlightColor} onChange={(highlightColor) => patchDraft({ highlightColor })} />
+            <ColorField
+              label={t("themeBuilder.color.desktop")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.desktop") })}
+              value={draft.desktopColor}
+              onChange={(desktopColor) => patchDraft({ desktopColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.window")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.window") })}
+              value={draft.windowColor}
+              onChange={(windowColor) => patchDraft({ windowColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.activeFrame")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.activeFrame") })}
+              value={draft.activeTitleColor}
+              onChange={(activeTitleColor) => patchDraft({ activeTitleColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.inactiveFrame")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.inactiveFrame") })}
+              value={draft.inactiveTitleColor}
+              onChange={(inactiveTitleColor) => patchDraft({ inactiveTitleColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.text")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.text") })}
+              value={draft.textColor}
+              onChange={(textColor) => patchDraft({ textColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.highlight")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.highlight") })}
+              value={draft.highlightColor}
+              onChange={(highlightColor) => patchDraft({ highlightColor })}
+            />
           </FieldGrid>
         </Group>
 
-        <Group variant="outside">
-          <GroupTitle>Desktop</GroupTitle>
+        <Group variant="outside" data-desktop-settings-region="desktop-panel">
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.desktop")}
+          </GroupTitle>
           <Field>
-            <span>Background image URL</span>
+            <span>{t("themeBuilder.field.backgroundUrl")}</span>
             <input
-              aria-label="Background image URL"
+              aria-label={t("themeBuilder.field.backgroundUrl")}
               value={draft.backgroundImageUrl ?? ""}
               onChange={(e) => patchDraft({ backgroundImageUrl: e.target.value || null })}
               placeholder="https://..."
@@ -1400,7 +1497,7 @@ export function DesktopSettings() {
           </Field>
           <Inline style={{ marginTop: 7 }}>
             <input
-              aria-label="Upload background image"
+              aria-label={t("themeBuilder.action.uploadBackground")}
               ref={fileRef}
               type="file"
               accept="image/*"
@@ -1410,16 +1507,24 @@ export function DesktopSettings() {
                 e.currentTarget.value = "";
               }}
             />
-            <IconButton size="sm" onClick={() => fileRef.current?.click()}>
-              <ImageIcon /> Upload
+            <IconButton
+              size="sm"
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => fileRef.current?.click()}
+            >
+              <ImageIcon /> {t("themeBuilder.action.upload")}
             </IconButton>
-            <IconButton size="sm" onClick={() => patchDraft({ backgroundImageUrl: null })}>
-              <Trash2 /> Clear
+            <IconButton
+              size="sm"
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => patchDraft({ backgroundImageUrl: null })}
+            >
+              <Trash2 /> {t("themeBuilder.action.clear")}
             </IconButton>
             <Field style={{ minWidth: 112 }}>
-              <span>Fit</span>
+              <span>{t("themeBuilder.field.fit")}</span>
               <select
-                aria-label="Background image fit"
+                aria-label={t("themeBuilder.field.backgroundFit")}
                 value={draft.backgroundFit}
                 onChange={(e) => patchDraft({ backgroundFit: e.target.value as DesktopAppearance["backgroundFit"] })}
               >
@@ -1429,10 +1534,11 @@ export function DesktopSettings() {
               </select>
             </Field>
           </Inline>
-          <HelpText>
-            Uploads use your media library and accept images up to{" "}
-            {formatBytes(DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES)}.
-            {uploadMutation.isPending ? " Uploading..." : ""}
+          <HelpText data-desktop-settings-region="help">
+            {t("themeBuilder.upload.help", {
+              size: formatBytes(DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES),
+            })}
+            {uploadMutation.isPending ? t("themeBuilder.upload.pending") : ""}
           </HelpText>
           {fileError && (
             <div style={{ color: "#b00000", fontSize: "var(--wtf-type-caption, 13px)", marginTop: 4 }}>
@@ -1441,13 +1547,21 @@ export function DesktopSettings() {
           )}
 
           <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>Saved images</GroupTitle>
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.savedImages")}
+          </GroupTitle>
           {mediaQuery.isLoading ? (
-            <HelpText>Loading saved media...</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.savedImages.loading")}
+            </HelpText>
           ) : mediaQuery.isError ? (
-            <HelpText>Saved media could not load.</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.savedImages.error")}
+            </HelpText>
           ) : mediaChoices.length === 0 ? (
-            <HelpText>No saved image media yet.</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.savedImages.empty")}
+            </HelpText>
           ) : (
             <SourceList>
               {mediaChoices.map(({ item, url }) => (
@@ -1455,10 +1569,12 @@ export function DesktopSettings() {
                   key={item.id}
                   type="button"
                   $active={draft.backgroundImageUrl === url}
+                  aria-pressed={draft.backgroundImageUrl === url}
+                  data-desktop-settings-region="source-button"
                   onClick={() => patchDraft({ backgroundImageUrl: url })}
                   title={item.title}
                 >
-                  <Thumb $src={url} />
+                  <Thumb $src={url} data-desktop-settings-thumb="true" />
                   <SourceLabel>{item.title || `Media #${item.id}`}</SourceLabel>
                 </SourceButton>
               ))}
@@ -1466,13 +1582,21 @@ export function DesktopSettings() {
           )}
 
           <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>Owned token art</GroupTitle>
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.tokenArt")}
+          </GroupTitle>
           {tokensQuery.isLoading ? (
-            <HelpText>Loading wallet art...</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.tokenArt.loading")}
+            </HelpText>
           ) : tokensQuery.isError ? (
-            <HelpText>Wallet art could not load.</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.tokenArt.error")}
+            </HelpText>
           ) : tokenChoices.length === 0 ? (
-            <HelpText>No image tokens found in your synced wallets.</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.tokenArt.empty")}
+            </HelpText>
           ) : (
             <SourceList>
               {tokenChoices.map(({ token, url }) => (
@@ -1480,6 +1604,8 @@ export function DesktopSettings() {
                   key={`${token.contract}:${token.tokenId}`}
                   type="button"
                   $active={draft.backgroundImageUrl === url}
+                  aria-pressed={draft.backgroundImageUrl === url}
+                  data-desktop-settings-region="source-button"
                   onClick={() => {
                     patchDraft({ backgroundImageUrl: url });
                     reportThemeBuilderEvent("desktop.wallpaper.token_set", "set-token-art", {
@@ -1489,7 +1615,7 @@ export function DesktopSettings() {
                   }}
                   title={`${token.name || "Token"} ${token.contract}:${token.tokenId}`}
                 >
-                  <Thumb $src={url} />
+                  <Thumb $src={url} data-desktop-settings-thumb="true" />
                   <SourceLabel>{token.name || `#${token.tokenId}`}</SourceLabel>
                 </SourceButton>
               ))}
@@ -1497,13 +1623,17 @@ export function DesktopSettings() {
           )}
 
           <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>Cursor</GroupTitle>
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.cursor")}
+          </GroupTitle>
           <SegmentGrid>
             {DESKTOP_CURSOR_STYLES.map((style) => (
               <Button
                 key={style}
                 size="sm"
                 active={draft.cursorStyle === style ? true : undefined}
+                aria-pressed={draft.cursorStyle === style}
+                data-desktop-settings-region="segment-button"
                 onClick={() => patchDraft({ cursorStyle: style })}
               >
                 {DESKTOP_CURSOR_LABELS[style]}
@@ -1512,11 +1642,13 @@ export function DesktopSettings() {
           </SegmentGrid>
 
           <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>Physics</GroupTitle>
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.physics")}
+          </GroupTitle>
           <Inline>
             <label>
               <input
-                aria-label="Desktop physics"
+                aria-label={t("themeBuilder.field.physics")}
                 type="checkbox"
                 checked={draft.desktopPhysicsEnabled}
                 onChange={(e) => {
@@ -1527,12 +1659,12 @@ export function DesktopSettings() {
                   });
                 }}
               />{" "}
-              Desktop physics
+              {t("themeBuilder.field.physics")}
             </label>
             <Field style={{ minWidth: 120 }}>
-              <span>Gravity</span>
+              <span>{t("themeBuilder.field.gravity")}</span>
               <select
-                aria-label="Desktop gravity"
+                aria-label={t("themeBuilder.field.gravity")}
                 value={draft.desktopGravityMode}
                 disabled={!draft.desktopPhysicsEnabled}
                 onChange={(e) => {
@@ -1553,38 +1685,46 @@ export function DesktopSettings() {
             </Field>
           </Inline>
 
-          <Toolbar>
+          <Toolbar data-desktop-settings-region="toolbar">
             <IconButton
               size="sm"
+              data-desktop-settings-region="toolbar-button"
               onClick={() => resetIconsMutation.mutate()}
               disabled={resetIconsMutation.isPending}
             >
-              <RotateCcw /> Reset Icons
+              <RotateCcw /> {t("themeBuilder.action.resetIcons")}
             </IconButton>
             <IconButton
+              data-desktop-settings-region="toolbar-button"
               onClick={() => saveMutation.mutate(draft)}
               disabled={saveMutation.isPending}
             >
-              <Save /> Save
+              <Save /> {t("common.save")}
             </IconButton>
           </Toolbar>
         </Group>
 
-        <Group variant="outside" style={{ gridColumn: "1 / -1" }}>
-          <GroupTitle>Pet</GroupTitle>
+        <Group
+          variant="outside"
+          style={{ gridColumn: "1 / -1" }}
+          data-desktop-settings-region="pet-panel"
+        >
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.pet")}
+          </GroupTitle>
           <Inline style={{ marginBottom: 8 }}>
             <label>
               <input
-                aria-label="Desktop pet enabled"
+                aria-label={t("themeBuilder.field.petEnabled")}
                 type="checkbox"
                 checked={draft.desktopPetEnabled}
                 onChange={(e) => patchDraft({ desktopPetEnabled: e.target.checked })}
               />{" "}
-              Desktop pet
+              {t("themeBuilder.field.petEnabled")}
             </label>
           </Inline>
           {draft.desktopPetEnabled && pet && (
-            <PetBox>
+            <PetBox data-desktop-settings-region="pet-box">
               <div>
                 <PetPreview>
                   <HamsterPixelSprite
@@ -1596,15 +1736,19 @@ export function DesktopSettings() {
                 </PetPreview>
                 <div style={{ textAlign: "center", fontWeight: "bold" }}>{pet.name}</div>
                 <div style={{ textAlign: "center", fontSize: "var(--wtf-type-caption, 13px)" }}>
-                  Lv {pet.level} · {pet.xpEarned} XP · {pet.carePoints} care
+                  {t("themeBuilder.pet.progress", {
+                    level: pet.level,
+                    xp: pet.xpEarned,
+                    care: pet.carePoints,
+                  })}
                 </div>
               </div>
               <div>
                 <FieldGrid style={{ marginBottom: 8 }}>
                   <Field>
-                    <span>Name</span>
+                    <span>{t("themeBuilder.pet.name")}</span>
                     <input
-                      aria-label="Pet name"
+                      aria-label={t("themeBuilder.pet.name")}
                       value={petDraft.name}
                       maxLength={40}
                       onChange={(e) =>
@@ -1613,9 +1757,9 @@ export function DesktopSettings() {
                     />
                   </Field>
                   <Field>
-                    <span>Coat</span>
+                    <span>{t("themeBuilder.pet.coat")}</span>
                     <select
-                      aria-label="Pet coat"
+                      aria-label={t("themeBuilder.pet.coat")}
                       value={petDraft.colorSchemeKey}
                       onChange={(e) =>
                         setPetDraft((prev) => ({
@@ -1635,18 +1779,20 @@ export function DesktopSettings() {
                 <Inline style={{ marginBottom: 8 }}>
                   <IconButton
                     size="sm"
+                    data-desktop-settings-region="toolbar-button"
                     disabled={petPatchMutation.isPending}
                     onClick={() => petPatchMutation.mutate(petDraft)}
                   >
-                    <Save /> Save Pet
+                    <Save /> {t("themeBuilder.action.savePet")}
                   </IconButton>
                 </Inline>
-                <PetStats pet={pet} />
+                <PetStats pet={pet} t={t} />
                 <Inline style={{ marginTop: 8 }}>
                   {petActions.map(({ action, label, icon }) => (
                     <IconButton
                       key={action}
                       size="sm"
+                      data-desktop-settings-region="toolbar-button"
                       disabled={petActionMutation.isPending}
                       onClick={() => petActionMutation.mutate(action)}
                     >
@@ -1657,7 +1803,7 @@ export function DesktopSettings() {
                 <EventList>
                   {(petQuery.data?.events ?? []).map((event) => (
                     <div key={event.id}>
-                      {new Date(event.createdAt).toLocaleString([], {
+                      {formatDate(event.createdAt, {
                         month: "short",
                         day: "numeric",
                         hour: "2-digit",
@@ -1672,77 +1818,106 @@ export function DesktopSettings() {
           )}
         </Group>
 
-        <Group variant="outside" style={{ gridColumn: "1 / -1" }}>
-          <GroupTitle>Agent pairing</GroupTitle>
+        <Group
+          variant="outside"
+          style={{ gridColumn: "1 / -1" }}
+          data-desktop-settings-region="agent-panel"
+        >
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.agent")}
+          </GroupTitle>
           <FieldGrid>
             <Field>
-              <span>MCP endpoint</span>
+              <span data-desktop-settings-region="mcp-endpoint">
+                {t("themeBuilder.field.mcpEndpoint")}
+              </span>
               <input
-                aria-label="MCP endpoint"
+                aria-label={t("themeBuilder.field.mcpEndpoint")}
                 readOnly
                 value={mcpTokensQuery.data?.endpoint ?? `${window.location.origin}/mcp`}
               />
             </Field>
             <Field>
-              <span>Token name</span>
+              <span>{t("themeBuilder.field.tokenName")}</span>
               <input
-                aria-label="Token name"
+                aria-label={t("themeBuilder.field.tokenName")}
                 value={mcpTokenName}
                 maxLength={100}
                 onChange={(e) => setMcpTokenName(e.target.value)}
               />
             </Field>
           </FieldGrid>
-          <Toolbar>
+          <Toolbar data-desktop-settings-region="toolbar">
             <IconButton
               size="sm"
+              data-desktop-settings-region="toolbar-button"
               disabled={createMcpTokenMutation.isPending}
               onClick={() => createMcpTokenMutation.mutate()}
             >
-              <KeyRound /> Generate Token
+              <KeyRound /> {t("themeBuilder.action.generateToken")}
             </IconButton>
           </Toolbar>
           {generatedMcpToken && (
             <div style={{ marginTop: 8 }}>
               <Field>
-                <span>New token</span>
-                <SecretBox aria-label="New token" readOnly value={generatedMcpToken} />
+                <span>{t("themeBuilder.field.newToken")}</span>
+                <SecretBox
+                  aria-label={t("themeBuilder.field.newToken")}
+                  readOnly
+                  value={generatedMcpToken}
+                  data-desktop-settings-region="secret-box"
+                />
               </Field>
               <Inline style={{ marginTop: 6 }}>
                 <IconButton
                   size="sm"
+                  data-desktop-settings-region="toolbar-button"
                   onClick={() => void navigator.clipboard?.writeText(generatedMcpToken)}
                 >
-                  <Clipboard /> Copy
+                  <Clipboard /> {t("themeBuilder.action.copy")}
                 </IconButton>
-                <HelpText>{createMcpTokenMutation.data?.warning}</HelpText>
+                <HelpText data-desktop-settings-region="help">
+                  {createMcpTokenMutation.data?.warning}
+                </HelpText>
               </Inline>
             </div>
           )}
           <Separator style={{ margin: "10px 0" }} />
           {mcpTokensQuery.isLoading ? (
-            <HelpText>Loading paired agents...</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.agents.loading")}
+            </HelpText>
           ) : activeMcpTokens.length === 0 ? (
-            <HelpText>No active paired agents.</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.agents.empty")}
+            </HelpText>
           ) : (
             activeMcpTokens.map((token) => (
-              <TokenRow key={token.id}>
+              <TokenRow key={token.id} data-desktop-settings-region="token-row">
                 <div>
                   <strong>{token.name}</strong>{" "}
                   <span>
-                    {token.tokenPrefix}... · created{" "}
-                    {new Date(token.createdAt).toLocaleDateString()}
+                    {t("themeBuilder.agents.created", {
+                      prefix: token.tokenPrefix,
+                      date: formatDate(token.createdAt),
+                    })}
                     {token.lastUsedAt
-                      ? ` · last used ${new Date(token.lastUsedAt).toLocaleString()}`
+                      ? t("themeBuilder.agents.lastUsed", {
+                          date: formatDate(token.lastUsedAt, {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          }),
+                        })
                       : ""}
                   </span>
                 </div>
                 <IconButton
                   size="sm"
+                  data-desktop-settings-region="toolbar-button"
                   disabled={revokeMcpTokenMutation.isPending}
                   onClick={() => revokeMcpTokenMutation.mutate(token.id)}
                 >
-                  <Unplug /> Revoke
+                  <Unplug /> {t("themeBuilder.action.revoke")}
                 </IconButton>
               </TokenRow>
             ))

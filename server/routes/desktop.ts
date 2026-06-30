@@ -43,6 +43,10 @@ import {
   type HamsterAction,
   type HamsterState,
 } from "@shared/desktop";
+import {
+  normalizeLocalizationSettings,
+  type LocalizationSettings,
+} from "@shared/localization";
 
 const router = Router();
 
@@ -51,6 +55,7 @@ const DESKTOP_CLIENT_EVENT_TYPES = new Set([
   "desktop.appearance.updated",
   "desktop.font_pack.updated",
   "desktop.chat_typography.updated",
+  "system_settings.language_changed",
   "desktop.wallpaper.uploaded",
   "desktop.wallpaper.token_set",
   "desktop.physics.updated",
@@ -214,6 +219,7 @@ function hamsterValues(userId: number, state: HamsterState) {
 async function getDesktopSettings(userId: number): Promise<{
   appearance: DesktopAppearance;
   iconLayout: DesktopIconLayout;
+  localization: LocalizationSettings;
   updatedAt: string | null;
 }> {
   const [row] = await db
@@ -227,6 +233,7 @@ async function getDesktopSettings(userId: number): Promise<{
       ...(row?.appearance ?? {}),
     }),
     iconLayout: normalizeIconLayout(row?.iconLayout ?? {}, DESKTOP_ICON_LAYOUT_KEYS),
+    localization: normalizeLocalizationSettings(row?.localization ?? {}),
     updatedAt: row?.updatedAt ? row.updatedAt.toISOString() : null,
   };
 }
@@ -470,6 +477,10 @@ router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
       body.iconLayout === undefined
         ? current.iconLayout
         : normalizeIconLayout(body.iconLayout, DESKTOP_ICON_LAYOUT_KEYS);
+    const nextLocalization =
+      body.localization === undefined
+        ? current.localization
+        : normalizeLocalizationSettings(body.localization, current.localization);
 
     const now = new Date();
     let row: typeof userDesktopSettings.$inferSelect | undefined;
@@ -481,6 +492,7 @@ router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
           userId: user.id,
           appearance: nextAppearance,
           iconLayout: nextIconLayout,
+          localization: nextLocalization,
           updatedAt: now,
         })
         .onConflictDoUpdate({
@@ -488,6 +500,7 @@ router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
           set: {
             appearance: nextAppearance,
             iconLayout: nextIconLayout,
+            localization: nextLocalization,
             updatedAt: now,
           },
         })
@@ -499,6 +512,7 @@ router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
           userId: user.id,
           appearance: nextAppearance,
           iconLayout: nextIconLayout,
+          localization: nextLocalization,
           updatedAt: now,
         })
         .onConflictDoNothing()
@@ -516,6 +530,7 @@ router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
         .set({
           appearance: nextAppearance,
           iconLayout: nextIconLayout,
+          localization: nextLocalization,
           updatedAt: now,
         })
         .where(
@@ -539,6 +554,7 @@ router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
     res.json({
       appearance: normalizeDesktopAppearance(row.appearance),
       iconLayout: normalizeIconLayout(row.iconLayout, DESKTOP_ICON_LAYOUT_KEYS),
+      localization: normalizeLocalizationSettings(row.localization ?? {}),
       updatedAt: row.updatedAt.toISOString(),
     });
   } catch (err) {

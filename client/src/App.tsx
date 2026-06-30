@@ -13,6 +13,7 @@ import { DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
 import { queryClient } from "./lib/query-client";
 import { api } from "./lib/api";
 import { AuthProvider, useAuth } from "./lib/auth-context";
+import { LocalizationProvider, useLocalization } from "./lib/localization";
 import { logClientSystemEvent } from "./lib/system-log";
 import { MusicPlayerProvider } from "./features/music/MusicPlayerContext";
 import { WalletProvider } from "./lib/wallet-context";
@@ -97,9 +98,11 @@ function WindowCrashFallback({
   onClose: () => void;
 }) {
   const isDev = import.meta.env.DEV;
+  const { t, translateSystemText } = useLocalization();
+  const localizedTitle = translateSystemText(title);
 
   return (
-    <AppWindow title={`${title} - crashed`}>
+    <AppWindow title={t("appWindow.crashedTitle", { title: localizedTitle })}>
       <div
         role="alert"
         style={{
@@ -109,11 +112,8 @@ function WindowCrashFallback({
           padding: 8,
         }}
       >
-        <strong>This app hit a render error.</strong>
-        <span>
-          The rest of WTF OS is still running. You can retry this window or close
-          it and keep working.
-        </span>
+        <strong>{t("appWindow.renderErrorTitle")}</strong>
+        <span>{t("appWindow.renderErrorBody")}</span>
         {isDev && error ? (
           <pre
             style={{
@@ -132,10 +132,10 @@ function WindowCrashFallback({
         ) : null}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="button" onClick={onReset}>
-            Retry
+            {t("common.retry")}
           </button>
           <button type="button" onClick={onClose}>
-            Close {path}
+            {t("appWindow.close", { title: path })}
           </button>
         </div>
       </div>
@@ -154,6 +154,10 @@ function AdminDisabledAppFallback({
   appKey: DesktopAppKey | null;
   onClose: () => void;
 }) {
+  const { t, translateSystemText } = useLocalization();
+  const localizedTitle = translateSystemText(title);
+  const localizedLabel = translateSystemText(appLabel);
+
   useEffect(() => {
     logClientSystemEvent({
       eventType: "desktop.app.disabled_by_admin",
@@ -162,7 +166,7 @@ function AdminDisabledAppFallback({
   }, [appKey, appLabel, title]);
 
   return (
-    <AppWindow title={`${title} - disabled`}>
+    <AppWindow title={t("appWindow.disabledTitle", { title: localizedTitle })}>
       <div
         role="alert"
         style={{
@@ -172,14 +176,11 @@ function AdminDisabledAppFallback({
           padding: 8,
         }}
       >
-        <strong>{appLabel} has been disabled by admin.</strong>
-        <span>
-          This app is currently unavailable. Ask an admin to re-enable it or
-          adjust role access before trying again.
-        </span>
+        <strong>{t("appWindow.disabledHeading", { label: localizedLabel })}</strong>
+        <span>{t("appWindow.disabledBody")}</span>
         <div>
           <button type="button" onClick={onClose}>
-            Close
+            {t("common.close")}
           </button>
         </div>
       </div>
@@ -426,6 +427,7 @@ function URLSync({ appAvailability }: { appAvailability: DesktopAppAvailability 
 function AppContent() {
   const [location, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
+  const { t } = useLocalization();
   const roleInput = user?.roles ?? user?.role ?? null;
   const desktopAppsQuery = useQuery({
     queryKey: ["desktop", "apps"],
@@ -491,7 +493,7 @@ function AppContent() {
             fontFamily: "var(--wtf-mono-font)",
           }}
         >
-          Loading wtfOS CLI…
+          {t("common.loadingCli")}
         </div>
       );
     }
@@ -561,16 +563,18 @@ export default function App() {
         }
       >
         <AuthProvider>
-          <WtfOsAppearanceProvider>
-            <GlobalStyles />
-            <WalletProvider>
-              <EtherlinkWalletProvider>
-                <MusicPlayerProvider>
-                  <AppContent />
-                </MusicPlayerProvider>
-              </EtherlinkWalletProvider>
-            </WalletProvider>
-          </WtfOsAppearanceProvider>
+          <LocalizationProvider>
+            <WtfOsAppearanceProvider>
+              <GlobalStyles />
+              <WalletProvider>
+                <EtherlinkWalletProvider>
+                  <MusicPlayerProvider>
+                    <AppContent />
+                  </MusicPlayerProvider>
+                </EtherlinkWalletProvider>
+              </WalletProvider>
+            </WtfOsAppearanceProvider>
+          </LocalizationProvider>
         </AuthProvider>
       </StyleSheetManager>
     </QueryClientProvider>

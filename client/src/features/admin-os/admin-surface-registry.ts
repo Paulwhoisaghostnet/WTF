@@ -1433,6 +1433,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "OS appearance grammar",
       "font pack",
       "chat typography defaults",
+      "localized OS shell labels",
       "theme colors",
       "wallpaper policy",
       "token wallpaper",
@@ -1450,9 +1451,14 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "desktop.weather.updated",
       "desktop.font_pack.updated",
       "desktop.chat_typography.updated",
+      "system_settings.language_changed",
       "app.interaction.tracked",
     ],
-    behaviorAssertionIds: ["desktop.settings-events-pet", "desktop.font-pack.updated"],
+    behaviorAssertionIds: [
+      "desktop.settings-events-pet",
+      "desktop.font-pack.updated",
+      "desktop.localization-language-region",
+    ],
   },
   {
     id: "system-settings",
@@ -1464,6 +1470,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Desktop Apps", "OS Admin", "System Logs"],
     nativeSettings: [
       "settings routes",
+      "language and region preference",
       "account settings links",
       "subdomain setup window handoff",
       "admin route gates",
@@ -1472,11 +1479,13 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     automationHandles: [
       "system_settings.viewed",
       "system_settings.opened",
+      "system_settings.language_changed",
       "app.interaction.tracked",
     ],
     behaviorAssertionIds: [
       "settings.subdomain-setup-applet",
       "account.cobwebsaints-domain-advanced-readiness",
+      "desktop.localization-language-region",
     ],
   },
   {

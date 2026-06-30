@@ -53,6 +53,7 @@ Priority labels:
 | WTF-BB-320 | Verified | Codex WTF LIVE dockable bento pass | 2026-06-29 | WTF LIVE / dockable room workspace UX | P1 | 13 | 6 | 4 | 5 | 0 | WTF LIVE public room now exposes Connection, Sharing, Screens, Attendance, and Room chat as dockable bento tiles with sharing drawers, screen grids, receiver default chat fonts, and pop-in/pinned floating panels |
 | WTF-BB-319 | Verified | Codex WTF LIVE server font cleanup | 2026-06-29 | WTF LIVE / realtime chat typography | P2 | 8 | 14 | 1 | 4 | 0 | WTF LIVE client font cleanup removed MEK/GROUT from visible options, but the WebSocket chat-style sanitizer still accepted MEK/GROUT and defaulted missing realtime chat styles to MEK; fixed server normalization and added regression coverage |
 | WTF-BB-318 | Verified | Codex WTF LIVE input flash repair | 2026-06-29 | WTF LIVE / input rendering stability | P1 | 12 | 7 | 3 | 5 | 0 | Users report WTF LIVE flashes or flickers whenever mic input is enabled or chat text is typed; fixed by isolating the mic meter from the room render tree, caching stage stream wrappers, moving WTF LIVE to a Classic 95 font stack, removing MEK/GROUT from WTF LIVE chat font choices, and collapsing mic diagnostics into a compact drawer |
+| WTF-BB-317 | Open | - | 2026-06-30 | E2E / social reward automation workflow | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory times out in the domain interoperability social post to reward automation loop while localization-specific tests and route smokes pass; inspect the workflow wait condition around Message Board, W, and Skywire reward plumbing |
 | WTF-BB-304 | Verified | Codex wallet/X auth full-send | 2026-06-21 | Auth / Tezos wallet sign-in | P0 | 14 | 3 | 3 | 5 | 1 | Production wallet sign-in could hang on `Connecting...` or bounce back to login after wallet connect; fixed by preserving live wallet lifecycle hardening, clearing stale username/password state before wallet auth, binding real login form names/labels, and keeping wallet waits bounded; verified live on `wtfos.app` commit `069b96b` |
 | WTF-BB-306 | Fixed | Codex desktop pet water repair | 2026-06-21 | Desktop pet / care tool UX | P1 | 10 | 10 | 2 | 4 | 0 | Water tool can clean instead of hydrate a thirsty sick/dirty pet, leaving the Water/thirst meter stuck at 0 despite repeated water care; fixed with water-first care policy and focused tests, pending unrelated inventory coverage blocker |
 | WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 14 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
@@ -353,6 +354,24 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-317 - Social reward automation inventory workflow times out
+
+- Category: E2E / social reward automation workflow
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - `npm run test:e2e:inventory` on 2026-06-30 from clean `origin/main` plus the localization patch finished 386/387 passing.
+  - The only failure was `tests/playwright/inventory/domain-interoperability.spec.mjs:20` for `social post to reward automation loop`, timing out at 60 seconds.
+  - The error-context snapshot was on the desktop with Message Board, W, and Skywire windows open; Message Board showed `Select a channel`, W showed the harness digest timeline, and Skywire was ready.
+  - The localization proof passed inside the same full run as tests 368-370, and Settings/Theme Builder route smokes passed earlier in the run.
+- Why it matters:
+  - The broad inventory suite cannot be used as an all-green release gate until this workflow has a stable wait condition or fixture state.
+- Likely correction:
+  - Inspect the social/reward domain workflow path and make the spec drive/select the expected Message Board channel or wait on a durable reward/event assertion instead of the current state that can stall with no selected channel.
+- Verification idea:
+  - Rerun `npx playwright test tests/playwright/inventory/domain-interoperability.spec.mjs -g "social post to reward automation loop"` after the workflow fix, then rerun `npm run test:e2e:inventory`.
 
 ### WTF-BB-267 - Macaroni generated drop pages reused collection covers for video previews
 

@@ -298,6 +298,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "DesktopAppearance.fontPackKey normalizes to wtfos-soft-system by default, chatTypographyPresetKey, wimChatStyle, and wtfLiveChatStyle normalize to known values, persist through /api/desktop/settings, and canvas helpers read the same CSS variable roles.",
   },
   {
+    id: "desktop.localization-language-region",
+    domain: "Desktop OS, Navigation, and Personal Environment",
+    ownerSurfaceIds: ["system-settings", "desktop-appearance"],
+    ownerSpec:
+      "shared/localization.test.ts, client/src/lib/localization-catalogs.test.ts, client/src/lib/localization-provider-policy.test.ts, tests/playwright/inventory/system-settings-localization.spec.mjs",
+    verificationCommand:
+      "npx tsx --test shared/localization.test.ts client/src/lib/localization-catalogs.test.ts client/src/lib/localization-provider-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/system-settings-localization.spec.mjs",
+    userVisibleAssertion:
+      "A signed-in user can choose a display language in System Settings, see system-owned OS shell text switch to that locale, and use Arabic or pseudo-locale to prove document direction and expansion behavior.",
+    durableSideEffectAssertion:
+      "The selected localization writes through /api/desktop/settings, survives reload in the inventory harness, updates document lang/dir/data-wtf-locale, and leaves user-authored media, token, pet, and profile strings outside the exact system text translation map.",
+  },
+  {
     id: "desktop.app-gates-runtime-policy",
     domain: "Desktop OS, Navigation, and Personal Environment",
     ownerSurfaceIds: ["admin-panel", "command-palette", "desktop-icons"],

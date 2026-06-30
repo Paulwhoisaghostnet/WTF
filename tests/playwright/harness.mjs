@@ -331,6 +331,10 @@ app.post("/__test/state", (req, res) => {
   state.wtfLivePrivateRoom = null;
   state.wtfLivePrivateMembers = [];
   state.wtfLiveOwnedStage = { id: "my-stage", title: "My Stage", kind: "stage", description: "Owned stage", liveUrl: "/live", source: "user", ownerUserId: 1, isPublic: true };
+  Object.assign(
+    desktopLocalization,
+    req.body?.desktopLocalization ?? { locale: "en-US", region: "US" }
+  );
   resetHarnessMarketState();
   res.json({
     ok: true,
@@ -529,6 +533,11 @@ const desktopAppearance = {
   desktopPhysicsEnabled: false,
   desktopGravityMode: "on",
   desktopPetEnabled: false,
+};
+
+const desktopLocalization = {
+  locale: "en-US",
+  region: "US",
 };
 
 const desktopApps = {
@@ -1378,11 +1387,22 @@ function apiMock(req, res) {
     });
   }
   if (pathName === "/api/desktop/settings" && req.method === "GET") {
-    return res.json({ appearance: desktopAppearance, iconLayout: {}, updatedAt: null });
+    return res.json({
+      appearance: desktopAppearance,
+      iconLayout: {},
+      localization: desktopLocalization,
+      updatedAt: null,
+    });
   }
   if (pathName === "/api/desktop/settings" && req.method === "PUT") {
     Object.assign(desktopAppearance, req.body?.appearance ?? {});
-    return res.json({ appearance: desktopAppearance, iconLayout: {}, updatedAt: nowIso() });
+    Object.assign(desktopLocalization, req.body?.localization ?? {});
+    return res.json({
+      appearance: desktopAppearance,
+      iconLayout: req.body?.iconLayout ?? {},
+      localization: desktopLocalization,
+      updatedAt: nowIso(),
+    });
   }
   if (pathName === "/api/atproto/oauth/start") {
     const wantsChat = url.searchParams.get("chat") === "1" || url.searchParams.get("chat") === "true";

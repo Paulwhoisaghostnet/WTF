@@ -22,6 +22,7 @@ import styled from "styled-components";
 import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UiButton, UiPanel } from "../components/wtfos-ui";
+import { useLocalization } from "../lib/localization";
 import {
   getInterfaceMode,
   setInterfaceMode,
@@ -150,8 +151,31 @@ const OpenButton = styled(UiButton)`
   }
 `;
 
+const LanguageControl = styled.label`
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: bold;
+
+  select {
+    min-height: 32px;
+    padding: 4px 6px;
+    border: 1px solid var(--wtf-app-border, #808080);
+    background: var(--wtf-app-control-bg, #ffffff);
+    color: var(--wtf-app-text, #111);
+    font: inherit;
+  }
+`;
+
 export function SystemSettings() {
   const { user } = useAuth();
+  const {
+    locale,
+    localeOptions,
+    setLocale,
+    t,
+  } = useLocalization();
   const [, setLocation] = useLocation();
   const isAdmin = user?.role === "admin";
 
@@ -159,121 +183,121 @@ export function SystemSettings() {
     () => [
       {
         id: "profile",
-        label: "Account Profile",
+        label: t("settingsCard.profile.label"),
         route: "/profile",
-        owner: "Identity",
-        detail: "name, avatar, public profile, social links, password",
+        owner: t("settingsCard.profile.owner"),
+        detail: t("settingsCard.profile.detail"),
         icon: IdCard,
       },
       {
         id: "commands",
-        label: "Command Palette",
+        label: t("settingsCard.commands.label"),
         route: "/command-palette",
-        owner: "Desktop OS",
-        detail: "app launcher, route search, workflow commands",
+        owner: t("settingsCard.commands.owner"),
+        detail: t("settingsCard.commands.detail"),
         icon: Command,
       },
       {
         id: "appearance",
-        label: "Theme Builder",
+        label: t("settingsCard.appearance.label"),
         route: "/theme-builder",
-        owner: "Desktop OS",
-        detail: "OS appearance, theme colors, wallpaper, cursor, physics mode",
+        owner: t("settingsCard.appearance.owner"),
+        detail: t("settingsCard.appearance.detail"),
         icon: Brush,
       },
       {
         id: "notifications",
-        label: "Notifications",
+        label: t("settingsCard.notifications.label"),
         route: "/notification-center",
-        owner: "Inbox",
-        detail: "notification preferences, unread items, linked targets",
+        owner: t("settingsCard.notifications.owner"),
+        detail: t("settingsCard.notifications.detail"),
         icon: Bell,
       },
       {
         id: "files",
-        label: "Files and Dwellings",
+        label: t("settingsCard.files.label"),
         route: "/file-manager",
-        owner: "File Manager",
-        detail: "Desktop, Projects, Media, Vault, Apps, Chain, Archives",
+        owner: t("settingsCard.files.owner"),
+        detail: t("settingsCard.files.detail"),
         icon: FolderCog,
       },
       {
         id: "wallet",
-        label: "Wallet and Portfolio",
+        label: t("settingsCard.wallet.label"),
         route: "/dashboard",
-        owner: "Cockpit",
-        detail: "active wallet, holdings, balances, sync state",
+        owner: t("settingsCard.wallet.owner"),
+        detail: t("settingsCard.wallet.detail"),
         icon: WalletCards,
       },
       {
         id: "subdomains",
-        label: "Subdomain Setup",
+        label: t("settingsCard.subdomains.label"),
         route: "/wtf-subdomains/setup",
-        owner: "WTF Domains",
-        detail: "claim username.wtfos.me and prepare wtf.tez setup",
+        owner: t("settingsCard.subdomains.owner"),
+        detail: t("settingsCard.subdomains.detail"),
         icon: Globe2,
       },
       {
         id: "w",
-        label: "W Social",
+        label: t("settingsCard.w.label"),
         route: "/w",
-        owner: "W",
-        detail: "scraped X timeline cache and read-only Gameshow chat",
+        owner: t("settingsCard.w.owner"),
+        detail: t("settingsCard.w.detail"),
         icon: Radio,
       },
       {
         id: "terminal",
-        label: "Terminal",
+        label: t("settingsCard.terminal.label"),
         route: "/terminal",
-        owner: "Desktop OS",
-        detail: "embedded safe commands, health checks, jobs, access routes",
+        owner: t("settingsCard.terminal.owner"),
+        detail: t("settingsCard.terminal.detail"),
         icon: TerminalSquare,
       },
       {
         id: "cli",
-        label: "CLI Shell",
+        label: t("settingsCard.cli.label"),
         route: "/cli",
-        owner: "Desktop OS",
-        detail: "full-screen CLI/TUI using the same safe command kernel",
+        owner: t("settingsCard.cli.owner"),
+        detail: t("settingsCard.cli.detail"),
         icon: TerminalSquare,
       },
       {
         id: "recovery",
-        label: "Recovery Mode",
+        label: t("settingsCard.recovery.label"),
         route: "/recovery-mode",
-        owner: "Recovery",
-        detail: "wallet disconnect, network reset, shell report export",
+        owner: t("settingsCard.recovery.owner"),
+        detail: t("settingsCard.recovery.detail"),
         icon: LifeBuoy,
       },
       {
         id: "admin",
-        label: "Admin Panel",
+        label: t("settingsCard.admin.label"),
         route: "/admin",
-        owner: "Admin",
-        detail: "permissions, app gates, users, logs, content",
+        owner: t("settingsCard.admin.owner"),
+        detail: t("settingsCard.admin.detail"),
         icon: LockKeyhole,
         adminOnly: true,
       },
       {
         id: "backup",
-        label: "Backup Manager",
+        label: t("settingsCard.backup.label"),
         route: "/backup-manager",
-        owner: "Admin",
-        detail: "restore proof, backup artifact, checksum, target safety",
+        owner: t("settingsCard.backup.owner"),
+        detail: t("settingsCard.backup.detail"),
         icon: DatabaseBackup,
         adminOnly: true,
       },
       {
         id: "control",
-        label: "Control Board",
+        label: t("settingsCard.control.label"),
         route: "/control-board",
-        owner: "Gameshow Admin",
-        detail: "round operations, host actions, contestant state",
+        owner: t("settingsCard.control.owner"),
+        detail: t("settingsCard.control.detail"),
         icon: Gauge,
         adminOnly: true,
       },
     ],
-    []
+    [t]
   );
 
   const visibleSettings = settings.filter((setting) => !setting.adminOnly || isAdmin);
@@ -311,31 +335,41 @@ export function SystemSettings() {
     setLocation("/mission-control");
   }
 
+  function chooseLocale(nextLocale: string) {
+    setLocale(nextLocale);
+    logClientSystemEvent({
+      eventType: "system_settings.language_changed",
+      metadata: { locale: nextLocale },
+    });
+  }
+
   return (
-    <AppWindow title="Settings">
+    <AppWindow title={t("systemSettings.title")}>
       <Shell data-testid="system-settings">
         <StatusGrid>
           <StatusCell>
-            <StatusLabel>Role</StatusLabel>
+            <StatusLabel>{t("systemSettings.status.role")}</StatusLabel>
             <StatusValue>{user?.role ?? "session"}</StatusValue>
           </StatusCell>
           <StatusCell>
-            <StatusLabel>Visible</StatusLabel>
+            <StatusLabel>{t("systemSettings.status.visible")}</StatusLabel>
             <StatusValue>{visibleSettings.length}</StatusValue>
           </StatusCell>
           <StatusCell>
-            <StatusLabel>Admin</StatusLabel>
-            <StatusValue>{isAdmin ? "enabled" : "hidden"}</StatusValue>
+            <StatusLabel>{t("systemSettings.status.admin")}</StatusLabel>
+            <StatusValue>
+              {isAdmin ? t("systemSettings.admin.enabled") : t("systemSettings.admin.hidden")}
+            </StatusValue>
           </StatusCell>
           <StatusCell>
-            <StatusLabel>Mode</StatusLabel>
+            <StatusLabel>{t("systemSettings.status.mode")}</StatusLabel>
             <StatusValue>{interfaceMode}</StatusValue>
           </StatusCell>
         </StatusGrid>
 
         <Separator />
 
-        <UiPanel title="System settings" compact>
+        <UiPanel title={t("systemSettings.panel.system")} compact>
           <CardGrid>
             {visibleSettings.map((setting) => {
               const Icon = setting.icon;
@@ -352,7 +386,7 @@ export function SystemSettings() {
                   </div>
                   <OpenButton onClick={() => openSetting(setting)}>
                     <MonitorCog size={14} aria-hidden />
-                    Open {setting.label}
+                    {t("systemSettings.openSetting", { label: setting.label })}
                   </OpenButton>
                 </Card>
               );
@@ -360,16 +394,47 @@ export function SystemSettings() {
           </CardGrid>
         </UiPanel>
 
-        <UiPanel title="Interface" compact>
+        <UiPanel title={t("systemSettings.panel.language")} compact>
+          <Card>
+            <IconBox>
+              <Globe2 size={17} aria-hidden />
+            </IconBox>
+            <div>
+              <CardTitle>{t("systemSettings.language.title")}</CardTitle>
+              <CardMeta>
+                {t("systemSettings.language.detail")}
+              </CardMeta>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <LanguageControl>
+                <span>{t("systemSettings.language.label")}</span>
+                <select
+                  data-testid="language-region-display-language"
+                  aria-label={t("systemSettings.language.label")}
+                  value={locale}
+                  onChange={(event) => chooseLocale(event.currentTarget.value)}
+                >
+                  {localeOptions.map((option) => (
+                    <option key={option.locale} value={option.locale}>
+                      {option.nativeName}
+                      {option.testingOnly ? " (test)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </LanguageControl>
+            </div>
+          </Card>
+        </UiPanel>
+
+        <UiPanel title={t("systemSettings.panel.interface")} compact>
           <Card>
             <IconBox>
               <TerminalSquare size={17} aria-hidden />
             </IconBox>
             <div>
-              <CardTitle>Choose your wtfOS interface</CardTitle>
+              <CardTitle>{t("systemSettings.interface.title")}</CardTitle>
               <CardMeta>
-                Desktop is the default windowed experience. CLI is the full-screen safe
-                command-line interface powered by the same kernel as Terminal.
+                {t("systemSettings.interface.detail")}
               </CardMeta>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -377,44 +442,43 @@ export function SystemSettings() {
                 active={interfaceMode === "desktop"}
                 onClick={() => chooseInterfaceMode("desktop")}
               >
-                Use desktop
+                {t("systemSettings.interface.desktop")}
               </OpenButton>
               <OpenButton
                 active={interfaceMode === "cli"}
                 onClick={() => chooseInterfaceMode("cli")}
               >
-                Use CLI
+                {t("systemSettings.interface.cli")}
               </OpenButton>
             </div>
           </Card>
         </UiPanel>
 
-        <UiPanel title="Boundary" compact tone="info">
+        <UiPanel title={t("systemSettings.panel.boundary")} compact tone="info">
           <Card>
             <IconBox>
               <ShieldCheck size={17} aria-hidden />
             </IconBox>
             <div>
-              <CardTitle>Settings ownership stays with each app</CardTitle>
+              <CardTitle>{t("systemSettings.boundary.title")}</CardTitle>
               <CardMeta>
-                This hub routes to existing owner surfaces and does not bypass their permissions,
-                wallet preflights, CSRF rules, or admin gates.
+                {t("systemSettings.boundary.detail")}
               </CardMeta>
             </div>
             <OpenButton
               onClick={() =>
                 openSetting({
                   id: "mission",
-                  label: "Mission Control",
+                  label: t("route.missionControl.title"),
                   route: "/mission-control",
-                  owner: "Mission Control",
+                  owner: t("route.missionControl.title"),
                   detail: "",
                   icon: Settings,
                 })
               }
             >
               <Settings size={14} aria-hidden />
-              Open Mission Control
+              {t("systemSettings.boundary.openMissionControl")}
             </OpenButton>
           </Card>
         </UiPanel>

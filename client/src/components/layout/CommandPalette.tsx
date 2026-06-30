@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { canOpenAppsForRole, type UserRoleInput } from "@shared/types";
 import { PAGE_DEFS } from "../../routes/page-defs";
 import { logClientSystemEvent } from "../../lib/system-log";
+import { useLocalization, type TranslateFn } from "../../lib/localization";
 import {
   buildCommandPaletteCommands,
   filterCommandPaletteCommands,
@@ -127,14 +128,14 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
 }
 
-function categoryLabel(category: CommandPaletteCategory): string {
-  if (category === "wallet") return "Wallet";
-  if (category === "reward") return "Reward";
-  if (category === "media") return "Media";
-  if (category === "system") return "System";
-  if (category === "admin") return "Admin";
-  if (category === "app") return "App";
-  return "Route";
+function categoryLabel(category: CommandPaletteCategory, t: TranslateFn): string {
+  if (category === "wallet") return t("commandPalette.category.wallet");
+  if (category === "reward") return t("commandPalette.category.reward");
+  if (category === "media") return t("commandPalette.category.media");
+  if (category === "system") return t("commandPalette.category.system");
+  if (category === "admin") return t("commandPalette.category.admin");
+  if (category === "app") return t("commandPalette.category.app");
+  return t("commandPalette.category.route");
 }
 
 function categoryGlyph(category: CommandPaletteCategory): string {
@@ -153,6 +154,7 @@ export function CommandPalette({
   appAvailability = {},
   navigate,
 }: CommandPaletteProps) {
+  const { t, translateSystemText } = useLocalization();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -162,9 +164,17 @@ export function CommandPalette({
     () => buildCommandPaletteCommands(PAGE_DEFS, role, accessSurfaceIds, appAvailability),
     [accessSurfaceIds, appAvailability, role]
   );
+  const localizedCommands = useMemo(
+    () =>
+      commands.map((command) => ({
+        ...command,
+        label: translateSystemText(command.label),
+      })),
+    [commands, translateSystemText]
+  );
   const results = useMemo(
-    () => filterCommandPaletteCommands(commands, query),
-    [commands, query]
+    () => filterCommandPaletteCommands(localizedCommands, query),
+    [localizedCommands, query]
   );
 
   useEffect(() => {
@@ -225,16 +235,16 @@ export function CommandPalette({
     <Overlay data-testid="command-palette-overlay" onMouseDown={() => setOpen(false)}>
       <Dialog
         role="dialog"
-        aria-label="Command Palette"
+        aria-label={t("commandPalette.title")}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <SearchRow>
           <SearchGlyph>MC</SearchGlyph>
           <Input
             ref={inputRef}
-            aria-label="Search commands"
+            aria-label={t("commandPalette.searchLabel")}
             value={query}
-            placeholder="Command"
+            placeholder={t("commandPalette.placeholder")}
             onChange={(event) => setQuery(event.currentTarget.value)}
             onKeyDown={(event) => {
               if (event.key === "ArrowDown") {
@@ -252,7 +262,7 @@ export function CommandPalette({
         </SearchRow>
         <Results>
           {results.length === 0 ? (
-            <Empty>No commands</Empty>
+            <Empty>{t("common.noCommands")}</Empty>
           ) : (
             results.map((command, index) => (
               <ResultButton
@@ -267,7 +277,7 @@ export function CommandPalette({
                   <Label>{command.label}</Label>
                   <Path>{command.path}</Path>
                 </div>
-                <Category>{categoryLabel(command.category)}</Category>
+                <Category>{categoryLabel(command.category, t)}</Category>
               </ResultButton>
             ))
           )}
