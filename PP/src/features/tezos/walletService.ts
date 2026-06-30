@@ -1,6 +1,12 @@
-import { BeaconEvent, BeaconWallet } from "@taquito/beacon-wallet";
+import {
+  BeaconEvent,
+  DAppClient,
+  NetworkType,
+  PermissionScope,
+  SigningType,
+  type AccountInfo,
+} from "@tezos-x/octez.connect-sdk";
 import { TezosToolkit } from "@taquito/taquito";
-import { NetworkType, SigningType, type AccountInfo } from "@ecadlabs/beacon-types";
 
 // Use mainnet for production
 const RPC_URL = "https://tezos-mainnet.octez.io/";
@@ -9,10 +15,9 @@ const NETWORK_TYPE = NetworkType.MAINNET;
 // Debug logging - only enabled in development mode
 const DEBUG = typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production';
 
-// Stabilization delay for Beacon SDK transport layer initialization
-// The Beacon SDK v4.x has a known timing issue where the transport layer may not be
-// fully initialized immediately after requestPermissions() completes. This delay
-// allows the SDK internal state to settle before allowing signing operations.
+// Stabilization delay for Octez Connect transport layer initialization.
+// Wallet transports can still need a short settle period immediately after
+// requestPermissions() completes, before follow-up signing operations are stable.
 const CONNECTION_STABILIZATION_DELAY_MS = 500;
 
 const log = (message: string, data?: unknown) => {
@@ -26,8 +31,185 @@ const log = (message: string, data?: unknown) => {
   }
 };
 
+type WalletParamsWithLimits = {
+  fee?: number | string;
+  gasLimit?: number | string;
+  storageLimit?: number | string;
+  [key: string]: unknown;
+};
+
+type RpcOperationWithLimits = {
+  fee?: string | number;
+  gas_limit?: string | number;
+  storage_limit?: string | number;
+  [key: string]: unknown;
+};
+
+const bytesToHex = (bytes: Uint8Array): string =>
+  Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+
+const signingTypeForWatermark = (watermark?: Uint8Array): SigningType => {
+  if (!watermark?.length) return SigningType.RAW;
+  if (watermark[0] === 3) return SigningType.OPERATION;
+  if (watermark[0] === 5) return SigningType.MICHELINE;
+  return SigningType.RAW;
+};
+
+const payloadWithWatermark = (bytes: string, watermark?: Uint8Array): string =>
+  watermark?.length ? `${bytesToHex(watermark)}${bytes}` : bytes;
+
+class OctezTaquitoWalletProvider {
+  readonly client: DAppClient;
+
+  constructor() {
+    this.client = new DAppClient({
+      name: "Particle Painter",
+      preferredNetwork: NETWORK_TYPE,
+      network: {
+        type: NETWORK_TYPE,
+      },
+      enableMetrics: false,
+      featuredWallets: ["kukai", "temple", "umami"],
+    } as any);
+  }
+
+  async requestPermissions(): Promise<string> {
+    const permissions = await this.client.requestPermissions({
+      scopes: [PermissionScope.SIGN, PermissionScope.OPERATION_REQUEST],
+    });
+    return permissions.address;
+  }
+
+  async clearActiveAccount(): Promise<void> {
+    await this.client.clearActiveAccount();
+    if (typeof (this.client as any).removeAllAccounts === "function") {
+      await (this.client as any).removeAllAccounts();
+    }
+    if (typeof (this.client as any).removeAllPeers === "function") {
+      await (this.client as any).removeAllPeers(false);
+    }
+  }
+
+  private async getRequiredAccount(): Promise<AccountInfo> {
+    const account = await this.client.getActiveAccount();
+    if (!account?.address) {
+      throw new Error("Octez Connect needs wallet permissions before signing.");
+    }
+    return account;
+  }
+
+  async getPKH(): Promise<string> {
+    const account = await this.getRequiredAccount();
+    return account.address;
+  }
+
+  async getPK(): Promise<string> {
+    const account = await this.getRequiredAccount();
+    return account.publicKey || "";
+  }
+
+  private formatParameters<T extends WalletParamsWithLimits>(params: T): T {
+    return {
+      ...params,
+      ...(params.fee !== undefined ? { fee: params.fee.toString() } : {}),
+      ...(params.gasLimit !== undefined ? { gasLimit: params.gasLimit.toString() } : {}),
+      ...(params.storageLimit !== undefined ? { storageLimit: params.storageLimit.toString() } : {}),
+    };
+  }
+
+  private removeDefaultParams<T extends RpcOperationWithLimits>(
+    params: WalletParamsWithLimits,
+    operatedParams: T,
+  ): T {
+    const cleaned = { ...operatedParams };
+    if (params.fee === undefined) delete cleaned.fee;
+    if (params.gasLimit === undefined) delete cleaned.gas_limit;
+    if (params.storageLimit === undefined) delete cleaned.storage_limit;
+    return cleaned;
+  }
+
+  private async mapParams<T extends WalletParamsWithLimits>(
+    params: () => Promise<T>,
+    createOperation: (params: T) => Promise<RpcOperationWithLimits>,
+  ) {
+    const walletParams = await params();
+    return this.removeDefaultParams(
+      walletParams,
+      await createOperation(this.formatParameters(walletParams)),
+    );
+  }
+
+  async mapTransferParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createTransferOperation } = (await import("@taquito/taquito")) as any;
+    return this.mapParams(params, createTransferOperation);
+  }
+
+  async mapTransferTicketParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createTransferTicketOperation } = (await import("@taquito/taquito")) as any;
+    return this.mapParams(params, createTransferTicketOperation);
+  }
+
+  async mapOriginateParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createOriginationOperation } = (await import("@taquito/taquito")) as any;
+    return this.mapParams(params, createOriginationOperation);
+  }
+
+  async mapDelegateParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createSetDelegateOperation } = (await import("@taquito/taquito")) as any;
+    return this.mapParams(params, createSetDelegateOperation);
+  }
+
+  async mapIncreasePaidStorageWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createIncreasePaidStorageOperation } = (await import("@taquito/taquito")) as any;
+    return this.mapParams(params, createIncreasePaidStorageOperation);
+  }
+
+  async mapRegisterGlobalConstantWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createRegisterGlobalConstantOperation } = (await import("@taquito/taquito")) as any;
+    return this.mapParams(params, createRegisterGlobalConstantOperation);
+  }
+
+  async mapStakeParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createTransferOperation } = (await import("@taquito/taquito")) as any;
+    return this.mapParams(params, createTransferOperation);
+  }
+
+  async mapUnstakeParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createTransferOperation } = (await import("@taquito/taquito")) as any;
+    return this.mapParams(params, createTransferOperation);
+  }
+
+  async mapFinalizeUnstakeParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createTransferOperation } = (await import("@taquito/taquito")) as any;
+    return this.mapParams(params, createTransferOperation);
+  }
+
+  async sendOperations(params: any[]): Promise<string> {
+    await this.getRequiredAccount();
+    const result = await this.client.requestOperation({ operationDetails: params });
+    if (!result?.transactionHash) {
+      throw new Error("Octez Connect did not return an operation hash.");
+    }
+    return result.transactionHash;
+  }
+
+  async sign(bytes: string, watermark?: Uint8Array): Promise<string> {
+    await this.getRequiredAccount();
+    const result = await this.client.requestSignPayload({
+      signingType: signingTypeForWatermark(watermark),
+      payload: payloadWithWatermark(bytes, watermark),
+    });
+    if (!result?.signature) {
+      throw new Error("Octez Connect did not return a signature.");
+    }
+    return result.signature;
+  }
+}
+
 class WalletService {
-  private wallet: BeaconWallet | null = null;
+  private wallet: OctezTaquitoWalletProvider | null = null;
   private tezos: TezosToolkit | null = null;
   private userAddress: string | null = null;
   private initialized: boolean = false;
@@ -44,21 +226,12 @@ class WalletService {
     log("Initializing wallet...");
     
     try {
-      // Initialize wallet lazily with a wallet-compatible named network.
-      // This is required by Beacon SDK v4.x for reliable connection
-      this.wallet = new BeaconWallet({
-        name: "Particle Painter",
-        iconUrl: "https://tezostaquito.io/img/favicon.png",
-        preferredNetwork: NETWORK_TYPE,
-        network: {
-          type: NETWORK_TYPE,
-        },
-      });
+      this.wallet = new OctezTaquitoWalletProvider();
       
-      log("BeaconWallet instance created");
+      log("Octez Connect wallet provider created");
 
       // Subscribe to ACTIVE_ACCOUNT_SET event before requesting permissions
-      // This is required by Beacon SDK v4.x for proper account management
+      // This is required by Octez Connect v4.x for proper account management.
       await this.wallet.client.subscribeToEvent(
         BeaconEvent.ACTIVE_ACCOUNT_SET,
         (account) => {
@@ -125,7 +298,7 @@ class WalletService {
       log("Requesting permissions...");
 
       // Request permissions - this will trigger ACTIVE_ACCOUNT_SET event
-      // Network is already configured in the BeaconWallet constructor
+      // Network is already configured in the Octez provider constructor.
       await this.wallet.requestPermissions();
       
       log("Permissions request completed, waiting for active account...");
@@ -139,7 +312,7 @@ class WalletService {
 
       // Initialize Tezos toolkit
       this.tezos = new TezosToolkit(RPC_URL);
-      this.tezos.setWalletProvider(this.wallet);
+      this.tezos.setWalletProvider(this.wallet as any);
       
       log("Tezos toolkit initialized");
 
@@ -150,7 +323,7 @@ class WalletService {
       log("Balance retrieved", { balanceInTez });
 
       // Mark connection as ready for signing operations after a brief stabilization delay
-      // This helps ensure the Beacon SDK transport layer is fully initialized
+      // This helps ensure the Octez Connect transport layer is fully initialized.
       setTimeout(() => {
         this.connectionReady = true;
         if (this.connectionReadyResolver) {
@@ -208,14 +381,14 @@ class WalletService {
     try {
       // Wait for connection to be ready before signing
       // This prevents race conditions where signing is attempted before
-      // the Beacon SDK transport layer is fully initialized
+      // the Octez Connect transport layer is fully initialized.
       if (!this.connectionReady && this.connectionReadyPromise) {
         log("Waiting for connection to be ready before signing...");
         await this.connectionReadyPromise;
         log("Connection is now ready");
       }
 
-      // Verify active account exists before signing (recommended by Beacon SDK v4.x)
+      // Verify active account exists before signing.
       const activeAccount = await this.wallet.client.getActiveAccount();
       log("Active account check", { hasActiveAccount: !!activeAccount, address: activeAccount?.address });
       
@@ -257,7 +430,7 @@ class WalletService {
     return this.tezos;
   }
 
-  getWallet(): BeaconWallet | null {
+  getWallet(): OctezTaquitoWalletProvider | null {
     return this.wallet;
   }
 }

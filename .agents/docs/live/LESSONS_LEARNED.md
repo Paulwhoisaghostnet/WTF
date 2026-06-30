@@ -1,3 +1,33 @@
+## 2026-06-30 - Dirty release slices must diff against the production base
+
+**What happened**: The Pasta source checkout was dirty and 12 commits behind `origin/main`. A raw `git diff` from that checkout would have described changes against an old local `HEAD`, not the current production base, and could have replayed already-promoted or unrelated work into the clean release branch.
+
+**Why it mattered**: Release prep is supposed to separate valid Pasta/Macaroni work from stale dirty work. Applying a patch from the wrong base can silently undo newer production changes or drag unrelated experiments into a live branch.
+
+**Rule**: When transplanting a dirty checkout into a clean release worktree, generate the patch as `dirty working tree` versus the refreshed production base, such as `git diff origin/main -- <scoped paths>`, then apply that patch to the isolated branch. If `origin/main` moves during the pass, rebase the release branch before validation.
+
+---
+
+## 2026-06-30 - Static creator-tool bundle policy is not live deployment proof
+
+**What happened**: Local Tezos/RPC policy checks passed against refreshed Pasta and Macaroni browser vendor bundles, but live `wtfos.app` still served `vendor/tezos.js` files containing Taquito `24.3.0` for Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna.
+
+**Why it mattered**: Static creator tools can be reachable in production while still running older wallet/deploy code. A green local policy test proves the checkout, not the deployed assets users are actually loading.
+
+**Rule**: For contract-adjacent static tools, verify both local policy and live asset contents before claiming deployment complete. After deploy, curl every shipped static wallet bundle and assert the expected protocol/package marker is present and stale markers are absent.
+
+---
+
+## 2026-06-30 - Installer manifests must not advertise plaintext remote binaries
+
+**What happened**: The Macaroni installer manifest endpoint sanitized configured installer URLs, but still accepted remote `http:` URLs. That was acceptable for a local development link but not for public installer binaries advertised through `wtfos.app`.
+
+**Why it mattered**: Native installer downloads are a supply-chain handoff. Serving the page over HTTPS is not enough if the manifest can point users at plaintext remote binaries that can be downgraded or replaced in transit.
+
+**Rule**: Production installer manifests may expose same-origin relative paths or remote HTTPS URLs only. Allow loopback HTTP only outside production for local development, and keep a source-policy test covering the sanitizer.
+
+---
+
 ## 2026-06-30 - Platform font resets must close every font ingress
 
 **What happened**: The wtfOS Soft System default could not be treated as only a new `fontPackKey` default. Existing users had persisted desktop appearance JSON, WIM chat font families, WTF LIVE chat style fonts, room-level localStorage defaults, realtime WebSocket payloads, and Playwright harness fixtures that could keep old font choices alive.

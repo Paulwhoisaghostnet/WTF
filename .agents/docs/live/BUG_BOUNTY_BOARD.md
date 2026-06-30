@@ -53,6 +53,9 @@ Priority labels:
 | WTF-BB-325 | Verified | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes no longer fall back to Classic after promotion to commit `6e35117`; verified by Deploy to Hetzner `28421767405`, main Quality Gates `28421767416`, live health, Gamma `/gallery` and `/leaderboard` content selectors, Gamma auth gates for `/admin` and `/swap`, plus Classic/Beta host sanity checks |
 | WTF-BB-326 | Verified | Codex Gamma live verification pass | 2026-06-30 | E2E / inventory workflow timeout | P2 | 7 | 15 | 1 | 3 | 0 | Broad inventory smoke could time out the healthy `social post to reward automation loop` under the fixed 60s Playwright budget; verified fixed by workload-based timeout budgeting, local focused/full domain-interoperability proof, and branch Quality Gates `28420704957` |
 | WTF-BB-327 | Verified | Codex Inbox full-send | 2026-06-30 | Comms / Inbox read model | P1 | 12 | 7 | 3 | 5 | 0 | WTF Mail is now the Inbox hub with user-scoped unread counts, source-owned read writes, WIM/Studio coordination, message marks, drafts/templates, desktop badge coverage, and verified focused inventory/browser coverage |
+| WTF-BB-328 | Fixed | Codex Pasta installer hardening | 2026-06-30 | Macaroni installers / supply chain | P1 | 13 | 6 | 1 | 4 | 4 | Macaroni installer manifest accepted remote HTTP URLs, which could publish downgradeable installer links; fixed by allowing HTTPS remote URLs, same-origin relative paths, and loopback HTTP only outside production, clean branch gates passed, pending live release proof |
+| WTF-BB-329 | Fixed | Codex Pasta live-baseline audit | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 3 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles still serve Taquito `24.3.0`; U025/Octez refresh is isolated on `codex/pasta-live-readiness` with clean branch gates passing but has not been deployed to production |
+| WTF-BB-330 | Open | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop installer source and workflow exist on `origin/main`; local macOS unsigned DMG/ZIP now build on `codex/pasta-live-readiness`, but GitHub still reports zero workflow runs and no releases/assets/tags, so production cannot yet offer downloadable native installers |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Open | - | 2026-06-29 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory and focused reruns fail Settings Subdomain Setup and cobwebsaints account readiness because the `wtf.tez target wallet` input remains blank instead of prefilled with the harness wallet |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -421,6 +424,62 @@ Priority labels:
   - Passed focused browser coverage: `node_modules/.bin/playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "documented static|Inbox and Notification|Inbox mailbox" --project=chromium --reporter=list`.
   - Ran `npm run test:e2e:inventory`; Inbox, WIM, messages, `/mail`, `/messages`, `/messages/dms/:id`, `/wim`, social-domain comms probes, and Gamma Inbox checks passed inside the broad run. The broad run finished `439 passed` with unrelated route/WTF LIVE harness failures matching the existing `WTF-BB-238` instability bucket.
   - Fresh focused reruns passed the unrelated broad-run failures: `HARNESS_PORT=4321 node_modules/.bin/playwright test tests/playwright/inventory/routes.spec.mjs -g "/tools/nikshumika-paint" --project=chromium --reporter=list` and `HARNESS_PORT=4323 node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs --project=chromium --reporter=list` (`15/15`).
+
+### WTF-BB-328 - Macaroni installer manifest accepted plaintext remote installer URLs
+
+- Category: Macaroni installers / supply chain
+- Status: Fixed
+- Owner/Session: Codex Pasta installer hardening
+- Score: C1 + F4 + S4 + P1(4) = 13
+- Evidence:
+  - `/api/macaroni/installers` builds a downloadable native installer manifest from configured URLs.
+  - The previous sanitizer accepted remote `http:` URLs, which would let a production HTTPS page advertise plaintext installer binaries.
+- Why it matters:
+  - Installer downloads are a supply-chain handoff. A remote HTTP URL can be downgraded or replaced in transit even when the wtfOS page itself is served over HTTPS.
+- Correction:
+  - Allow same-origin relative paths.
+  - Allow remote HTTPS URLs.
+  - Allow loopback HTTP only outside production for local development.
+- Verification:
+  - Clean branch `codex/pasta-live-readiness` passed focused `node --test server/routes/macaroni-policy.test.ts`, broad `npm run check -- --pretty false`, `npm run build`, and supporting release gates.
+  - Required before closure: live authenticated installer-manifest proof after deployment.
+
+### WTF-BB-329 - Live Pasta/Macaroni static wallet bundles still serve stale Taquito
+
+- Category: Tezos / Pasta production deployment
+- Status: Fixed
+- Owner/Session: Codex Pasta live-baseline audit
+- Score: C2 + F5 + S3 + P1(4) = 14
+- Evidence:
+  - 2026-06-30 live probes showed `https://wtfos.app/creation-tools/{macaroni,spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/vendor/tezos.js` still exposing Taquito `24.3.0`.
+  - The release branch carries refreshed Taquito `25.0.0` and Octez Connect `4.8.6` static bundles plus policy coverage.
+- Why it matters:
+  - Production creator tools can be reachable while still running older wallet/deploy code. Local policy checks are not live deployment proof.
+- Correction:
+  - Promote the refreshed dependency locks and static browser bundles through the normal main `wtfos.app` deployment path.
+  - After deploy, curl each shipped bundle and assert expected new markers are present and stale markers are absent.
+- Verification:
+  - Clean branch `codex/pasta-live-readiness` passed `npm run security:tezos-rpc-defaults`, `npm run creation-tools:check`, broad `npm run check -- --pretty false`, and `npm run build`.
+  - Required before closure: production deploy and live bundle marker proof.
+
+### WTF-BB-330 - Macaroni Desktop installer artifacts are not published
+
+- Category: Macaroni installers / release ops
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F5 + S2 + P1(4) = 13
+- Evidence:
+  - `.github/workflows/macaroni-desktop-installers.yml`, `apps/macaroni-desktop/package.json`, and `docs/macaroni-desktop-packaging.md` exist on `origin/main`.
+  - 2026-06-30 GitHub API probes reported zero releases and zero runs for the Macaroni desktop installer workflow.
+  - 2026-06-30 local `codex/pasta-live-readiness` proof built unsigned macOS universal artifacts with `npm run dist:mac --prefix apps/macaroni-desktop`.
+- Why it matters:
+  - Source and CI definitions do not make software downloadable. The main Pasta release goal requires users to download individual installers or a suite from stable URLs.
+- Correction:
+  - Run the Macaroni desktop installer workflow for macOS, Windows, and Raspberry Pi packages.
+  - Publish artifacts to stable URLs or a release, configure `MACARONI_INSTALLER_*_URL` plus `MACARONI_INSTALLER_VERSION`, and smoke the authenticated `/api/macaroni/installers` manifest on production.
+- Verification:
+  - Local macOS artifact proof: `Macaroni-Studio-1.0.0-mac-universal.dmg` sha256 `9df90eef0fe40b784a642d8630a0b842c7c355224c212884bf3f69777c2b187f`; `Macaroni-Studio-1.0.0-mac-universal.zip` sha256 `9cb9ea4c38494bf2bf9fc160288fa1988ce7ea687efc06b5a1330b569a2fdcba`.
+  - Required before closure: workflow run evidence, Windows/Raspberry Pi artifact proof, release/artifact URLs, configured production manifest, authenticated live proof, and public download smoke.
 
 ### WTF-BB-326 - Broad inventory social workflow timeout
 

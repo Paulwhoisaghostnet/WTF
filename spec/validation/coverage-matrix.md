@@ -15,3 +15,13 @@
 | WTFOS Pinning | 8/8 service specs | Supports every relevant publisher | Provider/host/puppet checks | Environment-specific smoke or recovery test |
 | Shadownet Rehearsal | 6/6 service specs | Supports every relevant publisher | Provider/host/puppet checks | Environment-specific smoke or recovery test |
 | Puppet Collections | 7/7 service specs | Supports every relevant publisher | Provider/host/puppet checks | Environment-specific smoke or recovery test |
+
+## Generated Validation-Suite Totals
+
+- App and service dossiers: 13.
+- Feature specs: 119.
+- Required validation test specs: 595.
+- Directed cross-app pairs: 72.
+- Meaningful chains: 22.
+- End-to-end ecosystem stories: 112.
+- Excluded target: Tortellini, covered only as a blocked-flow validation case.

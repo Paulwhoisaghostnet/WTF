@@ -2,24 +2,26 @@
 
 ## Coverage %
 
-Story and validation-spec coverage: 97.9% (843/861 generated coverage units).
+Story, requirements, and validation-test-spec coverage: 99.0% (852/861 generated coverage units).
 
 The report exceeds the 95% documentation/spec threshold required before any implementation coding. It does not claim production or executable-test completion; it provides the validation suite that later coding passes must implement.
 
 ## Missing Features
 
 - No app-roster feature is undocumented in this pass.
-- Tortellini is explicitly not a product; do not create stories or code for it unless the owner changes the naming model.
+- Tortellini is explicitly not a product; `CH-EASE -> Tortellini` is covered as a blocked-flow story and excluded-target validation, not as an implementation requirement.
 - Future franchise enforcement is intentionally design-only through relationship metadata.
 
 ## Missing Stories
 
 - No missing story category remains for the current Pasta roster.
+- Cross-app coverage includes 72 directed pairs and 22 meaningful chains, including explicit Macaroni/Gnocchi/Ravioli example chains and the blocked Tortellini example.
 - Future app additions must regenerate directed pairs and E2E combinations before implementation.
 
 ## Missing Tests
 
-- Executable Playwright/API tests still need to be implemented from the markdown validation cases in later coding passes.
+- No missing validation test specifications remain for the current generated feature roster.
+- Executable Playwright/API runners still need to be implemented from the markdown and manifest validation cases in later coding passes.
 - Mainnet deployment tests are intentionally excluded until Shadownet proof is complete.
 - Standalone downloadable build checks need release artifacts before they can be executed.
 

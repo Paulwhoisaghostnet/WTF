@@ -16,7 +16,7 @@ const tzktBase = (process.env.TZKT_MAINNET_API ?? "https://api.tzkt.io").replace
 const rpcUrl =
   process.env.TEZOS_MAINNET_RPC_URL ??
   process.env.TEZOS_RPC_URL ??
-  "https://mainnet.api.tez.ie";
+  "https://tezos-mainnet.octez.io/";
 const execute = process.argv.includes("--execute");
 const secretKey = process.env.MARKETPLACE_ADMIN_SECRET_KEY ?? process.env.TEZOS_ADMIN_SECRET_KEY;
 

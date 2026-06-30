@@ -2,6 +2,8 @@
 
 This file covers every directed pair among the nine Pasta applications. Pairs that are observational or management-only still require validation so users understand the boundary.
 
+Tortellini is intentionally absent from this pair matrix because it is not a current app. The requested `CH-EASE -> Tortellini` example is covered in `meaningful-chains.md` as a blocked-flow story.
+
 ### Macaroni -> CH-EASE
 
 As a Creator

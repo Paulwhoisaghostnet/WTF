@@ -1,12 +1,11 @@
 import {
   loadOctezConnect,
-  loadBeaconWallet,
   loadTaquito,
   getRpcUrlForNetwork,
   getNetwork,
 } from "./loaders";
 
-type WalletProviderName = "octez.connect" | "beacon";
+type WalletProviderName = "octez.connect";
 
 export interface WalletConnectionResult {
   address: string;
@@ -17,7 +16,7 @@ export interface ConnectWalletOptions {
   /**
    * Always clear cached connector state and show the wallet picker.
    * Required for auth flows on shared machines so a previous visitor's
-   * Beacon/Octez session is never reused silently.
+   * legacy Beacon/WalletConnect or Octez session is never reused silently.
    */
   forcePermissions?: boolean;
   /**
@@ -30,7 +29,7 @@ export interface ConnectWalletOptions {
 
 /**
  * Persisted session metadata so the UI can rehydrate the connected address
- * across page refreshes without forcing a fresh Beacon/Octez initialization
+ * across page refreshes without forcing a fresh Octez Connect initialization
  * (which both pings the public RPC and tends to surface rate-limit warnings).
  *
  * Signatures are NEVER stored — only the public address + provider id.
@@ -50,7 +49,7 @@ export function readPersistedWalletSession(): PersistedWalletSession | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<PersistedWalletSession>;
     if (!parsed?.address || typeof parsed.address !== "string") return null;
-    if (parsed.providerName !== "octez.connect" && parsed.providerName !== "beacon") {
+    if (parsed.providerName !== "octez.connect") {
       return null;
     }
     return { address: parsed.address, providerName: parsed.providerName };
@@ -73,8 +72,7 @@ function persistWalletSession(session: PersistedWalletSession | null) {
   }
 }
 
-/** Beacon `NetworkType` string values (ecad / airgap Beacon, Taquito 14–24). */
-type BeaconPreferredNetwork = "mainnet" | "ghostnet" | "shadownet";
+type OctezNamedNetwork = "mainnet" | "ghostnet" | "shadownet";
 const WALLET_CONNECT_TIMEOUT_MS = 35_000;
 const WALLET_PERMISSION_TIMEOUT_MS = 30_000;
 const WALLET_SIGN_TIMEOUT_MS = 30_000;
@@ -91,7 +89,7 @@ interface WalletNetworkConfig {
   rpcUrl: string;
 }
 
-function beaconPreferredNetwork(network: string): BeaconPreferredNetwork {
+function octezPreferredNetwork(network: string): OctezNamedNetwork {
   if (network === "ghostnet") return "ghostnet";
   if (network === "shadownet") return "shadownet";
   return "mainnet";
@@ -99,7 +97,7 @@ function beaconPreferredNetwork(network: string): BeaconPreferredNetwork {
 
 function walletNetworkSpec(network: string, rpcUrl?: string) {
   const spec: { type: any; name?: string; rpcUrl?: string } = {
-    type: beaconPreferredNetwork(network) as any,
+    type: octezPreferredNetwork(network) as any,
   };
   if (!NAMED_WALLET_NETWORKS.has(network) && rpcUrl) {
     spec.type = "custom";
@@ -234,6 +232,39 @@ async function clearWalletIndexedDbState() {
   await Promise.all(dbNames.map((name) => deleteIndexedDb(name)));
 }
 
+type WalletParamsWithLimits = {
+  fee?: number | string;
+  gasLimit?: number | string;
+  storageLimit?: number | string;
+  [key: string]: unknown;
+};
+
+type RpcOperationWithLimits = {
+  fee?: string | number;
+  gas_limit?: string | number;
+  storage_limit?: string | number;
+  [key: string]: unknown;
+};
+
+type SigningKind = "raw" | "micheline" | "operation";
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function octezSigningTypeForWatermark(watermark?: Uint8Array): SigningKind {
+  if (!watermark?.length) return "raw";
+  if (watermark[0] === 3) return "operation";
+  if (watermark[0] === 5) return "micheline";
+  return "raw";
+}
+
+function octezPayloadWithWatermark(bytes: string, watermark?: Uint8Array): string {
+  return watermark?.length ? `${bytesToHex(watermark)}${bytes}` : bytes;
+}
+
 async function resetWalletConnectorState(options?: { clearPersistedSession?: boolean }) {
   if (currentAdapter) {
     try {
@@ -313,63 +344,133 @@ async function preflightOctezExtensionHandshake(
   return false;
 }
 
-class BeaconLegacyAdapter implements WalletAdapter {
-  name: WalletProviderName = "beacon";
-  private wallet: any = null;
-  private network: BeaconPreferredNetwork = "mainnet";
-  private rpcUrl = "";
+class OctezConnectTaquitoWalletProvider {
+  constructor(private readonly client: any) {}
 
-  async init(network: string, rpcUrl: string) {
-    const { BeaconWallet, BeaconEvent } = (await loadBeaconWallet()) as any;
-    this.network = beaconPreferredNetwork(network);
-    this.rpcUrl = rpcUrl;
-    this.wallet = new BeaconWallet({
-      name: "WTF OS",
-      network: walletNetworkSpec(network, rpcUrl),
-      enableMetrics: false,
-      // Cast: airgap vs ecad Beacon both use string enum values; TS types differ by major.
-      preferredNetwork: this.network as any,
-    });
-    await this.wallet.client.subscribeToEvent(
-      (BeaconEvent?.ACTIVE_ACCOUNT_SET ?? "ACTIVE_ACCOUNT_SET") as any,
-      async () => {},
-    );
-  }
-
-  async requestPermissions(): Promise<string> {
-    await this.wallet.requestPermissions({
-      network: walletNetworkSpec(this.network, this.rpcUrl),
-    } as any);
-    const account = await this.wallet.getPKH();
+  private async getRequiredAccount() {
+    const account = await this.client.getActiveAccount();
+    if (!account?.address) {
+      throw new Error("Octez Connect needs wallet permissions before Tezos operations can be signed.");
+    }
     return account;
   }
 
-  async getActiveAccount() {
-    const account = await this.wallet.client.getActiveAccount();
-    return account ? { address: account.address } : null;
+  async getPKH(): Promise<string> {
+    const account = await this.getRequiredAccount();
+    return account.address;
   }
 
-  async clearActiveAccount() {
-    await this.wallet.disconnect();
+  async getPK(): Promise<string> {
+    const account = await this.getRequiredAccount();
+    return account.publicKey || "";
   }
 
-  async setAsTaquitoProvider(tezos: any) {
-    tezos.setWalletProvider(this.wallet);
+  private formatParameters<T extends WalletParamsWithLimits>(params: T): T {
+    return {
+      ...params,
+      ...(params.fee !== undefined ? { fee: params.fee.toString() } : {}),
+      ...(params.gasLimit !== undefined ? { gasLimit: params.gasLimit.toString() } : {}),
+      ...(params.storageLimit !== undefined ? { storageLimit: params.storageLimit.toString() } : {}),
+    };
+  }
+
+  private removeDefaultParams<T extends RpcOperationWithLimits>(
+    params: WalletParamsWithLimits,
+    operatedParams: T,
+  ): T {
+    const cleaned = { ...operatedParams };
+    if (params.fee === undefined) delete cleaned.fee;
+    if (params.gasLimit === undefined) delete cleaned.gas_limit;
+    if (params.storageLimit === undefined) delete cleaned.storage_limit;
+    return cleaned;
+  }
+
+  private async mapParams<T extends WalletParamsWithLimits>(
+    params: () => Promise<T>,
+    createOperation: (params: T) => Promise<RpcOperationWithLimits>,
+  ) {
+    const walletParams = await params();
+    return this.removeDefaultParams(
+      walletParams,
+      await createOperation(this.formatParameters(walletParams)),
+    );
+  }
+
+  async mapTransferParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createTransferOperation } = (await loadTaquito()) as any;
+    return this.mapParams(params, createTransferOperation as any);
+  }
+
+  async mapTransferTicketParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createTransferTicketOperation } = (await loadTaquito()) as any;
+    return this.mapParams(params, createTransferTicketOperation as any);
+  }
+
+  async mapOriginateParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createOriginationOperation } = (await loadTaquito()) as any;
+    return this.mapParams(params, createOriginationOperation as any);
+  }
+
+  async mapDelegateParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createSetDelegateOperation } = (await loadTaquito()) as any;
+    return this.mapParams(params, createSetDelegateOperation as any);
+  }
+
+  async mapIncreasePaidStorageWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createIncreasePaidStorageOperation } = (await loadTaquito()) as any;
+    return this.mapParams(params, createIncreasePaidStorageOperation as any);
+  }
+
+  async mapRegisterGlobalConstantWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createRegisterGlobalConstantOperation } = (await loadTaquito()) as any;
+    return this.mapParams(params, createRegisterGlobalConstantOperation as any);
+  }
+
+  async mapStakeParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createTransferOperation } = (await loadTaquito()) as any;
+    return this.mapParams(params, createTransferOperation as any);
+  }
+
+  async mapUnstakeParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createTransferOperation } = (await loadTaquito()) as any;
+    return this.mapParams(params, createTransferOperation as any);
+  }
+
+  async mapFinalizeUnstakeParamsToWalletParams(params: () => Promise<WalletParamsWithLimits>) {
+    const { createTransferOperation } = (await loadTaquito()) as any;
+    return this.mapParams(params, createTransferOperation as any);
+  }
+
+  async sendOperations(params: any[]): Promise<string> {
+    await this.getRequiredAccount();
+    const result = await this.client.requestOperation({ operationDetails: params });
+    if (!result?.transactionHash) {
+      throw new Error("Octez Connect did not return an operation hash.");
+    }
+    return result.transactionHash;
+  }
+
+  async sign(bytes: string, watermark?: Uint8Array): Promise<string> {
+    await this.getRequiredAccount();
+    const result = await this.client.requestSignPayload({
+      signingType: octezSigningTypeForWatermark(watermark),
+      payload: octezPayloadWithWatermark(bytes, watermark),
+    });
+    if (!result?.signature) {
+      throw new Error("Octez Connect did not return a signature.");
+    }
+    return result.signature;
   }
 }
 
 class OctezConnectAdapter implements WalletAdapter {
   name: WalletProviderName = "octez.connect";
   private client: any = null;
-  private _beaconWallet: any = null;
-  private _beaconNetwork: string = "mainnet";
-  private _rpcUrl = "";
+  private taquitoWalletProvider: OctezConnectTaquitoWalletProvider | null = null;
 
   async init(network: string, rpcUrl: string) {
-    this._beaconNetwork = network;
-    this._rpcUrl = rpcUrl;
     const { DAppClient, BeaconEvent } = await loadOctezConnect();
-    const preferredNetwork = beaconPreferredNetwork(network);
+    const preferredNetwork = octezPreferredNetwork(network);
     this.client = new (DAppClient as any)({
       name: "WTF OS",
       network: walletNetworkSpec(network, rpcUrl),
@@ -379,33 +480,23 @@ class OctezConnectAdapter implements WalletAdapter {
     });
     await this.client.subscribeToEvent(
       ((BeaconEvent as any)?.ACTIVE_ACCOUNT_SET ?? "ACTIVE_ACCOUNT_SET") as any,
-      async (account: any) => {
-        await this.syncAccountToBeaconWallet(account);
-      },
+      async () => {},
     );
   }
 
-  private async ensureBeaconWallet(): Promise<any> {
-    if (this._beaconWallet) return this._beaconWallet;
-    const { BeaconWallet, BeaconEvent } = (await loadBeaconWallet()) as any;
-    this._beaconWallet = new BeaconWallet({
-      name: "WTF OS",
-      network: walletNetworkSpec(this._beaconNetwork, this._rpcUrl),
-      preferredNetwork: beaconPreferredNetwork(this._beaconNetwork) as any,
-      enableMetrics: false,
-    });
-    await this._beaconWallet.client.subscribeToEvent(
-      (BeaconEvent?.ACTIVE_ACCOUNT_SET ?? "ACTIVE_ACCOUNT_SET") as any,
-      async () => {},
-    );
-    return this._beaconWallet;
+  private getTaquitoWalletProvider(): OctezConnectTaquitoWalletProvider {
+    if (!this.client) {
+      throw new Error("Octez Connect is not initialized.");
+    }
+    if (!this.taquitoWalletProvider) {
+      this.taquitoWalletProvider = new OctezConnectTaquitoWalletProvider(this.client);
+    }
+    return this.taquitoWalletProvider;
   }
 
   async requestPermissions(): Promise<string> {
     await preflightOctezExtensionHandshake();
     const perms = await this.client.requestPermissions();
-
-    await this.syncAccountToBeaconWallet();
 
     if (perms?.address) return perms.address;
 
@@ -415,22 +506,9 @@ class OctezConnectAdapter implements WalletAdapter {
     throw new Error("Wallet permissions granted but no active account address was returned");
   }
 
-  private async syncAccountToBeaconWallet(activeAccount?: any) {
-    try {
-      const account = activeAccount ?? await this.client.getActiveAccount();
-      if (account) {
-        const bw = await this.ensureBeaconWallet();
-        await bw.client.setActiveAccount(account);
-      }
-    } catch (err) {
-      console.warn("[WTF] Failed to sync octez account to BeaconWallet:", err);
-    }
-  }
-
   async getActiveAccount() {
     const account = await this.client.getActiveAccount();
     if (account) {
-      await this.syncAccountToBeaconWallet();
       return { address: account.address };
     }
     return null;
@@ -444,16 +522,11 @@ class OctezConnectAdapter implements WalletAdapter {
     if (typeof this.client.removeAllPeers === "function") {
       await this.client.removeAllPeers(false);
     }
-    if (this._beaconWallet) {
-      try {
-        await this._beaconWallet.clearActiveAccount();
-      } catch { /* may already be cleared via Octez client */ }
-    }
+    this.taquitoWalletProvider = null;
   }
 
   async setAsTaquitoProvider(tezos: any) {
-    const wallet = await this.ensureBeaconWallet();
-    tezos.setWalletProvider(wallet);
+    tezos.setWalletProvider(this.getTaquitoWalletProvider());
   }
 }
 
@@ -468,17 +541,7 @@ async function createAdapter(config: WalletNetworkConfig): Promise<WalletAdapter
     console.warn("[WTF] octez.connect unavailable:", err);
   }
 
-  try {
-    const beacon = new BeaconLegacyAdapter();
-    await beacon.init(config.network, config.rpcUrl);
-    const active = await beacon.getActiveAccount();
-    console.log(`[WTF] Wallet provider: Beacon${active ? " (active session)" : " (fallback)"}`);
-    return beacon;
-  } catch (err) {
-    console.warn("[WTF] Beacon unavailable:", err);
-  }
-
-  throw new Error("No wallet provider available");
+  throw new Error("Octez Connect is unavailable. Install or enable a supported Octez Connect wallet and retry.");
 }
 
 async function ensureAdapter(config = resolveWalletConfig()): Promise<WalletAdapter> {
@@ -672,27 +735,13 @@ export async function signPayload(
       "0501" + byteLen.toString(16).padStart(8, "0") + hex,
   };
 
-  if (adapter.name === "octez.connect") {
-    const octezAdapter = adapter as any;
-    const result = await withWalletTimeout<{ signature: string }>(
-      octezAdapter.client.requestSignPayload(payload),
-      "Wallet signing did not finish. Clear the wallet connection and try again, or choose another Tezos wallet.",
-      WALLET_SIGN_TIMEOUT_MS,
-    );
-    const account = await octezAdapter.client.getActiveAccount();
-    return {
-      signature: result.signature,
-      publicKey: account?.publicKey || "",
-    };
-  }
-
-  const beaconAdapter = adapter as any;
+  const octezAdapter = adapter as any;
   const result = await withWalletTimeout<{ signature: string }>(
-    beaconAdapter.wallet.client.requestSignPayload(payload),
+    octezAdapter.client.requestSignPayload(payload),
     "Wallet signing did not finish. Clear the wallet connection and try again, or choose another Tezos wallet.",
     WALLET_SIGN_TIMEOUT_MS,
   );
-  const account = await beaconAdapter.wallet.client.getActiveAccount();
+  const account = await octezAdapter.client.getActiveAccount();
   return {
     signature: result.signature,
     publicKey: account?.publicKey || "",
