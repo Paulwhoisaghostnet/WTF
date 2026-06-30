@@ -9,6 +9,7 @@ const prepareSource = readFileSync("apps/macaroni-desktop/scripts/prepare-assets
 const workflowSource = readFileSync(".github/workflows/macaroni-desktop-installers.yml", "utf8");
 const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
 const gitignoreSource = readFileSync(".gitignore", "utf8");
+const liveCheckSource = readFileSync("scripts/check-macaroni-installers-live.mjs", "utf8");
 
 test("Macaroni desktop package bundles a no-prereq Electron shell", () => {
   assert.equal(desktopPackage.main, "src/main.cjs");
@@ -70,4 +71,19 @@ test("Macaroni desktop installer workflow builds all target packages", () => {
   assert.match(workflowSource, /npm run dist:raspberry-pi --prefix apps\/macaroni-desktop/);
   assert.match(workflowSource, /actions\/upload-artifact@v4/);
   assert.match(workflowSource, /softprops\/action-gh-release@v2/);
+});
+
+test("Macaroni desktop live verifier pins the published v1 installer release", () => {
+  assert.equal(desktopPackage.version, "1.0.0");
+  assert.match(liveCheckSource, /macaroni-desktop-v1\.0\.0/);
+  assert.match(liveCheckSource, /Macaroni-Studio-1\.0\.0-mac-universal\.dmg/);
+  assert.match(liveCheckSource, /Macaroni-Studio-1\.0\.0-win-x64\.exe/);
+  assert.match(liveCheckSource, /Macaroni-Studio-1\.0\.0-linux-arm64\.deb/);
+  assert.match(liveCheckSource, /9c91ad656bd249d7d921084d429ba23f00692d68819937505aa3deec8e50f600/);
+  assert.match(liveCheckSource, /6b40525d524dd916ba3a46ab28bb36c3238c7cbffd993f2c1803f61f5063e1d4/);
+  assert.match(liveCheckSource, /6ed21c165f5b2c5f476b0c8ab23c78397de59a2990d3f4f21dfb741b5e7e6216/);
+  assert.equal(
+    JSON.parse(readFileSync("package.json", "utf8")).scripts["macaroni:installers:live-check"],
+    "node scripts/check-macaroni-installers-live.mjs"
+  );
 });

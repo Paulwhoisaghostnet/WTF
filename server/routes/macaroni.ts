@@ -61,18 +61,21 @@ const INSTALLER_PLATFORMS = [
     key: "macos",
     label: "macOS",
     env: "MACARONI_INSTALLER_MACOS_URL",
+    sha256Env: "MACARONI_INSTALLER_MACOS_SHA256",
     fileName: "Macaroni-Studio.dmg",
   },
   {
     key: "windows",
     label: "Windows",
     env: "MACARONI_INSTALLER_WINDOWS_URL",
+    sha256Env: "MACARONI_INSTALLER_WINDOWS_SHA256",
     fileName: "Macaroni-Studio.exe",
   },
   {
     key: "raspberry-pi",
     label: "Raspberry Pi",
     env: "MACARONI_INSTALLER_RASPBERRY_PI_URL",
+    sha256Env: "MACARONI_INSTALLER_RASPBERRY_PI_SHA256",
     fileName: "macaroni-studio-arm64.deb",
   },
 ] as const;
@@ -227,6 +230,11 @@ function safeInstallerUrl(value: string | undefined): string {
   } catch (_) {
     return "";
   }
+}
+
+function safeInstallerSha256(value: string | undefined): string {
+  const text = String(value || "").trim().toLowerCase().replace(/^sha256:/, "");
+  return /^[0-9a-f]{64}$/.test(text) ? text : "";
 }
 
 const upload = multer({
@@ -631,10 +639,12 @@ router.get("/api/macaroni/installers", isAuthenticated, (_req, res) => {
     version: version || null,
     installers: INSTALLER_PLATFORMS.map((platform) => {
       const url = safeInstallerUrl(process.env[platform.env]);
+      const sha256 = safeInstallerSha256(process.env[platform.sha256Env]);
       return {
         key: platform.key,
         label: platform.label,
         fileName: platform.fileName,
+        sha256: sha256 || null,
         available: Boolean(url),
         url: url || null,
       };

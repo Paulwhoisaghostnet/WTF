@@ -70,6 +70,7 @@
     "creation-tools:build-tezos-vendors": "node scripts/build-tezos-browser-vendors.mjs",
     "macaroni:desktop:prepare": "npm run prepare --prefix apps/macaroni-desktop",
     "macaroni:desktop:check": "node --test scripts/macaroni-desktop-package-policy.test.mjs",
+    "macaroni:installers:live-check": "node scripts/check-macaroni-installers-live.mjs",
     "macaroni:desktop:dist": "npm run dist --prefix apps/macaroni-desktop",
     "check": "tsc --noEmit",
     "wtfos:cli:build": "npm run build --prefix packages/wtfos-cli",

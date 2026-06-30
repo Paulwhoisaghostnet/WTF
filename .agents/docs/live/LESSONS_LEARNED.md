@@ -1,3 +1,13 @@
+## 2026-06-30 - Published installer digests must come from release assets
+
+**What happened**: The Macaroni live installer verifier was first seeded with earlier local/workflow artifact sizes and SHA-256 values. The public GitHub release assets accepted byte-range downloads, but their `content-range` totals and GitHub release API `digest` values differed from those stale notes.
+
+**Why it mattered**: The live download surface points at the GitHub release, not at the intermediate build artifact cache. Publishing checksums from the wrong artifact source would make the manifest fail release verification and could train users to distrust a valid installer.
+
+**Rule**: Treat the GitHub release asset metadata as the authority for production installer URLs, byte sizes, and SHA-256 digests. After publishing a release, refresh docs, production env, and live verifiers from `gh release view --json assets` or an equivalent release API query before exposing checksums.
+
+---
+
 ## 2026-06-30 - Installer manifest filenames must match release asset types
 
 **What happened**: The live Macaroni installer manifest correctly returned the Windows GitHub release URL for the NSIS `.exe`, but the manifest's `fileName` still advertised `Macaroni-Studio.msi`. The browser installer links use that value as the `download` filename, so a valid `.exe` could be saved with a misleading package extension.
