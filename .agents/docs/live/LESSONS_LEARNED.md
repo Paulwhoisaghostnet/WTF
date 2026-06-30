@@ -1,3 +1,13 @@
+## 2026-06-30 - Static publisher handoffs must prove iframe query and module runtime wiring
+
+**What happened**: The Pasta source policy said CH-EASE opened `/tools/spaghetti?handoff=chease-package`, and the Spaghetti iframe rendered visually, but the creation-tool wrapper only forwarded query strings for Macaroni. After fixing that, the handoff still did not import because the six Pasta static studios are ES modules that read `window.MD`, while their shared `common.js` files declared lexical `const MD` without exporting it onto `window`.
+
+**Why it mattered**: Static creator-tool route smoke can prove the iframe exists while the actual app module never wires buttons, package import, wallet, pinning, or publish flows. A handoff URL in the outer wtfOS route is not enough; the embedded static page must receive the query and the module must receive its shared runtime object.
+
+**Rule**: For static creation tools, verify route query preservation at the iframe `src`, browser-visible package import, and module runtime globals before claiming handoff coverage. When a classic script supplies helpers to an ES module, export the helper explicitly on `window` and keep a source-policy guard plus a focused browser proof.
+
+---
+
 ## 2026-06-30 - Octez wallet proof puppets must emit active-account events
 
 **What happened**: The Macaroni Shadownet proof patched the Beacon wallet class but not the Octez DAppClient lifecycle that `OctezPrimaryWallet` prefers. The mint-page test could briefly read a connected balance while the connect button fell back to `Connect wallet`, because the harness did not behave like an Octez client with `ACTIVE_ACCOUNT_SET` subscriptions.

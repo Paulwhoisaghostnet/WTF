@@ -210,12 +210,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol"],
     ownerSpec:
-      "client/src/pages/MacaroniPackager.tsx, public/creation-tools/*/js/studio.js, client/src/features/pasta-protocol/pasta-static-policy.test.ts",
-    verificationCommand: "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts",
+      "client/src/pages/MacaroniPackager.tsx, client/src/features/creation-tools/CreationToolFrame.tsx, public/creation-tools/*/js/common.js, public/creation-tools/*/js/studio.js, client/src/features/pasta-protocol/pasta-static-policy.test.ts, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs",
+    verificationCommand:
+      "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts client/src/features/creation-tools/creation-tool-presentation-policy.test.ts && HARNESS_PORT=4321 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "CH-EASE can open a target Pasta publisher with the current package preloaded through a same-origin sessionStorage handoff, and the publisher confirms import with inline status.",
+      "CH-EASE can open a target Pasta publisher with the current package preloaded through a same-origin sessionStorage handoff, the creation-tool iframe preserves the handoff query context, the publisher confirms import with inline status, and Spaghetti can rehearse the Shadownet-safe publish choreography from that imported package.",
     durableSideEffectAssertion:
-      "The CH-EASE handoff emits chease.package_handoff_opened and the six Pasta studios consume the shared handoff key without mutating server storage before the creator chooses to deploy or export.",
+      "The CH-EASE handoff emits chease.package_handoff_opened; the six Pasta studios expose the shared MD runtime to their module scripts and consume the shared handoff key without mutating server storage before the creator chooses to deploy or export; the focused browser proof records Spaghetti's chain guard, origination, create_token batch, mint batch, pinned collection metadata, pinned token metadata, and spaghetti.collection_deployed / spaghetti.token_published events.",
   },
   {
     id: "pasta-protocol.colander-context-handoff",

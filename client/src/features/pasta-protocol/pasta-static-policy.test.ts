@@ -30,6 +30,15 @@ test("Pasta static publishers use sandbox-safe inline feedback", () => {
   }
 });
 
+test("Pasta static publisher modules receive the shared MD runtime", () => {
+  for (const appId of PASTA_APPS) {
+    const common = readRepoFile(commonPath(appId));
+    const studio = readRepoFile(studioPath(appId));
+    assert.match(common, /window\.MD = MD;/, `${appId} common helpers should expose MD for module scripts`);
+    assert.match(studio, /const MD = window\.MD;/, `${appId} studio should read the shared MD runtime from window`);
+  }
+});
+
 test("Pasta wtfOS pinning is capability gated inside the platform", () => {
   for (const appId of PASTA_APPS) {
     const common = readRepoFile(commonPath(appId));

@@ -23,6 +23,7 @@ The report exceeds the 95% documentation/spec threshold required before any impl
 - No missing validation test specifications remain for the current generated feature roster.
 - Executable Playwright/API runners still need to be implemented from the markdown and manifest validation cases in later coding passes.
 - Mainnet deployment tests are intentionally excluded until full Shadownet proof is complete. Macaroni now has a green Shadownet confidence lane, but that is not yet full protocol deploy/mint/collect proof.
+- CH-EASE -> Spaghetti now has a focused executable browser proof for route-query handoff, static-module runtime wiring, imported collection metadata, Shadownet chain guard, origination choreography, create_token batching, mint batching, pinned metadata payloads, and canonical Spaghetti audit events. This is still a mocked wallet/chain choreography proof, not live Shadownet origination evidence.
 - Individual Macaroni Desktop and bundled Pasta Suite Desktop downloadable build checks now have release artifacts and live manifest verifiers. Future standalone app installers must follow the same release-asset, SHA-256, and authenticated-manifest proof pattern before being marked downloadable.
 
 ## Current Live Evidence
@@ -30,6 +31,7 @@ The report exceeds the 95% documentation/spec threshold required before any impl
 - Macaroni Desktop `1.0.0` individual installers are live for macOS, Windows, and Raspberry Pi with authenticated manifest and byte-range release asset proof.
 - Pasta Suite Desktop `1.0.0` bundled installers are live for macOS, Windows, and Raspberry Pi with authenticated manifest and byte-range release asset proof.
 - Macaroni Shadownet local puppet proof passed 5/5 against `https://tezos-shadownet.octez.io/`, covering Shadownet defaults, chain-verified wallet safety, trusted-creator publish gating, mint-page wallet restore/disconnect, mismatched RPC blocking, and Kukai handoff.
+- Local Spaghetti proof passed through the real `/tools/spaghetti?handoff=chease-package` shell after rebuilding, proving the CH-EASE handoff query reaches the iframe and the static publisher module receives its shared `window.MD` runtime before rehearsing the chain-guarded publish sequence.
 - Static Pasta tool bundles are live on `wtfos.app`, but static reachability does not prove Shadownet deploy, mint, collect, indexer, or hosted-page recovery workflows.
 
 ## Risk Areas
