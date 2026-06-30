@@ -504,7 +504,7 @@ const desktopAppearance = {
   fontPackKey: "wtfos-soft-system",
   chatTypographyPresetKey: "wtfos-default",
   wimChatStyle: {
-    fontFamily: "Helvetica",
+    fontFamily: "wtfOS Soft Sans",
     fontSize: 12,
     color: "#06135f",
     bold: false,
@@ -512,7 +512,7 @@ const desktopAppearance = {
     underline: false,
   },
   wtfLiveChatStyle: {
-    font: "classic-95",
+    font: "wtfos-soft-system",
     color: "ink",
     size: 12,
     bold: false,
@@ -534,6 +534,19 @@ const desktopAppearance = {
   desktopGravityMode: "on",
   desktopPetEnabled: false,
 };
+
+function forceHarnessDesktopFonts(appearance) {
+  appearance.fontPackKey = "wtfos-soft-system";
+  appearance.wimChatStyle = {
+    ...(appearance.wimChatStyle || {}),
+    fontFamily: "wtfOS Soft Sans",
+  };
+  appearance.wtfLiveChatStyle = {
+    ...(appearance.wtfLiveChatStyle || {}),
+    font: "wtfos-soft-system",
+  };
+  return appearance;
+}
 
 const desktopLocalization = {
   locale: "en-US",
@@ -1388,7 +1401,7 @@ function apiMock(req, res) {
   }
   if (pathName === "/api/desktop/settings" && req.method === "GET") {
     return res.json({
-      appearance: desktopAppearance,
+      appearance: forceHarnessDesktopFonts(desktopAppearance),
       iconLayout: {},
       localization: desktopLocalization,
       updatedAt: null,
@@ -1396,6 +1409,7 @@ function apiMock(req, res) {
   }
   if (pathName === "/api/desktop/settings" && req.method === "PUT") {
     Object.assign(desktopAppearance, req.body?.appearance ?? {});
+    forceHarnessDesktopFonts(desktopAppearance);
     Object.assign(desktopLocalization, req.body?.localization ?? {});
     return res.json({
       appearance: desktopAppearance,
@@ -4531,14 +4545,17 @@ const server = app.listen(PORT, () => {
 const livePeers = new Map();
 const liveWss = new WebSocketServer({ server, path: "/ws/wtf-live" });
 const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(512 * 1024 * 1.4);
-const LIVE_CHAT_FONTS = new Set(["classic-95", "terminal", "serif-press"]);
+const LIVE_CHAT_FONTS = new Set(["wtfos-soft-system"]);
 const LIVE_LEGACY_CHAT_FONT_MAP = {
-  system: "classic-95",
-  "mek-mono": "classic-95",
-  "grout-display": "classic-95",
-  mono: "terminal",
-  serif: "serif-press",
-  pixel: "classic-95",
+  system: "wtfos-soft-system",
+  "mek-mono": "wtfos-soft-system",
+  "grout-display": "wtfos-soft-system",
+  "classic-95": "wtfos-soft-system",
+  mono: "wtfos-soft-system",
+  terminal: "wtfos-soft-system",
+  serif: "wtfos-soft-system",
+  "serif-press": "wtfos-soft-system",
+  pixel: "wtfos-soft-system",
 };
 const LIVE_CHAT_COLORS = new Set(["ink", "blue", "green", "red", "purple", "amber"]);
 const LIVE_ROOM_REACTION_LABELS = {
@@ -4665,7 +4682,7 @@ function liveNormalizeChatStyle(value) {
   const font = String(style.font || "");
   const color = String(style.color || "");
   return {
-    font: LIVE_CHAT_FONTS.has(font) ? font : LIVE_LEGACY_CHAT_FONT_MAP[font] || "classic-95",
+    font: LIVE_CHAT_FONTS.has(font) ? font : LIVE_LEGACY_CHAT_FONT_MAP[font] || "wtfos-soft-system",
     color: LIVE_CHAT_COLORS.has(color) ? color : "ink",
     size,
     bold: Boolean(style.bold),

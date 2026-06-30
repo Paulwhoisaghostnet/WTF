@@ -6,15 +6,15 @@ import { Button, Hourglass, TextField } from "react95";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { presentationRouteHref, usePresentationShell } from "../../lib/presentation-shell";
-import { FONT_PACKS, getFontPack } from "../appearance/font-packs";
+import { getFontPack } from "../appearance/font-packs";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
   DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS,
   DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES,
   DESKTOP_WTF_LIVE_CHAT_COLORS,
   DESKTOP_WTF_LIVE_CHAT_FONT_LABELS,
-  DESKTOP_WTF_LIVE_CHAT_FONTS,
   DESKTOP_WTF_LIVE_CHAT_SIZES,
+  PLATFORM_DESKTOP_FONT_PACK_KEY,
   normalizeDesktopWtfLiveChatStyle,
   type DesktopAppearance,
   type DesktopFontPackKey,
@@ -307,15 +307,15 @@ const MAX_LIVE_AVATAR_BYTES = 512 * 1024;
 const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(MAX_LIVE_AVATAR_BYTES * 1.4);
 const LIVE_CHAT_FONT_SIZES = DESKTOP_WTF_LIVE_CHAT_SIZES;
 const WTF_LIVE_CHAT_DEFAULT_FONT_STORAGE_KEY = "wtf-live:room-default-font-pack";
-const WTF_LIVE_DEFAULT_FONT_PACK: DesktopFontPackKey = "classic-95";
-const WTF_LIVE_ROOM_FONT_PACKS = FONT_PACKS.filter((pack) => pack.key !== "mek-type");
-const CLASSIC_95_FONT_PACK = getFontPack("classic-95");
-const TERMINAL_FONT_PACK = getFontPack("terminal");
-const SERIF_PRESS_FONT_PACK = getFontPack("serif-press");
+const WTF_LIVE_DEFAULT_FONT_PACK: DesktopFontPackKey = PLATFORM_DESKTOP_FONT_PACK_KEY;
+const WTF_LIVE_ROOM_FONT_PACKS = [getFontPack(PLATFORM_DESKTOP_FONT_PACK_KEY)];
+const SOFT_SYSTEM_FONT_PACK = getFontPack(PLATFORM_DESKTOP_FONT_PACK_KEY);
 const LIVE_CHAT_FONT_OPTIONS: Array<{ id: LiveChatFont; label: string; family: string }> = [
-  { id: "classic-95", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["classic-95"], family: CLASSIC_95_FONT_PACK.roles.app },
-  { id: "terminal", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS.terminal, family: TERMINAL_FONT_PACK.roles.mono },
-  { id: "serif-press", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["serif-press"], family: SERIF_PRESS_FONT_PACK.roles.app },
+  {
+    id: "wtfos-soft-system",
+    label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["wtfos-soft-system"],
+    family: SOFT_SYSTEM_FONT_PACK.roles.app,
+  },
 ];
 const LIVE_CHAT_COLOR_OPTIONS: Array<{ id: LiveChatColor; label: string; value: string }> =
   DESKTOP_WTF_LIVE_CHAT_COLORS.map((color) => ({
@@ -2197,7 +2197,10 @@ function readStoredLiveChatStyle(): LiveChatStyle | null {
 function readStoredRoomDefaultFontPack(): DesktopFontPackKey {
   try {
     const stored = localStorage.getItem(WTF_LIVE_CHAT_DEFAULT_FONT_STORAGE_KEY);
-    return WTF_LIVE_ROOM_FONT_PACKS.some((pack) => pack.key === stored) ? stored as DesktopFontPackKey : WTF_LIVE_DEFAULT_FONT_PACK;
+    if (stored !== WTF_LIVE_DEFAULT_FONT_PACK) {
+      localStorage.setItem(WTF_LIVE_CHAT_DEFAULT_FONT_STORAGE_KEY, WTF_LIVE_DEFAULT_FONT_PACK);
+    }
+    return WTF_LIVE_DEFAULT_FONT_PACK;
   } catch {
     return WTF_LIVE_DEFAULT_FONT_PACK;
   }

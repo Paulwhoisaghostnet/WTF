@@ -1,3 +1,23 @@
+## 2026-06-30 - Platform font resets must close every font ingress
+
+**What happened**: The wtfOS Soft System default could not be treated as only a new `fontPackKey` default. Existing users had persisted desktop appearance JSON, WIM chat font families, WTF LIVE chat style fonts, room-level localStorage defaults, realtime WebSocket payloads, and Playwright harness fixtures that could keep old font choices alive.
+
+**Why it mattered**: A platform-wide font mandate must override stale and crafted values, not merely change what new users see. Leaving one ingress unnormalized would make the UI look inconsistent across apps and could make production verification pass for a fresh profile while existing accounts stayed on legacy typography.
+
+**Rule**: When forcing a new platform font, update shared normalization, client option lists, server/database persistence, realtime sanitizers, feature-local storage defaults, test harness defaults, inventory docs, and focused UI tests in the same pass. Preserve non-font personalization only after the font fields have been overwritten with the platform font.
+
+---
+
+## 2026-06-30 - Run Playwright artifact writers serially unless outputs are isolated
+
+**What happened**: Two focused Playwright inventory specs were started at the same time while writing into the shared `test-results` output tree. One run reported a trace artifact `ENOENT`, but the same spec passed when rerun by itself.
+
+**Why it mattered**: Parallel artifact writes can create false failures that look like product regressions. That is especially misleading during UI proof work, where screenshots and traces are part of the evidence chain.
+
+**Rule**: Run focused Playwright specs serially unless each process has an isolated output directory. If a Playwright failure mentions missing trace artifacts during concurrent runs, rerun the named spec alone before changing app code.
+
+---
+
 ## 2026-06-30 - Gamma promotion needs host isolation proof, not only Gamma proof
 
 **What happened**: The Gamma shell branch had local host-mapped proof and branch Quality Gates green, but the goal was not actually complete until the branch was promoted to `main`, Hetzner served commit `6e35117`, and live selectors proved direct Gamma routes no longer rendered the Classic desktop.

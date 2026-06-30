@@ -21,20 +21,28 @@ test.describe("interaction inventory - Theme Builder typography", () => {
       "aria-pressed",
       "true"
     );
-    await expect(page.getByTestId("font-pack-mek-type")).toBeVisible();
+    await expect(page.getByTestId("font-pack-mek-type")).toHaveCount(0);
     await page.getByRole("button", { name: "Chat typography preset Friendly Room" }).click();
 
-    await expect(page.getByLabel("Default WIM font", { exact: true })).toHaveValue("Comic Sans MS");
+    await expect(page.getByLabel("Default WIM font", { exact: true })).toHaveValue("wtfOS Soft Sans");
     await expect(page.getByLabel("Default WIM font size")).toHaveValue("14");
-    await expect(page.getByLabel("Default WTF LIVE chat font", { exact: true })).toHaveValue("classic-95");
+    await expect(page.getByLabel("Default WTF LIVE chat font", { exact: true })).toHaveValue("wtfos-soft-system");
     await expect(page.getByLabel("Default WTF LIVE chat font size")).toHaveValue("12");
 
+    const wimFontOptions = await page
+      .locator('select[aria-label="Default WIM font"] option')
+      .evaluateAll((options) => options.map((option) => option.value));
+    const liveFontOptions = await page
+      .locator('select[aria-label="Default WTF LIVE chat font"] option')
+      .evaluateAll((options) => options.map((option) => option.value));
     const wimSizeOptions = await page
       .locator('select[aria-label="Default WIM font size"] option')
       .evaluateAll((options) => options.map((option) => option.value));
     const liveSizeOptions = await page
       .locator('select[aria-label="Default WTF LIVE chat font size"] option')
       .evaluateAll((options) => options.map((option) => option.value));
+    expect(wimFontOptions).toEqual(["wtfOS Soft Sans"]);
+    expect(liveFontOptions).toEqual(["wtfos-soft-system"]);
     expect(wimSizeOptions).toEqual(["10", "12", "14", "18", "24"]);
     expect(liveSizeOptions).toEqual(["8", "9", "10", "11", "12", "13", "14"]);
 
@@ -47,7 +55,7 @@ test.describe("interaction inventory - Theme Builder typography", () => {
         const body = await response.json();
         return body.appearance.wtfLiveChatStyle;
       })
-      .toMatchObject({ font: "classic-95", color: "purple", size: 14 });
+      .toMatchObject({ font: "wtfos-soft-system", color: "purple", size: 14 });
 
     const state = await (await request.get("/__test/state")).json();
     expect(state.interactionLog.map((event) => event.eventType)).toContain(

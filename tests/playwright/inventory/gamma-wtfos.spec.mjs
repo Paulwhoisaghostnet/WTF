@@ -1063,7 +1063,12 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     }
     expect(settingsMetrics.stylePreview?.color).toBeTruthy();
 
-    await surface.getByTestId("font-pack-terminal").click();
+    await expect(surface.getByTestId("font-pack-wtfos-soft-system")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await expect(surface.getByTestId("font-pack-terminal")).toHaveCount(0);
+    await surface.getByTestId("font-pack-wtfos-soft-system").click();
     await expect(page).toHaveURL(/\/gamma\/theme-builder$/);
     await expectGammaRouteReady(page, "/theme-builder");
 

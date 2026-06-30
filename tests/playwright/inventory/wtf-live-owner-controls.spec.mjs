@@ -791,8 +791,8 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     const roomFontOptions = await page.locator("[data-wtf-live-room-default-font] option").evaluateAll((options) =>
       options.map((option) => option.getAttribute("value")),
     );
-    expect(roomFontOptions).not.toContain("mek-type");
-    await page.locator("[data-wtf-live-room-default-font]").selectOption("serif-press");
+    expect(roomFontOptions).toEqual(["wtfos-soft-system"]);
+    await expect(page.locator("[data-wtf-live-room-default-font]")).toHaveValue("wtfos-soft-system");
     await page.locator("[data-wtf-live-chat-text]").fill("receiver default font");
     await page.locator("[data-wtf-live-chat-send]").click();
     const defaultFontMessage = page.locator("[data-wtf-live-chat-message]").filter({ hasText: "receiver default font" }).last();
@@ -800,7 +800,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     const defaultFontFamily = await defaultFontMessage.locator("[data-wtf-live-chat-message-text]").evaluate((node) =>
       getComputedStyle(node).fontFamily.toLowerCase(),
     );
-    expect(defaultFontFamily).toMatch(/georgia|times/);
+    expect(defaultFontFamily).toMatch(/wtfos soft system|noto sans|sans-serif/);
 
     await page.locator("[data-wtf-live-toggle-camera]").click();
     await page.locator("[data-wtf-live-toggle-screen]").click();
@@ -1188,8 +1188,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       const fontOptions = await alice.locator("[data-wtf-live-chat-font] option").evaluateAll((options) =>
         options.map((option) => option.getAttribute("value")),
       );
-      expect(fontOptions).toEqual(["classic-95", "terminal", "serif-press"]);
-      await alice.locator("[data-wtf-live-chat-font]").selectOption("terminal");
+      expect(fontOptions).toEqual(["wtfos-soft-system"]);
       await alice.locator("[data-wtf-live-chat-font-size]").selectOption("14");
       await alice.locator("[data-wtf-live-chat-color='red']").click();
       await alice.locator("[data-wtf-live-chat-bold]").click();
@@ -1216,7 +1215,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       expect(renderedStyle.fontSize).toBe("14px");
       expect(renderedStyle.fontStyle).toBe("italic");
       expect(renderedStyle.color).toBe("rgb(143, 29, 44)");
-      expect(renderedStyle.fontFamily.toLowerCase()).toMatch(/mono|consolas|courier/);
+      expect(renderedStyle.fontFamily.toLowerCase()).toMatch(/wtfos soft sans|wtfos global sans|noto sans|sans-serif/);
       const renderedWeight = renderedStyle.fontWeight === "bold" ? 700 : Number(renderedStyle.fontWeight);
       expect(renderedWeight).toBeGreaterThanOrEqual(600);
 

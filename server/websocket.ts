@@ -31,14 +31,17 @@ const MAX_WTF_LIVE_SOUNDBOARD_BYTES = 1_200_000;
 const MAX_WTF_LIVE_SOUNDBOARD_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_SOUNDBOARD_BYTES * 1.4);
 const WTF_LIVE_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "video/mp4"]);
 const WTF_LIVE_SOUNDBOARD_TYPES = new Set(["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/mp4", "audio/webm"]);
-const WTF_LIVE_CHAT_FONTS = new Set(["classic-95", "terminal", "serif-press"]);
+const WTF_LIVE_CHAT_FONTS = new Set(["wtfos-soft-system"]);
 const WTF_LIVE_LEGACY_CHAT_FONT_MAP: Record<string, string> = {
-  system: "classic-95",
-  "mek-mono": "classic-95",
-  "grout-display": "classic-95",
-  mono: "terminal",
-  serif: "serif-press",
-  pixel: "classic-95",
+  system: "wtfos-soft-system",
+  "mek-mono": "wtfos-soft-system",
+  "grout-display": "wtfos-soft-system",
+  "classic-95": "wtfos-soft-system",
+  mono: "wtfos-soft-system",
+  terminal: "wtfos-soft-system",
+  serif: "wtfos-soft-system",
+  "serif-press": "wtfos-soft-system",
+  pixel: "wtfos-soft-system",
 };
 const WTF_LIVE_CHAT_COLORS = new Set(["ink", "blue", "green", "red", "purple", "amber"]);
 const WTF_LIVE_ROOM_REACTION_LABELS: Record<string, string> = {
@@ -60,7 +63,7 @@ type WtfLiveChatStyle = {
 };
 
 const DEFAULT_WTF_LIVE_CHAT_STYLE: WtfLiveChatStyle = {
-  font: "classic-95",
+  font: "wtfos-soft-system",
   color: "ink",
   size: 12,
   bold: false,
