@@ -1,3 +1,13 @@
+## 2026-06-30 - Installer env examples are part of the release surface
+
+**What happened**: The first Pasta Suite installer manifest pass added `PASTA_SUITE_INSTALLER_*` runtime variables in code and docs, but `.env.example` still only documented the Macaroni installer variables. The manifest also initially treated a safe URL as enough to mark an installer available even if the SHA-256 was missing.
+
+**Why it mattered**: Production operators configure installer downloads from env. If the example file omits the variables or lets URL-only entries look available, a release can ship dead or weakly verifiable installer links even though source policy checks pass.
+
+**Rule**: Whenever an installer manifest reads new env names, update `.env.example` and assert those names in policy tests. Treat both a safe URL and a valid SHA-256 digest as required before marking a downloadable native installer available.
+
+---
+
 ## 2026-06-30 - Suite installer workflows need manifest and release proof rails
 
 **What happened**: Pasta Suite Desktop packaging was easy to model by copying the Macaroni Electron installer pattern, but the first scaffold still missed the repo's interaction inventory, domain workflow probe, and a release-aware live verifier for `/api/pasta/installers`.

@@ -536,6 +536,7 @@ Priority labels:
   - Added `apps/pasta-suite-desktop` as an Electron shell that bundles Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna from production-style `/creation-tools/<tool>/...` paths.
   - Added `.github/workflows/pasta-suite-desktop-installers.yml` for macOS universal DMG/ZIP, Windows x64 NSIS, and Raspberry Pi arm64 `.deb` packages.
   - Added authenticated `/api/pasta/installers` with HTTPS/same-origin URL policy, SHA-256 validation, explicit product/version fields, and package filenames matching Electron Builder outputs.
+  - Added `PASTA_SUITE_INSTALLER_*` to `.env.example` and made the manifest mark installers available only when both the URL and SHA-256 digest are valid.
   - Added `pasta_suite.installer_manifest.viewed` to the interaction inventory and Pasta domain workflow, with a GET probe for `/api/pasta/installers`.
   - Added `scripts/check-pasta-suite-installers-live.mjs` to compare the live manifest against GitHub release asset URLs and GitHub release SHA-256 digests after release publication.
 - Verification:

@@ -66,8 +66,8 @@ router.get("/api/pasta/installers", isAuthenticated, (_req, res) => {
         label: platform.label,
         fileName: platform.fileName,
         sha256: sha256 || null,
-        available: Boolean(url),
-        url: url || null,
+        available: Boolean(url && sha256),
+        url: url && sha256 ? url : null,
       };
     }),
   });

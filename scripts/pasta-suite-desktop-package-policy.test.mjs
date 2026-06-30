@@ -12,6 +12,7 @@ const routesSource = readFileSync("server/routes.ts", "utf8");
 const rootPackage = JSON.parse(readFileSync("package.json", "utf8"));
 const gitignoreSource = readFileSync(".gitignore", "utf8");
 const liveCheckSource = readFileSync("scripts/check-pasta-suite-installers-live.mjs", "utf8");
+const envExampleSource = readFileSync(".env.example", "utf8");
 
 const pastaTools = ["macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"];
 
@@ -115,6 +116,15 @@ test("Pasta suite production installer manifest keeps Macaroni hardening rules",
   assert.match(routeSource, /process\.env\.NODE_ENV !== "production" && url\.protocol === "http:" && isLoopbackInstallerHost\(url\.hostname\)/);
   assert.doesNotMatch(routeSource, /url\.protocol === "https:" \|\| url\.protocol === "http:"/);
   assert.match(routeSource, /safeInstallerSha256/);
+  assert.match(routeSource, /available: Boolean\(url && sha256\)/);
+  assert.match(routeSource, /url: url && sha256 \? url : null/);
+  assert.match(envExampleSource, /PASTA_SUITE_INSTALLER_VERSION=/);
+  assert.match(envExampleSource, /PASTA_SUITE_INSTALLER_MACOS_URL=/);
+  assert.match(envExampleSource, /PASTA_SUITE_INSTALLER_MACOS_SHA256=/);
+  assert.match(envExampleSource, /PASTA_SUITE_INSTALLER_WINDOWS_URL=/);
+  assert.match(envExampleSource, /PASTA_SUITE_INSTALLER_WINDOWS_SHA256=/);
+  assert.match(envExampleSource, /PASTA_SUITE_INSTALLER_RASPBERRY_PI_URL=/);
+  assert.match(envExampleSource, /PASTA_SUITE_INSTALLER_RASPBERRY_PI_SHA256=/);
   assert.match(liveCheckSource, /pasta-suite-desktop-v\$\{EXPECTED_VERSION\}/);
   assert.match(liveCheckSource, /\/api\/pasta\/installers/);
   assert.match(liveCheckSource, /Pasta-Suite-\$\{EXPECTED_VERSION\}-mac-universal\.dmg/);
