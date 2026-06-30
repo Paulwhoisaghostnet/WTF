@@ -50,8 +50,8 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-325 | In Progress | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes still fall back to Classic on live commit `de0acb6`; isolated branch `codex/gamma-live-shell` now has local production-base proof green (`npm run check`, `112/112` route fixtures, Gamma browser spec `61/61`), so the remaining pass is fresh branch CI plus deployment/promotion and live selector proof |
-| WTF-BB-326 | Fixed | Codex Gamma live verification pass | 2026-06-30 | E2E / inventory workflow timeout | P2 | 7 | 15 | 1 | 3 | 0 | Broad inventory smoke can time out the healthy `social post to reward automation loop` under the fixed 60s Playwright budget; fixed locally with workflow-size-based timeout budgeting and focused/full domain-interoperability proof, pending fresh branch CI |
+| WTF-BB-325 | In Progress | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes still fall back to Classic on live commit `de0acb6`; isolated branch `codex/gamma-live-shell` now has local production-base proof and branch Quality Gates `28420704957` green, so the remaining pass is deployment/promotion and live selector proof |
+| WTF-BB-326 | Verified | Codex Gamma live verification pass | 2026-06-30 | E2E / inventory workflow timeout | P2 | 7 | 15 | 1 | 3 | 0 | Broad inventory smoke could time out the healthy `social post to reward automation loop` under the fixed 60s Playwright budget; verified fixed by workload-based timeout budgeting, local focused/full domain-interoperability proof, and branch Quality Gates `28420704957` |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Open | - | 2026-06-29 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory and focused reruns fail Settings Subdomain Setup and cobwebsaints account readiness because the `wtf.tez target wallet` input remains blank instead of prefilled with the harness wallet |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -385,6 +385,8 @@ Priority labels:
   - Focused rendered rerun for desktop utility handoffs and Message Board dialogs: `2/2` passed on `HARNESS_PORT=4319`.
   - Full Gamma browser suite: `61/61` passed on `HARNESS_PORT=4321`, including production-hostname direct routes, The Count admin suite, native admin cluster, desktop utility CLI handoff, Message Board dialogs, social/media/TV routes, and mobile first viewport.
   - `git diff --check`: passed.
+- Branch CI verification:
+  - GitHub Quality Gates run `28420704957` passed for commit `04ccba794bfb2007222a7f1143df7be6123e05be`, including Typecheck, Vite env policy, Build, Inventory coverage, Inventory Playwright smoke, External link safety, and SmartPy V1.2 contract tests.
 - Remaining verification:
   - Deploy/promote the branch, then rerun live `https://gamma.wtfos.app/`, `/gallery`, `/leaderboard`, and at least one auth-gated route selector proof.
   - Do not mark this bounty Verified until public Gamma deep routes no longer render `[data-wtf-desktop]`.
@@ -392,7 +394,7 @@ Priority labels:
 ### WTF-BB-326 - Broad inventory social workflow timeout
 
 - Category: E2E / inventory workflow timeout
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Gamma live verification pass
 - Score: C1 + F3 + S0 + P2(3) = 7
 - Evidence:
@@ -405,8 +407,8 @@ Priority labels:
 - Local verification:
   - Focused workflow: `CI=1 HARNESS_PORT=4323 ./node_modules/.bin/playwright test tests/playwright/inventory/domain-interoperability.spec.mjs -g "social post to reward automation loop"` passed in `42.7s`.
   - Full domain interoperability spec: `CI=1 HARNESS_PORT=4324 ./node_modules/.bin/playwright test tests/playwright/inventory/domain-interoperability.spec.mjs` passed `16/16`; the social workflow passed in `46.4s`.
-- Remaining verification:
-  - Fresh branch Quality Gates must pass before marking this item Verified.
+- Branch CI verification:
+  - GitHub Quality Gates run `28420704957` passed for commit `04ccba794bfb2007222a7f1143df7be6123e05be`; the broad Inventory Playwright smoke completed successfully after the workload-based timeout fix.
 
 ### WTF-BB-324 - Gamma Swap inventory proof lacks connected wallet state
 
