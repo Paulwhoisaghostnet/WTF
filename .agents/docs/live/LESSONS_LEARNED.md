@@ -1,3 +1,13 @@
+## 2026-06-30 - Wallet-session fixtures must track the accepted provider
+
+**What happened**: Pasta branch Quality Gates failed the Settings Subdomain Setup and cobwebsaints account inventory specs because the tests seeded `wtf:wallet-session` with the legacy `providerName: "beacon"`. The current wallet reader correctly accepts only `providerName: "octez.connect"`, so the applet rejected the persisted session and left the `wtf.tez target wallet` field blank. A local rerun on the default Playwright port later showed `wtf-admin.wtfos.me` because Playwright reused an old harness process, while a fresh harness port proved the fixed specs passed.
+
+**Why it mattered**: Wallet-provider migrations can break behavior proofs even when the user-facing app is healthy. Reused local harness ports can also make a fixed branch look broken by serving old state or code, which is dangerous when preparing a live deploy.
+
+**Rule**: Whenever the accepted wallet provider changes, update every Playwright, live puppet, and UX mock localStorage wallet seed to match `readPersistedWalletSession()`, and add a source-policy guard for those seeds. When focused Playwright output contradicts CI-style evidence, rerun on a fresh `HARNESS_PORT` before making product changes.
+
+---
+
 ## 2026-06-30 - Linux installers need package-manager metadata, not just Electron targets
 
 **What happened**: The first safe Macaroni Desktop installer workflow on `codex/pasta-live-readiness` built and uploaded macOS and Windows artifacts, but Raspberry Pi arm64 `.deb` packaging failed because `apps/macaroni-desktop/package.json` lacked the homepage, author email, and Linux maintainer metadata electron-builder requires for Debian packages.

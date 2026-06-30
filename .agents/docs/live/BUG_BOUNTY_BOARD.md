@@ -57,7 +57,7 @@ Priority labels:
 | WTF-BB-329 | Fixed | Codex Pasta live-baseline audit | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 3 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles still serve Taquito `24.3.0`; U025/Octez refresh is isolated on `codex/pasta-live-readiness` with clean branch gates passing but has not been deployed to production |
 | WTF-BB-330 | In Progress | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop installer workflow now has branch artifact proof for macOS, Windows, and Raspberry Pi on `codex/pasta-live-readiness`; stable release URLs, production env configuration, authenticated manifest proof, and public download smoke are still pending |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
-| WTF-BB-323 | Open | - | 2026-06-29 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory and focused reruns fail Settings Subdomain Setup and cobwebsaints account readiness because the `wtf.tez target wallet` input remains blank instead of prefilled with the harness wallet |
+| WTF-BB-323 | Fixed | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; focused fresh-harness proof passes, pending branch Quality Gates rerun |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
 | WTF-BB-321 | Verified | Codex Tezos provider currency audit | 2026-06-29 | Tezos / wallet dependencies and RPC defaults | P1 | 13 | 6 | 4 | 4 | 1 | Static creator-tool wallet bundles and package locks lagged Taquito U025 / Octez Connect 4.8.6 while fresh deploy/test defaults still pointed at legacy Ghostnet or Tez.ie paths; fixed with Taquito 25, Octez Connect 4.8.6, Shadownet-first defaults, regenerated browser bundles, and policy checks |
 | WTF-BB-322 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 14 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
@@ -465,8 +465,8 @@ Priority labels:
 ### WTF-BB-330 - Macaroni Desktop installer artifacts are not published
 
 - Category: Macaroni installers / release ops
-- Status: Open
-- Owner/Session: -
+- Status: In Progress
+- Owner/Session: Codex Pasta live-readiness
 - Score: C2 + F5 + S2 + P1(4) = 13
 - Evidence:
   - `.github/workflows/macaroni-desktop-installers.yml`, `apps/macaroni-desktop/package.json`, and `docs/macaroni-desktop-packaging.md` exist on `origin/main`.
@@ -536,12 +536,17 @@ Priority labels:
   - `npm run test:e2e:inventory` on 2026-06-29 failed `tests/playwright/inventory/settings-subdomain-setup.spec.mjs:18` and `tests/playwright/inventory/cobwebsaints-account.spec.mjs:20` after a clean build.
   - Focused rerun reproduced both failures with the two specs and the same expectations.
   - In both cases `getByLabel("wtf.tez target wallet")` stayed `""` while the spec expected `tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY`.
+  - Root cause on 2026-06-30 was stale harness wallet-session payloads seeding `providerName: "beacon"` after `readPersistedWalletSession()` only accepted `providerName: "octez.connect"`.
+  - Local focused proof passes on a clean harness port: `HARNESS_PORT=4514 ./node_modules/.bin/playwright test tests/playwright/inventory/settings-subdomain-setup.spec.mjs tests/playwright/inventory/cobwebsaints-account.spec.mjs --project=chromium --workers=1`.
 - Why it matters:
   - The Settings-owned Subdomain Setup behavior proof cannot verify the registrar plan path when the applet does not hydrate the current harness wallet.
-- Likely correction:
-  - Align the Playwright harness wallet/user payload with the applet's wallet-prefill source, or make the spec perform the same wallet-connect action a user must take before the field should be populated.
-- Verification idea:
-  - Rerun both focused subdomain specs, then rerun `npm run test:e2e:inventory`.
+- Correction:
+  - Updated the affected Playwright specs and UX Lab seed helper to use `octez.connect`.
+  - Added a source-policy guard so future provider migrations must update wallet-session fixtures with the accepted provider.
+- Verification:
+  - Passed `./node_modules/.bin/tsx --test client/src/lib/tezos/wallet-connect-policy.test.ts`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed focused fresh-harness Settings/Cobweb proof listed above; branch Quality Gates rerun still required before promotion.
 
 ### WTF-BB-267 - Macaroni generated drop pages reused collection covers for video previews
 
