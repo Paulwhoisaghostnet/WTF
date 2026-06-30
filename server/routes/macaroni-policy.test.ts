@@ -12,6 +12,8 @@ test("Macaroni server routes keep wtfOS pinning and publishing trusted-creator o
   assert.match(source, /MACARONI_INSTALLER_MACOS_URL/);
   assert.match(source, /MACARONI_INSTALLER_WINDOWS_URL/);
   assert.match(source, /MACARONI_INSTALLER_RASPBERRY_PI_URL/);
+  assert.match(source, /fileName: "Macaroni-Studio\.exe"/);
+  assert.doesNotMatch(source, /fileName: "Macaroni-Studio\.msi"/);
   assert.match(source, /safeInstallerUrl/);
   assert.match(source, /function isLoopbackInstallerHost\(hostname: string\): boolean/);
   assert.match(source, /url\.protocol === "https:"/);

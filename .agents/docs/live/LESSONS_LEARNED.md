@@ -1,3 +1,13 @@
+## 2026-06-30 - Installer manifest filenames must match release asset types
+
+**What happened**: The live Macaroni installer manifest correctly returned the Windows GitHub release URL for the NSIS `.exe`, but the manifest's `fileName` still advertised `Macaroni-Studio.msi`. The browser installer links use that value as the `download` filename, so a valid `.exe` could be saved with a misleading package extension.
+
+**Why it mattered**: Installer links are a supply-chain handoff and a user trust surface. A mismatched filename can confuse users, make OS security prompts look suspicious, and hide drift between the release workflow target and the wtfOS manifest.
+
+**Rule**: Whenever installer release targets change, verify both the URL and the manifest `download` filename extension against the actual published asset. Keep a source-policy guard for the expected installer filename per platform.
+
+---
+
 ## 2026-06-30 - Wallet-session fixtures must track the accepted provider
 
 **What happened**: Pasta branch Quality Gates failed the Settings Subdomain Setup and cobwebsaints account inventory specs because the tests seeded `wtf:wallet-session` with the legacy `providerName: "beacon"`. The current wallet reader correctly accepts only `providerName: "octez.connect"`, so the applet rejected the persisted session and left the `wtf.tez target wallet` field blank. A local rerun on the default Playwright port later showed `wtf-admin.wtfos.me` because Playwright reused an old harness process, while a fresh harness port proved the fixed specs passed.

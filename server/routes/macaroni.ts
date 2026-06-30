@@ -67,7 +67,7 @@ const INSTALLER_PLATFORMS = [
     key: "windows",
     label: "Windows",
     env: "MACARONI_INSTALLER_WINDOWS_URL",
-    fileName: "Macaroni-Studio.msi",
+    fileName: "Macaroni-Studio.exe",
   },
   {
     key: "raspberry-pi",
