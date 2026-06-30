@@ -293,9 +293,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test client/src/features/appearance/font-packs.test.ts client/src/features/appearance/get-canvas-font.test.ts shared/desktop.test.ts && npx playwright test tests/playwright/inventory/desktop-settings-typography.spec.mjs",
     userVisibleAssertion:
-      "Theme Builder can select a system font pack and chat typography presets; WIM and WTF LIVE composer defaults stay inside their visible font, color, and size windows.",
+      "Theme Builder defaults to the wtfOS Soft System font pack, can still select system font packs and chat typography presets, and WIM/WTF LIVE composer defaults stay inside their visible font, color, and size windows.",
     durableSideEffectAssertion:
-      "DesktopAppearance.fontPackKey, chatTypographyPresetKey, wimChatStyle, and wtfLiveChatStyle normalize to known values, persist through /api/desktop/settings, and canvas helpers read the same CSS variable roles.",
+      "DesktopAppearance.fontPackKey normalizes to wtfos-soft-system by default, chatTypographyPresetKey, wimChatStyle, and wtfLiveChatStyle normalize to known values, persist through /api/desktop/settings, and canvas helpers read the same CSS variable roles.",
   },
   {
     id: "desktop.app-gates-runtime-policy",

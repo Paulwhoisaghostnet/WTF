@@ -1,3 +1,13 @@
+## 2026-06-29 - Vite/Rolldown builds may need Homebrew Node in Codex desktop
+
+**What happened**: The Codex desktop app session exposed a Node runtime that could run package binaries, but the local Vite build failed before app transforms because the Rolldown native binding could not load under that runtime. Re-running the same repo-local Vite binary with `/opt/homebrew/bin/node` completed the build without source changes.
+
+**Why it mattered**: Treating that native-binding failure as an application build break would have sent the font rollout down a dependency churn path. The failure was environmental, while the same lockfile and source passed with the host Node/npm toolchain now placed on the universal shell path.
+
+**Rule**: When a Codex desktop Vite build fails with Rolldown native-binding code-signature or optional-dependency errors before app transforms begin, retry the same local binary with `/opt/homebrew/bin/node` before changing source or dependencies. Keep the original failure in the verification notes.
+
+---
+
 ## 2026-06-27 - Gamma shell resets must not override station controls
 
 **What happened**: The Gamma editorial restyle initially kept a shell-level `button { all: unset; }` reset. In styled-components that selector had enough specificity to override child station button styles, so the rendered controls lost their grid layout, borders, padding, and card geometry even though the component CSS looked correct in source.

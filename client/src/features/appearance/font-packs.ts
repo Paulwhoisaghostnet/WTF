@@ -36,11 +36,101 @@ const MEK_TYPE_ARTIFACTS = {
   mekSansAlphaV3: "ipfs://QmPCEHkAjKQCv5cgjuEcRmx3qjFEsw3YDFfEKJ9TYCfmL3",
 } as const;
 
+const WTFOS_SOFT_SYSTEM_FONT_PATH = "/fonts/wtfos-soft-system/";
+
+const WTFOS_SOFT_SYSTEM_FALLBACK =
+  `"wtfOS Global Sans", "Noto Sans", "Noto Sans CJK SC", "Noto Sans CJK JP", ` +
+  `"Noto Sans CJK KR", "PingFang SC", "PingFang TC", "Hiragino Sans", ` +
+  `"Yu Gothic", Meiryo, "Apple SD Gothic Neo", "Segoe UI", Arial, sans-serif`;
+
+const WTFOS_SOFT_SYSTEM_STACK = `"wtfOS Soft Sans", ${WTFOS_SOFT_SYSTEM_FALLBACK}`;
+const WTFOS_SOFT_SYSTEM_SYMBOL_STACK =
+  `"wtfOS Symbols", "wtfOS Soft Sans", ${WTFOS_SOFT_SYSTEM_FALLBACK}, ` +
+  `"Segoe UI Symbol", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+
 export const FONT_PACKS: FontPack[] = [
+  {
+    key: "wtfos-soft-system",
+    label: "wtfOS Soft System",
+    description:
+      "Default wtfOS typography: soft, highly legible UI lettering with Latin Extended, Greek, Cyrillic, Tezos, symbol, CJK fallback, and emoji compatibility.",
+    preloaded: true,
+    roles: {
+      ui: WTFOS_SOFT_SYSTEM_STACK,
+      app: WTFOS_SOFT_SYSTEM_STACK,
+      mono: `"SFMono-Regular", Consolas, "Liberation Mono", "Courier New", monospace`,
+      shell: WTFOS_SOFT_SYSTEM_STACK,
+      display:
+        `"wtfOS Soft Sans", "wtfOS Global Sans", "Arial Rounded MT Bold", ` +
+        `"Segoe UI", Arial, sans-serif`,
+      symbol: WTFOS_SOFT_SYSTEM_SYMBOL_STACK,
+    },
+    faces: [
+      {
+        family: "wtfOS Soft Sans",
+        url: `${WTFOS_SOFT_SYSTEM_FONT_PATH}Fredoka-latin.woff2`,
+        weight: "300 700",
+      },
+      {
+        family: "wtfOS Soft Sans",
+        url: `${WTFOS_SOFT_SYSTEM_FONT_PATH}Fredoka-latin-ext.woff2`,
+        weight: "300 700",
+      },
+      {
+        family: "wtfOS Soft Sans",
+        url: `${WTFOS_SOFT_SYSTEM_FONT_PATH}Fredoka-hebrew.woff2`,
+        weight: "300 700",
+      },
+      {
+        family: "wtfOS Global Sans",
+        url: `${WTFOS_SOFT_SYSTEM_FONT_PATH}NotoSans-latin.woff2`,
+        weight: "400 800",
+      },
+      {
+        family: "wtfOS Global Sans",
+        url: `${WTFOS_SOFT_SYSTEM_FONT_PATH}NotoSans-latin-ext.woff2`,
+        weight: "400 800",
+      },
+      {
+        family: "wtfOS Global Sans",
+        url: `${WTFOS_SOFT_SYSTEM_FONT_PATH}NotoSans-vietnamese.woff2`,
+        weight: "400 800",
+      },
+      {
+        family: "wtfOS Global Sans",
+        url: `${WTFOS_SOFT_SYSTEM_FONT_PATH}NotoSans-greek.woff2`,
+        weight: "400 800",
+      },
+      {
+        family: "wtfOS Global Sans",
+        url: `${WTFOS_SOFT_SYSTEM_FONT_PATH}NotoSans-greek-ext.woff2`,
+        weight: "400 800",
+      },
+      {
+        family: "wtfOS Global Sans",
+        url: `${WTFOS_SOFT_SYSTEM_FONT_PATH}NotoSans-cyrillic.woff2`,
+        weight: "400 800",
+      },
+      {
+        family: "wtfOS Global Sans",
+        url: `${WTFOS_SOFT_SYSTEM_FONT_PATH}NotoSans-cyrillic-ext.woff2`,
+        weight: "400 800",
+      },
+      {
+        family: "wtfOS Global Sans",
+        url: `${WTFOS_SOFT_SYSTEM_FONT_PATH}NotoSans-devanagari.woff2`,
+        weight: "400 800",
+      },
+      {
+        family: "wtfOS Symbols",
+        url: `${WTFOS_SOFT_SYSTEM_FONT_PATH}NotoSansSymbols2-symbols.woff2`,
+      },
+    ],
+  },
   {
     key: "mek-type",
     label: "MEK Type",
-    description: "Default wtfOS typography: MEK Mono, GROUT Display, and MEK Dings.",
+    description: "Legacy wtfOS typography: MEK Mono, GROUT Display, and MEK Dings.",
     preloaded: true,
     roles: {
       ui: `"MEK Mono", "MS Sans Serif", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif`,
@@ -138,6 +228,22 @@ export function cssVarsForFontPack(key: string | undefined | null): Record<strin
           "--wtf-mek-type-monomek-v10-artifact-uri": cssString(MEK_TYPE_ARTIFACTS.monoMekV10),
           "--wtf-mek-type-grout-alpha-v2-artifact-uri": cssString(MEK_TYPE_ARTIFACTS.groutAlphaV2),
           "--wtf-mek-type-meksans-alpha-v3-artifact-uri": cssString(MEK_TYPE_ARTIFACTS.mekSansAlphaV3),
+        }
+      : {}),
+    ...(pack.key === "wtfos-soft-system"
+      ? {
+          "--wtf-soft-system-fredoka-latin-font-url": cssString(
+            `${WTFOS_SOFT_SYSTEM_FONT_PATH}Fredoka-latin.woff2`
+          ),
+          "--wtf-soft-system-noto-greek-font-url": cssString(
+            `${WTFOS_SOFT_SYSTEM_FONT_PATH}NotoSans-greek.woff2`
+          ),
+          "--wtf-soft-system-noto-cyrillic-font-url": cssString(
+            `${WTFOS_SOFT_SYSTEM_FONT_PATH}NotoSans-cyrillic.woff2`
+          ),
+          "--wtf-soft-system-symbols-font-url": cssString(
+            `${WTFOS_SOFT_SYSTEM_FONT_PATH}NotoSansSymbols2-symbols.woff2`
+          ),
         }
       : {}),
   };

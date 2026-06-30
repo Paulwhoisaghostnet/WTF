@@ -246,6 +246,7 @@ export const DESKTOP_COLOR_SCHEMES = [
 export type DesktopColorSchemeKey = (typeof DESKTOP_COLOR_SCHEMES)[number]["key"];
 
 export const DESKTOP_FONT_PACK_KEYS = [
+  "wtfos-soft-system",
   "mek-type",
   "classic-95",
   "terminal",
@@ -255,13 +256,14 @@ export const DESKTOP_FONT_PACK_KEYS = [
 export type DesktopFontPackKey = (typeof DESKTOP_FONT_PACK_KEYS)[number];
 
 export const DESKTOP_FONT_PACK_LABELS: Record<DesktopFontPackKey, string> = {
+  "wtfos-soft-system": "wtfOS Soft System",
   "mek-type": "MEK Type",
   "classic-95": "Classic 95",
   terminal: "Terminal",
   "serif-press": "Serif Press",
 };
 
-export const DEFAULT_DESKTOP_FONT_PACK_KEY: DesktopFontPackKey = "mek-type";
+export const DEFAULT_DESKTOP_FONT_PACK_KEY: DesktopFontPackKey = "wtfos-soft-system";
 
 export const DESKTOP_WIM_CHAT_FONT_FAMILIES = [
   "Helvetica",

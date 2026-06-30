@@ -497,7 +497,7 @@ app.post("/api/auth/gm-welcome/complete", (_req, res) => {
 const desktopAppearance = {
   appearanceStyleKey: "classic-95",
   colorSchemeKey: "wtf-teal",
-  fontPackKey: "mek-type",
+  fontPackKey: "wtfos-soft-system",
   chatTypographyPresetKey: "wtfos-default",
   wimChatStyle: {
     fontFamily: "Helvetica",

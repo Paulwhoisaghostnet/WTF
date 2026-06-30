@@ -1083,6 +1083,7 @@ export function DesktopSettings() {
                 key={pack.key}
                 type="button"
                 $active={draft.fontPackKey === pack.key}
+                aria-pressed={draft.fontPackKey === pack.key}
                 aria-label={`Font pack ${pack.label}`}
                 data-testid={`font-pack-${pack.key}`}
                 onClick={() => {

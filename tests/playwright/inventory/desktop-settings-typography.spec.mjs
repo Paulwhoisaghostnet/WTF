@@ -16,6 +16,11 @@ test.describe("interaction inventory - Theme Builder typography", () => {
     await expect(page.getByText("System typography", { exact: true })).toBeVisible();
     await expect(page.getByText("Chat defaults", { exact: true })).toBeVisible();
 
+    await expect(page.getByTestId("font-pack-wtfos-soft-system")).toBeVisible();
+    await expect(page.getByTestId("font-pack-wtfos-soft-system")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
     await expect(page.getByTestId("font-pack-mek-type")).toBeVisible();
     await page.getByRole("button", { name: "Chat typography preset Friendly Room" }).click();
 

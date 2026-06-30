@@ -114,7 +114,7 @@ test("falls back to safe desktop appearance defaults for bad input", () => {
 
 test("desktop appearance defaults are aubergine-first with a broad preset set", () => {
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.appearanceStyleKey, "classic-95");
-  assert.equal(DEFAULT_DESKTOP_APPEARANCE.fontPackKey, "mek-type");
+  assert.equal(DEFAULT_DESKTOP_APPEARANCE.fontPackKey, "wtfos-soft-system");
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.chatTypographyPresetKey, "wtfos-default");
   assert.deepEqual(DEFAULT_DESKTOP_APPEARANCE.wimChatStyle, {
     fontFamily: "Helvetica",
