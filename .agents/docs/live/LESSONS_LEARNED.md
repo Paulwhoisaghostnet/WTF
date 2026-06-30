@@ -1,3 +1,13 @@
+## 2026-06-30 - Stale release worktrees can contain superseded security regressions
+
+**What happened**: After Pasta/Macaroni was live on `wtfos.app`, the old `WTF-pasta-deploy` checkout still contained dirty package/API work that looked relevant at a glance. Comparing it to `origin/main` showed most Pasta surfaces were already promoted, while its old `server/routes/macaroni.ts` would remove live installer checksums, advertise the wrong Windows filename, and allow remote plaintext installer URLs again. A separate shell inventory pass also initially failed because `path` is a special zsh variable tied to `PATH`.
+
+**Why it mattered**: Repo cleanup is not just deleting old branches. A stale dirty checkout can carry a mix of useful historical work, already-promoted files, and dangerous old assumptions. Replaying it wholesale after a successful live deploy can silently undo supply-chain hardening.
+
+**Rule**: Classify dirty release worktrees against current `origin/main` before mining them. Treat merged/promoted paths as stale by default, inspect the small set of not-in-main paths directly, and never apply an old worktree patch wholesale when it touches installer manifests, wallet/RPC bundles, or production deploy scripts. In zsh scripts, avoid `path` as a variable name.
+
+---
+
 ## 2026-06-30 - Deploy builds need disk preflight before Docker work
 
 **What happened**: Pasta/Macaroni branch and main quality gates were green, but Deploy to Hetzner run `28466080627` failed after building the app image because Docker could not write compose build metadata: `no space left on device`. The production root filesystem had only `1.9G` free (`98%` used), while the live site stayed on the previous healthy commit.

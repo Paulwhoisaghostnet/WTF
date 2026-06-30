@@ -17,6 +17,12 @@ Target state remains:
 - Macaroni/Pasta software installers are built, published, and downloadable as individual packages or a suite;
 - production is smoke-tested after deployment before anything is called live.
 
+## Post-Release Cleanup Note
+
+The live-release blockers documented below are historical for the initial Pasta pass. The current production authority is `origin/main` at `455641f05f011134841a48617fc4a6d87be982c1`, live `wtfos.app` reports `commitRef: "455641f"`, Deploy to Hetzner run `28468017848` succeeded, and main Quality Gates run `28468017850` succeeded.
+
+Current cleanup and remaining-scope findings are tracked in `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md`. In short: individual Macaroni Desktop installers are live and verified, live Pasta static bundles are refreshed, the old `WTF-pasta-deploy` checkout is superseded and unsafe to promote wholesale, and a bundled Pasta-suite installer/workflow is still not proven.
+
 ## Current Release Blockers
 
 The original source checkout is not a live-push candidate:

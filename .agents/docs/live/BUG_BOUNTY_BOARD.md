@@ -57,6 +57,7 @@ Priority labels:
 | WTF-BB-329 | Verified | Codex Pasta live-readiness | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 3 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles no longer serve Taquito `24.3.0`; all seven live creation-tool bundles passed stale-marker and Octez RPC marker probes on commit `f32dbe8` |
 | WTF-BB-330 | Verified | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated/live public download smoke on commit `f32dbe8` |
 | WTF-BB-331 | Verified | Codex Pasta live-readiness | 2026-06-30 | Deploy / production disk capacity | P0 | 13 | 5 | 2 | 5 | 1 | Pasta deploy disk exhaustion was cleared without touching app volumes, `scripts/server-deploy.sh` now has a 12 GiB free-space preflight, Deploy to Hetzner `28467035058` passed, and live health reports commit `f32dbe8` |
+| WTF-BB-332 | Open | - | 2026-06-30 | Repo hygiene / Pasta stale worktrees | P2 | 9 | 12 | 1 | 3 | 2 | Stale `WTF-pasta-deploy` checkout still contains dirty superseded Pasta/Macaroni work and installer-manifest regressions if replayed wholesale; keep production authority on `origin/main`/`codex/pasta-live-readiness` and archive/reset the stale checkout only after preserving any user-needed notes |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -518,6 +519,27 @@ Priority labels:
   - Deploy to Hetzner run `28467035058` passed with the new disk preflight in `scripts/server-deploy.sh`.
   - Live `https://wtfos.app/api/health` returned `ok: true` with `commitRef: "f32dbe8"`.
   - Main Quality Gates run `28467035060` passed.
+
+### WTF-BB-332 - Stale Pasta deploy checkout can regress installer hardening if replayed
+
+- Category: Repo hygiene / Pasta stale worktrees
+- Status: Open
+- Owner/Session: -
+- Score: C1 + F3 + S2 + P2(3) = 9
+- Evidence:
+  - `git worktree list` still shows `/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF-pasta-deploy` on branch `pasta-protocol` at `f6256708` with 29 dirty entries after the clean Pasta live-readiness release.
+  - Comparing that checkout to current `origin/main` shows most Pasta surfaces are already promoted, `drizzle/0103_macaroni_packages.sql` is superseded by `0104`, and `server/features/pasta-protocol` contains only `.gitkeep`.
+  - Its dirty `server/routes/macaroni.ts` would remove installer SHA-256 manifest fields, advertise the stale Windows `.msi` filename, and allow remote plaintext installer URLs again.
+- Why it matters:
+  - The stale checkout looks Pasta-relevant, but replaying it wholesale after live verification would undo supply-chain hardening and confuse the production source of truth.
+- Correction:
+  - Keep production authority on `origin/main` / `codex/pasta-live-readiness`.
+  - Mine the stale checkout only for explicit human notes, then archive/reset/delete it after user confirmation.
+  - Do not apply its patch wholesale to main.
+- Verification:
+  - `git worktree list --porcelain` no longer lists the stale checkout, or the checkout is explicitly retained with a warning note.
+  - `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md` remains current.
+  - `scripts/check-macaroni-installers-live.mjs` and installer manifest policy still prove HTTPS URLs, checksums, and actual release asset filenames.
 
 ### WTF-BB-326 - Broad inventory social workflow timeout
 
