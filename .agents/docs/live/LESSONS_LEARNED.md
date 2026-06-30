@@ -1,3 +1,13 @@
+## 2026-06-30 - Linux installers need package-manager metadata, not just Electron targets
+
+**What happened**: The first safe Macaroni Desktop installer workflow on `codex/pasta-live-readiness` built and uploaded macOS and Windows artifacts, but Raspberry Pi arm64 `.deb` packaging failed because `apps/macaroni-desktop/package.json` lacked the homepage, author email, and Linux maintainer metadata electron-builder requires for Debian packages.
+
+**Why it mattered**: A workflow matrix that names Linux/Raspberry Pi targets does not prove those installers are actually publishable. Debian packaging has metadata and package-name rules that macOS DMG/ZIP and Windows NSIS builds can skip, so a release can look mostly healthy while one promised download platform is absent.
+
+**Rule**: For Electron installer workflows, guard package-manager metadata in source policy tests before publishing artifacts. Linux `.deb` targets must have a stable homepage, author email, maintainer, lowercase package name, executable name, and desktop name, and the Ubuntu workflow artifact is the authority for Raspberry Pi package proof.
+
+---
+
 ## 2026-06-30 - Dirty release slices must diff against the production base
 
 **What happened**: The Pasta source checkout was dirty and 12 commits behind `origin/main`. A raw `git diff` from that checkout would have described changes against an old local `HEAD`, not the current production base, and could have replayed already-promoted or unrelated work into the clean release branch.

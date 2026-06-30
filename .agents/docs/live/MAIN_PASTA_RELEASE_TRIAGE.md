@@ -116,9 +116,10 @@ This matches live production and confirms the local Tezos vendor refresh has not
 
 ### Installer Artifact Status
 
-- GitHub API returned zero runs for the `macaroni-desktop-installers.yml` workflow.
-- GitHub releases API returned an empty release list.
-- No Macaroni/Pasta release tag appeared in the first 50 GitHub repo tags.
+- Initial GitHub API probes returned zero runs for the `macaroni-desktop-installers.yml` workflow, zero releases, and no Macaroni/Pasta release tag in the first 50 repo tags.
+- After pushing `codex/pasta-live-readiness`, manual safe workflow run `28458246772` with `publish_release=false` built and uploaded `macaroni-desktop-macos` artifact `7986390894` and `macaroni-desktop-windows` artifact `7986389945`.
+- The same workflow run failed Raspberry Pi arm64 before artifact upload because electron-builder required Debian package homepage/author email/maintainer metadata.
+- The release branch now adds guarded `.deb` metadata: package homepage, author email, Linux maintainer, lowercase Debian package name, executable name, and desktop name. A workflow retry is required before Raspberry Pi artifact proof exists.
 
 Tracked as `WTF-BB-330`.
 
@@ -224,11 +225,13 @@ Evidence:
   - `apps/macaroni-desktop/release/Macaroni-Studio-1.0.0-mac-universal.dmg` (`sha256 9df90eef0fe40b784a642d8630a0b842c7c355224c212884bf3f69777c2b187f`)
   - `apps/macaroni-desktop/release/Macaroni-Studio-1.0.0-mac-universal.zip` (`sha256 9cb9ea4c38494bf2bf9fc160288fa1988ce7ea687efc06b5a1330b569a2fdcba`)
 - The workflow builds macOS, Windows, and Raspberry Pi artifacts.
+- Safe branch workflow run `28458246772` proved artifact upload for macOS and Windows, but Raspberry Pi failed before upload on missing Debian package metadata.
+- Current branch adds package-policy assertions for the `.deb` homepage, maintainer, package name, executable name, and desktop name before retrying the workflow.
 - The app exposes installer links only when `MACARONI_INSTALLER_*_URL` and `MACARONI_INSTALLER_VERSION` are configured.
 
 Missing proof:
 
-- Windows x64 and Raspberry Pi arm64 artifacts are not proven built in this audit.
+- Raspberry Pi arm64 artifact is not proven built in this audit.
 - GitHub release artifacts are not proven published in this audit.
 - Production env URLs are not proven configured.
 - `/api/macaroni/installers` is not proven live on `wtfos.app`.

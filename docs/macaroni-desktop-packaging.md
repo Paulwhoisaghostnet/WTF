@@ -37,6 +37,8 @@ The workflow builds:
 - Windows x64 NSIS installer on `windows-latest`
 - Raspberry Pi Linux arm64 DEB on `ubuntu-latest`
 
+The Raspberry Pi `.deb` build requires package metadata that Linux package tools can expose to users and package managers. Keep `homepage`, `author.email`, `build.linux.maintainer`, and `build.deb.packageName` populated in `apps/macaroni-desktop/package.json`; `npm run macaroni:desktop:check` guards those fields because electron-builder rejects or weakens the `.deb` without them.
+
 When the workflow publishes a GitHub release, set the production app env values to the release asset URLs:
 
 ```bash
