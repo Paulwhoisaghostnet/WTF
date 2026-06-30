@@ -1,11 +1,29 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import test from "node:test";
 
 const appSource = readFileSync("client/src/App.tsx", "utf8");
 const betaSource = readFileSync("client/src/pages/BetaWtfos.tsx", "utf8");
 const presentationShellSource = readFileSync("client/src/lib/presentation-shell.tsx", "utf8");
 const react95PresentationSource = readFileSync("client/src/lib/react95-presentation.tsx", "utf8");
+
+function readSourceTree(dir: string): string {
+  let source = "";
+  for (const entry of readdirSync(dir)) {
+    const file = `${dir}/${entry}`;
+    const stat = statSync(file);
+    if (stat.isDirectory()) {
+      source += readSourceTree(file);
+    } else if (/\.(ts|tsx)$/.test(entry)) {
+      source += `\n${readFileSync(file, "utf8")}`;
+    }
+  }
+  return source;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 test("App routes production Beta hostnames through the Beta shell", () => {
   assert.match(appSource, /function isBetaShellLocation\(location: string\): boolean/);
@@ -59,4 +77,22 @@ test("Beta shares the presentation adapter for React95 controls", () => {
   assert.match(react95PresentationSource, /--presentation-accent/);
   assert.match(react95PresentationSource, /--presentation-progress/);
   assert.match(betaSource, /--presentation-progress: var\(--amber\)/);
+});
+
+test("Beta owns route app chrome through host-marked presentation surfaces", () => {
+  assert.match(betaSource, /const betaPresentationHostSelector = `:is\(/);
+  const sourceMarkers = [
+    ...new Set(readSourceTree("client/src").match(/data-[a-z0-9-]+-presentation-host/g) ?? []),
+  ].sort();
+  assert.ok(sourceMarkers.length > 40, "expected route-owner presentation host markers");
+  for (const marker of sourceMarkers) {
+    assert.match(betaSource, new RegExp(`\\[${escapeRegExp(marker)}="beta"\\]`));
+  }
+  assert.match(betaSource, /const betaPresentationClusterSelector = `:where\(/);
+  assert.match(betaSource, /background-image: none !important/);
+  assert.match(betaSource, /box-shadow: none !important/);
+  assert.match(betaSource, /border-width: 1px !important/);
+  assert.match(betaSource, /color: var\(--presentation-progress, var\(--amber\)\) !important/);
+  assert.match(betaSource, /--presentation-current: var\(--rose\)/);
+  assert.match(betaSource, /--presentation-radius: 8px/);
 });
