@@ -33,6 +33,7 @@ import contractActivityRoutes from "./routes/contract-activity";
 import notificationRoutes from "./routes/notifications";
 import commsRoutes from "./routes/comms";
 import mailRoutes from "./routes/mail";
+import bugReportRoutes from "./routes/bug-reports";
 import browserRoutes from "./routes/browser";
 import mediaLibraryRoutes from "./routes/media-library";
 import arcadeRoutes from "./routes/arcade";
@@ -293,6 +294,7 @@ export function registerRoutes(app: Express) {
   app.use(notificationRoutes);
   app.use(commsRoutes);
   app.use(mailRoutes);
+  app.use(bugReportRoutes);
   app.use(browserRoutes);
   app.use(mediaLibraryRoutes);
   app.use(arcadeRoutes);

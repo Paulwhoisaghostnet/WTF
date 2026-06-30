@@ -64,6 +64,7 @@ const DESKTOP_CLIENT_EVENT_TYPES = new Set([
   "desktop.icon.opened",
   "desktop.icon.moved",
   "desktop.icon_layout.reset",
+  "desktop.bug_report.opened",
   "desktop.artifact.spawned",
   "desktop.artifact.used",
   "desktop.tool.selected",

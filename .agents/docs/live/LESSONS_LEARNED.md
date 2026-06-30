@@ -6867,3 +6867,13 @@
 **Why it mattered**: A presentation shell can look contained while app-owned chrome is actually replaced by an error panel. For full-surface Beta/Gamma work, that misses the real requirement: shared routes must render inside the active shell with their app data, permissions, and controls intact.
 
 **Rule**: Inventory route sweeps for presentation shells should assert the shell boundary is present and assert route-error fallbacks are absent. When a route needs partial fixture data, normalize optional arrays/objects at the app boundary so empty-state UI renders instead of relying on the shell error boundary.
+
+---
+
+## 2026-06-30 - Inventory handles need a real event path
+
+**What happened**: The shared AppWindow bug-report affordance added a new `desktop.bug_report.opened` inventory handle. The open action also needed to be recorded through the existing `/api/desktop/events` normalized desktop event path and allowlisted server-side, not only documented in inventory.
+
+**Why it mattered**: Inventory handles are more than labels. If a new user interaction is documented without an emitting path, coverage can say the handle exists while live telemetry, challenge automation, and audit trails cannot observe the actual user action.
+
+**Rule**: When adding a canonical inventory handle for a UI interaction, wire the client action to the owning normalized event route in the same pass, add the event type to that route's allowlist, and include focused policy coverage that proves both the trigger and the event path exist.
