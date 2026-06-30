@@ -58,6 +58,7 @@ Priority labels:
 | WTF-BB-330 | Verified | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated/live public download smoke on commit `f32dbe8` |
 | WTF-BB-331 | Verified | Codex Pasta live-readiness | 2026-06-30 | Deploy / production disk capacity | P0 | 13 | 5 | 2 | 5 | 1 | Pasta deploy disk exhaustion was cleared without touching app volumes, `scripts/server-deploy.sh` now has a 12 GiB free-space preflight, Deploy to Hetzner `28467035058` passed, and live health reports commit `f32dbe8` |
 | WTF-BB-332 | Open | - | 2026-06-30 | Repo hygiene / Pasta stale worktrees | P2 | 9 | 12 | 1 | 3 | 2 | Stale `WTF-pasta-deploy` checkout still contains dirty superseded Pasta/Macaroni work and installer-manifest regressions if replayed wholesale; keep production authority on `origin/main`/`codex/pasta-live-readiness` and archive/reset the stale checkout only after preserving any user-needed notes |
+| WTF-BB-333 | Fixed | Codex Pasta live-readiness | 2026-06-30 | Pasta Suite installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Bundled Pasta Suite Desktop installers were missing a production manifest, installer workflow, and live verifier; current branch adds the Electron suite package, `/api/pasta/installers`, inventory coverage, release workflow, release-aware manifest proof, and local macOS artifact proof, pending GitHub release and production manifest verification |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -519,6 +520,31 @@ Priority labels:
   - Deploy to Hetzner run `28467035058` passed with the new disk preflight in `scripts/server-deploy.sh`.
   - Live `https://wtfos.app/api/health` returned `ok: true` with `commitRef: "f32dbe8"`.
   - Main Quality Gates run `28467035060` passed.
+
+### WTF-BB-333 - Pasta Suite Desktop installer release path was missing
+
+- Category: Pasta Suite installers / release ops
+- Status: Fixed
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F5 + S2 + P1(4) = 13
+- Evidence:
+  - The goal requires Pasta Protocol software package installers as individual items or a bundled suite.
+  - Production already had verified individual Macaroni Desktop installers, but no `apps/pasta-suite-desktop`, suite installer workflow, `/api/pasta/installers` manifest, suite inventory handle, or suite live verifier existed.
+- Why it matters:
+  - A web-hosted tool suite is not the same as a downloadable native suite. Without a manifest and release verifier, users can end up with no suite download surface or dead installer links.
+- Correction:
+  - Added `apps/pasta-suite-desktop` as an Electron shell that bundles Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna from production-style `/creation-tools/<tool>/...` paths.
+  - Added `.github/workflows/pasta-suite-desktop-installers.yml` for macOS universal DMG/ZIP, Windows x64 NSIS, and Raspberry Pi arm64 `.deb` packages.
+  - Added authenticated `/api/pasta/installers` with HTTPS/same-origin URL policy, SHA-256 validation, explicit product/version fields, and package filenames matching Electron Builder outputs.
+  - Added `pasta_suite.installer_manifest.viewed` to the interaction inventory and Pasta domain workflow, with a GET probe for `/api/pasta/installers`.
+  - Added `scripts/check-pasta-suite-installers-live.mjs` to compare the live manifest against GitHub release asset URLs and GitHub release SHA-256 digests after release publication.
+- Verification:
+  - `npm run pasta-suite:desktop:check` passed 5/5.
+  - `npm run macaroni:desktop:check` passed 4/4 to protect the existing individual installer lane.
+  - `npm run test:e2e:inventory:coverage` passed with 862 normalized handles and 16 domain workflows.
+  - `npm run check -- --pretty false` passed.
+  - `npm run dist:mac --prefix apps/pasta-suite-desktop` produced unsigned local macOS artifacts: `Pasta-Suite-1.0.0-mac-universal.dmg` sha256 `3b00d06229d2527294aac8f67e43e9437f5544846225e9688a345af9addf01e9`; `Pasta-Suite-1.0.0-mac-universal.zip` sha256 `812650e1e62d1bbe7332b84d6a437966ef9ddb2262977c8923429551a4e73f24`.
+  - Remaining target-environment proof: run the suite installer workflow for all three platforms, publish `pasta-suite-desktop-v1.0.0`, configure production `PASTA_SUITE_INSTALLER_*` env from GitHub release digests, then pass `npm run pasta-suite:installers:live-check` against `https://wtfos.app` with an authenticated session.
 
 ### WTF-BB-332 - Stale Pasta deploy checkout can regress installer hardening if replayed
 

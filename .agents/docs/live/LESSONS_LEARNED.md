@@ -1,3 +1,13 @@
+## 2026-06-30 - Suite installer workflows need manifest and release proof rails
+
+**What happened**: Pasta Suite Desktop packaging was easy to model by copying the Macaroni Electron installer pattern, but the first scaffold still missed the repo's interaction inventory, domain workflow probe, and a release-aware live verifier for `/api/pasta/installers`.
+
+**Why it mattered**: A native installer workflow proves little by itself. Users need a production manifest with authenticated access, HTTPS release URLs, SHA-256 checksums sourced from the published release assets, and E2E inventory visibility so future deploy gates keep the download surface accountable.
+
+**Rule**: When adding any native installer product, wire the package, workflow, production manifest route, inventory handle, domain API probe, package policy test, release verifier, and audit/bounty note in the same pass. Local unsigned artifacts are build proof only; production download proof requires published release digests, configured env, authenticated manifest verification, and live asset probes.
+
+---
+
 ## 2026-06-30 - Stale release worktrees can contain superseded security regressions
 
 **What happened**: After Pasta/Macaroni was live on `wtfos.app`, the old `WTF-pasta-deploy` checkout still contained dirty package/API work that looked relevant at a glance. Comparing it to `origin/main` showed most Pasta surfaces were already promoted, while its old `server/routes/macaroni.ts` would remove live installer checksums, advertise the wrong Windows filename, and allow remote plaintext installer URLs again. A separate shell inventory pass also initially failed because `path` is a special zsh variable tied to `PATH`.

@@ -994,8 +994,11 @@ export const DOMAIN_WORKFLOWS = [
       "colander.transfer_submitted",
       "colander.role_updated",
       "colander.graph_viewed",
+      "pasta_suite.installer_manifest.viewed",
     ],
-    apiProbes: [],
+    apiProbes: [
+      { method: "GET", path: "/api/pasta/installers", expectedStatuses: [200, 401] },
+    ],
   },
 ];
 

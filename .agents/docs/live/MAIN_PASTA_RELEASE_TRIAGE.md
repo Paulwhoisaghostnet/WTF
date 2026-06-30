@@ -21,7 +21,7 @@ Target state remains:
 
 The live-release blockers documented below are historical for the initial Pasta pass. The current production authority is `origin/main` at `455641f05f011134841a48617fc4a6d87be982c1`, live `wtfos.app` reports `commitRef: "455641f"`, Deploy to Hetzner run `28468017848` succeeded, and main Quality Gates run `28468017850` succeeded.
 
-Current cleanup and remaining-scope findings are tracked in `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md`. In short: individual Macaroni Desktop installers are live and verified, live Pasta static bundles are refreshed, the old `WTF-pasta-deploy` checkout is superseded and unsafe to promote wholesale, and a bundled Pasta-suite installer/workflow is still not proven.
+Current cleanup and remaining-scope findings are tracked in `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md`. In short: individual Macaroni Desktop installers are live and verified, live Pasta static bundles are refreshed, the old `WTF-pasta-deploy` checkout is superseded and unsafe to promote wholesale, and the bundled Pasta Suite installer path is now scaffolded with local macOS artifact proof but still needs CI release artifacts, production env, and live manifest verification.
 
 ## Current Release Blockers
 
@@ -34,12 +34,12 @@ The original source checkout is not a live-push candidate:
 
 The safe path is now in progress on `codex/pasta-live-readiness`, a clean worktree rebased to latest `origin/main` with only the audited Pasta/Macaroni release slice applied.
 
-The release is still not live-complete because:
+The historical initial-release blockers below are superseded by the current production authority above. The current Pasta Suite release is still not live-complete because:
 
-- Macaroni Desktop installer artifacts have been built on the release branch, but not published to stable release URLs or wired into production downloads.
-- Production installer URLs/version are not proven configured.
-- Live `wtfos.app` still serves the stale Taquito `24.3.0` static creator-tool bundles.
-- Production health still reports `version.commitRef: "dev"`, so deployed revision identity remains weak.
+- Pasta Suite Desktop release assets are not yet published for all platforms.
+- Production `PASTA_SUITE_INSTALLER_*` URLs, SHA-256 checksums, and version are not proven configured.
+- `npm run pasta-suite:installers:live-check` has not passed against `https://wtfos.app`.
+- The broader Pasta contract workflow proof still needs executable Shadownet deploy/mint/collect/recovery evidence beyond static bundle and installer availability.
 
 ## Live Production Baseline
 
