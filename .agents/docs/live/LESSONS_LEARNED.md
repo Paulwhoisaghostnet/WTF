@@ -1,3 +1,13 @@
+## 2026-06-30 - TzKT network labels are not raw chain ids
+
+**What happened**: The first Spaghetti Shadownet preflight expected TzKT `/v1/head` field `chain` to equal the raw chain id `NetXsqzbfFenSTS`, but TzKT reports `chain: "shadownet"` and carries the raw id separately as `chainId`.
+
+**Why it mattered**: A verifier that compares the wrong field can fail a healthy Shadownet indexer, or worse, teach future tests to loosen the RPC chain-id check. The RPC node and the indexer expose related but different network facts.
+
+**Rule**: For Tezos network proof, check RPC `/chains/main/chain_id` against the raw expected chain id, and check TzKT head with both its network label and `chainId` field when available.
+
+---
+
 ## 2026-06-30 - Stale worktree deletion needs restore evidence
 
 **What happened**: The old `WTF-pasta-deploy` checkout was clearly superseded by `origin/main`, but it still contained dirty Pasta files that could look useful later. Deleting it without an archive would have cleaned the worktree list while erasing the evidence needed to prove it had zero unique commits and contained installer-manifest regressions.

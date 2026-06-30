@@ -76,6 +76,7 @@
     "pasta-suite:desktop:check": "node --test scripts/pasta-suite-desktop-package-policy.test.mjs",
     "pasta-suite:installers:live-check": "node scripts/check-pasta-suite-installers-live.mjs",
     "pasta-suite:desktop:dist": "npm run dist --prefix apps/pasta-suite-desktop",
+    "pasta:shadownet:preflight": "tsx scripts/pasta-protocol/shadownet-preflight.ts",
     "check": "tsc --noEmit",
     "wtfos:cli:build": "npm run build --prefix packages/wtfos-cli",
     "wtfos:cli:test": "npm run test --prefix packages/wtfos-cli",
