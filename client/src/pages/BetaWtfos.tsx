@@ -1,11 +1,32 @@
-import { useMemo, useState } from "react";
+import {
+  Suspense,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type ComponentType,
+  type FormEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import styled from "styled-components";
 import { Activity, ArrowRight, Bell, Compass, ExternalLink, Search, ShieldCheck, Users } from "lucide-react";
-import type { LeaderboardEntry, RewardWtfLeaderboardEntry, XpRewardLeaderboardEntry } from "@shared/types";
+import type { DesktopAppKey, LeaderboardEntry, RewardWtfLeaderboardEntry, XpRewardLeaderboardEntry } from "@shared/types";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import {
+  PresentationShellProvider,
+  rememberPresentationHost,
+} from "../lib/presentation-shell";
+import {
+  WindowManagerProvider,
+  WindowPathContext,
+} from "../lib/window-context";
+import { getPageAccessState, matchPage } from "../routes/page-defs";
+import { Login } from "./Login";
+import { Register } from "./Register";
 import {
   BETA_AGENT_RUNS,
   BETA_AGENT_RETEST_SNAPSHOTS,
@@ -295,9 +316,393 @@ const designCriticReviews: BetaDesignCriticReview[] = [
   },
 ];
 
+type BetaRouteParts = {
+  pathname: string;
+  search: string;
+  hash: string;
+};
+
+const BETA_ROUTE_NAV_GROUPS = [
+  {
+    label: "Start",
+    routes: ["/gallery", "/leaderboard", "/side-quests", "/calendar"],
+  },
+  {
+    label: "Create",
+    routes: ["/studio", "/tools/broot", "/ipfs-pinning", "/tv"],
+  },
+  {
+    label: "People",
+    routes: ["/w", "/wim", "/live/r/wtf-live", "/skywire?standalone=1"],
+  },
+  {
+    label: "Operate",
+    routes: ["/admin", "/settings", "/notifications", "/mission-control"],
+  },
+];
+
+function splitBetaRouteLocation(location: string): BetaRouteParts {
+  const hashIndex = location.indexOf("#");
+  const beforeHash = hashIndex >= 0 ? location.slice(0, hashIndex) : location;
+  const hash = hashIndex >= 0 ? location.slice(hashIndex) : "";
+  const queryIndex = beforeHash.indexOf("?");
+  const pathname = queryIndex >= 0 ? beforeHash.slice(0, queryIndex) : beforeHash;
+  const search = queryIndex >= 0 ? beforeHash.slice(queryIndex) : "";
+  return {
+    pathname: pathname || "/",
+    search,
+    hash,
+  };
+}
+
+function betaRouteLocationFromParts(parts: BetaRouteParts): string {
+  return `${parts.pathname || "/"}${parts.search}${parts.hash}`;
+}
+
+function isBetaHost(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.hostname === "beta.wtfos.app";
+}
+
+function isBetaHarnessLocation(location: string): boolean {
+  const { pathname } = splitBetaRouteLocation(location);
+  return pathname === "/beta" || pathname.startsWith("/beta/");
+}
+
+function betaRouteFromLocation(location: string): string {
+  const parts = splitBetaRouteLocation(location);
+  if (parts.pathname === "/beta") return `/${parts.search}${parts.hash}`;
+  if (parts.pathname.startsWith("/beta/")) {
+    return betaRouteLocationFromParts({
+      ...parts,
+      pathname: parts.pathname.slice("/beta".length) || "/",
+    });
+  }
+  return betaRouteLocationFromParts(parts);
+}
+
+function betaNavigationTarget(route: string, currentLocation: string): string {
+  const raw = route.trim() || "/";
+  const parts = splitBetaRouteLocation(raw.startsWith("/") ? raw : `/${raw}`);
+  const routeLocation = betaRouteLocationFromParts(parts);
+  if (isBetaHost()) return routeLocation;
+  if (!isBetaHarnessLocation(currentLocation)) return routeLocation;
+  if (parts.pathname === "/") return `/beta${parts.search}${parts.hash}`;
+  return `/beta${routeLocation}`;
+}
+
+function betaBrowserLocation(fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
+function betaCleanPathname(routeLocation: string): string {
+  return splitBetaRouteLocation(routeLocation).pathname || "/";
+}
+
+function betaRouteTitle(routeLocation: string): string {
+  const match = matchPage(routeLocation);
+  if (match?.def.title) return match.def.title;
+  const pathname = betaCleanPathname(routeLocation);
+  if (pathname === "/" || pathname === "/beta") return "Beta Home";
+  return pathname
+    .split("/")
+    .filter(Boolean)
+    .slice(-1)[0]
+    ?.replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase()) ?? "WTFOS Route";
+}
+
+function betaRouteSummary(routeLocation: string): string {
+  const match = matchPage(routeLocation);
+  if (match?.def.group) return `${match.def.group} surface running in the Beta console`;
+  return "registered WTFOS route content stays inside Beta chrome";
+}
+
+function betaInterfaceHref(host: "classic" | "beta" | "gamma", routeLocation: string): string {
+  const pathname = betaCleanPathname(routeLocation);
+  const route = pathname === "/beta" ? "/" : routeLocation || "/";
+  if (host === "classic") return `https://wtfos.app${route === "/" ? "/" : route}`;
+  if (host === "beta") return `https://beta.wtfos.app${route === "/" ? "/" : route}`;
+  return `https://gamma.wtfos.app${route === "/" ? "/" : route}`;
+}
+
+function routeFromBetaInterceptableLink(anchor: HTMLAnchorElement): string | null {
+  const rawHref = anchor.getAttribute("href") || "";
+  if (!rawHref || rawHref.startsWith("#")) return null;
+  if (/^(mailto|tel|data|blob|javascript):/i.test(rawHref)) return null;
+  if (anchor.hasAttribute("download")) return null;
+  const target = anchor.getAttribute("target");
+  if (target && target.toLowerCase() !== "_self") return null;
+  if (anchor.closest("[data-beta-interface-switch='true']")) return null;
+
+  let url: URL;
+  try {
+    url = new URL(anchor.href);
+  } catch {
+    return null;
+  }
+
+  const currentOrigin =
+    typeof window !== "undefined" ? window.location.origin : "https://beta.wtfos.app";
+  const sameOrigin = url.origin === currentOrigin;
+  const knownWtfHost =
+    url.protocol === "https:" &&
+    ["wtfos.app", "beta.wtfos.app", "gamma.wtfos.app"].includes(url.hostname);
+  if (!sameOrigin && !knownWtfHost) return null;
+
+  const route = `${url.pathname || "/"}${url.search}${url.hash}`;
+  const routePath = betaCleanPathname(route);
+  if (routePath.startsWith("/api/")) return null;
+  const normalizedRoute = isBetaHarnessLocation(route) ? betaRouteFromLocation(route) : route;
+  const normalizedPath = betaCleanPathname(normalizedRoute);
+  if (normalizedPath === "/") return "/";
+  return matchPage(normalizedRoute) ? normalizedRoute : null;
+}
+
+function BetaLoadingBlock({ label }: { label: string }) {
+  return (
+    <BetaNotice data-beta-route-loading>
+      <b>{label}</b>
+      <span>Loading the shared WTFOS route inside the Beta console.</span>
+    </BetaNotice>
+  );
+}
+
+function BetaRouteGate({
+  title,
+  reason,
+  onLaunch,
+}: {
+  title: string;
+  reason: string;
+  onLaunch: (route: string) => void;
+}) {
+  const isAuth = reason === "auth-required";
+  return (
+    <BetaNotice data-beta-route-gate={reason}>
+      <b>{title}</b>
+      <span>
+        {isAuth
+          ? "Sign in to continue through the same WTFOS permission gate."
+          : "This route is protected by the shared WTFOS permission model."}
+      </span>
+      <BetaNoticeActions>
+        {isAuth ? (
+          <Primary type="button" onClick={() => onLaunch("/login")} data-beta-launch="/login">
+            Sign in
+          </Primary>
+        ) : null}
+        <Ghost type="button" onClick={() => onLaunch("/")} data-beta-launch="/">
+          Beta home
+        </Ghost>
+      </BetaNoticeActions>
+    </BetaNotice>
+  );
+}
+
+function BetaRouteWorkspace({
+  routeLocation,
+  onLaunch,
+  signedLabel,
+  user,
+  isAuthLoading,
+  appAvailability,
+  appAvailabilityReady,
+}: {
+  routeLocation: string;
+  onLaunch: (route: string) => void;
+  signedLabel: string;
+  user: ReturnType<typeof useAuth>["user"];
+  isAuthLoading: boolean;
+  appAvailability: Partial<Record<DesktopAppKey, boolean>>;
+  appAvailabilityReady: boolean;
+}) {
+  const [searchText, setSearchText] = useState("");
+  const routeMatch = matchPage(routeLocation);
+  const title = betaRouteTitle(routeLocation);
+  const summary = betaRouteSummary(routeLocation);
+  const routePathname = betaCleanPathname(routeLocation);
+  const roleInput = user?.roles ?? user?.role ?? null;
+  const accessSurfaceIds = user?.wtfOsAccess?.surfaceIds ?? [];
+  const preliminaryAccess = routeMatch
+    ? getPageAccessState(routeMatch.def, roleInput, accessSurfaceIds)
+    : null;
+  const accessState = routeMatch
+    ? getPageAccessState(routeMatch.def, roleInput, accessSurfaceIds, appAvailability)
+    : null;
+  const Comp = routeMatch?.def.component as ComponentType<any> | undefined;
+  const AuthComp =
+    routePathname === "/login" ? Login : routePathname === "/register" ? Register : null;
+
+  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = searchText.trim();
+    if (!query) return;
+    onLaunch(`/gallery?search=${encodeURIComponent(query)}`);
+  };
+
+  let routeContent: ReactNode;
+  if (AuthComp) {
+    routeContent = (
+      <WindowManagerProvider navigate={onLaunch} currentLocation={routeLocation}>
+        <WindowPathContext.Provider value={routeLocation}>
+          <BetaApplicationContent data-beta-application-content data-beta-auth-content>
+            <AuthComp />
+          </BetaApplicationContent>
+        </WindowPathContext.Provider>
+      </WindowManagerProvider>
+    );
+  } else if (!routeMatch || !Comp) {
+    routeContent = (
+      <BetaNotice data-beta-route-missing>
+        <b>{routePathname}</b>
+        <span>No registered WTFOS route matches this path.</span>
+        <BetaNoticeActions>
+          <Primary type="button" onClick={() => onLaunch("/gallery")} data-beta-launch="/gallery">
+            Gallery
+          </Primary>
+          <Ghost type="button" onClick={() => onLaunch("/")} data-beta-launch="/">
+            Beta home
+          </Ghost>
+        </BetaNoticeActions>
+      </BetaNotice>
+    );
+  } else if (isAuthLoading && routeMatch.def.auth) {
+    routeContent = <BetaLoadingBlock label={title} />;
+  } else if (!appAvailabilityReady && preliminaryAccess?.appKey) {
+    routeContent = <BetaLoadingBlock label={title} />;
+  } else if (accessState && !accessState.allowed) {
+    routeContent = (
+      <BetaRouteGate
+        title={title}
+        reason={accessState.reason}
+        onLaunch={onLaunch}
+      />
+    );
+  } else {
+    routeContent = (
+      <WindowManagerProvider navigate={onLaunch} currentLocation={routeLocation}>
+        <WindowPathContext.Provider value={routeLocation}>
+          <ErrorBoundary
+            resetKey={routeLocation}
+            fallback={(error) => (
+              <BetaNotice role="alert" data-beta-route-error>
+                <b>{title} crashed</b>
+                <span>{error?.message || "Render error"}</span>
+              </BetaNotice>
+            )}
+          >
+            <Suspense fallback={<BetaLoadingBlock label={title} />}>
+              <BetaApplicationContent data-beta-application-content>
+                <Comp {...routeMatch.props} />
+              </BetaApplicationContent>
+            </Suspense>
+          </ErrorBoundary>
+        </WindowPathContext.Provider>
+      </WindowManagerProvider>
+    );
+  }
+
+  return (
+    <BetaWorkspace data-beta-workspace data-beta-route={routePathname}>
+      <BetaWorkspaceChrome>
+        <BetaBreadcrumbs aria-label="Beta breadcrumbs" data-beta-breadcrumbs>
+          <button type="button" onClick={() => onLaunch("/")} data-beta-launch="/">
+            Beta
+          </button>
+          <ArrowRight size={14} aria-hidden="true" />
+          <span>{title}</span>
+        </BetaBreadcrumbs>
+        <BetaRouteHeader>
+          <div>
+            <Small>{routeMatch?.def.group ?? "wtfos route"}</Small>
+            <h1>{title}</h1>
+            <p>{summary}</p>
+          </div>
+          <BetaUxSwitch data-beta-ux-switcher aria-label="Switch WTFOS interface">
+            <a href={betaInterfaceHref("classic", routeLocation)} data-beta-interface-switch="true">Classic</a>
+            <a
+              href={betaInterfaceHref("beta", routeLocation)}
+              data-beta-interface-switch="true"
+              aria-current="page"
+            >
+              Beta
+            </a>
+            <a href={betaInterfaceHref("gamma", routeLocation)} data-beta-interface-switch="true">Gamma</a>
+          </BetaUxSwitch>
+        </BetaRouteHeader>
+        <BetaToolRow>
+          <BetaSearchForm onSubmit={submitSearch} data-beta-search>
+            <Search size={17} aria-hidden="true" />
+            <input
+              value={searchText}
+              onChange={(event) => setSearchText(event.target.value)}
+              placeholder="Search gallery, people, routes"
+              aria-label="Search WTFOS from Beta"
+            />
+          </BetaSearchForm>
+          <Ghost
+            type="button"
+            onClick={() => onLaunch(user?.username ? `/user/${encodeURIComponent(user.username)}` : "/login")}
+            data-beta-launch={user?.username ? `/user/${encodeURIComponent(user.username)}` : "/login"}
+          >
+            {signedLabel}
+          </Ghost>
+          <Ghost type="button" onClick={() => onLaunch("/notifications")} data-beta-launch="/notifications">
+            Signals
+          </Ghost>
+          <Primary type="button" onClick={() => onLaunch("/settings")} data-beta-launch="/settings">
+            Settings
+          </Primary>
+        </BetaToolRow>
+      </BetaWorkspaceChrome>
+
+      <BetaWorkspaceGrid>
+        <BetaRouteRail data-beta-route-rail>
+          {BETA_ROUTE_NAV_GROUPS.map((group) => (
+            <BetaRouteCluster key={group.label}>
+              <span>{group.label}</span>
+              {group.routes.map((route) => {
+                const routeLabel = betaRouteTitle(route);
+                const active = betaCleanPathname(route) === routePathname;
+                return (
+                  <button
+                    key={route}
+                    type="button"
+                    onClick={() => onLaunch(route)}
+                    data-beta-launch={route}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <b>{routeLabel}</b>
+                    <small>{betaCleanPathname(route)}</small>
+                  </button>
+                );
+              })}
+            </BetaRouteCluster>
+          ))}
+        </BetaRouteRail>
+
+        <BetaMainRegion>
+          <BetaRouteMeta data-beta-route-meta>
+            <span>{routePathname}</span>
+            <a href={betaInterfaceHref("classic", routeLocation)} data-beta-interface-switch="true">
+              Open Classic route
+            </a>
+          </BetaRouteMeta>
+          {routeContent}
+        </BetaMainRegion>
+      </BetaWorkspaceGrid>
+    </BetaWorkspace>
+  );
+}
+
 export function BetaWtfos() {
-  const [, navigate] = useLocation();
-  const { user, isAdmin } = useAuth();
+  const [location, navigate] = useLocation();
+  const { user, isAdmin, isLoading } = useAuth();
+  useLayoutEffect(() => {
+    rememberPresentationHost("beta");
+  }, []);
   const [personaKey, setPersonaKey] = useState<BetaPersonaKey>("new-tezos-user");
   const [researchOpen, setResearchOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -312,6 +717,41 @@ export function BetaWtfos() {
   const visibilityScore = betaVisibilityScore();
   const retestSummary = betaAgentRetestSummary();
   const queryOptions = { staleTime: 90_000, retry: 1, refetchOnWindowFocus: false };
+  const desktopAppsQuery = useQuery({
+    queryKey: ["desktop", "apps"],
+    queryFn: () =>
+      api.get<{ apps: Record<DesktopAppKey, boolean> }>("/api/apps/desktop"),
+    staleTime: 30_000,
+  });
+  const currentLocation = betaBrowserLocation(location);
+  const routeLocation = betaRouteFromLocation(currentLocation);
+  const routePathname = betaCleanPathname(routeLocation);
+  const isHomeRoute = routePathname === "/" || routePathname === "/beta";
+  const handleLaunch = (route: string) => {
+    rememberPresentationHost("beta");
+    navigate(betaNavigationTarget(route, betaBrowserLocation(currentLocation)));
+  };
+  const handleShellClick = (event: MouseEvent<HTMLElement>) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.shiftKey
+    ) {
+      return;
+    }
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const anchor = target.closest("a[href]");
+    if (!(anchor instanceof HTMLAnchorElement)) return;
+    const route = routeFromBetaInterceptableLink(anchor);
+    if (!route) return;
+    event.preventDefault();
+    event.stopPropagation();
+    handleLaunch(route);
+  };
   const holderQuery = useQuery({
     queryKey: ["beta", "now", "wtf-holders"],
     queryFn: () => betaReadOnlyGet<LeaderboardEntry[]>(findBetaNowSignalSource("wtf-holders").endpoint),
@@ -731,8 +1171,8 @@ export function BetaWtfos() {
   const jumpToCompassSection = (section: BetaSectionCompassItem) => jumpToBetaSection(section.sectionId);
 
   const openRoute = (app: Pick<BetaAppCatalogEntry, "route" | "access">) => {
-    if (app.access !== "public" && !user) navigate("/login");
-    else navigate(app.route);
+    if (app.access !== "public" && !user) handleLaunch("/login");
+    else handleLaunch(app.route);
   };
   const openKnownRoute = (route: string, accessHint?: BetaAppCatalogEntry["access"]) => {
     const app = BETA_APP_CATALOG.find((item) => item.route === route || item.related.includes(route));
@@ -957,9 +1397,70 @@ export function BetaWtfos() {
   const humanPulseCards = peopleDiscoveryCards
     .filter((card) => ["active-users", "creators", "collectors", "builders", "curators", "collaborators"].includes(card.source.key))
     .slice(0, 4);
+  const signedLabel = user?.username ? `@${user.username}` : "guest preview";
+  const identityRoute = user?.username ? `/user/${encodeURIComponent(user.username)}` : "/login";
+  const appAvailability = desktopAppsQuery.data?.apps ?? {};
+  const appAvailabilityReady = Boolean(desktopAppsQuery.data?.apps);
+
+  if (!isHomeRoute) {
+    return (
+      <PresentationShellProvider host="beta">
+        <Shell
+          data-beta-wtfos
+          data-beta-style-contract
+          data-theme="beta-dark-console-os"
+          onClickCapture={handleShellClick}
+        >
+          <TopBar data-beta-system-chrome>
+            <Brand>
+              <ChromeLights aria-hidden="true"><i /><i /><i /></ChromeLights>
+              <img src="/cursors/tezos-current-logo.png" alt="" />
+              <div>
+                <strong>WTFOS Beta</strong>
+                <span>beta.wtfos.app</span>
+              </div>
+            </Brand>
+            <ChromeStatusRail data-beta-system-status>
+              <ChromeStatus>
+                <small>Route</small>
+                <strong>{routePathname}</strong>
+              </ChromeStatus>
+              <ChromeStatus>
+                <small>Authority</small>
+                <strong>{sessionState}</strong>
+              </ChromeStatus>
+              <ChromeStatus>
+                <small>Shell</small>
+                <strong>Beta console</strong>
+              </ChromeStatus>
+            </ChromeStatusRail>
+            <Actions data-beta-system-command>
+              <Ghost type="button" onClick={() => handleLaunch(identityRoute)}>{user ? "Profile" : "Sign In"}</Ghost>
+              <Primary type="button" onClick={() => handleLaunch("/")}>Beta Home</Primary>
+            </Actions>
+          </TopBar>
+          <BetaRouteWorkspace
+            routeLocation={routeLocation}
+            onLaunch={handleLaunch}
+            signedLabel={signedLabel}
+            user={user}
+            isAuthLoading={isLoading}
+            appAvailability={appAvailability}
+            appAvailabilityReady={appAvailabilityReady}
+          />
+        </Shell>
+      </PresentationShellProvider>
+    );
+  }
 
   return (
-    <Shell data-beta-wtfos>
+    <PresentationShellProvider host="beta">
+    <Shell
+      data-beta-wtfos
+      data-beta-style-contract
+      data-theme="beta-dark-console-os"
+      onClickCapture={handleShellClick}
+    >
       <TopBar data-beta-system-chrome>
         <Brand>
           <ChromeLights aria-hidden="true"><i /><i /><i /></ChromeLights>
@@ -984,8 +1485,8 @@ export function BetaWtfos() {
           </ChromeStatus>
         </ChromeStatusRail>
         <Actions data-beta-system-command>
-          <Ghost type="button" onClick={() => navigate("/gallery")}>Gallery</Ghost>
-          <Primary type="button" onClick={() => navigate(user ? "/side-quests" : "/login")}>{topCommandLabel}</Primary>
+          <Ghost type="button" onClick={() => handleLaunch("/gallery")}>Gallery</Ghost>
+          <Primary type="button" onClick={() => handleLaunch(user ? "/side-quests" : "/login")}>{topCommandLabel}</Primary>
         </Actions>
       </TopBar>
 
@@ -2737,6 +3238,7 @@ export function BetaWtfos() {
         </ResearchDeckBody>
       </ResearchVault>
     </Shell>
+    </PresentationShellProvider>
   );
 }
 
@@ -3081,6 +3583,279 @@ function AppCard({ app, openRoute }: { app: BetaAppCatalogEntry; openRoute: (app
   return <Info data-beta-app-card><Small>{BETA_TIER_LABELS[app.tier]} / {BETA_STAGE_LABELS[app.stage]}</Small><h3>{app.title}</h3><p>{app.purpose}</p><Meta><strong>Use when</strong><span>{app.whenToUse}</span></Meta><RouteRow>{app.related.slice(0, 3).map((route) => <code key={route}>{route}</code>)}</RouteRow><Primary type="button" onClick={() => openRoute(app)}>{app.betaAction}</Primary></Info>;
 }
 
+const BetaWorkspace = styled.section`
+  display: grid;
+  gap: clamp(18px, 3vw, 28px);
+  width: min(92rem, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: clamp(18px, 3vw, 32px) 0 56px;
+`;
+
+const BetaWorkspaceChrome = styled.div`
+  display: grid;
+  gap: 14px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+`;
+
+const BetaBreadcrumbs = styled.nav`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+  text-transform: uppercase;
+
+  button {
+    appearance: none;
+    padding: 0;
+    color: var(--green);
+    background: transparent;
+    border: 0;
+    font: inherit;
+    font-weight: 900;
+  }
+
+  span {
+    color: var(--muted-strong);
+  }
+`;
+
+const BetaRouteHeader = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+
+  h1 {
+    margin: 6px 0 0;
+    font-size: clamp(36px, 6vw, 72px);
+    line-height: 0.95;
+  }
+
+  p {
+    max-width: 64ch;
+    margin: 10px 0 0;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 780px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const BetaUxSwitch = styled.div`
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: min(100%, 280px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.035);
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 12px;
+    color: var(--muted-strong);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 900;
+    border-left: 1px solid var(--line);
+  }
+
+  a:first-child {
+    border-left: 0;
+  }
+
+  a[aria-current="page"] {
+    color: var(--night);
+    background: var(--green);
+  }
+`;
+
+const BetaToolRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+`;
+
+const BetaSearchForm = styled.form`
+  flex: 1 1 320px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--green);
+
+  input {
+    flex: 1;
+    min-width: 0;
+    color: var(--ink);
+    background: transparent;
+    border: 0;
+    outline: 0;
+    font: inherit;
+  }
+
+  input::placeholder {
+    color: var(--muted);
+  }
+`;
+
+const BetaWorkspaceGrid = styled.div`
+  display: grid;
+  grid-template-columns: minmax(190px, 0.22fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const BetaRouteRail = styled.aside`
+  position: sticky;
+  top: 78px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+
+  @media (max-width: 900px) {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const BetaRouteCluster = styled.div`
+  display: grid;
+  gap: 7px;
+
+  > span {
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 950;
+    text-transform: uppercase;
+  }
+
+  button {
+    appearance: none;
+    display: grid;
+    gap: 4px;
+    min-height: 52px;
+    padding: 10px;
+    text-align: left;
+    color: var(--muted-strong);
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font: inherit;
+  }
+
+  button[aria-current="page"] {
+    color: var(--ink);
+    border-color: rgba(255, 79, 195, 0.55);
+    background: rgba(255, 79, 195, 0.08);
+  }
+
+  b {
+    color: inherit;
+    font-size: 13px;
+    line-height: 1.15;
+  }
+
+  small {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+`;
+
+const BetaMainRegion = styled.main`
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+`;
+
+const BetaRouteMeta = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+  text-transform: uppercase;
+
+  span {
+    color: var(--rose);
+    overflow-wrap: anywhere;
+  }
+
+  a {
+    color: var(--green);
+    text-decoration: none;
+  }
+
+  @media (max-width: 560px) {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+`;
+
+const BetaApplicationContent = styled.div`
+  min-width: 0;
+  color: var(--ink);
+
+  [data-wtf-app-surface="true"],
+  [data-wtf-app-scroll="true"] {
+    max-width: 100%;
+  }
+`;
+
+const BetaNotice = styled.div`
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  min-height: 260px;
+  padding: clamp(18px, 3vw, 28px);
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+
+  b {
+    color: var(--ink);
+    font-size: clamp(24px, 4vw, 42px);
+    line-height: 1;
+  }
+
+  span {
+    max-width: 56ch;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+`;
+
+const BetaNoticeActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+`;
+
 const Shell = styled.main`
   --ink: #f4f7f8;
   --muted: #8e98a6;
@@ -3098,6 +3873,12 @@ const Shell = styled.main`
   --surface-2: rgba(18, 23, 32, 0.92);
   --surface-3: rgba(26, 32, 43, 0.92);
   --paper: #111620;
+  --presentation-bg: var(--night);
+  --presentation-panel: var(--surface-2);
+  --presentation-text: var(--ink);
+  --presentation-accent: var(--green);
+  --presentation-line: var(--line);
+  --presentation-progress: var(--amber);
   min-height: 100vh;
   overflow-x: hidden;
   color: var(--ink);

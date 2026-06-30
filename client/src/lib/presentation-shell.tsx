@@ -51,30 +51,34 @@ export function rememberPresentationHost(host: PresentationHost) {
   }
 }
 
-function isGammaRuntime(host?: PresentationHost): boolean {
-  if (host === "gamma") return true;
-  if (typeof window === "undefined") return false;
-  if (window.location.hostname === "beta.wtfos.app") return false;
-  if (window.location.pathname === "/beta" || window.location.pathname.startsWith("/beta/")) {
-    return false;
-  }
-  if (window.location.hostname === "gamma.wtfos.app") return true;
-  return readPresentationHostFromSession() === "gamma";
+function presentationRuntimeHost(host?: PresentationHost): Exclude<PresentationHost, "classic"> | null {
+  if (host === "beta" || host === "gamma") return host;
+  if (typeof window === "undefined") return null;
+  const pathname = window.location.pathname || "/";
+  if (window.location.hostname === "beta.wtfos.app") return "beta";
+  if (pathname === "/beta" || pathname.startsWith("/beta/")) return "beta";
+  if (window.location.hostname === "gamma.wtfos.app") return "gamma";
+  if (pathname === "/gamma" || pathname.startsWith("/gamma/")) return "gamma";
+  const stored = readPresentationHostFromSession();
+  return stored === "beta" || stored === "gamma" ? stored : null;
 }
 
-function localGammaHref(url: URL): string {
+function localPresentationHref(url: URL, host: Exclude<PresentationHost, "classic">): string {
   const route = `${url.pathname || "/"}${url.search}${url.hash}`;
-  if (url.pathname === "/gamma" || url.pathname.startsWith("/gamma/")) {
+  const prefix = `/${host}`;
+  if (url.pathname === prefix || url.pathname.startsWith(`${prefix}/`)) {
     return route;
   }
   if (url.pathname === "/") {
-    return `/gamma${url.search}${url.hash}`;
+    return `${prefix}${url.search}${url.hash}`;
   }
-  return `/gamma${route}`;
+  return `${prefix}${route}`;
 }
 
 export function presentationRouteHref(route: string, host?: PresentationHost): string {
-  if (typeof window === "undefined" || !isGammaRuntime(host)) return route;
+  if (typeof window === "undefined") return route;
+  const presentationHost = presentationRuntimeHost(host);
+  if (!presentationHost) return route;
 
   let url: URL;
   try {
@@ -91,8 +95,8 @@ export function presentationRouteHref(route: string, host?: PresentationHost): s
   if (url.pathname.startsWith("/api/")) return route;
 
   const routeHref = `${url.pathname || "/"}${url.search}${url.hash}`;
-  if (window.location.hostname === "gamma.wtfos.app") {
+  if (window.location.hostname === `${presentationHost}.wtfos.app`) {
     return routeHref;
   }
-  return localGammaHref(url);
+  return localPresentationHref(url, presentationHost);
 }
