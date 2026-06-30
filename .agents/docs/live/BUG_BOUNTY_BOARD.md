@@ -56,6 +56,7 @@ Priority labels:
 | WTF-BB-328 | Fixed | Codex Pasta installer hardening | 2026-06-30 | Macaroni installers / supply chain | P1 | 13 | 6 | 1 | 4 | 4 | Macaroni installer manifest accepted remote HTTP URLs, which could publish downgradeable installer links; fixed by allowing HTTPS remote URLs, same-origin relative paths, and loopback HTTP only outside production, clean branch gates passed, pending live release proof |
 | WTF-BB-329 | Fixed | Codex Pasta live-baseline audit | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 3 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles still serve Taquito `24.3.0`; U025/Octez refresh is isolated on `codex/pasta-live-readiness` with clean branch gates passing but has not been deployed to production |
 | WTF-BB-330 | In Progress | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop installer workflow now has branch artifact proof for macOS, Windows, and Raspberry Pi on `codex/pasta-live-readiness`; stable release URLs, production env configuration, authenticated manifest proof, and public download smoke are still pending |
+| WTF-BB-331 | In Progress | Codex Pasta live-readiness | 2026-06-30 | Deploy / production disk capacity | P0 | 13 | 5 | 2 | 5 | 1 | Pasta main deploy `28466080627` failed after image build because production root had only 1.9 GB free and Docker could not write compose build metadata; disk was cleaned to 26 GB free and `scripts/server-deploy.sh` now has a disk preflight guard, pending redeploy/live proof |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Fixed | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; focused fresh-harness proof passes, pending branch Quality Gates rerun |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -485,6 +486,28 @@ Priority labels:
   - Local metadata guard: `npm run macaroni:desktop:check` passes with explicit Linux `.deb` metadata assertions.
   - Branch artifact proof: Macaroni Desktop Installers run `28458796320` passed macOS, Windows, and Raspberry Pi builds with `publish_release=false`.
   - Required before closure: stable release/artifact URLs, configured production manifest, authenticated live proof, and public download smoke.
+
+### WTF-BB-331 - Pasta main deploy failed on production disk exhaustion
+
+- Category: Deploy / production disk capacity
+- Status: In Progress
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F5 + S1 + P0(5) = 13
+- Evidence:
+  - Deploy to Hetzner run `28466080627` reset the production checkout to `3d27e10` and built `wtf-app-app:latest`, then failed at Docker compose metadata export with `no space left on device`.
+  - Live `https://wtfos.app/api/health` remained healthy on old commit `7b56bfd`, so the failure blocked promotion before the new Pasta/Macaroni code became live.
+  - Production root was `98%` full with `1.9G` available; Docker build cache, unused images, and journals were reclaimable.
+- Why it matters:
+  - A live-ready branch can still miss production if deploy capacity is only checked after a long Docker build. Repeated failures also risk filling the host further and delaying rollback or emergency fixes.
+- Correction:
+  - Pruned Docker build cache and unused images without touching volumes.
+  - Vacuumed systemd journals to `1G`.
+  - Production root now has `26G` free (`65%` used).
+  - Added `scripts/server-deploy.sh` disk preflight guard with configurable `WTF_DEPLOY_DISK_PATH` and `WTF_DEPLOY_MIN_FREE_KB`, defaulting to 12 GiB free before image build or app restart.
+- Verification:
+  - Passed `bash -n scripts/server-deploy.sh`.
+  - Passed `node --test scripts/deploy-dry-run-policy.test.mjs scripts/production-migrations-policy.test.mjs scripts/check-kiln-production-posture.test.mjs`.
+  - Pending before closure: push/deploy the preflight guard, rerun Deploy to Hetzner, and verify live health reports the promoted commit.
 
 ### WTF-BB-326 - Broad inventory social workflow timeout
 

@@ -1,3 +1,13 @@
+## 2026-06-30 - Deploy builds need disk preflight before Docker work
+
+**What happened**: Pasta/Macaroni branch and main quality gates were green, but Deploy to Hetzner run `28466080627` failed after building the app image because Docker could not write compose build metadata: `no space left on device`. The production root filesystem had only `1.9G` free (`98%` used), while the live site stayed on the previous healthy commit.
+
+**Why it mattered**: A code-clean release can still miss production if deploy capacity is discovered only after a long image build. Failed builds can consume even more disk, delay the actual release, and make emergency deploys harder.
+
+**Rule**: Before production image builds, check root free space and fail closed when it is below the deploy floor. Prefer pruning Docker build/image cache and bounded systemd journal retention over touching app volumes or user data, then rerun deploy only after live health can prove the promoted commit.
+
+---
+
 ## 2026-06-30 - Published installer digests must come from release assets
 
 **What happened**: The Macaroni live installer verifier was first seeded with earlier local/workflow artifact sizes and SHA-256 values. The public GitHub release assets accepted byte-range downloads, but their `content-range` totals and GitHub release API `digest` values differed from those stale notes.

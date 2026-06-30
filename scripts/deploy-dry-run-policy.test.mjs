@@ -36,6 +36,22 @@ test("LAW.DR3/04 deploy dry-run evidence starts app only after schema readiness"
   assert.match(deploy, /health check failed[\s\S]*docker compose logs --tail=80 app/);
 });
 
+test("deploy preflight checks free disk space before image build or app restart", () => {
+  assert.match(deploy, /require_min_free_disk\(\)/);
+  assert.match(deploy, /df -Pk "\$path"/);
+  assert.match(deploy, /WTF_DEPLOY_MIN_FREE_KB:-12582912/);
+  assert.match(deploy, /deploy disk preflight failed/);
+  assert.match(deploy, /docker system df \|\| true/);
+  assert.match(
+    deploy,
+    /require_min_free_disk "\$\{WTF_DEPLOY_DISK_PATH:-\/\}" "\$\{WTF_DEPLOY_MIN_FREE_KB:-12582912\}"[\s\S]*COMMIT_SHA="\$\(git rev-parse --short HEAD\)"[\s\S]*docker compose build/
+  );
+  assert.match(
+    deploy,
+    /require_min_free_disk[\s\S]*docker compose build[\s\S]*docker compose stop app/
+  );
+});
+
 test("LAW.DR4/04 deploy dry-run evidence locks health readiness fields", () => {
   for (const field of [
     "db: DbHealth",

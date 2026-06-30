@@ -63,6 +63,29 @@ require_runtime_secret() {
   fi
 }
 
+require_min_free_disk() {
+  local path="${1:-/}"
+  local min_kb="${2:-12582912}" # 12 GiB, in 1 KiB df blocks.
+  local available_kb
+
+  available_kb="$(df -Pk "$path" | awk 'NR == 2 { print $4 }')"
+  if [[ ! "$available_kb" =~ ^[0-9]+$ ]]; then
+    echo "[server-deploy] ERROR: could not determine free disk space for $path"
+    exit 1
+  fi
+
+  local available_mib=$((available_kb / 1024))
+  local min_mib=$((min_kb / 1024))
+  if (( available_kb < min_kb )); then
+    echo "[server-deploy] ERROR: deploy disk preflight failed for $path: ${available_mib} MiB free, need at least ${min_mib} MiB"
+    echo "[server-deploy] Free Docker build/image cache or expand the production disk before deploying."
+    docker system df || true
+    exit 1
+  fi
+
+  echo "[server-deploy] disk preflight ok for $path: ${available_mib} MiB free"
+}
+
 require_runtime_secret "TWITTER_TOKEN_ENCRYPTION_KEY"
 require_runtime_secret "STUDIO_CRYPTO_KEY"
 
@@ -94,6 +117,8 @@ node scripts/check-kiln-auth.mjs
 
 echo "[server-deploy] checking public Kiln production posture"
 node scripts/check-kiln-production-posture.mjs
+
+require_min_free_disk "${WTF_DEPLOY_DISK_PATH:-/}" "${WTF_DEPLOY_MIN_FREE_KB:-12582912}"
 
 COMMIT_SHA="$(git rev-parse --short HEAD)"
 export COMMIT_SHA
