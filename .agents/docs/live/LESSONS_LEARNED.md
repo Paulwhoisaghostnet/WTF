@@ -1,3 +1,13 @@
+## 2026-07-01 - Hosted page proof must not bypass publish APIs
+
+**What happened**: The first Pasta WTF.ME hosted-page proof served the right landing, mint, and collection HTML from a host-mapped `*.wtfos.me` harness page, but the test seeded the published page state directly through `/__test/state`.
+
+**Why it mattered**: A seeded public host response proves route serving, headers, and HTML markers, but it can miss regressions in the claim, page-save, publish, version, and audit-event path that production relies on before a page ever reaches the public host.
+
+**Rule**: Hosted-page release proofs must start from an unclaimed or draft site when practical, exercise the same claim/save/publish API shape used by the product, assert the publish/version response, and only then load the public host. Direct state seeding is acceptable only for narrow route-rendering tests that explicitly do not claim publish readiness.
+
+---
+
 ## 2026-07-01 - Hosted page proof must hit the public host contract
 
 **What happened**: Pasta had signer-backed Shadownet contracts and Colander discovery proof, but WTF.ME hosted pages were still open because no executable test served a landing, mint, or collection page from a `*.wtfos.me` host with user-site headers and inventory events.

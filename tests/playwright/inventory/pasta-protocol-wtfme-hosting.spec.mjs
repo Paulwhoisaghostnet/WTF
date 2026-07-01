@@ -54,18 +54,41 @@ const PASTA_WTFME_PAGES = [
   },
 ];
 
-async function seedPublishedPastaSite(request) {
-  const response = await request.post("/__test/state", {
+async function publishPastaSiteThroughApi(request) {
+  const reset = await request.post("/__test/state", {
     data: {
       userRole: "admin",
       username: "wtf-admin",
-      wtfUserSiteClaimed: true,
-      wtfUserSiteStatus: "published",
-      wtfUserSitePublishedAt: "2026-07-01T00:00:00.000Z",
-      wtfUserSitePages: PASTA_WTFME_PAGES,
     },
   });
-  expect(response.ok()).toBeTruthy();
+  expect(reset.ok()).toBeTruthy();
+
+  const initial = await (await request.get("/api/wtf-sites/my")).json();
+  expect(initial.site).toBeNull();
+
+  const claim = await request.post("/api/wtf-sites/claim", { data: {} });
+  expect(claim.status()).toBe(201);
+  const claimed = await claim.json();
+  expect(claimed.site?.status).toBe("draft");
+  expect(claimed.site?.host).toBe(HOST);
+
+  for (const pastaPage of PASTA_WTFME_PAGES) {
+    const saved = await request.put(`/api/wtf-sites/pages/${encodeURIComponent(pastaPage.slug)}`, {
+      data: {
+        title: pastaPage.title,
+        html: pastaPage.html,
+      },
+    });
+    expect(saved.ok()).toBeTruthy();
+  }
+
+  const publish = await request.post("/api/wtf-sites/publish", { data: {} });
+  expect(publish.ok()).toBeTruthy();
+  const published = await publish.json();
+  expect(published.site?.status).toBe("published");
+  expect(published.site?.publishedAt).toBeTruthy();
+  expect(published.site?.pages?.map((page) => page.slug).sort()).toEqual(["collection", "home", "mint"]);
+  expect(published.site?.versions?.[0]?.pageSlugs?.sort()).toEqual(["collection", "home", "mint"]);
 }
 
 function fatalErrors(errors) {
@@ -80,7 +103,7 @@ test.describe("interaction inventory - Pasta Protocol WTF.ME hosted pages", () =
   test.setTimeout(120_000);
 
   test("serves Shadownet landing, mint, and collection pages from a published WTF.ME host", async ({ request }) => {
-    await seedPublishedPastaSite(request);
+    await publishPastaSiteThroughApi(request);
 
     const browser = await chromium.launch({
       headless: true,
@@ -146,6 +169,23 @@ test.describe("interaction inventory - Pasta Protocol WTF.ME hosted pages", () =
             .sort();
         })
         .toEqual(["collection", "landing", "mint"]);
+
+      const harnessState = await (await request.get("/__test/state")).json();
+      const eventTypes = harnessState.interactionLog.map((event) => event.eventType);
+      expect(eventTypes).toEqual(expect.arrayContaining([
+        "wtf_site.claimed",
+        "wtf_site.page_saved",
+        "wtf_site.published",
+        "wtf_site.public.viewed",
+      ]));
+      expect(
+        harnessState.interactionLog
+          .filter((event) => event.eventType === "wtf_site.page_saved")
+          .map((event) => event.metadata?.slug)
+          .sort()
+      ).toEqual(["collection", "home", "mint"]);
+      const publishedEvent = harnessState.interactionLog.find((event) => event.eventType === "wtf_site.published");
+      expect(publishedEvent?.metadata?.pastaHostedPages?.sort()).toEqual(["collection", "landing", "mint"]);
 
       expect(fatalErrors(errors)).toEqual([]);
     } finally {

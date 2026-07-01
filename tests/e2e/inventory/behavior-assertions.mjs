@@ -242,7 +242,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion:
       "WTF.ME can serve Pasta Protocol landing, Gnocchi mint, and Spaghetti collection pages from a published user-site host, while preserving Pasta/WTF.ME branding, Shadownet chain context, wallet-connect markers, purchase/mint routing markers, and Shadownet TzKT contract links.",
     durableSideEffectAssertion:
-      "The source helper builds immutable user-site page snapshots from the signer-backed Shadownet proof contracts, the manifest digest changes when hosted page HTML changes, and the focused browser proof maps wtf-admin.wtfos.me to the local harness, serves the published pages with user-site CSP/opener headers, and records wtf_site.public.viewed events for landing, mint, and collection pages.",
+      "The source helper builds immutable user-site page snapshots from the signer-backed Shadownet proof contracts, the manifest digest changes when hosted page HTML changes, and the focused browser proof maps wtf-admin.wtfos.me to the local harness, claims the site, saves the landing/mint/collection pages through WTF.ME APIs, publishes them, serves the published pages with user-site CSP/opener headers, and records wtf_site.claimed, wtf_site.page_saved, wtf_site.published, and wtf_site.public.viewed events.",
   },
   {
     id: "inventory.temporary-grants-unlock-apps",
