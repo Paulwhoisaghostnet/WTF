@@ -1,3 +1,13 @@
+## 2026-07-01 - Public pin discovery must fail closed until the manifest is published
+
+**What happened**: The Pasta pinning proof modeled a complete `/.well-known/wtfos-pins` body, but the production service route could return a public-discovery response for an enabled subdomain binding even when the binding did not yet have a repo DID and published `app.wtfos.media.pinManifest` AT URI.
+
+**Why it mattered**: A `200` from `/.well-known/wtfos-pins` is a recovery entry point, not a placeholder. Returning a partial body can make a release verifier think public recovery is live while collectors and operators still cannot resolve the manifest or fetch the item records.
+
+**Rule**: Public pin discovery must fail closed until public discovery is enabled, the binding has a valid repo DID, and the manifest AT URI points at that same DID. Keep this as a pure policy guard so release tests can prove it without a database.
+
+---
+
 ## 2026-07-01 - WTF.ME publish credentials must prove host eligibility, not only login
 
 **What happened**: A production dry-run of the Pasta WTF.ME publisher authenticated as the trusted-creator puppet `e2e_cookiemonster`, but `/api/wtf-sites/my` returned no site and no claimable host. The account had a wallet and `canIssueWtfDid`, but its underscore username was not a DNS-valid WTF.ME label and it lacked OAuth social, linked Bluesky, and active WTF DID state.

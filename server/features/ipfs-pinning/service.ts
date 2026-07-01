@@ -50,6 +50,7 @@ import {
   type PinStorageRef,
   type PinSubdomainRef,
 } from "./records";
+import { isWellKnownPinDiscoveryReady } from "./well-known-policy";
 
 type ScopeType = (typeof ipfsPinningPolicies.$inferInsert)["scopeType"];
 type UserLike = typeof users.$inferSelect | { id: number; role?: string | null; roles?: string[] | null };
@@ -1225,6 +1226,9 @@ export async function wellKnownPinsForHost(host: string) {
     .limit(1);
   if (!binding || !binding.publicDiscoveryEnabled) {
     return { status: 404 as const, body: { error: "Pin discovery not enabled" } };
+  }
+  if (!isWellKnownPinDiscoveryReady(binding)) {
+    return { status: 404 as const, body: { error: "Pin discovery pending" } };
   }
   return {
     status: 200 as const,
