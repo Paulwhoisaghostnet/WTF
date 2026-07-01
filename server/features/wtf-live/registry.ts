@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { db } from "../../db";
-import { users, wtfLiveRoomAccessMembers, wtfLiveRooms, wtfLiveStages } from "@shared/schema";
+import { users, wtfLiveRoomAccessMembers, wtfLiveRooms, wtfLiveStageAccessMembers, wtfLiveStages } from "@shared/schema";
 
 export type WtfLiveRoomAccessMode = "public" | "private";
 
@@ -8,6 +8,16 @@ export type WtfLiveRoomAccessMember = {
   userId: number;
   username: string;
   displayName: string | null;
+};
+
+export type WtfLiveStageRole = "host" | "speaker";
+export type WtfLiveStageRoomRole = "owner" | WtfLiveStageRole | "audience";
+
+export type WtfLiveStageAccessMember = {
+  userId: number;
+  username: string;
+  displayName: string | null;
+  role: WtfLiveStageRole;
 };
 
 export type WtfLiveRoomRecord = {
@@ -33,6 +43,7 @@ export type WtfLiveStageRecord = {
   ownerUserId: number | null;
   ownerUsername: string | null;
   isPublic: boolean;
+  accessMembers?: WtfLiveStageAccessMember[];
 };
 
 export const SYSTEM_WTF_LIVE_ROOMS: WtfLiveRoomRecord[] = [
@@ -108,6 +119,7 @@ function roomRecordFromRow(row: {
 }
 
 function stageRecordFromRow(row: {
+  rowId?: number;
   slug: string;
   title: string;
   description: string;
@@ -126,6 +138,42 @@ function stageRecordFromRow(row: {
     ownerUsername: null,
     isPublic: row.isPublic,
   };
+}
+
+function normalizeAccessUsernames(usernames: string[]): string[] {
+  return Array.from(
+    new Set(usernames.map((username) => username.replace(/^@/, "").trim()).filter(Boolean)),
+  ).slice(0, 50);
+}
+
+function normalizeStageRole(value: string | null | undefined): WtfLiveStageRole {
+  return value === "host" ? "host" : "speaker";
+}
+
+async function listStageAccessMembersByRowId(
+  stageRowId: number,
+  tx: any = db,
+): Promise<WtfLiveStageAccessMember[]> {
+  const members: Array<{
+    userId: number;
+    username: string;
+    displayName: string | null;
+    role: string;
+  }> = await tx
+    .select({
+      userId: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      role: wtfLiveStageAccessMembers.role,
+    })
+    .from(wtfLiveStageAccessMembers)
+    .innerJoin(users, eq(wtfLiveStageAccessMembers.userId, users.id))
+    .where(eq(wtfLiveStageAccessMembers.stageId, stageRowId))
+    .orderBy(wtfLiveStageAccessMembers.role, users.username);
+  return members.map((member) => ({
+    ...member,
+    role: normalizeStageRole(member.role),
+  }));
 }
 
 export function slugifyWtfLiveId(raw: string): string {
@@ -148,9 +196,16 @@ async function uniqueRoomSlug(base: string): Promise<string> {
       .from(wtfLiveRooms)
       .where(eq(wtfLiveRooms.slug, candidate))
       .limit(1);
+    const existingStage = await db
+      .select({ id: wtfLiveStages.id })
+      .from(wtfLiveStages)
+      .where(eq(wtfLiveStages.slug, candidate))
+      .limit(1);
     if (
       existing.length === 0 &&
-      !SYSTEM_WTF_LIVE_ROOMS.some((room) => room.id === candidate)
+      existingStage.length === 0 &&
+      !SYSTEM_WTF_LIVE_ROOMS.some((room) => room.id === candidate) &&
+      !SYSTEM_WTF_LIVE_STAGES.some((stage) => stage.id === candidate)
     ) {
       return candidate;
     }
@@ -168,9 +223,16 @@ async function uniqueStageSlug(base: string): Promise<string> {
       .from(wtfLiveStages)
       .where(eq(wtfLiveStages.slug, candidate))
       .limit(1);
+    const existingRoom = await db
+      .select({ id: wtfLiveRooms.id })
+      .from(wtfLiveRooms)
+      .where(eq(wtfLiveRooms.slug, candidate))
+      .limit(1);
     if (
       existing.length === 0 &&
-      !SYSTEM_WTF_LIVE_STAGES.some((stage) => stage.id === candidate)
+      existingRoom.length === 0 &&
+      !SYSTEM_WTF_LIVE_STAGES.some((stage) => stage.id === candidate) &&
+      !SYSTEM_WTF_LIVE_ROOMS.some((room) => room.id === candidate)
     ) {
       return candidate;
     }
@@ -329,6 +391,109 @@ export async function listOwnedWtfLiveStages(ownerUserId: number): Promise<WtfLi
   return rows.map(stageRecordFromRow);
 }
 
+export async function getWtfLiveStage(stageId: string): Promise<WtfLiveStageRecord | null> {
+  const systemStage = SYSTEM_WTF_LIVE_STAGES.find((stage) => stage.id === stageId);
+  if (systemStage) return systemStage;
+  const rows = await db
+    .select({
+      rowId: wtfLiveStages.id,
+      slug: wtfLiveStages.slug,
+      title: wtfLiveStages.title,
+      description: wtfLiveStages.description,
+      liveUrl: wtfLiveStages.liveUrl,
+      ownerUserId: wtfLiveStages.ownerUserId,
+      isPublic: wtfLiveStages.isPublic,
+    })
+    .from(wtfLiveStages)
+    .where(and(eq(wtfLiveStages.slug, stageId), isNull(wtfLiveStages.archivedAt)))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return stageRecordFromRow(row);
+}
+
+export async function getPublicWtfLiveStage(stageId: string): Promise<WtfLiveStageRecord | null> {
+  const stage = await getWtfLiveStage(stageId);
+  return stage?.isPublic ? stage : null;
+}
+
+export async function getWtfLiveStageRoomRole(
+  stageId: string,
+  userId: number | null,
+): Promise<WtfLiveStageRoomRole> {
+  if (userId == null) return "audience";
+  const [stage] = await db
+    .select({
+      id: wtfLiveStages.id,
+      ownerUserId: wtfLiveStages.ownerUserId,
+    })
+    .from(wtfLiveStages)
+    .where(and(eq(wtfLiveStages.slug, stageId), isNull(wtfLiveStages.archivedAt)))
+    .limit(1);
+  if (!stage) return "audience";
+  if (stage.ownerUserId === userId) return "owner";
+  const [member] = await db
+    .select({ role: wtfLiveStageAccessMembers.role })
+    .from(wtfLiveStageAccessMembers)
+    .where(and(eq(wtfLiveStageAccessMembers.stageId, stage.id), eq(wtfLiveStageAccessMembers.userId, userId)))
+    .limit(1);
+  return member ? normalizeStageRole(member.role) : "audience";
+}
+
+export async function canAccessWtfLiveStage(
+  stageId: string,
+  userId: number | null,
+): Promise<{ stage: WtfLiveStageRecord; role: WtfLiveStageRoomRole } | null> {
+  const stage = await getWtfLiveStage(stageId);
+  if (!stage) return null;
+  const role = await getWtfLiveStageRoomRole(stageId, userId);
+  if (stage.isPublic || role !== "audience") return { stage, role };
+  return null;
+}
+
+async function selectManageableStageRow(stageId: string, actorUserId: number, tx: any = db) {
+  const [stage] = await tx
+    .select({
+      rowId: wtfLiveStages.id,
+      slug: wtfLiveStages.slug,
+      title: wtfLiveStages.title,
+      description: wtfLiveStages.description,
+      liveUrl: wtfLiveStages.liveUrl,
+      ownerUserId: wtfLiveStages.ownerUserId,
+      isPublic: wtfLiveStages.isPublic,
+    })
+    .from(wtfLiveStages)
+    .where(and(eq(wtfLiveStages.slug, stageId), isNull(wtfLiveStages.archivedAt)))
+    .limit(1);
+  if (!stage) return null;
+  if (stage.ownerUserId === actorUserId) return stage;
+  const [host] = await tx
+    .select({ id: wtfLiveStageAccessMembers.id })
+    .from(wtfLiveStageAccessMembers)
+    .where(
+      and(
+        eq(wtfLiveStageAccessMembers.stageId, stage.rowId),
+        eq(wtfLiveStageAccessMembers.userId, actorUserId),
+        eq(wtfLiveStageAccessMembers.role, "host"),
+      ),
+    )
+    .limit(1);
+  return host ? stage : null;
+}
+
+export async function listManageableWtfLiveStageAccessMembers(input: {
+  actorUserId: number;
+  stageId: string;
+}): Promise<{ stage: WtfLiveStageRecord; members: WtfLiveStageAccessMember[] } | null> {
+  const stage = await selectManageableStageRow(input.stageId, input.actorUserId);
+  if (!stage) return null;
+  const members = await listStageAccessMembersByRowId(stage.rowId);
+  return {
+    stage: { ...stageRecordFromRow(stage), accessMembers: members },
+    members,
+  };
+}
+
 export async function wtfLiveRoomExists(roomId: string): Promise<boolean> {
   if (SYSTEM_WTF_LIVE_ROOMS.some((room) => room.id === roomId)) return true;
   const rows = await db
@@ -441,9 +606,7 @@ export async function replaceOwnedWtfLiveRoomAccessMembers(input: {
   roomId: string;
   usernames: string[];
 }): Promise<{ room: WtfLiveRoomRecord; members: WtfLiveRoomAccessMember[]; missingUsernames: string[] } | null> {
-  const normalizedUsernames = Array.from(
-    new Set(input.usernames.map((username) => username.replace(/^@/, "").trim()).filter(Boolean)),
-  ).slice(0, 50);
+  const normalizedUsernames = normalizeAccessUsernames(input.usernames);
 
   return db.transaction(async (tx) => {
     const [room] = await tx
@@ -504,6 +667,71 @@ export async function replaceOwnedWtfLiveRoomAccessMembers(input: {
 
     return {
       room: { ...roomRecordFromRow(room), accessMembers: members },
+      members,
+      missingUsernames,
+    };
+  });
+}
+
+export async function replaceManageableWtfLiveStageAccessMembers(input: {
+  actorUserId: number;
+  stageId: string;
+  hostUsernames: string[];
+  speakerUsernames: string[];
+}): Promise<{
+  stage: WtfLiveStageRecord;
+  members: WtfLiveStageAccessMember[];
+  missingUsernames: string[];
+} | null> {
+  const normalizedHosts = normalizeAccessUsernames(input.hostUsernames);
+  const normalizedSpeakers = normalizeAccessUsernames(input.speakerUsernames);
+  const allUsernames = normalizeAccessUsernames([...normalizedHosts, ...normalizedSpeakers]);
+
+  return db.transaction(async (tx) => {
+    const stage = await selectManageableStageRow(input.stageId, input.actorUserId, tx);
+    if (!stage) return null;
+
+    const foundUsers = allUsernames.length
+      ? await tx
+          .select({ id: users.id, username: users.username, displayName: users.displayName })
+          .from(users)
+          .where(inArray(users.username, allUsernames))
+      : [];
+    const foundByUsername = new Map(foundUsers.map((user) => [user.username, user]));
+    const hostIds = new Set(
+      normalizedHosts
+        .map((username) => foundByUsername.get(username)?.id)
+        .filter((id): id is number => Boolean(id && id !== stage.ownerUserId)),
+    );
+    const speakerIds = new Set(
+      normalizedSpeakers
+        .map((username) => foundByUsername.get(username)?.id)
+        .filter((id): id is number => Boolean(id && id !== stage.ownerUserId && !hostIds.has(id))),
+    );
+    const missingUsernames = allUsernames.filter((username) => !foundByUsername.has(username));
+    const memberRows = [
+      ...Array.from(hostIds).map((userId) => ({
+        stageId: stage.rowId,
+        userId,
+        role: "host",
+        addedByUserId: input.actorUserId,
+      })),
+      ...Array.from(speakerIds).map((userId) => ({
+        stageId: stage.rowId,
+        userId,
+        role: "speaker",
+        addedByUserId: input.actorUserId,
+      })),
+    ];
+
+    await tx.delete(wtfLiveStageAccessMembers).where(eq(wtfLiveStageAccessMembers.stageId, stage.rowId));
+    if (memberRows.length) {
+      await tx.insert(wtfLiveStageAccessMembers).values(memberRows).onConflictDoNothing();
+    }
+
+    const members = await listStageAccessMembersByRowId(stage.rowId, tx);
+    return {
+      stage: { ...stageRecordFromRow(stage), accessMembers: members },
       members,
       missingUsernames,
     };

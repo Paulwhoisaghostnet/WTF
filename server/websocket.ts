@@ -16,7 +16,7 @@ import {
 } from "./lib/board-channel-permissions";
 import { resolveStudioAccess } from "./lib/studio/access";
 import { getSessionSecret } from "./auth/session-secret";
-import { canAccessWtfLiveRoom } from "./features/wtf-live/registry";
+import { canAccessWtfLiveRoom, canAccessWtfLiveStage } from "./features/wtf-live/registry";
 import { GREEN_ROOM_ROOM_BY_ID } from "./features/green-room/world";
 
 const MAX_CHAT_CONTENT_LENGTH = 10_000;
@@ -31,17 +31,14 @@ const MAX_WTF_LIVE_SOUNDBOARD_BYTES = 1_200_000;
 const MAX_WTF_LIVE_SOUNDBOARD_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_SOUNDBOARD_BYTES * 1.4);
 const WTF_LIVE_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "video/mp4"]);
 const WTF_LIVE_SOUNDBOARD_TYPES = new Set(["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/mp4", "audio/webm"]);
-const WTF_LIVE_CHAT_FONTS = new Set(["wtfos-soft-system"]);
+const WTF_LIVE_CHAT_FONTS = new Set(["wtfos-soft-system", "classic-95", "terminal", "serif-press"]);
 const WTF_LIVE_LEGACY_CHAT_FONT_MAP: Record<string, string> = {
   system: "wtfos-soft-system",
-  "mek-mono": "wtfos-soft-system",
-  "grout-display": "wtfos-soft-system",
-  "classic-95": "wtfos-soft-system",
-  mono: "wtfos-soft-system",
-  terminal: "wtfos-soft-system",
-  serif: "wtfos-soft-system",
-  "serif-press": "wtfos-soft-system",
-  pixel: "wtfos-soft-system",
+  "mek-mono": "terminal",
+  "grout-display": "classic-95",
+  mono: "terminal",
+  serif: "serif-press",
+  pixel: "classic-95",
 };
 const WTF_LIVE_CHAT_COLORS = new Set(["ink", "blue", "green", "red", "purple", "amber"]);
 const WTF_LIVE_ROOM_REACTION_LABELS: Record<string, string> = {
@@ -119,6 +116,7 @@ interface WsClient {
   wtfLivePeerId?: string;
   wtfLiveGuestName?: string;
   wtfLiveMediaState?: WtfLiveMediaState;
+  wtfLiveCanShareStage?: boolean;
   greenRoomLocationId?: string;
 }
 
@@ -453,6 +451,27 @@ function normalizeWtfLiveMediaState(value: unknown): WtfLiveMediaState {
   };
 }
 
+function restrictWtfLiveMediaStateForClient(client: WsClient, mediaState: WtfLiveMediaState): WtfLiveMediaState {
+  if (client.wtfLiveCanShareStage !== false) return mediaState;
+  return {
+    ...mediaState,
+    mic: false,
+    audioOpen: false,
+    camera: false,
+    screen: false,
+    screenAudio: false,
+    mediaVideo: false,
+    mediaAudio: false,
+    mediaName: null,
+    soundboard: false,
+    activeVideo: null,
+    cameraTrackId: null,
+    screenTrackId: null,
+    mediaVideoTrackId: null,
+    mediaAudioTrackId: null,
+  };
+}
+
 function normalizeWtfLiveChatAttachments(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value.slice(0, MAX_WTF_LIVE_CHAT_ATTACHMENTS).flatMap((attachment) => {
@@ -734,8 +753,10 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         sendJson(client.ws, { type: "error", message: "Invalid WTF LIVE room id" });
         return;
       }
-      const room = await canAccessWtfLiveRoom(roomId, client.userId > 0 ? client.userId : null);
-      if (!room) {
+      const actorUserId = client.userId > 0 ? client.userId : null;
+      const room = await canAccessWtfLiveRoom(roomId, actorUserId);
+      const stageAccess = room ? null : await canAccessWtfLiveStage(roomId, actorUserId);
+      if (!room && !stageAccess) {
         sendJson(client.ws, { type: "error", message: "WTF LIVE room is not open to this session" });
         return;
       }
@@ -747,7 +768,8 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         : normalizeWtfLiveGuestName(msg.guestName);
       client.wtfLiveGuestName = guestName;
       client.wtfLiveRoomId = roomId;
-      client.wtfLiveMediaState = normalizeWtfLiveMediaState(msg.mediaState);
+      client.wtfLiveCanShareStage = stageAccess ? stageAccess.role !== "audience" : true;
+      client.wtfLiveMediaState = restrictWtfLiveMediaStateForClient(client, normalizeWtfLiveMediaState(msg.mediaState));
 
       sendJson(client.ws, {
         type: "wtf_live_room_snapshot",
@@ -774,7 +796,7 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
 
     case "wtf_live_media_state": {
       if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
-      client.wtfLiveMediaState = normalizeWtfLiveMediaState(msg.mediaState);
+      client.wtfLiveMediaState = restrictWtfLiveMediaStateForClient(client, normalizeWtfLiveMediaState(msg.mediaState));
       broadcastToWtfLiveRoom(client.wtfLiveRoomId, {
         type: "wtf_live_media_state",
         roomId: client.wtfLiveRoomId,
@@ -1252,6 +1274,7 @@ function leaveWtfLiveRoom(client: WsClient) {
   const peerId = client.wtfLivePeerId;
   const guestName = wtfLivePeerDisplayName(client);
   client.wtfLiveRoomId = undefined;
+  client.wtfLiveCanShareStage = undefined;
   client.wtfLiveMediaState = emptyWtfLiveMediaState();
   broadcastToWtfLiveRoom(
     roomId,

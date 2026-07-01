@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, TextField } from "react95";
-import { ArrowDown, ArrowUp, Copy, ExternalLink, Keyboard, Lock, LogIn, Music2, Play, Power, Radio, Trash2, Upload, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, Camera, Copy, ExternalLink, Keyboard, Lock, LogIn, Mic, MonitorUp, Music2, Play, Power, Radio, Trash2, Upload, Users } from "lucide-react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { presentationRouteHref, usePresentationShell } from "../../lib/presentation-shell";
@@ -97,7 +97,7 @@ type WtfLiveRoom = {
 type SoundboardSettingsResponse = WtfLiveSoundboardSettings & {
   storage?: string;
 };
-type WtfLiveStage = WtfLiveRoom & { liveUrl?: string | null };
+type WtfLiveStage = WtfLiveRoom & { liveUrl?: string | null; accessMembers?: WtfLiveStageAccessMember[] };
 type WtfLiveRoomsResponse = { rooms?: WtfLiveRoom[]; [key: string]: unknown };
 type WtfLiveStagesResponse = { stages?: WtfLiveStage[]; [key: string]: unknown };
 
@@ -105,6 +105,22 @@ type WtfLiveRoomAccessMember = {
   userId: number;
   username: string;
   displayName?: string | null;
+};
+
+type WtfLiveStageRole = "host" | "speaker";
+
+type WtfLiveStageAccessMember = {
+  userId: number;
+  username: string;
+  displayName?: string | null;
+  role: WtfLiveStageRole;
+};
+
+type WtfLiveStageAccessResponse = {
+  stageId?: string;
+  stage?: WtfLiveStage;
+  members?: WtfLiveStageAccessMember[];
+  missingUsernames?: string[];
 };
 
 type WtfLiveRoomPresence = {
@@ -313,6 +329,11 @@ export function WtfLiveApp() {
   const [createRoomAccessMode, setCreateRoomAccessMode] = useState<"public" | "private">("public");
   const [createAccessList, setCreateAccessList] = useState("");
   const [selectedAccessList, setSelectedAccessList] = useState("");
+  const [createStageHostList, setCreateStageHostList] = useState("");
+  const [createStageSpeakerList, setCreateStageSpeakerList] = useState("");
+  const [selectedStageHostList, setSelectedStageHostList] = useState("");
+  const [selectedStageSpeakerList, setSelectedStageSpeakerList] = useState("");
+  const [stageAccessDisabledId, setStageAccessDisabledId] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState("");
 
   const meQuery = useQuery<AtprotoMe>({ queryKey: ["wtf-live", "me"], queryFn: () => api.get("/api/atproto/me") });
@@ -482,6 +503,11 @@ export function WtfLiveApp() {
     enabled: tab === "rooms" && Boolean(selectedRoomManageable && selectedRoom?.accessMode === "private"),
     queryFn: () => api.get(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/access`),
   });
+  const stageAccessQuery = useQuery<WtfLiveStageAccessResponse>({
+    queryKey: ["wtf-live", "stages", stageId, "access"],
+    enabled: tab === "stages" && Boolean(selectedStageManageable) && stageAccessDisabledId !== stageId,
+    queryFn: () => api.get(`/api/wtf-live/stages/${encodeURIComponent(stageId)}/access`),
+  });
 
   useEffect(() => {
     if (roomOptions.length && !roomOptions.some((r) => r.id === roomId)) setRoomId(roomOptions[0].id);
@@ -489,6 +515,9 @@ export function WtfLiveApp() {
   useEffect(() => {
     if (stageOptions.length && !stageOptions.some((s) => s.id === stageId)) setStageId(stageOptions[0].id);
   }, [stageId, stageOptions]);
+  useEffect(() => {
+    if (stageAccessDisabledId && stageAccessDisabledId !== stageId) setStageAccessDisabledId(null);
+  }, [stageAccessDisabledId, stageId]);
   useEffect(() => {
     if (!selectedRoom || selectedRoom.accessMode !== "private") {
       setSelectedAccessList("");
@@ -498,6 +527,16 @@ export function WtfLiveApp() {
       setSelectedAccessList(accessListQuery.data.members.map((member) => member.username).join("\n"));
     }
   }, [accessListQuery.data?.members, selectedRoom]);
+  useEffect(() => {
+    if (!selectedStageManageable) {
+      setSelectedStageHostList("");
+      setSelectedStageSpeakerList("");
+      return;
+    }
+    const members = stageAccessQuery.data?.members ?? selectedStage?.accessMembers ?? [];
+    setSelectedStageHostList(members.filter((member) => member.role === "host").map((member) => member.username).join("\n"));
+    setSelectedStageSpeakerList(members.filter((member) => member.role === "speaker").map((member) => member.username).join("\n"));
+  }, [selectedStage?.accessMembers, selectedStageManageable, stageAccessQuery.data?.members]);
 
   function mergeRoomCache(room: WtfLiveRoom) {
     qc.setQueryData<WtfLiveRoomsResponse>(["wtf-live", "rooms", "mine"], (current) => mergeRoomResponse(current, room));
@@ -567,23 +606,33 @@ export function WtfLiveApp() {
   });
   const createStage = useMutation({
     mutationFn: () =>
-      api.post<{ stage?: WtfLiveStage }>("/api/wtf-live/stages", {
+      api.post<WtfLiveStageAccessResponse>("/api/wtf-live/stages", {
         title: createTitle.trim(),
         description: createDescription.trim(),
         liveUrl: createLiveUrl.trim() || null,
+        hostUsernames: parseAccessUsernames(createStageHostList),
+        speakerUsernames: parseAccessUsernames(createStageSpeakerList),
       }),
-    onSuccess: (data: { stage?: WtfLiveStage }) => {
+    onSuccess: (data: WtfLiveStageAccessResponse) => {
       setStageDialog(false);
       setCreateTitle("");
       setCreateDescription("");
       setCreateLiveUrl("");
+      setCreateStageHostList("");
+      setCreateStageSpeakerList("");
       if (data?.stage?.id) {
         mergeStageCache(data.stage);
         setStageId(data.stage.id);
         setTab("stages");
+        const missing = data.missingUsernames ?? [];
+        setCopyStatus(
+          missing.length
+            ? `${data.stage.title} stage room created. Missing WTF users: ${missing.join(", ")}`
+            : `${data.stage.title} stage room ready: ${publicRoomUrl(data.stage.id)}`,
+        );
       }
-      qc.invalidateQueries({ queryKey: ["wtf-live", "stages"] });
-      qc.invalidateQueries({ queryKey: ["wtf-live", "stages", "mine"] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "stages"], exact: true });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "stages", "mine"], exact: true });
     },
   });
   const updateRoomAccess = useMutation({
@@ -603,6 +652,28 @@ export function WtfLiveApp() {
       qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "mine"] });
       qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "private"] });
       qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", room.id, "access"] });
+    },
+  });
+  const updateStageAccess = useMutation({
+    mutationFn: (stage: WtfLiveStage) =>
+      api.patch<WtfLiveStageAccessResponse>(`/api/wtf-live/stages/${encodeURIComponent(stage.id)}/access`, {
+        hostUsernames: parseAccessUsernames(selectedStageHostList),
+        speakerUsernames: parseAccessUsernames(selectedStageSpeakerList),
+      }),
+    onSuccess: (data, stage) => {
+      const missing = data?.missingUsernames ?? [];
+      if (data?.stage) mergeStageCache(data.stage);
+      setCopyStatus(
+        missing.length
+          ? `${stage.title} stage roles saved. Missing WTF users: ${missing.join(", ")}`
+          : `${stage.title} stage hosts and speakers saved.`,
+      );
+      qc.invalidateQueries({ queryKey: ["wtf-live", "stages"], exact: true });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "stages", "mine"], exact: true });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "stages", stage.id, "access"] });
+    },
+    onError: (error: unknown) => {
+      setCopyStatus(actionErrorMessage(error, "Could not save stage roles."));
     },
   });
   const updateRoomVisibility = useMutation({
@@ -640,9 +711,9 @@ export function WtfLiveApp() {
     onSuccess: (data: { stage?: WtfLiveStage }, variables) => {
       const stage = data?.stage ?? variables.stage;
       mergeStageCache({ ...stage, isPublic: variables.isPublic });
-      setCopyStatus(`${stage.title} is ${variables.isPublic ? "open" : "closed"} for stage broadcasts.`);
-      qc.invalidateQueries({ queryKey: ["wtf-live", "stages"] });
-      qc.invalidateQueries({ queryKey: ["wtf-live", "stages", "mine"] });
+      setCopyStatus(`${stage.title} stage room is ${variables.isPublic ? "open" : "closed"} to guests.`);
+      qc.invalidateQueries({ queryKey: ["wtf-live", "stages"], exact: true });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "stages", "mine"], exact: true });
     },
     onError: (error: unknown) => {
       setCopyStatus(actionErrorMessage(error, "Could not update stage visibility."));
@@ -650,14 +721,19 @@ export function WtfLiveApp() {
   });
   const deleteStage = useMutation({
     mutationFn: (stage: WtfLiveStage) => api.delete<{ ok: true; stageId: string }>(`/api/wtf-live/stages/${encodeURIComponent(stage.id)}`),
+    onMutate: async (stage: WtfLiveStage) => {
+      setStageAccessDisabledId(stage.id);
+      await qc.cancelQueries({ queryKey: ["wtf-live", "stages", stage.id, "access"], exact: true });
+    },
     onSuccess: (_data: { ok: true; stageId: string }, stage: WtfLiveStage) => {
       if (stageId === stage.id) setStageId("wtf-stage");
       removeStageCache(stage.id);
       setCopyStatus(`${stage.title} deleted.`);
-      qc.invalidateQueries({ queryKey: ["wtf-live", "stages"] });
-      qc.invalidateQueries({ queryKey: ["wtf-live", "stages", "mine"] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "stages"], exact: true });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "stages", "mine"], exact: true });
     },
     onError: (error: unknown) => {
+      setStageAccessDisabledId(null);
       setCopyStatus(actionErrorMessage(error, "Could not delete stage."));
     },
   });
@@ -690,6 +766,7 @@ export function WtfLiveApp() {
   });
 
   const contextTitle = wtfLiveContextTitle(tab, selectedRoom?.title, selectedStage?.title);
+  const selectedStageMembers = stageAccessQuery.data?.members ?? selectedStage?.accessMembers ?? [];
 
   async function copyPublicRoom(room: WtfLiveRoom) {
     await navigator.clipboard?.writeText(publicRoomUrl(room.id));
@@ -703,6 +780,16 @@ export function WtfLiveApp() {
   function joinPublicRoom(room: WtfLiveRoom) {
     window.open(presentationRouteHref(publicRoomPath(room.id)), "_blank", "noopener,noreferrer");
     setCopyStatus(`Opened ${room.title} in a new browser tab.`);
+  }
+
+  async function copyStageRoom(stage: WtfLiveStage) {
+    await navigator.clipboard?.writeText(publicRoomUrl(stage.id));
+    setCopyStatus(`Copied ${stage.title} stage room URL.`);
+  }
+
+  function joinStageRoom(stage: WtfLiveStage) {
+    window.open(presentationRouteHref(publicRoomPath(stage.id)), "_blank", "noopener,noreferrer");
+    setCopyStatus(`Opened ${stage.title} stage room in a new browser tab.`);
   }
 
   function openHostRoom(room: WtfLiveRoom) {
@@ -724,7 +811,7 @@ export function WtfLiveApp() {
   }
 
   function confirmDeleteStage(stage: WtfLiveStage) {
-    if (!window.confirm(`Delete ${stage.title}? Stage broadcasts for this lane will stop.`)) return;
+    if (!window.confirm(`Delete ${stage.title}? The stage room URL will stop working.`)) return;
     deleteStage.mutate(stage);
   }
 
@@ -825,6 +912,14 @@ export function WtfLiveApp() {
     if (room.accessMode === "private") return owned || canManageRoom(room) ? "Private owned" : "Private";
     if (canManageRoom(room) || owned) return "Owned";
     return room.source === "system" ? "Official" : "Open";
+  }
+
+  function stageMemberLabel(members: WtfLiveStageAccessMember[], role: WtfLiveStageRole) {
+    const names = members
+      .filter((member) => member.role === role)
+      .map((member) => member.displayName || member.username);
+    if (!names.length) return role === "host" ? "Owner only" : "No added speakers";
+    return names.join(", ");
   }
 
   function renderRoomCard(room: WtfLiveRoom, owned: boolean) {
@@ -1434,13 +1529,28 @@ export function WtfLiveApp() {
                     </RoomMetaRow>
                     <strong>{selectedStage.title}</strong>
                     {selectedStage.description ? <MutedText>{selectedStage.description}</MutedText> : null}
-                    {selectedStage.liveUrl ? <ShareLink>{selectedStage.liveUrl}</ShareLink> : <MutedText>No live URL set.</MutedText>}
+                    <MutedText>
+                      Stage rooms use the same live room shell, but only the owner, hosts, and speakers can share mic,
+                      camera, screen, or media.
+                    </MutedText>
+                    <ShareLink>{publicRoomUrl(selectedStage.id)}</ShareLink>
+                    <RoomMetaRow>
+                      <RoomPresenceBadge data-wtf-live-stage-host-summary={selectedStage.id}>
+                        <Users size={11} aria-hidden />
+                        Hosts: {stageMemberLabel(selectedStageMembers, "host")}
+                      </RoomPresenceBadge>
+                      <RoomPresenceBadge data-wtf-live-stage-speaker-summary={selectedStage.id}>
+                        <Mic size={11} aria-hidden />
+                        Speakers: {stageMemberLabel(selectedStageMembers, "speaker")}
+                      </RoomPresenceBadge>
+                    </RoomMetaRow>
                     <ActionGrid data-wtf-live-stage-actions={selectedStage.id}>
-                      {selectedStage.liveUrl ? (
-                        <Button size="sm" onClick={() => window.open(selectedStage.liveUrl || "", "_blank", "noopener,noreferrer")}>
-                          <ButtonLabel><ExternalLink size={14} aria-hidden /> Open Live URL</ButtonLabel>
-                        </Button>
-                      ) : null}
+                      <Button primary size="sm" disabled={selectedStage.isPublic === false} onClick={() => joinStageRoom(selectedStage)} data-wtf-live-stage-join={selectedStage.id}>
+                        <ButtonLabel><LogIn size={14} aria-hidden /> Join Stage Room</ButtonLabel>
+                      </Button>
+                      <Button size="sm" onClick={() => copyStageRoom(selectedStage)} data-wtf-live-stage-copy={selectedStage.id}>
+                        <ButtonLabel><Copy size={14} aria-hidden /> Copy URL</ButtonLabel>
+                      </Button>
                       {selectedStageManageable ? (
                         <Button
                           size="sm"
@@ -1462,6 +1572,38 @@ export function WtfLiveApp() {
                         </Button>
                       ) : null}
                     </ActionGrid>
+                    {selectedStageManageable ? (
+                      <Stack data-wtf-live-stage-access-editor={selectedStage.id}>
+                        <SettingsField>
+                          Host WTF usernames
+                          <TextArea
+                            value={selectedStageHostList}
+                            placeholder={"wtf-host-1\nwtf-host-2"}
+                            onChange={(e) => setSelectedStageHostList(e.target.value)}
+                            data-wtf-live-stage-host-list={selectedStage.id}
+                          />
+                        </SettingsField>
+                        <SettingsField>
+                          Speaker WTF usernames
+                          <TextArea
+                            value={selectedStageSpeakerList}
+                            placeholder={"wtf-speaker-1\nwtf-speaker-2"}
+                            onChange={(e) => setSelectedStageSpeakerList(e.target.value)}
+                            data-wtf-live-stage-speaker-list={selectedStage.id}
+                          />
+                        </SettingsField>
+                        <Button
+                          size="sm"
+                          disabled={updateStageAccess.isPending}
+                          onClick={() => updateStageAccess.mutate(selectedStage)}
+                          data-wtf-live-stage-access-save={selectedStage.id}
+                        >
+                          Save Stage Roles
+                        </Button>
+                        {stageAccessQuery.isLoading ? <MutedText>Loading stage roles...</MutedText> : null}
+                        {updateStageAccess.isError ? <span>{(updateStageAccess.error as Error).message}</span> : null}
+                      </Stack>
+                    ) : null}
                   </RoomCard>
                 ) : null}
                 <FeedList>
@@ -1481,32 +1623,23 @@ export function WtfLiveApp() {
                 </FeedList>
               </Stack>
             </GroupBox>
-            <GroupBox label="Broadcast">
+            <GroupBox label="Stage room policy">
               <Stack>
-                {pendingQuote ? (
-                  <QuoteCard>
-                    Quote loaded
-                    <div>{pendingQuote.text || pendingQuote.uri}</div>
-                    <Button size="sm" onClick={() => setPendingQuote(null)}>
-                      Remove quote
-                    </Button>
-                  </QuoteCard>
-                ) : null}
-                <NativeSelect value={stageMode} onChange={(e) => setStageMode(e.target.value as typeof stageMode)}>
-                  <option value="text">Text</option>
-                  <option value="voice">Voice</option>
-                  <option value="video">Video</option>
-                  <option value="link">Link</option>
-                </NativeSelect>
-                <TextArea value={stageText} maxLength={600} placeholder="Stage broadcast" onChange={(e) => setStageText(e.target.value)} />
-                <TextField value={stageLiveUrl} placeholder="Optional live/replay URL" fullWidth onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStageLiveUrl(e.target.value)} />
-                <Button disabled={!sessionOk || !canStages || !stageText.trim() || sendStage.isPending} onClick={() => sendStage.mutate()}>
-                  Send Broadcast
+                <FeedItem>
+                  <strong><Mic size={14} aria-hidden /> Mic</strong>
+                  <span>Enabled only for the stage owner, hosts, and speakers.</span>
+                </FeedItem>
+                <FeedItem>
+                  <strong><Camera size={14} aria-hidden /> Camera</strong>
+                  <span>Audience members can watch and chat, but cannot publish camera tiles.</span>
+                </FeedItem>
+                <FeedItem>
+                  <strong><MonitorUp size={14} aria-hidden /> Screen</strong>
+                  <span>Screen and media deck sharing follow the same host/speaker list.</span>
+                </FeedItem>
+                <Button disabled={!selectedStage || selectedStage.isPublic === false} onClick={() => selectedStage && joinStageRoom(selectedStage)}>
+                  Open Selected Stage Room
                 </Button>
-                {!account ? <span>Connect Bluesky in Skywire first.</span> : null}
-                {account && !sessionOk ? <span>Reconnect Bluesky from Skywire Settings.</span> : null}
-                {account && sessionOk && !canStages ? <span>Need Be Heard or Be Bold for stages.</span> : null}
-                {sendStage.isError ? <span>{(sendStage.error as Error).message}</span> : null}
               </Stack>
             </GroupBox>
           </Grid>
@@ -1523,7 +1656,24 @@ export function WtfLiveApp() {
             <Stack>
               <TextField value={createTitle} placeholder="Stage title" fullWidth onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateTitle(e.target.value)} />
               <TextArea value={createDescription} placeholder="Description (optional)" onChange={(e) => setCreateDescription(e.target.value)} />
-              <TextField value={createLiveUrl} placeholder="Optional live URL" fullWidth onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateLiveUrl(e.target.value)} />
+              <SettingsField>
+                Host WTF usernames
+                <TextArea
+                  value={createStageHostList}
+                  placeholder={"wtf-host-1\nwtf-host-2"}
+                  onChange={(e) => setCreateStageHostList(e.target.value)}
+                  data-wtf-live-create-stage-host-list
+                />
+              </SettingsField>
+              <SettingsField>
+                Speaker WTF usernames
+                <TextArea
+                  value={createStageSpeakerList}
+                  placeholder={"wtf-speaker-1\nwtf-speaker-2"}
+                  onChange={(e) => setCreateStageSpeakerList(e.target.value)}
+                  data-wtf-live-create-stage-speaker-list
+                />
+              </SettingsField>
               {createStage.isError ? <span>{(createStage.error as Error).message}</span> : null}
             </Stack>
           }

@@ -6907,3 +6907,23 @@
 **Why it mattered**: Inventory handles are more than labels. If a new user interaction is documented without an emitting path, coverage can say the handle exists while live telemetry, challenge automation, and audit trails cannot observe the actual user action.
 
 **Rule**: When adding a canonical inventory handle for a UI interaction, wire the client action to the owning normalized event route in the same pass, add the event type to that route's allowlist, and include focused policy coverage that proves both the trigger and the event path exist.
+
+---
+
+## 2026-07-01 - Stage rooms need role-gated publishing, not broadcast-only setup
+
+**What happened**: WTF LIVE stages had stage creation and broadcast-style surfaces, but no real room join path, host/speaker role lists, or in-room controls for deciding who could publish mic, camera, screen, or media. Focused Playwright also caught a post-delete 404 because invalidating the stage list refetched a deleted stage's sibling access query before the selection moved away.
+
+**Why it mattered**: The product difference between a room and a stage is not room setup. It is who may speak or share once everyone is in the same live transport. If role data is not durable and exposed in-room, stage owners cannot trust that the right users can talk. If list invalidation also refetches per-stage access resources after deletion, tests see browser noise and users can get stale state.
+
+**Rule**: Model stages as room transport plus explicit owner/host/speaker/audience publish capabilities across API, WebSocket, and UI. Keep stage role membership durable, editable from both the dashboard and the room, and narrow React Query invalidations so collection refreshes do not refetch deleted per-resource access endpoints.
+
+---
+
+## 2026-07-01 - WTF LIVE chat font choices need shared socket parity
+
+**What happened**: Expanding WTF LIVE room chat from one legacy font to `classic-95`, `terminal`, and `serif-press` updated the UI and browser assertions, but the shared desktop normalizer, production WebSocket normalizer, and Playwright realtime harness still collapsed valid font IDs back to `wtfos-soft-system`. The full inventory suite caught it when Alice's composer used the terminal stack but Bob received the styled message in the default Classic 95 stack.
+
+**Why it mattered**: WTF LIVE chat style is transmitted through multiple normalization layers before the audience sees it. If any layer treats a newly valid font as legacy, hosts can believe they are sending styled room text while viewers see a different font. Harness-only drift also makes production behavior harder to trust.
+
+**Rule**: When adding or retiring WTF LIVE chat style values, update `shared/desktop.ts`, `server/websocket.ts`, and `tests/playwright/harness.mjs` in the same pass, then prove a sender-selected style survives through the receiving browser.

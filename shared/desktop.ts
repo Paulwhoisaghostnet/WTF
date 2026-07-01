@@ -840,7 +840,11 @@ export function normalizeDesktopWtfLiveChatStyle(
   fallback: DesktopWtfLiveChatStyle = DEFAULT_DESKTOP_WTF_LIVE_CHAT_STYLE
 ): DesktopWtfLiveChatStyle {
   const input = isRecord(value) ? value : {};
-  const font = PLATFORM_DESKTOP_WTF_LIVE_CHAT_FONT;
+  const font = DESKTOP_WTF_LIVE_CHAT_FONTS.includes(
+    input.font as DesktopWtfLiveChatFont
+  )
+    ? (input.font as DesktopWtfLiveChatFont)
+    : fallback.font;
   const color = DESKTOP_WTF_LIVE_CHAT_COLORS.includes(
     input.color as DesktopWtfLiveChatColor
   )

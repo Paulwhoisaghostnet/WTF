@@ -61,6 +61,7 @@ Priority labels:
 | WTF-BB-333 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Suite installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Bundled Pasta Suite Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated live public download smoke on commit `fd4afcd` |
 | WTF-BB-334 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / Macaroni Shadownet proof harness | P2 | 9 | 12 | 2 | 4 | 0 | Macaroni Shadownet puppet proof drifted from the Octez active-account lifecycle; the harness now models accepted `octez.connect` session state, active-account events, restore/disconnect behavior, trusted-creator publish gating, and passed `npm run test:e2e:macaroni:shadownet` 5/5 against a disposable Shadownet puppet database |
 | WTF-BB-335 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Protocol / CH-EASE handoff and static publisher runtime | P1 | 12 | 7 | 2 | 5 | 1 | Pasta publisher handoffs could open `/tools/spaghetti?handoff=...` while the iframe dropped the query, and the six Pasta ES-module studios read `window.MD` even though their shared common helpers only declared lexical `const MD`; fixed by forwarding creation-tool route queries to all static iframes, exporting `window.MD` in Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna, adding policy guards, passing focused Spaghetti CH-EASE handoff plus mocked Shadownet publish choreography proof, promoting to main, and verifying live `wtfos.app` commit `c4ba55f` exposes `window.MD`, `consumeCheaseHandoff()`, and `loadPlatformCapabilities()` across all six Pasta publisher bundles |
+| WTF-BB-336 | Verified | Codex WTF LIVE stage controls full-send | 2026-07-01 | WTF LIVE / stage role controls | P1 | 13 | 6 | 3 | 5 | 1 | WTF LIVE stages now resolve through `/live/r/:stageId`, expose owner/host managed host/speaker role lists, gate audience mic/camera/screen/media publishing, and passed TypeScript, build, focused stage Playwright, inventory coverage, and the full inventory suite |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -7275,6 +7276,31 @@ Priority labels:
   - Align the Gamma Swap proof with the current wallet context bootstrap path, or provide an explicit harness wallet provider/session stub that exercises the connected quote state without changing shared wallet behavior.
 - Verification idea:
   - Rerun the focused Swap proof on a fresh port, then rerun the full Gamma spec: `HARNESS_PORT=<fresh> ./node_modules/.bin/playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "Swap DEX quote"` and `HARNESS_PORT=<fresh> ./node_modules/.bin/playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs`.
+
+### WTF-BB-336 - WTF LIVE stages need joinable role-gated rooms
+
+- Category: WTF LIVE / stage role controls
+- Status: Verified
+- Owner/Session: Codex WTF LIVE stage controls full-send
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - 2026-06-30 user report: WTF LIVE stages were being treated like a room setup/broadcast option, but the real product distinction is that stage owners decide who may share mic, camera, screen, or media inside the room.
+  - Existing stages had create/list/close/delete surfaces and old broadcast composer copy, but no practical stage room join path, no host/speaker membership model, and no in-room owner/host controls for who can talk.
+- Why it matters:
+  - A stage is a live room with publish permissions, not a one-way post feed. Without durable host/speaker settings and in-room controls, the right people cannot reliably talk when they arrive, and audience users can appear to have controls they should not use.
+- Correction:
+  - Added `wtf_live_stage_access_members` plus registry helpers for owner/host/speaker/audience role resolution and owner/host-managed host/speaker replacement.
+  - Let `/live/r/:slug` resolve either rooms or stages, using the same realtime room transport while returning stage capabilities and host/speaker permission envelopes.
+  - Added dashboard stage role editors during stage creation and for existing owned stages, plus a Join Stage Room path and stage-room copy instead of broadcast-only setup.
+  - Added in-room stage policy controls for owners/hosts, disabled audience mic/camera/screen/media controls in the client, and stripped disallowed stage media-state fields in the WebSocket relay for audience clients.
+  - Updated the Playwright harness, interaction inventory, domain workflows, behavior assertions, and admin surface registry for stage creation, role updates, stage-room join, and audience share blocking.
+  - Fixed a React Query invalidation issue where deleting the selected stage could refetch its access endpoint after the server row was gone.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run build`.
+  - Passed focused WTF LIVE stage coverage: `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "owned stages expose|stage rooms gate audience sharing" --project=chromium --reporter=list`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed full inventory coverage after aligning WTF LIVE chat font normalizers across shared code, production WebSocket, and harness: `npm run test:e2e:inventory` (572 passed).
 
 ## Backlog Intake Template
 

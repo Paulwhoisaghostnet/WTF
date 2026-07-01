@@ -791,8 +791,8 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     const roomFontOptions = await page.locator("[data-wtf-live-room-default-font] option").evaluateAll((options) =>
       options.map((option) => option.getAttribute("value")),
     );
-    expect(roomFontOptions).toEqual(["wtfos-soft-system"]);
-    await expect(page.locator("[data-wtf-live-room-default-font]")).toHaveValue("wtfos-soft-system");
+    expect(roomFontOptions).not.toContain("mek-type");
+    await page.locator("[data-wtf-live-room-default-font]").selectOption("serif-press");
     await page.locator("[data-wtf-live-chat-text]").fill("receiver default font");
     await page.locator("[data-wtf-live-chat-send]").click();
     const defaultFontMessage = page.locator("[data-wtf-live-chat-message]").filter({ hasText: "receiver default font" }).last();
@@ -800,7 +800,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     const defaultFontFamily = await defaultFontMessage.locator("[data-wtf-live-chat-message-text]").evaluate((node) =>
       getComputedStyle(node).fontFamily.toLowerCase(),
     );
-    expect(defaultFontFamily).toMatch(/wtfos soft system|noto sans|sans-serif/);
+    expect(defaultFontFamily).toMatch(/georgia|times/);
 
     await page.locator("[data-wtf-live-toggle-camera]").click();
     await page.locator("[data-wtf-live-toggle-screen]").click();
@@ -986,11 +986,24 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     const stageCard = page.locator("[data-wtf-live-stage-card='my-stage']");
     await expect(stageCard).toBeVisible();
     await expect(stageCard).toHaveAttribute("data-wtf-live-owned-stage", "true");
+    await expect(stageCard.getByRole("button", { name: "Join Stage Room" })).toBeVisible();
+    await expect(stageCard.locator("[data-wtf-live-stage-access-editor='my-stage']")).toBeVisible();
+    await expect(stageCard.locator("[data-wtf-live-stage-speaker-list='my-stage']")).toHaveValue("wtf-user");
+    await stageCard.locator("[data-wtf-live-stage-host-list='my-stage']").fill("wtf-host");
+    await stageCard.locator("[data-wtf-live-stage-speaker-list='my-stage']").fill("wtf-user\nwtf-speaker");
+    await stageCard.locator("[data-wtf-live-stage-access-save='my-stage']").click();
+    await expect(page.getByText("My Stage stage hosts and speakers saved.")).toBeVisible();
+    const roleState = await (await request.get("/api/wtf-live/stages/my-stage/access")).json();
+    expect(roleState.members.map((member) => `${member.role}:${member.username}`)).toEqual([
+      "host:wtf-host",
+      "speaker:wtf-user",
+      "speaker:wtf-speaker",
+    ]);
     await stageCard.getByRole("button", { name: "Close Stage" }).click();
-    await expect(page.getByText("My Stage is closed for stage broadcasts.")).toBeVisible();
+    await expect(page.getByText("My Stage stage room is closed to guests.")).toBeVisible();
     await expect(stageCard.getByRole("button", { name: "Reopen Stage" })).toBeVisible();
     await stageCard.getByRole("button", { name: "Reopen Stage" }).click();
-    await expect(page.getByText("My Stage is open for stage broadcasts.")).toBeVisible();
+    await expect(page.getByText("My Stage stage room is open to guests.")).toBeVisible();
 
     page.once("dialog", async (dialog) => {
       expect(dialog.message()).toContain("Delete My Stage?");
@@ -999,6 +1012,53 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     await stageCard.getByRole("button", { name: "Delete Stage" }).click();
     await expect(page.getByText("My Stage deleted.")).toBeVisible();
     await expect(page.locator("[data-wtf-live-stage-card='my-stage']")).toHaveCount(0);
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
+  test("stage rooms gate audience sharing while owners keep in-room role controls", async ({
+    browser,
+    page,
+    request,
+  }) => {
+    await setAdmin(request);
+    const errors = [];
+    capturePageErrors(page, errors, "stage-owner-room");
+    await installMediaMocks(page, "#3357a4");
+
+    await page.goto("/live/r/my-stage", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-wtf-live-room-frame='stage']")).toBeVisible();
+    await page.getByRole("button", { name: "Join Stage" }).click();
+    await expect(page.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+    await expect(page.locator("[data-wtf-live-stage-room-policy]")).toHaveAttribute("data-wtf-live-stage-role", "owner");
+    await expect(page.locator("[data-wtf-live-stage-room-policy]")).toHaveAttribute("data-wtf-live-stage-can-share", "true");
+    await expect(page.locator("[data-wtf-live-stage-room-host-list]")).toBeVisible();
+    await page.locator("[data-wtf-live-stage-room-host-list]").fill("wtf-host");
+    await page.locator("[data-wtf-live-stage-room-speaker-list]").fill("wtf-user");
+    await page.locator("[data-wtf-live-stage-room-access-save]").click();
+    await expect(page.getByText("Stage hosts and speakers saved.")).toBeVisible();
+    await expect(page.locator("[data-wtf-live-toggle-mic]")).toBeEnabled();
+    await expect(page.locator("[data-wtf-live-toggle-camera]")).toBeEnabled();
+    await expect(page.locator("[data-wtf-live-toggle-screen]")).toBeEnabled();
+
+    const audienceContext = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    await mockAnonymousUser(audienceContext);
+    const audience = await audienceContext.newPage();
+    capturePageErrors(audience, errors, "stage-audience-room");
+    try {
+      await audience.goto("/live/r/my-stage", { waitUntil: "domcontentloaded" });
+      await expect(audience.locator("[data-wtf-live-room-frame='stage']")).toBeVisible();
+      await audience.getByPlaceholder("Display name").fill("Audience Guest");
+      await audience.getByRole("button", { name: "Join Stage" }).click();
+      await expect(audience.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+      await expect(audience.locator("[data-wtf-live-stage-room-policy]")).toHaveAttribute("data-wtf-live-stage-role", "audience");
+      await expect(audience.locator("[data-wtf-live-stage-room-policy]")).toHaveAttribute("data-wtf-live-stage-can-share", "false");
+      await expect(audience.locator("[data-wtf-live-toggle-mic]")).toBeDisabled();
+      await expect(audience.locator("[data-wtf-live-toggle-camera]")).toBeDisabled();
+      await expect(audience.locator("[data-wtf-live-toggle-screen]")).toBeDisabled();
+      await expect(audience.locator("[data-wtf-live-media-load]")).toBeDisabled();
+    } finally {
+      await audienceContext.close();
+    }
     expect(fatalErrors(errors)).toEqual([]);
   });
 
@@ -1188,7 +1248,8 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       const fontOptions = await alice.locator("[data-wtf-live-chat-font] option").evaluateAll((options) =>
         options.map((option) => option.getAttribute("value")),
       );
-      expect(fontOptions).toEqual(["wtfos-soft-system"]);
+      expect(fontOptions).toEqual(["classic-95", "terminal", "serif-press"]);
+      await alice.locator("[data-wtf-live-chat-font]").selectOption("terminal");
       await alice.locator("[data-wtf-live-chat-font-size]").selectOption("14");
       await alice.locator("[data-wtf-live-chat-color='red']").click();
       await alice.locator("[data-wtf-live-chat-bold]").click();
@@ -1215,7 +1276,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
       expect(renderedStyle.fontSize).toBe("14px");
       expect(renderedStyle.fontStyle).toBe("italic");
       expect(renderedStyle.color).toBe("rgb(143, 29, 44)");
-      expect(renderedStyle.fontFamily.toLowerCase()).toMatch(/wtfos soft sans|wtfos global sans|noto sans|sans-serif/);
+      expect(renderedStyle.fontFamily.toLowerCase()).toMatch(/mono|consolas|courier/);
       const renderedWeight = renderedStyle.fontWeight === "bold" ? 700 : Number(renderedStyle.fontWeight);
       expect(renderedWeight).toBeGreaterThanOrEqual(600);
 

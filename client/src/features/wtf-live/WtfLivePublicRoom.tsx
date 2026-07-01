@@ -6,15 +6,15 @@ import { Button, Hourglass, TextField } from "react95";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { presentationRouteHref, usePresentationShell } from "../../lib/presentation-shell";
-import { getFontPack } from "../appearance/font-packs";
+import { FONT_PACKS, getFontPack } from "../appearance/font-packs";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
   DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS,
   DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES,
   DESKTOP_WTF_LIVE_CHAT_COLORS,
   DESKTOP_WTF_LIVE_CHAT_FONT_LABELS,
+  DESKTOP_WTF_LIVE_CHAT_FONTS,
   DESKTOP_WTF_LIVE_CHAT_SIZES,
-  PLATFORM_DESKTOP_FONT_PACK_KEY,
   normalizeDesktopWtfLiveChatStyle,
   type DesktopAppearance,
   type DesktopFontPackKey,
@@ -38,7 +38,7 @@ import {
 type PublicRoom = {
   id: string;
   title: string;
-  kind: "room";
+  kind: "room" | "stage";
   description?: string;
   source?: "system" | "user";
   ownerUserId?: number | null;
@@ -46,9 +46,18 @@ type PublicRoom = {
   isPublic?: boolean;
 };
 
+type StageRoomRole = "owner" | "host" | "speaker" | "audience";
+
+type StagePermissionMember = {
+  userId: number;
+  username: string;
+  displayName?: string | null;
+  role: "host" | "speaker";
+};
+
 type PublicRoomResponse = {
   room: PublicRoom;
-  joinMode: "guest_room_only" | "wtf_user_private_room";
+  joinMode: "guest_room_only" | "wtf_user_private_room" | "wtf_live_stage";
   roomPath: string;
   capabilities?: {
     audio?: boolean;
@@ -56,6 +65,17 @@ type PublicRoomResponse = {
     screen?: boolean;
     media?: boolean;
     transport?: string;
+    stage?: boolean;
+    canManageStage?: boolean;
+    canSpeakOnStage?: boolean;
+    stageRole?: StageRoomRole;
+  };
+  stagePermissions?: {
+    role: StageRoomRole;
+    canManage: boolean;
+    canSpeak: boolean;
+    hosts: StagePermissionMember[];
+    speakers: StagePermissionMember[];
   };
 };
 
@@ -307,15 +327,15 @@ const MAX_LIVE_AVATAR_BYTES = 512 * 1024;
 const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(MAX_LIVE_AVATAR_BYTES * 1.4);
 const LIVE_CHAT_FONT_SIZES = DESKTOP_WTF_LIVE_CHAT_SIZES;
 const WTF_LIVE_CHAT_DEFAULT_FONT_STORAGE_KEY = "wtf-live:room-default-font-pack";
-const WTF_LIVE_DEFAULT_FONT_PACK: DesktopFontPackKey = PLATFORM_DESKTOP_FONT_PACK_KEY;
-const WTF_LIVE_ROOM_FONT_PACKS = [getFontPack(PLATFORM_DESKTOP_FONT_PACK_KEY)];
-const SOFT_SYSTEM_FONT_PACK = getFontPack(PLATFORM_DESKTOP_FONT_PACK_KEY);
+const WTF_LIVE_DEFAULT_FONT_PACK: DesktopFontPackKey = "classic-95";
+const WTF_LIVE_ROOM_FONT_PACKS = FONT_PACKS.filter((pack) => pack.key !== "mek-type");
+const CLASSIC_95_FONT_PACK = getFontPack("classic-95");
+const TERMINAL_FONT_PACK = getFontPack("terminal");
+const SERIF_PRESS_FONT_PACK = getFontPack("serif-press");
 const LIVE_CHAT_FONT_OPTIONS: Array<{ id: LiveChatFont; label: string; family: string }> = [
-  {
-    id: "wtfos-soft-system",
-    label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["wtfos-soft-system"],
-    family: SOFT_SYSTEM_FONT_PACK.roles.app,
-  },
+  { id: "classic-95", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["classic-95"], family: CLASSIC_95_FONT_PACK.roles.app },
+  { id: "terminal", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS.terminal, family: TERMINAL_FONT_PACK.roles.mono },
+  { id: "serif-press", label: DESKTOP_WTF_LIVE_CHAT_FONT_LABELS["serif-press"], family: SERIF_PRESS_FONT_PACK.roles.app },
 ];
 const LIVE_CHAT_COLOR_OPTIONS: Array<{ id: LiveChatColor; label: string; value: string }> =
   DESKTOP_WTF_LIVE_CHAT_COLORS.map((color) => ({
@@ -372,6 +392,17 @@ const BENTO_PANEL_LABELS: Record<BentoPanelId, string> = {
   attendance: "Attendance",
   chat: "Room chat",
 };
+
+function parseStageUsernames(value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(/[\s,]+/)
+        .map((username) => username.replace(/^@/, "").trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, 50);
+}
 
 const GuestShell = styled.main`
   height: 100vh;
@@ -518,6 +549,34 @@ const SettingsGroup = styled.div`
   display: grid;
   gap: 5px;
   min-width: 0;
+`;
+
+const StagePolicyPanel = styled.div`
+  border: 2px outset #fff;
+  background: #fff8d6;
+  color: #121212;
+  padding: 6px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--wtf-type-caption, 13px);
+`;
+
+const StageRoleField = styled.label`
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-weight: 700;
+`;
+
+const StageRoleTextArea = styled.textarea`
+  width: 100%;
+  min-height: 58px;
+  border: 2px inset #fff;
+  padding: 5px;
+  font: inherit;
+  resize: vertical;
+  box-sizing: border-box;
 `;
 
 const BentoWorkspace = styled.div`
@@ -2197,10 +2256,7 @@ function readStoredLiveChatStyle(): LiveChatStyle | null {
 function readStoredRoomDefaultFontPack(): DesktopFontPackKey {
   try {
     const stored = localStorage.getItem(WTF_LIVE_CHAT_DEFAULT_FONT_STORAGE_KEY);
-    if (stored !== WTF_LIVE_DEFAULT_FONT_PACK) {
-      localStorage.setItem(WTF_LIVE_CHAT_DEFAULT_FONT_STORAGE_KEY, WTF_LIVE_DEFAULT_FONT_PACK);
-    }
-    return WTF_LIVE_DEFAULT_FONT_PACK;
+    return WTF_LIVE_ROOM_FONT_PACKS.some((pack) => pack.key === stored) ? stored as DesktopFontPackKey : WTF_LIVE_DEFAULT_FONT_PACK;
   } catch {
     return WTF_LIVE_DEFAULT_FONT_PACK;
   }
@@ -2973,13 +3029,17 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const presentation = usePresentationShell();
   const { user, isLoading: authLoading } = useAuth();
   const roomQuery = useQuery<PublicRoomResponse>({
-    queryKey: ["wtf-live", "public-room", roomId],
+    queryKey: ["wtf-live", "public-room", roomId, user?.id ?? "guest"],
+    enabled: !authLoading,
     queryFn: async () => {
-      try {
-        return await api.get<PublicRoomResponse>(`/api/wtf-live/public/rooms/${encodeURIComponent(roomId)}`);
-      } catch {
-        return api.get<PublicRoomResponse>(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/join`);
+      if (user?.id) {
+        try {
+          return await api.get<PublicRoomResponse>(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/join`);
+        } catch {
+          return api.get<PublicRoomResponse>(`/api/wtf-live/public/rooms/${encodeURIComponent(roomId)}`);
+        }
       }
+      return api.get<PublicRoomResponse>(`/api/wtf-live/public/rooms/${encodeURIComponent(roomId)}`);
     },
   });
   const desktopSettingsQuery = useQuery<DesktopSettingsResponse>({
@@ -3000,6 +3060,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const [micDiagnosticExpanded, setMicDiagnosticExpanded] = useState(false);
   const [sharingTestingOpen, setSharingTestingOpen] = useState(false);
   const [sharingSettingsOpen, setSharingSettingsOpen] = useState(false);
+  const [stageHostList, setStageHostList] = useState("");
+  const [stageSpeakerList, setStageSpeakerList] = useState("");
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const [soundboardOutputStream, setSoundboardOutputStream] = useState<MediaStream | null>(null);
@@ -3079,6 +3141,15 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   popoutFrameCountRef.current = popoutFrames.length;
   const room = roomQuery.data?.room;
   const joinMode = roomQuery.data?.joinMode ?? "guest_room_only";
+  const roomCapabilities = roomQuery.data?.capabilities;
+  const stagePermissions = roomQuery.data?.stagePermissions;
+  const isStageRoom = room?.kind === "stage" || joinMode === "wtf_live_stage" || Boolean(roomCapabilities?.stage);
+  const stageRole = stagePermissions?.role ?? roomCapabilities?.stageRole ?? "audience";
+  const canShareAudio = roomCapabilities?.audio !== false;
+  const canShareCamera = roomCapabilities?.camera !== false;
+  const canShareScreen = roomCapabilities?.screen !== false;
+  const canShareMedia = roomCapabilities?.media !== false;
+  const canManageStageRoom = Boolean(stagePermissions?.canManage || roomCapabilities?.canManageStage);
   const defaultLiveChatStyle =
     desktopSettingsQuery.data?.appearance.wtfLiveChatStyle ?? DEFAULT_LIVE_CHAT_STYLE;
   const roomDefaultChatFontFamily = getFontPack(roomDefaultFontPack).roles.app;
@@ -3088,7 +3159,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const attendeeDisplayName = signedInDisplayName || guestName.trim() || "guest";
   const soundboardStorageKey = wtfLiveSoundboardStorageKey(viewerUserId);
   const canUseRoomSoundboard = Boolean(
-    viewerUserId &&
+    !isStageRoom &&
+      viewerUserId &&
       room?.source === "user" &&
       normalizeLiveUserId(room.ownerUserId) === viewerUserId,
   );
@@ -3104,7 +3176,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     queryKey: ["wtf-live", "room", joinMode, roomId, "messages"],
     enabled: Boolean(room),
     queryFn: () =>
-      joinMode === "wtf_user_private_room"
+      joinMode === "wtf_user_private_room" || (joinMode === "wtf_live_stage" && viewerUserId)
         ? api.get(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/messages`)
         : api.get(`/api/wtf-live/public/rooms/${encodeURIComponent(roomId)}/messages`),
   });
@@ -3173,6 +3245,44 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     },
   });
 
+  const updateStageAccessMutation = useMutation({
+    mutationFn: () =>
+      api.patch<{
+        stage?: PublicRoom;
+        members?: StagePermissionMember[];
+        missingUsernames?: string[];
+      }>(`/api/wtf-live/stages/${encodeURIComponent(roomId)}/access`, {
+        hostUsernames: parseStageUsernames(stageHostList),
+        speakerUsernames: parseStageUsernames(stageSpeakerList),
+      }),
+    onSuccess: (result) => {
+      const members = result.members ?? [];
+      const missing = result.missingUsernames ?? [];
+      qc.setQueryData<PublicRoomResponse>(["wtf-live", "public-room", roomId, user?.id ?? "guest"], (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          room: result.stage ? { ...current.room, ...result.stage } : current.room,
+          stagePermissions: current.stagePermissions
+            ? {
+                ...current.stagePermissions,
+                hosts: members.filter((member) => member.role === "host"),
+                speakers: members.filter((member) => member.role === "speaker"),
+              }
+            : current.stagePermissions,
+        };
+      });
+      setStatus(
+        missing.length
+          ? `Stage roles saved. Missing WTF users: ${missing.join(", ")}`
+          : "Stage hosts and speakers saved.",
+      );
+    },
+    onError: (error: unknown) => {
+      setStatus(error instanceof Error ? error.message : "Could not save stage roles.");
+    },
+  });
+
   useMediaStream(cameraRef, cameraStream);
   useMediaStream(screenRef, screenStream);
 
@@ -3207,6 +3317,16 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   }, [roomDefaultFontPack]);
 
   useEffect(() => {
+    if (!isStageRoom || !canManageStageRoom) {
+      setStageHostList("");
+      setStageSpeakerList("");
+      return;
+    }
+    setStageHostList((stagePermissions?.hosts ?? []).map((member) => member.username).join("\n"));
+    setStageSpeakerList((stagePermissions?.speakers ?? []).map((member) => member.username).join("\n"));
+  }, [canManageStageRoom, isStageRoom, stagePermissions?.hosts, stagePermissions?.speakers]);
+
+  useEffect(() => {
     localStreamsRef.current = {
       micStream,
       cameraStream,
@@ -3219,6 +3339,29 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       avatarUrl,
     };
   }, [activeVideoSource, avatarUrl, cameraStream, localAudioOpen, mediaDeck?.name, mediaDeck?.stream, micStream, screenStream, soundboardOutputStream]);
+
+  useEffect(() => {
+    if (canShareAudio && canShareCamera && canShareScreen && canShareMedia) return;
+    if (!canShareAudio && micStream) {
+      stopStream(micStream);
+      setMicStream(null);
+      setPushHeld(false);
+    }
+    if (!canShareCamera && cameraStream) {
+      stopStream(cameraStream);
+      setCameraStream(null);
+    }
+    if (!canShareScreen && screenStream) {
+      stopStream(screenStream);
+      setScreenStream(null);
+    }
+    if (!canShareMedia && mediaDeck) {
+      closeMediaDeck("Stage media sharing is limited to hosts and speakers.");
+    }
+    if (activeVideoSource && ((activeVideoSource === "camera" && !canShareCamera) || (activeVideoSource === "screen" && !canShareScreen))) {
+      setActiveVideoSource(null);
+    }
+  }, [activeVideoSource, cameraStream, canShareAudio, canShareCamera, canShareMedia, canShareScreen, mediaDeck, micStream, screenStream]);
 
   useEffect(() => {
     setWimFriendIds(readWimFriendIds(viewerUserId));
@@ -3940,6 +4083,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   }
 
   async function toggleMic() {
+    if (!canShareAudio) {
+      setStatus("Only the stage owner, hosts, and speakers can use mic in this stage.");
+      return;
+    }
     if (micStream) {
       stopStream(micStream);
       setMicStream(null);
@@ -4099,6 +4246,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   }
 
   async function toggleCamera() {
+    if (!canShareCamera) {
+      setStatus("Only the stage owner, hosts, and speakers can share camera in this stage.");
+      return;
+    }
     if (cameraStream) {
       stopStream(cameraStream);
       setCameraStream(null);
@@ -4119,6 +4270,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   }
 
   async function toggleScreen() {
+    if (!canShareScreen) {
+      setStatus("Only the stage owner, hosts, and speakers can share screen in this stage.");
+      return;
+    }
     if (screenStream) {
       stopStream(screenStream);
       setScreenStream(null);
@@ -4151,6 +4306,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   }
 
   function selectActiveVideoSource(source: Exclude<ActiveVideoSource, null>) {
+    if ((source === "camera" && !canShareCamera) || (source === "screen" && !canShareScreen)) {
+      setStatus("Only the stage owner, hosts, and speakers can choose a stage focus.");
+      return;
+    }
     const canSelect = source === "camera" ? hasLiveTrack(cameraStream, "video") : hasLiveTrack(screenStream, "video");
     if (!canSelect) {
       setStatus(source === "camera" ? "Turn camera on before sharing it." : "Start screen share before sharing it.");
@@ -4184,6 +4343,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (!canShareMedia) {
+      setStatus("Only the stage owner, hosts, and speakers can share media in this stage.");
+      return;
+    }
     if (!isLiveMediaDeckFile(file)) {
       setStatus("Choose an audio or video file for the media deck.");
       return;
@@ -4249,6 +4412,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   }
 
   async function toggleMediaDeckPlayback() {
+    if (!canShareMedia) {
+      setStatus("Only the stage owner, hosts, and speakers can share media in this stage.");
+      return;
+    }
     const deck = mediaDeckRef.current;
     const element = mediaDeckElementRef.current;
     if (!deck || !element) {
@@ -4919,7 +5086,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const attendanceDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "attendance");
   const chatDetached = popoutFrames.some((frame) => frame.kind === "panel" && frame.panel === "chat");
 
-  if (roomQuery.isLoading) {
+  if (authLoading || roomQuery.isLoading) {
     return (
       <GuestShell>
 	      <RoomFrame data-wtf-live-room-frame>
@@ -5472,8 +5639,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	            />
 	          )}
 	          <RoomActionGrid>
-	            <Button primary aria-label="Join Room" disabled={joined || authLoading} onClick={joinRoom} data-wtf-live-join-room>
-	              {joined ? "Joined" : "Join"}
+	            <Button primary aria-label={isStageRoom ? "Join Stage" : "Join Room"} disabled={joined || authLoading} onClick={joinRoom} data-wtf-live-join-room>
+	              {joined ? "Joined" : isStageRoom ? "Join Stage" : "Join"}
 	            </Button>
 	            <Button aria-label="Copy URL" onClick={copyRoomUrl}>
 	              <ButtonLabel><Copy size={16} aria-hidden /> Copy</ButtonLabel>
@@ -5488,6 +5655,64 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	          <StatusLine aria-live="polite">{status}</StatusLine>
 	        </SettingsGroup>
 	      </ControlRail>
+	    );
+	  }
+
+	  function renderStagePolicyPanel() {
+	    if (!isStageRoom) return null;
+	    const roleLabel =
+	      stageRole === "owner"
+	        ? "Owner"
+	        : stageRole === "host"
+	          ? "Host"
+	          : stageRole === "speaker"
+	            ? "Speaker"
+	            : "Audience";
+	    return (
+	      <StagePolicyPanel
+	        data-wtf-live-stage-room-policy
+	        data-wtf-live-stage-role={stageRole}
+	        data-wtf-live-stage-can-share={canShareAudio || canShareCamera || canShareScreen ? "true" : "false"}
+	      >
+	        <LiveSectionHeader>
+	          <span><Radio size={15} aria-hidden /> Stage permissions</span>
+	          <ShareStatus>{roleLabel}</ShareStatus>
+	        </LiveSectionHeader>
+	        <span>
+	          {canShareAudio || canShareCamera || canShareScreen
+	            ? "You can publish mic, camera, screen, and media in this stage."
+	            : "Audience members can watch, chat, and react. Only the stage owner, hosts, and speakers can publish mic, camera, screen, or media."}
+	        </span>
+	        {canManageStageRoom ? (
+	          <>
+	            <StageRoleField>
+	              Host WTF usernames
+	              <StageRoleTextArea
+	                value={stageHostList}
+	                placeholder={"wtf-host-1\nwtf-host-2"}
+	                onChange={(event) => setStageHostList(event.currentTarget.value)}
+	                data-wtf-live-stage-room-host-list
+	              />
+	            </StageRoleField>
+	            <StageRoleField>
+	              Speaker WTF usernames
+	              <StageRoleTextArea
+	                value={stageSpeakerList}
+	                placeholder={"wtf-speaker-1\nwtf-speaker-2"}
+	                onChange={(event) => setStageSpeakerList(event.currentTarget.value)}
+	                data-wtf-live-stage-room-speaker-list
+	              />
+	            </StageRoleField>
+	            <Button
+	              disabled={updateStageAccessMutation.isPending}
+	              onClick={() => updateStageAccessMutation.mutate()}
+	              data-wtf-live-stage-room-access-save
+	            >
+	              Save Stage Roles
+	            </Button>
+	          </>
+	        ) : null}
+	      </StagePolicyPanel>
 	    );
 	  }
 
@@ -5519,9 +5744,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	              <TypeIcon size={15} aria-hidden />
 	            </Button>
 	          </SharingTrayActions>
+	          {renderStagePolicyPanel()}
 	          <MediaButtonGrid>
 	            <ControlButton
-	              disabled={!joined || !socketReady}
+	              disabled={!joined || !socketReady || !canShareAudio}
 	              $active={Boolean(micStream)}
 	              onClick={toggleMic}
 	              data-wtf-live-toggle-mic
@@ -5529,7 +5755,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	              {micStream ? <Square aria-hidden /> : <Mic aria-hidden />} Mic
 	            </ControlButton>
 	            <ControlButton
-	              disabled={!joined || !socketReady || !micStream}
+	              disabled={!joined || !socketReady || !micStream || !canShareAudio}
 	              $active={pushToTalk}
 	              onClick={() => {
 	                setPushToTalk((current) => !current);
@@ -5540,7 +5766,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	              <Mic aria-hidden /> PTT
 	            </ControlButton>
 	            <ControlButton
-	              disabled={!joined || !socketReady}
+	              disabled={!joined || !socketReady || !canShareCamera}
 	              $active={Boolean(cameraStream)}
 	              onClick={toggleCamera}
 	              data-wtf-live-toggle-camera
@@ -5548,7 +5774,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	              {cameraStream ? <Square aria-hidden /> : <Camera aria-hidden />} Camera
 	            </ControlButton>
 	            <ControlButton
-	              disabled={!joined || !socketReady}
+	              disabled={!joined || !socketReady || !canShareScreen}
 	              $active={Boolean(screenStream)}
 	              onClick={toggleScreen}
 	              data-wtf-live-toggle-screen
@@ -5599,7 +5825,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	            </MicTestPanel>
 	          </SharingDrawer>
 	          <ControlButton
-	            disabled={!joined || !socketReady || !micStream || !pushToTalk}
+	            disabled={!joined || !socketReady || !micStream || !pushToTalk || !canShareAudio}
 	            $active={pushHeld}
 	            onPointerDown={() => setPushHeld(true)}
 	            onPointerUp={() => setPushHeld(false)}
@@ -5620,7 +5846,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	            </LiveSectionHeader>
 	            <GuestGrid>
 	              <ControlButton
-	                disabled={!joined || !socketReady || !cameraStream}
+	                disabled={!joined || !socketReady || !cameraStream || !canShareCamera}
 	                $active={activeVideoSource === "camera"}
 	                onClick={() => selectActiveVideoSource("camera")}
 	                data-wtf-live-share-camera
@@ -5628,7 +5854,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	                <Camera aria-hidden /> Camera
 	              </ControlButton>
 	              <ControlButton
-	                disabled={!joined || !socketReady || !screenStream}
+	                disabled={!joined || !socketReady || !screenStream || !canShareScreen}
 	                $active={activeVideoSource === "screen"}
 	                onClick={() => selectActiveVideoSource("screen")}
 	                data-wtf-live-share-screen
@@ -5651,14 +5877,14 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	            />
 	            <GuestGrid>
 	              <Button
-	                disabled={!joined || !socketReady}
+	                disabled={!joined || !socketReady || !canShareMedia}
 	                onClick={() => mediaFileInputRef.current?.click()}
 	                data-wtf-live-media-load
 	              >
 	                <ButtonLabel><FileAudio size={16} aria-hidden /> Load</ButtonLabel>
 	              </Button>
 	              <Button
-	                disabled={!joined || !socketReady || !mediaDeck}
+	                disabled={!joined || !socketReady || !mediaDeck || !canShareMedia}
 	                onClick={toggleMediaDeckPlayback}
 	                data-wtf-live-media-play
 	              >
@@ -5797,7 +6023,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    return (
 	      <StagePanel data-wtf-live-stage-area={floating ? "popout" : "true"}>
 	        <StageHeader>
-	          <span>Shared screens</span>
+	          <span>{isStageRoom ? "Stage sources" : "Shared screens"}</span>
 	          <span>{stageCount ? `${stageCount} source${stageCount === 1 ? "" : "s"}` : "no sources shared"}</span>
 	        </StageHeader>
 	        {soundboardStatus ? (
@@ -5853,7 +6079,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	                onDropOn={handleStageEntryDropOn}
 	              />
 	            ))}
-	            {!stageCount ? <EmptyStage>No camera, screen, or media shared</EmptyStage> : null}
+	            {!stageCount ? <EmptyStage>{isStageRoom ? "No host or speaker is sharing yet" : "No camera, screen, or media shared"}</EmptyStage> : null}
 	          </StageGrid>
 	        </StageGridShell>
 	        {remotePeers.map((peer) => (
@@ -5867,7 +6093,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    return (
 	      <ChatColumn data-wtf-live-chat-column={floating ? "popout" : "true"}>
 	        <LiveSectionHeader>
-	          <span><MessageSquare size={15} aria-hidden /> Room chat</span>
+	          <span><MessageSquare size={15} aria-hidden /> {isStageRoom ? "Stage chat" : "Room chat"}</span>
 	          <span>{liveMessages.length + messages.length} messages</span>
 	        </LiveSectionHeader>
         <MessageList
@@ -5965,7 +6191,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 
 	  return (
     <GuestShell>
-      <RoomFrame data-wtf-live-room-frame="room">
+	      <RoomFrame data-wtf-live-room-frame={isStageRoom ? "stage" : "room"}>
         <TitleBar>
           <RoomTitleBlock>
             <h1>{room.title}</h1>
@@ -5973,7 +6199,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
           </RoomTitleBlock>
 	          <HeaderStatus>
 	            {socketReady ? <Wifi size={15} aria-hidden /> : <WifiOff size={15} aria-hidden />}{" "}
-	            <span>{joined ? (socketReady ? "Connected" : "Connecting") : joinMode === "wtf_user_private_room" ? "Private room" : "Public room"}</span>
+	            <span>{joined ? (socketReady ? "Connected" : "Connecting") : isStageRoom ? "Stage room" : joinMode === "wtf_user_private_room" ? "Private room" : "Public room"}</span>
 	            <span>{joined ? attendeeDisplayName : signedInUsername ? signedInUsername : authLoading ? "Checking account" : "Guest setup"}</span>
 	            <span>{peerId ? peerId.slice(0, 12) : "not joined"}</span>
 	            <HeaderCloseButton aria-label="Close Window" onClick={closeRoomWindow} data-wtf-live-close-window>

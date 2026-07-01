@@ -86,7 +86,7 @@ test("normalizes desktop appearance while forcing platform font selections", () 
     underline: false,
   });
   assert.deepEqual(normalized.wtfLiveChatStyle, {
-    font: "wtfos-soft-system",
+    font: "serif-press",
     color: "amber",
     size: 13,
     bold: false,

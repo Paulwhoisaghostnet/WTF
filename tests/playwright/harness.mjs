@@ -41,6 +41,7 @@ const state = {
   wtfLivePrivateRoom: null,
   wtfLivePrivateMembers: [],
   wtfLiveOwnedStage: { id: "my-stage", title: "My Stage", kind: "stage", description: "Owned stage", liveUrl: "/live", source: "user", ownerUserId: 1, isPublic: true },
+  wtfLiveStageMembers: [{ userId: 2, username: "wtf-user", displayName: "WTF User", role: "speaker" }],
 };
 
 function nowIso() {
@@ -331,6 +332,7 @@ app.post("/__test/state", (req, res) => {
   state.wtfLivePrivateRoom = null;
   state.wtfLivePrivateMembers = [];
   state.wtfLiveOwnedStage = { id: "my-stage", title: "My Stage", kind: "stage", description: "Owned stage", liveUrl: "/live", source: "user", ownerUserId: 1, isPublic: true };
+  state.wtfLiveStageMembers = [{ userId: 2, username: "wtf-user", displayName: "WTF User", role: "speaker" }];
   Object.assign(
     desktopLocalization,
     req.body?.desktopLocalization ?? { locale: "en-US", region: "US" }
@@ -1523,7 +1525,11 @@ function apiMock(req, res) {
       ...(state.wtfLiveOwnedRoom?.isPublic && state.wtfLiveOwnedRoom.accessMode !== "private" ? [state.wtfLiveOwnedRoom] : []),
     ];
     const room = publicRooms.find((candidate) => candidate.id === roomId);
-    if (!room) return res.status(404).json({ error: "Room not found" });
+    if (!room) {
+      const stage = state.wtfLiveOwnedStage?.isPublic && state.wtfLiveOwnedStage.id === roomId ? state.wtfLiveOwnedStage : null;
+      if (!stage) return res.status(404).json({ error: "Room not found" });
+      return res.json(harnessStageEnvelope(stage, "audience"));
+    }
     return res.json({
       room: { ...room, presence: liveRoomPresence(room.id) },
       joinMode: "guest_room_only",
@@ -1539,10 +1545,16 @@ function apiMock(req, res) {
   }
   if (/^\/api\/wtf-live\/public\/rooms\/[^/]+\/messages$/.test(pathName) && req.method === "GET") {
     const roomId = pathName.split("/")[5];
+    if (state.wtfLiveOwnedStage?.id === roomId) {
+      return res.json({ roomId, collection: null, messages: [], cursor: null, source: "wtf-live.stageRealtimeOnly", upstreamAvailable: true });
+    }
     return res.json({ roomId, collection: "app.wtfgameshow.skywire.room.message", messages: [], cursor: null, source: "harness" });
   }
   if (/^\/api\/wtf-live\/rooms\/[^/]+\/messages$/.test(pathName) && req.method === "GET") {
     const roomId = pathName.split("/")[4];
+    if (state.wtfLiveOwnedStage?.id === roomId) {
+      return res.json({ roomId, collection: null, messages: [], cursor: null, source: "wtf-live.stageRealtimeOnly", upstreamAvailable: true, stageRole: harnessStageRole(state.wtfLiveOwnedStage) });
+    }
     if (state.wtfLivePrivateRoom?.id === roomId) {
       return res.json({
         roomId,
@@ -1610,7 +1622,13 @@ function apiMock(req, res) {
       state.wtfLivePrivateRoom,
     ].filter(Boolean);
     const room = candidates.find((candidate) => candidate.id === roomId);
-    if (!room) return res.status(404).json({ error: "Room not found" });
+    if (!room) {
+      const stage = state.wtfLiveOwnedStage?.id === roomId ? state.wtfLiveOwnedStage : null;
+      if (!stage) return res.status(404).json({ error: "Room not found" });
+      const role = harnessStageRole(stage);
+      if (!stage.isPublic && role === "audience") return res.status(404).json({ error: "Room not found" });
+      return res.json(harnessStageEnvelope(stage, role));
+    }
     return res.json({
       room: { ...room, presence: liveRoomPresence(room.id) },
       joinMode: room.accessMode === "private" ? "wtf_user_private_room" : "guest_room_only",
@@ -1664,17 +1682,17 @@ function apiMock(req, res) {
     return res.json({
       stages: [
         { id: "wtf-stage", title: "WTF Stage", kind: "stage", description: "Official stage", liveUrl: "/live", source: "system", isPublic: true },
-        ...(state.wtfLiveOwnedStage?.isPublic ? [state.wtfLiveOwnedStage] : []),
+        ...(state.wtfLiveOwnedStage?.isPublic ? [{ ...state.wtfLiveOwnedStage, accessMembers: state.wtfLiveStageMembers }] : []),
       ],
       collection: "app.wtfgameshow.skywire.stage.broadcast",
       storage: "public_atproto_repo_records",
-      mode: "one_way_broadcast",
+      mode: "role_gated_room",
       skywirePath: "/skywire?tab=account",
     });
   }
   if (pathName === "/api/wtf-live/stages/mine" && req.method === "GET") {
     return res.json({
-      stages: state.wtfLiveOwnedStage ? [state.wtfLiveOwnedStage] : [],
+      stages: state.wtfLiveOwnedStage ? [{ ...state.wtfLiveOwnedStage, accessMembers: state.wtfLiveStageMembers }] : [],
       collection: "app.wtfgameshow.skywire.stage.broadcast",
       storage: "wtf_live_stages",
     });
@@ -1682,9 +1700,41 @@ function apiMock(req, res) {
   if (pathName === "/api/wtf-live/stages" && req.method === "POST") {
     const title = String(req.body?.title || "New Stage").trim();
     state.wtfLiveOwnedStage = { id: "my-stage", title, kind: "stage", description: req.body?.description || "", liveUrl: req.body?.liveUrl || null, source: "user", ownerUserId: 1, isPublic: true };
+    const hostUsernames = Array.isArray(req.body?.hostUsernames) ? req.body.hostUsernames : [];
+    const speakerUsernames = Array.isArray(req.body?.speakerUsernames) ? req.body.speakerUsernames : [];
+    state.wtfLiveStageMembers = [
+      ...hostUsernames.map((username, index) => ({ userId: index + 3, username: String(username).replace(/^@/, ""), displayName: null, role: "host" })),
+      ...speakerUsernames.map((username, index) => ({ userId: index + 20, username: String(username).replace(/^@/, ""), displayName: null, role: "speaker" })),
+    ];
     return res.status(201).json({
-      stage: state.wtfLiveOwnedStage,
+      stage: { ...state.wtfLiveOwnedStage, accessMembers: state.wtfLiveStageMembers },
+      members: state.wtfLiveStageMembers,
+      missingUsernames: [],
     });
+  }
+  if (/^\/api\/wtf-live\/stages\/[^/]+\/access$/.test(pathName) && req.method === "GET") {
+    const stageId = pathName.split("/")[4];
+    if (!state.wtfLiveOwnedStage || state.wtfLiveOwnedStage.id !== stageId) {
+      return res.status(404).json({ error: "Managed stage not found" });
+    }
+    return res.json({ stageId, stage: { ...state.wtfLiveOwnedStage, accessMembers: state.wtfLiveStageMembers }, members: state.wtfLiveStageMembers });
+  }
+  if (/^\/api\/wtf-live\/stages\/[^/]+\/access$/.test(pathName) && req.method === "PATCH") {
+    const stageId = pathName.split("/")[4];
+    if (!state.wtfLiveOwnedStage || state.wtfLiveOwnedStage.id !== stageId) {
+      return res.status(404).json({ error: "Managed stage not found" });
+    }
+    const hostUsernames = Array.isArray(req.body?.hostUsernames) ? req.body.hostUsernames : [];
+    const speakerUsernames = Array.isArray(req.body?.speakerUsernames) ? req.body.speakerUsernames : [];
+    const hostNames = new Set(hostUsernames.map((username) => String(username).replace(/^@/, "")));
+    state.wtfLiveStageMembers = [
+      ...Array.from(hostNames).filter(Boolean).map((username, index) => ({ userId: index + 3, username, displayName: null, role: "host" })),
+      ...speakerUsernames
+        .map((username) => String(username).replace(/^@/, ""))
+        .filter((username) => username && !hostNames.has(username))
+        .map((username, index) => ({ userId: index + 20, username, displayName: null, role: "speaker" })),
+    ];
+    return res.json({ stage: { ...state.wtfLiveOwnedStage, accessMembers: state.wtfLiveStageMembers }, members: state.wtfLiveStageMembers, missingUsernames: [] });
   }
   if (/^\/api\/wtf-live\/stages\/[^/]+$/.test(pathName) && req.method === "PATCH") {
     const stageId = pathName.split("/")[4];
@@ -1700,6 +1750,7 @@ function apiMock(req, res) {
       return res.status(404).json({ error: "Owned stage not found" });
     }
     state.wtfLiveOwnedStage = null;
+    state.wtfLiveStageMembers = [];
     return res.json({ ok: true, stageId });
   }
   if (/^\/api\/wtf-live\/rooms\/[^/]+\/messages$/.test(pathName) && req.method === "GET") {
@@ -4545,17 +4596,14 @@ const server = app.listen(PORT, () => {
 const livePeers = new Map();
 const liveWss = new WebSocketServer({ server, path: "/ws/wtf-live" });
 const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(512 * 1024 * 1.4);
-const LIVE_CHAT_FONTS = new Set(["wtfos-soft-system"]);
+const LIVE_CHAT_FONTS = new Set(["wtfos-soft-system", "classic-95", "terminal", "serif-press"]);
 const LIVE_LEGACY_CHAT_FONT_MAP = {
   system: "wtfos-soft-system",
-  "mek-mono": "wtfos-soft-system",
-  "grout-display": "wtfos-soft-system",
-  "classic-95": "wtfos-soft-system",
-  mono: "wtfos-soft-system",
-  terminal: "wtfos-soft-system",
-  serif: "wtfos-soft-system",
-  "serif-press": "wtfos-soft-system",
-  pixel: "wtfos-soft-system",
+  "mek-mono": "terminal",
+  "grout-display": "classic-95",
+  mono: "terminal",
+  serif: "serif-press",
+  pixel: "classic-95",
 };
 const LIVE_CHAT_COLORS = new Set(["ink", "blue", "green", "red", "purple", "amber"]);
 const LIVE_ROOM_REACTION_LABELS = {
@@ -4632,6 +4680,47 @@ function liveRoomPresence(roomId) {
     videoShareCount: cameraShareCount + screenShareCount,
     cameraShareCount,
     screenShareCount,
+  };
+}
+
+function harnessStageRole(stage) {
+  const user = currentAuthUser();
+  if (!user) return "audience";
+  if (Number(stage?.ownerUserId) === Number(user.id)) return "owner";
+  const member = state.wtfLiveStageMembers.find((entry) => Number(entry.userId) === Number(user.id) || entry.username === user.username);
+  return member?.role === "host" ? "host" : member?.role === "speaker" ? "speaker" : "audience";
+}
+
+function harnessStageEnvelope(stage, role = "audience") {
+  const canShare = ["owner", "host", "speaker"].includes(role);
+  const canManage = role === "owner" || role === "host";
+  return {
+    room: {
+      ...stage,
+      accessMode: "public",
+      presence: liveRoomPresence(stage.id),
+      accessMembers: canManage ? state.wtfLiveStageMembers : undefined,
+    },
+    joinMode: "wtf_live_stage",
+    roomPath: `/live/r/${stage.id}`,
+    capabilities: {
+      audio: canShare,
+      camera: canShare,
+      screen: canShare,
+      media: canShare,
+      transport: "webrtc_mesh_via_wtf_live_signaling",
+      stage: true,
+      canManageStage: canManage,
+      canSpeakOnStage: canShare,
+      stageRole: role,
+    },
+    stagePermissions: {
+      role,
+      canManage,
+      canSpeak: canShare,
+      hosts: state.wtfLiveStageMembers.filter((member) => member.role === "host"),
+      speakers: state.wtfLiveStageMembers.filter((member) => member.role === "speaker"),
+    },
   };
 }
 

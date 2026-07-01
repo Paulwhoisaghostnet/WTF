@@ -685,6 +685,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The inventory harness toggles the owned-stage fixture through the WTF LIVE stage PATCH API and deletes it through the DELETE API, then verifies the selected stage card reflects the lifecycle change.",
   },
   {
+    id: "wtf-live.stage-room-role-controls",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"stage rooms gate audience sharing\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A stage owner can open the stage room, edit host and speaker lists in-room, and keep mic/camera/screen/media controls enabled, while an audience guest sees the stage role policy and disabled share controls.",
+    durableSideEffectAssertion:
+      "The inventory harness serves stage rooms through the WTF LIVE room envelope, persists PATCH /api/wtf-live/stages/:stageId/access role lists, and proves audience clients receive no publish capabilities.",
+  },
+  {
     id: "w.groupchat-readonly-config-source",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["w"],
