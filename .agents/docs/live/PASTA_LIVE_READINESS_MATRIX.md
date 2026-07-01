@@ -15,6 +15,7 @@ This lane can safely claim:
 - Spaghetti has a real-network Shadownet preflight and a signer-backed deploy/mint/collect proof command.
 - Gnocchi has a signer-backed Shadownet open-edition deploy/configure/open-mint proof command.
 - Ravioli has a signer-backed Shadownet bundle deploy/create/mint/transfer/redeem proof command.
+- Rotini has a signer-backed Shadownet generative deploy/create/mint/collect proof command.
 
 This lane must not claim:
 
@@ -40,7 +41,7 @@ This lane must not claim:
 | Spaghetti | Standard collection publisher | PROVEN | PROVEN | PROVEN | PROVEN | OPEN | PARTIAL | PROVEN | OPEN |
 | Gnocchi | Open-edition token publisher | PROVEN | PARTIAL | PARTIAL | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
 | Ravioli | Bundle token publisher | PROVEN | PARTIAL | PARTIAL | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
-| Rotini | Generative collection publisher | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
+| Rotini | Generative collection publisher | PROVEN | PARTIAL | PARTIAL | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
 | Penne | Distribution contract product | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
 | Lasagna | Exhibition contract product | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
 | Colander | Management and discovery | PROVEN | PARTIAL | PARTIAL | OPEN | N/A | OPEN | PARTIAL | OPEN |
@@ -65,7 +66,7 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 | Spaghetti signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e` originated `KT1WTFnZAyWqcC2SB32xEjMS4F4cutnGsyVc`, created token 0, minted supply, transferred one edition to the collector, decoded token metadata, and verified collector ownership in TzKT big maps. | PROVEN |
 | Gnocchi signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:gnocchi:e2e` originated `KT1W2ijLhjRHeH7wWYnvYcDwDsgRM7TpAFZK`, created open edition token 0, collector-open-minted one edition, decoded token metadata, and verified collector ownership, supply, and sale config in TzKT big maps. | PROVEN |
 | Ravioli signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:ravioli:e2e` originated `KT194igzFGez1pB3HHhU8HFqyMzMLSLAPskB`, created bundle token 0, minted supply, transferred two editions to the collector, redeemed one edition, decoded token metadata, and verified collector ownership, total supply, bundle config, and redeemed count in TzKT big maps. | PROVEN |
-| Rotini signer proof | None yet. | OPEN |
+| Rotini signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:rotini:e2e` originated `KT1HqzEFqbwcR8BpXZrrfPALY6bJaPGQgDHQ`, created two deterministic generated token types, minted both editions, transferred token 1 to the collector, decoded token metadata, and verified creator ownership, collector ownership, total supply, trait attributes, and Rotini DNA in TzKT big maps. | PROVEN |
 | Penne signer proof | None yet. | OPEN |
 | Lasagna signer proof | None yet. | OPEN |
 | Colander real KT1 discovery | No end-to-end proof from a real Shadownet Pasta contract into Colander action/state refresh. | OPEN |
@@ -85,10 +86,9 @@ The safe next push target is this narrow proof lane. A full production Pasta dep
 
 ## Next Implementation Order
 
-1. Add Rotini signer-backed generated-edition proof.
-2. Add Penne and Lasagna contract-product deploy/configure proofs.
-3. Wire Colander real-contract discovery against Shadownet proof contracts.
-4. Add WTF.ME hosted page checks for the proven contracts/tokens.
-5. Add wtfOS artifact/metadata pinning and recovery checks.
-6. Repeat the standalone installer manifest/release proof pattern for remaining individual Pasta apps if separate native downloads are required.
-7. Re-run production readiness checks and only then evaluate mainnet/full-send deployment work.
+1. Add Penne and Lasagna contract-product deploy/configure proofs.
+2. Wire Colander real-contract discovery against Shadownet proof contracts.
+3. Add WTF.ME hosted page checks for the proven contracts/tokens.
+4. Add wtfOS artifact/metadata pinning and recovery checks.
+5. Repeat the standalone installer manifest/release proof pattern for remaining individual Pasta apps if separate native downloads are required.
+6. Re-run production readiness checks and only then evaluate mainnet/full-send deployment work.

@@ -1,3 +1,13 @@
+## 2026-07-01 - Sequential Pasta signer proofs need balance budgeting
+
+**What happened**: The Rotini signer-backed Shadownet proof correctly blocked before origination because the shared creator signer had only `2227765` mutez after previous Spaghetti, Gnocchi, and Ravioli proof runs. The proof needed origination plus create/mint/transfer headroom, so Shadownet faucet top-up `onpqeephir1NEprF9YdCpRtA4jKS72J2GLTVPu4Yte6FZLMo65q` was required before the final run passed.
+
+**Why it mattered**: Sequential real-network Pasta proofs spend from the same Shadownet signer. A later app proof can fail safely even when the script is correct, and rerunning no-flag checks after a pass would overwrite final report artifacts.
+
+**Rule**: Before each signer-backed Pasta proof, check creator balance against estimated origination plus all follow-on operation headroom. Use faucet top-ups only for Shadownet test wallets, record the faucet op in the audit report, and leave the final proof report in `PASSED` state.
+
+---
+
 ## 2026-07-01 - Shadownet signer proofs need balance headroom blockers
 
 **What happened**: The Spaghetti signer-backed Shadownet E2E runner loaded the correct keyring wallet and RPC, but the first execute attempt blocked after estimating origination because the creator wallet had enough test tez to look funded and still not enough headroom for origination plus create-token, mint, and transfer operations. A small Shadownet faucet top-up fixed the run before any contract operation was submitted.
