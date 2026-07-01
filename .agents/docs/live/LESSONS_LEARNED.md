@@ -1,3 +1,13 @@
+## 2026-07-01 - TLS-allowed hosts are not the same as Pasta publish authority
+
+**What happened**: A read-only WTF.ME production inventory run found `cobwebsaints.wtfos.me` and `paulwhoisaghost.wtfos.me` already pass the TLS ask gate, while `wtf-admin.wtfos.me` is still denied as `handle not registered`. The same run also showed the admin puppet can list sites but has no claimable WTF.ME host of its own because its username is not a DNS-valid label and it lacks social/DID state.
+
+**Why it mattered**: A TLS-allowed production host proves Caddy/site registration, but it does not prove the Pasta release can publish to that host. A host can be registered to another owner, already published with unrelated pages, or unavailable to the Pasta-scoped credentials that will run the normal claim/save/publish flow.
+
+**Rule**: Before a WTF.ME Pasta live claim, prove both sides separately: inventory the candidate host's TLS/registration state, then dry-run or execute the Pasta publish helper with credentials that actually own or can claim that exact host. Do not treat admin visibility or TLS allowance as publish authority.
+
+---
+
 ## 2026-07-01 - Public pin discovery must fail closed until the manifest is published
 
 **What happened**: The Pasta pinning proof modeled a complete `/.well-known/wtfos-pins` body, but the production service route could return a public-discovery response for an enabled subdomain binding even when the binding did not yet have a repo DID and published `app.wtfos.media.pinManifest` AT URI.
