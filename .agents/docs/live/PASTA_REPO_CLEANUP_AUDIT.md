@@ -212,11 +212,23 @@ Conclusion: `WTF-BB-332` is verified closed. Preserve the warning in history, bu
 - Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-colander-discovery-report.md`.
 - Scope note: this proves Colander browser discovery, adapter/action rendering, relationship metadata decoding, and event emission. It does not yet prove wallet-signed Colander management mutations, WTF.ME hosted pages, hosted wtfOS pinning/recovery, failure recovery, or mainnet readiness.
 
+## Current WTF.ME Hosted Pasta Page Proof
+
+- Local proof command: `npm run pasta:shadownet:wtfme`.
+- Source proof: `server/features/wtf-sites/pasta-hosting.ts` builds landing, mint, and collection page snapshots from `shared/pasta-shadownet-proof-contracts.json`, which lists the current Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna Shadownet proof contracts and relationship groups.
+- Browser proof: Playwright Chromium publishes those pages through the WTF.ME harness APIs, serves them from `wtf-admin.wtfos.me` with user-site CSP/COOP headers, and verifies the Shadownet chain id, current proof KT1s, relationship groups, wallet marker, mint action marker, and Shadownet TzKT links.
+- Event proof: the inventory harness observes `wtf_site.claimed`, `wtf_site.page_saved`, `wtf_site.published`, and `wtf_site.public.viewed` events for the hosted Pasta pages.
+- Tooling proof: `scripts/pasta-protocol/wtfme-live-publish.ts` defaults to dry-run and requires `PASTA_WTFME_LIVE_PUBLISH=1` plus scoped auth and CSRF before writing; `scripts/pasta-protocol/wtfme-live-inventory.ts` is read-only; `scripts/pasta-protocol/wtfme-live-check.ts` verifies the real host, page markers, wallet-safe headers, and `.well-known/wtfos-pins`.
+- Live blocker: `npm run pasta:wtfme:live-check` currently fails because production reports `https://wtfos.app/internal/tls/allow?domain=wtf-admin.wtfos.me` as HTTP 403 `handle not registered`.
+- Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-wtfme-hosting-report.md`.
+- Scope note: this proves the WTF.ME hosted-page source and local serving path. It does not yet prove a live production WTF.ME host, live pin discovery, live wallet minting, hosted wtfOS pinning/recovery, wallet-signed Colander mutations, or mainnet readiness.
+
 ## Recommended Next Actions
 
-1. Mine `codex/pasta-live-readiness` by narrow slices for WTF.ME hosting and wtfOS pinning/recovery. Do not merge the branch wholesale.
-2. Extend the now-green Macaroni Shadownet lane and signer-backed Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna proofs into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
-3. Add wallet-signed Colander management mutation proof for representative safe actions before treating Colander as an operational admin surface.
-4. Repeat the individual installer package/manifest/live-check pattern for Gnocchi, Ravioli, Rotini, Penne, and Lasagna if separate per-app downloads are required beyond the bundled Pasta Suite.
-5. After user confirmation, archive/delete merged historical Macaroni/IPFS and other clean ancestor worktrees; leave dirty non-Pasta worktrees untouched.
-6. Decide whether the original dirty local `WTF` checkout should be preserved before any reset, fast-forward, or archival action.
+1. Publish the generated Pasta pages to a real claimed WTF.ME host and make `npm run pasta:wtfme:live-check` pass.
+2. Mine `codex/pasta-live-readiness` by narrow slices for wtfOS pinning/recovery next. Do not merge the branch wholesale.
+3. Extend the now-green Macaroni Shadownet lane and signer-backed Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna proofs into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
+4. Add wallet-signed Colander management mutation proof for representative safe actions before treating Colander as an operational admin surface.
+5. Repeat the individual installer package/manifest/live-check pattern for Gnocchi, Ravioli, Rotini, Penne, and Lasagna if separate per-app downloads are required beyond the bundled Pasta Suite.
+6. After user confirmation, archive/delete merged historical Macaroni/IPFS and other clean ancestor worktrees; leave dirty non-Pasta worktrees untouched.
+7. Decide whether the original dirty local `WTF` checkout should be preserved before any reset, fast-forward, or archival action.

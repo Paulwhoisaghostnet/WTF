@@ -1029,6 +1029,7 @@ export const DOMAIN_WORKFLOWS = [
       "colander.graph_viewed",
       "spaghetti.installer_manifest.viewed",
       "pasta_suite.installer_manifest.viewed",
+      "wtf_site.public.viewed",
     ],
     apiProbes: [
       { method: "GET", path: "/api/spaghetti/installers", expectedStatuses: [200, 401] },

@@ -231,6 +231,17 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The Colander handoff emits colander.handoff_opened and the target static studios read the route handoff before any wallet or chain action is submitted.",
   },
   {
+    id: "pasta-protocol.wtfme-hosted-pages",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol", "wtf-domains", "ipfs-pinning"],
+    ownerSpec: "tests/playwright/inventory/pasta-protocol-wtfme-hosting.spec.mjs",
+    verificationCommand: "npm run pasta:shadownet:wtfme",
+    userVisibleAssertion:
+      "A claimed WTF.ME host can serve Pasta Protocol landing, mint, and collection pages that show the Shadownet chain id, current proof KT1 contracts, relationship groups, WTF.ME branding, wallet-connect marker, mint action marker, and Shadownet explorer links under user-site wallet-safe headers.",
+    durableSideEffectAssertion:
+      "The focused harness publishes home/mint/collection pages through the WTF.ME API, records wtf_site.claimed, wtf_site.page_saved, wtf_site.published, and wtf_site.public.viewed events, and verifies published page versions include the three Pasta slugs before browsing the host.",
+  },
+  {
     id: "inventory.temporary-grants-unlock-apps",
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSurfaceIds: ["arcade", "casino", "wtfiam"],

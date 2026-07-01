@@ -19,12 +19,13 @@ This lane can safely claim:
 - Penne has a signer-backed Shadownet distribution deploy/configure/claim/airdrop proof command.
 - Lasagna has a signer-backed Shadownet exhibition deploy/configure/revision/admin-handoff proof command.
 - Colander opens all six current signer-backed Shadownet Pasta proof contracts in-browser, detects adapters/actions, renders relationship metadata, and emits discovery events.
+- WTF.ME hosted Pasta page snapshots, live publish/check tooling, and local user-site browser proof exist for the current Shadownet proof contracts.
 
 This lane must not claim:
 
 - Full Pasta Protocol production deployment.
 - Mainnet Pasta contract readiness.
-- WTF.ME hosted mint/collection/purchase readiness.
+- Live WTF.ME hosted mint/collection/purchase readiness.
 - wtfOS hosted pinning/recovery readiness for Pasta artifacts.
 - Hosted-page, hosted-pinning, wallet-signed Colander mutation, and mainnet coverage for every Pasta publisher variant.
 
@@ -48,7 +49,7 @@ This lane must not claim:
 | Penne | Distribution contract product | PROVEN | PARTIAL | PARTIAL | PROVEN | OPEN | PROVEN | PARTIAL | OPEN |
 | Lasagna | Exhibition contract product | PROVEN | PARTIAL | PARTIAL | PROVEN | OPEN | PROVEN | PARTIAL | OPEN |
 | Colander | Management and discovery | PROVEN | PARTIAL | PARTIAL | OPEN | N/A | PROVEN | PARTIAL | OPEN |
-| WTF.ME | Hosted public pages | PARTIAL | N/A | N/A | OPEN | OPEN | OPEN | N/A | OPEN |
+| WTF.ME | Hosted public pages | PARTIAL | N/A | N/A | N/A | PARTIAL | OPEN | N/A | OPEN |
 | wtfOS pinning | Artifact and metadata durability | PROVEN | N/A | N/A | OPEN | OPEN | N/A | N/A | OPEN |
 | Pasta Suite Desktop | Bundled native app suite | N/A | N/A | N/A | N/A | N/A | N/A | PROVEN | N/A |
 
@@ -73,7 +74,7 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 | Penne signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:penne:e2e` originated `KT1EPdyxCjmosesvJ21cr8WqoCnTXoomCpRz`, created token 0, loaded two allocations, opened claim, completed a collector pull claim, completed an admin push airdrop, closed claim, decoded metadata, and verified allocation consumption, claimed state, total supply, and creator/collector ownership in TzKT big maps. | PROVEN |
 | Lasagna signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:lasagna:e2e` originated `KT1TEz2Rq8nUiNcJEAssrdrTqPj1h3ZN9B8r`, added and removed a curator, published two revisions, rolled the current pointer back to revision 0, transferred and accepted administration, decoded metadata, and verified final storage and revision big-map state in TzKT. | PROVEN |
 | Colander real KT1 discovery | `npm run pasta:shadownet:colander` opened the current Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna Shadownet proof KT1s through `/tools/colander`, detected adapters/actions, rendered Shadownet explorer links and relationship groups, and observed `colander.contract_opened` / `colander.graph_viewed` events. | PROVEN |
-| WTF.ME hosted Pasta pages | No proof for mint pages, collection pages, landing pages, branding, wallet connect, or purchase flows. | OPEN |
+| WTF.ME hosted Pasta pages | `npx tsx --test server/features/wtf-sites/pasta-hosting.test.ts`, `npm run pasta:wtfme:live-publish:check`, `npm run pasta:wtfme:live-inventory:check`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, and `npm run pasta:shadownet:wtfme` passed. These prove current-contract page snapshots, dry-run/write-gated live publish tooling, read-only live inventory tooling, inventory ownership, and a local published WTF.ME host browser proof for landing/mint/collection pages. `npm run pasta:wtfme:live-check` still fails against production because `https://wtfos.app/internal/tls/allow?domain=wtf-admin.wtfos.me` returns HTTP 403 `handle not registered`, so the actual live host is not proven. | PARTIAL |
 | wtfOS Pasta pinning/recovery | No proof for artifact pinning, metadata pinning, file pinning, redundancy, accessibility, or recovery tied to Pasta publish flows. | OPEN |
 | Mainnet deployment | Intentionally blocked until Shadownet and hosted-page gates are complete. | OPEN |
 
@@ -82,14 +83,14 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 The safe next push target is this narrow proof lane. A full production Pasta deployment claim should wait until these minimum gates are green:
 
 1. Signer-backed Shadownet proof exists for every Pasta publisher that production UI presents as deployable.
-2. WTF.ME serves at least one Pasta mint page, collection page, and landing page backed by Shadownet proof data.
+2. WTF.ME serves at least one live Pasta mint page, collection page, and landing page backed by Shadownet proof data.
 3. wtfOS pinning verifies artifact, metadata, redundancy, and recovery for a Pasta publish.
 4. Wallet-signed Colander management mutations are covered before using Colander as an operational admin surface.
 5. All executable verification commands pass on the production promotion branch.
 
 ## Next Implementation Order
 
-1. Add WTF.ME hosted page checks for the proven contracts/tokens.
+1. Publish the generated Pasta landing/mint/collection pages to a claimed production WTF.ME host and make `npm run pasta:wtfme:live-check` pass, including `.well-known/wtfos-pins`.
 2. Add wtfOS artifact/metadata pinning and recovery checks.
 3. Add wallet-signed Colander management mutation proof for representative safe actions before treating Colander as an operational admin surface.
 4. Repeat the standalone installer manifest/release proof pattern for remaining individual Pasta apps if separate native downloads are required.

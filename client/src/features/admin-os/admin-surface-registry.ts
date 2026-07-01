@@ -881,6 +881,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "wtf_domain.registration.prepared",
       "ipfs_pinning.subdomain_registry.linked",
       "wtf_site.claimed",
+      "wtf_site.public.viewed",
       "macaroni.drop_published",
     ],
     behaviorAssertionIds: [
@@ -888,6 +889,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "settings.subdomain-setup-applet",
       "account.cobwebsaints-domain-advanced-readiness",
       "macaroni.shadownet-rpc-wallet-setup",
+      "pasta-protocol.wtfme-hosted-pages",
     ],
   },
   {
@@ -1055,11 +1057,13 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "colander.transfer_submitted",
       "colander.role_updated",
       "colander.graph_viewed",
+      "wtf_site.public.viewed",
     ],
     behaviorAssertionIds: [
       "pasta-protocol.sandbox-safe-feedback",
       "pasta-protocol.chease-handoff",
       "pasta-protocol.colander-context-handoff",
+      "pasta-protocol.wtfme-hosted-pages",
     ],
   },
   {
@@ -1142,6 +1146,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "ipfs_pinning.pds_record.published",
       "ipfs_pinning.subdomain_registry.linked",
       "ipfs_pinning.restore_proof.created",
+      "wtf_site.public.viewed",
       "porcupin.connect",
       "porcupin.premium.check",
     ],
@@ -1150,6 +1155,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "account.cobwebsaints-domain-advanced-readiness",
       "macaroni.wtfos-package-source",
       "skullzarmy.fafolab-integration-contracts",
+      "pasta-protocol.wtfme-hosted-pages",
     ],
   },
   {

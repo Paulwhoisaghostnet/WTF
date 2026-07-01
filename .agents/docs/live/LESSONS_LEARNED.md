@@ -1,3 +1,13 @@
+## 2026-07-01 - Apply patches must target the release worktree explicitly
+
+**What happened**: While mining the stale Pasta WTF.ME hosting slice, `apply_patch` initially wrote new untracked files into the original dirty `WTF` checkout because the desktop thread cwd was still the main workspace even though all verification and release work belonged in the clean `codex-spaghetti-installer-live` worktree. The files were copied into the release worktree and the accidental original-checkout copies were removed before continuing.
+
+**Why it mattered**: This repo intentionally has a dirty original checkout and a clean release worktree. A correct patch applied to the wrong checkout can make the stale tree look newer than production authority, create confusing cleanup evidence, or lead to tests passing against files that will not be committed or deployed.
+
+**Rule**: When working from an isolated release worktree, use absolute paths in every `apply_patch` target or otherwise confirm the patch destination before editing. After any accidental cross-checkout write, remove only the files created by the current pass and verify both worktrees with `git status --short`.
+
+---
+
 ## 2026-07-01 - Sequential Pasta signer proofs need balance budgeting
 
 **What happened**: The Rotini signer-backed Shadownet proof correctly blocked before origination because the shared creator signer had only `2227765` mutez after previous Spaghetti, Gnocchi, and Ravioli proof runs. The proof needed origination plus create/mint/transfer headroom, so Shadownet faucet top-up `onpqeephir1NEprF9YdCpRtA4jKS72J2GLTVPu4Yte6FZLMo65q` was required before the final run passed.
