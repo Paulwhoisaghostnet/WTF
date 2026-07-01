@@ -68,6 +68,7 @@ Priority labels:
 | WTF-BB-344 | Verified | Codex Pasta live verification docs | 2026-07-01 | Pasta Protocol / installer catalog | P2 | 9 | 12 | 1 | 3 | 2 | Unified "suite or any individual Pasta app" catalogue is deployed on live `wtfos.app` and reconfirmed on commit `26c60cd`: `/api/pasta/installers/catalog` returns unauthenticated `401`, `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` passes the catalog probe, and the gate verifies Macaroni, Pasta Suite, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna public release assets while still blocking only on missing WTF.ME publish credentials and live Pasta host proof |
 | WTF-BB-345 | Verified | Codex Inbox compose full-send | 2026-07-01 | Social / Inbox and WIM compose UX | P1 | 12 | 7 | 3 | 5 | 0 | Inbox aggregated mail, WIM, Studio, comms, and notifications but still behaved like a read-only viewer; current branch adds first-class New message/New mail controls, selected external-mail Reply/Forward actions, inline WIM/Studio conversation sending through source-owned DM APIs, inventory-owned behavior assertions, admin registry coverage, and verified clean-worktree source, build, focused browser, and full inventory coverage before production promotion |
 | WTF-BB-346 | Fixed | Codex WTF LIVE smart-room goal | 2026-07-01 | WTF LIVE / user-aware room operations | P1 | 14 | 3 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
+| WTF-BB-347 | Fixed | Codex Pasta Colander RPC fallback | 2026-07-01 | Pasta Protocol / Colander Shadownet RPC resilience | P1 | 11 | 8 | 2 | 4 | 1 | Colander Shadownet discovery now retries recoverable primary RPC timeouts through the configured `https://tcinfra.net/rpc/tezos/shadownet` fallback with a bounded per-attempt read budget while preserving explicit env RPC overrides and the localhost wallet harness; focused, full Colander, and warm-prefix inventory proofs pass |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -6169,7 +6170,7 @@ Priority labels:
 ### WTF-BB-272 - Macaroni social shares omit creator social identity and token media
 
 - Category: Macaroni / generated drop website social sharing
-- Status: In Progress
+- Status: Fixed
 - Owner/Session: Codex Macaroni social-share identity/media pass
 - Score: C2 + F4 + S0 + P1(4) = 10
 - Evidence:
@@ -7409,6 +7410,35 @@ Priority labels:
   - Confirmed the closest existing production host still fails correctly: `PASTA_WTFME_LIVE_HOST=paulwhoisaghost.wtfos.me PASTA_WTFME_LIVE_CHECK_PINS=0 npm run pasta:wtfme:live-check` exits on the missing Pasta landing marker.
   - Passed `git diff --check`.
   - Still blocked live: no production host currently serves the Pasta landing/mint/collection pages plus public pin discovery; `wtf-admin.wtfos.me` is unregistered, and `paulwhoisaghost.wtfos.me` is registered but not yet published with Pasta content.
+
+### WTF-BB-347 - Colander Shadownet discovery needs RPC fallback
+
+- Category: Pasta Protocol / Colander Shadownet RPC resilience
+- Status: In Progress
+- Owner/Session: Codex Pasta Colander RPC fallback
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - Main Quality Gates run `28548649768` failed the Inventory Playwright smoke on `tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs` while waiting for a proven Shadownet contract fact row.
+  - Local focused reproduction with `HARNESS_PORT=4322 npx playwright test tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs -g "opens proven Shadownet" --project=chromium --reporter=list` failed after opening earlier contracts and rendering `HTTP request timeout of 30000ms exceeded` for Rotini.
+  - The failure moved between CI and local runs, proving a single bad contract expectation was not the root cause. Colander used the primary `https://tezos-shadownet.octez.io/` endpoint without the configured Shadownet fallback.
+  - A broad inventory reproduction after adding fallback still failed while the page was stuck in `Reading ...` state: the first RPC attempt could spend Taquito's full 30s timeout before fallback, leaving the 45s assertion window too tight.
+- Why it matters:
+  - Colander is the Pasta ownership/discovery control panel. A transient primary RPC timeout should not make the live app or release gate fail when the project has an explicit fallback endpoint for Shadownet.
+- Correction direction:
+  - Add shared client fallback metadata for configured Tezos RPCs.
+  - Route Colander read-only contract discovery through a recoverable-error fallback helper with a bounded per-attempt timeout while preserving explicit user/env RPC overrides and the localhost test harness.
+- Verification idea:
+  - Focused Colander discovery Playwright proof passes after fallback support.
+  - Policy coverage proves the Shadownet fallback remains wired into the shared client Tezos helpers and Colander.
+  - Main Quality Gates are rerun or a branch Quality Gates run proves the full inventory smoke.
+- Current pass verification:
+  - Passed `npx tsx --test client/src/lib/tezos/wallet-shadownet-preflight-policy.test.ts client/src/lib/tezos/wallet-connect-policy.test.ts`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run build && HARNESS_PORT=4322 npx playwright test tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs -g "opens proven Shadownet" --project=chromium --reporter=list`; the previously failing read-only discovery proof opened all six proven Shadownet contracts.
+  - Passed `HARNESS_PORT=4322 npx playwright test tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs --project=chromium --reporter=list`; the localhost browser-wallet action harness still passes.
+  - Passed warm-prefix inventory reproduction after the bounded-attempt fix: `npx playwright test tests/playwright/inventory/auth-session.spec.mjs tests/playwright/inventory/beta-wtfos.spec.mjs tests/playwright/inventory/broot.spec.mjs tests/playwright/inventory/cobwebsaints-account.spec.mjs tests/playwright/inventory/dedrooms.spec.mjs tests/playwright/inventory/desktop-settings-typography.spec.mjs tests/playwright/inventory/domain-interoperability.spec.mjs tests/playwright/inventory/feature-depth.spec.mjs tests/playwright/inventory/gamma-wtfos.spec.mjs tests/playwright/inventory/ipfs-pinning-manager.spec.mjs tests/playwright/inventory/macaroni-packager.spec.mjs tests/playwright/inventory/map-lab-workspace.spec.mjs tests/playwright/inventory/market-pricing.spec.mjs tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs --project=chromium --reporter=list` (`218 passed`).
+  - Passed `npm run test:e2e:inventory:coverage`, `npm run pasta:repo-cleanup:audit:check`, `npm run pasta:live-readiness:check`, `npm run pasta:repo-cleanup:audit`, `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`, and `git diff --check`.
+  - Pending remote verification: branch/main Quality Gates have not yet run for this fix.
 
 ### WTF-BB-343 - Remaining standalone Pasta installers are not all live
 

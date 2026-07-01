@@ -13,7 +13,7 @@ import styled from "styled-components";
 import { AppWindow } from "../../../components/layout/AppWindow";
 import { MOBILE } from "../../../global-styles";
 import { presentationRouteHref, usePresentationShell } from "../../../lib/presentation-shell";
-import { connectWallet, getActiveAccount, getTezos } from "../../../lib/tezos/wallet";
+import { connectWallet, getActiveAccount, getTezos, withTezosRpcFallback } from "../../../lib/tezos/wallet";
 import { getNetwork } from "../../../lib/tezos/loaders";
 import { assertNetworkReadyForSend } from "../../../lib/tezos/preflight";
 import { logClientSystemEvent } from "../../../lib/system-log";
@@ -195,56 +195,61 @@ export function ColanderApp() {
     setActiveAction(null);
     setStatus(`Reading ${short(kt)}…`);
     try {
-      const tezos = await colanderGetTezos();
-      const contract = await tezos.contract.at(kt);
-      const entrypoints = Object.keys((contract as any).entrypoints?.entrypoints ?? {});
-      const adapter = detectPastaContract(entrypoints);
-      const actions = adapter ? availableActions(adapter, entrypoints) : [];
+      const readContract = async (tezos: any): Promise<OpenedContract> => {
+        const contract = await tezos.contract.at(kt);
+        const entrypoints = Object.keys((contract as any).entrypoints?.entrypoints ?? {});
+        const adapter = detectPastaContract(entrypoints);
+        const actions = adapter ? availableActions(adapter, entrypoints) : [];
 
-      let admin: string | undefined;
-      let pendingAdmin: string | undefined;
-      let tokenCount: number | undefined;
-      let revisionCount: number | undefined;
-      let relationship: OwnershipRelationshipMetadata | undefined;
-      let metadataUri: string | undefined;
-      try {
-        const st: any = await contract.storage();
-        admin = typeof st.administrator === "string" ? st.administrator : undefined;
-        pendingAdmin =
-          st.pending_administrator && typeof st.pending_administrator === "string"
-            ? st.pending_administrator
-            : undefined;
-        tokenCount = bigToNum(st.next_token_id);
-        revisionCount = bigToNum(st.revision_count);
-        if (st.metadata && typeof st.metadata.get === "function") {
-          const raw = await st.metadata.get("");
-          if (typeof raw === "string" && raw.length > 0) {
-            metadataUri = hexToUtf8(raw);
-            relationship = await fetchRelationship(metadataUri);
+        let admin: string | undefined;
+        let pendingAdmin: string | undefined;
+        let tokenCount: number | undefined;
+        let revisionCount: number | undefined;
+        let relationship: OwnershipRelationshipMetadata | undefined;
+        let metadataUri: string | undefined;
+        try {
+          const st: any = await contract.storage();
+          admin = typeof st.administrator === "string" ? st.administrator : undefined;
+          pendingAdmin =
+            st.pending_administrator && typeof st.pending_administrator === "string"
+              ? st.pending_administrator
+              : undefined;
+          tokenCount = bigToNum(st.next_token_id);
+          revisionCount = bigToNum(st.revision_count);
+          if (st.metadata && typeof st.metadata.get === "function") {
+            const raw = await st.metadata.get("");
+            if (typeof raw === "string" && raw.length > 0) {
+              metadataUri = hexToUtf8(raw);
+              relationship = await fetchRelationship(metadataUri);
+            }
           }
+        } catch {
+          // storage shape varies; the control panel still works from entrypoints alone.
         }
-      } catch {
-        // storage shape varies; the control panel still works from entrypoints alone.
-      }
 
-      const next: OpenedContract = {
-        address: kt,
-        adapter,
-        entrypoints,
-        actions,
-        admin,
-        pendingAdmin,
-        tokenCount,
-        revisionCount,
-        relationship,
-        metadataUri,
+        return {
+          address: kt,
+          adapter,
+          entrypoints,
+          actions,
+          admin,
+          pendingAdmin,
+          tokenCount,
+          revisionCount,
+          relationship,
+          metadataUri,
+        };
       };
+
+      const next = getColanderTezosHarness()?.getTezos
+        ? await readContract(await colanderGetTezos())
+        : await withTezosRpcFallback((tezos) => readContract(tezos), { network, attemptTimeoutMs: 10_000 });
       setOpened(next);
-      setStatus(adapter ? `Opened ${adapter.label}` : "Opened (unrecognized contract)");
+      setStatus(next.adapter ? `Opened ${next.adapter.label}` : "Opened (unrecognized contract)");
       logClientSystemEvent({
         eventType: "colander.contract_opened",
         message: `Colander opened ${kt}`,
-        metadata: { app: "Colander", contract: kt, kind: adapter?.kind ?? "unknown", network },
+        metadata: { app: "Colander", contract: kt, kind: next.adapter?.kind ?? "unknown", network },
       });
       logClientSystemEvent({
         eventType: "colander.graph_viewed",
@@ -252,8 +257,8 @@ export function ColanderApp() {
         metadata: {
           app: "Colander",
           contract: kt,
-          hasRelationship: Boolean(relationship),
-          franchise: relationship?.franchise_contract ?? null,
+          hasRelationship: Boolean(next.relationship),
+          franchise: next.relationship?.franchise_contract ?? null,
         },
       });
     } catch (e) {

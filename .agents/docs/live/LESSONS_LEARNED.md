@@ -1,3 +1,13 @@
+## 2026-07-01 - Browser chain proofs need configured RPC fallback
+
+**What happened**: Main Quality Gates failed the Colander Shadownet discovery smoke while waiting for a proven Pasta contract fact row. Local focused reproduction failed on a different proven contract and the page status showed `HTTP request timeout of 30000ms exceeded`, proving the root cause was a transient primary Shadownet RPC timeout, not a bad selector or stale KT1 fixture. A second broad-suite reproduction showed that fallback alone was still too slow when the first RPC attempt consumed Taquito's full 30s timeout.
+
+**Why it mattered**: Colander is the Pasta ownership/discovery control panel. A browser proof that relies on a single public RPC can fail a live promotion even when the project has an explicit fallback endpoint and the contracts are otherwise readable.
+
+**Rule**: Browser Tezos reads that use project default RPCs must route recoverable network/RPC failures through the configured fallback endpoint with a bounded per-attempt read budget. Preserve explicit user/env RPC overrides, keep wallet-signing preflights strict, and reproduce timeout failures before changing selectors or waits.
+
+---
+
 ## 2026-07-01 - Markdown backticks in shell arguments execute in zsh
 
 **What happened**: A `gh pr create --body "..."` command included a Markdown inline-code phrase using backticks around `pasta:live-readiness`. zsh treated the backticked phrase as command substitution, printed `command not found: pasta:live-readiness`, and created the PR with that phrase missing from the body.

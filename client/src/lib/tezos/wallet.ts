@@ -1,6 +1,7 @@
 import {
   loadOctezConnect,
   loadTaquito,
+  getRpcFallbackUrlsForNetwork,
   getRpcUrlForNetwork,
   getNetwork,
 } from "./loaders";
@@ -124,6 +125,43 @@ function resolveAuthWalletConfig(): WalletNetworkConfig {
 
 function sameWalletConfig(a: WalletNetworkConfig | null, b: WalletNetworkConfig): boolean {
   return !!a && a.network === b.network && a.rpcUrl === b.rpcUrl;
+}
+
+function normalizeRpcUrl(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
+function uniqueRpcUrls(urls: string[]): string[] {
+  const seen = new Set<string>();
+  return urls.filter((url) => {
+    const normalized = normalizeRpcUrl(url);
+    if (seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+}
+
+function isRecoverableRpcError(err: unknown): boolean {
+  const message = String((err as Error)?.message || (err as Error)?.name || err || "").toLowerCase();
+  return /access-control|cors|failed to fetch|http request timeout|networkerror|rpc|timeout|503|502|504/.test(message);
+}
+
+async function withRpcAttemptTimeout<T>(task: Promise<T>, rpcUrl: string, timeoutMs?: number): Promise<T> {
+  if (!timeoutMs || timeoutMs <= 0) return task;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      task,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Tezos RPC attempt timed out after ${timeoutMs}ms at ${rpcUrl}`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 interface WalletAdapter {
@@ -578,6 +616,34 @@ export async function getTezos(options: { network?: string; rpcUrl?: string } = 
     await currentAdapter.setAsTaquitoProvider(tezosToolkit);
   }
   return tezosToolkit;
+}
+
+export async function withTezosRpcFallback<T>(
+  task: (tezos: any, context: { network: string; rpcUrl: string; attempt: number }) => Promise<T>,
+  options: { network?: string; rpcUrl?: string; attemptTimeoutMs?: number } = {},
+): Promise<T> {
+  const config = resolveWalletConfig(options);
+  const fallbackUrls = options.rpcUrl ? [] : getRpcFallbackUrlsForNetwork(config.network);
+  const candidates = uniqueRpcUrls([config.rpcUrl, ...fallbackUrls]);
+  let lastError: unknown;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const rpcUrl = candidates[index];
+    try {
+      const tezos = await getTezos({ network: config.network, rpcUrl });
+      return await withRpcAttemptTimeout(
+        task(tezos, { network: config.network, rpcUrl, attempt: index + 1 }),
+        rpcUrl,
+        options.attemptTimeoutMs,
+      );
+    } catch (err) {
+      lastError = err;
+      if (index >= candidates.length - 1 || !isRecoverableRpcError(err)) throw err;
+      console.warn(`[WTF] Tezos RPC ${rpcUrl} failed; retrying with fallback ${candidates[index + 1]}`, err);
+    }
+  }
+
+  throw lastError;
 }
 
 async function activateAdapterForSend(
