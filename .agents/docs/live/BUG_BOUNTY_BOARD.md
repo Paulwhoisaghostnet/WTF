@@ -7540,7 +7540,7 @@ Priority labels:
 ### WTF-BB-348 - Inventory smoke needs timeout and heartbeat diagnostics
 
 - Category: E2E / Quality Gates observability
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Pasta CI smoke heartbeat
 - Score: C1 + F3 + S0 + P2(3) = 7
 - Evidence:
@@ -7561,6 +7561,7 @@ Priority labels:
   - Passed `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; live `wtfos.app` commit `9209829` still proves static Pasta runtime markers, suite/individual installer assets, the installer catalog, and recorded Colander action proof while blocking only on WTF.ME credentials and `PASTA_WTFME_LIVE_HOST`.
   - Branch push Quality Gates `28554283936` passed; app-quality completed in 15m11s and the log shows 60-second heartbeat messages from 60s through 720s before `Inventory Playwright smoke completed`.
   - PR Quality Gates `28554285946` passed; app-quality completed in 15m41s and the log shows the same 60-second heartbeat pattern through 720s before completion.
+  - Current-head branch push Quality Gates `28554974401` and PR Quality Gates `28554976557` also passed on commit `663f8d9a`.
 
 ## Backlog Intake Template
 
