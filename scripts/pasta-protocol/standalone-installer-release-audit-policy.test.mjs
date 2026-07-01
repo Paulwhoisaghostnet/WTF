@@ -38,7 +38,8 @@ test("standalone installer release audit proves local source wiring before remot
 });
 
 test("standalone installer release audit checks remote workflow and release digests without publishing", () => {
-  assert.match(source, /ghJson\(\["workflow", "view", workflowPath, "--json", "id,name,path,state"\]\)/);
+  assert.match(source, /ghApiJson\(`repos\/\$\{repository\}\/actions\/workflows`\)/);
+  assert.match(source, /item\.path === workflowPath/);
   assert.match(source, /ghJson\(\["release", "view", app\.releaseTag, "--json", "tagName,isDraft,isPrerelease,assets,url"\]\)/);
   assert.match(source, /sha256FromDigest/);
   assert.match(source, /is missing a sha256 digest/);

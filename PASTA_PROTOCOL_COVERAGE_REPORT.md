@@ -34,13 +34,14 @@ The current deployment boundary is tracked in `.agents/docs/live/PASTA_LIVE_READ
 - `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:penne:e2e` now provides signer-backed Penne distribution proof on Shadownet. The latest run originated `KT1EPdyxCjmosesvJ21cr8WqoCnTXoomCpRz`, created token 0, loaded collector/creator allocations, opened claim, completed a collector pull claim, completed an admin push airdrop, closed claim, decoded token metadata from TzKT big-map state, and proved allocation consumption, claimed state, total supply, and creator/collector ownership.
 - `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:lasagna:e2e` now provides signer-backed Lasagna exhibition proof on Shadownet. The latest run originated `KT1TEz2Rq8nUiNcJEAssrdrTqPj1h3ZN9B8r`, added and removed a curator, published two revisions, rolled the current pointer back to revision 0, transferred and accepted administration, decoded collection/revision metadata from TzKT big-map state, and proved final administrator, revision count, current revision, referenced contracts, and cleared curator state.
 - `npm run pasta:shadownet:colander` now provides browser-side Colander discovery proof against the six current signer-backed Shadownet proof contracts. It opens Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna KT1s through `/tools/colander`, detects adapters/actions from live entrypoints/storage, renders Shadownet explorer links and relationship groups, and observes Colander discovery events. This covers Spaghetti standard collections, Gnocchi open editions, Ravioli bundles, Rotini generated collections, Penne distributions, and Lasagna exhibitions for Colander discovery; hosted pinning, WTF.ME, wallet-signed Colander mutations, and mainnet remain open.
-- Individual Macaroni Desktop, bundled Pasta Suite Desktop, and standalone Spaghetti Desktop downloadable lanes now have GitHub release artifacts and authenticated live manifest verifiers passing on `wtfos.app`. Future standalone app installers must follow the same release-asset, SHA-256, production-env, deployment, and authenticated-manifest proof pattern.
+- Individual Macaroni Desktop, bundled Pasta Suite Desktop, standalone Spaghetti Desktop, and standalone Gnocchi/Ravioli/Rotini/Penne/Lasagna Desktop downloadable lanes now have GitHub release artifacts, SHA-256 digests, production env, and authenticated live manifest verifiers passing on `wtfos.app`.
 
 ## Current Live Evidence
 
 - Macaroni Desktop `1.0.0` individual installers are live for macOS, Windows, and Raspberry Pi with authenticated manifest and byte-range release asset proof.
 - Pasta Suite Desktop `1.0.0` bundled installers are live for macOS, Windows, and Raspberry Pi with authenticated manifest and byte-range release asset proof.
 - Spaghetti Studio Desktop `1.0.0` standalone installers are live for macOS, Windows, and Raspberry Pi with authenticated manifest and byte-range release asset proof on `wtfos.app`.
+- Gnocchi Studio, Ravioli Studio, Rotini Studio, Penne Studio, and Lasagna Studio Desktop `1.0.0` standalone installers are live for macOS, Windows, and Raspberry Pi with authenticated manifest and byte-range release asset proof on `wtfos.app`.
 - Macaroni Shadownet local puppet proof passed 5/5 against `https://tezos-shadownet.octez.io/`, covering Shadownet defaults, chain-verified wallet safety, trusted-creator publish gating, mint-page wallet restore/disconnect, mismatched RPC blocking, and Kukai handoff.
 - Local Spaghetti proof passed through the real `/tools/spaghetti?handoff=chease-package` shell after rebuilding, proving the CH-EASE handoff query reaches the iframe and the static publisher module receives its shared `window.MD` runtime before rehearsing the chain-guarded publish sequence.
 - Real Shadownet preflight passed through `npm run pasta:shadownet:preflight`, proving the Spaghetti artifact and metadata/origination payload plan against `https://tezos-shadownet.octez.io/` and Shadownet TzKT before any wallet signing.
@@ -59,7 +60,7 @@ The current deployment boundary is tracked in `.agents/docs/live/PASTA_LIVE_READ
 
 - Wallet/network drift between Macaroni's proven legacy RPC defaults and new Pasta AGENTS.md defaults.
 - Trusted-creator wtfOS pinning/hosting accidentally leaking into standalone builds.
-- Future individual app installer manifests falsely reporting downloads before GitHub release digests, production env, deploy, and authenticated live verification are complete.
+- Future individual app installer manifests falsely reporting downloads before GitHub release digests, production runtime env, deploy, and authenticated live verification are complete.
 - Public hosting falsely reporting live before WTF.ME serves the expected page.
 - Indexer lag or high-level token endpoint omissions causing operation hashes to be mistaken for full ownership/metadata proof; fresh Shadownet contracts should verify storage and big-map state directly when needed.
 - Colander signed-management actions still need wallet-backed mutation proof before Colander can be treated as an operational admin surface.
@@ -74,6 +75,5 @@ The current deployment boundary is tracked in `.agents/docs/live/PASTA_LIVE_READ
 5. Add WTF.ME hosted page checks on top of the signer-backed proof contracts.
 6. Add WTFOS pinning/recovery checks for Pasta artifact and metadata durability.
 7. Add wallet-signed Colander management mutation proof for representative safe actions.
-8. Repeat the individual installer package/manifest/live-check pattern for Gnocchi, Ravioli, Rotini, Penne, and Lasagna if separate downloads are required beyond the Pasta Suite.
-9. Keep Macaroni, Spaghetti, and Pasta Suite installer verifiers as release gates while adding any future standalone Pasta installers.
-10. Use `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` as the live-push checklist, then only after Shadownet and hosted-page proof, plan mainnet/full-send deployment work.
+8. Keep all standalone and suite installer verifiers as release gates while adding any future native Pasta installer.
+9. Use `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` as the live-push checklist, then only after Shadownet and hosted-page proof, plan mainnet/full-send deployment work.

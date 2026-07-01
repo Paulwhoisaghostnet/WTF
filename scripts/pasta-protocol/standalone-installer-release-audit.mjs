@@ -150,6 +150,19 @@ function ghJson(args) {
   }
 }
 
+function ghApiJson(path) {
+  const result = run("gh", ["api", path]);
+  if (result.status !== 0) {
+    const output = `${result.stdout || ""}\n${result.stderr || ""}`.trim();
+    return { ok: false, detail: output || `gh api ${path} exited ${result.status ?? "unknown"}` };
+  }
+  try {
+    return { ok: true, value: JSON.parse(result.stdout || "{}") };
+  } catch (error) {
+    return { ok: false, detail: `failed to parse gh api JSON: ${error.message}` };
+  }
+}
+
 function sha256FromDigest(value) {
   const digest = String(value || "").toLowerCase();
   const sha256 = digest.startsWith("sha256:") ? digest.slice("sha256:".length) : digest;
@@ -225,18 +238,23 @@ function checkRemoteWorkflow(app) {
     record(app, "remote workflow", "skipped", "PASTA_STANDALONE_INSTALLER_AUDIT_CHECK_REMOTE=0");
     return;
   }
-  const workflowPath = `${app.key}-desktop-installers.yml`;
-  const result = ghJson(["workflow", "view", workflowPath, "--json", "id,name,path,state"]);
+  const workflowFile = `${app.key}-desktop-installers.yml`;
+  const workflowPath = `.github/workflows/${workflowFile}`;
+  const result = ghApiJson(`repos/${repository}/actions/workflows`);
   if (!result.ok) {
-    record(app, "remote workflow", "blocked", `${workflowPath} is not registered on ${repository}; push/merge the workflow before release dispatch`);
+    record(app, "remote workflow", "blocked", `${workflowFile} lookup failed on ${repository}: ${result.detail}`);
     return;
   }
-  const workflow = result.value;
+  const workflow = (result.value.workflows || []).find((item) => item.path === workflowPath || item.path === workflowFile);
+  if (!workflow) {
+    record(app, "remote workflow", "blocked", `${workflowFile} is not registered on ${repository}; push/merge the workflow before release dispatch`);
+    return;
+  }
   if (workflow.state !== "active") {
     record(app, "remote workflow", "blocked", `${workflowPath} state is ${workflow.state || "unknown"}`);
     return;
   }
-  record(app, "remote workflow", "pass", `${workflow.name || workflowPath} is active`);
+  record(app, "remote workflow", "pass", `${workflow.name || workflowPath} is active at ${workflow.path || workflowPath}`);
 }
 
 function checkRelease(app) {

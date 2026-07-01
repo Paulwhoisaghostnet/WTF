@@ -64,7 +64,7 @@ Priority labels:
 | WTF-BB-336 | Verified | Codex WTF LIVE stage controls full-send | 2026-07-01 | WTF LIVE / stage role controls | P1 | 13 | 6 | 3 | 5 | 1 | WTF LIVE stages now resolve through `/live/r/:stageId`, expose owner/host managed host/speaker role lists, gate audience mic/camera/screen/media publishing, and passed TypeScript, build, focused stage Playwright, inventory coverage, and the full inventory suite |
 | WTF-BB-341 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / standalone Spaghetti installers | P1 | 13 | 6 | 2 | 5 | 2 | Spaghetti Desktop `1.0.0` standalone installers are live on `wtfos.app`: production env is configured from GitHub release SHA-256 metadata, final Deploy to Hetzner `28493283644` and Quality Gates `28493283680` passed on live verification commit `e080b89`, and the authenticated live verifier passed with public byte-range probes for macOS, Windows, and Raspberry Pi |
 | WTF-BB-342 | In Progress | Codex Pasta manifest payload verifier | 2026-07-01 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 6 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, and current branch adds permission/object-storage-gated project-bundle publish, live publisher host-pinned/TLS-before-pin/overwrite-safe/post-publish-public-verifier ordering, an installer-aware live-readiness gate with credentialed non-writing publisher dry-run validation, signer-backed Colander management action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, non-spending readiness verification of that recorded TzKT operation, public DID/PDS pinManifest record resolution plus optional public manifest-payload validation in the live WTF.ME checker, and localhost-only Colander browser-wallet choreography coverage; production read-only audit shows `wtf-admin.wtfos.me` has no `wtf_user_sites` row, while `paulwhoisaghost.wtfos.me` is structurally eligible but not serving Pasta pages, and the live checker/inventory tools now require explicit or discovered hosts instead of defaulting to the stale target |
-| WTF-BB-343 | In Progress | Codex static standalone installer pass | 2026-07-01 | Pasta Protocol / individual installers | P2 | 11 | 8 | 2 | 4 | 2 | Remaining Pasta tools rely on the bundled Pasta Suite for live downloadable software; current branch adds source-verified standalone Gnocchi/Ravioli/Rotini/Penne/Lasagna Desktop package/workflow/authenticated manifest/live verifier/env docs/inventory coverage, makes the Pasta live-readiness gate block on their unpublished live verifiers, and adds a release audit helper for workflow/tag/env/deploy status, but their release assets, production env, live verification, and the Colander standalone packaging decision are not yet proven |
+| WTF-BB-343 | Verified | Codex standalone installer publication | 2026-07-01 | Pasta Protocol / individual installers | P2 | 11 | 8 | 2 | 4 | 2 | Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop `1.0.0` standalone installers are live on `wtfos.app`: workflows are registered, GitHub release assets exist with SHA-256 digests, runtime production env is configured in `/etc/wtf/wtf.env`, `server-deploy.sh` restored live commit `0558be0`, and authenticated live verifiers passed for macOS, Windows, and Raspberry Pi downloads |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -7386,23 +7386,25 @@ Priority labels:
 ### WTF-BB-343 - Remaining standalone Pasta installers are not all live
 
 - Category: Pasta Protocol / individual installers
-- Status: In Progress
-- Owner/Session: Codex static standalone installer pass
+- Status: Verified
+- Owner/Session: Codex standalone installer publication
 - Score: C2 + F4 + S2 + P2(3) = 11
 - Evidence:
   - Macaroni Desktop, Pasta Suite Desktop, and Spaghetti Desktop have production installer manifests, release assets, and live verifier coverage.
-  - The Pasta Suite manifest includes Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna in `bundledApps`, but separate native downloads do not yet exist for every Pasta tool.
-  - Current pass adds source-verified Gnocchi Desktop packaging, GitHub Actions workflow, authenticated `/api/gnocchi/installers` route, release verifier, env docs, and inventory probe.
-  - Current pass also adds source-verified Ravioli, Rotini, Penne, and Lasagna Desktop packaging, GitHub Actions workflows, authenticated installer manifest routes, release verifiers, env docs, and inventory probes.
-  - Current pass makes `npm run pasta:live-readiness` block explicitly on the unpublished Gnocchi/Ravioli/Rotini/Penne/Lasagna standalone installer live verifiers so a future full Pasta readiness claim cannot overlook them.
-  - Current pass adds `npm run pasta:standalone-installers:audit` to check local source policy, remote workflow registration, GitHub release tags/assets/digests, and deployed production manifest routes for those five apps before or after publication.
-  - Current pass does not publish `gnocchi-desktop-v1.0.0`, `ravioli-desktop-v1.0.0`, `rotini-desktop-v1.0.0`, `penne-desktop-v1.0.0`, or `lasagna-desktop-v1.0.0`, configure matching production installer env, or live-verify authenticated downloads for those apps.
+  - Main merge commit `0558be0` registered the Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop installer workflows and deployed authenticated `/api/<app>/installers` manifest routes on `wtfos.app`.
+  - Workflow dispatches `28519193761`, `28519193772`, `28519193756`, `28519193792`, and `28519193803` built macOS universal, Windows x64, and Raspberry Pi arm64 artifacts and published releases `gnocchi-desktop-v1.0.0`, `ravioli-desktop-v1.0.0`, `rotini-desktop-v1.0.0`, `penne-desktop-v1.0.0`, and `lasagna-desktop-v1.0.0`.
+  - Production runtime env `/etc/wtf/wtf.env` now contains the five apps' `*_INSTALLER_VERSION`, URL, and SHA-256 values. The repo `.env` was backed up at `/opt/platform/repos/wtf-app/.env.pasta-installers.20260701T130533Z.bak`, runtime env at `/etc/wtf/wtf.env.pasta-installers.20260701T130909Z.bak`.
+  - `scripts/server-deploy.sh` was rerun after runtime env publication and live `https://wtfos.app/api/health` returned `commitRef:"0558be0"` with `nodeEnv:"production"`.
+  - A temporary witness verifier account proved all five authenticated manifests and public release byte-range downloads.
 - Why it matters:
   - The active goal requires user-downloadable software packages as individual software items or as a suite. Suite coverage is proven, but per-app downloads need the same checksum-backed release discipline before they can be advertised independently.
-- Likely correction direction:
-  - Publish Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop release assets, configure production env from GitHub release SHA-256 metadata, run authenticated live installer verifiers for each app, then decide whether Colander should ship as a separate native admin app or remain an in-suite/main-app surface.
+- Correction:
+  - Published Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop release assets from the registered main-branch workflows.
+  - Configured production runtime env from GitHub release SHA-256 metadata and redeployed through `scripts/server-deploy.sh`.
+  - Fixed the standalone release audit to use the GitHub Actions API workflow path list instead of unsupported `gh workflow view --json` flags.
+  - Colander remains an in-suite/main-app operational surface for now; a separate native admin installer is a product decision, not a blocker for the individual static publisher downloads.
 - Verification idea:
-  - `npm run gnocchi:desktop:check`, `npm run ravioli:desktop:check`, `npm run rotini:desktop:check`, `npm run penne:desktop:check`, `npm run lasagna:desktop:check`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, and after release/env publication, authenticated live installer checks for each app.
+  - Keep `npm run pasta:standalone-installers:audit`, `npm run pasta:live-readiness`, and the five authenticated `npm run <app>:installers:live-check` commands as release-regression gates.
 - Current pass verification:
   - Passed `npm run gnocchi:desktop:prepare`.
   - Passed `npm run gnocchi:desktop:check`.
@@ -7412,7 +7414,10 @@ Priority labels:
   - Passed `npm run lasagna:desktop:prepare` and `npm run lasagna:desktop:check`.
   - Passed `npm run pasta:live-readiness:check` after adding individual installer release blockers.
   - Passed `npm run pasta:standalone-installers:audit:check`.
-  - Passed `PASTA_STANDALONE_INSTALLER_AUDIT_ALLOW_BLOCKERS=1 npm run pasta:standalone-installers:audit`; it verified local package version, route registration, and desktop policy for all five apps, then blocked correctly on missing remote workflow registration, missing `*-desktop-v1.0.0` release tags, and live production manifest routes returning HTTP 404.
+  - PR #12 merged to `main` as `0558be0`; Deploy to Hetzner `28518272800` passed and main Quality Gates `28518272811` passed.
+  - The five installer workflows completed successfully: Gnocchi `28519193761`, Ravioli `28519193772`, Rotini `28519193756`, Penne `28519193792`, and Lasagna `28519193803`.
+  - Passed `PASTA_STANDALONE_INSTALLER_AUDIT_ALLOW_BLOCKERS=1 npm run pasta:standalone-installers:audit` after the audit fix; it verified local source policy, active remote workflows, GitHub release assets with SHA-256 digests, and auth-protected production routes.
+  - Passed authenticated live checks against `https://wtfos.app`: `npm run gnocchi:installers:live-check`, `npm run ravioli:installers:live-check`, `npm run rotini:installers:live-check`, `npm run penne:installers:live-check`, and `npm run lasagna:installers:live-check`.
 
 ## Backlog Intake Template
 
