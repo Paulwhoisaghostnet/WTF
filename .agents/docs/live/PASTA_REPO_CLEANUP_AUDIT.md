@@ -6,17 +6,17 @@ Production focus: `https://wtfos.app`
 
 ## Current Production Authority
 
-- Authoritative production source is current `origin/main` at `abde65366e3c3a7ca7a5533a3130e3da897055ab` before this signer-backed Rotini Shadownet E2E slice.
+- Authoritative production source is current `origin/main` at `f3c9c4d174f5a38e08a019a8c3b808d88766545e` before this signer-backed Penne Shadownet E2E slice.
 - The Spaghetti installer route was code-verified on commit `09fff2fb2efe8481957d6f199cdf164f73c658c4`; live verification and release notes were promoted on `e080b896`.
 - Live cleanup verification later reported `commitRef: "21e1aca"`, `nodeEnv: "production"`, and healthy database, chain, and jobs status after the stale-worktree cleanup-doc deploy.
 - Main Quality Gates run `28494018464` and Deploy to Hetzner run `28494018454` succeeded for commit `21e1aca`.
 - Shadownet preflight commit `24cf9e26` is live: Deploy to Hetzner run `28494771031` and Quality Gates run `28494771038` passed, and live health reported `commitRef: "24cf9e2"` with healthy database, chain, and jobs status.
-- The broader Pasta evidence branch `codex/pasta-live-readiness` is a proof-only source branch; standalone Spaghetti, shared Shadownet proof-kit work, Gnocchi proof, Ravioli proof, and Rotini proof were promoted by narrow validated slices instead of merging that whole branch.
+- The broader Pasta evidence branch `codex/pasta-live-readiness` is a proof-only source branch; standalone Spaghetti, shared Shadownet proof-kit work, Gnocchi proof, Ravioli proof, and Rotini proof were promoted by narrow validated slices instead of merging that whole branch. Penne is staged in this current narrow validated slice.
 - Macaroni Desktop `1.0.0` individual installers are published as release assets and passed public plus authenticated manifest/download verification for macOS, Windows, and Raspberry Pi.
 - Pasta Suite Desktop `1.0.0` bundled installers are published as release assets and passed public plus authenticated manifest/download verification for macOS, Windows, and Raspberry Pi.
 - Spaghetti Studio Desktop `1.0.0` standalone installer package, GitHub Actions workflow, authenticated `/api/spaghetti/installers` manifest route, production env names, live verifier, docs, inventory probe, GitHub release assets, production env, and authenticated live verification now exist for macOS, Windows, and Raspberry Pi.
 - Local Macaroni Shadownet puppet proof now passes 5/5 against a disposable Postgres database and `https://tezos-shadownet.octez.io/`, covering trusted-creator defaults, wallet chain safety, wtfOS publish gating, standalone mint-page wallet restore/disconnect, mismatched RPC blocking, and Shadownet Kukai handoff.
-- Local signer-backed Spaghetti, Gnocchi, Ravioli, and Rotini Shadownet E2E proofs now pass against `https://tezos-shadownet.octez.io/` with operation and indexed TzKT evidence.
+- Local signer-backed Spaghetti, Gnocchi, Ravioli, Rotini, and Penne Shadownet E2E proofs now pass against `https://tezos-shadownet.octez.io/` with operation and indexed TzKT evidence.
 - Live Pasta/Macaroni static wallet bundles for `macaroni`, `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna` passed stale-Taquito probes: Taquito `24.3.0` is absent, Taquito `25.0.0` is present, and the old `rpc.shadownet.teztnets.com` marker is absent.
 - Live Pasta static publisher `common.js` files now expose the `window.MD` runtime export in `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna`, while retaining `consumeCheaseHandoff()` and `loadPlatformCapabilities()` markers.
 
@@ -34,7 +34,7 @@ Production focus: `https://wtfos.app`
 | Worktree | Branch/Head | Dirty Count | Classification | Action |
 | --- | --- | ---: | --- | --- |
 | `.config/superpowers/worktrees/WTF/codex-pasta-live-readiness` | `codex/pasta-live-readiness` / `1354f490` | 0 | Valid Pasta proof branch with unique unmerged work | Keep as a source branch for narrow, validated Shadownet/WTF.ME/pinning slices. It is not the production base and should not be merged wholesale. |
-| `.config/superpowers/worktrees/WTF/codex-spaghetti-installer-live` | `codex/spaghetti-installer-live` / `abde6536` | 0 before this E2E proof slice | Current production/promotion checkout | Production-aligned with `origin/main` before this signer-backed Rotini proof edit; keep as the clean continuation lane for the next Pasta slice. |
+| `.config/superpowers/worktrees/WTF/codex-spaghetti-installer-live` | `codex/spaghetti-installer-live` / `f3c9c4d` | 0 before this E2E proof slice | Current production/promotion checkout | Production-aligned with `origin/main` before this signer-backed Penne proof edit; keep as the clean continuation lane for the next Pasta slice. |
 | `Desktop/cursor-projects/Sandbox/WTF combo/WTF` | local `main` / `9d043fd` | 298 | Stale mixed scratch checkout | Do not deploy from it. It is 38 commits behind `origin/main` and mixes Pasta, Gamma/Beta, apphost, Agent, localization, Skywire, WTF LIVE, Particle Painter, docs, and test churn. Preserve or archive only after user confirmation. |
 | `Desktop/cursor-projects/Sandbox/WTF combo/WTF-pasta-deploy` | absent | 0 | Removed stale Pasta prototype | Historical regression warning only. Do not recreate or replay its patch. |
 | `Desktop/cursor-projects/Sandbox/WTF combo/DUMMY PASTA` | standalone fixture repo | 0 | Shadownet Macaroni rehearsal fixture | Keep as fixture/reference material; it is not a WTF app worktree and not production deploy code. |
@@ -64,8 +64,8 @@ Conclusion: `WTF-BB-332` is verified closed. Preserve the warning in history, bu
 - The CH-EASE package-to-Pasta static runtime fix is now production-deployed: post-deploy live probes confirm `window.MD` exports on the six Pasta publisher bundles.
 - Pasta suite installer/download is now production-complete for the bundled native suite lane: `apps/pasta-suite-desktop`, the `pasta-suite-desktop-installers.yml` workflow, `/api/pasta/installers`, inventory coverage, package policy checks, GitHub release assets, production env, and the authenticated live verifier all passed for `pasta-suite-desktop-v1.0.0`.
 - Spaghetti standalone installer/download is production-complete for the standalone native app lane: `apps/spaghetti-desktop`, the `spaghetti-desktop-installers.yml` workflow, `/api/spaghetti/installers`, inventory coverage, package policy checks, env examples, docs, live verifier, GitHub release assets, production `SPAGHETTI_INSTALLER_*` env, deploy, and authenticated live verifier all passed for `spaghetti-desktop-v1.0.0`.
-- Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, the Spaghetti preflight, and the signer-backed Spaghetti/Gnocchi/Ravioli/Rotini proofs: Penne, Lasagna, failure recovery, WTF.ME hosting, wtfOS pinning, and cross-app Colander management should remain open until executable evidence exists.
-- The remaining unique Pasta proof work is concentrated in `codex/pasta-live-readiness`; it should be mined by narrow slices. The current slice adds the signer-backed Rotini generative proof on the shared Shadownet proof kit without merging that broader branch wholesale.
+- Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, the Spaghetti preflight, and the signer-backed Spaghetti/Gnocchi/Ravioli/Rotini/Penne proofs: Lasagna, failure recovery, WTF.ME hosting, wtfOS pinning, and cross-app Colander management should remain open until executable evidence exists.
+- The remaining unique Pasta proof work is concentrated in `codex/pasta-live-readiness`; it should be mined by narrow slices. The current slice adds the signer-backed Penne distribution proof on the shared Shadownet proof kit without merging that broader branch wholesale.
 - Local `main` at the original workspace should be fast-forwarded, reset, or archived only after the user confirms whether its dirty scratch content should be preserved.
 
 ## Current Macaroni Shadownet Proof
@@ -175,10 +175,23 @@ Conclusion: `WTF-BB-332` is verified closed. Preserve the warning in history, bu
 - Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-rotini-e2e-report.md`.
 - Scope note: this proves Rotini generative collection deployment, deterministic generated-token metadata, token creation, minting, transfer/collect, total supply, and ownership resolution. It does not yet prove WTF.ME page hosting, hosted wtfOS pinning, recovery, Colander real-contract discovery, browser wallet batching, or every Pasta publisher variant.
 
+## Current Penne Shadownet E2E Proof
+
+- Local proof command: `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:penne:e2e`.
+- Safety gate: without `PASTA_SHADOWNET_E2E_EXECUTE=1`, the command writes a `BLOCKED` report and exits before spending Shadownet test tez.
+- Network proof: the command validates the configured Shadownet RPC chain id against `NetXsqzbfFenSTS` before loading signer state and again before creator and collector sensitive operations.
+- Keyring proof: the command loads the platform keyring wallets `wtf-os-root` and `arcade-treasury`, requires both to be Shadownet wallets, and records only public wallet ids/addresses in the report.
+- Funding proof: before origination, creator wallet `tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM` had `4928219` mutez and collector wallet `tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej` had `673838` mutez. The command estimated origination fee `7339` mutez plus burn `1809500` mutez and verified create/allocation/open/airdrop/close headroom before spending.
+- Deployment proof: contract `KT1EPdyxCjmosesvJ21cr8WqoCnTXoomCpRz` originated on Shadownet by `wtf-os-root`.
+- Operation proof: origination `oo4EWt4cSBzh8YQXMvstowHos8FyBJ4hHCmQgn6N6Tjf5AqoMkN`, create distribution token `oobqhAW2hYrFKgH8oUzVhDBXFNxgX2MjMezFrYcpBo5ePDJoo2n`, set allocations `ooKD83y3BSchZp7ag4SNN9EmEzz3sv6CdusqHq6g9oTFhk9qcxU`, open claim `opYFDNKKVqYCi6grnxmzptRFbmfUtymfYUzbV7EjnBh98sWFXq8`, collector claim `oo5bYmyRD3jbNkrM55SEYgMQJLWXmiyGT9HGZAJkteAprBaiJGG`, admin airdrop `onobWdgobH4Gbm3kNYeXQFNtGe9bx8RMB4jp6VCqB8PgwjYtexq`, and close claim `ookcHpcnnux1bD1VsJ3AE9fAh9YQZ14LaG8tcF2nrLc4Fh6sg6n`.
+- Indexer proof: TzKT storage indexed ledger big map `26824`, token metadata big map `26828`, total supply big map `26829`, allocations big map `26822`, claimed big map `26823`, collector ledger balance `2` after pull claim, creator ledger balance `3` after admin airdrop, total supply `5`, claimed entries collector `2` and creator `3`, inactive/cleared allocation rows for both recipients, final claim window `false`, and decoded token metadata name `Penne Proof Distribution Token` with relationship metadata and distribution modes intact.
+- Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-penne-e2e-report.md`.
+- Scope note: this proves Penne distribution deployment, token creation, allocation loading, claim-window configuration, recipient pull claim, admin push airdrop, allocation consumption, supply, ownership, claimed-state, and metadata resolution. It does not yet prove WTF.ME page hosting, hosted wtfOS pinning, Colander real-contract discovery, browser wallet batching, failure recovery, or every Pasta publisher variant.
+
 ## Recommended Next Actions
 
-1. Mine `codex/pasta-live-readiness` by narrow slices for Penne, Lasagna, Colander discovery, WTF.ME hosting, and wtfOS pinning/recovery. Do not merge the branch wholesale.
-2. Extend the now-green Macaroni Shadownet lane and signer-backed Spaghetti/Gnocchi/Ravioli/Rotini proofs into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
+1. Mine `codex/pasta-live-readiness` by narrow slices for Lasagna, Colander discovery, WTF.ME hosting, and wtfOS pinning/recovery. Do not merge the branch wholesale.
+2. Extend the now-green Macaroni Shadownet lane and signer-backed Spaghetti/Gnocchi/Ravioli/Rotini/Penne proofs into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
 3. Repeat the individual installer package/manifest/live-check pattern for Gnocchi, Ravioli, Rotini, Penne, and Lasagna if separate per-app downloads are required beyond the bundled Pasta Suite.
 4. After user confirmation, archive/delete merged historical Macaroni/IPFS and other clean ancestor worktrees; leave dirty non-Pasta worktrees untouched.
 5. Decide whether the original dirty local `WTF` checkout should be preserved before any reset, fast-forward, or archival action.

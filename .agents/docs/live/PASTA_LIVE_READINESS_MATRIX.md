@@ -16,6 +16,7 @@ This lane can safely claim:
 - Gnocchi has a signer-backed Shadownet open-edition deploy/configure/open-mint proof command.
 - Ravioli has a signer-backed Shadownet bundle deploy/create/mint/transfer/redeem proof command.
 - Rotini has a signer-backed Shadownet generative deploy/create/mint/collect proof command.
+- Penne has a signer-backed Shadownet distribution deploy/configure/claim/airdrop proof command.
 
 This lane must not claim:
 
@@ -42,7 +43,7 @@ This lane must not claim:
 | Gnocchi | Open-edition token publisher | PROVEN | PARTIAL | PARTIAL | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
 | Ravioli | Bundle token publisher | PROVEN | PARTIAL | PARTIAL | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
 | Rotini | Generative collection publisher | PROVEN | PARTIAL | PARTIAL | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
-| Penne | Distribution contract product | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
+| Penne | Distribution contract product | PROVEN | PARTIAL | PARTIAL | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
 | Lasagna | Exhibition contract product | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
 | Colander | Management and discovery | PROVEN | PARTIAL | PARTIAL | OPEN | N/A | OPEN | PARTIAL | OPEN |
 | WTF.ME | Hosted public pages | PARTIAL | N/A | N/A | OPEN | OPEN | OPEN | N/A | OPEN |
@@ -67,7 +68,7 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 | Gnocchi signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:gnocchi:e2e` originated `KT1W2ijLhjRHeH7wWYnvYcDwDsgRM7TpAFZK`, created open edition token 0, collector-open-minted one edition, decoded token metadata, and verified collector ownership, supply, and sale config in TzKT big maps. | PROVEN |
 | Ravioli signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:ravioli:e2e` originated `KT194igzFGez1pB3HHhU8HFqyMzMLSLAPskB`, created bundle token 0, minted supply, transferred two editions to the collector, redeemed one edition, decoded token metadata, and verified collector ownership, total supply, bundle config, and redeemed count in TzKT big maps. | PROVEN |
 | Rotini signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:rotini:e2e` originated `KT1HqzEFqbwcR8BpXZrrfPALY6bJaPGQgDHQ`, created two deterministic generated token types, minted both editions, transferred token 1 to the collector, decoded token metadata, and verified creator ownership, collector ownership, total supply, trait attributes, and Rotini DNA in TzKT big maps. | PROVEN |
-| Penne signer proof | None yet. | OPEN |
+| Penne signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:penne:e2e` originated `KT1EPdyxCjmosesvJ21cr8WqoCnTXoomCpRz`, created token 0, loaded two allocations, opened claim, completed a collector pull claim, completed an admin push airdrop, closed claim, decoded metadata, and verified allocation consumption, claimed state, total supply, and creator/collector ownership in TzKT big maps. | PROVEN |
 | Lasagna signer proof | None yet. | OPEN |
 | Colander real KT1 discovery | No end-to-end proof from a real Shadownet Pasta contract into Colander action/state refresh. | OPEN |
 | WTF.ME hosted Pasta pages | No proof for mint pages, collection pages, landing pages, branding, wallet connect, or purchase flows. | OPEN |
@@ -86,7 +87,7 @@ The safe next push target is this narrow proof lane. A full production Pasta dep
 
 ## Next Implementation Order
 
-1. Add Penne and Lasagna contract-product deploy/configure proofs.
+1. Add Lasagna contract-product deploy/configure proof.
 2. Wire Colander real-contract discovery against Shadownet proof contracts.
 3. Add WTF.ME hosted page checks for the proven contracts/tokens.
 4. Add wtfOS artifact/metadata pinning and recovery checks.
