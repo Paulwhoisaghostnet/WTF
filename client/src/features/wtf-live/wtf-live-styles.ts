@@ -97,6 +97,38 @@ export const InlineActions = styled.div`
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+
+  svg {
+    pointer-events: none;
+  }
+`;
+
+export const InlineButton = styled.button`
+  appearance: none;
+  min-height: 32px;
+  border: 2px outset #fff;
+  background: #ececec;
+  color: #050505;
+  padding: 4px 8px;
+  font: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+
+  &:active {
+    border-style: inset;
+  }
+
+  &:disabled {
+    color: #777;
+    cursor: default;
+  }
+
+  svg {
+    flex: 0 0 auto;
+  }
 `;
 
 export const FeedList = styled.div`
@@ -193,6 +225,10 @@ export const ActionGrid = styled.div`
   button {
     min-width: 0;
   }
+
+  svg {
+    pointer-events: none;
+  }
 `;
 
 export const ButtonLabel = styled.span`
@@ -202,6 +238,7 @@ export const ButtonLabel = styled.span`
   gap: 5px;
   min-width: 0;
   white-space: nowrap;
+  pointer-events: none;
 
   svg {
     flex: 0 0 auto;

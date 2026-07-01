@@ -384,6 +384,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "wtf-live.public-room-mic-test",
       "wtf-live.public-room-realtime-media-chat",
       "wtf-live.show-kit-soundboard",
+      "wtf-live.smart-room-owner-controls",
       "wtf-live.wim-attendance-identity",
       "wtf-live.tip-items-transfer-redeem",
       "wtf-live.private-room-access-list",

@@ -8,6 +8,7 @@ export type WtfLiveRoomAccessMember = {
   userId: number;
   username: string;
   displayName: string | null;
+  role: "host" | "guest";
 };
 
 export type WtfLiveStageRole = "host" | "speaker";
@@ -148,6 +149,10 @@ function normalizeAccessUsernames(usernames: string[]): string[] {
 
 function normalizeStageRole(value: string | null | undefined): WtfLiveStageRole {
   return value === "host" ? "host" : "speaker";
+}
+
+function normalizeRoomRole(value: string | null | undefined): "host" | "guest" {
+  return value === "host" ? "host" : "guest";
 }
 
 async function listStageAccessMembersByRowId(
@@ -583,7 +588,6 @@ export async function listOwnedWtfLiveRoomAccessMembers(input: {
       and(
         eq(wtfLiveRooms.slug, input.roomId),
         eq(wtfLiveRooms.ownerUserId, input.ownerUserId),
-        eq(wtfLiveRooms.accessMode, "private"),
         isNull(wtfLiveRooms.archivedAt),
       ),
     )
@@ -594,11 +598,13 @@ export async function listOwnedWtfLiveRoomAccessMembers(input: {
       userId: users.id,
       username: users.username,
       displayName: users.displayName,
+      role: wtfLiveRoomAccessMembers.role,
     })
     .from(wtfLiveRoomAccessMembers)
     .innerJoin(users, eq(wtfLiveRoomAccessMembers.userId, users.id))
     .where(eq(wtfLiveRoomAccessMembers.roomId, room.id))
-    .orderBy(users.username);
+    .orderBy(wtfLiveRoomAccessMembers.role, users.username)
+    .then((members) => members.map((member) => ({ ...member, role: normalizeRoomRole(member.role) })));
 }
 
 export async function replaceOwnedWtfLiveRoomAccessMembers(input: {
@@ -644,6 +650,7 @@ export async function replaceOwnedWtfLiveRoomAccessMembers(input: {
       .map((user) => ({
         roomId: room.id,
         userId: user.id,
+        role: "guest",
         addedByUserId: input.ownerUserId,
       }));
 
@@ -658,16 +665,18 @@ export async function replaceOwnedWtfLiveRoomAccessMembers(input: {
             userId: users.id,
             username: users.username,
             displayName: users.displayName,
+            role: wtfLiveRoomAccessMembers.role,
           })
           .from(wtfLiveRoomAccessMembers)
           .innerJoin(users, eq(wtfLiveRoomAccessMembers.userId, users.id))
           .where(eq(wtfLiveRoomAccessMembers.roomId, room.id))
-          .orderBy(users.username)
+          .orderBy(wtfLiveRoomAccessMembers.role, users.username)
       : [];
+    const normalizedMembers = members.map((member) => ({ ...member, role: normalizeRoomRole(member.role) }));
 
     return {
-      room: { ...roomRecordFromRow(room), accessMembers: members },
-      members,
+      room: { ...roomRecordFromRow(room), accessMembers: normalizedMembers },
+      members: normalizedMembers,
       missingUsernames,
     };
   });

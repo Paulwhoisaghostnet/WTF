@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { z } from "zod";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "../db";
@@ -49,6 +49,19 @@ import {
   getUserWtfLiveSoundboardSettings,
   replaceUserWtfLiveSoundboardSettings,
 } from "../features/wtf-live/soundboard";
+import {
+  createUserWtfLiveShowKit,
+  getWtfLiveRoomPublishPermissions,
+  getWtfLiveRoomSettings,
+  getWtfLiveRoomShowKit,
+  inviteWtfLiveRoomUser,
+  listUserWtfLiveShowKits,
+  replaceOwnedWtfLiveRoomRoleMembers,
+  scheduleWtfLiveRoomEvent,
+  searchWtfLiveUsers,
+  updateWtfLiveRoomSettings,
+  type WtfLiveRoomKind,
+} from "../features/wtf-live/smart-rooms";
 import { getWtfLiveRoomPresence } from "../websocket";
 
 const router = Router();
@@ -89,6 +102,52 @@ const updateRoomSchema = z.object({
 
 const updateRoomAccessSchema = z.object({
   usernames: z.array(z.string().trim().min(1).max(50)).max(50).default([]),
+});
+
+const updateRoomRolesSchema = z.object({
+  hostUsernames: z.array(z.string().trim().min(1).max(50)).max(50).default([]),
+  guestUsernames: z.array(z.string().trim().min(1).max(50)).max(50).default([]),
+});
+
+const roomKindSchema = z.enum(["room", "stage"]).default("room");
+
+const roomSettingsSchema = z.object({
+  roomKind: roomKindSchema.optional(),
+  allowGuestAudio: z.boolean().optional(),
+  allowGuestCamera: z.boolean().optional(),
+  allowGuestScreen: z.boolean().optional(),
+  allowGuestMedia: z.boolean().optional(),
+  showKitEnabled: z.boolean().optional(),
+  showKitId: z.coerce.number().int().positive().nullable().optional(),
+});
+
+const showKitSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(500).optional().default(""),
+  clipIds: z.array(z.string().trim().min(1).max(80)).max(24).optional(),
+  isDefault: z.boolean().optional().default(false),
+});
+
+const inviteRoomUserSchema = z.object({
+  roomKind: roomKindSchema.optional(),
+  targetUserId: z.coerce.number().int().positive(),
+  role: z.enum(["guest", "host", "speaker"]).default("guest"),
+  message: z.string().trim().max(500).optional().default(""),
+});
+
+const scheduleRoomEventSchema = z.object({
+  roomKind: roomKindSchema.optional(),
+  target: z.enum(["wtf", "ttc", "both"]).default("wtf"),
+  title: z.string().trim().min(2).max(300),
+  description: z.string().trim().max(2000).optional().default(""),
+  startsAt: z.string().datetime(),
+  endsAt: z.string().datetime().nullable().optional(),
+  visibility: z.enum(["public", "contestants", "hosts"]).optional().default("public"),
+});
+
+const usersQuerySchema = z.object({
+  q: z.string().trim().max(120).optional().default(""),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
 });
 
 const createStageSchema = z.object({
@@ -277,6 +336,16 @@ function stageCanShare(role: WtfLiveStageRoomRole): boolean {
   return role === "owner" || role === "host" || role === "speaker";
 }
 
+function normalizeRoomKindParam(value: unknown): WtfLiveRoomKind {
+  return value === "stage" ? "stage" : "room";
+}
+
+function originForRequest(req: Request): string {
+  const configured = process.env.PUBLIC_SITE_URL || process.env.APP_ORIGIN || "";
+  if (configured) return configured.replace(/\/+$/, "");
+  return `${req.protocol}://${req.get("host")}`;
+}
+
 async function stageRoomEnvelope(
   stage: WtfLiveStageRecord,
   role: WtfLiveStageRoomRole,
@@ -284,6 +353,7 @@ async function stageRoomEnvelope(
 ) {
   const canShare = stageCanShare(role);
   const canManage = role === "owner" || role === "host";
+  const roomSettings = await getWtfLiveRoomSettings({ roomKind: "stage", roomId: stage.id });
   const access =
     canManage && actorUserId
       ? await listManageableWtfLiveStageAccessMembers({ actorUserId, stageId: stage.id })
@@ -304,9 +374,13 @@ async function stageRoomEnvelope(
       transport: "webrtc_mesh_via_wtf_live_signaling",
       stage: true,
       canManageStage: canManage,
+      canManageRoom: canManage,
       canSpeakOnStage: canShare,
       stageRole: role,
+      roomRole: role,
+      showKit: canManage && roomSettings.showKitEnabled,
     },
+    roomSettings,
     stagePermissions: {
       role,
       canManage,
@@ -379,17 +453,26 @@ router.get("/api/wtf-live/public/rooms/:roomId", async (req, res) => {
     if (!stage) return res.status(404).json({ error: "Room not found" });
     return res.json(await stageRoomEnvelope(stage, "audience", null));
   }
+  const permissions = await getWtfLiveRoomPublishPermissions({
+    roomKind: "room",
+    roomId: room.id,
+    userId: null,
+  });
   res.json({
     room: withWtfLivePresence(room),
     joinMode: "guest_room_only",
     roomPath: `/live/r/${encodeURIComponent(room.id)}`,
     capabilities: {
-      audio: true,
-      camera: true,
-      screen: true,
-      media: true,
+      audio: permissions.audio,
+      camera: permissions.camera,
+      screen: permissions.screen,
+      media: permissions.media,
+      showKit: permissions.soundboard,
+      canManageRoom: permissions.canManageRoom,
+      roomRole: permissions.roomRole,
       transport: "webrtc_mesh_via_wtf_live_signaling",
     },
+    roomSettings: permissions.settings,
   });
 });
 
@@ -439,6 +522,152 @@ router.put("/api/wtf-live/soundboard", actionLimiter, async (req, res) => {
   }
 });
 
+router.get("/api/wtf-live/users", async (req, res) => {
+  const user = req.user as any;
+  const parsed = usersQuerySchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid user search", details: parsed.error.flatten() });
+  const users = await searchWtfLiveUsers({
+    q: parsed.data.q,
+    actorUserId: user.id,
+    limit: parsed.data.limit,
+  });
+  res.json({ users });
+});
+
+router.get("/api/wtf-live/show-kits", async (req, res) => {
+  const user = req.user as any;
+  const kits = await listUserWtfLiveShowKits(user.id);
+  res.json({ kits });
+});
+
+router.post("/api/wtf-live/show-kits", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const parsed = showKitSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Show Kit", details: parsed.error.flatten() });
+  try {
+    const kit = await createUserWtfLiveShowKit({
+      ownerUserId: user.id,
+      name: parsed.data.name,
+      description: parsed.data.description,
+      clipIds: parsed.data.clipIds,
+      isDefault: parsed.data.isDefault,
+    });
+    res.status(201).json({ kit });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message || "Could not save Show Kit" });
+  }
+});
+
+router.get("/api/wtf-live/rooms/:roomId/settings", async (req, res) => {
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  if (!roomId.success) return res.status(400).json({ error: "Invalid room" });
+  const roomKind = normalizeRoomKindParam(req.query.roomKind);
+  const user = req.user as any;
+  const settings = await getWtfLiveRoomSettings({ roomKind, roomId: roomId.data });
+  const permissions = await getWtfLiveRoomPublishPermissions({ roomKind, roomId: roomId.data, userId: user.id });
+  res.json({ settings, capabilities: permissions });
+});
+
+router.patch("/api/wtf-live/rooms/:roomId/settings", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  const parsed = roomSettingsSchema.safeParse(req.body);
+  if (!roomId.success || !parsed.success) {
+    return res.status(400).json({ error: "Invalid room settings", details: parsed.success ? undefined : parsed.error.flatten() });
+  }
+  try {
+    const roomKind = normalizeRoomKindParam(parsed.data.roomKind);
+    const settings = await updateWtfLiveRoomSettings({
+      actorUserId: user.id,
+      roomKind,
+      roomId: roomId.data,
+      allowGuestAudio: parsed.data.allowGuestAudio,
+      allowGuestCamera: parsed.data.allowGuestCamera,
+      allowGuestScreen: parsed.data.allowGuestScreen,
+      allowGuestMedia: parsed.data.allowGuestMedia,
+      showKitEnabled: parsed.data.showKitEnabled,
+      showKitId: parsed.data.showKitId,
+    });
+    if (!settings) return res.status(404).json({ error: "Managed room not found" });
+    res.json({ settings });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message || "Could not update room settings" });
+  }
+});
+
+router.get("/api/wtf-live/rooms/:roomId/show-kit", async (req, res) => {
+  const user = req.user as any;
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  if (!roomId.success) return res.status(400).json({ error: "Invalid room" });
+  const roomKind = normalizeRoomKindParam(req.query.roomKind);
+  const kit = await getWtfLiveRoomShowKit({ roomKind, roomId: roomId.data, actorUserId: user.id });
+  res.json(kit);
+});
+
+router.patch("/api/wtf-live/rooms/:roomId/roles", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  const parsed = updateRoomRolesSchema.safeParse(req.body);
+  if (!roomId.success || !parsed.success) {
+    return res.status(400).json({ error: "Invalid room roles", details: parsed.success ? undefined : parsed.error.flatten() });
+  }
+  const updated = await replaceOwnedWtfLiveRoomRoleMembers({
+    ownerUserId: user.id,
+    roomId: roomId.data,
+    hostUsernames: parsed.data.hostUsernames,
+    guestUsernames: parsed.data.guestUsernames,
+  });
+  if (!updated) return res.status(404).json({ error: "Owned room not found" });
+  res.json({ roomId: roomId.data, members: updated.members, missingUsernames: updated.missingUsernames });
+});
+
+router.post("/api/wtf-live/rooms/:roomId/invites", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  const parsed = inviteRoomUserSchema.safeParse(req.body);
+  if (!roomId.success || !parsed.success) {
+    return res.status(400).json({ error: "Invalid room invite", details: parsed.success ? undefined : parsed.error.flatten() });
+  }
+  const invite = await inviteWtfLiveRoomUser({
+    actorUserId: user.id,
+    roomKind: normalizeRoomKindParam(parsed.data.roomKind),
+    roomId: roomId.data,
+    targetUserId: parsed.data.targetUserId,
+    role: parsed.data.role,
+    message: parsed.data.message,
+  });
+  if (!invite) return res.status(404).json({ error: "Managed room not found" });
+  res.status(201).json({ invite });
+});
+
+router.post("/api/wtf-live/rooms/:roomId/events", actionLimiter, async (req, res) => {
+  const user = req.user as any;
+  const roomId = roomIdSchema.safeParse(req.params.roomId);
+  const parsed = scheduleRoomEventSchema.safeParse(req.body);
+  if (!roomId.success || !parsed.success) {
+    return res.status(400).json({ error: "Invalid room event", details: parsed.success ? undefined : parsed.error.flatten() });
+  }
+  try {
+    const roomUrl = `${originForRequest(req)}/live/r/${encodeURIComponent(roomId.data)}`;
+    const scheduled = await scheduleWtfLiveRoomEvent({
+      actorUserId: user.id,
+      roomKind: normalizeRoomKindParam(parsed.data.roomKind),
+      roomId: roomId.data,
+      target: parsed.data.target,
+      title: parsed.data.title,
+      description: parsed.data.description,
+      startsAt: parsed.data.startsAt,
+      endsAt: parsed.data.endsAt,
+      visibility: parsed.data.visibility,
+      roomUrl,
+    });
+    if (!scheduled) return res.status(404).json({ error: "Managed room not found" });
+    res.status(201).json(scheduled);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message || "Could not schedule room event" });
+  }
+});
+
 router.get("/api/wtf-live/rooms", async (_req, res) => {
   const rooms = await listWtfLiveRooms();
   res.json({
@@ -480,18 +709,27 @@ router.get("/api/wtf-live/rooms/:roomId/join", async (req, res) => {
     if (!stageAccess) return res.status(404).json({ error: "Room not found or not available to this WTF user" });
     return res.json(await stageRoomEnvelope(stageAccess.stage, stageAccess.role, user.id));
   }
+  const permissions = await getWtfLiveRoomPublishPermissions({
+    roomKind: "room",
+    roomId: room.id,
+    userId: user.id,
+  });
   res.json({
     room: withWtfLivePresence(room),
     joinMode: room.accessMode === "private" ? "wtf_user_private_room" : "guest_room_only",
     roomPath: `/live/r/${encodeURIComponent(room.id)}`,
     capabilities: {
-      audio: true,
-      camera: true,
-      screen: true,
-      media: true,
+      audio: permissions.audio,
+      camera: permissions.camera,
+      screen: permissions.screen,
+      media: permissions.media,
+      showKit: permissions.soundboard,
+      canManageRoom: permissions.canManageRoom,
+      roomRole: permissions.roomRole,
       transport: "webrtc_mesh_via_wtf_live_signaling",
       privateRoom: room.accessMode === "private",
     },
+    roomSettings: permissions.settings,
   });
 });
 
@@ -532,7 +770,7 @@ router.get("/api/wtf-live/rooms/:roomId/access", async (req, res) => {
     ownerUserId: user.id,
     roomId: roomId.data,
   });
-  if (!members) return res.status(404).json({ error: "Owned private room not found" });
+  if (!members) return res.status(404).json({ error: "Owned room not found" });
   res.json({ roomId: roomId.data, members });
 });
 

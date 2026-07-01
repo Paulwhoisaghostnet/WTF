@@ -635,6 +635,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused harness stores Show Kit presets through /api/wtf-live/soundboard, loads them inside an owned room, hides trigger controls from an anonymous audience guest, exposes the owner's WebRTC soundboard audio lane to the audience while /ws/wtf-live carries bounded cue metadata, enforces cooldown feedback, and verifies the shortcut does not fire while chat is focused but does fire after focus leaves chat.",
   },
   {
+    id: "wtf-live.smart-room-owner-controls",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"smart room owner controls\"",
+    userVisibleAssertion:
+      "A signed-in WTF LIVE owner can search existing WTF users, add them as room hosts/guests or stage hosts/speakers, send role invites, open settings icon controls, choose guest publishing permissions, associate a saved Show Kit, and schedule the room to WTF/TTC calendar targets from owned public rooms, private rooms, and stages.",
+    durableSideEffectAssertion:
+      "The harness persists /api/wtf-live/users, /show-kits, /rooms/:id/roles, /rooms/:id/invites, /rooms/:id/settings, /rooms/:id/show-kit, and /rooms/:id/events state, verifies saved Show Kits can be selected on a room, and proves the live-room Sharing settings drawer can patch publish permissions through the same settings endpoint.",
+  },
+  {
     id: "wtf-live.wim-attendance-identity",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["wtf-live", "wim"],

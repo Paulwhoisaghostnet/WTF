@@ -67,6 +67,7 @@ Priority labels:
 | WTF-BB-343 | Verified | Codex standalone installer publication | 2026-07-01 | Pasta Protocol / individual installers | P2 | 11 | 8 | 2 | 4 | 2 | Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop `1.0.0` standalone installers are live on `wtfos.app`: workflows are registered, GitHub release assets exist with SHA-256 digests, runtime production env is configured in `/etc/wtf/wtf.env`, PR #13 deployed audit-fixed live commit `51ab323`, and authenticated live verifiers passed for macOS, Windows, and Raspberry Pi downloads |
 | WTF-BB-344 | Verified | Codex Pasta live verification docs | 2026-07-01 | Pasta Protocol / installer catalog | P2 | 9 | 12 | 1 | 3 | 2 | Unified "suite or any individual Pasta app" catalogue is deployed on live `wtfos.app` and reconfirmed on commit `cb74cc1`: `/api/pasta/installers/catalog` returns unauthenticated `401`, `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` passes the catalog probe, and the gate verifies Macaroni, Pasta Suite, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna public release assets while still blocking only on missing WTF.ME publish credentials and live Pasta host proof |
 | WTF-BB-345 | Verified | Codex Inbox compose full-send | 2026-07-01 | Social / Inbox and WIM compose UX | P1 | 12 | 7 | 3 | 5 | 0 | Inbox aggregated mail, WIM, Studio, comms, and notifications but still behaved like a read-only viewer; current branch adds first-class New message/New mail controls, selected external-mail Reply/Forward actions, inline WIM/Studio conversation sending through source-owned DM APIs, inventory-owned behavior assertions, admin registry coverage, and verified clean-worktree source, build, focused browser, and full inventory coverage before production promotion |
+| WTF-BB-346 | Fixed | Codex WTF LIVE smart-room goal | 2026-07-01 | WTF LIVE / user-aware room operations | P1 | 14 | 3 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -7466,6 +7467,31 @@ Priority labels:
   - Passed `npm run build`.
   - Passed focused Gamma Inbox browser proof: `HARNESS_PORT=4322 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "hosts Inbox mailbox" --project=chromium --reporter=list`.
   - Passed full inventory E2E from a clean build: `HARNESS_PORT=4323 npm run test:e2e:inventory -- --reporter=list` (577 passed).
+
+### WTF-BB-346 - WTF LIVE rooms need user-aware roles, invites, scheduling, settings, and Show Kit association
+
+- Category: WTF LIVE / user-aware room operations
+- Status: Fixed
+- Owner/Session: Codex WTF LIVE smart-room goal
+- Score: C4 + F5 + S1 + P1(4) = 14
+- Evidence:
+  - 2026-07-01 user request: room and stage owners can now create/join rooms, but owner operations still do not know existing wtfOS users well enough to select users for host/speaker/guest roles or send invites.
+  - Stage rooms, public rooms, and private rooms lack a room-owned "schedule event" handoff that can write to WTF Calendar, TTC Events, or both.
+  - Owned rooms need a settings icon surface for permissions, Show Kit usage, and the chosen Show Kit; Show Kits need persistence and per-room association instead of only ad hoc clip use.
+- Why it matters:
+  - Live-room logistics depend on identity, permissions, timing, and reusable show materials. Without user-aware controls and durable room settings, hosts must coordinate outside wtfOS and can invite or authorize the wrong people.
+  - Calendar and TTC event mirroring are cross-app public commitments; they need explicit owner review, target selection, and durable event writes.
+- Likely correction:
+  - Add a signed-in user search/selection API suitable for room ownership controls, role/invite persistence, room settings persistence, calendar/TTC event creation, and saved Show Kit records that can be associated with stage, public, and private rooms.
+  - Wire the controls through owned room/stage dashboard cards and in-room owner controls, updating interaction inventory and behavior coverage.
+- Verification idea:
+  - Focused server/source tests for identity search, permission updates, event target handling, and Show Kit/room association.
+  - Focused WTF LIVE Playwright for owner role selection, scheduling, settings, and Show Kit assignment; `npm run test:e2e:inventory:coverage` plus touched inventory workflows.
+- Fix/Verification:
+  - Added persistent smart-room schema and APIs for wtfOS user search, host/guest/speaker roles, room invites, room settings, room calendar events, and saved Show Kits with room association.
+  - Wired owned public rooms, private rooms, and stages to role pickers, invite actions, schedule buttons, settings buttons, and Show Kit association; owners/hosts also get in-room settings controls for permissions and Show Kit usage.
+  - Updated inventory docs, workflow probes, behavior assertions, admin registry coverage, Playwright harness state, and WTF LIVE owner-control coverage.
+  - Passed `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, focused WTF LIVE smart-room/Show Kit/private-room Playwright probes, and full `HARNESS_PORT=4192 npm run test:e2e:inventory` with 580/580 passing.
 
 ## Backlog Intake Template
 

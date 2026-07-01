@@ -17,6 +17,7 @@ import {
 import { resolveStudioAccess } from "./lib/studio/access";
 import { getSessionSecret } from "./auth/session-secret";
 import { canAccessWtfLiveRoom, canAccessWtfLiveStage } from "./features/wtf-live/registry";
+import { getWtfLiveRoomPublishPermissions, type WtfLiveRoomKind, type WtfLiveRoomPublishPermissions } from "./features/wtf-live/smart-rooms";
 import { GREEN_ROOM_ROOM_BY_ID } from "./features/green-room/world";
 
 const MAX_CHAT_CONTENT_LENGTH = 10_000;
@@ -113,10 +114,11 @@ interface WsClient {
   role: UserRole;
   publicSocket?: "wtf-live" | "dedrooms";
   wtfLiveRoomId?: string;
+  wtfLiveRoomKind?: WtfLiveRoomKind;
   wtfLivePeerId?: string;
   wtfLiveGuestName?: string;
   wtfLiveMediaState?: WtfLiveMediaState;
-  wtfLiveCanShareStage?: boolean;
+  wtfLivePublishPermissions?: Pick<WtfLiveRoomPublishPermissions, "audio" | "camera" | "screen" | "media" | "soundboard">;
   greenRoomLocationId?: string;
 }
 
@@ -452,24 +454,76 @@ function normalizeWtfLiveMediaState(value: unknown): WtfLiveMediaState {
 }
 
 function restrictWtfLiveMediaStateForClient(client: WsClient, mediaState: WtfLiveMediaState): WtfLiveMediaState {
-  if (client.wtfLiveCanShareStage !== false) return mediaState;
-  return {
-    ...mediaState,
-    mic: false,
-    audioOpen: false,
-    camera: false,
-    screen: false,
-    screenAudio: false,
-    mediaVideo: false,
-    mediaAudio: false,
-    mediaName: null,
-    soundboard: false,
-    activeVideo: null,
-    cameraTrackId: null,
-    screenTrackId: null,
-    mediaVideoTrackId: null,
-    mediaAudioTrackId: null,
+  const permissions = client.wtfLivePublishPermissions;
+  if (!permissions) return mediaState;
+  const next = { ...mediaState };
+  if (!permissions.audio) {
+    next.mic = false;
+    next.audioOpen = false;
+  }
+  if (!permissions.camera) {
+    next.camera = false;
+    next.cameraTrackId = null;
+    if (next.activeVideo === "camera") next.activeVideo = null;
+  }
+  if (!permissions.screen) {
+    next.screen = false;
+    next.screenAudio = false;
+    next.screenTrackId = null;
+    if (next.activeVideo === "screen") next.activeVideo = null;
+  }
+  if (!permissions.media) {
+    next.mediaVideo = false;
+    next.mediaAudio = false;
+    next.mediaName = null;
+    next.mediaVideoTrackId = null;
+    next.mediaAudioTrackId = null;
+  }
+  if (!permissions.soundboard) {
+    next.soundboard = false;
+  }
+  return next;
+}
+
+async function refreshWtfLivePublishPermissions(client: WsClient): Promise<boolean> {
+  if (!client.wtfLiveRoomId) return false;
+  const actorUserId = client.userId > 0 ? client.userId : null;
+  if (client.wtfLiveRoomKind === "stage") {
+    const stageAccess = await canAccessWtfLiveStage(client.wtfLiveRoomId, actorUserId);
+    const canShare = Boolean(stageAccess && stageAccess.role !== "audience");
+    client.wtfLivePublishPermissions = {
+      audio: canShare,
+      camera: canShare,
+      screen: canShare,
+      media: canShare,
+      soundboard: false,
+    };
+    return Boolean(stageAccess);
+  }
+  const room = await canAccessWtfLiveRoom(client.wtfLiveRoomId, actorUserId);
+  if (!room) {
+    client.wtfLivePublishPermissions = {
+      audio: false,
+      camera: false,
+      screen: false,
+      media: false,
+      soundboard: false,
+    };
+    return false;
+  }
+  const permissions = await getWtfLiveRoomPublishPermissions({
+    roomKind: "room",
+    roomId: client.wtfLiveRoomId,
+    userId: actorUserId,
+  });
+  client.wtfLivePublishPermissions = {
+    audio: permissions.audio,
+    camera: permissions.camera,
+    screen: permissions.screen,
+    media: permissions.media,
+    soundboard: permissions.soundboard,
   };
+  return true;
 }
 
 function normalizeWtfLiveChatAttachments(value: unknown) {
@@ -768,7 +822,8 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         : normalizeWtfLiveGuestName(msg.guestName);
       client.wtfLiveGuestName = guestName;
       client.wtfLiveRoomId = roomId;
-      client.wtfLiveCanShareStage = stageAccess ? stageAccess.role !== "audience" : true;
+      client.wtfLiveRoomKind = stageAccess ? "stage" : "room";
+      await refreshWtfLivePublishPermissions(client);
       client.wtfLiveMediaState = restrictWtfLiveMediaStateForClient(client, normalizeWtfLiveMediaState(msg.mediaState));
 
       sendJson(client.ws, {
@@ -796,6 +851,7 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
 
     case "wtf_live_media_state": {
       if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
+      await refreshWtfLivePublishPermissions(client);
       client.wtfLiveMediaState = restrictWtfLiveMediaStateForClient(client, normalizeWtfLiveMediaState(msg.mediaState));
       broadcastToWtfLiveRoom(client.wtfLiveRoomId, {
         type: "wtf_live_media_state",
@@ -859,9 +915,9 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
 
     case "wtf_live_soundboard_clip": {
       if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
-      const room = await canAccessWtfLiveRoom(client.wtfLiveRoomId, client.userId > 0 ? client.userId : null);
-      if (!room || !room.ownerUserId || room.ownerUserId !== client.userId) {
-        sendJson(client.ws, { type: "error", message: "Only the room owner can trigger soundboard audio" });
+      await refreshWtfLivePublishPermissions(client);
+      if (!client.wtfLivePublishPermissions?.soundboard) {
+        sendJson(client.ws, { type: "error", message: "Show Kit audio is not enabled for this account in this room" });
         return;
       }
       const clip = normalizeWtfLiveSoundboardClip(msg.clip ?? msg.soundboardClip);
@@ -1274,7 +1330,8 @@ function leaveWtfLiveRoom(client: WsClient) {
   const peerId = client.wtfLivePeerId;
   const guestName = wtfLivePeerDisplayName(client);
   client.wtfLiveRoomId = undefined;
-  client.wtfLiveCanShareStage = undefined;
+  client.wtfLiveRoomKind = undefined;
+  client.wtfLivePublishPermissions = undefined;
   client.wtfLiveMediaState = emptyWtfLiveMediaState();
   broadcastToWtfLiveRoom(
     roomId,

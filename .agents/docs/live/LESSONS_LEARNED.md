@@ -7257,3 +7257,13 @@
 **Why it mattered**: Communication hubs are only trustworthy when reading and writing are proven together. If a user can see a message and a Reply affordance but cannot reply in context, the app breaks the core promise of an inbox even when the underlying send APIs exist elsewhere.
 
 **Rule**: When adding or refactoring Inbox aggregation, verify the write paths alongside the read paths: visible new-message/new-mail actions, selected mail reply/forward, inline conversation sending, source-owned API calls, canonical sent-event handles, inventory registry ownership, and browser proof against the built app.
+
+---
+
+## 2026-07-01 - WTF LIVE compact owner controls need pointer-safe activation
+
+**What happened**: Adding WTF LIVE smart-room owner controls exposed two UI hazards in the React95-style desktop shell. Some compact nested controls inside scrollable room cards did not reliably dispatch `click`, and settings checkbox/select handlers read `event.currentTarget` inside deferred state updaters after React had already cleared the event target.
+
+**Why it mattered**: Room owners need role, invite, settings, scheduling, and Show Kit controls to work during live production pressure. A visible icon button that misses activation, or a settings save that crashes after a toggle, turns permission management into guesswork.
+
+**Rule**: For compact WTF LIVE room/stage controls inside nested desktop surfaces, use stable pointer-down activation with keyboard fallbacks and non-interactive SVG/label children. When a handler feeds a React state updater, capture `checked`, `value`, or other event-derived values before calling `setState`.
