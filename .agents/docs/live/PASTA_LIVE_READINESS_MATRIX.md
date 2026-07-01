@@ -49,7 +49,7 @@ This branch must not claim:
 | Lasagna | Exhibition contract product | PROVEN | PARTIAL | PROVEN | PROVEN | OPEN | PROVEN | PARTIAL | OPEN |
 | Colander | Management and discovery | PROVEN | PARTIAL | PROVEN | OPEN | N/A | PROVEN | PARTIAL | OPEN |
 | WTF.ME | Hosted public pages | PARTIAL | N/A | N/A | OPEN | PARTIAL | OPEN | N/A | OPEN |
-| wtfOS pinning | Artifact and metadata durability | PROVEN | N/A | N/A | OPEN | OPEN | N/A | N/A | OPEN |
+| wtfOS pinning | Artifact and metadata durability | PROVEN | N/A | N/A | OPEN | PARTIAL | N/A | N/A | OPEN |
 | Pasta Suite Desktop | Bundled native app suite | N/A | N/A | N/A | N/A | N/A | N/A | PROVEN | N/A |
 
 Note: `PARTIAL` installer status for individual Pasta publishers means the bundled Pasta Suite Desktop download includes the app surface, but no separate per-app native installer has been proven for that publisher.
@@ -74,7 +74,7 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 | Lasagna signer proof | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:lasagna` originated `KT1GrrYTevWKExvhFWVigUdGKR86SQKwYceN`, added and removed a curator, published two cross-Pasta exhibition revisions, reset the current revision pointer to 0, completed two-step administration transfer, decoded metadata, and verified curator, revision, administration, and metadata state in TzKT big maps. | PROVEN |
 | Colander real KT1 discovery | `npm run pasta:shadownet:colander` opens Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna proof KT1s through `/tools/colander`, verifies adapter/action rendering, Shadownet TzKT links, relationship metadata graph decoding, and inventory event emission. Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-colander-discovery-report.md`. | PROVEN |
 | WTF.ME hosted Pasta pages | `npx tsx --test server/features/wtf-sites/pasta-hosting.test.ts` validates immutable landing/mint/collection page snapshots and manifest digest behavior; `npm run pasta:shadownet:wtfme` claims the user site, saves the Pasta pages, publishes them through the harness WTF.ME APIs, then serves them from `wtf-admin.wtfos.me` with Shadownet proof KT1s, wallet/purchase markers, CSP/opener headers, and `wtf_site.claimed` / `wtf_site.page_saved` / `wtf_site.published` / `wtf_site.public.viewed` events. Production TLS/live DNS, browser UI authoring persistence, hosted pinning/recovery, and wallet-signed purchase completion are still open. | PARTIAL |
-| wtfOS Pasta pinning/recovery | No proof for artifact pinning, metadata pinning, file pinning, redundancy, accessibility, or recovery tied to Pasta publish flows. | OPEN |
+| wtfOS Pasta pinning/recovery | `npm run pasta:shadownet:pinning` builds app.wtfos.media pinPolicy, pinManifest, and pinItem records from real Pasta hosted-page snapshots and contract artifacts, validates them against the AT lexicon, and proves public storage refs, IPFS gateway URLs, object-storage mirror keys, `.well-known/wtfos-pins`, and restore order for hosted pages plus Pasta metadata. Live provider pin completion, published PDS records, object-store writes, and recovery drill are still open. | PARTIAL |
 | Mainnet deployment | Intentionally blocked until Shadownet and hosted-page gates are complete. | OPEN |
 
 ## Live Push Recommendation
@@ -84,13 +84,13 @@ The safe next push target is the proof branch, not `main` production. A producti
 1. Signer-backed Shadownet proof remains green for every non-Macaroni Pasta publisher that production UI presents as deployable.
 2. Colander browser-wallet mutation and post-operation refresh are proven against at least one safe Shadownet Pasta action if signed management is in the first production release boundary.
 3. Production WTF.ME serves at least one Pasta mint page, collection page, and landing page backed by the Shadownet proof data, beyond the current local API-publish host-mapped harness proof.
-4. wtfOS pinning verifies artifact, metadata, redundancy, and recovery for a Pasta publish.
+4. wtfOS pinning verifies artifact, metadata, redundancy, and recovery for a Pasta publish against the live provider/PDS/object-store path, beyond the current record-shape proof.
 5. All executable verification commands pass on the production promotion branch.
 
 ## Next Implementation Order
 
 1. Promote the WTF.ME hosted-page proof from local API-publish host-mapped harness to production live DNS/TLS and signed mint/purchase dry run.
-2. Add wtfOS artifact/metadata pinning and recovery checks.
+2. Promote the wtfOS Pasta pinning proof from record-shape validation to live provider/PDS/object-store pinning and recovery drill.
 3. Prove Colander browser-wallet mutation and post-operation refresh if signed management is part of the production release.
 4. Generalize the signer-backed Pasta E2E runners into reusable publisher proof helpers.
 5. Re-run production readiness checks and only then evaluate a main/full-send.

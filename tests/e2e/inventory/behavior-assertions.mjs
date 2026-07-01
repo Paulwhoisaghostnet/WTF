@@ -245,6 +245,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The source helper builds immutable user-site page snapshots from the signer-backed Shadownet proof contracts, the manifest digest changes when hosted page HTML changes, and the focused browser proof maps wtf-admin.wtfos.me to the local harness, claims the site, saves the landing/mint/collection pages through WTF.ME APIs, publishes them, serves the published pages with user-site CSP/opener headers, and records wtf_site.claimed, wtf_site.page_saved, wtf_site.published, and wtf_site.public.viewed events.",
   },
   {
+    id: "pasta-protocol.wtfos-pinning-recovery-proof",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol", "ipfs-pinning"],
+    ownerSpec:
+      "server/features/ipfs-pinning/pasta-proof.ts, server/features/ipfs-pinning/pasta-proof.test.ts",
+    verificationCommand: "npm run pasta:shadownet:pinning",
+    userVisibleAssertion:
+      "A Pasta publish can be represented as a wtfOS pinning bundle that covers hosted pages, contract artifacts, token metadata, relationship metadata, public discovery, and recovery coordinates for the WTF.ME host.",
+    durableSideEffectAssertion:
+      "The proof builds app.wtfos.media pinPolicy, pinManifest, and pinItem records from the real Pasta hosted-page snapshots and contract artifacts, validates every record against the AT lexicon, requires public storage refs without credentials or file paths, includes IPFS gateway URLs, object-storage mirror keys, the .well-known/wtfos-pins URL, and a restore order for rebuilding the hosted pages plus Pasta contract metadata.",
+  },
+  {
     id: "inventory.temporary-grants-unlock-apps",
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSurfaceIds: ["arcade", "casino", "wtfiam"],

@@ -63,6 +63,7 @@ Priority labels:
 | WTF-BB-335 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Protocol / CH-EASE handoff and static publisher runtime | P1 | 12 | 7 | 2 | 5 | 1 | Pasta publisher handoffs could open `/tools/spaghetti?handoff=...` while the iframe dropped the query, and the six Pasta ES-module studios read `window.MD` even though their shared common helpers only declared lexical `const MD`; fixed by forwarding creation-tool route queries to all static iframes, exporting `window.MD` in Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna, adding policy guards, passing focused Spaghetti CH-EASE handoff plus mocked Shadownet publish choreography proof, promoting to main, and verifying live `wtfos.app` commit `c4ba55f` exposes `window.MD`, `consumeCheaseHandoff()`, and `loadPlatformCapabilities()` across all six Pasta publisher bundles |
 | WTF-BB-336 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / Colander real-contract discovery | P1 | 13 | 6 | 2 | 5 | 2 | Colander could detect real Pasta entrypoints but lost proof-contract relationship metadata, linked Shadownet KT1s to the mainnet explorer, and lacked the shared chain preflight before writes; fixed with data/HTTPS/IPFS metadata decoding, Shadownet TzKT links, write preflight, inventory docs, and focused real-contract browser proof over all six Shadownet Pasta contracts |
 | WTF-BB-337 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / WTF.ME hosted page proof | P1 | 12 | 7 | 2 | 5 | 1 | WTF.ME had no executable Pasta landing, mint, or collection page proof; added immutable hosted page snapshots for the signer-backed Shadownet proof data plus host-mapped `wtf-admin.wtfos.me` Playwright proof that claims, saves, publishes, and serves pages with user-site CSP/opener headers, wallet/purchase markers, TzKT links, and claim/save/publish/public-view events |
+| WTF-BB-338 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / wtfOS pinning and recovery proof | P1 | 12 | 7 | 2 | 5 | 1 | Pasta had hosted-page and contract proofs but no executable wtfOS pinning/recovery record shape for artifacts, metadata, pages, redundancy, accessibility, or restore order; added `npm run pasta:shadownet:pinning` to validate app.wtfos.media pinPolicy/pinManifest/pinItem records from real Pasta hosted pages and contract artifacts |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -649,6 +650,29 @@ Priority labels:
   - `npm run pasta:shadownet:wtfme`
 - Residual risk:
   - This is branch-level API-publish host-mapped proof, not production live DNS/TLS, browser UI authoring persistence, hosted pinning/recovery, or signed hosted-page mint/purchase proof.
+
+### WTF-BB-338 - Pasta wtfOS pinning/recovery lacked executable proof shape
+
+- Category: Pasta Protocol / wtfOS pinning and recovery proof
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F5 + S1 + P1(4) = 12
+- Evidence:
+  - `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` listed `wtfOS Pasta pinning/recovery` as `OPEN` because no proof tied Pasta artifacts, metadata, files, redundancy, accessibility, or recovery to the wtfOS IPFS Pinning record model.
+  - Pasta already had signer-backed Shadownet contracts, Colander discovery, and WTF.ME hosted-page proof, but the durability handoff could still be hand-waved without app.wtfos.media records or restore coordinates.
+- Why it matters:
+  - A hosted page and KT1 proof can still be unrecoverable if the contract artifacts, metadata, relationship graph, and page HTML are not represented as public pin records with redundant restore coordinates.
+  - Native installers and public hosted pages should not imply durable Pasta preservation until the pinning system can express and recover the publish bundle.
+- Correction:
+  - Added `server/features/ipfs-pinning/pasta-proof.ts` to build a Pasta publish pin bundle from the WTF.ME hosted-page snapshots, signer-backed Shadownet proof contracts, and real static contract artifacts.
+  - Added `server/features/ipfs-pinning/pasta-proof.test.ts` and `npm run pasta:shadownet:pinning` to validate app.wtfos.media `pinPolicy`, `pinManifest`, and `pinItem` records against the shared AT lexicon.
+  - The proof asserts hosted-page, contract-artifact, token-metadata, and relationship-metadata item coverage, public IPFS gateway URLs, object-storage mirror keys, `.well-known/wtfos-pins`, restore order, and storage refs without credentials/signed URLs/private paths.
+  - Registered the behavior assertion with Pasta Protocol and IPFS Pinning ownership.
+- Verification:
+  - `npm run pasta:shadownet:pinning`
+  - `npx tsx --test server/features/ipfs-pinning/records.test.ts`
+- Residual risk:
+  - This is branch-level pin-record and recovery-coordinate proof, not live hosted Porcupin pin completion, object-store writes, published PDS records, public `.well-known` serving, or a recovery drill from live persisted records.
 
 ### WTF-BB-326 - Broad inventory social workflow timeout
 

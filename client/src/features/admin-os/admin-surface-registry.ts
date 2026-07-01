@@ -1059,6 +1059,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "pasta-protocol.chease-handoff",
       "pasta-protocol.colander-context-handoff",
       "pasta-protocol.wtfme-hosted-pages",
+      "pasta-protocol.wtfos-pinning-recovery-proof",
     ],
   },
   {
@@ -1146,6 +1147,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     ],
     behaviorAssertionIds: [
       "ipfs-pinning.pds-backed-wallet-backup",
+      "pasta-protocol.wtfos-pinning-recovery-proof",
       "account.cobwebsaints-domain-advanced-readiness",
       "macaroni.wtfos-package-source",
       "skullzarmy.fafolab-integration-contracts",
