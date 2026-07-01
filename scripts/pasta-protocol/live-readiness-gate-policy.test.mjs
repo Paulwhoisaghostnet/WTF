@@ -1,0 +1,41 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+const source = readFileSync("scripts/pasta-protocol/live-readiness-gate.mjs", "utf8");
+
+test("Pasta live-readiness gate is wired as an explicit package command", () => {
+  assert.equal(packageJson.scripts["pasta:live-readiness"], "node scripts/pasta-protocol/live-readiness-gate.mjs");
+  assert.equal(
+    packageJson.scripts["pasta:live-readiness:check"],
+    "node --test scripts/pasta-protocol/live-readiness-gate-policy.test.mjs"
+  );
+});
+
+test("Pasta live-readiness gate separates blockers from allowed audit mode", () => {
+  assert.match(source, /PASTA_LIVE_READINESS_ALLOW_BLOCKERS/);
+  assert.match(source, /const blockers = \[\]/);
+  assert.match(source, /if \(!ok && !allowBlockers\) process\.exit\(1\)/);
+  assert.match(source, /set PASTA_WTFME_LIVE_HOST to the post-publish Pasta WTF\.ME host/);
+});
+
+test("Pasta live-readiness gate proves live health and static Pasta bundle markers", () => {
+  assert.match(source, /\/api\/health/);
+  assert.match(source, /health\.version\?\.nodeEnv !== "production"/);
+  assert.match(source, /\/creation-tools\/\$\{app\}\/vendor\/tezos\.js/);
+  assert.match(source, /24\.3\.0/);
+  assert.match(source, /rpc\.shadownet\.teztnets\.com/);
+  assert.match(source, /25\.0\.0/);
+  assert.match(source, /\/creation-tools\/\$\{app\}\/js\/common\.js/);
+  assert.match(source, /window\.MD/);
+  assert.match(source, /consumeCheaseHandoff/);
+  assert.match(source, /loadPlatformCapabilities/);
+});
+
+test("Pasta live-readiness gate delegates hosted-page proof to the live WTF.ME checker", () => {
+  assert.match(source, /PASTA_WTFME_LIVE_HOST/);
+  assert.match(source, /spawnSync\("npm", \["run", "pasta:wtfme:live-check"\]/);
+  assert.doesNotMatch(source, /PASTA_WTFME_LIVE_PUBLISH/);
+  assert.doesNotMatch(source, /PASTA_WTFME_LIVE_PASSWORD.*console\.log/);
+});

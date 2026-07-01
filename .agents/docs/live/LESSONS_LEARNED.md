@@ -1,3 +1,13 @@
+## 2026-07-01 - Pasta readiness needs an executable blocker gate
+
+**What happened**: The Pasta release lane had separate source-policy, live-check, inventory, and static-bundle proofs, but no single command that distinguished "safe guardrails can be promoted" from "full Pasta is live." Future passes could read green local tests and miss that the live WTF.ME host and credentialed pin discovery proof were still absent.
+
+**Why it mattered**: Release notes for contract-adjacent products need a command that fails for missing public collector surfaces, not only a pile of passing partial checks. Without that, a narrow guardrail push can be mistaken for a complete production deployment.
+
+**Rule**: Add an executable readiness gate for multi-step production claims. It should prove stable public prerequisites, print explicit blockers for credentialed/live-only gaps, and fail without an allow-blockers audit flag until the actual production proof exists.
+
+---
+
 ## 2026-07-01 - Credentialed WTF.ME publishers must require host pins
 
 **What happened**: The Pasta WTF.ME live publisher could be placed in production write mode with valid credentials and no `PASTA_WTFME_LIVE_EXPECT_HOST`. Existing-page guards would stop obvious overwrites, but a clean or newly claimable account could still become the proof surface without an explicit host decision.
