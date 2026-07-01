@@ -232,6 +232,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The Colander handoff emits colander.handoff_opened and the target static studios read the route handoff before any wallet or chain action is submitted; the focused browser proof opens the signer-backed Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna Shadownet proof contracts and asserts colander.contract_opened / colander.graph_viewed events after adapter, action, explorer, and relationship metadata resolution.",
   },
   {
+    id: "pasta-protocol.wtfme-hosted-pages",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol", "wtf-domains"],
+    ownerSpec:
+      "server/features/wtf-sites/pasta-hosting.ts, server/features/wtf-sites/pasta-hosting.test.ts, tests/playwright/inventory/pasta-protocol-wtfme-hosting.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/features/wtf-sites/pasta-hosting.test.ts && npm run pasta:shadownet:wtfme",
+    userVisibleAssertion:
+      "WTF.ME can serve Pasta Protocol landing, Gnocchi mint, and Spaghetti collection pages from a published user-site host, while preserving Pasta/WTF.ME branding, Shadownet chain context, wallet-connect markers, purchase/mint routing markers, and Shadownet TzKT contract links.",
+    durableSideEffectAssertion:
+      "The source helper builds immutable user-site page snapshots from the signer-backed Shadownet proof contracts, the manifest digest changes when hosted page HTML changes, and the focused browser proof maps wtf-admin.wtfos.me to the local harness, serves the published pages with user-site CSP/opener headers, and records wtf_site.public.viewed events for landing, mint, and collection pages.",
+  },
+  {
     id: "inventory.temporary-grants-unlock-apps",
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSurfaceIds: ["arcade", "casino", "wtfiam"],

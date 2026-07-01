@@ -1013,6 +1013,7 @@ export const DOMAIN_WORKFLOWS = [
       "colander.role_updated",
       "colander.graph_viewed",
       "pasta_suite.installer_manifest.viewed",
+      "wtf_site.public.viewed",
     ],
     apiProbes: [
       { method: "GET", path: "/api/pasta/installers", expectedStatuses: [200, 401] },

@@ -877,6 +877,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "wtf_domain.registration.prepared",
       "ipfs_pinning.subdomain_registry.linked",
       "wtf_site.claimed",
+      "wtf_site.public.viewed",
       "macaroni.drop_published",
     ],
     behaviorAssertionIds: [
@@ -884,6 +885,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "settings.subdomain-setup-applet",
       "account.cobwebsaints-domain-advanced-readiness",
       "macaroni.shadownet-rpc-wallet-setup",
+      "pasta-protocol.wtfme-hosted-pages",
     ],
   },
   {
@@ -1056,6 +1058,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "pasta-protocol.sandbox-safe-feedback",
       "pasta-protocol.chease-handoff",
       "pasta-protocol.colander-context-handoff",
+      "pasta-protocol.wtfme-hosted-pages",
     ],
   },
   {

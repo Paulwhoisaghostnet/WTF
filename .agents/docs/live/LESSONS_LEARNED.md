@@ -1,3 +1,13 @@
+## 2026-07-01 - Hosted page proof must hit the public host contract
+
+**What happened**: Pasta had signer-backed Shadownet contracts and Colander discovery proof, but WTF.ME hosted pages were still open because no executable test served a landing, mint, or collection page from a `*.wtfos.me` host with user-site headers and inventory events.
+
+**Why it mattered**: Static page HTML can contain the right KT1s and wallet markers while the actual public host path, CSP, opener policy, route slug resolution, or event logging remains unproven. That gap can make a release report say "hosted" before collectors can load the expected page.
+
+**Rule**: For WTF.ME or other public hosted-page release gates, prove both the generated page snapshot and the served host response. The browser proof must use the intended hostname, assert user-site CSP/opener headers, verify product-specific data markers, and record the canonical public-view event before hosted-page readiness moves out of OPEN.
+
+---
+
 ## 2026-06-30 - Zero-price open-edition mints can fail through treasury payout
 
 **What happened**: The first signer-backed Gnocchi Shadownet run originated an open-edition contract and created token 0, but the collector `open_mint` using a zero-mutez sale failed with `proto.024-PtTALLiN.contract.empty_transaction`.

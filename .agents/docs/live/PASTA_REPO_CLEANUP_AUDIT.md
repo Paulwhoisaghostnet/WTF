@@ -21,6 +21,7 @@ Production focus: `https://wtfos.app`
 - Signer-backed Penne Shadownet E2E now passes with keyring wallets `wtf-os-root` and `arcade-treasury`, originating `KT1DDY9Pyr7PYNJgXxnHnJn9T7WHaVx7ztdx`, creating token 0, loading allocations, completing a collector claim, completing an admin airdrop, closing the claim window, and proving TzKT allocation, claimed, supply, ownership, and metadata big-map state.
 - Signer-backed Lasagna Shadownet E2E now passes with keyring wallets `wtf-os-root` and `arcade-treasury`, originating `KT1GrrYTevWKExvhFWVigUdGKR86SQKwYceN`, adding/removing a curator, publishing two cross-Pasta exhibition revisions, resetting the current revision pointer, transferring/accepting administration, and proving TzKT curator, revision, administrator, current-pointer, and metadata big-map state.
 - Colander Shadownet discovery now passes through the browser against the six signer-backed proof KT1s, rendering adapter-specific action controls, Shadownet TzKT links, and relationship graphs for Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna.
+- WTF.ME hosted-page branch proof now serves Pasta landing, Gnocchi mint, and Spaghetti collection pages from a published `wtf-admin.wtfos.me` user-site harness host with Shadownet chain markers, real proof KT1s, wallet-connect and purchase/mint route markers, Shadownet TzKT links, user-site CSP/opener headers, and `wtf_site.public.viewed` events.
 - Live Pasta/Macaroni static wallet bundles for `macaroni`, `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna` passed stale-Taquito probes: Taquito `24.3.0` is absent, Taquito `25.0.0` is present, and the old `rpc.shadownet.teztnets.com` marker is absent.
 - Live Pasta static publisher `common.js` files now expose the `window.MD` runtime export in `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna`, while retaining `consumeCheaseHandoff()` and `loadPlatformCapabilities()` markers.
 - App-by-app live-readiness status is tracked in `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md`; it allows proof-branch pushes but blocks any full-production Pasta deployment claim until hosted-page, pinning/recovery, and signed-management boundaries are green.
@@ -62,7 +63,7 @@ Conclusion: this checkout has been archived outside the repo for recovery/audit 
 
 - The CH-EASE package-to-Pasta static runtime fix is now production-deployed: post-deploy live probes confirm `window.MD` exports on the six Pasta publisher bundles.
 - Pasta suite installer/download is now production-complete for the bundled native suite lane: `apps/pasta-suite-desktop`, the `pasta-suite-desktop-installers.yml` workflow, `/api/pasta/installers`, inventory coverage, package policy checks, GitHub release assets, production env, and the authenticated live verifier all passed for `pasta-suite-desktop-v1.0.0`.
-- Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, the Spaghetti Shadownet preflight, the signer-backed Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna deploy/mint/collect/distribution/exhibition proofs, and Colander discovery: failure recovery, WTF.ME hosting, wtfOS pinning, and browser-wallet Colander mutation/post-operation refresh should remain open until executable evidence exists. The exact app-by-app gate state is recorded in `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md`.
+- Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, the Spaghetti Shadownet preflight, the signer-backed Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna deploy/mint/collect/distribution/exhibition proofs, Colander discovery, and local WTF.ME hosted-page proof: failure recovery, production WTF.ME publish/live DNS/TLS, signed hosted-page purchase completion, wtfOS pinning, and browser-wallet Colander mutation/post-operation refresh should remain open until executable evidence exists. The exact app-by-app gate state is recorded in `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md`.
 - Local `main` at the original workspace should be fast-forwarded, reset, or archived only after the user confirms whether its dirty scratch content should be preserved.
 
 ## Current Macaroni Shadownet Proof
@@ -151,6 +152,16 @@ Conclusion: this checkout has been archived outside the repo for recovery/audit 
 - Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-colander-discovery-report.md`.
 - Scope note: this proves real-contract Colander discovery and read-management rendering. It does not yet prove a browser-wallet signed Colander mutation, post-operation refresh after mutation, WTF.ME page hosting, hosted wtfOS pinning/recovery, or mainnet readiness.
 
+## Current WTF.ME Hosted Page Proof
+
+- Source proof command: `npx tsx --test server/features/wtf-sites/pasta-hosting.test.ts`.
+- Browser proof command: `npm run pasta:shadownet:wtfme`.
+- Page proof: `server/features/wtf-sites/pasta-hosting.ts` builds immutable user-site snapshots for `home`, `mint`, and `collection` pages.
+- Host proof: `tests/playwright/inventory/pasta-protocol-wtfme-hosting.spec.mjs` maps `wtf-admin.wtfos.me` to the local harness, seeds a published user site, and loads `/`, `/mint`, and `/collection` from that public host.
+- Contract proof: the pages carry Gnocchi mint contract `KT1FwS1JifrUakeGqFwGYmMHMmfjuwJABaax`, Spaghetti collection contract `KT1LPXV5b83MU8LsvyVM76YCAH25JtNCBJPH`, token id `0`, the relevant relationship groups, Shadownet chain id `NetXsqzbfFenSTS`, and Shadownet TzKT links.
+- User-site proof: the harness response includes `X-WTFOS-Surface: user-site`, wallet-compatible Content Security Policy sources, `Cross-Origin-Opener-Policy: same-origin-allow-popups`, and `wtf_site.public.viewed` events for landing, mint, and collection.
+- Scope note: this proves branch-level hosted page rendering through the WTF.ME user-site host contract. It does not yet prove live production DNS/TLS, publish UI persistence, hosted wtfOS pinning/recovery, or a signed hosted-page mint/purchase operation.
+
 ## Current Suite Installer Proof
 
 - Source/package proof: `npm run pasta-suite:desktop:check` passed 5/5.
@@ -172,7 +183,7 @@ Conclusion: this checkout has been archived outside the repo for recovery/audit 
 
 ## Recommended Next Actions
 
-1. Use `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` as the live-push checklist, starting with WTF.ME hosted pages for the proven Shadownet contracts and tokens.
-2. Extend the now-green Shadownet evidence into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
+1. Use `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` as the live-push checklist, next extending WTF.ME hosted pages from local host-mapped proof into production-like publish and signed mint/purchase validation.
+2. Extend the now-green Shadownet evidence into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page -> artifact resolution.
 3. After user confirmation, archive/delete merged historical Macaroni branches and clean checked-out worktrees that are ancestors of `origin/main`.
 4. Keep the removed `WTF-pasta-deploy` archive only as recovery evidence; do not mine it for implementation unless a future pass needs a specific historical note.
