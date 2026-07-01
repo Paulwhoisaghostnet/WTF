@@ -247,7 +247,7 @@ async function main(): Promise<void> {
   assertPublishPayloadPlan();
   ok("Spaghetti package, relationship metadata, token metadata, and origination storage plan are valid");
 
-  ok("preflight complete; next missing proof is an actual signer-backed Shadownet origination/mint/collect run");
+  ok("preflight complete; signer-backed deploy/mint/collect proof is covered by npm run pasta:shadownet:e2e");
 }
 
 main().catch((error) => {

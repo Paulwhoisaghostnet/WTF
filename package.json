@@ -81,6 +81,7 @@
     "spaghetti:installers:live-check": "node scripts/check-spaghetti-installers-live.mjs",
     "spaghetti:desktop:dist": "npm run dist --prefix apps/spaghetti-desktop",
     "pasta:shadownet:preflight": "tsx scripts/pasta-protocol/shadownet-preflight.ts",
+    "pasta:shadownet:e2e": "tsx scripts/pasta-protocol/shadownet-spaghetti-e2e.ts",
     "check": "tsc --noEmit",
     "wtfos:cli:build": "npm run build --prefix packages/wtfos-cli",
     "wtfos:cli:test": "npm run test --prefix packages/wtfos-cli",

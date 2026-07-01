@@ -1,3 +1,13 @@
+## 2026-07-01 - Shadownet signer proofs need balance headroom blockers
+
+**What happened**: The Spaghetti signer-backed Shadownet E2E runner loaded the correct keyring wallet and RPC, but the first execute attempt blocked after estimating origination because the creator wallet had enough test tez to look funded and still not enough headroom for origination plus create-token, mint, and transfer operations. A small Shadownet faucet top-up fixed the run before any contract operation was submitted.
+
+**Why it mattered**: Testnet proof commands can fail halfway through a multi-operation story if they only check that a wallet balance is nonzero. A partially executed proof is harder to reason about than a clean pre-operation blocker, and can leave reports that look ambiguous.
+
+**Rule**: Signer-backed Shadownet proof scripts must estimate the expensive operation before injection, require explicit balance headroom for the full story, and write `BLOCKED` reports before sending if funding is insufficient. Record faucet/top-up operation hashes in the audit when local test-wallet funding is part of the proof.
+
+---
+
 ## 2026-07-01 - Cleanup reports must retire stale worktree findings
 
 **What happened**: The Pasta cleanup bounty was updated after `WTF-pasta-deploy` disappeared from the registered worktrees and filesystem, but the cleanup audit still described that removed checkout as present and kept the bounty listed as open.
