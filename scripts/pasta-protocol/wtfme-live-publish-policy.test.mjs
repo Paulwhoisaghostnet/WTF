@@ -16,12 +16,16 @@ test("Pasta WTF.ME live publisher defaults to dry-run and requires an explicit p
   );
   assert.match(source, /const execute = flag\("PASTA_WTFME_LIVE_PUBLISH", false\)/);
   assert.match(source, /const publishPins = flag\("PASTA_WTFME_LIVE_PUBLISH_PINS", true\)/);
+  assert.match(source, /const overwriteExisting = flag\("PASTA_WTFME_LIVE_OVERWRITE_EXISTING", false\)/);
   assert.match(source, /set PASTA_WTFME_LIVE_PUBLISH=1 to claim\/save\/publish pages/);
   assert.match(source, /if \(!execute\) \{\s*ok\(`dry-run: would publish Pasta landing\/mint\/collection pages to \$\{host\}`\);[\s\S]*?return;\s*\}/);
 
+  const safetyCheck = source.indexOf("assertSafeExistingContent(state)");
   const dryRunReturn = source.indexOf("dry-run: would publish Pasta landing/mint/collection pages");
   const firstSave = source.indexOf("await savePastaPages(headers)");
   const firstPublish = source.indexOf("await publish(headers)");
+  assert.ok(safetyCheck > -1, "existing-content safety check should be present");
+  assert.ok(safetyCheck < dryRunReturn, "existing-content safety check should run before dry-run success");
   assert.ok(dryRunReturn > -1, "dry-run return should be present before writes");
   assert.ok(firstSave > dryRunReturn, "page saves must happen only after the dry-run return path");
   assert.ok(firstPublish > dryRunReturn, "publish must happen only after the dry-run return path");
@@ -76,6 +80,24 @@ test("Pasta WTF.ME live publisher checks TLS before publishing pin recovery", ()
   assert.ok(publishSite > savePages, "site publish should happen after page saves");
   assert.ok(probeTls > publishSite, "TLS gate should be probed after site publish");
   assert.ok(publishPins > probeTls, "pin recovery publish should happen only after TLS passes");
+});
+
+test("Pasta WTF.ME live publisher refuses accidental existing-site overwrites", () => {
+  assert.match(source, /function assertSafeExistingContent\(state: any\): void/);
+  assert.match(source, /DEFAULT_HOME_HTML/);
+  assert.match(source, /pastaPageMarkers\(\)/);
+  assert.match(source, /Refusing to publish Pasta pages over \$\{site\.host\}: existing non-target WTF\.ME page\(s\)/);
+  assert.match(source, /would remain published; use a dedicated proof host or remove them first/);
+  assert.match(source, /Refusing to overwrite existing non-Pasta WTF\.ME page\(s\)/);
+  assert.match(source, /set PASTA_WTFME_LIVE_OVERWRITE_EXISTING=1 only for a dedicated Pasta proof host/);
+  assert.match(source, /explicit overwrite enabled for existing WTF\.ME page\(s\)/);
+
+  const claim = source.indexOf("state = await claimIfNeeded");
+  const safetyCheck = source.indexOf("assertSafeExistingContent(state)");
+  const savePages = source.indexOf("await savePastaPages(headers)");
+  assert.ok(claim > -1, "claim or claim dry-run should exist");
+  assert.ok(safetyCheck > claim, "existing-content safety check should run after host state is known");
+  assert.ok(savePages > safetyCheck, "page saves must happen only after existing-content safety check");
 });
 
 test("Pasta WTF.ME live publisher explains production host eligibility blockers", () => {

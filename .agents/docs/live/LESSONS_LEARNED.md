@@ -1,3 +1,13 @@
+## 2026-07-01 - Live WTF.ME publishers must guard existing public pages
+
+**What happened**: The Pasta WTF.ME live publisher had dry-run and production-write gates, but once credentials were supplied it would save Pasta home/mint/collection pages before proving that an existing claimed site was a dedicated Pasta proof host. The nearest real production host currently serves a generic published page, so a careless credentialed run could replace public user-site content before failing on a later proof step.
+
+**Why it mattered**: WTF.ME hosts are public identity and collection surfaces. Production proof tooling must not silently convert an existing user site into a Pasta proof site just because the account is structurally eligible.
+
+**Rule**: Before live publisher scripts write hosted pages, preflight the existing site page set. Refuse non-target page carryover, require an explicit overwrite flag for existing non-Pasta target pages, and keep all downstream pin/recovery writes behind those page-safety and TLS gates.
+
+---
+
 ## 2026-07-01 - Broad proof branches can become stale after narrow mining
 
 **What happened**: The cleanup audit still described `codex/pasta-live-readiness` as the remaining source of unique Pasta proof work after the current `codex/spaghetti-installer-live` branch had already mined or reworked those slices into narrower commits with stronger WTF.ME host and pinning guardrails.

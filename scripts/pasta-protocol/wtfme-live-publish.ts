@@ -22,6 +22,8 @@ function flag(name: string, defaultValue: boolean): boolean {
 
 const execute = flag("PASTA_WTFME_LIVE_PUBLISH", false);
 const publishPins = flag("PASTA_WTFME_LIVE_PUBLISH_PINS", true);
+const overwriteExisting = flag("PASTA_WTFME_LIVE_OVERWRITE_EXISTING", false);
+const DEFAULT_HOME_HTML = "<main><h1>wtfOS site</h1></main>";
 
 function ok(message: string): void {
   console.log(`[pasta-wtfme-publish] ok: ${message}`);
@@ -123,6 +125,61 @@ function pageSlugs(state: any): string[] {
   return Array.isArray(state?.site?.pages)
     ? state.site.pages.map((page: any) => String(page.slug || "")).filter(Boolean).sort()
     : [];
+}
+
+function existingPageHtml(page: any): string {
+  return String(page?.draftHtml ?? page?.html ?? "").trim();
+}
+
+function pastaPageMarkers(): Map<string, string> {
+  const markers = new Map<string, string>();
+  for (const page of buildPastaHostedPageSnapshots()) {
+    const marker = page.html.match(/data-pasta-hosted-page="([^"]+)"/)?.[1];
+    markers.set(page.slug, marker ? `data-pasta-hosted-page="${marker}"` : "data-pasta-hosted-page=");
+  }
+  return markers;
+}
+
+function assertSafeExistingContent(state: any): void {
+  const site = state?.site;
+  const pages = Array.isArray(site?.pages) ? site.pages : [];
+  if (!site || pages.length === 0) return;
+
+  const targetMarkers = pastaPageMarkers();
+  const extraSlugs: string[] = [];
+  const overwriteSlugs: string[] = [];
+  const siteIsPublished = site.status === "published" || Boolean(site.publishedAt);
+
+  for (const page of pages) {
+    const slug = String(page?.slug || "").trim();
+    if (!slug) continue;
+    const html = existingPageHtml(page);
+    if (!targetMarkers.has(slug)) {
+      extraSlugs.push(slug);
+      continue;
+    }
+    const marker = targetMarkers.get(slug) as string;
+    if (html.includes(marker)) continue;
+
+    const replaceableDefaultDraft = slug === WTF_USER_SITE_HOME_SLUG && html === DEFAULT_HOME_HTML && !siteIsPublished;
+    if (html && !replaceableDefaultDraft) overwriteSlugs.push(slug);
+  }
+
+  if (extraSlugs.length) {
+    fail(
+      `Refusing to publish Pasta pages over ${site.host}: existing non-target WTF.ME page(s) ` +
+        `${extraSlugs.join(", ")} would remain published; use a dedicated proof host or remove them first`
+    );
+  }
+  if (overwriteSlugs.length && !overwriteExisting) {
+    fail(
+      `Refusing to overwrite existing non-Pasta WTF.ME page(s) ${overwriteSlugs.join(", ")} on ${site.host}; ` +
+        "set PASTA_WTFME_LIVE_OVERWRITE_EXISTING=1 only for a dedicated Pasta proof host"
+    );
+  }
+  if (overwriteSlugs.length) {
+    ok(`explicit overwrite enabled for existing WTF.ME page(s): ${overwriteSlugs.join(", ")}`);
+  }
 }
 
 function eligibilitySummary(state: any): string {
@@ -260,6 +317,7 @@ async function main(): Promise<void> {
 
   const host = String(state.site?.host || state.eligibility?.host || plannedHost).toLowerCase();
   assertExpectedHost(host);
+  assertSafeExistingContent(state);
   if (!execute) {
     ok(`dry-run: would publish Pasta landing/mint/collection pages to ${host}`);
     if (publishPins) ok(`dry-run: would publish Pasta pin recovery manifest for ${host}`);
