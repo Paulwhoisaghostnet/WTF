@@ -37,6 +37,12 @@ test("Pasta repo cleanup audit classifies known stale and promoted branches", ()
   assert.match(source, /promoted_ancestor/);
 });
 
+test("Pasta repo cleanup audit treats the active branch and remote counterpart as ongoing", () => {
+  assert.match(source, /ref === activeRef/);
+  assert.match(source, /ref === `origin\/\$\{activeRef\}`/);
+  assert.doesNotMatch(source, /codex\/pasta-readiness-catalog-live.*valid_ongoing_work/);
+});
+
 test("Pasta repo cleanup audit ignores gamma and beta cleanup noise", () => {
   assert.match(source, /const pastaPattern =/);
   assert.match(source, /const ignoredPattern = \/gamma\|beta\/i/);

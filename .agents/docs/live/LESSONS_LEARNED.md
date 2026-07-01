@@ -1,3 +1,13 @@
+## 2026-07-01 - Cleanup audits must track the active branch remote
+
+**What happened**: After rebasing the Pasta live-verification branch onto current `origin/main`, `pasta:repo-cleanup:audit` correctly classified the local active branch as ongoing work but still treated `origin/codex/pasta-live-verification-docs` as an unknown Pasta branch. It also kept the already-promoted `codex/pasta-readiness-catalog-live` branch in a hard-coded active list, so yesterday's release lane could remain labeled ongoing after it became merge history.
+
+**Why it mattered**: Repo cleanup gates should stop unknown or unsafe Pasta work, not block the current PR's remote counterpart or keep stale branch names alive. A false cleanup blocker can prevent live-readiness evidence from staying current with production, while a stale active allowlist can send future work toward a promoted branch.
+
+**Rule**: Cleanup audits should derive active ongoing work from the current branch and `origin/<current-branch>`, then let promoted ancestors classify through ancestry. Do not keep a merged release branch hard-coded as active after it has reached `origin/main`.
+
+---
+
 ## 2026-07-01 - Installer catalogs need their own release proof
 
 **What happened**: Pasta had live individual installer manifests and a live suite manifest, but the follow-up unified `/api/pasta/installers/catalog` surface initially existed only as source code. It was missing inventory ownership, a shared readiness probe, and a TypeScript-safe readonly platform helper, so the product story "download the suite or any individual app" could drift from the release gate.
