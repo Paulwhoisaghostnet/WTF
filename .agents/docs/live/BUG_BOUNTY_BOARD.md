@@ -7373,6 +7373,9 @@ Priority labels:
   - Passed `npm run check -- --pretty false`.
   - Passed `npm run build`.
   - Confirmed `scripts/wtf-ssh.sh --check` reaches the `wtf` host and sudo can read `/etc/wtf/wtf.env` names without exposing values.
+  - Updated the live-readiness gate to print the non-secret WTF.ME unblock path: dedicated Pasta account/host credential, active WTFOS DID/repo, linked Tezos wallet, WTF Pin Collector permission, `PASTA_WTFME_LIVE_HOST`, `PASTA_WTFME_LIVE_EXPECT_HOST`, publish mode, and the final `pasta:wtfme:live-check` command.
+  - Passed `node --check scripts/pasta-protocol/live-readiness-gate.mjs` and `npm run pasta:live-readiness:check`.
+  - Passed `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; it still blocks on the missing credential/host proof and now prints the exact remediation commands.
   - Confirmed the closest existing production host still fails correctly: `PASTA_WTFME_LIVE_HOST=paulwhoisaghost.wtfos.me PASTA_WTFME_LIVE_CHECK_PINS=0 npm run pasta:wtfme:live-check` exits on the missing Pasta landing marker.
   - Passed `git diff --check`.
   - Still blocked live: no production host currently serves the Pasta landing/mint/collection pages plus public pin discovery; `wtf-admin.wtfos.me` is unregistered, and `paulwhoisaghost.wtfos.me` is registered but not yet published with Pasta content.

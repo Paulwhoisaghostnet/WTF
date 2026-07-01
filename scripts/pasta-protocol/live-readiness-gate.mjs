@@ -20,6 +20,8 @@ const checkInstallers = flag("PASTA_LIVE_READINESS_CHECK_INSTALLERS", true);
 const host = String(process.env.PASTA_WTFME_LIVE_HOST || "").trim().toLowerCase();
 const checks = [];
 const blockers = [];
+const WTFME_CREDENTIAL_DETAIL =
+  "provision a dedicated Pasta WTF.ME account with a claimed/publishable .wtfos.me host, active WTFOS DID/repo, linked Tezos wallet, and WTF Pin Collector permission; set PASTA_WTFME_LIVE_COOKIE or PASTA_WTFME_LIVE_USERNAME/PASTA_WTFME_LIVE_PASSWORD for a dry-run/publish pass";
 
 function baseUrl() {
   const raw = String(process.env.PASTA_LIVE_READINESS_BASE_URL || process.env.WTFOS_BASE_URL || DEFAULT_BASE_URL).trim();
@@ -145,7 +147,7 @@ function checkWtfmePublishDryRun() {
   } else {
     block(
       "local WTF.ME publish credentials",
-      "set PASTA_WTFME_LIVE_COOKIE or PASTA_WTFME_LIVE_USERNAME/PASTA_WTFME_LIVE_PASSWORD for a dry-run/publish pass"
+      WTFME_CREDENTIAL_DETAIL
     );
     return;
   }
@@ -216,6 +218,25 @@ function checkWtfmeHost() {
   block("live WTF.ME host", output || `pasta:wtfme:live-check exited ${result.status ?? "unknown"}`);
 }
 
+function printBlockerRemediation() {
+  if (blockers.length === 0) return;
+  const hasCredentialBlocker = blockers.some((blocker) => blocker.name === "local WTF.ME publish credentials");
+  const hasHostBlocker = blockers.some((blocker) => blocker.name === "live WTF.ME host");
+  if (hasCredentialBlocker) {
+    console.log(
+      "[pasta-live-readiness] next: provision the dedicated Pasta WTF.ME account/host credential outside the repo, then rerun this gate with PASTA_WTFME_LIVE_COOKIE or PASTA_WTFME_LIVE_USERNAME/PASTA_WTFME_LIVE_PASSWORD"
+    );
+  }
+  if (hasCredentialBlocker || hasHostBlocker) {
+    console.log(
+      "[pasta-live-readiness] next: bind the proof to the emitted host with PASTA_WTFME_LIVE_HOST=<published-host> for readiness checks and PASTA_WTFME_LIVE_EXPECT_HOST=<published-host> before any PASTA_WTFME_LIVE_PUBLISH=1 run"
+    );
+    console.log(
+      "[pasta-live-readiness] next: after publish, require PASTA_WTFME_LIVE_HOST=<published-host> npm run pasta:wtfme:live-check to pass with pin discovery enabled"
+    );
+  }
+}
+
 async function main() {
   console.log(`[pasta-live-readiness] target ${baseUrl().origin}`);
   await checkHealth();
@@ -226,6 +247,7 @@ async function main() {
 
   const ok = blockers.length === 0;
   console.log(JSON.stringify({ ok, allowBlockers, checks, blockers }, null, 2));
+  printBlockerRemediation();
   if (!ok && !allowBlockers) process.exit(1);
 }
 

@@ -62,3 +62,16 @@ test("Pasta live-readiness gate validates supplied WTF.ME credentials with a non
   assert.match(source, /authenticated user resolves/);
   assert.match(source, /Refusing to/);
 });
+
+test("Pasta live-readiness gate prints non-secret WTF.ME unblock instructions", () => {
+  assert.match(source, /function printBlockerRemediation\(\)/);
+  assert.match(source, /dedicated Pasta WTF\.ME account/);
+  assert.match(source, /claimed\/publishable \.wtfos\.me host/);
+  assert.match(source, /active WTFOS DID\/repo/);
+  assert.match(source, /linked Tezos wallet/);
+  assert.match(source, /WTF Pin Collector permission/);
+  assert.match(source, /PASTA_WTFME_LIVE_EXPECT_HOST=<published-host>/);
+  assert.match(source, /PASTA_WTFME_LIVE_PUBLISH=1/);
+  assert.match(source, /pin discovery enabled/);
+  assert.doesNotMatch(source, /PASTA_WTFME_LIVE_PASSWORD[^\\n]+console\.log/);
+});

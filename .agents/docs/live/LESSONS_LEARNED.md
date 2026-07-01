@@ -1,3 +1,13 @@
+## 2026-07-01 - Live blockers need executable unblock instructions
+
+**What happened**: The Pasta live-readiness gate correctly blocked on missing WTF.ME publish credentials and host proof, but its first blocker text only named the credential env vars. Operators still had to piece together the required account prerequisites, host binding, expected-host write guard, and post-publish verifier command from several docs and scripts.
+
+**Why it mattered**: A release gate that says "missing credentials" can still leave a live deployment stuck or tempt someone to reuse a stale/shared host. The safe path for hosted mint pages needs a dedicated account, claimed host, DID/repo, linked Tezos wallet, pinning permission, dry-run auth proof, host-bound publish, and public pin discovery proof.
+
+**Rule**: Live release gates should print the exact non-secret remediation path for each blocker, including required env names, account prerequisites, host-binding variables, and the final verifier command. Keep the gate fail-closed while making the next safe action obvious.
+
+---
+
 ## 2026-07-01 - Readiness gates must validate credentials, not count env names
 
 **What happened**: The Pasta live-readiness gate originally treated a non-empty `PASTA_WTFME_LIVE_COOKIE` or username/password pair as enough to satisfy the credential portion of the gate. That could let a later run with stale, mismatched, or under-permissioned credentials proceed to the public host check without proving the account can actually reach the intended WTF.ME publish path.
