@@ -1,3 +1,23 @@
+## 2026-07-01 - Production env changes must target the runtime env file
+
+**What happened**: The first Gnocchi/Ravioli/Rotini/Penne/Lasagna installer env publication wrote the public release URLs and SHA-256 values into the repo `.env`, then recreated the app container directly. Production compose uses `WTF_ENV_FILE=/etc/wtf/wtf.env`, so the app still saw no installer values; the direct recreate also lost the build-time `COMMIT_SHA` marker and made health report `commitRef:"dev"` until the normal deploy script rebuilt for the real commit.
+
+**Why it mattered**: Download manifests are only live when the running container sees the values. Updating the wrong env file can leave authenticated users with unavailable installers even though source, release assets, and repo `.env` look correct. A direct compose recreate can also weaken live evidence by erasing the commit marker used to prove what is deployed.
+
+**Rule**: For production env-only changes, identify the active compose `env_file` before editing, back up and update that runtime file, then use the repo's normal deploy script or an equivalent path that preserves `COMMIT_SHA`. Verify both container env-key presence and public health commit before running live feature checks.
+
+---
+
+## 2026-07-01 - GitHub workflow gates must use supported metadata APIs
+
+**What happened**: After the Gnocchi, Ravioli, Rotini, Penne, and Lasagna installer workflows were merged to `main` and visible in `gh workflow list`, the standalone installer release audit still reported every remote workflow as missing because it called `gh workflow view <filename> --json ...`. The installed GitHub CLI does not support `--json` for `workflow view`, so the guardrail converted a successful registration into a stale blocker.
+
+**Why it mattered**: Installer release gates are supply-chain evidence. A false remote-workflow blocker can send operators back through already-completed promotion steps, while a future workaround could tempt someone to bypass the audit entirely during release publication.
+
+**Rule**: For workflow-registration gates, use the GitHub Actions API workflow list and compare the exact `.github/workflows/<file>.yml` path, or add a policy test proving the CLI command is supported in the current environment. Do not rely on unsupported `gh workflow view --json` flags for release-critical checks.
+
+---
+
 ## 2026-07-01 - New installer surfaces must enter the shared readiness gate immediately
 
 **What happened**: After adding source-verified standalone desktop plumbing for the remaining static Pasta publishers, the package-specific checks and docs knew those installers were still unpublished, but the shared `pasta:live-readiness` gate still only verified the already-live Macaroni, Pasta Suite, and Spaghetti downloads.
