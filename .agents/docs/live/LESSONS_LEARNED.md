@@ -1,3 +1,13 @@
+## 2026-07-01 - WTF.ME publish credentials must prove host eligibility, not only login
+
+**What happened**: A production dry-run of the Pasta WTF.ME publisher authenticated as the trusted-creator puppet `e2e_cookiemonster`, but `/api/wtf-sites/my` returned no site and no claimable host. The account had a wallet and `canIssueWtfDid`, but its underscore username was not a DNS-valid WTF.ME label and it lacked OAuth social, linked Bluesky, and active WTF DID state.
+
+**Why it mattered**: Password login is not enough evidence for hosted-page release readiness. A live publisher can be safely authenticated yet unable to claim or publish the intended `*.wtfos.me` host, leaving TLS checks stuck at `handle not registered` and making the operator chase DNS instead of identity eligibility.
+
+**Rule**: Before any WTF.ME production publish attempt, dry-run `/api/wtf-sites/my` with the exact Pasta-scoped credentials and assert a DNS-valid claimable or already claimed host plus wallet and social/DID eligibility. Production helpers must surface eligibility flags and reasons when no host is available.
+
+---
+
 ## 2026-07-01 - Recovery drills must expose the public discovery URL
 
 **What happened**: The first Pasta pinning recovery drill matched the manifest, item records, checksums, hosted pages, contracts, and metadata, but the drill output did not carry the exact `/.well-known/wtfos-pins` URL as a first-class field.

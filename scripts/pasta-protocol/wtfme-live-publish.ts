@@ -124,6 +124,33 @@ function pageSlugs(state: any): string[] {
     : [];
 }
 
+function eligibilitySummary(state: any): string {
+  const siteHost = String(state?.site?.host || "").trim();
+  const siteStatus = String(state?.site?.status || "").trim();
+  const eligibility = state?.eligibility;
+  if (!eligibility || typeof eligibility !== "object") {
+    return `${siteHost ? `site=${siteHost}` : "site=none"}; eligibility=missing`;
+  }
+
+  const reasons = Array.isArray(eligibility.reasons)
+    ? eligibility.reasons.map((reason: any) => String(reason || "").trim()).filter(Boolean)
+    : [];
+  const host = String(eligibility.host || "").trim();
+  const flags = [
+    `site=${siteHost || "none"}`,
+    `siteStatus=${siteStatus || "none"}`,
+    `claimableHost=${host || "none"}`,
+    `canClaim=${Boolean(eligibility.canClaim)}`,
+    `hasWallet=${Boolean(eligibility.hasWallet)}`,
+    `hasOAuthSocial=${Boolean(eligibility.hasOAuthSocial)}`,
+    `hasLinkedBluesky=${Boolean(eligibility.hasLinkedBluesky)}`,
+    `hasActiveWtfDid=${Boolean(eligibility.hasActiveWtfDid)}`,
+    `canIssueWtfDid=${Boolean(eligibility.canIssueWtfDid)}`,
+  ];
+  if (reasons.length) flags.push(`reasons=${reasons.join("; ")}`);
+  return flags.join("; ");
+}
+
 function assertExpectedHost(host: string): void {
   if (expectedHost && host !== expectedHost) {
     fail(`authenticated user resolves to ${host}, expected PASTA_WTFME_LIVE_EXPECT_HOST=${expectedHost}`);
@@ -140,8 +167,7 @@ async function claimIfNeeded(state: any, headers: Record<string, string>): Promi
     return state;
   }
   if (!state.eligibility?.canClaim) {
-    const reasons = Array.isArray(state.eligibility?.reasons) ? state.eligibility.reasons.join("; ") : "unknown eligibility failure";
-    fail(`authenticated user is not eligible to claim a WTF.ME host: ${reasons}`);
+    fail(`authenticated user is not eligible to claim a WTF.ME host: ${eligibilitySummary(state)}`);
   }
   if (!execute) {
     ok(`dry-run: authenticated user can claim ${state.eligibility.host}`);
@@ -209,7 +235,9 @@ async function main(): Promise<void> {
   await login();
   let state = await getSiteState();
   const plannedHost = state.site?.host || state.eligibility?.host;
-  if (!plannedHost) fail("authenticated user did not expose a WTF.ME host or claimable host");
+  if (!plannedHost) {
+    fail(`authenticated user did not expose a WTF.ME host or claimable host: ${eligibilitySummary(state)}`);
+  }
   assertExpectedHost(String(plannedHost).toLowerCase());
   state = await claimIfNeeded(state, execute ? await csrfHeaders() : {});
 

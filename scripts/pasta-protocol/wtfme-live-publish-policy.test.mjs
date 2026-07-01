@@ -58,3 +58,23 @@ test("Pasta WTF.ME live publisher uses CSRF for every mutating API call and veri
   assert.match(source, /await probeTlsAsk\(host\)/);
   assert.match(source, /published host \$\{host\} is still denied by the production TLS gate/);
 });
+
+test("Pasta WTF.ME live publisher explains production host eligibility blockers", () => {
+  assert.match(source, /function eligibilitySummary\(state: any\): string/);
+  assert.match(source, /claimableHost=\$\{host \|\| "none"\}/);
+  assert.match(source, /canClaim=\$\{Boolean\(eligibility\.canClaim\)\}/);
+  assert.match(source, /hasWallet=\$\{Boolean\(eligibility\.hasWallet\)\}/);
+  assert.match(source, /hasOAuthSocial=\$\{Boolean\(eligibility\.hasOAuthSocial\)\}/);
+  assert.match(source, /hasLinkedBluesky=\$\{Boolean\(eligibility\.hasLinkedBluesky\)\}/);
+  assert.match(source, /hasActiveWtfDid=\$\{Boolean\(eligibility\.hasActiveWtfDid\)\}/);
+  assert.match(source, /canIssueWtfDid=\$\{Boolean\(eligibility\.canIssueWtfDid\)\}/);
+  assert.match(source, /reasons=\$\{reasons\.join\("; "\)\}/);
+  assert.match(
+    source,
+    /authenticated user is not eligible to claim a WTF\.ME host: \$\{eligibilitySummary\(state\)\}/,
+  );
+  assert.match(
+    source,
+    /authenticated user did not expose a WTF\.ME host or claimable host: \$\{eligibilitySummary\(state\)\}/,
+  );
+});
