@@ -1,3 +1,13 @@
+## 2026-07-01 - Post-prune docs need current branch counts
+
+**What happened**: After PR #17 promoted the Pasta live evidence refresh, a follow-up cleanup pruned more fully-promoted local branches and clean non-Gamma/Beta worktrees. The standing cleanup docs still named PR #16 as the evidence authority and still reported older `codex/pasta-live-readiness` / backup-branch ahead-behind counts.
+
+**Why it mattered**: Repo cleanup docs are instructions for future release agents. Stale counts make historical evidence branches look closer to current production than they are, and stale authority lines can send a later pass toward a branch that has already been merged, deleted, or intentionally retained only as proof material.
+
+**Rule**: After any post-merge pruning pass, rerun `npm run pasta:repo-cleanup:audit` against current `origin/main`, refresh live health/deploy/quality evidence, and update ahead-behind counts before recommending any archive, replay, or carry-forward action.
+
+---
+
 ## 2026-07-01 - Post-merge docs should separate product authority from docs-only refreshes
 
 **What happened**: PR #16 promoted the post-prune Pasta cleanup documentation and deployed successfully, moving live health from `9507502` to `2a1977e`. The audit docs still opened with PR #15 as the current authority until the post-merge pass refreshed them.
