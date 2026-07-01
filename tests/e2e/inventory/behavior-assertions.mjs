@@ -254,7 +254,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion:
       "A Pasta publish can be represented as a wtfOS pinning bundle that covers hosted pages, contract artifacts, token metadata, relationship metadata, public discovery, and recovery coordinates for the WTF.ME host.",
     durableSideEffectAssertion:
-      "The proof builds app.wtfos.media pinPolicy, pinManifest, and pinItem records from the real Pasta hosted-page snapshots and contract artifacts, validates every record against the AT lexicon, requires public storage refs without credentials or file paths, includes IPFS gateway URLs, object-storage mirror keys, the .well-known/wtfos-pins URL, and a restore order for rebuilding the hosted pages plus Pasta contract metadata.",
+      "The proof builds app.wtfos.media pinPolicy, pinManifest, and pinItem records from the real Pasta hosted-page snapshots and contract artifacts, validates every record against the AT lexicon, requires public storage refs without credentials or file paths, includes IPFS gateway URLs, object-storage mirror keys, the .well-known/wtfos-pins URL, and runs a public-discovery recovery drill that matches the manifest to pinItem records before rebuilding the hosted pages plus Pasta contract metadata.",
   },
   {
     id: "inventory.temporary-grants-unlock-apps",

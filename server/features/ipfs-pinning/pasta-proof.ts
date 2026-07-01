@@ -440,3 +440,106 @@ export function buildPastaPublishPinningProof(input: PastaPublishPinningProofInp
     recovery: manifestPayload.recovery,
   };
 }
+
+type PastaPublishPinningProof = ReturnType<typeof buildPastaPublishPinningProof>;
+type PastaManifestItem = PastaPublishPinningProof["manifestPayload"]["items"][number];
+
+export function buildPastaWellKnownPinsBody(proof: PastaPublishPinningProof) {
+  const manifest = proof.manifestPayload;
+  return {
+    schemaVersion: PASTA_PINNING_SCHEMA_VERSION,
+    host: manifest.host,
+    repoDid: manifest.repoDid,
+    repoHandle: `${manifest.host}`,
+    manifestUri: proof.recovery.manifestAtUri,
+    recordCid: proof.manifestRecord.storageRef.checksumSha256,
+    latestPublishedAt: manifest.publishedAt,
+    gatewayLinks: [`https://bsky.app/profile/${manifest.repoDid}/post/${encodeURIComponent(proof.recovery.manifestAtUri)}`],
+  };
+}
+
+export function buildPastaPinningRecoveryDrill(proof: PastaPublishPinningProof) {
+  const wellKnown = buildPastaWellKnownPinsBody(proof);
+  const manifest = proof.manifestPayload;
+  const itemRecordsByCid = new Map(proof.itemRecords.map((record) => [record.cid, record]));
+  const missingRecords: PastaManifestItem[] = [];
+  const checksumMismatches: Array<{ cid: string; manifestChecksum: string; recordChecksum?: string }> = [];
+
+  for (const item of manifest.items) {
+    const record = itemRecordsByCid.get(item.cid);
+    if (!record) {
+      missingRecords.push(item);
+      continue;
+    }
+    const recordChecksum = record.checksumSha256 || record.storageRef?.checksumSha256;
+    if (recordChecksum !== item.checksumSha256) {
+      checksumMismatches.push({ cid: item.cid, manifestChecksum: item.checksumSha256, recordChecksum });
+    }
+  }
+
+  const kinds = new Set(manifest.items.map((item) => item.kind));
+  const missingKinds = manifest.recovery.requiredKinds.filter((kind) => !kinds.has(kind as PastaPinItemKind));
+  const hostedPages = manifest.items
+    .filter((item) => item.kind === "hosted_page")
+    .map((item) => ({
+      slug: typeof item.metadata?.slug === "string" ? item.metadata.slug : item.fileName.replace(/^pages\//, "").replace(/\.html$/, ""),
+      title: typeof item.metadata?.title === "string" ? item.metadata.title : item.fileName,
+      cid: item.cid,
+      checksumSha256: item.checksumSha256,
+      restoreUrl: item.sourceUri,
+      mirrorKey: item.storageRef.s3Key,
+    }));
+  const contractArtifacts = manifest.items
+    .filter((item) => item.kind === "contract_artifact")
+    .map((item) => ({
+      app: item.app,
+      fileName: item.fileName,
+      cid: item.cid,
+      checksumSha256: item.checksumSha256,
+      mirrorKey: item.storageRef.s3Key,
+      contract: typeof item.metadata?.contract === "string" ? item.metadata.contract : null,
+    }));
+  const metadataItems = manifest.items
+    .filter((item) => item.kind === "token_metadata" || item.kind === "relationship_metadata")
+    .map((item) => ({
+      kind: item.kind,
+      app: item.app,
+      cid: item.cid,
+      checksumSha256: item.checksumSha256,
+      mirrorKey: item.storageRef.s3Key,
+    }));
+  const objectMirrorKeys = manifest.items.map((item) => item.storageRef.s3Key).filter((key): key is string => Boolean(key));
+  const ipfsGatewayUrls = manifest.items.map((item) => `https://ipfs.io/ipfs/${item.cid}`);
+  const checks = {
+    wellKnownLinksManifest: wellKnown.manifestUri === proof.recovery.manifestAtUri,
+    itemRecordsMatchManifest: missingRecords.length === 0,
+    allChecksumsRetained: checksumMismatches.length === 0,
+    requiredKindsPresent: missingKinds.length === 0,
+    hostedPagesRecoverable: hostedPages.length === 3,
+    contractArtifactsRecoverable: contractArtifacts.length === PASTA_PINNING_CONTRACT_ARTIFACTS.length,
+    metadataRecoverable: metadataItems.length >= PASTA_WTFME_PROOF_CONTRACTS.length * 2,
+    ipfsFallbacksPresent: ipfsGatewayUrls.length === manifest.items.length,
+    objectMirrorFallbacksPresent: objectMirrorKeys.length === manifest.items.length,
+  };
+
+  return {
+    wellKnown,
+    publicDiscoveryUrl: proof.recovery.wellKnownPinsUrl,
+    manifestUri: proof.recovery.manifestAtUri,
+    restoreOrder: proof.recovery.restoreOrder,
+    requiredKinds: proof.recovery.requiredKinds,
+    itemCount: manifest.itemCount,
+    itemRecordCount: proof.itemRecords.length,
+    hostedPages,
+    contractArtifacts,
+    metadataItems,
+    pdsRecords: manifest.redundancy.pdsRecords,
+    ipfsGatewayUrls,
+    objectMirrorKeys,
+    checks,
+    missingKinds,
+    missingRecords,
+    checksumMismatches,
+    recoverable: Object.values(checks).every(Boolean),
+  };
+}

@@ -1,3 +1,13 @@
+## 2026-07-01 - Recovery drills must expose the public discovery URL
+
+**What happened**: The first Pasta pinning recovery drill matched the manifest, item records, checksums, hosted pages, contracts, and metadata, but the drill output did not carry the exact `/.well-known/wtfos-pins` URL as a first-class field.
+
+**Why it mattered**: A recovery proof that only mentions the discovery URL in surrounding manifest prose can pass without proving the caller has the entry point needed to start recovery from public production state.
+
+**Rule**: Pinning recovery drills must expose and assert the public discovery URL, manifest URI, item-record set, IPFS fallbacks, object-storage fallbacks, and reconstructed asset groups as structured output. Do not rely on a text restore-order string as proof that recovery is reachable.
+
+---
+
 ## 2026-07-01 - Production mutator helpers need source-policy rails
 
 **What happened**: The Pasta WTF.ME production publisher was intentionally gated behind dry-run mode and `PASTA_WTFME_LIVE_PUBLISH=1`, but that safety lived only in the helper source and release notes at first.

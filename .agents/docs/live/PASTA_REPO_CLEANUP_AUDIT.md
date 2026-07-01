@@ -173,9 +173,9 @@ Conclusion: this checkout has been archived outside the repo for recovery/audit 
 - Local proof command: `npm run pasta:shadownet:pinning`.
 - Source proof: `server/features/ipfs-pinning/pasta-proof.ts` builds the Pasta publish pin bundle using `server/features/wtf-sites/pasta-hosting.ts`, `server/features/ipfs-pinning/records.ts`, and the real static contract artifact files under `public/creation-tools/*/contract`.
 - Record proof: the test validates app.wtfos.media `pinPolicy`, `pinManifest`, and every `pinItem` against the shared AT lexicon.
-- Coverage proof: the manifest payload covers hosted pages, six contract artifacts, token metadata, relationship metadata, public IPFS gateway URLs, object-storage mirror keys, `.well-known/wtfos-pins`, and a restore order for rebuilding hosted pages plus Pasta contract metadata.
+- Coverage proof: the manifest payload covers hosted pages, six contract artifacts, token metadata, relationship metadata, public IPFS gateway URLs, object-storage mirror keys, `.well-known/wtfos-pins`, and a public-discovery recovery drill for rebuilding hosted pages plus Pasta contract metadata.
 - Safety proof: storage references reject credentials, signed URLs, and private file paths through the existing IPFS pinning record sanitizer.
-- Scope note: this is branch-level record-shape and recovery-coordinate proof. It does not yet prove live hosted Porcupin pin completion, real object-store writes, published PDS records, public `.well-known` serving, or a recovery drill from live persisted records.
+- Scope note: this is branch-level record-shape, recovery-coordinate, and public-discovery drill proof. It does not yet prove live hosted Porcupin pin completion, real object-store writes, published PDS records, public `.well-known` serving, or a recovery drill from live persisted records.
 
 ## Current Suite Installer Proof
 

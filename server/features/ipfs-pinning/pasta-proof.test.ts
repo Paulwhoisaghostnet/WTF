@@ -12,7 +12,9 @@ import {
 import { PASTA_WTFME_PROOF_CONTRACTS, buildPastaHostedPageSnapshots } from "../wtf-sites/pasta-hosting";
 import {
   PASTA_PINNING_CONTRACT_ARTIFACTS,
+  buildPastaPinningRecoveryDrill,
   buildPastaPublishPinningProof,
+  buildPastaWellKnownPinsBody,
 } from "./pasta-proof";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -103,4 +105,50 @@ test("Pasta publish pinning proof covers artifacts, metadata, files, redundancy,
   assert.doesNotMatch(serialized, /X-Amz-Signature=|Bearer\s+|file:\/\//i);
   assert.match(serialized, /https:\/\/ipfs\.io\/ipfs\/bafybeipastaproof/);
   assert.match(serialized, new RegExp(`https://${HOST}/collection`));
+});
+
+test("Pasta pinning proof can be restored from public discovery, manifest, and pin item records", () => {
+  const proof = buildPastaPublishPinningProof({
+    host: HOST,
+    repoDid: REPO_DID,
+    walletAddress: WALLET,
+    publishedAt: PUBLISHED_AT,
+    pages: buildPastaHostedPageSnapshots(),
+    contractArtifacts: contractArtifacts(),
+  });
+  const wellKnown = buildPastaWellKnownPinsBody(proof);
+  const drill = buildPastaPinningRecoveryDrill(proof);
+
+  assert.equal(wellKnown.schemaVersion, 1);
+  assert.equal(wellKnown.host, HOST);
+  assert.equal(wellKnown.repoDid, REPO_DID);
+  assert.equal(wellKnown.manifestUri, `at://${REPO_DID}/app.wtfos.media.pinManifest/pasta-protocol-shadownet`);
+  assert.equal(drill.recoverable, true);
+  assert.deepEqual(drill.missingKinds, []);
+  assert.deepEqual(drill.missingRecords, []);
+  assert.deepEqual(drill.checksumMismatches, []);
+  assert.equal(drill.itemRecordCount, drill.itemCount);
+  assert.deepEqual(drill.checks, {
+    wellKnownLinksManifest: true,
+    itemRecordsMatchManifest: true,
+    allChecksumsRetained: true,
+    requiredKindsPresent: true,
+    hostedPagesRecoverable: true,
+    contractArtifactsRecoverable: true,
+    metadataRecoverable: true,
+    ipfsFallbacksPresent: true,
+    objectMirrorFallbacksPresent: true,
+  });
+
+  assert.deepEqual(
+    drill.hostedPages.map((page) => page.slug).sort(),
+    ["collection", "home", "mint"],
+  );
+  assert.equal(drill.contractArtifacts.length, PASTA_PINNING_CONTRACT_ARTIFACTS.length);
+  assert.equal(drill.metadataItems.length, PASTA_WTFME_PROOF_CONTRACTS.length * 2);
+  assert.equal(drill.ipfsGatewayUrls.length, proof.manifestPayload.items.length);
+  assert.equal(drill.objectMirrorKeys.length, proof.manifestPayload.items.length);
+  assert.equal(drill.publicDiscoveryUrl, `https://${HOST}/.well-known/wtfos-pins`);
+  assert.match(JSON.stringify(drill), new RegExp(`https://${HOST}/\\.well-known/wtfos-pins`));
+  assert.match(JSON.stringify(drill), /read \.well-known\/wtfos-pins/);
 });

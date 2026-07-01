@@ -667,13 +667,13 @@ Priority labels:
 - Correction:
   - Added `server/features/ipfs-pinning/pasta-proof.ts` to build a Pasta publish pin bundle from the WTF.ME hosted-page snapshots, signer-backed Shadownet proof contracts, and real static contract artifacts.
   - Added `server/features/ipfs-pinning/pasta-proof.test.ts` and `npm run pasta:shadownet:pinning` to validate app.wtfos.media `pinPolicy`, `pinManifest`, and `pinItem` records against the shared AT lexicon.
-  - The proof asserts hosted-page, contract-artifact, token-metadata, and relationship-metadata item coverage, public IPFS gateway URLs, object-storage mirror keys, `.well-known/wtfos-pins`, restore order, and storage refs without credentials/signed URLs/private paths.
+  - The proof asserts hosted-page, contract-artifact, token-metadata, and relationship-metadata item coverage, public IPFS gateway URLs, object-storage mirror keys, `.well-known/wtfos-pins`, restore order, a public-discovery recovery drill, and storage refs without credentials/signed URLs/private paths.
   - Registered the behavior assertion with Pasta Protocol and IPFS Pinning ownership.
 - Verification:
   - `npm run pasta:shadownet:pinning`
   - `npx tsx --test server/features/ipfs-pinning/records.test.ts`
 - Residual risk:
-  - This is branch-level pin-record and recovery-coordinate proof, not live hosted Porcupin pin completion, object-store writes, published PDS records, public `.well-known` serving, or a recovery drill from live persisted records.
+  - This is branch-level pin-record, recovery-coordinate, and public-discovery drill proof, not live hosted Porcupin pin completion, object-store writes, published PDS records, public `.well-known` serving, or a recovery drill from live persisted records.
 
 ### WTF-BB-339 - Pasta WTF.ME production host fails live TLS gate
 
