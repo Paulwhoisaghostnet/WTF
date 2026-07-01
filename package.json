@@ -83,6 +83,7 @@
     "pasta:shadownet:e2e:rotini": "tsx scripts/pasta-protocol/shadownet-rotini-e2e.ts",
     "pasta:shadownet:e2e:penne": "tsx scripts/pasta-protocol/shadownet-penne-e2e.ts",
     "pasta:shadownet:e2e:lasagna": "tsx scripts/pasta-protocol/shadownet-lasagna-e2e.ts",
+    "pasta:shadownet:colander": "npm run build && HARNESS_PORT=4322 playwright test tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs --project=chromium --reporter=list",
     "check": "tsc --noEmit",
     "wtfos:cli:build": "npm run build --prefix packages/wtfos-cli",
     "wtfos:cli:test": "npm run test --prefix packages/wtfos-cli",

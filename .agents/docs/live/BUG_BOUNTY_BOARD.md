@@ -61,6 +61,7 @@ Priority labels:
 | WTF-BB-333 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Suite installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Bundled Pasta Suite Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated live public download smoke on commit `fd4afcd` |
 | WTF-BB-334 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / Macaroni Shadownet proof harness | P2 | 9 | 12 | 2 | 4 | 0 | Macaroni Shadownet puppet proof drifted from the Octez active-account lifecycle; the harness now models accepted `octez.connect` session state, active-account events, restore/disconnect behavior, trusted-creator publish gating, and passed `npm run test:e2e:macaroni:shadownet` 5/5 against a disposable Shadownet puppet database |
 | WTF-BB-335 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Protocol / CH-EASE handoff and static publisher runtime | P1 | 12 | 7 | 2 | 5 | 1 | Pasta publisher handoffs could open `/tools/spaghetti?handoff=...` while the iframe dropped the query, and the six Pasta ES-module studios read `window.MD` even though their shared common helpers only declared lexical `const MD`; fixed by forwarding creation-tool route queries to all static iframes, exporting `window.MD` in Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna, adding policy guards, passing focused Spaghetti CH-EASE handoff plus mocked Shadownet publish choreography proof, promoting to main, and verifying live `wtfos.app` commit `c4ba55f` exposes `window.MD`, `consumeCheaseHandoff()`, and `loadPlatformCapabilities()` across all six Pasta publisher bundles |
+| WTF-BB-336 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / Colander real-contract discovery | P1 | 13 | 6 | 2 | 5 | 2 | Colander could detect real Pasta entrypoints but lost proof-contract relationship metadata, linked Shadownet KT1s to the mainnet explorer, and lacked the shared chain preflight before writes; fixed with data/HTTPS/IPFS metadata decoding, Shadownet TzKT links, write preflight, inventory docs, and focused real-contract browser proof over all six Shadownet Pasta contracts |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -599,6 +600,29 @@ Priority labels:
   - Current `git worktree list --porcelain` no longer lists the stale checkout, and `git branch --list pasta-protocol` returns no local branch.
   - `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md` remains current.
   - `scripts/check-macaroni-installers-live.mjs` and installer manifest policy still prove HTTPS URLs, checksums, and actual release asset filenames.
+
+### WTF-BB-336 - Colander real-contract discovery lost Shadownet proof metadata
+
+- Category: Pasta Protocol / Colander real-contract discovery
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F5 + S2 + P1(4) = 13
+- Evidence:
+  - After the signer-backed Pasta proofs, Colander could open a KT1 and detect entrypoint adapters, but relationship metadata only loaded from `ipfs://` contract metadata. The Shadownet proof contracts use `data:application/json;base64,...` metadata URIs, so the relationship graph could be absent even while controls rendered.
+  - `explorerUrl()` only distinguished Ghostnet from mainnet, so Shadownet KT1s linked to `tzkt.io` instead of `shadownet.tzkt.io`.
+  - Colander write submissions called `connectWallet()` but did not call the shared `assertNetworkReadyForSend()` chain-id preflight before building wallet operations.
+- Why it matters:
+  - Colander is the Pasta management and discovery console. It must prove contract type, current state, provenance metadata, and correct network evidence before any full Pasta release can rely on it.
+  - A wrong explorer link can make Shadownet evidence look missing or send users toward mainnet, and missing preflight weakens wallet safety before signed operations.
+- Correction:
+  - Added metadata resolution for `data:application/json`, `https://`, and `ipfs://` URIs.
+  - Routed Shadownet explorer links to `https://shadownet.tzkt.io`.
+  - Added `assertNetworkReadyForSend(me)` before Colander signed writes.
+  - Added `tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs`, which opens the signer-backed Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna Shadownet contracts through the browser UI and asserts adapters, actions, explorer links, relationship groups, and Colander events.
+- Verification:
+  - `npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run pasta:shadownet:colander`
 
 ### WTF-BB-326 - Broad inventory social workflow timeout
 

@@ -78,3 +78,11 @@ test("Colander external actions pass contract context to matching Pasta tools", 
     assert.match(studio, /MD\.readRouteHandoff\(\)/, `${appId} should read Colander route handoff context`);
   }
 });
+
+test("Colander decodes real proof metadata and checks network before writes", () => {
+  const colander = readRepoFile("client/src/features/pasta-protocol/colander/ColanderApp.tsx");
+  assert.match(colander, /data:application\/json/, "Colander should decode data JSON metadata used by proof contracts");
+  assert.match(colander, /metadataFetchUrl/, "Colander should normalize remote metadata fetch URLs");
+  assert.match(colander, /shadownet\.tzkt\.io/, "Colander should link Shadownet contracts to the Shadownet explorer");
+  assert.match(colander, /assertNetworkReadyForSend\(me\)/, "Colander writes should verify wallet/RPC chain id before signing");
+});

@@ -6957,3 +6957,13 @@
 **Why it mattered**: For contracts that deliberately clear state, such as Penne's shared allocation table, a TzKT key response may include historical inactive rows. Treating inactive keys as active state can turn a correct consume-and-clear operation into a false failure.
 
 **Rule**: When verifying deletion or consumption through TzKT big-map keys, check the `active` flag. Only active rows prove live state; inactive rows are valid historical evidence that a key existed and was later removed.
+
+---
+
+## 2026-07-01 - Contract managers must decode every metadata URI used by proof contracts
+
+**What happened**: Colander could open real Shadownet Pasta KT1s and detect their entrypoint adapters, but it only fetched relationship metadata from `ipfs://` URIs. The signer-backed Shadownet proof contracts intentionally store compact `data:application/json;base64,...` contract metadata, so Colander rendered the contract controls while losing the relationship graph. The same pass found Shadownet contracts linking to the mainnet TzKT host and signed Colander actions missing the shared wallet/RPC chain preflight.
+
+**Why it mattered**: A management console can look operational while silently dropping the provenance data that proves how token products relate across Pasta apps. Wrong explorer hosts and missing chain preflight are also release-safety issues because they can send users to the wrong network evidence or let a wallet sign before the app has verified its RPC lane.
+
+**Rule**: Contract management UIs must support every metadata URI scheme their deployment/proof paths produce, including `ipfs://`, remote HTTPS, and JSON `data:` URIs. Explorer links must be network-specific, and every signed write path must call the shared wallet/RPC chain preflight before submitting an operation. Rebuild the browser bundle and prove the behavior against real KT1 contracts, not only mocked adapters.

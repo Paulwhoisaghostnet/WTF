@@ -15,6 +15,7 @@ import { MOBILE } from "../../../global-styles";
 import { presentationRouteHref, usePresentationShell } from "../../../lib/presentation-shell";
 import { connectWallet, getActiveAccount, getTezos } from "../../../lib/tezos/wallet";
 import { getNetwork } from "../../../lib/tezos/loaders";
+import { assertNetworkReadyForSend } from "../../../lib/tezos/preflight";
 import { logClientSystemEvent } from "../../../lib/system-log";
 import {
   availableActions,
@@ -45,7 +46,7 @@ const colanderRegionAttrs = (region: string) =>
 
 function explorerUrl(address: string) {
   const net = getNetwork();
-  const host = net === "ghostnet" ? "ghostnet.tzkt.io" : "tzkt.io";
+  const host = net === "shadownet" ? "shadownet.tzkt.io" : net === "ghostnet" ? "ghostnet.tzkt.io" : "tzkt.io";
   return `https://${host}/${address}`;
 }
 
@@ -78,13 +79,38 @@ function hexToUtf8(hex: string): string {
   }
 }
 
+function parseJsonDataUri(uri: string): Record<string, unknown> | undefined {
+  const match = uri.match(/^data:application\/json(;charset=[^;,]+)?(;base64)?,(.+)$/i);
+  if (!match) return undefined;
+  const isBase64 = Boolean(match[2]);
+  const payload = match[3] ?? "";
+  const jsonText = isBase64
+    ? new TextDecoder().decode(Uint8Array.from(atob(payload), (char) => char.charCodeAt(0)))
+    : decodeURIComponent(payload);
+  return JSON.parse(jsonText) as Record<string, unknown>;
+}
+
+function metadataFetchUrl(metadataUri: string): string | null {
+  if (metadataUri.startsWith("ipfs://")) return `${IPFS_GATEWAY}${metadataUri.slice("ipfs://".length)}`;
+  if (/^https:\/\//i.test(metadataUri)) return metadataUri;
+  return null;
+}
+
 async function fetchRelationship(metadataUri: string): Promise<OwnershipRelationshipMetadata | undefined> {
-  if (!metadataUri.startsWith("ipfs://")) return undefined;
-  const cid = metadataUri.slice("ipfs://".length);
+  if (metadataUri.startsWith("data:application/json")) {
+    try {
+      const json = parseJsonDataUri(metadataUri);
+      return json ? extractRelationshipMetadata(json) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  const url = metadataFetchUrl(metadataUri);
+  if (!url) return undefined;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 6000);
   try {
-    const res = await fetch(`${IPFS_GATEWAY}${cid}`, { signal: controller.signal });
+    const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) return undefined;
     const json = (await res.json()) as Record<string, unknown>;
     return extractRelationshipMetadata(json);
@@ -294,6 +320,7 @@ export function ColanderApp() {
         if (input.type === "bool") continue;
         if (!(formValues[input.name] ?? "").trim()) throw new Error(`${input.label} is required`);
       }
+      await assertNetworkReadyForSend(me);
       setStatus(`Submitting ${action.label} (sign in wallet)…`);
       const tezos = await getTezos();
       const c = await tezos.wallet.at(opened.address);

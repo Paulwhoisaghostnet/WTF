@@ -223,12 +223,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol"],
     ownerSpec:
-      "client/src/features/pasta-protocol/colander/ColanderApp.tsx, public/creation-tools/*/js/studio.js, client/src/features/pasta-protocol/pasta-static-policy.test.ts",
-    verificationCommand: "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts",
+      "client/src/features/pasta-protocol/colander/ColanderApp.tsx, public/creation-tools/*/js/studio.js, client/src/features/pasta-protocol/pasta-static-policy.test.ts, tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs",
+    verificationCommand:
+      "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run pasta:shadownet:colander",
     userVisibleAssertion:
-      "Colander external actions open the matching Pasta tool with contract, network, action, and kind context in the URL so the target studio can prefill the relevant contract field.",
+      "Colander opens real Shadownet Pasta contracts, detects their adapter-specific control panels, shows the Shadownet TzKT explorer link, decodes the relationship graph from contract metadata, and opens matching Pasta tools with contract, network, action, and kind context in the URL so the target studio can prefill the relevant contract field.",
     durableSideEffectAssertion:
-      "The Colander handoff emits colander.handoff_opened and the target static studios read the route handoff before any wallet or chain action is submitted.",
+      "The Colander handoff emits colander.handoff_opened and the target static studios read the route handoff before any wallet or chain action is submitted; the focused browser proof opens the signer-backed Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna Shadownet proof contracts and asserts colander.contract_opened / colander.graph_viewed events after adapter, action, explorer, and relationship metadata resolution.",
   },
   {
     id: "inventory.temporary-grants-unlock-apps",
