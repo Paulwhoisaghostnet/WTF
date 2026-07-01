@@ -11,6 +11,7 @@ This lane can safely claim:
 - Macaroni Desktop `1.0.0` individual installers are published and production-verifiable.
 - Pasta Suite Desktop `1.0.0` bundled installers are published and production-verifiable; this branch also makes the Suite installer manifest enumerate the bundled Pasta app surfaces so the suite download contract is explicit.
 - Spaghetti Studio Desktop `1.0.0` standalone installers are published and production-verifiable.
+- Gnocchi Studio Desktop standalone installer source, workflow, authenticated manifest route, release verifier, env names, and inventory probe are wired and source-verified; GitHub release assets, production env, and live download verification are still pending.
 - Pasta static publisher bundles are reachable on `wtfos.app` and expose the shared `window.MD` runtime.
 - Spaghetti has a real-network Shadownet preflight and a signer-backed deploy/mint/collect proof command.
 - Gnocchi has a signer-backed Shadownet open-edition deploy/configure/open-mint proof command.
@@ -57,7 +58,7 @@ This lane must not claim:
 | wtfOS pinning | Artifact and metadata durability | PROVEN | N/A | N/A | PARTIAL | PARTIAL | N/A | N/A | OPEN |
 | Pasta Suite Desktop | Bundled native app suite | N/A | N/A | N/A | N/A | N/A | N/A | PROVEN | N/A |
 
-Note: `PARTIAL` installer status for individual Pasta publishers means the bundled Pasta Suite Desktop download includes that app surface and this branch's `/api/pasta/installers` manifest exposes it under `bundledApps`, but no separate per-app native installer has been proven for that publisher.
+Note: `PARTIAL` installer status for individual Pasta publishers means the bundled Pasta Suite Desktop download includes that app surface and this branch's `/api/pasta/installers` manifest exposes it under `bundledApps`. Gnocchi now also has source-verified standalone installer plumbing, but it remains `PARTIAL` until its GitHub release assets, production env values, and live verifier pass.
 
 ## Proof Inventory
 
@@ -69,6 +70,7 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 | Macaroni individual installers | `npm run macaroni:desktop:check`, live manifest verifier, GitHub release assets, and production env proof recorded in audit docs. | PROVEN |
 | Pasta Suite installers | `npm run pasta-suite:desktop:check`, `npm run pasta-suite:installers:live-check`, release tag `pasta-suite-desktop-v1.0.0`, and production manifest proof recorded in audit docs. Current branch source policy also requires `/api/pasta/installers` and the live verifier to enumerate Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna in `bundledApps`; this strengthened field still needs post-deploy live verification before claiming production serves it. | PROVEN |
 | Spaghetti standalone installers | `npm run spaghetti:desktop:check`, `npm run spaghetti:installers:live-check`, release tag `spaghetti-desktop-v1.0.0`, and production manifest proof recorded in audit docs. | PROVEN |
+| Gnocchi standalone installer source | `npm run gnocchi:desktop:prepare` and `npm run gnocchi:desktop:check` pass against the Gnocchi open-edition static publisher, authenticated `/api/gnocchi/installers` route, GitHub Actions installer workflow, release verifier, env example keys, and inventory probe. Release assets and production env are not live yet. | PARTIAL |
 | Macaroni Shadownet confidence lane | `DATABASE_URL=... npm run test:e2e:macaroni:shadownet` passed 5/5. | PARTIAL |
 | Spaghetti real-network preflight | `npm run pasta:shadownet:preflight` verifies Shadownet RPC, TzKT head, artifact entrypoints, adapter detection, and metadata/storage payload shape. | PROVEN |
 | Spaghetti signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e` originated `KT1WTFnZAyWqcC2SB32xEjMS4F4cutnGsyVc`, created token 0, minted supply, transferred one edition to the collector, decoded token metadata, and verified collector ownership in TzKT big maps. | PROVEN |
@@ -103,5 +105,5 @@ The safe next push target is this narrow proof lane. A full production Pasta dep
 3. Rerun `npm run pasta:live-readiness` without blocker-allow mode and require it to pass before claiming the Pasta lane is production-ready.
 4. Turn the current source-level wtfOS artifact/metadata pinning and recovery checks into a live provider/host proof that resolves item payload checksums plus IPFS/object-mirror fallback URLs.
 5. Extend the current Colander management proofs to real wallet-extension submission and additional safe actions before treating Colander as a fully operational admin surface.
-6. Repeat the standalone installer manifest/release proof pattern for remaining individual Pasta apps if separate native downloads are required.
+6. Publish and configure the Gnocchi standalone release assets, then repeat the standalone installer manifest/release proof pattern for Ravioli, Rotini, Penne, Lasagna, and Colander if separate native downloads are required.
 7. Re-run production readiness checks and only then evaluate mainnet/full-send deployment work.

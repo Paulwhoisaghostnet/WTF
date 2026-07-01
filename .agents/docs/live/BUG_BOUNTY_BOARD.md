@@ -64,6 +64,7 @@ Priority labels:
 | WTF-BB-336 | Verified | Codex WTF LIVE stage controls full-send | 2026-07-01 | WTF LIVE / stage role controls | P1 | 13 | 6 | 3 | 5 | 1 | WTF LIVE stages now resolve through `/live/r/:stageId`, expose owner/host managed host/speaker role lists, gate audience mic/camera/screen/media publishing, and passed TypeScript, build, focused stage Playwright, inventory coverage, and the full inventory suite |
 | WTF-BB-341 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / standalone Spaghetti installers | P1 | 13 | 6 | 2 | 5 | 2 | Spaghetti Desktop `1.0.0` standalone installers are live on `wtfos.app`: production env is configured from GitHub release SHA-256 metadata, final Deploy to Hetzner `28493283644` and Quality Gates `28493283680` passed on live verification commit `e080b89`, and the authenticated live verifier passed with public byte-range probes for macOS, Windows, and Raspberry Pi |
 | WTF-BB-342 | In Progress | Codex Pasta manifest payload verifier | 2026-07-01 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 6 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, and current branch adds permission/object-storage-gated project-bundle publish, live publisher host-pinned/TLS-before-pin/overwrite-safe/post-publish-public-verifier ordering, an installer-aware live-readiness gate with credentialed non-writing publisher dry-run validation, signer-backed Colander management action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, non-spending readiness verification of that recorded TzKT operation, public DID/PDS pinManifest record resolution plus optional public manifest-payload validation in the live WTF.ME checker, and localhost-only Colander browser-wallet choreography coverage; production read-only audit shows `wtf-admin.wtfos.me` has no `wtf_user_sites` row, while `paulwhoisaghost.wtfos.me` is structurally eligible but not serving Pasta pages, and the live checker/inventory tools now require explicit or discovered hosts instead of defaulting to the stale target |
+| WTF-BB-343 | In Progress | Codex Gnocchi standalone installer pass | 2026-07-01 | Pasta Protocol / individual installers | P2 | 11 | 8 | 2 | 4 | 2 | Remaining Pasta tools rely on the bundled Pasta Suite for downloadable software; current pass adds source-verified standalone Gnocchi Desktop package/workflow/authenticated manifest/live verifier/env docs/inventory coverage, but Gnocchi release assets, production env, live verification, and the remaining Ravioli/Rotini/Penne/Lasagna/Colander standalone packages are not yet proven |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -7381,6 +7382,27 @@ Priority labels:
   - Confirmed the closest existing production host still fails correctly: `PASTA_WTFME_LIVE_HOST=paulwhoisaghost.wtfos.me PASTA_WTFME_LIVE_CHECK_PINS=0 npm run pasta:wtfme:live-check` exits on the missing Pasta landing marker.
   - Passed `git diff --check`.
   - Still blocked live: no production host currently serves the Pasta landing/mint/collection pages plus public pin discovery; `wtf-admin.wtfos.me` is unregistered, and `paulwhoisaghost.wtfos.me` is registered but not yet published with Pasta content.
+
+### WTF-BB-343 - Remaining standalone Pasta installers are not all live
+
+- Category: Pasta Protocol / individual installers
+- Status: In Progress
+- Owner/Session: Codex Gnocchi standalone installer pass
+- Score: C2 + F4 + S2 + P2(3) = 11
+- Evidence:
+  - Macaroni Desktop, Pasta Suite Desktop, and Spaghetti Desktop have production installer manifests, release assets, and live verifier coverage.
+  - The Pasta Suite manifest includes Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna in `bundledApps`, but separate native downloads do not yet exist for every Pasta tool.
+  - Current pass adds source-verified Gnocchi Desktop packaging, GitHub Actions workflow, authenticated `/api/gnocchi/installers` route, release verifier, env docs, and inventory probe.
+  - Current pass does not publish `gnocchi-desktop-v1.0.0`, configure production `GNOCCHI_INSTALLER_*` env, or live-verify authenticated Gnocchi downloads.
+- Why it matters:
+  - The active goal requires user-downloadable software packages as individual software items or as a suite. Suite coverage is proven, but per-app downloads need the same checksum-backed release discipline before they can be advertised independently.
+- Likely correction direction:
+  - Publish Gnocchi Desktop release assets, configure production env from GitHub release SHA-256 metadata, run authenticated `npm run gnocchi:installers:live-check`, then repeat the same package/manifest/live-check pattern for Ravioli, Rotini, Penne, Lasagna, and Colander if separate native downloads are required.
+- Verification idea:
+  - `npm run gnocchi:desktop:check`, `npm run gnocchi:desktop:prepare`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, and after release/env publication, authenticated `npm run gnocchi:installers:live-check`.
+- Current pass verification:
+  - Passed `npm run gnocchi:desktop:prepare`.
+  - Passed `npm run gnocchi:desktop:check`.
 
 ## Backlog Intake Template
 

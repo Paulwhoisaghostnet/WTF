@@ -1,3 +1,13 @@
+## 2026-07-01 - Cloned desktop installer shells need app-specific contract audits
+
+**What happened**: The Gnocchi standalone installer pass started from the proven Spaghetti Electron shell, which correctly copied the native runtime and release plumbing but also carried Spaghetti's prepared asset folder and standard-collection contract assertions into an open-edition app until the app-specific scan caught them.
+
+**Why it mattered**: Native installer shells are supply-chain surfaces. A mechanically cloned package can look build-ready while bundling stale generated assets or proving the wrong contract artifact, which would make individual Pasta downloads drift from the actual static publisher they claim to package.
+
+**Rule**: When cloning a Pasta desktop installer shell, remove generated prepared assets immediately, update the required contract artifact and event assertions from the target app's `public/creation-tools/<app>` source, then run the package policy plus asset preparation before documenting installer readiness.
+
+---
+
 ## 2026-07-01 - Taquito option storage needs explicit normalization
 
 **What happened**: The first Colander Shadownet management-action proof correctly opened the current Lasagna proof contract and verified the administrator signer, but it stopped before submission because Taquito returned optional `current_revision` storage as `{ Some: BigNumber(0) }` instead of a primitive `0`. A plain `.toString()` normalizer produced `[object Object]`.

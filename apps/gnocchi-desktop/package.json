@@ -1,0 +1,89 @@
+{
+  "name": "@wtf/gnocchi-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "homepage": "https://wtfos.app/creation-tools/gnocchi/index.html",
+  "desktopName": "gnocchi-studio",
+  "author": {
+    "name": "wtfOS",
+    "email": "support@wtfos.app"
+  },
+  "description": "Native Gnocchi Studio installer builds for Mac, Windows, and Raspberry Pi.",
+  "main": "src/main.cjs",
+  "scripts": {
+    "prepare": "node scripts/prepare-assets.mjs",
+    "start": "npm run prepare && electron .",
+    "pack": "npm run prepare && electron-builder --dir --publish never",
+    "dist": "npm run prepare && electron-builder --publish never",
+    "dist:mac": "npm run prepare && electron-builder --mac dmg zip --universal --publish never",
+    "dist:mac:dir": "npm run prepare && electron-builder --mac dir --universal --publish never",
+    "dist:windows": "npm run prepare && electron-builder --win nsis --x64 --publish never",
+    "dist:raspberry-pi": "npm run prepare && electron-builder --linux deb --arm64 --publish never"
+  },
+  "build": {
+    "appId": "app.wtfos.gnocchi",
+    "productName": "Gnocchi Studio",
+    "asar": true,
+    "files": [
+      "package.json",
+      "src/**/*",
+      "gnocchi/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "artifactName": "Gnocchi-Studio-${version}-${os}-${arch}.${ext}",
+    "executableName": "gnocchi-studio",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "dmg": {
+      "sign": false
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "linux": {
+      "category": "Development",
+      "maintainer": "wtfOS <support@wtfos.app>",
+      "syncDesktopName": true,
+      "target": [
+        {
+          "target": "deb",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "deb": {
+      "packageName": "gnocchi-studio",
+      "packageCategory": "devel",
+      "maintainer": "wtfOS <support@wtfos.app>"
+    }
+  },
+  "devDependencies": {
+    "electron": "42.4.0",
+    "electron-builder": "26.15.3"
+  }
+}

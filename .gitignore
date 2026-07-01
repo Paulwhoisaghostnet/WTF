@@ -6,6 +6,8 @@ apps/pasta-suite-desktop/pasta/
 apps/pasta-suite-desktop/release/
 apps/spaghetti-desktop/spaghetti/
 apps/spaghetti-desktop/release/
+apps/gnocchi-desktop/gnocchi/
+apps/gnocchi-desktop/release/
 .env
 .env.*
 !.env.example
