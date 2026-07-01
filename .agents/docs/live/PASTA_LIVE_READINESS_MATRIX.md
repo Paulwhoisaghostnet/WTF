@@ -15,6 +15,7 @@ This branch can safely claim:
 - Gnocchi has one signer-backed Shadownet open-edition deploy/configure/collector-mint proof with TzKT sale, supply, ownership, and metadata verification.
 - Ravioli has one signer-backed Shadownet bundle deploy/create/mint/transfer/redeem proof with TzKT bundle, redeemed, supply, ownership, and metadata verification.
 - Rotini has one signer-backed Shadownet generative deploy/create/mint/transfer proof with TzKT supply, ownership, trait metadata, and generation DNA verification.
+- Penne has one signer-backed Shadownet distribution deploy/configure/claim/airdrop proof with TzKT allocation, claimed, supply, ownership, and metadata verification.
 
 This branch must not claim:
 
@@ -41,7 +42,7 @@ This branch must not claim:
 | Gnocchi | Open-edition token publisher | PROVEN | PARTIAL | PROVEN | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
 | Ravioli | Bundle token publisher | PROVEN | PARTIAL | PROVEN | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
 | Rotini | Generative collection publisher | PROVEN | PARTIAL | PROVEN | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
-| Penne | Distribution contract product | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
+| Penne | Distribution contract product | PROVEN | PARTIAL | PROVEN | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
 | Lasagna | Exhibition contract product | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
 | Colander | Management and discovery | PROVEN | PARTIAL | PARTIAL | OPEN | N/A | OPEN | PARTIAL | OPEN |
 | WTF.ME | Hosted public pages | PARTIAL | N/A | N/A | OPEN | OPEN | OPEN | N/A | OPEN |
@@ -66,7 +67,7 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 | Gnocchi signer proof | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:gnocchi` originated `KT1FwS1JifrUakeGqFwGYmMHMmfjuwJABaax`, created token 0, configured the open-edition sale, collector-minted one edition for 1 mutez, decoded metadata, and verified sale state, total supply, and collector ownership in TzKT big maps. | PROVEN |
 | Ravioli signer proof | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:ravioli` originated `KT1CeJYHodXy8dvmNFgXxk4zh6SjVB5KYLaG`, created token 0, minted three editions, transferred two to the collector, redeemed one, decoded metadata, and verified bundle config, redeemed count, total supply, and collector ownership in TzKT big maps. | PROVEN |
 | Rotini signer proof | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:rotini` originated `KT1SHHPFkthiSTf9CAmhAzWmbi7t5rTcUeYz`, created two generated token types, minted one edition of each, transferred token 1 to the collector, decoded trait/DNA metadata, and verified supply plus creator/collector ownership in TzKT big maps. | PROVEN |
-| Penne signer proof | None yet. | OPEN |
+| Penne signer proof | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:penne` originated `KT1DDY9Pyr7PYNJgXxnHnJn9T7WHaVx7ztdx`, created token 0, loaded two allocations, opened claim, completed a collector pull claim, completed an admin push airdrop, closed claim, decoded metadata, and verified allocation consumption, claimed state, total supply, and creator/collector ownership in TzKT big maps. | PROVEN |
 | Lasagna signer proof | None yet. | OPEN |
 | Colander real KT1 discovery | No end-to-end proof from a real Shadownet Pasta contract into Colander action/state refresh. | OPEN |
 | WTF.ME hosted Pasta pages | No proof for mint pages, collection pages, landing pages, branding, wallet connect, or purchase flows. | OPEN |
@@ -86,7 +87,7 @@ The safe next push target is the proof branch, not `main` production. A producti
 ## Next Implementation Order
 
 1. Generalize the signer-backed Pasta E2E runners into reusable publisher proof helpers.
-2. Add Penne and Lasagna contract-product deploy/configure proofs.
+2. Add Lasagna contract-product deploy/configure proof.
 3. Wire Colander real-contract discovery against the Shadownet proof contracts.
 4. Add WTF.ME hosted page checks for the proven contracts/tokens.
 5. Add wtfOS artifact/metadata pinning and recovery checks.

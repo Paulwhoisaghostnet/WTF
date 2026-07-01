@@ -6947,3 +6947,13 @@
 **Why it mattered**: Inventory handles are more than labels. If a new user interaction is documented without an emitting path, coverage can say the handle exists while live telemetry, challenge automation, and audit trails cannot observe the actual user action.
 
 **Rule**: When adding a canonical inventory handle for a UI interaction, wire the client action to the owning normalized event route in the same pass, add the event type to that route's allowlist, and include focused policy coverage that proves both the trigger and the event path exist.
+
+---
+
+## 2026-07-01 - Deleted TzKT big-map keys can still appear as inactive rows
+
+**What happened**: The first Penne Shadownet proof successfully originated, created a distribution token, loaded allocations, opened claim, completed a collector claim, airdropped the remaining allocation, and closed claim, but the verifier failed while checking cleared allocations. TzKT returned the deleted allocation keys with `active: false`, and the verifier treated their historical values as still-live allocations.
+
+**Why it mattered**: For contracts that deliberately clear state, such as Penne's shared allocation table, a TzKT key response may include historical inactive rows. Treating inactive keys as active state can turn a correct consume-and-clear operation into a false failure.
+
+**Rule**: When verifying deletion or consumption through TzKT big-map keys, check the `active` flag. Only active rows prove live state; inactive rows are valid historical evidence that a key existed and was later removed.
