@@ -1,3 +1,13 @@
+## 2026-07-01 - Live publishers must verify the public surface before success
+
+**What happened**: The Pasta WTF.ME live publisher wrote pages, published the site, published pin recovery, and then printed the verifier command. That was safe enough for a careful manual run, but it still allowed the write script itself to finish without proving that the public host actually served the landing/mint/collection pages and `.well-known/wtfos-pins`.
+
+**Why it mattered**: Hosted mint and collection pages are collector-facing production surfaces. A live publish command should not succeed on internal API writes alone when the actual user path could still fail through TLS, page routing, CSP, stale content, or pin discovery.
+
+**Rule**: Production publish scripts for public trust surfaces must run their public verifier before exiting successfully. Keep an explicit opt-out only for narrow recovery/debug runs, and make the default path prove the same host users will load.
+
+---
+
 ## 2026-07-01 - Pasta readiness gates must include installer distribution
 
 **What happened**: The first Pasta live-readiness gate proved live health, static bundle markers, and WTF.ME blockers, but the objective also includes user-downloadable software packages. Installer live checks existed separately for Macaroni, Pasta Suite, and Spaghetti, so a future pass could run the Pasta gate and overlook package distribution drift.

@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import process from "node:process";
 
 import { WTF_USER_SITE_HOME_SLUG } from "../../shared/wtf-user-sites";
@@ -22,6 +23,7 @@ function flag(name: string, defaultValue: boolean): boolean {
 
 const execute = flag("PASTA_WTFME_LIVE_PUBLISH", false);
 const publishPins = flag("PASTA_WTFME_LIVE_PUBLISH_PINS", true);
+const verifyAfterPublish = flag("PASTA_WTFME_LIVE_VERIFY_AFTER_PUBLISH", true);
 const overwriteExisting = flag("PASTA_WTFME_LIVE_OVERWRITE_EXISTING", false);
 const DEFAULT_HOME_HTML = "<main><h1>wtfOS site</h1></main>";
 
@@ -295,6 +297,29 @@ async function publishPastaPins(headers: Record<string, string>): Promise<any> {
   return state;
 }
 
+function verifyPublishedHost(host: string): void {
+  if (!verifyAfterPublish) {
+    ok("skipped public post-publish verifier; PASTA_WTFME_LIVE_VERIFY_AFTER_PUBLISH=0");
+    return;
+  }
+  const result = spawnSync("npm", ["run", "pasta:wtfme:live-check"], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      PASTA_WTFME_LIVE_HOST: host,
+      ...(publishPins ? {} : { PASTA_WTFME_LIVE_CHECK_PINS: "0" }),
+    },
+    encoding: "utf8",
+    maxBuffer: 1024 * 1024 * 4,
+  });
+  if (result.stdout.trim()) console.log(result.stdout.trim());
+  if (result.stderr.trim()) console.error(result.stderr.trim());
+  if (result.status !== 0) {
+    fail(`public post-publish verifier failed for ${host}: pasta:wtfme:live-check exited ${result.status ?? "unknown"}`);
+  }
+  ok(`public post-publish verifier passed for ${host}`);
+}
+
 async function probeTlsAsk(host: string): Promise<void> {
   const url = new URL("/internal/tls/allow", baseUrl());
   url.searchParams.set("domain", host);
@@ -328,6 +353,7 @@ async function main(): Promise<void> {
   if (!execute) {
     ok(`dry-run: would publish Pasta landing/mint/collection pages to ${host}`);
     if (publishPins) ok(`dry-run: would publish Pasta pin recovery manifest for ${host}`);
+    if (verifyAfterPublish) ok(`dry-run: would verify public Pasta host ${host}`);
     console.log(`[pasta-wtfme-publish] after publishing, verify with: PASTA_WTFME_LIVE_HOST=${host} npm run pasta:wtfme:live-check`);
     return;
   }
@@ -340,7 +366,9 @@ async function main(): Promise<void> {
   if (pinning?.wellKnownUrl) {
     console.log(`[pasta-wtfme-publish] pin discovery URL: ${pinning.wellKnownUrl}`);
   }
-  console.log(`[pasta-wtfme-publish] verify with: PASTA_WTFME_LIVE_HOST=${published.site.host} npm run pasta:wtfme:live-check`);
+  const publishedHost = String(published.site?.host || host).toLowerCase();
+  verifyPublishedHost(publishedHost);
+  console.log(`[pasta-wtfme-publish] verify with: PASTA_WTFME_LIVE_HOST=${publishedHost} npm run pasta:wtfme:live-check`);
 }
 
 main().catch((error) => {

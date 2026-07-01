@@ -16,5 +16,5 @@ test("Pasta WTF.ME live check requires the post-publish host explicitly", () => 
   assert.match(source, /Set PASTA_WTFME_LIVE_HOST to the published Pasta WTF\.ME host/);
   assert.doesNotMatch(source, /const DEFAULT_HOST/);
   assert.doesNotMatch(source, /wtf-admin\.wtfos\.me/);
-  assert.match(publishSource, /PASTA_WTFME_LIVE_HOST=\$\{published\.site\.host\} npm run pasta:wtfme:live-check/);
+  assert.match(publishSource, /PASTA_WTFME_LIVE_HOST=\$\{publishedHost\} npm run pasta:wtfme:live-check/);
 });

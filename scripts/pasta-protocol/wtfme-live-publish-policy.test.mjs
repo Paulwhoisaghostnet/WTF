@@ -16,6 +16,7 @@ test("Pasta WTF.ME live publisher defaults to dry-run and requires an explicit p
   );
   assert.match(source, /const execute = flag\("PASTA_WTFME_LIVE_PUBLISH", false\)/);
   assert.match(source, /const publishPins = flag\("PASTA_WTFME_LIVE_PUBLISH_PINS", true\)/);
+  assert.match(source, /const verifyAfterPublish = flag\("PASTA_WTFME_LIVE_VERIFY_AFTER_PUBLISH", true\)/);
   assert.match(source, /const overwriteExisting = flag\("PASTA_WTFME_LIVE_OVERWRITE_EXISTING", false\)/);
   assert.match(source, /set PASTA_WTFME_LIVE_PUBLISH=1 to claim\/save\/publish pages/);
   assert.match(source, /if \(!execute\) \{\s*ok\(`dry-run: would publish Pasta landing\/mint\/collection pages to \$\{host\}`\);[\s\S]*?return;\s*\}/);
@@ -92,6 +93,25 @@ test("Pasta WTF.ME live publisher checks TLS before publishing pin recovery", ()
   assert.ok(publishSite > savePages, "site publish should happen after page saves");
   assert.ok(probeTls > publishSite, "TLS gate should be probed after site publish");
   assert.ok(publishPins > probeTls, "pin recovery publish should happen only after TLS passes");
+});
+
+test("Pasta WTF.ME live publisher verifies the public host after production publish", () => {
+  assert.match(source, /function verifyPublishedHost\(host: string\): void/);
+  assert.match(source, /spawnSync\("npm", \["run", "pasta:wtfme:live-check"\]/);
+  assert.match(source, /PASTA_WTFME_LIVE_HOST: host/);
+  assert.match(source, /PASTA_WTFME_LIVE_CHECK_PINS: "0"/);
+  assert.match(source, /public post-publish verifier failed for \$\{host\}/);
+  assert.match(source, /public post-publish verifier passed for \$\{host\}/);
+  assert.match(source, /dry-run: would verify public Pasta host \$\{host\}/);
+
+  const publishPins = source.indexOf("const pinning = publishPins ? await publishPastaPins(headers) : null");
+  const publishedHost = source.indexOf("const publishedHost = String(published.site?.host || host).toLowerCase()");
+  const verifyHost = source.indexOf("verifyPublishedHost(publishedHost)");
+  const finalCommand = source.indexOf("verify with: PASTA_WTFME_LIVE_HOST=${publishedHost}");
+  assert.ok(publishPins > -1, "pin recovery publish should exist");
+  assert.ok(publishedHost > publishPins, "published host should be resolved after pin recovery publish");
+  assert.ok(verifyHost > publishedHost, "public host verifier should run after final host resolution");
+  assert.ok(finalCommand > verifyHost, "final manual verification command should print only after verifier runs");
 });
 
 test("Pasta WTF.ME live publisher refuses accidental existing-site overwrites", () => {
