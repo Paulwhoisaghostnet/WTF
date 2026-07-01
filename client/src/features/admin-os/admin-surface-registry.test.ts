@@ -123,6 +123,7 @@ test("Pasta Protocol owns Colander and static publisher routes", () => {
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.chease-handoff"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.colander-context-handoff"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.wtfme-hosted-pages"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.pinning-recovery"));
 });
 
 test("desktop app admin surface bindings are one-to-one", () => {

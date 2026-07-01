@@ -63,6 +63,7 @@ Priority labels:
 | WTF-BB-335 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Protocol / CH-EASE handoff and static publisher runtime | P1 | 12 | 7 | 2 | 5 | 1 | Pasta publisher handoffs could open `/tools/spaghetti?handoff=...` while the iframe dropped the query, and the six Pasta ES-module studios read `window.MD` even though their shared common helpers only declared lexical `const MD`; fixed by forwarding creation-tool route queries to all static iframes, exporting `window.MD` in Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna, adding policy guards, passing focused Spaghetti CH-EASE handoff plus mocked Shadownet publish choreography proof, promoting to main, and verifying live `wtfos.app` commit `c4ba55f` exposes `window.MD`, `consumeCheaseHandoff()`, and `loadPlatformCapabilities()` across all six Pasta publisher bundles |
 | WTF-BB-336 | Verified | Codex WTF LIVE stage controls full-send | 2026-07-01 | WTF LIVE / stage role controls | P1 | 13 | 6 | 3 | 5 | 1 | WTF LIVE stages now resolve through `/live/r/:stageId`, expose owner/host managed host/speaker role lists, gate audience mic/camera/screen/media publishing, and passed TypeScript, build, focused stage Playwright, inventory coverage, and the full inventory suite |
 | WTF-BB-341 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / standalone Spaghetti installers | P1 | 13 | 6 | 2 | 5 | 2 | Spaghetti Desktop `1.0.0` standalone installers are live on `wtfos.app`: production env is configured from GitHub release SHA-256 metadata, final Deploy to Hetzner `28493283644` and Quality Gates `28493283680` passed on live verification commit `e080b89`, and the authenticated live verifier passed with public byte-range probes for macOS, Windows, and Raspberry Pi |
+| WTF-BB-342 | In Progress | Codex Pasta pinning/recovery pass | 2026-07-01 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 6 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, but production `npm run pasta:wtfme:live-check` still fails because `wtf-admin.wtfos.me` is not registered in the live TLS/host gate; current pass adds fail-closed pin discovery and recovery proof before live host/provider work |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -7336,6 +7337,23 @@ Priority labels:
   - Passed focused WTF LIVE stage coverage: `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "owned stages expose|stage rooms gate audience sharing" --project=chromium --reporter=list`.
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed full inventory coverage after aligning WTF LIVE chat font normalizers across shared code, production WebSocket, and harness: `npm run test:e2e:inventory` (572 passed).
+
+### WTF-BB-342 - Pasta WTF.ME host and pin recovery remain live-blocked
+
+- Category: Pasta Protocol / WTF.ME host and pin recovery
+- Status: In Progress
+- Owner/Session: Codex Pasta pinning/recovery pass
+- Score: C2 + F5 + S2 + P1(4) = 13
+- Evidence:
+  - `npm run pasta:wtfme:live-check` fails against production because `https://wtfos.app/internal/tls/allow?domain=wtf-admin.wtfos.me` returns HTTP 403 with `handle not registered`.
+  - Source-level WTF.ME page proof exists for landing, mint, and collection pages, but live host registration and live `.well-known/wtfos-pins` resolution are not proven.
+  - The current pass adds Pasta pinPolicy/pinManifest/pinItem source proof plus a fail-closed public discovery guard, but it still does not write live provider pins or a production PDS manifest.
+- Why it matters:
+  - Pasta hosted mint/collection pages and recovery pointers are public trust surfaces. A production claim before host registration and manifest publication would imply that collectors can resolve pages, artifacts, metadata, and recovery records when production still rejects the host.
+- Likely correction direction:
+  - Claim/register a production WTF.ME host for the proof account, publish the Pasta pages, publish the pin manifest into the user-site PDS, expose `.well-known/wtfos-pins`, and verify provider/object-mirror fallback from outside the server.
+- Verification idea:
+  - Pass `npm run pasta:wtfme:live-check` plus a live provider recovery probe that fetches `.well-known/wtfos-pins`, resolves the manifest AT URI, validates item checksums, and confirms IPFS/object-mirror fallback URLs are reachable without credentials.
 
 ## Backlog Intake Template
 

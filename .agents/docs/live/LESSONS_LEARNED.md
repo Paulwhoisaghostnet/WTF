@@ -7007,3 +7007,13 @@
 **Why it mattered**: Colander is the cross-app management/discovery surface. If it cannot read the metadata form emitted by the real proof contracts, a green contract deployment lane still leaves creators without a trustworthy relationship graph or Shadownet-specific explorer trail.
 
 **Rule**: Colander Shadownet proofs must use the current proof KT1s, set the app network to Shadownet, assert Shadownet TzKT links, assert relationship groups from decoded metadata, and keep wallet-signed actions behind chain-id preflight. Treat IPFS, HTTPS, and inline JSON metadata as explicit supported cases rather than assuming one storage encoding.
+
+---
+
+## 2026-07-01 - Cross-surface behavior assertions must name every owning surface
+
+**What happened**: The first Pasta pinning/recovery behavior assertion named Pasta Protocol and IPFS Pinning as owners, but inventory coverage failed because the same recovery flow is exposed through WTF.ME host discovery and the WTF Domains admin surface also registers the assertion.
+
+**Why it mattered**: Behavior assertions are bidirectional ownership contracts. If a cross-surface proof omits one owning surface, coverage can no longer prove that route, domain, and admin registries agree about who is responsible for the behavior.
+
+**Rule**: When adding a behavior assertion that crosses app, domain, host, or storage boundaries, include every admin surface that registers or exposes the workflow in `ownerSurfaceIds` before running inventory coverage.

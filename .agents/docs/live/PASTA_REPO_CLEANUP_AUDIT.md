@@ -64,8 +64,8 @@ Conclusion: `WTF-BB-332` is verified closed. Preserve the warning in history, bu
 - The CH-EASE package-to-Pasta static runtime fix is now production-deployed: post-deploy live probes confirm `window.MD` exports on the six Pasta publisher bundles.
 - Pasta suite installer/download is now production-complete for the bundled native suite lane: `apps/pasta-suite-desktop`, the `pasta-suite-desktop-installers.yml` workflow, `/api/pasta/installers`, inventory coverage, package policy checks, GitHub release assets, production env, and the authenticated live verifier all passed for `pasta-suite-desktop-v1.0.0`.
 - Spaghetti standalone installer/download is production-complete for the standalone native app lane: `apps/spaghetti-desktop`, the `spaghetti-desktop-installers.yml` workflow, `/api/spaghetti/installers`, inventory coverage, package policy checks, env examples, docs, live verifier, GitHub release assets, production `SPAGHETTI_INSTALLER_*` env, deploy, and authenticated live verifier all passed for `spaghetti-desktop-v1.0.0`.
-- Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, the Spaghetti preflight, the signer-backed Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna proofs, and the current Colander browser discovery proof: failure recovery, WTF.ME hosting, wtfOS pinning, and wallet-signed Colander management should remain open until executable evidence exists.
-- The remaining unique Pasta proof work is concentrated in `codex/pasta-live-readiness`; it should be mined by narrow slices. The current slice adds Colander browser discovery proof against the current Shadownet proof contracts without merging that broader branch wholesale.
+- Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, the Spaghetti preflight, the signer-backed Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna proofs, the current Colander browser discovery proof, and the source-level WTF.ME/pinning proofs: live production WTF.ME hosting, live provider pinning, failure recovery, and wallet-signed Colander management should remain open until executable live evidence exists.
+- The remaining unique Pasta proof work is concentrated in `codex/pasta-live-readiness`; it should be mined by narrow slices. The current slice adds source-level Pasta pinning/recovery proof and a fail-closed `.well-known` discovery guard without merging that broader branch wholesale.
 - Local `main` at the original workspace should be fast-forwarded, reset, or archived only after the user confirms whether its dirty scratch content should be preserved.
 
 ## Current Macaroni Shadownet Proof
@@ -223,10 +223,20 @@ Conclusion: `WTF-BB-332` is verified closed. Preserve the warning in history, bu
 - Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-wtfme-hosting-report.md`.
 - Scope note: this proves the WTF.ME hosted-page source and local serving path. It does not yet prove a live production WTF.ME host, live pin discovery, live wallet minting, hosted wtfOS pinning/recovery, wallet-signed Colander mutations, or mainnet readiness.
 
+## Current Pasta Pinning/Recovery Proof
+
+- Local proof command: `npm run pasta:shadownet:pinning`.
+- Source proof: `server/features/ipfs-pinning/pasta-proof.ts` builds public pinPolicy, pinManifest, and pinItem records for Pasta hosted pages, contract artifacts, token metadata, and relationship metadata tied to the current Shadownet proof contracts.
+- Recovery proof: the focused test validates credential-free storage refs, SHA-256 checksums, IPFS gateway fallbacks, object-storage mirror keys, `.well-known/wtfos-pins` output, and a recovery drill that restores from public discovery through manifest and item records.
+- Safety proof: `server/features/ipfs-pinning/well-known-policy.ts` keeps public pin discovery at 404 until the binding has public discovery enabled, a valid repo DID, and a matching `app.wtfos.media.pinManifest` AT URI for that DID.
+- Inventory proof: `pasta-protocol.pinning-recovery` is registered against both the Pasta Protocol and IPFS Pinning admin surfaces so coverage gates track the source proof.
+- Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-pinning-recovery-report.md`.
+- Scope note: this proves source-level Pasta pinning and recovery shape. It does not yet prove a live provider-side pin, a production object mirror write, a production PDS publication, a live `.well-known/wtfos-pins` response, or recovery after real node/provider loss.
+
 ## Recommended Next Actions
 
 1. Publish the generated Pasta pages to a real claimed WTF.ME host and make `npm run pasta:wtfme:live-check` pass.
-2. Mine `codex/pasta-live-readiness` by narrow slices for wtfOS pinning/recovery next. Do not merge the branch wholesale.
+2. Convert the source-level Pasta pinning/recovery proof into live provider proof: write/publish the manifest, expose `.well-known/wtfos-pins`, verify public recovery URLs, and test object-mirror fallback.
 3. Extend the now-green Macaroni Shadownet lane and signer-backed Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna proofs into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
 4. Add wallet-signed Colander management mutation proof for representative safe actions before treating Colander as an operational admin surface.
 5. Repeat the individual installer package/manifest/live-check pattern for Gnocchi, Ravioli, Rotini, Penne, and Lasagna if separate per-app downloads are required beyond the bundled Pasta Suite.

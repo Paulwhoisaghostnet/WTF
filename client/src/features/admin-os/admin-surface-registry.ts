@@ -890,6 +890,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "account.cobwebsaints-domain-advanced-readiness",
       "macaroni.shadownet-rpc-wallet-setup",
       "pasta-protocol.wtfme-hosted-pages",
+      "pasta-protocol.pinning-recovery",
     ],
   },
   {
@@ -1064,6 +1065,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "pasta-protocol.chease-handoff",
       "pasta-protocol.colander-context-handoff",
       "pasta-protocol.wtfme-hosted-pages",
+      "pasta-protocol.pinning-recovery",
     ],
   },
   {
@@ -1156,6 +1158,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "macaroni.wtfos-package-source",
       "skullzarmy.fafolab-integration-contracts",
       "pasta-protocol.wtfme-hosted-pages",
+      "pasta-protocol.pinning-recovery",
     ],
   },
   {
