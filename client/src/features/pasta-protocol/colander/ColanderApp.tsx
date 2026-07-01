@@ -39,10 +39,39 @@ type OpenedContract = {
   metadataUri?: string;
 };
 
+type ColanderTezosHarness = {
+  connectWallet?: typeof connectWallet;
+  getActiveAccount?: typeof getActiveAccount;
+  getTezos?: typeof getTezos;
+  assertNetworkReadyForSend?: typeof assertNetworkReadyForSend;
+};
+
 const IPFS_GATEWAY = "https://ipfs.fileship.xyz/";
 
 const colanderRegionAttrs = (region: string) =>
   ({ "data-colander-region": region }) as Record<string, string>;
+
+function getColanderTezosHarness(): ColanderTezosHarness | undefined {
+  if (typeof window === "undefined") return undefined;
+  if (!["localhost", "127.0.0.1"].includes(window.location.hostname)) return undefined;
+  return (window as any).__wtfColanderTezosHarness;
+}
+
+async function colanderConnectWallet(options?: Parameters<typeof connectWallet>[0]) {
+  return (getColanderTezosHarness()?.connectWallet ?? connectWallet)(options);
+}
+
+async function colanderGetActiveAccount() {
+  return (getColanderTezosHarness()?.getActiveAccount ?? getActiveAccount)();
+}
+
+async function colanderGetTezos() {
+  return (getColanderTezosHarness()?.getTezos ?? getTezos)();
+}
+
+async function colanderAssertNetworkReadyForSend(address?: string) {
+  return (getColanderTezosHarness()?.assertNetworkReadyForSend ?? assertNetworkReadyForSend)(address);
+}
 
 function explorerUrl(address: string) {
   const net = getNetwork();
@@ -146,8 +175,8 @@ export function ColanderApp() {
   async function connect() {
     setError("");
     try {
-      await connectWallet({ forcePermissions: true });
-      const acc = await getActiveAccount();
+      await colanderConnectWallet({ forcePermissions: true });
+      const acc = await colanderGetActiveAccount();
       setAccount(acc?.address ?? "");
       setStatus(acc ? `Connected ${short(acc.address)}` : "Wallet not connected");
     } catch (e) {
@@ -166,7 +195,7 @@ export function ColanderApp() {
     setActiveAction(null);
     setStatus(`Reading ${short(kt)}…`);
     try {
-      const tezos = await getTezos();
+      const tezos = await colanderGetTezos();
       const contract = await tezos.contract.at(kt);
       const entrypoints = Object.keys((contract as any).entrypoints?.entrypoints ?? {});
       const adapter = detectPastaContract(entrypoints);
@@ -312,7 +341,7 @@ export function ColanderApp() {
     setBusy(true);
     setError("");
     try {
-      const conn = await connectWallet();
+      const conn = await colanderConnectWallet();
       const me = conn.address;
       setAccount(me);
       for (const input of action.inputs) {
@@ -320,9 +349,9 @@ export function ColanderApp() {
         if (input.type === "bool") continue;
         if (!(formValues[input.name] ?? "").trim()) throw new Error(`${input.label} is required`);
       }
-      await assertNetworkReadyForSend(me);
+      await colanderAssertNetworkReadyForSend(me);
       setStatus(`Submitting ${action.label} (sign in wallet)…`);
-      const tezos = await getTezos();
+      const tezos = await colanderGetTezos();
       const c = await tezos.wallet.at(opened.address);
       const op = await buildCall(c, action, me).send();
       await op.confirmation();
@@ -459,7 +488,7 @@ export function ColanderApp() {
                     <ActionGroupBlock key={group}>
                       <SectionTitle>{group}</SectionTitle>
                       {actions.map((action) => (
-                        <ActionCard key={action.id}>
+                        <ActionCard key={action.id} data-colander-action={action.id}>
                           <ActionHead>
                             <div>
                               <ActionName>{action.label}</ActionName>
@@ -471,6 +500,7 @@ export function ColanderApp() {
                           </ActionHead>
                           {activeAction === action.id && !action.external ? (
                             <ActionForm
+                              data-colander-action-form={action.id}
                               onSubmit={(e) => {
                                 e.preventDefault();
                                 void submitAction(action);
