@@ -7307,3 +7307,13 @@
 **Why it mattered**: Room owners need role, invite, settings, scheduling, and Show Kit controls to work during live production pressure. A visible icon button that misses activation, or a settings save that crashes after a toggle, turns permission management into guesswork.
 
 **Rule**: For compact WTF LIVE room/stage controls inside nested desktop surfaces, use stable pointer-down activation with keyboard fallbacks and non-interactive SVG/label children. When a handler feeds a React state updater, capture `checked`, `value`, or other event-derived values before calling `setState`.
+
+---
+
+## 2026-07-01 - Final launch gates need strict mode
+
+**What happened**: Pasta readiness had an audit-friendly `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1` mode plus diagnostic skip flags. That was correct for evidence collection, but it left too much room for a launch operator to run a green-looking command while WTF.ME, installer, static, Colander, or cleanup probes were disabled.
+
+**Why it mattered**: "Ready enough to audit" and "ready to claim production launch" are different states. A final launch check must fail closed even if someone accidentally keeps audit flags in their shell.
+
+**Rule**: Multi-surface release gates should expose an explicit final-launch mode that refuses blocker-allowed mode, rejects disabled production probes, and keeps all blockers fatal before a product readiness claim.
