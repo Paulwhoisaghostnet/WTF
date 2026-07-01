@@ -17,6 +17,7 @@ const allowBlockers = flag("PASTA_LIVE_READINESS_ALLOW_BLOCKERS", false);
 const checkWtfme = flag("PASTA_LIVE_READINESS_CHECK_WTFME", true);
 const checkStatic = flag("PASTA_LIVE_READINESS_CHECK_STATIC", true);
 const checkInstallers = flag("PASTA_LIVE_READINESS_CHECK_INSTALLERS", true);
+const checkColanderProof = flag("PASTA_LIVE_READINESS_CHECK_COLANDER_PROOF", true);
 const host = String(process.env.PASTA_WTFME_LIVE_HOST || "").trim().toLowerCase();
 const checks = [];
 const blockers = [];
@@ -132,6 +133,15 @@ function checkInstallerDownloads() {
   }
 }
 
+function checkRecordedColanderActionProof() {
+  if (!checkColanderProof) {
+    record("recorded Colander Shadownet action proof", "skipped", "PASTA_LIVE_READINESS_CHECK_COLANDER_PROOF=0");
+    return;
+  }
+  runPackageScript("pasta:shadownet:colander:action-proof");
+  record("recorded Colander Shadownet action proof", "pass", "TzKT indexed operation verified without signer execution");
+}
+
 function credentialState() {
   const hasCookie = Boolean(String(process.env.PASTA_WTFME_LIVE_COOKIE || "").trim());
   const hasUserPass =
@@ -242,6 +252,7 @@ async function main() {
   await checkHealth();
   await checkStaticBundles();
   checkInstallerDownloads();
+  checkRecordedColanderActionProof();
   checkWtfmePublishDryRun();
   checkWtfmeHost();
 

@@ -44,6 +44,15 @@ test("Pasta live-readiness gate verifies public installer download surfaces", ()
   assert.match(source, /protected manifest and public release assets verified/);
 });
 
+test("Pasta live-readiness gate verifies the recorded Colander action without a signer spend", () => {
+  assert.match(source, /PASTA_LIVE_READINESS_CHECK_COLANDER_PROOF/);
+  assert.match(source, /function checkRecordedColanderActionProof\(\)/);
+  assert.match(source, /pasta:shadownet:colander:action-proof/);
+  assert.match(source, /recorded Colander Shadownet action proof/);
+  assert.match(source, /TzKT indexed operation verified without signer execution/);
+  assert.doesNotMatch(source, /PASTA_SHADOWNET_COLANDER_E2E_EXECUTE/);
+});
+
 test("Pasta live-readiness gate delegates hosted-page proof to the live WTF.ME checker", () => {
   assert.match(source, /PASTA_WTFME_LIVE_HOST/);
   assert.match(source, /spawnSync\("npm", \["run", "pasta:wtfme:live-check"\]/);
