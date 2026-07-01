@@ -24,6 +24,7 @@ The report exceeds the 95% documentation/spec threshold required before any impl
 - Executable Playwright/API runners still need to be implemented from the markdown and manifest validation cases in later coding passes.
 - Mainnet deployment tests are intentionally excluded until full Shadownet proof is complete. Macaroni now has a green Shadownet confidence lane, but that is not yet full protocol deploy/mint/collect proof.
 - CH-EASE -> Spaghetti now has a focused executable browser proof for route-query handoff, static-module runtime wiring, imported collection metadata, Shadownet chain guard, origination choreography, create_token batching, mint batching, pinned metadata payloads, and canonical Spaghetti audit events. This is still a mocked wallet/chain choreography proof, not live Shadownet origination evidence.
+- `npm run pasta:shadownet:preflight` now provides an executable real-network preflight for Spaghetti: it verifies the configured Shadownet RPC chain id, Shadownet TzKT head, the Spaghetti Michelson artifact entrypoint surface, Colander standard-collection adapter detection, CH-EASE package validity, relationship metadata, token metadata, and origination storage payload shape. This still does not sign or inject a Shadownet operation.
 - Individual Macaroni Desktop, bundled Pasta Suite Desktop, and standalone Spaghetti Desktop downloadable lanes now have GitHub release artifacts and authenticated live manifest verifiers passing on `wtfos.app`. Future standalone app installers must follow the same release-asset, SHA-256, production-env, deployment, and authenticated-manifest proof pattern.
 
 ## Current Live Evidence
@@ -33,6 +34,7 @@ The report exceeds the 95% documentation/spec threshold required before any impl
 - Spaghetti Studio Desktop `1.0.0` standalone installers are live for macOS, Windows, and Raspberry Pi with authenticated manifest and byte-range release asset proof on `wtfos.app`.
 - Macaroni Shadownet local puppet proof passed 5/5 against `https://tezos-shadownet.octez.io/`, covering Shadownet defaults, chain-verified wallet safety, trusted-creator publish gating, mint-page wallet restore/disconnect, mismatched RPC blocking, and Kukai handoff.
 - Local Spaghetti proof passed through the real `/tools/spaghetti?handoff=chease-package` shell after rebuilding, proving the CH-EASE handoff query reaches the iframe and the static publisher module receives its shared `window.MD` runtime before rehearsing the chain-guarded publish sequence.
+- Real Shadownet preflight passed through `npm run pasta:shadownet:preflight`, proving the Spaghetti artifact and metadata/origination payload plan against `https://tezos-shadownet.octez.io/` and Shadownet TzKT before any wallet signing.
 - Static Pasta tool bundles are live on `wtfos.app`, and their Tezos vendor bundles now pass the Taquito `25.0.0` / no-`24.3.0` live marker probe.
 - The latest `window.MD` static-module runtime export fix is live on `wtfos.app` commit `c4ba55f`: production `common.js` for Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna all expose the export.
 - Static reachability and branch-level mocked choreography do not prove Shadownet deploy, mint, collect, indexer, or hosted-page recovery workflows.
@@ -57,6 +59,6 @@ The report exceeds the 95% documentation/spec threshold required before any impl
 6. Complete Penne and Lasagna contract-product publishers.
 7. Complete Colander adapters and relationship graph after publisher contracts stabilize.
 8. Repeat the individual installer package/manifest/live-check pattern for Gnocchi, Ravioli, Rotini, Penne, and Lasagna if separate downloads are required beyond the Pasta Suite.
-9. Extend the Macaroni Shadownet puppet lane into executable deploy/mint/collect, WTF.ME, WTFOS pinning, and Colander discovery tests.
+9. Extend the Macaroni Shadownet puppet lane and the new Spaghetti Shadownet preflight into executable signer-backed deploy/mint/collect, WTF.ME, WTFOS pinning, and Colander discovery tests.
 10. Keep Macaroni, Spaghetti, and Pasta Suite installer verifiers as release gates while adding any future standalone Pasta installers.
 11. Only after Shadownet and hosted-page proof, plan mainnet/full-send deployment work.
