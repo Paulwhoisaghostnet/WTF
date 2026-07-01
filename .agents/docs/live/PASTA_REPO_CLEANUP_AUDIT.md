@@ -6,13 +6,13 @@ Production focus: `https://wtfos.app`
 
 ## Current Production Authority
 
-- Authoritative production source is `origin/main` at `96b852369b0f3bcb737514afae922d4427f45d69`.
-- Live health reports `commitRef: "96b8523"` and `nodeEnv: "production"`.
-- Main Quality Gates run `28489362581` and Deploy to Hetzner run `28489362538` succeeded for commit `96b85236`.
-- The broader Pasta evidence branch `codex/pasta-live-readiness` is at `1354f490` with additional proof-only work; current `origin/main` is ahead with WTF LIVE stage controls, so standalone Spaghetti promotion is being prepared as a narrow cherry-pick onto `96b85236`.
+- Authoritative production source is current `origin/main`; the Spaghetti installer route was code-verified on commit `09fff2fb2efe8481957d6f199cdf164f73c658c4`.
+- Live health reported `commitRef: "09fff2f"` and `nodeEnv: "production"` after the Spaghetti route deploy.
+- Main Quality Gates run `28492620509` and Deploy to Hetzner run `28492620424` succeeded for commit `09fff2fb`.
+- The broader Pasta evidence branch `codex/pasta-live-readiness` is at `1354f490` with additional proof-only work; standalone Spaghetti was promoted by narrow cherry-pick instead of merging that whole branch.
 - Macaroni Desktop `1.0.0` individual installers are published as release assets and passed public plus authenticated manifest/download verification for macOS, Windows, and Raspberry Pi.
 - Pasta Suite Desktop `1.0.0` bundled installers are published as release assets and passed public plus authenticated manifest/download verification for macOS, Windows, and Raspberry Pi.
-- Spaghetti Studio Desktop `1.0.0` standalone installer package, GitHub Actions workflow, authenticated `/api/spaghetti/installers` manifest route, production env names, live verifier, docs, inventory probe, and GitHub release assets exist; production env/deploy/live verification is still pending.
+- Spaghetti Studio Desktop `1.0.0` standalone installer package, GitHub Actions workflow, authenticated `/api/spaghetti/installers` manifest route, production env names, live verifier, docs, inventory probe, GitHub release assets, production env, and authenticated live verification now exist for macOS, Windows, and Raspberry Pi.
 - Local Macaroni Shadownet puppet proof now passes 5/5 against a disposable Postgres database and `https://tezos-shadownet.octez.io/`, covering trusted-creator defaults, wallet chain safety, wtfOS publish gating, standalone mint-page wallet restore/disconnect, mismatched RPC blocking, and Shadownet Kukai handoff.
 - Live Pasta/Macaroni static wallet bundles for `macaroni`, `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna` passed stale-Taquito probes: Taquito `24.3.0` is absent, Taquito `25.0.0` is present, and the old `rpc.shadownet.teztnets.com` marker is absent.
 - Live Pasta static publisher `common.js` files now expose the `window.MD` runtime export in `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna`, while retaining `consumeCheaseHandoff()` and `loadPlatformCapabilities()` markers.
@@ -52,7 +52,7 @@ Conclusion: mine this checkout only for human notes if needed. Do not apply its 
 
 - The CH-EASE package-to-Pasta static runtime fix is now production-deployed: post-deploy live probes confirm `window.MD` exports on the six Pasta publisher bundles.
 - Pasta suite installer/download is now production-complete for the bundled native suite lane: `apps/pasta-suite-desktop`, the `pasta-suite-desktop-installers.yml` workflow, `/api/pasta/installers`, inventory coverage, package policy checks, GitHub release assets, production env, and the authenticated live verifier all passed for `pasta-suite-desktop-v1.0.0`.
-- Spaghetti standalone installer/download is release-asset-complete but not production-manifest-complete: `apps/spaghetti-desktop`, the `spaghetti-desktop-installers.yml` workflow, `/api/spaghetti/installers`, inventory coverage, package policy checks, env examples, docs, live verifier, and GitHub release assets now exist; production `SPAGHETTI_INSTALLER_*` env, container reload/deploy, and authenticated live verifier are still required before users can download it from `wtfos.app`.
+- Spaghetti standalone installer/download is production-complete for the standalone native app lane: `apps/spaghetti-desktop`, the `spaghetti-desktop-installers.yml` workflow, `/api/spaghetti/installers`, inventory coverage, package policy checks, env examples, docs, live verifier, GitHub release assets, production `SPAGHETTI_INSTALLER_*` env, deploy, and authenticated live verifier all passed for `spaghetti-desktop-v1.0.0`.
 - Full Pasta contract/product workflow proof remains broader than static bundle availability and the now-green Macaroni Shadownet confidence lane: actual Shadownet origination, mint/collect, failure recovery, WTF.ME hosting, wtfOS pinning, and cross-app Colander management should remain open until executable evidence exists.
 - Local `main` at the original workspace should be fast-forwarded, reset, or archived only after the user confirms whether its dirty scratch content should be preserved.
 
@@ -95,15 +95,16 @@ Conclusion: mine this checkout only for human notes if needed. Do not apply its 
   - macOS DMG: `Spaghetti-Studio-1.0.0-mac-universal.dmg` (`sha256 0cca2e45d91d6438bab7b4c10ebc41226dffdee934afa24e5c34221a88f1c60a`)
   - Windows NSIS: `Spaghetti-Studio-1.0.0-win-x64.exe` (`sha256 ba402284209fc777c7995ad6573ab017444604da80f475aeb81c7385b47b42d4`)
   - Raspberry Pi Debian package: `Spaghetti-Studio-1.0.0-linux-arm64.deb` (`sha256 3e8687bc87992f64af2666401f5f2e3b38b4641182dabe1ff46590f1497a9dd8`)
-- Public release verifier proof: `SPAGHETTI_INSTALLER_CHECK_ASSETS=1 SPAGHETTI_INSTALLER_REQUIRE_AUTH=0 npm run spaghetti:installers:live-check` confirmed release asset discovery and byte-range support, then failed closed on the production manifest because live `https://wtfos.app/api/spaghetti/installers` still returns 404 before this promotion branch is deployed.
+- Pre-deploy public release verifier proof: `SPAGHETTI_INSTALLER_CHECK_ASSETS=1 SPAGHETTI_INSTALLER_REQUIRE_AUTH=0 npm run spaghetti:installers:live-check` confirmed release asset discovery and byte-range support, then failed closed on the production manifest because live `https://wtfos.app/api/spaghetti/installers` returned 404 before this promotion branch was deployed.
 - Inventory proof added on branch: `spaghetti.installer_manifest.viewed` and `/api/spaghetti/installers` are registered in `tests/e2e/inventory/domain-workflows.mjs`; `npm run test:e2e:inventory:coverage` passed on the promotion branch.
 - Promotion branch validation passed: `node --check` on Spaghetti desktop/verifier scripts, `npm run spaghetti:desktop:check`, `npx tsx --test server/routes/macaroni-policy.test.ts`, `npm run spaghetti:desktop:prepare`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, and `git diff --check HEAD~1..HEAD`.
-- Scope note: this is release-asset and branch readiness proof. It does not yet prove production `SPAGHETTI_INSTALLER_*` env, reloaded production app container, authenticated live manifest agreement, or downloadable assets through `https://wtfos.app`.
+- Production `SPAGHETTI_INSTALLER_*` env was configured from the release digests, then the app container was recreated by Deploy to Hetzner run `28492620424` so the running process picked up the values.
+- `SPAGHETTI_INSTALLER_CHECK_ASSETS=1 SPAGHETTI_INSTALLER_REQUIRE_AUTH=1 npm run spaghetti:installers:live-check` passed against `https://wtfos.app` with production puppet `e2e_bert`; it verified unauthenticated `401`, GitHub release asset discovery, byte-range download support for all three platform assets, authenticated login, and manifest version/URL/SHA agreement.
+- Scope note: this proves the standalone Spaghetti native installer download lane. It does not prove separate native installers for Gnocchi, Ravioli, Rotini, Penne, or Lasagna beyond their bundled Pasta Suite availability.
 
 ## Recommended Next Actions
 
 1. Extend the now-green Macaroni Shadownet lane into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
-2. Configure production `SPAGHETTI_INSTALLER_*` env from the `spaghetti-desktop-v1.0.0` GitHub release digests, deploy/reload the production app so `/api/spaghetti/installers` exists on `wtfos.app`, then run `SPAGHETTI_INSTALLER_COOKIE='connect.sid=...' npm run spaghetti:installers:live-check`.
-3. Repeat the individual installer package/manifest/live-check pattern for Gnocchi, Ravioli, Rotini, Penne, and Lasagna if separate per-app downloads are required beyond the bundled Pasta Suite.
-4. After user confirmation, archive/delete merged historical Macaroni branches and clean checked-out worktrees that are ancestors of `origin/main`.
-5. Keep `WTF-BB-332` open until the stale `WTF-pasta-deploy` checkout is archived/reset or explicitly retained with a warning note.
+2. Repeat the individual installer package/manifest/live-check pattern for Gnocchi, Ravioli, Rotini, Penne, and Lasagna if separate per-app downloads are required beyond the bundled Pasta Suite.
+3. After user confirmation, archive/delete merged historical Macaroni branches and clean checked-out worktrees that are ancestors of `origin/main`.
+4. Keep `WTF-BB-332` open until the stale `WTF-pasta-deploy` checkout is archived/reset or explicitly retained with a warning note.
