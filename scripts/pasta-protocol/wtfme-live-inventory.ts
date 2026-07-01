@@ -8,6 +8,15 @@ const cookieJar = new Map<string, string>();
 const suppliedCookie = String(process.env.PASTA_WTFME_LIVE_COOKIE || "").trim();
 const username = String(process.env.PASTA_WTFME_LIVE_USERNAME || "").trim();
 const password = String(process.env.PASTA_WTFME_LIVE_PASSWORD || "");
+const expectedHost = String(process.env.PASTA_WTFME_LIVE_EXPECT_HOST || "").trim().toLowerCase();
+
+type ReadinessStatus = "pass" | "blocked";
+
+interface ReadinessCheck {
+  name: string;
+  status: ReadinessStatus;
+  detail: string;
+}
 
 function fail(message: string): never {
   throw new Error(message);
@@ -143,15 +152,147 @@ function summarizeEligibility(state: any) {
 }
 
 function summarizePinRegistry(state: any) {
+  const home = state?.pinRegistry?.home;
   const binding = state?.pinRegistry?.binding;
-  if (!binding || typeof binding !== "object") return null;
   return {
-    host: String(binding.host || "").trim() || null,
-    status: String(binding.status || "").trim() || null,
-    repoDid: String(binding.repoDid || "").trim() || null,
-    publicDiscoveryEnabled: Boolean(binding.publicDiscoveryEnabled),
-    manifestUri: String(binding.manifestUri || "").trim() || null,
-    wellKnownUrl: String(binding.wellKnownUrl || "").trim() || null,
+    home:
+      home && typeof home === "object"
+        ? {
+            host: String(home.host || "").trim() || null,
+            status: String(home.status || "").trim() || null,
+            ready: Boolean(home.ready),
+            repoDid: String(home.repoDid || "").trim() || null,
+            repoHandle: String(home.repoHandle || "").trim() || null,
+            pdsUrl: String(home.pdsUrl || "").trim() || null,
+            hasRepo: Boolean(home.hasRepo),
+            siteStatus: String(home.siteStatus || "").trim() || null,
+            wellKnownUrl: String(home.wellKnownUrl || "").trim() || null,
+          }
+        : null,
+    binding:
+      binding && typeof binding === "object"
+        ? {
+            host: String(binding.host || "").trim() || null,
+            status: String(binding.status || "").trim() || null,
+            repoDid: String(binding.repoDid || "").trim() || null,
+            publicDiscoveryEnabled: Boolean(binding.publicDiscoveryEnabled),
+            manifestUri: String(binding.manifestUri || "").trim() || null,
+            wellKnownUrl: String(binding.wellKnownUrl || "").trim() || null,
+          }
+        : null,
+  };
+}
+
+function userRoles(user: any): string[] {
+  const roles = Array.isArray(user?.roles) ? user.roles : user?.role ? [user.role] : [];
+  return roles.map((role: any) => String(role || "").trim()).filter(Boolean);
+}
+
+function userHasPermission(user: any, permission: string): boolean {
+  const effective = user?.effectivePermissions;
+  if (effective && typeof effective === "object" && !Array.isArray(effective)) {
+    return Boolean(effective[permission]);
+  }
+  const permissions = user?.permissions;
+  if (Array.isArray(permissions)) return permissions.includes(permission);
+  if (permissions && typeof permissions === "object") return Boolean(permissions[permission]);
+  return false;
+}
+
+function check(name: string, passed: boolean, passDetail: string, blockedDetail: string): ReadinessCheck {
+  return {
+    name,
+    status: passed ? "pass" : "blocked",
+    detail: passed ? passDetail : blockedDetail,
+  };
+}
+
+function summarizeReadiness(user: any, state: any) {
+  const mySite = summarizeSite(state.site);
+  const eligibility = summarizeEligibility(state);
+  const pinRegistry = summarizePinRegistry(state);
+  const candidateHost = mySite?.host || eligibility?.host || null;
+  const hostMatchesExpected = !expectedHost || candidateHost === expectedHost;
+  const claimedOrClaimable = Boolean(mySite?.host || eligibility?.canClaim);
+  const hasDidTarget = Boolean(eligibility?.didTargetSource || mySite?.activeDidSource);
+  const canUsePinning = userHasPermission(user, "use_wtfos_pinning");
+  const sitePublished = mySite?.status === "published";
+  const pinHomeReady = Boolean(pinRegistry?.home?.ready && pinRegistry.home.repoDid);
+  const publicPinDiscoveryReady = Boolean(
+    pinRegistry?.binding?.publicDiscoveryEnabled &&
+      pinRegistry.binding.repoDid &&
+      pinRegistry.binding.manifestUri &&
+      pinRegistry.binding.wellKnownUrl
+  );
+
+  const pagePublishChecks: ReadinessCheck[] = [
+    check(
+      "claimed or claimable WTF.ME host",
+      claimedOrClaimable,
+      mySite?.host ? `claimed ${mySite.host}` : `can claim ${eligibility?.host}`,
+      eligibility?.reasons?.length
+        ? eligibility.reasons.join("; ")
+        : "no claimed site and authenticated account is not claimable"
+    ),
+    check(
+      "expected host pin",
+      hostMatchesExpected,
+      expectedHost ? `matches ${expectedHost}` : "no expected host pin supplied for this read-only inventory",
+      `candidate host ${candidateHost || "none"} does not match PASTA_WTFME_LIVE_EXPECT_HOST=${expectedHost}`
+    ),
+    check(
+      "linked Tezos wallet",
+      Boolean(eligibility?.hasWallet),
+      "wallet link present",
+      "link a Tezos wallet before Pasta page/pin publication"
+    ),
+    check(
+      "OAuth/social identity",
+      Boolean(eligibility?.hasOAuthSocial),
+      "OAuth/social identity present",
+      "link at least one OAuth social account before claiming a WTF.ME host"
+    ),
+    check(
+      "DID publish target",
+      hasDidTarget,
+      `DID target source ${eligibility?.didTargetSource || mySite?.activeDidSource}`,
+      "activate a WTF DID/repo or linked Bluesky DID before publishing hosted pages"
+    ),
+  ];
+
+  const pinRecoveryChecks: ReadinessCheck[] = [
+    ...pagePublishChecks,
+    check(
+      "WTF Pin Collector permission",
+      canUsePinning,
+      "use_wtfos_pinning permission present",
+      "grant or buy WTF Pin Collector before publishing Pasta pin recovery"
+    ),
+    check(
+      "published WTF.ME site",
+      sitePublished,
+      `site status ${mySite?.status}`,
+      `publish the WTF.ME site first; current status is ${mySite?.status || "none"}`
+    ),
+    check(
+      "active PDS/repo pin home",
+      pinHomeReady,
+      `pin home ${pinRegistry?.home?.status} for ${pinRegistry?.home?.repoDid}`,
+      "set up an active wtfos.me PDS/repo before publishing Pasta pin recovery"
+    ),
+  ];
+
+  return {
+    candidateHost,
+    expectedHost: expectedHost || null,
+    pagePublishReady: pagePublishChecks.every((item) => item.status === "pass"),
+    pinRecoveryPublishReady: pinRecoveryChecks.every((item) => item.status === "pass"),
+    publicPinDiscoveryReady,
+    pagePublishChecks,
+    pinRecoveryChecks,
+    currentPublicDiscovery: pinRegistry?.binding ?? null,
+    note:
+      "This inventory is read-only. Existing-content safety, object-storage reachability, request-token handling, and public post-publish verification are enforced by pasta:wtfme:live-publish.",
   };
 }
 
@@ -206,6 +347,11 @@ function sanitizedUser(user: any) {
     id: Number.isFinite(Number(user?.id)) ? Number(user.id) : null,
     username: String(user?.username || username || "").trim() || null,
     role: String(user?.role || "").trim() || null,
+    roles: userRoles(user),
+    permissions: {
+      use_wtfos_pinning: userHasPermission(user, "use_wtfos_pinning"),
+      trusted_market_creator: userHasPermission(user, "trusted_market_creator"),
+    },
   };
 }
 
@@ -226,6 +372,8 @@ async function main(): Promise<void> {
     tls.push(await probeTlsAsk(host));
   }
 
+  const readiness = summarizeReadiness(user, state);
+
   console.log(JSON.stringify({
     ok: true,
     baseUrl: baseUrl().origin,
@@ -233,6 +381,7 @@ async function main(): Promise<void> {
     mySite,
     eligibility: summarizeEligibility(state),
     pinRegistry: summarizePinRegistry(state),
+    readiness,
     adminSites: {
       access: admin.access,
       status: admin.status,

@@ -1586,6 +1586,7 @@ export async function retryPinningJob(userId: number, jobId: number) {
 
 export async function getPinRegistrySummaryForUser(userId: number) {
   try {
+    const home = await resolvePinHome(userId);
     const [binding] = await db
       .select()
       .from(ipfsPinningSubdomainBindings)
@@ -1606,6 +1607,17 @@ export async function getPinRegistrySummaryForUser(userId: number) {
       .orderBy(desc(ipfsPinningManifests.createdAt))
       .limit(5);
     return {
+      home: {
+        host: home.host,
+        status: home.status,
+        ready: home.ready,
+        repoDid: home.identity?.repoDid ?? null,
+        repoHandle: home.identity?.handle ?? null,
+        pdsUrl: home.identity?.pdsUrl ?? null,
+        hasRepo: Boolean(home.identity?.hasRepo),
+        siteStatus: home.site?.status ?? null,
+        wellKnownUrl: home.wellKnownUrl,
+      },
       binding: binding
         ? {
             host: binding.host,
@@ -1619,7 +1631,7 @@ export async function getPinRegistrySummaryForUser(userId: number) {
       manifests,
     };
   } catch (err) {
-    if (missingRelation(err)) return { binding: null, manifests: [] };
+    if (missingRelation(err)) return { home: null, binding: null, manifests: [] };
     throw err;
   }
 }

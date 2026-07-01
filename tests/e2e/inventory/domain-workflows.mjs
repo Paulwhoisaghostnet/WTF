@@ -1035,6 +1035,7 @@ export const DOMAIN_WORKFLOWS = [
       "penne.installer_manifest.viewed",
       "lasagna.installer_manifest.viewed",
       "pasta_suite.installer_manifest.viewed",
+      "pasta_protocol.installer_catalog.viewed",
       "wtf_site.public.viewed",
     ],
     apiProbes: [
@@ -1045,6 +1046,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/penne/installers", expectedStatuses: [200, 401] },
       { method: "GET", path: "/api/lasagna/installers", expectedStatuses: [200, 401] },
       { method: "GET", path: "/api/pasta/installers", expectedStatuses: [200, 401] },
+      { method: "GET", path: "/api/pasta/installers/catalog", expectedStatuses: [200, 401] },
     ],
   },
 ];
