@@ -1,6 +1,6 @@
 ## 2026-07-01 - Local user-site host proof is not production TLS proof
 
-**What happened**: Pasta WTF.ME hosted pages passed the local host-mapped API-publish proof, but a live probe of `https://wtf-admin.wtfos.me/` failed during TLS negotiation before the landing, mint, collection, or pin-discovery pages could be inspected.
+**What happened**: Pasta WTF.ME hosted pages passed the local host-mapped API-publish proof, but a live probe of `https://wtf-admin.wtfos.me/` failed during TLS negotiation. The production ask gate at `https://wtfos.app/internal/tls/allow?domain=wtf-admin.wtfos.me` returned `handle not registered`, so the landing, mint, collection, and pin-discovery pages could not be inspected.
 
 **Why it mattered**: A Playwright harness can prove claim/save/publish routing and user-site headers while production Caddy/TLS, host registration, suspension state, or public renderer state is still broken. Treating those as equivalent would let a release claim collectors can load a Pasta mint page when the browser cannot complete HTTPS.
 

@@ -10,6 +10,9 @@ import {
 
 const DEFAULT_HOST = "wtf-admin.wtfos.me";
 const HOST = String(process.env.PASTA_WTFME_LIVE_HOST || DEFAULT_HOST).trim().toLowerCase();
+const TLS_ASK_BASE_URL = String(
+  process.env.PASTA_WTFME_TLS_ASK_BASE_URL || process.env.WTFOS_BASE_URL || "https://wtfos.app"
+).trim();
 const CHECK_PINS = !/^(0|false|no|off)$/i.test(String(process.env.PASTA_WTFME_LIVE_CHECK_PINS || "1"));
 
 type PageProbe = {
@@ -30,6 +33,35 @@ function baseUrl(): URL {
   if (!HOST || !/^[a-z0-9.-]+$/.test(HOST)) fail(`invalid PASTA_WTFME_LIVE_HOST: ${HOST}`);
   if (!HOST.endsWith(".wtfos.me")) fail(`live WTF.ME host must end with .wtfos.me: ${HOST}`);
   return new URL(`https://${HOST}/`);
+}
+
+function tlsAskBaseUrl(): URL {
+  const url = new URL(TLS_ASK_BASE_URL);
+  url.pathname = "/";
+  url.search = "";
+  url.hash = "";
+  return url;
+}
+
+async function assertTlsAskAllowsHost(): Promise<void> {
+  const url = new URL("/internal/tls/allow", tlsAskBaseUrl());
+  url.searchParams.set("domain", HOST);
+  const response = await fetch(url, {
+    headers: { "user-agent": "wtfos-pasta-wtfme-live-check" },
+    redirect: "manual",
+  });
+  const text = await response.text();
+  let parsed: { ok?: unknown; reason?: unknown } = {};
+  try {
+    parsed = JSON.parse(text);
+  } catch (_) {
+    // Keep the raw response in the assertion below.
+  }
+  if (response.status !== 200) {
+    fail(`${url.toString()} denied ${HOST}: HTTP ${response.status} ${String(parsed.reason || text).slice(0, 160)}`);
+  }
+  if (parsed.ok !== true) fail(`${url.toString()} did not return ok: true for ${HOST}`);
+  ok(`${url.toString()} allows on-demand TLS for ${HOST}`);
 }
 
 async function fetchText(pathname: string): Promise<PageProbe> {
@@ -136,6 +168,7 @@ async function assertWellKnownPins(): Promise<void> {
 
 async function main(): Promise<void> {
   console.log(`[pasta-wtfme-live] checking ${baseUrl().origin}`);
+  await assertTlsAskAllowsHost();
   await assertLanding();
   await assertMint();
   await assertCollection();
