@@ -28,6 +28,16 @@ const EXPECTED_ASSETS = {
   },
 };
 
+const EXPECTED_BUNDLED_APPS = [
+  { key: "macaroni", label: "Macaroni" },
+  { key: "spaghetti", label: "Spaghetti" },
+  { key: "gnocchi", label: "Gnocchi" },
+  { key: "ravioli", label: "Ravioli" },
+  { key: "rotini", label: "Rotini" },
+  { key: "penne", label: "Penne" },
+  { key: "lasagna", label: "Lasagna" },
+];
+
 const failures = [];
 const cookieJar = new Map();
 const suppliedCookie = String(
@@ -195,6 +205,33 @@ function validateManifest(manifest, releaseAssets) {
   if (!Array.isArray(manifest.installers)) {
     fail("installer manifest is missing installers[]");
     return;
+  }
+  if (!Array.isArray(manifest.bundledApps)) {
+    fail("installer manifest is missing bundledApps[]");
+  } else {
+    const bundledFailureCount = failures.length;
+    const expectedKeys = new Set(EXPECTED_BUNDLED_APPS.map((app) => app.key));
+    const bundledByKey = new Map(manifest.bundledApps.map((app) => [app.key, app]));
+    if (manifest.bundledApps.length !== EXPECTED_BUNDLED_APPS.length) {
+      fail(`installer manifest bundledApps length mismatch: expected ${EXPECTED_BUNDLED_APPS.length}, got ${manifest.bundledApps.length}`);
+    }
+    for (const item of manifest.bundledApps) {
+      if (!expectedKeys.has(item.key)) fail(`installer manifest includes unexpected bundled app ${item.key}`);
+      if (!String(item.purpose || "").trim()) fail(`bundled app ${item.key} is missing purpose`);
+    }
+    for (const expected of EXPECTED_BUNDLED_APPS) {
+      const item = bundledByKey.get(expected.key);
+      if (!item) {
+        fail(`installer manifest is missing bundled app ${expected.key}`);
+        continue;
+      }
+      if (item.label !== expected.label) {
+        fail(`bundled app ${expected.key} label mismatch: expected ${expected.label}, got ${item.label}`);
+      }
+    }
+    if (failures.length === bundledFailureCount) {
+      ok("authenticated manifest enumerates bundled Pasta app surfaces");
+    }
   }
 
   const byKey = new Map(manifest.installers.map((item) => [item.key, item]));

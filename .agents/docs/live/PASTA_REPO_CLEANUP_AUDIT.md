@@ -62,7 +62,7 @@ Conclusion: `WTF-BB-332` is verified closed. Preserve the warning in history, bu
 ## Remaining Product Gaps
 
 - The CH-EASE package-to-Pasta static runtime fix is now production-deployed: post-deploy live probes confirm `window.MD` exports on the six Pasta publisher bundles.
-- Pasta suite installer/download is now production-complete for the bundled native suite lane: `apps/pasta-suite-desktop`, the `pasta-suite-desktop-installers.yml` workflow, `/api/pasta/installers`, inventory coverage, package policy checks, GitHub release assets, production env, and the authenticated live verifier all passed for `pasta-suite-desktop-v1.0.0`.
+- Pasta suite installer/download is now production-complete for the bundled native suite lane: `apps/pasta-suite-desktop`, the `pasta-suite-desktop-installers.yml` workflow, `/api/pasta/installers`, inventory coverage, package policy checks, GitHub release assets, production env, and the authenticated live verifier all passed for `pasta-suite-desktop-v1.0.0`. The current branch strengthens the source manifest contract by adding a `bundledApps` list for Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna; that field still needs post-deploy authenticated live verification before claiming production serves it.
 - Spaghetti standalone installer/download is production-complete for the standalone native app lane: `apps/spaghetti-desktop`, the `spaghetti-desktop-installers.yml` workflow, `/api/spaghetti/installers`, inventory coverage, package policy checks, env examples, docs, live verifier, GitHub release assets, production `SPAGHETTI_INSTALLER_*` env, deploy, and authenticated live verifier all passed for `spaghetti-desktop-v1.0.0`.
 - Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, the Spaghetti preflight, the signer-backed Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna proofs, the current Colander browser discovery proof, and the source-level WTF.ME/pinning proofs: live production WTF.ME hosting, live provider pinning, failure recovery, and wallet-signed Colander management should remain open until executable live evidence exists.
 - The remaining unique Pasta proof work is concentrated in `codex/pasta-live-readiness`; it should be mined by narrow slices. The current slice adds source-level Pasta pinning/recovery proof and a fail-closed `.well-known` discovery guard without merging that broader branch wholesale.
@@ -79,6 +79,7 @@ Conclusion: `WTF-BB-332` is verified closed. Preserve the warning in history, bu
 ## Current Suite Installer Proof
 
 - Source/package proof: `npm run pasta-suite:desktop:check` passed 5/5.
+- Source manifest contract update: `/api/pasta/installers` now returns `bundledApps` for Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna, and the source policy/live verifier reject missing or unexpected suite app metadata after deployment.
 - Macaroni regression proof: `npm run macaroni:desktop:check` passed 4/4.
 - Inventory proof: `npm run test:e2e:inventory:coverage` passed with `pasta_suite.installer_manifest.viewed` and `/api/pasta/installers` in the Pasta workflow.
 - TypeScript proof: `npm run check -- --pretty false` passed.

@@ -9,7 +9,7 @@ Release lane: `codex/spaghetti-installer-live`
 This lane can safely claim:
 
 - Macaroni Desktop `1.0.0` individual installers are published and production-verifiable.
-- Pasta Suite Desktop `1.0.0` bundled installers are published and production-verifiable.
+- Pasta Suite Desktop `1.0.0` bundled installers are published and production-verifiable; this branch also makes the Suite installer manifest enumerate the bundled Pasta app surfaces so the suite download contract is explicit.
 - Spaghetti Studio Desktop `1.0.0` standalone installers are published and production-verifiable.
 - Pasta static publisher bundles are reachable on `wtfos.app` and expose the shared `window.MD` runtime.
 - Spaghetti has a real-network Shadownet preflight and a signer-backed deploy/mint/collect proof command.
@@ -54,7 +54,7 @@ This lane must not claim:
 | wtfOS pinning | Artifact and metadata durability | PROVEN | N/A | N/A | PARTIAL | PARTIAL | N/A | N/A | OPEN |
 | Pasta Suite Desktop | Bundled native app suite | N/A | N/A | N/A | N/A | N/A | N/A | PROVEN | N/A |
 
-Note: `PARTIAL` installer status for individual Pasta publishers means the bundled Pasta Suite Desktop download includes that app surface, but no separate per-app native installer has been proven for that publisher.
+Note: `PARTIAL` installer status for individual Pasta publishers means the bundled Pasta Suite Desktop download includes that app surface and this branch's `/api/pasta/installers` manifest exposes it under `bundledApps`, but no separate per-app native installer has been proven for that publisher.
 
 ## Proof Inventory
 
@@ -64,7 +64,7 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 | Stale Pasta worktree safety | `WTF-pasta-deploy` is absent from active worktrees and its historical patch is marked as do-not-replay. | PROVEN |
 | Static Pasta bundle reachability | Live probes recorded in `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md`; `window.MD` is exported for Spaghetti, Gnocchi, Ravioli, Rotini, Penne, Lasagna. | PROVEN |
 | Macaroni individual installers | `npm run macaroni:desktop:check`, live manifest verifier, GitHub release assets, and production env proof recorded in audit docs. | PROVEN |
-| Pasta Suite installers | `npm run pasta-suite:desktop:check`, `npm run pasta-suite:installers:live-check`, release tag `pasta-suite-desktop-v1.0.0`, and production manifest proof recorded in audit docs. | PROVEN |
+| Pasta Suite installers | `npm run pasta-suite:desktop:check`, `npm run pasta-suite:installers:live-check`, release tag `pasta-suite-desktop-v1.0.0`, and production manifest proof recorded in audit docs. Current branch source policy also requires `/api/pasta/installers` and the live verifier to enumerate Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna in `bundledApps`; this strengthened field still needs post-deploy live verification before claiming production serves it. | PROVEN |
 | Spaghetti standalone installers | `npm run spaghetti:desktop:check`, `npm run spaghetti:installers:live-check`, release tag `spaghetti-desktop-v1.0.0`, and production manifest proof recorded in audit docs. | PROVEN |
 | Macaroni Shadownet confidence lane | `DATABASE_URL=... npm run test:e2e:macaroni:shadownet` passed 5/5. | PARTIAL |
 | Spaghetti real-network preflight | `npm run pasta:shadownet:preflight` verifies Shadownet RPC, TzKT head, artifact entrypoints, adapter detection, and metadata/storage payload shape. | PROVEN |
