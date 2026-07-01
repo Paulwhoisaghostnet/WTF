@@ -47,6 +47,18 @@ test("Pasta live-readiness gate verifies public installer download surfaces", ()
 test("Pasta live-readiness gate delegates hosted-page proof to the live WTF.ME checker", () => {
   assert.match(source, /PASTA_WTFME_LIVE_HOST/);
   assert.match(source, /spawnSync\("npm", \["run", "pasta:wtfme:live-check"\]/);
-  assert.doesNotMatch(source, /PASTA_WTFME_LIVE_PUBLISH/);
+  assert.doesNotMatch(source, /PASTA_WTFME_LIVE_PUBLISH:\s*"1"/);
   assert.doesNotMatch(source, /PASTA_WTFME_LIVE_PASSWORD.*console\.log/);
+});
+
+test("Pasta live-readiness gate validates supplied WTF.ME credentials with a non-writing publisher dry-run", () => {
+  assert.match(source, /function checkWtfmePublishDryRun\(\)/);
+  assert.match(source, /spawnSync\("npm", \["run", "pasta:wtfme:live-publish"\]/);
+  assert.match(source, /PASTA_WTFME_LIVE_PUBLISH: "0"/);
+  assert.match(source, /PASTA_WTFME_LIVE_VERIFY_AFTER_PUBLISH: "0"/);
+  assert.match(source, /env\.PASTA_WTFME_LIVE_EXPECT_HOST = host/);
+  assert.match(source, /WTF\.ME publish dry-run/);
+  assert.match(source, /credentials authenticate and resolve/);
+  assert.match(source, /authenticated user resolves/);
+  assert.match(source, /Refusing to/);
 });

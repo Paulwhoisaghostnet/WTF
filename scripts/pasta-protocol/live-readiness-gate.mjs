@@ -130,11 +130,16 @@ function checkInstallerDownloads() {
   }
 }
 
-function checkLocalCredentialShape() {
+function credentialState() {
   const hasCookie = Boolean(String(process.env.PASTA_WTFME_LIVE_COOKIE || "").trim());
   const hasUserPass =
     Boolean(String(process.env.PASTA_WTFME_LIVE_USERNAME || "").trim()) &&
     Boolean(String(process.env.PASTA_WTFME_LIVE_PASSWORD || ""));
+  return { hasCookie, hasUserPass };
+}
+
+function checkWtfmePublishDryRun() {
+  const { hasCookie, hasUserPass } = credentialState();
   if (hasCookie || hasUserPass) {
     record("local WTF.ME publish credentials", "pass", hasCookie ? "cookie env present" : "username/password env present");
   } else {
@@ -142,7 +147,42 @@ function checkLocalCredentialShape() {
       "local WTF.ME publish credentials",
       "set PASTA_WTFME_LIVE_COOKIE or PASTA_WTFME_LIVE_USERNAME/PASTA_WTFME_LIVE_PASSWORD for a dry-run/publish pass"
     );
+    return;
   }
+
+  const env = {
+    ...process.env,
+    PASTA_WTFME_LIVE_PUBLISH: "0",
+    PASTA_WTFME_LIVE_VERIFY_AFTER_PUBLISH: "0",
+  };
+  if (host) env.PASTA_WTFME_LIVE_EXPECT_HOST = host;
+
+  const result = spawnSync("npm", ["run", "pasta:wtfme:live-publish"], {
+    cwd: process.cwd(),
+    env,
+    encoding: "utf8",
+    maxBuffer: 1024 * 1024 * 4,
+  });
+  if (result.status === 0) {
+    record(
+      "WTF.ME publish dry-run",
+      "pass",
+      host ? `credentials authenticate and resolve to ${host}` : "credentials authenticate and resolve a WTF.ME host"
+    );
+    return;
+  }
+
+  const lines = `${result.stdout || ""}\n${result.stderr || ""}`
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const focused =
+    lines.find((line) => line.includes("authenticated user resolves")) ||
+    lines.find((line) => line.includes("Refusing to")) ||
+    lines.find((line) => line.includes("not eligible")) ||
+    lines.find((line) => line.includes("Set PASTA_WTFME")) ||
+    lines.find((line) => line.includes("[pasta-wtfme-publish]"));
+  block("WTF.ME publish dry-run", focused || lines.slice(-3).join(" | ") || `pasta:wtfme:live-publish exited ${result.status ?? "unknown"}`);
 }
 
 function checkWtfmeHost() {
@@ -181,7 +221,7 @@ async function main() {
   await checkHealth();
   await checkStaticBundles();
   checkInstallerDownloads();
-  checkLocalCredentialShape();
+  checkWtfmePublishDryRun();
   checkWtfmeHost();
 
   const ok = blockers.length === 0;

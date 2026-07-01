@@ -1,3 +1,13 @@
+## 2026-07-01 - Readiness gates must validate credentials, not count env names
+
+**What happened**: The Pasta live-readiness gate originally treated a non-empty `PASTA_WTFME_LIVE_COOKIE` or username/password pair as enough to satisfy the credential portion of the gate. That could let a later run with stale, mismatched, or under-permissioned credentials proceed to the public host check without proving the account can actually reach the intended WTF.ME publish path.
+
+**Why it mattered**: Credentialed production flows are not proven by environment-variable shape. A real deploy account must authenticate, resolve to the expected host, pass existing-site safety checks, and remain in dry-run mode until an explicit publish flag is used.
+
+**Rule**: Release gates that require credentials should execute the least-dangerous authenticated preflight available. Force write flags off, bind to the expected public host when known, and fail the gate on invalid auth, host mismatch, missing eligibility, or unsafe existing content.
+
+---
+
 ## 2026-07-01 - Live publishers must verify the public surface before success
 
 **What happened**: The Pasta WTF.ME live publisher wrote pages, published the site, published pin recovery, and then printed the verifier command. That was safe enough for a careful manual run, but it still allowed the write script itself to finish without proving that the public host actually served the landing/mint/collection pages and `.well-known/wtfos-pins`.
