@@ -1,3 +1,33 @@
+## 2026-07-01 - Installer catalogs need their own release proof
+
+**What happened**: Pasta had live individual installer manifests and a live suite manifest, but the follow-up unified `/api/pasta/installers/catalog` surface initially existed only as source code. It was missing inventory ownership, a shared readiness probe, and a TypeScript-safe readonly platform helper, so the product story "download the suite or any individual app" could drift from the release gate.
+
+**Why it mattered**: A user-facing catalogue is a product surface, not just a convenience wrapper. If the individual manifests pass but the catalogue route is absent, unregistered, or compile-broken, production can claim installer coverage while the actual suite-vs-individual choice remains unproven.
+
+**Rule**: When adding an aggregate installer/download catalogue, give it a canonical inventory handle, API workflow probe, source-policy coverage, TypeScript coverage, and a live-readiness check that proves the deployed route is auth-protected before claiming the distribution surface is complete.
+
+---
+
+## 2026-07-01 - Cleanup gates belong inside release readiness
+
+**What happened**: The Pasta repo cleanup audit could classify stale proof branches and dirty worktrees, but `pasta:live-readiness` still allowed a release-readiness run to proceed without executing that cleanup check. Operators had to remember that repo hygiene was a separate command even though replaying stale Pasta work could delete newer installer, WTF.ME, Colander, and release-gate guardrails.
+
+**Why it mattered**: A release gate is the command people trust when deciding whether main `wtfos.app` is safe to promote. If branch/worktree safety is only a sidecar audit, a new or reappearing Pasta-looking branch can bypass the same readiness report that proves live assets and hosted-page blockers.
+
+**Rule**: When repo-cleanup state affects production release safety, invoke the non-destructive cleanup audit from the shared readiness gate by default. Keep a named diagnostic skip flag, but fail closed on unknown Pasta branch or worktree classifications in normal release runs.
+
+---
+
+## 2026-07-01 - Cleanup audits must refresh post-merge authority
+
+**What happened**: The Pasta cleanup audit and standalone installer bounty entry still opened with `0558be0` as the production authority after PR #13 had already deployed `51ab323` with the standalone audit fix. The live app was correct, but the standing docs made the clean proof worktree look like it still had a local delta and could send the next pass toward already-promoted installer work.
+
+**Why it mattered**: Repo-cleanup decisions depend on knowing which branch, worktree, and commit are authoritative. A stale authority line can make valid current work look unfinished or make an old promotion branch look like the next live target.
+
+**Rule**: After any merge/deploy that changes release evidence, refresh cleanup audits and bounty summaries against `origin/main`, the live health commit, and the latest deploy/quality run IDs before recommending a carry-forward or archive action.
+
+---
+
 ## 2026-07-01 - Production env changes must target the runtime env file
 
 **What happened**: The first Gnocchi/Ravioli/Rotini/Penne/Lasagna installer env publication wrote the public release URLs and SHA-256 values into the repo `.env`, then recreated the app container directly. Production compose uses `WTF_ENV_FILE=/etc/wtf/wtf.env`, so the app still saw no installer values; the direct recreate also lost the build-time `COMMIT_SHA` marker and made health report `commitRef:"dev"` until the normal deploy script rebuilt for the real commit.
@@ -7167,3 +7197,43 @@
 **Why it mattered**: Behavior assertions are bidirectional ownership contracts. If a cross-surface proof omits one owning surface, coverage can no longer prove that route, domain, and admin registries agree about who is responsible for the behavior.
 
 **Rule**: When adding a behavior assertion that crosses app, domain, host, or storage boundaries, include every admin surface that registers or exposes the workflow in `ownerSurfaceIds` before running inventory coverage.
+
+---
+
+## 2026-07-01 - Credential blockers need prerequisite checklists
+
+**What happened**: The WTF.ME live inventory dumped raw site, eligibility, and pin-registry facts, but it did not classify page-publish readiness, pin-recovery readiness, or public-discovery readiness for a candidate Pasta host.
+
+**Why it mattered**: Operators could still misread missing PDS, permission, site, wallet, or host-binding prerequisites and jump straight to a write-capable publish command.
+
+**Rule**: Read-only inventory for credentialed publish blockers should emit explicit pass/blocked checks for each prerequisite before any live write tool is used.
+
+---
+
+## 2026-07-01 - Sidecar diagnostics belong in shared readiness gates
+
+**What happened**: The Pasta WTF.ME inventory script gained the exact page-publish, pin-recovery, and public-discovery prerequisite checklist, but the top-level `pasta:live-readiness` command still only ran the credential dry-run and public host checker.
+
+**Why it mattered**: A sidecar diagnostic can be correct and still be skipped during the high-pressure release command. Operators trust the shared gate, so prerequisite failures need to surface there instead of relying on memory to run a second command.
+
+**Rule**: When a new read-only diagnostic becomes release-critical, fold it into the shared readiness gate immediately, keep write flags forced off, and add policy coverage that proves the gate parses and blocks on the diagnostic result.
+
+---
+
+## 2026-07-01 - Branch cleanup needs current two-dot replay checks
+
+**What happened**: A historical Pasta proof branch still had many useful-looking unique commits when viewed with log history, but comparing it directly against current `origin/main` showed it would delete newer installer packages, workflows, readiness gates, action proofs, and reports if replayed wholesale.
+
+**Why it mattered**: Triple-dot and commit-log views answer "what did this branch introduce from its old base," not "what would applying this branch do to production now." Stale branches can contain valuable evidence and still be destructive as merge targets.
+
+**Rule**: For cleanup decisions, pair ancestor checks with `origin/main..<branch>` two-dot diffs and shortstats before labeling a branch active. If the two-dot diff deletes newer release guardrails, mark the branch historical and mine ideas manually only after current-file comparison.
+
+---
+
+## 2026-07-01 - Cleanup classifications need executable gates
+
+**What happened**: The Pasta cleanup audit correctly classified stale branches in prose, but the result still depended on future operators manually repeating the same ancestry, two-dot replay, worktree, and Gamma/Beta-filtering checks.
+
+**Why it mattered**: Documentation can drift faster than branch lists. A new Pasta-looking branch could appear after the audit and bypass the stale-work warning unless the release lane has a command that fails on unknown cleanup state.
+
+**Rule**: When cleanup classification affects production release safety, add a non-destructive audit command and source-policy test. The command should pass for known active/promoted/historical branches, fail on unclassified Pasta work, and require explicit user confirmation before any archive/delete action.

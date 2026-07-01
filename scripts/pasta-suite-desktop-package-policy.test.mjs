@@ -102,6 +102,7 @@ test("Pasta suite production installer manifest keeps Macaroni hardening rules",
   assert.match(routesSource, /import pastaInstallerRoutes from "\.\/routes\/pasta-installers"/);
   assert.match(routesSource, /app\.use\(pastaInstallerRoutes\)/);
   assert.match(routeSource, /router\.get\("\/api\/pasta\/installers", isAuthenticated/);
+  assert.match(routeSource, /router\.get\("\/api\/pasta\/installers\/catalog", isAuthenticated/);
   assert.match(routeSource, /PASTA_SUITE_INSTALLER_VERSION/);
   assert.match(routeSource, /PASTA_SUITE_INSTALLER_MACOS_URL/);
   assert.match(routeSource, /PASTA_SUITE_INSTALLER_MACOS_SHA256/);
@@ -116,6 +117,16 @@ test("Pasta suite production installer manifest keeps Macaroni hardening rules",
     assert.match(routeSource, new RegExp(`key: "${id}"`));
   }
   assert.match(routeSource, /bundledApps: BUNDLED_PASTA_APPS/);
+  assert.match(routeSource, /const INDIVIDUAL_PASTA_INSTALLER_PRODUCTS = \[/);
+  for (const id of pastaTools) {
+    assert.match(routeSource, new RegExp(`manifestPath: "/api/${id}/installers"`));
+    assert.match(routeSource, new RegExp(`${id.toUpperCase()}_INSTALLER_VERSION`));
+  }
+  assert.match(routeSource, /product: "pasta-protocol-installers"/);
+  assert.match(routeSource, /manifestVersion: 1/);
+  assert.match(routeSource, /suiteAvailable: suite\.installers\.every\(\(item\) => item\.available\)/);
+  assert.match(routeSource, /individualAvailable: individualApps\.every\(\(app\) => app\.installers\.every\(\(item\) => item\.available\)\)/);
+  assert.match(routeSource, /products: \[suite, \.\.\.individualApps\]/);
   assert.match(routeSource, /function isLoopbackInstallerHost\(hostname: string\): boolean/);
   assert.match(routeSource, /url\.protocol === "https:"/);
   assert.match(routeSource, /process\.env\.NODE_ENV !== "production" && url\.protocol === "http:" && isLoopbackInstallerHost\(url\.hostname\)/);

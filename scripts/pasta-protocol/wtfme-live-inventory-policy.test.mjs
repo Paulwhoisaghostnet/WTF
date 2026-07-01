@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const source = readFileSync("scripts/pasta-protocol/wtfme-live-inventory.ts", "utf8");
+const pinningServiceSource = readFileSync("server/features/ipfs-pinning/service.ts", "utf8");
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 
 test("Pasta WTF.ME live inventory has package hooks and scoped credentials", () => {
@@ -19,6 +20,7 @@ test("Pasta WTF.ME live inventory has package hooks and scoped credentials", () 
   assert.match(source, /PASTA_WTFME_LIVE_PASSWORD/);
   assert.match(source, /PASTA_WTFME_LIVE_BASE_URL/);
   assert.match(source, /PASTA_WTFME_LIVE_HOSTS/);
+  assert.match(source, /PASTA_WTFME_LIVE_EXPECT_HOST/);
   assert.match(source, /PASTA_WTFME_LIVE_INVENTORY_LIMIT/);
   assert.doesNotMatch(source, /const DEFAULT_HOSTS/);
   assert.doesNotMatch(source, /wtf-admin\.wtfos\.me/);
@@ -61,9 +63,27 @@ test("Pasta WTF.ME live inventory reports the host facts needed for production u
   assert.match(source, /adminSites/);
   assert.match(source, /tlsAsk/);
   assert.match(source, /nextRequiredHost/);
+  assert.match(source, /summarizeReadiness/);
+  assert.match(source, /pagePublishReady/);
+  assert.match(source, /pinRecoveryPublishReady/);
+  assert.match(source, /publicPinDiscoveryReady/);
   assert.match(source, /hasWallet/);
   assert.match(source, /hasOAuthSocial/);
   assert.match(source, /hasLinkedBluesky/);
   assert.match(source, /hasActiveWtfDid/);
   assert.match(source, /canIssueWtfDid/);
+  assert.match(source, /use_wtfos_pinning/);
+  assert.match(source, /active PDS\/repo pin home/);
+  assert.match(source, /This inventory is read-only/);
+});
+
+test("Pasta WTF.ME live inventory API exposes non-secret pin home readiness", () => {
+  assert.match(pinningServiceSource, /export async function getPinRegistrySummaryForUser/);
+  assert.match(pinningServiceSource, /const home = await resolvePinHome\(userId\)/);
+  assert.match(pinningServiceSource, /home:\s*\{/);
+  assert.match(pinningServiceSource, /ready: home\.ready/);
+  assert.match(pinningServiceSource, /repoDid: home\.identity\?\.repoDid/);
+  assert.match(pinningServiceSource, /hasRepo: Boolean\(home\.identity\?\.hasRepo\)/);
+  assert.match(pinningServiceSource, /siteStatus: home\.site\?\.status/);
+  assert.match(pinningServiceSource, /wellKnownUrl: home\.wellKnownUrl/);
 });

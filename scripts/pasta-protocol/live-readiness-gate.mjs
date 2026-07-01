@@ -18,6 +18,7 @@ const checkWtfme = flag("PASTA_LIVE_READINESS_CHECK_WTFME", true);
 const checkStatic = flag("PASTA_LIVE_READINESS_CHECK_STATIC", true);
 const checkInstallers = flag("PASTA_LIVE_READINESS_CHECK_INSTALLERS", true);
 const checkColanderProof = flag("PASTA_LIVE_READINESS_CHECK_COLANDER_PROOF", true);
+const checkRepoCleanup = flag("PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP", true);
 const host = String(process.env.PASTA_WTFME_LIVE_HOST || "").trim().toLowerCase();
 const checks = [];
 const blockers = [];
@@ -68,6 +69,28 @@ function runPackageScript(script, env = {}) {
   throw new Error(result.detail);
 }
 
+function parseJsonObjectFromOutput(output, label) {
+  const text = String(output || "");
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) {
+    throw new Error(`${label} did not emit a JSON object`);
+  }
+  try {
+    return JSON.parse(text.slice(start, end + 1));
+  } catch (error) {
+    throw new Error(`${label} emitted invalid JSON: ${error.message}`);
+  }
+}
+
+function blockedCheckDetails(checks) {
+  return checks
+    .filter((check) => check?.status === "blocked")
+    .map((check) => `${check.name}: ${check.detail}`)
+    .slice(0, 4)
+    .join("; ");
+}
+
 async function fetchText(pathname) {
   const url = new URL(pathname, baseUrl());
   const response = await fetch(url, {
@@ -81,6 +104,16 @@ async function fetchText(pathname) {
   return { url, text };
 }
 
+async function fetchStatus(pathname) {
+  const url = new URL(pathname, baseUrl());
+  const response = await fetch(url, {
+    headers: { "user-agent": "wtfos-pasta-live-readiness-gate" },
+    redirect: "manual",
+  });
+  const text = await response.text().catch(() => "");
+  return { url, status: response.status, text };
+}
+
 async function checkHealth() {
   const { text } = await fetchText("/api/health");
   const health = JSON.parse(text);
@@ -91,6 +124,19 @@ async function checkHealth() {
     throw new Error(`/api/health did not report production nodeEnv: ${health.version?.nodeEnv || "missing"}`);
   }
   record("live health", "pass", `commit ${health.version?.commitRef || "unknown"}, chain ${health.chain?.network || "unknown"}`);
+}
+
+function checkRepoCleanupAudit() {
+  if (!checkRepoCleanup) {
+    record("repo cleanup audit", "skipped", "PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP=0");
+    return;
+  }
+  const result = runPackageScriptResult("pasta:repo-cleanup:audit");
+  if (result.ok) {
+    record("repo cleanup audit", "pass", "Pasta branches/worktrees classified against current origin/main");
+    return;
+  }
+  block("repo cleanup audit", result.detail);
 }
 
 async function checkStaticBundles() {
@@ -191,6 +237,22 @@ function checkInstallerDownloads() {
   }
 }
 
+async function checkInstallerCatalogRoute() {
+  if (!checkInstallers) {
+    record("Pasta installer catalog", "skipped", "PASTA_LIVE_READINESS_CHECK_INSTALLERS=0");
+    return;
+  }
+  const { status, text } = await fetchStatus("/api/pasta/installers/catalog");
+  if (status === 401) {
+    record("Pasta installer catalog", "pass", "/api/pasta/installers/catalog is deployed and auth-protected");
+    return;
+  }
+  block(
+    "Pasta installer catalog",
+    `/api/pasta/installers/catalog returned HTTP ${status}; expected an auth-protected 401 before claiming unified suite plus individual installer downloads${text ? ` (${text.slice(0, 120)})` : ""}`
+  );
+}
+
 function checkRecordedColanderActionProof() {
   if (!checkColanderProof) {
     record("recorded Colander Shadownet action proof", "skipped", "PASTA_LIVE_READINESS_CHECK_COLANDER_PROOF=0");
@@ -255,6 +317,61 @@ function checkWtfmePublishDryRun() {
   block("WTF.ME publish dry-run", focused || lines.slice(-3).join(" | ") || `pasta:wtfme:live-publish exited ${result.status ?? "unknown"}`);
 }
 
+function checkWtfmeInventoryReadiness() {
+  const { hasCookie, hasUserPass } = credentialState();
+  if (!hasCookie && !hasUserPass) {
+    record("WTF.ME read-only inventory readiness", "skipped", "waiting for local WTF.ME publish credentials");
+    return;
+  }
+
+  const env = {
+    ...process.env,
+    PASTA_WTFME_LIVE_PUBLISH: "0",
+  };
+  if (host) env.PASTA_WTFME_LIVE_EXPECT_HOST = host;
+
+  const result = spawnSync("npm", ["run", "pasta:wtfme:live-inventory"], {
+    cwd: process.cwd(),
+    env,
+    encoding: "utf8",
+    maxBuffer: 1024 * 1024 * 4,
+  });
+  if (result.status !== 0) {
+    const lines = `${result.stdout || ""}\n${result.stderr || ""}`
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    block("WTF.ME read-only inventory readiness", lines.slice(-4).join(" | ") || `pasta:wtfme:live-inventory exited ${result.status ?? "unknown"}`);
+    return;
+  }
+
+  let inventory;
+  try {
+    inventory = parseJsonObjectFromOutput(result.stdout, "pasta:wtfme:live-inventory");
+  } catch (error) {
+    block("WTF.ME read-only inventory readiness", error.message);
+    return;
+  }
+
+  const readiness = inventory?.readiness || {};
+  const pageReady = readiness.pagePublishReady === true;
+  const pinReady = readiness.pinRecoveryPublishReady === true;
+  const publicReady = readiness.publicPinDiscoveryReady === true;
+  if (!pageReady || !pinReady) {
+    const failed =
+      blockedCheckDetails([...(readiness.pagePublishChecks || []), ...(readiness.pinRecoveryChecks || [])]) ||
+      "inventory did not report passing page/pin prerequisites";
+    block("WTF.ME read-only inventory readiness", failed);
+    return;
+  }
+
+  record(
+    "WTF.ME read-only inventory readiness",
+    "pass",
+    `${readiness.candidateHost || "candidate host"} page/pin prerequisites pass; public discovery ${publicReady ? "already present" : "awaits publish"}`
+  );
+}
+
 function checkWtfmeHost() {
   if (!checkWtfme) {
     record("live WTF.ME host", "skipped", "PASTA_LIVE_READINESS_CHECK_WTFME=0");
@@ -308,10 +425,13 @@ function printBlockerRemediation() {
 async function main() {
   console.log(`[pasta-live-readiness] target ${baseUrl().origin}`);
   await checkHealth();
+  checkRepoCleanupAudit();
   await checkStaticBundles();
   checkInstallerDownloads();
+  await checkInstallerCatalogRoute();
   checkRecordedColanderActionProof();
   checkWtfmePublishDryRun();
+  checkWtfmeInventoryReadiness();
   checkWtfmeHost();
 
   const ok = blockers.length === 0;

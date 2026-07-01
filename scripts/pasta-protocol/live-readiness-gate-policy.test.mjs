@@ -33,12 +33,28 @@ test("Pasta live-readiness gate proves live health and static Pasta bundle marke
   assert.match(source, /loadPlatformCapabilities/);
 });
 
+test("Pasta live-readiness gate includes the repo cleanup audit by default", () => {
+  assert.match(source, /PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP/);
+  assert.match(source, /function checkRepoCleanupAudit\(\)/);
+  assert.match(source, /runPackageScriptResult\("pasta:repo-cleanup:audit"\)/);
+  assert.match(source, /repo cleanup audit/);
+  assert.match(source, /PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP=0/);
+  assert.match(source, /checkRepoCleanupAudit\(\)/);
+  assert.doesNotMatch(source, /PASTA_REPO_CLEANUP_AUDIT_ALLOW_UNKNOWN:\s*"1"/);
+});
+
 test("Pasta live-readiness gate verifies public installer download surfaces", () => {
   assert.match(source, /PASTA_LIVE_READINESS_CHECK_INSTALLERS/);
   assert.match(source, /function runPackageScriptResult\(script, env = \{\}\)/);
+  assert.match(source, /async function checkInstallerCatalogRoute\(\)/);
   assert.match(source, /macaroni:installers:live-check/);
   assert.match(source, /pasta-suite:installers:live-check/);
   assert.match(source, /spaghetti:installers:live-check/);
+  assert.match(source, /\/api\/pasta\/installers\/catalog/);
+  assert.match(source, /status === 401/);
+  assert.match(source, /auth-protected/);
+  assert.match(source, /Pasta installer catalog/);
+  assert.match(source, /checkInstallerCatalogRoute\(\)/);
   assert.match(source, /WTFOS_INSTALLER_REQUIRE_AUTH: "0"/);
   assert.match(source, /PASTA_SUITE_INSTALLER_REQUIRE_AUTH: "0"/);
   assert.match(source, /SPAGHETTI_INSTALLER_REQUIRE_AUTH: "0"/);
@@ -87,6 +103,19 @@ test("Pasta live-readiness gate validates supplied WTF.ME credentials with a non
   assert.match(source, /credentials authenticate and resolve/);
   assert.match(source, /authenticated user resolves/);
   assert.match(source, /Refusing to/);
+});
+
+test("Pasta live-readiness gate folds in read-only WTF.ME inventory prerequisites", () => {
+  assert.match(source, /function checkWtfmeInventoryReadiness\(\)/);
+  assert.match(source, /spawnSync\("npm", \["run", "pasta:wtfme:live-inventory"\]/);
+  assert.match(source, /parseJsonObjectFromOutput/);
+  assert.match(source, /pagePublishReady/);
+  assert.match(source, /pinRecoveryPublishReady/);
+  assert.match(source, /publicPinDiscoveryReady/);
+  assert.match(source, /blockedCheckDetails/);
+  assert.match(source, /waiting for local WTF\.ME publish credentials/);
+  assert.match(source, /page\/pin prerequisites pass; public discovery/);
+  assert.doesNotMatch(source, /PASTA_WTFME_LIVE_PUBLISH:\s*"1"/);
 });
 
 test("Pasta live-readiness gate prints non-secret WTF.ME unblock instructions", () => {
