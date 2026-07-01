@@ -4,7 +4,7 @@
 
 **Why it mattered**: A hard-coded proof host can make every live check fail on the wrong prerequisite and hide the real deploy path: publish Pasta pages with the authenticated account that owns the host, then verify that exact host. Changing production data by hand to satisfy a stale default would risk hollow TLS success without PDS, pin discovery, or published Pasta content.
 
-**Rule**: Live WTF.ME checkers must require or discover the host produced by the publish step; do not silently default to an unproven proof account. Before seeding or repairing a hosted proof, verify the same user has a non-suspended site row, active WTFOS repo DID/PDS, linked Tezos wallet, published Pasta page version, and public pin discovery prerequisites.
+**Rule**: Live WTF.ME checkers and inventory probes must require or discover the host produced by the publish step, authenticated site state, admin site inventory, or explicit host input; do not silently default to an unproven proof account. Before seeding or repairing a hosted proof, verify the same user has a non-suspended site row, active WTFOS repo DID/PDS, linked Tezos wallet, published Pasta page version, and public pin discovery prerequisites.
 
 ---
 

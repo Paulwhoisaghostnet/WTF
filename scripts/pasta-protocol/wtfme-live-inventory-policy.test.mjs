@@ -20,6 +20,8 @@ test("Pasta WTF.ME live inventory has package hooks and scoped credentials", () 
   assert.match(source, /PASTA_WTFME_LIVE_BASE_URL/);
   assert.match(source, /PASTA_WTFME_LIVE_HOSTS/);
   assert.match(source, /PASTA_WTFME_LIVE_INVENTORY_LIMIT/);
+  assert.doesNotMatch(source, /const DEFAULT_HOSTS/);
+  assert.doesNotMatch(source, /wtf-admin\.wtfos\.me/);
   assert.match(
     source,
     /fail\("Set PASTA_WTFME_LIVE_COOKIE or both PASTA_WTFME_LIVE_USERNAME and PASTA_WTFME_LIVE_PASSWORD"\)/

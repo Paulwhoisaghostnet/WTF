@@ -3,7 +3,6 @@
 import process from "node:process";
 
 const DEFAULT_BASE_URL = "https://wtfos.app";
-const DEFAULT_HOSTS = ["wtf-admin.wtfos.me"];
 
 const cookieJar = new Map<string, string>();
 const suppliedCookie = String(process.env.PASTA_WTFME_LIVE_COOKIE || "").trim();
@@ -97,11 +96,10 @@ function numericLimit(): number {
 }
 
 function hostCandidates(): string[] {
-  const extra = String(process.env.PASTA_WTFME_LIVE_HOSTS || "")
+  return String(process.env.PASTA_WTFME_LIVE_HOSTS || "")
     .split(",")
     .map((host) => host.trim().toLowerCase())
     .filter(Boolean);
-  return [...new Set([...DEFAULT_HOSTS, ...extra])];
 }
 
 function pageSlugs(site: any): string[] {
