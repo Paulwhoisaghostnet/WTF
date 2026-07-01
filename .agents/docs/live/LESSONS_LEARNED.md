@@ -1,3 +1,13 @@
+## 2026-07-01 - Broad proof branches can become stale after narrow mining
+
+**What happened**: The cleanup audit still described `codex/pasta-live-readiness` as the remaining source of unique Pasta proof work after the current `codex/spaghetti-installer-live` branch had already mined or reworked those slices into narrower commits with stronger WTF.ME host and pinning guardrails.
+
+**Why it mattered**: A stale audit can make a future release pass replay an older broad branch and accidentally delete newer policy files, readiness reports, or production safety checks. Branch names that once meant "source of truth" can quietly become historical evidence once narrower production slices exist.
+
+**Rule**: Before labeling any proof branch as active unmined work, run a current range comparison against the release lane and inspect the resulting file direction. If replaying the older branch would delete newer guardrails or production docs, mark it as historical proof material and continue from the current clean release branch.
+
+---
+
 ## 2026-07-01 - Live WTF.ME checks must use the post-publish host
 
 **What happened**: The Pasta WTF.ME live checker defaulted to `wtf-admin.wtfos.me`, but production read-only audit showed that host has no `wtf_user_sites` row and the `wtf-admin` user has no active WTFOS DID/repo or verified hosted-handle claim. Meanwhile `paulwhoisaghost.wtfos.me` is TLS-allowed and structurally closer to ready, but it still serves a generic user-site page rather than Pasta landing/mint/collection pages.
