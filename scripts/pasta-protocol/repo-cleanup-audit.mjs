@@ -8,7 +8,6 @@ const allowUnknown = /^(1|true|yes|on)$/i.test(String(process.env.PASTA_REPO_CLE
 
 const pastaPattern = /pasta|spaghetti|gnocchi|ravioli|rotini|penne|lasagna|macaroni|colander|wtfme|ipfs|pinning/i;
 const ignoredPattern = /gamma|beta/i;
-const activeBranches = new Set(["codex/pasta-readiness-catalog-live"]);
 const historicalProofBranches = new Set([
   "codex/pasta-live-readiness",
   "origin/codex/pasta-live-readiness",
@@ -135,7 +134,7 @@ function classifyBranch(ref, activeRef) {
   let action = "inspect before keeping or archiving";
   let status = "blocked";
 
-  if (activeBranches.has(ref) || ref === activeRef) {
+  if (ref === activeRef || ref === `origin/${activeRef}`) {
     classification = "valid_ongoing_work";
     action = "continue from this live-base readiness hardening worktree";
     status = "pass";
