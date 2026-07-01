@@ -1,3 +1,13 @@
+## 2026-07-01 - Cleanup reports must retire stale worktree findings
+
+**What happened**: The Pasta cleanup bounty was updated after `WTF-pasta-deploy` disappeared from the registered worktrees and filesystem, but the cleanup audit still described that removed checkout as present and kept the bounty listed as open.
+
+**Why it mattered**: Repo-cleaning notes become release guidance for the next agent. If one file says a stale branch is gone while another says it still blocks cleanup, a future pass can waste time chasing a removed checkout or, worse, resurrect an old patch that was kept only as a historical regression warning.
+
+**Rule**: Before carrying a stale-worktree warning forward, re-run `git worktree list --porcelain` and a filesystem path check. If the checkout is gone, close the bounty, keep only the historical "do not replay this patch" warning, and update every cleanup audit that references it.
+
+---
+
 ## 2026-07-01 - Promotion docs must refresh live authority before cherry-picking
 
 **What happened**: While promoting the standalone Spaghetti installer lane from the broader Pasta proof branch, the cleanup audit still named the older `c4ba55f` Pasta handoff commit as current production even though `origin/main` and live `wtfos.app` had advanced to `96b8523` for WTF LIVE stage controls.

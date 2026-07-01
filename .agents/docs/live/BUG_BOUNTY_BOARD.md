@@ -57,12 +57,12 @@ Priority labels:
 | WTF-BB-329 | Verified | Codex Pasta live-readiness | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 3 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles no longer serve Taquito `24.3.0`; all seven live creation-tool bundles passed stale-marker and Octez RPC marker probes on commit `f32dbe8` |
 | WTF-BB-330 | Verified | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated/live public download smoke on commit `f32dbe8` |
 | WTF-BB-331 | Verified | Codex Pasta live-readiness | 2026-06-30 | Deploy / production disk capacity | P0 | 13 | 5 | 2 | 5 | 1 | Pasta deploy disk exhaustion was cleared without touching app volumes, `scripts/server-deploy.sh` now has a 12 GiB free-space preflight, Deploy to Hetzner `28467035058` passed, and live health reports commit `f32dbe8` |
-| WTF-BB-332 | Open | - | 2026-06-30 | Repo hygiene / Pasta stale worktrees | P2 | 9 | 12 | 1 | 3 | 2 | Stale `WTF-pasta-deploy` checkout still contains dirty superseded Pasta/Macaroni work and installer-manifest regressions if replayed wholesale; keep production authority on `origin/main`/`codex/pasta-live-readiness` and archive/reset the stale checkout only after preserving any user-needed notes |
+| WTF-BB-332 | Verified | Codex Pasta cleanup continuation | 2026-07-01 | Repo hygiene / Pasta stale worktrees | P2 | 9 | 12 | 1 | 3 | 2 | Stale `WTF-pasta-deploy` checkout is no longer registered in `git worktree list --porcelain` and its old directory is absent; current cleanup audit keeps the regression warning, identifies `codex/pasta-live-readiness` as the only Pasta branch with unique proof work, and leaves unrelated/non-WTF fixture directories untouched |
 | WTF-BB-333 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Suite installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Bundled Pasta Suite Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated live public download smoke on commit `fd4afcd` |
 | WTF-BB-334 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / Macaroni Shadownet proof harness | P2 | 9 | 12 | 2 | 4 | 0 | Macaroni Shadownet puppet proof drifted from the Octez active-account lifecycle; the harness now models accepted `octez.connect` session state, active-account events, restore/disconnect behavior, trusted-creator publish gating, and passed `npm run test:e2e:macaroni:shadownet` 5/5 against a disposable Shadownet puppet database |
 | WTF-BB-335 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Protocol / CH-EASE handoff and static publisher runtime | P1 | 12 | 7 | 2 | 5 | 1 | Pasta publisher handoffs could open `/tools/spaghetti?handoff=...` while the iframe dropped the query, and the six Pasta ES-module studios read `window.MD` even though their shared common helpers only declared lexical `const MD`; fixed by forwarding creation-tool route queries to all static iframes, exporting `window.MD` in Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna, adding policy guards, passing focused Spaghetti CH-EASE handoff plus mocked Shadownet publish choreography proof, promoting to main, and verifying live `wtfos.app` commit `c4ba55f` exposes `window.MD`, `consumeCheaseHandoff()`, and `loadPlatformCapabilities()` across all six Pasta publisher bundles |
 | WTF-BB-336 | Verified | Codex WTF LIVE stage controls full-send | 2026-07-01 | WTF LIVE / stage role controls | P1 | 13 | 6 | 3 | 5 | 1 | WTF LIVE stages now resolve through `/live/r/:stageId`, expose owner/host managed host/speaker role lists, gate audience mic/camera/screen/media publishing, and passed TypeScript, build, focused stage Playwright, inventory coverage, and the full inventory suite |
-| WTF-BB-341 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / standalone Spaghetti installers | P1 | 13 | 6 | 2 | 5 | 2 | Spaghetti Desktop `1.0.0` standalone installers are live on `wtfos.app`: production env is configured from GitHub release SHA-256 metadata, Deploy to Hetzner `28492620424` and Quality Gates `28492620509` passed on `09fff2fb`, and the authenticated live verifier passed with public byte-range probes for macOS, Windows, and Raspberry Pi |
+| WTF-BB-341 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / standalone Spaghetti installers | P1 | 13 | 6 | 2 | 5 | 2 | Spaghetti Desktop `1.0.0` standalone installers are live on `wtfos.app`: production env is configured from GitHub release SHA-256 metadata, final Deploy to Hetzner `28493283644` and Quality Gates `28493283680` passed on live verification commit `e080b89`, and the authenticated live verifier passed with public byte-range probes for macOS, Windows, and Raspberry Pi |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -579,21 +579,23 @@ Priority labels:
 ### WTF-BB-332 - Stale Pasta deploy checkout can regress installer hardening if replayed
 
 - Category: Repo hygiene / Pasta stale worktrees
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex Pasta cleanup continuation
 - Score: C1 + F3 + S2 + P2(3) = 9
 - Evidence:
-  - `git worktree list` still shows `/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF-pasta-deploy` on branch `pasta-protocol` at `f6256708` with 29 dirty entries after the clean Pasta live-readiness release.
-  - Comparing that checkout to current `origin/main` shows most Pasta surfaces are already promoted, `drizzle/0103_macaroni_packages.sql` is superseded by `0104`, and `server/features/pasta-protocol` contains only `.gitkeep`.
-  - Its dirty `server/routes/macaroni.ts` would remove installer SHA-256 manifest fields, advertise the stale Windows `.msi` filename, and allow remote plaintext installer URLs again.
+  - Earlier audit evidence showed `/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF-pasta-deploy` on branch `pasta-protocol` at `f6256708` with 29 dirty entries after the clean Pasta live-readiness release.
+  - Comparing that old checkout to current `origin/main` showed most Pasta surfaces were already promoted, `drizzle/0103_macaroni_packages.sql` was superseded by `0104`, and `server/features/pasta-protocol` contained only `.gitkeep`.
+  - Its dirty `server/routes/macaroni.ts` would have removed installer SHA-256 manifest fields, advertised the stale Windows `.msi` filename, and allowed remote plaintext installer URLs again.
+  - 2026-07-01 follow-up: `git worktree list --porcelain` no longer lists `WTF-pasta-deploy`, and a filesystem scan under `Desktop/cursor-projects/Sandbox/WTF combo` no longer finds that directory.
+  - `DUMMY PASTA` remains as a separate tiny fixture Git repo with `README.md`, `tokens.csv`, and media files for Shadownet Macaroni rehearsals; it is not a WTF worktree and should not be treated as deployable production code.
 - Why it matters:
   - The stale checkout looks Pasta-relevant, but replaying it wholesale after live verification would undo supply-chain hardening and confuse the production source of truth.
 - Correction:
-  - Keep production authority on `origin/main` / `codex/pasta-live-readiness`.
-  - Mine the stale checkout only for explicit human notes, then archive/reset/delete it after user confirmation.
-  - Do not apply its patch wholesale to main.
+  - Keep production authority on `origin/main`.
+  - Treat `codex/pasta-live-readiness` as the remaining proof branch with unique Pasta Shadownet/WTF.ME/pinning work; mine it by narrow validated slices instead of merging it wholesale.
+  - Keep the historical warning that the removed checkout's patch must not be replayed onto main.
 - Verification:
-  - `git worktree list --porcelain` no longer lists the stale checkout, or the checkout is explicitly retained with a warning note.
+  - `git worktree list --porcelain` no longer lists the stale checkout.
   - `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md` remains current.
   - `scripts/check-macaroni-installers-live.mjs` and installer manifest policy still prove HTTPS URLs, checksums, and actual release asset filenames.
 
@@ -609,8 +611,9 @@ Priority labels:
   - Release asset metadata is now the checksum authority: macOS DMG `0cca2e45d91d6438bab7b4c10ebc41226dffdee934afa24e5c34221a88f1c60a`, Windows EXE `ba402284209fc777c7995ad6573ab017444604da80f475aeb81c7385b47b42d4`, and Raspberry Pi DEB `3e8687bc87992f64af2666401f5f2e3b38b4641182dabe1ff46590f1497a9dd8`.
   - Before promotion, `SPAGHETTI_INSTALLER_CHECK_ASSETS=1 SPAGHETTI_INSTALLER_REQUIRE_AUTH=0 npm run spaghetti:installers:live-check` confirmed the public release assets and byte-range probes, then failed against `https://wtfos.app/api/spaghetti/installers` with unauthenticated 404; that became the deployment gate.
   - Production `SPAGHETTI_INSTALLER_*` env was configured in `/etc/wtf/wtf.env` from the release metadata, with a timestamped backup at `/etc/wtf/wtf.env.bak.spaghetti-20260701T040218Z`.
-  - `main` was fast-forwarded to `09fff2fb`; Deploy to Hetzner run `28492620424` and Quality Gates run `28492620509` both passed.
-  - Post-deploy live health reported `commitRef: "09fff2f"`, and the authenticated live verifier passed against `https://wtfos.app` as production puppet `e2e_bert`.
+  - `main` was first fast-forwarded to route commit `09fff2fb`; Deploy to Hetzner run `28492620424` and Quality Gates run `28492620509` both passed for that code promotion.
+  - The final live verification docs were promoted on `e080b896`; Deploy to Hetzner run `28493283644` and Quality Gates run `28493283680` both passed.
+  - Post-deploy live health reported `commitRef: "e080b89"`, and the authenticated live verifier passed against `https://wtfos.app` as production puppet `e2e_bert`.
   - While adding the Spaghetti manifest, the older Macaroni route still exposed `available` from URL alone instead of requiring URL plus SHA-256, so individual installer manifests did not all share the same checksum gate.
 - Why it matters:
   - Spaghetti is a first-class Pasta app, not only a bundled suite component. Users need a separate native installer download surface with authenticated manifest access, HTTPS release URLs, and release-derived checksums.
@@ -623,7 +626,7 @@ Priority labels:
 - Verification:
   - Promotion branch checks passed: `node --check` on Spaghetti desktop/verifier scripts, `npm run spaghetti:desktop:check`, `npx tsx --test server/routes/macaroni-policy.test.ts`, `npm run spaghetti:desktop:prepare`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, and `git diff --check HEAD~1..HEAD`.
   - Release publication already passed with GitHub Actions run `28491364684`.
-  - Asset-mode live verifier passed GitHub release discovery and byte-range probes, then failed closed on live `wtfos.app` with unauthenticated 404 because `/api/spaghetti/installers` is not deployed yet.
+  - Asset-mode live verifier passed GitHub release discovery and byte-range probes, then failed closed on live `wtfos.app` with unauthenticated 404 before `/api/spaghetti/installers` was deployed.
   - Production verification passed: `SPAGHETTI_INSTALLER_CHECK_ASSETS=1 SPAGHETTI_INSTALLER_REQUIRE_AUTH=1 npm run spaghetti:installers:live-check` authenticated as `e2e_bert`, confirmed unauthenticated `401`, matched manifest URLs/SHA-256 values, and byte-range probed all three release assets.
 - Residual risk:
   - Future standalone Pasta installers still need the same package, release, manifest, env, deploy, and live verifier pattern before they are called downloadable from production.
