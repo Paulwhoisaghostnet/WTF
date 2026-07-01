@@ -686,14 +686,17 @@ Priority labels:
   - DNS resolves `wtf-admin.wtfos.me` to the WTF host `5.78.214.209`, so this is not a missing A-record problem.
   - `https://wtfos.app/internal/tls/allow?domain=wtf-admin.wtfos.me` returns `{"ok":false,"reason":"handle not registered"}`.
   - `npm run pasta:wtfme:live-check` now performs the production host proof and currently fails before content verification: `/internal/tls/allow` denied `wtf-admin.wtfos.me` with HTTP 403 `handle not registered`.
+  - 2026-07-01 rerun: `npm run pasta:wtfme:live-publish:check` passed 3/3, while `npm run pasta:wtfme:live-check` still fails at the same production `handle not registered` gate.
 - Why it matters:
   - The local API-publish Playwright proof shows WTF.ME can claim, save, publish, and serve Pasta pages in the harness, but collectors cannot use a production Pasta page if the real `*.wtfos.me` host cannot complete TLS.
   - A live production release must prove the actual user-site host returns the landing, mint, collection, wallet-compatible headers, and public pin discovery over HTTPS.
 - Correction direction:
   - Register or publish the target Pasta user-site host in production, ensure Caddy on-demand TLS allows the host, and verify the site is not suspended or unpublished.
   - Added `scripts/pasta-protocol/wtfme-live-publish.ts` and `npm run pasta:wtfme:live-publish` to authenticate an eligible production user, dry-run the resolved `username.wtfos.me` host, and only with `PASTA_WTFME_LIVE_PUBLISH=1` claim the site, save the Pasta landing/mint/collection pages through the normal WTF.ME APIs, publish, and recheck the TLS ask gate.
+  - Added `scripts/pasta-protocol/wtfme-live-publish-policy.test.mjs` and `npm run pasta:wtfme:live-publish:check` so the production helper cannot quietly lose its dry-run default, Pasta-scoped credentials, expected-host guard, CSRF write headers, or post-publish TLS proof.
   - Publish the Pasta landing, Gnocchi mint, and Spaghetti collection pages to an eligible host, enable public pin discovery, then rerun `npm run pasta:wtfme:live-check` with `PASTA_WTFME_LIVE_HOST=<published-host>`.
 - Verification:
+  - `npm run pasta:wtfme:live-publish:check`
   - `npm run pasta:wtfme:live-publish` dry-run with Pasta-specific credentials.
   - `PASTA_WTFME_LIVE_PUBLISH=1 npm run pasta:wtfme:live-publish` only when production publication is explicitly intended.
   - `npm run pasta:wtfme:live-check`

@@ -1,3 +1,13 @@
+## 2026-07-01 - Production mutator helpers need source-policy rails
+
+**What happened**: The Pasta WTF.ME production publisher was intentionally gated behind dry-run mode and `PASTA_WTFME_LIVE_PUBLISH=1`, but that safety lived only in the helper source and release notes at first.
+
+**Why it mattered**: A future refactor could accidentally move claim/save/publish calls before the dry-run return, reuse generic puppet credentials, drop CSRF headers, or skip the expected-host guard, turning a release helper into an unsafe production mutator.
+
+**Rule**: Any production helper that can mutate live user content must have source-policy coverage for its default dry-run behavior, explicit execute gate, credential scope, expected-target guard, CSRF/write protections, and post-mutation live verification command before it is used in a release path.
+
+---
+
 ## 2026-07-01 - Local user-site host proof is not production TLS proof
 
 **What happened**: Pasta WTF.ME hosted pages passed the local host-mapped API-publish proof, but a live probe of `https://wtf-admin.wtfos.me/` failed during TLS negotiation. The production ask gate at `https://wtfos.app/internal/tls/allow?domain=wtf-admin.wtfos.me` returned `handle not registered`, so the landing, mint, collection, and pin-discovery pages could not be inspected.
