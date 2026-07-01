@@ -122,6 +122,16 @@ test("Pasta Protocol owns Colander and static publisher routes", () => {
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.sandbox-safe-feedback"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.chease-handoff"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.colander-context-handoff"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.wtfme-hosted-pages"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.pinning-recovery"));
+});
+
+test("IPFS Pinning Manager owns Pasta project-bundle recovery publish API", () => {
+  const surface = surfaceById("ipfs-pinning");
+  assert(surface, "IPFS Pinning Manager should be registered for admin observability");
+  assert(surface?.adminRoutes?.includes("/api/ipfs-pinning/pasta-protocol/publish"));
+  assert(surface?.automationHandles.includes("ipfs_pinning.restore_proof.created"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.pinning-recovery"));
 });
 
 test("desktop app admin surface bindings are one-to-one", () => {

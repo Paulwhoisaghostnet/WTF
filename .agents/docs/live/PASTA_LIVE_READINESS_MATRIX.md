@@ -9,8 +9,10 @@ Release lane: `codex/spaghetti-installer-live`
 This lane can safely claim:
 
 - Macaroni Desktop `1.0.0` individual installers are published and production-verifiable.
-- Pasta Suite Desktop `1.0.0` bundled installers are published and production-verifiable.
+- Pasta Suite Desktop `1.0.0` bundled installers are published and production-verifiable; this branch also makes the Suite installer manifest enumerate the bundled Pasta app surfaces so the suite download contract is explicit.
 - Spaghetti Studio Desktop `1.0.0` standalone installers are published and production-verifiable.
+- Gnocchi Studio Desktop standalone installer source, workflow, authenticated manifest route, release verifier, env names, and inventory probe are wired and source-verified; GitHub release assets, production env, and live download verification are still pending.
+- Ravioli, Rotini, Penne, and Lasagna standalone installer source, workflows, authenticated manifest routes, release verifiers, env names, and inventory probes are wired and source-verified; GitHub release assets, production env, and live download verification are still pending.
 - Pasta static publisher bundles are reachable on `wtfos.app` and expose the shared `window.MD` runtime.
 - Spaghetti has a real-network Shadownet preflight and a signer-backed deploy/mint/collect proof command.
 - Gnocchi has a signer-backed Shadownet open-edition deploy/configure/open-mint proof command.
@@ -19,14 +21,20 @@ This lane can safely claim:
 - Penne has a signer-backed Shadownet distribution deploy/configure/claim/airdrop proof command.
 - Lasagna has a signer-backed Shadownet exhibition deploy/configure/revision/admin-handoff proof command.
 - Colander opens all six current signer-backed Shadownet Pasta proof contracts in-browser, detects adapters/actions, renders relationship metadata, and emits discovery events.
+- Colander has a guarded signer-backed Shadownet adapter action proof for the Lasagna `set_current_revision(0)` management path, including Taquito confirmation and indexed TzKT operation evidence; a separate non-spending verifier rechecks the recorded report plus TzKT operation.
+- Colander has a localhost-only browser-wallet choreography proof for the same `set_current_revision(0)` action path, covering UI form submission, wallet preflight, wallet contract lookup, send, and confirmation.
+- WTF.ME hosted Pasta page snapshots, live publish/check tooling, and local user-site browser proof exist for the current Shadownet proof contracts.
+- Pasta pinning/recovery source proof now builds credential-free public pinPolicy, pinManifest, and pinItem records for hosted pages, contract artifacts, token metadata, and relationship metadata, with a `.well-known/wtfos-pins` recovery drill and fail-closed manifest readiness guard.
+- `npm run pasta:live-readiness` exists as a promotion gate that proves live health, live static Pasta bundle/runtime markers, public installer release assets for Macaroni/Pasta Suite/Spaghetti, and the recorded Colander Shadownet action operation without signer execution; it now also reports explicit blockers for the unpublished Gnocchi/Ravioli/Rotini/Penne/Lasagna standalone installer releases. When WTF.ME credentials are supplied it runs a forced non-writing publisher dry-run before the public host proof, then blocks until the credentialed WTF.ME publish/host proof is real.
+- `npm run pasta:standalone-installers:audit` exists as the release-ops checklist for Gnocchi/Ravioli/Rotini/Penne/Lasagna standalone installers. It proves local source/policy wiring, checks whether the remote GitHub Actions workflows are registered, checks release tags/assets and SHA-256 digests, and checks whether production manifest routes are deployed and auth-protected.
 
 This lane must not claim:
 
 - Full Pasta Protocol production deployment.
 - Mainnet Pasta contract readiness.
-- WTF.ME hosted mint/collection/purchase readiness.
-- wtfOS hosted pinning/recovery readiness for Pasta artifacts.
-- Hosted-page, hosted-pinning, wallet-signed Colander mutation, and mainnet coverage for every Pasta publisher variant.
+- Live WTF.ME hosted mint/collection/purchase readiness.
+- Live wtfOS hosted pinning/recovery readiness for Pasta artifacts.
+- Hosted-page, hosted-pinning, real wallet-extension Colander submission, broad Colander action coverage, and mainnet coverage for every Pasta publisher variant.
 
 ## Gate Legend
 
@@ -47,12 +55,12 @@ This lane must not claim:
 | Rotini | Generative collection publisher | PROVEN | PARTIAL | PARTIAL | PROVEN | OPEN | PROVEN | PARTIAL | OPEN |
 | Penne | Distribution contract product | PROVEN | PARTIAL | PARTIAL | PROVEN | OPEN | PROVEN | PARTIAL | OPEN |
 | Lasagna | Exhibition contract product | PROVEN | PARTIAL | PARTIAL | PROVEN | OPEN | PROVEN | PARTIAL | OPEN |
-| Colander | Management and discovery | PROVEN | PARTIAL | PARTIAL | OPEN | N/A | PROVEN | PARTIAL | OPEN |
-| WTF.ME | Hosted public pages | PARTIAL | N/A | N/A | OPEN | OPEN | OPEN | N/A | OPEN |
-| wtfOS pinning | Artifact and metadata durability | PROVEN | N/A | N/A | OPEN | OPEN | N/A | N/A | OPEN |
+| Colander | Management and discovery | PROVEN | PARTIAL | PARTIAL | PARTIAL | N/A | PROVEN | PARTIAL | OPEN |
+| WTF.ME | Hosted public pages | PARTIAL | N/A | N/A | N/A | PARTIAL | OPEN | N/A | OPEN |
+| wtfOS pinning | Artifact and metadata durability | PROVEN | N/A | N/A | PARTIAL | PARTIAL | N/A | N/A | OPEN |
 | Pasta Suite Desktop | Bundled native app suite | N/A | N/A | N/A | N/A | N/A | N/A | PROVEN | N/A |
 
-Note: `PARTIAL` installer status for individual Pasta publishers means the bundled Pasta Suite Desktop download includes that app surface, but no separate per-app native installer has been proven for that publisher.
+Note: `PARTIAL` installer status for individual Pasta publishers means the bundled Pasta Suite Desktop download includes that app surface and this branch's `/api/pasta/installers` manifest exposes it under `bundledApps`. Gnocchi, Ravioli, Rotini, Penne, and Lasagna now also have source-verified standalone installer plumbing, but they remain `PARTIAL` until their GitHub release assets, production env values, and live verifiers pass.
 
 ## Proof Inventory
 
@@ -62,8 +70,14 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 | Stale Pasta worktree safety | `WTF-pasta-deploy` is absent from active worktrees and its historical patch is marked as do-not-replay. | PROVEN |
 | Static Pasta bundle reachability | Live probes recorded in `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md`; `window.MD` is exported for Spaghetti, Gnocchi, Ravioli, Rotini, Penne, Lasagna. | PROVEN |
 | Macaroni individual installers | `npm run macaroni:desktop:check`, live manifest verifier, GitHub release assets, and production env proof recorded in audit docs. | PROVEN |
-| Pasta Suite installers | `npm run pasta-suite:desktop:check`, `npm run pasta-suite:installers:live-check`, release tag `pasta-suite-desktop-v1.0.0`, and production manifest proof recorded in audit docs. | PROVEN |
+| Pasta Suite installers | `npm run pasta-suite:desktop:check`, `npm run pasta-suite:installers:live-check`, release tag `pasta-suite-desktop-v1.0.0`, and production manifest proof recorded in audit docs. Current branch source policy also requires `/api/pasta/installers` and the live verifier to enumerate Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna in `bundledApps`; this strengthened field still needs post-deploy live verification before claiming production serves it. | PROVEN |
 | Spaghetti standalone installers | `npm run spaghetti:desktop:check`, `npm run spaghetti:installers:live-check`, release tag `spaghetti-desktop-v1.0.0`, and production manifest proof recorded in audit docs. | PROVEN |
+| Gnocchi standalone installer source | `npm run gnocchi:desktop:prepare` and `npm run gnocchi:desktop:check` pass against the Gnocchi open-edition static publisher, authenticated `/api/gnocchi/installers` route, GitHub Actions installer workflow, release verifier, env example keys, and inventory probe. Release assets and production env are not live yet. | PARTIAL |
+| Ravioli standalone installer source | `npm run ravioli:desktop:prepare` and `npm run ravioli:desktop:check` pass against the Ravioli bundle static publisher, authenticated `/api/ravioli/installers` route, GitHub Actions installer workflow, release verifier, env example keys, and inventory probe. Release assets and production env are not live yet. | PARTIAL |
+| Rotini standalone installer source | `npm run rotini:desktop:prepare` and `npm run rotini:desktop:check` pass against the Rotini generative static publisher, authenticated `/api/rotini/installers` route, GitHub Actions installer workflow, release verifier, env example keys, and inventory probe. Release assets and production env are not live yet. | PARTIAL |
+| Penne standalone installer source | `npm run penne:desktop:prepare` and `npm run penne:desktop:check` pass against the Penne distribution static publisher, authenticated `/api/penne/installers` route, GitHub Actions installer workflow, release verifier, env example keys, and inventory probe. Release assets and production env are not live yet. | PARTIAL |
+| Lasagna standalone installer source | `npm run lasagna:desktop:prepare` and `npm run lasagna:desktop:check` pass against the Lasagna exhibition static publisher, authenticated `/api/lasagna/installers` route, GitHub Actions installer workflow, release verifier, env example keys, and inventory probe. Release assets and production env are not live yet. | PARTIAL |
+| Standalone installer release audit | `PASTA_STANDALONE_INSTALLER_AUDIT_ALLOW_BLOCKERS=1 npm run pasta:standalone-installers:audit` passed local package version, route registration, and desktop policy checks for Gnocchi/Ravioli/Rotini/Penne/Lasagna, then blocked correctly because their workflows are not yet registered remotely, the five `*-desktop-v1.0.0` release tags are missing, and live `wtfos.app` still returns 404 for the five manifest routes. | PARTIAL |
 | Macaroni Shadownet confidence lane | `DATABASE_URL=... npm run test:e2e:macaroni:shadownet` passed 5/5. | PARTIAL |
 | Spaghetti real-network preflight | `npm run pasta:shadownet:preflight` verifies Shadownet RPC, TzKT head, artifact entrypoints, adapter detection, and metadata/storage payload shape. | PROVEN |
 | Spaghetti signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e` originated `KT1WTFnZAyWqcC2SB32xEjMS4F4cutnGsyVc`, created token 0, minted supply, transferred one edition to the collector, decoded token metadata, and verified collector ownership in TzKT big maps. | PROVEN |
@@ -73,8 +87,11 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 | Penne signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:penne:e2e` originated `KT1EPdyxCjmosesvJ21cr8WqoCnTXoomCpRz`, created token 0, loaded two allocations, opened claim, completed a collector pull claim, completed an admin push airdrop, closed claim, decoded metadata, and verified allocation consumption, claimed state, total supply, and creator/collector ownership in TzKT big maps. | PROVEN |
 | Lasagna signer-backed Shadownet E2E | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:lasagna:e2e` originated `KT1TEz2Rq8nUiNcJEAssrdrTqPj1h3ZN9B8r`, added and removed a curator, published two revisions, rolled the current pointer back to revision 0, transferred and accepted administration, decoded metadata, and verified final storage and revision big-map state in TzKT. | PROVEN |
 | Colander real KT1 discovery | `npm run pasta:shadownet:colander` opened the current Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna Shadownet proof KT1s through `/tools/colander`, detected adapters/actions, rendered Shadownet explorer links and relationship groups, and observed `colander.contract_opened` / `colander.graph_viewed` events. | PROVEN |
-| WTF.ME hosted Pasta pages | No proof for mint pages, collection pages, landing pages, branding, wallet connect, or purchase flows. | OPEN |
-| wtfOS Pasta pinning/recovery | No proof for artifact pinning, metadata pinning, file pinning, redundancy, accessibility, or recovery tied to Pasta publish flows. | OPEN |
+| Colander browser-wallet choreography | `npm run pasta:shadownet:colander` also runs a localhost-only Playwright wallet harness proof that opens the Lasagna proof contract, selects `set_current_revision`, fills revision `0`, submits the form, and records wallet preflight, wallet contract lookup, `set_current_revision(0)` send, and confirmation. | PARTIAL |
+| Colander signer-backed management action | `PASTA_SHADOWNET_COLANDER_E2E_EXECUTE=1 npm run pasta:shadownet:colander:action` opened the current Lasagna proof contract through the shared Colander adapter registry, verified the `set_current_revision` curation action, submitted idempotent `set_current_revision(0)` with Shadownet signer `arcade-treasury`, and verified TzKT indexed applied operation `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h` against final storage. `npm run pasta:shadownet:colander:action-proof` rechecks the recorded report and TzKT operation without signer execution. | PROVEN |
+| Pasta live-readiness gate | `npm run pasta:live-readiness:check` passed. `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proves live `wtfos.app` health, Taquito 25 markers across Macaroni plus six Pasta publisher bundles, `window.MD`/handoff/runtime markers across the six Pasta shared runtimes, protected installer manifests and public release assets for Macaroni Desktop, Pasta Suite Desktop, and Spaghetti Desktop, blocks explicitly until Gnocchi/Ravioli/Rotini/Penne/Lasagna standalone release assets, production env, deployed manifest routes, and live verifiers are green, verifies recorded Colander Shadownet action operation `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h` without signer execution, and then reports blockers for missing local WTF.ME publish credentials plus missing `PASTA_WTFME_LIVE_HOST`. Source policy requires supplied credentials to pass a forced non-writing `pasta:wtfme:live-publish` dry-run, bound to `PASTA_WTFME_LIVE_HOST` when present. With `PASTA_WTFME_LIVE_HOST=paulwhoisaghost.wtfos.me PASTA_WTFME_LIVE_CHECK_PINS=0`, it also proves the nearest known host still fails on missing `data-pasta-hosted-page="landing"`. | PARTIAL |
+| WTF.ME hosted Pasta pages | `npx tsx --test server/features/wtf-sites/pasta-hosting.test.ts`, `npm run pasta:wtfme:live-publish:check`, `npm run pasta:wtfme:live-inventory:check`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, and `npm run pasta:shadownet:wtfme` passed. These prove current-contract page snapshots, dry-run/write-gated live publish tooling, read-only live inventory tooling, inventory ownership, and a local published WTF.ME host browser proof for landing/mint/collection pages. The live publisher requires `PASTA_WTFME_LIVE_EXPECT_HOST=<dedicated-host.wtfos.me>` before production writes, checks the production TLS gate before attempting Pasta pin recovery, refuses existing non-target pages, requires `PASTA_WTFME_LIVE_OVERWRITE_EXISTING=1` before replacing existing non-Pasta home/mint/collection drafts, and runs the public `pasta:wtfme:live-check` verifier after production publish/pin recovery, so a denied, accidental, or publicly broken host cannot silently become the proof surface. Production read-only audit on 2026-07-01 showed `wtf-admin.wtfos.me` has no `wtf_user_sites` row; `paulwhoisaghost.wtfos.me` is TLS-allowed, published, backed by an active WTFOS repo and wallet, but currently serves a generic home page instead of Pasta pages. `npm run pasta:wtfme:live-check` now requires `PASTA_WTFME_LIVE_HOST=<published-host>` and, when pin checks are enabled, resolves `.well-known/wtfos-pins` through the repo DID document to the public `app.wtfos.media.pinManifest` PDS record; if `PASTA_WTFME_LIVE_MANIFEST_PAYLOAD_URL` is set it also validates the public manifest payload checksum, item kinds, counts, IPFS CIDs, and object-mirror coordinates. The actual live Pasta host is not proven. | PARTIAL |
+| wtfOS Pasta pinning/recovery | `npm run pasta:shadownet:pinning` validates Pasta pinPolicy, pinManifest, pinItem records, hosted-page/contract-artifact/token-metadata/relationship-metadata coverage, credential-free storage refs, IPFS gateway fallbacks, object-mirror keys, `.well-known/wtfos-pins` recovery drill, the fail-closed public discovery guard, and route policy for `POST /api/ipfs-pinning/pasta-protocol/publish`. The live publish route is permission-gated, requires a published WTF.ME site, active PDS/repo, linked Tezos wallet, reachable object storage, and reuses an existing in-flight/published Pasta manifest instead of creating duplicate recovery rows. The live checker now verifies the public DID/PDS manifest-record path after `.well-known` discovery and can validate the public manifest payload when a mirror URL is supplied, but this remains source/proof coverage plus live-write guard coverage until a production host publishes the Pasta pages and manifest; it does not yet prove item payload retrieval from the real production mirror or recovery after provider/node loss. | PARTIAL |
 | Mainnet deployment | Intentionally blocked until Shadownet and hosted-page gates are complete. | OPEN |
 
 ## Live Push Recommendation
@@ -82,15 +99,18 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 The safe next push target is this narrow proof lane. A full production Pasta deployment claim should wait until these minimum gates are green:
 
 1. Signer-backed Shadownet proof exists for every Pasta publisher that production UI presents as deployable.
-2. WTF.ME serves at least one Pasta mint page, collection page, and landing page backed by Shadownet proof data.
+2. WTF.ME serves at least one live Pasta mint page, collection page, and landing page backed by Shadownet proof data.
 3. wtfOS pinning verifies artifact, metadata, redundancy, and recovery for a Pasta publish.
-4. Wallet-signed Colander management mutations are covered before using Colander as an operational admin surface.
+4. Representative signer-backed Colander management mutation coverage and localhost browser-wallet choreography exist before using Colander as an operational admin surface; real wallet-extension submission and broader action coverage should still land before a full operational claim.
 5. All executable verification commands pass on the production promotion branch.
+6. `npm run pasta:live-readiness` exits successfully without `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1`.
 
 ## Next Implementation Order
 
-1. Add WTF.ME hosted page checks for the proven contracts/tokens.
-2. Add wtfOS artifact/metadata pinning and recovery checks.
-3. Add wallet-signed Colander management mutation proof for representative safe actions before treating Colander as an operational admin surface.
-4. Repeat the standalone installer manifest/release proof pattern for remaining individual Pasta apps if separate native downloads are required.
-5. Re-run production readiness checks and only then evaluate mainnet/full-send deployment work.
+1. Provision or identify a dedicated Pasta WTF.ME publish account/host credential; 2026-07-01 local plus remote env-name checks found no matching Pasta WTF.ME/app-login/puppet credential names.
+2. Publish the generated Pasta landing/mint/collection pages to a claimed production WTF.ME host and make `PASTA_WTFME_LIVE_HOST=<published-host> npm run pasta:wtfme:live-check` pass, including `.well-known/wtfos-pins`, DID resolution, the public PDS `pinManifest` record, and `PASTA_WTFME_LIVE_MANIFEST_PAYLOAD_URL=<public-manifest-json>` when the mirror URL is available.
+3. Rerun `npm run pasta:live-readiness` without blocker-allow mode and require it to pass before claiming the Pasta lane is production-ready.
+4. Turn the current source-level wtfOS artifact/metadata pinning and recovery checks into a live provider/host proof that resolves item payload checksums plus IPFS/object-mirror fallback URLs.
+5. Extend the current Colander management proofs to real wallet-extension submission and additional safe actions before treating Colander as a fully operational admin surface.
+6. Promote the Gnocchi/Ravioli/Rotini/Penne/Lasagna standalone workflow and manifest-route commits, run `PASTA_STANDALONE_INSTALLER_AUDIT_ALLOW_BLOCKERS=1 npm run pasta:standalone-installers:audit`, publish each release from the registered workflow, configure production `*_INSTALLER_*` env from GitHub release SHA-256 metadata, redeploy, and make each live installer verifier pass. Decide whether Colander should ship as a separate native admin app or remain an in-suite/main-app surface.
+7. Re-run production readiness checks and only then evaluate mainnet/full-send deployment work.

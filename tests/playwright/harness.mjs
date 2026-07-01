@@ -37,6 +37,9 @@ const state = {
   macaroniNextPackageId: 1,
   macaroniNextItemId: 1,
   wtfUserSiteClaimed: false,
+  wtfUserSiteStatus: "draft",
+  wtfUserSitePages: [],
+  wtfUserSitePublishedAt: null,
   wtfLiveOwnedRoom: { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, accessMode: "public", isPublic: true },
   wtfLivePrivateRoom: null,
   wtfLivePrivateMembers: [],
@@ -68,6 +71,86 @@ function siteSafeLabelForUser(user = currentAuthUser()) {
   return raw.replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "wtf-admin";
 }
 
+function normalizeHarnessSiteSlug(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw || raw === "/" || raw === "home") return "home";
+  const slug = raw.replace(/^\/+|\/+$/g, "");
+  if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(slug)) return null;
+  return slug.length <= 80 ? slug : null;
+}
+
+function normalizeHarnessWtfUserSitePages(input) {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((page) => {
+      const slug = normalizeHarnessSiteSlug(page?.slug);
+      if (!slug) return null;
+      return {
+        slug,
+        title: String(page?.title || (slug === "home" ? "Home" : slug)),
+        html: String(page?.html || page?.draftHtml || ""),
+      };
+    })
+    .filter(Boolean);
+}
+
+function defaultHarnessWtfUserSitePages() {
+  return [
+    {
+      slug: "home",
+      title: "Home",
+      html: "<main><h1>Harness Home</h1></main>",
+    },
+  ];
+}
+
+function harnessWtfUserSitePages() {
+  return state.wtfUserSitePages.length ? state.wtfUserSitePages : defaultHarnessWtfUserSitePages();
+}
+
+function recordHarnessInteraction(eventType, metadata = {}, source = "harness") {
+  const event = {
+    id: `evt_${Date.now()}_${state.interactionLog.length}`,
+    eventType,
+    userId: currentAuthUser()?.id ?? 1,
+    walletAddress: "tz1-test-wallet",
+    timestamp: nowIso(),
+    source,
+    metadata,
+    rawReferenceId: `${source}:${eventType}`,
+  };
+  state.interactionLog.push(event);
+  return event;
+}
+
+function hostedPageKind(html) {
+  return String(html || "").match(/data-pasta-hosted-page="([^"]+)"/)?.[1] || null;
+}
+
+function saveHarnessWtfUserSitePage({ slug: rawSlug, title, html }) {
+  const slug = normalizeHarnessSiteSlug(rawSlug);
+  if (!slug) return { ok: false, status: 400, body: { error: "Invalid page slug" } };
+  const pageTitle = String(title || "").trim();
+  if (!pageTitle) return { ok: false, status: 400, body: { error: "Invalid page payload" } };
+  const draftHtml = String(html ?? "");
+  const pages = harnessWtfUserSitePages();
+  const existingIndex = pages.findIndex((page) => page.slug === slug);
+  const nextPage = { slug, title: pageTitle.slice(0, 200), html: draftHtml };
+  state.wtfUserSitePages = existingIndex >= 0
+    ? pages.map((page, index) => (index === existingIndex ? nextPage : page))
+    : [...pages, nextPage];
+  recordHarnessInteraction(
+    "wtf_site.page_saved",
+    {
+      slug,
+      pastaHostedPage: hostedPageKind(draftHtml),
+      pastaProtocol: Boolean(hostedPageKind(draftHtml)),
+    },
+    "wtf-sites/api"
+  );
+  return { ok: true };
+}
+
 function mockWtfUserSiteState() {
   const user = currentAuthUser();
   const label = siteSafeLabelForUser(user);
@@ -91,6 +174,10 @@ function mockWtfUserSiteState() {
     },
   };
   if (!state.wtfUserSiteClaimed) return { eligibility, site: null };
+  const pages = harnessWtfUserSitePages();
+  const publishedAt = state.wtfUserSiteStatus === "published"
+    ? state.wtfUserSitePublishedAt || nowIso()
+    : null;
   return {
     eligibility,
     site: {
@@ -98,24 +185,36 @@ function mockWtfUserSiteState() {
       label,
       host,
       url: `https://${host}/`,
-      status: "draft",
+      status: state.wtfUserSiteStatus,
       activeDid: eligibility.didTarget.did,
       activeDidSource: "wtf",
       proofGraceUntil: null,
       suspendedAt: null,
       suspendedReason: null,
-      publishedAt: null,
-      pages: [
-        {
-          id: 1,
-          slug: "home",
-          title: "Home",
-          draftHtml: "<main><h1>Harness Home</h1></main>",
-          sortOrder: 0,
-          updatedAt: nowIso(),
-        },
-      ],
-      versions: [],
+      publishedAt,
+      pages: pages.map((page, index) => ({
+        id: index + 1,
+        slug: page.slug,
+        title: page.title,
+        draftHtml: page.html,
+        sortOrder: index,
+        updatedAt: nowIso(),
+      })),
+      versions: publishedAt
+        ? [
+            {
+              id: 1,
+              versionNumber: 1,
+              digest: "harness-pasta-site-digest",
+              did: eligibility.didTarget.did,
+              didSource: "wtf",
+              pageSlugs: pages.map((page) => page.slug),
+              assetMediaIds: [],
+              publishedAt,
+              publishedBy: currentAuthUser()?.id ?? 1,
+            },
+          ]
+        : [],
       assets: [],
       assetBytes: 0,
       maxAssetBytes: 500 * 1024 * 1024,
@@ -328,6 +427,13 @@ app.post("/__test/state", (req, res) => {
   state.macaroniNextPackageId = 1;
   state.macaroniNextItemId = 1;
   state.wtfUserSiteClaimed = Boolean(req.body?.wtfUserSiteClaimed);
+  state.wtfUserSiteStatus = String(req.body?.wtfUserSiteStatus || "draft");
+  state.wtfUserSitePages = normalizeHarnessWtfUserSitePages(req.body?.wtfUserSitePages);
+  state.wtfUserSitePublishedAt = req.body?.wtfUserSitePublishedAt
+    ? String(req.body.wtfUserSitePublishedAt)
+    : state.wtfUserSiteStatus === "published"
+      ? nowIso()
+      : null;
   state.wtfLiveOwnedRoom = { id: "my-room", title: "My Room", kind: "room", description: "Owned public room", source: "user", ownerUserId: 1, accessMode: "public", isPublic: true };
   state.wtfLivePrivateRoom = null;
   state.wtfLivePrivateMembers = [];
@@ -349,6 +455,8 @@ app.post("/__test/state", (req, res) => {
       welcomePending: state.welcomePending,
       welcomeCompleteUnauthorized: state.welcomeCompleteUnauthorized,
       wtfUserSiteClaimed: state.wtfUserSiteClaimed,
+      wtfUserSiteStatus: state.wtfUserSiteStatus,
+      wtfUserSitePages: state.wtfUserSitePages,
     },
   });
 });
@@ -371,6 +479,8 @@ app.get("/__test/state", (_req, res) => {
     welcomePending: state.welcomePending,
     welcomeCompleteUnauthorized: state.welcomeCompleteUnauthorized,
     wtfUserSiteClaimed: state.wtfUserSiteClaimed,
+    wtfUserSiteStatus: state.wtfUserSiteStatus,
+    wtfUserSitePages: state.wtfUserSitePages,
   });
 });
 
@@ -2996,7 +3106,78 @@ function apiMock(req, res) {
   if (pathName === "/api/wtf-sites/my") return res.json(mockWtfUserSiteState());
   if (pathName === "/api/wtf-sites/claim" && req.method === "POST") {
     state.wtfUserSiteClaimed = true;
+    state.wtfUserSiteStatus = "draft";
+    state.wtfUserSitePublishedAt = null;
+    if (!state.wtfUserSitePages.length) {
+      state.wtfUserSitePages = defaultHarnessWtfUserSitePages();
+    }
+    recordHarnessInteraction(
+      "wtf_site.claimed",
+      { host: mockWtfUserSiteState().eligibility.host },
+      "wtf-sites/api"
+    );
     return res.status(201).json(mockWtfUserSiteState());
+  }
+  const wtfSitePageMatch = pathName.match(/^\/api\/wtf-sites\/pages\/([^/]+)$/);
+  if (wtfSitePageMatch && req.method === "PUT") {
+    if (!state.wtfUserSiteClaimed) {
+      return res.status(404).json({ error: "Claim a wtfOS site before editing pages" });
+    }
+    const saved = saveHarnessWtfUserSitePage({
+      slug: decodeURIComponent(wtfSitePageMatch[1]),
+      title: req.body?.title,
+      html: req.body?.html,
+    });
+    if (!saved.ok) return res.status(saved.status).json(saved.body);
+    state.wtfUserSiteStatus = "draft";
+    state.wtfUserSitePublishedAt = null;
+    return res.json(mockWtfUserSiteState());
+  }
+  if (pathName === "/api/wtf-sites/pages" && req.method === "POST") {
+    if (!state.wtfUserSiteClaimed) {
+      return res.status(404).json({ error: "Claim a wtfOS site before editing pages" });
+    }
+    const saved = saveHarnessWtfUserSitePage({
+      slug: req.body?.slug,
+      title: req.body?.title,
+      html: req.body?.html,
+    });
+    if (!saved.ok) return res.status(saved.status).json(saved.body);
+    state.wtfUserSiteStatus = "draft";
+    state.wtfUserSitePublishedAt = null;
+    return res.json(mockWtfUserSiteState());
+  }
+  if (pathName === "/api/wtf-sites/assets" && req.method === "PUT") {
+    if (!state.wtfUserSiteClaimed) {
+      return res.status(404).json({ error: "Claim a wtfOS site before editing assets" });
+    }
+    recordHarnessInteraction(
+      "wtf_site.assets_updated",
+      { mediaIds: Array.isArray(req.body?.mediaIds) ? req.body.mediaIds : [] },
+      "wtf-sites/api"
+    );
+    return res.json(mockWtfUserSiteState());
+  }
+  if (pathName === "/api/wtf-sites/publish" && req.method === "POST") {
+    if (!state.wtfUserSiteClaimed) {
+      return res.status(404).json({ error: "Claim a wtfOS site before publishing" });
+    }
+    const pages = harnessWtfUserSitePages();
+    if (!pages.some((page) => page.slug === "home")) {
+      state.wtfUserSitePages = [defaultHarnessWtfUserSitePages()[0], ...state.wtfUserSitePages];
+    }
+    state.wtfUserSiteStatus = "published";
+    state.wtfUserSitePublishedAt = nowIso();
+    const publishedPages = harnessWtfUserSitePages();
+    recordHarnessInteraction(
+      "wtf_site.published",
+      {
+        pages: publishedPages.map((page) => page.slug),
+        pastaHostedPages: publishedPages.map((page) => hostedPageKind(page.html)).filter(Boolean),
+      },
+      "wtf-sites/api"
+    );
+    return res.json(mockWtfUserSiteState());
   }
   if (pathName === "/api/wtf-subdomains/my") return res.json([]);
   if (pathName === "/api/wtf-subdomains/registrar/config") {
@@ -4572,6 +4753,165 @@ app.get("/api/macaroni/packages/:packageId/source", (req, res) => {
       metadataCid: item.metadataCid || "",
     })),
   });
+});
+
+const USER_SITE_WALLET_CONNECT_SOURCES = [
+  "wss://*.octez.io",
+  "wss://walletbeacon.io",
+  "wss://*.walletbeacon.io",
+  "wss://relay.walletconnect.org",
+  "wss://walletconnect.org",
+  "wss://*.walletconnect.org",
+  "wss://reown.com",
+  "wss://*.reown.com",
+];
+
+const USER_SITE_WALLET_FRAME_SOURCES = [
+  "https://walletbeacon.io",
+  "https://*.walletbeacon.io",
+  "https://*.octez.io",
+  "https://verify.walletconnect.org",
+  "https://verify.walletconnect.com",
+  "https://verify.reown.com",
+];
+
+const USER_SITE_CSP = [
+  "default-src 'none'",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'none'",
+  "img-src 'self' https: data: blob:",
+  "media-src 'self' https: data: blob:",
+  "font-src 'self' https: data:",
+  "style-src 'self' 'unsafe-inline' https:",
+  "script-src 'self' 'unsafe-inline' https: data: blob:",
+  `connect-src 'self' https: ${USER_SITE_WALLET_CONNECT_SOURCES.join(" ")}`,
+  `frame-src ${USER_SITE_WALLET_FRAME_SOURCES.join(" ")}`,
+  "worker-src 'none'",
+  "child-src 'none'",
+].join("; ");
+
+function requestHost(req) {
+  return String(req.headers["x-forwarded-host"] || req.headers.host || req.hostname || "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase()
+    .replace(/:\d+$/, "");
+}
+
+function classifyHarnessUserSiteHost(req) {
+  const host = requestHost(req);
+  const suffix = ".wtfos.me";
+  if (!host.endsWith(suffix) || host === "wtfos.me") return null;
+  const label = host.slice(0, -suffix.length);
+  if (!label || label.includes(".") || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label)) return null;
+  const expectedLabel = siteSafeLabelForUser(currentAuthUser());
+  if (label !== expectedLabel) return null;
+  return { host, label };
+}
+
+function setHarnessUserSiteHeaders(res) {
+  res.removeHeader("Set-Cookie");
+  res.setHeader("Content-Security-Policy", USER_SITE_CSP);
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-WTFOS-Surface", "user-site");
+}
+
+function harnessPageSlugForRequestPath(pathname) {
+  const clean = String(pathname || "/").split("?", 1)[0] || "/";
+  if (clean === "/") return "home";
+  const slug = clean.replace(/^\/+|\/+$/g, "");
+  if (!slug || slug.includes("/")) return null;
+  return normalizeHarnessSiteSlug(slug);
+}
+
+function isBlockedHarnessUserSitePath(pathname) {
+  const pathName = `/${String(pathname || "/").replace(/^\/+/, "")}`.toLowerCase();
+  return [
+    "/api",
+    "/auth",
+    "/xrpc",
+    "/admin",
+    "/internal",
+    "/desktop",
+    "/wtf-subdomains",
+    "/service-worker",
+    "/sw.js",
+    "/manifest.webmanifest",
+    "/favicon",
+    "/assets",
+    "/@vite",
+  ].some((prefix) => pathName === prefix || pathName.startsWith(`${prefix}/`));
+}
+
+function harnessUserSiteShell(title, html) {
+  const body = String(html || "");
+  if (/^\s*<!doctype\s+html/i.test(body) || /^\s*<html[\s>]/i.test(body)) return body;
+  const safeTitle = String(title || "wtfOS site")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="wtfos-site-digest" content="harness-pasta-site-digest">
+  <title>${safeTitle}</title>
+</head>
+<body>
+${body}
+</body>
+</html>`;
+}
+
+function logHarnessUserSitePublicView({ host, slug, page }) {
+  const pastaPageKind = hostedPageKind(page.html);
+  state.interactionLog.push({
+    id: `evt_${Date.now()}_${state.interactionLog.length}`,
+    eventType: "wtf_site.public.viewed",
+    userId: currentAuthUser()?.id ?? null,
+    walletAddress: "tz1-test-wallet",
+    timestamp: nowIso(),
+    source: "wtf-sites/public-host",
+    metadata: {
+      host,
+      slug,
+      pastaHostedPage: pastaPageKind,
+      pastaProtocol: Boolean(pastaPageKind),
+    },
+    rawReferenceId: `wtf-sites:${host}:${slug}`,
+  });
+}
+
+app.use((req, res, next) => {
+  const classified = classifyHarnessUserSiteHost(req);
+  if (!classified) return next();
+
+  setHarnessUserSiteHeaders(res);
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    return res.status(405).type("text/plain").send("Method not allowed");
+  }
+  if (!state.wtfUserSiteClaimed || state.wtfUserSiteStatus !== "published") {
+    return res.status(404).type("text/plain").send("Site not found");
+  }
+  if (isBlockedHarnessUserSitePath(req.path)) {
+    return res.status(404).type("text/plain").send("Not found");
+  }
+
+  const slug = harnessPageSlugForRequestPath(req.path);
+  if (!slug) return res.status(404).type("text/plain").send("Not found");
+
+  const page = harnessWtfUserSitePages().find((candidate) => candidate.slug === slug);
+  if (!page) return res.status(404).type("text/plain").send("Not found");
+
+  logHarnessUserSitePublicView({ host: classified.host, slug, page });
+  res.setHeader("Cache-Control", "public, max-age=30, must-revalidate");
+  return res.status(200).type("html").send(harnessUserSiteShell(page.title, page.html));
 });
 
 // Catch-all for unmocked /api/* — returns empty 200 to keep the page from

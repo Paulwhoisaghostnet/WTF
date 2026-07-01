@@ -5,6 +5,7 @@ import { isAuthenticated, requirePermission } from "../auth/passport";
 import {
   getIpfsPinningOverview,
   IpfsPinningError,
+  publishPastaProjectBundlePinning,
   retryPinningJob,
   savePinPolicy,
   stageAndPinUpload,
@@ -92,6 +93,19 @@ router.post(
       const user = req.user as { id: number };
       const result = await savePinPolicy(user, parsed.data);
       res.status(201).json(result);
+    } catch (err) {
+      handlePinningError(res, err);
+    }
+  }
+);
+
+router.post(
+  "/api/ipfs-pinning/pasta-protocol/publish",
+  requirePermission("use_wtfos_pinning"),
+  async (req, res) => {
+    try {
+      const user = req.user as { id: number };
+      res.status(201).json(await publishPastaProjectBundlePinning(user));
     } catch (err) {
       handlePinningError(res, err);
     }

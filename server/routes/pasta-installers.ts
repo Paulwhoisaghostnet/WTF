@@ -27,6 +27,44 @@ const INSTALLER_PLATFORMS = [
   },
 ] as const;
 
+const BUNDLED_PASTA_APPS = [
+  {
+    key: "macaroni",
+    label: "Macaroni",
+    purpose: "Blind-mint drop publisher",
+  },
+  {
+    key: "spaghetti",
+    label: "Spaghetti",
+    purpose: "Standard collection publisher",
+  },
+  {
+    key: "gnocchi",
+    label: "Gnocchi",
+    purpose: "Open-edition publisher",
+  },
+  {
+    key: "ravioli",
+    label: "Ravioli",
+    purpose: "Bundle token publisher",
+  },
+  {
+    key: "rotini",
+    label: "Rotini",
+    purpose: "Generative collection publisher",
+  },
+  {
+    key: "penne",
+    label: "Penne",
+    purpose: "Distribution and claim publisher",
+  },
+  {
+    key: "lasagna",
+    label: "Lasagna",
+    purpose: "Exhibition and curation publisher",
+  },
+] as const;
+
 function isLoopbackInstallerHost(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
 }
@@ -58,6 +96,7 @@ router.get("/api/pasta/installers", isAuthenticated, (_req, res) => {
     ok: true,
     product: "pasta-suite",
     version: version || null,
+    bundledApps: BUNDLED_PASTA_APPS,
     installers: INSTALLER_PLATFORMS.map((platform) => {
       const url = safeInstallerUrl(process.env[platform.env]);
       const sha256 = safeInstallerSha256(process.env[platform.sha256Env]);

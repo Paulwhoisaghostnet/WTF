@@ -111,6 +111,11 @@ test("Pasta suite production installer manifest keeps Macaroni hardening rules",
   assert.match(routeSource, /PASTA_SUITE_INSTALLER_RASPBERRY_PI_SHA256/);
   assert.match(routeSource, /fileName: "Pasta-Suite\.exe"/);
   assert.doesNotMatch(routeSource, /fileName: "Pasta-Suite\.msi"/);
+  assert.match(routeSource, /const BUNDLED_PASTA_APPS = \[/);
+  for (const id of pastaTools) {
+    assert.match(routeSource, new RegExp(`key: "${id}"`));
+  }
+  assert.match(routeSource, /bundledApps: BUNDLED_PASTA_APPS/);
   assert.match(routeSource, /function isLoopbackInstallerHost\(hostname: string\): boolean/);
   assert.match(routeSource, /url\.protocol === "https:"/);
   assert.match(routeSource, /process\.env\.NODE_ENV !== "production" && url\.protocol === "http:" && isLoopbackInstallerHost\(url\.hostname\)/);
@@ -131,6 +136,8 @@ test("Pasta suite production installer manifest keeps Macaroni hardening rules",
   assert.match(liveCheckSource, /Pasta-Suite-\$\{EXPECTED_VERSION\}-win-x64\.exe/);
   assert.match(liveCheckSource, /Pasta-Suite-\$\{EXPECTED_VERSION\}-linux-arm64\.deb/);
   assert.match(liveCheckSource, /asset\.digest/);
+  assert.match(liveCheckSource, /EXPECTED_BUNDLED_APPS/);
+  assert.match(liveCheckSource, /manifest\.bundledApps/);
   assert.equal(rootPackage.scripts["pasta-suite:desktop:prepare"], "npm run prepare --prefix apps/pasta-suite-desktop");
   assert.equal(rootPackage.scripts["pasta-suite:desktop:check"], "node --test scripts/pasta-suite-desktop-package-policy.test.mjs");
   assert.equal(rootPackage.scripts["pasta-suite:installers:live-check"], "node scripts/check-pasta-suite-installers-live.mjs");

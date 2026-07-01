@@ -1,3 +1,143 @@
+## 2026-07-01 - New installer surfaces must enter the shared readiness gate immediately
+
+**What happened**: After adding source-verified standalone desktop plumbing for the remaining static Pasta publishers, the package-specific checks and docs knew those installers were still unpublished, but the shared `pasta:live-readiness` gate still only verified the already-live Macaroni, Pasta Suite, and Spaghetti downloads.
+
+**Why it mattered**: A production readiness command is the thing future release passes trust under pressure. If a newly scaffolded installer has a route, verifier, workflow, and bounty entry but is absent from the shared gate, a partial release can look greener than the actual user-download surface.
+
+**Rule**: Whenever a new downloadable product surface is added, wire its live verifier into the shared production readiness gate in the same pass. If the release is not yet published, record it as an explicit blocker with the release tag, production env prefix, deploy requirement, and verifier command.
+
+---
+
+## 2026-07-01 - Cloned desktop installer shells need app-specific contract audits
+
+**What happened**: The Gnocchi standalone installer pass started from the proven Spaghetti Electron shell, which correctly copied the native runtime and release plumbing but also carried Spaghetti's prepared asset folder and standard-collection contract assertions into an open-edition app until the app-specific scan caught them.
+
+**Why it mattered**: Native installer shells are supply-chain surfaces. A mechanically cloned package can look build-ready while bundling stale generated assets or proving the wrong contract artifact, which would make individual Pasta downloads drift from the actual static publisher they claim to package.
+
+**Rule**: When cloning a Pasta desktop installer shell, remove generated prepared assets immediately, update the required contract artifact and event assertions from the target app's `public/creation-tools/<app>` source, then run the package policy plus asset preparation before documenting installer readiness.
+
+---
+
+## 2026-07-01 - Taquito option storage needs explicit normalization
+
+**What happened**: The first Colander Shadownet management-action proof correctly opened the current Lasagna proof contract and verified the administrator signer, but it stopped before submission because Taquito returned optional `current_revision` storage as `{ Some: BigNumber(0) }` instead of a primitive `0`. A plain `.toString()` normalizer produced `[object Object]`.
+
+**Why it mattered**: Signer-backed proof scripts must compare chain storage before spending even test tez. Optional Michelson values can look primitive in TzKT JSON while Taquito returns option wrappers, so naive string conversion can either block valid proofs or hide a real storage mismatch.
+
+**Rule**: Normalize Taquito option wrappers explicitly before asserting storage values. Treat `Some` recursively, treat `None` as absent, and keep the pre-operation assertion before any send.
+
+---
+
+## 2026-07-01 - Live blockers need executable unblock instructions
+
+**What happened**: The Pasta live-readiness gate correctly blocked on missing WTF.ME publish credentials and host proof, but its first blocker text only named the credential env vars. Operators still had to piece together the required account prerequisites, host binding, expected-host write guard, and post-publish verifier command from several docs and scripts.
+
+**Why it mattered**: A release gate that says "missing credentials" can still leave a live deployment stuck or tempt someone to reuse a stale/shared host. The safe path for hosted mint pages needs a dedicated account, claimed host, DID/repo, linked Tezos wallet, pinning permission, dry-run auth proof, host-bound publish, and public pin discovery proof.
+
+**Rule**: Live release gates should print the exact non-secret remediation path for each blocker, including required env names, account prerequisites, host-binding variables, and the final verifier command. Keep the gate fail-closed while making the next safe action obvious.
+
+---
+
+## 2026-07-01 - Readiness gates must validate credentials, not count env names
+
+**What happened**: The Pasta live-readiness gate originally treated a non-empty `PASTA_WTFME_LIVE_COOKIE` or username/password pair as enough to satisfy the credential portion of the gate. That could let a later run with stale, mismatched, or under-permissioned credentials proceed to the public host check without proving the account can actually reach the intended WTF.ME publish path.
+
+**Why it mattered**: Credentialed production flows are not proven by environment-variable shape. A real deploy account must authenticate, resolve to the expected host, pass existing-site safety checks, and remain in dry-run mode until an explicit publish flag is used.
+
+**Rule**: Release gates that require credentials should execute the least-dangerous authenticated preflight available. Force write flags off, bind to the expected public host when known, and fail the gate on invalid auth, host mismatch, missing eligibility, or unsafe existing content.
+
+---
+
+## 2026-07-01 - Live publishers must verify the public surface before success
+
+**What happened**: The Pasta WTF.ME live publisher wrote pages, published the site, published pin recovery, and then printed the verifier command. That was safe enough for a careful manual run, but it still allowed the write script itself to finish without proving that the public host actually served the landing/mint/collection pages and `.well-known/wtfos-pins`.
+
+**Why it mattered**: Hosted mint and collection pages are collector-facing production surfaces. A live publish command should not succeed on internal API writes alone when the actual user path could still fail through TLS, page routing, CSP, stale content, or pin discovery.
+
+**Rule**: Production publish scripts for public trust surfaces must run their public verifier before exiting successfully. Keep an explicit opt-out only for narrow recovery/debug runs, and make the default path prove the same host users will load.
+
+---
+
+## 2026-07-01 - Pasta readiness gates must include installer distribution
+
+**What happened**: The first Pasta live-readiness gate proved live health, static bundle markers, and WTF.ME blockers, but the objective also includes user-downloadable software packages. Installer live checks existed separately for Macaroni, Pasta Suite, and Spaghetti, so a future pass could run the Pasta gate and overlook package distribution drift.
+
+**Why it mattered**: Pasta production readiness is not only contract and hosted-page readiness. Users also need download surfaces that stay protected, digest-backed, and reachable from the published release assets.
+
+**Rule**: Production readiness gates for product suites must include their distribution surfaces. When installer verifiers can run without secrets, fold their public manifest-protection and release-asset probes into the shared gate.
+
+---
+
+## 2026-07-01 - Pasta readiness needs an executable blocker gate
+
+**What happened**: The Pasta release lane had separate source-policy, live-check, inventory, and static-bundle proofs, but no single command that distinguished "safe guardrails can be promoted" from "full Pasta is live." Future passes could read green local tests and miss that the live WTF.ME host and credentialed pin discovery proof were still absent.
+
+**Why it mattered**: Release notes for contract-adjacent products need a command that fails for missing public collector surfaces, not only a pile of passing partial checks. Without that, a narrow guardrail push can be mistaken for a complete production deployment.
+
+**Rule**: Add an executable readiness gate for multi-step production claims. It should prove stable public prerequisites, print explicit blockers for credentialed/live-only gaps, and fail without an allow-blockers audit flag until the actual production proof exists.
+
+---
+
+## 2026-07-01 - Credentialed WTF.ME publishers must require host pins
+
+**What happened**: The Pasta WTF.ME live publisher could be placed in production write mode with valid credentials and no `PASTA_WTFME_LIVE_EXPECT_HOST`. Existing-page guards would stop obvious overwrites, but a clean or newly claimable account could still become the proof surface without an explicit host decision.
+
+**Why it mattered**: Hosted Pasta proof pages are public collector-facing infrastructure. A credentialed script should not infer the live proof host from whichever account is currently authenticated, especially when multiple WTF.ME hosts may be structurally eligible.
+
+**Rule**: Dry-runs may discover the candidate host, but any production write flag must require an explicit expected host and verify the authenticated host against it before authentication-dependent writes.
+
+---
+
+## 2026-07-01 - Live WTF.ME publishers must guard existing public pages
+
+**What happened**: The Pasta WTF.ME live publisher had dry-run and production-write gates, but once credentials were supplied it would save Pasta home/mint/collection pages before proving that an existing claimed site was a dedicated Pasta proof host. The nearest real production host currently serves a generic published page, so a careless credentialed run could replace public user-site content before failing on a later proof step.
+
+**Why it mattered**: WTF.ME hosts are public identity and collection surfaces. Production proof tooling must not silently convert an existing user site into a Pasta proof site just because the account is structurally eligible.
+
+**Rule**: Before live publisher scripts write hosted pages, preflight the existing site page set. Refuse non-target page carryover, require an explicit overwrite flag for existing non-Pasta target pages, and keep all downstream pin/recovery writes behind those page-safety and TLS gates.
+
+---
+
+## 2026-07-01 - Broad proof branches can become stale after narrow mining
+
+**What happened**: The cleanup audit still described `codex/pasta-live-readiness` as the remaining source of unique Pasta proof work after the current `codex/spaghetti-installer-live` branch had already mined or reworked those slices into narrower commits with stronger WTF.ME host and pinning guardrails.
+
+**Why it mattered**: A stale audit can make a future release pass replay an older broad branch and accidentally delete newer policy files, readiness reports, or production safety checks. Branch names that once meant "source of truth" can quietly become historical evidence once narrower production slices exist.
+
+**Rule**: Before labeling any proof branch as active unmined work, run a current range comparison against the release lane and inspect the resulting file direction. If replaying the older branch would delete newer guardrails or production docs, mark it as historical proof material and continue from the current clean release branch.
+
+---
+
+## 2026-07-01 - Live WTF.ME checks must use the post-publish host
+
+**What happened**: The Pasta WTF.ME live checker defaulted to `wtf-admin.wtfos.me`, but production read-only audit showed that host has no `wtf_user_sites` row and the `wtf-admin` user has no active WTFOS DID/repo or verified hosted-handle claim. Meanwhile `paulwhoisaghost.wtfos.me` is TLS-allowed and structurally closer to ready, but it still serves a generic user-site page rather than Pasta landing/mint/collection pages.
+
+**Why it mattered**: A hard-coded proof host can make every live check fail on the wrong prerequisite and hide the real deploy path: publish Pasta pages with the authenticated account that owns the host, then verify that exact host. Changing production data by hand to satisfy a stale default would risk hollow TLS success without PDS, pin discovery, or published Pasta content.
+
+**Rule**: Live WTF.ME checkers and inventory probes must require or discover the host produced by the publish step, authenticated site state, admin site inventory, or explicit host input; do not silently default to an unproven proof account. Before seeding or repairing a hosted proof, verify the same user has a non-suspended site row, active WTFOS repo DID/PDS, linked Tezos wallet, published Pasta page version, and public pin discovery prerequisites.
+
+---
+
+## 2026-07-01 - Live publish scripts must gate downstream recovery writes on host registration
+
+**What happened**: The first Pasta WTF.ME live publisher wiring would save/publish pages, then publish the Pasta pin recovery manifest, then ask production TLS whether the host was allowed. Since production still denies `wtf-admin.wtfos.me` with `handle not registered`, that order could create provider/PDS recovery rows for a host that production would not actually serve.
+
+**Why it mattered**: Hosted mint pages and `.well-known/wtfos-pins` are public trust surfaces. Downstream pin/recovery publication is only meaningful after the live host gate can serve the page, and retries after a TLS failure must not multiply policy, manifest, and pin-job rows.
+
+**Rule**: Live host publishers must check production host/TLS registration before downstream pin, PDS, or marketplace recovery writes. Project-bundle recovery endpoints must be permission-gated, object-storage-gated, duplicate-safe for in-flight manifests, and covered by inventory/source-policy tests before promotion.
+
+---
+
+## 2026-07-01 - Apply patches must target the release worktree explicitly
+
+**What happened**: While mining the stale Pasta WTF.ME hosting slice, `apply_patch` initially wrote new untracked files into the original dirty `WTF` checkout because the desktop thread cwd was still the main workspace even though all verification and release work belonged in the clean `codex-spaghetti-installer-live` worktree. The files were copied into the release worktree and the accidental original-checkout copies were removed before continuing.
+
+**Why it mattered**: This repo intentionally has a dirty original checkout and a clean release worktree. A correct patch applied to the wrong checkout can make the stale tree look newer than production authority, create confusing cleanup evidence, or lead to tests passing against files that will not be committed or deployed.
+
+**Rule**: When working from an isolated release worktree, use absolute paths in every `apply_patch` target or otherwise confirm the patch destination before editing. After any accidental cross-checkout write, remove only the files created by the current pass and verify both worktrees with `git status --short`.
+
+---
+
 ## 2026-07-01 - Sequential Pasta signer proofs need balance budgeting
 
 **What happened**: The Rotini signer-backed Shadownet proof correctly blocked before origination because the shared creator signer had only `2227765` mutez after previous Spaghetti, Gnocchi, and Ravioli proof runs. The proof needed origination plus create/mint/transfer headroom, so Shadownet faucet top-up `onpqeephir1NEprF9YdCpRtA4jKS72J2GLTVPu4Yte6FZLMo65q` was required before the final run passed.
@@ -6997,3 +7137,13 @@
 **Why it mattered**: Colander is the cross-app management/discovery surface. If it cannot read the metadata form emitted by the real proof contracts, a green contract deployment lane still leaves creators without a trustworthy relationship graph or Shadownet-specific explorer trail.
 
 **Rule**: Colander Shadownet proofs must use the current proof KT1s, set the app network to Shadownet, assert Shadownet TzKT links, assert relationship groups from decoded metadata, and keep wallet-signed actions behind chain-id preflight. Treat IPFS, HTTPS, and inline JSON metadata as explicit supported cases rather than assuming one storage encoding.
+
+---
+
+## 2026-07-01 - Cross-surface behavior assertions must name every owning surface
+
+**What happened**: The first Pasta pinning/recovery behavior assertion named Pasta Protocol and IPFS Pinning as owners, but inventory coverage failed because the same recovery flow is exposed through WTF.ME host discovery and the WTF Domains admin surface also registers the assertion.
+
+**Why it mattered**: Behavior assertions are bidirectional ownership contracts. If a cross-surface proof omits one owning surface, coverage can no longer prove that route, domain, and admin registries agree about who is responsible for the behavior.
+
+**Rule**: When adding a behavior assertion that crosses app, domain, host, or storage boundaries, include every admin surface that registers or exposes the workflow in `ownerSurfaceIds` before running inventory coverage.

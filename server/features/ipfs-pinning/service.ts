@@ -1,4 +1,6 @@
 import { createHash, randomUUID } from "crypto";
+import { readFile } from "fs/promises";
+import path from "path";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   inAppInventoryItems,
@@ -50,6 +52,17 @@ import {
   type PinStorageRef,
   type PinSubdomainRef,
 } from "./records";
+import { isWellKnownPinDiscoveryReady } from "./well-known-policy";
+import {
+  PASTA_PINNING_CONTRACT_ARTIFACTS,
+  buildPastaPinSourceItems,
+  type PastaContractArtifactInput,
+  type PastaPinSourceItem,
+} from "./pasta-proof";
+import {
+  PASTA_WTFME_NETWORK,
+  buildPastaHostedPageSnapshots,
+} from "../wtf-sites/pasta-hosting";
 
 type ScopeType = (typeof ipfsPinningPolicies.$inferInsert)["scopeType"];
 type UserLike = typeof users.$inferSelect | { id: number; role?: string | null; roles?: string[] | null };
@@ -600,6 +613,7 @@ async function enqueueItemRecord(input: {
   home: Awaited<ReturnType<typeof resolvePinHome>>;
 }) {
   if (!input.job.cid) return null;
+  const metadata = input.job.metadata as Record<string, unknown> | null;
   const storageRef: PinStorageRef = {
     s3Bucket: input.job.s3Bucket ?? undefined,
     s3Key: input.job.s3Key ?? undefined,
@@ -618,8 +632,8 @@ async function enqueueItemRecord(input: {
     record: buildPinItemRecord({
       scopeType: input.job.scopeType,
       scopeRef: normalizeScopeRef(input.job),
-      walletAddress: (input.job.metadata as Record<string, unknown> | null)?.walletAddress as string | undefined,
-      sourceChain: "tezos",
+      walletAddress: metadata?.walletAddress as string | undefined,
+      sourceChain: typeof metadata?.sourceChain === "string" ? metadata.sourceChain : "tezos",
       cid: input.job.cid,
       provider: input.job.providerKey,
       storageRef,
@@ -729,9 +743,11 @@ async function writeManifestBundle(input: {
   const config = getObjectStorageConfig();
   if (!config) return { storageRef: { porcupinProviderKey: HOSTED_PORCUPIN_PROVIDER_KEY } as PinStorageRef };
   const key = `${PINNING_S3_PREFIX}/${input.userId}/manifests/${input.manifestId}.json`;
+  const body = JSON.stringify(input.payload, null, 2);
+  const bodyBytes = Buffer.from(body);
   const result = await putObjectBuffer({
     key,
-    body: JSON.stringify(input.payload, null, 2),
+    body,
     contentType: "application/json",
     metadata: {
       source: "wtfos-ipfs-pinning",
@@ -753,8 +769,9 @@ async function writeManifestBundle(input: {
       s3Region: result.region,
       porcupinProviderKey: HOSTED_PORCUPIN_PROVIDER_KEY,
       manifestKey: result.key,
-      byteSize: Buffer.byteLength(JSON.stringify(input.payload)),
+      byteSize: bodyBytes.byteLength,
       mimeType: "application/json",
+      checksumSha256: sha256(bodyBytes),
     } satisfies PinStorageRef,
   };
 }
@@ -928,6 +945,394 @@ export async function savePinPolicy(user: UserLike, input: {
   return { policy, manifest, overview: await getIpfsPinningOverview(user) };
 }
 
+function isTezosWalletAddress(value: string | null | undefined): value is string {
+  return /^tz[1-4][1-9A-HJ-NP-Za-km-z]{33}$/.test(String(value || "").trim());
+}
+
+async function primaryWalletAddress(userId: number): Promise<string | null> {
+  const [wallet] = await db
+    .select({ walletAddress: userWallets.walletAddress })
+    .from(userWallets)
+    .where(eq(userWallets.userId, userId))
+    .orderBy(desc(userWallets.isPrimary), desc(userWallets.linkedAt), desc(userWallets.id))
+    .limit(1);
+  return wallet?.walletAddress ?? null;
+}
+
+async function loadPastaContractArtifacts(): Promise<PastaContractArtifactInput[]> {
+  return Promise.all(
+    PASTA_PINNING_CONTRACT_ARTIFACTS.map(async (artifact) => ({
+      ...artifact,
+      bytes: await readFile(path.resolve(process.cwd(), artifact.sourcePath)),
+      mimeType: "application/json",
+    }))
+  );
+}
+
+async function requirePastaObjectStorageReady(): Promise<void> {
+  if (!getObjectStorageConfig()) {
+    throw new IpfsPinningError(
+      503,
+      "Hetzner Object Storage is required before publishing Pasta pin recovery",
+      "object_storage_required"
+    );
+  }
+  const access = await verifyObjectStorageAccess();
+  if (!access.ok) {
+    throw new IpfsPinningError(
+      503,
+      `Hetzner Object Storage is not reachable for Pasta pin recovery: ${access.error || "unknown_error"}`,
+      "object_storage_unavailable"
+    );
+  }
+}
+
+async function existingPastaProjectBundleManifest(userId: number, scopeRef: string) {
+  const [manifest] = await db
+    .select()
+    .from(ipfsPinningManifests)
+    .where(and(
+      eq(ipfsPinningManifests.userId, userId),
+      eq(ipfsPinningManifests.scopeType, "project_bundle"),
+      eq(ipfsPinningManifests.scopeRef, scopeRef),
+      inArray(ipfsPinningManifests.pdsStatus, ["pending_identity", "queued", "published"])
+    ))
+    .orderBy(desc(ipfsPinningManifests.createdAt))
+    .limit(1);
+  return manifest ?? null;
+}
+
+async function existingPastaPublishResponse(input: {
+  user: UserLike;
+  home: Awaited<ReturnType<typeof resolvePinHome>>;
+  manifest: typeof ipfsPinningManifests.$inferSelect;
+}) {
+  if (!input.manifest.pdsManifestRecordUri) {
+    throw new IpfsPinningError(
+      409,
+      "A Pasta pin recovery publish is already in progress for this host",
+      "pasta_pinning_publish_in_progress"
+    );
+  }
+  const [policy, binding] = await Promise.all([
+    input.manifest.policyId
+      ? db.select().from(ipfsPinningPolicies).where(eq(ipfsPinningPolicies.id, input.manifest.policyId)).limit(1)
+      : Promise.resolve([] as Array<typeof ipfsPinningPolicies.$inferSelect>),
+    db
+      .select()
+      .from(ipfsPinningSubdomainBindings)
+      .where(eq(ipfsPinningSubdomainBindings.userId, input.user.id))
+      .limit(1),
+  ]);
+  return {
+    ok: true,
+    existing: true,
+    host: input.home.host,
+    repoDid: input.home.identity?.repoDid ?? null,
+    wellKnownUrl: `https://${input.home.host}/.well-known/wtfos-pins`,
+    manifestUri: input.manifest.pdsManifestRecordUri,
+    policy: policy[0]
+      ? {
+          id: policy[0].id,
+          scopeType: policy[0].scopeType,
+          scopeRef: policy[0].scopeRef,
+          pdsPolicyRecordUri: policy[0].pdsPolicyRecordUri,
+        }
+      : null,
+    manifest: {
+      id: input.manifest.id,
+      scopeType: input.manifest.scopeType,
+      scopeRef: input.manifest.scopeRef,
+      itemCount: input.manifest.itemCount,
+      totalBytes: Number(input.manifest.byteSize || 0),
+      storageRef: {
+        s3Bucket: input.manifest.manifestBucket ?? undefined,
+        s3Key: input.manifest.manifestKey ?? undefined,
+        porcupinProviderKey: HOSTED_PORCUPIN_PROVIDER_KEY,
+        manifestKey: input.manifest.manifestKey ?? undefined,
+      } satisfies PinStorageRef,
+    },
+    binding: binding[0]
+      ? {
+          id: binding[0].id,
+          host: binding[0].host,
+          repoDid: binding[0].repoDid,
+          publicDiscoveryEnabled: binding[0].publicDiscoveryEnabled,
+          manifestUri: binding[0].pinManifestRecordUri,
+        }
+      : null,
+    items: [],
+  };
+}
+
+function pastaManifestPayload(input: {
+  host: string;
+  repoDid: string;
+  scopeRef: string;
+  walletAddress: string;
+  createdAt: string;
+  items: Array<{
+    source: PastaPinSourceItem;
+    cid: string;
+    jobId: number;
+    checksumSha256: string;
+    byteSize: number;
+    storage: { bucket: string; key: string; endpoint?: string | null; region?: string | null } | null;
+  }>;
+}) {
+  return {
+    schemaVersion: 1,
+    product: "pasta-protocol",
+    network: PASTA_WTFME_NETWORK,
+    host: input.host,
+    repoDid: input.repoDid,
+    scopeType: "project_bundle",
+    scopeRef: input.scopeRef,
+    walletAddress: input.walletAddress,
+    provider: HOSTED_PORCUPIN_PROVIDER_KEY,
+    createdAt: input.createdAt,
+    itemCount: input.items.length,
+    totalBytes: input.items.reduce((sum, item) => sum + item.byteSize, 0),
+    coverage: {
+      artifactPinning: input.items.some((item) => item.source.kind === "contract_artifact"),
+      metadataPinning:
+        input.items.some((item) => item.source.kind === "token_metadata") &&
+        input.items.some((item) => item.source.kind === "relationship_metadata"),
+      filePinning: input.items.some((item) => item.source.kind === "hosted_page"),
+      redundancy: true,
+      accessibility: true,
+      recovery: true,
+    },
+    recovery: {
+      wellKnownPinsUrl: `https://${input.host}/.well-known/wtfos-pins`,
+      requiredKinds: ["hosted_page", "contract_artifact", "token_metadata", "relationship_metadata"],
+      restoreOrder: [
+        "read .well-known/wtfos-pins",
+        "resolve app.wtfos.media.pinManifest",
+        "fetch pinItem records",
+        "prefer IPFS provider CIDs",
+        "fall back to object-storage mirror keys",
+      ],
+    },
+    items: input.items.map((item) => ({
+      kind: item.source.kind,
+      app: item.source.app,
+      scopeRef: item.source.scopeRef,
+      fileName: item.source.fileName,
+      sourceUri: item.source.sourceUri,
+      cid: item.cid,
+      jobId: item.jobId,
+      checksumSha256: item.checksumSha256,
+      byteSize: item.byteSize,
+      mimeType: item.source.mimeType,
+      storage: item.storage,
+      metadata: item.source.metadata,
+    })),
+  };
+}
+
+export async function publishPastaProjectBundlePinning(user: UserLike) {
+  const entitlement = await getPinningEntitlement(user);
+  if (!entitlement.canUsePinning) {
+    throw new IpfsPinningError(403, "WTF Pin Collector role is required for Pasta hosted pinning", "pin_collector_required");
+  }
+  const home = await resolvePinHome(user.id);
+  if (!home.host || !home.site) {
+    throw new IpfsPinningError(409, "Claim a wtfos.me site before publishing Pasta pin recovery", "site_required");
+  }
+  if (home.site.status !== "published") {
+    throw new IpfsPinningError(409, "Publish the WTF.ME site before publishing Pasta pin recovery", "site_publish_required");
+  }
+  if (!home.ready || !home.identity?.repoDid) {
+    throw new IpfsPinningError(409, "Set up an active wtfos.me PDS/repo before publishing Pasta pin recovery", "pds_required");
+  }
+
+  const walletAddress = await primaryWalletAddress(user.id);
+  if (!isTezosWalletAddress(walletAddress)) {
+    throw new IpfsPinningError(409, "Link a Tezos wallet before publishing Pasta pin recovery", "wallet_required");
+  }
+
+  const scopeRef = `pasta-protocol:${PASTA_WTFME_NETWORK.key}:${home.host}`;
+  const existingManifest = await existingPastaProjectBundleManifest(user.id, scopeRef);
+  if (existingManifest) {
+    return existingPastaPublishResponse({ user, home, manifest: existingManifest });
+  }
+  await requirePastaObjectStorageReady();
+  const pages = buildPastaHostedPageSnapshots();
+  const contractArtifacts = await loadPastaContractArtifacts();
+  const sourceItems = buildPastaPinSourceItems({
+    host: home.host,
+    pages,
+    contractArtifacts,
+  });
+  const totalBytes = sourceItems.reduce((sum, item) => sum + item.bytes.byteLength, 0);
+  const policyResult = await savePinPolicy(user, {
+    scopeType: "project_bundle",
+    scopeRef,
+    walletAddress,
+    sourceChain: "tezos-shadownet",
+    includeExisting: true,
+    includeFuture: false,
+    publicDiscovery: true,
+    exclusions: { product: "pasta-protocol", generatedBy: "pasta-wtfme-live-publish" },
+  });
+  const policy = policyResult.policy;
+  const now = new Date();
+  const [manifest] = await db
+    .insert(ipfsPinningManifests)
+    .values({
+      userId: user.id,
+      policyId: policy.id,
+      scopeType: "project_bundle",
+      scopeRef,
+      walletAddress,
+      sourceChain: "tezos-shadownet",
+      title: "Pasta Protocol Shadownet publish recovery",
+      itemCount: sourceItems.length,
+      byteSize: totalBytes,
+      providerKey: HOSTED_PORCUPIN_PROVIDER_KEY,
+      pdsStatus: "queued",
+      sourceEventId: policy.sourceEventId,
+      updatedAt: now,
+    })
+    .returning();
+
+  const pinnedItems: Array<{
+    source: PastaPinSourceItem;
+    cid: string;
+    jobId: number;
+    checksumSha256: string;
+    byteSize: number;
+    storage: { bucket: string; key: string; endpoint?: string | null; region?: string | null } | null;
+  }> = [];
+
+  for (const item of sourceItems) {
+    const checksumSha256 = sha256(item.bytes);
+    const pinned = await stageAndPinUpload({
+      userId: user.id,
+      fileName: item.fileName,
+      mimeType: item.mimeType,
+      buffer: item.bytes,
+      source: "pasta_protocol",
+      scopeType: "project_bundle",
+      scopeRef: item.scopeRef,
+      policyId: policy.id,
+      manifestId: manifest.id,
+      sourceUri: item.sourceUri,
+      sourceChain: "tezos-shadownet",
+      metadata: {
+        app: item.app,
+        kind: item.kind,
+        product: "pasta-protocol",
+        walletAddress,
+        ...(item.metadata ?? {}),
+      },
+    });
+    if (!pinned.storage?.bucket || !pinned.storage.key) {
+      throw new IpfsPinningError(
+        503,
+        "Pasta pin recovery item did not receive an object-storage mirror",
+        "object_mirror_required"
+      );
+    }
+    pinnedItems.push({
+      source: item,
+      cid: pinned.cid,
+      jobId: pinned.jobId,
+      checksumSha256,
+      byteSize: item.bytes.byteLength,
+      storage: pinned.storage,
+    });
+  }
+
+  const payload = pastaManifestPayload({
+    host: home.host,
+    repoDid: home.identity.repoDid,
+    scopeRef,
+    walletAddress,
+    createdAt: now.toISOString(),
+    items: pinnedItems,
+  });
+  const { storageRef } = await writeManifestBundle({
+    userId: user.id,
+    manifestId: manifest.id,
+    payload,
+  });
+  const [refreshed] = await db.select().from(ipfsPinningManifests).where(eq(ipfsPinningManifests.id, manifest.id)).limit(1);
+  const manifestRecord = await enqueueManifestRecord({
+    manifest: refreshed ?? manifest,
+    home,
+    storageRef,
+  });
+  if (!manifestRecord.uri) {
+    throw new IpfsPinningError(503, "Pasta pin manifest could not be queued to the user PDS", "pds_manifest_uri_missing");
+  }
+  const { binding } = await upsertSubdomainBinding({
+    userId: user.id,
+    manifestId: manifest.id,
+    manifestUri: manifestRecord.uri,
+    manifestCid: null,
+    publicDiscoveryEnabled: true,
+  });
+  await emitPinningEvent({
+    eventType: PINNING_EVENTS.restoreProofCreated,
+    userId: user.id,
+    walletAddress,
+    metadata: {
+      product: "pasta-protocol",
+      scopeRef,
+      manifestId: manifest.id,
+      manifestUri: manifestRecord.uri,
+      itemCount: pinnedItems.length,
+      wellKnownUrl: `https://${home.host}/.well-known/wtfos-pins`,
+      storageRef,
+    },
+    rawRefType: "ipfs_pinning_manifest",
+    rawRefId: manifest.id,
+  });
+
+  return {
+    ok: true,
+    host: home.host,
+    repoDid: home.identity.repoDid,
+    wellKnownUrl: `https://${home.host}/.well-known/wtfos-pins`,
+    manifestUri: manifestRecord.uri,
+    policy: {
+      id: policy.id,
+      scopeType: policy.scopeType,
+      scopeRef: policy.scopeRef,
+      pdsPolicyRecordUri: policy.pdsPolicyRecordUri,
+    },
+    manifest: {
+      id: manifest.id,
+      scopeType: manifest.scopeType,
+      scopeRef: manifest.scopeRef,
+      itemCount: pinnedItems.length,
+      totalBytes,
+      storageRef,
+    },
+    binding: binding
+      ? {
+          id: binding.id,
+          host: binding.host,
+          repoDid: binding.repoDid,
+          publicDiscoveryEnabled: binding.publicDiscoveryEnabled,
+          manifestUri: binding.pinManifestRecordUri,
+        }
+      : null,
+    items: pinnedItems.map((item) => ({
+      kind: item.source.kind,
+      app: item.source.app,
+      cid: item.cid,
+      jobId: item.jobId,
+      checksumSha256: item.checksumSha256,
+      byteSize: item.byteSize,
+      sourceUri: item.source.sourceUri,
+      mirrorKey: item.storage?.key ?? null,
+    })),
+  };
+}
+
 async function createWalletBackupManifest(input: {
   user: UserLike;
   policy: typeof ipfsPinningPolicies.$inferSelect;
@@ -1050,9 +1455,14 @@ export async function stageAndPinUpload(input: {
   fileName: string;
   mimeType: string;
   buffer: Buffer;
-  source: "macaroni" | "macaroni_package" | "manual" | "studio";
+  source: "macaroni" | "macaroni_package" | "manual" | "pasta_protocol" | "studio";
   scopeType?: ScopeType;
   scopeRef?: string | null;
+  policyId?: number | null;
+  manifestId?: number | null;
+  sourceUri?: string | null;
+  sourceChain?: string | null;
+  metadata?: Record<string, unknown>;
 }) {
   const checksumSha256 = sha256(input.buffer);
   const now = new Date();
@@ -1108,9 +1518,12 @@ export async function stageAndPinUpload(input: {
   const [job] = await db.insert(ipfsPinningJobs)
     .values({
       userId: input.userId,
+      policyId: input.policyId ?? null,
+      manifestId: input.manifestId ?? null,
       scopeType: input.scopeType ?? "manual_upload",
       scopeRef: input.scopeRef ?? pinned.cid,
       source: input.source,
+      sourceUri: input.sourceUri ?? null,
       fileName: input.fileName,
       mimeType: input.mimeType || "application/octet-stream",
       byteSize: input.buffer.length,
@@ -1127,7 +1540,11 @@ export async function stageAndPinUpload(input: {
       storageStatus,
       porcupinStatus: pinned.providerKey === HOSTED_PORCUPIN_PROVIDER_KEY ? "pinned" : "fallback_pinata",
       sourceEventId,
-      metadata: { source: input.source },
+      metadata: {
+        ...(input.metadata ?? {}),
+        source: input.source,
+        ...(input.sourceChain ? { sourceChain: input.sourceChain } : {}),
+      },
       updatedAt: now,
       completedAt: now,
     })
@@ -1223,8 +1640,8 @@ export async function wellKnownPinsForHost(host: string) {
     .from(ipfsPinningSubdomainBindings)
     .where(eq(ipfsPinningSubdomainBindings.host, normalized))
     .limit(1);
-  if (!binding || !binding.publicDiscoveryEnabled) {
-    return { status: 404 as const, body: { error: "Pin discovery not enabled" } };
+  if (!isWellKnownPinDiscoveryReady(binding)) {
+    return { status: 404 as const, body: { error: "Pin discovery pending" } };
   }
   return {
     status: 200 as const,
