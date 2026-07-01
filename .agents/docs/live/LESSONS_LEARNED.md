@@ -1,3 +1,13 @@
+## 2026-07-01 - Taquito option storage needs explicit normalization
+
+**What happened**: The first Colander Shadownet management-action proof correctly opened the current Lasagna proof contract and verified the administrator signer, but it stopped before submission because Taquito returned optional `current_revision` storage as `{ Some: BigNumber(0) }` instead of a primitive `0`. A plain `.toString()` normalizer produced `[object Object]`.
+
+**Why it mattered**: Signer-backed proof scripts must compare chain storage before spending even test tez. Optional Michelson values can look primitive in TzKT JSON while Taquito returns option wrappers, so naive string conversion can either block valid proofs or hide a real storage mismatch.
+
+**Rule**: Normalize Taquito option wrappers explicitly before asserting storage values. Treat `Some` recursively, treat `None` as absent, and keep the pre-operation assertion before any send.
+
+---
+
 ## 2026-07-01 - Live blockers need executable unblock instructions
 
 **What happened**: The Pasta live-readiness gate correctly blocked on missing WTF.ME publish credentials and host proof, but its first blocker text only named the credential env vars. Operators still had to piece together the required account prerequisites, host binding, expected-host write guard, and post-publish verifier command from several docs and scripts.
