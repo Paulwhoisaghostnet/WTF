@@ -6987,3 +6987,13 @@
 **Why it mattered**: A green new publisher proof is not enough when shared proof infrastructure changes an already-proven lane. The existing report artifact is part of the live-readiness record, and a sibling proof can consume the same faucet-funded signer balance before the baseline app is re-proved.
 
 **Rule**: When refactoring shared Tezos proof code, rerun every touched baseline proof after any fail-closed smoke that rewrites reports. Check signer balances after each real Shadownet operation, use faucet top-ups only for Shadownet test wallets, and leave the final report artifacts in `PASSED` state before promotion.
+
+---
+
+## 2026-07-01 - Colander discovery must decode the metadata form the contracts actually use
+
+**What happened**: The six current Pasta Shadownet proof contracts were valid and indexed, but Colander's browser discovery path only fetched `ipfs://` relationship metadata and routed non-Ghostnet explorer links to mainnet TzKT. The proof contracts store relationship metadata through inline `data:application/json` URIs, so a browser test could open a KT1 while silently falling back to a shallow wallet-to-contract graph.
+
+**Why it mattered**: Colander is the cross-app management/discovery surface. If it cannot read the metadata form emitted by the real proof contracts, a green contract deployment lane still leaves creators without a trustworthy relationship graph or Shadownet-specific explorer trail.
+
+**Rule**: Colander Shadownet proofs must use the current proof KT1s, set the app network to Shadownet, assert Shadownet TzKT links, assert relationship groups from decoded metadata, and keep wallet-signed actions behind chain-id preflight. Treat IPFS, HTTPS, and inline JSON metadata as explicit supported cases rather than assuming one storage encoding.
