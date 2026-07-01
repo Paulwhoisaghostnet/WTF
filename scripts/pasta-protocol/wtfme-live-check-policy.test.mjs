@@ -18,3 +18,17 @@ test("Pasta WTF.ME live check requires the post-publish host explicitly", () => 
   assert.doesNotMatch(source, /wtf-admin\.wtfos\.me/);
   assert.match(publishSource, /PASTA_WTFME_LIVE_HOST=\$\{publishedHost\} npm run pasta:wtfme:live-check/);
 });
+
+test("Pasta WTF.ME live check resolves the public pin manifest record", () => {
+  assert.match(source, /PASTA_WTFME_LIVE_CHECK_PIN_RECORDS/);
+  assert.match(source, /function parseAtUri\(uri: string\): AtUriParts/);
+  assert.match(source, /function didWebDocumentUrl\(did: string\): URL/);
+  assert.match(source, /https:\/\/plc\.directory\//);
+  assert.match(source, /AtprotoPersonalDataServer/);
+  assert.match(source, /\/xrpc\/com\.atproto\.repo\.getRecord/);
+  assert.match(source, /app\.wtfos\.media\.pinManifest/);
+  assert.match(source, /value\?\.scopeType, "project_bundle"/);
+  assert.match(source, /value\?\.sourceChain, "tezos-shadownet"/);
+  assert.match(source, /value\?\.storageRef\?\.checksumSha256/);
+  assert.match(source, /pin manifest should bind to the checked WTF\.ME host/);
+});

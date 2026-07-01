@@ -13,11 +13,27 @@ const TLS_ASK_BASE_URL = String(
   process.env.PASTA_WTFME_TLS_ASK_BASE_URL || process.env.WTFOS_BASE_URL || "https://wtfos.app"
 ).trim();
 const CHECK_PINS = !/^(0|false|no|off)$/i.test(String(process.env.PASTA_WTFME_LIVE_CHECK_PINS || "1"));
+const CHECK_PIN_RECORDS = !/^(0|false|no|off)$/i.test(String(process.env.PASTA_WTFME_LIVE_CHECK_PIN_RECORDS || "1"));
+
+type AtUriParts = {
+  repo: string;
+  collection: string;
+  rkey: string;
+};
 
 type PageProbe = {
   label: string;
   text: string;
   headers: Headers;
+};
+
+type DidDocument = {
+  id?: unknown;
+  service?: Array<{
+    id?: unknown;
+    type?: unknown;
+    serviceEndpoint?: unknown;
+  }>;
 };
 
 function fail(message: string): never {
@@ -91,6 +107,111 @@ async function fetchText(pathname: string): Promise<PageProbe> {
 
 function requireIncludes(text: string, marker: string, label: string): void {
   assert.ok(text.includes(marker), `${label} is missing marker: ${marker}`);
+}
+
+function parseAtUri(uri: string): AtUriParts {
+  const match = /^at:\/\/([^/]+)\/([^/]+)\/([^/]+)$/.exec(uri);
+  if (!match) fail(`invalid manifest at-uri: ${uri}`);
+  return {
+    repo: match[1],
+    collection: match[2],
+    rkey: match[3],
+  };
+}
+
+function didWebDocumentUrl(did: string): URL {
+  const suffix = did.slice("did:web:".length);
+  const parts = suffix.split(":").map((part) => decodeURIComponent(part));
+  const host = parts.shift();
+  if (!host) fail(`invalid did:web repo DID: ${did}`);
+  const url = new URL(`https://${host}/`);
+  if (parts.length === 0) {
+    url.pathname = "/.well-known/did.json";
+  } else {
+    url.pathname = `/${parts.map(encodeURIComponent).join("/")}/did.json`;
+  }
+  return url;
+}
+
+function didDocumentUrl(did: string): URL {
+  if (did.startsWith("did:web:")) return didWebDocumentUrl(did);
+  if (did.startsWith("did:plc:")) {
+    const base = new URL(String(process.env.PASTA_WTFME_PLC_DIRECTORY_URL || "https://plc.directory/"));
+    base.pathname = `/${did}`;
+    base.search = "";
+    base.hash = "";
+    return base;
+  }
+  fail(`unsupported repo DID method for pin record proof: ${did}`);
+}
+
+async function fetchJson(url: URL, label: string): Promise<any> {
+  const response = await fetch(url, {
+    headers: { "user-agent": "wtfos-pasta-wtfme-live-check" },
+    redirect: "manual",
+  });
+  const text = await response.text();
+  if (!response.ok) fail(`${label} returned HTTP ${response.status}: ${text.slice(0, 160)}`);
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    fail(`${label} returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function atprotoPdsEndpoint(didDocument: DidDocument, repoDid: string): URL {
+  assert.equal(didDocument.id, repoDid, "DID document id should match the pin discovery repo DID");
+  const services = Array.isArray(didDocument.service) ? didDocument.service : [];
+  const service = services.find((candidate) => {
+    const id = String(candidate.id || "");
+    const type = Array.isArray(candidate.type) ? candidate.type.join(" ") : String(candidate.type || "");
+    return id.endsWith("#atproto_pds") || type.includes("AtprotoPersonalDataServer");
+  });
+  if (!service) fail(`DID document for ${repoDid} is missing an AtprotoPersonalDataServer service`);
+  const endpoint = Array.isArray(service.serviceEndpoint) ? service.serviceEndpoint[0] : service.serviceEndpoint;
+  const url = new URL(String(endpoint || ""));
+  if (url.protocol !== "https:") fail(`PDS endpoint for ${repoDid} must be HTTPS: ${url.toString()}`);
+  url.pathname = "/";
+  url.search = "";
+  url.hash = "";
+  return url;
+}
+
+async function assertPinManifestRecord(repoDid: string, manifestUri: string): Promise<void> {
+  if (!CHECK_PIN_RECORDS) {
+    console.log("[pasta-wtfme-live] skipped pin record resolution; PASTA_WTFME_LIVE_CHECK_PIN_RECORDS=0");
+    return;
+  }
+
+  const parts = parseAtUri(manifestUri);
+  assert.equal(parts.repo, repoDid, "pin manifest at-uri repo should match .well-known repoDid");
+  assert.equal(parts.collection, "app.wtfos.media.pinManifest", "pin discovery must point at a pinManifest record");
+
+  const didDocUrl = didDocumentUrl(repoDid);
+  const didDocument = await fetchJson(didDocUrl, `${didDocUrl.toString()} DID document`) as DidDocument;
+  const pds = atprotoPdsEndpoint(didDocument, repoDid);
+  const recordUrl = new URL("/xrpc/com.atproto.repo.getRecord", pds);
+  recordUrl.searchParams.set("repo", repoDid);
+  recordUrl.searchParams.set("collection", parts.collection);
+  recordUrl.searchParams.set("rkey", parts.rkey);
+
+  const record = await fetchJson(recordUrl, `${recordUrl.toString()} pin manifest record`);
+  assert.equal(record.uri, manifestUri, "PDS pin manifest record URI should match .well-known manifestUri");
+  const value = record.value;
+  assert.equal(value?.$type, "app.wtfos.media.pinManifest");
+  assert.equal(value?.scopeType, "project_bundle");
+  assert.match(String(value?.scopeRef || ""), /^pasta-protocol:shadownet:/);
+  assert.equal(value?.sourceChain, "tezos-shadownet");
+  assert.ok(Number(value?.itemCount || 0) > 0, "pin manifest record should expose a positive item count");
+  assert.ok(Number(value?.totalBytes || 0) > 0, "pin manifest record should expose total bytes");
+  assert.match(String(value?.storageRef?.checksumSha256 || ""), /^[a-f0-9]{64}$/);
+  assert.ok(String(value?.storageRef?.s3Key || "").includes("pasta-protocol"), "pin manifest should expose a Pasta mirror key");
+  assert.ok(
+    Array.isArray(value?.subdomainRefs) &&
+      value.subdomainRefs.some((ref: any) => ref?.kind === "wtfos.me" && ref?.host === HOST),
+    "pin manifest should bind to the checked WTF.ME host"
+  );
+  ok(`${recordUrl.toString()} resolves the public Pasta pin manifest record`);
 }
 
 function assertUserSiteHeaders(probe: PageProbe): void {
@@ -170,6 +291,7 @@ async function assertWellKnownPins(): Promise<void> {
   assert.equal(parsed.host, HOST);
   assert.match(String(parsed.repoDid || ""), /^did:/);
   assert.match(String(parsed.manifestUri || ""), /^at:\/\/did:/);
+  await assertPinManifestRecord(String(parsed.repoDid), String(parsed.manifestUri));
   ok(`${probe.label} exposes public pin discovery`);
 }
 
