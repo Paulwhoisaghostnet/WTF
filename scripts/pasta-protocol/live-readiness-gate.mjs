@@ -14,6 +14,7 @@ function flag(name, defaultValue) {
 }
 
 const allowBlockers = flag("PASTA_LIVE_READINESS_ALLOW_BLOCKERS", false);
+const finalLaunch = flag("PASTA_LIVE_READINESS_FINAL_LAUNCH", false);
 const checkWtfme = flag("PASTA_LIVE_READINESS_CHECK_WTFME", true);
 const checkStatic = flag("PASTA_LIVE_READINESS_CHECK_STATIC", true);
 const checkInstallers = flag("PASTA_LIVE_READINESS_CHECK_INSTALLERS", true);
@@ -89,6 +90,31 @@ function blockedCheckDetails(checks) {
     .map((check) => `${check.name}: ${check.detail}`)
     .slice(0, 4)
     .join("; ");
+}
+
+function checkFinalLaunchGuardrails() {
+  if (!finalLaunch) return;
+
+  const violations = [];
+  if (allowBlockers) {
+    violations.push("cannot be combined with PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1");
+  }
+  if (!checkRepoCleanup) violations.push("requires PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP=1");
+  if (!checkStatic) violations.push("requires PASTA_LIVE_READINESS_CHECK_STATIC=1");
+  if (!checkInstallers) violations.push("requires PASTA_LIVE_READINESS_CHECK_INSTALLERS=1");
+  if (!checkColanderProof) violations.push("requires PASTA_LIVE_READINESS_CHECK_COLANDER_PROOF=1");
+  if (!checkWtfme) violations.push("requires PASTA_LIVE_READINESS_CHECK_WTFME=1");
+
+  if (violations.length > 0) {
+    block("final launch mode", violations.join("; "));
+    return;
+  }
+
+  record(
+    "final launch mode",
+    "pass",
+    "blockers are fatal and repo cleanup, static, installer, Colander, and WTF.ME probes are enabled"
+  );
 }
 
 async function fetchText(pathname) {
@@ -424,6 +450,7 @@ function printBlockerRemediation() {
 
 async function main() {
   console.log(`[pasta-live-readiness] target ${baseUrl().origin}`);
+  checkFinalLaunchGuardrails();
   await checkHealth();
   checkRepoCleanupAudit();
   await checkStaticBundles();
@@ -435,9 +462,9 @@ async function main() {
   checkWtfmeHost();
 
   const ok = blockers.length === 0;
-  console.log(JSON.stringify({ ok, allowBlockers, checks, blockers }, null, 2));
+  console.log(JSON.stringify({ ok, allowBlockers, finalLaunch, checks, blockers }, null, 2));
   printBlockerRemediation();
-  if (!ok && !allowBlockers) process.exit(1);
+  if (!ok && (!allowBlockers || finalLaunch)) process.exit(1);
 }
 
 main().catch((error) => {

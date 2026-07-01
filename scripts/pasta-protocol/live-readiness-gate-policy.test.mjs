@@ -16,8 +16,23 @@ test("Pasta live-readiness gate is wired as an explicit package command", () => 
 test("Pasta live-readiness gate separates blockers from allowed audit mode", () => {
   assert.match(source, /PASTA_LIVE_READINESS_ALLOW_BLOCKERS/);
   assert.match(source, /const blockers = \[\]/);
-  assert.match(source, /if \(!ok && !allowBlockers\) process\.exit\(1\)/);
+  assert.match(source, /if \(!ok && \(!allowBlockers \|\| finalLaunch\)\) process\.exit\(1\)/);
   assert.match(source, /set PASTA_WTFME_LIVE_HOST to the post-publish Pasta WTF\.ME host/);
+});
+
+test("Pasta live-readiness gate has a strict final-launch mode", () => {
+  assert.match(source, /PASTA_LIVE_READINESS_FINAL_LAUNCH/);
+  assert.match(source, /const finalLaunch = flag\("PASTA_LIVE_READINESS_FINAL_LAUNCH", false\)/);
+  assert.match(source, /function checkFinalLaunchGuardrails\(\)/);
+  assert.match(source, /cannot be combined with PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1/);
+  assert.match(source, /requires PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP=1/);
+  assert.match(source, /requires PASTA_LIVE_READINESS_CHECK_STATIC=1/);
+  assert.match(source, /requires PASTA_LIVE_READINESS_CHECK_INSTALLERS=1/);
+  assert.match(source, /requires PASTA_LIVE_READINESS_CHECK_COLANDER_PROOF=1/);
+  assert.match(source, /requires PASTA_LIVE_READINESS_CHECK_WTFME=1/);
+  assert.match(source, /blockers are fatal and repo cleanup, static, installer, Colander, and WTF\.ME probes are enabled/);
+  assert.match(source, /checkFinalLaunchGuardrails\(\)/);
+  assert.match(source, /JSON\.stringify\(\{ ok, allowBlockers, finalLaunch, checks, blockers \}/);
 });
 
 test("Pasta live-readiness gate proves live health and static Pasta bundle markers", () => {
