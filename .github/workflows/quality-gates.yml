@@ -40,7 +40,26 @@ jobs:
         run: npm run test:e2e:inventory:coverage
 
       - name: Inventory Playwright smoke
-        run: npx playwright test tests/playwright/inventory
+        timeout-minutes: 30
+        run: |
+          set -euo pipefail
+          started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "Inventory Playwright smoke started at ${started_at}"
+
+          (
+            elapsed=0
+            while true; do
+              sleep 60
+              elapsed=$((elapsed + 60))
+              echo "Inventory Playwright smoke still running after ${elapsed}s"
+            done
+          ) &
+          heartbeat_pid="$!"
+          trap 'kill "$heartbeat_pid" 2>/dev/null || true' EXIT
+
+          npx playwright test tests/playwright/inventory --reporter=line
+          kill "$heartbeat_pid" 2>/dev/null || true
+          echo "Inventory Playwright smoke completed"
 
       - name: External link safety
         run: npm run check:external-links
