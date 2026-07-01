@@ -1,3 +1,13 @@
+## 2026-07-01 - Live publish scripts must gate downstream recovery writes on host registration
+
+**What happened**: The first Pasta WTF.ME live publisher wiring would save/publish pages, then publish the Pasta pin recovery manifest, then ask production TLS whether the host was allowed. Since production still denies `wtf-admin.wtfos.me` with `handle not registered`, that order could create provider/PDS recovery rows for a host that production would not actually serve.
+
+**Why it mattered**: Hosted mint pages and `.well-known/wtfos-pins` are public trust surfaces. Downstream pin/recovery publication is only meaningful after the live host gate can serve the page, and retries after a TLS failure must not multiply policy, manifest, and pin-job rows.
+
+**Rule**: Live host publishers must check production host/TLS registration before downstream pin, PDS, or marketplace recovery writes. Project-bundle recovery endpoints must be permission-gated, object-storage-gated, duplicate-safe for in-flight manifests, and covered by inventory/source-policy tests before promotion.
+
+---
+
 ## 2026-07-01 - Apply patches must target the release worktree explicitly
 
 **What happened**: While mining the stale Pasta WTF.ME hosting slice, `apply_patch` initially wrote new untracked files into the original dirty `WTF` checkout because the desktop thread cwd was still the main workspace even though all verification and release work belonged in the clean `codex-spaghetti-installer-live` worktree. The files were copied into the release worktree and the accidental original-checkout copies were removed before continuing.

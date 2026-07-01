@@ -977,6 +977,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/mastodon/timeline", expectedStatuses: [200, 401, 404, 503] },
       { method: "GET", path: "/api/ipfs-pinning/overview", expectedStatuses: [200, 401, 404, 503] },
       { method: "POST", path: "/api/ipfs-pinning/policies", expectedStatuses: [201, 400, 401, 403, 409, 500, 503] },
+      { method: "POST", path: "/api/ipfs-pinning/pasta-protocol/publish", expectedStatuses: [201, 400, 401, 403, 409, 500, 503] },
       { method: "GET", path: "/api/wtf-subdomains/pins/summary", expectedStatuses: [200, 401, 404, 503] },
       { method: "GET", path: "/api/porcupin/status", expectedStatuses: [200, 401, 404, 503] },
       { method: "GET", path: "/api/discovery/random-artist", expectedStatuses: [200, 401, 404, 503] },

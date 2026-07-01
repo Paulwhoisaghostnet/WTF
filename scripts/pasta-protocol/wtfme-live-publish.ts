@@ -21,6 +21,7 @@ function flag(name: string, defaultValue: boolean): boolean {
 }
 
 const execute = flag("PASTA_WTFME_LIVE_PUBLISH", false);
+const publishPins = flag("PASTA_WTFME_LIVE_PUBLISH_PINS", true);
 
 function ok(message: string): void {
   console.log(`[pasta-wtfme-publish] ok: ${message}`);
@@ -215,6 +216,22 @@ async function publish(headers: Record<string, string>): Promise<any> {
   return state;
 }
 
+async function publishPastaPins(headers: Record<string, string>): Promise<any> {
+  const state = await expectJson(
+    await fetchWithCookies("/api/ipfs-pinning/pasta-protocol/publish", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({}),
+    }),
+    "publish Pasta pin recovery"
+  );
+  if (!state.manifestUri || !state.wellKnownUrl) {
+    fail("Pasta pin recovery publish did not return a manifestUri and wellKnownUrl");
+  }
+  ok(`published Pasta pin recovery manifest ${state.manifestUri}`);
+  return state;
+}
+
 async function probeTlsAsk(host: string): Promise<void> {
   const url = new URL("/internal/tls/allow", baseUrl());
   url.searchParams.set("domain", host);
@@ -245,6 +262,7 @@ async function main(): Promise<void> {
   assertExpectedHost(host);
   if (!execute) {
     ok(`dry-run: would publish Pasta landing/mint/collection pages to ${host}`);
+    if (publishPins) ok(`dry-run: would publish Pasta pin recovery manifest for ${host}`);
     console.log(`[pasta-wtfme-publish] after publishing, verify with: PASTA_WTFME_LIVE_HOST=${host} npm run pasta:wtfme:live-check`);
     return;
   }
@@ -253,6 +271,10 @@ async function main(): Promise<void> {
   await savePastaPages(headers);
   const published = await publish(headers);
   await probeTlsAsk(host);
+  const pinning = publishPins ? await publishPastaPins(headers) : null;
+  if (pinning?.wellKnownUrl) {
+    console.log(`[pasta-wtfme-publish] pin discovery URL: ${pinning.wellKnownUrl}`);
+  }
   console.log(`[pasta-wtfme-publish] verify with: PASTA_WTFME_LIVE_HOST=${published.site.host} npm run pasta:wtfme:live-check`);
 }
 

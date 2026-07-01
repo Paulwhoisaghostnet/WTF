@@ -1124,6 +1124,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminRoutes: [
       "/api/ipfs-pinning/overview",
       "/api/ipfs-pinning/policies",
+      "/api/ipfs-pinning/pasta-protocol/publish",
       "/api/ipfs-pinning/upload",
       "/api/wtf-subdomains/pins/summary",
       "/api/macaroni/ipfs/pin",

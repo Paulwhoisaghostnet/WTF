@@ -89,7 +89,7 @@
     "pasta:shadownet:lasagna:e2e": "tsx scripts/pasta-protocol/shadownet-lasagna-e2e.ts",
     "pasta:shadownet:colander": "npm run build && HARNESS_PORT=4322 playwright test tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs --project=chromium --reporter=list",
     "pasta:shadownet:wtfme": "npm run build && HARNESS_PORT=4324 playwright test tests/playwright/inventory/pasta-protocol-wtfme-hosting.spec.mjs --project=chromium --reporter=list",
-    "pasta:shadownet:pinning": "npx tsx --test server/features/ipfs-pinning/pasta-proof.test.ts server/features/ipfs-pinning/well-known-policy.test.ts",
+    "pasta:shadownet:pinning": "npx tsx --test server/features/ipfs-pinning/pasta-proof.test.ts server/features/ipfs-pinning/well-known-policy.test.ts server/routes/ipfs-pinning-pasta-policy.test.ts",
     "pasta:wtfme:live-check": "tsx scripts/pasta-protocol/wtfme-live-check.ts",
     "pasta:wtfme:live-inventory": "tsx scripts/pasta-protocol/wtfme-live-inventory.ts",
     "pasta:wtfme:live-inventory:check": "node --test scripts/pasta-protocol/wtfme-live-inventory-policy.test.mjs",

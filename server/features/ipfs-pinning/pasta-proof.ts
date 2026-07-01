@@ -52,7 +52,7 @@ export const PASTA_PINNING_CONTRACT_ARTIFACTS = [
   },
 ] as const;
 
-type PastaPinItemKind =
+export type PastaPinItemKind =
   | "hosted_page"
   | "contract_artifact"
   | "token_metadata"
@@ -74,7 +74,7 @@ export type PastaContractArtifactInput = {
   cid?: string;
 };
 
-type PastaPinSourceItem = {
+export type PastaPinSourceItem = {
   kind: PastaPinItemKind;
   app: string;
   scopeRef: string;
@@ -190,7 +190,7 @@ function buildRelationshipMetadataItem(contract: PastaWtfmeProofContract): Pasta
   };
 }
 
-function buildSourceItems(input: {
+export function buildPastaPinSourceItems(input: {
   host: string;
   pages: readonly ManifestPageSnapshot[];
   contractArtifacts: readonly PastaContractArtifactInput[];
@@ -243,7 +243,7 @@ export function buildPastaPublishPinningProof(input: PastaPublishPinningProofInp
   const mirror: MirrorConfig = { ...DEFAULT_MIRROR, ...input.mirror };
   const subdomainRefs: PinSubdomainRef[] = [{ kind: "wtfos.me", host }];
   const scopeRef = `pasta-protocol:${PASTA_WTFME_NETWORK.key}:${host}`;
-  const rawItems = buildSourceItems({ host, pages, contractArtifacts: input.contractArtifacts });
+  const rawItems = buildPastaPinSourceItems({ host, pages, contractArtifacts: input.contractArtifacts });
   const items = rawItems.map((item, index) => {
     const checksumSha256 = sha256(item.bytes);
     const cid = item.cid ?? proofCid(index, checksumSha256);

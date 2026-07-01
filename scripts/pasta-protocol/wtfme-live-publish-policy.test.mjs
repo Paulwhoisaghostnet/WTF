@@ -15,6 +15,7 @@ test("Pasta WTF.ME live publisher defaults to dry-run and requires an explicit p
     "node --test scripts/pasta-protocol/wtfme-live-publish-policy.test.mjs"
   );
   assert.match(source, /const execute = flag\("PASTA_WTFME_LIVE_PUBLISH", false\)/);
+  assert.match(source, /const publishPins = flag\("PASTA_WTFME_LIVE_PUBLISH_PINS", true\)/);
   assert.match(source, /set PASTA_WTFME_LIVE_PUBLISH=1 to claim\/save\/publish pages/);
   assert.match(source, /if \(!execute\) \{\s*ok\(`dry-run: would publish Pasta landing\/mint\/collection pages to \$\{host\}`\);[\s\S]*?return;\s*\}/);
 
@@ -55,8 +56,26 @@ test("Pasta WTF.ME live publisher uses CSRF for every mutating API call and veri
     source,
     /fetchWithCookies\("\/api\/wtf-sites\/publish", \{\s*method: "POST",\s*headers,/
   );
+  assert.match(
+    source,
+    /fetchWithCookies\("\/api\/ipfs-pinning\/pasta-protocol\/publish", \{\s*method: "POST",\s*headers,/
+  );
   assert.match(source, /await probeTlsAsk\(host\)/);
   assert.match(source, /published host \$\{host\} is still denied by the production TLS gate/);
+});
+
+test("Pasta WTF.ME live publisher checks TLS before publishing pin recovery", () => {
+  assert.match(source, /dry-run: would publish Pasta pin recovery manifest for \$\{host\}/);
+  assert.match(source, /Pasta pin recovery publish did not return a manifestUri and wellKnownUrl/);
+
+  const savePages = source.indexOf("await savePastaPages(headers)");
+  const publishSite = source.indexOf("const published = await publish(headers)");
+  const probeTls = source.indexOf("await probeTlsAsk(host)");
+  const publishPins = source.indexOf("const pinning = publishPins ? await publishPastaPins(headers) : null");
+  assert.ok(savePages > -1, "page saves should exist");
+  assert.ok(publishSite > savePages, "site publish should happen after page saves");
+  assert.ok(probeTls > publishSite, "TLS gate should be probed after site publish");
+  assert.ok(publishPins > probeTls, "pin recovery publish should happen only after TLS passes");
 });
 
 test("Pasta WTF.ME live publisher explains production host eligibility blockers", () => {
