@@ -100,6 +100,8 @@
     "lasagna:desktop:check": "node --test scripts/lasagna-desktop-package-policy.test.mjs",
     "lasagna:installers:live-check": "node scripts/check-lasagna-installers-live.mjs",
     "lasagna:desktop:dist": "npm run dist --prefix apps/lasagna-desktop",
+    "pasta:standalone-installers:audit": "node scripts/pasta-protocol/standalone-installer-release-audit.mjs",
+    "pasta:standalone-installers:audit:check": "node --test scripts/pasta-protocol/standalone-installer-release-audit-policy.test.mjs",
     "pasta:shadownet:preflight": "tsx scripts/pasta-protocol/shadownet-preflight.ts",
     "pasta:shadownet:e2e": "tsx scripts/pasta-protocol/shadownet-spaghetti-e2e.ts",
     "pasta:shadownet:gnocchi:e2e": "tsx scripts/pasta-protocol/shadownet-gnocchi-e2e.ts",
