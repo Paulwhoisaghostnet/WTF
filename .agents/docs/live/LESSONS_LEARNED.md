@@ -1,6 +1,16 @@
+## 2026-07-01 - Post-merge docs should separate product authority from docs-only refreshes
+
+**What happened**: PR #16 promoted the post-prune Pasta cleanup documentation and deployed successfully, moving live health from `9507502` to `2a1977e`. The audit docs still opened with PR #15 as the current authority until the post-merge pass refreshed them.
+
+**Why it mattered**: Cleanup and readiness docs often need one final evidence refresh after a docs-only PR merges. If they phrase that evidence as an eternally current branch head, the next docs commit immediately makes the same line stale again.
+
+**Rule**: After a docs-only cleanup/readiness merge, record the latest verified production authority, deploy run, quality run, and live-readiness result, and phrase exact commits as verification evidence rather than permanent future truth.
+
+---
+
 ## 2026-07-01 - Post-merge pruning needs an immediate audit refresh
 
-**What happened**: After PR #15 deployed the Pasta cleanup-audit fix, the promoted Pasta/Macaroni/Spaghetti/IPFS branches and clean promoted worktrees were safe to prune. The cleanup audit immediately shrank to only the retained historical `codex/pasta-live-readiness` evidence branch plus the active cleanup-docs checkout, but the standing docs still described pruned branches as active archive candidates until they were refreshed.
+**What happened**: After PR #15 deployed the Pasta cleanup-audit fix, the promoted Pasta/Macaroni/Spaghetti/IPFS branches and clean promoted worktrees were safe to prune. The cleanup audit immediately shrank to only the retained historical `codex/pasta-live-readiness` evidence branch plus the cleanup-docs checkout that was active at the time, but the standing docs still described pruned branches as active archive candidates until they were refreshed.
 
 **Why it mattered**: Repo-cleanup docs are operational guidance. If they continue listing already-deleted promoted branches or removed worktrees, the next pass can waste time chasing non-existent cleanup targets or accidentally recreate stale release branches.
 
