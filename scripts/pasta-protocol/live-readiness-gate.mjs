@@ -44,19 +44,28 @@ function block(name, detail) {
   record(name, "blocked", detail);
 }
 
-function runPackageScript(script, env = {}) {
+function runPackageScriptResult(script, env = {}) {
   const result = spawnSync("npm", ["run", script], {
     cwd: process.cwd(),
     env: { ...process.env, ...env },
     encoding: "utf8",
     maxBuffer: 1024 * 1024 * 4,
   });
-  if (result.status === 0) return;
+  if (result.status === 0) return { ok: true };
   const lines = `${result.stdout || ""}\n${result.stderr || ""}`
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
-  throw new Error(`${script} failed: ${lines.slice(-8).join(" | ") || `exit ${result.status ?? "unknown"}`}`);
+  return {
+    ok: false,
+    detail: `${script} failed: ${lines.slice(-8).join(" | ") || `exit ${result.status ?? "unknown"}`}`,
+  };
+}
+
+function runPackageScript(script, env = {}) {
+  const result = runPackageScriptResult(script, env);
+  if (result.ok) return;
+  throw new Error(result.detail);
 }
 
 async function fetchText(pathname) {
@@ -130,6 +139,55 @@ function checkInstallerDownloads() {
   for (const installer of installers) {
     runPackageScript(installer.script, installer.env);
     record(installer.name, "pass", "protected manifest and public release assets verified");
+  }
+
+  const individualInstallers = [
+    {
+      name: "Gnocchi Desktop standalone installers",
+      script: "gnocchi:installers:live-check",
+      env: { GNOCCHI_INSTALLER_REQUIRE_AUTH: "0" },
+      releaseTag: "gnocchi-desktop-v1.0.0",
+      envPrefix: "GNOCCHI_INSTALLER",
+    },
+    {
+      name: "Ravioli Desktop standalone installers",
+      script: "ravioli:installers:live-check",
+      env: { RAVIOLI_INSTALLER_REQUIRE_AUTH: "0" },
+      releaseTag: "ravioli-desktop-v1.0.0",
+      envPrefix: "RAVIOLI_INSTALLER",
+    },
+    {
+      name: "Rotini Desktop standalone installers",
+      script: "rotini:installers:live-check",
+      env: { ROTINI_INSTALLER_REQUIRE_AUTH: "0" },
+      releaseTag: "rotini-desktop-v1.0.0",
+      envPrefix: "ROTINI_INSTALLER",
+    },
+    {
+      name: "Penne Desktop standalone installers",
+      script: "penne:installers:live-check",
+      env: { PENNE_INSTALLER_REQUIRE_AUTH: "0" },
+      releaseTag: "penne-desktop-v1.0.0",
+      envPrefix: "PENNE_INSTALLER",
+    },
+    {
+      name: "Lasagna Desktop standalone installers",
+      script: "lasagna:installers:live-check",
+      env: { LASAGNA_INSTALLER_REQUIRE_AUTH: "0" },
+      releaseTag: "lasagna-desktop-v1.0.0",
+      envPrefix: "LASAGNA_INSTALLER",
+    },
+  ];
+  for (const installer of individualInstallers) {
+    const result = runPackageScriptResult(installer.script, installer.env);
+    if (result.ok) {
+      record(installer.name, "pass", "protected manifest and public release assets verified");
+      continue;
+    }
+    block(
+      installer.name,
+      `${result.detail}; publish ${installer.releaseTag}, configure ${installer.envPrefix}_* production env, deploy the manifest route, and rerun npm run ${installer.script}`
+    );
   }
 }
 

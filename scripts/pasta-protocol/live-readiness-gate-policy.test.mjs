@@ -35,6 +35,7 @@ test("Pasta live-readiness gate proves live health and static Pasta bundle marke
 
 test("Pasta live-readiness gate verifies public installer download surfaces", () => {
   assert.match(source, /PASTA_LIVE_READINESS_CHECK_INSTALLERS/);
+  assert.match(source, /function runPackageScriptResult\(script, env = \{\}\)/);
   assert.match(source, /macaroni:installers:live-check/);
   assert.match(source, /pasta-suite:installers:live-check/);
   assert.match(source, /spaghetti:installers:live-check/);
@@ -42,6 +43,22 @@ test("Pasta live-readiness gate verifies public installer download surfaces", ()
   assert.match(source, /PASTA_SUITE_INSTALLER_REQUIRE_AUTH: "0"/);
   assert.match(source, /SPAGHETTI_INSTALLER_REQUIRE_AUTH: "0"/);
   assert.match(source, /protected manifest and public release assets verified/);
+});
+
+test("Pasta live-readiness gate blocks on unpublished individual installer downloads", () => {
+  assert.match(source, /const individualInstallers = \[/);
+  assert.match(source, /gnocchi:installers:live-check/);
+  assert.match(source, /ravioli:installers:live-check/);
+  assert.match(source, /rotini:installers:live-check/);
+  assert.match(source, /penne:installers:live-check/);
+  assert.match(source, /lasagna:installers:live-check/);
+  assert.match(source, /gnocchi-desktop-v1\.0\.0/);
+  assert.match(source, /ravioli-desktop-v1\.0\.0/);
+  assert.match(source, /rotini-desktop-v1\.0\.0/);
+  assert.match(source, /penne-desktop-v1\.0\.0/);
+  assert.match(source, /lasagna-desktop-v1\.0\.0/);
+  assert.match(source, /configure \$\{installer\.envPrefix\}_\* production env/);
+  assert.match(source, /block\(\s*installer\.name/);
 });
 
 test("Pasta live-readiness gate verifies the recorded Colander action without a signer spend", () => {

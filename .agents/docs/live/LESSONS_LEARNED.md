@@ -1,3 +1,13 @@
+## 2026-07-01 - New installer surfaces must enter the shared readiness gate immediately
+
+**What happened**: After adding source-verified standalone desktop plumbing for the remaining static Pasta publishers, the package-specific checks and docs knew those installers were still unpublished, but the shared `pasta:live-readiness` gate still only verified the already-live Macaroni, Pasta Suite, and Spaghetti downloads.
+
+**Why it mattered**: A production readiness command is the thing future release passes trust under pressure. If a newly scaffolded installer has a route, verifier, workflow, and bounty entry but is absent from the shared gate, a partial release can look greener than the actual user-download surface.
+
+**Rule**: Whenever a new downloadable product surface is added, wire its live verifier into the shared production readiness gate in the same pass. If the release is not yet published, record it as an explicit blocker with the release tag, production env prefix, deploy requirement, and verifier command.
+
+---
+
 ## 2026-07-01 - Cloned desktop installer shells need app-specific contract audits
 
 **What happened**: The Gnocchi standalone installer pass started from the proven Spaghetti Electron shell, which correctly copied the native runtime and release plumbing but also carried Spaghetti's prepared asset folder and standard-collection contract assertions into an open-edition app until the app-specific scan caught them.
