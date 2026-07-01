@@ -87,6 +87,7 @@
     "pasta:shadownet:wtfme": "npm run build && HARNESS_PORT=4324 playwright test tests/playwright/inventory/pasta-protocol-wtfme-hosting.spec.mjs --project=chromium --reporter=list",
     "pasta:shadownet:pinning": "npx tsx --test server/features/ipfs-pinning/pasta-proof.test.ts",
     "pasta:wtfme:live-check": "tsx scripts/pasta-protocol/wtfme-live-check.ts",
+    "pasta:wtfme:live-publish": "tsx scripts/pasta-protocol/wtfme-live-publish.ts",
     "check": "tsc --noEmit",
     "wtfos:cli:build": "npm run build --prefix packages/wtfos-cli",
     "wtfos:cli:test": "npm run test --prefix packages/wtfos-cli",

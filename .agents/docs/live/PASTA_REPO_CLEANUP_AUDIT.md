@@ -23,6 +23,7 @@ Production focus: `https://wtfos.app`
 - Colander Shadownet discovery now passes through the browser against the six signer-backed proof KT1s, rendering adapter-specific action controls, Shadownet TzKT links, and relationship graphs for Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna.
 - WTF.ME hosted-page branch proof now claims `wtf-admin.wtfos.me`, saves Pasta landing, Gnocchi mint, and Spaghetti collection pages, publishes them through the harness WTF.ME APIs, and serves them from the user-site harness host with Shadownet chain markers, real proof KT1s, wallet-connect and purchase/mint route markers, Shadownet TzKT links, user-site CSP/opener headers, and claim/save/publish/public-view events.
 - Production WTF.ME live host proof is now executable through `npm run pasta:wtfme:live-check`, but the current live target `wtf-admin.wtfos.me` is denied by the production TLS ask gate as `handle not registered` before any Pasta page can be inspected.
+- Production WTF.ME API publication now has an explicit helper: `npm run pasta:wtfme:live-publish` dry-runs the authenticated user's eligible `username.wtfos.me` host, and only with `PASTA_WTFME_LIVE_PUBLISH=1` claims, saves, and publishes the Pasta pages through the normal WTF.ME APIs.
 - wtfOS Pasta pinning/recovery record proof now builds app.wtfos.media pinPolicy, pinManifest, and pinItem records from the Pasta hosted pages and real static contract artifacts, validates them against the AT lexicon, and proves public storage refs, IPFS gateway URLs, object-storage mirror keys, `.well-known/wtfos-pins`, and restore order for hosted pages plus Pasta metadata.
 - Live Pasta/Macaroni static wallet bundles for `macaroni`, `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna` passed stale-Taquito probes: Taquito `24.3.0` is absent, Taquito `25.0.0` is present, and the old `rpc.shadownet.teztnets.com` marker is absent.
 - Live Pasta static publisher `common.js` files now expose the `window.MD` runtime export in `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna`, while retaining `consumeCheaseHandoff()` and `loadPlatformCapabilities()` markers.
@@ -158,6 +159,7 @@ Conclusion: this checkout has been archived outside the repo for recovery/audit 
 
 - Source proof command: `npx tsx --test server/features/wtf-sites/pasta-hosting.test.ts`.
 - Browser proof command: `npm run pasta:shadownet:wtfme`.
+- Live publish helper: `npm run pasta:wtfme:live-publish` dry-runs production host eligibility; `PASTA_WTFME_LIVE_PUBLISH=1 npm run pasta:wtfme:live-publish` performs the claim/save/publish sequence when production publication is explicitly intended.
 - Page proof: `server/features/wtf-sites/pasta-hosting.ts` builds immutable user-site snapshots for `home`, `mint`, and `collection` pages.
 - Host proof: `tests/playwright/inventory/pasta-protocol-wtfme-hosting.spec.mjs` maps `wtf-admin.wtfos.me` to the local harness, starts from an unclaimed user site, calls `/api/wtf-sites/claim`, saves `home`, `mint`, and `collection` pages through `/api/wtf-sites/pages/:slug`, calls `/api/wtf-sites/publish`, and loads `/`, `/mint`, and `/collection` from that public host.
 - Contract proof: the pages carry Gnocchi mint contract `KT1FwS1JifrUakeGqFwGYmMHMmfjuwJABaax`, Spaghetti collection contract `KT1LPXV5b83MU8LsvyVM76YCAH25JtNCBJPH`, token id `0`, the relevant relationship groups, Shadownet chain id `NetXsqzbfFenSTS`, and Shadownet TzKT links.
@@ -195,7 +197,7 @@ Conclusion: this checkout has been archived outside the repo for recovery/audit 
 
 ## Recommended Next Actions
 
-1. Use `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` as the live-push checklist, next fixing production WTF.ME TLS/DNS for the Pasta host and making `npm run pasta:wtfme:live-check` pass before signed mint/purchase validation.
+1. Use `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` as the live-push checklist, next running `npm run pasta:wtfme:live-publish` with Pasta-specific production credentials, intentionally publishing with `PASTA_WTFME_LIVE_PUBLISH=1`, and making `PASTA_WTFME_LIVE_HOST=<published-host> npm run pasta:wtfme:live-check` pass before signed mint/purchase validation.
 2. Promote wtfOS Pasta pinning from record-shape proof to live provider/PDS/object-store durability plus a recovery drill.
 3. Extend the now-green Shadownet evidence into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page -> artifact resolution.
 4. After user confirmation, archive/delete merged historical Macaroni branches and clean checked-out worktrees that are ancestors of `origin/main`.
