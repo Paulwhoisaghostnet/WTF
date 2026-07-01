@@ -1,3 +1,13 @@
+## 2026-07-01 - Post-merge pruning needs an immediate audit refresh
+
+**What happened**: After PR #15 deployed the Pasta cleanup-audit fix, the promoted Pasta/Macaroni/Spaghetti/IPFS branches and clean promoted worktrees were safe to prune. The cleanup audit immediately shrank to only the retained historical `codex/pasta-live-readiness` evidence branch plus the active cleanup-docs checkout, but the standing docs still described pruned branches as active archive candidates until they were refreshed.
+
+**Why it mattered**: Repo-cleanup docs are operational guidance. If they continue listing already-deleted promoted branches or removed worktrees, the next pass can waste time chasing non-existent cleanup targets or accidentally recreate stale release branches.
+
+**Rule**: After pruning promoted branches or worktrees, rerun the executable cleanup audit and update the live cleanup report, bounty summary, and readiness matrix in the same pass. Distinguish pruned promoted history from retained historical evidence that must not be replayed.
+
+---
+
 ## 2026-07-01 - Cleanup audits must track the active branch remote
 
 **What happened**: After rebasing the Pasta live-verification branch onto current `origin/main`, `pasta:repo-cleanup:audit` correctly classified the local active branch as ongoing work but still treated `origin/codex/pasta-live-verification-docs` as an unknown Pasta branch. It also kept the already-promoted `codex/pasta-readiness-catalog-live` branch in a hard-coded active list, so yesterday's release lane could remain labeled ongoing after it became merge history.
