@@ -894,6 +894,12 @@ export const RPC_URLS: Record<string, string> = {
   shadownet: "https://tezos-shadownet.octez.io/",
 };
 
+export const RPC_FALLBACK_URLS: Record<string, string[]> = {
+  mainnet: ["https://tcinfra.net/rpc/tezos/mainnet"],
+  ghostnet: [],
+  shadownet: ["https://tcinfra.net/rpc/tezos/shadownet"],
+};
+
 // ---------------------------------------------------------------------------
 // SpicySwap DEX constants & types
 // ---------------------------------------------------------------------------
