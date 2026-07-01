@@ -1,3 +1,13 @@
+## 2026-07-01 - Live WTF.ME checks must use the post-publish host
+
+**What happened**: The Pasta WTF.ME live checker defaulted to `wtf-admin.wtfos.me`, but production read-only audit showed that host has no `wtf_user_sites` row and the `wtf-admin` user has no active WTFOS DID/repo or verified hosted-handle claim. Meanwhile `paulwhoisaghost.wtfos.me` is TLS-allowed and structurally closer to ready, but it still serves a generic user-site page rather than Pasta landing/mint/collection pages.
+
+**Why it mattered**: A hard-coded proof host can make every live check fail on the wrong prerequisite and hide the real deploy path: publish Pasta pages with the authenticated account that owns the host, then verify that exact host. Changing production data by hand to satisfy a stale default would risk hollow TLS success without PDS, pin discovery, or published Pasta content.
+
+**Rule**: Live WTF.ME checkers must require or discover the host produced by the publish step; do not silently default to an unproven proof account. Before seeding or repairing a hosted proof, verify the same user has a non-suspended site row, active WTFOS repo DID/PDS, linked Tezos wallet, published Pasta page version, and public pin discovery prerequisites.
+
+---
+
 ## 2026-07-01 - Live publish scripts must gate downstream recovery writes on host registration
 
 **What happened**: The first Pasta WTF.ME live publisher wiring would save/publish pages, then publish the Pasta pin recovery manifest, then ask production TLS whether the host was allowed. Since production still denies `wtf-admin.wtfos.me` with `handle not registered`, that order could create provider/PDS recovery rows for a host that production would not actually serve.

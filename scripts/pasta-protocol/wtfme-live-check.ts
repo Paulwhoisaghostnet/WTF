@@ -8,8 +8,7 @@ import {
   PASTA_WTFME_PROOF_CONTRACTS,
 } from "../../server/features/wtf-sites/pasta-hosting";
 
-const DEFAULT_HOST = "wtf-admin.wtfos.me";
-const HOST = String(process.env.PASTA_WTFME_LIVE_HOST || DEFAULT_HOST).trim().toLowerCase();
+const HOST = String(process.env.PASTA_WTFME_LIVE_HOST || "").trim().toLowerCase();
 const TLS_ASK_BASE_URL = String(
   process.env.PASTA_WTFME_TLS_ASK_BASE_URL || process.env.WTFOS_BASE_URL || "https://wtfos.app"
 ).trim();
@@ -30,7 +29,13 @@ function ok(message: string): void {
 }
 
 function baseUrl(): URL {
-  if (!HOST || !/^[a-z0-9.-]+$/.test(HOST)) fail(`invalid PASTA_WTFME_LIVE_HOST: ${HOST}`);
+  if (!HOST) {
+    fail(
+      "Set PASTA_WTFME_LIVE_HOST to the published Pasta WTF.ME host; " +
+        "the live publish script prints the exact verification command after publishing"
+    );
+  }
+  if (!/^[a-z0-9.-]+$/.test(HOST)) fail(`invalid PASTA_WTFME_LIVE_HOST: ${HOST}`);
   if (!HOST.endsWith(".wtfos.me")) fail(`live WTF.ME host must end with .wtfos.me: ${HOST}`);
   return new URL(`https://${HOST}/`);
 }
