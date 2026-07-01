@@ -1,17 +1,12 @@
 #!/usr/bin/env tsx
 
 import assert from "node:assert/strict";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { fileURLToPath } from "node:url";
 
-import { MichelsonMap, TezosToolkit } from "@taquito/taquito";
-import type { InMemorySigner } from "@taquito/signer";
+import { MichelsonMap } from "@taquito/taquito";
 
-import keyringModule from "../../extensions/wtf-operator-signer/src/keyring";
-import type { SignerEnv } from "../../extensions/wtf-operator-signer/src/env";
 import {
   availableActions,
   buildCollectionMetadata,
@@ -21,25 +16,29 @@ import {
   extractRelationshipMetadata,
   validateCheasePackage,
 } from "../../shared/pasta-protocol/index";
+import {
+  assertShadownet,
+  block,
+  buildToolkit,
+  collectAnnotations,
+  createLogger,
+  dataJsonUri,
+  hexToUtf8,
+  loadSignerPair,
+  normalizeBase,
+  parseDataJsonUri,
+  pollJson,
+  probeRpcChainId,
+  ProofBlocked,
+  root,
+  SHADOWNET_RPC_PRIMARY,
+  SHADOWNET_TZKT_API,
+  signerEnv,
+  utf8ToHex,
+  writeProofReport,
+  type ProofStatus,
+} from "./shadownet-proof-kit";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(__dirname, "..", "..");
-
-const SHADOWNET_CHAIN_ID = "NetXsqzbfFenSTS";
-const SHADOWNET_RPC_PRIMARY =
-  process.env.PASTA_SHADOWNET_RPC || "https://tezos-shadownet.octez.io/";
-const SHADOWNET_RPC_FALLBACK =
-  process.env.PASTA_SHADOWNET_RPC_FALLBACK || "https://tcinfra.net/rpc/tezos/shadownet";
-const SHADOWNET_TZKT_API =
-  process.env.PASTA_SHADOWNET_TZKT_API || "https://api.shadownet.tzkt.io/v1";
-const DEFAULT_KEYRING_PATH = path.join(homedir(), ".wtf-gameshow", "platform-wallet-keyring.json");
-const DEFAULT_MASTER_KEY_FILE = path.join(homedir(), ".wtf-gameshow", "platform-keyring-master.key");
-const DEFAULT_CREATOR_WALLET_ID = "wtf-os-root";
-const DEFAULT_COLLECTOR_WALLET_ID = "arcade-treasury";
-const MIN_PREFLIGHT_BALANCE_MUTEZ = Number(
-  process.env.PASTA_SHADOWNET_E2E_MIN_BALANCE_MUTEZ || "500000",
-);
-const { PlatformWalletKeyring } = keyringModule as any;
 const REPORT_PATH = path.join(
   root,
   ".agents",
@@ -49,204 +48,20 @@ const REPORT_PATH = path.join(
   "pasta-protocol",
   "shadownet-spaghetti-e2e-report.md",
 );
+const MIN_PREFLIGHT_BALANCE_MUTEZ = Number(
+  process.env.PASTA_SHADOWNET_E2E_MIN_BALANCE_MUTEZ || "500000",
+);
 let reportRpcUrl = normalizeBase(SHADOWNET_RPC_PRIMARY);
+const ok = createLogger("pasta-shadownet-e2e");
 
-type ProofStatus = "BLOCKED" | "FAILED" | "PASSED";
-
-type RpcProbe = {
-  rpcUrl: string;
-  chainId: string;
-};
-
-class ProofBlocked extends Error {
-  constructor(
-    message: string,
-    readonly lines: string[],
-  ) {
-    super(message);
-    this.name = "ProofBlocked";
-  }
-}
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-function normalizeBase(raw: string): string {
-  return raw.replace(/\/+$/, "");
-}
-
-function utf8ToHex(value: string): string {
-  return Buffer.from(value, "utf8").toString("hex");
-}
-
-function dataJsonUri(value: unknown): string {
-  return `data:application/json;base64,${Buffer.from(JSON.stringify(value), "utf8").toString("base64")}`;
-}
-
-function hexToUtf8(hex: string): string {
-  return Buffer.from(hex, "hex").toString("utf8");
-}
-
-function parseDataJsonUri(uri: string): unknown {
-  const match = uri.match(/^data:application\/json;base64,(.+)$/);
-  if (!match) throw new Error(`unsupported metadata URI: ${uri.slice(0, 80)}`);
-  return JSON.parse(Buffer.from(match[1], "base64").toString("utf8"));
-}
-
-function ok(message: string): void {
-  console.log(`[pasta-shadownet-e2e] ok: ${message}`);
-}
-
-function block(message: string, details: string[]): never {
-  throw new ProofBlocked(message, ["## Blocker", "", ...details]);
-}
-
-async function writeReport(
-  status: ProofStatus,
-  lines: string[],
-  context: { rpcUrl?: string } = {},
-): Promise<void> {
-  await mkdir(path.dirname(REPORT_PATH), { recursive: true });
-  await writeFile(
-    REPORT_PATH,
-    [
-      "# Pasta Protocol Spaghetti Shadownet E2E Report",
-      "",
-      `- Status: ${status}`,
-      `- Timestamp: ${nowIso()}`,
-      `- RPC: ${normalizeBase(context.rpcUrl || reportRpcUrl)}`,
-      `- TzKT API: ${normalizeBase(SHADOWNET_TZKT_API)}`,
-      "",
-      ...lines,
-      "",
-    ].join("\n"),
-  );
-}
-
-async function fetchText(url: string): Promise<{ status: number; text: string }> {
-  const response = await fetch(url, {
-    headers: { "user-agent": "wtfos-pasta-shadownet-e2e" },
+async function writeReport(status: ProofStatus, lines: string[]): Promise<void> {
+  await writeProofReport({
+    reportPath: REPORT_PATH,
+    title: "Pasta Protocol Spaghetti Shadownet E2E Report",
+    status,
+    lines,
+    rpcUrl: reportRpcUrl,
   });
-  return { status: response.status, text: await response.text() };
-}
-
-async function fetchJson(url: string): Promise<{ status: number; json: any; text: string }> {
-  const response = await fetch(url, {
-    headers: { "user-agent": "wtfos-pasta-shadownet-e2e" },
-  });
-  const text = await response.text();
-  let json: any = null;
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    json = null;
-  }
-  return { status: response.status, json, text };
-}
-
-async function probeRpcChainId(): Promise<RpcProbe> {
-  const errors: string[] = [];
-  for (const rpcUrl of [SHADOWNET_RPC_PRIMARY, SHADOWNET_RPC_FALLBACK]) {
-    const base = normalizeBase(rpcUrl);
-    try {
-      const response = await fetchText(`${base}/chains/main/chain_id`);
-      if (response.status >= 200 && response.status < 300) {
-        const chainId = response.text.trim().replace(/^"|"$/g, "");
-        assert.equal(
-          chainId,
-          SHADOWNET_CHAIN_ID,
-          `${base} returned unexpected chain id ${chainId}`,
-        );
-        return { rpcUrl: base, chainId };
-      }
-      errors.push(`${base}: HTTP ${response.status} ${response.text.slice(0, 160)}`);
-    } catch (error) {
-      errors.push(`${base}: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-  throw new Error(`No configured Shadownet RPC returned ${SHADOWNET_CHAIN_ID}: ${errors.join(" | ")}`);
-}
-
-async function pollJson(
-  label: string,
-  url: string,
-  predicate: (json: any) => boolean,
-  opts: { attempts?: number; delayMs?: number } = {},
-): Promise<any> {
-  const attempts = opts.attempts ?? 30;
-  const delayMs = opts.delayMs ?? 4_000;
-  let last: { status: number; json: any; text: string } | null = null;
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    last = await fetchJson(url);
-    if (last.status >= 200 && last.status < 300 && predicate(last.json)) return last.json;
-    if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, delayMs));
-  }
-  throw new Error(
-    `${label} did not appear after ${attempts} attempts: HTTP ${last?.status ?? "n/a"} ${String(
-      last?.text ?? "",
-    ).slice(0, 500)}`,
-  );
-}
-
-async function loadMasterKey(): Promise<string> {
-  const inline = process.env.WTF_PLATFORM_KEYRING_MASTER_KEY?.trim();
-  if (inline) return inline;
-
-  const file = process.env.WTF_PLATFORM_KEYRING_MASTER_KEY_FILE || DEFAULT_MASTER_KEY_FILE;
-  let value = "";
-  try {
-    value = (await readFile(file, "utf8")).trim();
-  } catch (error: any) {
-    if (error?.code === "ENOENT") {
-      block("platform keyring master key file is missing", [
-        `Expected keyring master key file: \`${file}\`.`,
-        "Set `WTF_PLATFORM_KEYRING_MASTER_KEY` or `WTF_PLATFORM_KEYRING_MASTER_KEY_FILE`, then rerun with `PASTA_SHADOWNET_E2E_EXECUTE=1`.",
-      ]);
-    }
-    throw error;
-  }
-
-  if (value.length < 24) {
-    block("platform keyring master key is too short", [
-      `Loaded keyring master key from \`${file}\`, but it does not meet the platform keyring length requirement.`,
-      "Provide the correct keyring master key, then rerun with `PASTA_SHADOWNET_E2E_EXECUTE=1`.",
-    ]);
-  }
-  return value;
-}
-
-async function signerEnv(rpcUrl: string): Promise<SignerEnv> {
-  return {
-    WTF_OPERATOR_SIGNER_RPC: rpcUrl,
-    WTF_OPERATOR_SIGNER_SOCKET: process.env.WTF_OPERATOR_SIGNER_SOCKET || "/tmp/wtf-pasta-shadownet-e2e.sock",
-    WTF_OPERATOR_SIGNER_AUTH_TOKEN: process.env.WTF_OPERATOR_SIGNER_AUTH_TOKEN || "local-pasta-shadownet-e2e",
-    WTF_OPERATOR_SIGNER_SECRET: process.env.WTF_OPERATOR_SIGNER_SECRET || "",
-    WTF_OPERATOR_SIGNER_DEFAULT_WALLET_ID: process.env.PASTA_SHADOWNET_CREATOR_WALLET_ID || DEFAULT_CREATOR_WALLET_ID,
-    WTF_PLATFORM_KEYRING_PATH: process.env.WTF_PLATFORM_KEYRING_PATH || DEFAULT_KEYRING_PATH,
-    WTF_PLATFORM_KEYRING_MASTER_KEY: await loadMasterKey(),
-    WTF_PLATFORM_KEYRING_MASTER_KEY_FILE: process.env.WTF_PLATFORM_KEYRING_MASTER_KEY_FILE || DEFAULT_MASTER_KEY_FILE,
-    WTF_PLATFORM_KEYRING_CREATE_ENABLED: 0,
-    WTF_OPERATOR_SIGNER_CONTRACT_ALLOWLIST: [],
-    WTF_OPERATOR_SIGNER_DISBURSE_ASSETS: [],
-    WTF_OPERATOR_SIGNER_MAX_XTZ_MUTEZ: 100_000_000,
-    WTF_OPERATOR_SIGNER_MAX_RECIPIENTS: 20,
-    WTF_OPERATOR_SIGNER_ALLOW_CUSTOM: 0,
-    WTF_OPERATOR_SIGNER_ALLOW_ORIGINATION: 1,
-    WTF_OPERATOR_SIGNER_MAX_ORIGINATION_BYTES: 750_000,
-    WTF_OPERATOR_SIGNER_AUDIT_LOG: process.env.WTF_OPERATOR_SIGNER_AUDIT_LOG || "/tmp/wtf-pasta-shadownet-e2e-audit.log",
-  };
-}
-
-function buildToolkit(signer: InMemorySigner, rpcUrl: string): TezosToolkit {
-  const tezos = new TezosToolkit(rpcUrl);
-  tezos.setProvider({ signer });
-  return tezos;
-}
-
-async function assertShadownet(tezos: TezosToolkit, stage: string): Promise<void> {
-  const chainId = await tezos.rpc.getChainId();
-  assert.equal(chainId, SHADOWNET_CHAIN_ID, `${stage} RPC returned unexpected chain id ${chainId}`);
 }
 
 async function readContractArtifact(): Promise<unknown[]> {
@@ -261,24 +76,6 @@ async function readContractArtifact(): Promise<unknown[]> {
   const code = JSON.parse(await readFile(artifact, "utf8"));
   assert.ok(Array.isArray(code), "Spaghetti contract artifact should be Michelson JSON array");
   return code;
-}
-
-function collectAnnotations(value: unknown, output = new Set<string>()): Set<string> {
-  if (Array.isArray(value)) {
-    for (const item of value) collectAnnotations(item, output);
-    return output;
-  }
-  if (!value || typeof value !== "object") return output;
-  const record = value as { annots?: unknown; args?: unknown };
-  if (Array.isArray(record.annots)) {
-    for (const annot of record.annots) {
-      if (typeof annot === "string" && annot.startsWith("%")) output.add(annot.slice(1));
-    }
-  }
-  if (Array.isArray(record.args)) {
-    for (const arg of record.args) collectAnnotations(arg, output);
-  }
-  return output;
 }
 
 function buildMetadata(creator: string) {
@@ -356,26 +153,6 @@ function buildTokenInfo(tokenMetadataUri: string) {
   return tokenInfo;
 }
 
-async function loadSignerPair(env: SignerEnv) {
-  const keyring = new PlatformWalletKeyring(env);
-  const creatorWalletId = process.env.PASTA_SHADOWNET_CREATOR_WALLET_ID || DEFAULT_CREATOR_WALLET_ID;
-  const collectorWalletId = process.env.PASTA_SHADOWNET_COLLECTOR_WALLET_ID || DEFAULT_COLLECTOR_WALLET_ID;
-  try {
-    const { wallet: creator, signer } = await keyring.getSigner(creatorWalletId);
-    const { wallet: collector } = await keyring.getSigner(collectorWalletId);
-    assert.equal(creator.network, "shadownet", `creator wallet ${creator.id} is not Shadownet`);
-    assert.equal(collector.network, "shadownet", `collector wallet ${collector.id} is not Shadownet`);
-    return { creator, signer, collector };
-  } catch (error) {
-    block("platform keyring signer is unavailable", [
-      `Creator wallet id: \`${creatorWalletId}\`.`,
-      `Collector wallet id: \`${collectorWalletId}\`.`,
-      `Keyring path: \`${env.WTF_PLATFORM_KEYRING_PATH}\`.`,
-      `Reason: ${error instanceof Error ? error.message : String(error)}`,
-    ]);
-  }
-}
-
 async function main(): Promise<void> {
   if (process.env.PASTA_SHADOWNET_E2E_EXECUTE !== "1") {
     block("explicit execute flag is required", [
@@ -391,8 +168,8 @@ async function main(): Promise<void> {
   ok(`Shadownet RPC ${rpc.rpcUrl} returned ${rpc.chainId}`);
 
   const env = await signerEnv(rpc.rpcUrl);
-  const { creator, signer, collector } = await loadSignerPair(env);
-  const tezos = buildToolkit(signer, rpc.rpcUrl);
+  const { creator, creatorSigner, collector } = await loadSignerPair(env);
+  const tezos = buildToolkit(creatorSigner, rpc.rpcUrl);
   await assertShadownet(tezos, "startup");
 
   const balance = await tezos.tz.getBalance(creator.address);
@@ -494,38 +271,34 @@ async function main(): Promise<void> {
   assert.equal(indexedTokenMetadata.name, metadata.package.items[0].name);
   assert.deepEqual(extractRelationshipMetadata(indexedTokenMetadata), metadata.relationship);
 
-  await writeReport(
-    "PASSED",
-    [
-      "## Result",
-      "",
-      "- Signer-backed Spaghetti Shadownet deploy/mint/collect proof passed.",
-      `- Creator wallet: \`${creator.id}\` / \`${creator.address}\``,
-      `- Collector wallet: \`${collector.id}\` / \`${collector.address}\``,
-      `- Contract: \`${originated.address}\``,
-      `- Explorer: https://shadownet.tzkt.io/${originated.address}`,
-      "",
-      "## Operations",
-      "",
-      `- Origination: \`${originate.hash}\``,
-      `- Create token: \`${createToken.hash}\``,
-      `- Mint: \`${mint.hash}\``,
-      `- Transfer/collect: \`${transfer.hash}\``,
-      "",
-      "## Indexed Proof",
-      "",
-      `- Contract storage indexed ledger big map \`${indexedStorage.ledger}\` and token_metadata big map \`${indexedStorage.token_metadata}\`.`,
-      `- Collector ledger big-map entry returned balance \`${collectorLedgerEntry?.value}\` for token 0.`,
-      `- Token metadata big-map entry decoded to \`${indexedTokenMetadata.name}\` with relationship metadata intact.`,
-      `- Relationship group: \`${metadata.relationship.collection_group}\``,
-      "",
-      "## Scope",
-      "",
-      "- This proves signer-backed Shadownet origination, token creation, mint, transfer/collect, and TzKT ownership resolution for Spaghetti standard collections.",
-      "- It does not yet prove WTF.ME page hosting, wtfOS hosted pinning, Colander discovery, or every Pasta publisher variant.",
-    ],
-    { rpcUrl: rpc.rpcUrl },
-  );
+  await writeReport("PASSED", [
+    "## Result",
+    "",
+    "- Signer-backed Spaghetti Shadownet deploy/mint/collect proof passed.",
+    `- Creator wallet: \`${creator.id}\` / \`${creator.address}\``,
+    `- Collector wallet: \`${collector.id}\` / \`${collector.address}\``,
+    `- Contract: \`${originated.address}\``,
+    `- Explorer: https://shadownet.tzkt.io/${originated.address}`,
+    "",
+    "## Operations",
+    "",
+    `- Origination: \`${originate.hash}\``,
+    `- Create token: \`${createToken.hash}\``,
+    `- Mint: \`${mint.hash}\``,
+    `- Transfer/collect: \`${transfer.hash}\``,
+    "",
+    "## Indexed Proof",
+    "",
+    `- Contract storage indexed ledger big map \`${indexedStorage.ledger}\` and token_metadata big map \`${indexedStorage.token_metadata}\`.`,
+    `- Collector ledger big-map entry returned balance \`${collectorLedgerEntry?.value}\` for token 0.`,
+    `- Token metadata big-map entry decoded to \`${indexedTokenMetadata.name}\` with relationship metadata intact.`,
+    `- Relationship group: \`${metadata.relationship.collection_group}\``,
+    "",
+    "## Scope",
+    "",
+    "- This proves signer-backed Shadownet origination, token creation, mint, transfer/collect, and TzKT ownership resolution for Spaghetti standard collections.",
+    "- It does not yet prove WTF.ME page hosting, wtfOS hosted pinning, Colander discovery, or every Pasta publisher variant.",
+  ]);
 }
 
 main().catch(async (error) => {

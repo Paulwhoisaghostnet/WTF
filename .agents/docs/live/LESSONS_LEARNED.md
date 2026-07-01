@@ -6967,3 +6967,13 @@
 **Why it mattered**: WTF LIVE chat style is transmitted through multiple normalization layers before the audience sees it. If any layer treats a newly valid font as legacy, hosts can believe they are sending styled room text while viewers see a different font. Harness-only drift also makes production behavior harder to trust.
 
 **Rule**: When adding or retiring WTF LIVE chat style values, update `shared/desktop.ts`, `server/websocket.ts`, and `tests/playwright/harness.mjs` in the same pass, then prove a sender-selected style survives through the receiving browser.
+
+---
+
+## 2026-07-01 - Shared Shadownet proof refactors must re-prove the baseline app
+
+**What happened**: Extracting shared Pasta Shadownet proof helpers correctly let Gnocchi reuse Spaghetti's RPC fallback, chain-id checks, keyring blockers, and report writer. The no-execute smoke intentionally overwrote Spaghetti's report with `BLOCKED`, and the first refactored Spaghetti execute then blocked because the new Gnocchi proof had spent enough test tez to drop the creator wallet below the origination-plus-headroom threshold.
+
+**Why it mattered**: A green new publisher proof is not enough when shared proof infrastructure changes an already-proven lane. The existing report artifact is part of the live-readiness record, and a sibling proof can consume the same faucet-funded signer balance before the baseline app is re-proved.
+
+**Rule**: When refactoring shared Tezos proof code, rerun every touched baseline proof after any fail-closed smoke that rewrites reports. Check signer balances after each real Shadownet operation, use faucet top-ups only for Shadownet test wallets, and leave the final report artifacts in `PASSED` state before promotion.

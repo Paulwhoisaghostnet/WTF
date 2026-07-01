@@ -1,7 +1,7 @@
 # Pasta Protocol Spaghetti Shadownet E2E Report
 
 - Status: PASSED
-- Timestamp: 2026-07-01T05:33:47.994Z
+- Timestamp: 2026-07-01T06:08:50.166Z
 - RPC: https://tezos-shadownet.octez.io
 - TzKT API: https://api.shadownet.tzkt.io/v1
 
@@ -10,22 +10,22 @@
 - Signer-backed Spaghetti Shadownet deploy/mint/collect proof passed.
 - Creator wallet: `wtf-os-root` / `tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM`
 - Collector wallet: `arcade-treasury` / `tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej`
-- Contract: `KT1WwwBcnK5b9VLtWpq6jjHn9WE9KHwRyDdd`
-- Explorer: https://shadownet.tzkt.io/KT1WwwBcnK5b9VLtWpq6jjHn9WE9KHwRyDdd
+- Contract: `KT1WTFnZAyWqcC2SB32xEjMS4F4cutnGsyVc`
+- Explorer: https://shadownet.tzkt.io/KT1WTFnZAyWqcC2SB32xEjMS4F4cutnGsyVc
 
 ## Operations
 
-- Origination: `ooP5aAfkximqFDCNTnh22TzMfanQtkeFVaMkF5hbTRyqY5FGoDX`
-- Create token: `oojX42FnxhRUbv1PgwJ1imNxr3C3oyvRNUsEiJ7q4KfEBsfTW5W`
-- Mint: `opQNNb6g3m6KsHosh4nqySpT6R2oee6Sw6qJNe8aXp4c5ocafgz`
-- Transfer/collect: `ooQSU4TWL1gzEhp6KUnZtPEGqDyzbXB3hSdD7Wtwc6kjU4hgPcL`
+- Origination: `oo88bXJQvofrsMUkguvdm5cYqc191oibyqdMioyvKAtrqFYhAJB`
+- Create token: `onyinAoomrdeo6kJrKw7yPMFF4G4MkcLyVoVTfWxmC51PJ3bp9V`
+- Mint: `op2qSe5jNqcieMGzsXC52BkaCgtP9bmArndN2Pk1KkWGsuNQocX`
+- Transfer/collect: `ooBgUrdzwoEBnQxGs4UmbGNwJSMHi3WrfeGmvbd2BWEdHVsHWRU`
 
 ## Indexed Proof
 
-- Contract storage indexed ledger big map `26788` and token_metadata big map `26792`.
+- Contract storage indexed ledger big map `26801` and token_metadata big map `26805`.
 - Collector ledger big-map entry returned balance `1` for token 0.
 - Token metadata big-map entry decoded to `Spaghetti Proof Token` with relationship metadata intact.
-- Relationship group: `spaghetti-shadownet-e2e-mr1n351t`
+- Relationship group: `spaghetti-shadownet-e2e-mr1oc17f`
 
 ## Scope
 

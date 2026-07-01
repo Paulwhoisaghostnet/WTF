@@ -64,8 +64,8 @@ Conclusion: `WTF-BB-332` is verified closed. Preserve the warning in history, bu
 - The CH-EASE package-to-Pasta static runtime fix is now production-deployed: post-deploy live probes confirm `window.MD` exports on the six Pasta publisher bundles.
 - Pasta suite installer/download is now production-complete for the bundled native suite lane: `apps/pasta-suite-desktop`, the `pasta-suite-desktop-installers.yml` workflow, `/api/pasta/installers`, inventory coverage, package policy checks, GitHub release assets, production env, and the authenticated live verifier all passed for `pasta-suite-desktop-v1.0.0`.
 - Spaghetti standalone installer/download is production-complete for the standalone native app lane: `apps/spaghetti-desktop`, the `spaghetti-desktop-installers.yml` workflow, `/api/spaghetti/installers`, inventory coverage, package policy checks, env examples, docs, live verifier, GitHub release assets, production `SPAGHETTI_INSTALLER_*` env, deploy, and authenticated live verifier all passed for `spaghetti-desktop-v1.0.0`.
-- Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, the Spaghetti preflight, and this signer-backed Spaghetti deploy/mint/collect proof: other publisher variants, failure recovery, WTF.ME hosting, wtfOS pinning, and cross-app Colander management should remain open until executable evidence exists.
-- The remaining unique Pasta proof work is concentrated in `codex/pasta-live-readiness`; it should be mined by narrow slices. This slice promotes the signer-backed Spaghetti Shadownet proof command without merging that broader branch wholesale.
+- Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, the Spaghetti preflight, and the signer-backed Spaghetti/Gnocchi proofs: Ravioli, Rotini, Penne, Lasagna, failure recovery, WTF.ME hosting, wtfOS pinning, and cross-app Colander management should remain open until executable evidence exists.
+- The remaining unique Pasta proof work is concentrated in `codex/pasta-live-readiness`; it should be mined by narrow slices. The current slice promotes a shared Shadownet proof kit, preserves the signer-backed Spaghetti proof command, and adds the signer-backed Gnocchi open-edition proof without merging that broader branch wholesale.
 - Local `main` at the original workspace should be fast-forwarded, reset, or archived only after the user confirms whether its dirty scratch content should be preserved.
 
 ## Current Macaroni Shadownet Proof
@@ -129,16 +129,29 @@ Conclusion: `WTF-BB-332` is verified closed. Preserve the warning in history, bu
 - Safety gate: without `PASTA_SHADOWNET_E2E_EXECUTE=1`, the command writes a `BLOCKED` report and exits before spending Shadownet test tez.
 - Network proof: the command validates the configured Shadownet RPC chain id against `NetXsqzbfFenSTS` before loading signer state and again before each sensitive operation.
 - Keyring proof: the command loads the platform keyring wallets `wtf-os-root` and `arcade-treasury`, requires both to be Shadownet wallets, and records only public wallet ids/addresses in the report.
-- Funding proof: the first execute attempt blocked before origination because creator wallet `tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM` had only `2222596` mutez against an origination fee/burn estimate of `1266565` mutez plus follow-on operation headroom. The Shadownet faucet top-up `ooeZH3kucs975uq4g6B52ooZ1oRbZNXZzxpVPCEU2yGHWavZJ31` raised the wallet to `7222596` mutez before rerun.
-- Deployment proof: contract `KT1WwwBcnK5b9VLtWpq6jjHn9WE9KHwRyDdd` originated on Shadownet by `wtf-os-root`.
-- Operation proof: origination `ooP5aAfkximqFDCNTnh22TzMfanQtkeFVaMkF5hbTRyqY5FGoDX`, create token `oojX42FnxhRUbv1PgwJ1imNxr3C3oyvRNUsEiJ7q4KfEBsfTW5W`, mint `opQNNb6g3m6KsHosh4nqySpT6R2oee6Sw6qJNe8aXp4c5ocafgz`, and transfer/collect `ooQSU4TWL1gzEhp6KUnZtPEGqDyzbXB3hSdD7Wtwc6kjU4hgPcL`.
-- Indexer proof: TzKT storage indexed ledger big map `26788`, token metadata big map `26792`, collector ledger balance `1`, and decoded token metadata name `Spaghetti Proof Token` with relationship metadata intact.
+- Funding proof: the first historical execute attempt blocked before origination because creator wallet `tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM` had only `2222596` mutez against an origination fee/burn estimate of `1266565` mutez plus follow-on operation headroom. The Shadownet faucet top-up `ooeZH3kucs975uq4g6B52ooZ1oRbZNXZzxpVPCEU2yGHWavZJ31` raised the wallet to `7222596` mutez before that rerun. During the shared proof-kit refactor pass, Gnocchi execution left the same creator at `1449185` mutez, the refactored Spaghetti command blocked before spending, and faucet top-up `opUUzBLG3pd2XkACfjyPNFD7hQAzXxr11KQKLDDChpZnsvcGFJ6` raised it before the current-code rerun.
+- Deployment proof: contract `KT1WTFnZAyWqcC2SB32xEjMS4F4cutnGsyVc` originated on Shadownet by `wtf-os-root`.
+- Operation proof: origination `oo88bXJQvofrsMUkguvdm5cYqc191oibyqdMioyvKAtrqFYhAJB`, create token `onyinAoomrdeo6kJrKw7yPMFF4G4MkcLyVoVTfWxmC51PJ3bp9V`, mint `op2qSe5jNqcieMGzsXC52BkaCgtP9bmArndN2Pk1KkWGsuNQocX`, and transfer/collect `ooBgUrdzwoEBnQxGs4UmbGNwJSMHi3WrfeGmvbd2BWEdHVsHWRU`.
+- Indexer proof: TzKT storage indexed ledger big map `26801`, token metadata big map `26805`, collector ledger balance `1`, and decoded token metadata name `Spaghetti Proof Token` with relationship metadata intact.
 - Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-spaghetti-e2e-report.md`.
 - Scope note: this proves Spaghetti standard-collection deployment, token creation, minting, transfer/collect, metadata decoding, and ownership resolution. It does not yet prove WTF.ME page hosting, hosted wtfOS pinning, recovery, Colander real-contract discovery, or every Pasta publisher variant.
 
+## Current Gnocchi Shadownet E2E Proof
+
+- Local proof command: `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:gnocchi:e2e`.
+- Safety gate: without `PASTA_SHADOWNET_E2E_EXECUTE=1`, the command writes a `BLOCKED` report and exits before spending Shadownet test tez.
+- Network proof: the command validates the configured Shadownet RPC chain id against `NetXsqzbfFenSTS` before loading signer state and again before creator and collector sensitive operations.
+- Keyring proof: the command loads the platform keyring wallets `wtf-os-root` and `arcade-treasury`, requires both to be Shadownet wallets, and records only public wallet ids/addresses in the report.
+- Funding proof: before origination, creator wallet `tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM` had `3993704` mutez and collector wallet `tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej` had `708744` mutez; the command estimated origination fee `8953` mutez and burn `2189750` mutez, then verified collector open-mint cost plus fee headroom before spending.
+- Deployment proof: contract `KT1W2ijLhjRHeH7wWYnvYcDwDsgRM7TpAFZK` originated on Shadownet by `wtf-os-root`.
+- Operation proof: origination `ooApSTk1YyQGwUs5mKpVrGbHHfAgHmoSW7yB8KehDYypC3apk9R`, create open edition `ooke2sTVMjnLLwqhH7hCfocGTanUBEDXfMoMdieJ2QJm2j2dQir`, and collector open mint `opHEtdBfjV4UjCcmVLLoeX8kPgMaborNoJ9m5JtDZhGWYWyNGAu`.
+- Indexer proof: TzKT storage indexed ledger big map `26794`, token metadata big map `26799`, total supply big map `26800`, sales big map `26798`, collector ledger balance `1`, total supply `1`, active sale config, and decoded token metadata name `Gnocchi Proof Open Edition` with relationship metadata intact.
+- Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-gnocchi-e2e-report.md`.
+- Scope note: this proves Gnocchi open-edition deployment, sale configuration, collector open mint, metadata decoding, supply, sale state, and ownership resolution. It does not yet prove WTF.ME page hosting, hosted wtfOS pinning, recovery, Colander real-contract discovery, or every Pasta publisher variant.
+
 ## Recommended Next Actions
 
-1. Mine `codex/pasta-live-readiness` by narrow slices for app-specific deploy proofs, Colander discovery, WTF.ME hosting, and wtfOS pinning/recovery. Do not merge the branch wholesale.
+1. Mine `codex/pasta-live-readiness` by narrow slices for Ravioli, Rotini, Penne, Lasagna, Colander discovery, WTF.ME hosting, and wtfOS pinning/recovery. Do not merge the branch wholesale.
 2. Extend the now-green Macaroni Shadownet lane and signer-backed Spaghetti proof into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
 3. Repeat the individual installer package/manifest/live-check pattern for Gnocchi, Ravioli, Rotini, Penne, and Lasagna if separate per-app downloads are required beyond the bundled Pasta Suite.
 4. After user confirmation, archive/delete merged historical Macaroni/IPFS and other clean ancestor worktrees; leave dirty non-Pasta worktrees untouched.
