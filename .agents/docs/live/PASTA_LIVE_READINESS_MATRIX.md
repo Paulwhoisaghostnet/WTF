@@ -94,9 +94,10 @@ The safe next push target is this narrow proof lane. A full production Pasta dep
 
 ## Next Implementation Order
 
-1. Publish the generated Pasta landing/mint/collection pages to a claimed production WTF.ME host and make `PASTA_WTFME_LIVE_HOST=<published-host> npm run pasta:wtfme:live-check` pass, including `.well-known/wtfos-pins`.
-2. Rerun `npm run pasta:live-readiness` without blocker-allow mode and require it to pass before claiming the Pasta lane is production-ready.
-3. Turn the current source-level wtfOS artifact/metadata pinning and recovery checks into a live provider/host proof.
-4. Add wallet-signed Colander management mutation proof for representative safe actions before treating Colander as an operational admin surface.
-5. Repeat the standalone installer manifest/release proof pattern for remaining individual Pasta apps if separate native downloads are required.
-6. Re-run production readiness checks and only then evaluate mainnet/full-send deployment work.
+1. Provision or identify a dedicated Pasta WTF.ME publish account/host credential; 2026-07-01 local plus remote env-name checks found no matching Pasta WTF.ME/app-login/puppet credential names.
+2. Publish the generated Pasta landing/mint/collection pages to a claimed production WTF.ME host and make `PASTA_WTFME_LIVE_HOST=<published-host> npm run pasta:wtfme:live-check` pass, including `.well-known/wtfos-pins`.
+3. Rerun `npm run pasta:live-readiness` without blocker-allow mode and require it to pass before claiming the Pasta lane is production-ready.
+4. Turn the current source-level wtfOS artifact/metadata pinning and recovery checks into a live provider/host proof.
+5. Add wallet-signed Colander management mutation proof for representative safe actions before treating Colander as an operational admin surface.
+6. Repeat the standalone installer manifest/release proof pattern for remaining individual Pasta apps if separate native downloads are required.
+7. Re-run production readiness checks and only then evaluate mainnet/full-send deployment work.

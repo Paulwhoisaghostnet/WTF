@@ -7355,12 +7355,14 @@ Priority labels:
   - The current live publisher pass also requires `PASTA_WTFME_LIVE_EXPECT_HOST=<dedicated-host.wtfos.me>` before any production write mode can authenticate or save pages.
   - The current post-publish verifier pass makes production publish runs call `pasta:wtfme:live-check` after page publish and pin recovery, so the script cannot exit successfully until the public host serves Pasta landing/mint/collection markers and `.well-known/wtfos-pins`.
   - The current release-lane pass adds `npm run pasta:live-readiness` plus `npm run pasta:live-readiness:check`. Audit mode proves live health, live static bundle/runtime markers, and public installer release assets, requires supplied WTF.ME credentials to pass a forced non-writing publisher dry-run, then reports the current blockers instead of allowing a vague "almost ready" claim.
+  - 2026-07-01 credential availability check found no local matching `PASTA_WTFME`, `WTFME`, app-login, live-puppet, E2E, or puppet env names; no Pasta/WTF.ME matches in local production/local puppet credential files or `.codex/secure/wtf-keyring.env`; SSH to `wtf` and sudo env-name reads worked, and `/etc/wtf/wtf.env` plus checked installer backup env files exposed no matching Pasta WTF.ME/app-login/puppet credential names.
   - These changes still do not prove live provider pins or a production PDS manifest because no production host currently serves Pasta pages and public pin discovery.
 - Why it matters:
   - Pasta hosted mint/collection pages and recovery pointers are public trust surfaces. A production claim before host registration and manifest publication would imply that collectors can resolve pages, artifacts, metadata, and recovery records when production still rejects the host.
 - Likely correction direction:
   - Use `scripts/pasta-protocol/wtfme-live-publish.ts` with credentials for a real account that already has or can claim a WTF.ME host, active WTFOS DID/repo, linked Tezos wallet, and WTF Pin Collector permission; then run `PASTA_WTFME_LIVE_HOST=<published-host> npm run pasta:wtfme:live-check`.
   - Do not assume `wtf-admin.wtfos.me` is the proof host unless production identity/site prerequisites are explicitly created for that user.
+  - Provision or identify a dedicated Pasta WTF.ME publish account/host credential outside the repo, then run the forced non-writing readiness dry-run before setting `PASTA_WTFME_LIVE_PUBLISH=1`.
 - Verification idea:
   - Pass `npm run pasta:wtfme:live-check` plus a live provider recovery probe that fetches `.well-known/wtfos-pins`, resolves the manifest AT URI, validates item checksums, and confirms IPFS/object-mirror fallback URLs are reachable without credentials.
 - Current pass verification:
@@ -7369,6 +7371,8 @@ Priority labels:
   - Passed `npm run pasta:wtfme:live-inventory:check`.
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed `npm run check -- --pretty false`.
+  - Passed `npm run build`.
+  - Confirmed `scripts/wtf-ssh.sh --check` reaches the `wtf` host and sudo can read `/etc/wtf/wtf.env` names without exposing values.
   - Confirmed the closest existing production host still fails correctly: `PASTA_WTFME_LIVE_HOST=paulwhoisaghost.wtfos.me PASTA_WTFME_LIVE_CHECK_PINS=0 npm run pasta:wtfme:live-check` exits on the missing Pasta landing marker.
   - Passed `git diff --check`.
   - Still blocked live: no production host currently serves the Pasta landing/mint/collection pages plus public pin discovery; `wtf-admin.wtfos.me` is unregistered, and `paulwhoisaghost.wtfos.me` is registered but not yet published with Pasta content.
