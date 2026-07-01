@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import process from "node:process";
 
 import {
@@ -14,6 +15,7 @@ const TLS_ASK_BASE_URL = String(
 ).trim();
 const CHECK_PINS = !/^(0|false|no|off)$/i.test(String(process.env.PASTA_WTFME_LIVE_CHECK_PINS || "1"));
 const CHECK_PIN_RECORDS = !/^(0|false|no|off)$/i.test(String(process.env.PASTA_WTFME_LIVE_CHECK_PIN_RECORDS || "1"));
+const MANIFEST_PAYLOAD_URL = String(process.env.PASTA_WTFME_LIVE_MANIFEST_PAYLOAD_URL || "").trim();
 
 type AtUriParts = {
   repo: string;
@@ -33,6 +35,25 @@ type DidDocument = {
     id?: unknown;
     type?: unknown;
     serviceEndpoint?: unknown;
+  }>;
+};
+
+type PinManifestRecordValue = {
+  $type?: unknown;
+  scopeType?: unknown;
+  scopeRef?: unknown;
+  sourceChain?: unknown;
+  itemCount?: unknown;
+  totalBytes?: unknown;
+  storageRef?: {
+    s3Key?: unknown;
+    checksumSha256?: unknown;
+    byteSize?: unknown;
+    mimeType?: unknown;
+  };
+  subdomainRefs?: Array<{
+    kind?: unknown;
+    host?: unknown;
   }>;
 };
 
@@ -159,6 +180,61 @@ async function fetchJson(url: URL, label: string): Promise<any> {
   }
 }
 
+async function fetchTextUrl(url: URL, label: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: { "user-agent": "wtfos-pasta-wtfme-live-check" },
+    redirect: "manual",
+  });
+  const text = await response.text();
+  if (!response.ok) fail(`${label} returned HTTP ${response.status}: ${text.slice(0, 160)}`);
+  return text;
+}
+
+function sha256Hex(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function assertManifestPayload(payload: any, value: PinManifestRecordValue, repoDid: string): void {
+  assert.equal(payload?.schemaVersion, 1);
+  assert.equal(payload?.product, "pasta-protocol");
+  assert.equal(payload?.network?.key, PASTA_WTFME_NETWORK.key);
+  assert.equal(payload?.network?.chainId, PASTA_WTFME_NETWORK.chainId);
+  assert.equal(payload?.host, HOST);
+  assert.equal(payload?.repoDid, repoDid);
+  assert.equal(payload?.scopeType, "project_bundle");
+  assert.equal(payload?.scopeRef, value.scopeRef);
+  assert.equal(payload?.itemCount, value.itemCount);
+  assert.equal(payload?.totalBytes, value.totalBytes);
+  assert.deepEqual(payload?.recovery?.requiredKinds, [
+    "hosted_page",
+    "contract_artifact",
+    "token_metadata",
+    "relationship_metadata",
+  ]);
+  assert.ok(Array.isArray(payload?.items), "manifest payload should expose items[]");
+  assert.equal(payload.items.length, value.itemCount, "manifest payload item count should match the PDS record");
+
+  const kinds = new Set(payload.items.map((item: any) => item?.kind));
+  for (const kind of ["hosted_page", "contract_artifact", "token_metadata", "relationship_metadata"]) {
+    assert.ok(kinds.has(kind), `manifest payload is missing ${kind}`);
+  }
+  for (const item of payload.items) {
+    assert.match(String(item?.cid || ""), /^bafy/i, "manifest item should expose an IPFS CID");
+    assert.match(String(item?.checksumSha256 || ""), /^[a-f0-9]{64}$/);
+    assert.ok(Number(item?.byteSize || 0) > 0, "manifest item should expose byteSize");
+    const mirrorKey = String(item?.storageRef?.s3Key || item?.storage?.key || "");
+    assert.ok(mirrorKey.includes("pasta"), "manifest item should expose a Pasta mirror key");
+  }
+  const gatewayItems = Array.isArray(payload?.accessibility?.items) ? payload.accessibility.items : [];
+  if (gatewayItems.length > 0) {
+    assert.equal(gatewayItems.length, payload.items.length, "accessibility item count should match manifest items");
+    for (const item of gatewayItems) {
+      assert.match(String(item?.gatewayUrl || ""), /^https:\/\/ipfs\.io\/ipfs\/bafy/i);
+      assert.ok(String(item?.mirrorKey || "").includes("pasta"), "accessibility item should expose object mirror key");
+    }
+  }
+}
+
 function atprotoPdsEndpoint(didDocument: DidDocument, repoDid: string): URL {
   assert.equal(didDocument.id, repoDid, "DID document id should match the pin discovery repo DID");
   const services = Array.isArray(didDocument.service) ? didDocument.service : [];
@@ -175,6 +251,31 @@ function atprotoPdsEndpoint(didDocument: DidDocument, repoDid: string): URL {
   url.search = "";
   url.hash = "";
   return url;
+}
+
+async function assertManifestPayloadUrl(value: PinManifestRecordValue, repoDid: string): Promise<void> {
+  if (!MANIFEST_PAYLOAD_URL) {
+    console.log("[pasta-wtfme-live] skipped manifest payload fetch; set PASTA_WTFME_LIVE_MANIFEST_PAYLOAD_URL to verify public item payloads");
+    return;
+  }
+  const url = new URL(MANIFEST_PAYLOAD_URL);
+  if (url.protocol !== "https:") fail(`manifest payload URL must be HTTPS: ${url.toString()}`);
+  const text = await fetchTextUrl(url, `${url.toString()} manifest payload`);
+  const expectedChecksum = String(value.storageRef?.checksumSha256 || "");
+  if (expectedChecksum) {
+    assert.equal(sha256Hex(text), expectedChecksum, "manifest payload SHA-256 should match the PDS pinManifest storageRef");
+  }
+  if (typeof value.storageRef?.byteSize === "number") {
+    assert.equal(Buffer.byteLength(text), value.storageRef.byteSize, "manifest payload byte size should match the PDS pinManifest storageRef");
+  }
+  let payload: any;
+  try {
+    payload = JSON.parse(text);
+  } catch (error) {
+    fail(`manifest payload returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  assertManifestPayload(payload, value, repoDid);
+  ok(`${url.toString()} exposes the public Pasta manifest payload with recoverable item coordinates`);
 }
 
 async function assertPinManifestRecord(repoDid: string, manifestUri: string): Promise<void> {
@@ -197,7 +298,7 @@ async function assertPinManifestRecord(repoDid: string, manifestUri: string): Pr
 
   const record = await fetchJson(recordUrl, `${recordUrl.toString()} pin manifest record`);
   assert.equal(record.uri, manifestUri, "PDS pin manifest record URI should match .well-known manifestUri");
-  const value = record.value;
+  const value = record.value as PinManifestRecordValue;
   assert.equal(value?.$type, "app.wtfos.media.pinManifest");
   assert.equal(value?.scopeType, "project_bundle");
   assert.match(String(value?.scopeRef || ""), /^pasta-protocol:shadownet:/);
@@ -205,12 +306,15 @@ async function assertPinManifestRecord(repoDid: string, manifestUri: string): Pr
   assert.ok(Number(value?.itemCount || 0) > 0, "pin manifest record should expose a positive item count");
   assert.ok(Number(value?.totalBytes || 0) > 0, "pin manifest record should expose total bytes");
   assert.match(String(value?.storageRef?.checksumSha256 || ""), /^[a-f0-9]{64}$/);
+  assert.equal(value?.storageRef?.mimeType, "application/json");
+  assert.ok(Number(value?.storageRef?.byteSize || 0) > 0, "pin manifest should expose manifest payload byte size");
   assert.ok(String(value?.storageRef?.s3Key || "").includes("pasta-protocol"), "pin manifest should expose a Pasta mirror key");
   assert.ok(
     Array.isArray(value?.subdomainRefs) &&
       value.subdomainRefs.some((ref: any) => ref?.kind === "wtfos.me" && ref?.host === HOST),
     "pin manifest should bind to the checked WTF.ME host"
   );
+  await assertManifestPayloadUrl(value, repoDid);
   ok(`${recordUrl.toString()} resolves the public Pasta pin manifest record`);
 }
 
