@@ -1,3 +1,23 @@
+## 2026-07-01 - Promotion docs must refresh live authority before cherry-picking
+
+**What happened**: While promoting the standalone Spaghetti installer lane from the broader Pasta proof branch, the cleanup audit still named the older `c4ba55f` Pasta handoff commit as current production even though `origin/main` and live `wtfos.app` had advanced to `96b8523` for WTF LIVE stage controls.
+
+**Why it mattered**: A narrow production cherry-pick can be technically correct while its release notes point at stale live authority. That makes future cleanup agents misclassify valid main work as branch-only proof, or accidentally merge a broad evidence branch instead of a scoped production promotion.
+
+**Rule**: Before continuing any production-promotion cherry-pick, refresh `origin/main`, read live health, and update audit docs to distinguish current production, historical evidence branches, and the exact narrow commit being promoted.
+
+---
+
+## 2026-07-01 - Every installer manifest must fail closed on missing checksums
+
+**What happened**: While adding the standalone Spaghetti installer manifest, the safer Pasta Suite pattern required both a production-safe URL and SHA-256 before marking a download available, but the older Macaroni manifest still derived `available` from URL alone.
+
+**Why it mattered**: Native installers are a supply-chain handoff. If one individual app route treats URL-only metadata as downloadable while another requires URL plus digest, production can accidentally expose weakly verifiable release links even though policy tests pass for a different installer product.
+
+**Rule**: Every native installer manifest route must require both a safe URL and a valid SHA-256 before returning `available: true` or a non-null URL. Add route-owned source-policy assertions whenever adding or touching installer manifests.
+
+---
+
 ## 2026-06-30 - Static publisher handoffs must prove iframe query and module runtime wiring
 
 **What happened**: The Pasta source policy said CH-EASE opened `/tools/spaghetti?handoff=chease-package`, and the Spaghetti iframe rendered visually, but the creation-tool wrapper only forwarded query strings for Macaroni. After fixing that, the handoff still did not import because the six Pasta static studios are ES modules that read `window.MD`, while their shared `common.js` files declared lexical `const MD` without exporting it onto `window`.
