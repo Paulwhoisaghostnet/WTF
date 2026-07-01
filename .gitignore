@@ -4,6 +4,8 @@ apps/macaroni-desktop/macaroni/
 apps/macaroni-desktop/release/
 apps/pasta-suite-desktop/pasta/
 apps/pasta-suite-desktop/release/
+apps/spaghetti-desktop/spaghetti/
+apps/spaghetti-desktop/release/
 .env
 .env.*
 !.env.example

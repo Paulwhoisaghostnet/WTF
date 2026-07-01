@@ -20,6 +20,8 @@ test("Macaroni server routes keep wtfOS pinning and publishing trusted-creator o
   assert.match(source, /safeInstallerUrl/);
   assert.match(source, /safeInstallerSha256/);
   assert.match(source, /sha256: sha256 \|\| null/);
+  assert.match(source, /available: Boolean\(url && sha256\)/);
+  assert.match(source, /url: url && sha256 \? url : null/);
   assert.match(source, /function isLoopbackInstallerHost\(hostname: string\): boolean/);
   assert.match(source, /url\.protocol === "https:"/);
   assert.match(source, /process\.env\.NODE_ENV !== "production" && url\.protocol === "http:" && isLoopbackInstallerHost\(url\.hostname\)/);

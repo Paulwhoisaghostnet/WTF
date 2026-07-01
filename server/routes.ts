@@ -62,6 +62,7 @@ import ipfsPinningRoutes from "./routes/ipfs-pinning";
 import macaroniRoutes from "./routes/macaroni";
 import macaroniPackagesRoutes from "./routes/macaroni-packages";
 import pastaInstallerRoutes from "./routes/pasta-installers";
+import spaghettiInstallerRoutes from "./routes/spaghetti-installers";
 import atprotoRoutes from "./routes/atproto";
 import skywireRoutes from "./routes/skywire";
 import wtfLiveRoutes from "./routes/wtf-live";
@@ -322,6 +323,7 @@ export function registerRoutes(app: Express) {
   app.use(macaroniRoutes);
   app.use(macaroniPackagesRoutes);
   app.use(pastaInstallerRoutes);
+  app.use(spaghettiInstallerRoutes);
   app.use(collektRoutes);
   app.use(attendanceRoutes);
   app.use(calendarRoutes);

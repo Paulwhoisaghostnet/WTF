@@ -1,3 +1,13 @@
+## 2026-07-01 - Every installer manifest must fail closed on missing checksums
+
+**What happened**: While adding the standalone Spaghetti installer manifest, the safer Pasta Suite pattern required both a production-safe URL and SHA-256 before marking a download available, but the older Macaroni manifest still derived `available` from URL alone.
+
+**Why it mattered**: Native installers are a supply-chain handoff. If one individual app route treats URL-only metadata as downloadable while another requires URL plus digest, production can accidentally expose weakly verifiable release links even though policy tests pass for a different installer product.
+
+**Rule**: Every native installer manifest route must require both a safe URL and a valid SHA-256 before returning `available: true` or a non-null URL. Add route-owned source-policy assertions whenever adding or touching installer manifests.
+
+---
+
 ## 2026-07-01 - TLS-allowed hosts are not the same as Pasta publish authority
 
 **What happened**: A read-only WTF.ME production inventory run found `cobwebsaints.wtfos.me` and `paulwhoisaghost.wtfos.me` already pass the TLS ask gate, while `wtf-admin.wtfos.me` is still denied as `handle not registered`. The same run also showed the admin puppet can list sites but has no claimable WTF.ME host of its own because its username is not a DNS-valid label and it lacks social/DID state.

@@ -66,6 +66,7 @@ Priority labels:
 | WTF-BB-338 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / wtfOS pinning and recovery proof | P1 | 12 | 7 | 2 | 5 | 1 | Pasta had hosted-page and contract proofs but no executable wtfOS pinning/recovery record shape for artifacts, metadata, pages, redundancy, accessibility, or restore order; added `npm run pasta:shadownet:pinning` to validate app.wtfos.media pinPolicy/pinManifest/pinItem records from real Pasta hosted pages and contract artifacts |
 | WTF-BB-339 | In Progress | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / WTF.ME production TLS and page serving | P1 | 12 | 7 | 2 | 5 | 1 | The new `npm run pasta:wtfme:live-check` gate proves production WTF.ME readiness, but production currently denies `wtf-admin.wtfos.me` at `/internal/tls/allow` with `handle not registered`; `npm run pasta:wtfme:live-publish` provides the explicit claim/save/publish API helper and reports eligibility blockers, and `npm run pasta:wtfme:live-inventory` now read-only inventories current/admin WTF.ME host eligibility plus TLS ask state. Production sweep evidence shows all 12 available puppets authenticate but none has a current or claimable WTF.ME host because their handles are not DNS-valid and lack required social/DID state; admin inventory shows `cobwebsaints.wtfos.me` and `paulwhoisaghost.wtfos.me` are TLS-allowed but not yet Pasta publication proof without owner credentials or intentional Pasta publish |
 | WTF-BB-340 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / wtfOS pin discovery route | P2 | 9 | 12 | 2 | 4 | 0 | User-site `/.well-known/wtfos-pins` could expose a public-discovery response for an enabled binding before a repo DID and published pinManifest AT URI existed; fixed with a pure readiness guard and expanded `npm run pasta:shadownet:pinning` coverage so incomplete bindings remain 404 |
+| WTF-BB-341 | Fixed | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / standalone Spaghetti installers | P1 | 13 | 6 | 2 | 5 | 2 | Spaghetti had Shadownet contract proof and suite-installer coverage but no standalone desktop package, authenticated installer manifest, live verifier, env example, or inventory probe; branch fix adds Spaghetti Studio Electron packaging/workflow, `/api/spaghetti/installers`, `npm run spaghetti:installers:live-check`, and closes Macaroni URL-only availability drift, pending published release assets and production env/live-check proof |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -707,6 +708,31 @@ Priority labels:
   - The command must pass against a real production host before any full-send claim.
 - Residual risk:
   - Passing this gate proves production page serving and pin discovery only; wallet-signed mint/purchase and live provider/PDS/object-store recovery still need separate proof.
+
+### WTF-BB-341 - Standalone Spaghetti installers need release publication proof
+
+- Category: Pasta Protocol / standalone Spaghetti installers
+- Status: Fixed
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F5 + S2 + P1(4) = 13
+- Evidence:
+  - `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` listed Spaghetti installer status as `PARTIAL` because the bundled Pasta Suite includes Spaghetti, but no separate per-app Spaghetti installer was proven.
+  - Before this branch fix, there was no `apps/spaghetti-desktop` package, no Spaghetti installer workflow, no authenticated `/api/spaghetti/installers` route, no Spaghetti env example, no live release verifier, and no inventory probe for the standalone download surface.
+  - While adding the Spaghetti manifest, the older Macaroni route still exposed `available` from URL alone instead of requiring URL plus SHA-256, so individual installer manifests did not all share the same checksum gate.
+- Correction:
+  - Added `apps/spaghetti-desktop` with local static asset preparation, Electron runtime, secure preload flags, package metadata, macOS/Windows/Raspberry Pi build targets, and a local native `/api/spaghetti/installers` response.
+  - Added `.github/workflows/spaghetti-desktop-installers.yml` for GitHub Actions artifacts and release publication on `spaghetti-desktop-v*` tags or manual release dispatch.
+  - Added authenticated production route `/api/spaghetti/installers`, Spaghetti-specific `SPAGHETTI_INSTALLER_*` env names, `.env.example` entries, `docs/spaghetti-desktop-packaging.md`, `npm run spaghetti:installers:live-check`, and inventory coverage for `spaghetti.installer_manifest.viewed`.
+  - Tightened the existing Macaroni installer manifest so a platform is unavailable and has a null URL unless both a safe URL and a valid SHA-256 are configured.
+- Verification:
+  - `npm run spaghetti:desktop:check`
+  - `npm run spaghetti:desktop:prepare`
+  - `npm run dist:mac:dir --prefix apps/spaghetti-desktop`
+  - `npm run test:e2e:inventory:coverage`
+  - `npm run check -- --pretty false`
+  - After release publication: `SPAGHETTI_INSTALLER_COOKIE='connect.sid=...' npm run spaghetti:installers:live-check`
+- Residual risk:
+  - This branch fix is not production download proof until a `spaghetti-desktop-v1.0.0` release is published, production `SPAGHETTI_INSTALLER_*` env values are configured from the GitHub release digests, the app container is recreated or redeployed, and the live verifier passes against `https://wtfos.app`.
 
 ### WTF-BB-326 - Broad inventory social workflow timeout
 
