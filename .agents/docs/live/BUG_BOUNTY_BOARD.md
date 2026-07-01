@@ -66,6 +66,7 @@ Priority labels:
 | WTF-BB-342 | In Progress | Codex Pasta manifest payload verifier | 2026-07-01 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 6 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, and current branch adds permission/object-storage-gated project-bundle publish, live publisher host-pinned/TLS-before-pin/overwrite-safe/post-publish-public-verifier ordering, an installer-aware live-readiness gate with credentialed non-writing publisher dry-run validation, signer-backed Colander management action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, non-spending readiness verification of that recorded TzKT operation, public DID/PDS pinManifest record resolution plus optional public manifest-payload validation in the live WTF.ME checker, and localhost-only Colander browser-wallet choreography coverage; production read-only audit shows `wtf-admin.wtfos.me` has no `wtf_user_sites` row, while `paulwhoisaghost.wtfos.me` is structurally eligible but not serving Pasta pages, and the live checker/inventory tools now require explicit or discovered hosts instead of defaulting to the stale target |
 | WTF-BB-343 | Verified | Codex standalone installer publication | 2026-07-01 | Pasta Protocol / individual installers | P2 | 11 | 8 | 2 | 4 | 2 | Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop `1.0.0` standalone installers are live on `wtfos.app`: workflows are registered, GitHub release assets exist with SHA-256 digests, runtime production env is configured in `/etc/wtf/wtf.env`, PR #13 deployed audit-fixed live commit `51ab323`, and authenticated live verifiers passed for macOS, Windows, and Raspberry Pi downloads |
 | WTF-BB-344 | Fixed | Codex Pasta installer catalog hardening | 2026-07-01 | Pasta Protocol / installer catalog | P2 | 9 | 12 | 1 | 3 | 2 | Individual and suite installer manifests are live, but the unified "suite or any individual Pasta app" catalogue needed its own authenticated `/api/pasta/installers/catalog` route, inventory handle `pasta_protocol.installer_catalog.viewed`, workflow API probe, source-policy coverage, TypeScript proof, and live-readiness probe; current branch implements and locally verifies those rails with `npm run pasta-suite:desktop:check`, `npm run pasta:live-readiness:check`, `npm run test:e2e:inventory:coverage`, and `npm run check -- --pretty false`, while `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` now blocks production on the expected live `404` until the catalogue route is deployed and returns unauthenticated `401` |
+| WTF-BB-345 | Verified | Codex Inbox compose full-send | 2026-07-01 | Social / Inbox and WIM compose UX | P1 | 12 | 7 | 3 | 5 | 0 | Inbox aggregated mail, WIM, Studio, comms, and notifications but still behaved like a read-only viewer; current branch adds first-class New message/New mail controls, selected external-mail Reply/Forward actions, inline WIM/Studio conversation sending through source-owned DM APIs, inventory-owned behavior assertions, admin registry coverage, and verified clean-worktree source, build, focused browser, and full inventory coverage before production promotion |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -7434,6 +7435,35 @@ Priority labels:
   - The five installer workflows completed successfully: Gnocchi `28519193761`, Ravioli `28519193772`, Rotini `28519193756`, Penne `28519193792`, and Lasagna `28519193803`.
   - Passed `PASTA_STANDALONE_INSTALLER_AUDIT_ALLOW_BLOCKERS=1 npm run pasta:standalone-installers:audit` after the audit fix; it verified local source policy, active remote workflows, GitHub release assets with SHA-256 digests, and auth-protected production routes.
   - Passed authenticated live checks against `https://wtfos.app`: `npm run gnocchi:installers:live-check`, `npm run ravioli:installers:live-check`, `npm run rotini:installers:live-check`, `npm run penne:installers:live-check`, and `npm run lasagna:installers:live-check`.
+
+### WTF-BB-345 - Inbox compose and reply paths were read-only
+
+- Category: Social / Inbox and WIM compose UX
+- Status: Verified
+- Owner/Session: Codex Inbox compose full-send
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report on 2026-07-01: New Inbox exposed reply buttons in several places but had no real way to create a message or reply from the standard Inbox and WIM conversation views.
+  - The Inbox UI already aggregated external mail, WIM/Studio DMs, comms items, notifications, read-state writes, marks, drafts, and templates, but the common working surface still emphasized read controls and hid or omitted the source-owned send paths.
+  - Source policy coverage did not yet require the Inbox surface to expose first-class compose/reply controls or prove the WIM tab composer posts to `/api/messages/dms/:id/messages`.
+- Why it matters:
+  - A communication hub that displays Reply affordances without a reliable send loop trains users to distrust the app. Standard email UX needs visible compose/reply/forward entry points, and the instant-messenger tab needs inline send behavior in the conversation context where users are already reading.
+- Correction:
+  - Added New message and New mail controls to the Inbox header action row.
+  - Added selected-message Reply/Forward controls for external mail that prefill the mail composer.
+  - Added an inline WIM/Studio conversation composer that preserves per-conversation drafts, posts through the existing DM message API, invalidates the active conversation cache, and emits the `dm.message.sent` handle.
+  - Kept mail sending on the existing `/api/mail/send` path and added `mail.message.sent` instrumentation for successful external mail sends.
+  - Updated interaction inventory, behavior assertions, workflow API probes, admin surface registry ownership, source policy checks, and focused Gamma browser proof for the write paths.
+- Verification idea:
+  - Prove source-level controls and endpoints with `client/src/pages/mail-presentation-policy.test.ts`, prove registry coverage with `npm run test:e2e:inventory:coverage`, and run the focused Gamma Inbox browser proof against a built bundle.
+- Current pass verification:
+  - Passed `git diff --check`.
+  - Passed `node --test client/src/pages/mail-presentation-policy.test.ts client/src/pages/Messages.test.ts client/src/pages/messages-presentation-policy.test.ts server/routes/messages-user-roster-policy.test.ts` (12 tests).
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run build`.
+  - Passed focused Gamma Inbox browser proof: `HARNESS_PORT=4322 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "hosts Inbox mailbox" --project=chromium --reporter=list`.
+  - Passed full inventory E2E from a clean build: `HARNESS_PORT=4323 npm run test:e2e:inventory -- --reporter=list` (577 passed).
 
 ## Backlog Intake Template
 

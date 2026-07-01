@@ -7237,3 +7237,13 @@
 **Why it mattered**: Documentation can drift faster than branch lists. A new Pasta-looking branch could appear after the audit and bypass the stale-work warning unless the release lane has a command that fails on unknown cleanup state.
 
 **Rule**: When cleanup classification affects production release safety, add a non-destructive audit command and source-policy test. The command should pass for known active/promoted/historical branches, fail on unclassified Pasta work, and require explicit user confirmation before any archive/delete action.
+
+---
+
+## 2026-07-01 - Inbox hubs need visible write-path proof
+
+**What happened**: Inbox aggregated mail, WIM, Studio, comms, and notifications, but the standard user flow still read like a viewer. Reply buttons existed, while the selected mail reader and WIM conversation tab lacked the expected compose/reply loop users rely on in email and messenger tools.
+
+**Why it mattered**: Communication hubs are only trustworthy when reading and writing are proven together. If a user can see a message and a Reply affordance but cannot reply in context, the app breaks the core promise of an inbox even when the underlying send APIs exist elsewhere.
+
+**Rule**: When adding or refactoring Inbox aggregation, verify the write paths alongside the read paths: visible new-message/new-mail actions, selected mail reply/forward, inline conversation sending, source-owned API calls, canonical sent-event handles, inventory registry ownership, and browser proof against the built app.

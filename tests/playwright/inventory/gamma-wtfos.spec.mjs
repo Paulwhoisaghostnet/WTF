@@ -6725,6 +6725,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await setHarnessState(request, { userRole: "admin", username: "the-count", displayName: "The Count" });
 
     let sendPayload = null;
+    let dmSendPayload = null;
     await page.route("**/api/mail/status", async (route) => {
       await route.fulfill({
         contentType: "application/json",
@@ -6787,6 +6788,71 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
         body: JSON.stringify({ ok: true, messageId: 9010 }),
       });
     });
+    await page.route("**/api/comms/items**", async (route) => {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ items: [] }) });
+    });
+    await page.route("**/api/notifications?limit=200", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ items: [], unreadCount: 0 }),
+      });
+    });
+    await page.route("**/api/messages/users?limit=200", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([
+          { id: 2, username: "gamma-peer", displayName: "Gamma Peer", role: "contestant" },
+        ]),
+      });
+    });
+    await page.route("**/api/messages/dms", async (route) => {
+      if (route.request().method() === "POST") {
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify({ id: 77 }) });
+        return;
+      }
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: 77,
+            title: null,
+            lastMessageAt: "2026-06-29T12:05:00.000Z",
+            unreadCount: 1,
+            conversationType: "direct",
+            peers: [{ id: 2, userId: 2, username: "gamma-peer", displayName: "Gamma Peer" }],
+            latestMessage: {
+              id: 9101,
+              senderId: 2,
+              content: "Queued Gamma WIM.",
+              createdAt: "2026-06-29T12:05:00.000Z",
+            },
+          },
+        ]),
+      });
+    });
+    await page.route("**/api/messages/dms/77/read", async (route) => {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true }) });
+    });
+    await page.route("**/api/messages/dms/77/messages**", async (route) => {
+      if (route.request().method() === "POST") {
+        dmSendPayload = route.request().postDataJSON();
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify({ id: 9102 }) });
+        return;
+      }
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: 9101,
+            senderId: 2,
+            username: "gamma-peer",
+            displayName: "Gamma Peer",
+            content: "Queued Gamma WIM.",
+            createdAt: "2026-06-29T12:05:00.000Z",
+          },
+        ]),
+      });
+    });
 
     await gotoGammaRoute(page, "/mail");
 
@@ -6794,13 +6860,17 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(mailSurface).toHaveAttribute("data-mail-presentation-host", "gamma");
     await expect(mailSurface.locator('[data-mail-region="mailbox-panel"]')).toContainText("the-count@mail.wtfgameshow.app");
     await expect(mailSurface.locator('[data-mail-region="messages-panel"]')).toContainText("Gamma mail containment");
+    await expect(mailSurface.getByRole("button", { name: /New message/ })).toBeVisible();
+    await expect(mailSurface.getByRole("button", { name: /New mail/ })).toBeVisible();
     const gammaMailRow = mailSurface
       .locator('[data-mail-region="message-row"]')
       .filter({ hasText: "Gamma mail containment" });
-    await gammaMailRow
+    await mailSurface
       .getByRole("button", { name: /Open User mail message: Gamma mail containment/ })
       .click();
     await expect(mailSurface.locator('[data-mail-region="selected-panel"]')).toContainText("This external mail message stays inside the Gamma shell.");
+    await expect(mailSurface.locator('[data-mail-region="selected-panel"]').getByRole("button", { name: /Reply/ })).toBeVisible();
+    await expect(mailSurface.locator('[data-mail-region="selected-panel"]').getByRole("button", { name: /Forward/ })).toBeVisible();
     await expect(gammaMailRow).toHaveAttribute("data-mail-active", "false");
 
     const mailMetrics = await mailSurface.evaluate((surface) => {
@@ -6899,6 +6969,15 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       to: ["gamma-peer@example.com"],
       subject: "Gamma follow-up",
       textBody: "Inbox Mail still sends through the shared endpoint.",
+    });
+
+    await mailSurface.getByRole("button", { name: /Conversations/ }).click();
+    await expect(mailSurface.locator('[data-mail-region="conversation-compose"]')).toBeVisible();
+    await expect(mailSurface).toContainText("Queued Gamma WIM.");
+    await mailSurface.getByLabel("WIM conversation reply").fill("Inbox WIM reply sends inline.");
+    await mailSurface.getByRole("button", { name: /Send WIM/ }).click();
+    await expect.poll(() => dmSendPayload).toMatchObject({
+      content: "Inbox WIM reply sends inline.",
     });
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
   });

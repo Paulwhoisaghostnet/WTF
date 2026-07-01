@@ -6,6 +6,7 @@ import {
   Bookmark,
   Flag,
   Forward,
+  PenLine,
   Reply,
   Search,
   Send,
@@ -362,7 +363,7 @@ const Shell = styled.div`
     border-radius: 6px !important;
   }
 
-  &[data-mail-presentation-host="gamma"] :where(section[data-mail-region], [data-mail-region="message-row"], [data-mail-region="reader"], [data-mail-region="compose-body"], [data-mail-region="nav-panel"]) {
+  &[data-mail-presentation-host="gamma"] :where(section[data-mail-region], [data-mail-region="message-row"], [data-mail-region="reader"], [data-mail-region="compose-body"], [data-mail-region="conversation-compose"], [data-mail-region="nav-panel"]) {
     background: #11110f !important;
     color: #f2ead9 !important;
   }
@@ -561,6 +562,14 @@ const CardActions = styled.div`
   margin-top: 6px;
 `;
 
+const ReaderActions = styled.div`
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+`;
+
 const IconAction = styled(UiButton)`
   display: inline-flex;
   align-items: center;
@@ -639,6 +648,15 @@ const ConversationBubble = styled.div<{ $mine?: boolean; $trim: string }>`
   background: ${(p) => (p.$mine ? "var(--wtf-app-info-bg, #dcecff)" : "var(--wtf-app-surface-raised, #ffffff)")};
 `;
 
+const ConversationComposer = styled.form.attrs(mailRegionAttrs("conversation-compose"))`
+  display: grid;
+  gap: var(--wtf-space-2, 8px);
+  margin-top: var(--wtf-space-2, 8px);
+  padding: var(--wtf-space-3, 12px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface, #f4f4f4);
+`;
+
 function usePersistentInboxState(userId: number | null | undefined) {
   const [marks, setMarks] = useState<InboxMarks>(EMPTY_MARKS);
   const [savedDrafts, setSavedDrafts] = useState<SavedDraft[]>([]);
@@ -683,6 +701,7 @@ export function Mail() {
   const [draftEmail, setDraftEmail] = useState("");
   const [draftSubject, setDraftSubject] = useState("");
   const [draftBody, setDraftBody] = useState("");
+  const [conversationDrafts, setConversationDrafts] = useState<Record<number, string>>({});
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -753,8 +772,9 @@ export function Mail() {
   const sendDmMutation = useMutation({
     mutationFn: (input: { conversationId: number; body: string }) =>
       api.post(`/api/messages/dms/${input.conversationId}/messages`, { content: input.body }),
-    onSuccess: () => {
+    onSuccess: (_data, input) => {
       qc.invalidateQueries({ queryKey: ["messages", "dms"] });
+      qc.invalidateQueries({ queryKey: ["messages", "dms", input.conversationId] });
       qc.invalidateQueries({ queryKey: ["comms"] });
       qc.invalidateQueries({ queryKey: ["inbox", "unread-count"] });
     },
@@ -949,6 +969,9 @@ export function Mail() {
     });
   }, [cards, filterCategory, search, sortMode]);
 
+  const selectedMailCard = selectedMail
+    ? cards.find((card) => card.mailMessageId === selectedMail.id) ?? null
+    : null;
   const unreadCount = cards.filter((card) => !card.read).length;
   const countsByCategory = useMemo(() => {
     const counts = new Map<InboxCategory, number>();
@@ -1020,6 +1043,30 @@ export function Mail() {
     }
   };
 
+  const updateConversationDraft = (conversationId: number, body: string) => {
+    setConversationDrafts((current) => ({
+      ...current,
+      [conversationId]: body,
+    }));
+  };
+
+  const primeConversationReply = (conversationId: number) => {
+    setConversationDrafts((current) => {
+      if (current[conversationId]?.trim()) return current;
+      return { ...current, [conversationId]: "" };
+    });
+  };
+
+  const startNewDraft = (mode: DraftMode = "dm") => {
+    setView("drafts");
+    setDraftMode(mode);
+    setDraftTargetUserId(null);
+    setDraftEmail("");
+    setDraftSubject("");
+    setDraftBody("");
+    setNotice("");
+  };
+
   const openRoute = (route: string) => {
     if (presentation.host === "gamma") {
       setLocation(presentationRouteHref(route, presentation.host));
@@ -1038,6 +1085,8 @@ export function Mail() {
     if (card.conversationId) {
       setActiveConversationId(card.conversationId);
       setView("conversations");
+      primeConversationReply(card.conversationId);
+      setNotice(`Replying in ${card.title}.`);
       return;
     }
     if (card.routePath) openRoute(card.routePath);
@@ -1060,6 +1109,8 @@ export function Mail() {
     if (card.conversationId) {
       setActiveConversationId(card.conversationId);
       setView("conversations");
+      primeConversationReply(card.conversationId);
+      setNotice(`Replying in ${card.title}.`);
       return;
     }
     setDraftMode("dm");
@@ -1108,7 +1159,19 @@ export function Mail() {
   const sendDraft = async () => {
     setNotice("");
     if (draftMode === "mail") {
-      sendMailMutation.mutate();
+      if (!draftEmail.trim() || !draftSubject.trim() || !draftBody.trim()) return;
+      try {
+        await sendMailMutation.mutateAsync();
+        logClientSystemEvent({
+          eventType: "mail.message.sent",
+          metadata: {
+            recipientCount: draftEmail.split(/[,\s]+/).filter(Boolean).length,
+            hasSubject: Boolean(draftSubject.trim()),
+          },
+        });
+      } catch (err) {
+        setNotice(err instanceof Error ? err.message : "Mail failed.");
+      }
       return;
     }
     const targetUserId = draftTargetUserId;
@@ -1121,7 +1184,33 @@ export function Mail() {
       });
       setDraftSubject("");
       setDraftBody("");
+      setDraftTargetUserId(null);
       setNotice("Message sent.");
+      logClientSystemEvent({
+        eventType: "dm.message.sent",
+        metadata: { targetUserId, source: "inbox-draft" },
+      });
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "Message failed.");
+    }
+  };
+
+  const sendConversationDraft = async (conversationId: number) => {
+    const body = (conversationDrafts[conversationId] ?? "").trim();
+    if (!body || sendDmMutation.isPending) return;
+    setNotice("");
+    try {
+      await sendDmMutation.mutateAsync({ conversationId, body });
+      setConversationDrafts((current) => {
+        const next = { ...current };
+        delete next[conversationId];
+        return next;
+      });
+      setNotice("Conversation message sent.");
+      logClientSystemEvent({
+        eventType: "dm.message.sent",
+        metadata: { conversationId, source: "inbox-conversation" },
+      });
     } catch (err) {
       setNotice(err instanceof Error ? err.message : "Message failed.");
     }
@@ -1192,6 +1281,16 @@ export function Mail() {
         ) : null}
       </UiPanel>
       <UiPanel title="Selected Message" data-mail-region="selected-panel">
+        {selectedMailCard ? (
+          <ReaderActions>
+            <UiButton size="sm" onClick={() => startReply(selectedMailCard)}>
+              <Reply size={14} aria-hidden /> Reply
+            </UiButton>
+            <UiButton size="sm" onClick={() => startForward(selectedMailCard)}>
+              <Forward size={14} aria-hidden /> Forward
+            </UiButton>
+          </ReaderActions>
+        ) : null}
         <MessagePanel>
           {selectedMail ? (
             <>
@@ -1252,6 +1351,9 @@ export function Mail() {
     const active = selectedConversation;
     const messagesInConversation = conversationMessagesQuery.data ?? [];
     const trim = active?.conversationType === "studio" ? CATEGORY_META.studio.color : CATEGORY_META.wim.color;
+    const activeDraft =
+      activeConversationId != null ? conversationDrafts[activeConversationId] ?? "" : "";
+    const activeKind = active?.conversationType === "studio" ? "Studio" : "WIM";
     return (
       <Split>
         <UiPanel title="Conversations">
@@ -1323,6 +1425,47 @@ export function Mail() {
               </>
             )}
           </MessagePanel>
+          {activeConversationId ? (
+            <ConversationComposer
+              onSubmit={(event) => {
+                event.preventDefault();
+                void sendConversationDraft(activeConversationId);
+              }}
+            >
+              <ComposeBody
+                aria-label={`${activeKind} conversation reply`}
+                value={activeDraft}
+                placeholder={`Reply to ${active ? conversationLabel(active) : "conversation"}`}
+                rows={3}
+                disabled={sendDmMutation.isPending}
+                onChange={(event: any) =>
+                  updateConversationDraft(activeConversationId, event.target.value)
+                }
+              />
+              <UiToolbar>
+                <UiButton
+                  uiVariant="primary"
+                  data-mail-region="send-button"
+                  type="submit"
+                  disabled={!activeDraft.trim() || sendDmMutation.isPending}
+                >
+                  <Send size={14} aria-hidden /> Send {activeKind}
+                </UiButton>
+                <UiButton
+                  type="button"
+                  disabled={!activeDraft.trim()}
+                  onClick={() => {
+                    setDraftMode("dm");
+                    setDraftSubject(active ? `Re: ${conversationLabel(active)}` : "Conversation reply");
+                    setDraftBody(activeDraft);
+                    setView("drafts");
+                  }}
+                >
+                  Save as draft
+                </UiButton>
+              </UiToolbar>
+            </ConversationComposer>
+          ) : null}
         </UiPanel>
       </Split>
     );
@@ -1489,7 +1632,19 @@ export function Mail() {
         </NavPanel>
 
         <Workspace data-mail-region="workspace">
-          <UiPanel title="Message controls">
+          <UiPanel
+            title="Message controls"
+            actions={
+              <ReaderActions>
+                <UiButton uiVariant="primary" size="sm" onClick={() => startNewDraft("dm")}>
+                  <PenLine size={14} aria-hidden /> New message
+                </UiButton>
+                <UiButton size="sm" onClick={() => startNewDraft("mail")}>
+                  <Send size={14} aria-hidden /> New mail
+                </UiButton>
+              </ReaderActions>
+            }
+          >
             <SearchGrid>
               <TextInput
                 aria-label="Search Inbox"

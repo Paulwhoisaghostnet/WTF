@@ -729,6 +729,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The harness asserts the groupchat API is read-only, personal DM writes are disabled, and admin diagnostics expose the active config source.",
   },
   {
+    id: "inbox.compose-reply-send-actions",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["mail", "messages", "wim"],
+    ownerSpec:
+      "client/src/pages/mail-presentation-policy.test.ts; tests/e2e/inventory/domain-workflows.mjs; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      'node --test client/src/pages/mail-presentation-policy.test.ts && npm run test:e2e:inventory:coverage && npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "hosts Inbox mailbox" --project=chromium --reporter=list',
+    userVisibleAssertion:
+      "Inbox exposes explicit New message and New mail controls, selected mail reader Reply/Forward actions, and an inline WIM/Studio conversation reply composer so message cards and conversation tabs are not read-only dead ends.",
+    durableSideEffectAssertion:
+      "Source policy keeps Inbox sends on /api/mail/send, /api/messages/dms, and /api/messages/dms/:id/messages while the inventory workflow probes both mail send and DM send paths with bounded expected outcomes.",
+  },
+  {
     id: "ipfs-pinning.pds-backed-wallet-backup",
     domain: "Media, Storage, AT Protocol, and WTF Domains",
     ownerSurfaceIds: ["ipfs-pinning", "wtf-domains", "creation-tools"],

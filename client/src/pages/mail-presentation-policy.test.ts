@@ -18,6 +18,7 @@ test("Inbox app chrome is presentation-host aware", () => {
   assert.match(mailSource, /data-mail-region="selected-panel"/);
   assert.match(mailSource, /data-mail-region="reader"/);
   assert.match(mailSource, /data-mail-region="send-button"/);
+  assert.match(mailSource, /data-mail-region="conversation-compose"/);
 });
 
 test("Inbox Gamma chrome is scoped to presentation styling only", () => {
@@ -40,6 +41,8 @@ test("Inbox keeps shared mailbox, comms, WIM, and notification APIs separate", (
   assert.match(mailSource, /api\.get<DmConversation\[\]>\("\/api\/messages\/dms"\)/);
   assert.match(mailSource, /api\.get<NotificationListResponse>\("\/api\/notifications\?limit=200"\)/);
   assert.match(mailSource, /api\.post\("\/api\/mail\/send"/);
+  assert.match(mailSource, /api\.post<\{ id: number \}>\("\/api\/messages\/dms", \{ targetUserId \}\)/);
+  assert.match(mailSource, /api\.post\(`\/api\/messages\/dms\/\$\{input\.conversationId\}\/messages`, \{ content: input\.body \}\)/);
   assert.match(mailSource, /api\.post\(`\/api\/comms\/items\/\$\{id\}\/read`, \{\}\)/);
   assert.match(mailSource, /api\.put\(`\/api\/notifications\/\$\{id\}\/read`, \{ read: true \}\)/);
   assert.match(mailSource, /api\.put\(`\/api\/messages\/dms\/\$\{id\}\/read`, \{\}\)/);
@@ -47,6 +50,26 @@ test("Inbox keeps shared mailbox, comms, WIM, and notification APIs separate", (
   assert.match(mailSource, /qc\.invalidateQueries\(\{ queryKey: \["comms"\] \}\)/);
   assert.match(mailSource, /qc\.invalidateQueries\(\{ queryKey: \["inbox", "unread-count"\] \}\)/);
   assert.doesNotMatch(mailSource, /\/api\/gamma/);
+});
+
+test("Inbox exposes first-class compose and WIM conversation reply controls", () => {
+  for (const expected of [
+    "startNewDraft",
+    "New message",
+    "New mail",
+    "ConversationComposer",
+    'activeKind = active?.conversationType === "studio" ? "Studio" : "WIM"',
+    "`${activeKind} conversation reply`",
+    "Send {activeKind}",
+    "Save as draft",
+    "sendConversationDraft",
+    "conversationDrafts",
+    "primeConversationReply",
+    'eventType: "mail.message.sent"',
+    'eventType: "dm.message.sent"',
+  ]) {
+    assert.match(mailSource, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
 });
 
 test("Inbox exposes the required message-center categories and local actions", () => {
