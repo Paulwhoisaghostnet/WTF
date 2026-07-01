@@ -64,6 +64,7 @@ Priority labels:
 | WTF-BB-336 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / Colander real-contract discovery | P1 | 13 | 6 | 2 | 5 | 2 | Colander could detect real Pasta entrypoints but lost proof-contract relationship metadata, linked Shadownet KT1s to the mainnet explorer, and lacked the shared chain preflight before writes; fixed with data/HTTPS/IPFS metadata decoding, Shadownet TzKT links, write preflight, inventory docs, and focused real-contract browser proof over all six Shadownet Pasta contracts |
 | WTF-BB-337 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / WTF.ME hosted page proof | P1 | 12 | 7 | 2 | 5 | 1 | WTF.ME had no executable Pasta landing, mint, or collection page proof; added immutable hosted page snapshots for the signer-backed Shadownet proof data plus host-mapped `wtf-admin.wtfos.me` Playwright proof that claims, saves, publishes, and serves pages with user-site CSP/opener headers, wallet/purchase markers, TzKT links, and claim/save/publish/public-view events |
 | WTF-BB-338 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / wtfOS pinning and recovery proof | P1 | 12 | 7 | 2 | 5 | 1 | Pasta had hosted-page and contract proofs but no executable wtfOS pinning/recovery record shape for artifacts, metadata, pages, redundancy, accessibility, or restore order; added `npm run pasta:shadownet:pinning` to validate app.wtfos.media pinPolicy/pinManifest/pinItem records from real Pasta hosted pages and contract artifacts |
+| WTF-BB-339 | Open | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / WTF.ME production TLS and page serving | P1 | 12 | 7 | 2 | 5 | 1 | The new `npm run pasta:wtfme:live-check` gate proves production WTF.ME readiness, but current `https://wtf-admin.wtfos.me/` fails during TLS negotiation before the Pasta landing, mint, collection, or `.well-known/wtfos-pins` responses can be inspected |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -673,6 +674,27 @@ Priority labels:
   - `npx tsx --test server/features/ipfs-pinning/records.test.ts`
 - Residual risk:
   - This is branch-level pin-record and recovery-coordinate proof, not live hosted Porcupin pin completion, object-store writes, published PDS records, public `.well-known` serving, or a recovery drill from live persisted records.
+
+### WTF-BB-339 - Pasta WTF.ME production host fails live TLS gate
+
+- Category: Pasta Protocol / WTF.ME production TLS and page serving
+- Status: Open
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F5 + S1 + P1(4) = 12
+- Evidence:
+  - `curl -I --max-time 20 https://wtf-admin.wtfos.me/` fails with `tlsv1 alert internal error`.
+  - `npm run pasta:wtfme:live-check` now performs the production host proof and currently fails before content verification: `https://wtf-admin.wtfos.me/ could not be fetched over production TLS`.
+- Why it matters:
+  - The local API-publish Playwright proof shows WTF.ME can claim, save, publish, and serve Pasta pages in the harness, but collectors cannot use a production Pasta page if the real `*.wtfos.me` host cannot complete TLS.
+  - A live production release must prove the actual user-site host returns the landing, mint, collection, wallet-compatible headers, and public pin discovery over HTTPS.
+- Correction direction:
+  - Register or publish the target Pasta user-site host in production, ensure Caddy on-demand TLS allows the host, and verify the site is not suspended or unpublished.
+  - Publish the Pasta landing, Gnocchi mint, and Spaghetti collection pages to that host, enable public pin discovery, then rerun `npm run pasta:wtfme:live-check`.
+- Verification:
+  - `npm run pasta:wtfme:live-check`
+  - The command must pass against a real production host before any full-send claim.
+- Residual risk:
+  - Passing this gate proves production page serving and pin discovery only; wallet-signed mint/purchase and live provider/PDS/object-store recovery still need separate proof.
 
 ### WTF-BB-326 - Broad inventory social workflow timeout
 
