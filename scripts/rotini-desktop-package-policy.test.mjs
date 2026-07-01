@@ -1,0 +1,142 @@
+import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
+import test from "node:test";
+
+const desktopPackage = JSON.parse(readFileSync("apps/rotini-desktop/package.json", "utf8"));
+const mainSource = readFileSync("apps/rotini-desktop/src/main.cjs", "utf8");
+const preloadSource = readFileSync("apps/rotini-desktop/src/preload.cjs", "utf8");
+const prepareSource = readFileSync("apps/rotini-desktop/scripts/prepare-assets.mjs", "utf8");
+const workflowSource = readFileSync(".github/workflows/rotini-desktop-installers.yml", "utf8");
+const routeSource = readFileSync("server/routes/rotini-installers.ts", "utf8");
+const routesSource = readFileSync("server/routes.ts", "utf8");
+const studioSource = readFileSync("public/creation-tools/rotini/js/studio.js", "utf8");
+const commonSource = readFileSync("public/creation-tools/rotini/js/common.js", "utf8");
+const rootPackage = JSON.parse(readFileSync("package.json", "utf8"));
+const gitignoreSource = readFileSync(".gitignore", "utf8");
+const liveCheckSource = readFileSync("scripts/check-rotini-installers-live.mjs", "utf8");
+const envExampleSource = readFileSync(".env.example", "utf8");
+const inventorySource = readFileSync("tests/e2e/inventory/domain-workflows.mjs", "utf8");
+
+test("Rotini desktop package bundles the generative publisher in an Electron shell", () => {
+  assert.equal(desktopPackage.name, "@wtf/rotini-desktop");
+  assert.equal(desktopPackage.version, "1.0.0");
+  assert.equal(desktopPackage.main, "src/main.cjs");
+  assert.equal(desktopPackage.devDependencies.electron, "42.4.0");
+  assert.equal(desktopPackage.devDependencies["electron-builder"], "26.15.3");
+  assert.equal(desktopPackage.homepage, "https://wtfos.app/creation-tools/rotini/index.html");
+  assert.equal(desktopPackage.desktopName, "rotini-studio");
+  assert.equal(desktopPackage.author.name, "wtfOS");
+  assert.equal(desktopPackage.author.email, "support@wtfos.app");
+  assert.match(desktopPackage.scripts.prepare, /prepare-assets\.mjs/);
+  assert.match(desktopPackage.scripts["dist:mac"], /--mac dmg zip --universal/);
+  assert.match(desktopPackage.scripts["dist:windows"], /--win nsis --x64/);
+  assert.match(desktopPackage.scripts["dist:raspberry-pi"], /--linux deb --arm64/);
+  assert.deepEqual(desktopPackage.build.files, ["package.json", "src/**/*", "rotini/**/*"]);
+  assert.equal(desktopPackage.build.artifactName, "Rotini-Studio-${version}-${os}-${arch}.${ext}");
+  assert.equal(desktopPackage.build.executableName, "rotini-studio");
+  assert.equal(desktopPackage.build.linux.maintainer, "wtfOS <support@wtfos.app>");
+  assert.equal(desktopPackage.build.linux.syncDesktopName, true);
+  assert.equal(desktopPackage.build.deb.packageName, "rotini-studio");
+  assert.equal(desktopPackage.build.deb.packageCategory, "devel");
+  assert.equal(desktopPackage.build.deb.maintainer, "wtfOS <support@wtfos.app>");
+  assert.match(gitignoreSource, /apps\/rotini-desktop\/rotini\//);
+  assert.match(gitignoreSource, /apps\/rotini-desktop\/release\//);
+});
+
+test("Rotini desktop asset preparation preserves the static publisher contract", () => {
+  assert.match(prepareSource, /public\/creation-tools\/rotini/);
+  assert.match(prepareSource, /contract\/pasta-standard-collection\.contract\.json/);
+  assert.match(prepareSource, /js\/pasta-foundation\.js/);
+  assert.match(prepareSource, /vendor\/tezos\.js/);
+  assert.match(prepareSource, /vendor\/octez-connect\.js/);
+  assert.ok(existsSync("public/creation-tools/rotini/index.html"), "Rotini source page should exist");
+  assert.ok(existsSync("public/creation-tools/rotini/contract/pasta-standard-collection.contract.json"), "Rotini contract artifact should exist");
+  assert.match(studioSource, /Pasta Protocol generative publisher/);
+  assert.match(studioSource, /rotini\.tokens_published/);
+  assert.match(commonSource, /window\.MD/);
+});
+
+test("Rotini desktop runtime serves local assets and blocks hosted wtfOS APIs", () => {
+  assert.match(mainSource, /http\.createServer/);
+  assert.match(mainSource, /baseUrl = `http:\/\/127\.0\.0\.1:\$\{address\.port\}`/);
+  assert.match(mainSource, /mainWindow\.loadURL\(`\$\{baseUrl\}\/`\)/);
+  assert.match(mainSource, /path\.join\(appRoot\(\), "rotini"\)/);
+  assert.match(mainSource, /parsed\.pathname === "\/api\/auth\/user"/);
+  assert.match(mainSource, /Rotini Desktop does not include wtfOS hosted resources/);
+  assert.match(mainSource, /parsed\.pathname === "\/api\/auth\/csrf-token"/);
+  assert.match(mainSource, /parsed\.pathname === "\/api\/rotini\/installers"/);
+  assert.match(mainSource, /product: "rotini"/);
+  assert.match(mainSource, /parsed\.pathname === "\/api\/system\/logs\/client"/);
+  assert.match(mainSource, /parsed\.pathname === "\/api\/macaroni\/ipfs\/pin"/);
+  assert.match(mainSource, /parsed\.pathname === "\/api\/macaroni\/publish"/);
+  assert.match(mainSource, /Use Pinata or your own IPFS node/);
+  assert.match(mainSource, /nodeIntegration: false/);
+  assert.match(mainSource, /contextIsolation: true/);
+  assert.match(mainSource, /sandbox: true/);
+  assert.match(mainSource, /setWindowOpenHandler/);
+  assert.match(preloadSource, /ROTINI_DESKTOP/);
+  assert.match(preloadSource, /PASTA_TOOL_DESKTOP/);
+  assert.match(preloadSource, /native: true/);
+});
+
+test("Rotini desktop installer workflow builds all target packages", () => {
+  assert.match(workflowSource, /name: Rotini Desktop Installers/);
+  assert.match(workflowSource, /workflow_dispatch/);
+  assert.match(workflowSource, /rotini-desktop-v\*/);
+  assert.match(workflowSource, /node-version: 22/);
+  assert.match(workflowSource, /macos-latest/);
+  assert.match(workflowSource, /windows-latest/);
+  assert.match(workflowSource, /ubuntu-latest/);
+  assert.match(workflowSource, /npm ci --prefix apps\/rotini-desktop/);
+  assert.match(workflowSource, /npm run rotini:desktop:check/);
+  assert.match(workflowSource, /npm run dist:mac --prefix apps\/rotini-desktop/);
+  assert.match(workflowSource, /npm run dist:windows --prefix apps\/rotini-desktop/);
+  assert.match(workflowSource, /npm run dist:raspberry-pi --prefix apps\/rotini-desktop/);
+  assert.match(workflowSource, /actions\/upload-artifact@v4/);
+  assert.match(workflowSource, /softprops\/action-gh-release@v2/);
+});
+
+test("Rotini production installer manifest keeps release download hardening rules", () => {
+  assert.match(routesSource, /import rotiniInstallerRoutes from "\.\/routes\/rotini-installers"/);
+  assert.match(routesSource, /app\.use\(rotiniInstallerRoutes\)/);
+  assert.match(routeSource, /router\.get\("\/api\/rotini\/installers", isAuthenticated/);
+  assert.match(routeSource, /product: "rotini"/);
+  assert.match(routeSource, /ROTINI_INSTALLER_VERSION/);
+  assert.match(routeSource, /ROTINI_INSTALLER_MACOS_URL/);
+  assert.match(routeSource, /ROTINI_INSTALLER_MACOS_SHA256/);
+  assert.match(routeSource, /ROTINI_INSTALLER_WINDOWS_URL/);
+  assert.match(routeSource, /ROTINI_INSTALLER_WINDOWS_SHA256/);
+  assert.match(routeSource, /ROTINI_INSTALLER_RASPBERRY_PI_URL/);
+  assert.match(routeSource, /ROTINI_INSTALLER_RASPBERRY_PI_SHA256/);
+  assert.match(routeSource, /fileName: "Rotini-Studio\.exe"/);
+  assert.doesNotMatch(routeSource, /fileName: "Rotini-Studio\.msi"/);
+  assert.match(routeSource, /function isLoopbackInstallerHost\(hostname: string\): boolean/);
+  assert.match(routeSource, /url\.protocol === "https:"/);
+  assert.match(routeSource, /process\.env\.NODE_ENV !== "production" && url\.protocol === "http:" && isLoopbackInstallerHost\(url\.hostname\)/);
+  assert.doesNotMatch(routeSource, /url\.protocol === "https:" \|\| url\.protocol === "http:"/);
+  assert.match(routeSource, /safeInstallerSha256/);
+  assert.match(routeSource, /available: Boolean\(url && sha256\)/);
+  assert.match(routeSource, /url: url && sha256 \? url : null/);
+  assert.match(envExampleSource, /ROTINI_INSTALLER_VERSION=/);
+  assert.match(envExampleSource, /ROTINI_INSTALLER_MACOS_URL=/);
+  assert.match(envExampleSource, /ROTINI_INSTALLER_MACOS_SHA256=/);
+  assert.match(envExampleSource, /ROTINI_INSTALLER_WINDOWS_URL=/);
+  assert.match(envExampleSource, /ROTINI_INSTALLER_WINDOWS_SHA256=/);
+  assert.match(envExampleSource, /ROTINI_INSTALLER_RASPBERRY_PI_URL=/);
+  assert.match(envExampleSource, /ROTINI_INSTALLER_RASPBERRY_PI_SHA256=/);
+  assert.match(liveCheckSource, /rotini-desktop-v\$\{EXPECTED_VERSION\}/);
+  assert.match(liveCheckSource, /\/api\/rotini\/installers/);
+  assert.match(liveCheckSource, /Rotini-Studio-\$\{EXPECTED_VERSION\}-mac-universal\.dmg/);
+  assert.match(liveCheckSource, /Rotini-Studio-\$\{EXPECTED_VERSION\}-win-x64\.exe/);
+  assert.match(liveCheckSource, /Rotini-Studio-\$\{EXPECTED_VERSION\}-linux-arm64\.deb/);
+  assert.match(liveCheckSource, /asset\.digest/);
+  assert.match(inventorySource, /rotini\.installer_manifest\.viewed/);
+  assert.match(inventorySource, /\/api\/rotini\/installers/);
+});
+
+test("Rotini desktop root scripts expose package preparation, policy, and dist", () => {
+  assert.equal(rootPackage.scripts["rotini:desktop:prepare"], "npm run prepare --prefix apps/rotini-desktop");
+  assert.equal(rootPackage.scripts["rotini:desktop:check"], "node --test scripts/rotini-desktop-package-policy.test.mjs");
+  assert.equal(rootPackage.scripts["rotini:installers:live-check"], "node scripts/check-rotini-installers-live.mjs");
+  assert.equal(rootPackage.scripts["rotini:desktop:dist"], "npm run dist --prefix apps/rotini-desktop");
+});
