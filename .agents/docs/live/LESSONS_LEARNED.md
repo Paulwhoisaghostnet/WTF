@@ -1,3 +1,13 @@
+## 2026-07-01 - Pasta readiness gates must include installer distribution
+
+**What happened**: The first Pasta live-readiness gate proved live health, static bundle markers, and WTF.ME blockers, but the objective also includes user-downloadable software packages. Installer live checks existed separately for Macaroni, Pasta Suite, and Spaghetti, so a future pass could run the Pasta gate and overlook package distribution drift.
+
+**Why it mattered**: Pasta production readiness is not only contract and hosted-page readiness. Users also need download surfaces that stay protected, digest-backed, and reachable from the published release assets.
+
+**Rule**: Production readiness gates for product suites must include their distribution surfaces. When installer verifiers can run without secrets, fold their public manifest-protection and release-asset probes into the shared gate.
+
+---
+
 ## 2026-07-01 - Pasta readiness needs an executable blocker gate
 
 **What happened**: The Pasta release lane had separate source-policy, live-check, inventory, and static-bundle proofs, but no single command that distinguished "safe guardrails can be promoted" from "full Pasta is live." Future passes could read green local tests and miss that the live WTF.ME host and credentialed pin discovery proof were still absent.

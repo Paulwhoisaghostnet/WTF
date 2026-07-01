@@ -16,6 +16,7 @@ function flag(name, defaultValue) {
 const allowBlockers = flag("PASTA_LIVE_READINESS_ALLOW_BLOCKERS", false);
 const checkWtfme = flag("PASTA_LIVE_READINESS_CHECK_WTFME", true);
 const checkStatic = flag("PASTA_LIVE_READINESS_CHECK_STATIC", true);
+const checkInstallers = flag("PASTA_LIVE_READINESS_CHECK_INSTALLERS", true);
 const host = String(process.env.PASTA_WTFME_LIVE_HOST || "").trim().toLowerCase();
 const checks = [];
 const blockers = [];
@@ -38,6 +39,21 @@ function record(name, status, detail) {
 function block(name, detail) {
   blockers.push({ name, detail });
   record(name, "blocked", detail);
+}
+
+function runPackageScript(script, env = {}) {
+  const result = spawnSync("npm", ["run", script], {
+    cwd: process.cwd(),
+    env: { ...process.env, ...env },
+    encoding: "utf8",
+    maxBuffer: 1024 * 1024 * 4,
+  });
+  if (result.status === 0) return;
+  const lines = `${result.stdout || ""}\n${result.stderr || ""}`
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  throw new Error(`${script} failed: ${lines.slice(-8).join(" | ") || `exit ${result.status ?? "unknown"}`}`);
 }
 
 async function fetchText(pathname) {
@@ -83,6 +99,34 @@ async function checkStaticBundles() {
       if (!text.includes(marker)) throw new Error(`${app} common.js is missing ${marker}`);
     }
     record(`${app} shared Pasta runtime`, "pass", "window.MD and handoff markers present");
+  }
+}
+
+function checkInstallerDownloads() {
+  if (!checkInstallers) {
+    record("installer download probes", "skipped", "PASTA_LIVE_READINESS_CHECK_INSTALLERS=0");
+    return;
+  }
+  const installers = [
+    {
+      name: "Macaroni Desktop installers",
+      script: "macaroni:installers:live-check",
+      env: { WTFOS_INSTALLER_REQUIRE_AUTH: "0" },
+    },
+    {
+      name: "Pasta Suite installers",
+      script: "pasta-suite:installers:live-check",
+      env: { PASTA_SUITE_INSTALLER_REQUIRE_AUTH: "0" },
+    },
+    {
+      name: "Spaghetti Desktop installers",
+      script: "spaghetti:installers:live-check",
+      env: { SPAGHETTI_INSTALLER_REQUIRE_AUTH: "0" },
+    },
+  ];
+  for (const installer of installers) {
+    runPackageScript(installer.script, installer.env);
+    record(installer.name, "pass", "protected manifest and public release assets verified");
   }
 }
 
@@ -136,6 +180,7 @@ async function main() {
   console.log(`[pasta-live-readiness] target ${baseUrl().origin}`);
   await checkHealth();
   await checkStaticBundles();
+  checkInstallerDownloads();
   checkLocalCredentialShape();
   checkWtfmeHost();
 

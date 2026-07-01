@@ -33,6 +33,17 @@ test("Pasta live-readiness gate proves live health and static Pasta bundle marke
   assert.match(source, /loadPlatformCapabilities/);
 });
 
+test("Pasta live-readiness gate verifies public installer download surfaces", () => {
+  assert.match(source, /PASTA_LIVE_READINESS_CHECK_INSTALLERS/);
+  assert.match(source, /macaroni:installers:live-check/);
+  assert.match(source, /pasta-suite:installers:live-check/);
+  assert.match(source, /spaghetti:installers:live-check/);
+  assert.match(source, /WTFOS_INSTALLER_REQUIRE_AUTH: "0"/);
+  assert.match(source, /PASTA_SUITE_INSTALLER_REQUIRE_AUTH: "0"/);
+  assert.match(source, /SPAGHETTI_INSTALLER_REQUIRE_AUTH: "0"/);
+  assert.match(source, /protected manifest and public release assets verified/);
+});
+
 test("Pasta live-readiness gate delegates hosted-page proof to the live WTF.ME checker", () => {
   assert.match(source, /PASTA_WTFME_LIVE_HOST/);
   assert.match(source, /spawnSync\("npm", \["run", "pasta:wtfme:live-check"\]/);
