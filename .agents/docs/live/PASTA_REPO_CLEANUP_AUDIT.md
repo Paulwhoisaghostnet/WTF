@@ -1,6 +1,6 @@
 # Pasta Repo Cleanup Audit
 
-Last audited: 2026-06-30
+Last audited: 2026-07-01
 Auditor: Codex Pasta live-readiness continuation
 Production focus: `https://wtfos.app`
 
@@ -19,6 +19,7 @@ Production focus: `https://wtfos.app`
 - Signer-backed Ravioli Shadownet E2E now passes with keyring wallets `wtf-os-root` and `arcade-treasury`, originating `KT1CeJYHodXy8dvmNFgXxk4zh6SjVB5KYLaG`, creating token 0, minting supply, transferring two editions to the collector, redeeming one edition, and proving TzKT bundle, redeemed, supply, ownership, and metadata big-map state.
 - Signer-backed Rotini Shadownet E2E now passes with keyring wallets `wtf-os-root` and `arcade-treasury`, originating `KT1SHHPFkthiSTf9CAmhAzWmbi7t5rTcUeYz`, creating two generated token types, minting one edition of each, transferring one generated edition to the collector, and proving TzKT supply, ownership, relationship metadata, trait attributes, and Rotini DNA state.
 - Signer-backed Penne Shadownet E2E now passes with keyring wallets `wtf-os-root` and `arcade-treasury`, originating `KT1DDY9Pyr7PYNJgXxnHnJn9T7WHaVx7ztdx`, creating token 0, loading allocations, completing a collector claim, completing an admin airdrop, closing the claim window, and proving TzKT allocation, claimed, supply, ownership, and metadata big-map state.
+- Signer-backed Lasagna Shadownet E2E now passes with keyring wallets `wtf-os-root` and `arcade-treasury`, originating `KT1GrrYTevWKExvhFWVigUdGKR86SQKwYceN`, adding/removing a curator, publishing two cross-Pasta exhibition revisions, resetting the current revision pointer, transferring/accepting administration, and proving TzKT curator, revision, administrator, current-pointer, and metadata big-map state.
 - Live Pasta/Macaroni static wallet bundles for `macaroni`, `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna` passed stale-Taquito probes: Taquito `24.3.0` is absent, Taquito `25.0.0` is present, and the old `rpc.shadownet.teztnets.com` marker is absent.
 - Live Pasta static publisher `common.js` files now expose the `window.MD` runtime export in `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna`, while retaining `consumeCheaseHandoff()` and `loadPlatformCapabilities()` markers.
 - App-by-app live-readiness status is tracked in `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md`; it allows proof-branch pushes but blocks any full-production Pasta deployment claim until signer, hosted-page, pinning, and Colander gates are green.
@@ -60,7 +61,7 @@ Conclusion: this checkout has been archived outside the repo for recovery/audit 
 
 - The CH-EASE package-to-Pasta static runtime fix is now production-deployed: post-deploy live probes confirm `window.MD` exports on the six Pasta publisher bundles.
 - Pasta suite installer/download is now production-complete for the bundled native suite lane: `apps/pasta-suite-desktop`, the `pasta-suite-desktop-installers.yml` workflow, `/api/pasta/installers`, inventory coverage, package policy checks, GitHub release assets, production env, and the authenticated live verifier all passed for `pasta-suite-desktop-v1.0.0`.
-- Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, the Spaghetti Shadownet preflight, and the signer-backed Spaghetti/Gnocchi/Ravioli/Rotini/Penne deploy/mint/collect/distribution proofs: Lasagna, failure recovery, WTF.ME hosting, wtfOS pinning, and cross-app Colander management should remain open until executable evidence exists. The exact app-by-app gate state is recorded in `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md`.
+- Full Pasta contract/product workflow proof remains broader than static bundle availability, the now-green Macaroni Shadownet confidence lane, the Spaghetti Shadownet preflight, and the signer-backed Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna deploy/mint/collect/distribution/exhibition proofs: failure recovery, WTF.ME hosting, wtfOS pinning, and cross-app Colander browser management should remain open until executable evidence exists. The exact app-by-app gate state is recorded in `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md`.
 - Local `main` at the original workspace should be fast-forwarded, reset, or archived only after the user confirms whether its dirty scratch content should be preserved.
 
 ## Current Macaroni Shadownet Proof
@@ -130,6 +131,15 @@ Conclusion: this checkout has been archived outside the repo for recovery/audit 
 - Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-penne-e2e-report.md`.
 - Scope note: this proves Penne distribution deployment, token creation, allocation loading, claim-window configuration, recipient pull claim, admin push airdrop, allocation consumption, supply, ownership, claimed-state, and metadata resolution. It does not yet prove WTF.ME page hosting, hosted wtfOS pinning, Colander real-contract discovery, browser wallet batching, failure recovery, or every Pasta publisher variant.
 
+## Current Lasagna Shadownet E2E Proof
+
+- Local proof command: `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:lasagna`.
+- Deployment proof: contract `KT1GrrYTevWKExvhFWVigUdGKR86SQKwYceN` originated on Shadownet by `tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM`.
+- Operation proof: origination `onzXgGMzYxcSjdLTMyxbHqf8dfUakWXig3P8ZeCJsh5UvVwsNAT`, add curator `opWHD7JtP8TUhrmsgZC7KntKEHxv779DFTJhc31qBoiNWjGHcwJ`, curator publish revision 0 `op3m9yfqHiQCMmkT7qgNZQBYTZ5ydtYnw8hRbamHEYMcH3eepqe`, administrator publish revision 1 `ooqzTWCAmdUXTt7F6XDWDjkVomQyzNKh96em1Xt7RMyo7uwchUR`, set current revision to 0 `ooH9HKyVjJYRLprbTE7kxZgHY9oXq4JosicS4PQDj6XjMGDspFt`, remove curator `ongWrFmZXn3K6A4BosC5oeJBVt5RkprsRkWLa7kE3ND9ajWems4`, transfer administration `oo6s88oLv7kZoywT9ukH1uH3PAHrdzRH7Zeg696yUDvek9ij8C9`, accept administration `ooLwFs9r5XTygtC1mo3Xv71Gm8ZAamJg69iYK5pfam1HrPG299c`.
+- Indexer proof: TzKT storage indexed metadata big map `26775`, curators big map `26774`, revisions big map `26776`, final administrator `tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej`, pending administrator `null`, revision count `2`, current revision pointer `0`, revision 0 by curator with two referenced tokens, revision 1 by creator with three referenced tokens, no active curator big-map entry after removal, and decoded contract metadata name `Lasagna Shadownet E2E` with relationship metadata intact.
+- Report: `.agents/docs/archive/contracts/pasta-protocol/shadownet-lasagna-e2e-report.md`.
+- Scope note: this proves Lasagna exhibition registry deployment, curator configuration, cross-Pasta revision publication, current-pointer rollback, curator removal, two-step administration transfer, metadata decoding, and indexed registry state. It does not yet prove WTF.ME page hosting, hosted wtfOS pinning, Colander browser action-state refresh, failure recovery, or mainnet readiness.
+
 ## Current Suite Installer Proof
 
 - Source/package proof: `npm run pasta-suite:desktop:check` passed 5/5.
@@ -151,7 +161,7 @@ Conclusion: this checkout has been archived outside the repo for recovery/audit 
 
 ## Recommended Next Actions
 
-1. Use `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` as the live-push checklist, starting with a reusable signer-backed proof for Lasagna.
-2. Extend the now-green Macaroni Shadownet lane into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander discovery -> hosted page or artifact resolution.
+1. Use `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` as the live-push checklist, starting with Colander real-contract discovery against the proven Shadownet contracts.
+2. Extend the now-green Macaroni Shadownet lane into one end-to-end Pasta chain: CH-EASE package -> publisher -> Shadownet deploy/mint -> Colander browser refresh -> hosted page or artifact resolution.
 3. After user confirmation, archive/delete merged historical Macaroni branches and clean checked-out worktrees that are ancestors of `origin/main`.
 4. Keep the removed `WTF-pasta-deploy` archive only as recovery evidence; do not mine it for implementation unless a future pass needs a specific historical note.

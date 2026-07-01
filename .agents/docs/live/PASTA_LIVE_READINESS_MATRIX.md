@@ -1,6 +1,6 @@
 # Pasta Live Readiness Matrix
 
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 Production focus: `https://wtfos.app`
 Release branch: `codex/pasta-live-readiness`
 
@@ -16,6 +16,7 @@ This branch can safely claim:
 - Ravioli has one signer-backed Shadownet bundle deploy/create/mint/transfer/redeem proof with TzKT bundle, redeemed, supply, ownership, and metadata verification.
 - Rotini has one signer-backed Shadownet generative deploy/create/mint/transfer proof with TzKT supply, ownership, trait metadata, and generation DNA verification.
 - Penne has one signer-backed Shadownet distribution deploy/configure/claim/airdrop proof with TzKT allocation, claimed, supply, ownership, and metadata verification.
+- Lasagna has one signer-backed Shadownet exhibition deploy/configure/revision/admin-handoff proof with TzKT curator, revision, administration, and metadata verification.
 
 This branch must not claim:
 
@@ -23,7 +24,7 @@ This branch must not claim:
 - Mainnet Pasta contract readiness.
 - WTF.ME hosted mint/collection/purchase readiness.
 - wtfOS hosted pinning/recovery readiness for Pasta artifacts.
-- Complete signer-backed coverage for all Pasta publisher variants.
+- Browser-driven Colander action-state refresh against real Pasta contracts.
 
 ## Gate Legend
 
@@ -43,7 +44,7 @@ This branch must not claim:
 | Ravioli | Bundle token publisher | PROVEN | PARTIAL | PROVEN | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
 | Rotini | Generative collection publisher | PROVEN | PARTIAL | PROVEN | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
 | Penne | Distribution contract product | PROVEN | PARTIAL | PROVEN | PROVEN | OPEN | OPEN | PARTIAL | OPEN |
-| Lasagna | Exhibition contract product | PROVEN | PARTIAL | OPEN | OPEN | OPEN | OPEN | PARTIAL | OPEN |
+| Lasagna | Exhibition contract product | PROVEN | PARTIAL | PROVEN | PROVEN | OPEN | PARTIAL | PARTIAL | OPEN |
 | Colander | Management and discovery | PROVEN | PARTIAL | PARTIAL | OPEN | N/A | OPEN | PARTIAL | OPEN |
 | WTF.ME | Hosted public pages | PARTIAL | N/A | N/A | OPEN | OPEN | OPEN | N/A | OPEN |
 | wtfOS pinning | Artifact and metadata durability | PROVEN | N/A | N/A | OPEN | OPEN | N/A | N/A | OPEN |
@@ -68,7 +69,7 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 | Ravioli signer proof | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:ravioli` originated `KT1CeJYHodXy8dvmNFgXxk4zh6SjVB5KYLaG`, created token 0, minted three editions, transferred two to the collector, redeemed one, decoded metadata, and verified bundle config, redeemed count, total supply, and collector ownership in TzKT big maps. | PROVEN |
 | Rotini signer proof | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:rotini` originated `KT1SHHPFkthiSTf9CAmhAzWmbi7t5rTcUeYz`, created two generated token types, minted one edition of each, transferred token 1 to the collector, decoded trait/DNA metadata, and verified supply plus creator/collector ownership in TzKT big maps. | PROVEN |
 | Penne signer proof | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:penne` originated `KT1DDY9Pyr7PYNJgXxnHnJn9T7WHaVx7ztdx`, created token 0, loaded two allocations, opened claim, completed a collector pull claim, completed an admin push airdrop, closed claim, decoded metadata, and verified allocation consumption, claimed state, total supply, and creator/collector ownership in TzKT big maps. | PROVEN |
-| Lasagna signer proof | None yet. | OPEN |
+| Lasagna signer proof | `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:e2e:lasagna` originated `KT1GrrYTevWKExvhFWVigUdGKR86SQKwYceN`, added and removed a curator, published two cross-Pasta exhibition revisions, reset the current revision pointer to 0, completed two-step administration transfer, decoded metadata, and verified curator, revision, administration, and metadata state in TzKT big maps. | PROVEN |
 | Colander real KT1 discovery | No end-to-end proof from a real Shadownet Pasta contract into Colander action/state refresh. | OPEN |
 | WTF.ME hosted Pasta pages | No proof for mint pages, collection pages, landing pages, branding, wallet connect, or purchase flows. | OPEN |
 | wtfOS Pasta pinning/recovery | No proof for artifact pinning, metadata pinning, file pinning, redundancy, accessibility, or recovery tied to Pasta publish flows. | OPEN |
@@ -78,7 +79,7 @@ Note: `PARTIAL` installer status for individual Pasta publishers means the bundl
 
 The safe next push target is the proof branch, not `main` production. A production full-send should wait until these minimum gates are green:
 
-1. Signer-backed Shadownet proof exists for every Pasta publisher that production UI presents as deployable.
+1. Signer-backed Shadownet proof remains green for every non-Macaroni Pasta publisher that production UI presents as deployable.
 2. Colander opens at least one real Shadownet Pasta contract, detects the adapter from entrypoints/storage, refreshes post-operation state, and shows ownership/action state from indexed data.
 3. WTF.ME serves at least one Pasta mint page, collection page, and landing page backed by the Shadownet proof data.
 4. wtfOS pinning verifies artifact, metadata, redundancy, and recovery for a Pasta publish.
@@ -87,8 +88,7 @@ The safe next push target is the proof branch, not `main` production. A producti
 ## Next Implementation Order
 
 1. Generalize the signer-backed Pasta E2E runners into reusable publisher proof helpers.
-2. Add Lasagna contract-product deploy/configure proof.
-3. Wire Colander real-contract discovery against the Shadownet proof contracts.
-4. Add WTF.ME hosted page checks for the proven contracts/tokens.
-5. Add wtfOS artifact/metadata pinning and recovery checks.
-6. Re-run production readiness checks and only then evaluate a main/full-send.
+2. Wire Colander real-contract discovery against the Shadownet proof contracts.
+3. Add WTF.ME hosted page checks for the proven contracts/tokens.
+4. Add wtfOS artifact/metadata pinning and recovery checks.
+5. Re-run production readiness checks and only then evaluate a main/full-send.

@@ -82,6 +82,7 @@
     "pasta:shadownet:e2e:ravioli": "tsx scripts/pasta-protocol/shadownet-ravioli-e2e.ts",
     "pasta:shadownet:e2e:rotini": "tsx scripts/pasta-protocol/shadownet-rotini-e2e.ts",
     "pasta:shadownet:e2e:penne": "tsx scripts/pasta-protocol/shadownet-penne-e2e.ts",
+    "pasta:shadownet:e2e:lasagna": "tsx scripts/pasta-protocol/shadownet-lasagna-e2e.ts",
     "check": "tsc --noEmit",
     "wtfos:cli:build": "npm run build --prefix packages/wtfos-cli",
     "wtfos:cli:test": "npm run test --prefix packages/wtfos-cli",
