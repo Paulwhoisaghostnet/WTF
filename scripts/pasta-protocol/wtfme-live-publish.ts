@@ -215,6 +215,12 @@ function assertExpectedHost(host: string): void {
   }
 }
 
+function assertProductionHostPinned(): void {
+  if (execute && !expectedHost) {
+    fail("Set PASTA_WTFME_LIVE_EXPECT_HOST=<dedicated-host.wtfos.me> before enabling PASTA_WTFME_LIVE_PUBLISH=1");
+  }
+}
+
 async function getSiteState(): Promise<any> {
   return expectJson(await fetchWithCookies("/api/wtf-sites/my"), "WTF.ME site state");
 }
@@ -306,6 +312,7 @@ async function main(): Promise<void> {
   if (!execute) {
     console.log("[pasta-wtfme-publish] dry-run mode; set PASTA_WTFME_LIVE_PUBLISH=1 to claim/save/publish pages");
   }
+  assertProductionHostPinned();
   await login();
   let state = await getSiteState();
   const plannedHost = state.site?.host || state.eligibility?.host;

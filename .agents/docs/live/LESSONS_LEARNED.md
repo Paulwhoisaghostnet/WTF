@@ -1,3 +1,13 @@
+## 2026-07-01 - Credentialed WTF.ME publishers must require host pins
+
+**What happened**: The Pasta WTF.ME live publisher could be placed in production write mode with valid credentials and no `PASTA_WTFME_LIVE_EXPECT_HOST`. Existing-page guards would stop obvious overwrites, but a clean or newly claimable account could still become the proof surface without an explicit host decision.
+
+**Why it mattered**: Hosted Pasta proof pages are public collector-facing infrastructure. A credentialed script should not infer the live proof host from whichever account is currently authenticated, especially when multiple WTF.ME hosts may be structurally eligible.
+
+**Rule**: Dry-runs may discover the candidate host, but any production write flag must require an explicit expected host and verify the authenticated host against it before authentication-dependent writes.
+
+---
+
 ## 2026-07-01 - Live WTF.ME publishers must guard existing public pages
 
 **What happened**: The Pasta WTF.ME live publisher had dry-run and production-write gates, but once credentials were supplied it would save Pasta home/mint/collection pages before proving that an existing claimed site was a dedicated Pasta proof host. The nearest real production host currently serves a generic published page, so a careless credentialed run could replace public user-site content before failing on a later proof step.

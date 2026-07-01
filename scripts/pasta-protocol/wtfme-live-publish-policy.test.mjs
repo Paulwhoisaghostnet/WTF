@@ -36,6 +36,11 @@ test("Pasta WTF.ME live publisher scopes credentials and host before writing", (
   assert.match(source, /PASTA_WTFME_LIVE_USERNAME/);
   assert.match(source, /PASTA_WTFME_LIVE_PASSWORD/);
   assert.match(source, /PASTA_WTFME_LIVE_EXPECT_HOST/);
+  assert.match(source, /function assertProductionHostPinned\(\): void/);
+  assert.match(
+    source,
+    /Set PASTA_WTFME_LIVE_EXPECT_HOST=<dedicated-host\.wtfos\.me> before enabling PASTA_WTFME_LIVE_PUBLISH=1/
+  );
   assert.match(
     source,
     /fail\("Set PASTA_WTFME_LIVE_COOKIE or both PASTA_WTFME_LIVE_USERNAME and PASTA_WTFME_LIVE_PASSWORD"\)/
@@ -43,6 +48,13 @@ test("Pasta WTF.ME live publisher scopes credentials and host before writing", (
   assert.match(source, /assertExpectedHost\(String\(plannedHost\)\.toLowerCase\(\)\)/);
   assert.match(source, /assertExpectedHost\(host\)/);
   assert.doesNotMatch(source, /E2E_PUPPET|LIVE_PUPPET|MACARONI_.*PASSWORD|PASTA_SUITE_.*PASSWORD/);
+
+  const hostPin = source.indexOf("assertProductionHostPinned()");
+  const login = source.indexOf("await login()");
+  const firstSave = source.indexOf("await savePastaPages(headers)");
+  assert.ok(hostPin > -1, "production publish host pinning should be present");
+  assert.ok(login > hostPin, "production host pinning should run before credential validation");
+  assert.ok(firstSave > hostPin, "production host pinning should run before any page write");
 });
 
 test("Pasta WTF.ME live publisher uses CSRF for every mutating API call and verifies TLS after publish", () => {
