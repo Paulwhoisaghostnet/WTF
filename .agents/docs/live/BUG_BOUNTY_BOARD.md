@@ -72,7 +72,7 @@ Priority labels:
 | WTF-BB-348 | Verified | Codex Pasta CI smoke heartbeat | 2026-07-02 | E2E / Quality Gates observability | P2 | 7 | 15 | 1 | 3 | 0 | Main Quality Gates inventory smoke can run for ~14 minutes with no CLI-visible progress before a production push is fully proven, making healthy CI hard to distinguish from a wedged release gate; verified by branch, PR, and main Quality Gates through PR #23 with 60-second heartbeat output through the long smoke step |
 | WTF-BB-349 | Verified | Codex Pasta cleanup squash-equivalence | 2026-07-02 | Repo hygiene / Pasta squash-merge cleanup | P2 | 8 | 14 | 2 | 3 | 0 | Squash-merged Pasta branches with no remaining file delta can block `pasta:repo-cleanup:audit` as unknown stale work until manually deleted; live commit `7657a3b` classifies zero-delta non-ancestor refs as promoted squash-equivalent prune candidates while keeping real stale deltas fail-closed, and the merged PR #25 branch was pruned after post-deploy verification |
 | WTF-BB-350 | Verified | Codex Pasta cleanup disappearing-ref hardening | 2026-07-02 | Repo hygiene / Pasta cleanup audit concurrency | P2 | 8 | 14 | 2 | 3 | 0 | Parallel release verification can delete the temporary `codex/pasta-zero-delta-fixture-*` audit-check ref after `pasta:repo-cleanup:audit` lists it but before classification; live commit `956420f` re-checks ref existence before ahead/behind/diff calls, records vanished refs as non-blocking audit metadata, keeps surviving unknown refs fail-closed, and passes policy, cleanup, audit-mode readiness, and strict final-launch readiness with only WTF.ME blockers remaining |
-| WTF-BB-351 | Open | - | 2026-07-02 | Deploy / production disk capacity | P2 | 8 | 14 | 2 | 3 | 0 | PR #28 Deploy to Hetzner initially failed the 12 GiB disk preflight by 114 MiB; manual Docker build-cache-only pruning recovered 19.11 GiB and the deploy rerun passed, but production deploys still rely on manual cache cleanup when the host drifts near threshold |
+| WTF-BB-351 | Fixed | Codex deploy cache-only recovery | 2026-07-02 | Deploy / production disk capacity | P2 | 8 | 14 | 2 | 3 | 0 | Deploy preflight now attempts Docker build-cache-only recovery when free space is below the 12 GiB floor, rechecks disk before image build, and still avoids broad system/image/volume pruning; pending branch CI and live deploy proof |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -386,8 +386,8 @@ Priority labels:
 ### WTF-BB-351 - Deploy disk preflight still depends on manual cache pruning
 
 - Category: Deploy / production disk capacity
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex deploy cache-only recovery
 - Score: C2 + F3 + S0 + P2(3) = 8
 - Evidence:
   - PR #28 merged as `956420f`, but Deploy to Hetzner run `28566737184` initially failed before rebuild because `/` had 12,174 MiB free and the deploy preflight requires 12,288 MiB.
@@ -397,9 +397,11 @@ Priority labels:
 - Why it matters:
   - The preflight protects production from low-disk rebuilds, but a deploy can still require manual operator intervention when routine build cache growth leaves the host just below threshold.
 - Likely correction direction:
-  - Add an explicit, safe build-cache-only recovery runbook or a bounded preflight helper that reports the exact cache-only prune command. Consider an opt-in deploy workflow step for Docker builder cache cleanup before failing, while continuing to avoid Docker volume pruning.
+  - `scripts/server-deploy.sh` now logs Docker disk usage when the free-space floor is missed, runs `docker builder prune -af` by default as a cache-only recovery path, rechecks `df -Pk` before image build, and still fails closed if recovery is disabled with `WTF_DEPLOY_AUTO_PRUNE_BUILD_CACHE_ON_LOW_DISK=0` or if the host remains below the configured floor.
+  - The policy test explicitly rejects broad `docker system prune`, `docker image prune`, and `docker volume prune` in the deploy script.
 - Verification idea:
-  - Prove the deploy preflight emits cache-only remediation when free space is below threshold and `docker system df` reports reclaimable build cache; verify normal deploy still refuses to touch volumes automatically.
+  - Local focused verification passed `bash -n scripts/server-deploy.sh` and `node --test scripts/deploy-dry-run-policy.test.mjs`.
+  - Branch CI and live deployment still need to prove the fixed deploy path in the target workflow before this can move to Verified.
 
 ### WTF-BB-325 - Public Gamma deep routes still fall back to Classic
 

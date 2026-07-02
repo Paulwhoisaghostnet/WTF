@@ -77,10 +77,39 @@ require_min_free_disk() {
   local available_mib=$((available_kb / 1024))
   local min_mib=$((min_kb / 1024))
   if (( available_kb < min_kb )); then
-    echo "[server-deploy] ERROR: deploy disk preflight failed for $path: ${available_mib} MiB free, need at least ${min_mib} MiB"
-    echo "[server-deploy] Free Docker build/image cache or expand the production disk before deploying."
+    echo "[server-deploy] WARN: deploy disk preflight low-space for $path: ${available_mib} MiB free, need at least ${min_mib} MiB"
+    echo "[server-deploy] Docker disk usage before cache-only recovery:"
     docker system df || true
-    exit 1
+
+    if [[ "${WTF_DEPLOY_AUTO_PRUNE_BUILD_CACHE_ON_LOW_DISK:-1}" =~ ^(0|false|no|off)$ ]]; then
+      echo "[server-deploy] ERROR: deploy disk preflight failed for $path: ${available_mib} MiB free, need at least ${min_mib} MiB"
+      echo "[server-deploy] Build-cache auto recovery is disabled; run docker builder prune -af or expand the production disk before deploying."
+      exit 1
+    fi
+
+    echo "[server-deploy] running Docker build-cache-only recovery: docker builder prune -af"
+    if ! docker builder prune -af; then
+      echo "[server-deploy] ERROR: Docker build-cache-only recovery failed"
+      exit 1
+    fi
+
+    echo "[server-deploy] Docker disk usage after cache-only recovery:"
+    docker system df || true
+
+    available_kb="$(df -Pk "$path" | awk 'NR == 2 { print $4 }')"
+    if [[ ! "$available_kb" =~ ^[0-9]+$ ]]; then
+      echo "[server-deploy] ERROR: could not determine free disk space for $path after cache-only recovery"
+      exit 1
+    fi
+    available_mib=$((available_kb / 1024))
+    if (( available_kb < min_kb )); then
+      echo "[server-deploy] ERROR: deploy disk preflight failed for $path after cache-only recovery: ${available_mib} MiB free, need at least ${min_mib} MiB"
+      echo "[server-deploy] Expand the production disk or perform a manual non-volume cleanup before deploying."
+      exit 1
+    fi
+
+    echo "[server-deploy] disk preflight recovered for $path after Docker build-cache-only prune: ${available_mib} MiB free"
+    return 0
   fi
 
   echo "[server-deploy] disk preflight ok for $path: ${available_mib} MiB free"

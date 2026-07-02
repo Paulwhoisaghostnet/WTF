@@ -1,3 +1,13 @@
+## 2026-07-02 - Low-disk deploy recovery must stay build-cache-only
+
+**What happened**: The deploy preflight had a safe 12 GiB floor and printed Docker disk usage when capacity was too low, but a host that drifted just below the floor still needed a manual `docker builder prune -af` before the same verified deployment could proceed.
+
+**Why it mattered**: Low-disk deploy incidents are easiest to mishandle under pressure. Broad Docker cleanup commands can delete images or volumes that are part of the production recovery surface, while build cache is the narrow disposable layer that previously recovered enough space.
+
+**Rule**: Deploy automation may recover low disk by inspecting `docker system df`, pruning Docker builder cache only, and rechecking free space before image build. Keep broad `docker system prune`, image prune, and volume prune out of routine deploy recovery paths unless a human has explicitly chosen a wider cleanup.
+
+---
+
 ## 2026-07-02 - Deploy disk preflight needs cache-only recovery
 
 **What happened**: PR #28 merged cleanly, but the first Deploy to Hetzner run failed before rebuild because the production root filesystem had 12,174 MiB free and the deploy preflight requires 12,288 MiB. Docker build cache had 13.82 GiB reclaimable, so pruning build cache only raised free space to 29 GiB and the rerun deployed successfully.
