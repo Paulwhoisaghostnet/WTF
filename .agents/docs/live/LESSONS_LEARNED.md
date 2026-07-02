@@ -1,3 +1,13 @@
+## 2026-07-02 - Evidence docs must advance after narrow CI promotions
+
+**What happened**: PR #22 promoted a CI-observability-only change and deployed successfully as `984b3f5`, with main Quality Gates and live readiness proving the same Pasta installer/static/Colander surfaces as earlier runs. The standing Pasta coverage report and readiness matrix still referenced older proof snapshots, which could make future cleanup or launch passes chase stale commit IDs or reopen already-proven Colander action evidence.
+
+**Why it mattered**: Pasta launch decisions depend on the current live commit, not just on whether the changed files were product code. A narrow workflow or docs promotion still changes the production evidence boundary and should not leave the live checklist pointing at older commits.
+
+**Rule**: After any production promotion that is used as Pasta release evidence, refresh the readiness matrix, coverage report, and bounty evidence with the current live commit, deploy run, Quality Gates run, cleanup audit result, and readiness-gate blockers before starting the next launch step.
+
+---
+
 ## 2026-07-01 - Browser chain proofs need configured RPC fallback
 
 **What happened**: Main Quality Gates failed the Colander Shadownet discovery smoke while waiting for a proven Pasta contract fact row. Local focused reproduction failed on a different proven contract and the page status showed `HTTP request timeout of 30000ms exceeded`, proving the root cause was a transient primary Shadownet RPC timeout, not a bad selector or stale KT1 fixture. A second broad-suite reproduction showed that fallback alone was still too slow when the first RPC attempt consumed Taquito's full 30s timeout.

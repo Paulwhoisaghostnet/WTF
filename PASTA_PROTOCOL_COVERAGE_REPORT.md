@@ -6,7 +6,7 @@ Story, requirements, and validation-test-spec coverage: 99.0% (852/861 generated
 
 The report exceeds the 95% documentation/spec threshold required before any implementation coding. It does not claim production or executable-test completion; it provides the validation suite that later coding passes must implement.
 
-The current deployment boundary is tracked in `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md`. That matrix is the safe-push gate for distinguishing proven production downloads and signer-backed Shadownet publisher evidence from still-open full Pasta deployment requirements.
+The current deployment boundary is tracked in `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md`. That matrix is the safe-push gate for distinguishing proven production downloads, signer-backed Shadownet publisher evidence, recorded Colander action evidence, and still-open full Pasta deployment requirements.
 
 ## Missing Features
 
@@ -33,7 +33,8 @@ The current deployment boundary is tracked in `.agents/docs/live/PASTA_LIVE_READ
 - `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:rotini:e2e` now provides signer-backed Rotini generative proof on Shadownet. The latest run originated `KT1HqzEFqbwcR8BpXZrrfPALY6bJaPGQgDHQ`, created two deterministic generated token types, minted both editions, transferred token 1 to the collector, decoded token metadata from TzKT big-map state, and proved creator ownership, collector ownership, total supply, trait attributes, and Rotini DNA.
 - `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:penne:e2e` now provides signer-backed Penne distribution proof on Shadownet. The latest run originated `KT1EPdyxCjmosesvJ21cr8WqoCnTXoomCpRz`, created token 0, loaded collector/creator allocations, opened claim, completed a collector pull claim, completed an admin push airdrop, closed claim, decoded token metadata from TzKT big-map state, and proved allocation consumption, claimed state, total supply, and creator/collector ownership.
 - `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:lasagna:e2e` now provides signer-backed Lasagna exhibition proof on Shadownet. The latest run originated `KT1TEz2Rq8nUiNcJEAssrdrTqPj1h3ZN9B8r`, added and removed a curator, published two revisions, rolled the current pointer back to revision 0, transferred and accepted administration, decoded collection/revision metadata from TzKT big-map state, and proved final administrator, revision count, current revision, referenced contracts, and cleared curator state.
-- `npm run pasta:shadownet:colander` now provides browser-side Colander discovery proof against the six current signer-backed Shadownet proof contracts. It opens Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna KT1s through `/tools/colander`, detects adapters/actions from live entrypoints/storage, renders Shadownet explorer links and relationship groups, and observes Colander discovery events. This covers Spaghetti standard collections, Gnocchi open editions, Ravioli bundles, Rotini generated collections, Penne distributions, and Lasagna exhibitions for Colander discovery; hosted pinning, WTF.ME, wallet-signed Colander mutations, and mainnet remain open.
+- `npm run pasta:shadownet:colander` now provides browser-side Colander discovery proof against the six current signer-backed Shadownet proof contracts. It opens Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna KT1s through `/tools/colander`, detects adapters/actions from live entrypoints/storage, renders Shadownet explorer links and relationship groups, and observes Colander discovery events. This covers Spaghetti standard collections, Gnocchi open editions, Ravioli bundles, Rotini generated collections, Penne distributions, and Lasagna exhibitions for Colander discovery.
+- `PASTA_SHADOWNET_COLANDER_E2E_EXECUTE=1 npm run pasta:shadownet:colander:action` now provides a guarded signer-backed Colander management action proof for the Lasagna `set_current_revision(0)` path. The recorded TzKT operation `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h` is rechecked without signer execution by `npm run pasta:shadownet:colander:action-proof` and by the shared `pasta:live-readiness` gate. Hosted pinning, WTF.ME public host proof, real wallet-extension Colander submission, broader action coverage, and mainnet remain open.
 - Individual Macaroni Desktop, bundled Pasta Suite Desktop, standalone Spaghetti Desktop, and standalone Gnocchi/Ravioli/Rotini/Penne/Lasagna Desktop downloadable lanes now have GitHub release artifacts, SHA-256 digests, production env, and authenticated live manifest verifiers passing on `wtfos.app`.
 
 ## Current Live Evidence
@@ -52,9 +53,10 @@ The current deployment boundary is tracked in `.agents/docs/live/PASTA_LIVE_READ
 - Signer-backed Penne Shadownet E2E passed through `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:penne:e2e`; the command wrote `.agents/docs/archive/contracts/pasta-protocol/shadownet-penne-e2e-report.md` with contract `KT1EPdyxCjmosesvJ21cr8WqoCnTXoomCpRz`, operation, allocation, claimed-state, supply, metadata, and TzKT ownership evidence.
 - Signer-backed Lasagna Shadownet E2E passed through `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:lasagna:e2e`; the command wrote `.agents/docs/archive/contracts/pasta-protocol/shadownet-lasagna-e2e-report.md` with contract `KT1TEz2Rq8nUiNcJEAssrdrTqPj1h3ZN9B8r`, operation, curator, revision, admin-handoff, relationship metadata, referenced proof-contract, and TzKT storage/big-map evidence.
 - Colander Shadownet discovery passed through `npm run pasta:shadownet:colander`; the command wrote `.agents/docs/archive/contracts/pasta-protocol/shadownet-colander-discovery-report.md` after browser-opening all six current proof KT1s, proving adapter/action rendering, Shadownet explorer routing, relationship group decoding, and `colander.contract_opened` / `colander.graph_viewed` event emission.
+- Colander signer-backed Shadownet management action proof passed for the Lasagna `set_current_revision(0)` path; `npm run pasta:shadownet:colander:action-proof` rechecks the recorded report and TzKT operation `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h` without spending signer funds.
 - Static Pasta tool bundles are live on `wtfos.app`, and their Tezos vendor bundles now pass the Taquito `25.0.0` / no-`24.3.0` live marker probe.
-- The latest `window.MD` static-module runtime export fix is live on `wtfos.app` commit `c4ba55f`: production `common.js` for Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna all expose the export.
-- Static reachability, branch-level mocked choreography, the Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna signer-backed Shadownet proofs, and the Colander browser discovery proof still do not prove WTF.ME hosting, wtfOS hosted pinning, hosted-page recovery, wallet-signed Colander management mutations, or mainnet deployment workflows.
+- The latest completed production evidence snapshot before this docs-only refresh reported `wtfos.app` health at commit `984b3f5`, and `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved live health, repo cleanup, static runtime markers, suite/individual installer assets, installer catalog auth, and recorded Colander action proof while still blocking only on missing dedicated WTF.ME publish credentials and missing `PASTA_WTFME_LIVE_HOST`. A later docs-only promotion should be treated as a carrier commit until the same post-deploy checks record a newer release-evidence snapshot.
+- Static reachability, branch-level mocked choreography, the Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna signer-backed Shadownet proofs, Colander browser discovery, and the representative Colander signer-backed management action proof still do not prove live WTF.ME hosting, wtfOS hosted pinning/public recovery from a production Pasta host, broad real-wallet Colander operations, or mainnet deployment workflows.
 
 ## Risk Areas
 
@@ -63,7 +65,7 @@ The current deployment boundary is tracked in `.agents/docs/live/PASTA_LIVE_READ
 - Future individual app installer manifests falsely reporting downloads before GitHub release digests, production runtime env, deploy, and authenticated live verification are complete.
 - Public hosting falsely reporting live before WTF.ME serves the expected page.
 - Indexer lag or high-level token endpoint omissions causing operation hashes to be mistaken for full ownership/metadata proof; fresh Shadownet contracts should verify storage and big-map state directly when needed.
-- Colander signed-management actions still need wallet-backed mutation proof before Colander can be treated as an operational admin surface.
+- Colander now has one signer-backed management action proof, but real wallet-extension submission and broader safe-action coverage are still needed before treating Colander as a fully operational admin surface.
 - Marketplace previews hiding edition quantity, owner, price, or target contract.
 
 ## Recommended Implementation Order
@@ -72,8 +74,8 @@ The current deployment boundary is tracked in `.agents/docs/live/PASTA_LIVE_READ
 2. Implement or verify shared Pasta package, metadata, relationship, and adapter helpers.
 3. Complete CH-EASE target-aware package export and handoff validation.
 4. Complete Spaghetti because it anchors standard collection/token-product publishing.
-5. Add WTF.ME hosted page checks on top of the signer-backed proof contracts.
-6. Add WTFOS pinning/recovery checks for Pasta artifact and metadata durability.
-7. Add wallet-signed Colander management mutation proof for representative safe actions.
+5. Publish WTF.ME hosted pages on a dedicated production host and make the public host checker pass.
+6. Turn the current WTFOS pinning/recovery checks into a live host/provider proof for Pasta artifact and metadata durability.
+7. Extend the representative Colander management action proof to real wallet-extension submission and broader safe actions.
 8. Keep all standalone and suite installer verifiers as release gates while adding any future native Pasta installer.
 9. Use `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` as the live-push checklist, then only after Shadownet and hosted-page proof, plan mainnet/full-send deployment work.
