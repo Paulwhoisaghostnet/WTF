@@ -765,8 +765,9 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
 
     await surface.getByRole("button", { name: "Run workflow map" }).click();
+    // The demo is generated from live registries, so route/node totals grow.
     await expect(surface.locator('[data-map-lab-run-summary="true"]')).toHaveText(
-      "Last run activated 24 routes across 25 connected nodes."
+      /Last run activated \d+ routes across \d+ connected nodes\./
     );
     await expect(surface.locator("[data-map-lab-route-list-item='demo-wire-1']")).toContainText("active");
     await expect(page).toHaveURL(/\/gamma\/map-lab$/);
