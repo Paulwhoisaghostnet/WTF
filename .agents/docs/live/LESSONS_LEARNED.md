@@ -1,3 +1,13 @@
+## 2026-07-02 - Credentialed launch blockers need one canonical runbook
+
+**What happened**: The Pasta WTF.ME launch blocker had strong publish/check tooling, but the operator path still required reconstructing the sequence from gate output, matrix notes, bounty history, and script behavior. That made the remaining external step clearer to describe than to execute.
+
+**Why it mattered**: Credentialed production publishing is where accidental shortcuts are most tempting. A scattered checklist can lead to direct database edits, a reused shared host, disabled pin checks, or a publish run that is not bound to the intended host.
+
+**Rule**: When a final launch blocker depends on external credentials or account state, add a source-controlled runbook and make the readiness gate point to it. The runbook should preserve the safe order: expected-host pin, read-only inventory, non-writing dry-run, write mode, public verifier, strict final gate.
+
+---
+
 ## 2026-07-02 - Low-disk deploy recovery must stay build-cache-only
 
 **What happened**: The deploy preflight had a safe 12 GiB floor and printed Docker disk usage when capacity was too low, but a host that drifted just below the floor still needed a manual `docker builder prune -af` before the same verified deployment could proceed.

@@ -108,8 +108,8 @@ The safe next push target is this narrow proof lane. A full production Pasta dep
 
 ## Next Implementation Order
 
-1. Provision or identify a dedicated Pasta WTF.ME publish account/host credential; 2026-07-01 local plus remote env-name checks found no matching Pasta WTF.ME/app-login/puppet credential names.
-2. Publish the generated Pasta landing/mint/collection pages to a claimed production WTF.ME host and make `PASTA_WTFME_LIVE_HOST=<published-host> npm run pasta:wtfme:live-check` pass, including `.well-known/wtfos-pins`, DID resolution, the public PDS `pinManifest` record, and `PASTA_WTFME_LIVE_MANIFEST_PAYLOAD_URL=<public-manifest-json>` when the mirror URL is available.
+1. Follow `.agents/docs/live/PASTA_WTFME_LIVE_PUBLISH_RUNBOOK.md` to provision or identify a dedicated Pasta WTF.ME publish account/host credential; 2026-07-01 local plus remote env-name checks found no matching Pasta WTF.ME/app-login/puppet credential names.
+2. Publish the generated Pasta landing/mint/collection pages to a claimed production WTF.ME host through the runbook's expected-host-pinned dry-run/write flow, then make `PASTA_WTFME_LIVE_HOST=<published-host> npm run pasta:wtfme:live-check` pass, including `.well-known/wtfos-pins`, DID resolution, the public PDS `pinManifest` record, and `PASTA_WTFME_LIVE_MANIFEST_PAYLOAD_URL=<public-manifest-json>` when the mirror URL is available.
 3. Rerun `npm run pasta:live-readiness:final` without blocker-allow mode and require it to pass before claiming the Pasta lane is production-ready.
 4. Turn the current source-level wtfOS artifact/metadata pinning and recovery checks into a live provider/host proof that resolves item payload checksums plus IPFS/object-mirror fallback URLs.
 5. Extend the current Colander management proofs to real wallet-extension submission and additional safe actions before treating Colander as a fully operational admin surface.
