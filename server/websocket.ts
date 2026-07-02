@@ -1532,7 +1532,6 @@ function leaveWtfLiveRoom(client: WsClient) {
   client.wtfLiveRoomKind = undefined;
   client.wtfLivePublishPermissions = undefined;
   client.wtfLiveMediaState = emptyWtfLiveMediaState();
-  client.wtfLiveCanShareStage = undefined;
   broadcastToWtfLiveRoom(
     roomId,
     {
