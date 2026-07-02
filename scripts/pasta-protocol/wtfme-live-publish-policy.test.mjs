@@ -77,7 +77,7 @@ test("Pasta WTF.ME live publisher uses CSRF for every mutating API call and veri
     source,
     /fetchWithCookies\("\/api\/ipfs-pinning\/pasta-protocol\/publish", \{\s*method: "POST",\s*headers,/
   );
-  assert.match(source, /await probeTlsAsk\(host\)/);
+  assert.match(source, /await probeTlsAsk\(publishedHost\)/);
   assert.match(source, /published host \$\{host\} is still denied by the production TLS gate/);
 });
 
@@ -87,11 +87,15 @@ test("Pasta WTF.ME live publisher checks TLS before publishing pin recovery", ()
 
   const savePages = source.indexOf("await savePastaPages(headers)");
   const publishSite = source.indexOf("const published = await publish(headers)");
-  const probeTls = source.indexOf("await probeTlsAsk(host)");
+  const publishedHost = source.indexOf("const publishedHost = String(published.site?.host || \"\").toLowerCase()");
+  const stableHost = source.indexOf("assertPublishedHostStable(host, publishedHost)");
+  const probeTls = source.indexOf("await probeTlsAsk(publishedHost)");
   const publishPins = source.indexOf("const pinning = publishPins ? await publishPastaPins(headers) : null");
   assert.ok(savePages > -1, "page saves should exist");
   assert.ok(publishSite > savePages, "site publish should happen after page saves");
-  assert.ok(probeTls > publishSite, "TLS gate should be probed after site publish");
+  assert.ok(publishedHost > publishSite, "published host should be resolved after site publish");
+  assert.ok(stableHost > publishedHost, "published host should be checked before TLS");
+  assert.ok(probeTls > stableHost, "TLS gate should be probed after host stability is proven");
   assert.ok(publishPins > probeTls, "pin recovery publish should happen only after TLS passes");
 });
 
@@ -105,13 +109,38 @@ test("Pasta WTF.ME live publisher verifies the public host after production publ
   assert.match(source, /dry-run: would verify public Pasta host \$\{host\}/);
 
   const publishPins = source.indexOf("const pinning = publishPins ? await publishPastaPins(headers) : null");
-  const publishedHost = source.indexOf("const publishedHost = String(published.site?.host || host).toLowerCase()");
+  const publishedHost = source.indexOf("const publishedHost = String(published.site?.host || \"\").toLowerCase()");
   const verifyHost = source.indexOf("verifyPublishedHost(publishedHost)");
   const finalCommand = source.indexOf("verify with: PASTA_WTFME_LIVE_HOST=${publishedHost}");
   assert.ok(publishPins > -1, "pin recovery publish should exist");
-  assert.ok(publishedHost > publishPins, "published host should be resolved after pin recovery publish");
-  assert.ok(verifyHost > publishedHost, "public host verifier should run after final host resolution");
+  assert.ok(publishedHost > -1, "published host should be resolved from publish response");
+  assert.ok(publishPins > publishedHost, "pin recovery publish should run only after published host resolution");
+  assert.ok(verifyHost > publishPins, "public host verifier should run after pin recovery publish");
   assert.ok(finalCommand > verifyHost, "final manual verification command should print only after verifier runs");
+});
+
+test("Pasta WTF.ME live publisher refuses host drift after site publish and pin recovery", () => {
+  assert.match(source, /function assertPublishedHostStable\(plannedHost: string, publishedHost: string\): void/);
+  assert.match(source, /WTF\.ME publish response did not include a site host/);
+  assert.match(source, /assertExpectedHost\(publishedHost\)/);
+  assert.match(source, /WTF\.ME publish changed host from \$\{plannedHost\} to \$\{publishedHost\}; refusing to continue pin recovery/);
+  assert.match(source, /function assertPinningResponseMatchesHost\(pinning: any, host: string\): void/);
+  assert.match(source, /Pasta pin recovery returned host \$\{pinHost\}, expected \$\{host\}/);
+  assert.match(source, /Pasta pin recovery returned wellKnownUrl \$\{wellKnownUrl\}, expected \$\{expectedWellKnown\}/);
+  assert.match(source, /Pasta pin recovery returned scopeRef \$\{scopeRef\}, expected it to end with :\$\{host\}/);
+
+  const publishSite = source.indexOf("const published = await publish(headers)");
+  const publishedHost = source.indexOf("const publishedHost = String(published.site?.host || \"\").toLowerCase()");
+  const stableHost = source.indexOf("assertPublishedHostStable(host, publishedHost)");
+  const probeTls = source.indexOf("await probeTlsAsk(publishedHost)");
+  const publishPins = source.indexOf("const pinning = publishPins ? await publishPastaPins(headers) : null");
+  const pinHost = source.indexOf("assertPinningResponseMatchesHost(pinning, publishedHost)");
+  const verifyHost = source.indexOf("verifyPublishedHost(publishedHost)");
+  assert.ok(publishedHost > publishSite, "published host should be resolved from publish response");
+  assert.ok(stableHost > publishedHost, "published host should be validated immediately");
+  assert.ok(probeTls > stableHost, "TLS check should use the validated published host");
+  assert.ok(pinHost > publishPins, "pin recovery response should be host-checked");
+  assert.ok(verifyHost > pinHost, "public verifier should run only after pin recovery host matches");
 });
 
 test("Pasta WTF.ME live publisher refuses accidental existing-site overwrites", () => {

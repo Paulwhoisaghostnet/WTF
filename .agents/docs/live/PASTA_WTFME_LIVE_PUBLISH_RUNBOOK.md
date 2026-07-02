@@ -42,6 +42,7 @@ The publisher must:
 
 - Save Pasta landing, mint, and collection pages.
 - Publish the WTF.ME site.
+- Reject any host drift between the planned host, the publish response, pin recovery response, `.well-known/wtfos-pins`, and manifest scope.
 - Confirm the production TLS allow endpoint accepts the host.
 - Publish Pasta pin recovery.
 - Run `npm run pasta:wtfme:live-check` against the public host before exiting successfully.
@@ -65,6 +66,7 @@ The manifest payload URL check should be added when the public object-mirror URL
 Stop and do not claim Pasta is live if any of these happen:
 
 - Credentials authenticate to a different host than `PASTA_WTFME_LIVE_EXPECT_HOST`.
+- The site publish or pin recovery response changes host, `wellKnownUrl`, or manifest scope away from the expected Pasta host.
 - The TLS allow endpoint denies the host.
 - Public pages miss `data-pasta-hosted-page` markers.
 - `.well-known/wtfos-pins` is missing or points to a non-resolving `app.wtfos.media.pinManifest` record.
