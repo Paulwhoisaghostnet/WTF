@@ -37,6 +37,14 @@ test("Pasta repo cleanup audit classifies known stale and promoted branches", ()
   assert.match(source, /promoted_ancestor/);
 });
 
+test("Pasta repo cleanup audit treats tree-equivalent squash branches as prunable", () => {
+  assert.match(source, /function hasNoReplayDelta/);
+  assert.match(source, /replay\.fileCount === 0/);
+  assert.match(source, /replay\.deletedCount === 0/);
+  assert.match(source, /promoted_equivalent_squash/);
+  assert.match(source, /current main already has the same file tree/);
+});
+
 test("Pasta repo cleanup audit treats the active branch and remote counterpart as ongoing", () => {
   assert.match(source, /ref === activeRef/);
   assert.match(source, /ref === `origin\/\$\{activeRef\}`/);

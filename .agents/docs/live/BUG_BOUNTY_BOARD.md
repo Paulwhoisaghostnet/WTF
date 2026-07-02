@@ -70,6 +70,7 @@ Priority labels:
 | WTF-BB-346 | Fixed | Codex WTF LIVE smart-room goal | 2026-07-01 | WTF LIVE / user-aware room operations | P1 | 14 | 3 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-347 | Verified | Codex Pasta Colander RPC fallback | 2026-07-01 | Pasta Protocol / Colander Shadownet RPC resilience | P1 | 11 | 8 | 2 | 4 | 1 | Colander Shadownet discovery now retries recoverable primary RPC timeouts through the configured `https://tcinfra.net/rpc/tezos/shadownet` fallback with a bounded per-attempt read budget while preserving explicit env RPC overrides and the localhost wallet harness; PR #20 deployed live as `9267c4b`, Deploy to Hetzner `28551857308` and main Quality Gates `28551857324` passed, and live readiness verified all non-credentialed Pasta surfaces with only the expected WTF.ME credential/host blockers remaining |
 | WTF-BB-348 | Verified | Codex Pasta CI smoke heartbeat | 2026-07-02 | E2E / Quality Gates observability | P2 | 7 | 15 | 1 | 3 | 0 | Main Quality Gates inventory smoke can run for ~14 minutes with no CLI-visible progress before a production push is fully proven, making healthy CI hard to distinguish from a wedged release gate; verified by branch, PR, and main Quality Gates through PR #23 with 60-second heartbeat output through the long smoke step |
+| WTF-BB-349 | Fixed | Codex Pasta cleanup squash-equivalence | 2026-07-02 | Repo hygiene / Pasta squash-merge cleanup | P2 | 8 | 14 | 2 | 3 | 0 | Squash-merged Pasta branches with no remaining file delta can block `pasta:repo-cleanup:audit` as unknown stale work until manually deleted; local fix classifies zero-delta non-ancestor refs as promoted squash-equivalent prune candidates while keeping real stale deltas fail-closed |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -6780,7 +6781,7 @@ Priority labels:
 ### WTF-BB-297 - Production app gate doc freshness disables core public apps
 
 - Category: Desktop OS / production app gates
-- Status: In Progress
+- Status: Fixed
 - Owner/Session: Codex live user-story gap loop
 - Score: C3 + F5 + S1 + P0(5) = 14
 - Evidence:
@@ -7567,6 +7568,29 @@ Priority labels:
   - Final branch push Quality Gates `28555655135` and PR Quality Gates `28555657254` passed on commit `a556db84` after the evidence-status alignment.
   - PR #22 merged as live commit `984b3f5`; Deploy to Hetzner `28556324686` passed, main Quality Gates `28556324696` passed, and the main log shows heartbeat messages every 60 seconds from 60s through 720s before `Inventory Playwright smoke completed`.
   - PR #23 branch push Quality Gates `28557872687`, PR Quality Gates `28557873981`, and main Quality Gates `28558457383` all passed; each long app-quality log showed Inventory Playwright smoke heartbeat output every 60 seconds through 720s before completion.
+
+### WTF-BB-349 - Squash-equivalent Pasta branches should not block cleanup
+
+- Category: Repo hygiene / Pasta squash-merge cleanup
+- Status: In Progress
+- Owner/Session: Codex Pasta cleanup squash-equivalence
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - After PR #24 squash-merged to live commit `7c26c4f`, `pasta:repo-cleanup:audit` classified `codex/pasta-post-pr23-cleanup-audit` and `origin/codex/pasta-post-pr23-cleanup-audit` as unknown Pasta branches even though their two-dot replay against current `origin/main` had no file delta.
+  - Deleting the merged branch locally and remotely immediately returned the cleanup audit to green, proving the blocker was branch-shape noise rather than unreviewed file content.
+- Why it matters:
+  - The cleanup audit should keep real stale Pasta deltas fail-closed, but a squash-equivalent branch whose file tree is already present in `origin/main` is a prune candidate, not abandoned work to inspect.
+- Likely correction direction:
+  - Teach the cleanup audit to classify Pasta refs with zero two-dot replay delta as `promoted_equivalent_squash`, while preserving active, promoted ancestor, and historical evidence handling.
+- Verification idea:
+  - Add policy coverage, create a temporary non-ancestor Pasta ref with the same tree as `origin/main`, prove `npm run pasta:repo-cleanup:audit` passes with `promoted_equivalent_squash`, delete the temp ref, and rerun the normal readiness gates.
+- Current pass verification:
+  - Added `promoted_equivalent_squash` classification for Pasta refs whose replay summary has zero files, zero deletes, and no shortstat against current `origin/main`.
+  - Passed `npm run pasta:repo-cleanup:audit:check`.
+  - Passed `git diff --check`.
+  - Created temporary non-ancestor local ref `codex/pasta-zero-delta-fixture` with the same tree as `origin/main`; `npm run pasta:repo-cleanup:audit` classified it as `promoted_equivalent_squash; 1 behind current main / 1 ahead; no file delta` and returned `ok: true`.
+  - Deleted the temporary fixture ref and reran `npm run pasta:repo-cleanup:audit`; the normal audit returned `ok: true` with no blockers.
+  - Reran `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; repo cleanup passed and the only remaining blockers were the expected dedicated WTF.ME publish credentials plus missing live Pasta WTF.ME host proof.
 
 ## Backlog Intake Template
 

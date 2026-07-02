@@ -1,3 +1,13 @@
+## 2026-07-02 - Squash-merged cleanup branches need tree-equivalence handling
+
+**What happened**: After PR #24 was squash-merged and deployed as `7c26c4f`, the source branch still existed briefly as a non-ancestor ref. `pasta:repo-cleanup:audit` correctly saw it as Pasta-related but blocked it as unknown even though `git diff origin/main..codex/pasta-post-pr23-cleanup-audit` had no file delta. The branch had to be deleted manually before the cleanup gate could return green.
+
+**Why it mattered**: GitHub squash merges produce a new commit, so the original branch may not be an ancestor of `origin/main` even when all of its file content is already promoted. Treating a zero-delta squash-equivalent branch like abandoned work creates noisy release blockers and can distract from the real stale branches that would delete newer Pasta guardrails if replayed.
+
+**Rule**: Cleanup audits should classify Pasta-related refs with no two-dot replay delta against current `origin/main` as promoted squash-equivalent prune candidates, while continuing to fail closed on refs with real file deltas unless they are active, promoted ancestors, or explicitly retained historical evidence.
+
+---
+
 ## 2026-07-02 - Evidence docs must advance after narrow CI promotions
 
 **What happened**: PR #22 promoted a CI-observability-only change and deployed successfully as `984b3f5`, with main Quality Gates and live readiness proving the same Pasta installer/static/Colander surfaces as earlier runs. The standing Pasta coverage report and readiness matrix still referenced older proof snapshots, which could make future cleanup or launch passes chase stale commit IDs or reopen already-proven Colander action evidence.
