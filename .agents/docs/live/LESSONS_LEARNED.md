@@ -488,16 +488,6 @@
 
 ---
 
-## 2026-06-30 - Data-marker attrs helpers need explicit styled-components-safe types
-
-**What happened**: The broad TypeScript gate failed after Tezos Intel presentation markers were added with a helper returning a plain object literal. Styled-components rejected the helper return type for `div`, `section`, `input`, `textarea`, and heading attrs even though the runtime data attributes were simple strings.
-
-**Why it mattered**: Presentation or measurement markers can block production release gates even when they are not product behavior. In a dirty release-prep tree, one untyped attrs helper can make unrelated Pasta/Macaroni verification look unshippable.
-
-**Rule**: Shared data-marker helpers used with `styled.*.attrs(...)` should return a styled-components-safe shape, such as `Record<string, string>`, or use static attrs objects. Run the broad type gate after adding shared marker helpers.
-
----
-
 ## 2026-06-30 - Installer manifests must not advertise plaintext remote binaries
 
 **What happened**: The Macaroni installer manifest endpoint sanitized configured installer URLs, but still accepted remote `http:` URLs. That was acceptable for a local development link but not for public installer binaries advertised through `wtfos.app`.
@@ -5197,6 +5187,18 @@
 **Fix**: W now serves the configured Gameshow groupchat from persisted DB cache first, exposes one chat in the UI, and uses a shared throttled platform refresh only for stale or explicit refresh reads. Personal inbox, ad hoc DM threads, groupchat sends, compose, and media upload are outside the active W surface.
 
 **Rule**: W chat must remain a platform-account-backed read mirror unless the product intentionally reopens personal DMs. User OAuth scopes should cover read/timeline actions only, not DM permissions.
+## 2026-05-24 — W chat reads must not spend per-user X API calls
+
+**What happened**: W exposed too much of the original X surface area after the product had narrowed to one timeline stream and one gameshow chat mirror. The chat route could still depend on live platform DM resolution patterns, while the UI kept clutter from abandoned DM/inbox/posting plans.
+
+**Why it mattered**: Under X pay-per-use constraints, a single public chat mirror should be served from the cached canonical conversation, not refreshed independently for every viewer. Extra DM, inbox, and compose affordances also invite OAuth scopes and API calls the product no longer needs.
+
+**Fix**: Re-centered W on cached timeline plus one gameshow chat, added a shared throttled route refresh for the configured platform conversation, removed normal W route registration for compose/DM/media upload flows, added media previews and a cache-derived media tab, and narrowed OAuth to read plus timeline engagement actions.
+
+**Rule**: When an API-priced product surface is retired, remove its UI, route registration, OAuth scopes, and inventory handles in the same pass. Shared read mirrors must be DB-first, with any upstream refresh gated globally rather than per user.
+
+---
+
 ## 2026-05-24 — W URLs should become content, not duplicate text
 
 **What happened**: Timeline posts and groupchat messages could show raw URLs while also trying to show media or link metadata elsewhere, which made the feed noisy and hid the useful artifact preview.
@@ -5363,6 +5365,18 @@
 **Fix**: Added a shared `canOpenAppsForRole` / `canOpenPageDef` policy and consumed it from window rendering, URL sync, Start Menu construction, command palette construction, desktop icons, shortcuts, and item launch callbacks.
 
 **Rule**: New account roles that change app access must be enforced through the shared route/app-launch policy first, then consumed by every launcher. Do not patch only the visible menu.
+
+---
+
+## 2026-05-25 — App gates must be runtime policy, not launcher decoration
+
+**What happened**: Desktop app toggles were treated mostly as presentation state for icons and Start Menu entries. A disabled app could still be reached through direct routes, stale shortcuts, or command-palette commands because page access checks only evaluated auth and route role flags.
+
+**Why it mattered**: Admins need app disable controls to stop an app from running, not merely make it less visible. If launch surfaces and route rendering use different gate logic, disabled apps remain reachable through any path the UI forgot to hide.
+
+**Fix**: Page access now combines role/surface access with the desktop app enabled map, command palette and Start Menu filtering use that shared decision, and direct disabled-app routes render an explicit admin-disabled failure state instead of mounting the app.
+
+**Rule**: Every desktop app gate must be enforced at runtime in the shared route access layer. Launcher hiding is secondary; direct URLs, stale shortcuts, command palette entries, and open windows must all honor the same admin app state.
 
 ---
 
@@ -7223,31 +7237,6 @@
 **Why it mattered**: A central message hub is useful only if it preserves source boundaries. Untargeted DM comms rows or a global unread aggregate can make private conversations visible in the wrong user's badge or mark messages read outside the owning app's contract.
 
 **Rule**: Central inbox surfaces may aggregate display cards, counts, and launch targets, but every read/write mutation must stay source-owned and user-scoped. DMs and Studio conversations need participant-targeted comms rows, unread badges need signed-in-user counts, and WIM can surface Studio rooms in recent conversations without mixing them into the buddy roster.
-**What happened**: The Inbox hub pass found DM sends publishing normalized comms cards with `targetUserId: null`, which made private DM previews eligible for the shared/global comms branch. The same pass found viewed mail could remain visually unread when the comms read state had not refetched yet.
-
-**Why it mattered**: Inbox is an aggregator, not a permission boundary replacement. Direct messages and Studio conversations can appear in Inbox and WIM, but their indexed cards must stay scoped to conversation participants, and the UI has to give immediate read feedback without waiting on the read-model round trip.
-
-**Rule**: For cross-app communication hubs, publish one comms read-model item per intended recipient for private sources, never a null-target global card. When marking a source-owned item read from an aggregator, combine source read state with a local optimistic read fallback until the canonical read model catches up.
-
----
-
-## 2026-06-30 - Source-update imports need current-source proof and isolated verification
-
-**What happened**: The Skywire source refresh pulled Bluesky trending topics from the current social-app/ATProto source, but the broad app check was blocked by an unrelated JSX parse error in `client/src/pages/DesktopSettings.tsx`. A focused Skywire bundle proof and server import still passed, while full inventory browser proof could not honestly claim current-client coverage because the normal build path was blocked.
-
-**Why it mattered**: Source-derived feature imports can be correct locally while stale `dist` or unrelated dirty files make browser coverage ambiguous. Treating an old built asset as proof would hide whether the new source feature actually renders in the current app.
-
-**Rule**: For upstream source refreshes, record the upstream release/hash and the local adoption state in the source tracker, run focused compile/import proofs for the changed surface, and clearly separate broad-build blockers from feature regressions. Do not claim Playwright coverage for a client change unless the tested browser bundle was built from the current source.
-
----
-
-## 2026-06-30 - Hidden feature UI needs direct-entry sanitization
-
-**What happened**: Skywire Signals needed to be hidden for a sleeker user experience without deleting the underlying signal collection or API path. Removing only the visible nav item would have left public login copy, quick actions, live-status banner controls, behavior assertions, and direct `/skywire?tab=signals` links still exposing the dormant surface.
-
-**Why it mattered**: A hidden feature is still user-visible if old deep links, status badges, tests, or inventory docs route people into it. That creates confusing half-supported UI while making future agents think the feature is still intentionally promoted.
-
-**Rule**: When hiding a feature rather than deleting it, keep the internal type/API spine if needed, but sanitize route/query entry, remove visible CTAs and marketing copy, update inventory and behavior assertions to describe the hidden state, and add focused tests that prove both "not visible" and "not deleted" where relevant.
 
 ---
 
@@ -7274,18 +7263,14 @@
 ## 2026-06-30 - Inventory handles need a real event path
 
 **What happened**: The shared AppWindow bug-report affordance added a new `desktop.bug_report.opened` inventory handle. The open action also needed to be recorded through the existing `/api/desktop/events` normalized desktop event path and allowlisted server-side, not only documented in inventory.
-## 2026-07-01 - Stage rooms need role-gated publishing, not broadcast-only setup
-## 2026-06-30 - Apphost WebRTC needs bounded host negotiation proof
 
-**What happened**: The remote application host could launch Jackbox and capture snapshots, but the first WebRTC streamer path timed out because GStreamer promise handling blocked before writing an answer. Focused apphost tests caught timeout cleanup, and a real Playwright-generated browser SDP offer against Hetzner proved the daemon now returns a VP8/OPUS answer with llvmpipe and PulseAudio diagnostics.
+**Why it mattered**: Inventory handles are more than labels. If a new user interaction is documented without an emitting path, coverage can say the handle exists while live telemetry, challenge automation, and audit trails cannot observe the actual user action.
 
-**Why it mattered**: A remote GUI session is not usable just because the game process is running. The browser needs an actual media/control path, and failed WebRTC attempts must be reaped so retries do not leave hidden capture processes behind.
-
-**Rule**: For apphost streaming work, test launch/status separately from streaming negotiation, use a real browser-generated offer for host smoke proof, clamp offer timeouts, stop failed streamers automatically, and keep snapshot capture as a fallback rather than the primary success signal.
+**Rule**: When adding a canonical inventory handle for a UI interaction, wire the client action to the owning normalized event route in the same pass, add the event type to that route's allowlist, and include focused policy coverage that proves both the trigger and the event path exist.
 
 ---
 
-## 2026-06-30 - Stage rooms need role-gated publishing, not broadcast-only setup
+## 2026-07-01 - Stage rooms need role-gated publishing, not broadcast-only setup
 
 **What happened**: WTF LIVE stages had stage creation and broadcast-style surfaces, but no real room join path, host/speaker role lists, or in-room controls for deciding who could publish mic, camera, screen, or media. Focused Playwright also caught a post-delete 404 because invalidating the stage list refetched a deleted stage's sibling access query before the selection moved away.
 
@@ -7402,6 +7387,69 @@
 **Why it mattered**: "Ready enough to audit" and "ready to claim production launch" are different states. A final launch check must fail closed even if someone accidentally keeps audit flags in their shell.
 
 **Rule**: Multi-surface release gates should expose an explicit final-launch mode that refuses blocker-allowed mode, rejects disabled production probes, and keeps all blockers fatal before a product readiness claim.
+
+---
+
+## 2026-06-30 - Data-marker attrs helpers need explicit styled-components-safe types
+
+**What happened**: The broad TypeScript gate failed after Tezos Intel presentation markers were added with a helper returning a plain object literal. Styled-components rejected the helper return type for `div`, `section`, `input`, `textarea`, and heading attrs even though the runtime data attributes were simple strings.
+
+**Why it mattered**: Presentation or measurement markers can block production release gates even when they are not product behavior. In a dirty release-prep tree, one untyped attrs helper can make unrelated Pasta/Macaroni verification look unshippable.
+
+**Rule**: Shared data-marker helpers used with `styled.*.attrs(...)` should return a styled-components-safe shape, such as `Record<string, string>`, or use static attrs objects. Run the broad type gate after adding shared marker helpers.
+
+---
+
+---
+
+## 2026-06-30 - Source-update imports need current-source proof and isolated verification
+
+**What happened**: The Skywire source refresh pulled Bluesky trending topics from the current social-app/ATProto source, but the broad app check was blocked by an unrelated JSX parse error in `client/src/pages/DesktopSettings.tsx`. A focused Skywire bundle proof and server import still passed, while full inventory browser proof could not honestly claim current-client coverage because the normal build path was blocked.
+
+**Why it mattered**: Source-derived feature imports can be correct locally while stale `dist` or unrelated dirty files make browser coverage ambiguous. Treating an old built asset as proof would hide whether the new source feature actually renders in the current app.
+
+**Rule**: For upstream source refreshes, record the upstream release/hash and the local adoption state in the source tracker, run focused compile/import proofs for the changed surface, and clearly separate broad-build blockers from feature regressions. Do not claim Playwright coverage for a client change unless the tested browser bundle was built from the current source.
+
+---
+
+---
+
+## 2026-06-30 - Hidden feature UI needs direct-entry sanitization
+
+**What happened**: Skywire Signals needed to be hidden for a sleeker user experience without deleting the underlying signal collection or API path. Removing only the visible nav item would have left public login copy, quick actions, live-status banner controls, behavior assertions, and direct `/skywire?tab=signals` links still exposing the dormant surface.
+
+**Why it mattered**: A hidden feature is still user-visible if old deep links, status badges, tests, or inventory docs route people into it. That creates confusing half-supported UI while making future agents think the feature is still intentionally promoted.
+
+**Rule**: When hiding a feature rather than deleting it, keep the internal type/API spine if needed, but sanitize route/query entry, remove visible CTAs and marketing copy, update inventory and behavior assertions to describe the hidden state, and add focused tests that prove both "not visible" and "not deleted" where relevant.
+
+---
+
+---
+
+## 2026-06-30 - Apphost WebRTC needs bounded host negotiation proof
+
+**What happened**: The remote application host could launch Jackbox and capture snapshots, but the first WebRTC streamer path timed out because GStreamer promise handling blocked before writing an answer. Focused apphost tests caught timeout cleanup, and a real Playwright-generated browser SDP offer against Hetzner proved the daemon now returns a VP8/OPUS answer with llvmpipe and PulseAudio diagnostics.
+
+**Why it mattered**: A remote GUI session is not usable just because the game process is running. The browser needs an actual media/control path, and failed WebRTC attempts must be reaped so retries do not leave hidden capture processes behind.
+
+**Rule**: For apphost streaming work, test launch/status separately from streaming negotiation, use a real browser-generated offer for host smoke proof, clamp offer timeouts, stop failed streamers automatically, and keep snapshot capture as a fallback rather than the primary success signal.
+
+---
+
+---
+
+## 2026-06-30 - Stage rooms need role-gated publishing, not broadcast-only setup
+
+**What happened**: WTF LIVE stages had stage creation and broadcast-style surfaces, but no real room join path, host/speaker role lists, or in-room controls for deciding who could publish mic, camera, screen, or media. Focused Playwright also caught a post-delete 404 because invalidating the stage list refetched a deleted stage's sibling access query before the selection moved away.
+
+**Why it mattered**: The product difference between a room and a stage is not room setup. It is who may speak or share once everyone is in the same live transport. If role data is not durable and exposed in-room, stage owners cannot trust that the right users can talk. If list invalidation also refetches per-stage access resources after deletion, tests see browser noise and users can get stale state.
+
+**Rule**: Model stages as room transport plus explicit owner/host/speaker/audience publish capabilities across API, WebSocket, and UI. Keep stage role membership durable, editable from both the dashboard and the room, and narrow React Query invalidations so collection refreshes do not refetch deleted per-resource access endpoints.
+
+---
+
+---
+
 ## 2026-07-01 - Quest predicates must only require fields the UI can actually write
 
 **What happened**: Reggie's intro side quest required `users.displayName` AND `users.bio` via the `reggie.profile_ready` predicate. Live E2E showed the step never completing: the automation engine evaluated correctly and reported `hasBio: false`, because no route in the app writes `users.bio` — `PUT /api/profile/account` only accepts `displayName`, and the Profile UI has no bio field. The column exists in the schema (and a legacy side-quest verifier reads it), which made the requirement look plausible during design.
