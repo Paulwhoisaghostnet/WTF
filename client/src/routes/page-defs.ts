@@ -496,7 +496,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
   { pattern: "/marketplace", component: MarketplacePage, auth: true, title: "On Chain Market", group: "market", startMenu: true },
   { pattern: "/rat-race", component: RatRacePage, auth: true, title: "Rat Race", group: "market", startMenu: true, desktopIcon: true },
-  { pattern: "/map-lab", component: WtfMapLabPage, auth: true, title: "WTF Map Lab", group: "desktop-os", startMenu: true, desktopIcon: true },
+  { pattern: "/map-lab", component: WtfMapLabPage, auth: false, title: "WTF Map Lab", group: "desktop-os", startMenu: true, desktopIcon: true },
   { pattern: "/trade-boards", component: TradeBoardsPage, auth: true, title: "Trade Boards", group: "market", startMenu: true },
   { pattern: "/w", component: WPage, auth: true, title: "W Feed", group: "social", startMenu: true },
   { pattern: "/w/post/:id", component: WPage, auth: true, title: "W Post", group: "social" },

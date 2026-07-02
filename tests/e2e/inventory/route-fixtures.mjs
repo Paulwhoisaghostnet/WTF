@@ -32,7 +32,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/wtfiam", path: "/wtfiam", title: "WTF In-App Marketplace", domain: "commerce", subdomain: "WTF In-App Marketplace", auth: true },
   { pattern: "/marketplace", path: "/marketplace", title: "On Chain Market", domain: "commerce", subdomain: "On-chain marketplace", auth: true },
   { pattern: "/rat-race", path: "/rat-race", title: "Rat Race", domain: "commerce", subdomain: "Tezos urgency shopping channel", auth: true },
-  { pattern: "/map-lab", path: "/map-lab", title: "WTF Map Lab", domain: "desktop-os", subdomain: "System maps and roadmaps", auth: true },
+  { pattern: "/map-lab", path: "/map-lab", title: "WTF Map Lab", domain: "desktop-os", subdomain: "System maps and roadmaps", auth: false },
   { pattern: "/trade-boards", path: "/trade-boards", title: "Trade Boards", domain: "commerce", subdomain: "Trade boards/barter", auth: true },
   { pattern: "/w", path: "/w", title: "W Feed", domain: "social", subdomain: "W timeline", auth: true },
   { pattern: "/skywire", path: "/skywire", title: "Skywire", domain: "social", subdomain: "Skywire AT Protocol bridge", auth: false },

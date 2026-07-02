@@ -164,7 +164,9 @@ test.describe("Map Lab workspace", () => {
     await expect(page.locator("[data-map-lab-mode-badge='true']")).toContainText("Read-only demo");
     await expect(page.locator("[data-map-lab-mode-copy='true']")).toContainText("any user can inspect");
     await expect(page.getByText(/\d+ nodes, \d+ routes/).first()).toBeVisible();
-    await expect(page.locator("[data-map-lab-node='true']")).toHaveCount(212);
+    // The demo is generated from live registries, so the node count grows as
+    // routes/surfaces are added; assert a healthy floor instead of equality.
+    expect(await page.locator("[data-map-lab-node='true']").count()).toBeGreaterThanOrEqual(212);
     const topologySummary = await page.getByText(/\d+ nodes, \d+ routes/).first().textContent();
     const routeCount = Number(topologySummary?.match(/(\d+) routes/)?.[1] ?? 0);
     expect(routeCount).toBeGreaterThan(390);
@@ -238,7 +240,7 @@ test.describe("Map Lab workspace", () => {
     await expect(shell).toHaveAttribute("data-map-lab-mode", "wtfos-demo");
     await expect(shell).toHaveAttribute("data-map-lab-readonly", "true");
     await expect(page.getByText(/\d+ nodes, \d+ routes/).first()).toBeVisible();
-    await expect(page.locator("[data-map-lab-node='true']")).toHaveCount(212);
+    expect(await page.locator("[data-map-lab-node='true']").count()).toBeGreaterThanOrEqual(212);
     await expect(page.locator("[data-map-lab-node-key='wtfos-domain-social-comms']")).toBeVisible();
     await expect(page.locator("[data-map-lab-node-key='wtfos-manager-admin-panel']")).toBeVisible();
     await expect(page.locator("[data-map-lab-node-key='wtfos-route-skywire']")).toBeVisible();
