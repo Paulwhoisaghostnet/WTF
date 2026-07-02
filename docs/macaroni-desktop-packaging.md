@@ -37,16 +37,25 @@ The workflow builds:
 - Windows x64 NSIS installer on `windows-latest`
 - Raspberry Pi Linux arm64 DEB on `ubuntu-latest`
 
+The Raspberry Pi `.deb` build requires package metadata that Linux package tools can expose to users and package managers. Keep `homepage`, `author.email`, `build.linux.maintainer`, and `build.deb.packageName` populated in `apps/macaroni-desktop/package.json`; `npm run macaroni:desktop:check` guards those fields because electron-builder rejects or weakens the `.deb` without them.
+
 When the workflow publishes a GitHub release, set the production app env values to the release asset URLs:
 
 ```bash
 MACARONI_INSTALLER_MACOS_URL=https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.0/Macaroni-Studio-1.0.0-mac-universal.dmg
+MACARONI_INSTALLER_MACOS_SHA256=9c91ad656bd249d7d921084d429ba23f00692d68819937505aa3deec8e50f600
 MACARONI_INSTALLER_WINDOWS_URL=https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.0/Macaroni-Studio-1.0.0-win-x64.exe
+MACARONI_INSTALLER_WINDOWS_SHA256=6b40525d524dd916ba3a46ab28bb36c3238c7cbffd993f2c1803f61f5063e1d4
 MACARONI_INSTALLER_RASPBERRY_PI_URL=https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.0/Macaroni-Studio-1.0.0-linux-arm64.deb
+MACARONI_INSTALLER_RASPBERRY_PI_SHA256=6ed21c165f5b2c5f476b0c8ab23c78397de59a2990d3f4f21dfb741b5e7e6216
 MACARONI_INSTALLER_VERSION=1.0.0
 ```
 
-The wtfOS Studio page only enables installer download buttons when those URLs are configured.
+The wtfOS Studio page only enables installer download buttons when those URLs are configured. It also exposes configured SHA-256 values in the authenticated installer manifest so release operators can verify the download handoff with:
+
+```bash
+WTFOS_INSTALLER_COOKIE='connect.sid=...' npm run macaroni:installers:live-check
+```
 
 ## macOS Signing And Notarization
 

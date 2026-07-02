@@ -1542,7 +1542,7 @@ export function Mail() {
               <UiButton
                 uiVariant="primary"
                 data-mail-region="send-button"
-                disabled={!canSend || sendMailMutation.isPending || sendDmMutation.isPending || createDmMutation.isPending}
+                disabled={!canSend || sendMailMutation.isPending || sendDmMutation.isPending}
                 onClick={sendDraft}
               >
                 <Send size={14} aria-hidden /> Send message

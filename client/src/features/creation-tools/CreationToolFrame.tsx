@@ -9,10 +9,10 @@ type CreationToolFrameProps = {
 export function CreationToolFrame({ tool }: CreationToolFrameProps) {
   const presentation = usePresentationShell();
   const provenance = tool.provenance;
-  const frameSrc =
-    tool.id === "macaroni" && typeof window !== "undefined" && window.location.search
-      ? `${tool.src}${tool.src.includes("?") ? "&" : "?"}${window.location.search.slice(1)}`
-      : tool.src;
+  const routeSearch = typeof window !== "undefined" ? window.location.search : "";
+  const frameSrc = routeSearch
+    ? `${tool.src}${tool.src.includes("?") ? "&" : "?"}${routeSearch.slice(1)}`
+    : tool.src;
   const xLabel = provenance?.xHandle
     ? `@${provenance.xHandle.replace(/^@+/, "")}`
     : null;

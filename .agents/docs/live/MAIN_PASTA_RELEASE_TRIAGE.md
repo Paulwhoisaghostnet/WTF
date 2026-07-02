@@ -1,8 +1,10 @@
 # Main wtfOS Pasta Release Triage
 
 Last audited: 2026-06-30
-Workspace: `/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF`
-Branch snapshot: `main` at `9d043fd1`, behind `origin/main` `56955345` by 12 commits
+Release worktree: `/Users/joshuafarnworth/.config/superpowers/worktrees/WTF/codex-pasta-live-readiness`
+Release branch: `codex/pasta-live-readiness` is aligned with `origin/main` `c4ba55ff50612241869e92464504d2464f4aa9b4`
+Source checkout audited for stale/ongoing work: `/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF`
+Source checkout snapshot: `main` at `9d043fd1`, behind the original `origin/main` baseline `56955345` by 12 commits during the first audit pass
 
 ## Purpose
 
@@ -15,16 +17,24 @@ Target state remains:
 - Macaroni/Pasta software installers are built, published, and downloadable as individual packages or a suite;
 - production is smoke-tested after deployment before anything is called live.
 
-## Current Release Blocker
+## Post-Release Cleanup Note
 
-The current checkout is not a live-push candidate:
+The live-release blockers documented below are historical for the initial Pasta pass. The current production authority is `origin/main` at `c4ba55ff50612241869e92464504d2464f4aa9b4`, live `wtfos.app` reports `commitRef: "c4ba55f"`, main Quality Gates run `28479148843` succeeded, and Deploy to Hetzner run `28479148838` succeeded.
+
+Current cleanup and remaining-scope findings are tracked in `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md`. In short: individual Macaroni Desktop installers and bundled Pasta Suite Desktop installers are live and verified, live Pasta static Tezos vendor bundles are refreshed to Taquito `25.0.0`, Macaroni's local Shadownet puppet confidence lane passes 5/5, and the old `WTF-pasta-deploy` checkout is superseded and unsafe to promote wholesale. The static publisher runtime gap is also closed on production: Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna live `common.js` bundles now export `window.MD`. The broader product gap is executable Pasta Protocol workflow proof, especially actual Shadownet deploy/mint/collect/recovery, Colander discovery, and hosted artifact resolution.
+
+## Current Release Blockers
+
+The original source checkout is not a live-push candidate:
 
 - `main` is 12 commits behind `origin/main`.
 - The worktree contains 206 tracked-file changes plus many untracked files.
 - The dirty tree mixes Pasta/Macaroni, Tezos dependency upgrades, Gamma/Beta presentation work, apphost, Agent, localization, Skywire, Mail/Messages, WTF LIVE, Particle Painter assets, and test-result churn.
 - No changes are staged, so there is no commit boundary separating valid release work from stale or unrelated work.
 
-The safe path is a clean branch from `origin/main` carrying only the audited Pasta/Macaroni release slice.
+The safe path is now in progress on `codex/pasta-live-readiness`, a clean worktree based on latest `origin/main` with only the audited Pasta/Macaroni release slice applied.
+
+The historical initial-release blockers below are superseded by the current production authority above. The Pasta Suite installer lane is now live-complete for `1.0.0`: release assets exist for macOS, Windows, and Raspberry Pi; production `PASTA_SUITE_INSTALLER_*` URL/SHA/version values are configured; and `npm run pasta-suite:installers:live-check` passed against `https://wtfos.app` with an authenticated production puppet. Macaroni's Shadownet puppet confidence lane also passes locally, but the broader Pasta contract workflow proof still needs actual Shadownet deploy/mint/collect/recovery evidence beyond static bundle and installer availability.
 
 ## Live Production Baseline
 
@@ -33,7 +43,7 @@ Probed on 2026-06-30 against `https://wtfos.app`.
 ### Health And Release Identity
 
 - `/api/health` returned HTTP 200 with `status: "ok"`.
-- Health reported `nodeEnv: "production"` but `version.commitRef: "dev"`, so live commit identity is not strong enough to prove a specific git revision.
+- Health reported `nodeEnv: "production"` and `version.commitRef: "c4ba55f"`, matching the current `origin/main` short revision.
 - Health exposes verbose runtime and chain topology, matching the existing `WTF-BB-302` public-observability risk.
 
 ### Pasta Static Tool Availability
@@ -50,9 +60,9 @@ All checked static Pasta/Macaroni tool pages returned HTTP 200:
 
 Observed page content confirms the Pasta publisher pages exist on production and expose Shadownet/wallet/contract-oriented flows, but this is reachability only. It does not prove successful deployment, minting, collecting, or recovery.
 
-### Production Tezos Vendor Drift
+### Production Tezos Vendor Status
 
-Every checked live vendor bundle still reports Taquito `24.3.0`:
+Every checked live vendor bundle now reports Taquito `25.0.0`, does not include Taquito `24.3.0`, and does not include the old `rpc.shadownet.teztnets.com` RPC marker:
 
 - `/creation-tools/macaroni/vendor/tezos.js`
 - `/creation-tools/spaghetti/vendor/tezos.js`
@@ -62,19 +72,30 @@ Every checked live vendor bundle still reports Taquito `24.3.0`:
 - `/creation-tools/penne/vendor/tezos.js`
 - `/creation-tools/lasagna/vendor/tezos.js`
 
-This contradicts a live-complete Pasta claim. Local policy expects the refreshed Taquito `25.0.0` / U025 / Octez baseline and passes locally, but production has not received that refresh.
+This proves the earlier live static vendor drift is resolved on production. It does not prove static publisher module runtime wiring or live Shadownet operations.
 
-Tracked as `WTF-BB-330`.
+### Production Static Publisher Runtime Gap
+
+All six live Pasta `common.js` files expose `consumeCheaseHandoff()`, `loadPlatformCapabilities()`, and `window.MD`:
+
+- `/creation-tools/spaghetti/js/common.js`
+- `/creation-tools/gnocchi/js/common.js`
+- `/creation-tools/ravioli/js/common.js`
+- `/creation-tools/rotini/js/common.js`
+- `/creation-tools/penne/js/common.js`
+- `/creation-tools/lasagna/js/common.js`
+
+The fix passed branch Quality Gates `28478213183`, main Quality Gates `28479148843`, Deploy to Hetzner `28479148838`, and post-deploy live asset verification on `wtfos.app` commit `c4ba55f`.
 
 ### Installer Exposure
 
 - `/api/macaroni/installers` returned HTTP 401 to an unauthenticated request, which matches the authenticated endpoint contract.
 - Macaroni Studio production HTML/JS contains the installer download controls and the `/api/macaroni/installers` manifest fetch.
-- No authenticated production proof exists yet that installer URLs are configured or available.
+- Authenticated production verifiers have since proved both Macaroni Desktop and Pasta Suite Desktop installer manifests, HTTPS GitHub release URLs, SHA-256 checksums, and byte-range release downloads for macOS, Windows, and Raspberry Pi.
 
 ## Origin Main Baseline
 
-Checked on 2026-06-30 against local `origin/main` (`56955345`).
+Checked on 2026-06-30 against local `origin/main` (`eda1db4b` after the System Appearance promotion).
 
 ### Already On Origin Main
 
@@ -89,7 +110,7 @@ This means installer source, docs, and CI workflow are already part of the remot
 - `spec/tests/validation-manifest.json`
 - `scripts/check-tezos-rpc-defaults.test.mjs`
 
-These must be carried from the dirty checkout onto the clean release branch.
+These are now carried from the dirty checkout onto `codex/pasta-live-readiness`, but remain missing from `origin/main` until this release branch lands.
 
 ### Origin Tezos Vendor Drift
 
@@ -107,15 +128,18 @@ This matches live production and confirms the local Tezos vendor refresh has not
 
 ### Installer Artifact Status
 
-- GitHub API returned zero runs for the `macaroni-desktop-installers.yml` workflow.
-- GitHub releases API returned an empty release list.
-- No Macaroni/Pasta release tag appeared in the first 50 GitHub repo tags.
+- Initial GitHub API probes returned zero runs for the `macaroni-desktop-installers.yml` workflow, zero releases, and no Macaroni/Pasta release tag in the first 50 repo tags.
+- After pushing `codex/pasta-live-readiness`, manual safe workflow run `28458246772` with `publish_release=false` built and uploaded `macaroni-desktop-macos` artifact `7986390894` and `macaroni-desktop-windows` artifact `7986389945`.
+- The same workflow run failed Raspberry Pi arm64 before artifact upload because electron-builder required Debian package homepage/author email/maintainer metadata.
+- The release branch now adds guarded `.deb` metadata: package homepage, author email, Linux maintainer, lowercase Debian package name, executable name, and desktop name.
+- Manual safe workflow retry `28458796320` on commit `3dc2013a` with `publish_release=false` succeeded for macOS, Windows, and Raspberry Pi. It uploaded `macaroni-desktop-macos` artifact `7986621165`, `macaroni-desktop-windows` artifact `7986637629`, and `macaroni-desktop-raspberry-pi` artifact `7986602158`.
+- These are GitHub Actions artifacts, not stable public release URLs.
 
-Tracked as `WTF-BB-331`.
+Tracked as `WTF-BB-330`.
 
 ## Carry Forward: Main/Pasta Candidate Work
 
-These items appear aligned with the main Pasta release goal, but they still need to be applied on a clean production-base branch and reverified there.
+These items are aligned with the main Pasta release goal and are now applied to the clean production-base branch. They still need clean-branch verification and live proof.
 
 ### Pasta Spec And Coverage
 
@@ -172,8 +196,18 @@ Carry:
 - `client/src/lib/tezos/wallet.ts`
 - `client/src/lib/tezos/loaders.ts`
 - `client/src/lib/tezos/wallet-connect-policy.test.ts`
+- `extensions/wtf-operator-signer/package.json`
+- `extensions/wtf-operator-signer/package-lock.json`
+- `extensions/wtf-domain-bot/src/config.ts`
+- `extensions/wtf-domain-bot/.env.example`
+- `contracts/wtf-subdomains/deploy.ts`
+- `server/routes/buyback-windows.ts`
+- `shared/schema-recapture.ts`
+- `scripts/marketplace-v2/legacy-marketplace-pause.ts`
 - `public/creation-tools/*/vendor/tezos.js` for Pasta/Macaroni tools
 - `public/creation-tools/macaroni/vendor/octez-connect.js`
+- `public/creation-tools/particle-painter/*`
+- `client/src/features/creation-tools/tool-registry.ts`
 - `scripts/build-tezos-browser-vendors.mjs`
 - `scripts/check-tezos-rpc-defaults.test.mjs`
 - `server/routes/macaroni-policy.test.ts`
@@ -185,7 +219,7 @@ Evidence:
 
 Risk:
 
-- This is a broad dependency-lock change. It must be tested on a clean branch with build, creator-tool asset checks, Macaroni/CH-EASE workflow tests, and Shadownet tests.
+- This is a broad dependency-lock change. It must be tested on this clean branch with build, creator-tool asset checks, Macaroni/CH-EASE workflow tests, and Shadownet tests.
 
 ### Macaroni Desktop Installers
 
@@ -201,20 +235,26 @@ Carry or preserve as already tracked source:
 Evidence:
 
 - `npm run macaroni:desktop:check` passed 3/3 in this audit.
+- `npm run dist:mac --prefix apps/macaroni-desktop` produced local unsigned macOS universal artifacts:
+  - `apps/macaroni-desktop/release/Macaroni-Studio-1.0.0-mac-universal.dmg` (`sha256 9df90eef0fe40b784a642d8630a0b842c7c355224c212884bf3f69777c2b187f`)
+  - `apps/macaroni-desktop/release/Macaroni-Studio-1.0.0-mac-universal.zip` (`sha256 9cb9ea4c38494bf2bf9fc160288fa1988ce7ea687efc06b5a1330b569a2fdcba`)
 - The workflow builds macOS, Windows, and Raspberry Pi artifacts.
+- Safe branch workflow run `28458246772` proved artifact upload for macOS and Windows, but Raspberry Pi failed before upload on missing Debian package metadata.
+- Current branch adds package-policy assertions for the `.deb` homepage, maintainer, package name, executable name, and desktop name.
+- Safe branch workflow retry `28458796320` proved artifact upload for macOS, Windows, and Raspberry Pi.
 - The app exposes installer links only when `MACARONI_INSTALLER_*_URL` and `MACARONI_INSTALLER_VERSION` are configured.
 
 Missing proof:
 
-- Release artifacts are not proven built in this audit.
+- GitHub release artifacts are not proven published in this audit.
 - Production env URLs are not proven configured.
 - `/api/macaroni/installers` is not proven live on `wtfos.app`.
 - Public macOS distribution still needs signing/notarization or an explicit unsigned-release policy.
 
 Installer URL hardening status:
 
-- Fixed locally in this dirty checkout: production remote installer URLs are now HTTPS-only, with same-origin relative paths allowed and loopback HTTP allowed only outside production.
-- Still needs clean-branch carry and live manifest proof before it counts as production-verified.
+- Fixed locally in `codex/pasta-live-readiness`: production remote installer URLs are now HTTPS-only, with same-origin relative paths allowed and loopback HTTP allowed only outside production.
+- Still needs clean-branch verification and live manifest proof before it counts as production-verified.
 
 ### CH-EASE And Macaroni Packager
 
@@ -306,9 +346,9 @@ Reason:
 
 - These are main production surfaces, but they are not Pasta release requirements. They should ship only through their own scoped branch and verification.
 
-### Particle Painter Asset Churn
+### Particle Painter Main Tezos Asset Refresh
 
-Hold or discard unless separately requested:
+Carried as part of the main `wtfos.app` Tezos dependency refresh, not as Pasta app behavior:
 
 - deleted `public/creation-tools/particle-painter/assets/index-CwPOmQ7R.js`
 - deleted `taquito-utils.es6-DgY7mjuu.js`
@@ -317,12 +357,13 @@ Hold or discard unless separately requested:
 - new `public/creation-tools/particle-painter/assets/index-B--Bh6Oo.js`
 - new Particle Painter Taquito/Teia/wallet bundles
 - `public/creation-tools/particle-painter/index.html`
-- `client/src/features/creation-tools/tool-registry.ts` if it only points at the rebuilt Particle Painter asset hash
+- `client/src/features/creation-tools/tool-registry.ts`
 
 Reason:
 
-- Particle Painter is a creation tool, but not a Pasta Protocol publisher or Macaroni installer dependency.
-- Asset replacement needs its own provenance and runtime proof before it goes live.
+- The Tezos policy gate covers all main static creator-tool bundles that would otherwise keep stale Taquito `24.3.0` code in production.
+- This remains excluded from Pasta feature claims: it proves main Tezos bundle currency, not Pasta Protocol deployment or installer availability.
+- It still needs `npm run creation-tools:check`, build proof, and live static asset marker proof before production closure.
 
 ### Test Artifacts
 
@@ -354,19 +395,23 @@ Passed:
 - `npm run security:tezos-rpc-defaults`
 - `./node_modules/.bin/tsx --test shared/pasta-protocol/foundation.test.ts tests/unit/pasta-foundation-parity.test.mjs`
 - `npm run test:e2e:inventory:coverage`
+- `npm run creation-tools:check`
+- `npm run build`
+- `npm run dist:mac --prefix apps/macaroni-desktop`
 
 Interpretation:
 
 - These checks support the Macaroni desktop packaging policy, Tezos dependency/RPC currency, Pasta helper parity, and inventory skeleton coverage.
-- The broad TypeScript gate currently passes in the dirty tree after a type-only Tezos Intel data-attribute helper cleanup.
-- They do not prove production deployment, downloadable installer availability, Shadownet contract execution, or live `wtfos.app` behavior.
+- The broad TypeScript gate and production build pass on `codex/pasta-live-readiness`.
+- The Tezos policy now passes on the clean branch after carrying the main Tezos defaults, operator signer, and Particle Painter static asset refresh.
+- They do not prove production deployment, public downloadable installer availability, Windows/Raspberry Pi installer artifacts, Shadownet contract execution, or live `wtfos.app` behavior.
 
 ## Required Evidence Before Calling Pasta Live
 
 The goal is not complete until current evidence proves all of the following:
 
 1. A clean production-base branch exists from `origin/main`.
-2. Only audited Pasta/Macaroni release files are included.
+2. Only audited Pasta/Macaroni release files and directly required main Tezos currency files are included.
 3. `npm run check -- --pretty false` passes on the clean branch.
 4. `npm run build` passes on the clean branch.
 5. `npm run creation-tools:check` passes.

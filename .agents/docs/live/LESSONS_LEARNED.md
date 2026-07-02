@@ -1,3 +1,483 @@
+## 2026-07-02 - Low-disk deploy recovery must stay build-cache-only
+
+**What happened**: The deploy preflight had a safe 12 GiB floor and printed Docker disk usage when capacity was too low, but a host that drifted just below the floor still needed a manual `docker builder prune -af` before the same verified deployment could proceed.
+
+**Why it mattered**: Low-disk deploy incidents are easiest to mishandle under pressure. Broad Docker cleanup commands can delete images or volumes that are part of the production recovery surface, while build cache is the narrow disposable layer that previously recovered enough space.
+
+**Rule**: Deploy automation may recover low disk by inspecting `docker system df`, pruning Docker builder cache only, and rechecking free space before image build. Keep broad `docker system prune`, image prune, and volume prune out of routine deploy recovery paths unless a human has explicitly chosen a wider cleanup.
+
+---
+
+## 2026-07-02 - Deploy disk preflight needs cache-only recovery
+
+**What happened**: PR #28 merged cleanly, but the first Deploy to Hetzner run failed before rebuild because the production root filesystem had 12,174 MiB free and the deploy preflight requires 12,288 MiB. Docker build cache had 13.82 GiB reclaimable, so pruning build cache only raised free space to 29 GiB and the rerun deployed successfully.
+
+**Why it mattered**: The disk preflight did exactly its job by stopping before a risky rebuild, but a narrow margin can recur after routine image builds. Operators need the safe recovery path to be obvious so nobody touches Docker volumes or app data under deploy pressure.
+
+**Rule**: When deploy disk preflight fails by capacity, inspect `docker system df` first and prune Docker build cache only before considering any broader cleanup. Do not prune volumes for routine deploy recovery, and record the successful rerun plus live health commit before claiming production promotion.
+
+---
+
+## 2026-07-02 - Final launch checks need named commands
+
+**What happened**: Pasta had a strict final-launch readiness mode, but the operator path still required remembering the raw `PASTA_LIVE_READINESS_FINAL_LAUNCH=1` environment prefix. That made the most important launch check easier to mistype, omit from docs, or confuse with blocker-allowed audit mode.
+
+**Why it mattered**: The final launch gate is the boundary between "non-WTF.ME production surfaces are proven" and "the whole product is launchable." A hidden env incantation leaves room for a future push to run the audit command, see mostly green output, and miss that final launch must keep blockers fatal.
+
+**Rule**: Release-critical strict modes need named package commands, source-policy coverage, and docs that tell operators to run the named command. Keep raw env flags available for diagnostics, but make the final-launch path discoverable and copy-paste-safe.
+
+---
+
+## 2026-07-02 - Cleanup audits must tolerate disappearing refs
+
+**What happened**: While checking a Pasta evidence-refresh branch, `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness` ran in parallel with `npm run pasta:repo-cleanup:audit:check`. The policy test creates and deletes a temporary `codex/pasta-zero-delta-fixture-*` ref; the nested readiness cleanup audit could list that ref, then fail when the test deleted it before ahead/behind classification.
+
+**Why it mattered**: Release gates should fail closed on real surviving stale Pasta work, not on a ref that no longer exists by the time it is inspected. Parallel verification, branch pruning, or manual cleanup during a release pass can otherwise produce a false repo-cleanup blocker that distracts from the actual final-launch blockers.
+
+**Rule**: Cleanup audits that list refs and classify them in a later step must re-check ref existence before running diff, ancestry, or ahead/behind commands. Treat refs that disappear during the audit as non-blocking audit metadata, and keep unknown refs that still exist fail-closed.
+
+---
+
+## 2026-07-02 - Squash-merged cleanup branches need tree-equivalence handling
+
+**What happened**: After PR #24 was squash-merged and deployed as `7c26c4f`, the source branch still existed briefly as a non-ancestor ref. `pasta:repo-cleanup:audit` correctly saw it as Pasta-related but blocked it as unknown even though `git diff origin/main..codex/pasta-post-pr23-cleanup-audit` had no file delta. The branch had to be deleted manually before the cleanup gate could return green.
+
+**Why it mattered**: GitHub squash merges produce a new commit, so the original branch may not be an ancestor of `origin/main` even when all of its file content is already promoted. Treating a zero-delta squash-equivalent branch like abandoned work creates noisy release blockers and can distract from the real stale branches that would delete newer Pasta guardrails if replayed.
+
+**Rule**: Cleanup audits should classify Pasta-related refs with no two-dot replay delta against current `origin/main` as promoted squash-equivalent prune candidates, while continuing to fail closed on refs with real file deltas unless they are active, promoted ancestors, or explicitly retained historical evidence.
+
+---
+
+## 2026-07-02 - Evidence docs must advance after narrow CI promotions
+
+**What happened**: PR #22 promoted a CI-observability-only change and deployed successfully as `984b3f5`, with main Quality Gates and live readiness proving the same Pasta installer/static/Colander surfaces as earlier runs. The standing Pasta coverage report and readiness matrix still referenced older proof snapshots, which could make future cleanup or launch passes chase stale commit IDs or reopen already-proven Colander action evidence.
+
+**Why it mattered**: Pasta launch decisions depend on the current live commit, not just on whether the changed files were product code. A narrow workflow or docs promotion still changes the production evidence boundary and should not leave the live checklist pointing at older commits.
+
+**Rule**: After any production promotion that is used as Pasta release evidence, refresh the readiness matrix, coverage report, and bounty evidence with the current live commit, deploy run, Quality Gates run, cleanup audit result, and readiness-gate blockers before starting the next launch step.
+
+---
+
+## 2026-07-01 - Browser chain proofs need configured RPC fallback
+
+**What happened**: Main Quality Gates failed the Colander Shadownet discovery smoke while waiting for a proven Pasta contract fact row. Local focused reproduction failed on a different proven contract and the page status showed `HTTP request timeout of 30000ms exceeded`, proving the root cause was a transient primary Shadownet RPC timeout, not a bad selector or stale KT1 fixture. A second broad-suite reproduction showed that fallback alone was still too slow when the first RPC attempt consumed Taquito's full 30s timeout.
+
+**Why it mattered**: Colander is the Pasta ownership/discovery control panel. A browser proof that relies on a single public RPC can fail a live promotion even when the project has an explicit fallback endpoint and the contracts are otherwise readable.
+
+**Rule**: Browser Tezos reads that use project default RPCs must route recoverable network/RPC failures through the configured fallback endpoint with a bounded per-attempt read budget. Preserve explicit user/env RPC overrides, keep wallet-signing preflights strict, and reproduce timeout failures before changing selectors or waits.
+
+---
+
+## 2026-07-01 - Markdown backticks in shell arguments execute in zsh
+
+**What happened**: A `gh pr create --body "..."` command included a Markdown inline-code phrase using backticks around `pasta:live-readiness`. zsh treated the backticked phrase as command substitution, printed `command not found: pasta:live-readiness`, and created the PR with that phrase missing from the body.
+
+**Why it mattered**: Release PR bodies are part of the audit trail. A shell-quoted body can silently lose command names, verification evidence, or blocker text even when the PR itself is created successfully.
+
+**Rule**: When creating or editing GitHub PR bodies that contain Markdown code spans, use `--body-file -` with a single-quoted heredoc delimiter, or avoid backticks in the shell argument. After creation, inspect the PR body before trusting it as evidence.
+
+---
+
+## 2026-07-01 - Post-prune docs need current branch counts
+
+**What happened**: After PR #17 promoted the Pasta live evidence refresh, a follow-up cleanup pruned more fully-promoted local branches and clean non-Gamma/Beta worktrees. The standing cleanup docs still named PR #16 as the evidence authority and still reported older `codex/pasta-live-readiness` / backup-branch ahead-behind counts.
+
+**Why it mattered**: Repo cleanup docs are instructions for future release agents. Stale counts make historical evidence branches look closer to current production than they are, and stale authority lines can send a later pass toward a branch that has already been merged, deleted, or intentionally retained only as proof material.
+
+**Rule**: After any post-merge pruning pass, rerun `npm run pasta:repo-cleanup:audit` against current `origin/main`, refresh live health/deploy/quality evidence, and update ahead-behind counts before recommending any archive, replay, or carry-forward action.
+
+---
+
+## 2026-07-01 - Post-merge docs should separate product authority from docs-only refreshes
+
+**What happened**: PR #16 promoted the post-prune Pasta cleanup documentation and deployed successfully, moving live health from `9507502` to `2a1977e`. The audit docs still opened with PR #15 as the current authority until the post-merge pass refreshed them.
+
+**Why it mattered**: Cleanup and readiness docs often need one final evidence refresh after a docs-only PR merges. If they phrase that evidence as an eternally current branch head, the next docs commit immediately makes the same line stale again.
+
+**Rule**: After a docs-only cleanup/readiness merge, record the latest verified production authority, deploy run, quality run, and live-readiness result, and phrase exact commits as verification evidence rather than permanent future truth.
+
+---
+
+## 2026-07-01 - Post-merge pruning needs an immediate audit refresh
+
+**What happened**: After PR #15 deployed the Pasta cleanup-audit fix, the promoted Pasta/Macaroni/Spaghetti/IPFS branches and clean promoted worktrees were safe to prune. The cleanup audit immediately shrank to only the retained historical `codex/pasta-live-readiness` evidence branch plus the cleanup-docs checkout that was active at the time, but the standing docs still described pruned branches as active archive candidates until they were refreshed.
+
+**Why it mattered**: Repo-cleanup docs are operational guidance. If they continue listing already-deleted promoted branches or removed worktrees, the next pass can waste time chasing non-existent cleanup targets or accidentally recreate stale release branches.
+
+**Rule**: After pruning promoted branches or worktrees, rerun the executable cleanup audit and update the live cleanup report, bounty summary, and readiness matrix in the same pass. Distinguish pruned promoted history from retained historical evidence that must not be replayed.
+
+---
+
+## 2026-07-01 - Cleanup audits must track the active branch remote
+
+**What happened**: After rebasing the Pasta live-verification branch onto current `origin/main`, `pasta:repo-cleanup:audit` correctly classified the local active branch as ongoing work but still treated `origin/codex/pasta-live-verification-docs` as an unknown Pasta branch. It also kept the already-promoted `codex/pasta-readiness-catalog-live` branch in a hard-coded active list, so yesterday's release lane could remain labeled ongoing after it became merge history.
+
+**Why it mattered**: Repo cleanup gates should stop unknown or unsafe Pasta work, not block the current PR's remote counterpart or keep stale branch names alive. A false cleanup blocker can prevent live-readiness evidence from staying current with production, while a stale active allowlist can send future work toward a promoted branch.
+
+**Rule**: Cleanup audits should derive active ongoing work from the current branch and `origin/<current-branch>`, then let promoted ancestors classify through ancestry. Do not keep a merged release branch hard-coded as active after it has reached `origin/main`.
+
+---
+
+## 2026-07-01 - Installer catalogs need their own release proof
+
+**What happened**: Pasta had live individual installer manifests and a live suite manifest, but the follow-up unified `/api/pasta/installers/catalog` surface initially existed only as source code. It was missing inventory ownership, a shared readiness probe, and a TypeScript-safe readonly platform helper, so the product story "download the suite or any individual app" could drift from the release gate.
+
+**Why it mattered**: A user-facing catalogue is a product surface, not just a convenience wrapper. If the individual manifests pass but the catalogue route is absent, unregistered, or compile-broken, production can claim installer coverage while the actual suite-vs-individual choice remains unproven.
+
+**Rule**: When adding an aggregate installer/download catalogue, give it a canonical inventory handle, API workflow probe, source-policy coverage, TypeScript coverage, and a live-readiness check that proves the deployed route is auth-protected before claiming the distribution surface is complete.
+
+---
+
+## 2026-07-01 - Cleanup gates belong inside release readiness
+
+**What happened**: The Pasta repo cleanup audit could classify stale proof branches and dirty worktrees, but `pasta:live-readiness` still allowed a release-readiness run to proceed without executing that cleanup check. Operators had to remember that repo hygiene was a separate command even though replaying stale Pasta work could delete newer installer, WTF.ME, Colander, and release-gate guardrails.
+
+**Why it mattered**: A release gate is the command people trust when deciding whether main `wtfos.app` is safe to promote. If branch/worktree safety is only a sidecar audit, a new or reappearing Pasta-looking branch can bypass the same readiness report that proves live assets and hosted-page blockers.
+
+**Rule**: When repo-cleanup state affects production release safety, invoke the non-destructive cleanup audit from the shared readiness gate by default. Keep a named diagnostic skip flag, but fail closed on unknown Pasta branch or worktree classifications in normal release runs.
+
+---
+
+## 2026-07-01 - Cleanup audits must refresh post-merge authority
+
+**What happened**: The Pasta cleanup audit and standalone installer bounty entry still opened with `0558be0` as the production authority after PR #13 had already deployed `51ab323` with the standalone audit fix. The live app was correct, but the standing docs made the clean proof worktree look like it still had a local delta and could send the next pass toward already-promoted installer work.
+
+**Why it mattered**: Repo-cleanup decisions depend on knowing which branch, worktree, and commit are authoritative. A stale authority line can make valid current work look unfinished or make an old promotion branch look like the next live target.
+
+**Rule**: After any merge/deploy that changes release evidence, refresh cleanup audits and bounty summaries against `origin/main`, the live health commit, and the latest deploy/quality run IDs before recommending a carry-forward or archive action.
+
+---
+
+## 2026-07-01 - Production env changes must target the runtime env file
+
+**What happened**: The first Gnocchi/Ravioli/Rotini/Penne/Lasagna installer env publication wrote the public release URLs and SHA-256 values into the repo `.env`, then recreated the app container directly. Production compose uses `WTF_ENV_FILE=/etc/wtf/wtf.env`, so the app still saw no installer values; the direct recreate also lost the build-time `COMMIT_SHA` marker and made health report `commitRef:"dev"` until the normal deploy script rebuilt for the real commit.
+
+**Why it mattered**: Download manifests are only live when the running container sees the values. Updating the wrong env file can leave authenticated users with unavailable installers even though source, release assets, and repo `.env` look correct. A direct compose recreate can also weaken live evidence by erasing the commit marker used to prove what is deployed.
+
+**Rule**: For production env-only changes, identify the active compose `env_file` before editing, back up and update that runtime file, then use the repo's normal deploy script or an equivalent path that preserves `COMMIT_SHA`. Verify both container env-key presence and public health commit before running live feature checks.
+
+---
+
+## 2026-07-01 - GitHub workflow gates must use supported metadata APIs
+
+**What happened**: After the Gnocchi, Ravioli, Rotini, Penne, and Lasagna installer workflows were merged to `main` and visible in `gh workflow list`, the standalone installer release audit still reported every remote workflow as missing because it called `gh workflow view <filename> --json ...`. The installed GitHub CLI does not support `--json` for `workflow view`, so the guardrail converted a successful registration into a stale blocker.
+
+**Why it mattered**: Installer release gates are supply-chain evidence. A false remote-workflow blocker can send operators back through already-completed promotion steps, while a future workaround could tempt someone to bypass the audit entirely during release publication.
+
+**Rule**: For workflow-registration gates, use the GitHub Actions API workflow list and compare the exact `.github/workflows/<file>.yml` path, or add a policy test proving the CLI command is supported in the current environment. Do not rely on unsupported `gh workflow view --json` flags for release-critical checks.
+
+---
+
+## 2026-07-01 - New installer surfaces must enter the shared readiness gate immediately
+
+**What happened**: After adding source-verified standalone desktop plumbing for the remaining static Pasta publishers, the package-specific checks and docs knew those installers were still unpublished, but the shared `pasta:live-readiness` gate still only verified the already-live Macaroni, Pasta Suite, and Spaghetti downloads.
+
+**Why it mattered**: A production readiness command is the thing future release passes trust under pressure. If a newly scaffolded installer has a route, verifier, workflow, and bounty entry but is absent from the shared gate, a partial release can look greener than the actual user-download surface.
+
+**Rule**: Whenever a new downloadable product surface is added, wire its live verifier into the shared production readiness gate in the same pass. If the release is not yet published, record it as an explicit blocker with the release tag, production env prefix, deploy requirement, and verifier command.
+
+---
+
+## 2026-07-01 - Cloned desktop installer shells need app-specific contract audits
+
+**What happened**: The Gnocchi standalone installer pass started from the proven Spaghetti Electron shell, which correctly copied the native runtime and release plumbing but also carried Spaghetti's prepared asset folder and standard-collection contract assertions into an open-edition app until the app-specific scan caught them.
+
+**Why it mattered**: Native installer shells are supply-chain surfaces. A mechanically cloned package can look build-ready while bundling stale generated assets or proving the wrong contract artifact, which would make individual Pasta downloads drift from the actual static publisher they claim to package.
+
+**Rule**: When cloning a Pasta desktop installer shell, remove generated prepared assets immediately, update the required contract artifact and event assertions from the target app's `public/creation-tools/<app>` source, then run the package policy plus asset preparation before documenting installer readiness.
+
+---
+
+## 2026-07-01 - Taquito option storage needs explicit normalization
+
+**What happened**: The first Colander Shadownet management-action proof correctly opened the current Lasagna proof contract and verified the administrator signer, but it stopped before submission because Taquito returned optional `current_revision` storage as `{ Some: BigNumber(0) }` instead of a primitive `0`. A plain `.toString()` normalizer produced `[object Object]`.
+
+**Why it mattered**: Signer-backed proof scripts must compare chain storage before spending even test tez. Optional Michelson values can look primitive in TzKT JSON while Taquito returns option wrappers, so naive string conversion can either block valid proofs or hide a real storage mismatch.
+
+**Rule**: Normalize Taquito option wrappers explicitly before asserting storage values. Treat `Some` recursively, treat `None` as absent, and keep the pre-operation assertion before any send.
+
+---
+
+## 2026-07-01 - Live blockers need executable unblock instructions
+
+**What happened**: The Pasta live-readiness gate correctly blocked on missing WTF.ME publish credentials and host proof, but its first blocker text only named the credential env vars. Operators still had to piece together the required account prerequisites, host binding, expected-host write guard, and post-publish verifier command from several docs and scripts.
+
+**Why it mattered**: A release gate that says "missing credentials" can still leave a live deployment stuck or tempt someone to reuse a stale/shared host. The safe path for hosted mint pages needs a dedicated account, claimed host, DID/repo, linked Tezos wallet, pinning permission, dry-run auth proof, host-bound publish, and public pin discovery proof.
+
+**Rule**: Live release gates should print the exact non-secret remediation path for each blocker, including required env names, account prerequisites, host-binding variables, and the final verifier command. Keep the gate fail-closed while making the next safe action obvious.
+
+---
+
+## 2026-07-01 - Readiness gates must validate credentials, not count env names
+
+**What happened**: The Pasta live-readiness gate originally treated a non-empty `PASTA_WTFME_LIVE_COOKIE` or username/password pair as enough to satisfy the credential portion of the gate. That could let a later run with stale, mismatched, or under-permissioned credentials proceed to the public host check without proving the account can actually reach the intended WTF.ME publish path.
+
+**Why it mattered**: Credentialed production flows are not proven by environment-variable shape. A real deploy account must authenticate, resolve to the expected host, pass existing-site safety checks, and remain in dry-run mode until an explicit publish flag is used.
+
+**Rule**: Release gates that require credentials should execute the least-dangerous authenticated preflight available. Force write flags off, bind to the expected public host when known, and fail the gate on invalid auth, host mismatch, missing eligibility, or unsafe existing content.
+
+---
+
+## 2026-07-01 - Live publishers must verify the public surface before success
+
+**What happened**: The Pasta WTF.ME live publisher wrote pages, published the site, published pin recovery, and then printed the verifier command. That was safe enough for a careful manual run, but it still allowed the write script itself to finish without proving that the public host actually served the landing/mint/collection pages and `.well-known/wtfos-pins`.
+
+**Why it mattered**: Hosted mint and collection pages are collector-facing production surfaces. A live publish command should not succeed on internal API writes alone when the actual user path could still fail through TLS, page routing, CSP, stale content, or pin discovery.
+
+**Rule**: Production publish scripts for public trust surfaces must run their public verifier before exiting successfully. Keep an explicit opt-out only for narrow recovery/debug runs, and make the default path prove the same host users will load.
+
+---
+
+## 2026-07-01 - Pasta readiness gates must include installer distribution
+
+**What happened**: The first Pasta live-readiness gate proved live health, static bundle markers, and WTF.ME blockers, but the objective also includes user-downloadable software packages. Installer live checks existed separately for Macaroni, Pasta Suite, and Spaghetti, so a future pass could run the Pasta gate and overlook package distribution drift.
+
+**Why it mattered**: Pasta production readiness is not only contract and hosted-page readiness. Users also need download surfaces that stay protected, digest-backed, and reachable from the published release assets.
+
+**Rule**: Production readiness gates for product suites must include their distribution surfaces. When installer verifiers can run without secrets, fold their public manifest-protection and release-asset probes into the shared gate.
+
+---
+
+## 2026-07-01 - Pasta readiness needs an executable blocker gate
+
+**What happened**: The Pasta release lane had separate source-policy, live-check, inventory, and static-bundle proofs, but no single command that distinguished "safe guardrails can be promoted" from "full Pasta is live." Future passes could read green local tests and miss that the live WTF.ME host and credentialed pin discovery proof were still absent.
+
+**Why it mattered**: Release notes for contract-adjacent products need a command that fails for missing public collector surfaces, not only a pile of passing partial checks. Without that, a narrow guardrail push can be mistaken for a complete production deployment.
+
+**Rule**: Add an executable readiness gate for multi-step production claims. It should prove stable public prerequisites, print explicit blockers for credentialed/live-only gaps, and fail without an allow-blockers audit flag until the actual production proof exists.
+
+---
+
+## 2026-07-01 - Credentialed WTF.ME publishers must require host pins
+
+**What happened**: The Pasta WTF.ME live publisher could be placed in production write mode with valid credentials and no `PASTA_WTFME_LIVE_EXPECT_HOST`. Existing-page guards would stop obvious overwrites, but a clean or newly claimable account could still become the proof surface without an explicit host decision.
+
+**Why it mattered**: Hosted Pasta proof pages are public collector-facing infrastructure. A credentialed script should not infer the live proof host from whichever account is currently authenticated, especially when multiple WTF.ME hosts may be structurally eligible.
+
+**Rule**: Dry-runs may discover the candidate host, but any production write flag must require an explicit expected host and verify the authenticated host against it before authentication-dependent writes.
+
+---
+
+## 2026-07-01 - Live WTF.ME publishers must guard existing public pages
+
+**What happened**: The Pasta WTF.ME live publisher had dry-run and production-write gates, but once credentials were supplied it would save Pasta home/mint/collection pages before proving that an existing claimed site was a dedicated Pasta proof host. The nearest real production host currently serves a generic published page, so a careless credentialed run could replace public user-site content before failing on a later proof step.
+
+**Why it mattered**: WTF.ME hosts are public identity and collection surfaces. Production proof tooling must not silently convert an existing user site into a Pasta proof site just because the account is structurally eligible.
+
+**Rule**: Before live publisher scripts write hosted pages, preflight the existing site page set. Refuse non-target page carryover, require an explicit overwrite flag for existing non-Pasta target pages, and keep all downstream pin/recovery writes behind those page-safety and TLS gates.
+
+---
+
+## 2026-07-01 - Broad proof branches can become stale after narrow mining
+
+**What happened**: The cleanup audit still described `codex/pasta-live-readiness` as the remaining source of unique Pasta proof work after the current `codex/spaghetti-installer-live` branch had already mined or reworked those slices into narrower commits with stronger WTF.ME host and pinning guardrails.
+
+**Why it mattered**: A stale audit can make a future release pass replay an older broad branch and accidentally delete newer policy files, readiness reports, or production safety checks. Branch names that once meant "source of truth" can quietly become historical evidence once narrower production slices exist.
+
+**Rule**: Before labeling any proof branch as active unmined work, run a current range comparison against the release lane and inspect the resulting file direction. If replaying the older branch would delete newer guardrails or production docs, mark it as historical proof material and continue from the current clean release branch.
+
+---
+
+## 2026-07-01 - Live WTF.ME checks must use the post-publish host
+
+**What happened**: The Pasta WTF.ME live checker defaulted to `wtf-admin.wtfos.me`, but production read-only audit showed that host has no `wtf_user_sites` row and the `wtf-admin` user has no active WTFOS DID/repo or verified hosted-handle claim. Meanwhile `paulwhoisaghost.wtfos.me` is TLS-allowed and structurally closer to ready, but it still serves a generic user-site page rather than Pasta landing/mint/collection pages.
+
+**Why it mattered**: A hard-coded proof host can make every live check fail on the wrong prerequisite and hide the real deploy path: publish Pasta pages with the authenticated account that owns the host, then verify that exact host. Changing production data by hand to satisfy a stale default would risk hollow TLS success without PDS, pin discovery, or published Pasta content.
+
+**Rule**: Live WTF.ME checkers and inventory probes must require or discover the host produced by the publish step, authenticated site state, admin site inventory, or explicit host input; do not silently default to an unproven proof account. Before seeding or repairing a hosted proof, verify the same user has a non-suspended site row, active WTFOS repo DID/PDS, linked Tezos wallet, published Pasta page version, and public pin discovery prerequisites.
+
+---
+
+## 2026-07-01 - Live publish scripts must gate downstream recovery writes on host registration
+
+**What happened**: The first Pasta WTF.ME live publisher wiring would save/publish pages, then publish the Pasta pin recovery manifest, then ask production TLS whether the host was allowed. Since production still denies `wtf-admin.wtfos.me` with `handle not registered`, that order could create provider/PDS recovery rows for a host that production would not actually serve.
+
+**Why it mattered**: Hosted mint pages and `.well-known/wtfos-pins` are public trust surfaces. Downstream pin/recovery publication is only meaningful after the live host gate can serve the page, and retries after a TLS failure must not multiply policy, manifest, and pin-job rows.
+
+**Rule**: Live host publishers must check production host/TLS registration before downstream pin, PDS, or marketplace recovery writes. Project-bundle recovery endpoints must be permission-gated, object-storage-gated, duplicate-safe for in-flight manifests, and covered by inventory/source-policy tests before promotion.
+
+---
+
+## 2026-07-01 - Apply patches must target the release worktree explicitly
+
+**What happened**: While mining the stale Pasta WTF.ME hosting slice, `apply_patch` initially wrote new untracked files into the original dirty `WTF` checkout because the desktop thread cwd was still the main workspace even though all verification and release work belonged in the clean `codex-spaghetti-installer-live` worktree. The files were copied into the release worktree and the accidental original-checkout copies were removed before continuing.
+
+**Why it mattered**: This repo intentionally has a dirty original checkout and a clean release worktree. A correct patch applied to the wrong checkout can make the stale tree look newer than production authority, create confusing cleanup evidence, or lead to tests passing against files that will not be committed or deployed.
+
+**Rule**: When working from an isolated release worktree, use absolute paths in every `apply_patch` target or otherwise confirm the patch destination before editing. After any accidental cross-checkout write, remove only the files created by the current pass and verify both worktrees with `git status --short`.
+
+---
+
+## 2026-07-01 - Sequential Pasta signer proofs need balance budgeting
+
+**What happened**: The Rotini signer-backed Shadownet proof correctly blocked before origination because the shared creator signer had only `2227765` mutez after previous Spaghetti, Gnocchi, and Ravioli proof runs. The proof needed origination plus create/mint/transfer headroom, so Shadownet faucet top-up `onpqeephir1NEprF9YdCpRtA4jKS72J2GLTVPu4Yte6FZLMo65q` was required before the final run passed.
+
+**Why it mattered**: Sequential real-network Pasta proofs spend from the same Shadownet signer. A later app proof can fail safely even when the script is correct, and rerunning no-flag checks after a pass would overwrite final report artifacts.
+
+**Rule**: Before each signer-backed Pasta proof, check creator balance against estimated origination plus all follow-on operation headroom. Use faucet top-ups only for Shadownet test wallets, record the faucet op in the audit report, and leave the final proof report in `PASSED` state.
+
+---
+
+## 2026-07-01 - Shadownet signer proofs need balance headroom blockers
+
+**What happened**: The Spaghetti signer-backed Shadownet E2E runner loaded the correct keyring wallet and RPC, but the first execute attempt blocked after estimating origination because the creator wallet had enough test tez to look funded and still not enough headroom for origination plus create-token, mint, and transfer operations. A small Shadownet faucet top-up fixed the run before any contract operation was submitted.
+
+**Why it mattered**: Testnet proof commands can fail halfway through a multi-operation story if they only check that a wallet balance is nonzero. A partially executed proof is harder to reason about than a clean pre-operation blocker, and can leave reports that look ambiguous.
+
+**Rule**: Signer-backed Shadownet proof scripts must estimate the expensive operation before injection, require explicit balance headroom for the full story, and write `BLOCKED` reports before sending if funding is insufficient. Record faucet/top-up operation hashes in the audit when local test-wallet funding is part of the proof.
+
+---
+
+## 2026-07-01 - Cleanup reports must retire stale worktree findings
+
+**What happened**: The Pasta cleanup bounty was updated after `WTF-pasta-deploy` disappeared from the registered worktrees and filesystem, but the cleanup audit still described that removed checkout as present and kept the bounty listed as open.
+
+**Why it mattered**: Repo-cleaning notes become release guidance for the next agent. If one file says a stale branch is gone while another says it still blocks cleanup, a future pass can waste time chasing a removed checkout or, worse, resurrect an old patch that was kept only as a historical regression warning.
+
+**Rule**: Before carrying a stale-worktree warning forward, re-run `git worktree list --porcelain` and a filesystem path check. If the checkout is gone, close the bounty, keep only the historical "do not replay this patch" warning, and update every cleanup audit that references it.
+
+---
+
+## 2026-07-01 - Promotion docs must refresh live authority before cherry-picking
+
+**What happened**: While promoting the standalone Spaghetti installer lane from the broader Pasta proof branch, the cleanup audit still named the older `c4ba55f` Pasta handoff commit as current production even though `origin/main` and live `wtfos.app` had advanced to `96b8523` for WTF LIVE stage controls.
+
+**Why it mattered**: A narrow production cherry-pick can be technically correct while its release notes point at stale live authority. That makes future cleanup agents misclassify valid main work as branch-only proof, or accidentally merge a broad evidence branch instead of a scoped production promotion.
+
+**Rule**: Before continuing any production-promotion cherry-pick, refresh `origin/main`, read live health, and update audit docs to distinguish current production, historical evidence branches, and the exact narrow commit being promoted.
+
+---
+
+## 2026-07-01 - Every installer manifest must fail closed on missing checksums
+
+**What happened**: While adding the standalone Spaghetti installer manifest, the safer Pasta Suite pattern required both a production-safe URL and SHA-256 before marking a download available, but the older Macaroni manifest still derived `available` from URL alone.
+
+**Why it mattered**: Native installers are a supply-chain handoff. If one individual app route treats URL-only metadata as downloadable while another requires URL plus digest, production can accidentally expose weakly verifiable release links even though policy tests pass for a different installer product.
+
+**Rule**: Every native installer manifest route must require both a safe URL and a valid SHA-256 before returning `available: true` or a non-null URL. Add route-owned source-policy assertions whenever adding or touching installer manifests.
+
+---
+
+## 2026-06-30 - Static publisher handoffs must prove iframe query and module runtime wiring
+
+**What happened**: The Pasta source policy said CH-EASE opened `/tools/spaghetti?handoff=chease-package`, and the Spaghetti iframe rendered visually, but the creation-tool wrapper only forwarded query strings for Macaroni. After fixing that, the handoff still did not import because the six Pasta static studios are ES modules that read `window.MD`, while their shared `common.js` files declared lexical `const MD` without exporting it onto `window`.
+
+**Why it mattered**: Static creator-tool route smoke can prove the iframe exists while the actual app module never wires buttons, package import, wallet, pinning, or publish flows. A handoff URL in the outer wtfOS route is not enough; the embedded static page must receive the query and the module must receive its shared runtime object.
+
+**Rule**: For static creation tools, verify route query preservation at the iframe `src`, browser-visible package import, and module runtime globals before claiming handoff coverage. When a classic script supplies helpers to an ES module, export the helper explicitly on `window` and keep a source-policy guard plus a focused browser proof.
+
+---
+
+## 2026-06-30 - Octez wallet proof puppets must emit active-account events
+
+**What happened**: The Macaroni Shadownet proof patched the Beacon wallet class but not the Octez DAppClient lifecycle that `OctezPrimaryWallet` prefers. The mint-page test could briefly read a connected balance while the connect button fell back to `Connect wallet`, because the harness did not behave like an Octez client with `ACTIVE_ACCOUNT_SET` subscriptions.
+
+**Why it mattered**: A visible balance or stored wallet address is not enough wallet proof. Macaroni's signed-operation boundary depends on the active account held by the wallet client, the app session, and the UI controls all agreeing after connect, restore, and disconnect.
+
+**Rule**: Shadownet wallet puppets must model the selected provider, including accepted provider names, active-account get/set/clear, and active-account event emission. Keep expected non-contract publish blocks out of fatal console filters only when the test intentionally triggers that gate.
+
+---
+
+## 2026-06-30 - Runtime env edits need container reload proof
+
+**What happened**: After configuring production `PASTA_SUITE_INSTALLER_*` values in `/etc/wtf/wtf.env`, the first live installer verifier still saw `version: null` and unavailable installers because the running app container had not loaded the updated runtime environment.
+
+**Why it mattered**: Updating the host env file is not the same as proving the live Node process is serving those values. A release can have correct GitHub assets and correct production secrets but still expose an empty manifest until the app container is recreated through the deploy env-file path.
+
+**Rule**: After changing production runtime env, recreate or redeploy the app container with the same temp-env pattern used by the deploy script, then prove the running commit and affected endpoint from outside the server before marking the release live.
+
+---
+
+## 2026-06-30 - Installer env examples are part of the release surface
+
+**What happened**: The first Pasta Suite installer manifest pass added `PASTA_SUITE_INSTALLER_*` runtime variables in code and docs, but `.env.example` still only documented the Macaroni installer variables. The manifest also initially treated a safe URL as enough to mark an installer available even if the SHA-256 was missing.
+
+**Why it mattered**: Production operators configure installer downloads from env. If the example file omits the variables or lets URL-only entries look available, a release can ship dead or weakly verifiable installer links even though source policy checks pass.
+
+**Rule**: Whenever an installer manifest reads new env names, update `.env.example` and assert those names in policy tests. Treat both a safe URL and a valid SHA-256 digest as required before marking a downloadable native installer available.
+
+---
+
+## 2026-06-30 - Suite installer workflows need manifest and release proof rails
+
+**What happened**: Pasta Suite Desktop packaging was easy to model by copying the Macaroni Electron installer pattern, but the first scaffold still missed the repo's interaction inventory, domain workflow probe, and a release-aware live verifier for `/api/pasta/installers`.
+
+**Why it mattered**: A native installer workflow proves little by itself. Users need a production manifest with authenticated access, HTTPS release URLs, SHA-256 checksums sourced from the published release assets, and E2E inventory visibility so future deploy gates keep the download surface accountable.
+
+**Rule**: When adding any native installer product, wire the package, workflow, production manifest route, inventory handle, domain API probe, package policy test, release verifier, and audit/bounty note in the same pass. Local unsigned artifacts are build proof only; production download proof requires published release digests, configured env, authenticated manifest verification, and live asset probes.
+
+---
+
+## 2026-06-30 - Stale release worktrees can contain superseded security regressions
+
+**What happened**: After Pasta/Macaroni was live on `wtfos.app`, the old `WTF-pasta-deploy` checkout still contained dirty package/API work that looked relevant at a glance. Comparing it to `origin/main` showed most Pasta surfaces were already promoted, while its old `server/routes/macaroni.ts` would remove live installer checksums, advertise the wrong Windows filename, and allow remote plaintext installer URLs again. A separate shell inventory pass also initially failed because `path` is a special zsh variable tied to `PATH`.
+
+**Why it mattered**: Repo cleanup is not just deleting old branches. A stale dirty checkout can carry a mix of useful historical work, already-promoted files, and dangerous old assumptions. Replaying it wholesale after a successful live deploy can silently undo supply-chain hardening.
+
+**Rule**: Classify dirty release worktrees against current `origin/main` before mining them. Treat merged/promoted paths as stale by default, inspect the small set of not-in-main paths directly, and never apply an old worktree patch wholesale when it touches installer manifests, wallet/RPC bundles, or production deploy scripts. In zsh scripts, avoid `path` as a variable name.
+
+---
+
+## 2026-06-30 - Deploy builds need disk preflight before Docker work
+
+**What happened**: Pasta/Macaroni branch and main quality gates were green, but Deploy to Hetzner run `28466080627` failed after building the app image because Docker could not write compose build metadata: `no space left on device`. The production root filesystem had only `1.9G` free (`98%` used), while the live site stayed on the previous healthy commit.
+
+**Why it mattered**: A code-clean release can still miss production if deploy capacity is discovered only after a long image build. Failed builds can consume even more disk, delay the actual release, and make emergency deploys harder.
+
+**Rule**: Before production image builds, check root free space and fail closed when it is below the deploy floor. Prefer pruning Docker build/image cache and bounded systemd journal retention over touching app volumes or user data, then rerun deploy only after live health can prove the promoted commit.
+
+---
+
+## 2026-06-30 - Published installer digests must come from release assets
+
+**What happened**: The Macaroni live installer verifier was first seeded with earlier local/workflow artifact sizes and SHA-256 values. The public GitHub release assets accepted byte-range downloads, but their `content-range` totals and GitHub release API `digest` values differed from those stale notes.
+
+**Why it mattered**: The live download surface points at the GitHub release, not at the intermediate build artifact cache. Publishing checksums from the wrong artifact source would make the manifest fail release verification and could train users to distrust a valid installer.
+
+**Rule**: Treat the GitHub release asset metadata as the authority for production installer URLs, byte sizes, and SHA-256 digests. After publishing a release, refresh docs, production env, and live verifiers from `gh release view --json assets` or an equivalent release API query before exposing checksums.
+
+---
+
+## 2026-06-30 - Installer manifest filenames must match release asset types
+
+**What happened**: The live Macaroni installer manifest correctly returned the Windows GitHub release URL for the NSIS `.exe`, but the manifest's `fileName` still advertised `Macaroni-Studio.msi`. The browser installer links use that value as the `download` filename, so a valid `.exe` could be saved with a misleading package extension.
+
+**Why it mattered**: Installer links are a supply-chain handoff and a user trust surface. A mismatched filename can confuse users, make OS security prompts look suspicious, and hide drift between the release workflow target and the wtfOS manifest.
+
+**Rule**: Whenever installer release targets change, verify both the URL and the manifest `download` filename extension against the actual published asset. Keep a source-policy guard for the expected installer filename per platform.
+
+---
+
+## 2026-06-30 - Wallet-session fixtures must track the accepted provider
+
+**What happened**: Pasta branch Quality Gates failed the Settings Subdomain Setup and cobwebsaints account inventory specs because the tests seeded `wtf:wallet-session` with the legacy `providerName: "beacon"`. The current wallet reader correctly accepts only `providerName: "octez.connect"`, so the applet rejected the persisted session and left the `wtf.tez target wallet` field blank. A local rerun on the default Playwright port later showed `wtf-admin.wtfos.me` because Playwright reused an old harness process, while a fresh harness port proved the fixed specs passed.
+
+**Why it mattered**: Wallet-provider migrations can break behavior proofs even when the user-facing app is healthy. Reused local harness ports can also make a fixed branch look broken by serving old state or code, which is dangerous when preparing a live deploy.
+
+**Rule**: Whenever the accepted wallet provider changes, update every Playwright, live puppet, and UX mock localStorage wallet seed to match `readPersistedWalletSession()`, and add a source-policy guard for those seeds. When focused Playwright output contradicts CI-style evidence, rerun on a fresh `HARNESS_PORT` before making product changes.
+
+---
+
+## 2026-06-30 - Linux installers need package-manager metadata, not just Electron targets
+
+**What happened**: The first safe Macaroni Desktop installer workflow on `codex/pasta-live-readiness` built and uploaded macOS and Windows artifacts, but Raspberry Pi arm64 `.deb` packaging failed because `apps/macaroni-desktop/package.json` lacked the homepage, author email, and Linux maintainer metadata electron-builder requires for Debian packages.
+
+**Why it mattered**: A workflow matrix that names Linux/Raspberry Pi targets does not prove those installers are actually publishable. Debian packaging has metadata and package-name rules that macOS DMG/ZIP and Windows NSIS builds can skip, so a release can look mostly healthy while one promised download platform is absent.
+
+**Rule**: For Electron installer workflows, guard package-manager metadata in source policy tests before publishing artifacts. Linux `.deb` targets must have a stable homepage, author email, maintainer, lowercase package name, executable name, and desktop name, and the Ubuntu workflow artifact is the authority for Raspberry Pi package proof.
+
+---
+
+## 2026-06-30 - Dirty release slices must diff against the production base
+
+**What happened**: The Pasta source checkout was dirty and 12 commits behind `origin/main`. A raw `git diff` from that checkout would have described changes against an old local `HEAD`, not the current production base, and could have replayed already-promoted or unrelated work into the clean release branch.
+
+**Why it mattered**: Release prep is supposed to separate valid Pasta/Macaroni work from stale dirty work. Applying a patch from the wrong base can silently undo newer production changes or drag unrelated experiments into a live branch.
+
+**Rule**: When transplanting a dirty checkout into a clean release worktree, generate the patch as `dirty working tree` versus the refreshed production base, such as `git diff origin/main -- <scoped paths>`, then apply that patch to the isolated branch. If `origin/main` moves during the pass, rebase the release branch before validation.
+
+---
+
 ## 2026-06-30 - Static creator-tool bundle policy is not live deployment proof
 
 **What happened**: Local Tezos/RPC policy checks passed against refreshed Pasta and Macaroni browser vendor bundles, but live `wtfos.app` still served `vendor/tezos.js` files containing Taquito `24.3.0` for Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna.
@@ -28,6 +508,36 @@
 
 ---
 
+## 2026-06-30 - Presentation host containment must include app-owner chrome
+
+**What happened**: Beta route containment was already green for the shell and shared React95 adapters, but many route-owner components only had Gamma-scoped visual selectors even though their rendered `data-*-presentation-host` markers received `beta` under the Beta shell.
+
+**Why it mattered**: A hostname shell can keep every route out of the Classic desktop while still letting app-owned panels, dialogs, utility regions, and dense controls keep legacy or previous-shell styling. That makes route proof look complete while the actual user surface is only partially re-presented.
+
+**Rule**: When extending a presentation shell to another hostname, prove both route containment and rendered app-owner chrome. Add host-aware boundary styling or per-owner selectors for `data-*-presentation-host="<host>"`, then test representative public, signed-in, utility, and dense surfaces after rebuilding the served bundle.
+
+---
+
+## 2026-06-30 - Platform font resets must close every font ingress
+
+**What happened**: The wtfOS Soft System default could not be treated as only a new `fontPackKey` default. Existing users had persisted desktop appearance JSON, WIM chat font families, WTF LIVE chat style fonts, room-level localStorage defaults, realtime WebSocket payloads, and Playwright harness fixtures that could keep old font choices alive.
+
+**Why it mattered**: A platform-wide font mandate must override stale and crafted values, not merely change what new users see. Leaving one ingress unnormalized would make the UI look inconsistent across apps and could make production verification pass for a fresh profile while existing accounts stayed on legacy typography.
+
+**Rule**: When forcing a new platform font, update shared normalization, client option lists, server/database persistence, realtime sanitizers, feature-local storage defaults, test harness defaults, inventory docs, and focused UI tests in the same pass. Preserve non-font personalization only after the font fields have been overwritten with the platform font.
+
+---
+
+## 2026-06-30 - Run Playwright artifact writers serially unless outputs are isolated
+
+**What happened**: Two focused Playwright inventory specs were started at the same time while writing into the shared `test-results` output tree. One run reported a trace artifact `ENOENT`, but the same spec passed when rerun by itself.
+
+**Why it mattered**: Parallel artifact writes can create false failures that look like product regressions. That is especially misleading during UI proof work, where screenshots and traces are part of the evidence chain.
+
+**Rule**: Run focused Playwright specs serially unless each process has an isolated output directory. If a Playwright failure mentions missing trace artifacts during concurrent runs, rerun the named spec alone before changing app code.
+
+---
+
 ## 2026-06-30 - Appearance settings need persistent save-state affordances
 
 **What happened**: System Appearance kept background, typography, cursor, physics, pet, and agent controls in one long mixed scroll, with the profile-persisting Save control buried inside section toolbars. Users could change settings after a reset and miss that the draft still had not been recorded to their profile.
@@ -35,6 +545,46 @@
 **Why it mattered**: Desktop appearance is an OS-level recovery and personalization surface. If the persistent save action is visually tied to whichever section happens to be in view, users can assume instant preview means durable profile state and lose changes on reload or reset.
 
 **Rule**: Settings surfaces that use instant preview plus explicit persistence need both category-owned save controls and one always-visible profile save-state control. The global control must compare the current draft to the last recorded server settings, stay outside tab panels, and render an unmistakable dirty-vs-recorded state.
+
+---
+
+## 2026-06-30 - Gamma promotion needs host isolation proof, not only Gamma proof
+
+**What happened**: The Gamma shell branch had local host-mapped proof and branch Quality Gates green, but the goal was not actually complete until the branch was promoted to `main`, Hetzner served commit `6e35117`, and live selectors proved direct Gamma routes no longer rendered the Classic desktop.
+
+**Why it mattered**: Gamma shares the production deployment path with Classic and Beta. A live Gamma fix can be real while still accidentally leaking Gamma presentation into another hostname, so the final proof must include Classic/Beta negative checks alongside Gamma positive checks.
+
+**Rule**: For Gamma live completion, verify four layers before closing the loop: deploy run passed, main Quality Gates passed, live health reports the promoted commit, and browser selector proof shows Gamma routes have `[data-gamma-wtfos]` with no `[data-wtf-desktop]` while `wtfos.app` and `beta.wtfos.app` do not render Gamma markers.
+
+---
+
+## 2026-06-30 - Inventory workflows need workload-proportional timeouts
+
+**What happened**: Gamma branch Quality Gates twice failed in broad inventory smoke after `451` checks passed because the `social post to reward automation loop` domain workflow hit the default 60-second Playwright test timeout. The workflow was healthy in focused local proof, but it owns `122` API probes, `130` normalized event posts, and `15` representative routes, so a slow GitHub runner could exhaust the fixed per-test budget.
+
+**Why it mattered**: A fixed timeout makes large inventory workflows look broken even when every probe, event, and route is progressing. That can be misread as a Gamma route regression, even though the failure is in cross-domain inventory scheduling.
+
+**Rule**: Domain-interoperability tests should set timeout budgets from the workflow's API probe, event-handle, and route counts. When a broad inventory timeout happens, rerun the named workflow focused before changing app code; if the workflow passes near the default limit, fix the harness budget rather than weakening route assertions.
+
+---
+
+## 2026-06-30 - Gamma presentation markers need the real TypeScript gate
+
+**What happened**: The isolated Gamma branch passed source-policy tests, production build, inventory coverage, and the rendered Gamma browser suite, but branch CI failed at `npm run check` because `styled-components.attrs()` rejected untyped custom `data-tezos-intel-region` attrs and the marketplace route's new presentation-only `surfaceVariant` prop was missing from `MarketplaceProps`.
+
+**Why it mattered**: Source-policy tests can prove marker intent, but they do not typecheck every styled-component overload or route prop surface. A branch can be visually correct locally and still be blocked before build in CI if presentation-only markers are not typed as first-class props.
+
+**Rule**: After adding rendered Gamma markers or presentation-only route props, run `npm run check` before branch promotion. Keep marker prop typing local to the presentation component or feature type file, and do not treat a policy-test pass as a substitute for TypeScript.
+
+---
+
+## 2026-06-30 - Gamma isolated worktrees need harness dotfile serving and companion markers
+
+**What happened**: The isolated Gamma branch lived under `~/.config/superpowers/worktrees`, and the Playwright harness served `dist/public/index.html` through Express `sendFile`. Express/send treated the `.config` path component as hidden and returned `NotFoundError` for every SPA fallback, so rendered Gamma tests failed before React loaded. The first transplant also copied top-level Gamma shell tests without several companion child-component marker files, leaving source-policy gaps in Message Board, TV, Tezos Intel, Mint Portal, Skywire, and marketplace route owner chrome.
+
+**Why it mattered**: A route-containment failure can be caused by the test harness path, not the app shell. If we report those failures as Gamma regressions, we lose time in the wrong layer. Likewise, Gamma presentation coverage is measured through rendered child regions, so copying only route/page files can create false gaps or hide real missing handoff hooks.
+
+**Rule**: When a Playwright harness runs from a hidden directory, allow dot-directory paths in `express.static` and SPA `sendFile`, or place the worktree somewhere non-hidden. For Gamma production-base transplants, copy or reapply the companion rendered-region files alongside each route owner, then prove the result with source policy, Vite build, inventory coverage, and the full Gamma browser spec before estimating remaining passes.
 
 ---
 
@@ -4647,18 +5197,6 @@
 **Fix**: W now serves the configured Gameshow groupchat from persisted DB cache first, exposes one chat in the UI, and uses a shared throttled platform refresh only for stale or explicit refresh reads. Personal inbox, ad hoc DM threads, groupchat sends, compose, and media upload are outside the active W surface.
 
 **Rule**: W chat must remain a platform-account-backed read mirror unless the product intentionally reopens personal DMs. User OAuth scopes should cover read/timeline actions only, not DM permissions.
-## 2026-05-24 — W chat reads must not spend per-user X API calls
-
-**What happened**: W exposed too much of the original X surface area after the product had narrowed to one timeline stream and one gameshow chat mirror. The chat route could still depend on live platform DM resolution patterns, while the UI kept clutter from abandoned DM/inbox/posting plans.
-
-**Why it mattered**: Under X pay-per-use constraints, a single public chat mirror should be served from the cached canonical conversation, not refreshed independently for every viewer. Extra DM, inbox, and compose affordances also invite OAuth scopes and API calls the product no longer needs.
-
-**Fix**: Re-centered W on cached timeline plus one gameshow chat, added a shared throttled route refresh for the configured platform conversation, removed normal W route registration for compose/DM/media upload flows, added media previews and a cache-derived media tab, and narrowed OAuth to read plus timeline engagement actions.
-
-**Rule**: When an API-priced product surface is retired, remove its UI, route registration, OAuth scopes, and inventory handles in the same pass. Shared read mirrors must be DB-first, with any upstream refresh gated globally rather than per user.
-
----
-
 ## 2026-05-24 — W URLs should become content, not duplicate text
 
 **What happened**: Timeline posts and groupchat messages could show raw URLs while also trying to show media or link metadata elsewhere, which made the feed noisy and hid the useful artifact preview.
@@ -4825,18 +5363,6 @@
 **Fix**: Added a shared `canOpenAppsForRole` / `canOpenPageDef` policy and consumed it from window rendering, URL sync, Start Menu construction, command palette construction, desktop icons, shortcuts, and item launch callbacks.
 
 **Rule**: New account roles that change app access must be enforced through the shared route/app-launch policy first, then consumed by every launcher. Do not patch only the visible menu.
-
----
-
-## 2026-05-25 — App gates must be runtime policy, not launcher decoration
-
-**What happened**: Desktop app toggles were treated mostly as presentation state for icons and Start Menu entries. A disabled app could still be reached through direct routes, stale shortcuts, or command-palette commands because page access checks only evaluated auth and route role flags.
-
-**Why it mattered**: Admins need app disable controls to stop an app from running, not merely make it less visible. If launch surfaces and route rendering use different gate logic, disabled apps remain reachable through any path the UI forgot to hide.
-
-**Fix**: Page access now combines role/surface access with the desktop app enabled map, command palette and Start Menu filtering use that shared decision, and direct disabled-app routes render an explicit admin-disabled failure state instead of mounting the app.
-
-**Rule**: Every desktop app gate must be enforced at runtime in the shared route access layer. Launcher hiding is secondary; direct URLs, stale shortcuts, command palette entries, and open windows must all honor the same admin app state.
 
 ---
 
@@ -6692,6 +7218,11 @@
 
 ## 2026-06-30 - Inbox aggregators must not globalize private read models
 
+**What happened**: Reworking WTF Mail into Inbox touched Mail, WIM, Studio conversations, notifications, comms indexing, desktop badges, Gamma proofs, and admin/inventory registries. The tempting shortcut was to make the Inbox aggregate the presentation shape and unread badge directly from broad comms rows, but DMs, Studio rooms, and mail all have source-owned permissions and per-user read state.
+
+**Why it mattered**: A central message hub is useful only if it preserves source boundaries. Untargeted DM comms rows or a global unread aggregate can make private conversations visible in the wrong user's badge or mark messages read outside the owning app's contract.
+
+**Rule**: Central inbox surfaces may aggregate display cards, counts, and launch targets, but every read/write mutation must stay source-owned and user-scoped. DMs and Studio conversations need participant-targeted comms rows, unread badges need signed-in-user counts, and WIM can surface Studio rooms in recent conversations without mixing them into the buddy roster.
 **What happened**: The Inbox hub pass found DM sends publishing normalized comms cards with `targetUserId: null`, which made private DM previews eligible for the shared/global comms branch. The same pass found viewed mail could remain visually unread when the comms read state had not refetched yet.
 
 **Why it mattered**: Inbox is an aggregator, not a permission boundary replacement. Direct messages and Studio conversations can appear in Inbox and WIM, but their indexed cards must stay scoped to conversation participants, and the UI has to give immediate read feedback without waiting on the read-model round trip.
@@ -6730,16 +7261,20 @@
 
 ---
 
-## 2026-06-30 - Inventory handles need a real event path
+## 2026-06-30 - Presentation shells must not count contained crashes as route coverage
 
-**What happened**: The shared AppWindow bug-report affordance added a new `desktop.bug_report.opened` inventory handle, but the first pass only documented the handle and API probe. The open action also needed to be recorded through the existing `/api/desktop/events` normalized desktop event path and allowlisted server-side.
+**What happened**: The first all-route Beta sweep accepted `[data-beta-route-error]` as a successful shell outcome. That proved the Beta boundary contained failures, but Dicksword, Profile, and Operator Wallet were still crashing under partial inventory harness payloads until their optional app data was normalized and the browser bundle was rebuilt.
 
-**Why it mattered**: Inventory handles are more than labels. If a new user interaction is documented without an emitting path, coverage can say the handle exists while live telemetry, challenge automation, and audit trails cannot observe the actual user action.
+**Why it mattered**: A presentation shell can look contained while app-owned chrome is actually replaced by an error panel. For full-surface Beta/Gamma work, that misses the real requirement: shared routes must render inside the active shell with their app data, permissions, and controls intact.
 
-**Rule**: When adding a canonical inventory handle for a UI interaction, wire the client action to the owning normalized event route in the same pass, add the event type to that route's allowlist, and include focused policy coverage that proves both the trigger and the event path exist.
+**Rule**: Inventory route sweeps for presentation shells should assert the shell boundary is present and assert route-error fallbacks are absent. When a route needs partial fixture data, normalize optional arrays/objects at the app boundary so empty-state UI renders instead of relying on the shell error boundary.
 
 ---
 
+## 2026-06-30 - Inventory handles need a real event path
+
+**What happened**: The shared AppWindow bug-report affordance added a new `desktop.bug_report.opened` inventory handle. The open action also needed to be recorded through the existing `/api/desktop/events` normalized desktop event path and allowlisted server-side, not only documented in inventory.
+## 2026-07-01 - Stage rooms need role-gated publishing, not broadcast-only setup
 ## 2026-06-30 - Apphost WebRTC needs bounded host negotiation proof
 
 **What happened**: The remote application host could launch Jackbox and capture snapshots, but the first WebRTC streamer path timed out because GStreamer promise handling blocked before writing an answer. Focused apphost tests caught timeout cleanup, and a real Playwright-generated browser SDP offer against Hetzner proved the daemon now returns a VP8/OPUS answer with llvmpipe and PulseAudio diagnostics.
@@ -6760,16 +7295,113 @@
 
 ---
 
-## 2026-07-01 - Inbox hubs need visible write-path proof
+## 2026-07-01 - WTF LIVE chat font choices need shared socket parity
 
-**What happened**: The new Inbox successfully aggregated mail, WIM conversations, comms cards, and notifications, but the user-facing send paths were hidden or split across card actions and a Drafts tab. Reply buttons existed, yet the selected message reader and WIM conversation view did not make the standard reply/new-message loop obvious.
+**What happened**: Expanding WTF LIVE room chat from one legacy font to `classic-95`, `terminal`, and `serif-press` updated the UI and browser assertions, but the shared desktop normalizer, production WebSocket normalizer, and Playwright realtime harness still collapsed valid font IDs back to `wtfos-soft-system`. The full inventory suite caught it when Alice's composer used the terminal stack but Bob received the styled message in the default Classic 95 stack.
 
-**Why it mattered**: Communication hubs cannot be read-only summaries. Users expect email-style compose/reply/forward actions for mail and instant-message-style inline composition for active conversations, and the UI proof has to show those controls actually hit the source-owned mail and DM APIs.
+**Why it mattered**: WTF LIVE chat style is transmitted through multiple normalization layers before the audience sees it. If any layer treats a newly valid font as legacy, hosts can believe they are sending styled room text while viewers see a different font. Harness-only drift also makes production behavior harder to trust.
 
-**Rule**: When adding or refactoring an Inbox-style aggregator, verify both read aggregation and write loops in the same pass: visible new-message/new-mail actions, reader reply/forward actions, inline conversation sending, source-owned endpoint preservation, inventory behavior registration, and browser proof against the built bundle.
+**Rule**: When adding or retiring WTF LIVE chat style values, update `shared/desktop.ts`, `server/websocket.ts`, and `tests/playwright/harness.mjs` in the same pass, then prove a sender-selected style survives through the receiving browser.
 
 ---
 
+## 2026-07-01 - Shared Shadownet proof refactors must re-prove the baseline app
+
+**What happened**: Extracting shared Pasta Shadownet proof helpers correctly let Gnocchi reuse Spaghetti's RPC fallback, chain-id checks, keyring blockers, and report writer. The no-execute smoke intentionally overwrote Spaghetti's report with `BLOCKED`, and the first refactored Spaghetti execute then blocked because the new Gnocchi proof had spent enough test tez to drop the creator wallet below the origination-plus-headroom threshold.
+
+**Why it mattered**: A green new publisher proof is not enough when shared proof infrastructure changes an already-proven lane. The existing report artifact is part of the live-readiness record, and a sibling proof can consume the same faucet-funded signer balance before the baseline app is re-proved.
+
+**Rule**: When refactoring shared Tezos proof code, rerun every touched baseline proof after any fail-closed smoke that rewrites reports. Check signer balances after each real Shadownet operation, use faucet top-ups only for Shadownet test wallets, and leave the final report artifacts in `PASSED` state before promotion.
+
+---
+
+## 2026-07-01 - Colander discovery must decode the metadata form the contracts actually use
+
+**What happened**: The six current Pasta Shadownet proof contracts were valid and indexed, but Colander's browser discovery path only fetched `ipfs://` relationship metadata and routed non-Ghostnet explorer links to mainnet TzKT. The proof contracts store relationship metadata through inline `data:application/json` URIs, so a browser test could open a KT1 while silently falling back to a shallow wallet-to-contract graph.
+
+**Why it mattered**: Colander is the cross-app management/discovery surface. If it cannot read the metadata form emitted by the real proof contracts, a green contract deployment lane still leaves creators without a trustworthy relationship graph or Shadownet-specific explorer trail.
+
+**Rule**: Colander Shadownet proofs must use the current proof KT1s, set the app network to Shadownet, assert Shadownet TzKT links, assert relationship groups from decoded metadata, and keep wallet-signed actions behind chain-id preflight. Treat IPFS, HTTPS, and inline JSON metadata as explicit supported cases rather than assuming one storage encoding.
+
+---
+
+## 2026-07-01 - Cross-surface behavior assertions must name every owning surface
+
+**What happened**: The first Pasta pinning/recovery behavior assertion named Pasta Protocol and IPFS Pinning as owners, but inventory coverage failed because the same recovery flow is exposed through WTF.ME host discovery and the WTF Domains admin surface also registers the assertion.
+
+**Why it mattered**: Behavior assertions are bidirectional ownership contracts. If a cross-surface proof omits one owning surface, coverage can no longer prove that route, domain, and admin registries agree about who is responsible for the behavior.
+
+**Rule**: When adding a behavior assertion that crosses app, domain, host, or storage boundaries, include every admin surface that registers or exposes the workflow in `ownerSurfaceIds` before running inventory coverage.
+
+---
+
+## 2026-07-01 - Credential blockers need prerequisite checklists
+
+**What happened**: The WTF.ME live inventory dumped raw site, eligibility, and pin-registry facts, but it did not classify page-publish readiness, pin-recovery readiness, or public-discovery readiness for a candidate Pasta host.
+
+**Why it mattered**: Operators could still misread missing PDS, permission, site, wallet, or host-binding prerequisites and jump straight to a write-capable publish command.
+
+**Rule**: Read-only inventory for credentialed publish blockers should emit explicit pass/blocked checks for each prerequisite before any live write tool is used.
+
+---
+
+## 2026-07-01 - Sidecar diagnostics belong in shared readiness gates
+
+**What happened**: The Pasta WTF.ME inventory script gained the exact page-publish, pin-recovery, and public-discovery prerequisite checklist, but the top-level `pasta:live-readiness` command still only ran the credential dry-run and public host checker.
+
+**Why it mattered**: A sidecar diagnostic can be correct and still be skipped during the high-pressure release command. Operators trust the shared gate, so prerequisite failures need to surface there instead of relying on memory to run a second command.
+
+**Rule**: When a new read-only diagnostic becomes release-critical, fold it into the shared readiness gate immediately, keep write flags forced off, and add policy coverage that proves the gate parses and blocks on the diagnostic result.
+
+---
+
+## 2026-07-01 - Branch cleanup needs current two-dot replay checks
+
+**What happened**: A historical Pasta proof branch still had many useful-looking unique commits when viewed with log history, but comparing it directly against current `origin/main` showed it would delete newer installer packages, workflows, readiness gates, action proofs, and reports if replayed wholesale.
+
+**Why it mattered**: Triple-dot and commit-log views answer "what did this branch introduce from its old base," not "what would applying this branch do to production now." Stale branches can contain valuable evidence and still be destructive as merge targets.
+
+**Rule**: For cleanup decisions, pair ancestor checks with `origin/main..<branch>` two-dot diffs and shortstats before labeling a branch active. If the two-dot diff deletes newer release guardrails, mark the branch historical and mine ideas manually only after current-file comparison.
+
+---
+
+## 2026-07-01 - Cleanup classifications need executable gates
+
+**What happened**: The Pasta cleanup audit correctly classified stale branches in prose, but the result still depended on future operators manually repeating the same ancestry, two-dot replay, worktree, and Gamma/Beta-filtering checks.
+
+**Why it mattered**: Documentation can drift faster than branch lists. A new Pasta-looking branch could appear after the audit and bypass the stale-work warning unless the release lane has a command that fails on unknown cleanup state.
+
+**Rule**: When cleanup classification affects production release safety, add a non-destructive audit command and source-policy test. The command should pass for known active/promoted/historical branches, fail on unclassified Pasta work, and require explicit user confirmation before any archive/delete action.
+
+---
+
+## 2026-07-01 - Inbox hubs need visible write-path proof
+
+**What happened**: Inbox aggregated mail, WIM, Studio, comms, and notifications, but the standard user flow still read like a viewer. Reply buttons existed, while the selected mail reader and WIM conversation tab lacked the expected compose/reply loop users rely on in email and messenger tools.
+
+**Why it mattered**: Communication hubs are only trustworthy when reading and writing are proven together. If a user can see a message and a Reply affordance but cannot reply in context, the app breaks the core promise of an inbox even when the underlying send APIs exist elsewhere.
+
+**Rule**: When adding or refactoring Inbox aggregation, verify the write paths alongside the read paths: visible new-message/new-mail actions, selected mail reply/forward, inline conversation sending, source-owned API calls, canonical sent-event handles, inventory registry ownership, and browser proof against the built app.
+
+---
+
+## 2026-07-01 - WTF LIVE compact owner controls need pointer-safe activation
+
+**What happened**: Adding WTF LIVE smart-room owner controls exposed two UI hazards in the React95-style desktop shell. Some compact nested controls inside scrollable room cards did not reliably dispatch `click`, and settings checkbox/select handlers read `event.currentTarget` inside deferred state updaters after React had already cleared the event target.
+
+**Why it mattered**: Room owners need role, invite, settings, scheduling, and Show Kit controls to work during live production pressure. A visible icon button that misses activation, or a settings save that crashes after a toggle, turns permission management into guesswork.
+
+**Rule**: For compact WTF LIVE room/stage controls inside nested desktop surfaces, use stable pointer-down activation with keyboard fallbacks and non-interactive SVG/label children. When a handler feeds a React state updater, capture `checked`, `value`, or other event-derived values before calling `setState`.
+
+---
+
+## 2026-07-01 - Final launch gates need strict mode
+
+**What happened**: Pasta readiness had an audit-friendly `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1` mode plus diagnostic skip flags. That was correct for evidence collection, but it left too much room for a launch operator to run a green-looking command while WTF.ME, installer, static, Colander, or cleanup probes were disabled.
+
+**Why it mattered**: "Ready enough to audit" and "ready to claim production launch" are different states. A final launch check must fail closed even if someone accidentally keeps audit flags in their shell.
+
+**Rule**: Multi-surface release gates should expose an explicit final-launch mode that refuses blocker-allowed mode, rejects disabled production probes, and keeps all blockers fatal before a product readiness claim.
 ## 2026-07-01 - Quest predicates must only require fields the UI can actually write
 
 **What happened**: Reggie's intro side quest required `users.displayName` AND `users.bio` via the `reggie.profile_ready` predicate. Live E2E showed the step never completing: the automation engine evaluated correctly and reported `hasBio: false`, because no route in the app writes `users.bio` — `PUT /api/profile/account` only accepts `displayName`, and the Profile UI has no bio field. The column exists in the schema (and a legacy side-quest verifier reads it), which made the requirement look plausible during design.

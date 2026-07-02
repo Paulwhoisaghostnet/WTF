@@ -1,0 +1,66 @@
+{
+  "network": {
+    "key": "shadownet",
+    "label": "Tezos Shadownet",
+    "chainId": "NetXsqzbfFenSTS",
+    "rpcUrl": "https://tezos-shadownet.octez.io/",
+    "tzkt": "https://shadownet.tzkt.io"
+  },
+  "contracts": [
+    {
+      "app": "spaghetti",
+      "kind": "collection",
+      "title": "Spaghetti Proof Token",
+      "contract": "KT1WTFnZAyWqcC2SB32xEjMS4F4cutnGsyVc",
+      "tokenId": "0",
+      "relationshipGroup": "spaghetti-shadownet-e2e-mr1oc17f",
+      "route": "/collection"
+    },
+    {
+      "app": "gnocchi",
+      "kind": "mint",
+      "title": "Gnocchi Proof Open Edition",
+      "contract": "KT1W2ijLhjRHeH7wWYnvYcDwDsgRM7TpAFZK",
+      "tokenId": "0",
+      "relationshipGroup": "gnocchi-shadownet-e2e-mr1oadsz",
+      "route": "/mint",
+      "mintEntrypoint": "open_mint",
+      "priceMutez": "1"
+    },
+    {
+      "app": "ravioli",
+      "kind": "bundle",
+      "title": "Ravioli Proof Bundle",
+      "contract": "KT194igzFGez1pB3HHhU8HFqyMzMLSLAPskB",
+      "tokenId": "0",
+      "relationshipGroup": "ravioli-shadownet-e2e-mr1pdpt4",
+      "route": "/"
+    },
+    {
+      "app": "rotini",
+      "kind": "generative",
+      "title": "Rotini Proof Seeds",
+      "contract": "KT1HqzEFqbwcR8BpXZrrfPALY6bJaPGQgDHQ",
+      "tokenId": "1",
+      "relationshipGroup": "rotini-shadownet-e2e-mr1q9kcr",
+      "route": "/"
+    },
+    {
+      "app": "penne",
+      "kind": "distribution",
+      "title": "Penne Proof Distribution Token",
+      "contract": "KT1EPdyxCjmosesvJ21cr8WqoCnTXoomCpRz",
+      "tokenId": "0",
+      "relationshipGroup": "penne-shadownet-e2e-mr1reng0",
+      "route": "/"
+    },
+    {
+      "app": "lasagna",
+      "kind": "exhibition",
+      "title": "Lasagna Shadownet E2E",
+      "contract": "KT1TEz2Rq8nUiNcJEAssrdrTqPj1h3ZN9B8r",
+      "relationshipGroup": "lasagna-shadownet-e2e-mr1srf15",
+      "route": "/"
+    }
+  ]
+}

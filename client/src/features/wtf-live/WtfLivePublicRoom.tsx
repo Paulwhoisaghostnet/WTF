@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, Bold, Camera, Check, ChevronDown, ChevronRight, Copy, ExternalLink, FileAudio, Gauge, Gift, Image as ImageIcon, Italic, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Music2, Paperclip, Pause, Pin, Play, Radio, RotateCcw, Send, Smile, Square, Type as TypeIcon, UserPlus, Users, Volume2, VolumeX, Wifi, WifiOff, X } from "lucide-react";
+import { Activity, Bold, Camera, Check, ChevronDown, ChevronRight, Copy, ExternalLink, FileAudio, Gauge, Gift, Image as ImageIcon, Italic, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Music2, Paperclip, Pause, Pin, Play, Radio, RotateCcw, Send, Settings, Smile, Square, Type as TypeIcon, UserPlus, Users, Volume2, VolumeX, Wifi, WifiOff, X } from "lucide-react";
 import styled from "styled-components";
 import { Button, Hourglass, TextField } from "react95";
 import { api } from "../../lib/api";
@@ -66,6 +66,9 @@ type PublicRoomResponse = {
     media?: boolean;
     transport?: string;
     stage?: boolean;
+    showKit?: boolean;
+    canManageRoom?: boolean;
+    roomRole?: "owner" | "host" | "guest" | "audience";
     canManageStage?: boolean;
     canSpeakOnStage?: boolean;
     stageRole?: StageRoomRole;
@@ -314,6 +317,45 @@ type WtfLiveSocketEvent = {
 
 type SoundboardSettingsResponse = WtfLiveSoundboardSettings & {
   storage?: string;
+};
+
+type RoomShowKitResponse = {
+  settings: WtfLiveSoundboardSettings & { storage?: string };
+  kit: {
+    id: number;
+    kitId: string;
+    name: string;
+    description: string;
+    clipCount: number;
+  } | null;
+  roomSettings?: {
+    showKitEnabled?: boolean;
+    showKitName?: string | null;
+  };
+};
+
+type RuntimeRoomSettings = {
+  allowGuestAudio: boolean;
+  allowGuestCamera: boolean;
+  allowGuestScreen: boolean;
+  allowGuestMedia: boolean;
+  showKitEnabled: boolean;
+  showKitId: number | null;
+};
+
+type RuntimeShowKit = {
+  id: number;
+  name: string;
+  clipCount: number;
+};
+
+const DEFAULT_RUNTIME_ROOM_SETTINGS: RuntimeRoomSettings = {
+  allowGuestAudio: true,
+  allowGuestCamera: true,
+  allowGuestScreen: true,
+  allowGuestMedia: true,
+  showKitEnabled: true,
+  showKitId: null,
 };
 
 const LIVE_CHAT_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "video/mp4"]);
@@ -3060,6 +3102,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const [micDiagnosticExpanded, setMicDiagnosticExpanded] = useState(false);
   const [sharingTestingOpen, setSharingTestingOpen] = useState(false);
   const [sharingSettingsOpen, setSharingSettingsOpen] = useState(false);
+  const [runtimeRoomSettings, setRuntimeRoomSettings] = useState<RuntimeRoomSettings>(DEFAULT_RUNTIME_ROOM_SETTINGS);
+  const [runtimeRoomSettingsStatus, setRuntimeRoomSettingsStatus] = useState("");
   const [stageHostList, setStageHostList] = useState("");
   const [stageSpeakerList, setStageSpeakerList] = useState("");
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -3150,6 +3194,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const canShareScreen = roomCapabilities?.screen !== false;
   const canShareMedia = roomCapabilities?.media !== false;
   const canManageStageRoom = Boolean(stagePermissions?.canManage || roomCapabilities?.canManageStage);
+  const canManageRoom = Boolean(roomCapabilities?.canManageRoom || canManageStageRoom);
   const defaultLiveChatStyle =
     desktopSettingsQuery.data?.appearance.wtfLiveChatStyle ?? DEFAULT_LIVE_CHAT_STYLE;
   const roomDefaultChatFontFamily = getFontPack(roomDefaultFontPack).roles.app;
@@ -3161,16 +3206,55 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const canUseRoomSoundboard = Boolean(
     !isStageRoom &&
       viewerUserId &&
-      room?.source === "user" &&
-      normalizeLiveUserId(room.ownerUserId) === viewerUserId,
+      roomCapabilities?.showKit &&
+      canManageRoom,
   );
   const soundboardClips = soundboardSettings.clips;
   const soundboardQuery = useQuery<SoundboardSettingsResponse>({
     queryKey: ["wtf-live", "soundboard", viewerUserId],
-    enabled: Boolean(viewerUserId),
+    enabled: Boolean(viewerUserId && !canUseRoomSoundboard),
     queryFn: () => api.get<SoundboardSettingsResponse>("/api/wtf-live/soundboard"),
     retry: false,
     staleTime: 15_000,
+  });
+  const roomShowKitQuery = useQuery<RoomShowKitResponse>({
+    queryKey: ["wtf-live", "room-show-kit", roomId, viewerUserId],
+    enabled: canUseRoomSoundboard,
+    queryFn: () => api.get<RoomShowKitResponse>(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/show-kit`),
+    retry: false,
+    staleTime: 15_000,
+  });
+  const runtimeRoomKind = isStageRoom ? "stage" : "room";
+  const runtimeRoomSettingsQuery = useQuery<{ settings: RuntimeRoomSettings }>({
+    queryKey: ["wtf-live", "room-runtime-settings", runtimeRoomKind, roomId, viewerUserId],
+    enabled: Boolean(viewerUserId && canManageRoom && room),
+    queryFn: () => api.get(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/settings?roomKind=${runtimeRoomKind}`),
+    retry: false,
+    staleTime: 10_000,
+  });
+  const runtimeShowKitsQuery = useQuery<{ kits: RuntimeShowKit[] }>({
+    queryKey: ["wtf-live", "show-kits", viewerUserId],
+    enabled: Boolean(viewerUserId && canManageRoom),
+    queryFn: () => api.get("/api/wtf-live/show-kits"),
+    retry: false,
+    staleTime: 15_000,
+  });
+  const saveRuntimeRoomSettings = useMutation({
+    mutationFn: () =>
+      api.patch<{ settings: RuntimeRoomSettings }>(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/settings`, {
+        roomKind: runtimeRoomKind,
+        ...runtimeRoomSettings,
+      }),
+    onSuccess: (data) => {
+      setRuntimeRoomSettings(data.settings);
+      setRuntimeRoomSettingsStatus("Room settings saved.");
+      qc.invalidateQueries({ queryKey: ["wtf-live", "public-room", roomId] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "room-show-kit", roomId, viewerUserId] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "room-runtime-settings", runtimeRoomKind, roomId, viewerUserId] });
+    },
+    onError: (error: unknown) => {
+      setRuntimeRoomSettingsStatus(error instanceof Error ? error.message : "Could not save room settings.");
+    },
   });
   const messagesQuery = useQuery<{ messages: RoomMessage[] }>({
     queryKey: ["wtf-live", "room", joinMode, roomId, "messages"],
@@ -3372,12 +3456,33 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   }, [viewerUserId]);
 
   useEffect(() => {
-    if (!viewerUserId || !soundboardQuery.data) return;
+    if (!viewerUserId || !soundboardQuery.data || canUseRoomSoundboard) return;
     setSoundboardSettings(normalizeWtfLiveSoundboardSettings(soundboardQuery.data));
-  }, [soundboardQuery.data, viewerUserId]);
+  }, [canUseRoomSoundboard, soundboardQuery.data, viewerUserId]);
+
+  useEffect(() => {
+    if (!viewerUserId || !roomShowKitQuery.data || !canUseRoomSoundboard) return;
+    setSoundboardSettings(normalizeWtfLiveSoundboardSettings(roomShowKitQuery.data.settings));
+  }, [canUseRoomSoundboard, roomShowKitQuery.data, viewerUserId]);
+
+  useEffect(() => {
+    if (!runtimeRoomSettingsQuery.data?.settings) return;
+    setRuntimeRoomSettings({
+      allowGuestAudio: runtimeRoomSettingsQuery.data.settings.allowGuestAudio,
+      allowGuestCamera: runtimeRoomSettingsQuery.data.settings.allowGuestCamera,
+      allowGuestScreen: runtimeRoomSettingsQuery.data.settings.allowGuestScreen,
+      allowGuestMedia: runtimeRoomSettingsQuery.data.settings.allowGuestMedia,
+      showKitEnabled: runtimeRoomSettingsQuery.data.settings.showKitEnabled,
+      showKitId: runtimeRoomSettingsQuery.data.settings.showKitId ?? null,
+    });
+  }, [runtimeRoomSettingsQuery.data?.settings]);
 
   useEffect(() => {
     const refreshSoundboard = () => {
+      if (canUseRoomSoundboard) {
+        void roomShowKitQuery.refetch();
+        return;
+      }
       setSoundboardSettings(readWtfLiveSoundboardSettings(viewerUserId));
     };
     const onStorage = (event: StorageEvent) => {
@@ -3391,7 +3496,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       window.removeEventListener("wtf-live:soundboard-updated", refreshSoundboard);
       window.removeEventListener("focus", refreshSoundboard);
     };
-  }, [soundboardStorageKey, viewerUserId]);
+  }, [canUseRoomSoundboard, roomShowKitQuery.refetch, soundboardStorageKey, viewerUserId]);
 
   useEffect(() => {
     if (!canUseRoomSoundboard) {
@@ -5451,8 +5556,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     return (
       <SettingsGroup data-wtf-live-soundboard-runtime>
         <LiveSectionHeader>
-          <span><Music2 size={15} aria-hidden /> Soundboard</span>
-          <ShareStatus>{soundboardOutputStream ? "WebRTC lane" : soundboardClips.length ? `${soundboardClips.length} clips` : "No clips"}</ShareStatus>
+          <span><Music2 size={15} aria-hidden /> {roomShowKitQuery.data?.kit?.name || "Soundboard"}</span>
+          <ShareStatus>{roomShowKitQuery.isLoading ? "Loading kit" : soundboardOutputStream ? "WebRTC lane" : soundboardClips.length ? `${soundboardClips.length} clips` : "No clips"}</ShareStatus>
         </LiveSectionHeader>
         {soundboardClips.length ? (
           <SoundboardButtonGrid>
@@ -5486,6 +5591,115 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
             {soundboardStatus}
           </StatusLine>
         ) : null}
+      </SettingsGroup>
+    );
+  }
+
+  function renderRuntimeRoomSettings() {
+    if (!canManageRoom) return null;
+    const kits = runtimeShowKitsQuery.data?.kits ?? [];
+    return (
+      <SettingsGroup data-wtf-live-runtime-room-settings={roomId}>
+        <LiveSectionHeader>
+          <span><Settings size={15} aria-hidden /> Room settings</span>
+          <ShareStatus>{roomCapabilities?.roomRole || stageRole}</ShareStatus>
+        </LiveSectionHeader>
+        {!isStageRoom ? (
+          <>
+            <label>
+              <input
+                type="checkbox"
+                checked={runtimeRoomSettings.allowGuestAudio}
+                onChange={(event) => {
+                  const checked = event.currentTarget.checked;
+                  setRuntimeRoomSettings((current) => ({ ...current, allowGuestAudio: checked }));
+                }}
+                data-wtf-live-runtime-allow-audio
+              /> Guest mic
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={runtimeRoomSettings.allowGuestCamera}
+                onChange={(event) => {
+                  const checked = event.currentTarget.checked;
+                  setRuntimeRoomSettings((current) => ({ ...current, allowGuestCamera: checked }));
+                }}
+                data-wtf-live-runtime-allow-camera
+              /> Guest camera
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={runtimeRoomSettings.allowGuestScreen}
+                onChange={(event) => {
+                  const checked = event.currentTarget.checked;
+                  setRuntimeRoomSettings((current) => ({ ...current, allowGuestScreen: checked }));
+                }}
+                data-wtf-live-runtime-allow-screen
+              /> Guest screen
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={runtimeRoomSettings.allowGuestMedia}
+                onChange={(event) => {
+                  const checked = event.currentTarget.checked;
+                  setRuntimeRoomSettings((current) => ({ ...current, allowGuestMedia: checked }));
+                }}
+                data-wtf-live-runtime-allow-media
+              /> Guest media deck
+            </label>
+          </>
+        ) : (
+          <StatusLine>Stage publishing follows the host and speaker list.</StatusLine>
+        )}
+        <label>
+          <input
+            type="checkbox"
+            checked={runtimeRoomSettings.showKitEnabled}
+            onChange={(event) => {
+              const checked = event.currentTarget.checked;
+              setRuntimeRoomSettings((current) => ({ ...current, showKitEnabled: checked }));
+            }}
+            data-wtf-live-runtime-show-kit-enabled
+          /> Show Kit enabled
+        </label>
+        <ChatStyleField>
+          <span>Show Kit</span>
+          <ChatToolSelect
+            aria-label="Room Show Kit"
+            value={runtimeRoomSettings.showKitId ? String(runtimeRoomSettings.showKitId) : ""}
+            onChange={(event) => {
+              const value = event.target.value;
+              setRuntimeRoomSettings((current) => ({
+                ...current,
+                showKitId: value ? Number(value) : null,
+              }));
+            }}
+            data-wtf-live-runtime-show-kit-select
+          >
+            <option value="">No saved kit</option>
+            {kits.map((kit) => (
+              <option key={kit.id} value={kit.id}>
+                {kit.name} · {kit.clipCount}
+              </option>
+            ))}
+          </ChatToolSelect>
+        </ChatStyleField>
+        <GuestGrid>
+          <Button
+            disabled={saveRuntimeRoomSettings.isPending}
+            onClick={() => saveRuntimeRoomSettings.mutate()}
+            data-wtf-live-runtime-settings-save
+          >
+            {saveRuntimeRoomSettings.isPending ? "Saving..." : "Save"}
+          </Button>
+          <Button onClick={() => window.open(presentationRouteHref("/live?tab=rooms", presentation.host), "_blank", "noopener,noreferrer")}>
+            Dashboard
+          </Button>
+        </GuestGrid>
+        {runtimeRoomSettingsStatus ? <StatusLine aria-live="polite">{runtimeRoomSettingsStatus}</StatusLine> : null}
       </SettingsGroup>
     );
   }
@@ -5928,6 +6142,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	        {renderSoundboardRuntime()}
 
 	        <SharingDrawer hidden={!sharingSettingsOpen} data-wtf-live-sharing-settings-drawer>
+	        {renderRuntimeRoomSettings()}
 	        <SettingsGroup>
 	          <LiveSectionHeader>
 	            <span><ImageIcon size={15} aria-hidden /> Local</span>

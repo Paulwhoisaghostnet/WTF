@@ -420,6 +420,7 @@ const IconGlyph = styled.div`
   min-height: 34px;
   display: flex;
   align-items: center;
+  position: relative;
 `;
 
 const IconLabel = styled.div`
@@ -456,24 +457,24 @@ const IconLabel = styled.div`
 
 const IconBadge = styled.span`
   position: absolute;
-  top: -3px;
-  right: 8px;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #ffffff;
-  border-radius: 999px;
-  background: #d10000;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  text-shadow: none;
-  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55);
+  top: -7px;
+  right: -10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
   box-sizing: border-box;
+  border: 1px solid #ffffff;
+  border-radius: 9px;
+  background: #d40000;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 16px;
+  text-align: center;
+  text-shadow: none;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.45),
+    1px 1px 0 rgba(0, 0, 0, 0.42);
 `;
 
 export interface DesktopIconDef {
@@ -484,8 +485,8 @@ export interface DesktopIconDef {
   defaultY: number;
   enabled: boolean;
   experimental?: boolean;
-  openPath?: string;
   badgeCount?: number;
+  openPath?: string;
 }
 
 interface DraggableIconProps {
@@ -641,6 +642,8 @@ export function DraggableIcon({
     [onOpen]
   );
 
+  const badgeCount = def.badgeCount ?? 0;
+
   return (
     <DesktopIconRoot
       ref={rootRef}
@@ -664,19 +667,47 @@ export function DraggableIcon({
         onContextMenu?.(event, def);
       }}
     >
-      <IconGlyph>{def.icon}</IconGlyph>
-      {def.badgeCount && def.badgeCount > 0 ? (
-        <IconBadge aria-label={`${def.badgeCount} unread messages`}>
-          {def.badgeCount > 99 ? "99+" : def.badgeCount}
-        </IconBadge>
-      ) : null}
+      <IconGlyph>
+        {def.icon}
+        {badgeCount > 0 ? (
+          <IconBadge aria-label={`${badgeCount} unread messages`}>
+            {badgeCount > 99 ? "99+" : badgeCount}
+          </IconBadge>
+        ) : null}
+      </IconGlyph>
       <IconLabel>{def.label}</IconLabel>
     </DesktopIconRoot>
   );
 }
 
 
-export type DesktopAppAvailability = Record<DesktopAppKey, boolean>;
+export type DesktopAppAvailability = {
+  wtfiam: boolean;
+  hoard: boolean;
+  wim: boolean;
+  w: boolean;
+  tv: boolean;
+  dicksword: boolean;
+  "i-hate-telegram": boolean;
+  "dear-diary": boolean;
+  arcade: boolean;
+  casino: boolean;
+  "dues-manager": boolean;
+  console: boolean;
+  "game-studio": boolean;
+  dedrooms: boolean;
+  studio: boolean;
+  gallery: boolean;
+  "ipfs-pinning": boolean;
+  skywire: boolean;
+  "wtf-live": boolean;
+  tz2at: boolean;
+  "crp-nominations": boolean;
+  "rat-race": boolean;
+  "map-lab": boolean;
+  agent: boolean;
+  mail: boolean;
+};
 
 export function buildDesktopIconDefs(
   apps: DesktopAppAvailability,
@@ -805,8 +836,8 @@ export function buildDesktopIconDefs(
       key: "agent",
       label: "Agent",
       icon: <ConsoleDeskIcon>AI</ConsoleDeskIcon>,
-      defaultX: 252,
-      defaultY: 12,
+      defaultX: 572,
+      defaultY: 188,
       enabled: canOpenApps && (apps.agent || canOpenDisabledApps),
       openPath: "/agent",
     },

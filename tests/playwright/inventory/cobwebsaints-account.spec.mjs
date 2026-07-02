@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 const HARNESS_WALLET = "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY";
+const HARNESS_WALLET_PROVIDER = "octez.connect";
 const COBWEBSAINTS_FULL_USER_ROLE = "cobwebsaints_full_user";
 
 async function seedCobwebsaints(request, { wtfUserSiteClaimed = false } = {}) {
@@ -35,12 +36,12 @@ test.describe("interaction inventory - cobwebsaints account readiness", () => {
     expect(atprotoMe.account.handle).toBe("cobwebsaints.bsky.social");
     expect(atprotoMe.account.did).toBe("did:plc:hlwiidixnd2bcc65tkvsmfs2");
 
-    await page.addInitScript((walletAddress) => {
+    await page.addInitScript(({ walletAddress, providerName }) => {
       window.localStorage.setItem(
         "wtf:wallet-session",
-        JSON.stringify({ address: walletAddress, providerName: "beacon" }),
+        JSON.stringify({ address: walletAddress, providerName }),
       );
-    }, HARNESS_WALLET);
+    }, { walletAddress: HARNESS_WALLET, providerName: HARNESS_WALLET_PROVIDER });
 
     await page.goto("/settings", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Open Subdomain Setup" }).click();

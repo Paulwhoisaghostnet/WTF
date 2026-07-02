@@ -50,17 +50,31 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-326 | Verified | Codex Inbox hub pass | 2026-06-30 | Social / DM comms privacy | P0 | 14 | 3 | 2 | 4 | 3 | DM sends published normalized comms cards with `targetUserId: null`, which let direct-message previews behave like global digest items instead of per-participant inbox cards; fixed future sends to publish one targeted comms item per conversation participant and verified with source-policy plus focused Gamma Inbox proof |
-| WTF-BB-327 | Fixed | Codex Pasta installer hardening | 2026-06-30 | Macaroni installers / supply chain | P1 | 13 | 6 | 1 | 4 | 4 | Macaroni installer manifest accepted remote HTTP URLs, which could publish downgradeable installer links; fixed by allowing HTTPS remote URLs, same-origin relative paths, and loopback HTTP only outside production, pending clean-branch/live release proof |
-| WTF-BB-330 | Fixed | Codex Pasta live-baseline audit | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 3 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles still serve Taquito `24.3.0`; local U025/Octez `25.0.0` refresh passes policy but has not been deployed to production |
-| WTF-BB-331 | Open | - | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop installer source and workflow exist on `origin/main`, but GitHub reports zero installer workflow runs and no release assets/tags, so production cannot yet offer downloadable native installers |
-| WTF-BB-332 | Verified | Codex WTF LIVE stage controls pass | 2026-06-30 | WTF LIVE / stage role controls | P1 | 13 | 6 | 3 | 5 | 1 | WTF LIVE stages now resolve through `/live/r/:stageId`, expose owner-managed host/speaker role lists, gate audience mic/camera/screen/media publishing, and passed focused WTF LIVE plus inventory coverage; full inventory has unrelated non-WTF failures |
-| WTF-BB-333 | Verified | Codex Inbox composer pass | 2026-07-01 | Social / Inbox and WIM compose UX | P1 | 12 | 7 | 3 | 5 | 0 | Inbox now exposes New message/New mail, selected-mail Reply/Forward, and an inline WIM/Studio conversation composer wired to the existing mail and DM send APIs; verified with focused source, build, inventory coverage, focused Gamma Inbox browser proof, and full inventory run with unrelated failures |
-| WTF-BB-328 | Claimed | Codex Beta full UX continuation | 2026-06-30 | Beta / route shell containment | P1 | 11 | 8 | 3 | 4 | 0 | Full inventory rerun during AppWindow bug-report pass shows Beta launched routes falling back to Classic paths (`/beta/gallery` expected, `/gallery` received) and direct/canonical Beta route checks missing `[data-beta-wtfos]`; likely needs Beta route-host retention and focused `beta-wtfos.spec.mjs` proof |
-| WTF-BB-329 | Open | - | 2026-06-30 | Theme Builder / WTF LIVE typography options | P2 | 7 | 15 | 1 | 3 | 0 | Full inventory rerun during AppWindow bug-report pass shows `desktop-settings-typography.spec.mjs` receiving WTF LIVE font options `mek-mono` and `grout-display` even though verified cleanup expected only `classic-95`, `terminal`, and `serif-press`; likely needs font-option source/normalizer regression fix |
-| WTF-BB-325 | In Progress | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes still fall back to Classic: live `/gallery` and `/leaderboard` rendered `[data-wtf-desktop]=1` with no Gamma workspace; live commit `de0acb6` still ships the root-only Gamma App branch, so the fix needs an isolated `origin/main` branch carrying the Gamma route-shell runtime slice and live selector proof after deploy |
+| WTF-BB-325 | Verified | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes no longer fall back to Classic after promotion to commit `6e35117`; verified by Deploy to Hetzner `28421767405`, main Quality Gates `28421767416`, live health, Gamma `/gallery` and `/leaderboard` content selectors, Gamma auth gates for `/admin` and `/swap`, plus Classic/Beta host sanity checks |
+| WTF-BB-326 | Verified | Codex Gamma live verification pass | 2026-06-30 | E2E / inventory workflow timeout | P2 | 7 | 15 | 1 | 3 | 0 | Broad inventory smoke could time out the healthy `social post to reward automation loop` under the fixed 60s Playwright budget; verified fixed by workload-based timeout budgeting, local focused/full domain-interoperability proof, and branch Quality Gates `28420704957` |
+| WTF-BB-327 | Verified | Codex Inbox full-send | 2026-06-30 | Comms / Inbox read model | P1 | 12 | 7 | 3 | 5 | 0 | WTF Mail is now the Inbox hub with user-scoped unread counts, source-owned read writes, WIM/Studio coordination, message marks, drafts/templates, desktop badge coverage, and verified focused inventory/browser coverage |
+| WTF-BB-328 | Verified | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / supply chain | P1 | 13 | 6 | 1 | 4 | 4 | Macaroni installer manifest rejects unauthenticated callers, exposes only HTTPS GitHub release installer URLs with SHA-256 values after authenticated login, and passed live verifier proof on `wtfos.app` commit `f32dbe8` |
+| WTF-BB-329 | Verified | Codex Pasta live-readiness | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 3 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles no longer serve Taquito `24.3.0`; all seven live creation-tool bundles passed stale-marker and Octez RPC marker probes on commit `f32dbe8` |
+| WTF-BB-330 | Verified | Codex Pasta live-readiness | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated/live public download smoke on commit `f32dbe8` |
+| WTF-BB-331 | Verified | Codex Pasta live-readiness | 2026-06-30 | Deploy / production disk capacity | P0 | 13 | 5 | 2 | 5 | 1 | Pasta deploy disk exhaustion was cleared without touching app volumes, `scripts/server-deploy.sh` now has a 12 GiB free-space preflight, Deploy to Hetzner `28467035058` passed, and live health reports commit `f32dbe8` |
+| WTF-BB-332 | Verified | Codex Pasta cleanup/status continuation | 2026-07-02 | Repo hygiene / Pasta stale worktrees | P2 | 9 | 12 | 1 | 3 | 2 | Stale `WTF-pasta-deploy` checkout is gone; promoted Spaghetti/Macaroni/IPFS/catalog/docs branches and clean promoted non-Gamma/Beta worktrees were pruned after live verification through PR #30 commit `6f71f14`; current cleanup audit keeps `codex/pasta-live-readiness` / `origin/codex/pasta-live-readiness` only as historical material unsafe to replay, recognizes `wip/full-working-tree-20260617` as expected historical backup material, classifies the current proof checkout as valid ongoing work, and now runs inside `pasta:live-readiness` by default |
+| WTF-BB-333 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Suite installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Bundled Pasta Suite Desktop `1.0.0` installers are published as stable GitHub release assets for macOS, Windows, and Raspberry Pi; production manifest exposes release URLs and SHA-256 checksums and passed authenticated live public download smoke on commit `fd4afcd` |
+| WTF-BB-334 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / Macaroni Shadownet proof harness | P2 | 9 | 12 | 2 | 4 | 0 | Macaroni Shadownet puppet proof drifted from the Octez active-account lifecycle; the harness now models accepted `octez.connect` session state, active-account events, restore/disconnect behavior, trusted-creator publish gating, and passed `npm run test:e2e:macaroni:shadownet` 5/5 against a disposable Shadownet puppet database |
+| WTF-BB-335 | Verified | Codex Pasta live-readiness | 2026-06-30 | Pasta Protocol / CH-EASE handoff and static publisher runtime | P1 | 12 | 7 | 2 | 5 | 1 | Pasta publisher handoffs could open `/tools/spaghetti?handoff=...` while the iframe dropped the query, and the six Pasta ES-module studios read `window.MD` even though their shared common helpers only declared lexical `const MD`; fixed by forwarding creation-tool route queries to all static iframes, exporting `window.MD` in Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna, adding policy guards, passing focused Spaghetti CH-EASE handoff plus mocked Shadownet publish choreography proof, promoting to main, and verifying live `wtfos.app` commit `c4ba55f` exposes `window.MD`, `consumeCheaseHandoff()`, and `loadPlatformCapabilities()` across all six Pasta publisher bundles |
+| WTF-BB-336 | Verified | Codex WTF LIVE stage controls full-send | 2026-07-01 | WTF LIVE / stage role controls | P1 | 13 | 6 | 3 | 5 | 1 | WTF LIVE stages now resolve through `/live/r/:stageId`, expose owner/host managed host/speaker role lists, gate audience mic/camera/screen/media publishing, and passed TypeScript, build, focused stage Playwright, inventory coverage, and the full inventory suite |
+| WTF-BB-341 | Verified | Codex Pasta live-readiness | 2026-07-01 | Pasta Protocol / standalone Spaghetti installers | P1 | 13 | 6 | 2 | 5 | 2 | Spaghetti Desktop `1.0.0` standalone installers are live on `wtfos.app`: production env is configured from GitHub release SHA-256 metadata, final Deploy to Hetzner `28493283644` and Quality Gates `28493283680` passed on live verification commit `e080b89`, and the authenticated live verifier passed with public byte-range probes for macOS, Windows, and Raspberry Pi |
+| WTF-BB-342 | In Progress | Codex Pasta final-launch command | 2026-07-02 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 6 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, and the latest PR #30 production evidence snapshot verifies repo cleanup, installer assets/catalog, static runtime markers, signer-backed Colander management action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, non-spending TzKT proof replay, and the named strict `pasta:live-readiness:final` command on production commit `6f71f14`; final launch remains blocked only on dedicated WTF.ME publish credentials plus a public Pasta WTF.ME host serving landing/mint/collection pages and pin discovery |
+| WTF-BB-343 | Verified | Codex standalone installer publication | 2026-07-01 | Pasta Protocol / individual installers | P2 | 11 | 8 | 2 | 4 | 2 | Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop `1.0.0` standalone installers are live on `wtfos.app`: workflows are registered, GitHub release assets exist with SHA-256 digests, runtime production env is configured in `/etc/wtf/wtf.env`, PR #13 deployed audit-fixed live commit `51ab323`, and authenticated live verifiers passed for macOS, Windows, and Raspberry Pi downloads |
+| WTF-BB-344 | Verified | Codex Pasta live verification docs | 2026-07-02 | Pasta Protocol / installer catalog | P2 | 9 | 12 | 1 | 3 | 2 | Unified "suite or any individual Pasta app" catalogue is deployed on live `wtfos.app` and reconfirmed on commit `6f71f14`: `/api/pasta/installers/catalog` returns unauthenticated `401`, `npm run pasta:live-readiness:final` passes the catalog probe before the expected WTF.ME blockers, and the gate verifies Macaroni, Pasta Suite, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna public release assets while still blocking only on missing WTF.ME publish credentials and live Pasta host proof |
+| WTF-BB-345 | Verified | Codex Inbox compose full-send | 2026-07-01 | Social / Inbox and WIM compose UX | P1 | 12 | 7 | 3 | 5 | 0 | Inbox aggregated mail, WIM, Studio, comms, and notifications but still behaved like a read-only viewer; current branch adds first-class New message/New mail controls, selected external-mail Reply/Forward actions, inline WIM/Studio conversation sending through source-owned DM APIs, inventory-owned behavior assertions, admin registry coverage, and verified clean-worktree source, build, focused browser, and full inventory coverage before production promotion |
+| WTF-BB-346 | Fixed | Codex WTF LIVE smart-room goal | 2026-07-01 | WTF LIVE / user-aware room operations | P1 | 14 | 3 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
+| WTF-BB-347 | Verified | Codex Pasta Colander RPC fallback | 2026-07-01 | Pasta Protocol / Colander Shadownet RPC resilience | P1 | 11 | 8 | 2 | 4 | 1 | Colander Shadownet discovery now retries recoverable primary RPC timeouts through the configured `https://tcinfra.net/rpc/tezos/shadownet` fallback with a bounded per-attempt read budget while preserving explicit env RPC overrides and the localhost wallet harness; PR #20 deployed live as `9267c4b`, Deploy to Hetzner `28551857308` and main Quality Gates `28551857324` passed, and live readiness verified all non-credentialed Pasta surfaces with only the expected WTF.ME credential/host blockers remaining |
+| WTF-BB-348 | Verified | Codex Pasta CI smoke heartbeat | 2026-07-02 | E2E / Quality Gates observability | P2 | 7 | 15 | 1 | 3 | 0 | Main Quality Gates inventory smoke can run for ~14 minutes with no CLI-visible progress before a production push is fully proven, making healthy CI hard to distinguish from a wedged release gate; verified by branch, PR, and main Quality Gates through PR #23 with 60-second heartbeat output through the long smoke step |
+| WTF-BB-349 | Verified | Codex Pasta cleanup squash-equivalence | 2026-07-02 | Repo hygiene / Pasta squash-merge cleanup | P2 | 8 | 14 | 2 | 3 | 0 | Squash-merged Pasta branches with no remaining file delta can block `pasta:repo-cleanup:audit` as unknown stale work until manually deleted; live commit `7657a3b` classifies zero-delta non-ancestor refs as promoted squash-equivalent prune candidates while keeping real stale deltas fail-closed, and the merged PR #25 branch was pruned after post-deploy verification |
+| WTF-BB-350 | Verified | Codex Pasta cleanup disappearing-ref hardening | 2026-07-02 | Repo hygiene / Pasta cleanup audit concurrency | P2 | 8 | 14 | 2 | 3 | 0 | Parallel release verification can delete the temporary `codex/pasta-zero-delta-fixture-*` audit-check ref after `pasta:repo-cleanup:audit` lists it but before classification; live commits through `6f71f14` re-check ref existence before ahead/behind/diff calls, record vanished refs as non-blocking audit metadata, keep surviving unknown refs fail-closed, and pass policy, cleanup, audit-mode readiness, and strict final-launch readiness with only WTF.ME blockers remaining |
+| WTF-BB-351 | Verified | Codex deploy cache-only recovery | 2026-07-02 | Deploy / production disk capacity | P2 | 8 | 14 | 2 | 3 | 0 | Deploy preflight now attempts Docker build-cache-only recovery when free space is below the 12 GiB floor, rechecks disk before image build, and still avoids broad system/image/volume pruning; PR #30 deployed as live commit `6f71f14` with Deploy to Hetzner `28570029612`, main Quality Gates `28570029603`, live health, and Pasta readiness proof |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
-| WTF-BB-323 | Open | - | 2026-06-29 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory and focused reruns fail Settings Subdomain Setup and cobwebsaints account readiness because the `wtf.tez target wallet` input remains blank instead of prefilled with the harness wallet |
+| WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
 | WTF-BB-321 | Verified | Codex Tezos provider currency audit | 2026-06-29 | Tezos / wallet dependencies and RPC defaults | P1 | 13 | 6 | 4 | 4 | 1 | Static creator-tool wallet bundles and package locks lagged Taquito U025 / Octez Connect 4.8.6 while fresh deploy/test defaults still pointed at legacy Ghostnet or Tez.ie paths; fixed with Taquito 25, Octez Connect 4.8.6, Shadownet-first defaults, regenerated browser bundles, and policy checks |
 | WTF-BB-322 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 14 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
@@ -369,96 +383,314 @@ Priority labels:
 
 ## Issue Details
 
-### WTF-BB-330 - Live Pasta/Macaroni vendor bundles still serve Taquito 24.3.0
+### WTF-BB-351 - Deploy disk preflight still depends on manual cache pruning
 
-- Category: Tezos / Pasta production deployment
-- Status: Fixed
-- Owner/Session: Codex Pasta live-baseline audit
-- Score: C2 + F5 + S3 + P1(4) = 14
+- Category: Deploy / production disk capacity
+- Status: Verified
+- Owner/Session: Codex deploy cache-only recovery
+- Score: C2 + F3 + S0 + P2(3) = 8
 - Evidence:
-  - Live probe on 2026-06-30 confirmed these production files are reachable but still contain `24.3.0`: `/creation-tools/macaroni/vendor/tezos.js`, `/creation-tools/spaghetti/vendor/tezos.js`, `/creation-tools/gnocchi/vendor/tezos.js`, `/creation-tools/ravioli/vendor/tezos.js`, `/creation-tools/rotini/vendor/tezos.js`, `/creation-tools/penne/vendor/tezos.js`, and `/creation-tools/lasagna/vendor/tezos.js`.
-  - Local policy `npm run security:tezos-rpc-defaults` passes against the dirty checkout and expects Taquito `25.0.0` plus current Octez defaults, so the repo has the intended refresh locally but production has not received it.
+  - PR #28 merged as `956420f`, but Deploy to Hetzner run `28566737184` initially failed before rebuild because `/` had 12,174 MiB free and the deploy preflight requires 12,288 MiB.
+  - `docker system df` showed Docker build cache had 13.82 GiB reclaimable; Docker volumes were not needed for recovery and were not pruned.
+  - `docker builder prune -af` recovered 19.11 GiB of build cache and raised root free space to 29 GiB.
+  - Rerunning the same Deploy to Hetzner workflow `28566737184` passed for `956420f`, and live health reported `commitRef:"956420f"` with healthy DB and mainnet chain.
+  - PR #30 merged to `main` as `6f71f14a6f9e6839f7a21a1390201676eb79e2bd`; Deploy to Hetzner run `28570029612` passed, main Quality Gates run `28570029603` passed, and live health reported `commitRef:"6f71f14"` with healthy DB and mainnet chain.
+  - The PR #30 deploy log exercised the new script's healthy path with `disk preflight ok for /: 23438 MiB free`, image build for `6f71f14`, and a passed health check. The low-disk recovery branch remains covered by deploy policy tests and intentionally prunes build cache only.
 - Why it matters:
-  - Pasta and Macaroni wallet/deploy flows are contract-adjacent. Production serving stale Taquito/browser wallet bundles can keep old protocol or wallet behavior alive while local tests look current.
-- Correction:
-  - Carry the audited Tezos dependency, lockfile, static vendor bundle, and policy-test slice onto a clean branch from `origin/main`.
-  - Deploy to `wtfos.app` and verify every listed live vendor path no longer contains `24.3.0` and does contain the expected `25.0.0`/U025 marker.
+  - The preflight protects production from low-disk rebuilds, but a deploy can still require manual operator intervention when routine build cache growth leaves the host just below threshold.
+- Likely correction direction:
+  - `scripts/server-deploy.sh` now logs Docker disk usage when the free-space floor is missed, runs `docker builder prune -af` by default as a cache-only recovery path, rechecks `df -Pk` before image build, and still fails closed if recovery is disabled with `WTF_DEPLOY_AUTO_PRUNE_BUILD_CACHE_ON_LOW_DISK=0` or if the host remains below the configured floor.
+  - The policy test explicitly rejects broad `docker system prune`, `docker image prune`, and `docker volume prune` in the deploy script.
 - Verification:
-  - Local checks: `npm run security:tezos-rpc-defaults`, `node --test server/routes/macaroni-policy.test.ts`, `npm run check -- --pretty false`.
-  - Live checks after deploy: curl each listed `vendor/tezos.js` path and assert `25.0.0`/U025 marker is present and `24.3.0` is absent.
+  - Local focused verification passed `bash -n scripts/server-deploy.sh` and `node --test scripts/deploy-dry-run-policy.test.mjs`.
+  - Additional pre-merge verification passed `git diff --check` and `npm run pasta:repo-cleanup:audit`.
+  - Branch push Quality Gates `28569256115` and PR Quality Gates `28569249359` passed on `5af0d84c`.
+  - Target live deployment proof passed on `main` as `6f71f14` through Deploy to Hetzner `28570029612`; post-deploy `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` and `npm run pasta:live-readiness:final` reconfirmed all non-WTF.ME Pasta surfaces, with the strict final gate exiting nonzero only on missing dedicated WTF.ME credentials plus missing live Pasta WTF.ME host proof.
 
-### WTF-BB-331 - Macaroni Desktop installers have no upstream release artifacts
+### WTF-BB-325 - Public Gamma deep routes still fall back to Classic
 
-- Category: Macaroni installers / release ops
-- Status: Open
-- Owner/Session: -
-- Score: C2 + F5 + S2 + P1(4) = 13
-- Evidence:
-  - `origin/main` contains `.github/workflows/macaroni-desktop-installers.yml`, `apps/macaroni-desktop/package.json`, and `docs/macaroni-desktop-packaging.md`.
-  - GitHub API check on 2026-06-30 returned zero workflow runs for `macaroni-desktop-installers.yml`.
-  - GitHub releases API returned an empty release list and no Macaroni/Pasta tags were found in the first 50 repo tags.
-  - Live `/api/macaroni/installers` requires authentication as expected, but no authenticated proof exists that production env values point to real installer assets.
-- Why it matters:
-  - The product goal requires downloadable software packages. Installer source and CI YAML are not enough; users need built artifacts attached to a stable release and wired into production env.
-- Likely correction:
-  - Create the clean Pasta/Macaroni release branch, verify it, tag or manually dispatch the Macaroni Desktop Installers workflow, publish the GitHub release assets, set `MACARONI_INSTALLER_MACOS_URL`, `MACARONI_INSTALLER_WINDOWS_URL`, `MACARONI_INSTALLER_RASPBERRY_PI_URL`, and `MACARONI_INSTALLER_VERSION` in production, then redeploy.
-- Verification idea:
-  - GitHub workflow run succeeds for macOS, Windows, and Raspberry Pi artifacts.
-  - GitHub release includes DMG/ZIP, Windows installer, and arm64 DEB assets.
-  - Authenticated `https://wtfos.app/api/macaroni/installers` returns `available: true` for the intended platforms with HTTPS URLs and the expected version.
-
-### WTF-BB-327 - Macaroni installer manifest accepted remote HTTP URLs
-
-- Category: Macaroni installers / supply chain
-- Status: Fixed
-- Owner/Session: Codex Pasta installer hardening
-- Score: C1 + F4 + S4 + P1(4) = 13
-- Evidence:
-  - `server/routes/macaroni.ts` exposes `/api/macaroni/installers` from `MACARONI_INSTALLER_MACOS_URL`, `MACARONI_INSTALLER_WINDOWS_URL`, and `MACARONI_INSTALLER_RASPBERRY_PI_URL`.
-  - Before this pass, `safeInstallerUrl` accepted any remote URL with `http:` or `https:`.
-  - Installer URLs are the public handoff from wtfOS to native Macaroni software packages, so a plain HTTP release URL would make the download path downgradeable even if the main site is HTTPS.
-- Why it matters:
-  - Pasta/Macaroni installer downloads are a supply-chain boundary. Production should not advertise remote installer binaries over plaintext transport.
-- Correction:
-  - Tightened `safeInstallerUrl` to allow same-origin relative paths, HTTPS remote URLs, and loopback HTTP only outside production for local development.
-  - Added policy assertions in `server/routes/macaroni-policy.test.ts`.
-- Verification:
-  - Passed `node --test server/routes/macaroni-policy.test.ts` on 2026-06-30.
-  - Clean release branch and live `wtfos.app` still need installer artifact URL and authenticated manifest proof before this can be marked production-verified.
-
-### WTF-BB-329 - WTF LIVE font options reintroduced MEK/GROUT in Theme Builder
-
-- Category: Theme Builder / WTF LIVE typography options
-- Status: Open
-- Owner/Session: -
-- Score: C1 + F3 + S0 + P2(3) = 7
-- Evidence:
-  - `npm run test:e2e:inventory` on 2026-06-30 during the AppWindow bug-report pass failed `tests/playwright/inventory/desktop-settings-typography.spec.mjs:9`.
-  - The spec expected WTF LIVE font options `["classic-95", "terminal", "serif-press"]`, but received `["mek-mono", "grout-display", "classic-95", "terminal", "serif-press"]`.
-  - This is a current regression against the verified WTF LIVE typography cleanup noted in `WTF-BB-318` and `WTF-BB-319`.
-- Why it matters:
-  - WTF LIVE typography was intentionally constrained to remove distracting MEK/GROUT options from live-room chat. Reintroducing them in Theme Builder can bring back the user-facing readability complaint.
-- Likely correction:
-  - Trace the Theme Builder chat-default font option source and the font-pack registry changes that re-added MEK/GROUT to the WTF LIVE option list, then keep legacy stored values mapped to safe visible choices.
-- Verification idea:
-  - Rerun `npx playwright test tests/playwright/inventory/desktop-settings-typography.spec.mjs`, then rerun `npm run test:e2e:inventory:coverage`.
-
-### WTF-BB-328 - Beta route shell does not retain Beta containment
-
-- Category: Beta / route shell containment
-- Status: Open
-- Owner/Session: -
+- Category: Gamma / live hostname route containment
+- Status: Verified
+- Owner/Session: Codex Gamma live verification pass
 - Score: C3 + F4 + S0 + P1(4) = 11
 - Evidence:
-  - `npm run test:e2e:inventory` on 2026-06-30 during the AppWindow bug-report pass failed three Beta containment specs in `tests/playwright/inventory/beta-wtfos.spec.mjs`.
-  - The launched application route test expected `/beta/gallery` but received `http://127.0.0.1:4173/gallery`.
-  - Same-session canonical route and production-hostname direct-route checks timed out waiting for `[data-beta-wtfos]`.
+  - Live `https://gamma.wtfos.app/` rendered `[data-gamma-wtfos]=1`, but direct live `https://gamma.wtfos.app/gallery` and `https://gamma.wtfos.app/leaderboard` rendered `[data-wtf-desktop]=1` with no Gamma workspace.
+  - Live `/api/health` reported commit `de0acb6`; the deployed `index-wtf2-ChA9LqzT.js` bundle still contains the root-only Gamma branch and no broad `isGammaShellLocation` route branch.
+- Correction:
+  - Created isolated branch `codex/gamma-live-shell` from `origin/main` and transplanted only the Gamma presentation shell/runtime/test slice.
+  - Kept `/applications` out of the branch because it is not part of the current production-base route registry and would add a new surface.
+  - Fixed hidden-worktree Playwright harness serving by allowing dot-directory paths when the worktree lives under `~/.config`.
+  - Fixed branch-CI Typecheck blockers by typing Tezos Intel presentation markers and declaring the marketplace presentation-only `surfaceVariant` prop.
+  - Promoted the verified branch to `main` by fast-forward from `de0acb6` to `6e351170678cccb6a72228465d758c15420830cd`.
+  - Preserved shared application logic, API contracts, data, wallet, contract, and auth behavior; changes are presentation shell, route containment, host-aware navigation, and test harness proof only.
+- Local verification:
+  - `npm run check`: passed.
+  - `tsx --test` presentation-policy sweep: `148/148` passed.
+  - `npm run test:e2e:inventory:coverage`: route fixtures `112/112`, subdomain rows `195/195`, normalized handles `852/852`.
+  - `/opt/homebrew/bin/node ./node_modules/.bin/vite build`: passed.
+  - Focused rendered rerun for desktop utility handoffs and Message Board dialogs: `2/2` passed on `HARNESS_PORT=4319`.
+  - Full Gamma browser suite: `61/61` passed on `HARNESS_PORT=4321`, including production-hostname direct routes, The Count admin suite, native admin cluster, desktop utility CLI handoff, Message Board dialogs, social/media/TV routes, and mobile first viewport.
+  - `git diff --check`: passed.
+- Branch CI verification:
+  - GitHub Quality Gates run `28420704957` passed for commit `04ccba794bfb2007222a7f1143df7be6123e05be`, including Typecheck, Vite env policy, Build, Inventory coverage, Inventory Playwright smoke, External link safety, and SmartPy V1.2 contract tests.
+- Production verification:
+  - GitHub Deploy to Hetzner run `28421767405` passed for `main` commit `6e351170678cccb6a72228465d758c15420830cd`.
+  - GitHub Quality Gates run `28421767416` passed on `main`, including Typecheck, Vite env policy, Build, Inventory coverage, Inventory Playwright smoke, External link safety, and SmartPy V1.2 contract tests.
+  - Live `https://gamma.wtfos.app/api/health` and `https://wtfos.app/api/health` reported `commitRef:"6e35117"` with `status:"ok"`.
+  - Live selector proof: `https://gamma.wtfos.app/` rendered `[data-gamma-wtfos]=1`; `/gallery` and `/leaderboard` rendered `[data-gamma-wtfos]=1`, `[data-gamma-application-content]=1`, and `[data-wtf-desktop]=0`; `/admin` and `/swap` rendered Gamma route gates with `[data-wtf-desktop]=0`.
+  - Host isolation proof: live `https://wtfos.app/` rendered `[data-wtf-desktop]=1` and `[data-gamma-wtfos]=0`; live `https://beta.wtfos.app/` rendered Beta shell markers and `[data-gamma-wtfos]=0`.
+
+### WTF-BB-327 - Central Inbox must preserve source-owned privacy boundaries
+
+- Category: Comms / Inbox read model
+- Status: Verified
+- Owner/Session: Codex Inbox full-send
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - 2026-06-30 user request reimagined WTF Mail as Inbox, the central messaging hub for system, admin, user mail, WIM, invites, notification subscriptions, and Studio messages.
+  - The hub needs a permanent desktop badge and cross-app read-state sync, which can accidentally become a global or presentation-only read model if the Inbox aggregates private sources without preserving per-user target rows and source-owned write APIs.
 - Why it matters:
-  - Beta is meant to be a presentation shell that hosts shared app routes without silently dropping users into Classic. Route containment failures make Beta proofs noisy and can hide app-shell regressions.
-- Likely correction:
-  - Audit Beta link interception, host/session persistence, and direct-route bootstrap so canonical WTFOS app routes stay inside Beta unless the user chooses an explicit interface-switch exit.
-- Verification idea:
-  - Rerun the three focused Beta specs around lines 553, 576, and 593, then rerun full `tests/playwright/inventory/beta-wtfos.spec.mjs`.
+  - Inbox is now the recovery surface for account, wallet, social-proof, safety, mail, WIM, Studio, and notification needs. If it globalizes read state or bypasses source routes, one user's unread badge or read action can become misleading or leak private activity.
+- Correction:
+  - Keep `/mail` as the Inbox owner surface while preserving Mail, WIM/DM, Studio, Notification Center, and Comms Kernel APIs by domain.
+  - Add a user-scoped `/api/comms/unread-count` for the permanent desktop badge.
+  - Publish DM comms rows to each participant instead of untargeted global rows.
+  - Let Inbox mark read through source-owned endpoints, and let WIM show Studio project conversations without adding Studio rooms to the buddy roster.
+- Verification:
+  - Passed `git diff --check`.
+  - Passed focused source/unit coverage: `node_modules/.bin/tsx --test client/src/pages/mail-presentation-policy.test.ts client/src/pages/messages-presentation-policy.test.ts client/src/pages/Wim.test.ts client/src/features/desktop/DesktopIcons.test.tsx server/routes/messages-user-roster-policy.test.ts`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run build`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed focused browser coverage: `node_modules/.bin/playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "documented static|Inbox and Notification|Inbox mailbox" --project=chromium --reporter=list`.
+  - Ran `npm run test:e2e:inventory`; Inbox, WIM, messages, `/mail`, `/messages`, `/messages/dms/:id`, `/wim`, social-domain comms probes, and Gamma Inbox checks passed inside the broad run. The broad run finished `439 passed` with unrelated route/WTF LIVE harness failures matching the existing `WTF-BB-238` instability bucket.
+  - Fresh focused reruns passed the unrelated broad-run failures: `HARNESS_PORT=4321 node_modules/.bin/playwright test tests/playwright/inventory/routes.spec.mjs -g "/tools/nikshumika-paint" --project=chromium --reporter=list` and `HARNESS_PORT=4323 node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs --project=chromium --reporter=list` (`15/15`).
+
+### WTF-BB-328 - Macaroni installer manifest accepted plaintext remote installer URLs
+
+- Category: Macaroni installers / supply chain
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
+- Score: C1 + F4 + S4 + P1(4) = 13
+- Evidence:
+  - `/api/macaroni/installers` builds a downloadable native installer manifest from configured URLs.
+  - The previous sanitizer accepted remote `http:` URLs, which would let a production HTTPS page advertise plaintext installer binaries.
+- Why it matters:
+  - Installer downloads are a supply-chain handoff. A remote HTTP URL can be downgraded or replaced in transit even when the wtfOS page itself is served over HTTPS.
+- Correction:
+  - Allow same-origin relative paths.
+  - Allow remote HTTPS URLs.
+  - Allow loopback HTTP only outside production for local development.
+- Verification:
+  - Clean branch `codex/pasta-live-readiness` passed focused `node --test server/routes/macaroni-policy.test.ts`, broad `npm run check -- --pretty false`, `npm run build`, and supporting release gates.
+  - Deploy to Hetzner run `28467035058` passed and live `https://wtfos.app/api/health` reported commit `f32dbe8`.
+  - Public live verifier passed: unauthenticated `/api/macaroni/installers` returned `401`, and macOS, Windows, and Raspberry Pi GitHub release assets accepted byte-range download probes.
+  - Authenticated live verifier passed as production puppet `e2e_bert`; manifest matched Macaroni Desktop `1.0.0`, stable GitHub release URLs, file names, HTTPS-only URLs, and SHA-256 values.
+
+### WTF-BB-329 - Live Pasta/Macaroni static wallet bundles still serve stale Taquito
+
+- Category: Tezos / Pasta production deployment
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F5 + S3 + P1(4) = 14
+- Evidence:
+  - 2026-06-30 live probes showed `https://wtfos.app/creation-tools/{macaroni,spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/vendor/tezos.js` still exposing Taquito `24.3.0`.
+  - The release branch carries refreshed Taquito `25.0.0` and Octez Connect `4.8.6` static bundles plus policy coverage.
+- Why it matters:
+  - Production creator tools can be reachable while still running older wallet/deploy code. Local policy checks are not live deployment proof.
+- Correction:
+  - Promote the refreshed dependency locks and static browser bundles through the normal main `wtfos.app` deployment path.
+  - After deploy, curl each shipped bundle and assert expected new markers are present and stale markers are absent.
+- Verification:
+  - Clean branch `codex/pasta-live-readiness` passed `npm run security:tezos-rpc-defaults`, `npm run creation-tools:check`, broad `npm run check -- --pretty false`, and `npm run build`.
+  - Deploy to Hetzner run `28467035058` passed and live `https://wtfos.app/api/health` reported commit `f32dbe8`.
+  - Main Quality Gates run `28467035060` passed SmartPy, Typecheck, Vite env policy, Build, Inventory coverage, Inventory Playwright smoke, and External link safety.
+  - Live bundle probe passed for `macaroni`, `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna`: every `vendor/tezos.js` returned `200` with `staleTaquito=false`, and every `js/common.js` returned `200` with Octez mainnet and Shadownet RPC markers.
+
+### WTF-BB-330 - Macaroni Desktop installer artifacts are not published
+
+- Category: Macaroni installers / release ops
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F5 + S2 + P1(4) = 13
+- Evidence:
+  - `.github/workflows/macaroni-desktop-installers.yml`, `apps/macaroni-desktop/package.json`, and `docs/macaroni-desktop-packaging.md` exist on `origin/main`.
+  - 2026-06-30 GitHub API probes reported zero releases and zero runs for the Macaroni desktop installer workflow.
+  - 2026-06-30 local `codex/pasta-live-readiness` proof built unsigned macOS universal artifacts with `npm run dist:mac --prefix apps/macaroni-desktop`.
+  - 2026-06-30 branch workflow run `28458246772` produced `macaroni-desktop-macos` artifact `7986390894` and `macaroni-desktop-windows` artifact `7986389945`; Raspberry Pi arm64 failed before upload because electron-builder rejected the `.deb` without homepage/author email/maintainer metadata.
+  - 2026-06-30 branch workflow retry `28458796320` on commit `3dc2013a` succeeded for all matrix targets and uploaded `macaroni-desktop-macos` artifact `7986621165`, `macaroni-desktop-windows` artifact `7986637629`, and `macaroni-desktop-raspberry-pi` artifact `7986602158`.
+- Why it matters:
+  - Source and CI definitions do not make software downloadable. The main Pasta release goal requires users to download individual installers or a suite from stable URLs.
+- Correction:
+  - Run the Macaroni desktop installer workflow for macOS, Windows, and Raspberry Pi packages.
+  - Keep Debian package metadata explicit: package homepage, author email, Linux maintainer, lowercase package name, executable name, and desktop name.
+  - Publish artifacts to stable URLs or a release, configure `MACARONI_INSTALLER_*_URL` plus `MACARONI_INSTALLER_VERSION`, and smoke the authenticated `/api/macaroni/installers` manifest on production.
+- Verification:
+  - Local macOS artifact proof: `Macaroni-Studio-1.0.0-mac-universal.dmg` sha256 `9df90eef0fe40b784a642d8630a0b842c7c355224c212884bf3f69777c2b187f`; `Macaroni-Studio-1.0.0-mac-universal.zip` sha256 `9cb9ea4c38494bf2bf9fc160288fa1988ce7ea687efc06b5a1330b569a2fdcba`.
+  - Local metadata guard: `npm run macaroni:desktop:check` passes with explicit Linux `.deb` metadata assertions.
+  - Branch artifact proof: Macaroni Desktop Installers run `28458796320` passed macOS, Windows, and Raspberry Pi builds with `publish_release=false`.
+  - Stable release proof: GitHub release `macaroni-desktop-v1.0.0` exposes macOS DMG sha256 `9c91ad656bd249d7d921084d429ba23f00692d68819937505aa3deec8e50f600`, Windows EXE sha256 `6b40525d524dd916ba3a46ab28bb36c3238c7cbffd993f2c1803f61f5063e1d4`, and Raspberry Pi arm64 DEB sha256 `6ed21c165f5b2c5f476b0c8ab23c78397de59a2990d3f4f21dfb741b5e7e6216`.
+  - Deploy to Hetzner run `28467035058` passed and live `https://wtfos.app/api/health` reported commit `f32dbe8`.
+  - Public live verifier passed unauthenticated manifest protection plus byte-range probes for all three release assets.
+  - Authenticated live verifier passed as production puppet `e2e_bert`; `/api/macaroni/installers` matched Macaroni Desktop `1.0.0`, expected filenames, stable GitHub release URLs, and SHA-256 values.
+
+### WTF-BB-331 - Pasta main deploy failed on production disk exhaustion
+
+- Category: Deploy / production disk capacity
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F5 + S1 + P0(5) = 13
+- Evidence:
+  - Deploy to Hetzner run `28466080627` reset the production checkout to `3d27e10` and built `wtf-app-app:latest`, then failed at Docker compose metadata export with `no space left on device`.
+  - Live `https://wtfos.app/api/health` remained healthy on old commit `7b56bfd`, so the failure blocked promotion before the new Pasta/Macaroni code became live.
+  - Production root was `98%` full with `1.9G` available; Docker build cache, unused images, and journals were reclaimable.
+- Why it matters:
+  - A live-ready branch can still miss production if deploy capacity is only checked after a long Docker build. Repeated failures also risk filling the host further and delaying rollback or emergency fixes.
+- Correction:
+  - Pruned Docker build cache and unused images without touching volumes.
+  - Vacuumed systemd journals to `1G`.
+  - Production root now has `26G` free (`65%` used).
+  - Added `scripts/server-deploy.sh` disk preflight guard with configurable `WTF_DEPLOY_DISK_PATH` and `WTF_DEPLOY_MIN_FREE_KB`, defaulting to 12 GiB free before image build or app restart.
+- Verification:
+  - Passed `bash -n scripts/server-deploy.sh`.
+  - Passed `node --test scripts/deploy-dry-run-policy.test.mjs scripts/production-migrations-policy.test.mjs scripts/check-kiln-production-posture.test.mjs`.
+  - Production disk cleanup left root with `26G` free before redeploy and `24G` free after redeploy; Docker volumes were not pruned.
+  - Deploy to Hetzner run `28467035058` passed with the new disk preflight in `scripts/server-deploy.sh`.
+  - Live `https://wtfos.app/api/health` returned `ok: true` with `commitRef: "f32dbe8"`.
+  - Main Quality Gates run `28467035060` passed.
+
+### WTF-BB-334 - Macaroni Shadownet proof harness drifted from Octez active-account state
+
+- Category: E2E / Macaroni Shadownet proof harness
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - `npm run test:e2e:macaroni:shadownet` initially failed with the generated mint-page proof stuck in a split wallet state: balance read as connected while the top connect button returned to `Connect wallet`.
+  - The harness seeded a puppet Beacon account, but Macaroni installs `OctezPrimaryWallet` and prefers the Octez DAppClient facade when it is present.
+  - The trusted-creator Studio test also switched to the Page tab before asserting Drop-tab-only fields, and the intentionally blocked wtfOS publish gate logged an expected console error.
+- Why it matters:
+  - Shadownet proof is the staging gate before mainnet Pasta deployment claims. A stale wallet harness can make healthy product code look disconnected, or worse, let a weaker address-only proof pass without exercising the selected wallet provider lifecycle.
+  - Trusted-creator wtfOS publish affordances and standalone mint-page restore/disconnect behavior are part of the Macaroni contract-product workflow surface.
+- Correction:
+  - Updated the Playwright puppet to seed the accepted `octez.connect` provider name and install a deterministic Octez DAppClient facade with active-account get/set/clear plus `ACTIVE_ACCOUNT_SET` subscriptions.
+  - Kept the Studio test on the correct tab for Drop-only assertions and treated the intentionally triggered no-KT1 publish block as expected console output.
+- Verification:
+  - `node --check tests/playwright/live/macaroni-shadownet.spec.mjs` passed.
+  - `DATABASE_URL=postgresql://wtf:***@127.0.0.1:55432/wtf npm run db:push` passed against disposable local Postgres.
+  - `DATABASE_URL=postgresql://wtf:***@127.0.0.1:55432/wtf npm run test:e2e:macaroni:shadownet` passed 5/5, seeding 12 Shadownet puppet actors against `https://tezos-shadownet.octez.io/`.
+
+### WTF-BB-333 - Pasta Suite Desktop installer release path was missing
+
+- Category: Pasta Suite installers / release ops
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F5 + S2 + P1(4) = 13
+- Evidence:
+  - The goal requires Pasta Protocol software package installers as individual items or a bundled suite.
+  - Production already had verified individual Macaroni Desktop installers, but no `apps/pasta-suite-desktop`, suite installer workflow, `/api/pasta/installers` manifest, suite inventory handle, or suite live verifier existed.
+- Why it matters:
+  - A web-hosted tool suite is not the same as a downloadable native suite. Without a manifest and release verifier, users can end up with no suite download surface or dead installer links.
+- Correction:
+  - Added `apps/pasta-suite-desktop` as an Electron shell that bundles Macaroni, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna from production-style `/creation-tools/<tool>/...` paths.
+  - Added `.github/workflows/pasta-suite-desktop-installers.yml` for macOS universal DMG/ZIP, Windows x64 NSIS, and Raspberry Pi arm64 `.deb` packages.
+  - Added authenticated `/api/pasta/installers` with HTTPS/same-origin URL policy, SHA-256 validation, explicit product/version fields, and package filenames matching Electron Builder outputs.
+  - Added `PASTA_SUITE_INSTALLER_*` to `.env.example` and made the manifest mark installers available only when both the URL and SHA-256 digest are valid.
+  - Added `pasta_suite.installer_manifest.viewed` to the interaction inventory and Pasta domain workflow, with a GET probe for `/api/pasta/installers`.
+  - Added `scripts/check-pasta-suite-installers-live.mjs` to compare the live manifest against GitHub release asset URLs and GitHub release SHA-256 digests after release publication.
+- Verification:
+  - `npm run pasta-suite:desktop:check` passed 5/5.
+  - `npm run macaroni:desktop:check` passed 4/4 to protect the existing individual installer lane.
+  - `npm run test:e2e:inventory:coverage` passed with 862 normalized handles and 16 domain workflows.
+  - `npm run check -- --pretty false` passed.
+  - `npm run dist:mac --prefix apps/pasta-suite-desktop` produced unsigned local macOS artifacts: `Pasta-Suite-1.0.0-mac-universal.dmg` sha256 `3b00d06229d2527294aac8f67e43e9437f5544846225e9688a345af9addf01e9`; `Pasta-Suite-1.0.0-mac-universal.zip` sha256 `812650e1e62d1bbe7332b84d6a437966ef9ddb2262977c8923429551a4e73f24`.
+  - Branch Quality Gates run `28470551711` passed on `fd4afcd`.
+  - Main Deploy to Hetzner run `28471646097` passed, and live `https://wtfos.app/api/health` reported `commitRef: "fd4afcd"` with `nodeEnv: "production"`.
+  - Pasta Suite Desktop Installers workflow run `28471682307` passed and published stable release tag `pasta-suite-desktop-v1.0.0`.
+  - Published release assets expose GitHub SHA-256 digests for `Pasta-Suite-1.0.0-mac-universal.dmg` (`1c62cfde5a019d0c5900476c9dc72d2fc60c25e8098b06be5a88b4e858dbf39f`), `Pasta-Suite-1.0.0-win-x64.exe` (`5fb9c02531aa492a306928e89501eb3d628c61b4380720fb8a7e54fffa0c2f8a`), and `Pasta-Suite-1.0.0-linux-arm64.deb` (`bd15004c5a4233bf27280d9b2132e0408739f349ef7f0184af0cf665c5fe4a29`).
+  - Production `PASTA_SUITE_INSTALLER_*` env was configured from the release digests, the app container was recreated with the deploy temp-env pattern, and `npm run pasta-suite:installers:live-check` passed against `https://wtfos.app` as production puppet `e2e_bert`.
+
+### WTF-BB-332 - Stale Pasta deploy checkout can regress installer hardening if replayed
+
+- Category: Repo hygiene / Pasta stale worktrees
+- Status: Verified
+- Owner/Session: Codex Pasta cleanup continuation
+- Score: C1 + F3 + S2 + P2(3) = 9
+- Evidence:
+  - Earlier audit evidence showed `/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF-pasta-deploy` on branch `pasta-protocol` at `f6256708` with 29 dirty entries after the clean Pasta live-readiness release.
+  - Comparing that old checkout to current `origin/main` showed most Pasta surfaces were already promoted, `drizzle/0103_macaroni_packages.sql` was superseded by `0104`, and `server/features/pasta-protocol` contained only `.gitkeep`.
+  - Its dirty `server/routes/macaroni.ts` would have removed installer SHA-256 manifest fields, advertised the stale Windows `.msi` filename, and allowed remote plaintext installer URLs again.
+  - 2026-07-01 follow-up: `git worktree list --porcelain` no longer lists `WTF-pasta-deploy`, and a filesystem scan under `Desktop/cursor-projects/Sandbox/WTF combo` no longer finds that directory.
+  - 2026-07-01 branch recheck after PR #16: promoted Spaghetti, Macaroni, IPFS, installer-audit, catalog, and cleanup-docs branches were proven ancestors of `origin/main` and pruned locally/remotely where present; `codex/pasta-live-readiness` is `47` current-main commits behind and `22` historical commits ahead, and `wip/full-working-tree-20260617` remains an old backup over a much older base.
+  - Two-dot replay checks showed `origin/main..codex/pasta-live-readiness` would touch 126 files with 32,893 deletions, including deletion of newer installer apps/workflows, live-readiness gates, Colander action proof tooling, and proof reports; `origin/main..wip/full-working-tree-20260617` would touch 811 files with 198,996 deletions, including current installer apps, workflows, Pasta reports, spec files, and live readiness tooling.
+  - 2026-07-01 cleanup gate pass after pruning and PR #16 branch deletion: `npm run pasta:repo-cleanup:audit` returned `ok: true`, classified only `codex/pasta-live-readiness`/`origin/codex/pasta-live-readiness` as historical evidence unsafe to replay, the retained `codex-pasta-live-readiness` worktree as historical evidence, and the clean Pasta verification checkout as the PR #16 reference; it reported no unknown Pasta branches or worktrees.
+  - 2026-07-01 shared gate follow-up: `pasta:live-readiness` now runs `pasta:repo-cleanup:audit` by default, so the live release gate blocks on unclassified Pasta branch/worktree state unless `PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP=0` is intentionally set for a diagnostic run.
+  - `DUMMY PASTA` remains as a separate tiny fixture Git repo with `README.md`, `tokens.csv`, and media files for Shadownet Macaroni rehearsals; it is not a WTF worktree and should not be treated as deployable production code.
+- Why it matters:
+  - The stale checkout looks Pasta-relevant, but replaying it wholesale after live verification would undo supply-chain hardening and confuse the production source of truth.
+- Correction:
+  - Keep production authority on `origin/main`.
+  - Treat `codex/pasta-live-readiness` as historical proof material that has been mined/reworked into current mainline/readiness hardening; do not merge or replay it wholesale because current two-dot comparison shows it would remove newer host-gate, pinning, installer, and release-readiness guardrails.
+  - Treat `wip/full-working-tree-20260617` as a monolithic stale backup, not a Pasta release source.
+  - Keep the historical warning that the removed checkout's patch must not be replayed onto main.
+- Verification:
+  - `git worktree list --porcelain` no longer lists the stale checkout.
+  - `npm run pasta:repo-cleanup:audit:check` passes and proves the cleanup audit command is package-wired, non-destructive, Gamma/Beta-filtered, and uses current `origin/main` ancestry plus two-dot replay checks.
+  - `npm run pasta:repo-cleanup:audit` passes with no unknown Pasta branch blockers.
+  - `npm run pasta:live-readiness:check` proves the cleanup audit remains wired into the shared Pasta release gate by default.
+  - `.agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md` remains current.
+  - `scripts/check-macaroni-installers-live.mjs` and installer manifest policy still prove HTTPS URLs, checksums, and actual release asset filenames.
+
+### WTF-BB-341 - Standalone Spaghetti installers need production manifest proof
+
+- Category: Pasta Protocol / standalone Spaghetti installers
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
+- Score: C2 + F5 + S2 + P1(4) = 13
+- Evidence:
+  - Before this branch fix, there was no `apps/spaghetti-desktop` package, no Spaghetti installer workflow, no authenticated `/api/spaghetti/installers` route, no Spaghetti env example, no live release verifier, and no inventory probe for the standalone download surface.
+  - GitHub Actions workflow run `28491364684` for tag `spaghetti-desktop-v1.0.0` succeeded and published the Spaghetti Desktop release assets.
+  - Release asset metadata is now the checksum authority: macOS DMG `0cca2e45d91d6438bab7b4c10ebc41226dffdee934afa24e5c34221a88f1c60a`, Windows EXE `ba402284209fc777c7995ad6573ab017444604da80f475aeb81c7385b47b42d4`, and Raspberry Pi DEB `3e8687bc87992f64af2666401f5f2e3b38b4641182dabe1ff46590f1497a9dd8`.
+  - Before promotion, `SPAGHETTI_INSTALLER_CHECK_ASSETS=1 SPAGHETTI_INSTALLER_REQUIRE_AUTH=0 npm run spaghetti:installers:live-check` confirmed the public release assets and byte-range probes, then failed against `https://wtfos.app/api/spaghetti/installers` with unauthenticated 404; that became the deployment gate.
+  - Production `SPAGHETTI_INSTALLER_*` env was configured in `/etc/wtf/wtf.env` from the release metadata, with a timestamped backup at `/etc/wtf/wtf.env.bak.spaghetti-20260701T040218Z`.
+  - `main` was first fast-forwarded to route commit `09fff2fb`; Deploy to Hetzner run `28492620424` and Quality Gates run `28492620509` both passed for that code promotion.
+  - The final live verification docs were promoted on `e080b896`; Deploy to Hetzner run `28493283644` and Quality Gates run `28493283680` both passed.
+  - Post-deploy live health reported `commitRef: "e080b89"`, and the authenticated live verifier passed against `https://wtfos.app` as production puppet `e2e_bert`.
+  - While adding the Spaghetti manifest, the older Macaroni route still exposed `available` from URL alone instead of requiring URL plus SHA-256, so individual installer manifests did not all share the same checksum gate.
+- Why it matters:
+  - Spaghetti is a first-class Pasta app, not only a bundled suite component. Users need a separate native installer download surface with authenticated manifest access, HTTPS release URLs, and release-derived checksums.
+  - A passing GitHub release is not production download proof until `wtfos.app` serves the manifest and the verifier checks the actual live route.
+- Correction:
+  - Added `apps/spaghetti-desktop` with local static asset preparation, Electron runtime, secure preload flags, package metadata, macOS/Windows/Raspberry Pi build targets, and a local native `/api/spaghetti/installers` response.
+  - Added `.github/workflows/spaghetti-desktop-installers.yml` for GitHub Actions artifacts and release publication on `spaghetti-desktop-v*` tags or manual release dispatch.
+  - Added authenticated production route `/api/spaghetti/installers`, Spaghetti-specific `SPAGHETTI_INSTALLER_*` env names, `.env.example` entries, `docs/spaghetti-desktop-packaging.md`, `npm run spaghetti:installers:live-check`, and inventory coverage for `spaghetti.installer_manifest.viewed`.
+  - Tightened the existing Macaroni installer manifest so a platform is unavailable and has a null URL unless both a safe URL and a valid SHA-256 are configured.
+- Verification:
+  - Promotion branch checks passed: `node --check` on Spaghetti desktop/verifier scripts, `npm run spaghetti:desktop:check`, `npx tsx --test server/routes/macaroni-policy.test.ts`, `npm run spaghetti:desktop:prepare`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, and `git diff --check HEAD~1..HEAD`.
+  - Release publication already passed with GitHub Actions run `28491364684`.
+  - Asset-mode live verifier passed GitHub release discovery and byte-range probes, then failed closed on live `wtfos.app` with unauthenticated 404 before `/api/spaghetti/installers` was deployed.
+  - Production verification passed: `SPAGHETTI_INSTALLER_CHECK_ASSETS=1 SPAGHETTI_INSTALLER_REQUIRE_AUTH=1 npm run spaghetti:installers:live-check` authenticated as `e2e_bert`, confirmed unauthenticated `401`, matched manifest URLs/SHA-256 values, and byte-range probed all three release assets.
+- Residual risk:
+  - Future standalone Pasta installers still need the same package, release, manifest, env, deploy, and live verifier pattern before they are called downloadable from production.
+
+### WTF-BB-326 - Broad inventory social workflow timeout
+
+- Category: E2E / inventory workflow timeout
+- Status: Verified
+- Owner/Session: Codex Gamma live verification pass
+- Score: C1 + F3 + S0 + P2(3) = 7
+- Evidence:
+  - GitHub Quality Gates run `28419602338` passed Typecheck, Vite env policy, Build, and Inventory coverage, then failed broad Inventory Playwright smoke after `451 passed` because `social post to reward automation loop` hit the default `60000ms` Playwright timeout.
+  - A failed-job rerun reproduced the same timeout, confirming it was not the earlier Typecheck blocker.
+  - The workflow contains `122` API probes, `130` event handles, and `15` representative routes, making the fixed 60s per-test budget too tight on slower runners.
+- Correction:
+  - `tests/playwright/inventory/domain-interoperability.spec.mjs` now computes a per-workflow timeout from API probe count, event-handle count, route count, and a baseline overhead.
+  - Assertions remain unchanged: every API probe still must return an accepted status, every event handle still posts through the normalized interaction endpoint, and every route still opens without app-error text.
+- Local verification:
+  - Focused workflow: `CI=1 HARNESS_PORT=4323 ./node_modules/.bin/playwright test tests/playwright/inventory/domain-interoperability.spec.mjs -g "social post to reward automation loop"` passed in `42.7s`.
+  - Full domain interoperability spec: `CI=1 HARNESS_PORT=4324 ./node_modules/.bin/playwright test tests/playwright/inventory/domain-interoperability.spec.mjs` passed `16/16`; the social workflow passed in `46.4s`.
+- Branch CI verification:
+  - GitHub Quality Gates run `28420704957` passed for commit `04ccba794bfb2007222a7f1143df7be6123e05be`; the broad Inventory Playwright smoke completed successfully after the workload-based timeout fix.
 
 ### WTF-BB-324 - Gamma Swap inventory proof lacks connected wallet state
 
@@ -484,19 +716,26 @@ Priority labels:
 ### WTF-BB-323 - Settings Subdomain Setup harness wallet prefill is blank
 
 - Category: E2E / WTF Domains Settings applet wallet prefill
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex Pasta live-readiness
 - Score: C2 + F3 + S0 + P2(3) = 8
 - Evidence:
   - `npm run test:e2e:inventory` on 2026-06-29 failed `tests/playwright/inventory/settings-subdomain-setup.spec.mjs:18` and `tests/playwright/inventory/cobwebsaints-account.spec.mjs:20` after a clean build.
   - Focused rerun reproduced both failures with the two specs and the same expectations.
   - In both cases `getByLabel("wtf.tez target wallet")` stayed `""` while the spec expected `tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY`.
+  - Root cause on 2026-06-30 was stale harness wallet-session payloads seeding `providerName: "beacon"` after `readPersistedWalletSession()` only accepted `providerName: "octez.connect"`.
+  - Local focused proof passes on a clean harness port: `HARNESS_PORT=4514 ./node_modules/.bin/playwright test tests/playwright/inventory/settings-subdomain-setup.spec.mjs tests/playwright/inventory/cobwebsaints-account.spec.mjs --project=chromium --workers=1`.
 - Why it matters:
   - The Settings-owned Subdomain Setup behavior proof cannot verify the registrar plan path when the applet does not hydrate the current harness wallet.
-- Likely correction:
-  - Align the Playwright harness wallet/user payload with the applet's wallet-prefill source, or make the spec perform the same wallet-connect action a user must take before the field should be populated.
-- Verification idea:
-  - Rerun both focused subdomain specs, then rerun `npm run test:e2e:inventory`.
+- Correction:
+  - Updated the affected Playwright specs and UX Lab seed helper to use `octez.connect`.
+  - Added a source-policy guard so future provider migrations must update wallet-session fixtures with the accepted provider.
+- Verification:
+  - Passed `./node_modules/.bin/tsx --test client/src/lib/tezos/wallet-connect-policy.test.ts`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed focused fresh-harness Settings/Cobweb proof listed above.
+  - Passed branch Quality Gates run `28465190052`.
+  - Passed main Quality Gates run `28467035060` after promotion to commit `f32dbe8`.
 
 ### WTF-BB-267 - Macaroni generated drop pages reused collection covers for video previews
 
@@ -5959,7 +6198,7 @@ Priority labels:
 ### WTF-BB-272 - Macaroni social shares omit creator social identity and token media
 
 - Category: Macaroni / generated drop website social sharing
-- Status: In Progress
+- Status: Fixed
 - Owner/Session: Codex Macaroni social-share identity/media pass
 - Score: C2 + F4 + S0 + P1(4) = 10
 - Evidence:
@@ -6568,7 +6807,7 @@ Priority labels:
 ### WTF-BB-297 - Production app gate doc freshness disables core public apps
 
 - Category: Desktop OS / production app gates
-- Status: In Progress
+- Status: Fixed
 - Owner/Session: Codex live user-story gap loop
 - Score: C3 + F5 + S1 + P0(5) = 14
 - Evidence:
@@ -6903,7 +7142,7 @@ Priority labels:
 ### WTF-BB-314 - WIM settings dialog Escape fails after custom-list creation
 
 - Category: WIM / settings dialog keyboard UX
-- Status: In Progress
+- Status: Fixed
 - Owner/Session: Codex live user-story gap loop
 - Score: C1 + F4 + S0 + P2(3) = 8
 - Evidence:
@@ -7115,75 +7354,314 @@ Priority labels:
 - Verification idea:
   - Rerun the focused Swap proof on a fresh port, then rerun the full Gamma spec: `HARNESS_PORT=<fresh> ./node_modules/.bin/playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "Swap DEX quote"` and `HARNESS_PORT=<fresh> ./node_modules/.bin/playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs`.
 
-### WTF-BB-326 - DM comms cards were indexed as global digest items
-
-- Category: Social / DM comms privacy
-- Status: Fixed
-- Owner/Session: Codex Inbox hub pass
-- Score: C2 + F4 + S3 + P0(5) = 14
-- Evidence:
-  - During the Inbox hub pass, `POST /api/messages/dms/:id/messages` published a normalized comms item with `targetUserId: null`.
-  - The comms list query intentionally includes `targetUserId IS NULL OR targetUserId = currentUser`, so private DM previews could enter every user's central comms digest instead of only the conversation participants.
-- Why it matters:
-  - Direct messages and Studio conversations are private communication channels. Inbox can aggregate them, but the read model must remain participant-scoped and must not turn private content into a public/global card.
-- Correction:
-  - Future DM sends now select the conversation participants and publish one normalized comms item per participant with `targetUserId` set to that participant and an external ref scoped by both message id and user id.
-  - Added a source-policy regression assertion to prevent reintroducing `targetUserId: null` on DM publish.
-- Verification:
-  - Passed `node_modules/.bin/tsx --test client/src/pages/mail-presentation-policy.test.ts client/src/pages/messages-presentation-policy.test.ts server/routes/messages-user-roster-policy.test.ts`.
-  - Passed `node_modules/.bin/playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "documented static|Inbox and Notification|Inbox mailbox" --project=chromium --reporter=list`.
-
-### WTF-BB-332 - WTF LIVE stages need joinable role-gated rooms
+### WTF-BB-336 - WTF LIVE stages need joinable role-gated rooms
 
 - Category: WTF LIVE / stage role controls
 - Status: Verified
-- Owner/Session: Codex WTF LIVE stage controls pass
+- Owner/Session: Codex WTF LIVE stage controls full-send
 - Score: C3 + F5 + S1 + P1(4) = 13
-
 - Evidence:
   - 2026-06-30 user report: WTF LIVE stages were being treated like a room setup/broadcast option, but the real product distinction is that stage owners decide who may share mic, camera, screen, or media inside the room.
   - Existing stages had create/list/close/delete surfaces and old broadcast composer copy, but no practical stage room join path, no host/speaker membership model, and no in-room owner/host controls for who can talk.
 - Why it matters:
   - A stage is a live room with publish permissions, not a one-way post feed. Without durable host/speaker settings and in-room controls, the right people cannot reliably talk when they arrive, and audience users can appear to have controls they should not use.
 - Correction:
-  - Added `wtf_live_stage_access_members` plus registry helpers for owner/host/speaker/audience role resolution and owner-managed host/speaker replacement.
+  - Added `wtf_live_stage_access_members` plus registry helpers for owner/host/speaker/audience role resolution and owner/host-managed host/speaker replacement.
   - Let `/live/r/:slug` resolve either rooms or stages, using the same realtime room transport while returning stage capabilities and host/speaker permission envelopes.
   - Added dashboard stage role editors during stage creation and for existing owned stages, plus a Join Stage Room path and stage-room copy instead of broadcast-only setup.
   - Added in-room stage policy controls for owners/hosts, disabled audience mic/camera/screen/media controls in the client, and stripped disallowed stage media-state fields in the WebSocket relay for audience clients.
   - Updated the Playwright harness, interaction inventory, domain workflows, behavior assertions, and admin surface registry for stage creation, role updates, stage-room join, and audience share blocking.
-  - Fixed a follow-up React Query invalidation issue where deleting the selected stage could refetch its access endpoint after the server row was gone.
+  - Fixed a React Query invalidation issue where deleting the selected stage could refetch its access endpoint after the server row was gone.
 - Verification:
   - Passed `npm run check -- --pretty false`.
   - Passed `npm run build`.
   - Passed focused WTF LIVE stage coverage: `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "owned stages expose|stage rooms gate audience sharing" --project=chromium --reporter=list`.
   - Passed `npm run test:e2e:inventory:coverage`.
-  - Full `npm run test:e2e:inventory` rebuilt and ran 463 tests: all 16 WTF LIVE owner-control tests passed, including both stage role cases; overall suite ended `457 passed, 6 failed` from unrelated known/non-WTF areas (`cobwebsaints`/Settings subdomain wallet prefill, apphost Applications, Skywire hot topics strict locator, and System Settings localization visibility).
+  - Passed full inventory coverage after aligning WTF LIVE chat font normalizers across shared code, production WebSocket, and harness: `npm run test:e2e:inventory` (572 passed).
 
-### WTF-BB-333 - Inbox and WIM conversation panes lack obvious compose paths
+### WTF-BB-342 - Pasta WTF.ME host and pin recovery remain live-blocked
+
+- Category: Pasta Protocol / WTF.ME host and pin recovery
+- Status: In Progress
+- Owner/Session: Codex Pasta final-launch command
+- Score: C2 + F5 + S2 + P1(4) = 13
+- Evidence:
+  - Historical `npm run pasta:wtfme:live-check` failed against production because `https://wtfos.app/internal/tls/allow?domain=wtf-admin.wtfos.me` returned HTTP 403 with `handle not registered`.
+  - 2026-07-01 read-only production DB audit confirmed `wtf-admin.wtfos.me` has no `wtf_user_sites` row; the `wtf-admin` user has a linked Tezos wallet but no active WTFOS DID/repo, no verified hosted handle claim, and no site.
+  - The same audit found `paulwhoisaghost.wtfos.me` is TLS-allowed, published, backed by an active WTFOS repo and primary Tezos wallet, but public `https://paulwhoisaghost.wtfos.me/` still serves the generic `wtfOS site` home page and `PASTA_WTFME_LIVE_HOST=paulwhoisaghost.wtfos.me PASTA_WTFME_LIVE_CHECK_PINS=0 npm run pasta:wtfme:live-check` fails on the missing Pasta landing marker.
+  - Source-level WTF.ME page proof exists for landing, mint, and collection pages, and the live checker now resolves `.well-known/wtfos-pins` through the repo DID document to the public PDS `app.wtfos.media.pinManifest` record; when `PASTA_WTFME_LIVE_MANIFEST_PAYLOAD_URL` is supplied it validates the public manifest payload checksum, item kinds, counts, CIDs, and object-mirror coordinates. Live host registration and live Pasta page/pin publication are not proven.
+  - The previous pinning/recovery pass added Pasta pinPolicy/pinManifest/pinItem source proof plus a fail-closed public discovery guard, and extended the live publish path with `POST /api/ipfs-pinning/pasta-protocol/publish`, `use_wtfos_pinning` permission gating, published-site/PDS/wallet prerequisites, reachable-object-storage gating before writes, object-mirror enforcement, duplicate publish reuse, and TLS-before-pin ordering in the live publisher.
+  - The current host-gate audit pass removes stale default live-check/inventory hosts, requires `PASTA_WTFME_LIVE_HOST` for verification, and lets inventory probe only authenticated site/admin-discovered hosts plus explicit `PASTA_WTFME_LIVE_HOSTS`.
+  - The current live publisher pass adds pre-write existing-site guards so a credentialed run fails before saving if the host has non-target pages or existing non-Pasta target pages without explicit `PASTA_WTFME_LIVE_OVERWRITE_EXISTING=1`.
+  - The current live publisher pass also requires `PASTA_WTFME_LIVE_EXPECT_HOST=<dedicated-host.wtfos.me>` before any production write mode can authenticate or save pages.
+  - The current post-publish verifier pass makes production publish runs call `pasta:wtfme:live-check` after page publish and pin recovery, so the script cannot exit successfully until the public host serves Pasta landing/mint/collection markers, `.well-known/wtfos-pins`, and the public PDS `pinManifest` record.
+  - The current release-lane pass adds `npm run pasta:live-readiness` plus `npm run pasta:live-readiness:check`. Audit mode proves live health, repo cleanup classification, live static bundle/runtime markers, public installer release assets, and the recorded Colander Shadownet action proof without signer execution; it requires supplied WTF.ME credentials to pass a forced non-writing publisher dry-run and a read-only inventory prerequisite check, then reports the current blockers instead of allowing a vague "almost ready" claim.
+  - The current inventory diagnostic pass makes `pasta:wtfme:live-inventory` report read-only `readiness.pagePublishReady`, `readiness.pinRecoveryPublishReady`, and `readiness.publicPinDiscoveryReady` checks, including the non-secret pin-home summary exposed by `/api/wtf-sites/my`, before any live publish write path is used.
+  - 2026-07-01 credential availability check found no local matching `PASTA_WTFME`, `WTFME`, app-login, live-puppet, E2E, or puppet env names; no Pasta/WTF.ME matches in local production/local puppet credential files or `.codex/secure/wtf-keyring.env`; SSH to `wtf` and sudo env-name reads worked, and `/etc/wtf/wtf.env` plus checked installer backup env files exposed no matching Pasta WTF.ME/app-login/puppet credential names.
+  - These changes still do not prove live provider item payloads from the real production mirror or a production Pasta host manifest because no production host currently serves Pasta pages and public pin discovery.
+- Why it matters:
+  - Pasta hosted mint/collection pages and recovery pointers are public trust surfaces. A production claim before host registration and manifest publication would imply that collectors can resolve pages, artifacts, metadata, and recovery records when production still rejects the host.
+- Likely correction direction:
+  - Use `scripts/pasta-protocol/wtfme-live-publish.ts` with credentials for a real account that already has or can claim a WTF.ME host, active WTFOS DID/repo, linked Tezos wallet, and WTF Pin Collector permission; then run `PASTA_WTFME_LIVE_HOST=<published-host> npm run pasta:wtfme:live-check`.
+  - Do not assume `wtf-admin.wtfos.me` is the proof host unless production identity/site prerequisites are explicitly created for that user.
+  - Provision or identify a dedicated Pasta WTF.ME publish account/host credential outside the repo, then run the forced non-writing readiness dry-run before setting `PASTA_WTFME_LIVE_PUBLISH=1`.
+- Verification idea:
+  - Pass `npm run pasta:wtfme:live-check` with `PASTA_WTFME_LIVE_MANIFEST_PAYLOAD_URL=<public-manifest-json>` when the mirror URL is known, then extend provider recovery to fetch individual item payloads and confirm IPFS/object-mirror fallback URLs are reachable without credentials.
+- Current pass verification:
+  - Passed `npm run pasta:wtfme:live-check:check`.
+  - Updated `pasta:wtfme:live-check` so pin-enabled runs resolve `.well-known/wtfos-pins` through did:web/did:plc discovery to `com.atproto.repo.getRecord` and verify the public `app.wtfos.media.pinManifest` record shape, storage checksum, item count, source chain, and host binding. When `PASTA_WTFME_LIVE_MANIFEST_PAYLOAD_URL` is set, the same checker now fetches the manifest payload and validates its SHA-256, byte count, host/repo/scope, item kinds, item counts, IPFS CIDs, item checksums, and object-mirror coordinates.
+  - Passed `npm run pasta:wtfme:live-publish:check`.
+  - Passed `npm run pasta:wtfme:live-inventory:check`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run build`.
+  - 2026-07-01 final-launch gate pass added `PASTA_LIVE_READINESS_FINAL_LAUNCH=1` to `pasta:live-readiness`; in that mode the gate refuses `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1`, refuses disabled repo-cleanup/static/installer/Colander/WTF.ME probes, and exits nonzero even when blocker-allowed audit mode is present.
+  - Passed `node --check scripts/pasta-protocol/live-readiness-gate.mjs` and `npm run pasta:live-readiness:check` after adding final-launch policy coverage.
+  - Verified the negative runtime path with `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP=0 PASTA_LIVE_READINESS_CHECK_STATIC=0 PASTA_LIVE_READINESS_CHECK_INSTALLERS=0 PASTA_LIVE_READINESS_CHECK_COLANDER_PROOF=0 PASTA_LIVE_READINESS_CHECK_WTFME=0 node scripts/pasta-protocol/live-readiness-gate.mjs`; it exited `1` and reported the final-launch guardrail blocker.
+  - Verified the real final-launch path with `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness`; it enabled all production probes, proved live health at `15af752`, repo cleanup, static bundle/runtime markers, all suite/individual installer assets, installer catalog auth, and recorded Colander action proof, then exited `1` only on missing dedicated WTF.ME credentials and missing `PASTA_WTFME_LIVE_HOST`.
+  - Re-ran `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; audit mode still proved live health at `15af752`, repo cleanup, static bundle/runtime markers, all suite/individual installer assets, installer catalog auth, and recorded Colander action proof, while still blocking only on missing dedicated WTF.ME credentials and `PASTA_WTFME_LIVE_HOST`.
+  - Confirmed `scripts/wtf-ssh.sh --check` reaches the `wtf` host and sudo can read `/etc/wtf/wtf.env` names without exposing values.
+  - Updated the live-readiness gate to print the non-secret WTF.ME unblock path: dedicated Pasta account/host credential, active WTFOS DID/repo, linked Tezos wallet, WTF Pin Collector permission, `PASTA_WTFME_LIVE_HOST`, `PASTA_WTFME_LIVE_EXPECT_HOST`, publish mode, and the final `pasta:wtfme:live-check` command.
+  - Passed `node --check scripts/pasta-protocol/live-readiness-gate.mjs` and `npm run pasta:live-readiness:check`.
+  - Folded the read-only WTF.ME inventory prerequisite report into `pasta:live-readiness`: when credentials are supplied, the gate now runs `pasta:wtfme:live-inventory` with publish mode off, parses `pagePublishReady`, `pinRecoveryPublishReady`, and `publicPinDiscoveryReady`, and blocks on failed page/pin prerequisites before any production write path is considered ready.
+  - Folded `pasta:repo-cleanup:audit` into `pasta:live-readiness`: the shared release gate now blocks on unknown Pasta branch/worktree classifications by default and exposes `PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP=0` only as an explicit diagnostic bypass.
+  - Passed `npm run pasta:shadownet:colander:action-proof` and `npm run pasta:shadownet:colander:action-proof:check`; the verifier checks the recorded report and TzKT operation `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h` without signer execution.
+  - Passed `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; it still blocks on the missing credential/host proof and now prints the exact remediation commands.
+  - 2026-07-01 post-PR #13 rerun from clean commit `51ab323` again passed `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`, proving live health at `51ab323`, Taquito 25/static runtime markers, all installer manifests/release assets, and the recorded Colander action proof; it still blocks only on dedicated WTF.ME credentials and live Pasta host proof.
+  - 2026-07-01 diagnostic rerun passed `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; it now records `repo cleanup audit` as passed and `WTF.ME read-only inventory readiness` as skipped until credentials exist, proving the shared gate will not silently skip cleanup or the prerequisite checklist during a credentialed publish run.
+  - 2026-07-01 post-PR #14 live rerun passed the installer/catalog portions of `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` against live commit `04b242a`, and the rebased live-verification pass reconfirmed them on live commit `cb74cc1`: health returned production commit `cb74cc1`, the unified `/api/pasta/installers/catalog` route returned unauthenticated `401`, all Macaroni/Pasta static bundles exposed Taquito 25/runtime markers, all Macaroni, Pasta Suite, Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna installer release assets were verified, and the cleanup audit classified the current local/remote branch pair correctly. The only remaining blockers were the dedicated WTF.ME publish credential and `PASTA_WTFME_LIVE_HOST`.
+  - 2026-07-01 PR #15 merged as live commit `9507502`; Deploy to Hetzner `28531403032` and Quality Gates `28531403138` passed. Post-deploy `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` again proved live health, installer catalog, all suite/individual installer release assets, static runtime markers, repo cleanup audit, and recorded Colander action proof, while still blocking only on missing dedicated WTF.ME publish credentials and `PASTA_WTFME_LIVE_HOST`.
+  - 2026-07-01 post-PR #15 repo cleanup pruned promoted ancestor branches/worktrees: local `codex/ipfs-pinning-organ`, `codex/macaroni-*`, `codex/pasta-installer-audit-docs`, `codex/pasta-readiness-catalog-live`, and `codex/spaghetti-installer-live`; remote `origin/codex/macaroni-onboarding-guards`, `origin/codex/macaroni-v2-full-send`, `origin/codex/pasta-readiness-catalog-live`, and `origin/codex/spaghetti-installer-live`; and clean worktrees `WTF-ipfs-fullsend` plus `WTF-macaroni-fullsend`. Rerun `npm run pasta:repo-cleanup:audit` now reports retained historical `codex/pasta-live-readiness` evidence plus the clean Pasta verification checkout.
+  - 2026-07-01 PR #16 merged as live commit `2a1977e`; Deploy to Hetzner `28534054510` and Quality Gates `28534054583` passed. Post-deploy `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` again proved live health, installer catalog, all suite/individual installer release assets, static runtime markers, repo cleanup audit, and recorded Colander action proof, while still blocking only on missing dedicated WTF.ME publish credentials and `PASTA_WTFME_LIVE_HOST`. The promoted `codex/pasta-post-merge-cleanup-docs` branch was deleted locally and remotely after merge.
+  - 2026-07-01 PR #17 merged as live commit `26c60cd`; Deploy to Hetzner `28536687429` and Quality Gates `28536687348` passed. Post-deploy `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` again proved live health, installer catalog, all suite/individual installer release assets, static runtime markers, repo cleanup audit, and recorded Colander action proof, while still blocking only on missing dedicated WTF.ME publish credentials and `PASTA_WTFME_LIVE_HOST`. The promoted `codex/pasta-post-pr16-live-docs` branch was deleted locally and remotely after merge, and the follow-up cleanup audit now classifies only `codex/pasta-live-readiness` as historical Pasta evidence unsafe to replay.
+  - 2026-07-02 PR #22 merged as live commit `984b3f5`; Deploy to Hetzner `28556324686` and main Quality Gates `28556324696` passed. Post-deploy live health reported `commitRef:"984b3f5"`, `npm run pasta:repo-cleanup:audit` passed against current `origin/main`, and `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved live health, repo cleanup, static runtime markers, suite/individual installer release assets, installer catalog auth, and recorded Colander action proof while still blocking only on missing dedicated WTF.ME publish credentials and `PASTA_WTFME_LIVE_HOST`.
+  - 2026-07-02 PR #23 merged as docs-only live evidence carrier commit `92bb731`; Deploy to Hetzner `28558457407` and main Quality Gates `28558457383` passed. Post-deploy live health reported `commitRef:"92bb731"`, `npm run pasta:repo-cleanup:audit` passed against current `origin/main`, and `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` again proved live health, repo cleanup, static runtime markers, suite/individual installer release assets, installer catalog auth, and recorded Colander action proof while still blocking only on missing dedicated WTF.ME publish credentials and `PASTA_WTFME_LIVE_HOST`. `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness` exited nonzero on only those WTF.ME blockers.
+  - 2026-07-02 PR #25 merged as live cleanup-hardening commit `7657a3b`; Deploy to Hetzner `28561834866` and main Quality Gates `28561834903` passed. Post-deploy live health reported `commitRef:"7657a3b"`, `npm run pasta:repo-cleanup:audit` passed after pruning the promoted squash-equivalent branch, and `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` again proved live health, repo cleanup, static runtime markers, suite/individual installer release assets, installer catalog auth, and recorded Colander action proof while still blocking only on missing dedicated WTF.ME publish credentials and `PASTA_WTFME_LIVE_HOST`. `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness` exited `1` on only those WTF.ME blockers.
+  - 2026-07-02 PR #26 merged as live disappearing-ref cleanup-hardening commit `c1686b5`; Deploy to Hetzner `28563611520` and main Quality Gates `28563611557` passed. Post-deploy live health reported `commitRef:"c1686b5"`, `npm run pasta:repo-cleanup:audit` passed after pruning the promoted evidence-refresh branch, and `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` again proved live health, repo cleanup, static runtime markers, suite/individual installer release assets, installer catalog auth, and recorded Colander action proof while still blocking only on missing dedicated WTF.ME publish credentials and `PASTA_WTFME_LIVE_HOST`. `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness` exited `1` on only those WTF.ME blockers.
+  - 2026-07-02 PR #27 merged as docs/evidence commit `4e50cf3`; Deploy to Hetzner `28565070962` and main Quality Gates `28565070945` passed. Post-deploy live health reported healthy DB and mainnet chain, and post-prune `npm run pasta:repo-cleanup:audit` passed with no blockers or warnings against current `origin/main`.
+  - 2026-07-02 pre-merge final-command pass added `npm run pasta:live-readiness:final` as the named strict launch command, passed `node --check scripts/pasta-protocol/live-readiness-gate.mjs` and `npm run pasta:live-readiness:check`, and verified `npm run pasta:live-readiness:final` against live `4e50cf3`; the command proved repo cleanup, static runtime markers, installer catalog/assets, and recorded Colander action proof, then exited `1` only on missing dedicated WTF.ME credentials plus missing live Pasta WTF.ME host proof.
+  - 2026-07-02 PR #28 merged as final-launch-command commit `956420f`; branch and PR Quality Gates `28566080713` / `28566088240` passed, the Deploy to Hetzner rerun `28566737184` passed after cache-only disk-preflight recovery, and main Quality Gates `28566737178` passed.
+  - 2026-07-02 post-PR #28 live verification reported `commitRef:"956420f"` with healthy DB and mainnet chain; `npm run pasta:repo-cleanup:audit` passed with no blockers or warnings after deleting the promoted PR branch; `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved all non-WTF.ME Pasta surfaces; and `npm run pasta:live-readiness:final` exited `1` only on missing dedicated WTF.ME credentials plus missing live Pasta WTF.ME host proof.
+  - 2026-07-02 PR #29 merged as evidence-refresh commit `c8e9e19`; Deploy to Hetzner `28568481870` and main Quality Gates `28568481860` passed, live health reported `commitRef:"c8e9e19"`, `npm run pasta:repo-cleanup:audit` passed after deleting the promoted PR branch, and both blocker-allowed and strict live-readiness runs still failed only on dedicated WTF.ME credentials plus missing live Pasta WTF.ME host proof.
+  - 2026-07-02 PR #30 merged as deploy-cache-recovery commit `6f71f14`; branch and PR Quality Gates `28569256115` / `28569249359` passed, Deploy to Hetzner `28570029612` passed with the new script's healthy disk-preflight path, main Quality Gates `28570029603` passed, live health reported `commitRef:"6f71f14"`, `npm run pasta:repo-cleanup:audit` passed, and both blocker-allowed and strict live-readiness runs still failed only on dedicated WTF.ME credentials plus missing live Pasta WTF.ME host proof.
+  - Added read-only readiness classification to `pasta:wtfme:live-inventory`: it now distinguishes page publish prerequisites, pin recovery prerequisites, and public pin discovery state with non-secret host, permission, DID/repo, wallet, site, and PDS readiness facts.
+  - Confirmed the closest existing production host still fails correctly: `PASTA_WTFME_LIVE_HOST=paulwhoisaghost.wtfos.me PASTA_WTFME_LIVE_CHECK_PINS=0 npm run pasta:wtfme:live-check` exits on the missing Pasta landing marker.
+  - Passed `git diff --check`.
+  - Still blocked live: no production host currently serves the Pasta landing/mint/collection pages plus public pin discovery; `wtf-admin.wtfos.me` is unregistered, and `paulwhoisaghost.wtfos.me` is registered but not yet published with Pasta content.
+
+### WTF-BB-347 - Colander Shadownet discovery needs RPC fallback
+
+- Category: Pasta Protocol / Colander Shadownet RPC resilience
+- Status: Verified
+- Owner/Session: Codex Pasta Colander RPC fallback
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence:
+  - Main Quality Gates run `28548649768` failed the Inventory Playwright smoke on `tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs` while waiting for a proven Shadownet contract fact row.
+  - Local focused reproduction with `HARNESS_PORT=4322 npx playwright test tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs -g "opens proven Shadownet" --project=chromium --reporter=list` failed after opening earlier contracts and rendering `HTTP request timeout of 30000ms exceeded` for Rotini.
+  - The failure moved between CI and local runs, proving a single bad contract expectation was not the root cause. Colander used the primary `https://tezos-shadownet.octez.io/` endpoint without the configured Shadownet fallback.
+  - A broad inventory reproduction after adding fallback still failed while the page was stuck in `Reading ...` state: the first RPC attempt could spend Taquito's full 30s timeout before fallback, leaving the 45s assertion window too tight.
+- Why it matters:
+  - Colander is the Pasta ownership/discovery control panel. A transient primary RPC timeout should not make the live app or release gate fail when the project has an explicit fallback endpoint for Shadownet.
+- Correction direction:
+  - Add shared client fallback metadata for configured Tezos RPCs.
+  - Route Colander read-only contract discovery through a recoverable-error fallback helper with a bounded per-attempt timeout while preserving explicit user/env RPC overrides and the localhost test harness.
+- Verification idea:
+  - Focused Colander discovery Playwright proof passes after fallback support.
+  - Policy coverage proves the Shadownet fallback remains wired into the shared client Tezos helpers and Colander.
+  - Main Quality Gates are rerun or a branch Quality Gates run proves the full inventory smoke.
+- Current pass verification:
+  - Passed `npx tsx --test client/src/lib/tezos/wallet-shadownet-preflight-policy.test.ts client/src/lib/tezos/wallet-connect-policy.test.ts`.
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run build && HARNESS_PORT=4322 npx playwright test tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs -g "opens proven Shadownet" --project=chromium --reporter=list`; the previously failing read-only discovery proof opened all six proven Shadownet contracts.
+  - Passed `HARNESS_PORT=4322 npx playwright test tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs --project=chromium --reporter=list`; the localhost browser-wallet action harness still passes.
+  - Passed warm-prefix inventory reproduction after the bounded-attempt fix: `npx playwright test tests/playwright/inventory/auth-session.spec.mjs tests/playwright/inventory/beta-wtfos.spec.mjs tests/playwright/inventory/broot.spec.mjs tests/playwright/inventory/cobwebsaints-account.spec.mjs tests/playwright/inventory/dedrooms.spec.mjs tests/playwright/inventory/desktop-settings-typography.spec.mjs tests/playwright/inventory/domain-interoperability.spec.mjs tests/playwright/inventory/feature-depth.spec.mjs tests/playwright/inventory/gamma-wtfos.spec.mjs tests/playwright/inventory/ipfs-pinning-manager.spec.mjs tests/playwright/inventory/macaroni-packager.spec.mjs tests/playwright/inventory/map-lab-workspace.spec.mjs tests/playwright/inventory/market-pricing.spec.mjs tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs --project=chromium --reporter=list` (`218 passed`).
+  - Passed `npm run test:e2e:inventory:coverage`, `npm run pasta:repo-cleanup:audit:check`, `npm run pasta:live-readiness:check`, `npm run pasta:repo-cleanup:audit`, `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`, and `git diff --check`.
+  - PR #20 branch Quality Gates passed on run `28551045955` and the duplicate push Quality Gates passed on run `28551031969`.
+  - PR #20 merged as live commit `9267c4b`; Deploy to Hetzner `28551857308` passed, public `https://wtfos.app/api/health` reported `commitRef:"9267c4b"`, main Quality Gates `28551857324` passed, and post-deploy `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` verified live health, repo cleanup, static runtime markers, installer catalogue/downloads, and the recorded Colander action proof while still blocking only on WTF.ME publish credentials and `PASTA_WTFME_LIVE_HOST`.
+
+### WTF-BB-343 - Remaining standalone Pasta installers are not all live
+
+- Category: Pasta Protocol / individual installers
+- Status: Verified
+- Owner/Session: Codex standalone installer publication
+- Score: C2 + F4 + S2 + P2(3) = 11
+- Evidence:
+  - Macaroni Desktop, Pasta Suite Desktop, and Spaghetti Desktop have production installer manifests, release assets, and live verifier coverage.
+  - Main merge commit `0558be0` registered the Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop installer workflows and deployed authenticated `/api/<app>/installers` manifest routes on `wtfos.app`; PR #13 later promoted the standalone installer audit fix as live commit `51ab323`.
+  - Workflow dispatches `28519193761`, `28519193772`, `28519193756`, `28519193792`, and `28519193803` built macOS universal, Windows x64, and Raspberry Pi arm64 artifacts and published releases `gnocchi-desktop-v1.0.0`, `ravioli-desktop-v1.0.0`, `rotini-desktop-v1.0.0`, `penne-desktop-v1.0.0`, and `lasagna-desktop-v1.0.0`.
+  - Production runtime env `/etc/wtf/wtf.env` now contains the five apps' `*_INSTALLER_VERSION`, URL, and SHA-256 values. The repo `.env` was backed up at `/opt/platform/repos/wtf-app/.env.pasta-installers.20260701T130533Z.bak`, runtime env at `/etc/wtf/wtf.env.pasta-installers.20260701T130909Z.bak`.
+  - `scripts/server-deploy.sh` was rerun after runtime env publication and live `https://wtfos.app/api/health` returned `commitRef:"0558be0"` with `nodeEnv:"production"`; the later PR #13 deployment returned `commitRef:"51ab323"` with the same production env and installer manifests intact.
+  - A temporary witness verifier account proved all five authenticated manifests and public release byte-range downloads.
+- Why it matters:
+  - The active goal requires user-downloadable software packages as individual software items or as a suite. Suite coverage is proven, but per-app downloads need the same checksum-backed release discipline before they can be advertised independently.
+- Correction:
+  - Published Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop release assets from the registered main-branch workflows.
+  - Configured production runtime env from GitHub release SHA-256 metadata and redeployed through `scripts/server-deploy.sh`.
+  - Fixed the standalone release audit to use the GitHub Actions API workflow path list instead of unsupported `gh workflow view --json` flags.
+  - Colander remains an in-suite/main-app operational surface for now; a separate native admin installer is a product decision, not a blocker for the individual static publisher downloads.
+- Verification idea:
+  - Keep `npm run pasta:standalone-installers:audit`, `npm run pasta:live-readiness`, and the five authenticated `npm run <app>:installers:live-check` commands as release-regression gates.
+- Current pass verification:
+  - Passed `npm run gnocchi:desktop:prepare`.
+  - Passed `npm run gnocchi:desktop:check`.
+  - Passed `npm run ravioli:desktop:prepare` and `npm run ravioli:desktop:check`.
+  - Passed `npm run rotini:desktop:prepare` and `npm run rotini:desktop:check`.
+  - Passed `npm run penne:desktop:prepare` and `npm run penne:desktop:check`.
+  - Passed `npm run lasagna:desktop:prepare` and `npm run lasagna:desktop:check`.
+  - Passed `npm run pasta:live-readiness:check` after adding individual installer release blockers.
+  - Passed `npm run pasta:standalone-installers:audit:check`.
+  - PR #12 merged to `main` as `0558be0`; Deploy to Hetzner `28518272800` passed and main Quality Gates `28518272811` passed.
+  - PR #13 merged the standalone audit API fix to `main` as `51ab323`; Deploy to Hetzner `28521762196` passed, main Quality Gates `28521762176` passed, and live health reported `commitRef:"51ab323"`.
+  - PR #14 merged the unified catalog readiness gate to `main` as `04b242a`; Deploy to Hetzner `28527900056` passed, live health reported `commitRef:"04b242a"`, and `/api/pasta/installers/catalog` returned unauthenticated `401`. The later main deployment `cb74cc13` also passed Deploy to Hetzner `28529083020`; live health reported `commitRef:"cb74cc1"`, and the catalog route still returned unauthenticated `401`.
+  - PR #15 merged the cleanup-audit live verification fix to `main` as `9507502`; Deploy to Hetzner `28531403032` and main Quality Gates `28531403138` passed, live health reported `commitRef:"9507502"`, `/api/pasta/installers/catalog` still returned unauthenticated `401`, and the post-prune `pasta:repo-cleanup:audit` remained green.
+  - PR #16 merged the post-prune cleanup documentation refresh to `main` as `2a1977e`; Deploy to Hetzner `28534054510` and main Quality Gates `28534054583` passed, live health reported `commitRef:"2a1977e"`, `/api/pasta/installers/catalog` still returned unauthenticated `401`, and the post-branch-delete `pasta:repo-cleanup:audit` remained green.
+  - PR #17 merged the post-PR #16 live evidence refresh to `main` as `26c60cd`; Deploy to Hetzner `28536687429` and main Quality Gates `28536687348` passed, live health reported `commitRef:"26c60cd"`, `/api/pasta/installers/catalog` still returned unauthenticated `401`, and the post-cleanup `pasta:repo-cleanup:audit` remained green.
+  - The five installer workflows completed successfully: Gnocchi `28519193761`, Ravioli `28519193772`, Rotini `28519193756`, Penne `28519193792`, and Lasagna `28519193803`.
+  - Passed `PASTA_STANDALONE_INSTALLER_AUDIT_ALLOW_BLOCKERS=1 npm run pasta:standalone-installers:audit` after the audit fix; it verified local source policy, active remote workflows, GitHub release assets with SHA-256 digests, and auth-protected production routes.
+  - Passed authenticated live checks against `https://wtfos.app`: `npm run gnocchi:installers:live-check`, `npm run ravioli:installers:live-check`, `npm run rotini:installers:live-check`, `npm run penne:installers:live-check`, and `npm run lasagna:installers:live-check`.
+
+### WTF-BB-345 - Inbox compose and reply paths were read-only
 
 - Category: Social / Inbox and WIM compose UX
 - Status: Verified
-- Owner/Session: Codex Inbox composer pass
+- Owner/Session: Codex Inbox compose full-send
 - Score: C3 + F5 + S0 + P1(4) = 12
 - Evidence:
-  - User report on 2026-07-01: the new Inbox app appears read-only even though several surfaces expose Reply buttons.
-  - The Inbox route has mail and DM send mutations, but reply/new-message affordances are split between message cards, the Drafts tab, and a conversation history pane that does not behave like a standard email or IM composer.
-  - The WIM conversation tab model should remain DM-backed and usable as an instant messenger composer rather than sending users to a separate backend.
+  - User report on 2026-07-01: New Inbox exposed reply buttons in several places but had no real way to create a message or reply from the standard Inbox and WIM conversation views.
+  - The Inbox UI already aggregated external mail, WIM/Studio DMs, comms items, notifications, read-state writes, marks, drafts, and templates, but the common working surface still emphasized read controls and hid or omitted the source-owned send paths.
+  - Source policy coverage did not yet require the Inbox surface to expose first-class compose/reply controls or prove the WIM tab composer posts to `/api/messages/dms/:id/messages`.
 - Why it matters:
-  - Inbox is the permanent communication hub. If users cannot plainly reply or start a message from the hub, unread aggregation becomes a dead end and WIM loses the expected IM loop.
+  - A communication hub that displays Reply affordances without a reliable send loop trains users to distrust the app. Standard email UX needs visible compose/reply/forward entry points, and the instant-messenger tab needs inline send behavior in the conversation context where users are already reading.
 - Correction:
-  - Added first-class `New message` and `New mail` actions to the Inbox control bar.
-  - Added selected-mail `Reply` and `Forward` reader actions that open the existing Drafts composer with addressed/referenced content.
-  - Added an inline WIM/Studio conversation composer in the Inbox Conversations view that posts through `/api/messages/dms/:id/messages`, clears the sent draft, refetches the conversation, and emits `dm.message.sent`.
-  - Kept mail sends on `/api/mail/send`, new DM starts on `/api/messages/dms`, and WIM conversation sends on the existing DM message endpoint.
-  - Updated the interaction inventory, domain workflow probes, behavior assertions, admin surface registry, and focused Gamma Inbox browser coverage.
-- Verification:
+  - Added New message and New mail controls to the Inbox header action row.
+  - Added selected-message Reply/Forward controls for external mail that prefill the mail composer.
+  - Added an inline WIM/Studio conversation composer that preserves per-conversation drafts, posts through the existing DM message API, invalidates the active conversation cache, and emits the `dm.message.sent` handle.
+  - Kept mail sending on the existing `/api/mail/send` path and added `mail.message.sent` instrumentation for successful external mail sends.
+  - Updated interaction inventory, behavior assertions, workflow API probes, admin surface registry ownership, source policy checks, and focused Gamma browser proof for the write paths.
+- Verification idea:
+  - Prove source-level controls and endpoints with `client/src/pages/mail-presentation-policy.test.ts`, prove registry coverage with `npm run test:e2e:inventory:coverage`, and run the focused Gamma Inbox browser proof against a built bundle.
+- Current pass verification:
+  - Passed `git diff --check`.
+  - Passed `node --test client/src/pages/mail-presentation-policy.test.ts client/src/pages/Messages.test.ts client/src/pages/messages-presentation-policy.test.ts server/routes/messages-user-roster-policy.test.ts` (12 tests).
   - Passed `npm run check -- --pretty false`.
-  - Passed `node --test client/src/pages/mail-presentation-policy.test.ts client/src/pages/Messages.test.ts client/src/pages/messages-presentation-policy.test.ts server/routes/messages-user-roster-policy.test.ts`.
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed `npm run build`.
-  - Passed focused Gamma Inbox browser proof: `HARNESS_PORT=4311 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "hosts Inbox mailbox" --project=chromium --reporter=list`.
-  - Full `HARNESS_PORT=4312 npm run test:e2e:inventory -- --reporter=list` rebuilt and ran 463 tests: Inbox mailbox, Inbox route, WIM route, WIM owner controls, social workflow, and Inbox subdomain coverage passed; overall suite ended `457 passed, 6 failed` from unrelated known/non-Inbox areas (`cobwebsaints` and Settings subdomain wallet prefill, apphost Applications route/session, Skywire hot topics strict locator, and System Settings localization visibility).
+  - Passed focused Gamma Inbox browser proof: `HARNESS_PORT=4322 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "hosts Inbox mailbox" --project=chromium --reporter=list`.
+  - Passed full inventory E2E from a clean build: `HARNESS_PORT=4323 npm run test:e2e:inventory -- --reporter=list` (577 passed).
+
+### WTF-BB-346 - WTF LIVE rooms need user-aware roles, invites, scheduling, settings, and Show Kit association
+
+- Category: WTF LIVE / user-aware room operations
+- Status: Fixed
+- Owner/Session: Codex WTF LIVE smart-room goal
+- Score: C4 + F5 + S1 + P1(4) = 14
+- Evidence:
+  - 2026-07-01 user request: room and stage owners can now create/join rooms, but owner operations still do not know existing wtfOS users well enough to select users for host/speaker/guest roles or send invites.
+  - Stage rooms, public rooms, and private rooms lack a room-owned "schedule event" handoff that can write to WTF Calendar, TTC Events, or both.
+  - Owned rooms need a settings icon surface for permissions, Show Kit usage, and the chosen Show Kit; Show Kits need persistence and per-room association instead of only ad hoc clip use.
+- Why it matters:
+  - Live-room logistics depend on identity, permissions, timing, and reusable show materials. Without user-aware controls and durable room settings, hosts must coordinate outside wtfOS and can invite or authorize the wrong people.
+  - Calendar and TTC event mirroring are cross-app public commitments; they need explicit owner review, target selection, and durable event writes.
+- Likely correction:
+  - Add a signed-in user search/selection API suitable for room ownership controls, role/invite persistence, room settings persistence, calendar/TTC event creation, and saved Show Kit records that can be associated with stage, public, and private rooms.
+  - Wire the controls through owned room/stage dashboard cards and in-room owner controls, updating interaction inventory and behavior coverage.
+- Verification idea:
+  - Focused server/source tests for identity search, permission updates, event target handling, and Show Kit/room association.
+  - Focused WTF LIVE Playwright for owner role selection, scheduling, settings, and Show Kit assignment; `npm run test:e2e:inventory:coverage` plus touched inventory workflows.
+- Fix/Verification:
+  - Added persistent smart-room schema and APIs for wtfOS user search, host/guest/speaker roles, room invites, room settings, room calendar events, and saved Show Kits with room association.
+  - Wired owned public rooms, private rooms, and stages to role pickers, invite actions, schedule buttons, settings buttons, and Show Kit association; owners/hosts also get in-room settings controls for permissions and Show Kit usage.
+  - Updated inventory docs, workflow probes, behavior assertions, admin registry coverage, Playwright harness state, and WTF LIVE owner-control coverage.
+  - Passed `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, focused WTF LIVE smart-room/Show Kit/private-room Playwright probes, and full `HARNESS_PORT=4192 npm run test:e2e:inventory` with 580/580 passing.
+
+### WTF-BB-348 - Inventory smoke needs timeout and heartbeat diagnostics
+
+- Category: E2E / Quality Gates observability
+- Status: Verified
+- Owner/Session: Codex Pasta CI smoke heartbeat
+- Score: C1 + F3 + S0 + P2(3) = 7
+- Evidence:
+  - Main Quality Gates run `28553414410` on live evidence commit `9209829c` passed, but the `Inventory Playwright smoke` step stayed active for roughly 14 minutes before any CLI-visible completion detail was available.
+  - `gh run view --log` could not stream the in-progress step, so release verification had to poll the Actions job API to distinguish a slow healthy run from a stuck smoke gate.
+- Why it matters:
+  - The inventory smoke is the final broad browser gate before a production push is trustworthy. When it is opaque, agents may either wait blindly or interrupt a healthy release proof.
+- Likely correction direction:
+  - Add an explicit step timeout and periodic heartbeat output around the Quality Gates inventory Playwright smoke command.
+- Verification idea:
+  - Validate the workflow YAML/shell syntax, run inventory coverage locally, and let branch Quality Gates prove the real inventory smoke still passes with the diagnostic wrapper.
+- Current pass verification:
+  - Added a 30-minute timeout to the `Inventory Playwright smoke` Quality Gates step and wrapped the Playwright command with a 60-second elapsed-time heartbeat.
+  - Passed `git diff --check`.
+  - Passed workflow YAML parsing plus `bash -n` syntax validation of the new run block.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run pasta:repo-cleanup:audit`; the active branch is classified as `valid_ongoing_work` and the retained Pasta readiness branch remains historical evidence unsafe to replay.
+  - Passed `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; live `wtfos.app` commit `9209829` still proves static Pasta runtime markers, suite/individual installer assets, the installer catalog, and recorded Colander action proof while blocking only on WTF.ME credentials and `PASTA_WTFME_LIVE_HOST`.
+  - Branch push Quality Gates `28554283936` passed; app-quality completed in 15m11s and the log shows 60-second heartbeat messages from 60s through 720s before `Inventory Playwright smoke completed`.
+  - PR Quality Gates `28554285946` passed; app-quality completed in 15m41s and the log shows the same 60-second heartbeat pattern through 720s before completion.
+  - Current-head branch push Quality Gates `28554974401` and PR Quality Gates `28554976557` also passed on commit `663f8d9a`.
+  - Final branch push Quality Gates `28555655135` and PR Quality Gates `28555657254` passed on commit `a556db84` after the evidence-status alignment.
+  - PR #22 merged as live commit `984b3f5`; Deploy to Hetzner `28556324686` passed, main Quality Gates `28556324696` passed, and the main log shows heartbeat messages every 60 seconds from 60s through 720s before `Inventory Playwright smoke completed`.
+  - PR #23 branch push Quality Gates `28557872687`, PR Quality Gates `28557873981`, and main Quality Gates `28558457383` all passed; each long app-quality log showed Inventory Playwright smoke heartbeat output every 60 seconds through 720s before completion.
+
+### WTF-BB-349 - Squash-equivalent Pasta branches should not block cleanup
+
+- Category: Repo hygiene / Pasta squash-merge cleanup
+- Status: Verified
+- Owner/Session: Codex Pasta cleanup squash-equivalence
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - After PR #24 squash-merged to live commit `7c26c4f`, `pasta:repo-cleanup:audit` classified `codex/pasta-post-pr23-cleanup-audit` and `origin/codex/pasta-post-pr23-cleanup-audit` as unknown Pasta branches even though their two-dot replay against current `origin/main` had no file delta.
+  - Deleting the merged branch locally and remotely immediately returned the cleanup audit to green, proving the blocker was branch-shape noise rather than unreviewed file content.
+- Why it matters:
+  - The cleanup audit should keep real stale Pasta deltas fail-closed, but a squash-equivalent branch whose file tree is already present in `origin/main` is a prune candidate, not abandoned work to inspect.
+- Likely correction direction:
+  - Teach the cleanup audit to classify Pasta refs with zero two-dot replay delta as `promoted_equivalent_squash`, while preserving active, promoted ancestor, and historical evidence handling.
+- Verification idea:
+  - Keep executable policy coverage that creates a temporary non-ancestor Pasta ref with the same tree as the configured base, proves `npm run pasta:repo-cleanup:audit` classifies it as `promoted_equivalent_squash`, deletes the temp ref, and reruns the normal readiness gates.
+- Current pass verification:
+  - Added `promoted_equivalent_squash` classification for Pasta refs whose replay summary has zero files, zero deletes, and no shortstat against current `origin/main`.
+  - Initially passed `npm run pasta:repo-cleanup:audit:check` with 8/8 checks, including the executable temporary-ref regression for zero-delta non-ancestor Pasta branches; the later disappearing-ref hardening extends the same policy suite to 9/9.
+  - Passed `git diff --check`.
+  - Confirmed no `codex/pasta-zero-delta-fixture-*` temp refs remained after the executable regression.
+  - Reran `npm run pasta:repo-cleanup:audit`; the normal audit returned `ok: true` with no blockers.
+  - Reran `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; repo cleanup passed and the only remaining blockers were the expected dedicated WTF.ME publish credentials plus missing live Pasta WTF.ME host proof.
+  - Reran `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness`; strict mode exited `1` only on the same WTF.ME credentials and live host proof blockers.
+  - PR #25 branch Quality Gates `28561244635` and PR Quality Gates `28561245926` passed on `94acd16e`, with the long inventory smoke heartbeat visible through 720s before completion.
+  - PR #25 merged to `main` as `7657a3ba`; Deploy to Hetzner `28561834866` and main Quality Gates `28561834903` passed, and live health reported `commitRef:"7657a3b"`.
+  - Post-merge `npm run pasta:repo-cleanup:audit` classified the squash-merged local and remote `codex/pasta-cleanup-squash-equivalent` refs as `promoted_equivalent_squash` with no file delta against current `origin/main`.
+  - Deleted `codex/pasta-cleanup-squash-equivalent` locally and remotely, fetched with prune, and reran `npm run pasta:repo-cleanup:audit`; the audit remained `ok: true` with only retained historical Pasta evidence refs.
+  - Post-prune `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved live commit `7657a3b`, repo cleanup, static runtime markers, installer catalog/assets, and the recorded Colander action proof while still blocking only on WTF.ME credentials and live host proof.
+  - Post-prune `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness` exited `1` only on the same WTF.ME credentials and live host proof blockers.
+
+### WTF-BB-350 - Cleanup audit should tolerate refs that disappear during classification
+
+- Category: Repo hygiene / Pasta cleanup audit concurrency
+- Status: Verified
+- Owner/Session: Codex Pasta cleanup disappearing-ref hardening
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - A strict final-launch readiness run was started in parallel with `npm run pasta:repo-cleanup:audit:check`.
+  - The policy check creates and deletes a temporary `codex/pasta-zero-delta-fixture-*` branch to prove squash-equivalent behavior.
+  - The nested cleanup audit in `pasta:live-readiness` listed that temporary Pasta ref, then failed at ahead/behind classification after the policy test deleted it.
+- Why it matters:
+  - Release gates must fail closed on real surviving stale Pasta branches, but a ref that no longer exists is not active abandoned work and should not mask the true final-launch blockers.
+- Likely correction direction:
+  - Re-check ref existence inside `classifyBranch` before ancestry, ahead/behind, or diff calls; record disappeared refs as non-blocking audit metadata.
+- Verification idea:
+  - Add policy coverage requiring the existence re-check before ahead/behind classification, then rerun cleanup and readiness gates.
+- Current pass verification:
+  - Added `vanished_during_audit` classification for refs that disappear between branch listing and classification.
+  - Added policy coverage that requires `classifyBranch` to check `refExists(ref)` before calling `aheadBehind(ref)`.
+  - Watched `npm run pasta:repo-cleanup:audit:check` fail before the implementation, then pass 9/9 after the fix.
+  - Reran `npm run pasta:repo-cleanup:audit`; it returned `ok: true` with no blockers and kept retained Pasta evidence refs classified as historical.
+  - Reran `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; all non-WTF.ME surfaces passed on live commit `7657a3b`.
+  - Reran `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness`; strict mode passed repo cleanup/static/installer/catalog/Colander checks and exited `1` only on missing dedicated WTF.ME credentials plus missing live Pasta WTF.ME host proof.
+  - PR #26 branch Quality Gates `28563026768` and PR Quality Gates `28563037055` passed on `a69fd6f8`; PR #26 squash-merged to `main` as `c1686b59`.
+  - Deploy to Hetzner `28563611520` and main Quality Gates `28563611557` passed, and live health reported `commitRef:"c1686b5"`.
+  - Deleted `codex/pasta-post-pr25-evidence-refresh` locally and remotely after proving it had no file delta against current `origin/main`.
+  - Post-prune `npm run pasta:repo-cleanup:audit` passed against `origin/main` at `c1686b59`, with only retained historical Pasta evidence refs and no blockers.
+  - Post-prune `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved live commit `c1686b5`, repo cleanup, static runtime markers, installer catalog/assets, and the recorded Colander action proof while still blocking only on WTF.ME credentials and live host proof.
+  - Post-prune `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness` exited `1` only on the same WTF.ME credentials and live host proof blockers.
 
 ## Backlog Intake Template
 

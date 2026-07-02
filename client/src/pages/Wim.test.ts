@@ -20,10 +20,12 @@ const retiredMessengerNamePattern = new RegExp(`\\bA${"im"}\\b|\\ba${"im"}\\b|/a
 const retiredMessengerInventoryPattern = new RegExp(`/a${"im"}|A${"IM"}`);
 
 test("WIM roster is user-driven and keeps Studio rooms out of buddies", () => {
-  assert.match(wimSource, /\/api\/messages\/dms\?type=direct/);
+  assert.match(wimSource, /api\.get<DmConversation\[\]>\("\/api\/messages\/dms"\)/);
   assert.match(wimSource, /\/api\/messages\/users\?limit=100&excludeSelf=1/);
   assert.match(wimSource, /conversation\.conversationType \?\? "direct"/);
   assert.match(wimSource, /conversation\.peers\.length === 1/);
+  assert.match(wimSource, /studioConversations/);
+  assert.match(wimSource, /allConversationRows/);
 
   for (const label of [
     "My Friends",
@@ -31,7 +33,9 @@ test("WIM roster is user-driven and keeps Studio rooms out of buddies", () => {
     "Inactive / Away",
     "Offline",
     "All WTF Users",
-    "Recent Direct Chats",
+    "Recent Chats",
+    "Direct WIM chats",
+    "Studio project chats",
   ]) {
     assert.match(wimSource, new RegExp(label));
   }
@@ -122,7 +126,8 @@ test("WIM friend list and unread popups are browser-local and covered by invento
   assert.match(inventory, /dismissible WIM desktop popups/);
   assert.match(inventory, /`wim\.offline_popup\.opened`/);
   assert.match(inventory, /`wim\.offline_popup\.dismissed`/);
-  assert.match(inventory, /Studio project rooms stay out of the WIM buddy roster/);
+  assert.match(inventory, /Studio project conversations in Recent Chats/);
+  assert.match(inventory, /keeping Studio rooms out of the buddy roster/);
   assert.doesNotMatch(inventory, retiredMessengerInventoryPattern);
   assert.match(workflows, /"wim\.friend\.added"/);
   assert.match(workflows, /"wim\.offline_popup\.opened"/);

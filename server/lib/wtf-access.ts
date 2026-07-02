@@ -129,6 +129,7 @@ export const WTF_STANDARD_API_ROUTES: WtfApiAccessRoute[] = [
   { method: "DELETE", path: "/api/diary/entries/:id", access: "browser-session", purpose: "Delete one owned private diary entry.", appGate: "dear-diary" },
   { method: "GET", path: "/api/comms/sources", access: "browser-session", purpose: "List enabled communications mesh sources." },
   { method: "GET", path: "/api/comms/items", access: "browser-session", purpose: "List the signed-in user's normalized communications cards." },
+  { method: "GET", path: "/api/comms/unread-count", access: "browser-session", purpose: "Read the signed-in user's unified Inbox unread count for desktop badges." },
   { method: "POST", path: "/api/comms/items/:id/read", access: "browser-session", purpose: "Mark one normalized communications item read for the signed-in user." },
   { method: "GET", path: "/api/comms/route-target", access: "browser-session", purpose: "Resolve a communications item or URL to its WTFOS route target." },
   { method: "GET", path: "/api/mail/status", access: "browser-session", purpose: "Read or provision the signed-in user's Inbox Mail mailbox status." },

@@ -13,8 +13,9 @@ import styled from "styled-components";
 import { AppWindow } from "../../../components/layout/AppWindow";
 import { MOBILE } from "../../../global-styles";
 import { presentationRouteHref, usePresentationShell } from "../../../lib/presentation-shell";
-import { connectWallet, getActiveAccount, getTezos } from "../../../lib/tezos/wallet";
+import { connectWallet, getActiveAccount, getTezos, withTezosRpcFallback } from "../../../lib/tezos/wallet";
 import { getNetwork } from "../../../lib/tezos/loaders";
+import { assertNetworkReadyForSend } from "../../../lib/tezos/preflight";
 import { logClientSystemEvent } from "../../../lib/system-log";
 import {
   availableActions,
@@ -38,14 +39,43 @@ type OpenedContract = {
   metadataUri?: string;
 };
 
+type ColanderTezosHarness = {
+  connectWallet?: typeof connectWallet;
+  getActiveAccount?: typeof getActiveAccount;
+  getTezos?: typeof getTezos;
+  assertNetworkReadyForSend?: typeof assertNetworkReadyForSend;
+};
+
 const IPFS_GATEWAY = "https://ipfs.fileship.xyz/";
 
 const colanderRegionAttrs = (region: string) =>
   ({ "data-colander-region": region }) as Record<string, string>;
 
+function getColanderTezosHarness(): ColanderTezosHarness | undefined {
+  if (typeof window === "undefined") return undefined;
+  if (!["localhost", "127.0.0.1"].includes(window.location.hostname)) return undefined;
+  return (window as any).__wtfColanderTezosHarness;
+}
+
+async function colanderConnectWallet(options?: Parameters<typeof connectWallet>[0]) {
+  return (getColanderTezosHarness()?.connectWallet ?? connectWallet)(options);
+}
+
+async function colanderGetActiveAccount() {
+  return (getColanderTezosHarness()?.getActiveAccount ?? getActiveAccount)();
+}
+
+async function colanderGetTezos() {
+  return (getColanderTezosHarness()?.getTezos ?? getTezos)();
+}
+
+async function colanderAssertNetworkReadyForSend(address?: string) {
+  return (getColanderTezosHarness()?.assertNetworkReadyForSend ?? assertNetworkReadyForSend)(address);
+}
+
 function explorerUrl(address: string) {
   const net = getNetwork();
-  const host = net === "ghostnet" ? "ghostnet.tzkt.io" : "tzkt.io";
+  const host = net === "shadownet" ? "shadownet.tzkt.io" : net === "ghostnet" ? "ghostnet.tzkt.io" : "tzkt.io";
   return `https://${host}/${address}`;
 }
 
@@ -78,13 +108,38 @@ function hexToUtf8(hex: string): string {
   }
 }
 
+function parseJsonDataUri(uri: string): Record<string, unknown> | undefined {
+  const match = uri.match(/^data:application\/json(;charset=[^;,]+)?(;base64)?,(.+)$/i);
+  if (!match) return undefined;
+  const isBase64 = Boolean(match[2]);
+  const payload = match[3] ?? "";
+  const jsonText = isBase64
+    ? new TextDecoder().decode(Uint8Array.from(atob(payload), (char) => char.charCodeAt(0)))
+    : decodeURIComponent(payload);
+  return JSON.parse(jsonText) as Record<string, unknown>;
+}
+
+function metadataFetchUrl(metadataUri: string): string | null {
+  if (metadataUri.startsWith("ipfs://")) return `${IPFS_GATEWAY}${metadataUri.slice("ipfs://".length)}`;
+  if (/^https:\/\//i.test(metadataUri)) return metadataUri;
+  return null;
+}
+
 async function fetchRelationship(metadataUri: string): Promise<OwnershipRelationshipMetadata | undefined> {
-  if (!metadataUri.startsWith("ipfs://")) return undefined;
-  const cid = metadataUri.slice("ipfs://".length);
+  if (metadataUri.startsWith("data:application/json")) {
+    try {
+      const json = parseJsonDataUri(metadataUri);
+      return json ? extractRelationshipMetadata(json) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  const url = metadataFetchUrl(metadataUri);
+  if (!url) return undefined;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 6000);
   try {
-    const res = await fetch(`${IPFS_GATEWAY}${cid}`, { signal: controller.signal });
+    const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) return undefined;
     const json = (await res.json()) as Record<string, unknown>;
     return extractRelationshipMetadata(json);
@@ -120,8 +175,8 @@ export function ColanderApp() {
   async function connect() {
     setError("");
     try {
-      await connectWallet({ forcePermissions: true });
-      const acc = await getActiveAccount();
+      await colanderConnectWallet({ forcePermissions: true });
+      const acc = await colanderGetActiveAccount();
       setAccount(acc?.address ?? "");
       setStatus(acc ? `Connected ${short(acc.address)}` : "Wallet not connected");
     } catch (e) {
@@ -140,56 +195,61 @@ export function ColanderApp() {
     setActiveAction(null);
     setStatus(`Reading ${short(kt)}…`);
     try {
-      const tezos = await getTezos();
-      const contract = await tezos.contract.at(kt);
-      const entrypoints = Object.keys((contract as any).entrypoints?.entrypoints ?? {});
-      const adapter = detectPastaContract(entrypoints);
-      const actions = adapter ? availableActions(adapter, entrypoints) : [];
+      const readContract = async (tezos: any): Promise<OpenedContract> => {
+        const contract = await tezos.contract.at(kt);
+        const entrypoints = Object.keys((contract as any).entrypoints?.entrypoints ?? {});
+        const adapter = detectPastaContract(entrypoints);
+        const actions = adapter ? availableActions(adapter, entrypoints) : [];
 
-      let admin: string | undefined;
-      let pendingAdmin: string | undefined;
-      let tokenCount: number | undefined;
-      let revisionCount: number | undefined;
-      let relationship: OwnershipRelationshipMetadata | undefined;
-      let metadataUri: string | undefined;
-      try {
-        const st: any = await contract.storage();
-        admin = typeof st.administrator === "string" ? st.administrator : undefined;
-        pendingAdmin =
-          st.pending_administrator && typeof st.pending_administrator === "string"
-            ? st.pending_administrator
-            : undefined;
-        tokenCount = bigToNum(st.next_token_id);
-        revisionCount = bigToNum(st.revision_count);
-        if (st.metadata && typeof st.metadata.get === "function") {
-          const raw = await st.metadata.get("");
-          if (typeof raw === "string" && raw.length > 0) {
-            metadataUri = hexToUtf8(raw);
-            relationship = await fetchRelationship(metadataUri);
+        let admin: string | undefined;
+        let pendingAdmin: string | undefined;
+        let tokenCount: number | undefined;
+        let revisionCount: number | undefined;
+        let relationship: OwnershipRelationshipMetadata | undefined;
+        let metadataUri: string | undefined;
+        try {
+          const st: any = await contract.storage();
+          admin = typeof st.administrator === "string" ? st.administrator : undefined;
+          pendingAdmin =
+            st.pending_administrator && typeof st.pending_administrator === "string"
+              ? st.pending_administrator
+              : undefined;
+          tokenCount = bigToNum(st.next_token_id);
+          revisionCount = bigToNum(st.revision_count);
+          if (st.metadata && typeof st.metadata.get === "function") {
+            const raw = await st.metadata.get("");
+            if (typeof raw === "string" && raw.length > 0) {
+              metadataUri = hexToUtf8(raw);
+              relationship = await fetchRelationship(metadataUri);
+            }
           }
+        } catch {
+          // storage shape varies; the control panel still works from entrypoints alone.
         }
-      } catch {
-        // storage shape varies; the control panel still works from entrypoints alone.
-      }
 
-      const next: OpenedContract = {
-        address: kt,
-        adapter,
-        entrypoints,
-        actions,
-        admin,
-        pendingAdmin,
-        tokenCount,
-        revisionCount,
-        relationship,
-        metadataUri,
+        return {
+          address: kt,
+          adapter,
+          entrypoints,
+          actions,
+          admin,
+          pendingAdmin,
+          tokenCount,
+          revisionCount,
+          relationship,
+          metadataUri,
+        };
       };
+
+      const next = getColanderTezosHarness()?.getTezos
+        ? await readContract(await colanderGetTezos())
+        : await withTezosRpcFallback((tezos) => readContract(tezos), { network, attemptTimeoutMs: 10_000 });
       setOpened(next);
-      setStatus(adapter ? `Opened ${adapter.label}` : "Opened (unrecognized contract)");
+      setStatus(next.adapter ? `Opened ${next.adapter.label}` : "Opened (unrecognized contract)");
       logClientSystemEvent({
         eventType: "colander.contract_opened",
         message: `Colander opened ${kt}`,
-        metadata: { app: "Colander", contract: kt, kind: adapter?.kind ?? "unknown", network },
+        metadata: { app: "Colander", contract: kt, kind: next.adapter?.kind ?? "unknown", network },
       });
       logClientSystemEvent({
         eventType: "colander.graph_viewed",
@@ -197,8 +257,8 @@ export function ColanderApp() {
         metadata: {
           app: "Colander",
           contract: kt,
-          hasRelationship: Boolean(relationship),
-          franchise: relationship?.franchise_contract ?? null,
+          hasRelationship: Boolean(next.relationship),
+          franchise: next.relationship?.franchise_contract ?? null,
         },
       });
     } catch (e) {
@@ -286,7 +346,7 @@ export function ColanderApp() {
     setBusy(true);
     setError("");
     try {
-      const conn = await connectWallet();
+      const conn = await colanderConnectWallet();
       const me = conn.address;
       setAccount(me);
       for (const input of action.inputs) {
@@ -294,8 +354,9 @@ export function ColanderApp() {
         if (input.type === "bool") continue;
         if (!(formValues[input.name] ?? "").trim()) throw new Error(`${input.label} is required`);
       }
+      await colanderAssertNetworkReadyForSend(me);
       setStatus(`Submitting ${action.label} (sign in wallet)…`);
-      const tezos = await getTezos();
+      const tezos = await colanderGetTezos();
       const c = await tezos.wallet.at(opened.address);
       const op = await buildCall(c, action, me).send();
       await op.confirmation();
@@ -432,7 +493,7 @@ export function ColanderApp() {
                     <ActionGroupBlock key={group}>
                       <SectionTitle>{group}</SectionTitle>
                       {actions.map((action) => (
-                        <ActionCard key={action.id}>
+                        <ActionCard key={action.id} data-colander-action={action.id}>
                           <ActionHead>
                             <div>
                               <ActionName>{action.label}</ActionName>
@@ -444,6 +505,7 @@ export function ColanderApp() {
                           </ActionHead>
                           {activeAction === action.id && !action.external ? (
                             <ActionForm
+                              data-colander-action-form={action.id}
                               onSubmit={(e) => {
                                 e.preventDefault();
                                 void submitAction(action);

@@ -683,7 +683,7 @@ function BetaRouteWorkspace({
           ))}
         </BetaRouteRail>
 
-        <BetaMainRegion>
+        <BetaMainRegion data-beta-route-content>
           <BetaRouteMeta data-beta-route-meta>
             <span>{routePathname}</span>
             <a href={betaInterfaceHref("classic", routeLocation)} data-beta-interface-switch="true">
@@ -3816,6 +3816,194 @@ const BetaRouteMeta = styled.div`
   }
 `;
 
+const betaPresentationHostSelector = `:is(
+  [data-admin-presentation-host="beta"],
+  [data-agent-presentation-host="beta"],
+  [data-arcade-console-presentation-host="beta"],
+  [data-backup-manager-presentation-host="beta"],
+  [data-board-presentation-host="beta"],
+  [data-calendar-presentation-host="beta"],
+  [data-casino-presentation-host="beta"],
+  [data-casino-table-presentation-host="beta"],
+  [data-chease-presentation-host="beta"],
+  [data-colander-presentation-host="beta"],
+  [data-collekt-presentation-host="beta"],
+  [data-command-palette-presentation-host="beta"],
+  [data-contract-factory-presentation-host="beta"],
+  [data-control-board-presentation-host="beta"],
+  [data-creation-tool-presentation-host="beta"],
+  [data-crp-presentation-host="beta"],
+  [data-dashboard-presentation-host="beta"],
+  [data-dear-diary-presentation-host="beta"],
+  [data-dedrooms-presentation-host="beta"],
+  [data-desktop-settings-presentation-host="beta"],
+  [data-dicksword-presentation-host="beta"],
+  [data-digest-presentation-host="beta"],
+  [data-dues-presentation-host="beta"],
+  [data-gallery-presentation-host="beta"],
+  [data-game-studio-presentation-host="beta"],
+  [data-gamma-utility-presentation-host="beta"],
+  [data-hoard-presentation-host="beta"],
+  [data-ipfs-pinning-presentation-host="beta"],
+  [data-mail-presentation-host="beta"],
+  [data-map-lab-presentation-host="beta"],
+  [data-marketplace-presentation-host="beta"],
+  [data-media-delete-presentation-host="beta"],
+  [data-messages-presentation-host="beta"],
+  [data-mint-portal-presentation-host="beta"],
+  [data-mission-control-presentation-host="beta"],
+  [data-music-presentation-host="beta"],
+  [data-my-music-presentation-host="beta"],
+  [data-my-photos-presentation-host="beta"],
+  [data-my-videos-presentation-host="beta"],
+  [data-operator-wallet-presentation-host="beta"],
+  [data-profile-presentation-host="beta"],
+  [data-progression-presentation-host="beta"],
+  [data-public-profile-presentation-host="beta"],
+  [data-rat-race-presentation-host="beta"],
+  [data-rounds-presentation-host="beta"],
+  [data-skywire-presentation-host="beta"],
+  [data-studio-presentation-host="beta"],
+  [data-swap-presentation-host="beta"],
+  [data-system-settings-presentation-host="beta"],
+  [data-telegram-presentation-host="beta"],
+  [data-tezamp-presentation-host="beta"],
+  [data-tezos-intel-presentation-host="beta"],
+  [data-token-detail-presentation-host="beta"],
+  [data-tv-presentation-host="beta"],
+  [data-tz2at-presentation-host="beta"],
+  [data-ux-lab-presentation-host="beta"],
+  [data-w-presentation-host="beta"],
+  [data-wim-presentation-host="beta"],
+  [data-wtf-live-presentation-host="beta"],
+  [data-wtf-recapture-presentation-host="beta"],
+  [data-wtfiam-presentation-host="beta"]
+)`;
+
+const betaPresentationClusterSelector = `:where(
+  [data-admin-region],
+  [data-admin-surface],
+  [data-agent-region],
+  [data-agent-surface],
+  [data-arcade-console-region],
+  [data-arcade-console-surface],
+  [data-backup-manager-region],
+  [data-backup-manager-surface],
+  [data-board-dialog],
+  [data-board-region],
+  [data-board-surface],
+  [data-calendar-region],
+  [data-calendar-surface],
+  [data-casino-region],
+  [data-casino-surface],
+  [data-casino-table-region],
+  [data-chease-region],
+  [data-chease-surface],
+  [data-colander-region],
+  [data-colander-surface],
+  [data-collekt-region],
+  [data-collekt-surface],
+  [data-command-palette-region],
+  [data-command-palette-surface],
+  [data-contract-factory-region],
+  [data-contract-factory-surface],
+  [data-control-board-region],
+  [data-control-board-surface],
+  [data-creation-tool-region],
+  [data-creation-tool-surface],
+  [data-crp-region],
+  [data-crp-surface],
+  [data-dashboard-region],
+  [data-dashboard-surface],
+  [data-dear-diary-region],
+  [data-dear-diary-surface],
+  [data-dedrooms-region],
+  [data-dedrooms-surface],
+  [data-desktop-settings-region],
+  [data-desktop-settings-surface],
+  [data-dicksword-region],
+  [data-dicksword-surface],
+  [data-digest-region],
+  [data-digest-surface],
+  [data-dues-region],
+  [data-dues-surface],
+  [data-gallery-region],
+  [data-gallery-surface],
+  [data-game-studio-region],
+  [data-game-studio-surface],
+  [data-gamma-utility-region],
+  [data-gamma-utility-surface],
+  [data-hoard-region],
+  [data-hoard-surface],
+  [data-ipfs-pinning-region],
+  [data-ipfs-pinning-surface],
+  [data-mail-region],
+  [data-mail-surface],
+  [data-map-lab-region],
+  [data-map-lab-surface],
+  [data-marketplace-region],
+  [data-marketplace-surface],
+  [data-media-delete-modal],
+  [data-messages-region],
+  [data-messages-surface],
+  [data-mint-portal-region],
+  [data-mint-portal-surface],
+  [data-mission-control-region],
+  [data-mission-control-surface],
+  [data-music-region],
+  [data-music-surface],
+  [data-my-music-region],
+  [data-my-photos-region],
+  [data-my-videos-region],
+  [data-operator-wallet-region],
+  [data-operator-wallet-surface],
+  [data-profile-region],
+  [data-profile-surface],
+  [data-progression-region],
+  [data-progression-surface],
+  [data-public-profile-region],
+  [data-public-profile-surface],
+  [data-rat-race-region],
+  [data-rat-race-surface],
+  [data-rounds-region],
+  [data-rounds-surface],
+  [data-skywire-region],
+  [data-skywire-surface],
+  [data-studio-region],
+  [data-studio-surface],
+  [data-swap-region],
+  [data-swap-surface],
+  [data-system-settings-region],
+  [data-system-settings-surface],
+  [data-telegram-region],
+  [data-telegram-surface],
+  [data-tezamp-region],
+  [data-tezamp-surface],
+  [data-tezos-intel-region],
+  [data-tezos-intel-surface],
+  [data-token-detail-modal],
+  [data-tv-region],
+  [data-tv-surface],
+  [data-tz2at-region],
+  [data-tz2at-surface],
+  [data-ux-lab-region],
+  [data-ux-lab-surface],
+  [data-w-region],
+  [data-w-surface],
+  [data-wim-desktop-surface],
+  [data-wtf-live-dialog],
+  [data-wtf-live-room-surface],
+  [data-wtf-recapture-region],
+  [data-wtf-recapture-surface],
+  [data-wtfiam-region],
+  [data-wtfiam-surface],
+  fieldset,
+  table,
+  th,
+  td,
+  [role="dialog"]
+)`;
+
 const BetaApplicationContent = styled.div`
   min-width: 0;
   color: var(--ink);
@@ -3823,6 +4011,86 @@ const BetaApplicationContent = styled.div`
   [data-wtf-app-surface="true"],
   [data-wtf-app-scroll="true"] {
     max-width: 100%;
+  }
+
+  ${betaPresentationHostSelector} {
+    --beta-app-panel: color-mix(in srgb, var(--surface-2) 88%, var(--night));
+    --beta-app-panel-soft: rgba(255, 255, 255, 0.035);
+    color: var(--presentation-text) !important;
+    background-color: transparent;
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    font-family: inherit;
+    letter-spacing: 0;
+  }
+
+  ${betaPresentationHostSelector},
+  ${betaPresentationHostSelector} * {
+    letter-spacing: 0 !important;
+    text-shadow: none !important;
+  }
+
+  ${betaPresentationHostSelector} :where(h1, h2, h3, h4, legend, strong) {
+    color: var(--presentation-text) !important;
+  }
+
+  ${betaPresentationHostSelector} :where(p, small, label, figcaption, li, summary) {
+    color: var(--muted) !important;
+  }
+
+  ${betaPresentationHostSelector} :where(code, pre, kbd) {
+    color: var(--muted-strong) !important;
+    background: rgba(255, 255, 255, 0.045) !important;
+    border-color: var(--presentation-line) !important;
+  }
+
+  ${betaPresentationHostSelector} ${betaPresentationClusterSelector} {
+    background-image: none !important;
+    border-color: var(--presentation-line) !important;
+    border-width: 1px !important;
+    border-radius: min(8px, var(--presentation-radius, 8px)) !important;
+    box-shadow: none !important;
+  }
+
+  ${betaPresentationHostSelector} :where(button, input, textarea, select, [role="button"], [role="tab"]) {
+    color: var(--presentation-text) !important;
+    background-color: var(--beta-app-panel-soft) !important;
+    background-image: none !important;
+    border-color: var(--presentation-line) !important;
+    border-width: 1px !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+
+  ${betaPresentationHostSelector} :where(button:not(:disabled), a, [role="button"], [role="tab"]) {
+    color: var(--presentation-accent) !important;
+  }
+
+  ${betaPresentationHostSelector} :where(
+    button[aria-current="page"],
+    button[aria-pressed="true"],
+    button[aria-selected="true"],
+    [role="tab"][aria-selected="true"],
+    [data-active="true"],
+    [data-current="true"]
+  ) {
+    color: var(--night) !important;
+    background-color: var(--presentation-accent) !important;
+    border-color: var(--presentation-accent) !important;
+  }
+
+  ${betaPresentationHostSelector} :where(
+    progress,
+    meter,
+    [role="progressbar"],
+    [data-chease-region="meter-fill"],
+    [data-progression-region="progress"],
+    [data-rounds-region="launch-metric"]
+  ) {
+    color: var(--presentation-progress, var(--amber)) !important;
+    accent-color: var(--presentation-progress, var(--amber)) !important;
+    border-color: color-mix(in srgb, var(--presentation-progress, var(--amber)) 52%, transparent) !important;
   }
 `;
 
@@ -3876,9 +4144,12 @@ const Shell = styled.main`
   --presentation-bg: var(--night);
   --presentation-panel: var(--surface-2);
   --presentation-text: var(--ink);
+  --presentation-muted: var(--muted);
   --presentation-accent: var(--green);
   --presentation-line: var(--line);
   --presentation-progress: var(--amber);
+  --presentation-current: var(--rose);
+  --presentation-radius: 8px;
   min-height: 100vh;
   overflow-x: hidden;
   color: var(--ink);

@@ -1964,18 +1964,26 @@ function setInstallerLink(platform, item) {
   const btn = $(platform.id);
   if (!btn) return;
   const available = item && item.available && item.url;
+  const sha = shortSha256(item?.sha256);
   btn.textContent = item?.label || platform.label;
   btn.classList.toggle("disabled", !available);
   btn.setAttribute("aria-disabled", available ? "false" : "true");
   if (available) {
     btn.href = item.url;
     btn.download = item.fileName || "";
+    btn.title = sha ? `${item.label || platform.label} SHA-256 ${sha}` : item.url;
     btn.removeAttribute("tabindex");
   } else {
     btn.removeAttribute("href");
     btn.removeAttribute("download");
+    btn.removeAttribute("title");
     btn.tabIndex = -1;
   }
+}
+
+function shortSha256(value) {
+  const text = String(value || "").trim().toLowerCase();
+  return /^[0-9a-f]{64}$/.test(text) ? `${text.slice(0, 12)}...${text.slice(-8)}` : "";
 }
 
 async function refreshInstallerDownloads() {
@@ -1991,14 +1999,16 @@ async function refreshInstallerDownloads() {
     const json = await res.json();
     const byKey = new Map((json.installers || []).map((item) => [item.key, item]));
     let available = 0;
+    let checksummed = 0;
     for (const platform of INSTALLER_PLATFORMS) {
       const item = byKey.get(platform.key) || { key: platform.key, label: platform.label, available: false };
       if (item.available) available++;
+      if (item.available && shortSha256(item.sha256)) checksummed++;
       setInstallerLink(platform, item);
     }
     if (status) {
       status.textContent = available
-        ? `${available} desktop installer package${available === 1 ? "" : "s"} available.`
+        ? `${available} desktop installer package${available === 1 ? "" : "s"} available${checksummed === available ? " with SHA-256 checksums" : ""}.`
         : "Desktop installer packages are not published yet. Export the website package for self-hosting today.";
       status.className = available ? "ok" : "muted";
     }

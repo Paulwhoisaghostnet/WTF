@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, TextField } from "react95";
-import { ArrowDown, ArrowUp, Camera, Copy, ExternalLink, Keyboard, Lock, LogIn, Mic, MonitorUp, Music2, Play, Power, Radio, Trash2, Upload, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarDays, Camera, Copy, ExternalLink, Keyboard, Lock, LogIn, Mic, MonitorUp, Music2, Play, Power, Radio, Save, Settings, Trash2, Upload, UserPlus, Users } from "lucide-react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { presentationRouteHref, usePresentationShell } from "../../lib/presentation-shell";
@@ -17,6 +17,7 @@ import {
   FeedList,
   Grid,
   InlineActions,
+  InlineButton,
   MainLayout,
   NativeSelect,
   NavButton,
@@ -105,6 +106,7 @@ type WtfLiveRoomAccessMember = {
   userId: number;
   username: string;
   displayName?: string | null;
+  role?: "host" | "guest";
 };
 
 type WtfLiveStageRole = "host" | "speaker";
@@ -144,6 +146,45 @@ type WtfLiveStatus = {
     rooms?: string;
     stages?: string;
   };
+};
+
+type WtfLiveUser = {
+  id: number;
+  username: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  role?: string | null;
+};
+
+type WtfLiveShowKit = {
+  id: number;
+  kitId: string;
+  name: string;
+  description: string;
+  clipIds: string[];
+  clipCount: number;
+  isDefault: boolean;
+  updatedAt: string;
+};
+
+type WtfLiveRoomSettings = {
+  roomKind: "room" | "stage";
+  roomId: string;
+  ownerUserId: number | null;
+  allowGuestAudio: boolean;
+  allowGuestCamera: boolean;
+  allowGuestScreen: boolean;
+  allowGuestMedia: boolean;
+  showKitEnabled: boolean;
+  showKitId: number | null;
+  showKitName: string | null;
+  updatedAt: string | null;
+};
+
+type RoomControlTarget = {
+  roomKind: "room" | "stage";
+  id: string;
+  title: string;
 };
 
 type WtfLivePendingQuote = {
@@ -211,6 +252,36 @@ function parseAccessUsernames(value: string): string[] {
         .filter(Boolean),
     ),
   ).slice(0, 50);
+}
+
+function appendAccessUsername(value: string, username: string): string {
+  return parseAccessUsernames(`${value}\n${username}`).join("\n");
+}
+
+function defaultRoomSettingsDraft(target: RoomControlTarget | null): WtfLiveRoomSettings {
+  return {
+    roomKind: target?.roomKind ?? "room",
+    roomId: target?.id ?? "",
+    ownerUserId: null,
+    allowGuestAudio: true,
+    allowGuestCamera: true,
+    allowGuestScreen: true,
+    allowGuestMedia: true,
+    showKitEnabled: true,
+    showKitId: null,
+    showKitName: null,
+    updatedAt: null,
+  };
+}
+
+function defaultScheduleStart(): string {
+  const date = new Date(Date.now() + 60 * 60 * 1000);
+  date.setSeconds(0, 0);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+function datetimeLocalToIso(value: string): string {
+  return new Date(value).toISOString();
 }
 
 function normalizeCount(value: unknown): number {
@@ -329,11 +400,31 @@ export function WtfLiveApp() {
   const [createRoomAccessMode, setCreateRoomAccessMode] = useState<"public" | "private">("public");
   const [createAccessList, setCreateAccessList] = useState("");
   const [selectedAccessList, setSelectedAccessList] = useState("");
+  const [selectedRoomHostList, setSelectedRoomHostList] = useState("");
+  const [roomRoleDraftRoomId, setRoomRoleDraftRoomId] = useState<string | null>(null);
+  const roomRoleDraftRoomIdRef = useRef<string | null>(null);
   const [createStageHostList, setCreateStageHostList] = useState("");
   const [createStageSpeakerList, setCreateStageSpeakerList] = useState("");
   const [selectedStageHostList, setSelectedStageHostList] = useState("");
   const [selectedStageSpeakerList, setSelectedStageSpeakerList] = useState("");
+  const [stageRoleDraftStageId, setStageRoleDraftStageId] = useState<string | null>(null);
+  const stageRoleDraftStageIdRef = useRef<string | null>(null);
   const [stageAccessDisabledId, setStageAccessDisabledId] = useState<string | null>(null);
+  const [userSearch, setUserSearch] = useState("");
+  const [selectedWtfUserId, setSelectedWtfUserId] = useState("");
+  const selectedWtfUserIdRef = useRef("");
+  const [showKitName, setShowKitName] = useState("");
+  const [showKitDescription, setShowKitDescription] = useState("");
+  const [showKitDefault, setShowKitDefault] = useState(false);
+  const [settingsTarget, setSettingsTarget] = useState<RoomControlTarget | null>(null);
+  const [settingsDraft, setSettingsDraft] = useState<WtfLiveRoomSettings>(() => defaultRoomSettingsDraft(null));
+  const [settingsStatus, setSettingsStatus] = useState("");
+  const [scheduleTarget, setScheduleTarget] = useState<RoomControlTarget | null>(null);
+  const [scheduleTitle, setScheduleTitle] = useState("");
+  const [scheduleDescription, setScheduleDescription] = useState("");
+  const [scheduleStartsAt, setScheduleStartsAt] = useState(() => defaultScheduleStart());
+  const [scheduleEndsAt, setScheduleEndsAt] = useState("");
+  const [scheduleDestination, setScheduleDestination] = useState<"wtf" | "ttc" | "both">("wtf");
   const [copyStatus, setCopyStatus] = useState("");
 
   const meQuery = useQuery<AtprotoMe>({ queryKey: ["wtf-live", "me"], queryFn: () => api.get("/api/atproto/me") });
@@ -379,6 +470,18 @@ export function WtfLiveApp() {
     enabled: Boolean(user?.id),
     queryFn: () => api.get<SoundboardSettingsResponse>("/api/wtf-live/soundboard"),
     retry: false,
+    staleTime: 15_000,
+  });
+  const usersQuery = useQuery<{ users: WtfLiveUser[] }>({
+    queryKey: ["wtf-live", "users", userSearch],
+    enabled: Boolean(user?.id),
+    queryFn: () => api.get(`/api/wtf-live/users?q=${encodeURIComponent(userSearch)}&limit=100`),
+    staleTime: 30_000,
+  });
+  const showKitsQuery = useQuery<{ kits: WtfLiveShowKit[] }>({
+    queryKey: ["wtf-live", "show-kits", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: () => api.get("/api/wtf-live/show-kits"),
     staleTime: 15_000,
   });
 
@@ -447,6 +550,25 @@ export function WtfLiveApp() {
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [soundboardCapturing]);
 
+  const wtfUsers = usersQuery.data?.users ?? [];
+  const selectedWtfUser = wtfUsers.find((candidate) => String(candidate.id) === selectedWtfUserId) ?? null;
+  const showKits = showKitsQuery.data?.kits ?? [];
+
+  useEffect(() => {
+    if (!wtfUsers.length) {
+      selectedWtfUserIdRef.current = "";
+      setSelectedWtfUserId("");
+      return;
+    }
+    if (!selectedWtfUserId || !wtfUsers.some((candidate) => String(candidate.id) === selectedWtfUserId)) {
+      const nextUserId = String(wtfUsers[0].id);
+      selectedWtfUserIdRef.current = nextUserId;
+      setSelectedWtfUserId(nextUserId);
+      return;
+    }
+    selectedWtfUserIdRef.current = selectedWtfUserId;
+  }, [selectedWtfUserId, wtfUsers]);
+
   const me = meQuery.data;
   const account = me?.account ?? null;
   const sessionOk = canUseAtprotoSession(account);
@@ -500,7 +622,7 @@ export function WtfLiveApp() {
 
   const accessListQuery = useQuery<{ members: WtfLiveRoomAccessMember[] }>({
     queryKey: ["wtf-live", "rooms", roomId, "access"],
-    enabled: tab === "rooms" && Boolean(selectedRoomManageable && selectedRoom?.accessMode === "private"),
+    enabled: tab === "rooms" && Boolean(selectedRoomManageable),
     queryFn: () => api.get(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/access`),
   });
   const stageAccessQuery = useQuery<WtfLiveStageAccessResponse>({
@@ -519,24 +641,35 @@ export function WtfLiveApp() {
     if (stageAccessDisabledId && stageAccessDisabledId !== stageId) setStageAccessDisabledId(null);
   }, [stageAccessDisabledId, stageId]);
   useEffect(() => {
-    if (!selectedRoom || selectedRoom.accessMode !== "private") {
+    if (!selectedRoomManageable) {
       setSelectedAccessList("");
+      setSelectedRoomHostList("");
+      roomRoleDraftRoomIdRef.current = null;
+      setRoomRoleDraftRoomId(null);
       return;
     }
-    if (accessListQuery.data?.members) {
-      setSelectedAccessList(accessListQuery.data.members.map((member) => member.username).join("\n"));
-    }
-  }, [accessListQuery.data?.members, selectedRoom]);
+    if (roomRoleDraftRoomIdRef.current === roomId || !accessListQuery.data?.members) return;
+    setSelectedRoomHostList(accessListQuery.data.members.filter((member) => member.role === "host").map((member) => member.username).join("\n"));
+    setSelectedAccessList(accessListQuery.data.members.filter((member) => member.role !== "host").map((member) => member.username).join("\n"));
+    roomRoleDraftRoomIdRef.current = roomId;
+    setRoomRoleDraftRoomId(roomId);
+  }, [accessListQuery.data?.members, roomId, roomRoleDraftRoomId, selectedRoomManageable]);
   useEffect(() => {
     if (!selectedStageManageable) {
       setSelectedStageHostList("");
       setSelectedStageSpeakerList("");
+      stageRoleDraftStageIdRef.current = null;
+      setStageRoleDraftStageId(null);
       return;
     }
+    if (stageRoleDraftStageIdRef.current === stageId) return;
     const members = stageAccessQuery.data?.members ?? selectedStage?.accessMembers ?? [];
+    if (!members.length && !stageAccessQuery.data?.members && !selectedStage?.accessMembers) return;
     setSelectedStageHostList(members.filter((member) => member.role === "host").map((member) => member.username).join("\n"));
     setSelectedStageSpeakerList(members.filter((member) => member.role === "speaker").map((member) => member.username).join("\n"));
-  }, [selectedStage?.accessMembers, selectedStageManageable, stageAccessQuery.data?.members]);
+    stageRoleDraftStageIdRef.current = stageId;
+    setStageRoleDraftStageId(stageId);
+  }, [selectedStage?.accessMembers, selectedStageManageable, stageAccessQuery.data?.members, stageId, stageRoleDraftStageId]);
 
   function mergeRoomCache(room: WtfLiveRoom) {
     qc.setQueryData<WtfLiveRoomsResponse>(["wtf-live", "rooms", "mine"], (current) => mergeRoomResponse(current, room));
@@ -643,6 +776,12 @@ export function WtfLiveApp() {
       ),
     onSuccess: (data, room) => {
       const missing = data?.missingUsernames ?? [];
+      if (data?.members) {
+        setSelectedRoomHostList(data.members.filter((member) => member.role === "host").map((member) => member.username).join("\n"));
+        setSelectedAccessList(data.members.filter((member) => member.role !== "host").map((member) => member.username).join("\n"));
+        roomRoleDraftRoomIdRef.current = room.id;
+        setRoomRoleDraftRoomId(room.id);
+      }
       setCopyStatus(
         missing.length
           ? `${room.title} access saved. Missing WTF users: ${missing.join(", ")}`
@@ -654,6 +793,132 @@ export function WtfLiveApp() {
       qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", room.id, "access"] });
     },
   });
+  const updateRoomRoles = useMutation({
+    mutationFn: (room: WtfLiveRoom) =>
+      api.patch<{ members?: WtfLiveRoomAccessMember[]; missingUsernames?: string[] }>(
+        `/api/wtf-live/rooms/${encodeURIComponent(room.id)}/roles`,
+        {
+          hostUsernames: parseAccessUsernames(selectedRoomHostList),
+          guestUsernames: parseAccessUsernames(selectedAccessList),
+        },
+      ),
+    onSuccess: (data, room) => {
+      const missing = data?.missingUsernames ?? [];
+      if (data?.members) {
+        setSelectedRoomHostList(data.members.filter((member) => member.role === "host").map((member) => member.username).join("\n"));
+        setSelectedAccessList(data.members.filter((member) => member.role !== "host").map((member) => member.username).join("\n"));
+        roomRoleDraftRoomIdRef.current = room.id;
+        setRoomRoleDraftRoomId(room.id);
+      }
+      setCopyStatus(
+        missing.length
+          ? `${room.title} roles saved. Missing WTF users: ${missing.join(", ")}`
+          : room.accessMode === "private" && parseAccessUsernames(selectedRoomHostList).length === 0
+            ? `${room.title} private access list saved.`
+            : `${room.title} hosts and guests saved.`,
+      );
+      qc.invalidateQueries({ queryKey: ["wtf-live", "rooms"] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "mine"] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "private"] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", room.id, "access"] });
+    },
+    onError: (error: unknown) => {
+      setCopyStatus(actionErrorMessage(error, "Could not save room roles."));
+    },
+  });
+  const createShowKit = useMutation({
+    mutationFn: () =>
+      api.post<{ kit: WtfLiveShowKit }>("/api/wtf-live/show-kits", {
+        name: showKitName.trim(),
+        description: showKitDescription.trim(),
+        clipIds: soundboardSettings.clips.map((clip) => clip.id),
+        isDefault: showKitDefault,
+      }),
+    onSuccess: (data) => {
+      setShowKitName("");
+      setShowKitDescription("");
+      setShowKitDefault(false);
+      setSoundboardStatus(`${data.kit.name} saved as a Show Kit.`);
+      qc.invalidateQueries({ queryKey: ["wtf-live", "show-kits", user?.id] });
+    },
+    onError: (error: unknown) => {
+      setSoundboardStatus(actionErrorMessage(error, "Could not save Show Kit."));
+    },
+  });
+  const sendRoomInvite = useMutation({
+    mutationFn: (input: { target: RoomControlTarget; targetUserId: number; role: "guest" | "host" | "speaker" }) =>
+      api.post(`/api/wtf-live/rooms/${encodeURIComponent(input.target.id)}/invites`, {
+        roomKind: input.target.roomKind,
+        targetUserId: input.targetUserId,
+        role: input.role,
+      }),
+    onSuccess: (_data, input) => {
+      const invitee = wtfUsers.find((candidate) => candidate.id === input.targetUserId);
+      setCopyStatus(`Invite sent to @${invitee?.username || input.targetUserId} for ${input.target.title}.`);
+    },
+    onError: (error: unknown) => {
+      setCopyStatus(actionErrorMessage(error, "Could not send room invite."));
+    },
+  });
+  const saveRoomSettings = useMutation({
+    mutationFn: () => {
+      if (!settingsTarget) throw new Error("No room selected");
+      return api.patch<{ settings: WtfLiveRoomSettings }>(
+        `/api/wtf-live/rooms/${encodeURIComponent(settingsTarget.id)}/settings`,
+        {
+          roomKind: settingsTarget.roomKind,
+          allowGuestAudio: settingsDraft.allowGuestAudio,
+          allowGuestCamera: settingsDraft.allowGuestCamera,
+          allowGuestScreen: settingsDraft.allowGuestScreen,
+          allowGuestMedia: settingsDraft.allowGuestMedia,
+          showKitEnabled: settingsDraft.showKitEnabled,
+          showKitId: settingsDraft.showKitId,
+        },
+      );
+    },
+    onSuccess: (data) => {
+      setSettingsDraft(data.settings);
+      setSettingsStatus("Settings saved.");
+      setCopyStatus(`${settingsTarget?.title || "Room"} settings saved.`);
+      setSettingsTarget(null);
+      qc.invalidateQueries({ queryKey: ["wtf-live", "rooms"] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "mine"] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "rooms", "private"] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "show-kits", user?.id] });
+    },
+    onError: (error: unknown) => {
+      setSettingsStatus(actionErrorMessage(error, "Could not save room settings."));
+    },
+  });
+  const scheduleRoomEvent = useMutation({
+    mutationFn: () => {
+      if (!scheduleTarget) throw new Error("No room selected");
+      return api.post<{ event?: { id: number; title: string }; ttcSubmitUrl?: string | null }>(
+        `/api/wtf-live/rooms/${encodeURIComponent(scheduleTarget.id)}/events`,
+        {
+          roomKind: scheduleTarget.roomKind,
+          target: scheduleDestination,
+          title: scheduleTitle.trim(),
+          description: scheduleDescription.trim(),
+          startsAt: datetimeLocalToIso(scheduleStartsAt),
+          endsAt: scheduleEndsAt ? datetimeLocalToIso(scheduleEndsAt) : null,
+          visibility: "public",
+        },
+      );
+    },
+    onSuccess: (data) => {
+      if (data.ttcSubmitUrl) window.open(data.ttcSubmitUrl, "_blank", "noopener,noreferrer");
+      setCopyStatus(
+        scheduleDestination === "ttc"
+          ? `TTC event submission opened for ${scheduleTarget?.title || "room"}.`
+          : `${scheduleTarget?.title || "Room"} event scheduled${data.ttcSubmitUrl ? " and TTC submission opened" : ""}.`,
+      );
+      setScheduleTarget(null);
+    },
+    onError: (error: unknown) => {
+      setCopyStatus(actionErrorMessage(error, "Could not schedule room event."));
+    },
+  });
   const updateStageAccess = useMutation({
     mutationFn: (stage: WtfLiveStage) =>
       api.patch<WtfLiveStageAccessResponse>(`/api/wtf-live/stages/${encodeURIComponent(stage.id)}/access`, {
@@ -663,6 +928,12 @@ export function WtfLiveApp() {
     onSuccess: (data, stage) => {
       const missing = data?.missingUsernames ?? [];
       if (data?.stage) mergeStageCache(data.stage);
+      if (data?.members) {
+        setSelectedStageHostList(data.members.filter((member) => member.role === "host").map((member) => member.username).join("\n"));
+        setSelectedStageSpeakerList(data.members.filter((member) => member.role === "speaker").map((member) => member.username).join("\n"));
+        stageRoleDraftStageIdRef.current = stage.id;
+        setStageRoleDraftStageId(stage.id);
+      }
       setCopyStatus(
         missing.length
           ? `${stage.title} stage roles saved. Missing WTF users: ${missing.join(", ")}`
@@ -767,6 +1038,7 @@ export function WtfLiveApp() {
 
   const contextTitle = wtfLiveContextTitle(tab, selectedRoom?.title, selectedStage?.title);
   const selectedStageMembers = stageAccessQuery.data?.members ?? selectedStage?.accessMembers ?? [];
+  const settingsLoading = settingsStatus === "Loading settings...";
 
   async function copyPublicRoom(room: WtfLiveRoom) {
     await navigator.clipboard?.writeText(publicRoomUrl(room.id));
@@ -790,6 +1062,100 @@ export function WtfLiveApp() {
   function joinStageRoom(stage: WtfLiveStage) {
     window.open(presentationRouteHref(publicRoomPath(stage.id)), "_blank", "noopener,noreferrer");
     setCopyStatus(`Opened ${stage.title} stage room in a new browser tab.`);
+  }
+
+  function addSelectedUserToList(setter: Dispatch<SetStateAction<string>>) {
+    const selectedId = selectedWtfUserIdRef.current || selectedWtfUserId;
+    const selected = wtfUsers.find((candidate) => String(candidate.id) === selectedId) ?? selectedWtfUser;
+    if (!selected?.username) {
+      setCopyStatus("Select a WTF user first.");
+      return;
+    }
+    setter((current) => appendAccessUsername(current, selected.username));
+  }
+
+  function openScheduleDialog(target: RoomControlTarget) {
+    setScheduleTarget(target);
+    setScheduleTitle(target.title);
+    setScheduleDescription("");
+    setScheduleStartsAt(defaultScheduleStart());
+    setScheduleEndsAt("");
+    setScheduleDestination("wtf");
+  }
+
+  async function openSettingsDialog(target: RoomControlTarget) {
+    setSettingsTarget(target);
+    setSettingsDraft(defaultRoomSettingsDraft(target));
+    setSettingsStatus("Loading settings...");
+    try {
+      const response = await api.get<{ settings: WtfLiveRoomSettings }>(
+        `/api/wtf-live/rooms/${encodeURIComponent(target.id)}/settings?roomKind=${target.roomKind}`,
+      );
+      setSettingsDraft(response.settings);
+      setSettingsStatus("");
+    } catch (error) {
+      setSettingsStatus(actionErrorMessage(error, "Could not load room settings."));
+    }
+  }
+
+  function inviteSelectedUser(target: RoomControlTarget, role: "guest" | "host" | "speaker") {
+    const selectedId = selectedWtfUserIdRef.current || selectedWtfUserId;
+    const selected = wtfUsers.find((candidate) => String(candidate.id) === selectedId) ?? selectedWtfUser;
+    if (!selected) {
+      setCopyStatus("Select a WTF user first.");
+      return;
+    }
+    sendRoomInvite.mutate({ target, targetUserId: selected.id, role });
+  }
+
+  function activateInlinePointerAction(event: React.PointerEvent<HTMLButtonElement>, action: () => void) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    action();
+  }
+
+  function activateInlineKeyboardAction(event: React.MouseEvent<HTMLButtonElement>, action: () => void) {
+    if (event.detail === 0) action();
+  }
+
+  function renderWtfUserPicker(actions: ReactNode, suffix: string) {
+    return (
+      <Stack data-wtf-live-user-picker={suffix}>
+        <SettingsField>
+          WTF user search
+          <TextField
+            value={userSearch}
+            placeholder="username or display name"
+            fullWidth
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => setUserSearch(event.target.value)}
+            data-wtf-live-user-search={suffix}
+          />
+        </SettingsField>
+        <SettingsField>
+          Selected WTF user
+          <NativeSelect
+            value={selectedWtfUserId}
+            onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
+              selectedWtfUserIdRef.current = event.target.value;
+              setSelectedWtfUserId(event.target.value);
+            }}
+            data-wtf-live-user-select={suffix}
+          >
+            {wtfUsers.length ? (
+              wtfUsers.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  @{candidate.username}{candidate.displayName ? ` · ${candidate.displayName}` : ""}
+                </option>
+              ))
+            ) : (
+              <option value="">No WTF users found</option>
+            )}
+          </NativeSelect>
+        </SettingsField>
+        <InlineActions>{actions}</InlineActions>
+        {usersQuery.isLoading ? <MutedText>Loading WTF users...</MutedText> : null}
+      </Stack>
+    );
   }
 
   function openHostRoom(room: WtfLiveRoom) {
@@ -968,7 +1334,14 @@ export function WtfLiveApp() {
         {privateRoom ? <ShareLink>Private room · no public guest URL</ShareLink> : <ShareLink>{publicRoomUrl(room.id)}</ShareLink>}
         {manageable ? <MutedText data-wtf-live-owner-controls="true">Owner controls</MutedText> : null}
         <ActionGrid data-wtf-live-room-actions={room.id}>
-          <Button primary size="sm" disabled={closed} onClick={() => joinPublicRoom(room)} data-wtf-live-room-join={room.id}>
+          <Button
+            primary
+            size="sm"
+            disabled={closed}
+            onPointerDown={(event) => activateInlinePointerAction(event, () => joinPublicRoom(room))}
+            onClick={(event) => activateInlineKeyboardAction(event, () => joinPublicRoom(room))}
+            data-wtf-live-room-join={room.id}
+          >
             <ButtonLabel><LogIn size={14} aria-hidden /> {privateRoom ? "Join Private Room" : "Join in New Tab"}</ButtonLabel>
           </Button>
           {!privateRoom ? (
@@ -1272,6 +1645,57 @@ export function WtfLiveApp() {
                 {soundboardQuery.isLoading ? <MutedText>Loading server presets...</MutedText> : null}
               </Stack>
             </GroupBox>
+            <GroupBox label="Saved Show Kits">
+              <Stack data-wtf-live-show-kit-saves>
+                <SettingsField>
+                  Kit name
+                  <TextField
+                    value={showKitName}
+                    placeholder="Friday stage kit"
+                    fullWidth
+                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => setShowKitName(event.target.value)}
+                    data-wtf-live-show-kit-name
+                  />
+                </SettingsField>
+                <SettingsField>
+                  Description
+                  <TextArea
+                    value={showKitDescription}
+                    placeholder="Intro, stings, applause, and outro buttons"
+                    onChange={(event) => setShowKitDescription(event.target.value)}
+                    data-wtf-live-show-kit-description
+                  />
+                </SettingsField>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showKitDefault}
+                    onChange={(event) => setShowKitDefault(event.currentTarget.checked)}
+                    data-wtf-live-show-kit-default
+                  /> Default Show Kit
+                </label>
+                <Button
+                  disabled={!showKitName.trim() || !soundboardSettings.clips.length || createShowKit.isPending}
+                  onClick={() => createShowKit.mutate()}
+                  data-wtf-live-show-kit-save
+                >
+                  <ButtonLabel><Save size={14} aria-hidden /> {createShowKit.isPending ? "Saving..." : "Save Current as Kit"}</ButtonLabel>
+                </Button>
+                {showKitsQuery.isLoading ? <MutedText>Loading saved Show Kits...</MutedText> : null}
+              </Stack>
+              <FeedList data-wtf-live-show-kit-list>
+                {showKits.length ? (
+                  showKits.map((kit) => (
+                    <FeedItem key={kit.id} data-wtf-live-show-kit={kit.kitId}>
+                      <strong>{kit.name}{kit.isDefault ? " · default" : ""}</strong>
+                      <span>{kit.clipCount} clip{kit.clipCount === 1 ? "" : "s"}{kit.description ? ` · ${kit.description}` : ""}</span>
+                    </FeedItem>
+                  ))
+                ) : (
+                  <MutedText>No saved Show Kits yet.</MutedText>
+                )}
+              </FeedList>
+            </GroupBox>
             <GroupBox label="Programmed buttons">
               <FeedList data-wtf-live-soundboard-clip-list>
                 {soundboardSettings.clips.length ? (
@@ -1401,7 +1825,14 @@ export function WtfLiveApp() {
                     {selectedRoom.accessMode === "private" ? <ShareLink>Private room · no public guest URL</ShareLink> : <ShareLink>{publicRoomUrl(selectedRoom.id)}</ShareLink>}
                     {selectedRoomManageable ? <MutedText data-wtf-live-owner-controls="true">Owner controls</MutedText> : null}
                     <ActionGrid data-wtf-live-room-actions={selectedRoom.id}>
-                      <Button primary size="sm" disabled={selectedRoom.isPublic === false} onClick={() => joinPublicRoom(selectedRoom)} data-wtf-live-room-join={selectedRoom.id}>
+                      <Button
+                        primary
+                        size="sm"
+                        disabled={selectedRoom.isPublic === false}
+                        onPointerDown={(event) => activateInlinePointerAction(event, () => joinPublicRoom(selectedRoom))}
+                        onClick={(event) => activateInlineKeyboardAction(event, () => joinPublicRoom(selectedRoom))}
+                        data-wtf-live-room-join={selectedRoom.id}
+                      >
                         <ButtonLabel><LogIn size={14} aria-hidden /> {selectedRoom.accessMode === "private" ? "Join Private Room" : "Join in New Tab"}</ButtonLabel>
                       </Button>
                       {selectedRoom.accessMode !== "private" ? (
@@ -1412,6 +1843,46 @@ export function WtfLiveApp() {
                       {selectedRoom.accessMode !== "private" ? (
                         <Button size="sm" disabled={selectedRoom.isPublic === false} onClick={() => openPublicRoom(selectedRoom)}>
                           <ButtonLabel><ExternalLink size={14} aria-hidden /> Guest View</ButtonLabel>
+                        </Button>
+                      ) : null}
+                      {selectedRoomManageable ? (
+                        <Button
+                          size="sm"
+                          aria-label={`Schedule ${selectedRoom.title}`}
+                          title="Schedule room event"
+                          onPointerDown={(event) =>
+                            activateInlinePointerAction(event, () =>
+                              openScheduleDialog({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title }),
+                            )
+                          }
+                          onClick={(event) =>
+                            activateInlineKeyboardAction(event, () =>
+                              openScheduleDialog({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title }),
+                            )
+                          }
+                          data-wtf-live-room-schedule={selectedRoom.id}
+                        >
+                          <CalendarDays size={14} aria-hidden />
+                        </Button>
+                      ) : null}
+                      {selectedRoomManageable ? (
+                        <Button
+                          size="sm"
+                          aria-label={`${selectedRoom.title} settings`}
+                          title="Room settings"
+                          onPointerDown={(event) =>
+                            activateInlinePointerAction(event, () => {
+                              void openSettingsDialog({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title });
+                            })
+                          }
+                          onClick={(event) =>
+                            activateInlineKeyboardAction(event, () => {
+                              void openSettingsDialog({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title });
+                            })
+                          }
+                          data-wtf-live-room-settings={selectedRoom.id}
+                        >
+                          <Settings size={14} aria-hidden />
                         </Button>
                       ) : null}
                       {selectedRoomManageable ? (
@@ -1435,25 +1906,119 @@ export function WtfLiveApp() {
                         </Button>
                       ) : null}
                     </ActionGrid>
-                    {selectedRoomManageable && selectedRoom.accessMode === "private" ? (
-                      <Stack data-wtf-live-private-access-editor={selectedRoom.id}>
-                        <MutedText>Allowed WTF usernames</MutedText>
-                        <TextArea
-                          value={selectedAccessList}
-                          placeholder={"wtf-user-1\nwtf-user-2"}
-                          onChange={(e) => setSelectedAccessList(e.target.value)}
-                          data-wtf-live-private-access-list={selectedRoom.id}
-                        />
+                    {selectedRoomManageable ? (
+                      <Stack
+                        data-wtf-live-room-role-editor={selectedRoom.id}
+                        data-wtf-live-private-access-editor={selectedRoom.accessMode === "private" ? selectedRoom.id : undefined}
+                      >
+                        {renderWtfUserPicker(
+                          <>
+                            <InlineButton
+                              disabled={!selectedWtfUser}
+                              onPointerDown={(event) => activateInlinePointerAction(event, () => {
+                                roomRoleDraftRoomIdRef.current = selectedRoom.id;
+                                setRoomRoleDraftRoomId(selectedRoom.id);
+                                addSelectedUserToList(setSelectedRoomHostList);
+                              })}
+                              onClick={(event) => activateInlineKeyboardAction(event, () => {
+                                roomRoleDraftRoomIdRef.current = selectedRoom.id;
+                                setRoomRoleDraftRoomId(selectedRoom.id);
+                                addSelectedUserToList(setSelectedRoomHostList);
+                              })}
+                              data-wtf-live-room-add-host={selectedRoom.id}
+                            >
+                              <ButtonLabel><UserPlus size={14} aria-hidden /> Host</ButtonLabel>
+                            </InlineButton>
+                            <InlineButton
+                              disabled={!selectedWtfUser}
+                              onPointerDown={(event) => activateInlinePointerAction(event, () => {
+                                roomRoleDraftRoomIdRef.current = selectedRoom.id;
+                                setRoomRoleDraftRoomId(selectedRoom.id);
+                                addSelectedUserToList(setSelectedAccessList);
+                              })}
+                              onClick={(event) => activateInlineKeyboardAction(event, () => {
+                                roomRoleDraftRoomIdRef.current = selectedRoom.id;
+                                setRoomRoleDraftRoomId(selectedRoom.id);
+                                addSelectedUserToList(setSelectedAccessList);
+                              })}
+                              data-wtf-live-room-add-guest={selectedRoom.id}
+                            >
+                              <ButtonLabel><UserPlus size={14} aria-hidden /> Guest</ButtonLabel>
+                            </InlineButton>
+                            <InlineButton
+                              disabled={!selectedWtfUser || sendRoomInvite.isPending}
+                              onPointerDown={(event) =>
+                                activateInlinePointerAction(event, () =>
+                                  inviteSelectedUser({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title }, "host"),
+                                )
+                              }
+                              onClick={(event) =>
+                                activateInlineKeyboardAction(event, () =>
+                                  inviteSelectedUser({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title }, "host"),
+                                )
+                              }
+                              data-wtf-live-room-invite-host={selectedRoom.id}
+                            >
+                              Invite Host
+                            </InlineButton>
+                            <InlineButton
+                              disabled={!selectedWtfUser || sendRoomInvite.isPending}
+                              onPointerDown={(event) =>
+                                activateInlinePointerAction(event, () =>
+                                  inviteSelectedUser({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title }, "guest"),
+                                )
+                              }
+                              onClick={(event) =>
+                                activateInlineKeyboardAction(event, () =>
+                                  inviteSelectedUser({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title }, "guest"),
+                                )
+                              }
+                              data-wtf-live-room-invite={selectedRoom.id}
+                            >
+                              Invite Guest
+                            </InlineButton>
+                          </>,
+                          `room-${selectedRoom.id}`,
+                        )}
+                        <SettingsField>
+                          Host WTF usernames
+                          <TextArea
+                            value={selectedRoomHostList}
+                            placeholder={"wtf-host-1\nwtf-host-2"}
+                            onChange={(e) => {
+                              roomRoleDraftRoomIdRef.current = selectedRoom.id;
+                              setRoomRoleDraftRoomId(selectedRoom.id);
+                              setSelectedRoomHostList(e.target.value);
+                            }}
+                            data-wtf-live-room-host-list={selectedRoom.id}
+                          />
+                        </SettingsField>
+                        <SettingsField>
+                          Guest WTF usernames
+                          <TextArea
+                            value={selectedAccessList}
+                            placeholder={"wtf-guest-1\nwtf-guest-2"}
+                            onChange={(e) => {
+                              roomRoleDraftRoomIdRef.current = selectedRoom.id;
+                              setRoomRoleDraftRoomId(selectedRoom.id);
+                              setSelectedAccessList(e.target.value);
+                            }}
+                            data-wtf-live-room-guest-list={selectedRoom.id}
+                            data-wtf-live-private-access-list={selectedRoom.accessMode === "private" ? selectedRoom.id : undefined}
+                          />
+                        </SettingsField>
+                        {selectedRoom.accessMode === "private" ? <MutedText>Guest usernames are the private-room access list.</MutedText> : null}
                         <Button
                           size="sm"
-                          disabled={updateRoomAccess.isPending}
-                          onClick={() => updateRoomAccess.mutate(selectedRoom)}
-                          data-wtf-live-private-access-save={selectedRoom.id}
+                          disabled={updateRoomRoles.isPending}
+                          onClick={() => updateRoomRoles.mutate(selectedRoom)}
+                          data-wtf-live-room-roles-save={selectedRoom.id}
+                          data-wtf-live-private-access-save={selectedRoom.accessMode === "private" ? selectedRoom.id : undefined}
                         >
-                          Save Private Access
+                          Save Room Roles
                         </Button>
-                        {accessListQuery.isLoading ? <MutedText>Loading access list...</MutedText> : null}
-                        {updateRoomAccess.isError ? <span>{(updateRoomAccess.error as Error).message}</span> : null}
+                        {accessListQuery.isLoading ? <MutedText>Loading room roles...</MutedText> : null}
+                        {updateRoomRoles.isError ? <span>{(updateRoomRoles.error as Error).message}</span> : null}
                       </Stack>
                     ) : null}
                   </RoomCard>
@@ -1545,12 +2110,59 @@ export function WtfLiveApp() {
                       </RoomPresenceBadge>
                     </RoomMetaRow>
                     <ActionGrid data-wtf-live-stage-actions={selectedStage.id}>
-                      <Button primary size="sm" disabled={selectedStage.isPublic === false} onClick={() => joinStageRoom(selectedStage)} data-wtf-live-stage-join={selectedStage.id}>
+                      <Button
+                        primary
+                        size="sm"
+                        disabled={selectedStage.isPublic === false}
+                        onPointerDown={(event) => activateInlinePointerAction(event, () => joinStageRoom(selectedStage))}
+                        onClick={(event) => activateInlineKeyboardAction(event, () => joinStageRoom(selectedStage))}
+                        data-wtf-live-stage-join={selectedStage.id}
+                      >
                         <ButtonLabel><LogIn size={14} aria-hidden /> Join Stage Room</ButtonLabel>
                       </Button>
                       <Button size="sm" onClick={() => copyStageRoom(selectedStage)} data-wtf-live-stage-copy={selectedStage.id}>
                         <ButtonLabel><Copy size={14} aria-hidden /> Copy URL</ButtonLabel>
                       </Button>
+                      {selectedStageManageable ? (
+                        <Button
+                          size="sm"
+                          aria-label={`Schedule ${selectedStage.title}`}
+                          title="Schedule stage event"
+                          onPointerDown={(event) =>
+                            activateInlinePointerAction(event, () =>
+                              openScheduleDialog({ roomKind: "stage", id: selectedStage.id, title: selectedStage.title }),
+                            )
+                          }
+                          onClick={(event) =>
+                            activateInlineKeyboardAction(event, () =>
+                              openScheduleDialog({ roomKind: "stage", id: selectedStage.id, title: selectedStage.title }),
+                            )
+                          }
+                          data-wtf-live-stage-schedule={selectedStage.id}
+                        >
+                          <CalendarDays size={14} aria-hidden />
+                        </Button>
+                      ) : null}
+                      {selectedStageManageable ? (
+                        <Button
+                          size="sm"
+                          aria-label={`${selectedStage.title} settings`}
+                          title="Stage settings"
+                          onPointerDown={(event) =>
+                            activateInlinePointerAction(event, () => {
+                              void openSettingsDialog({ roomKind: "stage", id: selectedStage.id, title: selectedStage.title });
+                            })
+                          }
+                          onClick={(event) =>
+                            activateInlineKeyboardAction(event, () => {
+                              void openSettingsDialog({ roomKind: "stage", id: selectedStage.id, title: selectedStage.title });
+                            })
+                          }
+                          data-wtf-live-stage-settings={selectedStage.id}
+                        >
+                          <Settings size={14} aria-hidden />
+                        </Button>
+                      ) : null}
                       {selectedStageManageable ? (
                         <Button
                           size="sm"
@@ -1574,12 +2186,85 @@ export function WtfLiveApp() {
                     </ActionGrid>
                     {selectedStageManageable ? (
                       <Stack data-wtf-live-stage-access-editor={selectedStage.id}>
+                        {renderWtfUserPicker(
+                          <>
+                            <InlineButton
+                              disabled={!selectedWtfUser}
+                              onPointerDown={(event) => activateInlinePointerAction(event, () => {
+                                stageRoleDraftStageIdRef.current = selectedStage.id;
+                                setStageRoleDraftStageId(selectedStage.id);
+                                addSelectedUserToList(setSelectedStageHostList);
+                              })}
+                              onClick={(event) => activateInlineKeyboardAction(event, () => {
+                                stageRoleDraftStageIdRef.current = selectedStage.id;
+                                setStageRoleDraftStageId(selectedStage.id);
+                                addSelectedUserToList(setSelectedStageHostList);
+                              })}
+                              data-wtf-live-stage-add-host={selectedStage.id}
+                            >
+                              <ButtonLabel><UserPlus size={14} aria-hidden /> Host</ButtonLabel>
+                            </InlineButton>
+                            <InlineButton
+                              disabled={!selectedWtfUser}
+                              onPointerDown={(event) => activateInlinePointerAction(event, () => {
+                                stageRoleDraftStageIdRef.current = selectedStage.id;
+                                setStageRoleDraftStageId(selectedStage.id);
+                                addSelectedUserToList(setSelectedStageSpeakerList);
+                              })}
+                              onClick={(event) => activateInlineKeyboardAction(event, () => {
+                                stageRoleDraftStageIdRef.current = selectedStage.id;
+                                setStageRoleDraftStageId(selectedStage.id);
+                                addSelectedUserToList(setSelectedStageSpeakerList);
+                              })}
+                              data-wtf-live-stage-add-speaker={selectedStage.id}
+                            >
+                              <ButtonLabel><UserPlus size={14} aria-hidden /> Speaker</ButtonLabel>
+                            </InlineButton>
+                            <InlineButton
+                              disabled={!selectedWtfUser || sendRoomInvite.isPending}
+                              onPointerDown={(event) =>
+                                activateInlinePointerAction(event, () =>
+                                  inviteSelectedUser({ roomKind: "stage", id: selectedStage.id, title: selectedStage.title }, "host"),
+                                )
+                              }
+                              onClick={(event) =>
+                                activateInlineKeyboardAction(event, () =>
+                                  inviteSelectedUser({ roomKind: "stage", id: selectedStage.id, title: selectedStage.title }, "host"),
+                                )
+                              }
+                              data-wtf-live-stage-invite-host={selectedStage.id}
+                            >
+                              Invite Host
+                            </InlineButton>
+                            <InlineButton
+                              disabled={!selectedWtfUser || sendRoomInvite.isPending}
+                              onPointerDown={(event) =>
+                                activateInlinePointerAction(event, () =>
+                                  inviteSelectedUser({ roomKind: "stage", id: selectedStage.id, title: selectedStage.title }, "speaker"),
+                                )
+                              }
+                              onClick={(event) =>
+                                activateInlineKeyboardAction(event, () =>
+                                  inviteSelectedUser({ roomKind: "stage", id: selectedStage.id, title: selectedStage.title }, "speaker"),
+                                )
+                              }
+                              data-wtf-live-stage-invite={selectedStage.id}
+                            >
+                              Invite Speaker
+                            </InlineButton>
+                          </>,
+                          `stage-${selectedStage.id}`,
+                        )}
                         <SettingsField>
                           Host WTF usernames
                           <TextArea
                             value={selectedStageHostList}
                             placeholder={"wtf-host-1\nwtf-host-2"}
-                            onChange={(e) => setSelectedStageHostList(e.target.value)}
+                            onChange={(e) => {
+                              stageRoleDraftStageIdRef.current = selectedStage.id;
+                              setStageRoleDraftStageId(selectedStage.id);
+                              setSelectedStageHostList(e.target.value);
+                            }}
                             data-wtf-live-stage-host-list={selectedStage.id}
                           />
                         </SettingsField>
@@ -1588,7 +2273,11 @@ export function WtfLiveApp() {
                           <TextArea
                             value={selectedStageSpeakerList}
                             placeholder={"wtf-speaker-1\nwtf-speaker-2"}
-                            onChange={(e) => setSelectedStageSpeakerList(e.target.value)}
+                            onChange={(e) => {
+                              stageRoleDraftStageIdRef.current = selectedStage.id;
+                              setStageRoleDraftStageId(selectedStage.id);
+                              setSelectedStageSpeakerList(e.target.value);
+                            }}
                             data-wtf-live-stage-speaker-list={selectedStage.id}
                           />
                         </SettingsField>
@@ -1678,6 +2367,207 @@ export function WtfLiveApp() {
             </Stack>
           }
         />
+      ) : null}
+
+      {settingsTarget ? (
+        <DialogOverlay
+          role="presentation"
+          data-wtf-live-room-settings-dialog={settingsTarget.id}
+          onClick={() => setSettingsTarget(null)}
+        >
+          <DialogCard
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${settingsTarget.title} settings`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <strong>{settingsTarget.title} settings</strong>
+            <Stack>
+              {settingsTarget.roomKind === "room" ? (
+                <Stack data-wtf-live-room-permission-settings={settingsTarget.id}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      disabled={settingsLoading || saveRoomSettings.isPending}
+                      checked={settingsDraft.allowGuestAudio}
+                      onChange={(event) => {
+                        const checked = event.currentTarget.checked;
+                        setSettingsDraft((current) => ({ ...current, allowGuestAudio: checked }));
+                      }}
+                      data-wtf-live-room-allow-audio={settingsTarget.id}
+                    /> Guest mic
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      disabled={settingsLoading || saveRoomSettings.isPending}
+                      checked={settingsDraft.allowGuestCamera}
+                      onChange={(event) => {
+                        const checked = event.currentTarget.checked;
+                        setSettingsDraft((current) => ({ ...current, allowGuestCamera: checked }));
+                      }}
+                      data-wtf-live-room-allow-camera={settingsTarget.id}
+                    /> Guest camera
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      disabled={settingsLoading || saveRoomSettings.isPending}
+                      checked={settingsDraft.allowGuestScreen}
+                      onChange={(event) => {
+                        const checked = event.currentTarget.checked;
+                        setSettingsDraft((current) => ({ ...current, allowGuestScreen: checked }));
+                      }}
+                      data-wtf-live-room-allow-screen={settingsTarget.id}
+                    /> Guest screen
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      disabled={settingsLoading || saveRoomSettings.isPending}
+                      checked={settingsDraft.allowGuestMedia}
+                      onChange={(event) => {
+                        const checked = event.currentTarget.checked;
+                        setSettingsDraft((current) => ({ ...current, allowGuestMedia: checked }));
+                      }}
+                      data-wtf-live-room-allow-media={settingsTarget.id}
+                    /> Guest media deck
+                  </label>
+                </Stack>
+              ) : (
+                <FeedItem>
+                  <strong>Stage publishing</strong>
+                  <span>Host and speaker lists control mic, camera, screen, and media.</span>
+                </FeedItem>
+              )}
+              <label>
+                <input
+                  type="checkbox"
+                  disabled={settingsLoading || saveRoomSettings.isPending}
+                  checked={settingsDraft.showKitEnabled}
+                  onChange={(event) => {
+                    const checked = event.currentTarget.checked;
+                    setSettingsDraft((current) => ({ ...current, showKitEnabled: checked }));
+                  }}
+                  data-wtf-live-room-show-kit-enabled={settingsTarget.id}
+                /> Show Kit enabled
+              </label>
+              <SettingsField>
+                Show Kit
+                <NativeSelect
+                  disabled={settingsLoading || saveRoomSettings.isPending}
+                  value={settingsDraft.showKitId ? String(settingsDraft.showKitId) : ""}
+                  onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
+                    const value = event.target.value;
+                    setSettingsDraft((current) => ({
+                      ...current,
+                      showKitId: value ? Number(value) : null,
+                    }));
+                  }}
+                  data-wtf-live-room-show-kit-select={settingsTarget.id}
+                >
+                  <option value="">No saved kit</option>
+                  {showKits.map((kit) => (
+                    <option key={kit.id} value={kit.id}>
+                      {kit.name} · {kit.clipCount} clip{kit.clipCount === 1 ? "" : "s"}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </SettingsField>
+              {settingsStatus ? <MutedText aria-live="polite">{settingsStatus}</MutedText> : null}
+              <InlineActions>
+                <Button onClick={() => setSettingsTarget(null)}>Cancel</Button>
+                <Button
+                  primary
+                  disabled={settingsLoading || saveRoomSettings.isPending}
+                  onClick={() => saveRoomSettings.mutate()}
+                  data-wtf-live-room-settings-save={settingsTarget.id}
+                >
+                  {saveRoomSettings.isPending ? "Saving..." : "Save Settings"}
+                </Button>
+              </InlineActions>
+            </Stack>
+          </DialogCard>
+        </DialogOverlay>
+      ) : null}
+
+      {scheduleTarget ? (
+        <DialogOverlay
+          role="presentation"
+          data-wtf-live-room-schedule-dialog={scheduleTarget.id}
+          onClick={() => setScheduleTarget(null)}
+        >
+          <DialogCard
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Schedule ${scheduleTarget.title}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <strong>Schedule {scheduleTarget.title}</strong>
+            <Stack>
+              <SettingsField>
+                Event title
+                <TextField
+                  value={scheduleTitle}
+                  fullWidth
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => setScheduleTitle(event.target.value)}
+                  data-wtf-live-room-event-title={scheduleTarget.id}
+                />
+              </SettingsField>
+              <SettingsField>
+                Description
+                <TextArea
+                  value={scheduleDescription}
+                  onChange={(event) => setScheduleDescription(event.target.value)}
+                  data-wtf-live-room-event-description={scheduleTarget.id}
+                />
+              </SettingsField>
+              <InlineActions>
+                <SettingsField>
+                  Starts
+                  <input
+                    type="datetime-local"
+                    value={scheduleStartsAt}
+                    onChange={(event) => setScheduleStartsAt(event.currentTarget.value)}
+                    data-wtf-live-room-event-start={scheduleTarget.id}
+                  />
+                </SettingsField>
+                <SettingsField>
+                  Ends
+                  <input
+                    type="datetime-local"
+                    value={scheduleEndsAt}
+                    onChange={(event) => setScheduleEndsAt(event.currentTarget.value)}
+                    data-wtf-live-room-event-end={scheduleTarget.id}
+                  />
+                </SettingsField>
+              </InlineActions>
+              <SettingsField>
+                Calendar
+                <NativeSelect
+                  value={scheduleDestination}
+                  onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setScheduleDestination(event.target.value as "wtf" | "ttc" | "both")}
+                  data-wtf-live-room-event-target={scheduleTarget.id}
+                >
+                  <option value="wtf">WTF Calendar</option>
+                  <option value="ttc">TTC Events Calendar</option>
+                  <option value="both">Both calendars</option>
+                </NativeSelect>
+              </SettingsField>
+              <InlineActions>
+                <Button onClick={() => setScheduleTarget(null)}>Cancel</Button>
+                <Button
+                  primary
+                  disabled={!scheduleTitle.trim() || !scheduleStartsAt || scheduleRoomEvent.isPending}
+                  onClick={() => scheduleRoomEvent.mutate()}
+                  data-wtf-live-room-event-save={scheduleTarget.id}
+                >
+                  {scheduleRoomEvent.isPending ? "Scheduling..." : "Schedule Event"}
+                </Button>
+              </InlineActions>
+            </Stack>
+          </DialogCard>
+        </DialogOverlay>
       ) : null}
     </MainLayout>
   );

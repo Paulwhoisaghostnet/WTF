@@ -1,5 +1,22 @@
 import { test, expect } from "@playwright/test";
 import { DOMAIN_WORKFLOWS } from "../../e2e/inventory/domain-workflows.mjs";
+
+const BASE_WORKFLOW_TIMEOUT_MS = 60_000;
+const WORKFLOW_OVERHEAD_MS = 20_000;
+const API_PROBE_BUDGET_MS = 400;
+const EVENT_HANDLE_BUDGET_MS = 100;
+const ROUTE_BUDGET_MS = 2_000;
+
+function workflowTimeoutMs(workflow) {
+  return Math.max(
+    BASE_WORKFLOW_TIMEOUT_MS,
+    WORKFLOW_OVERHEAD_MS +
+      workflow.apiProbes.length * API_PROBE_BUDGET_MS +
+      workflow.eventHandles.length * EVENT_HANDLE_BUDGET_MS +
+      workflow.routes.length * ROUTE_BUDGET_MS
+  );
+}
+
 async function setAdmin(request) {
   const res = await request.post("/__test/state", { data: { userRole: "admin" } });
   expect(res.ok()).toBeTruthy();
@@ -17,7 +34,8 @@ function probeAccepted(response, probeSpec) {
 
 test.describe("interaction inventory — domain interoperability", () => {
   for (const workflow of DOMAIN_WORKFLOWS) {
-    test(workflow.name, async ({ page, request }) => {
+    test(workflow.name, async ({ page, request }, testInfo) => {
+      testInfo.setTimeout(workflowTimeoutMs(workflow));
       await setAdmin(request);
 
       for (const probeSpec of workflow.apiProbes) {

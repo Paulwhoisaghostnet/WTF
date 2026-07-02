@@ -77,6 +77,7 @@ export const WTF_PROJECT_BUNDLE_SECTIONS: readonly WtfProjectBundleSection[] = [
       "agent.file.renamed",
       "agent.file.deleted",
       "agent.diagnostics.ran",
+      "agent.code_navigation.opened",
       "agent.filesystem.saved",
       "agent.filesystem.restored",
       "agent.filesystem.imported",

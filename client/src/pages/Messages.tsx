@@ -519,7 +519,7 @@ interface NotificationListResponse {
 
 /**
  * Takes a DM conversation list and returns a { directs, studioRooms } split so
- * the Inbox can render each section separately.
+ * Messages can render each section separately.
  */
 function splitConversations(list: DmConversation[] | undefined) {
   const directs: DmConversation[] = [];

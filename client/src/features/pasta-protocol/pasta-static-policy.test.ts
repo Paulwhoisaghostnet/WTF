@@ -30,6 +30,15 @@ test("Pasta static publishers use sandbox-safe inline feedback", () => {
   }
 });
 
+test("Pasta static publisher modules receive the shared MD runtime", () => {
+  for (const appId of PASTA_APPS) {
+    const common = readRepoFile(commonPath(appId));
+    const studio = readRepoFile(studioPath(appId));
+    assert.match(common, /window\.MD = MD;/, `${appId} common helpers should expose MD for module scripts`);
+    assert.match(studio, /const MD = window\.MD;/, `${appId} studio should read the shared MD runtime from window`);
+  }
+});
+
 test("Pasta wtfOS pinning is capability gated inside the platform", () => {
   for (const appId of PASTA_APPS) {
     const common = readRepoFile(commonPath(appId));
@@ -68,4 +77,18 @@ test("Colander external actions pass contract context to matching Pasta tools", 
     const studio = readRepoFile(studioPath(appId));
     assert.match(studio, /MD\.readRouteHandoff\(\)/, `${appId} should read Colander route handoff context`);
   }
+});
+
+test("Colander discovery supports Shadownet proof contracts before signed actions", () => {
+  const colander = readRepoFile("client/src/features/pasta-protocol/colander/ColanderApp.tsx");
+  assert.match(colander, /shadownet\.tzkt\.io/, "Colander should link Shadownet contracts to Shadownet TzKT");
+  assert.match(colander, /parseJsonDataUri/, "Colander should decode data:application/json metadata");
+  assert.match(colander, /metadataFetchUrl/, "Colander should centralize remote metadata fetch URL policy");
+  assert.match(colander, /startsWith\("ipfs:\/\/"\)/, "Colander should preserve IPFS relationship metadata reads");
+  assert.match(colander, /\^https:\\\/\\\//, "Colander should allow HTTPS relationship metadata reads");
+  assert.match(
+    colander,
+    /await assertNetworkReadyForSend\(me\)/,
+    "Colander should verify wallet account and chain id before signed writes",
+  );
 });

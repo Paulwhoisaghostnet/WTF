@@ -23,6 +23,12 @@ test("creation tool Gamma shell overrides wrapper chrome without changing iframe
   assert.match(frameSource, /sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox"/);
 });
 
+test("creation tool iframe receives route query context for package handoffs", () => {
+  assert.match(frameSource, /const routeSearch = typeof window !== "undefined" \? window\.location\.search : ""/);
+  assert.match(frameSource, /routeSearch\s*\?\s*`\$\{tool\.src\}\$\{tool\.src\.includes\("\?"\) \? "&" : "\?"\}\$\{routeSearch\.slice\(1\)\}`/);
+  assert.doesNotMatch(frameSource, /tool\.id === "macaroni"/);
+});
+
 test("creation tool presentation shell keeps shared static and external behavior raw", () => {
   assert.doesNotMatch(frameSource, /\/api\/gamma/);
   assert.doesNotMatch(frameSource, /presentationRouteHref/);

@@ -809,3 +809,4 @@ const MD = (() => {
     DEFAULT_GATEWAY,
   };
 })();
+window.MD = MD;

@@ -383,7 +383,7 @@ export const enUSCatalog = {
   "route.tz2at.title": "tz2at",
   "route.crp.title": "CRP Nominations",
   "route.wim.title": "WIM",
-  "route.mail.title": "WTF Mail",
+  "route.mail.title": "Inbox",
   "route.digest.title": "Digest",
   "route.browser.title": "Browser",
   "route.music.title": "TezosBeats",

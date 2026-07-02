@@ -264,8 +264,15 @@ export const DESKTOP_FONT_PACK_LABELS: Record<DesktopFontPackKey, string> = {
 };
 
 export const DEFAULT_DESKTOP_FONT_PACK_KEY: DesktopFontPackKey = "wtfos-soft-system";
+export const PLATFORM_DESKTOP_FONT_PACK_KEY: DesktopFontPackKey =
+  DEFAULT_DESKTOP_FONT_PACK_KEY;
+
+export function normalizeDesktopFontPackKey(_value: unknown): DesktopFontPackKey {
+  return PLATFORM_DESKTOP_FONT_PACK_KEY;
+}
 
 export const DESKTOP_WIM_CHAT_FONT_FAMILIES = [
+  "wtfOS Soft Sans",
   "Helvetica",
   "Arial",
   "Verdana",
@@ -278,6 +285,9 @@ export const DESKTOP_WIM_CHAT_FONT_FAMILIES = [
 
 export type DesktopWimChatFontFamily =
   (typeof DESKTOP_WIM_CHAT_FONT_FAMILIES)[number];
+
+export const PLATFORM_DESKTOP_WIM_CHAT_FONT_FAMILY: DesktopWimChatFontFamily =
+  "wtfOS Soft Sans";
 
 export const DESKTOP_WIM_CHAT_FONT_SIZES = [10, 12, 14, 18, 24] as const;
 export type DesktopWimChatFontSize =
@@ -293,7 +303,7 @@ export interface DesktopWimChatStyle {
 }
 
 export const DEFAULT_DESKTOP_WIM_CHAT_STYLE: DesktopWimChatStyle = {
-  fontFamily: "Helvetica",
+  fontFamily: PLATFORM_DESKTOP_WIM_CHAT_FONT_FAMILY,
   fontSize: 12,
   color: "#06135f",
   bold: false,
@@ -302,6 +312,9 @@ export const DEFAULT_DESKTOP_WIM_CHAT_STYLE: DesktopWimChatStyle = {
 };
 
 export const DESKTOP_WTF_LIVE_CHAT_FONTS = [
+  "wtfos-soft-system",
+  "mek-mono",
+  "grout-display",
   "classic-95",
   "terminal",
   "serif-press",
@@ -314,6 +327,9 @@ export const DESKTOP_WTF_LIVE_CHAT_FONT_LABELS: Record<
   DesktopWtfLiveChatFont,
   string
 > = {
+  "wtfos-soft-system": "wtfOS Soft System",
+  "mek-mono": "MEK Mono",
+  "grout-display": "GROUT Display",
   "classic-95": "Classic 95",
   terminal: "Terminal",
   "serif-press": "Serif Press",
@@ -367,8 +383,11 @@ export interface DesktopWtfLiveChatStyle {
   italic: boolean;
 }
 
+export const PLATFORM_DESKTOP_WTF_LIVE_CHAT_FONT: DesktopWtfLiveChatFont =
+  "wtfos-soft-system";
+
 export const DEFAULT_DESKTOP_WTF_LIVE_CHAT_STYLE: DesktopWtfLiveChatStyle = {
-  font: "classic-95",
+  font: PLATFORM_DESKTOP_WTF_LIVE_CHAT_FONT,
   color: "ink",
   size: 12,
   bold: false,
@@ -407,7 +426,7 @@ export const DESKTOP_CHAT_TYPOGRAPHY_PRESETS: readonly DesktopChatTypographyPres
     label: "Compact Terminal",
     summary: "Tighter live-room text and monospace WIM messages for dense chats.",
     wim: {
-      fontFamily: "Courier New",
+      fontFamily: PLATFORM_DESKTOP_WIM_CHAT_FONT_FAMILY,
       fontSize: 12,
       color: "#102a43",
       bold: false,
@@ -415,7 +434,7 @@ export const DESKTOP_CHAT_TYPOGRAPHY_PRESETS: readonly DesktopChatTypographyPres
       underline: false,
     },
     wtfLive: {
-      font: "terminal",
+      font: PLATFORM_DESKTOP_WTF_LIVE_CHAT_FONT,
       color: "green",
       size: 11,
       bold: false,
@@ -427,7 +446,7 @@ export const DESKTOP_CHAT_TYPOGRAPHY_PRESETS: readonly DesktopChatTypographyPres
     label: "Friendly Room",
     summary: "Bigger casual WIM text with softer retro room-chat flavor.",
     wim: {
-      fontFamily: "Comic Sans MS",
+      fontFamily: PLATFORM_DESKTOP_WIM_CHAT_FONT_FAMILY,
       fontSize: 14,
       color: "#5b2c83",
       bold: false,
@@ -435,7 +454,7 @@ export const DESKTOP_CHAT_TYPOGRAPHY_PRESETS: readonly DesktopChatTypographyPres
       underline: false,
     },
     wtfLive: {
-      font: "classic-95",
+      font: PLATFORM_DESKTOP_WTF_LIVE_CHAT_FONT,
       color: "purple",
       size: 12,
       bold: false,
@@ -447,7 +466,7 @@ export const DESKTOP_CHAT_TYPOGRAPHY_PRESETS: readonly DesktopChatTypographyPres
     label: "Editorial",
     summary: "Serif-forward chat for diary energy, readings, and slower rooms.",
     wim: {
-      fontFamily: "Georgia",
+      fontFamily: PLATFORM_DESKTOP_WIM_CHAT_FONT_FAMILY,
       fontSize: 14,
       color: "#3a2511",
       bold: false,
@@ -455,7 +474,7 @@ export const DESKTOP_CHAT_TYPOGRAPHY_PRESETS: readonly DesktopChatTypographyPres
       underline: false,
     },
     wtfLive: {
-      font: "serif-press",
+      font: PLATFORM_DESKTOP_WTF_LIVE_CHAT_FONT,
       color: "amber",
       size: 13,
       bold: false,
@@ -467,7 +486,7 @@ export const DESKTOP_CHAT_TYPOGRAPHY_PRESETS: readonly DesktopChatTypographyPres
     label: "Loud Display",
     summary: "Punchy display defaults for rooms that want text to announce itself.",
     wim: {
-      fontFamily: "MEK Mono",
+      fontFamily: PLATFORM_DESKTOP_WIM_CHAT_FONT_FAMILY,
       fontSize: 18,
       color: "#8f1d2c",
       bold: true,
@@ -475,7 +494,7 @@ export const DESKTOP_CHAT_TYPOGRAPHY_PRESETS: readonly DesktopChatTypographyPres
       underline: false,
     },
     wtfLive: {
-      font: "terminal",
+      font: PLATFORM_DESKTOP_WTF_LIVE_CHAT_FONT,
       color: "red",
       size: 14,
       bold: true,
@@ -798,11 +817,7 @@ export function normalizeDesktopWimChatStyle(
   fallback: DesktopWimChatStyle = DEFAULT_DESKTOP_WIM_CHAT_STYLE
 ): DesktopWimChatStyle {
   const input = isRecord(value) ? value : {};
-  const fontFamily = DESKTOP_WIM_CHAT_FONT_FAMILIES.includes(
-    input.fontFamily as DesktopWimChatFontFamily
-  )
-    ? (input.fontFamily as DesktopWimChatFontFamily)
-    : fallback.fontFamily;
+  const fontFamily = PLATFORM_DESKTOP_WIM_CHAT_FONT_FAMILY;
   const rawFontSize = Number(input.fontSize);
   const fontSize = DESKTOP_WIM_CHAT_FONT_SIZES.includes(
     rawFontSize as DesktopWimChatFontSize
@@ -820,29 +835,16 @@ export function normalizeDesktopWimChatStyle(
   };
 }
 
-const DESKTOP_WTF_LIVE_CHAT_LEGACY_FONT_MAP: Record<
-  string,
-  DesktopWtfLiveChatFont
-> = {
-  system: "classic-95",
-  "mek-mono": "classic-95",
-  "grout-display": "classic-95",
-  mono: "terminal",
-  serif: "serif-press",
-  pixel: "classic-95",
-};
-
 export function normalizeDesktopWtfLiveChatStyle(
   value: unknown,
   fallback: DesktopWtfLiveChatStyle = DEFAULT_DESKTOP_WTF_LIVE_CHAT_STYLE
 ): DesktopWtfLiveChatStyle {
   const input = isRecord(value) ? value : {};
-  const font =
-    DESKTOP_WTF_LIVE_CHAT_FONTS.includes(input.font as DesktopWtfLiveChatFont)
-      ? (input.font as DesktopWtfLiveChatFont)
-      : typeof input.font === "string" && DESKTOP_WTF_LIVE_CHAT_LEGACY_FONT_MAP[input.font]
-        ? DESKTOP_WTF_LIVE_CHAT_LEGACY_FONT_MAP[input.font]
-        : fallback.font;
+  const font = DESKTOP_WTF_LIVE_CHAT_FONTS.includes(
+    input.font as DesktopWtfLiveChatFont
+  )
+    ? (input.font as DesktopWtfLiveChatFont)
+    : fallback.font;
   const color = DESKTOP_WTF_LIVE_CHAT_COLORS.includes(
     input.color as DesktopWtfLiveChatColor
   )
@@ -883,9 +885,7 @@ export function normalizeDesktopAppearance(input: unknown): DesktopAppearance {
   const backgroundFit = DESKTOP_BACKGROUND_FITS.includes(input.backgroundFit as DesktopBackgroundFit)
     ? (input.backgroundFit as DesktopBackgroundFit)
     : DEFAULT_DESKTOP_APPEARANCE.backgroundFit;
-  const fontPackKey = DESKTOP_FONT_PACK_KEYS.includes(input.fontPackKey as DesktopFontPackKey)
-    ? (input.fontPackKey as DesktopFontPackKey)
-    : DEFAULT_DESKTOP_APPEARANCE.fontPackKey;
+  const fontPackKey = normalizeDesktopFontPackKey(input.fontPackKey);
 
   return {
     appearanceStyleKey: appearanceStyle.key,

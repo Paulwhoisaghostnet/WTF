@@ -8,8 +8,9 @@
 ## Unclear Workflows
 
 - Exact mainnet rollout order per contract app remains dependent on Shadownet proof.
+- Macaroni now has local Shadownet puppet proof for wallet defaults, chain safety, restore/disconnect, mismatch blocking, and Kukai handoff. Spaghetti now has local executable CH-EASE handoff plus mocked Shadownet publish choreography proof. Full protocol proof still needs actual origination, mint/collect, hosted artifact resolution, indexer confirmation, and Colander discovery.
 - Marketplace integration should stay preview/inspection first until hidden quantity, ownership, and price tests exist per app.
-- Downloaded standalone builds need a release artifact checklist proving wtfOS-only providers are stripped.
+- Individual Macaroni Desktop and bundled Pasta Suite Desktop downloads now have release-asset, SHA-256, and authenticated-manifest proof. Any future standalone Pasta app downloads still need the same checklist, including proof that hosted wtfOS-only providers are stripped or blocked where required.
 
 ## Missing User Stories
 
@@ -17,7 +18,7 @@
 
 ## Missing Dependencies
 
-- Live puppet AT/Tezos credentials and Shadownet wallet fixtures may be required for deployment tests.
+- Live puppet AT/Tezos credentials and Shadownet wallet fixtures may be required for deployment tests. Macaroni's local Shadownet puppet fixture exists and passes; equivalent executable fixtures are still needed for the broader Pasta chain.
 - Indexer availability, pinner provider credentials, and WTF.ME public host readiness must be declared per environment.
 
 ## Missing Infrastructure

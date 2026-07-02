@@ -1,0 +1,112 @@
+name: Rotini Desktop Installers
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Attach installers to a GitHub release"
+        type: boolean
+        default: false
+      release_tag:
+        description: "Release tag to publish, for example rotini-desktop-v1.0.0"
+        required: false
+        type: string
+  push:
+    tags:
+      - "rotini-desktop-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS universal
+            os: macos-latest
+            command: npm run dist:mac --prefix apps/rotini-desktop
+            artifact: rotini-desktop-macos
+          - label: Windows x64
+            os: windows-latest
+            command: npm run dist:windows --prefix apps/rotini-desktop
+            artifact: rotini-desktop-windows
+          - label: Raspberry Pi arm64
+            os: ubuntu-latest
+            command: npm run dist:raspberry-pi --prefix apps/rotini-desktop
+            artifact: rotini-desktop-raspberry-pi
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/rotini-desktop/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install desktop dependencies
+        run: npm ci --prefix apps/rotini-desktop
+
+      - name: Verify desktop packaging policy
+        run: npm run rotini:desktop:check
+
+      - name: Build installer
+        run: ${{ matrix.command }}
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            apps/rotini-desktop/release/*.dmg
+            apps/rotini-desktop/release/*.zip
+            apps/rotini-desktop/release/*.exe
+            apps/rotini-desktop/release/*.deb
+            apps/rotini-desktop/release/*.blockmap
+            apps/rotini-desktop/release/latest*.yml
+          if-no-files-found: error
+
+  release:
+    name: Publish installer release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/rotini-desktop-v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
+    steps:
+      - name: Validate manual release tag
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          if [ -z "${{ inputs.release_tag }}" ]; then
+            echo "release_tag is required when publish_release is true"
+            exit 1
+          fi
+
+      - name: Download installer artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: release-artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release
+          find release-artifacts -maxdepth 3 -type f -print -exec cp {} release/ \;
+          ls -lah release
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          name: Rotini Desktop ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          files: release/*
+          fail_on_unmatched_files: true

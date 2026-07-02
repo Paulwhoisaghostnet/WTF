@@ -10,7 +10,6 @@ import {
   DESKTOP_COLOR_SCHEMES,
   DESKTOP_CURSOR_STYLES,
   DESKTOP_ICON_LAYOUT_KEYS,
-  DESKTOP_WTF_LIVE_CHAT_FONTS,
   DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
   HAMSTER_COLOR_SCHEMES,
   HAMSTER_CORE_STAT_KEYS,
@@ -30,7 +29,7 @@ import {
   tokenWallpaperUrl,
 } from "./desktop";
 
-test("normalizes desktop appearance while keeping valid personalization", () => {
+test("normalizes desktop appearance while forcing platform font selections", () => {
   const longCacheUrl = `/api/cache/media?url=${encodeURIComponent(
     `https://example.com/${"nested/".repeat(80)}wallpaper.png`
   )}`;
@@ -76,10 +75,10 @@ test("normalizes desktop appearance while keeping valid personalization", () => 
   assert.equal(normalized.desktopPhysicsEnabled, true);
   assert.equal(normalized.desktopGravityMode, "zero");
   assert.equal(normalized.desktopPetEnabled, true);
-  assert.equal(normalized.fontPackKey, "terminal");
+  assert.equal(normalized.fontPackKey, "wtfos-soft-system");
   assert.equal(normalized.chatTypographyPresetKey, "editorial");
   assert.deepEqual(normalized.wimChatStyle, {
-    fontFamily: "Georgia",
+    fontFamily: "wtfOS Soft Sans",
     fontSize: 14,
     color: "#3a2511",
     bold: false,
@@ -118,7 +117,7 @@ test("desktop appearance defaults are aubergine-first with a broad preset set", 
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.fontPackKey, "wtfos-soft-system");
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.chatTypographyPresetKey, "wtfos-default");
   assert.deepEqual(DEFAULT_DESKTOP_APPEARANCE.wimChatStyle, {
-    fontFamily: "Helvetica",
+    fontFamily: "wtfOS Soft Sans",
     fontSize: 12,
     color: "#06135f",
     bold: false,
@@ -126,13 +125,12 @@ test("desktop appearance defaults are aubergine-first with a broad preset set", 
     underline: false,
   });
   assert.deepEqual(DEFAULT_DESKTOP_APPEARANCE.wtfLiveChatStyle, {
-    font: "classic-95",
+    font: "wtfos-soft-system",
     color: "ink",
     size: 12,
     bold: false,
     italic: false,
   });
-  assert.deepEqual([...DESKTOP_WTF_LIVE_CHAT_FONTS], ["classic-95", "terminal", "serif-press"]);
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.cursorStyle, "eggplant");
   assert.deepEqual(
     DESKTOP_APPEARANCE_STYLES.map((style) => style.key),
@@ -184,7 +182,7 @@ test("normalizes desktop chat typography defaults inside composer windows", () =
 
   assert.equal(normalized.chatTypographyPresetKey, "loud-display");
   assert.deepEqual(normalized.wimChatStyle, {
-    fontFamily: "MEK Mono",
+    fontFamily: "wtfOS Soft Sans",
     fontSize: 18,
     color: "#8f1d2c",
     bold: true,
@@ -192,7 +190,7 @@ test("normalizes desktop chat typography defaults inside composer windows", () =
     underline: false,
   });
   assert.deepEqual(normalized.wtfLiveChatStyle, {
-    font: "terminal",
+    font: "wtfos-soft-system",
     color: "red",
     size: 14,
     bold: true,

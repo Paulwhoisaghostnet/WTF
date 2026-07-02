@@ -48,18 +48,20 @@ import {
   DESKTOP_CURSOR_LABELS,
   DESKTOP_CURSOR_STYLES,
   DESKTOP_GRAVITY_MODES,
-  DESKTOP_WIM_CHAT_FONT_FAMILIES,
   DESKTOP_WIM_CHAT_FONT_SIZES,
   DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
   DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS,
   DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES,
   DESKTOP_WTF_LIVE_CHAT_COLORS,
   DESKTOP_WTF_LIVE_CHAT_FONT_LABELS,
-  DESKTOP_WTF_LIVE_CHAT_FONTS,
   DESKTOP_WTF_LIVE_CHAT_SIZES,
   HAMSTER_COLOR_SCHEMES,
   HAMSTER_CORE_STAT_KEYS,
+  PLATFORM_DESKTOP_FONT_PACK_KEY,
+  PLATFORM_DESKTOP_WIM_CHAT_FONT_FAMILY,
+  PLATFORM_DESKTOP_WTF_LIVE_CHAT_FONT,
   mediaLibraryWallpaperUrl,
+  normalizeDesktopAppearance,
   tokenWallpaperUrl,
   type DesktopAppearance,
   type HamsterCoreStatKey,
@@ -73,7 +75,11 @@ import {
   type LocalizationSettings,
 } from "@shared/localization";
 import { getTokenMimeType, isImageMime } from "../lib/media-resolve";
-import { FONT_PACKS, getFontPack } from "../features/appearance/font-packs";
+import { getFontPack } from "../features/appearance/font-packs";
+
+const SYSTEM_FONT_PACKS = [getFontPack(PLATFORM_DESKTOP_FONT_PACK_KEY)];
+const SYSTEM_WIM_CHAT_FONT_FAMILIES = [PLATFORM_DESKTOP_WIM_CHAT_FONT_FAMILY];
+const SYSTEM_WTF_LIVE_CHAT_FONTS = [PLATFORM_DESKTOP_WTF_LIVE_CHAT_FONT];
 
 type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
@@ -972,6 +978,8 @@ function applyScheme(appearance: DesktopAppearance, key: string): DesktopAppeara
 
 function liveChatFontFamily(font: DesktopWtfLiveChatFont): string {
   switch (font) {
+    case "wtfos-soft-system":
+      return getFontPack("wtfos-soft-system").roles.app;
     case "classic-95":
       return getFontPack("classic-95").roles.app;
     case "terminal":
@@ -979,7 +987,7 @@ function liveChatFontFamily(font: DesktopWtfLiveChatFont): string {
     case "serif-press":
       return getFontPack("serif-press").roles.app;
     default:
-      return getFontPack("classic-95").roles.app;
+      return getFontPack(PLATFORM_DESKTOP_FONT_PACK_KEY).roles.app;
   }
 }
 
@@ -1147,8 +1155,9 @@ export function DesktopSettings() {
     (updater: Partial<DesktopAppearance> | ((prev: DesktopAppearance) => DesktopAppearance)) => {
       setDraft((prev) => {
         const next = typeof updater === "function" ? updater(prev) : { ...prev, ...updater };
+        const normalizedNext = normalizeDesktopAppearance(next);
         qc.setQueryData(["desktop", "settings"], (current: DesktopSettingsResponse | undefined) => ({
-          appearance: next,
+          appearance: normalizedNext,
           iconLayout: current?.iconLayout ?? settingsQuery.data?.iconLayout ?? {},
           localization:
             current?.localization ??
@@ -1156,7 +1165,7 @@ export function DesktopSettings() {
             DEFAULT_LOCALIZATION_SETTINGS,
           updatedAt: current?.updatedAt ?? settingsQuery.data?.updatedAt ?? null,
         }));
-        return next;
+        return normalizedNext;
       });
     },
     [qc, settingsQuery.data?.iconLayout, settingsQuery.data?.localization, settingsQuery.data?.updatedAt]
@@ -1210,24 +1219,26 @@ export function DesktopSettings() {
         updatedAt: settingsQuery.data?.updatedAt ?? null,
       }),
     onSuccess: (result) => {
-      qc.setQueryData(["desktop", "settings"], result);
-      setDraft(result.appearance);
-      setSavedAppearance(result.appearance);
+      const normalizedAppearance = normalizeDesktopAppearance(result.appearance);
+      const normalizedResult = { ...result, appearance: normalizedAppearance };
+      qc.setQueryData(["desktop", "settings"], normalizedResult);
+      setDraft(normalizedAppearance);
+      setSavedAppearance(normalizedAppearance);
       reportThemeBuilderEvent("desktop.appearance.updated", "save", {
-        appearanceStyleKey: result.appearance.appearanceStyleKey,
-        colorSchemeKey: result.appearance.colorSchemeKey,
-        fontPackKey: result.appearance.fontPackKey,
-        chatTypographyPresetKey: result.appearance.chatTypographyPresetKey,
-        wimChatFont: result.appearance.wimChatStyle.fontFamily,
-        wimChatSize: result.appearance.wimChatStyle.fontSize,
-        wtfLiveChatFont: result.appearance.wtfLiveChatStyle.font,
-        wtfLiveChatSize: result.appearance.wtfLiveChatStyle.size,
-        cursorStyle: result.appearance.cursorStyle,
-        backgroundFit: result.appearance.backgroundFit,
-        wallpaperSet: Boolean(result.appearance.backgroundImageUrl),
-        physicsEnabled: result.appearance.desktopPhysicsEnabled,
-        gravityMode: result.appearance.desktopGravityMode,
-        desktopPetEnabled: result.appearance.desktopPetEnabled,
+        appearanceStyleKey: normalizedAppearance.appearanceStyleKey,
+        colorSchemeKey: normalizedAppearance.colorSchemeKey,
+        fontPackKey: normalizedAppearance.fontPackKey,
+        chatTypographyPresetKey: normalizedAppearance.chatTypographyPresetKey,
+        wimChatFont: normalizedAppearance.wimChatStyle.fontFamily,
+        wimChatSize: normalizedAppearance.wimChatStyle.fontSize,
+        wtfLiveChatFont: normalizedAppearance.wtfLiveChatStyle.font,
+        wtfLiveChatSize: normalizedAppearance.wtfLiveChatStyle.size,
+        cursorStyle: normalizedAppearance.cursorStyle,
+        backgroundFit: normalizedAppearance.backgroundFit,
+        wallpaperSet: Boolean(normalizedAppearance.backgroundImageUrl),
+        physicsEnabled: normalizedAppearance.desktopPhysicsEnabled,
+        gravityMode: normalizedAppearance.desktopGravityMode,
+        desktopPetEnabled: normalizedAppearance.desktopPetEnabled,
       });
     },
   });
@@ -1321,8 +1332,9 @@ export function DesktopSettings() {
   useEffect(() => {
     if (!settingsQuery.data?.appearance || initialSettingsLoadedRef.current) return;
     initialSettingsLoadedRef.current = true;
-    setDraft(settingsQuery.data.appearance);
-    setSavedAppearance(settingsQuery.data.appearance);
+    const normalizedAppearance = normalizeDesktopAppearance(settingsQuery.data.appearance);
+    setDraft(normalizedAppearance);
+    setSavedAppearance(normalizedAppearance);
   }, [settingsQuery.data?.appearance]);
 
   useEffect(() => {
@@ -1629,19 +1641,19 @@ export function DesktopSettings() {
             {t("themeBuilder.typography.help")}
           </HelpText>
           <FontPackGrid>
-            {FONT_PACKS.map((pack) => (
+            {SYSTEM_FONT_PACKS.map((pack) => (
               <FontPackButton
                 key={pack.key}
                 type="button"
-                $active={draft.fontPackKey === pack.key}
-                aria-pressed={draft.fontPackKey === pack.key}
+                $active={draft.fontPackKey === PLATFORM_DESKTOP_FONT_PACK_KEY}
+                aria-pressed={draft.fontPackKey === PLATFORM_DESKTOP_FONT_PACK_KEY}
                 aria-label={`Font pack ${pack.label}`}
                 data-testid={`font-pack-${pack.key}`}
                 data-desktop-settings-region="font-pack-button"
                 onClick={() => {
-                  patchDraft({ fontPackKey: pack.key });
+                  patchDraft({ fontPackKey: PLATFORM_DESKTOP_FONT_PACK_KEY });
                   reportThemeBuilderEvent("desktop.font_pack.updated", "select", {
-                    fontPackKey: pack.key,
+                    fontPackKey: PLATFORM_DESKTOP_FONT_PACK_KEY,
                   });
                 }}
               >
@@ -1742,7 +1754,7 @@ export function DesktopSettings() {
                       })
                     }
                   >
-                    {DESKTOP_WIM_CHAT_FONT_FAMILIES.map((font) => (
+                    {SYSTEM_WIM_CHAT_FONT_FAMILIES.map((font) => (
                       <option key={font} value={font}>
                         {font}
                       </option>
@@ -1840,7 +1852,7 @@ export function DesktopSettings() {
                       })
                     }
                   >
-                    {DESKTOP_WTF_LIVE_CHAT_FONTS.map((font) => (
+                    {SYSTEM_WTF_LIVE_CHAT_FONTS.map((font) => (
                       <option key={font} value={font}>
                         {DESKTOP_WTF_LIVE_CHAT_FONT_LABELS[font]}
                       </option>

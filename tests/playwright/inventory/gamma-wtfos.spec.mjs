@@ -1081,7 +1081,12 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     expect(settingsMetrics.stylePreview?.color).toBeTruthy();
 
     await surface.getByTestId("desktop-settings-tab-font").click();
-    await surface.getByTestId("font-pack-terminal").click();
+    await expect(surface.getByTestId("font-pack-wtfos-soft-system")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await expect(surface.getByTestId("font-pack-terminal")).toHaveCount(0);
+    await surface.getByTestId("font-pack-wtfos-soft-system").click();
     await expect(page).toHaveURL(/\/gamma\/theme-builder$/);
     await expectGammaRouteReady(page, "/theme-builder");
 
@@ -7057,8 +7062,8 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       return {
         surface: read('[data-mail-region="surface"]'),
         navPanel: read('[data-mail-region="nav-panel"]'),
-        workspace: read('[data-mail-region="workspace"]'),
         mailboxPanel: read('[data-mail-region="mailbox-panel"]'),
+        workspace: read('[data-mail-region="workspace"]'),
         messagesPanel: read('[data-mail-region="messages-panel"]'),
         messageRow: read('[data-mail-region="message-row"]'),
         selectedPanel: read('[data-mail-region="selected-panel"]'),
@@ -7068,7 +7073,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
 
     expect(mailMetrics.surface?.fontFamily).toMatch(/Inter|sans-serif/i);
     for (const [key, region] of Object.entries(mailMetrics)) {
-      expect(region, `missing Inbox metric: ${key}`).not.toBeNull();
+      expect(region, `missing Mail metric: ${key}`).not.toBeNull();
       expect(region.backgroundImage).toBe("none");
       expect(region.boxShadow).toBe("none");
       expect(region.textShadow).toBe("none");
@@ -7078,7 +7083,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     expect(mailMetrics.messageRow?.color).not.toBe("rgb(0, 0, 0)");
 
     await mailSurface.getByRole("button", { name: /Drafts/ }).click();
-    await mailSurface.getByLabel("Draft destination type").selectOption("mail");
+    await page.getByLabel("Draft destination type").selectOption("mail");
     const composeMetrics = await mailSurface.evaluate((surface) => {
       const read = (selector) => {
         const node = surface.querySelector(selector);
@@ -7109,13 +7114,14 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       };
     });
     for (const [key, region] of Object.entries(composeMetrics)) {
-      expect(region, `missing Inbox draft metric: ${key}`).not.toBeNull();
+      expect(region, `missing Inbox compose metric: ${key}`).not.toBeNull();
       expect(region.backgroundImage).toBe("none");
       expect(region.boxShadow).toBe("none");
       expect(region.textShadow).toBe("none");
       expect(region.radius).toBeLessThanOrEqual(6);
       expect(region.borderWidth).toBeLessThanOrEqual(1);
     }
+
     await page.getByLabel("Mail recipients").fill("gamma-peer@example.com");
     await page.getByLabel("Message subject").fill("Gamma follow-up");
     await page.getByLabel("Message body").fill("Inbox Mail still sends through the shared endpoint.");

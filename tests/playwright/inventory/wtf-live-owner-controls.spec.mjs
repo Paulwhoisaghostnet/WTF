@@ -307,6 +307,96 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     expect(fatalErrors(errors)).toEqual([]);
   });
 
+  test("smart room owner controls select WTF users, save settings, schedule events, and attach Show Kits", async ({
+    page,
+    request,
+  }) => {
+    await setAdmin(request);
+    await request.post("/api/wtf-live/show-kits", {
+      data: { name: "Control Room Kit", description: "owner controls fixture", clipIds: [], isDefault: true },
+    });
+    const errors = [];
+    capturePageErrors(page, errors, "smart-room-controls");
+
+    await page.goto("/live?tab=rooms&room=my-room", { waitUntil: "domcontentloaded" });
+    const roomCard = page.locator("[data-wtf-live-room-card='my-room'][data-wtf-live-room-surface='selected']");
+    await expect(roomCard).toBeVisible();
+    await expect(roomCard.locator("[data-wtf-live-room-settings='my-room']")).toBeVisible();
+    await expect(roomCard.locator("[data-wtf-live-room-schedule='my-room']")).toBeVisible();
+
+    await roomCard.locator("[data-wtf-live-user-search='room-my-room']").fill("stage");
+    await expect(roomCard.locator("[data-wtf-live-user-select='room-my-room']")).toContainText("stage-host");
+    await roomCard.locator("[data-wtf-live-user-select='room-my-room']").selectOption("3");
+    await roomCard.locator("[data-wtf-live-room-add-host='my-room']").click();
+    await expect(roomCard.locator("[data-wtf-live-room-host-list='my-room']")).toHaveValue(/stage-host/);
+    await roomCard.locator("[data-wtf-live-room-invite-host='my-room']").click();
+    await expect(page.getByText("Invite sent to @stage-host for My Room.")).toBeVisible();
+
+    await roomCard.locator("[data-wtf-live-user-search='room-my-room']").fill("room");
+    await roomCard.locator("[data-wtf-live-user-select='room-my-room']").selectOption("4");
+    await roomCard.locator("[data-wtf-live-room-add-guest='my-room']").click();
+    await expect(roomCard.locator("[data-wtf-live-room-guest-list='my-room']")).toHaveValue(/room-guest/);
+    await roomCard.locator("[data-wtf-live-room-roles-save='my-room']").click();
+    await expect(page.getByText("My Room hosts and guests saved.")).toBeVisible();
+    const roomAccess = await (await request.get("/api/wtf-live/rooms/my-room/access")).json();
+    expect(roomAccess.members.some((member) => member.username === "stage-host" && member.role === "host")).toBeTruthy();
+    expect(roomAccess.members.some((member) => member.username === "room-guest" && member.role === "guest")).toBeTruthy();
+
+    await roomCard.locator("[data-wtf-live-room-settings='my-room']").click();
+    await page.locator("[data-wtf-live-room-allow-camera='my-room']").uncheck();
+    await page.locator("[data-wtf-live-room-allow-screen='my-room']").uncheck();
+    await page.locator("[data-wtf-live-room-show-kit-select='my-room']").selectOption({ index: 1 });
+    await page.locator("[data-wtf-live-room-settings-save='my-room']").click();
+    await expect(page.getByText("My Room settings saved.")).toBeVisible();
+    const savedSettings = await (await request.get("/api/wtf-live/rooms/my-room/settings")).json();
+    expect(savedSettings.settings.allowGuestCamera).toBe(false);
+    expect(savedSettings.settings.allowGuestScreen).toBe(false);
+    expect(savedSettings.settings.showKitName).toBe("Control Room Kit");
+
+    await roomCard.locator("[data-wtf-live-room-schedule='my-room']").click();
+    await page.locator("[data-wtf-live-room-event-title='my-room']").fill("Smart Controls Live");
+    await page.locator("[data-wtf-live-room-event-target='my-room']").selectOption("both");
+    const ttcPopupPromise = page.waitForEvent("popup");
+    await page.locator("[data-wtf-live-room-event-save='my-room']").click();
+    const ttcPopup = await ttcPopupPromise;
+    expect(ttcPopup.url()).toContain("thetezos.com");
+    await ttcPopup.close();
+    await expect(page.getByText("My Room event scheduled and TTC submission opened.")).toBeVisible();
+
+    await page.goto("/live?tab=stages&stage=my-stage", { waitUntil: "domcontentloaded" });
+    const stageCard = page.locator("[data-wtf-live-stage-card='my-stage']");
+    await expect(stageCard.locator("[data-wtf-live-stage-settings='my-stage']")).toBeVisible();
+    await expect(stageCard.locator("[data-wtf-live-stage-schedule='my-stage']")).toBeVisible();
+    await stageCard.locator("[data-wtf-live-user-search='stage-my-stage']").fill("stage");
+    await stageCard.locator("[data-wtf-live-user-select='stage-my-stage']").selectOption("3");
+    await stageCard.locator("[data-wtf-live-stage-add-host='my-stage']").click();
+    await expect(stageCard.locator("[data-wtf-live-stage-host-list='my-stage']")).toHaveValue(/stage-host/);
+    await stageCard.locator("[data-wtf-live-stage-invite-host='my-stage']").click();
+    await expect(page.getByText("Invite sent to @stage-host for My Stage.")).toBeVisible();
+    await stageCard.locator("[data-wtf-live-stage-access-save='my-stage']").click();
+    await expect(page.getByText("My Stage stage hosts and speakers saved.")).toBeVisible();
+
+    await stageCard.locator("[data-wtf-live-stage-settings='my-stage']").click();
+    await page.locator("[data-wtf-live-room-show-kit-select='my-stage']").selectOption({ index: 1 });
+    await page.locator("[data-wtf-live-room-settings-save='my-stage']").click();
+    await expect(page.getByText("My Stage settings saved.")).toBeVisible();
+    await stageCard.locator("[data-wtf-live-stage-schedule='my-stage']").click();
+    await page.locator("[data-wtf-live-room-event-title='my-stage']").fill("Smart Stage Live");
+    await page.locator("[data-wtf-live-room-event-save='my-stage']").click();
+    await expect(page.getByText("My Stage event scheduled.")).toBeVisible();
+
+    await page.goto("/live/r/my-room", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "Join Room" }).click();
+    await expect(page.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+    await page.locator("[data-wtf-live-sharing-settings-toggle]").click();
+    await expect(page.locator("[data-wtf-live-runtime-room-settings='my-room']")).toBeVisible();
+    await page.locator("[data-wtf-live-runtime-allow-audio]").uncheck();
+    await page.locator("[data-wtf-live-runtime-settings-save]").click();
+    await expect(page.getByText("Room settings saved.")).toBeVisible();
+
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
   test("signed-in Show Kit soundboard persists clips and owner relays them to an audience room", async ({
     browser,
     page,
@@ -352,6 +442,18 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     await page.locator("[data-wtf-live-soundboard-shortcut]").fill("Alt+1");
     await expect(page.locator("[data-wtf-live-soundboard-conflict]")).toContainText("Intro Sting");
     await expect(page.locator("[data-wtf-live-soundboard-file]")).toBeDisabled();
+    await page.locator("[data-wtf-live-show-kit-name]").fill("Main Room Kit");
+    await page.locator("[data-wtf-live-show-kit-description]").fill("Intro kit for the owned room");
+    await page.locator("[data-wtf-live-show-kit-save]").click();
+    await expect(page.locator("[data-wtf-live-soundboard-status]")).toContainText("Main Room Kit saved as a Show Kit.");
+    await expect(page.locator("[data-wtf-live-show-kit-list]")).toContainText("Main Room Kit");
+    await page.goto("/live?tab=rooms&room=my-room", { waitUntil: "domcontentloaded" });
+    const ownedRoomCard = page.locator("[data-wtf-live-room-card='my-room'][data-wtf-live-room-surface='selected']");
+    await expect(ownedRoomCard).toBeVisible();
+    await ownedRoomCard.locator("[data-wtf-live-room-settings='my-room']").click();
+    await page.locator("[data-wtf-live-room-show-kit-select='my-room']").selectOption({ index: 1 });
+    await page.locator("[data-wtf-live-room-settings-save='my-room']").click();
+    await expect(page.getByText("My Room settings saved.")).toBeVisible();
 
     const owner = page;
     const audienceContext = await browser.newContext({ viewport: { width: 1280, height: 720 } });

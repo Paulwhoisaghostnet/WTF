@@ -44,7 +44,6 @@ import {
   type HamsterState,
 } from "@shared/desktop";
 import {
-  DEFAULT_LOCALIZATION_SETTINGS,
   normalizeLocalizationSettings,
   type LocalizationSettings,
 } from "@shared/localization";
@@ -56,6 +55,7 @@ const DESKTOP_CLIENT_EVENT_TYPES = new Set([
   "desktop.appearance.updated",
   "desktop.font_pack.updated",
   "desktop.chat_typography.updated",
+  "system_settings.language_changed",
   "desktop.wallpaper.uploaded",
   "desktop.wallpaper.token_set",
   "desktop.physics.updated",
@@ -240,10 +240,7 @@ async function getDesktopSettings(userId: number): Promise<{
       ...(row?.appearance ?? {}),
     }),
     iconLayout: normalizeIconLayout(row?.iconLayout ?? {}, DESKTOP_ICON_LAYOUT_KEYS),
-    localization: normalizeLocalizationSettings(
-      row?.localization ?? {},
-      DEFAULT_LOCALIZATION_SETTINGS
-    ),
+    localization: normalizeLocalizationSettings(row?.localization ?? {}),
     updatedAt: row?.updatedAt ? row.updatedAt.toISOString() : null,
   };
 }
@@ -564,7 +561,7 @@ router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
     res.json({
       appearance: normalizeDesktopAppearance(row.appearance),
       iconLayout: normalizeIconLayout(row.iconLayout, DESKTOP_ICON_LAYOUT_KEYS),
-      localization: normalizeLocalizationSettings(row.localization),
+      localization: normalizeLocalizationSettings(row.localization ?? {}),
       updatedAt: row.updatedAt.toISOString(),
     });
   } catch (err) {

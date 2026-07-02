@@ -10,9 +10,18 @@ test("Macaroni server routes keep wtfOS pinning and publishing trusted-creator o
   assert.doesNotMatch(source, /requirePermission\("trusted_market_creator", "use_wtfos_pinning"\)/);
   assert.match(source, /router\.get\("\/api\/macaroni\/installers", isAuthenticated/);
   assert.match(source, /MACARONI_INSTALLER_MACOS_URL/);
+  assert.match(source, /MACARONI_INSTALLER_MACOS_SHA256/);
   assert.match(source, /MACARONI_INSTALLER_WINDOWS_URL/);
+  assert.match(source, /MACARONI_INSTALLER_WINDOWS_SHA256/);
   assert.match(source, /MACARONI_INSTALLER_RASPBERRY_PI_URL/);
+  assert.match(source, /MACARONI_INSTALLER_RASPBERRY_PI_SHA256/);
+  assert.match(source, /fileName: "Macaroni-Studio\.exe"/);
+  assert.doesNotMatch(source, /fileName: "Macaroni-Studio\.msi"/);
   assert.match(source, /safeInstallerUrl/);
+  assert.match(source, /safeInstallerSha256/);
+  assert.match(source, /sha256: sha256 \|\| null/);
+  assert.match(source, /available: Boolean\(url && sha256\)/);
+  assert.match(source, /url: url && sha256 \? url : null/);
   assert.match(source, /function isLoopbackInstallerHost\(hostname: string\): boolean/);
   assert.match(source, /url\.protocol === "https:"/);
   assert.match(source, /process\.env\.NODE_ENV !== "production" && url\.protocol === "http:" && isLoopbackInstallerHost\(url\.hostname\)/);
@@ -44,6 +53,8 @@ test("Macaroni static API calls use the wtfOS CSRF boundary and do not embed pin
   assert.match(studioSource, /btn\.hidden = !canUseWtfosPinning/);
   assert.match(studioSource, /Export the site package for your own host/);
   assert.match(studioSource, /\/api\/macaroni\/installers/);
+  assert.match(studioSource, /function shortSha256\(value\)/);
+  assert.match(studioSource, /SHA-256 checksums/);
   assert.match(studioSource, /MD\.apiFetch\("\/api\/macaroni\/publish"/);
   assert.equal(commonSource.includes("VITE_PINATA_JWT"), false);
   assert.equal(studioSource.includes("VITE_PINATA_JWT"), false);

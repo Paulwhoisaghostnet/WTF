@@ -935,6 +935,13 @@ const BuddyPreview = styled.div`
   white-space: nowrap;
 `;
 
+const RecentGroupTitle = styled.div`
+  margin: 5px 4px 4px;
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 900;
+  color: #06135f;
+`;
+
 const BuddyFooter = styled.div`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1957,7 +1964,7 @@ function ChatWindowPane({
       setAttachments([]);
       setActivePicker(null);
       qc.invalidateQueries({ queryKey: ["wim", "messages", conversationId] });
-      qc.invalidateQueries({ queryKey: ["wim", "conversations", "direct"] });
+      qc.invalidateQueries({ queryKey: ["wim", "conversations"] });
     },
   });
 
@@ -1968,7 +1975,7 @@ function ChatWindowPane({
 
   useEffect(() => {
     if (!messagesQuery.data) return;
-    qc.invalidateQueries({ queryKey: ["wim", "conversations", "direct"] });
+    qc.invalidateQueries({ queryKey: ["wim", "conversations"] });
   }, [conversationId, messagesQuery.dataUpdatedAt, messagesQuery.data, qc]);
 
   const label = conversation
@@ -2366,7 +2373,7 @@ export function Wim() {
   });
 
   const conversationsQuery = useQuery({
-    queryKey: ["wim", "conversations", "direct"],
+    queryKey: ["wim", "conversations"],
     queryFn: () => api.get<DmConversation[]>("/api/messages/dms"),
     refetchInterval: 15_000,
   });
@@ -2480,7 +2487,7 @@ export function Wim() {
     onSuccess: (conversation, targetUserId) => {
       setConversationPeerHints((current) => ({ ...current, [conversation.id]: targetUserId }));
       showConversation(conversation.id, targetUserId);
-      qc.invalidateQueries({ queryKey: ["wim", "conversations", "direct"] });
+      qc.invalidateQueries({ queryKey: ["wim", "conversations"] });
     },
   });
 
@@ -3226,65 +3233,52 @@ export function Wim() {
 
   const renderRecentConversationGroup = (
     title: string,
-    list: DmConversation[],
-    emptyTitle: string,
-    emptyBody: string
-  ) => (
-    <>
-      <SectionTitle style={{ padding: "4px 2px" }}>{title}</SectionTitle>
-      {list.map((conversation) => {
-        const label = conversationLabel(conversation);
-        const peer = conversationPeerId(conversation);
-        const active =
-          openConversationIds.has(conversation.id) ||
-          (peer ? selectedBuddyId === peer : false);
-        return (
-          <RecentButton
-            key={conversation.id}
-            $active={active}
-            type="button"
-            aria-label={`Open recent WIM chat ${label}`}
-            onClick={() => {
-              if (peer) setSelectedBuddyId(peer);
-              else openConversation(conversation);
-            }}
-            onDoubleClickCapture={() => openConversation(conversation)}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" && event.key !== " ") return;
-              event.preventDefault();
-              openConversation(conversation);
-            }}
-          >
-            <BuddyName>
-              {label}
-              {conversation.unreadCount ? ` (${conversation.unreadCount})` : ""}
-            </BuddyName>
-            {conversation.latestMessage?.content ? (
-              <BuddyPreview>{conversation.latestMessage.content}</BuddyPreview>
-            ) : null}
-          </RecentButton>
-        );
-      })}
-      {list.length === 0 ? (
-        <UiEmptyState title={emptyTitle}>{emptyBody}</UiEmptyState>
-      ) : null}
-    </>
-  );
+    rows: DmConversation[],
+    labelPrefix: string
+  ) =>
+    rows.length ? (
+      <>
+        <RecentGroupTitle>{title}</RecentGroupTitle>
+        {rows.map((conversation) => {
+          const label = conversationLabel(conversation);
+          const peer = conversationPeerId(conversation);
+          const active =
+            openConversationIds.has(conversation.id) ||
+            (peer ? selectedBuddyId === peer : false);
+          return (
+            <RecentButton
+              key={conversation.id}
+              $active={active}
+              type="button"
+              aria-label={`Open recent ${labelPrefix} ${label}`}
+              onClick={() => (peer ? setSelectedBuddyId(peer) : openConversation(conversation))}
+              onDoubleClickCapture={() => openConversation(conversation)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                openConversation(conversation);
+              }}
+            >
+              <BuddyName>
+                {label}
+                {conversation.unreadCount ? ` (${conversation.unreadCount})` : ""}
+              </BuddyName>
+              {conversation.latestMessage?.content ? (
+                <BuddyPreview>{conversation.latestMessage.content}</BuddyPreview>
+              ) : null}
+            </RecentButton>
+          );
+        })}
+      </>
+    ) : null;
 
   const renderRecentChats = () => (
     <DirectoryPanel>
-      {renderRecentConversationGroup(
-        "Direct WIM chats",
-        conversations,
-        "No direct chats yet",
-        "No WIM history is waiting."
-      )}
-      {renderRecentConversationGroup(
-        "Studio project chats",
-        studioConversations,
-        "No Studio chats yet",
-        "Studio rooms will appear here when a project has chat history."
-      )}
+      {renderRecentConversationGroup("Direct WIM chats", conversations, "WIM chat")}
+      {renderRecentConversationGroup("Studio project chats", studioConversations, "Studio project chat")}
+      {allConversationRows.length === 0 ? (
+        <UiEmptyState title="No direct chats yet">No WIM history is waiting.</UiEmptyState>
+      ) : null}
     </DirectoryPanel>
   );
 
@@ -3326,7 +3320,7 @@ export function Wim() {
           data-compact-control="true"
           onClick={() => {
             qc.invalidateQueries({ queryKey: ["wim", "users"] });
-            qc.invalidateQueries({ queryKey: ["wim", "conversations", "direct"] });
+            qc.invalidateQueries({ queryKey: ["wim", "conversations"] });
           }}
         >
           <Users size={15} aria-hidden />

@@ -486,10 +486,11 @@ export function Profile() {
 
   /* ── queries ───────────────────────────────────────────────────────────── */
 
-  const { data: wallets } = useQuery({
+  const { data: walletsData } = useQuery({
     queryKey: ["wallets"],
     queryFn: () => api.get<WalletWithCount[]>("/api/wallets"),
   });
+  const wallets = Array.isArray(walletsData) ? walletsData : [];
 
   const { data: social } = useQuery({
     queryKey: ["profile-social"],
@@ -676,13 +677,13 @@ export function Profile() {
   /* ── mutations ─────────────────────────────────────────────────────────── */
 
   const totalTokens =
-    wallets?.reduce((sum, w) => sum + (w.tokenCount ?? 0), 0) ?? 0;
+    wallets.reduce((sum, w) => sum + (w.tokenCount ?? 0), 0);
 
   const walletOptions =
-    wallets?.map((w) => ({
+    wallets.map((w) => ({
       label: `${w.walletAddress.slice(0, 10)}...${w.walletAddress.slice(-6)}${w.tezDomain ? ` (${w.tezDomain})` : ""}${w.isPrimary ? " *" : ""} [${w.tokenCount}]`,
       value: w.walletAddress,
-    })) ?? [];
+    }));
 
   const linkWalletMutation = useMutation({
     mutationFn: () => connect(),

@@ -2,7 +2,12 @@
   "name": "@wtf/macaroni-desktop",
   "version": "1.0.0",
   "private": true,
-  "author": "wtfOS",
+  "homepage": "https://wtfos.app/creation-tools/macaroni/studio.html",
+  "desktopName": "macaroni-studio",
+  "author": {
+    "name": "wtfOS",
+    "email": "support@wtfos.app"
+  },
   "description": "Native Macaroni Studio installer builds for Mac, Windows, and Raspberry Pi.",
   "main": "src/main.cjs",
   "scripts": {
@@ -28,6 +33,7 @@
       "output": "release"
     },
     "artifactName": "Macaroni-Studio-${version}-${os}-${arch}.${ext}",
+    "executableName": "macaroni-studio",
     "mac": {
       "category": "public.app-category.developer-tools",
       "hardenedRuntime": true,
@@ -59,6 +65,8 @@
     },
     "linux": {
       "category": "Development",
+      "maintainer": "wtfOS <support@wtfos.app>",
+      "syncDesktopName": true,
       "target": [
         {
           "target": "deb",
@@ -67,6 +75,11 @@
           ]
         }
       ]
+    },
+    "deb": {
+      "packageName": "macaroni-studio",
+      "packageCategory": "devel",
+      "maintainer": "wtfOS <support@wtfos.app>"
     }
   },
   "devDependencies": {

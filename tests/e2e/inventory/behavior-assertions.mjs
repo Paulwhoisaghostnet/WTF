@@ -210,12 +210,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol"],
     ownerSpec:
-      "client/src/pages/MacaroniPackager.tsx, public/creation-tools/*/js/studio.js, client/src/features/pasta-protocol/pasta-static-policy.test.ts",
-    verificationCommand: "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts",
+      "client/src/pages/MacaroniPackager.tsx, client/src/features/creation-tools/CreationToolFrame.tsx, public/creation-tools/*/js/common.js, public/creation-tools/*/js/studio.js, client/src/features/pasta-protocol/pasta-static-policy.test.ts, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs",
+    verificationCommand:
+      "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts client/src/features/creation-tools/creation-tool-presentation-policy.test.ts && HARNESS_PORT=4321 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "CH-EASE can open a target Pasta publisher with the current package preloaded through a same-origin sessionStorage handoff, and the publisher confirms import with inline status.",
+      "CH-EASE can open a target Pasta publisher with the current package preloaded through a same-origin sessionStorage handoff, the creation-tool iframe preserves the handoff query context, the publisher confirms import with inline status, and Spaghetti can rehearse the Shadownet-safe publish choreography from that imported package.",
     durableSideEffectAssertion:
-      "The CH-EASE handoff emits chease.package_handoff_opened and the six Pasta studios consume the shared handoff key without mutating server storage before the creator chooses to deploy or export.",
+      "The CH-EASE handoff emits chease.package_handoff_opened; the six Pasta studios expose the shared MD runtime to their module scripts and consume the shared handoff key without mutating server storage before the creator chooses to deploy or export; the focused browser proof records Spaghetti's chain guard, origination, create_token batch, mint batch, pinned collection metadata, pinned token metadata, and spaghetti.collection_deployed / spaghetti.token_published events.",
   },
   {
     id: "pasta-protocol.colander-context-handoff",
@@ -228,6 +229,28 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "Colander external actions open the matching Pasta tool with contract, network, action, and kind context in the URL so the target studio can prefill the relevant contract field.",
     durableSideEffectAssertion:
       "The Colander handoff emits colander.handoff_opened and the target static studios read the route handoff before any wallet or chain action is submitted.",
+  },
+  {
+    id: "pasta-protocol.wtfme-hosted-pages",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol", "wtf-domains", "ipfs-pinning"],
+    ownerSpec: "tests/playwright/inventory/pasta-protocol-wtfme-hosting.spec.mjs",
+    verificationCommand: "npm run pasta:shadownet:wtfme",
+    userVisibleAssertion:
+      "A claimed WTF.ME host can serve Pasta Protocol landing, mint, and collection pages that show the Shadownet chain id, current proof KT1 contracts, relationship groups, WTF.ME branding, wallet-connect marker, mint action marker, and Shadownet explorer links under user-site wallet-safe headers.",
+    durableSideEffectAssertion:
+      "The focused harness publishes home/mint/collection pages through the WTF.ME API, records wtf_site.claimed, wtf_site.page_saved, wtf_site.published, and wtf_site.public.viewed events, and verifies published page versions include the three Pasta slugs before browsing the host.",
+  },
+  {
+    id: "pasta-protocol.pinning-recovery",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol", "wtf-domains", "ipfs-pinning"],
+    ownerSpec: "server/features/ipfs-pinning/pasta-proof.test.ts, server/features/ipfs-pinning/well-known-policy.test.ts, server/routes/ipfs-pinning-pasta-policy.test.ts, scripts/pasta-protocol/wtfme-live-inventory-policy.test.mjs",
+    verificationCommand: "npm run pasta:shadownet:pinning",
+    userVisibleAssertion:
+      "Pasta publish recovery can expose a public .well-known pin manifest for hosted pages, contract artifacts, token metadata, and relationship metadata only after the user-site PDS binding has a valid repo DID and matching pinManifest AT URI.",
+    durableSideEffectAssertion:
+      "The focused source proof builds public pinPolicy, pinManifest, and pinItem records for the current Shadownet proof contracts, keeps checksum/object-mirror/IPFS fallback coordinates public and credential-free, validates the recovery drill from .well-known discovery through manifest and item records, verifies the live project-bundle publish route is permission-gated, object-storage-gated, duplicate-safe, and fail-closed while public discovery has no matching manifest URI, and keeps the read-only live inventory response exposing non-secret pin-home readiness plus page/pin prerequisite checks before any publish write.",
   },
   {
     id: "inventory.temporary-grants-unlock-apps",
@@ -293,18 +316,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test client/src/features/appearance/font-packs.test.ts client/src/features/appearance/get-canvas-font.test.ts shared/desktop.test.ts && npx playwright test tests/playwright/inventory/desktop-settings-typography.spec.mjs",
     userVisibleAssertion:
-      "Theme Builder exposes a left-column settings category list, keeps Font controls behind the Font tab, defaults to the wtfOS Soft System font pack, can still select system font packs and chat typography presets, shows the static bottom-right SAVE control as red while the draft differs from profile settings and green after save, and WIM/WTF LIVE composer defaults stay inside their visible font, color, and size windows.",
+      "Theme Builder exposes a left-column settings category list, keeps Font controls behind the Font tab, enforces the wtfOS Soft System font pack as the only OS font selection, keeps chat typography presets available for non-font settings, shows the static bottom-right SAVE control as red while the draft differs from profile settings and green after save, and WIM/WTF LIVE composer defaults stay inside their visible color and size windows.",
     durableSideEffectAssertion:
-      "DesktopAppearance.fontPackKey normalizes to wtfos-soft-system by default, chatTypographyPresetKey, wimChatStyle, and wtfLiveChatStyle normalize to known values, persist through /api/desktop/settings, and canvas helpers read the same CSS variable roles.",
+      "DesktopAppearance.fontPackKey, wimChatStyle.fontFamily, and wtfLiveChatStyle.font normalize to wtfOS Soft System defaults on read/write, chatTypographyPresetKey plus non-font chat style values persist through /api/desktop/settings, and canvas helpers read the same CSS variable roles.",
   },
   {
     id: "desktop.localization-language-region",
     domain: "Desktop OS, Navigation, and Personal Environment",
     ownerSurfaceIds: ["system-settings", "desktop-appearance"],
     ownerSpec:
-      "shared/localization.test.ts, client/src/lib/localization-catalogs.test.ts, client/src/lib/localization-provider-policy.test.ts, client/src/pages/system-settings-presentation-policy.test.ts, tests/playwright/inventory/system-settings-localization.spec.mjs",
+      "shared/localization.test.ts, client/src/lib/localization-catalogs.test.ts, client/src/lib/localization-provider-policy.test.ts, tests/playwright/inventory/system-settings-localization.spec.mjs",
     verificationCommand:
-      "npx tsx --test shared/localization.test.ts client/src/lib/localization-catalogs.test.ts client/src/lib/localization-provider-policy.test.ts client/src/pages/system-settings-presentation-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/system-settings-localization.spec.mjs",
+      "npx tsx --test shared/localization.test.ts client/src/lib/localization-catalogs.test.ts client/src/lib/localization-provider-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/system-settings-localization.spec.mjs",
     userVisibleAssertion:
       "A signed-in user can choose a display language in System Settings, see system-owned OS shell text switch to that locale, and use Arabic or pseudo-locale to prove document direction and expansion behavior.",
     durableSideEffectAssertion:
@@ -624,6 +647,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused harness stores Show Kit presets through /api/wtf-live/soundboard, loads them inside an owned room, hides trigger controls from an anonymous audience guest, exposes the owner's WebRTC soundboard audio lane to the audience while /ws/wtf-live carries bounded cue metadata, enforces cooldown feedback, and verifies the shortcut does not fire while chat is focused but does fire after focus leaves chat.",
   },
   {
+    id: "wtf-live.smart-room-owner-controls",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"smart room owner controls\"",
+    userVisibleAssertion:
+      "A signed-in WTF LIVE owner can search existing WTF users, add them as room hosts/guests or stage hosts/speakers, send role invites, open settings icon controls, choose guest publishing permissions, associate a saved Show Kit, and schedule the room to WTF/TTC calendar targets from owned public rooms, private rooms, and stages.",
+    durableSideEffectAssertion:
+      "The harness persists /api/wtf-live/users, /show-kits, /rooms/:id/roles, /rooms/:id/invites, /rooms/:id/settings, /rooms/:id/show-kit, and /rooms/:id/events state, verifies saved Show Kits can be selected on a room, and proves the live-room Sharing settings drawer can patch publish permissions through the same settings endpoint.",
+  },
+  {
     id: "wtf-live.wim-attendance-identity",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["wtf-live", "wim"],
@@ -701,11 +736,11 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["wtf-live"],
     ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     verificationCommand:
-      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"stage rooms gate audience sharing\"",
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"stage rooms gate audience sharing\" --project=chromium --reporter=list",
     userVisibleAssertion:
-      "A WTF LIVE stage owner can join the stage room, see in-room host/speaker controls, save role lists, and keep mic/camera/screen/media controls enabled while audience members can still join, chat, and react with share controls disabled.",
+      "A stage owner can open the stage room, edit host and speaker lists in-room, and keep mic/camera/screen/media controls enabled, while an audience guest sees the stage role policy and disabled share controls.",
     durableSideEffectAssertion:
-      "The inventory harness persists host/speaker lists through /api/wtf-live/stages/:stageId/access, verifies the owner room receives stage-role capabilities, and verifies an anonymous stage audience room receives audience capabilities with mic, camera, screen, and media load controls disabled.",
+      "The inventory harness serves stage rooms through the WTF LIVE room envelope, persists PATCH /api/wtf-live/stages/:stageId/access role lists, and proves audience clients receive no publish capabilities.",
   },
   {
     id: "w.groupchat-readonly-config-source",

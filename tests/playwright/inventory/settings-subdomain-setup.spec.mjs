@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 const HARNESS_WALLET = "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY";
+const HARNESS_WALLET_PROVIDER = "octez.connect";
 
 async function seedHarness(request) {
   const res = await request.post("/__test/state", {
@@ -20,12 +21,12 @@ test.describe("interaction inventory - settings subdomain setup", () => {
     request,
   }) => {
     await seedHarness(request);
-    await page.addInitScript((walletAddress) => {
+    await page.addInitScript(({ walletAddress, providerName }) => {
       window.localStorage.setItem(
         "wtf:wallet-session",
-        JSON.stringify({ address: walletAddress, providerName: "beacon" }),
+        JSON.stringify({ address: walletAddress, providerName }),
       );
-    }, HARNESS_WALLET);
+    }, { walletAddress: HARNESS_WALLET, providerName: HARNESS_WALLET_PROVIDER });
 
     await page.goto("/settings", { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("system-settings")).toBeVisible();

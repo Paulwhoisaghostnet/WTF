@@ -15,6 +15,7 @@ test.describe("interaction inventory - Theme Builder typography", () => {
     await page.goto("/desktop-settings", { waitUntil: "domcontentloaded" });
     const globalSave = page.getByTestId("desktop-settings-global-save");
     await expect(globalSave).toHaveAttribute("data-save-state", "recorded");
+    await expect(globalSave).toHaveCSS("background-color", "rgb(19, 138, 52)");
 
     await page.getByTestId("desktop-settings-tab-font").click();
     await expect(page.getByRole("tabpanel", { name: "Font" })).toBeVisible();
@@ -26,27 +27,32 @@ test.describe("interaction inventory - Theme Builder typography", () => {
       "aria-pressed",
       "true"
     );
-    await expect(page.getByTestId("font-pack-mek-type")).toBeVisible();
+    await expect(page.getByTestId("font-pack-mek-type")).toHaveCount(0);
     await page.getByRole("button", { name: "Chat typography preset Friendly Room" }).click();
     await expect(globalSave).toHaveAttribute("data-save-state", "unsaved");
+    await expect(globalSave).toHaveCSS("background-color", "rgb(192, 24, 36)");
 
-    await expect(page.getByLabel("Default WIM font", { exact: true })).toHaveValue("Comic Sans MS");
+    await expect(page.getByLabel("Default WIM font", { exact: true })).toHaveValue("wtfOS Soft Sans");
     await expect(page.getByLabel("Default WIM font size")).toHaveValue("14");
-    await expect(page.getByLabel("Default WTF LIVE chat font", { exact: true })).toHaveValue("classic-95");
+    await expect(page.getByLabel("Default WTF LIVE chat font", { exact: true })).toHaveValue("wtfos-soft-system");
     await expect(page.getByLabel("Default WTF LIVE chat font size")).toHaveValue("12");
 
+    const wimFontOptions = await page
+      .locator('select[aria-label="Default WIM font"] option')
+      .evaluateAll((options) => options.map((option) => option.value));
+    const liveFontOptions = await page
+      .locator('select[aria-label="Default WTF LIVE chat font"] option')
+      .evaluateAll((options) => options.map((option) => option.value));
     const wimSizeOptions = await page
       .locator('select[aria-label="Default WIM font size"] option')
       .evaluateAll((options) => options.map((option) => option.value));
     const liveSizeOptions = await page
       .locator('select[aria-label="Default WTF LIVE chat font size"] option')
       .evaluateAll((options) => options.map((option) => option.value));
-    const liveFontOptions = await page
-      .locator('select[aria-label="Default WTF LIVE chat font"] option')
-      .evaluateAll((options) => options.map((option) => option.value));
+    expect(wimFontOptions).toEqual(["wtfOS Soft Sans"]);
+    expect(liveFontOptions).toEqual(["wtfos-soft-system"]);
     expect(wimSizeOptions).toEqual(["10", "12", "14", "18", "24"]);
     expect(liveSizeOptions).toEqual(["8", "9", "10", "11", "12", "13", "14"]);
-    expect(liveFontOptions).toEqual(["classic-95", "terminal", "serif-press"]);
 
     await page.getByLabel("Default WTF LIVE chat font size").selectOption("14");
     await expect(globalSave).toHaveAttribute("data-save-state", "unsaved");
@@ -58,8 +64,9 @@ test.describe("interaction inventory - Theme Builder typography", () => {
         const body = await response.json();
         return body.appearance.wtfLiveChatStyle;
       })
-      .toMatchObject({ font: "classic-95", color: "purple", size: 14 });
+      .toMatchObject({ font: "wtfos-soft-system", color: "purple", size: 14 });
     await expect(globalSave).toHaveAttribute("data-save-state", "recorded");
+    await expect(globalSave).toHaveCSS("background-color", "rgb(19, 138, 52)");
 
     const state = await (await request.get("/__test/state")).json();
     expect(state.interactionLog.map((event) => event.eventType)).toContain(

@@ -396,26 +396,37 @@ export function Dicksword() {
     refetchInterval: 10_000,
   });
 
+  const me = meQuery.data;
+  const config = configQuery.data;
+  const avatarLayers = Array.isArray(me?.avatar?.layers) ? me.avatar.layers : [];
+  const avatarConflicts = Array.isArray(me?.avatar?.conflicts)
+    ? me.avatar.conflicts
+    : [];
+  const avatarSelections = Array.isArray(me?.avatar?.selections)
+    ? me.avatar.selections
+    : [];
+  const roleMappings = Array.isArray(me?.roleMappings) ? me.roleMappings : [];
+  const activity = Array.isArray(me?.activity) ? me.activity : [];
+
   const selectedLayerIds = useMemo(
-    () => new Set(meQuery.data?.avatar.selections.map((s) => s.layerId) ?? []),
-    [meQuery.data?.avatar.selections]
+    () => new Set(avatarSelections.map((s) => s.layerId)),
+    [avatarSelections]
   );
 
   const selectedLayers = useMemo(() => {
-    const layers = meQuery.data?.avatar.layers ?? [];
-    return layers
+    return avatarLayers
       .filter((layer) => selectedLayerIds.has(layer.id))
       .sort((a, b) => a.stackOrder - b.stackOrder || a.label.localeCompare(b.label));
-  }, [meQuery.data?.avatar.layers, selectedLayerIds]);
+  }, [avatarLayers, selectedLayerIds]);
 
   const blockedLayerIds = useMemo(() => {
     const blocked = new Set<number>();
-    for (const conflict of meQuery.data?.avatar.conflicts ?? []) {
+    for (const conflict of avatarConflicts) {
       if (selectedLayerIds.has(conflict.layerId)) blocked.add(conflict.conflictsWithLayerId);
       if (selectedLayerIds.has(conflict.conflictsWithLayerId)) blocked.add(conflict.layerId);
     }
     return blocked;
-  }, [meQuery.data?.avatar.conflicts, selectedLayerIds]);
+  }, [avatarConflicts, selectedLayerIds]);
 
   const createClaim = useMutation({
     mutationFn: () =>
@@ -473,8 +484,6 @@ export function Dicksword() {
     },
   });
 
-  const me = meQuery.data;
-  const config = configQuery.data;
   const canAdmin = isStaffRole(user?.role);
 
   if (meQuery.isLoading) {
@@ -579,7 +588,7 @@ export function Dicksword() {
                 documented here so the bot can skip admin, host, and moderation
                 power without guessing.
               </Muted>
-              {(me?.roleMappings ?? []).slice(0, 8).map((role) => (
+              {roleMappings.slice(0, 8).map((role) => (
                 <ActivityRow key={role.id}>
                   <span>{role.roleKind}</span>
                   <span>{role.label}</span>
@@ -602,7 +611,7 @@ export function Dicksword() {
                 ))}
               </AvatarStage>
               <LayerGrid>
-                {(me?.avatar.layers ?? []).map((layer) => {
+                {avatarLayers.map((layer) => {
                   const checked = selectedLayerIds.has(layer.id);
                   const blocked = !checked && blockedLayerIds.has(layer.id);
                   return (
@@ -634,10 +643,10 @@ export function Dicksword() {
 
             <Section>
               <SectionTitle>Discord Activity</SectionTitle>
-              {(me?.activity ?? []).length === 0 ? (
+              {activity.length === 0 ? (
                 <Muted>No mirrored Discord activity yet.</Muted>
               ) : (
-                me!.activity.map((event) => (
+                activity.map((event) => (
                   <ActivityRow key={event.id}>
                     <span>{fmtDate(event.observedAt)}</span>
                     <span>
@@ -756,7 +765,7 @@ export function Dicksword() {
                       }
                     >
                       <option value={0}>Select layer</option>
-                      {(me?.avatar.layers ?? []).map((layer) => (
+                      {avatarLayers.map((layer) => (
                         <option key={layer.id} value={layer.id}>
                           {layer.label}
                         </option>
@@ -775,7 +784,7 @@ export function Dicksword() {
                       }
                     >
                       <option value={0}>Select layer</option>
-                      {(me?.avatar.layers ?? []).map((layer) => (
+                      {avatarLayers.map((layer) => (
                         <option key={layer.id} value={layer.id}>
                           {layer.label}
                         </option>

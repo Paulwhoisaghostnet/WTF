@@ -427,7 +427,7 @@ function setWalletSession(walletAddress: string | null) {
   } else {
     window.localStorage.setItem(
       WALLET_SESSION_KEY,
-      JSON.stringify({ address: walletAddress, providerName: "beacon" })
+      JSON.stringify({ address: walletAddress, providerName: "octez.connect" })
     );
   }
   window.dispatchEvent(new CustomEvent(WALLET_SESSION_EVENT));
