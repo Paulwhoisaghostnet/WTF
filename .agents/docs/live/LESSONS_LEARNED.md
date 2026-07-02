@@ -1,3 +1,13 @@
+## 2026-07-02 - Deploy disk preflight needs cache-only recovery
+
+**What happened**: PR #28 merged cleanly, but the first Deploy to Hetzner run failed before rebuild because the production root filesystem had 12,174 MiB free and the deploy preflight requires 12,288 MiB. Docker build cache had 13.82 GiB reclaimable, so pruning build cache only raised free space to 29 GiB and the rerun deployed successfully.
+
+**Why it mattered**: The disk preflight did exactly its job by stopping before a risky rebuild, but a narrow margin can recur after routine image builds. Operators need the safe recovery path to be obvious so nobody touches Docker volumes or app data under deploy pressure.
+
+**Rule**: When deploy disk preflight fails by capacity, inspect `docker system df` first and prune Docker build cache only before considering any broader cleanup. Do not prune volumes for routine deploy recovery, and record the successful rerun plus live health commit before claiming production promotion.
+
+---
+
 ## 2026-07-02 - Final launch checks need named commands
 
 **What happened**: Pasta had a strict final-launch readiness mode, but the operator path still required remembering the raw `PASTA_LIVE_READINESS_FINAL_LAUNCH=1` environment prefix. That made the most important launch check easier to mistype, omit from docs, or confuse with blocker-allowed audit mode.
