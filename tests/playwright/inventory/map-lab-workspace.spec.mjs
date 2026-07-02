@@ -148,6 +148,12 @@ test.describe("Map Lab workspace", () => {
     const viewport = page.locator("[data-map-lab-viewport='true']");
     const demoDesktopNode = page.locator("[data-map-lab-node-key='wtfos-demo-desktop-shell']");
     const demoMapLabNode = page.locator("[data-map-lab-node-key='wtfos-demo-map-lab']");
+    const socialDomainNode = page.locator("[data-map-lab-node-key='wtfos-domain-social-comms']");
+    const walletDomainNode = page.locator("[data-map-lab-node-key='wtfos-domain-wallet-tezos']");
+    const adminManagerNode = page.locator("[data-map-lab-node-key='wtfos-manager-admin-panel']");
+    const skywireRouteNode = page.locator("[data-map-lab-node-key='wtfos-route-skywire']");
+    const macaroniRouteNode = page.locator("[data-map-lab-node-key='wtfos-route-tools-macaroni']");
+    const mcpTokensRouteNode = page.locator("[data-map-lab-node-key='wtfos-route-api-mcp-tokens']");
     const demoOutputPort = page.locator("[data-map-lab-port-node-key='wtfos-demo-desktop-shell'][data-map-lab-port-id='output']");
     const runSummary = page.locator("[data-map-lab-run-summary='true']");
 
@@ -157,9 +163,20 @@ test.describe("Map Lab workspace", () => {
     await expect(shell).toHaveAttribute("data-map-lab-readonly", "true");
     await expect(page.locator("[data-map-lab-mode-badge='true']")).toContainText("Read-only demo");
     await expect(page.locator("[data-map-lab-mode-copy='true']")).toContainText("any user can inspect");
-    await expect(page.getByText("25 nodes, 26 routes").first()).toBeVisible();
+    await expect(page.getByText(/\d+ nodes, \d+ routes/).first()).toBeVisible();
+    await expect(page.locator("[data-map-lab-node='true']")).toHaveCount(212);
+    const topologySummary = await page.getByText(/\d+ nodes, \d+ routes/).first().textContent();
+    const routeCount = Number(topologySummary?.match(/(\d+) routes/)?.[1] ?? 0);
+    expect(routeCount).toBeGreaterThan(390);
+    await expect(page.getByText(/more routes on canvas/)).toBeVisible();
     await expect(demoDesktopNode).toBeVisible();
     await expect(demoMapLabNode).toBeVisible();
+    await expect(socialDomainNode).toBeVisible();
+    await expect(walletDomainNode).toBeVisible();
+    await expect(adminManagerNode).toBeVisible();
+    await expect(skywireRouteNode).toBeVisible();
+    await expect(macaroniRouteNode).toBeVisible();
+    await expect(mcpTokensRouteNode).toBeVisible();
     await expect(page.locator("[data-map-lab-template='gradio-space']")).toBeDisabled();
     await expect(page.getByRole("button", { name: "Save repo draft" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Connect route" })).toBeDisabled();
@@ -189,7 +206,10 @@ test.describe("Map Lab workspace", () => {
 
     await expect(page.getByRole("button", { name: "Run workflow map" })).toBeEnabled();
     await page.getByRole("button", { name: "Run workflow map" }).click();
-    await expect(runSummary).toHaveText("Last run activated 24 routes across 25 connected nodes.");
+    await expect(runSummary).toHaveText(/Last run activated \d+ routes across \d+ connected nodes\./);
+    const runText = await runSummary.textContent();
+    const connectedNodes = Number(runText?.match(/across (\d+) connected/)?.[1] ?? 0);
+    expect(connectedNodes).toBeGreaterThanOrEqual(205);
     await expect(page.locator("[data-map-lab-route-list-item='demo-wire-1']")).toContainText("active");
   });
 
@@ -217,13 +237,19 @@ test.describe("Map Lab workspace", () => {
     await page.locator("[data-map-lab-open-demo='true']").click();
     await expect(shell).toHaveAttribute("data-map-lab-mode", "wtfos-demo");
     await expect(shell).toHaveAttribute("data-map-lab-readonly", "true");
-    await expect(page.getByText("25 nodes, 26 routes").first()).toBeVisible();
-    await expect(page.locator("[data-map-lab-node='true']")).toHaveCount(25);
+    await expect(page.getByText(/\d+ nodes, \d+ routes/).first()).toBeVisible();
+    await expect(page.locator("[data-map-lab-node='true']")).toHaveCount(212);
+    await expect(page.locator("[data-map-lab-node-key='wtfos-domain-social-comms']")).toBeVisible();
+    await expect(page.locator("[data-map-lab-node-key='wtfos-manager-admin-panel']")).toBeVisible();
+    await expect(page.locator("[data-map-lab-node-key='wtfos-route-skywire']")).toBeVisible();
     await expect(page.locator("[data-map-lab-template='gradio-space']")).toBeDisabled();
     await expect(page.getByRole("button", { name: "Save repo draft" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Connect route" })).toBeDisabled();
 
     await page.getByRole("button", { name: "Run workflow map" }).click();
-    await expect(runSummary).toHaveText("Last run activated 24 routes across 25 connected nodes.");
+    await expect(runSummary).toHaveText(/Last run activated \d+ routes across \d+ connected nodes\./);
+    const runText = await runSummary.textContent();
+    const connectedNodes = Number(runText?.match(/across (\d+) connected/)?.[1] ?? 0);
+    expect(connectedNodes).toBeGreaterThanOrEqual(205);
   });
 });
