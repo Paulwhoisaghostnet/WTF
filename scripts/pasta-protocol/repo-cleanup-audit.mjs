@@ -131,6 +131,25 @@ function hasNoReplayDelta(replay) {
 }
 
 function classifyBranch(ref, activeRef) {
+  if (!refExists(ref)) {
+    const item = {
+      ref,
+      baseRef: BASE_REF,
+      aheadBehind: null,
+      ancestor: null,
+      classification: "vanished_during_audit",
+      action: "no current ref to inspect; rerun audit if this was unexpected",
+      replay: {
+        fileCount: 0,
+        deletedCount: 0,
+        shortstat: "",
+        protectedDeletes: [],
+      },
+    };
+    record(`branch ${ref}`, "warn", `${item.classification}; ref disappeared before classification`);
+    return item;
+  }
+
   const counts = aheadBehind(ref);
   const ancestor = isAncestor(ref);
   const replay = replaySummary(ref);

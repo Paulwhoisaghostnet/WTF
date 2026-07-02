@@ -115,6 +115,18 @@ test("Pasta repo cleanup audit treats the active branch and remote counterpart a
   assert.doesNotMatch(source, /codex\/pasta-readiness-catalog-live.*valid_ongoing_work/);
 });
 
+test("Pasta repo cleanup audit tolerates refs that disappear during classification", () => {
+  const classifyBranchIndex = source.indexOf("function classifyBranch(ref, activeRef)");
+  const refStillExistsIndex = source.indexOf("if (!refExists(ref))", classifyBranchIndex);
+  const aheadBehindIndex = source.indexOf("const counts = aheadBehind(ref)", classifyBranchIndex);
+  assert.notEqual(refStillExistsIndex, -1, "classifyBranch must re-check ref existence");
+  assert.ok(
+    refStillExistsIndex < aheadBehindIndex,
+    "classifyBranch should avoid ahead/behind calls for concurrently deleted refs"
+  );
+  assert.match(source, /vanished_during_audit/);
+});
+
 test("Pasta repo cleanup audit ignores gamma and beta cleanup noise", () => {
   assert.match(source, /const pastaPattern =/);
   assert.match(source, /const ignoredPattern = \/gamma\|beta\/i/);
