@@ -231,6 +231,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "rat-race",
     "map-lab",
     "agent",
+    "applications",
     "mail",
     "tv",
     "dicksword",
@@ -238,10 +239,12 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "dear-diary",
     "arcade",
     "casino",
+    "dedrooms",
     "dues-manager",
     "console",
     "game-studio",
     "studio",
+    "ipfs-pinning",
     "my-gallery",
   ]);
 

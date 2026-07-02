@@ -978,6 +978,7 @@ const desktopRoutes: Record<DesktopAppKey, string> = {
   "rat-race": "/rat-race",
   "map-lab": "/map-lab",
   agent: "/agent",
+  applications: "/applications",
   mail: "/mail",
 };
 
@@ -1039,7 +1040,7 @@ function stageFor(appKey: DesktopAppKey): BetaStage {
   if (["wtfiam", "hoard", "gallery", "rat-race"].includes(appKey)) return "collect";
   if (["studio", "game-studio", "pasta-protocol", "ch-ease", "agent"].includes(appKey)) return "create";
   if (["wim", "w", "tv", "dicksword", "i-hate-telegram", "skywire", "wtf-live", "mail"].includes(appKey)) return "connect";
-  if (["arcade", "casino", "console", "dedrooms"].includes(appKey)) return "play";
+  if (["arcade", "casino", "console", "dedrooms", "applications"].includes(appKey)) return "play";
   if (["ipfs-pinning", "wtf-subdomains"].includes(appKey)) return "publish";
   return "operate";
 }

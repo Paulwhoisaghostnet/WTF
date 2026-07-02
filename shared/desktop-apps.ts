@@ -63,6 +63,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   "rat-race": false,
   "map-lab": true,
   agent: true,
+  applications: true,
   mail: true,
 };
 

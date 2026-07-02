@@ -584,6 +584,7 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "rat-race",
   "map-lab",
   "agent",
+  "applications",
   "mail",
   "tv",
   "dicksword",

@@ -7467,3 +7467,13 @@
 **Why it mattered**: A component mounted on every desktop route is a single point of failure for the entire E2E suite: one unguarded property access against a generic mock multiplies into hundreds of unrelated-looking timeouts and "element not found" failures. The 161-failure wall of noise hid the two real defects.
 
 **Rule**: When adding an always-mounted client surface or a new API/WebSocket namespace, add matching harness mocks (REST fixtures and, for sockets, a `noServer` upgrade router entry) in the same change, and normalize/validate fetched payloads at the component boundary so a malformed response degrades to "hidden" instead of crashing the shell. Optional chains must cover every level that can be absent (`a?.b?.c`, not `a?.b.c`). Run the full Playwright inventory suite locally before pushing anything that touches the desktop shell. Also: Playwright string `getByText` is case-insensitive substring matching — scope assertions to owning containers or use `exact: true` when nav labels can collide with content.
+
+---
+
+## 2026-07-02 - Route presence is not app discoverability
+
+**What happened**: Remote Applications had live `/applications` routes, apphost proxy calls, and interaction-inventory coverage, but it was not fully registered as a canonical `DesktopAppKey`. The missing cross-registry pass left default desktop app config, Start Menu gates, desktop icon/layout persistence, admin surfaces, package acceptance, doc-registry mapping, and domain registry docs out of sync, so normal users could lose the Applications launcher even though the apphost API and page code existed.
+
+**Why it mattered**: wtfOS discoverability is registry-driven. A route that responds is still effectively missing when the desktop/start-menu/admin/package/doc gates cannot see the app key or decide whether the app is installable for a user.
+
+**Rule**: New route-first apps must land the whole app-key bundle in one pass: `DESKTOP_APPS`, `DESKTOP_APP_LABELS`, `DEFAULT_DESKTOP_APP_CONFIG`, Start Menu gate/icon mapping, desktop icon definition, `DESKTOP_ICON_LAYOUT_KEYS`, admin surface, package acceptance, doc-registry domain mapping, domain docs, interaction inventory, and a focused policy test that fails if any gate drifts.

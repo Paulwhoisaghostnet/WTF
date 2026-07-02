@@ -144,6 +144,7 @@ const DESKTOP_APP_DOMAIN_KEYS: Partial<Record<DesktopAppKey, keyof typeof WTF_DO
   "rat-race": "commerceAndWallets",
   "map-lab": "wtfOs",
   agent: "wtfOs",
+  applications: "arcadeConsoleGameStudio",
   mail: "identityAndSocial",
 };
 

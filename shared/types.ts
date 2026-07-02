@@ -483,6 +483,7 @@ export const DESKTOP_APPS = [
   "rat-race",
   "map-lab",
   "agent",
+  "applications",
   "mail",
 ] as const;
 export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
@@ -515,6 +516,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   "rat-race": "Rat Race",
   "map-lab": "WTF Map Lab",
   agent: "Agent",
+  applications: "Applications",
   mail: "Inbox",
 };
 
@@ -525,6 +527,7 @@ export const EXPERIMENTAL_DESKTOP_APPS = [
   "dues-manager",
   "rat-race",
   "dedrooms",
+  "applications",
 ] as const satisfies readonly DesktopAppKey[];
 
 const EXPERIMENTAL_DESKTOP_APP_SET = new Set<string>(EXPERIMENTAL_DESKTOP_APPS);

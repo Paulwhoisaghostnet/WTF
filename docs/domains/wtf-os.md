@@ -32,6 +32,7 @@ Phase 4 is the shell, Mission Control, and user-rights layer. The canonical user
 - Notification Center: exposes all/unread notification state, preference changes, linked targets, and read actions.
 - WTF Map Lab: provides the OS-native canvas for keyed/indexed system maps, roadmaps, AI workflow maps, AT Protocol input previews, locked-node layout optimization, and explicit WTFOS repo save/restore boundaries. See [WTF Map Lab Manual](../wtf-map-lab.md).
 - Agent: provides the native AI workspace at `/agent`, with provider adapters, local credential ownership, IDE panels, MCP pairing, permissions, project memory, and companion knowledge inside the OS frame.
+- Applications: provides the apphost-backed launcher at `/applications`, opening hosted Linux desktop applications in browser play windows while hiding Steam/runtime setup and preserving the single-active-external-app guard.
 - Browser Boundaries: separates normal browsing, wallet-safe mode, local development, media capture, archive/save-to-project, and admin surfaces.
 - Recovery Mode: provides user-safe repair actions and routes operator-only reset, rollback, restore-proof, and driver-quarantine work to gated admin surfaces.
 - Backup Manager: remains admin-gated and is the restore-proof authority.

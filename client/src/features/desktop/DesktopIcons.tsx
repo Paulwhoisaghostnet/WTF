@@ -706,6 +706,7 @@ export type DesktopAppAvailability = {
   "rat-race": boolean;
   "map-lab": boolean;
   agent: boolean;
+  applications: boolean;
   mail: boolean;
 };
 
@@ -840,6 +841,15 @@ export function buildDesktopIconDefs(
       defaultY: 188,
       enabled: canOpenApps && (apps.agent || canOpenDisabledApps),
       openPath: "/agent",
+    },
+    {
+      key: "applications",
+      label: "Apps",
+      icon: <ConsoleDeskIcon>APP</ConsoleDeskIcon>,
+      defaultX: 652,
+      defaultY: 188,
+      enabled: canOpenApps && (apps.applications || canOpenDisabledApps),
+      openPath: "/applications",
     },
     {
       key: "mail",

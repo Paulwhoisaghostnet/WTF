@@ -49,6 +49,7 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/rat-race": "rat-race",
   "/map-lab": "map-lab",
   "/agent": "agent",
+  "/applications": "applications",
   "/mail": "mail",
 };
 

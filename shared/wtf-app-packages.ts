@@ -93,6 +93,7 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   "rat-race": domainGuides.commerceAndWallets,
   "map-lab": domainGuides.wtfOs,
   agent: domainGuides.wtfOs,
+  applications: domainGuides.arcadeConsoleGameStudio,
   mail: domainGuides.identityAndSocial,
 };
 
@@ -144,6 +145,7 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
   "rat-race": ["tz2at rolling market stream", "Objkt metadata/listing-key supplement", "Tezos wallet preflight"],
   "map-lab": ["AT Protocol repo reads", "AT Protocol firehose previews", "WTFOS repo save/restore"],
   agent: ["AI providers (browser-direct BYOK)", "local inference endpoints", "MCP paired agents"],
+  applications: ["Hetzner remote application host", "Steam Linux runtime", "WebRTC browser media transport"],
   mail: ["Resend inbound email"],
 };
 
@@ -199,6 +201,12 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
     "wtfOS project memory",
     "Agent project plans and generated action queue",
     "Agent native git branches, staged paths, and commit history",
+  ],
+  applications: [
+    "remote application manifests",
+    "active apphost session state",
+    "remote desktop input events",
+    "transient WebRTC stream lifecycle",
   ],
   mail: ["mailboxes", "mail_messages", "comms_items"],
 };

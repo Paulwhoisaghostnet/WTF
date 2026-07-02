@@ -572,6 +572,7 @@ export function Desktop({
     "rat-race": sourceApps["rat-race"],
     "map-lab": sourceApps["map-lab"],
     agent: sourceApps.agent,
+    applications: sourceApps.applications,
     mail: sourceApps.mail,
   };
 
@@ -601,6 +602,7 @@ export function Desktop({
       apps["rat-race"],
       apps["map-lab"],
       apps.agent,
+      apps.applications,
       apps.studio,
       apps.tv,
       apps.wim,

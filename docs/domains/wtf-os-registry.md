@@ -21,6 +21,7 @@ Primary commands and launch paths:
 - Settings
 - Browser Boundaries
 - Agent (`/agent`)
+- Applications (`/applications`, apphost-backed)
 - Terminal
 - CLI (`/cli`, native `@wtfos/cli`)
 - Notification Center
@@ -31,6 +32,7 @@ Registry rule:
 
 - If a desktop app is hidden because its docs/install key is stale, normal users do not get a palette command for it.
 - Admins and trusted creators can still see the repair path.
+- New route-first apps must ship their `DesktopAppKey`, default gate config, start-menu gate, desktop icon/layout key, admin surface, package acceptance, doc-registry mapping, and inventory row in one pass.
 
 ## MCP Registry
 
