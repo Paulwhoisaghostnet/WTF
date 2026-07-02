@@ -21,6 +21,7 @@ import { answerQuestion } from "./reggie-knowledge";
 import {
   availableSteps,
   checkpointsForRoute,
+  normalizeReggieQuestState,
   progressPercent,
   recommendedStep,
   selectorsForAnchor,
@@ -303,7 +304,7 @@ export function ReggieAssistant() {
     staleTime: 30_000,
     refetchInterval: 90_000,
   });
-  const quest = questQuery.data ?? null;
+  const quest = normalizeReggieQuestState(questQuery.data);
 
   const [snoozedUntil, setSnoozedUntil] = useState<number | null>(readSnoozedUntil);
   const [bubbleOpen, setBubbleOpen] = useState(false);

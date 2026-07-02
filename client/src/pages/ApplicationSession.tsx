@@ -422,7 +422,7 @@ export function ApplicationSession({ appId }: { appId: string }) {
 
   useEffect(() => {
     if (!user || !sessionQuery.data || launchMutation.isPending) return;
-    const state = sessionQuery.data.status.state;
+    const state = sessionQuery.data.status?.state;
     if (state === "running" || state === "launching") return;
     if (launchAttemptedRef.current === appId) return;
     launchAttemptedRef.current = appId;
@@ -638,11 +638,11 @@ export function ApplicationSession({ appId }: { appId: string }) {
   const app = sessionQuery.data?.app;
   const appName = app?.name || appId;
   const aspect = useMemo(() => {
-    const display = sessionQuery.data?.session.display;
+    const display = sessionQuery.data?.session?.display;
     const width = display?.width || 1280;
     const height = display?.height || 720;
     return `${width} / ${height}`;
-  }, [sessionQuery.data?.session.display]);
+  }, [sessionQuery.data?.session?.display]);
   const loadError = sessionQuery.error || statusQuery.error || launchMutation.error || stopMutation.error || null;
 
   useEffect(() => {

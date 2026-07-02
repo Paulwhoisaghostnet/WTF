@@ -55,6 +55,14 @@ const state = {
 
 const harnessAppHostApps = [
   {
+    id: "e2e-app",
+    name: "E2E Test Application",
+    displayRequired: true,
+    audioRequired: false,
+    startupTimeout: 60,
+    healthCheck: { type: "process" },
+  },
+  {
     id: "jackbox-party-pack-10",
     name: "Jackbox Party Pack 10",
     displayRequired: true,
@@ -89,6 +97,39 @@ function makeHarnessAppHostStatus(appId, overrides = {}) {
           audio: { ok: true, server: "PulseAudio" },
         }
       : {},
+  };
+}
+
+// 1x1 transparent PNG used as the harness snapshot frame.
+const HARNESS_APPHOST_SNAPSHOT_DATA_URL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+function makeHarnessAppHostSession(app) {
+  return {
+    appId: app.id,
+    appName: app.name,
+    display: { width: 1280, height: 720, displayName: ":99", required: Boolean(app.displayRequired) },
+    audio: { required: Boolean(app.audioRequired), pulseServer: "unix:/tmp/pulse.sock" },
+    stream: {
+      // Snapshot-first keeps the harness out of real WebRTC negotiation.
+      preferredTransport: "snapshot",
+      fallbackTransports: ["snapshot"],
+      signalingRoom: `apphost:${app.id}`,
+      webSocketPath: "/ws/apphost",
+      offerPath: `/api/apphost/apps/${app.id}/stream/offer`,
+      statusPath: `/api/apphost/apps/${app.id}/stream/status`,
+      stopPath: `/api/apphost/apps/${app.id}/stream/stop`,
+      snapshotPath: `/api/apphost/apps/${app.id}/snapshot`,
+      iceServers: [],
+    },
+    input: {
+      pointer: true,
+      keyboard: true,
+      clipboard: false,
+      transport: "websocket",
+      coordinateSpace: { width: 1280, height: 720 },
+    },
+    storage: {},
   };
 }
 
@@ -1559,7 +1600,9 @@ function apiMock(req, res) {
   if (pathName === "/api/apphost/apps" && req.method === "GET") {
     return res.json({ apps: harnessAppHostApps });
   }
-  const appHostMatch = pathName.match(/^\/api\/apphost\/apps\/([^/]+)(?:\/(status|launch|stop))?$/);
+  const appHostMatch = pathName.match(
+    /^\/api\/apphost\/apps\/([^/]+)(?:\/(status|launch|stop|session|snapshot|stream\/offer|stream\/status|stream\/stop))?$/
+  );
   if (appHostMatch) {
     const appId = decodeURIComponent(appHostMatch[1]);
     const action = appHostMatch[2] ?? null;
@@ -1576,6 +1619,34 @@ function apiMock(req, res) {
     if (action === "stop" && req.method === "POST") {
       appHostStatuses[appId] = makeHarnessAppHostStatus(appId, { state: "stopped" });
       return res.json({ ok: true, app, status: appHostStatuses[appId] });
+    }
+    if (action === "session" && req.method === "GET") {
+      return res.json({
+        ok: true,
+        app,
+        status: appHostStatuses[appId] ?? makeHarnessAppHostStatus(appId),
+        session: makeHarnessAppHostSession(app),
+      });
+    }
+    if (action === "snapshot" && req.method === "GET") {
+      return res.json({
+        ok: true,
+        appId,
+        contentType: "image/png",
+        capturedAt: nowIso(),
+        dataUrl: HARNESS_APPHOST_SNAPSHOT_DATA_URL,
+      });
+    }
+    if (action === "stream/offer" && req.method === "POST") {
+      // The harness has no real WebRTC answerer; report the transport as
+      // unavailable so the client falls back to snapshot mode cleanly.
+      return res.status(503).json({ ok: false, error: "Streaming unavailable in harness" });
+    }
+    if (action === "stream/status" && req.method === "GET") {
+      return res.json({ ok: true, appId, streams: [] });
+    }
+    if (action === "stream/stop" && req.method === "POST") {
+      return res.json({ ok: true, appId });
     }
   }
 
@@ -5137,7 +5208,51 @@ const server = app.listen(PORT, () => {
 });
 
 const livePeers = new Map();
-const liveWss = new WebSocketServer({ server, path: "/ws/wtf-live" });
+const liveWss = new WebSocketServer({ noServer: true });
+const appHostWss = new WebSocketServer({ noServer: true });
+
+server.on("upgrade", (req, socket, head) => {
+  const pathname = new URL(req.url ?? "/", `http://127.0.0.1:${PORT}`).pathname;
+  if (pathname === "/ws/wtf-live") {
+    liveWss.handleUpgrade(req, socket, head, (ws) => liveWss.emit("connection", ws, req));
+  } else if (pathname === "/ws/apphost") {
+    appHostWss.handleUpgrade(req, socket, head, (ws) => appHostWss.emit("connection", ws, req));
+  } else {
+    socket.destroy();
+  }
+});
+
+appHostWss.on("connection", (ws) => {
+  const peerId = `apphost_${randomUUID().replace(/-/g, "").slice(0, 18)}`;
+  let joinedAppId = null;
+  const send = (payload) => {
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+  };
+  send({ type: "apphost_connected", peerId, userId: 1, username: "wtf-admin" });
+  ws.on("message", (raw) => {
+    let message;
+    try {
+      message = JSON.parse(String(raw));
+    } catch {
+      send({ type: "error", message: "Invalid message" });
+      return;
+    }
+    if (message.type === "apphost_join") {
+      joinedAppId = String(message.appId || "");
+      send({ type: "apphost_session_snapshot", appId: joinedAppId, peerId, peers: [] });
+    } else if (message.type === "apphost_leave") {
+      joinedAppId = null;
+    } else if (message.type === "apphost_input") {
+      send({
+        type: "apphost_input_ack",
+        appId: String(message.appId || joinedAppId || ""),
+        ok: true,
+        status: 200,
+        result: { ok: true, harness: true },
+      });
+    }
+  });
+});
 const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(512 * 1024 * 1.4);
 const LIVE_CHAT_FONTS = new Set(["wtfos-soft-system", "classic-95", "terminal", "serif-press"]);
 const LIVE_LEGACY_CHAT_FONT_MAP = {
@@ -5572,6 +5687,7 @@ liveWss.on("connection", (ws) => {
 });
 
 const shutdown = () => {
+  appHostWss.close();
   liveWss.close(() => {
     server.close(() => process.exit(0));
   });

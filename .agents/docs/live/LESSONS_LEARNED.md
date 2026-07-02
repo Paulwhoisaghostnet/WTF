@@ -7457,3 +7457,13 @@
 **Why it mattered**: A completion predicate keyed to a field with no write surface creates an uncompletable quest step that blocks the whole prerequisite chain. Schema presence is not proof of a user-reachable write path. A second trap: `tsx server/index.ts` does not watch files, so after fixing the predicate the running dev server kept evaluating the old code until restarted, which briefly looked like the fix had not worked.
 
 **Rule**: Before wiring a DB-backed completion predicate, trace the full write path — route handler, request schema, and UI control — and confirm a real user can set the field today. Verify predicates against a live user flow, not just the schema. And when server-side predicate code changes, restart the tsx dev server before re-testing; it does not hot-reload.
+
+---
+
+## 2026-07-02 - New always-mounted surfaces must ship with harness mocks, or one crash fails the whole gate
+
+**What happened**: Shipping Reggie and the apphost Remote Applications pages turned Quality Gates red with 161 Playwright failures. The harness's catch-all API mock returns `{ ok: true, mocked: true }` for any unmocked `/api/*` route, so the always-mounted `ReggieAssistant` received a quest payload without a `steps` array and threw `Cannot read properties of undefined (reading 'filter')`, crashing the desktop shell under every desktop-based test. `ApplicationSession` had the same class of bug via `sessionQuery.data?.session.display` (optional chain stopping one level too early), and `/ws/apphost` upgrades were rejected with 400 because the harness only registered a `WebSocketServer` for `/ws/wtf-live` — with the `path` option, `ws` actively aborts every non-matching upgrade on the shared HTTP server.
+
+**Why it mattered**: A component mounted on every desktop route is a single point of failure for the entire E2E suite: one unguarded property access against a generic mock multiplies into hundreds of unrelated-looking timeouts and "element not found" failures. The 161-failure wall of noise hid the two real defects.
+
+**Rule**: When adding an always-mounted client surface or a new API/WebSocket namespace, add matching harness mocks (REST fixtures and, for sockets, a `noServer` upgrade router entry) in the same change, and normalize/validate fetched payloads at the component boundary so a malformed response degrades to "hidden" instead of crashing the shell. Optional chains must cover every level that can be absent (`a?.b?.c`, not `a?.b.c`). Run the full Playwright inventory suite locally before pushing anything that touches the desktop shell. Also: Playwright string `getByText` is case-insensitive substring matching — scope assertions to owning containers or use `exact: true` when nav labels can collide with content.

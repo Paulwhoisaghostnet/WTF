@@ -550,10 +550,12 @@ export function Applications() {
   const currentUserId = user?.id != null ? String(user.id) : null;
   const activeOwnerId = activeSession?.owner?.userId ? String(activeSession.owner.userId) : null;
   const activeOwnedByCurrentUser = Boolean(currentUserId && activeOwnerId && currentUserId === activeOwnerId);
+  // Launching is blocked when someone else owns the active session (even for
+  // the same title), or when the user's own session is for a different title.
   const selectedBlockedByActiveSession = Boolean(
     activeSession &&
       activeApp &&
-      activeSession.appId !== activeApp.id
+      (!activeOwnedByCurrentUser || activeSession.appId !== activeApp.id)
   );
   const hostBusyMessage = selectedBlockedByActiveSession
     ? busyMessage(activeSession, activeOwnedByCurrentUser)

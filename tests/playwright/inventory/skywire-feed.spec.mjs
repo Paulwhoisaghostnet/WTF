@@ -171,14 +171,15 @@ test.describe("interaction inventory — Skywire feed usability", () => {
 
     await page.goto("/skywire?tab=hot", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("button", { name: /Hot/ })).toHaveAttribute("title", "Trending topics");
-    await expect(page.getByText("What's Hot")).toBeVisible();
+    await expect(page.getByText("What's Hot", { exact: true })).toBeVisible();
     await expect(page.locator("[data-skywire-hot-topic='true']")).toHaveCount(3);
     await expect(page.locator("[data-skywire-hot-topic='true']").first()).toHaveAttribute(
       "data-skywire-hot-topic-active",
       "true",
     );
-    await expect(page.getByText("Tezos art")).toBeVisible();
-    await expect(page.getByText("1.3K posts")).toBeVisible();
+    const tezosArtTopic = page.locator("[data-skywire-hot-topic='true']").filter({ hasText: "Tezos art" });
+    await expect(tezosArtTopic).toBeVisible();
+    await expect(tezosArtTopic).toContainText("1.3K posts");
     await expect(page.getByText(/Reading posts for/)).toBeVisible();
     await expect(page.locator("[data-skywire-feed-card='true']")).toHaveCount(3);
 

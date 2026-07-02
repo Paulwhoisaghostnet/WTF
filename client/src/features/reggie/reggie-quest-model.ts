@@ -98,6 +98,25 @@ export function checkpointsForRoute(pathname: string): Array<{
   ).map(({ checkpoint, stepKey }) => ({ checkpoint, stepKey }));
 }
 
+/**
+ * Validate an API payload before trusting it as quest state. A proxy hiccup,
+ * auth edge, or test harness can hand back JSON without `steps`; treating
+ * that as "no quest data" keeps Reggie from crashing the desktop shell.
+ */
+export function normalizeReggieQuestState(value: unknown): ReggieQuestState | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Record<string, unknown>;
+  if (!Array.isArray(candidate.steps)) return null;
+  if (typeof candidate.questComplete !== "boolean") return null;
+  return {
+    questComplete: candidate.questComplete,
+    completedCount: typeof candidate.completedCount === "number" ? candidate.completedCount : 0,
+    totalCount: typeof candidate.totalCount === "number" ? candidate.totalCount : 0,
+    steps: candidate.steps as ReggieQuestStepState[],
+    finale: (candidate.finale ?? null) as ReggieQuestStepState | null,
+  };
+}
+
 /** Steps the user can work on right now, in recommended order. */
 export function availableSteps(state: ReggieQuestState): ReggieQuestStepState[] {
   return state.steps
