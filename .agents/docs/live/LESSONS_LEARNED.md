@@ -1,3 +1,13 @@
+## 2026-07-02 - Cleanup audits must tolerate disappearing refs
+
+**What happened**: While checking a Pasta evidence-refresh branch, `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness` ran in parallel with `npm run pasta:repo-cleanup:audit:check`. The policy test creates and deletes a temporary `codex/pasta-zero-delta-fixture-*` ref; the nested readiness cleanup audit could list that ref, then fail when the test deleted it before ahead/behind classification.
+
+**Why it mattered**: Release gates should fail closed on real surviving stale Pasta work, not on a ref that no longer exists by the time it is inspected. Parallel verification, branch pruning, or manual cleanup during a release pass can otherwise produce a false repo-cleanup blocker that distracts from the actual final-launch blockers.
+
+**Rule**: Cleanup audits that list refs and classify them in a later step must re-check ref existence before running diff, ancestry, or ahead/behind commands. Treat refs that disappear during the audit as non-blocking audit metadata, and keep unknown refs that still exist fail-closed.
+
+---
+
 ## 2026-07-02 - Squash-merged cleanup branches need tree-equivalence handling
 
 **What happened**: After PR #24 was squash-merged and deployed as `7c26c4f`, the source branch still existed briefly as a non-ancestor ref. `pasta:repo-cleanup:audit` correctly saw it as Pasta-related but blocked it as unknown even though `git diff origin/main..codex/pasta-post-pr23-cleanup-audit` had no file delta. The branch had to be deleted manually before the cleanup gate could return green.
