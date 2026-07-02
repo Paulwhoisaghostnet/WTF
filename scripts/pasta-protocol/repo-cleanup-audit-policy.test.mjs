@@ -1,9 +1,26 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import process from "node:process";
 import test from "node:test";
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const source = readFileSync("scripts/pasta-protocol/repo-cleanup-audit.mjs", "utf8");
+
+function run(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    maxBuffer: 1024 * 1024 * 16,
+    ...options,
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `${command} ${args.join(" ")} failed: ${(result.stdout || "")}\n${result.stderr || ""}`.trim()
+    );
+  }
+  return result.stdout.trim();
+}
 
 test("Pasta repo cleanup audit is wired as package commands", () => {
   assert.equal(
@@ -43,6 +60,53 @@ test("Pasta repo cleanup audit treats tree-equivalent squash branches as prunabl
   assert.match(source, /replay\.deletedCount === 0/);
   assert.match(source, /promoted_equivalent_squash/);
   assert.match(source, /current main already has the same file tree/);
+});
+
+test("Pasta repo cleanup audit proves a zero-delta non-ancestor Pasta ref is squash-equivalent", () => {
+  const tempRef = `refs/heads/codex/pasta-zero-delta-fixture-${process.pid}`;
+  const commitEnv = {
+    ...process.env,
+    GIT_AUTHOR_NAME: "Pasta Cleanup Test",
+    GIT_AUTHOR_EMAIL: "pasta-cleanup-test@example.invalid",
+    GIT_COMMITTER_NAME: "Pasta Cleanup Test",
+    GIT_COMMITTER_EMAIL: "pasta-cleanup-test@example.invalid",
+  };
+
+  try {
+    const tempCommit = run("git", ["commit-tree", "HEAD^{tree}", "-m", "Pasta zero-delta fixture"], {
+      env: commitEnv,
+    });
+    run("git", ["update-ref", tempRef, tempCommit]);
+
+    const audit = spawnSync("node", ["scripts/pasta-protocol/repo-cleanup-audit.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 16,
+      env: {
+        ...process.env,
+        PASTA_REPO_CLEANUP_BASE_REF: "HEAD",
+        PASTA_REPO_CLEANUP_AUDIT_ALLOW_UNKNOWN: "1",
+      },
+    });
+
+    assert.equal(audit.status, 0, `${audit.stdout}\n${audit.stderr}`);
+    const jsonStart = audit.stdout.indexOf("{\n");
+    assert.notEqual(jsonStart, -1, audit.stdout);
+    const report = JSON.parse(audit.stdout.slice(jsonStart));
+    const tempBranch = report.branches.find((branch) => branch.ref === tempRef.replace("refs/heads/", ""));
+    assert.ok(tempBranch, audit.stdout);
+    assert.equal(tempBranch.ancestor, false);
+    assert.equal(tempBranch.replay.fileCount, 0);
+    assert.equal(tempBranch.replay.deletedCount, 0);
+    assert.equal(tempBranch.replay.shortstat, "");
+    assert.equal(tempBranch.classification, "promoted_equivalent_squash");
+  } finally {
+    spawnSync("git", ["update-ref", "-d", tempRef], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 16,
+    });
+  }
 });
 
 test("Pasta repo cleanup audit treats the active branch and remote counterpart as ongoing", () => {

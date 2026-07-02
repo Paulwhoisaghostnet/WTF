@@ -7116,7 +7116,7 @@ Priority labels:
 ### WTF-BB-314 - WIM settings dialog Escape fails after custom-list creation
 
 - Category: WIM / settings dialog keyboard UX
-- Status: In Progress
+- Status: Fixed
 - Owner/Session: Codex live user-story gap loop
 - Score: C1 + F4 + S0 + P2(3) = 8
 - Evidence:
@@ -7583,14 +7583,15 @@ Priority labels:
 - Likely correction direction:
   - Teach the cleanup audit to classify Pasta refs with zero two-dot replay delta as `promoted_equivalent_squash`, while preserving active, promoted ancestor, and historical evidence handling.
 - Verification idea:
-  - Add policy coverage, create a temporary non-ancestor Pasta ref with the same tree as `origin/main`, prove `npm run pasta:repo-cleanup:audit` passes with `promoted_equivalent_squash`, delete the temp ref, and rerun the normal readiness gates.
+  - Keep executable policy coverage that creates a temporary non-ancestor Pasta ref with the same tree as the configured base, proves `npm run pasta:repo-cleanup:audit` classifies it as `promoted_equivalent_squash`, deletes the temp ref, and reruns the normal readiness gates.
 - Current pass verification:
   - Added `promoted_equivalent_squash` classification for Pasta refs whose replay summary has zero files, zero deletes, and no shortstat against current `origin/main`.
-  - Passed `npm run pasta:repo-cleanup:audit:check`.
+  - Passed `npm run pasta:repo-cleanup:audit:check` with 8/8 checks, including the executable temporary-ref regression for zero-delta non-ancestor Pasta branches.
   - Passed `git diff --check`.
-  - Created temporary non-ancestor local ref `codex/pasta-zero-delta-fixture` with the same tree as `origin/main`; `npm run pasta:repo-cleanup:audit` classified it as `promoted_equivalent_squash; 1 behind current main / 1 ahead; no file delta` and returned `ok: true`.
-  - Deleted the temporary fixture ref and reran `npm run pasta:repo-cleanup:audit`; the normal audit returned `ok: true` with no blockers.
+  - Confirmed no `codex/pasta-zero-delta-fixture-*` temp refs remained after the executable regression.
+  - Reran `npm run pasta:repo-cleanup:audit`; the normal audit returned `ok: true` with no blockers.
   - Reran `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; repo cleanup passed and the only remaining blockers were the expected dedicated WTF.ME publish credentials plus missing live Pasta WTF.ME host proof.
+  - Reran `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness`; strict mode exited `1` only on the same WTF.ME credentials and live host proof blockers.
 
 ## Backlog Intake Template
 
