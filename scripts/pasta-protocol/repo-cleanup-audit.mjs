@@ -126,6 +126,10 @@ function replaySummary(ref) {
   };
 }
 
+function hasNoReplayDelta(replay) {
+  return replay.fileCount === 0 && replay.deletedCount === 0 && !replay.shortstat;
+}
+
 function classifyBranch(ref, activeRef) {
   const counts = aheadBehind(ref);
   const ancestor = isAncestor(ref);
@@ -145,6 +149,10 @@ function classifyBranch(ref, activeRef) {
   } else if (historicalProofBranches.has(ref)) {
     classification = "historical_evidence_unsafe_to_replay";
     action = "keep as evidence only; mine ideas manually against current main";
+    status = "pass";
+  } else if (hasNoReplayDelta(replay)) {
+    classification = "promoted_equivalent_squash";
+    action = "delete/prune after verification; current main already has the same file tree";
     status = "pass";
   }
 
