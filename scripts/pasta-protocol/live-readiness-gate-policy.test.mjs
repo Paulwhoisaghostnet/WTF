@@ -8,6 +8,10 @@ const source = readFileSync("scripts/pasta-protocol/live-readiness-gate.mjs", "u
 test("Pasta live-readiness gate is wired as an explicit package command", () => {
   assert.equal(packageJson.scripts["pasta:live-readiness"], "node scripts/pasta-protocol/live-readiness-gate.mjs");
   assert.equal(
+    packageJson.scripts["pasta:live-readiness:final"],
+    "PASTA_LIVE_READINESS_FINAL_LAUNCH=1 node scripts/pasta-protocol/live-readiness-gate.mjs"
+  );
+  assert.equal(
     packageJson.scripts["pasta:live-readiness:check"],
     "node --test scripts/pasta-protocol/live-readiness-gate-policy.test.mjs"
   );

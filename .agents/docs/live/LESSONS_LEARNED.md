@@ -1,3 +1,13 @@
+## 2026-07-02 - Final launch checks need named commands
+
+**What happened**: Pasta had a strict final-launch readiness mode, but the operator path still required remembering the raw `PASTA_LIVE_READINESS_FINAL_LAUNCH=1` environment prefix. That made the most important launch check easier to mistype, omit from docs, or confuse with blocker-allowed audit mode.
+
+**Why it mattered**: The final launch gate is the boundary between "non-WTF.ME production surfaces are proven" and "the whole product is launchable." A hidden env incantation leaves room for a future push to run the audit command, see mostly green output, and miss that final launch must keep blockers fatal.
+
+**Rule**: Release-critical strict modes need named package commands, source-policy coverage, and docs that tell operators to run the named command. Keep raw env flags available for diagnostics, but make the final-launch path discoverable and copy-paste-safe.
+
+---
+
 ## 2026-07-02 - Cleanup audits must tolerate disappearing refs
 
 **What happened**: While checking a Pasta evidence-refresh branch, `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness` ran in parallel with `npm run pasta:repo-cleanup:audit:check`. The policy test creates and deletes a temporary `codex/pasta-zero-delta-fixture-*` ref; the nested readiness cleanup audit could list that ref, then fail when the test deleted it before ahead/behind classification.
