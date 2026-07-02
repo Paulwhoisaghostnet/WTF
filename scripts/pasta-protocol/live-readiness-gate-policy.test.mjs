@@ -144,6 +144,7 @@ test("Pasta live-readiness gate prints non-secret WTF.ME unblock instructions", 
   assert.match(source, /active WTFOS DID\/repo/);
   assert.match(source, /linked Tezos wallet/);
   assert.match(source, /WTF Pin Collector permission/);
+  assert.match(source, /PASTA_WTFME_LIVE_PUBLISH_RUNBOOK\.md/);
   assert.match(source, /PASTA_WTFME_LIVE_EXPECT_HOST=<published-host>/);
   assert.match(source, /PASTA_WTFME_LIVE_PUBLISH=1/);
   assert.match(source, /pin discovery enabled/);

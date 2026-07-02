@@ -223,6 +223,31 @@ function assertProductionHostPinned(): void {
   }
 }
 
+function assertPublishedHostStable(plannedHost: string, publishedHost: string): void {
+  if (!publishedHost) fail("WTF.ME publish response did not include a site host");
+  assertExpectedHost(publishedHost);
+  if (publishedHost !== plannedHost) {
+    fail(`WTF.ME publish changed host from ${plannedHost} to ${publishedHost}; refusing to continue pin recovery`);
+  }
+}
+
+function assertPinningResponseMatchesHost(pinning: any, host: string): void {
+  if (!pinning) return;
+  const pinHost = String(pinning.host || pinning.binding?.host || "").trim().toLowerCase();
+  if (pinHost && pinHost !== host) {
+    fail(`Pasta pin recovery returned host ${pinHost}, expected ${host}`);
+  }
+  const expectedWellKnown = `https://${host}/.well-known/wtfos-pins`;
+  const wellKnownUrl = String(pinning.wellKnownUrl || "").trim().toLowerCase();
+  if (wellKnownUrl && wellKnownUrl !== expectedWellKnown) {
+    fail(`Pasta pin recovery returned wellKnownUrl ${wellKnownUrl}, expected ${expectedWellKnown}`);
+  }
+  const scopeRef = String(pinning.manifest?.scopeRef || pinning.policy?.scopeRef || "").trim();
+  if (scopeRef && !scopeRef.endsWith(`:${host}`)) {
+    fail(`Pasta pin recovery returned scopeRef ${scopeRef}, expected it to end with :${host}`);
+  }
+}
+
 async function getSiteState(): Promise<any> {
   return expectJson(await fetchWithCookies("/api/wtf-sites/my"), "WTF.ME site state");
 }
@@ -361,12 +386,14 @@ async function main(): Promise<void> {
   const headers = await csrfHeaders();
   await savePastaPages(headers);
   const published = await publish(headers);
-  await probeTlsAsk(host);
+  const publishedHost = String(published.site?.host || "").toLowerCase();
+  assertPublishedHostStable(host, publishedHost);
+  await probeTlsAsk(publishedHost);
   const pinning = publishPins ? await publishPastaPins(headers) : null;
+  assertPinningResponseMatchesHost(pinning, publishedHost);
   if (pinning?.wellKnownUrl) {
     console.log(`[pasta-wtfme-publish] pin discovery URL: ${pinning.wellKnownUrl}`);
   }
-  const publishedHost = String(published.site?.host || host).toLowerCase();
   verifyPublishedHost(publishedHost);
   console.log(`[pasta-wtfme-publish] verify with: PASTA_WTFME_LIVE_HOST=${publishedHost} npm run pasta:wtfme:live-check`);
 }

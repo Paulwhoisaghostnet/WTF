@@ -1,3 +1,23 @@
+## 2026-07-02 - Credentialed publishers must reject response-host drift
+
+**What happened**: The Pasta WTF.ME publisher pinned credentials to the expected host before writes and verified the public host after publishing, but the write path did not explicitly reject a changed `site.host` in the publish response or a mismatched pin recovery host/scope before continuing.
+
+**Why it mattered**: Credentialed publish flows can cross account, site, TLS, PDS, and pinning state. If any response silently shifts to a different host, the script could spend effort on the wrong public surface or leave recovery evidence bound to a host the operator did not intend.
+
+**Rule**: After every credentialed site publish, resolve the host from the write response and assert it still matches the planned/expected host before TLS checks, pin recovery, and public verification. Pin recovery responses should also prove their host, `.well-known` URL, and manifest scope are bound to that same host.
+
+---
+
+## 2026-07-02 - Credentialed launch blockers need one canonical runbook
+
+**What happened**: The Pasta WTF.ME launch blocker had strong publish/check tooling, but the operator path still required reconstructing the sequence from gate output, matrix notes, bounty history, and script behavior. That made the remaining external step clearer to describe than to execute.
+
+**Why it mattered**: Credentialed production publishing is where accidental shortcuts are most tempting. A scattered checklist can lead to direct database edits, a reused shared host, disabled pin checks, or a publish run that is not bound to the intended host.
+
+**Rule**: When a final launch blocker depends on external credentials or account state, add a source-controlled runbook and make the readiness gate point to it. The runbook should preserve the safe order: expected-host pin, read-only inventory, non-writing dry-run, write mode, public verifier, strict final gate.
+
+---
+
 ## 2026-07-02 - Low-disk deploy recovery must stay build-cache-only
 
 **What happened**: The deploy preflight had a safe 12 GiB floor and printed Docker disk usage when capacity was too low, but a host that drifted just below the floor still needed a manual `docker builder prune -af` before the same verified deployment could proceed.
