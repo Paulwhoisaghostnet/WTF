@@ -69,6 +69,7 @@ Priority labels:
 | WTF-BB-345 | Verified | Codex Inbox compose full-send | 2026-07-01 | Social / Inbox and WIM compose UX | P1 | 12 | 7 | 3 | 5 | 0 | Inbox aggregated mail, WIM, Studio, comms, and notifications but still behaved like a read-only viewer; current branch adds first-class New message/New mail controls, selected external-mail Reply/Forward actions, inline WIM/Studio conversation sending through source-owned DM APIs, inventory-owned behavior assertions, admin registry coverage, and verified clean-worktree source, build, focused browser, and full inventory coverage before production promotion |
 | WTF-BB-346 | Fixed | Codex WTF LIVE smart-room goal | 2026-07-01 | WTF LIVE / user-aware room operations | P1 | 14 | 3 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-347 | Verified | Codex Pasta Colander RPC fallback | 2026-07-01 | Pasta Protocol / Colander Shadownet RPC resilience | P1 | 11 | 8 | 2 | 4 | 1 | Colander Shadownet discovery now retries recoverable primary RPC timeouts through the configured `https://tcinfra.net/rpc/tezos/shadownet` fallback with a bounded per-attempt read budget while preserving explicit env RPC overrides and the localhost wallet harness; PR #20 deployed live as `9267c4b`, Deploy to Hetzner `28551857308` and main Quality Gates `28551857324` passed, and live readiness verified all non-credentialed Pasta surfaces with only the expected WTF.ME credential/host blockers remaining |
+| WTF-BB-348 | Verified | Codex Pasta CI smoke heartbeat | 2026-07-01 | E2E / Quality Gates observability | P2 | 7 | 15 | 1 | 3 | 0 | Main Quality Gates inventory smoke can run for ~14 minutes with no CLI-visible progress before a production push is fully proven, making healthy CI hard to distinguish from a wedged release gate; verified by branch and PR Quality Gates with 60-second heartbeat output through the long smoke step |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -1172,7 +1173,7 @@ Priority labels:
 ### WTF-BB-207 - Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity
 
 - Category: Platform domains / AT OAuth identity boundary
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Skywire canonical-domain OAuth repair
 - Score: C3 + F5 + S5 + P0(5) = 16
 - Evidence:
@@ -7535,6 +7536,32 @@ Priority labels:
   - Wired owned public rooms, private rooms, and stages to role pickers, invite actions, schedule buttons, settings buttons, and Show Kit association; owners/hosts also get in-room settings controls for permissions and Show Kit usage.
   - Updated inventory docs, workflow probes, behavior assertions, admin registry coverage, Playwright harness state, and WTF LIVE owner-control coverage.
   - Passed `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, focused WTF LIVE smart-room/Show Kit/private-room Playwright probes, and full `HARNESS_PORT=4192 npm run test:e2e:inventory` with 580/580 passing.
+
+### WTF-BB-348 - Inventory smoke needs timeout and heartbeat diagnostics
+
+- Category: E2E / Quality Gates observability
+- Status: Verified
+- Owner/Session: Codex Pasta CI smoke heartbeat
+- Score: C1 + F3 + S0 + P2(3) = 7
+- Evidence:
+  - Main Quality Gates run `28553414410` on live evidence commit `9209829c` passed, but the `Inventory Playwright smoke` step stayed active for roughly 14 minutes before any CLI-visible completion detail was available.
+  - `gh run view --log` could not stream the in-progress step, so release verification had to poll the Actions job API to distinguish a slow healthy run from a stuck smoke gate.
+- Why it matters:
+  - The inventory smoke is the final broad browser gate before a production push is trustworthy. When it is opaque, agents may either wait blindly or interrupt a healthy release proof.
+- Likely correction direction:
+  - Add an explicit step timeout and periodic heartbeat output around the Quality Gates inventory Playwright smoke command.
+- Verification idea:
+  - Validate the workflow YAML/shell syntax, run inventory coverage locally, and let branch Quality Gates prove the real inventory smoke still passes with the diagnostic wrapper.
+- Current pass verification:
+  - Added a 30-minute timeout to the `Inventory Playwright smoke` Quality Gates step and wrapped the Playwright command with a 60-second elapsed-time heartbeat.
+  - Passed `git diff --check`.
+  - Passed workflow YAML parsing plus `bash -n` syntax validation of the new run block.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run pasta:repo-cleanup:audit`; the active branch is classified as `valid_ongoing_work` and the retained Pasta readiness branch remains historical evidence unsafe to replay.
+  - Passed `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; live `wtfos.app` commit `9209829` still proves static Pasta runtime markers, suite/individual installer assets, the installer catalog, and recorded Colander action proof while blocking only on WTF.ME credentials and `PASTA_WTFME_LIVE_HOST`.
+  - Branch push Quality Gates `28554283936` passed; app-quality completed in 15m11s and the log shows 60-second heartbeat messages from 60s through 720s before `Inventory Playwright smoke completed`.
+  - PR Quality Gates `28554285946` passed; app-quality completed in 15m41s and the log shows the same 60-second heartbeat pattern through 720s before completion.
+  - Current-head branch push Quality Gates `28554974401` and PR Quality Gates `28554976557` also passed on commit `663f8d9a`.
 
 ## Backlog Intake Template
 
