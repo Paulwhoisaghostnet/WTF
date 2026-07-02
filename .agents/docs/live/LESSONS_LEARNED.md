@@ -1646,6 +1646,16 @@
 
 ---
 
+## 2026-06-14 - System demo maps must be registry-backed, not curated spines
+
+**What happened**: The first read-only MapLab wtfOS demo was visually useful but incomplete. It showed a hand-curated 25-node spine that under-represented the actual OS: route domains/subdomains, admin/native managers, PageDef routing, interaction inventory, SystemEvent handles, domain workflows, behavior assertions, public/API/agent paths, and deployment topology were mostly collapsed into broad labels.
+
+**Why it mattered**: A map demo is not just onboarding copy; it teaches users and future agents what the system is. If the canonical demo skips managers, registries, routes, and E2E ownership, it makes wtfOS look smaller and less coherent than it really is, and it hides the exact boundaries that keep future changes safe.
+
+**Rule**: Read-only system demo maps must be generated from or explicitly aligned to repo-owned registries and inventory layers. For wtfOS, the MapLab demo should include PageDef routes, domain/subdomain lanes, admin/native manager surfaces, interaction inventory, SystemEvent spine, domain workflows, behavior assertions, public/API/agent paths, persistence, and deploy health, with tests asserting representative route, domain, and manager nodes.
+
+---
+
 ## 2026-06-13 - Macaroni mint counters must use effective remaining allowance
 
 **What happened**: A generated Macaroni mint page could let a collector set the requested quantity above what the contract would accept. The UI considered the creator's raw max-per-wallet value, but the effective allowance was lower after previous mints had consumed part of that wallet's stage cap or after collection supply had been reduced by other collectors.
@@ -7492,8 +7502,8 @@
 
 ## 2026-07-02 - Route presence is not app discoverability
 
-**What happened**: Remote Applications had live `/applications` routes, apphost proxy calls, and interaction-inventory coverage, but it was not fully registered as a canonical `DesktopAppKey`. The missing cross-registry pass left default desktop app config, Start Menu gates, desktop icon/layout persistence, admin surfaces, package acceptance, doc-registry mapping, and domain registry docs out of sync, so normal users could lose the Applications launcher even though the apphost API and page code existed.
+**What happened**: Remote Applications had live `/applications` routes, apphost proxy calls, and interaction-inventory coverage, but it was not fully registered as a canonical `DesktopAppKey`. The missing cross-registry pass left default desktop app config, Start Menu gates, desktop icon/layout persistence, admin surfaces, package acceptance, doc-registry mapping, universal app-registry seed/key, and domain registry docs out of sync, so normal users could lose the Applications launcher even though the apphost API and page code existed.
 
 **Why it mattered**: wtfOS discoverability is registry-driven. A route that responds is still effectively missing when the desktop/start-menu/admin/package/doc gates cannot see the app key or decide whether the app is installable for a user.
 
-**Rule**: New route-first apps must land the whole app-key bundle in one pass: `DESKTOP_APPS`, `DESKTOP_APP_LABELS`, `DEFAULT_DESKTOP_APP_CONFIG`, Start Menu gate/icon mapping, desktop icon definition, `DESKTOP_ICON_LAYOUT_KEYS`, admin surface, package acceptance, doc-registry domain mapping, domain docs, interaction inventory, and a focused policy test that fails if any gate drifts.
+**Rule**: New route-first apps must land the whole app-key bundle in one pass: `DESKTOP_APPS`, `DESKTOP_APP_LABELS`, `DEFAULT_DESKTOP_APP_CONFIG`, Start Menu gate/icon mapping, desktop icon definition, `DESKTOP_ICON_LAYOUT_KEYS`, admin surface, package acceptance, doc-registry domain mapping, universal app-registry seed/key when `APP_REGISTRY_ENABLED` is on, domain docs, interaction inventory, and a focused policy test that fails if any gate drifts.

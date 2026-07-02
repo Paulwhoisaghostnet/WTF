@@ -10,9 +10,11 @@ import {
 import styled, { css, keyframes } from "styled-components";
 import { Button, Checkbox, GroupBox, TextField } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
+import { ADMIN_SURFACES, findAdminSurfaceForPath, type AdminSurface } from "../features/admin-os/admin-surface-registry";
 import { useAuth } from "../lib/auth-context";
 import { usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
+import { PAGE_DEFS, type PageDef } from "../routes/page-defs";
 
 type NodeKind =
   | "input"
@@ -132,8 +134,8 @@ const WIRE_KINDS: WireKind[] = ["pipeline", "fallback", "conditional", "serves",
 const NODE_STATUSES: NodeStatus[] = ["idle", "queued", "running", "complete", "blocked"];
 const ROUTE_STATUSES: RouteStatus[] = ["idle", "active", "cached", "blocked"];
 const PALETTE = ["#2563eb", "#059669", "#d97706", "#dc2626", "#7c3aed", "#0f766e"];
-const BOARD_WIDTH = 2400;
-const BOARD_HEIGHT = 1560;
+const BOARD_WIDTH = 3200;
+const BOARD_HEIGHT = 12000;
 const NODE_WIDTH = 208;
 const NODE_HEIGHT = 142;
 const MIN_ZOOM = 0.4;
@@ -475,7 +477,7 @@ const SEED_DOC: MapDoc = {
   ],
 };
 
-const WTFOS_DEMO_DOC: MapDoc = {
+const LEGACY_WTFOS_DEMO_DOC: MapDoc = {
   version: 1,
   title: "wtfOS living system map (read-only demo)",
   updatedAt: "2026-06-13T00:00:00.000Z",
@@ -810,6 +812,650 @@ const WTFOS_DEMO_DOC: MapDoc = {
     { id: "demo-wire-26", from: "demo-node-25", fromPort: "publish", to: "demo-node-5", toPort: "input", kind: "writes", color: "#059669", label: "live telemetry", status: "idle", throughput: "smoke signals" },
   ],
 };
+
+type WtfosDemoDomain = {
+  id: string;
+  label: string;
+  concern: string;
+  description: string;
+  notes: string;
+};
+
+type WtfosDemoWorkflow = {
+  name: string;
+  domainId: string;
+  routes: number;
+  handles: number;
+  probes: number;
+};
+
+type WtfosInfraRoute = {
+  pattern: string;
+  title: string;
+  domainId: string;
+  subdomain: string;
+  access: string;
+  notes: string;
+};
+
+type RouteDemoSeed = {
+  key: string;
+  label: string;
+  kind: NodeKind;
+  domainId: string;
+  system: string;
+  description: string;
+  notes: string;
+  surfaceId?: string;
+};
+
+const WTFOS_DEMO_DOMAINS: WtfosDemoDomain[] = [
+  {
+    id: "entry-identity",
+    label: "Entry + identity",
+    concern: "Entry, Authentication, and Account Identity",
+    description: "Public boot, login, registration, OAuth, wallet proof, profiles, public identity, and notifications.",
+    notes: "Time-out users can authenticate, but app/window launches still fail closed at the OS boundary.",
+  },
+  {
+    id: "desktop-os",
+    label: "Desktop OS",
+    concern: "Desktop OS, Navigation, and Personal Environment",
+    description: "Window shell, launchers, command palette, settings, MapLab, terminal, browser, desktop state, and app gates.",
+    notes: "Direct routes, desktop icons, Start Menu, command palette, Settings, and native admin panels must agree.",
+  },
+  {
+    id: "gameshow",
+    label: "Gameshow",
+    concern: "Gameshow Participation, Progression, and Rewards",
+    description: "Dashboard, rounds, challenges, side quests, mint portal, calendar, recapture, XP, and reward automation.",
+    notes: "Challenge completion is event-driven; skeleton route smoke is not enough to claim behavior coverage.",
+  },
+  {
+    id: "social-comms",
+    label: "Social + comms",
+    concern: "Community, Social, Messaging, and Discord",
+    description: "Messageboard, DMs, mail, Digest, W, WIM, Skywire, WTF LIVE, tz2at, CRP, Discord, and Telegram.",
+    notes: "This is the densest domain: OAuth, realtime rooms, AT records, chat, XP, and marketplace signals cross here.",
+  },
+  {
+    id: "wallet-tezos",
+    label: "Wallet + Tezos",
+    concern: "Wallets, Tokens, Portfolio, and On-Chain State",
+    description: "Linked wallets, signer preflight, Hoard, Tezos Intel, WTF Domains, user sites, and chain activity.",
+    notes: "Wallet-bound writes must bind active account, chain id, RPC, contract version, and linked user.",
+  },
+  {
+    id: "commerce-market",
+    label: "Commerce",
+    concern: "Market, Exchange, Inventory, and Commerce",
+    description: "WTFIAM, marketplace, trade boards, Rat Race, swap, discovery, inventory, tips, and checkout flows.",
+    notes: "Value-bearing flows need explicit object, price, wallet, stock, and durable side-effect proof.",
+  },
+  {
+    id: "club-dues",
+    label: "Club Dues",
+    concern: "Club Dues, Memberships, and Subscription Access",
+    description: "Membership visibility, dues payment intent, arrears warnings, contract compile, and subscription access.",
+    notes: "Dues can be public to inspect, but payment preparation must stay linked-wallet and contract guarded.",
+  },
+  {
+    id: "media-gallery",
+    label: "Media + gallery",
+    concern: "Media, Creation, Gallery, and Preservation",
+    description: "Owned media libraries, gallery/token views, colleKT, Studio, media storage, previews, and publication outputs.",
+    notes: "Private library state, public gallery inspection, storage caps, and external media references are separate contracts.",
+  },
+  {
+    id: "storage-ipfs",
+    label: "Storage + IPFS",
+    concern: "Media, Storage, AT Protocol, and WTF Domains",
+    description: "IPFS Pinning Manager, Porcupin aliases, provider policy, portable pin ledgers, and restore proof.",
+    notes: "Pinned records must preserve owner policy, PDS publication intent, and quota/provider failure states.",
+  },
+  {
+    id: "creation-tools",
+    label: "Creation tools",
+    concern: "Media, Creation, Gallery, and Preservation",
+    description: "Studio, Macaroni, particle/art tools, generated pages, media policies, and creator handoffs.",
+    notes: "Imported tools need sandbox-safe feedback, brand-residue scans, media policy parity, and first-open geometry proof.",
+  },
+  {
+    id: "tv-playback",
+    label: "TV + playback",
+    concern: "WTF TV, Playback, Channels, and Embeds",
+    description: "WTF TV, public streams, embeds, oEmbed, media cache, canonical channel config, telemetry, and Tezamp handoffs.",
+    notes: "Playback routes need explicit source ownership, cache, current-item, embed, and degraded states.",
+  },
+  {
+    id: "arcade-console-sdk",
+    label: "Arcade + Console",
+    concern: "WTF Arcade, WTF Console, and Game Studio SDK",
+    description: "Public Arcade, owned Console, Game Studio publishing, source imports, sessions, scores, reports, and SDK paths.",
+    notes: "Catalog, runtime, score tickets, creator submissions, and game package acceptance are different contracts.",
+  },
+  {
+    id: "casino",
+    label: "Casino",
+    concern: "WTF Casino, Membership, and Wagered Games",
+    description: "Casino access, membership card flow, WTF Button, Rug Pull, Guinea Pig Raceway, audits, and fail-closed wagering.",
+    notes: "Wagered games stay scaffolded/fail-closed until compliance, settlement, accounting, randomness, and anti-replay are real.",
+  },
+  {
+    id: "admin-ops",
+    label: "Admin + ops",
+    concern: "Administration, Governance, and Operations",
+    description: "Strict-admin suite, Control Board, Backup Manager, operator wallets, contract factory, role/app gates, health, and logs.",
+    notes: "Admin UX must expose affected object, permission, route, app key, event handle, and recovery path.",
+  },
+  {
+    id: "public-agents",
+    label: "Public + agents",
+    concern: "Public Data, Embeds, APIs, Agents, and Automation",
+    description: "Public routes, bounded public writes, MCP transport, paired-agent scopes, bots, webhooks, and system workers.",
+    notes: "Agents mirror browser authority and must not bypass login, role, app gate, wallet, or privacy boundaries.",
+  },
+  {
+    id: "skullz-fafolab",
+    label: "Skullzarmy + FAFOlab",
+    concern: "Skullzarmy / FAFOlab Integrations (skllzrmy)",
+    description: "TezosBeats, Mastodon/Tusk, IPFS/Porcupin continuity, MindWalk, PixelPatterns, PenRose, discovery, and FA2 templates.",
+    notes: "Partner integrations are first-class routes/tools only when registry, admin, docs, and tests agree.",
+  },
+];
+
+const WTFOS_DOMAIN_WORKFLOWS: WtfosDemoWorkflow[] = [
+  { name: "entry auth identity loop", domainId: "entry-identity", routes: 5, handles: 10, probes: 4 },
+  { name: "time out account app lockdown", domainId: "entry-identity", routes: 3, handles: 4, probes: 2 },
+  { name: "desktop os app shell loop", domainId: "desktop-os", routes: 5, handles: 28, probes: 4 },
+  { name: "gameshow rewards loop", domainId: "gameshow", routes: 6, handles: 12, probes: 12 },
+  { name: "social post to reward automation loop", domainId: "social-comms", routes: 15, handles: 122, probes: 113 },
+  { name: "wallet portfolio to commerce loop", domainId: "wallet-tezos", routes: 10, handles: 18, probes: 15 },
+  { name: "market commerce exchange loop", domainId: "commerce-market", routes: 7, handles: 20, probes: 13 },
+  { name: "club dues membership subscription loop", domainId: "club-dues", routes: 3, handles: 12, probes: 3 },
+  { name: "media creation to arcade publishing loop", domainId: "media-gallery", routes: 7, handles: 9, probes: 9 },
+  { name: "tv programming and playback loop", domainId: "tv-playback", routes: 3, handles: 7, probes: 6 },
+  { name: "arcade console score and report loop", domainId: "arcade-console-sdk", routes: 4, handles: 11, probes: 6 },
+  { name: "casino access and membership loop", domainId: "casino", routes: 6, handles: 48, probes: 6 },
+  { name: "admin os control loop", domainId: "admin-ops", routes: 5, handles: 18, probes: 10 },
+  { name: "public data and agent automation loop", domainId: "public-agents", routes: 5, handles: 8, probes: 9 },
+  { name: "skullzarmy fafolab integration loop", domainId: "skullz-fafolab", routes: 10, handles: 32, probes: 13 },
+];
+
+const WTFOS_BEHAVIOR_ASSERTIONS_BY_DOMAIN: Record<string, number> = {
+  "entry-identity": 3,
+  "desktop-os": 5,
+  gameshow: 4,
+  "social-comms": 13,
+  "wallet-tezos": 4,
+  "commerce-market": 3,
+  "club-dues": 1,
+  "media-gallery": 3,
+  "storage-ipfs": 1,
+  "tv-playback": 1,
+  "arcade-console-sdk": 1,
+  casino: 1,
+  "admin-ops": 1,
+  "public-agents": 1,
+  "skullz-fafolab": 1,
+};
+
+const WTFOS_INFRA_ROUTES: WtfosInfraRoute[] = [
+  { pattern: "/", title: "Landing + desktop boot", domainId: "entry-identity", subdomain: "Public entry", access: "public", notes: "Public root and desktop boot envelope." },
+  { pattern: "/login", title: "Login", domainId: "entry-identity", subdomain: "Local auth", access: "public/session", notes: "Password session, timeout-role authentication, and welcome event entry." },
+  { pattern: "/register", title: "Register", domainId: "entry-identity", subdomain: "Local auth", access: "public", notes: "Account creation path and registration failure telemetry." },
+  { pattern: "/api/auth/*", title: "Auth APIs", domainId: "entry-identity", subdomain: "Auth service", access: "public/session", notes: "Current user, social config, wallet challenges, and session lifecycle." },
+  { pattern: "/mcp", title: "MCP transport", domainId: "public-agents", subdomain: "MCP transport", access: "agent", notes: "Bearer-token paired-agent transport; ignores browser-session authority." },
+  { pattern: "/api/access", title: "Access manifest", domainId: "public-agents", subdomain: "Public JSON APIs", access: "public", notes: "Standard route/API manifest consumed by browser, CLI, and agents." },
+  { pattern: "/api/mcp/tokens", title: "MCP token APIs", domainId: "public-agents", subdomain: "MCP pairing", access: "session/agent", notes: "Create, list, scope, and revoke paired-agent tokens." },
+  { pattern: "/embed/tv/:ref", title: "TV embed", domainId: "tv-playback", subdomain: "Embeds", access: "public", notes: "Public channel/player embed path." },
+  { pattern: "/oembed", title: "oEmbed", domainId: "tv-playback", subdomain: "Embeds", access: "public", notes: "Public metadata resolver for embeddable TV surfaces." },
+  { pattern: "/ws", title: "Authenticated realtime", domainId: "public-agents", subdomain: "WebSocket realtime", access: "public/session", notes: "Board and Studio realtime envelope." },
+  { pattern: "/ws/wtf-live", title: "WTF LIVE realtime", domainId: "social-comms", subdomain: "WTF LIVE realtime", access: "public/session", notes: "Room-scoped media state, chat style, signaling, and relay path." },
+];
+
+const DEMO_DOMAIN_BY_ROUTE_GROUP: Record<NonNullable<PageDef["group"]>, string> = {
+  gameshow: "gameshow",
+  social: "social-comms",
+  market: "commerce-market",
+  media: "media-gallery",
+  create: "creation-tools",
+  casino: "casino",
+  gaming: "arcade-console-sdk",
+  "desktop-os": "desktop-os",
+  admin: "admin-ops",
+  public: "public-agents",
+};
+
+const DEMO_DOMAIN_BY_ADMIN_DOMAIN: Record<string, string> = {
+  Admin: "admin-ops",
+  Arcade: "arcade-console-sdk",
+  Casino: "casino",
+  "Club Dues": "club-dues",
+  Commerce: "commerce-market",
+  Console: "arcade-console-sdk",
+  Creation: "creation-tools",
+  "Desktop OS": "desktop-os",
+  Gameshow: "gameshow",
+  Media: "media-gallery",
+  Public: "public-agents",
+  Social: "social-comms",
+  Storage: "storage-ipfs",
+  Wallet: "wallet-tezos",
+};
+
+const DEMO_DOMAIN_BY_SURFACE_ID: Record<string, string> = {
+  arcade: "arcade-console-sdk",
+  console: "arcade-console-sdk",
+  "game-studio": "arcade-console-sdk",
+  tv: "tv-playback",
+  tezosbeats: "skullz-fafolab",
+  mastodon: "skullz-fafolab",
+  "ipfs-pinning": "storage-ipfs",
+  "wtf-domains": "wallet-tezos",
+};
+
+const DEMO_DOMAIN_BY_ROUTE_PATTERN: Record<string, string> = {
+  "/": "entry-identity",
+  "/login": "entry-identity",
+  "/register": "entry-identity",
+  "/profile": "entry-identity",
+  "/user/:username": "entry-identity",
+  "/task-manager": "gameshow",
+  "/game-studio": "arcade-console-sdk",
+  "/arcade": "arcade-console-sdk",
+  "/console": "arcade-console-sdk",
+  "/tv": "tv-playback",
+  "/music": "skullz-fafolab",
+  "/tezamp": "skullz-fafolab",
+  "/ipfs-pinning": "storage-ipfs",
+  "/apps/porcupin-setup": "storage-ipfs",
+  "/apps/porcupin-dashboard": "storage-ipfs",
+  "/dues": "club-dues",
+};
+
+function compactList(values: string[], limit = 3) {
+  if (values.length <= limit) return values.join(", ");
+  return `${values.slice(0, limit).join(", ")} +${values.length - limit} more`;
+}
+
+function samplePathForPattern(pattern: string) {
+  if (pattern === "/") return "/";
+  return pattern.replace(/:([A-Za-z0-9_]+)/g, (_, name: string) => {
+    const lower = name.toLowerCase();
+    if (lower.includes("contract")) return "KT1DemoContract";
+    if (lower.includes("token")) return "1";
+    if (lower.includes("username")) return "wtf-admin";
+    if (lower.includes("room")) return "wtf-live";
+    return "demo";
+  });
+}
+
+function demoDomainForSurface(surface: AdminSurface | null | undefined) {
+  if (!surface) return null;
+  return DEMO_DOMAIN_BY_SURFACE_ID[surface.id] ?? DEMO_DOMAIN_BY_ADMIN_DOMAIN[surface.domain] ?? null;
+}
+
+function pageDefAccessLabel(def: PageDef) {
+  if (def.roles?.includes("admin")) return "admin";
+  return def.auth ? "session" : "public";
+}
+
+function routeKindForAccess(access: string): NodeKind {
+  if (access.includes("admin")) return "policy";
+  if (access.includes("agent")) return "agent";
+  if (access.includes("public")) return "output";
+  return "router";
+}
+
+function managerKind(surface: AdminSurface): NodeKind {
+  if (surface.kind === "admin-tool") return "policy";
+  if (surface.kind === "tool") return "function";
+  if (surface.kind === "public-surface") return "output";
+  return "system";
+}
+
+function managerNodeKey(surface: AdminSurface) {
+  return surface.id === "map-lab" ? "wtfos-demo-map-lab" : `wtfos-manager-${slugify(surface.id)}`;
+}
+
+function buildRouteSeeds(): RouteDemoSeed[] {
+  const pageRoutes = PAGE_DEFS.map((def) => {
+    const samplePath = samplePathForPattern(def.pattern);
+    const surface = findAdminSurfaceForPath(samplePath) ?? findAdminSurfaceForPath(def.pattern);
+    const access = pageDefAccessLabel(def);
+    const launchSurfaces = [def.startMenu ? "Start Menu" : "", def.desktopIcon ? "desktop icon" : ""].filter(Boolean);
+    const domainId =
+      DEMO_DOMAIN_BY_ROUTE_PATTERN[def.pattern] ??
+      demoDomainForSurface(surface) ??
+      (def.group ? DEMO_DOMAIN_BY_ROUTE_GROUP[def.group] : "public-agents");
+    return {
+      key: `wtfos-route-${slugify(def.pattern)}`,
+      label: def.title ?? def.pattern,
+      kind: routeKindForAccess(access),
+      domainId,
+      system: surface ? `Route / ${surface.subdomain}` : `Route / ${def.group ?? "ungrouped"}`,
+      description: `${def.pattern} · ${access} · ${launchSurfaces.join(" + ") || "direct URL"}.`,
+      notes: surface
+        ? `Managed by ${surface.id}; admin domain ${surface.domain}; subdomain ${surface.subdomain}.`
+        : `PageDef group ${def.group ?? "none"}; no native admin surface matched this route.`,
+      surfaceId: surface?.id,
+    };
+  });
+
+  const infraRoutes = WTFOS_INFRA_ROUTES.map((route) => ({
+    key: `wtfos-route-${slugify(route.pattern)}`,
+    label: route.title,
+    kind: routeKindForAccess(route.access),
+    domainId: route.domainId,
+    system: `Inventory / ${route.subdomain}`,
+    description: `${route.pattern} · ${route.access}.`,
+    notes: route.notes,
+  }));
+
+  return [...pageRoutes, ...infraRoutes];
+}
+
+function buildWtfosDemoDoc(): MapDoc {
+  const nodes: MapNode[] = [];
+  const wires: MapWire[] = [];
+  let wireIndex = 1;
+
+  const addNode = (config: Omit<MapNode, "id" | "index" | "locked" | "status" | "ports"> & Partial<Pick<MapNode, "locked" | "status" | "ports" | "runtimeMs">>) => {
+    const node = staticNode({
+      ...config,
+      id: `demo-node-${nodes.length + 1}`,
+      index: nodes.length + 1,
+      locked: config.locked ?? true,
+    });
+    nodes.push(node);
+    return node;
+  };
+
+  const addWire = (
+    from: string,
+    to: string,
+    kind: WireKind,
+    label: string,
+    throughput: string,
+    color = PALETTE[wireIndex % PALETTE.length]
+  ) => {
+    wires.push({
+      id: `demo-wire-${wireIndex++}`,
+      from,
+      to,
+      kind,
+      color,
+      label,
+      status: "idle",
+      throughput,
+    });
+  };
+
+  const registryNodes = [
+    {
+      key: "wtfos-demo-desktop-shell",
+      label: "Desktop shell",
+      kind: "system" as NodeKind,
+      system: "Core OS",
+      description: "Window manager, taskbar, app chrome, crash boundaries, session restore, and launch orchestration.",
+      notes: "Every app should be windowed, focusable, recoverable, resize-aware, and gated by the same route policy.",
+    },
+    {
+      key: "wtfos-demo-page-defs",
+      label: "PageDef route registry",
+      kind: "router" as NodeKind,
+      system: "Routing",
+      description: `${PAGE_DEFS.length} browser PageDef entries with auth, roles, groups, Start Menu, and desktop-icon metadata.`,
+      notes: "This is the client-side route source that launches app windows and fullscreen surfaces.",
+    },
+    {
+      key: "wtfos-demo-browser-route-meta",
+      label: "Browser route meta",
+      kind: "policy" as NodeKind,
+      system: "Access",
+      description: "Shared route-access metadata keeps browser, CLI, stale shortcuts, public demos, and app gates aligned.",
+      notes: "Public demo access is a route metadata contract, not only a component-level read-only flag.",
+    },
+    {
+      key: "wtfos-demo-desktop-app-registry",
+      label: "Desktop app registry",
+      kind: "policy" as NodeKind,
+      system: "App gates",
+      description: "Canonical app keys, default config, package acceptance, doc registry, app availability, and role grants.",
+      notes: "Enableable owner surfaces need registry identity before users or operators can safely manage them.",
+    },
+    {
+      key: "wtfos-demo-admin-surface-registry",
+      label: "Admin surface registry",
+      kind: "repo" as NodeKind,
+      system: "Managers",
+      description: `${ADMIN_SURFACES.length} native/admin manager surfaces with domains, subdomains, routes, settings, handles, and behavior assertions.`,
+      notes: "This is the manager layer: every serious app needs visible operator ownership and native settings.",
+    },
+    {
+      key: "wtfos-demo-interaction-inventory",
+      label: "Interaction inventory",
+      kind: "data" as NodeKind,
+      system: "Contract",
+      description: "Markdown interaction contract by concern, domain, access level, user interaction, and canonical handles.",
+      notes: "Route, admin, reward, API, bot, telemetry, and SystemEvent changes update this inventory and E2E registry together.",
+    },
+    {
+      key: "wtfos-demo-system-event-spine",
+      label: "SystemEvent spine",
+      kind: "data" as NodeKind,
+      system: "Telemetry",
+      description: "Normalized event handles drive rewards, challenge automation, abuse monitoring, audits, and activity history.",
+      notes: "Meaningful interactions use stable handles when they affect rewards, monitoring, or automation.",
+    },
+    {
+      key: "wtfos-demo-behavior-assertions",
+      label: "Behavior assertions",
+      kind: "milestone" as NodeKind,
+      system: "Verification",
+      description: "42 named behavior assertions separate reachability from durable side-effect proof.",
+      notes: "Skeleton route smoke is not a feature-complete E2E claim.",
+    },
+    {
+      key: "wtfos-demo-domain-workflows",
+      label: "Domain workflows",
+      kind: "function" as NodeKind,
+      system: "E2E",
+      description: "15 inventory workflows connect routes, event handles, API probes, and cross-domain effects.",
+      notes: "Workflows prove the OS is a connected system instead of unrelated windows.",
+    },
+    {
+      key: "wtfos-demo-mcp-agents",
+      label: "MCP + agents",
+      kind: "agent" as NodeKind,
+      system: "Automation",
+      description: "Paired MCP tokens, scoped tools, public data reads, safe mutations, browser/client parity, and revocation.",
+      notes: "Agents mirror browser authority; they do not get hidden data paths or extra privileges.",
+    },
+    {
+      key: "wtfos-demo-postgres-storage",
+      label: "Postgres + storage",
+      kind: "memory" as NodeKind,
+      system: "Persistence",
+      description: "Schema, migrations, durable app state, media/object storage, pin ledgers, logs, and restore proof.",
+      notes: "Seeds and backfills must be idempotent and satisfy production constraints.",
+    },
+    {
+      key: "wtfos-demo-deploy-health",
+      label: "Deploy health",
+      kind: "milestone" as NodeKind,
+      system: "Release",
+      description: "Main promotion, Hetzner deploy workflow, health commit checks, quality gates, and production smoke.",
+      notes: "Full send means main is pushed, deploy succeeds, live health matches, and production is verified.",
+    },
+  ].map((node, index) =>
+    addNode({
+      ...node,
+      x: 76 + (index % 6) * 510,
+      y: 72 + Math.floor(index / 6) * 230,
+    })
+  );
+
+  const registryByKey = Object.fromEntries(registryNodes.map((node) => [node.key, node]));
+  addWire(registryByKey["wtfos-demo-desktop-shell"].id, registryByKey["wtfos-demo-page-defs"].id, "serves", "opens routes", "windows + fullscreen", "#2563eb");
+  addWire(registryByKey["wtfos-demo-page-defs"].id, registryByKey["wtfos-demo-browser-route-meta"].id, "depends", "access policy", "auth/roles/app gates", "#d97706");
+  addWire(registryByKey["wtfos-demo-browser-route-meta"].id, registryByKey["wtfos-demo-desktop-app-registry"].id, "blocks", "fail closed", "route gates", "#dc2626");
+  addWire(registryByKey["wtfos-demo-desktop-app-registry"].id, registryByKey["wtfos-demo-admin-surface-registry"].id, "depends", "managed surfaces", "app keys", "#7c3aed");
+  addWire(registryByKey["wtfos-demo-admin-surface-registry"].id, registryByKey["wtfos-demo-interaction-inventory"].id, "writes", "surface contract", "domains + handles", "#059669");
+  addWire(registryByKey["wtfos-demo-interaction-inventory"].id, registryByKey["wtfos-demo-system-event-spine"].id, "writes", "canonical handles", "SystemEvents", "#059669");
+  addWire(registryByKey["wtfos-demo-interaction-inventory"].id, registryByKey["wtfos-demo-behavior-assertions"].id, "depends", "behavior depth", "proof registry", "#d97706");
+  addWire(registryByKey["wtfos-demo-domain-workflows"].id, registryByKey["wtfos-demo-behavior-assertions"].id, "depends", "workflow proof", "route/API/events", "#0f766e");
+  addWire(registryByKey["wtfos-demo-mcp-agents"].id, registryByKey["wtfos-demo-browser-route-meta"].id, "depends", "same authority", "scopes + gates", "#dc2626");
+  addWire(registryByKey["wtfos-demo-postgres-storage"].id, registryByKey["wtfos-demo-system-event-spine"].id, "writes", "durable events", "rows + logs", "#2563eb");
+  addWire(registryByKey["wtfos-demo-deploy-health"].id, registryByKey["wtfos-demo-interaction-inventory"].id, "depends", "release evidence", "smoke + coverage", "#0f766e");
+
+  const routeSeeds = buildRouteSeeds();
+  const routesByDomain = routeSeeds.reduce<Map<string, RouteDemoSeed[]>>((acc, route) => {
+    acc.set(route.domainId, [...(acc.get(route.domainId) ?? []), route]);
+    return acc;
+  }, new Map());
+
+  const surfacesByDomain = ADMIN_SURFACES.reduce<Map<string, AdminSurface[]>>((acc, surface) => {
+    const domainId = demoDomainForSurface(surface) ?? "admin-ops";
+    acc.set(domainId, [...(acc.get(domainId) ?? []), surface]);
+    return acc;
+  }, new Map());
+
+  const workflowsByDomain = WTFOS_DOMAIN_WORKFLOWS.reduce<Map<string, WtfosDemoWorkflow[]>>((acc, workflow) => {
+    acc.set(workflow.domainId, [...(acc.get(workflow.domainId) ?? []), workflow]);
+    return acc;
+  }, new Map());
+
+  const domainNodeIds = new Map<string, string>();
+  const managerIdsBySurface = new Map<string, string>();
+  let laneY = 600;
+  const itemColumns = 8;
+  const itemStartX = 420;
+  const itemGapX = 330;
+  const itemGapY = 176;
+
+  for (const domain of WTFOS_DEMO_DOMAINS) {
+    const domainRoutes = routesByDomain.get(domain.id) ?? [];
+    const domainSurfaces = surfacesByDomain.get(domain.id) ?? [];
+    const domainWorkflows = workflowsByDomain.get(domain.id) ?? [];
+    const behaviorCount = WTFOS_BEHAVIOR_ASSERTIONS_BY_DOMAIN[domain.id] ?? 0;
+    const itemCount = domainRoutes.length + domainSurfaces.length + domainWorkflows.length;
+    const itemRows = Math.max(1, Math.ceil(itemCount / itemColumns));
+    const domainNode = addNode({
+      key: `wtfos-domain-${slugify(domain.id)}`,
+      label: domain.label,
+      kind: "system",
+      x: 76,
+      y: laneY + 42,
+      system: "Domain lane",
+      description: `${domain.description} ${domainRoutes.length} route/API nodes, ${domainSurfaces.length} manager surfaces, ${domainWorkflows.length} workflow specs, ${behaviorCount} behavior proofs.`,
+      notes: `${domain.concern}. ${domain.notes}`,
+    });
+    domainNodeIds.set(domain.id, domainNode.id);
+
+    addWire(registryByKey["wtfos-demo-page-defs"].id, domainNode.id, "serves", "route domain", `${domainRoutes.length} routes`, "#2563eb");
+    addWire(registryByKey["wtfos-demo-admin-surface-registry"].id, domainNode.id, "depends", "manager domain", `${domainSurfaces.length} surfaces`, "#7c3aed");
+    addWire(registryByKey["wtfos-demo-interaction-inventory"].id, domainNode.id, "reads", "inventory concern", domain.concern, "#059669");
+    if (behaviorCount > 0) {
+      addWire(registryByKey["wtfos-demo-behavior-assertions"].id, domainNode.id, "depends", "behavior proofs", `${behaviorCount} assertions`, "#d97706");
+    }
+
+    let itemIndex = 0;
+    const place = () => {
+      const position = {
+        x: itemStartX + (itemIndex % itemColumns) * itemGapX,
+        y: laneY + 28 + Math.floor(itemIndex / itemColumns) * itemGapY,
+      };
+      itemIndex += 1;
+      return position;
+    };
+
+    for (const workflow of domainWorkflows) {
+      const position = place();
+      const workflowNode = addNode({
+        key: `wtfos-workflow-${slugify(workflow.name)}`,
+        label: workflow.name,
+        kind: "milestone",
+        x: position.x,
+        y: position.y,
+        system: "Inventory workflow",
+        description: `${workflow.routes} routes, ${workflow.handles} event handles, ${workflow.probes} API probes.`,
+        notes: "Source: tests/e2e/inventory/domain-workflows.mjs.",
+      });
+      addWire(domainNode.id, workflowNode.id, "depends", "workflow", "routes + events + API", "#0f766e");
+      addWire(registryByKey["wtfos-demo-domain-workflows"].id, workflowNode.id, "serves", "workflow spec", workflow.name, "#0f766e");
+    }
+
+    for (const surface of domainSurfaces) {
+      const position = place();
+      const managerNode = addNode({
+        key: managerNodeKey(surface),
+        label: surface.label,
+        kind: managerKind(surface),
+        x: position.x,
+        y: position.y,
+        system: `${surface.domain} / ${surface.subdomain}`,
+        description: `${surface.kind}; ${surface.routePatterns.length} routes, ${surface.automationHandles.length} handles, ${surface.behaviorAssertionIds?.length ?? 0} behavior proofs.`,
+        notes: `Native settings: ${compactList(surface.nativeSettings, 4) || "none"}. Admin tabs: ${compactList(surface.adminPanelTabs, 4) || "none"}.`,
+      });
+      managerIdsBySurface.set(surface.id, managerNode.id);
+      addWire(domainNode.id, managerNode.id, "depends", "manager", surface.subdomain, "#7c3aed");
+      if (surface.automationHandles.length >= 8 || surface.id === "map-lab") {
+        addWire(managerNode.id, registryByKey["wtfos-demo-system-event-spine"].id, "writes", "handles", `${surface.automationHandles.length} events`, "#059669");
+      }
+      if ((surface.behaviorAssertionIds?.length ?? 0) > 0) {
+        addWire(managerNode.id, registryByKey["wtfos-demo-behavior-assertions"].id, "depends", "behavior proof", `${surface.behaviorAssertionIds?.length ?? 0} assertions`, "#d97706");
+      }
+    }
+
+    for (const route of domainRoutes) {
+      const position = place();
+      const routeNode = addNode({
+        key: route.key,
+        label: route.label,
+        kind: route.kind,
+        x: position.x,
+        y: position.y,
+        system: route.system,
+        description: route.description,
+        notes: route.notes,
+      });
+      addWire(domainNode.id, routeNode.id, "serves", "route", route.description.split(" · ")[0] ?? route.label, "#2563eb");
+      if (route.surfaceId) {
+        const managerId = managerIdsBySurface.get(route.surfaceId);
+        if (managerId) {
+          addWire(routeNode.id, managerId, "depends", "managed by", route.surfaceId, "#7c3aed");
+        }
+      }
+    }
+
+    laneY += Math.max(390, itemRows * itemGapY + 150);
+  }
+
+  const socialDomainId = domainNodeIds.get("social-comms");
+  const commerceDomainId = domainNodeIds.get("commerce-market");
+  const walletDomainId = domainNodeIds.get("wallet-tezos");
+  const mediaDomainId = domainNodeIds.get("media-gallery");
+  const arcadeDomainId = domainNodeIds.get("arcade-console-sdk");
+  const publicAgentsDomainId = domainNodeIds.get("public-agents");
+  const deployNodeId = registryByKey["wtfos-demo-deploy-health"].id;
+  if (socialDomainId && commerceDomainId) addWire(socialDomainId, commerceDomainId, "writes", "social commerce signals", "Skywire market + tips", "#0f766e");
+  if (walletDomainId && commerceDomainId) addWire(walletDomainId, commerceDomainId, "blocks", "wallet preflight", "chain guard", "#dc2626");
+  if (mediaDomainId && arcadeDomainId) addWire(mediaDomainId, arcadeDomainId, "pipeline", "creator publish path", "Studio/Game Studio", "#2563eb");
+  if (publicAgentsDomainId && socialDomainId) addWire(publicAgentsDomainId, socialDomainId, "serves", "realtime + agents", "MCP/bots/ws", "#059669");
+  if (deployNodeId && publicAgentsDomainId) addWire(deployNodeId, publicAgentsDomainId, "pipeline", "live smoke", "public verification", "#0f766e");
+
+  return {
+    version: 1,
+    title: "wtfOS full topology map (read-only demo)",
+    updatedAt: "2026-06-14T00:00:00.000Z",
+    nodes,
+    wires,
+  };
+}
+
+const WTFOS_DEMO_DOC: MapDoc = buildWtfosDemoDoc();
 
 const pulseRoute = keyframes`
   from { stroke-dashoffset: 24; }

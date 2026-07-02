@@ -5,7 +5,7 @@ WTF Map Lab is a WTFOS workflow graph designer for modeling complex systems as l
 ## What It Does
 
 - Creates keyed, indexed workflow nodes so every node can be identified by both a stable key and an order index.
-- Includes a built-in read-only wtfOS demo map that any user can open to inspect the system graph, pan/zoom around it, select nodes/routes, and run the preview without editing the canonical demo structure.
+- Includes a built-in read-only wtfOS demo map that any user can open to inspect the full OS topology, pan/zoom around it, select nodes/routes, and run the preview without editing the canonical demo structure.
 - Provides a typed node palette for prompt inputs, Hugging Face-style model calls, Gradio Spaces, function steps, routers, agents, memory stores, and artifact outputs.
 - Connects output ports to compatible input ports with typed, colored routes for pipelines, fallbacks, conditionals, `serves`, `depends`, `reads`, `writes`, and `blocks`.
 - Shows compatible/incompatible port feedback while a route is pending, supports Escape to cancel routing, and prevents mismatched port types from creating routes.
@@ -38,7 +38,8 @@ WTF Map Lab is a WTFOS workflow graph designer for modeling complex systems as l
 - Nodes have typed input and output ports. A route starts by clicking an output port and completes by clicking a compatible input port.
 - Routes are first-class graph objects with a kind, label, color, status, and throughput note.
 - The graph run action is a local preview, not external execution. It marks connected nodes and routes so users can inspect the intended pipeline before wiring real APIs or agents.
-- The wtfOS demo map uses the same graph model as user drafts: desktop shell, app registry, auth, WTFOS PDS, SystemEvent spine, inventory coverage, social/realtime/commerce/creator/media/chain surfaces, agents, jobs, database, deploy health, and public app output are represented as locked nodes with typed routed pipelines.
+- The wtfOS demo map uses the same graph model as user drafts, but its content is generated from current wtfOS source layers: PageDef routes, browser-route access policy, desktop app gates, admin/native manager surfaces, the interaction inventory, SystemEvent handles, domain workflows, behavior assertions, public/API/agent routes, persistence, deploy health, and cross-domain pipelines.
+- The demo intentionally includes concrete domain lanes, subdomain route nodes, native manager nodes, workflow nodes, and registry spine nodes so the map reflects the real operating-system contract instead of a hand-curated summary.
 - The overview map is clickable and recenters the scrollable canvas on the chosen region.
 - Hugging Face-inspired node categories are represented as local WTFOS templates; Map Lab does not call Hugging Face services by itself.
 
