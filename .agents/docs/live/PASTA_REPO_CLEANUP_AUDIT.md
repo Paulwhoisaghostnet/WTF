@@ -1,12 +1,22 @@
 # Pasta Repo Cleanup Audit
 
 Last audited: 2026-07-02
-Auditor: Codex Pasta post-PR25 evidence refresh
+Auditor: Codex Pasta post-PR26 live evidence refresh
 Production focus: `https://wtfos.app`
+
+## Post-PR #26 Production Evidence
+
+- The latest product-state verification source recorded in this audit is `origin/main` at `c1686b590843f9fd496f346215314ac0730875bf` (`Harden Pasta cleanup audit evidence refresh (#26)`).
+- PR #26 promoted the disappearing-ref cleanup-audit hardening and post-PR #25 evidence refresh. Branch push Quality Gates `28563026768` and PR Quality Gates `28563037055` passed on `a69fd6f8`; the PR gate completed SmartPy, typecheck, Vite env policy, build, inventory coverage, inventory Playwright smoke, and external link safety.
+- Deploy to Hetzner run `28563611520` passed for `c1686b59`, main Quality Gates run `28563611557` passed, and live `https://wtfos.app/api/health` reported `version.commitRef: "c1686b5"`, `nodeEnv: "production"`, healthy DB, and healthy mainnet chain defaults.
+- Post-merge pruning proved `codex/pasta-post-pr25-evidence-refresh` was squash-equivalent to `origin/main` with no file delta, then deleted that branch locally and remotely.
+- Post-prune `npm run pasta:repo-cleanup:audit` now reports only `codex/pasta-live-readiness` / `origin/codex/pasta-live-readiness` as historical evidence unsafe to replay, classifies the retained proof worktree as historical evidence, and classifies this detached cleanup checkout as a clean Pasta-related reference.
+- Post-deploy `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved live health at `c1686b5`, repo cleanup, static runtime markers, suite and individual installer release assets, installer catalog auth, and recorded Colander action proof while still blocking only on missing dedicated WTF.ME credentials and `PASTA_WTFME_LIVE_HOST`.
+- Post-deploy `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness` correctly exited `1` on the same two WTF.ME blockers, proving the cleanup-hardening carrier did not complete the full Pasta launch.
 
 ## Post-PR #25 Production Evidence
 
-- The latest product-state verification source recorded in this audit is `origin/main` at `7657a3ba94d9b6c8c0015815af0d99024c73b334` (`Handle squash-equivalent Pasta cleanup refs`).
+- The previous product-state verification source was `origin/main` at `7657a3ba94d9b6c8c0015815af0d99024c73b334` (`Handle squash-equivalent Pasta cleanup refs`).
 - PR #25 promoted the cleanup-audit squash-equivalence hardening. Branch push Quality Gates `28561244635` and PR Quality Gates `28561245926` passed on `94acd16e`, each with Inventory Playwright smoke heartbeat output through 720s before completion.
 - Deploy to Hetzner run `28561834866` passed for `7657a3ba`, main Quality Gates run `28561834903` passed, and live `https://wtfos.app/api/health` reported `version.commitRef: "7657a3b"`, `nodeEnv: "production"`, healthy DB, and healthy mainnet chain defaults.
 - Post-merge `npm run pasta:repo-cleanup:audit` first proved the squash-merged `codex/pasta-cleanup-squash-equivalent` / `origin/codex/pasta-cleanup-squash-equivalent` refs as `promoted_equivalent_squash` with no file delta against current `origin/main`. After the branch was deleted locally and remotely, the post-prune audit passed again with no blockers.
@@ -59,6 +69,7 @@ Production focus: `https://wtfos.app`
 - After PR #17 deployed to live `26c60cd`, deleted the promoted `codex/pasta-post-pr16-live-docs` branch locally and remotely, pruned 24 fully-promoted local branch refs, removed 9 clean promoted non-Gamma/Beta worktrees and their local branch refs, reran `npm run pasta:repo-cleanup:audit`, and confirmed no new Pasta branch/worktree blockers were introduced.
 - After PR #23 deployed to live `92bb731`, deleted the promoted `codex/pasta-live-evidence-refresh` branch locally and remotely, detached the proof checkout at current `origin/main`, reran `npm run pasta:repo-cleanup:audit`, and confirmed no new Pasta branch/worktree blockers were introduced.
 - After PR #25 deployed to live `7657a3b`, proved the squash-merged `codex/pasta-cleanup-squash-equivalent` refs as `promoted_equivalent_squash`, deleted that branch locally and remotely, detached/reused the clean proof checkout from current `origin/main`, reran `npm run pasta:repo-cleanup:audit`, and confirmed no new Pasta branch/worktree blockers were introduced.
+- After PR #26 deployed to live `c1686b5`, proved `codex/pasta-post-pr25-evidence-refresh` had no file delta against current `origin/main`, deleted that branch locally and remotely, detached/reused the clean proof checkout from current `origin/main`, reran `npm run pasta:repo-cleanup:audit`, and confirmed no new Pasta branch/worktree blockers were introduced.
 - No dirty user work was deleted during this follow-up audit.
 
 ## Worktree Classification
@@ -66,7 +77,7 @@ Production focus: `https://wtfos.app`
 | Worktree | Branch/Head | Dirty Count | Classification | Action |
 | --- | --- | ---: | --- | --- |
 | `.config/superpowers/worktrees/WTF/codex-pasta-live-readiness` | `codex/pasta-live-readiness` / `1354f490` | 0 | Historical Pasta proof branch, superseded by release slices | Keep as audit evidence only. Current two-dot comparison against `origin/main` shows replaying it would remove newer installer apps/workflows, live-readiness gates, Colander action proof, and standalone installer audit tooling. |
-| `.config/superpowers/worktrees/WTF/codex-spaghetti-installer-live` | `codex/pasta-post-pr25-evidence-refresh` from `7657a3ba` | current branch changes | Active Pasta evidence/hardening checkout | Use as the proof base for post-PR #25 Pasta evidence refresh and disappearing-ref cleanup hardening. PR #25 is promoted and `codex/pasta-cleanup-squash-equivalent` was deleted; full Pasta remains blocked by live WTF.ME host and pin-discovery proof, not by individual installer publication, catalog deployment, repo cleanup, squash-equivalent branch noise, or disappearing temporary audit refs. |
+| `.config/superpowers/worktrees/WTF/codex-spaghetti-installer-live` | `codex/pasta-post-pr26-live-evidence` from `c1686b59` | current docs changes | Active Pasta evidence-refresh checkout | Use as the proof base for the post-PR #26 live evidence refresh. PR #26 is promoted and `codex/pasta-post-pr25-evidence-refresh` was deleted locally and remotely; full Pasta remains blocked by live WTF.ME host and pin-discovery proof, not by individual installer publication, catalog deployment, repo cleanup, squash-equivalent branch noise, or disappearing temporary audit refs. |
 | `Desktop/cursor-projects/Sandbox/WTF combo/WTF` | local `main` / `9d043fd` | 305 | Stale mixed scratch checkout | Do not deploy from it. It is 96 commits behind `origin/main` with zero local commits ahead and broad tracked/untracked scratch churn. Preserve or archive only after user confirmation; any Pasta-looking file must be compared against current `origin/main` before mining. |
 | `Desktop/cursor-projects/Sandbox/WTF combo/WTF-pasta-deploy` | absent | 0 | Removed stale Pasta prototype | Historical regression warning only. Do not recreate or replay its patch. |
 | `Desktop/cursor-projects/Sandbox/WTF combo/DUMMY PASTA` | standalone fixture repo | 0 | Shadownet Macaroni rehearsal fixture | Keep as fixture/reference material; it is not a WTF app worktree and not production deploy code. |
@@ -89,12 +100,12 @@ Production focus: `https://wtfos.app`
 
 | Branch | Current delta vs `origin/main` | Classification | Action |
 | --- | ---: | --- | --- |
-| `codex/pasta-live-readiness` / `origin/codex/pasta-live-readiness` | `61 22` | Historical proof branch, unsafe to replay | Keep only as evidence. `origin/main..codex/pasta-live-readiness` touches 131 files with 33,381 deletions, including deletion of newer Gnocchi/Ravioli/Rotini/Penne/Lasagna desktop packages and workflows, `pasta:live-readiness`, standalone installer audit tooling, Colander action proof scripts, and published proof reports. Mine individual ideas only by comparing current main first. |
+| `codex/pasta-live-readiness` / `origin/codex/pasta-live-readiness` | `62 22` | Historical proof branch, unsafe to replay | Keep only as evidence. `origin/main..codex/pasta-live-readiness` touches 131 files with 33,469 deletions, including deletion of newer Gnocchi/Ravioli/Rotini/Penne/Lasagna desktop packages and workflows, `pasta:live-readiness`, standalone installer audit tooling, Colander action proof scripts, and published proof reports. Mine individual ideas only by comparing current main first. |
 | `wip/full-working-tree-20260617` | `210 2` | Monolithic stale backup | Do not merge. It is two old backup commits over a much older base; replay would touch 812 files with 199,472 deletions, including removal of current installer apps, workflows, Pasta reports, spec files, and live readiness tooling. Archive after user confirmation. |
 | `codex/pasta-installer-audit-docs`, `codex/pasta-readiness-catalog-live`, `codex/spaghetti-installer-live`, `codex/ipfs-pinning-organ`, `codex/macaroni-*`, and other promoted local ancestors | deleted after ancestor proof | Pruned promoted history | Removed locally after audit proved zero commits ahead of `origin/main`; remote promoted branches `origin/codex/macaroni-onboarding-guards`, `origin/codex/macaroni-v2-full-send`, `origin/codex/pasta-readiness-catalog-live`, and `origin/codex/spaghetti-installer-live` were deleted and pruned. |
 | `codex/tz2at-ratrace-combined-backup` | absent locally/remotely | Removed unrelated old Tezos backup | No Pasta action remains; do not recreate for this release lane. |
 
-Executable audit proof: after PR #25 deployed and the promoted squash-equivalent branch was deleted, `npm run pasta:repo-cleanup:audit` passed with `ok: true`, base `origin/main` at `7657a3ba94d9b6c8c0015815af0d99024c73b334`, no blockers, `codex/pasta-live-readiness` / `origin/codex/pasta-live-readiness` classified as `historical_evidence_unsafe_to_replay`, the retained `codex-pasta-live-readiness` worktree classified as `historical_evidence_worktree`, and this cleanup checkout classified as valid ongoing work. Current branch policy coverage also proves the audit tolerates a Pasta ref that disappears between listing and classification without weakening fail-closed handling for surviving unknown refs.
+Executable audit proof: after PR #26 deployed and the promoted squash-equivalent branch was deleted, `npm run pasta:repo-cleanup:audit` passed with `ok: true`, base `origin/main` at `c1686b590843f9fd496f346215314ac0730875bf`, active ref `HEAD`, no blockers, `codex/pasta-live-readiness` / `origin/codex/pasta-live-readiness` classified as `historical_evidence_unsafe_to_replay`, the retained `codex-pasta-live-readiness` worktree classified as `historical_evidence_worktree`, and this cleanup checkout classified as a clean `pasta_related_reference`. Policy coverage also proves the audit tolerates a Pasta ref that disappears between listing and classification without weakening fail-closed handling for surviving unknown refs.
 
 ## Historical Stale Pasta Findings
 
