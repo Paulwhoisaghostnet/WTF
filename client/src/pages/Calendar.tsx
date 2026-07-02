@@ -18,10 +18,185 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { usePresentationShell } from "../lib/presentation-shell";
 
 const TTC_SUBMIT_URL = "https://thetezos.com/submit-event/";
 const TTC_CALENDAR_URL = "https://thetezos.com/calendar-view/";
 const TTC_X_URL = "https://x.com/TezosEvents";
+
+const CalendarSurface = styled.div`
+  &[data-calendar-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-calendar-presentation-host="gamma"],
+  &[data-calendar-presentation-host="gamma"] * {
+    letter-spacing: 0;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region],
+  &[data-calendar-presentation-host="gamma"] fieldset,
+  &[data-calendar-presentation-host="gamma"] button,
+  &[data-calendar-presentation-host="gamma"] input,
+  &[data-calendar-presentation-host="gamma"] textarea,
+  &[data-calendar-presentation-host="gamma"] select {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="source-links"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="tabs"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="tab-body"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="browse-actions"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="source-panel"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="event-card"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="ticket-card"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="personal-form"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="submit-form"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="tickets-panel"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="loading"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="empty"],
+  &[data-calendar-presentation-host="gamma"] fieldset {
+    background: #11110f !important;
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    border-radius: 6px !important;
+    color: #f2ead9;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="source-links"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="browse-actions"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="source-panel"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="personal-form"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="submit-form"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="tickets-panel"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="loading"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="empty"] {
+    padding: 10px;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="tabs"] {
+    border-bottom-color: rgba(0, 210, 255, 0.34) !important;
+    margin-bottom: 12px;
+    padding: 8px;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="tab-body"] {
+    padding: 10px;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="event-card"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="ticket-card"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="source-panel"] {
+    margin-bottom: 10px;
+  }
+
+  &[data-calendar-presentation-host="gamma"] legend {
+    color: #00d2ff !important;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="event-card"] > div,
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="ticket-card"] > div,
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="source-panel"] > div,
+  &[data-calendar-presentation-host="gamma"] fieldset > div {
+    background: transparent !important;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="source-badge"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="kind-badge"] {
+    background: #070706 !important;
+    border: 1px solid rgba(0, 210, 255, 0.52);
+    border-radius: 4px;
+    color: #00d2ff;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 12px;
+    padding: 2px 6px;
+    text-transform: uppercase;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="event-media"] {
+    background: #070706 !important;
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    border-radius: 4px;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="event-description"] {
+    color: rgba(242, 234, 217, 0.82);
+    line-height: 1.45;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="field"] label {
+    color: rgba(242, 234, 217, 0.72);
+    font-size: 12px;
+  }
+
+  &[data-calendar-presentation-host="gamma"] button,
+  &[data-calendar-presentation-host="gamma"] input,
+  &[data-calendar-presentation-host="gamma"] textarea,
+  &[data-calendar-presentation-host="gamma"] select {
+    background: #070706 !important;
+    border: 1px solid rgba(242, 234, 217, 0.2) !important;
+    border-radius: 4px !important;
+    color: #f2ead9 !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    min-height: 32px;
+  }
+
+  &[data-calendar-presentation-host="gamma"] button[aria-selected="true"],
+  &[data-calendar-presentation-host="gamma"] button[data-calendar-active="true"],
+  &[data-calendar-presentation-host="gamma"] button:hover {
+    border-color: rgba(0, 210, 255, 0.72) !important;
+    color: #00d2ff !important;
+  }
+
+  &[data-calendar-presentation-host="gamma"] a {
+    color: #00d2ff;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="meta"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="source-copy"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="empty"] {
+    color: rgba(242, 234, 217, 0.72);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="error"] {
+    color: #ff6b5f;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="ttc-backdrop"] {
+    background: rgba(7, 7, 6, 0.84);
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="ttc-modal"] {
+    background: #11110f !important;
+    border: 1px solid rgba(0, 210, 255, 0.38) !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="ttc-header"] {
+    background: #070706 !important;
+    border-bottom: 1px solid rgba(0, 210, 255, 0.34) !important;
+    color: #00d2ff !important;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="ttc-body"] {
+    background: #11110f !important;
+    color: #f2ead9;
+  }
+
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="ttc-frame"] {
+    background: #070706 !important;
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    border-radius: 4px;
+  }
+`;
 
 const Stack = styled.div`
   display: flex;
@@ -305,6 +480,7 @@ function personalToCalendarEvent(event: PersonalEvent): CalendarEvent {
 
 export function Calendar() {
   const { user } = useAuth();
+  const presentation = usePresentationShell();
   const qc = useQueryClient();
   const [view, setView] = useState<"today" | "week" | "season">("week");
   const [tab, setTab] = useState<"browse" | "personal" | "submit" | "mine">("browse");
@@ -424,15 +600,20 @@ export function Calendar() {
 
   return (
     <AppWindow title="Calendar">
-      <Stack>
-        <Row>
-          <Muted>
+      <CalendarSurface
+        data-calendar-presentation-host={presentation.host}
+        data-calendar-surface="calendar"
+        data-calendar-active-tab={tab}
+      >
+      <Stack data-calendar-region="shell">
+        <Row data-calendar-region="source-links">
+          <Muted data-calendar-region="meta">
             WTF iCal:{" "}
             <a href="/api/calendar/feed.ics" target="_blank" rel="noopener noreferrer">
               /api/calendar/feed.ics
             </a>
           </Muted>
-          <Muted>
+          <Muted data-calendar-region="meta">
             TTC:{" "}
             <a href={TTC_CALENDAR_URL} target="_blank" rel="noopener noreferrer">
               calendar
@@ -444,31 +625,36 @@ export function Calendar() {
           </Muted>
         </Row>
 
-        <Tabs value={tab} onChange={(v: any) => setTab(v)}>
-          <Tab value="browse">Browse</Tab>
-          <Tab value="personal">Add personal</Tab>
-          <Tab value="submit">Submit to WTF</Tab>
-          <Tab value="mine">My tickets</Tab>
-        </Tabs>
+        <div data-calendar-region="tabs">
+          <Tabs value={tab} onChange={(v: any) => setTab(v)}>
+            <Tab value="browse">Browse</Tab>
+            <Tab value="personal">Add personal</Tab>
+            <Tab value="submit">Submit to WTF</Tab>
+            <Tab value="mine">My tickets</Tab>
+          </Tabs>
+        </div>
 
-        <TabBody>
+        <TabBody data-calendar-region="tab-body">
           {tab === "browse" ? (
-            <Split>
+            <Split data-calendar-region="browse-split">
               <Stack>
-                <Row>
+                <Row data-calendar-region="browse-actions">
                   <Button
+                    data-calendar-active={view === "today" ? "true" : "false"}
                     onClick={() => setView("today")}
                     primary={view === "today"}
                   >
                     Today
                   </Button>
                   <Button
+                    data-calendar-active={view === "week" ? "true" : "false"}
                     onClick={() => setView("week")}
                     primary={view === "week"}
                   >
                     This week
                   </Button>
                   <Button
+                    data-calendar-active={view === "season" ? "true" : "false"}
                     onClick={() => setView("season")}
                     primary={view === "season"}
                   >
@@ -480,80 +666,105 @@ export function Calendar() {
                 </Row>
 
                 {eventsQuery.isLoading ? (
-                  <Hourglass size={24} />
+                  <div data-calendar-region="loading">
+                    <Hourglass size={24} />
+                  </div>
                 ) : visibleEvents.length === 0 ? (
-                  <Muted>No events in this window.</Muted>
+                  <Muted data-calendar-region="empty">No events in this window.</Muted>
                 ) : (
                   visibleEvents.map((e) => (
-                    <EventCard key={`${e.sourceProvider ?? "wtf"}:${e.id}`} label={e.title}>
-                      <Row>
-                        {e.imageUrl ? <PreviewImage src={e.imageUrl} alt="" /> : null}
-                        <Stack>
-                          <Row>
-                            <SourceBadge $source={e.sourceProvider ?? "wtf"}>
-                              {(e.sourceProvider ?? "wtf").toUpperCase()}
-                            </SourceBadge>
-                            <KindBadge $kind={e.kind}>{e.kind}</KindBadge>
-                            <Muted>{formatEventTime(e)}</Muted>
-                          </Row>
-                          <Row>
-                            <Muted>visibility: {e.visibility}</Muted>
-                            {e.location ? <Muted>place: {e.location}</Muted> : null}
-                            {e.categories?.length ? (
-                              <Muted>{e.categories.join(", ")}</Muted>
-                            ) : null}
-                          </Row>
-                        </Stack>
-                      </Row>
-                      {e.description ? (
-                        <div style={{ marginTop: 6, fontSize: 13, whiteSpace: "pre-wrap" }}>
-                          {e.description}
-                        </div>
-                      ) : null}
-                      {Array.isArray(e.linksJson) && e.linksJson.length > 0 ? (
-                        <div style={{ marginTop: 6 }}>
-                          {(e.linksJson as Array<{
-                            label: string;
-                            url: string;
-                          }>).map((l) => (
-                            <div key={l.url}>
-                              <a href={l.url} target="_blank" rel="noopener noreferrer">
-                                {l.label}
-                              </a>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                      {e.sourceProvider === "personal" ? (
-                        <Row style={{ marginTop: 8 }}>
-                          <Button size="sm" onClick={() => removePersonalEvent(String(e.id))}>
-                            Remove
-                          </Button>
+                    <div
+                      key={`${e.sourceProvider ?? "wtf"}:${e.id}`}
+                      data-calendar-region="event-card"
+                    >
+                      <EventCard label={e.title}>
+                        <Row>
+                          {e.imageUrl ? (
+                            <PreviewImage
+                              src={e.imageUrl}
+                              alt=""
+                              data-calendar-region="event-media"
+                            />
+                          ) : null}
+                          <Stack>
+                            <Row>
+                              <SourceBadge
+                                $source={e.sourceProvider ?? "wtf"}
+                                data-calendar-region="source-badge"
+                              >
+                                {(e.sourceProvider ?? "wtf").toUpperCase()}
+                              </SourceBadge>
+                              <KindBadge $kind={e.kind} data-calendar-region="kind-badge">
+                                {e.kind}
+                              </KindBadge>
+                              <Muted data-calendar-region="meta">{formatEventTime(e)}</Muted>
+                            </Row>
+                            <Row>
+                              <Muted data-calendar-region="meta">visibility: {e.visibility}</Muted>
+                              {e.location ? (
+                                <Muted data-calendar-region="meta">place: {e.location}</Muted>
+                              ) : null}
+                              {e.categories?.length ? (
+                                <Muted data-calendar-region="meta">{e.categories.join(", ")}</Muted>
+                              ) : null}
+                            </Row>
+                          </Stack>
                         </Row>
-                      ) : null}
-                    </EventCard>
+                        {e.description ? (
+                          <div
+                            data-calendar-region="event-description"
+                            style={{ marginTop: 6, fontSize: 13, whiteSpace: "pre-wrap" }}
+                          >
+                            {e.description}
+                          </div>
+                        ) : null}
+                        {Array.isArray(e.linksJson) && e.linksJson.length > 0 ? (
+                          <div data-calendar-region="event-links" style={{ marginTop: 6 }}>
+                            {(e.linksJson as Array<{
+                              label: string;
+                              url: string;
+                            }>).map((l) => (
+                              <div key={l.url}>
+                                <a href={l.url} target="_blank" rel="noopener noreferrer">
+                                  {l.label}
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {e.sourceProvider === "personal" ? (
+                          <Row data-calendar-region="event-actions" style={{ marginTop: 8 }}>
+                            <Button size="sm" onClick={() => removePersonalEvent(String(e.id))}>
+                              Remove
+                            </Button>
+                          </Row>
+                        ) : null}
+                      </EventCard>
+                    </div>
                   ))
                 )}
               </Stack>
 
-              <SourcePanel label="Sources">
-                <Stack>
-                  <Muted>TTC events are pulled from TheTezosCommunity iCal feed and ranked above WTF entries when duplicates share the same title and start time.</Muted>
-                  <Muted>WTF entries come from approved WTF calendar tickets and staff-created events.</Muted>
-                  <Muted>Personal entries stay in this browser profile only.</Muted>
-                  <Separator />
-                  <Button onClick={() => setTab("personal")}>Add personal entry</Button>
-                  <Button onClick={() => setTab("submit")}>Submit to WTF</Button>
-                  <Button onClick={() => setShowTtcSubmit(true)}>Submit to TTC</Button>
-                </Stack>
-              </SourcePanel>
+              <div data-calendar-region="source-panel">
+                <SourcePanel label="Sources">
+                  <Stack>
+                    <Muted data-calendar-region="source-copy">TTC events are pulled from TheTezosCommunity iCal feed and ranked above WTF entries when duplicates share the same title and start time.</Muted>
+                    <Muted data-calendar-region="source-copy">WTF entries come from approved WTF calendar tickets and staff-created events.</Muted>
+                    <Muted data-calendar-region="source-copy">Personal entries stay in this browser profile only.</Muted>
+                    <Separator />
+                    <Button onClick={() => setTab("personal")}>Add personal entry</Button>
+                    <Button onClick={() => setTab("submit")}>Submit to WTF</Button>
+                    <Button onClick={() => setShowTtcSubmit(true)}>Submit to TTC</Button>
+                  </Stack>
+                </SourcePanel>
+              </div>
             </Split>
           ) : null}
 
           {tab === "personal" ? (
-            <Stack>
-              <Muted>Personal entries appear only in your WTFos calendar view.</Muted>
-              <Field>
+            <Stack data-calendar-region="personal-form">
+              <Muted data-calendar-region="meta">Personal entries appear only in your WTFos calendar view.</Muted>
+              <Field data-calendar-region="field">
                 <label>Title</label>
                 <TextInput
                   value={personalTitle}
@@ -561,7 +772,7 @@ export function Calendar() {
                   fullWidth
                 />
               </Field>
-              <Field>
+              <Field data-calendar-region="field">
                 <label>Description</label>
                 <TextInput
                   value={personalDescription}
@@ -570,7 +781,7 @@ export function Calendar() {
                   fullWidth
                 />
               </Field>
-              <Field>
+              <Field data-calendar-region="field">
                 <label>Starts at (local)</label>
                 <TextInput
                   type="datetime-local"
@@ -579,7 +790,7 @@ export function Calendar() {
                   fullWidth
                 />
               </Field>
-              <Field>
+              <Field data-calendar-region="field">
                 <label>Ends at (optional)</label>
                 <TextInput
                   type="datetime-local"
@@ -588,7 +799,7 @@ export function Calendar() {
                   fullWidth
                 />
               </Field>
-              <Field>
+              <Field data-calendar-region="field">
                 <label>Place or stream</label>
                 <TextInput
                   value={personalLocation}
@@ -596,7 +807,7 @@ export function Calendar() {
                   fullWidth
                 />
               </Field>
-              <Row>
+              <Row data-calendar-region="form-actions">
                 <Button primary disabled={!personalTitle || !personalStartsAt} onClick={savePersonalEvent}>
                   Add to my view
                 </Button>
@@ -605,20 +816,20 @@ export function Calendar() {
           ) : null}
 
           {tab === "submit" ? (
-            <Stack>
-              <Row>
+            <Stack data-calendar-region="submit-form">
+              <Row data-calendar-region="form-actions">
                 <Button onClick={() => setShowTtcSubmit(true)}>Submit to TTC</Button>
-                <Muted>TTC is the Tezos source of truth; WTF submissions stay in the WTF review queue.</Muted>
+                <Muted data-calendar-region="meta">TTC is the Tezos source of truth; WTF submissions stay in the WTF review queue.</Muted>
               </Row>
               {!user ? (
-                <Muted>Sign in to submit a WTF calendar event for review.</Muted>
+                <Muted data-calendar-region="empty">Sign in to submit a WTF calendar event for review.</Muted>
               ) : (
                 <>
-                  <Muted>
+                  <Muted data-calendar-region="meta">
                     WTF submissions are reviewed by cohosts. Approved events
                     appear in the public WTF calendar layer.
                   </Muted>
-                  <Field>
+                  <Field data-calendar-region="field">
                     <label>Title</label>
                     <TextInput
                       value={formTitle}
@@ -626,7 +837,7 @@ export function Calendar() {
                       fullWidth
                     />
                   </Field>
-                  <Field>
+                  <Field data-calendar-region="field">
                     <label>Description</label>
                     <TextInput
                       value={formDescription}
@@ -637,7 +848,7 @@ export function Calendar() {
                       fullWidth
                     />
                   </Field>
-                  <Field>
+                  <Field data-calendar-region="field">
                     <label>Starts at (local)</label>
                     <TextInput
                       type="datetime-local"
@@ -646,7 +857,7 @@ export function Calendar() {
                       fullWidth
                     />
                   </Field>
-                  <Field>
+                  <Field data-calendar-region="field">
                     <label>Ends at (optional)</label>
                     <TextInput
                       type="datetime-local"
@@ -655,7 +866,7 @@ export function Calendar() {
                       fullWidth
                     />
                   </Field>
-                  <Field>
+                  <Field data-calendar-region="field">
                     <label>Kind</label>
                     <Select
                       value={formKind}
@@ -664,7 +875,7 @@ export function Calendar() {
                       width={240}
                     />
                   </Field>
-                  <Field>
+                  <Field data-calendar-region="field">
                     <label>Visibility</label>
                     <Select
                       value={formVisibility}
@@ -673,8 +884,8 @@ export function Calendar() {
                       width={240}
                     />
                   </Field>
-                  {submitError ? <ErrorText>{submitError}</ErrorText> : null}
-                  <Row>
+                  {submitError ? <ErrorText data-calendar-region="error">{submitError}</ErrorText> : null}
+                  <Row data-calendar-region="form-actions">
                     <Button
                       primary
                       disabled={
@@ -693,40 +904,43 @@ export function Calendar() {
           ) : null}
 
           {tab === "mine" ? (
-            <Stack>
+            <Stack data-calendar-region="tickets-panel">
               {myTicketsQuery.isLoading ? (
-                <Hourglass size={24} />
+                <div data-calendar-region="loading">
+                  <Hourglass size={24} />
+                </div>
               ) : !user ? (
-                <Muted>Sign in to see your WTF submissions.</Muted>
+                <Muted data-calendar-region="empty">Sign in to see your WTF submissions.</Muted>
               ) : (myTicketsQuery.data ?? []).length === 0 ? (
-                <Muted>You have not submitted any WTF events yet.</Muted>
+                <Muted data-calendar-region="empty">You have not submitted any WTF events yet.</Muted>
               ) : (
                 (myTicketsQuery.data ?? []).map((t) => (
-                  <EventCard
-                    key={t.id}
-                    label={`${t.payloadJson?.title ?? "(untitled)"} - ${t.status}`}
-                  >
-                    <Row>
-                      <Muted>
-                        Starts:{" "}
-                        {t.payloadJson?.startsAt
-                          ? new Date(t.payloadJson.startsAt).toLocaleString()
-                          : "-"}
-                      </Muted>
-                      <Muted>Kind: {t.payloadJson?.kind ?? "-"}</Muted>
-                    </Row>
-                    {t.reviewReason ? (
-                      <>
-                        <Separator />
-                        <Muted>Reviewer: {t.reviewReason}</Muted>
-                      </>
-                    ) : null}
-                    {t.publishedEventId ? (
-                      <Muted>
-                        Published as event #{t.publishedEventId}
-                      </Muted>
-                    ) : null}
-                  </EventCard>
+                  <div key={t.id} data-calendar-region="ticket-card">
+                    <EventCard
+                      label={`${t.payloadJson?.title ?? "(untitled)"} - ${t.status}`}
+                    >
+                      <Row>
+                        <Muted data-calendar-region="meta">
+                          Starts:{" "}
+                          {t.payloadJson?.startsAt
+                            ? new Date(t.payloadJson.startsAt).toLocaleString()
+                            : "-"}
+                        </Muted>
+                        <Muted data-calendar-region="meta">Kind: {t.payloadJson?.kind ?? "-"}</Muted>
+                      </Row>
+                      {t.reviewReason ? (
+                        <>
+                          <Separator />
+                          <Muted data-calendar-region="meta">Reviewer: {t.reviewReason}</Muted>
+                        </>
+                      ) : null}
+                      {t.publishedEventId ? (
+                        <Muted data-calendar-region="meta">
+                          Published as event #{t.publishedEventId}
+                        </Muted>
+                      ) : null}
+                    </EventCard>
+                  </div>
                 ))
               )}
             </Stack>
@@ -735,24 +949,27 @@ export function Calendar() {
       </Stack>
 
       {showTtcSubmit ? (
-        <ModalBackdrop onClick={() => setShowTtcSubmit(false)}>
-          <ModalWindow onClick={(e: any) => e.stopPropagation()}>
-            <ModalHeader>
+        <ModalBackdrop data-calendar-region="ttc-backdrop" onClick={() => setShowTtcSubmit(false)}>
+          <ModalWindow data-calendar-region="ttc-modal" onClick={(e: any) => e.stopPropagation()}>
+            <ModalHeader data-calendar-region="ttc-header">
               <span>Submit event to TTC</span>
               <Button size="sm" onClick={() => setShowTtcSubmit(false)}>
                 X
               </Button>
             </ModalHeader>
-            <WindowContent style={{ minHeight: 0, flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+            <WindowContent
+              data-calendar-region="ttc-body"
+              style={{ minHeight: 0, flex: 1, display: "flex", flexDirection: "column", gap: 8 }}
+            >
               <Row>
-                <Muted>
+                <Muted data-calendar-region="meta">
                   This submits directly to TheTezosCommunity. WTF does not write to TTC.
                 </Muted>
                 <a href={TTC_SUBMIT_URL} target="_blank" rel="noopener noreferrer">
                   Open in new tab
                 </a>
               </Row>
-              <IframeWrap>
+              <IframeWrap data-calendar-region="ttc-frame">
                 <TtcFrame
                   title="Submit event to TheTezosCommunity"
                   src={TTC_SUBMIT_URL}
@@ -763,6 +980,7 @@ export function Calendar() {
           </ModalWindow>
         </ModalBackdrop>
       ) : null}
+      </CalendarSurface>
     </AppWindow>
   );
 }

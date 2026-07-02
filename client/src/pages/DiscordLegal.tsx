@@ -1,6 +1,7 @@
 import { Anchor, Button, GroupBox } from "react95";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { presentationRouteHref } from "../lib/presentation-shell";
 
 const Copy = styled.div`
   font-size: 13px;
@@ -134,7 +135,7 @@ export function DiscordLinkedRoles() {
             unless WTF staff explicitly map and approve them.
           </p>
           <p>
-            <Button onClick={() => window.location.assign("/dicksword")}>
+            <Button onClick={() => window.location.assign(presentationRouteHref("/dicksword"))}>
               Open Dicksword
             </Button>{" "}
             <Anchor href="/api/auth/discord">Connect Discord OAuth</Anchor>

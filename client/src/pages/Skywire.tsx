@@ -12,6 +12,10 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import {
+  presentationRouteHref,
+  usePresentationShell,
+} from "../lib/presentation-shell";
 import { purchaseRatRaceListing } from "../lib/tezos";
 import { assertWalletLinkedToCurrentUser } from "../lib/tezos/wallet-ownership";
 import { useWallet } from "../lib/wallet-context";
@@ -26,7 +30,7 @@ import {
   SkywireSidebar,
   SkywireAdminSettingsHint,
 } from "../features/skywire/SkywireShell";
-import { isSkywireTab, type SkywireTab } from "../features/skywire/skywire-nav";
+import { isSkywireTab, skywireUserVisibleTab, type SkywireTab } from "../features/skywire/skywire-nav";
 import {
   SKYWIRE_CHAT_PERMISSION_DESCRIPTION,
   SKYWIRE_CHAT_PERMISSION_WARNING,
@@ -126,6 +130,7 @@ const SKYWIRE_OAUTH_ERROR_KEY = "skywire:atproto-error";
 const SKYWIRE_OAUTH_PENDING_KEY = "skywire:atproto-oauth-pending";
 const SKYWIRE_OAUTH_POPUP_NAME = "skywire-atproto-oauth";
 const SKYWIRE_RESERVED_PLATFORM_HANDLES = new Set(["wtfgameshow.bsky.social"]);
+const SKYWIRE_SIGNALS_UI_ENABLED = false;
 const SKYWIRE_OAUTH_QUERY_KEYS = [
   "verified",
   "error",
@@ -200,12 +205,13 @@ function skywireOAuthCompletionKey(payload: AtprotoOAuthCompletion): string {
 }
 
 function replaceSkywireTabUrl(tab: SkywireTab) {
+  const visibleTab = skywireUserVisibleTab(tab);
   const params = new URLSearchParams(window.location.search);
   for (const key of SKYWIRE_OAUTH_QUERY_KEYS) params.delete(key);
-  if (tab === "home") {
+  if (visibleTab === "home") {
     params.delete("tab");
   } else {
-    params.set("tab", tab);
+    params.set("tab", visibleTab);
   }
   const search = params.toString();
   const next = `${window.location.pathname}${search ? `?${search}` : ""}`;
@@ -268,6 +274,25 @@ interface FeedResponse {
   actor?: string;
   cursor: string | null;
   feed: SkywireFeedItem[];
+}
+
+interface SkywireTrendingTopic {
+  topic: string;
+  displayName: string;
+  description: string | null;
+  link: string;
+  category: string | null;
+  startedAt: string | null;
+  postCount: number | null;
+}
+
+interface SkywireTrendingTopicsResponse {
+  source: string;
+  personalizesWithViewer: boolean;
+  limit: number;
+  topics: SkywireTrendingTopic[];
+  suggested: SkywireTrendingTopic[];
+  fetchedAt: string;
 }
 
 interface SkywireActor {
@@ -756,6 +781,106 @@ const Shell = styled.div<{ $standalone?: boolean }>`
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   ${({ $standalone }) => ($standalone ? "min-height: 100vh; align-content: start;" : "")}
 
+  &[data-skywire-presentation-host="gamma"] {
+    --sky-bg: #070706;
+    --sky-panel: #0b0b0a;
+    --sky-panel-2: #11110f;
+    --sky-card: #11110f;
+    --sky-card-soft: #151512;
+    --sky-border: rgba(242, 234, 217, 0.2);
+    --sky-border-strong: rgba(242, 234, 217, 0.32);
+    --sky-text: #f2ead9;
+    --sky-muted: #a99f8f;
+    --sky-dim: #81786a;
+    --sky-cyan: #00d2ff;
+    --sky-teal: #d6ff3f;
+    --sky-rose: #f06b6b;
+    --sky-amber: #d6ff3f;
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    padding: 0;
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-feed-card="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-feed-media="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-token-preview="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-video-embed="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-chat-media="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-chat-quote="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-vault-token],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-vault-share-draft="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-live-banner="active"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-live-status],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-vault-created-group="true"] {
+    background: #0b0b0a !important;
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.2) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    color: #f2ead9;
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="header"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="content-body"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="sidebar"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="welcome-card"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="compose-box"] {
+    border: 1px solid rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="nav-button"] {
+    background: #11110f !important;
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.22) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="nav-button"][data-skywire-active="true"],
+  &[data-skywire-presentation-host="gamma"] [data-skywire-live-badge="active"] {
+    border-color: #00d2ff !important;
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="status-badge"] {
+    background: #11110f !important;
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.2);
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-region="status-badge"][data-skywire-tone="ready"] {
+    border-color: #d6ff3f;
+  }
+
+  &[data-skywire-presentation-host="gamma"] button:not(:disabled) {
+    background: #11110f !important;
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.28) !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-skywire-presentation-host="gamma"] input:not([type="checkbox"]):not([type="radio"]),
+  &[data-skywire-presentation-host="gamma"] textarea,
+  &[data-skywire-presentation-host="gamma"] select,
+  &[data-skywire-presentation-host="gamma"] div:has(> input:not([type="checkbox"]):not([type="radio"])),
+  &[data-skywire-presentation-host="gamma"] fieldset,
+  &[data-skywire-presentation-host="gamma"] legend {
+    background: #11110f !important;
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.24) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+
+  &[data-skywire-presentation-host="gamma"] [data-skywire-feed-card="true"]::before {
+    background: #00d2ff;
+    background-image: none;
+    border-radius: 6px 0 0 6px;
+  }
+
   a {
     color: var(--sky-cyan);
   }
@@ -1001,6 +1126,48 @@ const NoticeBar = styled.div`
   background: rgba(87, 64, 18, 0.58);
   color: #ffe9a6;
   padding: 6px 8px;
+`;
+
+const TopicGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+`;
+
+const TopicButton = styled.button<{ $active?: boolean }>`
+  appearance: none;
+  border: 1px solid ${({ $active }) => ($active ? "var(--sky-cyan)" : "var(--sky-border)")} !important;
+  border-radius: 8px !important;
+  background: ${({ $active }) =>
+    $active
+      ? "linear-gradient(135deg, rgba(21, 79, 75, 0.96), rgba(45, 52, 83, 0.88))"
+      : "rgba(32, 24, 47, 0.9)"} !important;
+  color: var(--sky-text) !important;
+  padding: 10px;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+  min-height: 96px;
+  cursor: pointer;
+
+  strong {
+    font-size: 14px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  span {
+    color: var(--sky-muted);
+    font-size: 12px;
+    line-height: 1.3;
+  }
+`;
+
+const TopicMetaRow = styled.div`
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
 `;
 
 const StandaloneLoginPage = styled.main`
@@ -2857,6 +3024,139 @@ function FeedPanel({
   );
 }
 
+function skywireTrendingTopicKey(topic: SkywireTrendingTopic): string {
+  return `${topic.link || ""}|${topic.displayName || topic.topic}`;
+}
+
+function skywireTrendingSearchQuery(topic: SkywireTrendingTopic | null): string {
+  if (!topic) return "";
+  const fallback = topic.topic || topic.displayName;
+  try {
+    const url = new URL(topic.link, "https://bsky.app");
+    const query = url.searchParams.get("q");
+    if (query?.trim()) return query.trim();
+    const segments = url.pathname.split("/").map((part) => decodeURIComponent(part)).filter(Boolean);
+    if (segments[0] === "hashtag" && segments[1]) return `#${segments[1].replace(/^#/, "")}`;
+  } catch {
+    // Trend links are usually relative app paths; fallback to the topic label.
+  }
+  return fallback;
+}
+
+function uniqueTrendingTopics(topics: SkywireTrendingTopic[]): SkywireTrendingTopic[] {
+  const seen = new Set<string>();
+  return topics.filter((topic) => {
+    const key = skywireTrendingTopicKey(topic);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function HotPanel({
+  canUseSocialActions,
+  canCompose,
+  onActorSelect,
+  onThreadOpen,
+  onPipelineOpen,
+  onRoomQuote,
+  onStageQuote,
+  onChatQuote,
+}: {
+  canUseSocialActions: boolean;
+  canCompose: boolean;
+  onActorSelect?: (actor: SkywireActor) => void;
+  onThreadOpen?: (post: SkywirePost) => void;
+  onPipelineOpen?: (post: SkywirePost) => void;
+  onRoomQuote?: (quote: SkywireQuotePost) => void;
+  onStageQuote?: (quote: SkywireQuotePost) => void;
+  onChatQuote?: (quote: SkywireQuotePost, members?: string[]) => void;
+}) {
+  const [selectedKey, setSelectedKey] = useState("");
+  const topicsQuery = useQuery<SkywireTrendingTopicsResponse>({
+    queryKey: ["skywire", "trending-topics"],
+    queryFn: () => api.get("/api/skywire/trending-topics?limit=14"),
+    staleTime: 180_000,
+  });
+  const topics = useMemo(
+    () => uniqueTrendingTopics([...(topicsQuery.data?.topics ?? []), ...(topicsQuery.data?.suggested ?? [])]),
+    [topicsQuery.data?.suggested, topicsQuery.data?.topics],
+  );
+  const selectedTopic = useMemo(() => {
+    if (!topics.length) return null;
+    return topics.find((topic) => skywireTrendingTopicKey(topic) === selectedKey) ?? topics[0];
+  }, [selectedKey, topics]);
+  useEffect(() => {
+    if (!selectedKey && topics[0]) setSelectedKey(skywireTrendingTopicKey(topics[0]));
+  }, [selectedKey, topics]);
+  const searchQuery = skywireTrendingSearchQuery(selectedTopic);
+
+  if (topicsQuery.isLoading) return <Hourglass size={24} />;
+  if (topicsQuery.isError) return <p>{(topicsQuery.error as Error).message}</p>;
+
+  return (
+    <Stack>
+      <GroupBox label="What's Hot">
+        <Stack>
+          <NoticeBar>
+            {topicsQuery.data?.personalizesWithViewer
+              ? "Personalized with your Bluesky viewer DID."
+              : "Public Bluesky trends, shown without writing to your repo."}
+          </NoticeBar>
+          <TopicGrid aria-label="Skywire hot topics">
+            {topics.map((topic) => {
+              const key = skywireTrendingTopicKey(topic);
+              const active = key === skywireTrendingTopicKey(selectedTopic ?? topic);
+              return (
+                <TopicButton
+                  key={key}
+                  type="button"
+                  $active={active}
+                  data-skywire-hot-topic="true"
+                  data-skywire-hot-topic-active={active ? "true" : "false"}
+                  onClick={() => setSelectedKey(key)}
+                >
+                  <strong>{topic.displayName || topic.topic}</strong>
+                  {topic.description ? <span>{topic.description}</span> : null}
+                  <TopicMetaRow>
+                    {topic.category ? <StatChip>{topic.category}</StatChip> : null}
+                    {topic.postCount != null ? <StatChip>{formatCount(topic.postCount)} posts</StatChip> : null}
+                  </TopicMetaRow>
+                </TopicButton>
+              );
+            })}
+          </TopicGrid>
+          {!topics.length ? (
+            <EmptyState>
+              <strong>No hot topics returned.</strong>
+              <span>The Bluesky trend source is quiet or unavailable right now.</span>
+            </EmptyState>
+          ) : null}
+        </Stack>
+      </GroupBox>
+      {searchQuery ? (
+        <FeedPanel
+          feedType="search"
+          queryText={searchQuery}
+          canUseSocialActions={canUseSocialActions}
+          canCompose={canCompose}
+          header={
+            <NoticeBar>
+              Reading posts for <strong>{searchQuery}</strong> through Skywire search.
+            </NoticeBar>
+          }
+          onActorSelect={onActorSelect}
+          onThreadOpen={onThreadOpen}
+          onPipelineOpen={onPipelineOpen}
+          onRoomQuote={onRoomQuote}
+          onStageQuote={onStageQuote}
+          onChatQuote={onChatQuote}
+        />
+      ) : null}
+    </Stack>
+  );
+}
+
 function SkywireVaultTokenTile({
   token,
   context,
@@ -3601,7 +3901,7 @@ function PipelinePanel({ post }: { post: SkywirePost | null }) {
                   >
                     {pendingPipelineId === pipeline.id ? "Queueing..." : `Send to ${pipeline.app}`}
                   </Button>
-                  <Button size="sm" onClick={() => window.open(pipeline.appRoute, "_self")}>
+                  <Button size="sm" onClick={() => window.open(presentationRouteHref(pipeline.appRoute), "_self")}>
                     Open App
                   </Button>
                 </Row>
@@ -4487,10 +4787,8 @@ function LiveStatusPanel({ me, canSetLiveStatus }: { me: AtprotoMe; canSetLiveSt
 
 function SkywireLiveStatusBanner({
   status,
-  onOpenSignals,
 }: {
   status: SkywireLiveStatus;
-  onOpenSignals: () => void;
 }) {
   const liveUrl = status.liveUrl || "/live";
   return (
@@ -4505,11 +4803,8 @@ function SkywireLiveStatusBanner({
         {status.createdAt ? <FinePrint>Set {formatDate(status.createdAt)}</FinePrint> : null}
       </LiveIndicatorBody>
       <Row>
-        <Button onClick={() => { window.location.href = liveUrl; }}>
+        <Button onClick={() => { window.location.href = presentationRouteHref(liveUrl); }}>
           Open WTF LIVE
-        </Button>
-        <Button onClick={onOpenSignals}>
-          Update live status
         </Button>
       </Row>
     </LiveIndicatorBanner>
@@ -5058,7 +5353,7 @@ function SkywireStandaloneLogin({
         <StandaloneMark aria-hidden="true">SW</StandaloneMark>
         <StandaloneIntro>
           <h1 id="skywire-standalone-title">Skywire</h1>
-          <p>A Tezos-aware AT Protocol client for Bluesky, live status, creator signals, and portable sales context.</p>
+          <p>A Tezos-aware AT Protocol client for Bluesky, live status, market context, and portable sales context.</p>
         </StandaloneIntro>
         <StandaloneForm onSubmit={handleSubmit}>
           <StandaloneLabel>
@@ -5078,20 +5373,6 @@ function SkywireStandaloneLogin({
           <StandaloneButton type="submit">Continue</StandaloneButton>
         </StandaloneForm>
         {notice || localNotice ? <StandaloneNotice role="status">{notice || localNotice}</StandaloneNotice> : null}
-        <StandaloneSignals aria-label="Skywire signal examples">
-          <StandaloneSignal>
-            <strong>Recent sale</strong>
-            <span>Share sale context without hand-writing a record.</span>
-          </StandaloneSignal>
-          <StandaloneSignal>
-            <strong>WTF LIVE</strong>
-            <span>Publish a live-status handoff that points at your room.</span>
-          </StandaloneSignal>
-          <StandaloneSignal>
-            <strong>Proof link</strong>
-            <span>Attach identity, token, wallet, or post evidence.</span>
-          </StandaloneSignal>
-        </StandaloneSignals>
       </StandaloneLoginCenter>
       <StandaloneFooter>
         <a href="https://bsky.app" target="_blank" rel="noopener noreferrer">Bluesky</a>
@@ -5104,12 +5385,12 @@ function SkywireStandaloneLogin({
 
 function resolveInitialSkywireTab(explicitTab?: SkywireTab) {
   if (explicitTab) {
-    return { didChoose: true, tab: explicitTab };
+    return { didChoose: true, tab: skywireUserVisibleTab(explicitTab) };
   }
   if (typeof window !== "undefined") {
     const tabParam = new URLSearchParams(window.location.search).get("tab");
     if (tabParam && isSkywireTab(tabParam)) {
-      return { didChoose: true, tab: tabParam as SkywireTab };
+      return { didChoose: true, tab: skywireUserVisibleTab(tabParam as SkywireTab) };
     }
   }
   return { didChoose: false, tab: "home" as SkywireTab };
@@ -5118,6 +5399,7 @@ function resolveInitialSkywireTab(explicitTab?: SkywireTab) {
 export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   const { isAdmin, user, isLoading: authLoading } = useAuth();
   const qc = useQueryClient();
+  const presentation = usePresentationShell();
   const standaloneSurface = isSkywireStandaloneSurface();
   const [tab, setTab] = useState<SkywireTab>(() => resolveInitialSkywireTab(initialTab).tab);
   const [selectedActor, setSelectedActor] = useState<SkywireActor | null>(null);
@@ -5132,10 +5414,11 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   const [notice, setNotice] = useState("");
   const durableOAuthCompletionKeysRef = useRef<Set<string>>(new Set());
   const selectTab = useCallback((nextTab: SkywireTab, options: { syncUrl?: boolean } = {}) => {
+    const visibleTab = skywireUserVisibleTab(nextTab);
     setDidChooseInitialTab(true);
-    setTab(nextTab);
+    setTab(visibleTab);
     if (options.syncUrl !== false) {
-      replaceSkywireTabUrl(nextTab);
+      replaceSkywireTabUrl(visibleTab);
     }
   }, []);
   const meQuery = useQuery<AtprotoMe>({
@@ -5221,7 +5504,11 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
       tabParam &&
       isSkywireTab(tabParam)
     ) {
-      selectTab(tabParam as SkywireTab, { syncUrl: false });
+      const visibleTab = skywireUserVisibleTab(tabParam as SkywireTab);
+      selectTab(visibleTab, { syncUrl: false });
+      if (visibleTab !== tabParam) {
+        replaceSkywireTabUrl(visibleTab);
+      }
     }
     if (params.get("verified") === "atproto") {
       const completion: AtprotoOAuthCompletion = {
@@ -5367,7 +5654,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
     const params = new URLSearchParams({ tab: targetTab });
     if (targetTab === "rooms" && id) params.set("room", id);
     if (targetTab === "stages" && id) params.set("stage", id);
-    window.location.href = `/live?${params.toString()}`;
+    window.location.href = presentationRouteHref(`/live?${params.toString()}`);
   };
   const openRoomQuote = (quote: SkywireQuotePost) => handoffToWtfLive("rooms", quote);
   const openStageQuote = (quote: SkywireQuotePost) => handoffToWtfLive("stages", quote);
@@ -5402,26 +5689,30 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
   }
 
   const skywireBody = (
-      <Shell $standalone={standaloneSurface}>
-        <SkywireHeader>
+      <Shell
+        $standalone={standaloneSurface}
+        data-skywire-surface="skywire-shell"
+        data-skywire-presentation-host={presentation.host}
+      >
+        <SkywireHeader data-skywire-region="header">
           <HeaderTitle>
             <h2>Skywire</h2>
             <p>
-              AT Protocol for creators: timeline, market context, live status, signals, chat, and Tezos identity.
+              AT Protocol for creators: timeline, hot topics, market context, chat, and Tezos identity.
             </p>
             <HeaderActionRow aria-label="Skywire quick actions">
               <HeaderActionButton
                 type="button"
                 $primary
-                onClick={() => selectTab("signals")}
+                onClick={() => selectTab("hot")}
               >
-                {activeLiveStatus ? "Live status" : "Go live"}
+                What's hot
               </HeaderActionButton>
               <HeaderActionButton
                 type="button"
-                onClick={() => selectTab("signals")}
+                onClick={() => selectTab("market")}
               >
-                Recent sale signal
+                Market feed
               </HeaderActionButton>
               <HeaderActionButton
                 type="button"
@@ -5432,26 +5723,40 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
             </HeaderActionRow>
           </HeaderTitle>
           <HeaderBadgeGrid>
-            <StatusBadge $tone={connectionTone} role="button" style={{ cursor: "pointer" }} onClick={openSettings}>
+            <StatusBadge
+              $tone={connectionTone}
+              data-skywire-region="status-badge"
+              data-skywire-tone={connectionTone}
+              role="button"
+              style={{ cursor: "pointer" }}
+              onClick={openSettings}
+            >
               <span>Identity</span>
               <strong>{me?.account ? `@${me.account.handle}` : "Connect AT"}</strong>
             </StatusBadge>
-            <StatusBadge $tone={connectionTone}>
+            <StatusBadge
+              $tone={connectionTone}
+              data-skywire-region="status-badge"
+              data-skywire-tone={connectionTone}
+            >
               <span>Session</span>
               <strong>{canUseAtprotoSession ? "Ready" : me?.account ? "Reconnect" : "Offline"}</strong>
             </StatusBadge>
             <StatusBadge
               $tone={activeLiveStatus ? "ready" : "quiet"}
-              role="button"
-              tabIndex={0}
-              style={{ cursor: "pointer" }}
+              data-skywire-region="status-badge"
+              data-skywire-tone={activeLiveStatus ? "ready" : "quiet"}
+              role={activeLiveStatus ? "button" : undefined}
+              tabIndex={activeLiveStatus ? 0 : undefined}
+              style={activeLiveStatus ? { cursor: "pointer" } : undefined}
               data-skywire-live-badge={activeLiveStatus ? "active" : "inactive"}
-              aria-label={activeLiveStatus ? "WTF LIVE status is live now" : "WTF LIVE status is not live"}
-              onClick={() => selectTab("signals")}
+              aria-label={activeLiveStatus ? "Open WTF LIVE status" : "WTF LIVE status is not live"}
+              onClick={activeLiveStatus ? () => { window.location.href = presentationRouteHref(activeLiveStatus.liveUrl || "/live"); } : undefined}
               onKeyDown={(event) => {
+                if (!activeLiveStatus) return;
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  selectTab("signals");
+                  window.location.href = presentationRouteHref(activeLiveStatus.liveUrl || "/live");
                 }
               }}
             >
@@ -5460,6 +5765,8 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
             </StatusBadge>
             <StatusBadge
               $tone={chatTone}
+              data-skywire-region="status-badge"
+              data-skywire-tone={chatTone}
               role="button"
               style={{ cursor: "pointer" }}
               onClick={canUseChat ? openSettings : enableChatAddOn}
@@ -5467,7 +5774,11 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
               <span>Chat</span>
               <strong>{canUseChat ? "DM add-on on" : "DM add-on off"}</strong>
             </StatusBadge>
-            <StatusBadge $tone={capabilityCount > 4 ? "ready" : me?.account ? "warn" : "quiet"}>
+            <StatusBadge
+              $tone={capabilityCount > 4 ? "ready" : me?.account ? "warn" : "quiet"}
+              data-skywire-region="status-badge"
+              data-skywire-tone={capabilityCount > 4 ? "ready" : me?.account ? "warn" : "quiet"}
+            >
               <span>Scope</span>
               <strong>{me?.account ? `${capabilityCount} grants` : "none"}</strong>
             </StatusBadge>
@@ -5477,7 +5788,6 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
         {activeLiveStatus ? (
           <SkywireLiveStatusBanner
             status={activeLiveStatus}
-            onOpenSignals={() => selectTab("signals")}
           />
         ) : null}
         {me && !me.enabled ? (
@@ -5493,7 +5803,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
               activeTab={tab}
               onSelect={selectTab}
               onOpenWtfLive={() => {
-                window.location.href = "/live";
+                window.location.href = presentationRouteHref("/live");
               }}
             />
           }
@@ -5509,7 +5819,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
             ) : null
           }
         >
-        <ContentBody>
+        <ContentBody data-skywire-region="content-body">
           {authLoading || meQuery.isLoading ? <Hourglass size={32} /> : null}
           {meQuery.isError ? <p>{(meQuery.error as Error).message}</p> : null}
           {me ? (
@@ -5566,6 +5876,18 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
                     }}
                   />
                 )
+              ) : null}
+              {tab === "hot" ? (
+                <HotPanel
+                  canUseSocialActions={canUseSocialActions}
+                  canCompose={canCompose}
+                  onActorSelect={openActorFeed}
+                  onThreadOpen={openThread}
+                  onPipelineOpen={openPipelinePost}
+                  onRoomQuote={openRoomQuote}
+                  onStageQuote={openStageQuote}
+                  onChatQuote={openChatQuote}
+                />
               ) : null}
               {tab === "actor" ? (
                 <ActorFeedPanel
@@ -5673,7 +5995,7 @@ export function Skywire({ initialTab }: { initialTab?: SkywireTab } = {}) {
                   onEnableChat={enableChatAddOn}
                 />
               ) : null}
-              {tab === "signals" ? (
+              {SKYWIRE_SIGNALS_UI_ENABLED && tab === "signals" ? (
                 <SignalsPanel
                   me={me}
                   canPublishSignals={canUseSignals}

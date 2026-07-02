@@ -1,0 +1,22 @@
+[Unit]
+Description=wtfOS Application Host PulseAudio daemon
+After=network.target
+
+[Service]
+Type=simple
+User=wtfos-apphost
+Group=wtfos-apphost
+Environment=HOME=/opt/wtfos/apphost/home
+Environment=XDG_RUNTIME_DIR=/opt/wtfos/apphost/run/user
+Environment=PULSE_RUNTIME_PATH=/opt/wtfos/apphost/run/pulse
+ExecStartPre=/usr/bin/install -d -m 0700 -o wtfos-apphost -g wtfos-apphost /opt/wtfos/apphost/run/user /opt/wtfos/apphost/run/pulse
+ExecStart=/usr/bin/pulseaudio --daemonize=no --exit-idle-time=-1 --log-target=journal
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/wtfos/apphost
+
+[Install]
+WantedBy=multi-user.target

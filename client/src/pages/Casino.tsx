@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, Panel } from "react95";
 import styled from "styled-components";
+import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
+import {
+  presentationRouteHref,
+  usePresentationShell,
+} from "../lib/presentation-shell";
 import { purchaseCasinoMembership } from "../lib/tezos";
 import { useWallet } from "../lib/wallet-context";
 import { useWindowManager } from "../lib/window-context";
@@ -63,6 +68,8 @@ type CasinoIntentResponse = {
   };
 };
 
+const gammaCasinoScope = `[data-casino-presentation-host="gamma"]`;
+
 const Shell = styled.div`
   min-height: 100%;
   background:
@@ -70,6 +77,59 @@ const Shell = styled.div`
     linear-gradient(180deg, #14261f 0%, #0d1514 100%);
   color: #f7eed4;
   padding: 10px;
+
+  &[data-casino-presentation-host="gamma"] {
+    background: #080807;
+    border: 1px solid rgba(242, 234, 217, 0.14);
+    border-radius: 6px;
+    color: #f2ead9;
+    font-family:
+      Inter, "IBM Plex Sans", "Neue Haas Grotesk Text", Arial, sans-serif;
+    line-height: 1.45;
+  }
+
+  &[data-casino-presentation-host="gamma"],
+  &[data-casino-presentation-host="gamma"] * {
+    box-sizing: border-box;
+    letter-spacing: 0;
+    text-shadow: none;
+  }
+
+  &[data-casino-presentation-host="gamma"] [data-casino-region] {
+    background-image: none;
+    box-shadow: none;
+  }
+
+  &[data-casino-presentation-host="gamma"]
+    :where(button, input, select, textarea, div, span, strong, p, label, legend, fieldset) {
+    font-family:
+      Inter, "IBM Plex Sans", "Neue Haas Grotesk Text", Arial, sans-serif;
+  }
+
+  &[data-casino-presentation-host="gamma"] :where([data-casino-region="meta"], [data-casino-region="subline"], [data-casino-region="status-line"]) {
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+  }
+
+  &[data-casino-presentation-host="gamma"] fieldset {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: rgba(242, 234, 217, 0.035);
+    color: #f2ead9;
+  }
+
+  &[data-casino-presentation-host="gamma"] legend {
+    color: #28d7ff;
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  &[data-casino-presentation-host="gamma"] button {
+    border-radius: 4px;
+  }
 `;
 
 const Header = styled.div`
@@ -89,12 +149,25 @@ const TitlePanel = styled(Panel).attrs({ variant: "well" })`
   background: #f6e2a6;
   color: #101010;
   border-color: #ffffff #20170a #20170a #ffffff;
+
+  ${gammaCasinoScope} & {
+    background: rgba(242, 234, 217, 0.045);
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
 const Title = styled.h2`
   margin: 0;
   font-size: 22px;
   letter-spacing: 0;
+
+  ${gammaCasinoScope} & {
+    color: #f2ead9;
+    font-size: 22px;
+    font-weight: 800;
+  }
 `;
 
 const Subline = styled.div`
@@ -103,6 +176,12 @@ const Subline = styled.div`
   gap: 8px;
   margin-top: 4px;
   font-size: 11px;
+
+  ${gammaCasinoScope} & {
+    color: rgba(242, 234, 217, 0.68);
+    align-items: center;
+    text-transform: uppercase;
+  }
 `;
 
 const Badge = styled.span<{ $ready?: boolean }>`
@@ -111,6 +190,19 @@ const Badge = styled.span<{ $ready?: boolean }>`
   color: #101010;
   padding: 2px 6px;
   font-weight: 700;
+
+  ${gammaCasinoScope} & {
+    background: ${(p) =>
+      p.$ready ? "rgba(40, 215, 255, 0.14)" : "rgba(242, 234, 217, 0.045)"};
+    border: 1px solid
+      ${(p) =>
+        p.$ready ? "rgba(40, 215, 255, 0.58)" : "rgba(242, 234, 217, 0.18)"};
+    border-radius: 4px;
+    color: ${(p) => (p.$ready ? "#28d7ff" : "rgba(242, 234, 217, 0.72)")};
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 10px;
+  }
 `;
 
 const Meter = styled(Panel).attrs({ variant: "well" })`
@@ -120,6 +212,15 @@ const Meter = styled(Panel).attrs({ variant: "well" })`
   color: #101010;
   font-size: 12px;
   line-height: 1.45;
+
+  ${gammaCasinoScope} & {
+    background: rgba(242, 234, 217, 0.045);
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    color: rgba(242, 234, 217, 0.82);
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+  }
 `;
 
 const Layout = styled.div`
@@ -148,6 +249,13 @@ const Empty = styled.div`
   justify-content: center;
   text-align: center;
   padding: 14px;
+
+  ${gammaCasinoScope} & {
+    background: rgba(242, 234, 217, 0.035);
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    color: rgba(242, 234, 217, 0.76);
+  }
 `;
 
 const GameGrid = styled.div`
@@ -162,12 +270,26 @@ const GameCard = styled(Panel).attrs({ variant: "well" })`
   background: #f1e9c9;
   color: #101010;
   line-height: 1.35;
+
+  ${gammaCasinoScope} & {
+    background: rgba(242, 234, 217, 0.045);
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
 const CardMeta = styled.div`
   margin-top: 6px;
   font-size: 11px;
   color: #3a321f;
+
+  ${gammaCasinoScope} & {
+    color: rgba(242, 234, 217, 0.66);
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 11px;
+  }
 `;
 
 const CardTagLine = styled.div`
@@ -183,6 +305,15 @@ const CardTag = styled.span`
   color: #2f2818;
   padding: 1px 5px;
   font-size: 10px;
+
+  ${gammaCasinoScope} & {
+    background: rgba(40, 215, 255, 0.08);
+    border: 1px solid rgba(40, 215, 255, 0.36);
+    border-radius: 4px;
+    color: #28d7ff;
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+  }
 `;
 
 const CardActions = styled.div`
@@ -201,6 +332,12 @@ const StatusLine = styled.div<{ $error?: boolean }>`
   color: ${(p) => (p.$error ? "#b00020" : "#173b18")};
   font-size: 11px;
   overflow-wrap: anywhere;
+
+  ${gammaCasinoScope} & {
+    color: ${(p) => (p.$error ? "#ff7a7a" : "rgba(242, 234, 217, 0.76)")};
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+  }
 `;
 
 function formatExpiry(value: string | null): string {
@@ -214,9 +351,11 @@ function formatExpiry(value: string | null): string {
 }
 
 function CasinoSurface() {
+  const presentation = usePresentationShell();
   const qc = useQueryClient();
   const wallet = useWallet();
   const wm = useWindowManager();
+  const [, setLocation] = useLocation();
 
   const statusQuery = useQuery({
     queryKey: ["casino", "status"],
@@ -265,66 +404,78 @@ function CasinoSurface() {
     membershipMutation.error instanceof Error ? membershipMutation.error.message : "";
   const entryError = entryMutation.error instanceof Error ? entryMutation.error.message : "";
 
+  const openCasinoRoute = (route: string) => {
+    if (presentation.host === "gamma") {
+      setLocation(presentationRouteHref(route, presentation.host));
+      return;
+    }
+    wm.openPage(route);
+  };
+
   return (
-    <Shell>
-      <Header>
-        <TitlePanel>
+    <Shell
+      data-casino-presentation-host={presentation.host}
+      data-casino-surface="lobby"
+      data-casino-region="surface"
+    >
+      <Header data-casino-region="header">
+        <TitlePanel data-casino-region="title-panel">
           <Title>WTF Casino</Title>
-          <Subline>
-            <Badge $ready={status?.appPass.owned}>APP</Badge>
-            <Badge $ready={status?.membership.active}>CARD</Badge>
-            <Badge $ready={status?.canEnter}>ENTRY</Badge>
-            <span>{status?.config.network ?? "mainnet"}</span>
+          <Subline data-casino-region="subline">
+            <Badge $ready={status?.appPass.owned} data-casino-region="status-badge">APP</Badge>
+            <Badge $ready={status?.membership.active} data-casino-region="status-badge">CARD</Badge>
+            <Badge $ready={status?.canEnter} data-casino-region="status-badge">ENTRY</Badge>
+            <span data-casino-region="meta">{status?.config.network ?? "mainnet"}</span>
           </Subline>
         </TitlePanel>
-        <Meter>
-          <div>App pass: {status?.appPass.owned ? "owned" : "missing"}</div>
-          <div>Membership: {formatExpiry(status?.membership.expiresAt ?? null)}</div>
-          <div>Fee: {status?.config.feeTez ?? "1"} XTZ</div>
-          <div>Contract: {status?.config.contractAddress ?? "pending"}</div>
+        <Meter data-casino-region="meter">
+          <div data-casino-region="meta">App pass: {status?.appPass.owned ? "owned" : "missing"}</div>
+          <div data-casino-region="meta">Membership: {formatExpiry(status?.membership.expiresAt ?? null)}</div>
+          <div data-casino-region="meta">Fee: {status?.config.feeTez ?? "1"} XTZ</div>
+          <div data-casino-region="meta">Contract: {status?.config.contractAddress ?? "pending"}</div>
         </Meter>
       </Header>
 
-      <Layout>
-        <Box label="Casino Floor">
+      <Layout data-casino-region="layout">
+        <Box label="Casino Floor" data-casino-region="floor">
           {busy ? (
-            <Empty>
+            <Empty data-casino-region="empty">
               <Hourglass size={28} />
             </Empty>
           ) : games.length === 0 ? (
-            <Empty>No casino tables installed.</Empty>
+            <Empty data-casino-region="empty">No casino tables installed.</Empty>
           ) : (
-            <GameGrid>
+            <GameGrid data-casino-region="game-grid">
               {games.map((game) => (
-                <GameCard key={game.key}>
+                <GameCard key={game.key} data-casino-region="game-card">
                   <strong>{game.title}</strong>
-                  {game.tagline && <CardMeta>{game.tagline}</CardMeta>}
-                  {game.summary && <CardMeta>{game.summary}</CardMeta>}
-                  <CardMeta>
+                  {game.tagline && <CardMeta data-casino-region="meta">{game.tagline}</CardMeta>}
+                  {game.summary && <CardMeta data-casino-region="meta">{game.summary}</CardMeta>}
+                  <CardMeta data-casino-region="meta">
                     {game.mode.replace("_", " ")} · {game.status}
                   </CardMeta>
-                  <CardMeta>
+                  <CardMeta data-casino-region="meta">
                     {game.maxPlayers
                       ? `${game.minPlayers}-${game.maxPlayers} players`
                       : `${game.minPlayers}+ players`}
                   </CardMeta>
-                  <CardMeta>
+                  <CardMeta data-casino-region="meta">
                     Wager: {game.wagerAsset ?? "XTZ"} · House:{" "}
                     {game.defaultHouseTakeBps / 100}%
                   </CardMeta>
-                  <CardMeta>Live wagers: {game.wageringEnabled ? "enabled" : "disabled"}</CardMeta>
+                  <CardMeta data-casino-region="meta">Live wagers: {game.wageringEnabled ? "enabled" : "disabled"}</CardMeta>
                   {game.highlights && game.highlights.length > 0 && (
-                    <CardTagLine>
+                    <CardTagLine data-casino-region="card-tags">
                       {game.highlights.slice(0, 4).map((highlight) => (
                         <CardTag key={highlight}>{highlight}</CardTag>
                       ))}
                     </CardTagLine>
                   )}
                   {["wtf-button", "rug-pull", "guinea-pig-raceway"].includes(game.key) && (
-                    <CardActions>
+                    <CardActions data-casino-region="card-actions">
                       <Button
                         size="sm"
-                        onClick={() => wm.openPage(`/casino/${game.key}`)}
+                        onClick={() => openCasinoRoute(`/casino/${game.key}`)}
                         disabled={!status?.canEnter}
                       >
                         Open Table
@@ -337,9 +488,9 @@ function CasinoSurface() {
           )}
         </Box>
 
-        <Box label="Entry">
-          <Controls>
-            <Button onClick={() => wm.openPage("/wtfiam")} disabled={status?.appPass.owned}>
+        <Box label="Entry" data-casino-region="entry">
+          <Controls data-casino-region="entry-controls">
+            <Button onClick={() => openCasinoRoute("/wtfiam")} disabled={status?.appPass.owned}>
               Buy App
             </Button>
             <Button
@@ -358,7 +509,10 @@ function CasinoSurface() {
             >
               Enter
             </Button>
-            <StatusLine $error={Boolean(membershipError || entryError)}>
+            <StatusLine
+              $error={Boolean(membershipError || entryError)}
+              data-casino-region="status-line"
+            >
               {membershipError ||
                 entryError ||
                 (status?.canEnter

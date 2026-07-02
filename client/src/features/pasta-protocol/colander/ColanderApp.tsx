@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import styled from "styled-components";
 import { AppWindow } from "../../../components/layout/AppWindow";
 import { MOBILE } from "../../../global-styles";
+import { presentationRouteHref, usePresentationShell } from "../../../lib/presentation-shell";
 import { connectWallet, getActiveAccount, getTezos } from "../../../lib/tezos/wallet";
 import { getNetwork } from "../../../lib/tezos/loaders";
 import { logClientSystemEvent } from "../../../lib/system-log";
@@ -38,6 +39,9 @@ type OpenedContract = {
 };
 
 const IPFS_GATEWAY = "https://ipfs.fileship.xyz/";
+
+const colanderRegionAttrs = (region: string) =>
+  ({ "data-colander-region": region }) as Record<string, string>;
 
 function explorerUrl(address: string) {
   const net = getNetwork();
@@ -92,6 +96,7 @@ async function fetchRelationship(metadataUri: string): Promise<OwnershipRelation
 }
 
 export function ColanderApp() {
+  const presentation = usePresentationShell();
   const [account, setAccount] = useState<string>("");
   const [network] = useState<string>(getNetwork());
   const [addressInput, setAddressInput] = useState("");
@@ -226,7 +231,7 @@ export function ColanderApp() {
           path,
         },
       });
-      window.open(path, "_blank", "noopener");
+      window.open(presentationRouteHref(path, presentation.host), "_blank", "noopener");
       return;
     }
     setActiveAction((cur) => (cur === action.id ? null : action.id));
@@ -338,7 +343,11 @@ export function ColanderApp() {
 
   return (
     <AppWindow title="Colander">
-      <Shell data-testid="colander-app">
+      <Shell
+        data-testid="colander-app"
+        data-colander-surface="control-panel"
+        data-colander-presentation-host={presentation.host}
+      >
         <Header>
           <BrandRow>
             <BrandBadge aria-hidden="true">CL</BrandBadge>
@@ -506,9 +515,31 @@ const Shell = styled.div`
   height: 100%;
   min-height: 0;
   overflow: auto;
+
+  &[data-colander-presentation-host="gamma"] {
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    gap: 12px;
+    padding: 12px;
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-colander-presentation-host="gamma"],
+  &[data-colander-presentation-host="gamma"] * {
+    box-sizing: border-box;
+  }
+
+  &[data-colander-presentation-host="gamma"] a {
+    color: #00d2ff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 `;
 
-const Header = styled.section`
+const Header = styled.section.attrs(colanderRegionAttrs("header"))`
   display: grid;
   grid-template-columns: minmax(240px, 1fr) auto;
   gap: 12px;
@@ -518,12 +549,22 @@ const Header = styled.section`
   background: linear-gradient(180deg, #ffffff 0%, #f3f6fb 100%);
   color: var(--wtf-app-text, #111);
 
+  [data-colander-presentation-host="gamma"] & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(0, 210, 255, 0.28);
+    border-radius: 6px;
+    color: #f2ead9;
+    box-shadow: none;
+    text-shadow: none;
+  }
+
   ${MOBILE} {
     grid-template-columns: 1fr;
   }
 `;
 
-const BrandRow = styled.div`
+const BrandRow = styled.div.attrs(colanderRegionAttrs("brand"))`
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 10px;
@@ -539,6 +580,16 @@ const BrandBadge = styled.div`
   background: #111;
   color: #fff;
   font-weight: 800;
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid #00d2ff;
+    border-radius: 4px;
+    color: #00d2ff;
+    box-shadow: none;
+    text-shadow: none;
+  }
 `;
 
 const BrandCopy = styled.div`
@@ -551,14 +602,27 @@ const AppTitle = styled.h1`
   margin: 0;
   font-size: 26px;
   line-height: 1;
+
+  [data-colander-presentation-host="gamma"] & {
+    color: #f2ead9;
+    font-size: 20px;
+    letter-spacing: 0;
+    line-height: 1.15;
+    text-shadow: none;
+  }
 `;
 
 const Acronym = styled.div`
   color: var(--wtf-app-muted-text, #384352);
   font-size: var(--wtf-type-caption, 13px);
+
+  [data-colander-presentation-host="gamma"] & {
+    color: rgba(242, 234, 217, 0.72);
+    line-height: 1.4;
+  }
 `;
 
-const WalletBox = styled.div`
+const WalletBox = styled.div.attrs(colanderRegionAttrs("wallet"))`
   display: flex;
   align-items: center;
   gap: 6px;
@@ -566,7 +630,7 @@ const WalletBox = styled.div`
   justify-content: flex-end;
 `;
 
-const Toolbar = styled.div`
+const Toolbar = styled.div.attrs(colanderRegionAttrs("toolbar"))`
   display: flex;
   align-items: end;
   gap: 8px;
@@ -574,9 +638,19 @@ const Toolbar = styled.div`
   padding: 8px;
   border: 1px solid var(--wtf-app-border, #808080);
   background: var(--wtf-app-surface-raised, #fff);
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    color: #f2ead9;
+    box-shadow: none;
+    text-shadow: none;
+  }
 `;
 
-const Body = styled.div`
+const Body = styled.div.attrs(colanderRegionAttrs("body"))`
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.2fr);
   gap: 10px;
@@ -587,15 +661,25 @@ const Body = styled.div`
   }
 `;
 
-const Panel = styled.section`
+const Panel = styled.section.attrs(colanderRegionAttrs("panel"))`
   min-height: 0;
   border: 1px solid var(--wtf-app-border, #808080);
   background: var(--wtf-app-surface-raised, #fff);
   display: flex;
   flex-direction: column;
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    color: #f2ead9;
+    box-shadow: none;
+    text-shadow: none;
+  }
 `;
 
-const PanelHeader = styled.div`
+const PanelHeader = styled.div.attrs(colanderRegionAttrs("panel-header"))`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -606,6 +690,10 @@ const PanelHeader = styled.div`
 
   a {
     font-size: var(--wtf-type-caption, 13px);
+  }
+
+  [data-colander-presentation-host="gamma"] & {
+    border-bottom: 1px solid rgba(0, 210, 255, 0.24);
   }
 `;
 
@@ -619,9 +707,13 @@ const PanelSubtitle = styled.span`
   color: var(--wtf-app-muted-text, #555);
   font-size: var(--wtf-type-caption, 13px);
   font-weight: 400;
+
+  [data-colander-presentation-host="gamma"] & {
+    color: rgba(242, 234, 217, 0.64);
+  }
 `;
 
-const Scroll = styled.div`
+const Scroll = styled.div.attrs(colanderRegionAttrs("scroll"))`
   overflow: auto;
   min-height: 0;
   padding: 8px;
@@ -630,15 +722,20 @@ const Scroll = styled.div`
   align-content: start;
 `;
 
-const Field = styled.label`
+const Field = styled.label.attrs(colanderRegionAttrs("field"))`
   display: grid;
   gap: 4px;
   min-width: 180px;
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-text, #111);
+
+  [data-colander-presentation-host="gamma"] & {
+    color: rgba(242, 234, 217, 0.78);
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
 `;
 
-const Input = styled.input`
+const Input = styled.input.attrs(colanderRegionAttrs("input"))`
   min-height: 30px;
   border: 1px solid var(--wtf-app-border, #808080);
   padding: 4px 6px;
@@ -650,9 +747,24 @@ const Input = styled.input`
     outline: 2px solid #0b5cad;
     outline-offset: 2px;
   }
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(0, 210, 255, 0.36);
+    border-radius: 4px;
+    color: #f2ead9;
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  [data-colander-presentation-host="gamma"] &:focus-visible {
+    outline: 2px solid #00d2ff;
+    outline-offset: 2px;
+  }
 `;
 
-const Button = styled.button`
+const Button = styled.button.attrs(colanderRegionAttrs("button"))`
   min-height: 32px;
   border: 1px solid #111;
   background: var(--wtf-app-surface-raised, #fff);
@@ -669,9 +781,28 @@ const Button = styled.button`
     color: var(--wtf-app-muted-text, #666);
     cursor: not-allowed;
   }
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(0, 210, 255, 0.44);
+    border-radius: 4px;
+    color: #00d2ff;
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  [data-colander-presentation-host="gamma"] &:hover:not(:disabled) {
+    background: #11110f;
+    color: #f2ead9;
+  }
+
+  [data-colander-presentation-host="gamma"] &:disabled {
+    color: rgba(242, 234, 217, 0.42);
+  }
 `;
 
-const PrimaryButton = styled(Button)`
+const PrimaryButton = styled(Button).attrs(colanderRegionAttrs("primary-button"))`
   background: #0b5cad;
   border-color: #073f75;
   color: #fff;
@@ -679,9 +810,21 @@ const PrimaryButton = styled(Button)`
   &:hover:not(:disabled) {
     background: #084f96;
   }
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #00d2ff;
+    background-image: none;
+    border: 1px solid #00d2ff;
+    color: #070706;
+  }
+
+  [data-colander-presentation-host="gamma"] &:hover:not(:disabled) {
+    background: #f2ead9;
+    color: #070706;
+  }
 `;
 
-const FactRow = styled.div`
+const FactRow = styled.div.attrs(colanderRegionAttrs("fact-row"))`
   display: grid;
   grid-template-columns: 110px minmax(0, 1fr);
   gap: 6px;
@@ -698,14 +841,24 @@ const SectionTitle = styled.div`
   text-transform: capitalize;
   border-top: 1px solid #e2e2e2;
   padding-top: 6px;
+
+  [data-colander-presentation-host="gamma"] & {
+    border-top: 1px solid rgba(0, 210, 255, 0.22);
+    color: #f2ead9;
+    letter-spacing: 0;
+  }
 `;
 
 const Muted = styled.span`
   color: var(--wtf-app-muted-text, #555);
   font-size: var(--wtf-type-caption, 13px);
+
+  [data-colander-presentation-host="gamma"] & {
+    color: rgba(242, 234, 217, 0.62);
+  }
 `;
 
-const Graph = styled.div`
+const Graph = styled.div.attrs(colanderRegionAttrs("graph"))`
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -718,7 +871,7 @@ const GraphNodeWrap = styled.div`
   gap: 6px;
 `;
 
-const GraphNode = styled.div<{ $tone: string }>`
+const GraphNode = styled.div.attrs(colanderRegionAttrs("graph-node"))<{ $tone: string }>`
   display: grid;
   gap: 1px;
   border: 1px solid
@@ -734,11 +887,26 @@ const GraphNode = styled.div<{ $tone: string }>`
   background: #fff;
   padding: 5px 8px;
   min-width: 96px;
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(0, 210, 255, 0.34);
+    border-left-width: 1px;
+    border-radius: 4px;
+    color: #f2ead9;
+    box-shadow: none;
+    text-shadow: none;
+  }
 `;
 
 const NodeLabel = styled.div`
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted-text, #555);
+
+  [data-colander-presentation-host="gamma"] & {
+    color: rgba(242, 234, 217, 0.62);
+  }
 `;
 
 const NodeValue = styled.div`
@@ -749,6 +917,10 @@ const NodeValue = styled.div`
 const Arrow = styled.span`
   color: #888;
   font-weight: 800;
+
+  [data-colander-presentation-host="gamma"] & {
+    color: #00d2ff;
+  }
 `;
 
 const ActionGroupBlock = styled.div`
@@ -756,12 +928,22 @@ const ActionGroupBlock = styled.div`
   gap: 6px;
 `;
 
-const ActionCard = styled.div`
+const ActionCard = styled.div.attrs(colanderRegionAttrs("action-card"))`
   border: 1px solid var(--wtf-app-border, #b8c6d4);
   background: #fbfdff;
   padding: 8px;
   display: grid;
   gap: 8px;
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.14);
+    border-radius: 6px;
+    color: #f2ead9;
+    box-shadow: none;
+    text-shadow: none;
+  }
 `;
 
 const ActionHead = styled.div`
@@ -775,14 +957,18 @@ const ActionName = styled.div`
   font-weight: 700;
 `;
 
-const ActionForm = styled.form`
+const ActionForm = styled.form.attrs(colanderRegionAttrs("action-form"))`
   display: grid;
   gap: 8px;
   border-top: 1px dashed #cdd7e1;
   padding-top: 8px;
+
+  [data-colander-presentation-host="gamma"] & {
+    border-top: 1px solid rgba(0, 210, 255, 0.22);
+  }
 `;
 
-const EmptyState = styled.div`
+const EmptyState = styled.div.attrs(colanderRegionAttrs("empty"))`
   border: 1px dashed var(--wtf-app-border, #808080);
   background: #fbfbfb;
   display: grid;
@@ -790,16 +976,36 @@ const EmptyState = styled.div`
   align-content: center;
   padding: 24px;
   text-align: center;
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    color: #f2ead9;
+    box-shadow: none;
+    text-shadow: none;
+  }
 `;
 
-const StatusLine = styled.div<{ $error?: boolean }>`
+const StatusLine = styled.div.attrs(colanderRegionAttrs("status"))<{ $error?: boolean }>`
   min-height: 24px;
   padding: 4px 8px;
   color: ${(p) => (p.$error ? "#8b0000" : "var(--wtf-app-muted-text, #444)")};
   font-size: var(--wtf-type-caption, 13px);
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.14);
+    border-radius: 6px;
+    color: ${(p) => (p.$error ? "#ff6f61" : "rgba(242, 234, 217, 0.72)")};
+    box-shadow: none;
+    text-shadow: none;
+  }
 `;
 
-const Chip = styled.span<{ $tone?: "ok" | "muted" }>`
+const Chip = styled.span.attrs(colanderRegionAttrs("chip"))<{ $tone?: "ok" | "muted" }>`
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -807,4 +1013,14 @@ const Chip = styled.span<{ $tone?: "ok" | "muted" }>`
   border: 1px solid var(--wtf-app-border, #808080);
   font-size: var(--wtf-type-caption, 13px);
   background: ${(p) => (p.$tone === "ok" ? "#e6f5e6" : "#f4f4f4")};
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid ${(p) => (p.$tone === "ok" ? "#d6ff3f" : "rgba(242, 234, 217, 0.18)")};
+    border-radius: 4px;
+    color: ${(p) => (p.$tone === "ok" ? "#d6ff3f" : "rgba(242, 234, 217, 0.72)")};
+    box-shadow: none;
+    text-shadow: none;
+  }
 `;

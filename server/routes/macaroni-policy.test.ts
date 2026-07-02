@@ -13,6 +13,10 @@ test("Macaroni server routes keep wtfOS pinning and publishing trusted-creator o
   assert.match(source, /MACARONI_INSTALLER_WINDOWS_URL/);
   assert.match(source, /MACARONI_INSTALLER_RASPBERRY_PI_URL/);
   assert.match(source, /safeInstallerUrl/);
+  assert.match(source, /function isLoopbackInstallerHost\(hostname: string\): boolean/);
+  assert.match(source, /url\.protocol === "https:"/);
+  assert.match(source, /process\.env\.NODE_ENV !== "production" && url\.protocol === "http:" && isLoopbackInstallerHost\(url\.hostname\)/);
+  assert.doesNotMatch(source, /url\.protocol === "https:" \|\| url\.protocol === "http:"/);
   assert.match(source, /stageAndPinUpload/);
   assert.match(source, /scopeType:\s*"macaroni_drop"/);
   assert.equal(source.includes("WTFGAMESHOW_IPFS_JWT"), false);
@@ -346,6 +350,7 @@ test("Macaroni drop wallet runtime prefers Octez Connect with Beacon backup", ()
 
   assert.match(octezVendorSource, /MacaroniOctezConnect/);
   assert.match(octezVendorSource, /getDAppClientInstance/);
+  assert.match(octezVendorSource, /beacon-node-1\.octez\.io/);
   assert.doesNotMatch(octezVendorSource, /eval\(/);
 
   assert.match(octezWalletSource, /function installOctezPrimaryWallet/);
@@ -720,7 +725,11 @@ test("Macaroni treats Shadownet as a first-class RPC and chain-id guarded networ
   assert.match(dropSource, /throwOnRecoverableRpcError:\s*true/);
   assert.match(octezWalletSource, /configure\(options\)/);
   assert.match(octezWalletSource, /subscribeToEvent\(eventName, handler\)/);
-  assert.match(vendorSource, /rR\(\{\.\.\.e,matrixNodes:t\},e\?\.resetClient\)/);
+  assert.match(vendorSource, /PsUshuai9/);
+  assert.match(vendorSource, /25\.0\.0/);
+  assert.doesNotMatch(vendorSource, /version:[`"']24\.3\.0/);
+  assert.match(vendorSource, /matrixNodes:t/);
+  assert.match(vendorSource, /beacon-node-1\.octez\.io/);
   assert.match(vendorSource, /shadownet:"https:\/\/shadownet\.kukai\.app"/);
   assert.match(frameSource, /allow-popups-to-escape-sandbox/);
   assert.equal(commonSource.includes("shadownet rotates"), false);

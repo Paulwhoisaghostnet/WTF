@@ -4,6 +4,7 @@ import styled from "styled-components";
 import { Button, GroupBox, Hourglass, TextField } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api, fetchWithCsrf } from "../lib/api";
+import { usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 import { WTFOS_PDS_PUBLIC_URL } from "@shared/platform-branding";
 
@@ -448,6 +449,87 @@ const Shell = styled.div`
   color: var(--wtf-app-text, #111);
   display: grid;
   gap: 10px;
+
+  &[data-tz2at-presentation-host="gamma"] {
+    --tz2at-bg: #070706;
+    --tz2at-panel: #0b0b0a;
+    --tz2at-card: #11110f;
+    --tz2at-border: rgba(242, 234, 217, 0.2);
+    --tz2at-border-strong: rgba(242, 234, 217, 0.32);
+    --tz2at-text: #f2ead9;
+    --tz2at-muted: #a99f8f;
+    --tz2at-cyan: #00d2ff;
+    --tz2at-live: #d6ff3f;
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    padding: 0;
+  }
+
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region] {
+    background: #0b0b0a !important;
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.2) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    color: #f2ead9;
+  }
+
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="tabs"],
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="field-grid"],
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="analytics-band"],
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="readout-grid"] {
+    background: transparent !important;
+    border-color: transparent !important;
+  }
+
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="readout-panel"],
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="chart-panel"],
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="metric"],
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="item"],
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="step"],
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="interpretation"],
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="full-report"] {
+    border: 1px solid rgba(242, 234, 217, 0.2) !important;
+  }
+
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="bar-fill"] {
+    background: #00d2ff !important;
+    background-image: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  &[data-tz2at-presentation-host="gamma"] [data-tz2at-region="bar-track"] {
+    background: #11110f !important;
+  }
+
+  &[data-tz2at-presentation-host="gamma"] button:not(:disabled),
+  &[data-tz2at-presentation-host="gamma"] input:not([type="checkbox"]):not([type="radio"]),
+  &[data-tz2at-presentation-host="gamma"] select,
+  &[data-tz2at-presentation-host="gamma"] textarea {
+    background: #11110f !important;
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.28) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-tz2at-presentation-host="gamma"] button[aria-pressed="true"],
+  &[data-tz2at-presentation-host="gamma"] button[data-tz2at-active="true"] {
+    border-color: #00d2ff !important;
+  }
+
+  &[data-tz2at-presentation-host="gamma"] :where(button, input, textarea, select, p, span, strong, div, section, article, nav, h1, h2, h3, h4, label, legend, fieldset, summary, code) {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    letter-spacing: 0 !important;
+    text-shadow: none !important;
+  }
+
+  &[data-tz2at-presentation-host="gamma"] code {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace !important;
+  }
 `;
 
 const Grid = styled.div`
@@ -482,7 +564,11 @@ const Row = styled.div`
   flex-wrap: wrap;
 `;
 
-const Step = styled.div<{ $active?: boolean }>`
+const tz2atRegionAttrs = (region: string): any => ({
+  "data-tz2at-region": region,
+});
+
+const Step = styled.div.attrs(tz2atRegionAttrs("step"))<{ $active?: boolean }>`
   border: 1px solid ${(p) => (p.$active ? "var(--wtf-app-primary, #000080)" : "var(--wtf-app-border, #808080)")};
   background: ${(p) => (p.$active ? "var(--wtf-app-info-bg, #fffff0)" : "var(--wtf-app-surface, #f4f4f4)")};
   padding: 8px;
@@ -506,12 +592,12 @@ const Mono = styled.code`
   overflow-wrap: anywhere;
 `;
 
-const List = styled.div`
+const List = styled.div.attrs(tz2atRegionAttrs("list"))`
   display: grid;
   gap: 6px;
 `;
 
-const Item = styled.div`
+const Item = styled.div.attrs(tz2atRegionAttrs("item"))`
   border: 1px solid var(--wtf-app-border, #808080);
   background: var(--wtf-app-surface-raised, #ffffff);
   padding: var(--wtf-space-2, 8px);
@@ -519,18 +605,21 @@ const Item = styled.div`
   gap: 5px;
 `;
 
-const Tabs = styled.div`
+const Tabs = styled.div.attrs(tz2atRegionAttrs("tabs"))`
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 `;
 
-const TabButton = styled(Button)<{ $active?: boolean }>`
+const TabButton = styled(Button).attrs<{ $active?: boolean }>((props) => ({
+  "data-tz2at-active": props.$active ? "true" : "false",
+  "aria-pressed": props.$active ? "true" : "false",
+}))<{ $active?: boolean }>`
   font-weight: ${(p) => (p.$active ? 700 : 400)};
   min-height: var(--wtf-control-min-height, 34px);
 `;
 
-const FieldGrid = styled.div`
+const FieldGrid = styled.div.attrs(tz2atRegionAttrs("field-grid"))`
   display: grid;
   grid-template-columns: repeat(3, minmax(140px, 1fr));
   gap: 8px;
@@ -540,14 +629,14 @@ const FieldGrid = styled.div`
   }
 `;
 
-const Field = styled.label`
+const Field = styled.label.attrs(tz2atRegionAttrs("field"))`
   display: grid;
   gap: 4px;
   font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
 `;
 
-const Select = styled.select`
+const Select = styled.select.attrs(tz2atRegionAttrs("select"))`
   min-height: var(--wtf-control-min-height, 34px);
   border: 2px inset #ffffff;
   background: var(--wtf-app-control-bg, #ffffff);
@@ -562,7 +651,7 @@ const EventCard = styled(Item)`
   background: var(--wtf-app-info-bg, var(--wtf-app-surface-raised, #ffffff));
 `;
 
-const Details = styled.details`
+const Details = styled.details.attrs(tz2atRegionAttrs("details"))`
   font-size: var(--wtf-type-caption, 13px);
 
   summary {
@@ -571,7 +660,7 @@ const Details = styled.details`
   }
 `;
 
-const MetricGrid = styled.div`
+const MetricGrid = styled.div.attrs(tz2atRegionAttrs("metric-grid"))`
   display: grid;
   grid-template-columns: repeat(4, minmax(130px, 1fr));
   gap: 8px;
@@ -585,14 +674,14 @@ const MetricGrid = styled.div`
   }
 `;
 
-const Metric = styled.div`
+const Metric = styled.div.attrs(tz2atRegionAttrs("metric"))`
   border: 1px solid var(--wtf-app-border, #808080);
   background: var(--wtf-app-surface-raised, #ffffff);
   padding: 8px;
   min-height: 58px;
 `;
 
-const ReadoutPanel = styled.div`
+const ReadoutPanel = styled.div.attrs(tz2atRegionAttrs("readout-panel"))`
   border: 2px solid var(--wtf-app-primary, #000080);
   background: var(--wtf-app-info-bg, #f8fbff);
   padding: 12px;
@@ -606,7 +695,7 @@ const ReadoutHeadline = styled.div`
   line-height: 1.25;
 `;
 
-const ReadoutGrid = styled.div`
+const ReadoutGrid = styled.div.attrs(tz2atRegionAttrs("readout-grid"))`
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
   gap: 10px;
@@ -616,7 +705,7 @@ const ReadoutGrid = styled.div`
   }
 `;
 
-const InterpretationBox = styled.div<{ $tone?: "good" | "watch" | "risk" | "info" }>`
+const InterpretationBox = styled.div.attrs(tz2atRegionAttrs("interpretation"))<{ $tone?: "good" | "watch" | "risk" | "info" }>`
   border: 1px solid
     ${(p) =>
       p.$tone === "good"
@@ -648,7 +737,7 @@ const NarrativeList = styled.ul`
   line-height: 1.35;
 `;
 
-const ChartGrid = styled.div`
+const ChartGrid = styled.div.attrs(tz2atRegionAttrs("chart-grid"))`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -658,7 +747,7 @@ const ChartGrid = styled.div`
   }
 `;
 
-const ChartPanel = styled.div`
+const ChartPanel = styled.div.attrs(tz2atRegionAttrs("chart-panel"))`
   border: 1px solid var(--wtf-app-border, #808080);
   background: var(--wtf-app-surface-raised, #ffffff);
   padding: 9px;
@@ -674,14 +763,14 @@ const BarRow = styled.div`
   font-size: var(--wtf-type-caption, 13px);
 `;
 
-const BarTrack = styled.div`
+const BarTrack = styled.div.attrs(tz2atRegionAttrs("bar-track"))`
   height: 13px;
   border: 1px solid var(--wtf-app-border, #808080);
   background: var(--wtf-app-surface, #f2f2f2);
   overflow: hidden;
 `;
 
-const BarFill = styled.div<{ $pct: number; $tone?: "good" | "watch" | "risk" | "info" }>`
+const BarFill = styled.div.attrs(tz2atRegionAttrs("bar-fill"))<{ $pct: number; $tone?: "good" | "watch" | "risk" | "info" }>`
   width: ${(p) => Math.max(2, Math.min(100, p.$pct))}%;
   height: 100%;
   background: ${(p) =>
@@ -694,7 +783,7 @@ const BarFill = styled.div<{ $pct: number; $tone?: "good" | "watch" | "risk" | "
           : "var(--wtf-app-info, #000080)"};
 `;
 
-const FullReport = styled(Details)`
+const FullReport = styled(Details).attrs(tz2atRegionAttrs("full-report"))`
   border: 1px solid var(--wtf-app-border, #808080);
   background: var(--wtf-app-surface, #efefef);
   padding: 8px;
@@ -737,7 +826,7 @@ const MetricValue = styled.div`
   overflow-wrap: anywhere;
 `;
 
-const AnalyticsBand = styled.div`
+const AnalyticsBand = styled.div.attrs(tz2atRegionAttrs("analytics-band"))`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -1607,6 +1696,7 @@ function Tz2atEventRow({ item }: { item: Record<string, unknown> }) {
 
 export function Tz2at() {
   const queryClient = useQueryClient();
+  const presentation = usePresentationShell();
   const [handle, setHandle] = useState("");
   const [activePanel, setActivePanel] = useState<"tezos-market" | "etherlink" | "firehose" | "identity">("tezos-market");
   const [explorerDraft, setExplorerDraft] = useState<ExplorerFilters>(defaultExplorerFilters);
@@ -1840,7 +1930,11 @@ export function Tz2at() {
 
   return (
     <AppWindow title="tz2at">
-      <Shell>
+      <Shell
+        data-tz2at-surface="identity-market-analytics"
+        data-tz2at-presentation-host={presentation.host}
+        data-tz2at-region="surface"
+      >
         {statusQuery.isLoading ? (
           <Hourglass size={32} />
         ) : (

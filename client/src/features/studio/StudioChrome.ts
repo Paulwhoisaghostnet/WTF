@@ -2,12 +2,63 @@ import { Button, Panel } from "react95";
 import styled from "styled-components";
 import { MOBILE } from "../../global-styles";
 
-export const Shell = styled.div`
+const studioRegionAttrs = (region: string): any => ({
+  "data-studio-region": region,
+});
+
+const gammaStudioScope = `[data-studio-presentation-host="gamma"]`;
+
+export const Shell = styled.div.attrs(studioRegionAttrs("workspace-shell"))`
   display: grid;
   grid-template-columns: 260px 1fr 320px;
   gap: 8px;
   height: 100%;
   min-height: 0;
+
+  &[data-studio-presentation-host="gamma"] {
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-studio-presentation-host="gamma"],
+  &[data-studio-presentation-host="gamma"] * {
+    background-image: none !important;
+    box-shadow: none !important;
+    letter-spacing: 0 !important;
+    text-shadow: none !important;
+  }
+
+  &[data-studio-presentation-host="gamma"] :where(button, input, textarea, select, p, span, strong, div, section, article, h1, h2, h3, h4, label, legend, fieldset) {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  }
+
+  &[data-studio-presentation-host="gamma"] :where(code, pre) {
+    color: #00d2ff !important;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace !important;
+  }
+
+  &[data-studio-presentation-host="gamma"] :where(p, span, div, label, legend, strong, textarea) {
+    color: #f2ead9 !important;
+  }
+
+  &[data-studio-presentation-host="gamma"] :where(fieldset, [data-studio-region]) {
+    border-color: rgba(242, 234, 217, 0.2) !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-studio-presentation-host="gamma"] :where(fieldset) {
+    background: color-mix(in srgb, #11110f 82%, #070706) !important;
+  }
+
+  &[data-studio-presentation-host="gamma"] :where(legend) {
+    color: #00d2ff !important;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace !important;
+    font-size: 12px !important;
+    text-transform: uppercase;
+  }
 
   ${MOBILE} {
     grid-template-columns: 1fr;
@@ -16,7 +67,7 @@ export const Shell = styled.div`
   }
 `;
 
-export const Column = styled.div`
+export const Column = styled.div.attrs(studioRegionAttrs("workspace-column"))`
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -24,15 +75,24 @@ export const Column = styled.div`
   min-width: 0;
 `;
 
-export const PanelBody = styled(Panel).attrs({ variant: "well" })`
+export const PanelBody = styled(Panel).attrs({
+  variant: "well",
+  ...studioRegionAttrs("panel-body"),
+})`
   flex: 1;
   min-height: 0;
   padding: 6px;
   overflow: auto;
   font-size: var(--wtf-type-body, 14px);
+
+  ${gammaStudioScope} & {
+    background: color-mix(in srgb, #11110f 76%, #070706) !important;
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    color: #f2ead9;
+  }
 `;
 
-export const ToolBar = styled.div`
+export const ToolBar = styled.div.attrs(studioRegionAttrs("toolbar"))`
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -40,9 +100,19 @@ export const ToolBar = styled.div`
   padding: 4px;
   background: var(--wtf-control-bg, #e9eaec);
   border: 1px solid var(--wtf-app-border, #8b929a);
+
+  ${gammaStudioScope} & {
+    background: color-mix(in srgb, #11110f 84%, #070706);
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    color: #f2ead9;
+  }
+
+  ${gammaStudioScope} & > span {
+    color: rgba(242, 234, 217, 0.72) !important;
+  }
 `;
 
-export const ToolButton = styled(Button)<{ $active?: boolean }>`
+export const ToolButton = styled(Button).attrs(studioRegionAttrs("tool-button"))<{ $active?: boolean }>`
   min-width: 32px;
   min-height: var(--wtf-control-height, 32px);
   display: inline-flex;
@@ -51,9 +121,16 @@ export const ToolButton = styled(Button)<{ $active?: boolean }>`
   gap: 3px;
   font-size: var(--wtf-type-caption, 13px) !important;
   ${(p) => p.$active && `font-weight: bold; background: var(--wtf-app-warning-bg, #fff4bf) !important;`}
+
+  ${gammaStudioScope} & {
+    background: ${(p) => (p.$active ? "#00d2ff" : "color-mix(in srgb, #11110f 82%, #070706)")} !important;
+    border: 1px solid ${(p) => (p.$active ? "#00d2ff" : "rgba(242, 234, 217, 0.2)")} !important;
+    border-radius: 6px !important;
+    color: ${(p) => (p.$active ? "#070706" : "#f2ead9")} !important;
+  }
 `;
 
-export const ProjectHeader = styled.div`
+export const ProjectHeader = styled.div.attrs(studioRegionAttrs("project-header"))`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -63,17 +140,31 @@ export const ProjectHeader = styled.div`
   color: var(--wtf-active-title-text, #fff);
   font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
+
+  ${gammaStudioScope} & {
+    background: color-mix(in srgb, #11110f 74%, #070706);
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    color: #f2ead9;
+  }
 `;
 
-export const Breadcrumbs = styled.div`
+export const Breadcrumbs = styled.div.attrs(studioRegionAttrs("breadcrumbs"))`
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-active-title-text, #fff);
+
+  ${gammaStudioScope} & {
+    color: #f2ead9;
+  }
+
+  ${gammaStudioScope} & span:nth-child(2n) {
+    color: #00d2ff !important;
+  }
 `;
 
-export const HeaderMeta = styled.div`
+export const HeaderMeta = styled.div.attrs(studioRegionAttrs("header-meta"))`
   display: flex;
   gap: 6px;
   font-size: var(--wtf-type-caption, 13px);
@@ -81,7 +172,7 @@ export const HeaderMeta = styled.div`
   color: var(--wtf-active-title-text, #fff);
 `;
 
-export const TreeNode = styled.div<{ $depth?: number; $active?: boolean }>`
+export const TreeNode = styled.div.attrs(studioRegionAttrs("tree-node"))<{ $depth?: number; $active?: boolean }>`
   display: flex;
   align-items: center;
   gap: 4px;
@@ -95,9 +186,19 @@ export const TreeNode = styled.div<{ $depth?: number; $active?: boolean }>`
   &:hover {
     background: ${(p) => (p.$active ? "var(--wtf-app-link, #000080)" : "var(--wtf-control-bg, #e4e4e4)")};
   }
+
+  ${gammaStudioScope} & {
+    background: ${(p) => (p.$active ? "#00d2ff" : "transparent")};
+    color: ${(p) => (p.$active ? "#070706" : "#f2ead9")} !important;
+    min-height: 34px;
+  }
+
+  ${gammaStudioScope} &:hover {
+    background: ${(p) => (p.$active ? "#00d2ff" : "rgba(0, 210, 255, 0.1)")};
+  }
 `;
 
-export const FileThumb = styled.div`
+export const FileThumb = styled.div.attrs(studioRegionAttrs("file-thumb"))`
   width: 18px;
   height: 18px;
   background: #1a1a1a;
@@ -115,18 +216,30 @@ export const FileThumb = styled.div`
     height: 100%;
     object-fit: cover;
   }
+
+  ${gammaStudioScope} & {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.2);
+    color: #00d2ff;
+  }
 `;
 
-export const PreviewStage = styled.div`
+export const PreviewStage = styled.div.attrs(studioRegionAttrs("preview-stage"))`
   flex: 1;
   min-height: 0;
   position: relative;
   background: var(--wtf-app-bg, #f3f4f6);
   border: 1px solid var(--wtf-app-border, #8b929a);
   overflow: hidden;
+
+  ${gammaStudioScope} & {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+  }
 `;
 
-export const PreviewFrame = styled.div`
+export const PreviewFrame = styled.div.attrs(studioRegionAttrs("preview-frame"))`
   position: absolute;
   inset: 0;
   display: flex;
@@ -134,7 +247,7 @@ export const PreviewFrame = styled.div`
   justify-content: center;
 `;
 
-export const PreviewMedia = styled.div`
+export const PreviewMedia = styled.div.attrs(studioRegionAttrs("preview-media"))`
   position: relative;
   max-width: 100%;
   max-height: 100%;
@@ -158,9 +271,28 @@ export const PreviewMedia = styled.div`
     border: none;
     display: block;
   }
+
+  ${gammaStudioScope} & {
+    color: #f2ead9;
+  }
+
+  ${gammaStudioScope} & :where(div, span, a) {
+    color: #f2ead9 !important;
+  }
+
+  ${gammaStudioScope} & a {
+    color: #00d2ff !important;
+  }
+
+  ${gammaStudioScope} & iframe,
+  ${gammaStudioScope} & audio {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+  }
 `;
 
-export const AnnotationOverlay = styled.div`
+export const AnnotationOverlay = styled.div.attrs(studioRegionAttrs("annotation-overlay"))`
   position: absolute;
   inset: 0;
   pointer-events: auto;
@@ -168,7 +300,7 @@ export const AnnotationOverlay = styled.div`
   touch-action: none;
 `;
 
-export const PinMarker = styled.button<{ $resolved?: boolean; $selected?: boolean }>`
+export const PinMarker = styled.button.attrs(studioRegionAttrs("pin-marker"))<{ $resolved?: boolean; $selected?: boolean }>`
   position: absolute;
   transform: translate(-50%, -100%);
   background: ${(p) =>
@@ -205,9 +337,15 @@ export const PinMarker = styled.button<{ $resolved?: boolean; $selected?: boolea
     border-top: none;
     border-left: none;
   }
+
+  ${gammaStudioScope} & {
+    background: ${(p) => (p.$resolved ? "#555" : p.$selected ? "#d6ff3f" : "#00d2ff")};
+    border: 1px solid #070706;
+    color: #070706 !important;
+  }
 `;
 
-export const RectMarker = styled.div<{ $resolved?: boolean; $selected?: boolean }>`
+export const RectMarker = styled.div.attrs(studioRegionAttrs("rect-marker"))<{ $resolved?: boolean; $selected?: boolean }>`
   position: absolute;
   border: 2px solid
     ${(p) => (p.$resolved ? "#6a6a6a" : p.$selected ? "#1fbb38" : "#ff3366")};
@@ -217,9 +355,14 @@ export const RectMarker = styled.div<{ $resolved?: boolean; $selected?: boolean 
       : "rgba(255, 51, 102, 0.12)"};
   pointer-events: auto;
   cursor: pointer;
+
+  ${gammaStudioScope} & {
+    border-color: ${(p) => (p.$resolved ? "rgba(242, 234, 217, 0.45)" : p.$selected ? "#d6ff3f" : "#00d2ff")};
+    background: ${(p) => (p.$resolved ? "rgba(242, 234, 217, 0.1)" : "rgba(0, 210, 255, 0.12)")};
+  }
 `;
 
-export const CursorGhost = styled.div`
+export const CursorGhost = styled.div.attrs(studioRegionAttrs("cursor-ghost"))`
   position: absolute;
   width: 10px;
   height: 10px;
@@ -230,9 +373,14 @@ export const CursorGhost = styled.div`
   box-shadow: 0 0 0 1px #000;
   pointer-events: none;
   transition: transform 80ms linear;
+
+  ${gammaStudioScope} & {
+    background: #d6ff3f;
+    border: 1px solid #070706;
+  }
 `;
 
-export const CursorLabel = styled.span`
+export const CursorLabel = styled.span.attrs(studioRegionAttrs("cursor-label"))`
   position: absolute;
   top: 10px;
   left: 10px;
@@ -242,16 +390,28 @@ export const CursorLabel = styled.span`
   padding: 2px 6px;
   white-space: nowrap;
   border-radius: 2px;
+
+  ${gammaStudioScope} & {
+    background: #11110f;
+    border: 1px solid #d6ff3f;
+    border-radius: 6px;
+    color: #d6ff3f !important;
+  }
 `;
 
-export const PendingRect = styled.div`
+export const PendingRect = styled.div.attrs(studioRegionAttrs("pending-rect"))`
   position: absolute;
   border: 2px dashed #0066ff;
   background: rgba(0, 102, 255, 0.1);
   pointer-events: none;
+
+  ${gammaStudioScope} & {
+    border-color: #00d2ff;
+    background: rgba(0, 210, 255, 0.12);
+  }
 `;
 
-export const AnnotationPopover = styled.div<{ $x: number; $y: number }>`
+export const AnnotationPopover = styled.div.attrs(studioRegionAttrs("annotation-popover"))<{ $x: number; $y: number }>`
   position: absolute;
   left: ${(p) => p.$x}px;
   top: ${(p) => p.$y}px;
@@ -272,30 +432,59 @@ export const AnnotationPopover = styled.div<{ $x: number; $y: number }>`
     box-sizing: border-box;
     resize: vertical;
   }
+
+  ${gammaStudioScope} & {
+    background: #11110f;
+    border: 1px solid #00d2ff;
+    border-radius: 6px;
+    color: #f2ead9;
+  }
+
+  ${gammaStudioScope} & textarea {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
-export const ChatMessageRow = styled.div<{ $system?: boolean }>`
+export const ChatMessageRow = styled.div.attrs(studioRegionAttrs("chat-message"))<{ $system?: boolean }>`
   margin-bottom: 6px;
   padding: 4px 6px;
   background: ${(p) => (p.$system ? "#e9eef7" : "transparent")};
   border: 1px solid ${(p) => (p.$system ? "var(--wtf-app-link, #000080)" : "transparent")};
   font-size: var(--wtf-type-caption, 13px);
+
+  ${gammaStudioScope} & {
+    background: ${(p) => (p.$system ? "rgba(0, 210, 255, 0.1)" : "transparent")};
+    border: 1px solid ${(p) => (p.$system ? "#00d2ff" : "rgba(242, 234, 217, 0.1)")};
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
-export const ChatMeta = styled.div`
+export const ChatMeta = styled.div.attrs(studioRegionAttrs("chat-meta"))`
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted, #4b5563);
   display: flex;
   justify-content: space-between;
   gap: 6px;
+
+  ${gammaStudioScope} & {
+    color: rgba(242, 234, 217, 0.66);
+  }
+
+  ${gammaStudioScope} & strong {
+    color: #00d2ff !important;
+  }
 `;
 
-export const ChatBody = styled.div`
+export const ChatBody = styled.div.attrs(studioRegionAttrs("chat-body"))`
   word-break: break-word;
   white-space: pre-wrap;
 `;
 
-export const PresenceChip = styled.span`
+export const PresenceChip = styled.span.attrs(studioRegionAttrs("presence-chip"))`
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -303,28 +492,43 @@ export const PresenceChip = styled.span`
   background: #c3f0c3;
   padding: 1px 6px;
   border: 1px solid #1a6a1a;
+
+  ${gammaStudioScope} & {
+    background: transparent;
+    border: 1px solid #d6ff3f !important;
+    border-radius: 6px;
+    color: #d6ff3f !important;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
 `;
 
-export const ErrorBanner = styled.div`
+export const ErrorBanner = styled.div.attrs(studioRegionAttrs("error-banner"))`
   background: #ffe2e2;
   border: 1px solid #c06060;
   padding: 6px 8px;
   font-size: var(--wtf-type-caption, 13px);
   color: #800;
   margin-bottom: 4px;
+
+  ${gammaStudioScope} & {
+    background: color-mix(in srgb, #b42318 18%, #11110f);
+    border: 1px solid color-mix(in srgb, #b42318 70%, #f2ead9);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
-export const InvitePicker = styled.div`
+export const InvitePicker = styled.div.attrs(studioRegionAttrs("invite-picker"))`
   position: relative;
   margin-top: 6px;
 `;
 
-export const InviteInputRow = styled.div`
+export const InviteInputRow = styled.div.attrs(studioRegionAttrs("invite-input-row"))`
   display: flex;
   gap: 4px;
 `;
 
-export const InviteSelectedChip = styled.div`
+export const InviteSelectedChip = styled.div.attrs(studioRegionAttrs("invite-selected"))`
   margin-top: 4px;
   display: inline-flex;
   align-items: center;
@@ -333,9 +537,16 @@ export const InviteSelectedChip = styled.div`
   background: #d4f0d4;
   border: 1px solid #1a6a1a;
   font-size: var(--wtf-type-caption, 13px);
+
+  ${gammaStudioScope} & {
+    background: rgba(214, 255, 63, 0.1);
+    border: 1px solid #d6ff3f;
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
-export const InviteChipClear = styled.button`
+export const InviteChipClear = styled.button.attrs(studioRegionAttrs("invite-clear"))`
   border: 1px solid #1a6a1a;
   background: #fff;
   cursor: pointer;
@@ -344,9 +555,16 @@ export const InviteChipClear = styled.button`
   padding: 0 5px;
   min-width: 32px;
   min-height: 32px;
+
+  ${gammaStudioScope} & {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.2);
+    border-radius: 6px;
+    color: #00d2ff;
+  }
 `;
 
-export const InviteDropdown = styled.div`
+export const InviteDropdown = styled.div.attrs(studioRegionAttrs("invite-dropdown"))`
   position: absolute;
   top: 100%;
   left: 0;
@@ -358,9 +576,16 @@ export const InviteDropdown = styled.div`
   max-height: 220px;
   overflow-y: auto;
   margin-top: 1px;
+
+  ${gammaStudioScope} & {
+    background: #11110f;
+    border: 1px solid #00d2ff;
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
-export const InviteItem = styled.div<{ $active?: boolean }>`
+export const InviteItem = styled.div.attrs(studioRegionAttrs("invite-item"))<{ $active?: boolean }>`
   padding: 4px 6px;
   font-size: var(--wtf-type-caption, 13px);
   display: flex;
@@ -370,29 +595,46 @@ export const InviteItem = styled.div<{ $active?: boolean }>`
   cursor: pointer;
   background: ${(p) => (p.$active ? "#000080" : "transparent")};
   color: ${(p) => (p.$active ? "#fff" : "#000")};
+
+  ${gammaStudioScope} & {
+    background: ${(p) => (p.$active ? "#00d2ff" : "transparent")};
+    color: ${(p) => (p.$active ? "#070706" : "#f2ead9")} !important;
+  }
 `;
 
-export const InviteItemPrimary = styled.span`
+export const InviteItemPrimary = styled.span.attrs(studioRegionAttrs("invite-item-primary"))`
   display: flex;
   flex-direction: column;
   min-width: 0;
 `;
 
-export const InviteItemHandle = styled.span`
+export const InviteItemHandle = styled.span.attrs(studioRegionAttrs("invite-item-handle"))`
   font-size: var(--wtf-type-caption, 13px);
   opacity: 0.85;
+
+  ${gammaStudioScope} & {
+    color: rgba(242, 234, 217, 0.66) !important;
+  }
 `;
 
-export const InviteItemRole = styled.span`
+export const InviteItemRole = styled.span.attrs(studioRegionAttrs("invite-item-role"))`
   font-size: var(--wtf-type-caption, 13px);
   opacity: 0.85;
   text-transform: capitalize;
   white-space: nowrap;
+
+  ${gammaStudioScope} & {
+    color: #00d2ff !important;
+  }
 `;
 
-export const InviteEmpty = styled.div`
+export const InviteEmpty = styled.div.attrs(studioRegionAttrs("invite-empty"))`
   padding: 6px 8px;
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted, #4b5563);
   font-style: italic;
+
+  ${gammaStudioScope} & {
+    color: rgba(242, 234, 217, 0.66);
+  }
 `;

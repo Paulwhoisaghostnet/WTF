@@ -66,6 +66,7 @@ export const SKYWIRE_READ_SCOPES = [
   bskyRpcScope("app.bsky.feed.searchPosts"),
   bskyRpcScope("app.bsky.graph.getFollows"),
   bskyRpcScope("app.bsky.notification.listNotifications"),
+  bskyRpcScope("app.bsky.unspecced.getTrendingTopics"),
 ] as const;
 
 export const SKYWIRE_SOCIAL_ACTION_SCOPES = [

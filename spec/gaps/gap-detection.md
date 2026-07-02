@@ -3,7 +3,7 @@
 ## Unimplemented Features
 
 - Some Pasta surfaces are present as static or planned tools; implementation depth varies by app. The story suite treats missing behavior as a validation gap for later coding passes, not as permission to change code during this documentation loop.
-- Tortellini is not missing; it is intentionally not a product under the current owner-approved Pasta structure.
+- Tortellini is not missing; it is intentionally not a product under the current owner-approved Pasta structure. The `CH-EASE -> Tortellini` example is covered as a blocked-flow validation requirement.
 
 ## Unclear Workflows
 

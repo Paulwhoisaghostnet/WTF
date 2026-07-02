@@ -24,6 +24,7 @@ test("admin registry includes every canonical Phase 4 shell surface", () => {
     "desktop-appearance",
     "system-settings",
     "browser-boundaries",
+    "agent",
     "terminal",
     "cli",
     "file-manager",
@@ -36,6 +37,7 @@ test("admin registry resolves Mission Control and Recovery Mode routes", () => {
   assert.equal(findAdminSurfaceForPath("/mission-control")?.id, "mission-control");
   assert.equal(findAdminSurfaceForPath("/recovery-mode")?.id, "recovery-mode");
   assert.equal(findAdminSurfaceForPath("/browser-boundaries")?.id, "browser-boundaries");
+  assert.equal(findAdminSurfaceForPath("/agent")?.id, "agent");
   assert.equal(findAdminSurfaceForPath("/digest")?.id, "digest");
   assert.equal(findAdminSurfaceForPath("/wtf-subdomains")?.id, "wtf-domains");
   assert.equal(findAdminSurfaceForPath("/wtf-subdomains/setup")?.id, "wtf-domains");
@@ -46,6 +48,8 @@ test("admin registry tracks current shell event handles", () => {
   assert(surfaceById("recovery-mode")?.automationHandles.includes("recovery_mode.action_opened"));
   assert(surfaceById("recovery-mode")?.automationHandles.includes("recovery_mode.filesystem_checked"));
   assert(surfaceById("browser-boundaries")?.automationHandles.includes("browser_boundaries.action_opened"));
+  assert(surfaceById("agent")?.automationHandles.includes("agent.chat.sent"));
+  assert(surfaceById("agent")?.automationHandles.includes("agent.git.committed"));
   assert(surfaceById("notifications")?.automationHandles.includes("notification_center.viewed"));
 });
 

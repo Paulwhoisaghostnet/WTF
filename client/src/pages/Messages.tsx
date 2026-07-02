@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import {
   Button,
   Checkbox,
@@ -17,12 +18,93 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { UiEmptyState } from "../components/wtfos-ui";
 import { UserLink } from "../components/UserLink";
 import { useAuth } from "../lib/auth-context";
+import {
+  presentationRouteHref,
+  usePresentationShell,
+} from "../lib/presentation-shell";
 import { useWindowManager } from "../lib/window-context";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
 import { ROLE_LABELS, type UserRole } from "@shared/types";
 import { MOBILE } from "../global-styles";
 import { HAMSTER_REACTIONS, HAMSTER_SECTION_LABEL } from "../lib/hamster-emoji";
+
+const gammaMessagesScope = `[data-messages-presentation-host="gamma"]`;
+
+const MessagesSurface = styled.div`
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+
+  &[data-messages-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family:
+      Inter, "IBM Plex Sans", "Neue Haas Grotesk Text", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+
+  &[data-messages-presentation-host="gamma"],
+  &[data-messages-presentation-host="gamma"] * {
+    box-sizing: border-box;
+    letter-spacing: 0;
+    text-shadow: none;
+  }
+
+  &[data-messages-presentation-host="gamma"] [data-messages-region] {
+    background-image: none;
+    box-shadow: none;
+  }
+
+  &[data-messages-presentation-host="gamma"]
+    :where(button, input, textarea, select, p, span, strong, div, label, legend, fieldset) {
+    font-family:
+      Inter, "IBM Plex Sans", "Neue Haas Grotesk Text", Arial, sans-serif;
+  }
+
+  &[data-messages-presentation-host="gamma"] :where(code, pre, [data-wtf-caption="true"]) {
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+  }
+
+  &[data-messages-presentation-host="gamma"] [data-messages-region="tabs"],
+  &[data-messages-presentation-host="gamma"] [data-messages-region="tab-body"],
+  &[data-messages-presentation-host="gamma"] [data-messages-region="layout"],
+  &[data-messages-presentation-host="gamma"] [data-messages-region="notification-pane"] {
+    background: transparent;
+    border: 0;
+  }
+
+  &[data-messages-presentation-host="gamma"] fieldset {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: rgba(242, 234, 217, 0.035);
+    color: #f2ead9;
+  }
+
+  &[data-messages-presentation-host="gamma"] legend {
+    color: #28d7ff;
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  &[data-messages-presentation-host="gamma"]
+    :where(button, input, select, textarea) {
+    border-radius: 4px;
+  }
+
+  &[data-messages-presentation-host="gamma"] button:not(:disabled) {
+    color: #f2ead9;
+  }
+
+  &[data-messages-presentation-host="gamma"] a {
+    color: #28d7ff;
+  }
+`;
 
 const Layout = styled.div`
   display: flex;
@@ -72,6 +154,13 @@ const ListPanel = styled(Panel).attrs({ variant: "well" })`
   color: var(--wtf-app-text, #111);
   background: var(--wtf-app-surface-raised, #ffffff);
   border-color: var(--wtf-app-border, #808080);
+
+  ${gammaMessagesScope} & {
+    background: rgba(242, 234, 217, 0.045);
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
 const ItemButton = styled(Button)<{ $active?: boolean }>`
@@ -81,6 +170,20 @@ const ItemButton = styled(Button)<{ $active?: boolean }>`
   margin-bottom: var(--wtf-space-1, 4px);
   color: var(--wtf-app-text, #111);
   ${(p) => p.$active && "font-weight: bold;"}
+
+  ${gammaMessagesScope} & {
+    min-height: 38px;
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    background: rgba(242, 234, 217, 0.035);
+    color: #f2ead9;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  ${gammaMessagesScope} &[data-active-conversation="true"] {
+    border-color: rgba(40, 215, 255, 0.65);
+    background: rgba(40, 215, 255, 0.11);
+  }
 `;
 
 const MessageList = styled(Panel).attrs({ variant: "well" })`
@@ -92,10 +195,23 @@ const MessageList = styled(Panel).attrs({ variant: "well" })`
   color: var(--wtf-app-text, #111);
   background: var(--wtf-app-surface-raised, #ffffff);
   border-color: var(--wtf-app-border, #808080);
+
+  ${gammaMessagesScope} & {
+    background: rgba(242, 234, 217, 0.045);
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
 const MessageRow = styled.div`
   margin-bottom: 10px;
+
+  ${gammaMessagesScope} & {
+    margin-bottom: 8px;
+    padding: 8px 0 10px;
+    border-bottom: 1px solid rgba(242, 234, 217, 0.1);
+  }
 `;
 
 const Meta = styled.div`
@@ -103,6 +219,13 @@ const Meta = styled.div`
   color: var(--wtf-app-muted-text, #384352);
   line-height: 1.35;
   overflow-wrap: anywhere;
+
+  ${gammaMessagesScope} & {
+    color: rgba(242, 234, 217, 0.67);
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+  }
 `;
 
 const Body = styled.div`
@@ -110,11 +233,20 @@ const Body = styled.div`
   line-height: 1.45;
   margin-top: 2px;
   overflow-wrap: anywhere;
+
+  ${gammaMessagesScope} & {
+    color: #f2ead9;
+  }
 `;
 
 const InputRow = styled.div`
   display: flex;
   gap: 6px;
+
+  ${gammaMessagesScope} & {
+    align-items: stretch;
+    padding-top: 2px;
+  }
 `;
 
 const MobileBackButton = styled(Button)`
@@ -141,6 +273,21 @@ const NotificationRow = styled.div<{ $unread?: boolean; $clickable?: boolean }>`
     p.$clickable
       ? "cursor: pointer; &:hover { background: var(--wtf-app-info-bg, var(--wtf-app-surface-raised, #ffffff)); }"
       : ""}
+
+  ${gammaMessagesScope} & {
+    background: ${(p) =>
+      p.$unread ? "rgba(40, 215, 255, 0.1)" : "rgba(242, 234, 217, 0.045)"};
+    border: 1px solid
+      ${(p) =>
+        p.$unread ? "rgba(40, 215, 255, 0.42)" : "rgba(242, 234, 217, 0.16)"};
+    border-radius: 6px;
+    color: #f2ead9;
+  }
+
+  ${(p) =>
+    p.$clickable
+      ? `${gammaMessagesScope} &:hover { background: rgba(40, 215, 255, 0.14); }`
+      : ""}
 `;
 
 const StudioBadge = styled.span`
@@ -153,6 +300,17 @@ const StudioBadge = styled.span`
   letter-spacing: 0;
   min-height: 22px;
   line-height: 1.2;
+
+  ${gammaMessagesScope} & {
+    background: transparent;
+    border: 1px solid rgba(40, 215, 255, 0.6);
+    border-radius: 4px;
+    color: #28d7ff;
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 10px;
+    font-weight: 700;
+  }
 `;
 
 const SectionHeader = styled.div`
@@ -162,6 +320,14 @@ const SectionHeader = styled.div`
   padding: 4px 2px 2px;
   text-transform: none;
   letter-spacing: 0;
+
+  ${gammaMessagesScope} & {
+    color: #28d7ff;
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
 `;
 
 const SystemMessageRow = styled.div`
@@ -172,16 +338,33 @@ const SystemMessageRow = styled.div`
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-text, #111);
   font-style: italic;
+
+  ${gammaMessagesScope} & {
+    background: rgba(40, 215, 255, 0.08);
+    border: 1px solid rgba(40, 215, 255, 0.26);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
 const NotificationTitle = styled.div`
   font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
+
+  ${gammaMessagesScope} & {
+    color: #f2ead9;
+    font-size: 14px;
+  }
 `;
 
 const NotificationBody = styled.div`
   margin-top: 3px;
   font-size: var(--wtf-type-caption, 13px);
+
+  ${gammaMessagesScope} & {
+    color: rgba(242, 234, 217, 0.84);
+    font-size: 13px;
+  }
 `;
 
 const NotificationMeta = styled.div`
@@ -192,6 +375,13 @@ const NotificationMeta = styled.div`
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+
+  ${gammaMessagesScope} & {
+    color: rgba(242, 234, 217, 0.62);
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+  }
 `;
 
 const PreferenceRow = styled.div`
@@ -200,6 +390,13 @@ const PreferenceRow = styled.div`
   border: 1px solid var(--wtf-app-border, #808080);
   background: var(--wtf-app-surface-raised, #ffffff);
   color: var(--wtf-app-text, #111);
+
+  ${gammaMessagesScope} & {
+    background: rgba(242, 234, 217, 0.045);
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
 const DmEmojiPicker = styled.div`
@@ -216,6 +413,13 @@ const DmEmojiPicker = styled.div`
   z-index: 20;
   max-width: 260px;
 
+  ${gammaMessagesScope} & {
+    background: #10100e;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
+
   button {
     min-width: 32px;
     min-height: 32px;
@@ -229,6 +433,17 @@ const DmEmojiPicker = styled.div`
       border-color: var(--wtf-app-control-border, #808080);
       background: var(--wtf-app-info-bg, var(--wtf-app-surface, #f4f4f4));
     }
+  }
+
+  ${gammaMessagesScope} & button {
+    background: rgba(242, 234, 217, 0.05);
+    border-color: rgba(242, 234, 217, 0.14);
+    color: #f2ead9;
+  }
+
+  ${gammaMessagesScope} & button:hover {
+    background: rgba(40, 215, 255, 0.12);
+    border-color: rgba(40, 215, 255, 0.45);
   }
 `;
 
@@ -250,7 +465,7 @@ interface DmConversation {
     content: string;
     createdAt: string;
   } | null;
-  conversationType?: "direct" | "studio_project";
+  conversationType?: "direct" | "studio";
   studioProjectId?: number | null;
   title?: string | null;
 }
@@ -310,7 +525,7 @@ function splitConversations(list: DmConversation[] | undefined) {
   const directs: DmConversation[] = [];
   const studioRooms: DmConversation[] = [];
   for (const c of list ?? []) {
-    if (c.conversationType === "studio_project") {
+    if (c.conversationType === "studio") {
       studioRooms.push(c);
     } else {
       directs.push(c);
@@ -353,9 +568,11 @@ function tabForInitialMode(initialTab: MessagesProps["initialTab"]) {
 }
 
 export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
+  const presentation = usePresentationShell();
   const { user } = useAuth();
   const qc = useQueryClient();
   const wm = useWindowManager();
+  const [, setLocation] = useLocation();
 
   const [inboxTab, setInboxTab] = useState(() => tabForInitialMode(initialTab));
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
@@ -515,8 +732,14 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
 
   if (dmLoading) {
     return (
-      <AppWindow title={initialTab === "notifications" ? "Notification Center" : "Inbox"}>
-        <Hourglass size={32} />
+      <AppWindow title={initialTab === "notifications" ? "Notification Center" : "Messages"}>
+        <MessagesSurface
+          data-messages-presentation-host={presentation.host}
+          data-messages-surface={initialTab === "notifications" ? "notifications" : "messages"}
+          data-messages-region="surface"
+        >
+          <Hourglass size={32} />
+        </MessagesSurface>
       </AppWindow>
     );
   }
@@ -540,9 +763,18 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
   const { directs, studioRooms } = splitConversations(dmConversations);
 
   const currentStudioProjectId =
-    currentDm?.conversationType === "studio_project"
+    currentDm?.conversationType === "studio"
       ? currentDm.studioProjectId ?? null
       : null;
+
+  const openStudioProject = (projectId: number) => {
+    const route = `/studio/${projectId}`;
+    if (presentation.host === "gamma") {
+      setLocation(presentationRouteHref(route, presentation.host));
+      return;
+    }
+    wm.openPage(route);
+  };
 
   const handleNotificationClick = (item: NotificationItem) => {
     if (!item.eventKey.startsWith("studio.")) return;
@@ -553,7 +785,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
       metadata: {
         notificationId: item.id,
         eventKey: item.eventKey,
-        target: "studio_project",
+        target: "studio",
         projectId,
       },
     });
@@ -561,11 +793,11 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
     if (!item.read) {
       markNotificationReadMutation.mutate(item.id);
     }
-    wm.openPage(`/studio/${projectId}`);
+    openStudioProject(projectId);
   };
 
   const renderConversationButton = (conversation: DmConversation) => {
-    const isStudio = conversation.conversationType === "studio_project";
+    const isStudio = conversation.conversationType === "studio";
     const peerNames =
       conversation.peers.length > 0
         ? conversation.peers
@@ -580,6 +812,8 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
         key={conversation.id}
         size="sm"
         $active={conversation.id === activeConversationId}
+        data-messages-region="conversation-button"
+        data-active-conversation={conversation.id === activeConversationId ? "true" : undefined}
         onClick={() => selectConversation(conversation.id)}
       >
         <span
@@ -601,19 +835,28 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
   };
 
   return (
-    <AppWindow title={initialTab === "notifications" ? "Notification Center" : "Inbox"}>
-      <Tabs value={inboxTab} onChange={(v: number) => setInboxTab(v)}>
+    <AppWindow title={initialTab === "notifications" ? "Notification Center" : "Messages"}>
+      <MessagesSurface
+        data-messages-presentation-host={presentation.host}
+        data-messages-surface={initialTab === "notifications" ? "notifications" : "messages"}
+        data-messages-region="surface"
+      >
+      <Tabs
+        value={inboxTab}
+        onChange={(v: number) => setInboxTab(v)}
+        data-messages-region="tabs"
+      >
         <Tab value={0}>Direct Messages</Tab>
         <Tab value={1}>
           Notifications{unreadNotificationCount > 0 ? ` (${unreadNotificationCount})` : ""}
         </Tab>
       </Tabs>
 
-      <TabBody>
+      <TabBody data-messages-region="tab-body">
         {inboxTab === 0 && (
-          <Layout>
-            <Side $mobileHidden={mobileView === "chat"}>
-              <GroupBox label="Start DM">
+          <Layout data-messages-region="layout">
+            <Side $mobileHidden={mobileView === "chat"} data-messages-region="side">
+              <GroupBox label="Start DM" data-messages-region="start-dm">
                 <div
                   style={{
                     display: "flex",
@@ -641,8 +884,12 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                 </div>
               </GroupBox>
 
-              <GroupBox label="Conversations" style={{ flex: 1 }}>
-                <ListPanel>
+              <GroupBox
+                label="Conversations"
+                style={{ flex: 1 }}
+                data-messages-region="conversations"
+              >
+                <ListPanel data-messages-region="list-panel">
                   {directs.length > 0 ? (
                     <>
                       <SectionHeader>Direct messages</SectionHeader>
@@ -670,7 +917,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
               </GroupBox>
             </Side>
 
-            <Main $mobileHidden={mobileView === "list"}>
+            <Main $mobileHidden={mobileView === "list"} data-messages-region="main">
               <MobileBackButton
                 size="sm"
                 onClick={() => setMobileView("list")}
@@ -678,8 +925,9 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                 ← Back
               </MobileBackButton>
               <GroupBox
+                data-messages-region="conversation-meta"
                 label={
-                  currentDm?.conversationType === "studio_project"
+                  currentDm?.conversationType === "studio"
                     ? "Studio project chat"
                     : "Conversation"
                 }
@@ -695,7 +943,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                 >
                   <Meta>
                     {currentDm
-                      ? currentDm.conversationType === "studio_project"
+                      ? currentDm.conversationType === "studio"
                         ? `Project chat · ${
                             currentDm.title ||
                             currentDm.peers
@@ -713,9 +961,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                   {currentStudioProjectId ? (
                     <Button
                       size="sm"
-                      onClick={() =>
-                        wm.openPage(`/studio/${currentStudioProjectId}`)
-                      }
+                      onClick={() => openStudioProject(currentStudioProjectId)}
                     >
                       Open in Studio
                     </Button>
@@ -723,12 +969,12 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                 </div>
               </GroupBox>
 
-              <MessageList>
+              <MessageList data-messages-region="message-list">
                 {dmMessages?.map((message) => {
                   const isSystem = message.messageType === "studio_system";
                   if (isSystem) {
                     return (
-                      <SystemMessageRow key={message.id}>
+                      <SystemMessageRow key={message.id} data-messages-region="system-message-row">
                         <strong>Studio ·</strong> {message.content}
                         <div
                           data-wtf-caption="true"
@@ -740,7 +986,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                     );
                   }
                   return (
-                    <MessageRow key={message.id}>
+                    <MessageRow key={message.id} data-messages-region="message-row">
                       <Meta>
                         <strong>
                           <UserLink
@@ -768,7 +1014,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                 ) : null}
               </MessageList>
 
-              <InputRow>
+              <InputRow data-messages-region="input-row">
                 <TextInput
                   aria-label={
                     activeConversationId
@@ -803,7 +1049,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                     🐹
                   </Button>
                   {showDmEmoji && (
-                    <DmEmojiPicker>
+                    <DmEmojiPicker data-messages-region="emoji-picker">
                       <div
                         data-wtf-caption="true"
                         style={{ width: "100%", textAlign: "center", color: "var(--wtf-app-muted-text, #384352)", marginBottom: 2 }}
@@ -842,10 +1088,10 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
         )}
 
         {inboxTab === 1 && (
-          <div style={{ display: "grid", gap: 8 }}>
-            <GroupBox label="Notification Settings">
+          <div style={{ display: "grid", gap: 8 }} data-messages-region="notification-pane">
+            <GroupBox label="Notification Settings" data-messages-region="notification-settings">
               {(notificationPrefs?.definitions ?? []).map((def) => (
-                <PreferenceRow key={def.key}>
+                <PreferenceRow key={def.key} data-messages-region="preference-row">
                   <Checkbox
                     aria-label={`Enable ${def.label} notifications`}
                     checked={Boolean(notificationDraftPrefs[def.key])}
@@ -873,8 +1119,9 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
               </div>
             </GroupBox>
 
-            <GroupBox label="Notifications">
+            <GroupBox label="Notifications" data-messages-region="notifications">
               <div
+                data-messages-region="notification-actions"
                 style={{
                   display: "flex",
                   gap: 6,
@@ -927,7 +1174,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
               {notificationsLoading ? (
                 <Hourglass size={32} />
               ) : (
-                <ListPanel>
+                <ListPanel data-messages-region="list-panel">
                   {(notifications?.items || []).map((item) => {
                     const isStudio = item.eventKey.startsWith("studio.");
                     const studioId = isStudio
@@ -939,6 +1186,8 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                         key={item.id}
                         $unread={!item.read}
                         $clickable={clickable}
+                        data-messages-region="notification-row"
+                        data-messages-unread={!item.read ? "true" : undefined}
                         onClick={
                           clickable
                             ? () => handleNotificationClick(item)
@@ -996,6 +1245,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
           </div>
         )}
       </TabBody>
+      </MessagesSurface>
     </AppWindow>
   );
 }

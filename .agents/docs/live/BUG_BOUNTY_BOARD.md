@@ -50,6 +50,23 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-326 | Verified | Codex Inbox hub pass | 2026-06-30 | Social / DM comms privacy | P0 | 14 | 3 | 2 | 4 | 3 | DM sends published normalized comms cards with `targetUserId: null`, which let direct-message previews behave like global digest items instead of per-participant inbox cards; fixed future sends to publish one targeted comms item per conversation participant and verified with source-policy plus focused Gamma Inbox proof |
+| WTF-BB-327 | Fixed | Codex Pasta installer hardening | 2026-06-30 | Macaroni installers / supply chain | P1 | 13 | 6 | 1 | 4 | 4 | Macaroni installer manifest accepted remote HTTP URLs, which could publish downgradeable installer links; fixed by allowing HTTPS remote URLs, same-origin relative paths, and loopback HTTP only outside production, pending clean-branch/live release proof |
+| WTF-BB-330 | Fixed | Codex Pasta live-baseline audit | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 3 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles still serve Taquito `24.3.0`; local U025/Octez `25.0.0` refresh passes policy but has not been deployed to production |
+| WTF-BB-331 | Open | - | 2026-06-30 | Macaroni installers / release ops | P1 | 13 | 6 | 2 | 5 | 2 | Macaroni Desktop installer source and workflow exist on `origin/main`, but GitHub reports zero installer workflow runs and no release assets/tags, so production cannot yet offer downloadable native installers |
+| WTF-BB-332 | Verified | Codex WTF LIVE stage controls pass | 2026-06-30 | WTF LIVE / stage role controls | P1 | 13 | 6 | 3 | 5 | 1 | WTF LIVE stages now resolve through `/live/r/:stageId`, expose owner-managed host/speaker role lists, gate audience mic/camera/screen/media publishing, and passed focused WTF LIVE plus inventory coverage; full inventory has unrelated non-WTF failures |
+| WTF-BB-333 | Verified | Codex Inbox composer pass | 2026-07-01 | Social / Inbox and WIM compose UX | P1 | 12 | 7 | 3 | 5 | 0 | Inbox now exposes New message/New mail, selected-mail Reply/Forward, and an inline WIM/Studio conversation composer wired to the existing mail and DM send APIs; verified with focused source, build, inventory coverage, focused Gamma Inbox browser proof, and full inventory run with unrelated failures |
+| WTF-BB-328 | Claimed | Codex Beta full UX continuation | 2026-06-30 | Beta / route shell containment | P1 | 11 | 8 | 3 | 4 | 0 | Full inventory rerun during AppWindow bug-report pass shows Beta launched routes falling back to Classic paths (`/beta/gallery` expected, `/gallery` received) and direct/canonical Beta route checks missing `[data-beta-wtfos]`; likely needs Beta route-host retention and focused `beta-wtfos.spec.mjs` proof |
+| WTF-BB-329 | Open | - | 2026-06-30 | Theme Builder / WTF LIVE typography options | P2 | 7 | 15 | 1 | 3 | 0 | Full inventory rerun during AppWindow bug-report pass shows `desktop-settings-typography.spec.mjs` receiving WTF LIVE font options `mek-mono` and `grout-display` even though verified cleanup expected only `classic-95`, `terminal`, and `serif-press`; likely needs font-option source/normalizer regression fix |
+| WTF-BB-325 | In Progress | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes still fall back to Classic: live `/gallery` and `/leaderboard` rendered `[data-wtf-desktop]=1` with no Gamma workspace; live commit `de0acb6` still ships the root-only Gamma App branch, so the fix needs an isolated `origin/main` branch carrying the Gamma route-shell runtime slice and live selector proof after deploy |
+| WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
+| WTF-BB-323 | Open | - | 2026-06-29 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory and focused reruns fail Settings Subdomain Setup and cobwebsaints account readiness because the `wtf.tez target wallet` input remains blank instead of prefilled with the harness wallet |
+| WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
+| WTF-BB-321 | Verified | Codex Tezos provider currency audit | 2026-06-29 | Tezos / wallet dependencies and RPC defaults | P1 | 13 | 6 | 4 | 4 | 1 | Static creator-tool wallet bundles and package locks lagged Taquito U025 / Octez Connect 4.8.6 while fresh deploy/test defaults still pointed at legacy Ghostnet or Tez.ie paths; fixed with Taquito 25, Octez Connect 4.8.6, Shadownet-first defaults, regenerated browser bundles, and policy checks |
+| WTF-BB-322 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 14 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
+| WTF-BB-320 | Verified | Codex WTF LIVE dockable bento pass | 2026-06-29 | WTF LIVE / dockable room workspace UX | P1 | 13 | 6 | 4 | 5 | 0 | WTF LIVE public room now exposes Connection, Sharing, Screens, Attendance, and Room chat as dockable bento tiles with sharing drawers, screen grids, receiver default chat fonts, and pop-in/pinned floating panels |
+| WTF-BB-319 | Verified | Codex WTF LIVE server font cleanup | 2026-06-29 | WTF LIVE / realtime chat typography | P2 | 8 | 14 | 1 | 4 | 0 | WTF LIVE client font cleanup removed MEK/GROUT from visible options, but the WebSocket chat-style sanitizer still accepted MEK/GROUT and defaulted missing realtime chat styles to MEK; fixed server normalization and added regression coverage |
+| WTF-BB-318 | Verified | Codex WTF LIVE input flash repair | 2026-06-29 | WTF LIVE / input rendering stability | P1 | 12 | 7 | 3 | 5 | 0 | Users report WTF LIVE flashes or flickers whenever mic input is enabled or chat text is typed; fixed by isolating the mic meter from the room render tree, caching stage stream wrappers, memoizing stage entries, moving WTF LIVE to a Classic 95 font stack, removing MEK/GROUT from WTF LIVE chat font choices, and collapsing mic diagnostics into a compact Details drawer; verified with TypeScript, inventory coverage, focused unit/source tests, focused Playwright, and visual mobile smoke |
 | WTF-BB-304 | Verified | Codex wallet/X auth full-send | 2026-06-21 | Auth / Tezos wallet sign-in | P0 | 14 | 3 | 3 | 5 | 1 | Production wallet sign-in could hang on `Connecting...` or bounce back to login after wallet connect; fixed by preserving live wallet lifecycle hardening, clearing stale username/password state before wallet auth, binding real login form names/labels, and keeping wallet waits bounded; verified live on `wtfos.app` commit `069b96b` |
 | WTF-BB-306 | Fixed | Codex desktop pet water repair | 2026-06-21 | Desktop pet / care tool UX | P1 | 10 | 10 | 2 | 4 | 0 | Water tool can clean instead of hydrate a thirsty sick/dirty pet, leaving the Water/thirst meter stuck at 0 despite repeated water care; fixed with water-first care policy and focused tests, pending unrelated inventory coverage blocker |
 | WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 14 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
@@ -62,11 +79,12 @@ Priority labels:
 | WTF-BB-314 | Verified | Codex live user-story gap loop | 2026-06-22 | WIM / settings dialog keyboard UX | P2 | 8 | 14 | 1 | 4 | 0 | Independent live WIM probe found the settings dialog could stay open after creating a custom list because Escape was only handled on the popover node; fixed in `f09feec` with capture-phase Escape handling and verified on live `https://wtfos.app` with the WIM modular roster/DM probe |
 | WTF-BB-315 | Verified | Codex Macaroni exported drop wallet repair | 2026-06-23 | Macaroni / exported drop wallet and stage config | P0 | 15 | 2 | 3 | 5 | 2 | Exported Macaroni drop pages can create duplicate Octez/Beacon wallet clients, misdisplay max-per-wallet stage caps, and hit browser-blocked Octez RPC packing from third-party drop origins; fixed in `1ad5b57` and verified live on `https://wtfos.app` |
 | WTF-BB-316 | Verified | Codex Macaroni share/calendar repair | 2026-06-23 | Macaroni / exported drop sharing and sale reminders | P1 | 10 | 10 | 2 | 4 | 0 | Exported Macaroni drop share copy could exceed the standard X 280-character post limit and sale stages lacked prefilled add-to-calendar actions; fixed in `50083c5` and verified live on `https://wtfos.app` |
+| WTF-BB-317 | Open | - | 2026-06-27 | E2E / Playwright harness parity | P3 | 7 | 15 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-298 | Open | - | 2026-06-21 | API / app gates and information disclosure | P1 | 14 | 3 | 3 | 4 | 3 | Disabled app APIs still serve public data and CRP status leaks internal topology |
 | WTF-BB-297 | Verified | Codex live user-story gap loop | 2026-06-22 | Desktop OS / production app gates | P0 | 14 | 3 | 3 | 5 | 1 | Production app gate doc freshness disables core public apps; fixed in `44e556f` by decoupling runtime launcher availability from stale doc/install-key health, verified on `https://wtfos.app` with `/api/apps/desktop` showing `wtf-live` and `skywire` launchable while stale plus 3/3 independent WTF LIVE user-story probes passing |
 | WTF-BB-299 | Verified | Codex live user-story gap loop | 2026-06-22 | Platform domains / access manifest | P1 | 12 | 7 | 2 | 4 | 2 | `/api/access` advertised legacy `wtfgameshow.app` origin on canonical `wtfos.app`; fixed in `e4770ad` and verified live on `https://wtfos.app` with canonical origin plus MCP endpoint |
 | WTF-BB-303 | Open | - | 2026-06-21 | Security / CSP hardening | P2 | 11 | 8 | 3 | 2 | 3 | Main app and user-site CSP policies remain broad for script/connect sources |
-| WTF-BB-300 | Open | - | 2026-06-21 | Desktop OS / route contract | P1 | 10 | 10 | 2 | 4 | 0 | Map Lab public route contract drifts between registries and renders an empty desktop |
+| WTF-BB-300 | Open | - | 2026-06-29 | Desktop OS / route contract | P1 | 10 | 10 | 2 | 4 | 0 | Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified |
 | WTF-BB-302 | Open | - | 2026-06-21 | Observability / public information disclosure | P2 | 9 | 12 | 2 | 2 | 2 | Public health endpoint exposes verbose runtime and chain topology |
 | WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 18 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
 | WTF-BB-305 | Verified | Codex wallet live full-send | 2026-06-21 | Operations / production health | P0 | 13 | 4 | 3 | 5 | 0 | Live `/api/health` could intermittently return 503 because scheduler audit used a whole-table latest-run query that timed out under production audit volume; fixed by querying only registered job names through indexed lateral latest-row lookups plus a production index; verified live on `wtfos.app` |
@@ -90,7 +108,7 @@ Priority labels:
 | WTF-BB-235 | Verified | Codex Macaroni subdomain setup applet | 2026-06-11 | Macaroni / wtfOS subdomain setup UX | P1 | 11 | 8 | 3 | 5 | 0 | Macaroni users can still reach publish before clearly claiming/configuring `username.wtfos.me` and `label.wtf.tez`; fixed with a focused Settings applet, behavior inventory, harnessed claim/registrar mocks, and verified by focused Playwright, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-236 | Verified | Codex Macaroni domains registry hotfix | 2026-06-11 | Macaroni / app registry feature gate | P1 | 10 | 10 | 2 | 5 | 0 | WTF Domains route existed without a `desktop:wtf-subdomains` app-registry seed/admin surface binding; fixed by promoting WTF Domains to a canonical app key and verified by focused registry/gate tests, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-237 | Verified | Codex WTF Domains window conformance pass | 2026-06-11 | Macaroni / WTF Domains app windowing | P1 | 10 | 10 | 2 | 5 | 0 | Subdomain setup now opens from Settings as `/wtf-subdomains/setup` in a normal `AppWindow`, `/wtf-subdomains` is wrapped in the shared OS window shell, and both routes resolve to the WTF Domains native admin surface; verified with TypeScript, admin registry tests, inventory coverage, direct setup route smoke, focused Settings-to-window Playwright, full inventory E2E, and a focused fresh-harness Skywire/WTF LIVE rerun |
-| WTF-BB-238 | Open | - | 2026-06-11 | E2E / Playwright harness artifact stability | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory can report unrelated Skywire/WTF LIVE failures when build or trace artifacts disappear mid-run; current focused fresh-harness rerun passes, so hardening should isolate build output and trace artifacts per run |
+| WTF-BB-238 | Open | - | 2026-06-29 | E2E / Playwright harness artifact stability | P2 | 8 | 14 | 2 | 3 | 0 | Full inventory can report unrelated failures when build/trace artifacts disappear or the shared harness dies mid-run; current focused fresh-harness reruns pass, so hardening should isolate build output, trace artifacts, and harness lifecycle per run |
 | WTF-BB-239 | Verified | Codex Macaroni Shadownet RPC puppet pass | 2026-06-12 | Macaroni / Shadownet RPC setup | P1 | 13 | 6 | 3 | 5 | 1 | Macaroni now treats Shadownet as a first-class RPC/chain target, blocks mismatched RPCs before signing, and has a focused dummy-account puppet-wallet Playwright runner for the rehearsal flow |
 | WTF-BB-240 | Verified | Codex Macaroni Kukai Shadownet handoff pass | 2026-06-12 | Macaroni / Beacon Kukai Shadownet pairing | P1 | 11 | 8 | 2 | 5 | 0 | Macaroni now sends Beacon the concrete Shadownet network type, so Kukai's web option opens `https://shadownet.kukai.app`; verified by policy, inventory coverage, and a focused Beacon popup Playwright regression |
 | WTF-BB-241 | Verified | Codex Macaroni Beacon picker restoration | 2026-06-12 | Macaroni / Beacon wallet picker regression | P1 | 12 | 7 | 3 | 5 | 0 | Macaroni explicit connect restores the Beacon wallet picker with Kukai and Temple, clears stale active wallet state without destroying Beacon identity, and only opens `shadownet.kukai.app` after Kukai is selected |
@@ -350,6 +368,135 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-330 - Live Pasta/Macaroni vendor bundles still serve Taquito 24.3.0
+
+- Category: Tezos / Pasta production deployment
+- Status: Fixed
+- Owner/Session: Codex Pasta live-baseline audit
+- Score: C2 + F5 + S3 + P1(4) = 14
+- Evidence:
+  - Live probe on 2026-06-30 confirmed these production files are reachable but still contain `24.3.0`: `/creation-tools/macaroni/vendor/tezos.js`, `/creation-tools/spaghetti/vendor/tezos.js`, `/creation-tools/gnocchi/vendor/tezos.js`, `/creation-tools/ravioli/vendor/tezos.js`, `/creation-tools/rotini/vendor/tezos.js`, `/creation-tools/penne/vendor/tezos.js`, and `/creation-tools/lasagna/vendor/tezos.js`.
+  - Local policy `npm run security:tezos-rpc-defaults` passes against the dirty checkout and expects Taquito `25.0.0` plus current Octez defaults, so the repo has the intended refresh locally but production has not received it.
+- Why it matters:
+  - Pasta and Macaroni wallet/deploy flows are contract-adjacent. Production serving stale Taquito/browser wallet bundles can keep old protocol or wallet behavior alive while local tests look current.
+- Correction:
+  - Carry the audited Tezos dependency, lockfile, static vendor bundle, and policy-test slice onto a clean branch from `origin/main`.
+  - Deploy to `wtfos.app` and verify every listed live vendor path no longer contains `24.3.0` and does contain the expected `25.0.0`/U025 marker.
+- Verification:
+  - Local checks: `npm run security:tezos-rpc-defaults`, `node --test server/routes/macaroni-policy.test.ts`, `npm run check -- --pretty false`.
+  - Live checks after deploy: curl each listed `vendor/tezos.js` path and assert `25.0.0`/U025 marker is present and `24.3.0` is absent.
+
+### WTF-BB-331 - Macaroni Desktop installers have no upstream release artifacts
+
+- Category: Macaroni installers / release ops
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F5 + S2 + P1(4) = 13
+- Evidence:
+  - `origin/main` contains `.github/workflows/macaroni-desktop-installers.yml`, `apps/macaroni-desktop/package.json`, and `docs/macaroni-desktop-packaging.md`.
+  - GitHub API check on 2026-06-30 returned zero workflow runs for `macaroni-desktop-installers.yml`.
+  - GitHub releases API returned an empty release list and no Macaroni/Pasta tags were found in the first 50 repo tags.
+  - Live `/api/macaroni/installers` requires authentication as expected, but no authenticated proof exists that production env values point to real installer assets.
+- Why it matters:
+  - The product goal requires downloadable software packages. Installer source and CI YAML are not enough; users need built artifacts attached to a stable release and wired into production env.
+- Likely correction:
+  - Create the clean Pasta/Macaroni release branch, verify it, tag or manually dispatch the Macaroni Desktop Installers workflow, publish the GitHub release assets, set `MACARONI_INSTALLER_MACOS_URL`, `MACARONI_INSTALLER_WINDOWS_URL`, `MACARONI_INSTALLER_RASPBERRY_PI_URL`, and `MACARONI_INSTALLER_VERSION` in production, then redeploy.
+- Verification idea:
+  - GitHub workflow run succeeds for macOS, Windows, and Raspberry Pi artifacts.
+  - GitHub release includes DMG/ZIP, Windows installer, and arm64 DEB assets.
+  - Authenticated `https://wtfos.app/api/macaroni/installers` returns `available: true` for the intended platforms with HTTPS URLs and the expected version.
+
+### WTF-BB-327 - Macaroni installer manifest accepted remote HTTP URLs
+
+- Category: Macaroni installers / supply chain
+- Status: Fixed
+- Owner/Session: Codex Pasta installer hardening
+- Score: C1 + F4 + S4 + P1(4) = 13
+- Evidence:
+  - `server/routes/macaroni.ts` exposes `/api/macaroni/installers` from `MACARONI_INSTALLER_MACOS_URL`, `MACARONI_INSTALLER_WINDOWS_URL`, and `MACARONI_INSTALLER_RASPBERRY_PI_URL`.
+  - Before this pass, `safeInstallerUrl` accepted any remote URL with `http:` or `https:`.
+  - Installer URLs are the public handoff from wtfOS to native Macaroni software packages, so a plain HTTP release URL would make the download path downgradeable even if the main site is HTTPS.
+- Why it matters:
+  - Pasta/Macaroni installer downloads are a supply-chain boundary. Production should not advertise remote installer binaries over plaintext transport.
+- Correction:
+  - Tightened `safeInstallerUrl` to allow same-origin relative paths, HTTPS remote URLs, and loopback HTTP only outside production for local development.
+  - Added policy assertions in `server/routes/macaroni-policy.test.ts`.
+- Verification:
+  - Passed `node --test server/routes/macaroni-policy.test.ts` on 2026-06-30.
+  - Clean release branch and live `wtfos.app` still need installer artifact URL and authenticated manifest proof before this can be marked production-verified.
+
+### WTF-BB-329 - WTF LIVE font options reintroduced MEK/GROUT in Theme Builder
+
+- Category: Theme Builder / WTF LIVE typography options
+- Status: Open
+- Owner/Session: -
+- Score: C1 + F3 + S0 + P2(3) = 7
+- Evidence:
+  - `npm run test:e2e:inventory` on 2026-06-30 during the AppWindow bug-report pass failed `tests/playwright/inventory/desktop-settings-typography.spec.mjs:9`.
+  - The spec expected WTF LIVE font options `["classic-95", "terminal", "serif-press"]`, but received `["mek-mono", "grout-display", "classic-95", "terminal", "serif-press"]`.
+  - This is a current regression against the verified WTF LIVE typography cleanup noted in `WTF-BB-318` and `WTF-BB-319`.
+- Why it matters:
+  - WTF LIVE typography was intentionally constrained to remove distracting MEK/GROUT options from live-room chat. Reintroducing them in Theme Builder can bring back the user-facing readability complaint.
+- Likely correction:
+  - Trace the Theme Builder chat-default font option source and the font-pack registry changes that re-added MEK/GROUT to the WTF LIVE option list, then keep legacy stored values mapped to safe visible choices.
+- Verification idea:
+  - Rerun `npx playwright test tests/playwright/inventory/desktop-settings-typography.spec.mjs`, then rerun `npm run test:e2e:inventory:coverage`.
+
+### WTF-BB-328 - Beta route shell does not retain Beta containment
+
+- Category: Beta / route shell containment
+- Status: Open
+- Owner/Session: -
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - `npm run test:e2e:inventory` on 2026-06-30 during the AppWindow bug-report pass failed three Beta containment specs in `tests/playwright/inventory/beta-wtfos.spec.mjs`.
+  - The launched application route test expected `/beta/gallery` but received `http://127.0.0.1:4173/gallery`.
+  - Same-session canonical route and production-hostname direct-route checks timed out waiting for `[data-beta-wtfos]`.
+- Why it matters:
+  - Beta is meant to be a presentation shell that hosts shared app routes without silently dropping users into Classic. Route containment failures make Beta proofs noisy and can hide app-shell regressions.
+- Likely correction:
+  - Audit Beta link interception, host/session persistence, and direct-route bootstrap so canonical WTFOS app routes stay inside Beta unless the user chooses an explicit interface-switch exit.
+- Verification idea:
+  - Rerun the three focused Beta specs around lines 553, 576, and 593, then rerun full `tests/playwright/inventory/beta-wtfos.spec.mjs`.
+
+### WTF-BB-324 - Gamma Swap inventory proof lacks connected wallet state
+
+- Category: E2E / Gamma Swap harness wallet state
+- Status: Verified
+- Owner/Session: Codex Gamma shell continuation
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - `npm run test:e2e:inventory` on 2026-06-29 failed `tests/playwright/inventory/gamma-wtfos.spec.mjs:5957` after a clean build.
+  - Focused rerun reproduced the same failure with `npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "hosts Swap DEX quote chrome"`.
+  - The spec expects `[data-swap-region="submit-button"]` to contain `Swap via SpicySwap`, but the rendered button remains `Connect Wallet`.
+  - Root cause on 2026-06-30 was stale harness wallet state: the Gamma Swap proof seeded `providerName: "beacon"`, while `readPersistedWalletSession()` accepts only `providerName: "octez.connect"`.
+- Why it matters:
+  - The Gamma Swap proof currently cannot distinguish a real quote/action regression from a missing wallet precondition in the harness.
+- Correction:
+  - Updated the Gamma Swap proof to seed the accepted Octez wallet provider.
+  - Added a source-policy guard tying the proof seed to the wallet reader's accepted provider so future provider migrations update the proof and reader together.
+- Verification:
+  - Passed `tsx --test client/src/pages/swap-presentation-policy.test.ts client/src/lib/presentation-shell.test.ts`.
+  - Passed focused Gamma Swap Playwright proof on fresh `HARNESS_PORT=4301`.
+  - Passed full Gamma shell suite with Swap, static/nested route audit, and production-hostname proof included: `62/62` on fresh `HARNESS_PORT=4307`.
+
+### WTF-BB-323 - Settings Subdomain Setup harness wallet prefill is blank
+
+- Category: E2E / WTF Domains Settings applet wallet prefill
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - `npm run test:e2e:inventory` on 2026-06-29 failed `tests/playwright/inventory/settings-subdomain-setup.spec.mjs:18` and `tests/playwright/inventory/cobwebsaints-account.spec.mjs:20` after a clean build.
+  - Focused rerun reproduced both failures with the two specs and the same expectations.
+  - In both cases `getByLabel("wtf.tez target wallet")` stayed `""` while the spec expected `tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY`.
+- Why it matters:
+  - The Settings-owned Subdomain Setup behavior proof cannot verify the registrar plan path when the applet does not hydrate the current harness wallet.
+- Likely correction:
+  - Align the Playwright harness wallet/user payload with the applet's wallet-prefill source, or make the spec perform the same wallet-connect action a user must take before the field should be populated.
+- Verification idea:
+  - Rerun both focused subdomain specs, then rerun `npm run test:e2e:inventory`.
 
 ### WTF-BB-267 - Macaroni generated drop pages reused collection covers for video previews
 
@@ -814,7 +961,7 @@ Priority labels:
 ### WTF-BB-207 - Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity
 
 - Category: Platform domains / AT OAuth identity boundary
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Skywire canonical-domain OAuth repair
 - Score: C3 + F5 + S5 + P0(5) = 16
 - Evidence:
@@ -5306,6 +5453,10 @@ Priority labels:
   - Make inventory runs use an isolated built artifact directory or guarantee no concurrent rebuild removes `dist/public` while the harness is serving it; prefer no-reuse harness mode for full inventory verification; isolate trace output per run; and preserve enough server/build logs to explain artifact failures.
 - Verification idea:
   - Reproduce by running full inventory while intentionally rebuilding or removing `dist/public`, then harden the harness/build lifecycle and prove the same interruption fails early with an artifact-health error instead of unrelated app-spec names. Rerun full inventory plus the focused Skywire/WTF LIVE command above.
+- Related note (2026-06-28):
+  - Gamma's monolithic presentation proof was hardened with a shell-ready wait that requires the Gamma root, route marker, no Classic desktop, and no `data-gamma-route-loading` before sampling app-owned chrome. This removed a separate readiness race in `tests/playwright/inventory/gamma-wtfos.spec.mjs`, but it does not close the broader artifact-isolation bounty above.
+- Related note (2026-06-29):
+  - Gamma media discovery/detail pass saw direct `playwright test tests/playwright/inventory` collapse after the first passing auth-session spec, with unrelated Beta, Broot, domain, Gamma, route-smoke, and subdomain specs failing on `apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:4173` after the shared harness died. Touched media-detail proof passed before and after the cascade, including a fresh `HARNESS_PORT=4273` rerun, and the full Gamma suite passed `55/55` on the same fresh port.
 
 ### WTF-BB-239 - Macaroni Shadownet mint/setup flow can surface RPC errors
 
@@ -6493,6 +6644,8 @@ Priority labels:
   - Decide whether `/map-lab` remains public demo or signed-in app, sync every route registry, and ensure direct anonymous navigation opens the demo surface visibly on desktop and mobile.
 - Verification idea:
   - Add focused Playwright for anonymous `/map-lab` with a rendered demo marker, route metadata sync, no horizontal overflow, and CLI/access manifest parity.
+- Related Gamma note:
+  - 2026-06-29 Gamma Map Lab containment was fixed without changing shared auth or route policy. `/gamma/map-lab` now has host-scoped presentation chrome and browser proof for workspace and demo states, but the public-route/auth drift described above remains open for a separate non-Gamma pass.
 
 ### WTF-BB-315 - Exported Macaroni drop pages create duplicate wallet clients and drift from stage config
 
@@ -6824,6 +6977,213 @@ Priority labels:
   - Verified `.codex/machine-ssh.env` is ignored by `.gitignore`.
   - Verified `scripts/wtf-ssh.sh --doctor` reports the current visible agent and required identity fingerprint.
   - Verified `scripts/wtf-ssh.sh --check` exits 78 with the local agent/env fix instead of opening an SSH passphrase prompt.
+
+	### WTF-BB-319 - WTF LIVE realtime chat sanitizer kept legacy MEK fonts
+
+- Category: WTF LIVE / realtime chat typography
+- Status: Verified
+- Owner/Session: Codex WTF LIVE server font cleanup
+- Score: C1 + F4 + S0 + P2(3) = 8
+- Evidence:
+  - 2026-06-29 follow-up from the WTF LIVE font cleanup found `server/websocket.ts` still allowed `mek-mono` and `grout-display` in realtime chat style payloads.
+  - The same server sanitizer defaulted missing or invalid realtime chat styles to `mek-mono`, so WebSocket-delivered room messages could still reintroduce MEK after the client option list was cleaned.
+- Why it matters:
+  - WTF LIVE chat is relayed through the WebSocket layer. A client-only font cleanup is incomplete if stale or malicious realtime payloads can still render with the removed font.
+- Correction:
+  - Restricted the server realtime chat font allowlist to `classic-95`, `terminal`, and `serif-press`.
+  - Changed the server default chat font to `classic-95`.
+  - Mapped legacy `system`, `mek-mono`, `grout-display`, and `pixel` payloads to `classic-95`.
+  - Added `server/websocket-wtf-live-font-policy.test.ts` to guard the server sanitizer.
+- Verification:
+  - Confirmed the new regression failed before the server patch.
+	  - Passed `/Users/joshuafarnworth/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/.bin/tsx --test server/websocket-wtf-live-font-policy.test.ts`.
+	  - Passed `/Users/joshuafarnworth/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/.bin/tsx --test shared/desktop.test.ts client/src/features/wtf-live/wtf-live-presentation-policy.test.ts`.
+	  - Passed `/Users/joshuafarnworth/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/.bin/tsc --noEmit --pretty false`.
+
+### WTF-BB-322 - Recovery Mode route smoke treats auth probe as fatal
+
+- Category: Desktop OS / Recovery Mode route smoke
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Evidence:
+  - 2026-06-29 full inventory run for the Tezos provider audit ended 440/444 passing.
+  - `tests/playwright/inventory/routes.spec.mjs` failed the `/recovery-mode` route because the browser console captured `Failed to load resource: the server responded with a status of 401 (Unauthorized)` and `fatalErrors(errors)` expected no fatal browser errors.
+  - The Tezos-facing routes in the same run passed, including `/tools/particle-painter`, `/tools/macaroni`, Pasta publisher routes, `/tezos-intel`, `/wtf-subdomains`, `/contract-factory`, and `/operator-wallet`.
+- Why it matters:
+  - Recovery Mode is supposed to be the fallback surface users see when normal app state is unhealthy. Its inventory smoke should either avoid noisy protected probes or explicitly classify expected unauthenticated probes as non-fatal so real regressions are visible.
+- Likely correction direction:
+  - Inspect `client/src/pages/RecoveryMode.tsx` and the route harness to determine whether the 401 probe is intentional. If it is expected, update the route inventory fatal-error filter narrowly for this route; if not, prevent the protected request before auth state exists.
+- Verification idea:
+  - Run `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Recovery Mode"` and then `npm run test:e2e:inventory:coverage`.
+
+### WTF-BB-320 - WTF LIVE public room dockable bento workspace
+
+- Category: WTF LIVE / dockable room workspace UX
+- Status: Verified
+- Owner/Session: Codex WTF LIVE dockable bento pass
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - 2026-06-29 user report: WTF LIVE remains a single monolithic UX window, and users need to split connection, sharing, testing, attendance, chat, settings, and shared screens/main screen into a resizable core bento or separate draggable windows.
+  - Existing room layout used one fixed control/stage/sidebar grid with chat and attendance as the only detachable panels; connection, sharing, shared screens, and settings/testing could not be docked, grouped, or popped out independently.
+- Why it matters:
+  - Live rooms are used alongside other apps, streams, and screens. Forcing every live control into one fixed room frame blocks multi-monitor layouts and keeps chat/attendance competing with stage space.
+- Correction:
+  - Replaced the fixed public-room shell with a transparent bento workspace containing Connection, Sharing, Screens, Attendance, and Room chat tiles.
+  - Hid Testing and Settings behind icon toggles under the Sharing tray; Settings now exposes a receiver default chat font select from the WTFOS font library for unstyled incoming room chat.
+  - Added per-core-panel pop-out, pop-in, resize/maximize, and always-on-top pin controls; screen/camera/media sources can be dragged together into a screen grid with hover-only per-item popout buttons.
+  - Updated the real WebSocket relay and the Playwright WTF LIVE relay so messages without an assigned sender style remain unstyled, allowing receiver default fonts to apply end-to-end.
+- Verification:
+  - `vite build`
+  - `node_modules/.bin/tsx --test server/websocket-wtf-live-font-policy.test.ts`
+  - `node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "core bento" --project=chromium --reporter=list`
+  - `node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "mic test" --project=chromium --reporter=list`
+
+### WTF-BB-318 - WTF LIVE input-triggered screen flash and MEK typography complaints
+
+- Category: WTF LIVE / input rendering stability
+- Status: Verified
+- Owner/Session: Codex WTF LIVE input flash repair
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - 2026-06-29 user report: WTF LIVE flashes whenever mic input is enabled or users type in chat, and users continue to complain about the MEK font in WTF LIVE.
+  - Source trace found the parent public-room component owned the high-frequency mic-level analyser state and chat draft state while rebuilding track-filtered `MediaStream` wrappers during render for stage video tiles and popouts.
+- Why it matters:
+  - Chat typing and microphone input are core live-room interactions; repainting or reattaching video streams during those interactions makes the room feel unstable and can look like a full-screen flash.
+- Correction:
+  - Moved the mic-level analyser into a local `MicLevelMeter` component so audio-frame updates no longer rerender the whole room.
+  - Cached track-filtered stage `MediaStream` wrappers and memoized local/remote stage entries so unrelated input state does not reset video `srcObject`.
+  - Collapsed the microphone compatibility UI into a compact row with a Details drawer for browser/permission/device guidance.
+  - Set WTF LIVE room/dashboard shells to a Classic 95 system font stack and removed MEK/GROUT from WTF LIVE chat font options/defaults, while mapping legacy stored MEK/GROUT values to Classic 95.
+- Verification:
+  - Passed focused source/unit tests: `/Users/joshuafarnworth/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/.bin/tsx --test shared/desktop.test.ts client/src/features/wtf-live/wtf-live-presentation-policy.test.ts`.
+  - Passed TypeScript: `/Users/joshuafarnworth/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/.bin/tsc --noEmit --pretty false`.
+  - Passed inventory coverage: `/Users/joshuafarnworth/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/.bin/tsx tests/e2e/inventory/coverage.ts`.
+  - Rebuilt client bundle with Vite: `node node_modules/.bin/vite build`.
+  - Focused Playwright passed 14/14 before the shell-font follow-up; after the follow-up, combined focused Playwright passed 14/15 with the only failure matching known artifact instability `WTF-BB-238` during trace network-file copy, then the affected fresh-harness rerun passed: `HARNESS_PORT=4191 node_modules/.bin/playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "public room keeps chat reachable" --project=chromium --reporter=list`.
+  - Theme Builder typography Playwright passed and confirms WTF LIVE font options are `classic-95`, `terminal`, and `serif-press`.
+  - Visual mobile smoke on `/live/r/wtf-live` at 390px confirmed Classic 95 font stack, no horizontal overflow, a 105px closed mic-test row, and collapsed details at 0px height.
+
+### WTF-BB-321 - Tezos wallet dependencies and static bundles lagged U025
+
+- Category: Tezos / wallet dependencies and RPC defaults
+- Status: Verified
+- Owner/Session: Codex Tezos provider currency audit
+- Score: C4 + F4 + S1 + P1(4) = 13
+- Evidence:
+  - 2026-06-29 upstream audit found Taquito `25.0.0` is the current U025/Ushuaia release, while root, Particle Painter, operator signer, lockfiles, and static creator-tool bundles still resolved Taquito `24.3.0`.
+  - Macaroni and Pasta vendored `tezos.js` bundles included `PtTALLiNt` as the default protocol and had no `PsUshuai9` support, so package manifest updates alone would not have updated shipped wallet/transaction code.
+  - Octez Connect SDK was behind `4.8.6`, and several new/default local paths still preferred Ghostnet or `mainnet.api.tez.ie` instead of Octez primary endpoints.
+  - Follow-up grep found the live buyback-window create API and DB schema still defaulted fresh windows to Ghostnet.
+  - User correction confirmed ECAD Beacon should not be treated as a first-class wallet provider; active app and Particle Painter wallet flows still instantiated Beacon provider bridges after the initial package upgrade.
+- Why it matters:
+  - Wallet connection and transaction handling are shipped both through npm packages and static browser bundles. A stale bundle can keep using old protocol constants, wallet transport defaults, or provider endpoints even after source dependencies look current.
+- Correction:
+  - Upgraded root, Particle Painter, and operator signer Taquito packages to `25.0.0`; upgraded Octez Connect SDK to `4.8.6`.
+  - Replaced the shared app's Beacon fallback/bridge with a custom Octez Connect-backed Taquito wallet provider that maps Taquito wallet operations to Octez `requestOperation` and signatures to Octez `requestSignPayload`.
+  - Replaced Particle Painter's direct `@taquito/beacon-wallet` / `@ecadlabs/beacon-types` wallet service with `@tezos-x/octez.connect-sdk` plus a custom Taquito wallet provider; refreshed its lockfile and rebuilt tracked production assets.
+  - Kept root `@taquito/beacon-wallet` only for generated static creator-tool compatibility bundles that still need Taquito's wallet wrapper while the visible transport remains Octez-primary.
+  - Added `scripts/build-tezos-browser-vendors.mjs` and regenerated Macaroni/Pasta Tezos and Octez Connect browser bundles with U025 support.
+  - Rebuilt the tracked Particle Painter production bundle so it no longer ships Taquito `24.3.0` or the dead `tezostaquito.io` icon URL.
+  - Moved fresh-work defaults to Octez Shadownet for the domain bot, subdomain deploy helper, Contract Factory, buyback-window creation, DB-side buyback-window defaults, and puppet seed/runtime paths; replaced the legacy marketplace pause fallback with Octez mainnet.
+- Verification:
+  - Passed `npm run security:tezos-rpc-defaults`.
+  - Passed `node --test scripts/check-tezos-rpc-defaults.test.mjs`.
+  - Passed `npx tsx --test client/src/lib/tezos/wallet-connect-policy.test.ts client/src/lib/tezos/wallet-shadownet-preflight-policy.test.ts`.
+  - Passed `npm --prefix PP run build`.
+  - Passed `npx tsx --test server/routes/macaroni-policy.test.ts client/src/pages/ContractFactory.test.ts`.
+  - Passed `npm run creation-tools:check`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm --prefix extensions/wtf-domain-bot run typecheck` after installing that subpackage.
+  - Passed `npm --prefix extensions/wtf-operator-signer run typecheck`.
+  - Verified `https://tezos-shadownet.octez.io/chains/main/chain_id` returns `NetXsqzbfFenSTS`.
+
+### WTF-BB-322 - Gamma Swap proof no longer recognizes the harness wallet seed
+
+- Category: Gamma / Swap presentation proof
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - During the 2026-06-29 Gamma social-route containment pass, the full Gamma suite reached the Swap proof and failed with `[data-swap-region="submit-button"]` stuck on `Connect Wallet` instead of `Swap via SpicySwap`.
+  - A fresh isolated rerun also failed the same way: `HARNESS_PORT=4276 ./node_modules/.bin/playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "Swap DEX quote"`.
+  - The Swap proof seeds `localStorage["wtf:wallet-session"]`, but the current wallet context no longer treats that as a connected wallet in the built harness.
+- Why it matters:
+  - Gamma route containment depends on broad shell proof staying meaningful. If wallet-backed proofs drift away from the current wallet context, unrelated Gamma passes get noisy failures and Swap's quote/signer state can no longer be trusted by the harness.
+- Likely correction direction:
+  - Align the Gamma Swap proof with the current wallet context bootstrap path, or provide an explicit harness wallet provider/session stub that exercises the connected quote state without changing shared wallet behavior.
+- Verification idea:
+  - Rerun the focused Swap proof on a fresh port, then rerun the full Gamma spec: `HARNESS_PORT=<fresh> ./node_modules/.bin/playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "Swap DEX quote"` and `HARNESS_PORT=<fresh> ./node_modules/.bin/playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs`.
+
+### WTF-BB-326 - DM comms cards were indexed as global digest items
+
+- Category: Social / DM comms privacy
+- Status: Fixed
+- Owner/Session: Codex Inbox hub pass
+- Score: C2 + F4 + S3 + P0(5) = 14
+- Evidence:
+  - During the Inbox hub pass, `POST /api/messages/dms/:id/messages` published a normalized comms item with `targetUserId: null`.
+  - The comms list query intentionally includes `targetUserId IS NULL OR targetUserId = currentUser`, so private DM previews could enter every user's central comms digest instead of only the conversation participants.
+- Why it matters:
+  - Direct messages and Studio conversations are private communication channels. Inbox can aggregate them, but the read model must remain participant-scoped and must not turn private content into a public/global card.
+- Correction:
+  - Future DM sends now select the conversation participants and publish one normalized comms item per participant with `targetUserId` set to that participant and an external ref scoped by both message id and user id.
+  - Added a source-policy regression assertion to prevent reintroducing `targetUserId: null` on DM publish.
+- Verification:
+  - Passed `node_modules/.bin/tsx --test client/src/pages/mail-presentation-policy.test.ts client/src/pages/messages-presentation-policy.test.ts server/routes/messages-user-roster-policy.test.ts`.
+  - Passed `node_modules/.bin/playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "documented static|Inbox and Notification|Inbox mailbox" --project=chromium --reporter=list`.
+
+### WTF-BB-332 - WTF LIVE stages need joinable role-gated rooms
+
+- Category: WTF LIVE / stage role controls
+- Status: Verified
+- Owner/Session: Codex WTF LIVE stage controls pass
+- Score: C3 + F5 + S1 + P1(4) = 13
+
+- Evidence:
+  - 2026-06-30 user report: WTF LIVE stages were being treated like a room setup/broadcast option, but the real product distinction is that stage owners decide who may share mic, camera, screen, or media inside the room.
+  - Existing stages had create/list/close/delete surfaces and old broadcast composer copy, but no practical stage room join path, no host/speaker membership model, and no in-room owner/host controls for who can talk.
+- Why it matters:
+  - A stage is a live room with publish permissions, not a one-way post feed. Without durable host/speaker settings and in-room controls, the right people cannot reliably talk when they arrive, and audience users can appear to have controls they should not use.
+- Correction:
+  - Added `wtf_live_stage_access_members` plus registry helpers for owner/host/speaker/audience role resolution and owner-managed host/speaker replacement.
+  - Let `/live/r/:slug` resolve either rooms or stages, using the same realtime room transport while returning stage capabilities and host/speaker permission envelopes.
+  - Added dashboard stage role editors during stage creation and for existing owned stages, plus a Join Stage Room path and stage-room copy instead of broadcast-only setup.
+  - Added in-room stage policy controls for owners/hosts, disabled audience mic/camera/screen/media controls in the client, and stripped disallowed stage media-state fields in the WebSocket relay for audience clients.
+  - Updated the Playwright harness, interaction inventory, domain workflows, behavior assertions, and admin surface registry for stage creation, role updates, stage-room join, and audience share blocking.
+  - Fixed a follow-up React Query invalidation issue where deleting the selected stage could refetch its access endpoint after the server row was gone.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `npm run build`.
+  - Passed focused WTF LIVE stage coverage: `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "owned stages expose|stage rooms gate audience sharing" --project=chromium --reporter=list`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Full `npm run test:e2e:inventory` rebuilt and ran 463 tests: all 16 WTF LIVE owner-control tests passed, including both stage role cases; overall suite ended `457 passed, 6 failed` from unrelated known/non-WTF areas (`cobwebsaints`/Settings subdomain wallet prefill, apphost Applications, Skywire hot topics strict locator, and System Settings localization visibility).
+
+### WTF-BB-333 - Inbox and WIM conversation panes lack obvious compose paths
+
+- Category: Social / Inbox and WIM compose UX
+- Status: Verified
+- Owner/Session: Codex Inbox composer pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - User report on 2026-07-01: the new Inbox app appears read-only even though several surfaces expose Reply buttons.
+  - The Inbox route has mail and DM send mutations, but reply/new-message affordances are split between message cards, the Drafts tab, and a conversation history pane that does not behave like a standard email or IM composer.
+  - The WIM conversation tab model should remain DM-backed and usable as an instant messenger composer rather than sending users to a separate backend.
+- Why it matters:
+  - Inbox is the permanent communication hub. If users cannot plainly reply or start a message from the hub, unread aggregation becomes a dead end and WIM loses the expected IM loop.
+- Correction:
+  - Added first-class `New message` and `New mail` actions to the Inbox control bar.
+  - Added selected-mail `Reply` and `Forward` reader actions that open the existing Drafts composer with addressed/referenced content.
+  - Added an inline WIM/Studio conversation composer in the Inbox Conversations view that posts through `/api/messages/dms/:id/messages`, clears the sent draft, refetches the conversation, and emits `dm.message.sent`.
+  - Kept mail sends on `/api/mail/send`, new DM starts on `/api/messages/dms`, and WIM conversation sends on the existing DM message endpoint.
+  - Updated the interaction inventory, domain workflow probes, behavior assertions, admin surface registry, and focused Gamma Inbox browser coverage.
+- Verification:
+  - Passed `npm run check -- --pretty false`.
+  - Passed `node --test client/src/pages/mail-presentation-policy.test.ts client/src/pages/Messages.test.ts client/src/pages/messages-presentation-policy.test.ts server/routes/messages-user-roster-policy.test.ts`.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run build`.
+  - Passed focused Gamma Inbox browser proof: `HARNESS_PORT=4311 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "hosts Inbox mailbox" --project=chromium --reporter=list`.
+  - Full `HARNESS_PORT=4312 npm run test:e2e:inventory -- --reporter=list` rebuilt and ran 463 tests: Inbox mailbox, Inbox route, WIM route, WIM owner controls, social workflow, and Inbox subdomain coverage passed; overall suite ended `457 passed, 6 failed` from unrelated known/non-Inbox areas (`cobwebsaints` and Settings subdomain wallet prefill, apphost Applications route/session, Skywire hot topics strict locator, and System Settings localization visibility).
 
 ## Backlog Intake Template
 

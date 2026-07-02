@@ -8,6 +8,7 @@ import { readTvCacheStats, migrateTvCacheKeys } from "./features/tv/cache-storag
 import { runTvBootBackfill } from "./lib/tv-boot-backfill";
 import { runGameshowBootBackfill } from "./lib/gameshow-boot-backfill";
 import { ensureCanonicalDailyLoopChallenges } from "./challenges/services/daily-loop-challenges";
+import { ensureReggieQuestChallenges } from "./challenges/services/reggie-quest";
 import { pool } from "./db";
 import {
   flushSystemLog,
@@ -84,6 +85,15 @@ async function main() {
         }
       })
       .catch((err) => console.warn("[boot] side quest seed failed:", err));
+    ensureReggieQuestChallenges(null)
+      .then((result) => {
+        if (result.created || result.updated) {
+          console.log(
+            `[reggie-boot] quest steps ready: ${result.created} created, ${result.updated} updated`
+          );
+        }
+      })
+      .catch((err) => console.warn("[boot] reggie quest seed failed:", err));
     // One-shot rekey of pre-existing IPFS cache entries from the old
     // sha256(fullUrl) scheme to the new sha256("ipfs:<cidPath>")
     // scheme.  Idempotent: once all files match the new format this

@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, Panel } from "react95";
 import styled, { keyframes } from "styled-components";
+import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { useWindowManager } from "../lib/window-context";
 
 type AmountView = { microwtf: string; wtf: string };
@@ -179,6 +181,72 @@ const Shell = styled.div`
   background:
     radial-gradient(circle at 74% 18%, rgba(62, 170, 111, 0.22), transparent 24%),
     linear-gradient(180deg, #131b16 0%, #101211 100%);
+
+  &[data-casino-table-presentation-host="gamma"] {
+    color: #f2ead9;
+    background: #08090a;
+    border: 1px solid rgba(40, 215, 255, 0.18);
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  &[data-casino-table-presentation-host="gamma"],
+  &[data-casino-table-presentation-host="gamma"] * {
+    letter-spacing: 0;
+    text-shadow: none;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] [data-casino-table-region] {
+    background-image: none;
+    box-shadow: none;
+    text-shadow: none;
+    border-radius: 6px;
+  }
+
+  &[data-casino-table-presentation-host="gamma"]
+    :where(
+      [data-casino-table-region="title-panel"],
+      [data-casino-table-region="wallet"],
+      [data-casino-table-region="scene"],
+      [data-casino-table-region="racer-card"],
+      [data-casino-table-region="thumb"],
+      [data-casino-table-region="stat"],
+      [data-casino-table-region="tote-chip"]
+    ) {
+    background: rgba(242, 234, 217, 0.045);
+    color: #f2ead9;
+    border: 1px solid rgba(242, 234, 217, 0.14);
+  }
+
+  &[data-casino-table-presentation-host="gamma"] fieldset {
+    background: rgba(242, 234, 217, 0.035);
+    color: #f2ead9;
+    border: 1px solid rgba(40, 215, 255, 0.2);
+    border-radius: 6px;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] legend {
+    color: #28d7ff;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 11px;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] button {
+    background: #0b0d0e;
+    color: #28d7ff;
+    border: 1px solid rgba(40, 215, 255, 0.55);
+    border-radius: 4px;
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] [data-casino-table-region="meter"] {
+    background: rgba(242, 234, 217, 0.08);
+    border: 1px solid rgba(242, 234, 217, 0.16);
+  }
+
+  &[data-casino-table-presentation-host="gamma"] [data-casino-table-region="meter"]::after {
+    background: #28d7ff;
+  }
 `;
 
 const Header = styled.div`
@@ -523,7 +591,7 @@ function RacewayScene({ entrants, phase }: { entrants: RacewayEntrant[]; phase: 
     };
   }, [entrants.map((entrant) => entrant.id).join("|")]);
 
-  return <Canvas ref={canvasRef} aria-label="Guinea Pig Raceway 3D race scene" />;
+  return <Canvas ref={canvasRef} aria-label="Guinea Pig Raceway 3D race scene" data-casino-table-region="canvas" />;
 }
 
 function postRaceway(path: string, body?: unknown) {
@@ -533,6 +601,8 @@ function postRaceway(path: string, body?: unknown) {
 function RacewaySurface() {
   const qc = useQueryClient();
   const wm = useWindowManager();
+  const presentation = usePresentationShell();
+  const [, setLocation] = useLocation();
   const query = useQuery({
     queryKey: ["casino", "guinea-pig-raceway", "state"],
     queryFn: () => api.get<RacewaySnapshot>("/api/casino/guinea-pig-raceway/state"),
@@ -558,12 +628,23 @@ function RacewaySurface() {
     () => [...(data?.entrants ?? [])].sort((a, b) => b.winProbabilityBps - a.winProbabilityBps),
     [data?.entrants]
   );
+  const openCasinoLobby = () => {
+    if (presentation.host === "gamma") {
+      setLocation(presentationRouteHref("/casino", presentation.host));
+      return;
+    }
+    wm.openPage("/casino");
+  };
 
   if (!data) {
     return (
-      <Shell>
-        <SceneShell>
-          {query.isLoading ? <Hourglass size={36} /> : <Button onClick={() => wm.openPage("/casino")}>Back to Casino</Button>}
+      <Shell
+        data-casino-table-presentation-host={presentation.host}
+        data-casino-table="guinea-pig-raceway"
+        data-casino-table-region="surface"
+      >
+        <SceneShell data-casino-table-region="scene">
+          {query.isLoading ? <Hourglass size={36} /> : <Button onClick={openCasinoLobby}>Back to Casino</Button>}
           {error && <p>{error}</p>}
         </SceneShell>
       </Shell>
@@ -571,9 +652,13 @@ function RacewaySurface() {
   }
 
   return (
-    <Shell>
-      <Header>
-        <TitlePanel>
+    <Shell
+      data-casino-table-presentation-host={presentation.host}
+      data-casino-table="guinea-pig-raceway"
+      data-casino-table-region="surface"
+    >
+      <Header data-casino-table-region="header">
+        <TitlePanel data-casino-table-region="title-panel">
           <Title>Guinea Pig Raceway</Title>
           <Badges>
             <Badge $hot>{phaseLabel(data.race.phase)}</Badge>
@@ -582,37 +667,40 @@ function RacewaySurface() {
             <Badge>No cash value</Badge>
           </Badges>
         </TitlePanel>
-        <Wallet>
+        <Wallet data-casino-table-region="wallet">
           <div>{data.user.displayName}</div>
           <div>Balance: {data.user.balance.wtf} WTF</div>
           <div>Handle: {data.race.toteBoard.totalHandle.wtf} WTF</div>
           <div>House/takeout if official: {data.race.houseTakeIfSettledNow.wtf} WTF</div>
           <div>{data.tokenPolicy.statement}</div>
+          <Button size="sm" onClick={openCasinoLobby}>
+            Casino Lobby
+          </Button>
         </Wallet>
       </Header>
 
-      <Layout>
+      <Layout data-casino-table-region="layout">
         <div>
-          <SceneShell>
+          <SceneShell data-casino-table-region="scene">
             <RacewayScene entrants={data.entrants} phase={data.race.phase} />
             <Tote>
-              <ToteChip>{data.race.track.label}</ToteChip>
-              <ToteChip>{data.race.phaseSecondsRemaining}s</ToteChip>
-              <ToteChip>{data.race.conditions.map((condition) => condition.label).join(" / ")}</ToteChip>
+              <ToteChip data-casino-table-region="tote-chip">{data.race.track.label}</ToteChip>
+              <ToteChip data-casino-table-region="tote-chip">{data.race.phaseSecondsRemaining}s</ToteChip>
+              <ToteChip data-casino-table-region="tote-chip">{data.race.conditions.map((condition) => condition.label).join(" / ")}</ToteChip>
             </Tote>
             <ReplayBar>
               {(data.lastSettlement?.replayManifest.cameraAngles ?? data.race.track.replayAngles).map((angle) => (
-                <ToteChip key={angle}>{angle.replaceAll("_", " ")}</ToteChip>
+                <ToteChip key={angle} data-casino-table-region="tote-chip">{angle.replaceAll("_", " ")}</ToteChip>
               ))}
             </ReplayBar>
           </SceneShell>
 
           <Box label="Race Card">
-            <Grid>
+            <Grid data-casino-table-region="race-card-grid">
               {sortedEntrants.map((entrant) => (
-                <RacerCard key={entrant.id}>
+                <RacerCard key={entrant.id} data-casino-table-region="racer-card">
                   <RacerTop>
-                    <Thumb src={entrant.thumbnailPath} alt="" />
+                    <Thumb src={entrant.thumbnailPath} alt="" data-casino-table-region="thumb" />
                     <div>
                       <strong>{entrant.displayName}</strong>
                       <div>{entrant.coat}</div>
@@ -623,13 +711,13 @@ function RacewaySurface() {
                       </div>
                     </div>
                   </RacerTop>
-                  <Meter $value={entrant.winProbabilityBps / 100} />
+                  <Meter $value={entrant.winProbabilityBps / 100} data-casino-table-region="meter" />
                   <StatStrip>
-                    <Stat>S {entrant.stats.speed}</Stat>
-                    <Stat>ST {entrant.stats.stamina}</Stat>
-                    <Stat>C {entrant.stats.cornering}</Stat>
-                    <Stat>F {entrant.stats.focus}</Stat>
-                    <Stat>G {entrant.stats.courage}</Stat>
+                    <Stat data-casino-table-region="stat">S {entrant.stats.speed}</Stat>
+                    <Stat data-casino-table-region="stat">ST {entrant.stats.stamina}</Stat>
+                    <Stat data-casino-table-region="stat">C {entrant.stats.cornering}</Stat>
+                    <Stat data-casino-table-region="stat">F {entrant.stats.focus}</Stat>
+                    <Stat data-casino-table-region="stat">G {entrant.stats.courage}</Stat>
                   </StatStrip>
                   <div>Form {statTotal(entrant.stats)} · effects {entrant.effectBps} bps</div>
                   <div>Backed: {entrant.betTotal.wtf} WTF</div>

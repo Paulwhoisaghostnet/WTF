@@ -31,9 +31,8 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     await expect(page.getByRole("button", { name: "Open Stuffs menu" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Skywire" })).toBeVisible();
     await expect(page.getByText("A Tezos-aware AT Protocol client")).toBeVisible();
-    await expect(page.getByText("Recent sale")).toBeVisible();
-    const signalExamples = page.getByLabel("Skywire signal examples");
-    await expect(signalExamples.getByText("WTF LIVE", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Skywire signal examples")).toHaveCount(0);
+    await expect(page.getByText("Recent sale")).toHaveCount(0);
 
     await page.getByLabel("Handle or DID").fill("paulwhoisaghost.bsky.social");
     await Promise.all([
@@ -63,8 +62,11 @@ test.describe("interaction inventory — Skywire feed usability", () => {
 
     await page.goto("/skywire", { waitUntil: "domcontentloaded" });
     const quickActions = page.getByLabel("Skywire quick actions");
-    await expect(quickActions.getByRole("button", { name: "Go live" })).toBeVisible();
-    await expect(quickActions.getByRole("button", { name: "Recent sale signal" })).toBeVisible();
+    await expect(quickActions.getByRole("button", { name: "What's hot" })).toBeVisible();
+    await expect(quickActions.getByRole("button", { name: "Market feed" })).toBeVisible();
+    await expect(quickActions.getByRole("button", { name: "Go live" })).toHaveCount(0);
+    await expect(quickActions.getByRole("button", { name: "Recent sale signal" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Signals/ })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /WTF Feed/ })).toHaveCount(0);
     await expect(page.locator("[data-skywire-feed-card='true']")).toHaveCount(3);
     await expect(page.locator("[data-skywire-token-preview='true']")).toHaveCount(3);
@@ -159,6 +161,36 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     expect(fatalErrors(errors)).toEqual([]);
   });
 
+  test("hot topics render Bluesky trends and open a search-backed feed", async ({ page, request }) => {
+    await setAdmin(request);
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+
+    await page.goto("/skywire?tab=hot", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("button", { name: /Hot/ })).toHaveAttribute("title", "Trending topics");
+    await expect(page.getByText("What's Hot")).toBeVisible();
+    await expect(page.locator("[data-skywire-hot-topic='true']")).toHaveCount(3);
+    await expect(page.locator("[data-skywire-hot-topic='true']").first()).toHaveAttribute(
+      "data-skywire-hot-topic-active",
+      "true",
+    );
+    await expect(page.getByText("Tezos art")).toBeVisible();
+    await expect(page.getByText("1.3K posts")).toBeVisible();
+    await expect(page.getByText(/Reading posts for/)).toBeVisible();
+    await expect(page.locator("[data-skywire-feed-card='true']")).toHaveCount(3);
+
+    await page.locator("[data-skywire-hot-topic='true']").filter({ hasText: "#WTFOS" }).click();
+    await expect(page.locator("[data-skywire-hot-topic='true']").filter({ hasText: "#WTFOS" })).toHaveAttribute(
+      "data-skywire-hot-topic-active",
+      "true",
+    );
+    await expect(page.getByText(/Reading posts for #WTFOS/)).toBeVisible();
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
   test("vault separates owned tokens from created collections and prefills Bluesky token shares", async ({
     page,
     request,
@@ -214,8 +246,15 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     expect(fatalErrors(errors)).toEqual([]);
   });
 
-  test("live status writes and clears the Bluesky actor status record", async ({ page, request }) => {
+  test("signals UI stays hidden while live status remains visible", async ({ page, request }) => {
     await setAdmin(request);
+    await request.post("/api/skywire/live-status", {
+      data: {
+        liveUrl: "https://wtfos.app/live/r/wtf-testing",
+        title: "WTF LIVE",
+        durationMinutes: 30,
+      },
+    });
     const errors = [];
     page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
     page.on("console", (message) => {
@@ -223,41 +262,24 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     });
 
     await page.goto("/skywire?tab=signals", { waitUntil: "domcontentloaded" });
-    await expect(page.getByText("Bluesky Live Status")).toBeVisible();
-    await expect(page.getByText("app.bsky.actor.status/self")).toBeVisible();
-    await page.getByPlaceholder("https://wtfos.app/live/r/room-id").fill("https://wtfos.app/live/r/wtf-testing");
-    await page.getByRole("button", { name: "Go Live on Skywire" }).click();
-    const activeLive = page.locator("[data-skywire-live-status='active']");
-    await expect(activeLive).toContainText("https://wtfos.app/live/r/wtf-testing");
-    await expect(page.locator("[data-skywire-live-badge='active']")).toContainText("Live now");
-    await expect(page.locator("[data-skywire-live-banner='active']")).toContainText(
-      "https://wtfos.app/live/r/wtf-testing",
-    );
-
-    await page.goto("/skywire?tab=home", { waitUntil: "domcontentloaded" });
+    await expect.poll(() => new URL(page.url()).searchParams.get("tab")).not.toBe("signals");
+    await expect(page.getByRole("button", { name: /Signals/ })).toHaveCount(0);
+    await expect(page.getByText("Signal Starters")).toHaveCount(0);
+    await expect(page.getByText("Bluesky Live Status")).toHaveCount(0);
     await expect(page.locator("[data-skywire-live-badge='active']")).toContainText("Live now");
     await expect(page.locator("[data-skywire-live-banner='active']")).toContainText(
       "Skywire sees your live status",
     );
-    await page.getByRole("button", { name: "Update live status" }).click();
-    await expect(page.getByText("Bluesky Live Status")).toBeVisible();
-
-    let state = await (await request.get("/__test/state")).json();
+    await expect(page.getByRole("button", { name: "Update live status" })).toHaveCount(0);
+    const state = await (await request.get("/__test/state")).json();
     expect(state.skywireLiveStatus).toMatchObject({
       liveUrl: "https://wtfos.app/live/r/wtf-testing",
       status: "app.bsky.actor.status#live",
     });
-
-    await page.getByRole("button", { name: "Clear Live" }).click();
-    await expect(page.getByText("No live record")).toBeVisible();
-    await expect(page.locator("[data-skywire-live-badge='inactive']")).toContainText("Not live");
-    await expect(page.locator("[data-skywire-live-banner='active']")).toHaveCount(0);
-    state = await (await request.get("/__test/state")).json();
-    expect(state.skywireLiveStatus).toBeNull();
     expect(fatalErrors(errors)).toEqual([]);
   });
 
-  test("signal starter presets publish a recent sale Skywire Signal", async ({ page, request }) => {
+  test("signal starter publisher stays hidden from the user-facing Skywire UI", async ({ page, request }) => {
     await setAdmin(request);
     const errors = [];
     page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
@@ -266,23 +288,20 @@ test.describe("interaction inventory — Skywire feed usability", () => {
     });
 
     await page.goto("/skywire?tab=signals", { waitUntil: "domcontentloaded" });
-    await expect(page.getByText("Signal Starters")).toBeVisible();
-    const recentSaleStarter = page.locator("[data-skywire-signal-preset='recent-sale']");
-    await expect(recentSaleStarter).toContainText("Recent sale");
-    await recentSaleStarter.click();
-
-    await expect(page.getByLabel("Skywire signal type")).toHaveValue("market.sale");
-    await expect(page.getByLabel("Skywire signal text")).toHaveValue(/Recent sale:/);
-    await expect(page.getByLabel("Skywire signal tags")).toHaveValue(/sale, collector, tezos/);
-    await page
-      .getByLabel("Skywire signal text")
-      .fill("Recent sale: Harness Alpha sold for 2.5 tez. Thank you to the collector.");
-    await page
-      .getByLabel("Related Skywire signal URI")
-      .fill("https://objkt.com/tokens/KT1AlphaCreatedCollection/2");
-    await page.getByRole("button", { name: "Publish Signal" }).click();
-
-    await expect(page.getByText("Harness Alpha sold for 2.5 tez")).toBeVisible();
+    await expect.poll(() => new URL(page.url()).searchParams.get("tab")).not.toBe("signals");
+    await expect(page.getByText("Signal Starters")).toHaveCount(0);
+    await expect(page.locator("[data-skywire-signal-preset='recent-sale']")).toHaveCount(0);
+    await expect(page.getByLabel("Skywire signal text")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Publish Signal" })).toHaveCount(0);
+    const apiResponse = await request.post("/api/skywire/signals", {
+      data: {
+        text: "Recent sale: Harness Alpha sold for 2.5 tez. Thank you to the collector.",
+        signalType: "market.sale",
+        tags: ["sale", "collector", "tezos"],
+        relatedUri: "https://objkt.com/tokens/KT1AlphaCreatedCollection/2",
+      },
+    });
+    expect(apiResponse.status()).toBe(201);
     const state = await (await request.get("/__test/state")).json();
     expect(state.skywireSignals[0].value).toMatchObject({
       text: "Recent sale: Harness Alpha sold for 2.5 tez. Thank you to the collector.",

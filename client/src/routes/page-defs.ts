@@ -38,6 +38,15 @@ const SystemSettingsPage = lazy(() =>
 const BrowserBoundariesPage = lazy(() =>
   import("../pages/BrowserBoundaries").then((m) => ({ default: m.BrowserBoundaries }))
 );
+const ApplicationsPage = lazy(() =>
+  import("../pages/Applications").then((m) => ({ default: m.Applications }))
+);
+const ApplicationSessionPage = lazy(() =>
+  import("../pages/ApplicationSession").then((m) => ({ default: m.ApplicationSession }))
+);
+const AgentPage = lazy(() =>
+  import("../pages/Agent").then((m) => ({ default: m.Agent }))
+);
 const TerminalPage = lazy(() =>
   import("../pages/Terminal").then((m) => ({ default: m.Terminal }))
 );
@@ -391,6 +400,32 @@ export const PAGE_DEFS: PageDef[] = [
     desktopIcon: true,
   },
   {
+    pattern: "/applications/:appId/play",
+    component: ApplicationSessionPage,
+    mapProps: (params) => ({ appId: params.appId }),
+    auth: true,
+    title: "Remote Application",
+    group: "desktop-os",
+  },
+  {
+    pattern: "/applications",
+    component: ApplicationsPage,
+    auth: true,
+    title: "Applications",
+    group: "desktop-os",
+    startMenu: true,
+    desktopIcon: true,
+  },
+  {
+    pattern: "/agent",
+    component: AgentPage,
+    auth: true,
+    title: "Agent",
+    group: "desktop-os",
+    startMenu: true,
+    desktopIcon: true,
+  },
+  {
     pattern: "/terminal",
     component: TerminalPage,
     auth: true,
@@ -428,8 +463,8 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/rounds", component: RoundsPage, auth: true, title: "Rounds", group: "gameshow", startMenu: true },
   { pattern: "/challenges", component: ChallengesPage, auth: true, title: "Challenges", group: "gameshow", startMenu: true },
   { pattern: "/side-quests", component: SideQuestsPage, auth: true, title: "Side Quests", group: "gameshow", startMenu: true },
-  { pattern: "/messages", component: MessagesPage, auth: true, title: "Inbox", group: "social", startMenu: true },
-  { pattern: "/messages/dms/:id", component: MessagesPage, auth: true, title: "Inbox", group: "social" },
+  { pattern: "/messages", component: MessagesPage, auth: true, title: "Messages", group: "social", startMenu: true },
+  { pattern: "/messages/dms/:id", component: MessagesPage, auth: true, title: "Messages", group: "social" },
   {
     pattern: "/notification-center",
     component: MessagesPage,
@@ -617,7 +652,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/tz2at", component: Tz2atPage, auth: true, title: "tz2at", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/crp-nominate", component: CrpNominatePage, auth: true, title: "CRP Nominations", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/wim", component: WimPage, auth: true, title: "WIM", group: "social", startMenu: true },
-  { pattern: "/mail", component: MailPage, auth: true, title: "WTF Mail", group: "social", startMenu: true },
+  { pattern: "/mail", component: MailPage, auth: true, title: "Inbox", group: "social", startMenu: true },
   { pattern: "/digest", component: DigestPage, auth: true, title: "Digest", group: "social", startMenu: true },
   { pattern: "/browser", component: BrowserPage, auth: true, title: "Browser", group: "desktop-os", startMenu: true },
   { pattern: "/music", component: MusicPage, auth: true, title: "TezosBeats", group: "media", startMenu: true },
@@ -639,7 +674,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
 ];
 
-export const FULLSCREEN_ROUTES = new Set(["/", "/gamma", "/beta", "/login", "/register", "/cli", "/live/r/:roomId"]);
+export const FULLSCREEN_ROUTES = new Set(["/", "/gamma", "/beta", "/login", "/register", "/cli", "/live/r/:roomId", "/applications/:appId/play"]);
 
 function patternToRegex(pattern: string): {
   regex: RegExp;

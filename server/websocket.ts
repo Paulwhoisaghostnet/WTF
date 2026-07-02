@@ -16,8 +16,9 @@ import {
 } from "./lib/board-channel-permissions";
 import { resolveStudioAccess } from "./lib/studio/access";
 import { getSessionSecret } from "./auth/session-secret";
-import { canAccessWtfLiveRoom } from "./features/wtf-live/registry";
+import { canAccessWtfLiveRoom, canAccessWtfLiveStage } from "./features/wtf-live/registry";
 import { GREEN_ROOM_ROOM_BY_ID } from "./features/green-room/world";
+import { fetchAppHostJson } from "./features/apphost/proxy";
 
 const MAX_CHAT_CONTENT_LENGTH = 10_000;
 const MAX_WTF_LIVE_CHAT_TEXT_LENGTH = 1_200;
@@ -27,13 +28,17 @@ const MAX_WTF_LIVE_ATTACHMENT_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_ATTACHMEN
 const MAX_WTF_LIVE_AVATAR_BYTES = 512 * 1024;
 const MAX_WTF_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_AVATAR_BYTES * 1.4);
 const MAX_WTF_LIVE_SIGNAL_LENGTH = 256 * 1024;
+const MAX_APPHOST_SIGNAL_LENGTH = 256 * 1024;
+const MAX_APPHOST_INPUT_LENGTH = 16 * 1024;
 const MAX_WTF_LIVE_SOUNDBOARD_BYTES = 1_200_000;
 const MAX_WTF_LIVE_SOUNDBOARD_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_SOUNDBOARD_BYTES * 1.4);
 const WTF_LIVE_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "video/mp4"]);
 const WTF_LIVE_SOUNDBOARD_TYPES = new Set(["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/mp4", "audio/webm"]);
-const WTF_LIVE_CHAT_FONTS = new Set(["mek-mono", "grout-display", "classic-95", "terminal", "serif-press"]);
+const WTF_LIVE_CHAT_FONTS = new Set(["classic-95", "terminal", "serif-press"]);
 const WTF_LIVE_LEGACY_CHAT_FONT_MAP: Record<string, string> = {
-  system: "mek-mono",
+  system: "classic-95",
+  "mek-mono": "classic-95",
+  "grout-display": "classic-95",
   mono: "terminal",
   serif: "serif-press",
   pixel: "classic-95",
@@ -58,7 +63,7 @@ type WtfLiveChatStyle = {
 };
 
 const DEFAULT_WTF_LIVE_CHAT_STYLE: WtfLiveChatStyle = {
-  font: "mek-mono",
+  font: "classic-95",
   color: "ink",
   size: 12,
   bold: false,
@@ -109,12 +114,15 @@ interface WsClient {
   studioFileId?: number;
   username: string;
   role: UserRole;
-  publicSocket?: "wtf-live" | "dedrooms";
+  publicSocket?: "wtf-live" | "dedrooms" | "apphost";
   wtfLiveRoomId?: string;
   wtfLivePeerId?: string;
   wtfLiveGuestName?: string;
   wtfLiveMediaState?: WtfLiveMediaState;
+  wtfLiveCanShareStage?: boolean;
   greenRoomLocationId?: string;
+  appHostAppId?: string;
+  appHostPeerId?: string;
 }
 
 const clients = new Set<WsClient>();
@@ -379,6 +387,28 @@ function normalizeWtfLiveRoomId(value: unknown): string | null {
   return roomId;
 }
 
+function normalizeAppHostAppId(value: unknown): string | null {
+  const appId = String(value || "").trim();
+  if (!/^[a-z0-9][a-z0-9._-]{1,80}$/i.test(appId)) return null;
+  return appId;
+}
+
+function snapshotAppHostPeers(appId: string, exclude?: WsClient) {
+  return [...clients]
+    .filter((client) =>
+      client.publicSocket === "apphost" &&
+      client.appHostAppId === appId &&
+      client.appHostPeerId &&
+      client !== exclude &&
+      client.ws.readyState === WebSocket.OPEN
+    )
+    .map((client) => ({
+      peerId: client.appHostPeerId,
+      userId: client.userId,
+      username: client.username,
+    }));
+}
+
 function normalizeWtfLiveGuestName(value: unknown): string {
   return String(value || "guest")
     .trim()
@@ -448,6 +478,27 @@ function normalizeWtfLiveMediaState(value: unknown): WtfLiveMediaState {
   };
 }
 
+function restrictWtfLiveMediaStateForClient(client: WsClient, mediaState: WtfLiveMediaState): WtfLiveMediaState {
+  if (client.wtfLiveCanShareStage !== false) return mediaState;
+  return {
+    ...mediaState,
+    mic: false,
+    audioOpen: false,
+    camera: false,
+    screen: false,
+    screenAudio: false,
+    mediaVideo: false,
+    mediaAudio: false,
+    mediaName: null,
+    soundboard: false,
+    activeVideo: null,
+    cameraTrackId: null,
+    screenTrackId: null,
+    mediaVideoTrackId: null,
+    mediaAudioTrackId: null,
+  };
+}
+
 function normalizeWtfLiveChatAttachments(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value.slice(0, MAX_WTF_LIVE_CHAT_ATTACHMENTS).flatMap((attachment) => {
@@ -471,8 +522,9 @@ function normalizeWtfLiveChatAttachments(value: unknown) {
   });
 }
 
-function normalizeWtfLiveChatStyle(value: unknown): WtfLiveChatStyle {
-  const style = typeof value === "object" && value ? value as Record<string, unknown> : {};
+function normalizeWtfLiveChatStyle(value: unknown): WtfLiveChatStyle | undefined {
+  if (typeof value !== "object" || !value) return undefined;
+  const style = value as Record<string, unknown>;
   const rawSize = Number(style.size);
   const size = Number.isFinite(rawSize)
     ? Math.min(14, Math.max(8, Math.round(rawSize)))
@@ -545,7 +597,7 @@ export function setupWebSocket(server: Server) {
 
   server.on("upgrade", (req, socket, head) => {
     const pathname = pathnameForRequest(req);
-    if (pathname !== "/ws" && pathname !== "/ws/wtf-live" && pathname !== "/ws/dedrooms") return;
+    if (pathname !== "/ws" && pathname !== "/ws/wtf-live" && pathname !== "/ws/dedrooms" && pathname !== "/ws/apphost") return;
 
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit("connection", ws, req);
@@ -616,6 +668,44 @@ export function setupWebSocket(server: Server) {
       return;
     }
 
+    if (pathname === "/ws/apphost") {
+      const auth = await resolveSessionUser(req).catch(() => null);
+      if (!auth) {
+        sendJson(ws, { type: "error", message: "Unauthorized apphost websocket session" });
+        ws.close(1008, "unauthorized");
+        return;
+      }
+      const client: WsClient = {
+        ws,
+        userId: auth.userId,
+        username: auth.username,
+        role: auth.role,
+        publicSocket: "apphost",
+        appHostPeerId: `apphost_${randomUUID().replace(/-/g, "").slice(0, 18)}`,
+      };
+      clients.add(client);
+      installHeartbeat(ws);
+
+      ws.on("message", (raw) => {
+        void (async () => {
+          try {
+            const msg = JSON.parse(raw.toString()) as Record<string, unknown>;
+            await handleMessage(client, msg);
+          } catch {
+            sendJson(ws, { type: "error", message: "Invalid message" });
+          }
+        })();
+      });
+      ws.on("close", () => cleanupClient(client));
+      sendJson(ws, {
+        type: "apphost_connected",
+        peerId: client.appHostPeerId,
+        userId: client.userId,
+        username: client.username,
+      });
+      return;
+    }
+
     const auth = await resolveSessionUser(req);
     if (!auth) {
       ws.send(JSON.stringify({ type: "error", message: "Unauthorized websocket session" }));
@@ -678,6 +768,105 @@ export function setupWebSocket(server: Server) {
 
 async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
   switch (msg.type) {
+    case "apphost_join": {
+      if (client.publicSocket !== "apphost") {
+        sendJson(client.ws, { type: "error", message: "Use the apphost socket." });
+        return;
+      }
+      const appId = normalizeAppHostAppId(msg.appId);
+      if (!appId) {
+        sendJson(client.ws, { type: "error", message: "Invalid apphost application id" });
+        return;
+      }
+      if (client.appHostAppId && client.appHostAppId !== appId) {
+        leaveAppHostRoom(client);
+      }
+      client.appHostAppId = appId;
+      sendJson(client.ws, {
+        type: "apphost_session_snapshot",
+        appId,
+        peerId: client.appHostPeerId,
+        peers: snapshotAppHostPeers(appId, client),
+      });
+      broadcastToAppHostRoom(
+        appId,
+        {
+          type: "apphost_peer_joined",
+          appId,
+          peer: {
+            peerId: client.appHostPeerId,
+            userId: client.userId,
+            username: client.username,
+          },
+        },
+        client,
+      );
+      break;
+    }
+
+    case "apphost_leave": {
+      leaveAppHostRoom(client);
+      break;
+    }
+
+    case "apphost_signal": {
+      if (client.publicSocket !== "apphost" || !client.appHostAppId || !client.appHostPeerId) return;
+      const toPeerId = String(msg.toPeerId || "").trim();
+      const signal = typeof msg.signal === "object" && msg.signal ? msg.signal as Record<string, unknown> : null;
+      if (!/^apphost_[a-f0-9]{18}$/i.test(toPeerId) || !signal) return;
+      const encoded = JSON.stringify(signal);
+      if (encoded.length > MAX_APPHOST_SIGNAL_LENGTH) return;
+      const target = [...clients].find((candidate) =>
+        candidate.publicSocket === "apphost" &&
+        candidate.appHostAppId === client.appHostAppId &&
+        candidate.appHostPeerId === toPeerId &&
+        candidate.ws.readyState === WebSocket.OPEN
+      );
+      if (!target) return;
+      sendJson(target.ws, {
+        type: "apphost_signal",
+        appId: client.appHostAppId,
+        fromPeerId: client.appHostPeerId,
+        signal,
+      });
+      break;
+    }
+
+    case "apphost_input": {
+      if (client.publicSocket !== "apphost") {
+        sendJson(client.ws, { type: "error", message: "Use the apphost socket." });
+        return;
+      }
+      const appId = normalizeAppHostAppId(msg.appId) || client.appHostAppId;
+      if (!appId || (client.appHostAppId && client.appHostAppId !== appId)) {
+        sendJson(client.ws, { type: "error", message: "Join the apphost room before sending input." });
+        return;
+      }
+      const event = typeof msg.event === "object" && msg.event ? msg.event as Record<string, unknown> : null;
+      if (!event) {
+        sendJson(client.ws, { type: "error", message: "Missing apphost input event" });
+        return;
+      }
+      const encoded = JSON.stringify(event);
+      if (encoded.length > MAX_APPHOST_INPUT_LENGTH) {
+        sendJson(client.ws, { type: "error", message: "Apphost input event is too large" });
+        return;
+      }
+      const upstream = await fetchAppHostJson(`/apps/${appId}/input`, {
+        method: "POST",
+        body: encoded,
+        headers: { "Content-Type": "application/json" },
+      });
+      sendJson(client.ws, {
+        type: "apphost_input_ack",
+        appId,
+        ok: upstream.status >= 200 && upstream.status < 300,
+        status: upstream.status,
+        result: upstream.body,
+      });
+      break;
+    }
+
     case "ded_rooms_join": {
       if (client.publicSocket !== "dedrooms") {
         sendJson(client.ws, { type: "error", message: "Use the DedRooms socket." });
@@ -728,8 +917,10 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         sendJson(client.ws, { type: "error", message: "Invalid WTF LIVE room id" });
         return;
       }
-      const room = await canAccessWtfLiveRoom(roomId, client.userId > 0 ? client.userId : null);
-      if (!room) {
+      const actorUserId = client.userId > 0 ? client.userId : null;
+      const room = await canAccessWtfLiveRoom(roomId, actorUserId);
+      const stageAccess = room ? null : await canAccessWtfLiveStage(roomId, actorUserId);
+      if (!room && !stageAccess) {
         sendJson(client.ws, { type: "error", message: "WTF LIVE room is not open to this session" });
         return;
       }
@@ -741,7 +932,8 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         : normalizeWtfLiveGuestName(msg.guestName);
       client.wtfLiveGuestName = guestName;
       client.wtfLiveRoomId = roomId;
-      client.wtfLiveMediaState = normalizeWtfLiveMediaState(msg.mediaState);
+      client.wtfLiveCanShareStage = stageAccess ? stageAccess.role !== "audience" : true;
+      client.wtfLiveMediaState = restrictWtfLiveMediaStateForClient(client, normalizeWtfLiveMediaState(msg.mediaState));
 
       sendJson(client.ws, {
         type: "wtf_live_room_snapshot",
@@ -768,7 +960,7 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
 
     case "wtf_live_media_state": {
       if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
-      client.wtfLiveMediaState = normalizeWtfLiveMediaState(msg.mediaState);
+      client.wtfLiveMediaState = restrictWtfLiveMediaStateForClient(client, normalizeWtfLiveMediaState(msg.mediaState));
       broadcastToWtfLiveRoom(client.wtfLiveRoomId, {
         type: "wtf_live_media_state",
         roomId: client.wtfLiveRoomId,
@@ -821,7 +1013,7 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
           peerId: client.wtfLivePeerId,
           guestName: wtfLivePeerDisplayName(client),
           text,
-          style,
+          ...(style ? { style } : {}),
           attachments,
           createdAt: new Date().toISOString(),
         },
@@ -1222,6 +1414,24 @@ function broadcastToGreenRoomLocation(
   }
 }
 
+function broadcastToAppHostRoom(
+  appId: string,
+  message: Record<string, unknown>,
+  exclude?: WsClient
+) {
+  const payload = JSON.stringify(message);
+  for (const c of clients) {
+    if (
+      c.publicSocket === "apphost" &&
+      c.appHostAppId === appId &&
+      c !== exclude &&
+      c.ws.readyState === WebSocket.OPEN
+    ) {
+      c.ws.send(payload);
+    }
+  }
+}
+
 function leaveGreenRoomLocation(client: WsClient) {
   if (!client.greenRoomLocationId) return;
   const locationId = client.greenRoomLocationId;
@@ -1240,6 +1450,23 @@ function leaveGreenRoomLocation(client: WsClient) {
   );
 }
 
+function leaveAppHostRoom(client: WsClient) {
+  if (!client.appHostAppId || !client.appHostPeerId) return;
+  const appId = client.appHostAppId;
+  const peerId = client.appHostPeerId;
+  client.appHostAppId = undefined;
+  broadcastToAppHostRoom(
+    appId,
+    {
+      type: "apphost_peer_left",
+      appId,
+      peerId,
+      username: client.username,
+    },
+    client,
+  );
+}
+
 function leaveWtfLiveRoom(client: WsClient) {
   if (!client.wtfLiveRoomId || !client.wtfLivePeerId) return;
   const roomId = client.wtfLiveRoomId;
@@ -1247,6 +1474,7 @@ function leaveWtfLiveRoom(client: WsClient) {
   const guestName = wtfLivePeerDisplayName(client);
   client.wtfLiveRoomId = undefined;
   client.wtfLiveMediaState = emptyWtfLiveMediaState();
+  client.wtfLiveCanShareStage = undefined;
   broadcastToWtfLiveRoom(
     roomId,
     {
@@ -1285,6 +1513,9 @@ function cleanupClient(client: WsClient) {
   }
   if (client.greenRoomLocationId) {
     leaveGreenRoomLocation(client);
+  }
+  if (client.appHostAppId) {
+    leaveAppHostRoom(client);
   }
 }
 

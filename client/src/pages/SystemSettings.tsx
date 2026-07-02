@@ -22,11 +22,16 @@ import styled from "styled-components";
 import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UiButton, UiPanel } from "../components/wtfos-ui";
+import { useLocalization } from "../lib/localization";
 import {
   getInterfaceMode,
   setInterfaceMode,
 } from "../features/wtfos-cli/interface-mode";
 import { useAuth } from "../lib/auth-context";
+import {
+  presentationRouteHref,
+  usePresentationShell,
+} from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 
 type SettingCard = {
@@ -43,6 +48,79 @@ const Shell = styled.div`
   display: grid;
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
+
+  &[data-system-settings-presentation-host="gamma"] {
+    color: var(--gamma-milk, #f2ead9);
+    background: #070706;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-system-settings-presentation-host="gamma"],
+  &[data-system-settings-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region] {
+    background-image: none;
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+  }
+
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="panel"],
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="card"],
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="status-cell"] {
+    color: var(--gamma-milk, #f2ead9);
+    background: rgba(17, 17, 15, 0.86);
+    border: 1px solid rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="separator"] {
+    height: 1px;
+    overflow: hidden;
+    border: 0;
+    background: rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="icon"] {
+    color: var(--gamma-cyan, #00d2ff);
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="actions"] {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &[data-system-settings-presentation-host="gamma"] h2,
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="card-title"],
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="status-value"] {
+    color: var(--gamma-milk, #f2ead9);
+    letter-spacing: 0;
+  }
+
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="status-label"],
+  &[data-system-settings-presentation-host="gamma"] [data-system-settings-region="card-meta"] {
+    color: rgba(242, 234, 217, 0.68);
+  }
+
+  &[data-system-settings-presentation-host="gamma"] button {
+    color: var(--gamma-cyan, #00d2ff);
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-system-settings-presentation-host="gamma"] button[aria-pressed="true"],
+  &[data-system-settings-presentation-host="gamma"] button[data-system-settings-active="true"] {
+    color: #070706;
+    background: var(--gamma-cyan, #00d2ff);
+    border-color: var(--gamma-cyan, #00d2ff);
+  }
 `;
 
 const StatusGrid = styled.div`
@@ -150,130 +228,154 @@ const OpenButton = styled(UiButton)`
   }
 `;
 
+const LanguageControl = styled.label`
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: bold;
+
+  select {
+    min-height: 32px;
+    padding: 4px 6px;
+    border: 1px solid var(--wtf-app-border, #808080);
+    background: var(--wtf-app-control-bg, #ffffff);
+    color: var(--wtf-app-text, #111);
+    font: inherit;
+  }
+`;
+
 export function SystemSettings() {
   const { user } = useAuth();
+  const {
+    locale,
+    localeOptions,
+    setLocale,
+    t,
+  } = useLocalization();
   const [, setLocation] = useLocation();
+  const presentation = usePresentationShell();
   const isAdmin = user?.role === "admin";
 
   const settings = useMemo<SettingCard[]>(
     () => [
       {
         id: "profile",
-        label: "Account Profile",
+        label: t("settingsCard.profile.label"),
         route: "/profile",
-        owner: "Identity",
-        detail: "name, avatar, public profile, social links, password",
+        owner: t("settingsCard.profile.owner"),
+        detail: t("settingsCard.profile.detail"),
         icon: IdCard,
       },
       {
         id: "commands",
-        label: "Command Palette",
+        label: t("settingsCard.commands.label"),
         route: "/command-palette",
-        owner: "Desktop OS",
-        detail: "app launcher, route search, workflow commands",
+        owner: t("settingsCard.commands.owner"),
+        detail: t("settingsCard.commands.detail"),
         icon: Command,
       },
       {
         id: "appearance",
-        label: "Theme Builder",
+        label: t("settingsCard.appearance.label"),
         route: "/theme-builder",
-        owner: "Desktop OS",
-        detail: "OS appearance, theme colors, wallpaper, cursor, physics mode",
+        owner: t("settingsCard.appearance.owner"),
+        detail: t("settingsCard.appearance.detail"),
         icon: Brush,
       },
       {
         id: "notifications",
-        label: "Notifications",
+        label: t("settingsCard.notifications.label"),
         route: "/notification-center",
-        owner: "Inbox",
-        detail: "notification preferences, unread items, linked targets",
+        owner: t("settingsCard.notifications.owner"),
+        detail: t("settingsCard.notifications.detail"),
         icon: Bell,
       },
       {
         id: "files",
-        label: "Files and Dwellings",
+        label: t("settingsCard.files.label"),
         route: "/file-manager",
-        owner: "File Manager",
-        detail: "Desktop, Projects, Media, Vault, Apps, Chain, Archives",
+        owner: t("settingsCard.files.owner"),
+        detail: t("settingsCard.files.detail"),
         icon: FolderCog,
       },
       {
         id: "wallet",
-        label: "Wallet and Portfolio",
+        label: t("settingsCard.wallet.label"),
         route: "/dashboard",
-        owner: "Cockpit",
-        detail: "active wallet, holdings, balances, sync state",
+        owner: t("settingsCard.wallet.owner"),
+        detail: t("settingsCard.wallet.detail"),
         icon: WalletCards,
       },
       {
         id: "subdomains",
-        label: "Subdomain Setup",
+        label: t("settingsCard.subdomains.label"),
         route: "/wtf-subdomains/setup",
-        owner: "WTF Domains",
-        detail: "claim username.wtfos.me and prepare wtf.tez setup",
+        owner: t("settingsCard.subdomains.owner"),
+        detail: t("settingsCard.subdomains.detail"),
         icon: Globe2,
       },
       {
         id: "w",
-        label: "W Social",
+        label: t("settingsCard.w.label"),
         route: "/w",
-        owner: "W",
-        detail: "scraped X timeline cache and read-only Gameshow chat",
+        owner: t("settingsCard.w.owner"),
+        detail: t("settingsCard.w.detail"),
         icon: Radio,
       },
       {
         id: "terminal",
-        label: "Terminal",
+        label: t("settingsCard.terminal.label"),
         route: "/terminal",
-        owner: "Desktop OS",
-        detail: "embedded safe commands, health checks, jobs, access routes",
+        owner: t("settingsCard.terminal.owner"),
+        detail: t("settingsCard.terminal.detail"),
         icon: TerminalSquare,
       },
       {
         id: "cli",
-        label: "CLI Shell",
+        label: t("settingsCard.cli.label"),
         route: "/cli",
-        owner: "Desktop OS",
-        detail: "full-screen CLI/TUI using the same safe command kernel",
+        owner: t("settingsCard.cli.owner"),
+        detail: t("settingsCard.cli.detail"),
         icon: TerminalSquare,
       },
       {
         id: "recovery",
-        label: "Recovery Mode",
+        label: t("settingsCard.recovery.label"),
         route: "/recovery-mode",
-        owner: "Recovery",
-        detail: "wallet disconnect, network reset, shell report export",
+        owner: t("settingsCard.recovery.owner"),
+        detail: t("settingsCard.recovery.detail"),
         icon: LifeBuoy,
       },
       {
         id: "admin",
-        label: "Admin Panel",
+        label: t("settingsCard.admin.label"),
         route: "/admin",
-        owner: "Admin",
-        detail: "permissions, app gates, users, logs, content",
+        owner: t("settingsCard.admin.owner"),
+        detail: t("settingsCard.admin.detail"),
         icon: LockKeyhole,
         adminOnly: true,
       },
       {
         id: "backup",
-        label: "Backup Manager",
+        label: t("settingsCard.backup.label"),
         route: "/backup-manager",
-        owner: "Admin",
-        detail: "restore proof, backup artifact, checksum, target safety",
+        owner: t("settingsCard.backup.owner"),
+        detail: t("settingsCard.backup.detail"),
         icon: DatabaseBackup,
         adminOnly: true,
       },
       {
         id: "control",
-        label: "Control Board",
+        label: t("settingsCard.control.label"),
         route: "/control-board",
-        owner: "Gameshow Admin",
-        detail: "round operations, host actions, contestant state",
+        owner: t("settingsCard.control.owner"),
+        detail: t("settingsCard.control.detail"),
         icon: Gauge,
         adminOnly: true,
       },
     ],
-    []
+    [t]
   );
 
   const visibleSettings = settings.filter((setting) => !setting.adminOnly || isAdmin);
@@ -295,7 +397,7 @@ export function SystemSettings() {
       eventType: "system_settings.opened",
       metadata: { setting: setting.id, route: setting.route },
     });
-    setLocation(setting.route);
+    setLocation(presentationRouteHref(setting.route, presentation.host));
   }
 
   function chooseInterfaceMode(mode: "desktop" | "cli") {
@@ -305,54 +407,71 @@ export function SystemSettings() {
       metadata: { mode },
     });
     if (mode === "cli") {
-      setLocation("/cli");
+      setLocation(presentationRouteHref("/cli", presentation.host));
       return;
     }
-    setLocation("/mission-control");
+    setLocation(presentationRouteHref("/mission-control", presentation.host));
+  }
+
+  function chooseLocale(nextLocale: string) {
+    setLocale(nextLocale);
+    logClientSystemEvent({
+      eventType: "system_settings.language_changed",
+      metadata: { locale: nextLocale },
+    });
   }
 
   return (
-    <AppWindow title="Settings">
-      <Shell data-testid="system-settings">
-        <StatusGrid>
-          <StatusCell>
-            <StatusLabel>Role</StatusLabel>
-            <StatusValue>{user?.role ?? "session"}</StatusValue>
+    <AppWindow title={t("systemSettings.title")}>
+      <Shell
+        data-testid="system-settings"
+        data-system-settings-presentation-host={presentation.host}
+        data-system-settings-surface="settings"
+        data-system-settings-region="surface"
+      >
+        <StatusGrid data-system-settings-region="status-grid">
+          <StatusCell data-system-settings-region="status-cell">
+            <StatusLabel data-system-settings-region="status-label">{t("systemSettings.status.role")}</StatusLabel>
+            <StatusValue data-system-settings-region="status-value">{user?.role ?? "session"}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Visible</StatusLabel>
-            <StatusValue>{visibleSettings.length}</StatusValue>
+          <StatusCell data-system-settings-region="status-cell">
+            <StatusLabel data-system-settings-region="status-label">{t("systemSettings.status.visible")}</StatusLabel>
+            <StatusValue data-system-settings-region="status-value">{visibleSettings.length}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Admin</StatusLabel>
-            <StatusValue>{isAdmin ? "enabled" : "hidden"}</StatusValue>
+          <StatusCell data-system-settings-region="status-cell">
+            <StatusLabel data-system-settings-region="status-label">{t("systemSettings.status.admin")}</StatusLabel>
+            <StatusValue data-system-settings-region="status-value">
+              {isAdmin ? t("systemSettings.admin.enabled") : t("systemSettings.admin.hidden")}
+            </StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Mode</StatusLabel>
-            <StatusValue>{interfaceMode}</StatusValue>
+          <StatusCell data-system-settings-region="status-cell">
+            <StatusLabel data-system-settings-region="status-label">{t("systemSettings.status.mode")}</StatusLabel>
+            <StatusValue data-system-settings-region="status-value">{interfaceMode}</StatusValue>
           </StatusCell>
         </StatusGrid>
 
-        <Separator />
+        <div data-system-settings-region="separator">
+          <Separator />
+        </div>
 
-        <UiPanel title="System settings" compact>
-          <CardGrid>
+        <UiPanel title={t("systemSettings.panel.system")} compact data-system-settings-region="panel">
+          <CardGrid data-system-settings-region="card-grid">
             {visibleSettings.map((setting) => {
               const Icon = setting.icon;
               return (
-                <Card key={setting.id}>
-                  <IconBox>
+                <Card key={setting.id} data-system-settings-region="card" data-system-settings-card={setting.id}>
+                  <IconBox data-system-settings-region="icon">
                     <Icon size={17} aria-hidden />
                   </IconBox>
                   <div>
-                    <CardTitle>{setting.label}</CardTitle>
-                    <CardMeta>
+                    <CardTitle data-system-settings-region="card-title">{setting.label}</CardTitle>
+                    <CardMeta data-system-settings-region="card-meta">
                       {setting.owner} - {setting.detail}
                     </CardMeta>
                   </div>
-                  <OpenButton onClick={() => openSetting(setting)}>
+                  <OpenButton onClick={() => openSetting(setting)} data-system-settings-region="open-button">
                     <MonitorCog size={14} aria-hidden />
-                    Open {setting.label}
+                    {t("systemSettings.openSetting", { label: setting.label })}
                   </OpenButton>
                 </Card>
               );
@@ -360,61 +479,98 @@ export function SystemSettings() {
           </CardGrid>
         </UiPanel>
 
-        <UiPanel title="Interface" compact>
-          <Card>
-            <IconBox>
+        <UiPanel title={t("systemSettings.panel.language")} compact data-system-settings-region="panel" data-system-settings-panel="language">
+          <Card data-system-settings-region="card" data-system-settings-card="language-region">
+            <IconBox data-system-settings-region="icon">
+              <Globe2 size={17} aria-hidden />
+            </IconBox>
+            <div>
+              <CardTitle data-system-settings-region="card-title">{t("systemSettings.language.title")}</CardTitle>
+              <CardMeta data-system-settings-region="card-meta">
+                {t("systemSettings.language.detail")}
+              </CardMeta>
+            </div>
+            <div data-system-settings-region="actions">
+              <LanguageControl>
+                <span>{t("systemSettings.language.label")}</span>
+                <select
+                  data-testid="language-region-display-language"
+                  aria-label={t("systemSettings.language.label")}
+                  value={locale}
+                  onChange={(event) => chooseLocale(event.currentTarget.value)}
+                >
+                  {localeOptions.map((option) => (
+                    <option key={option.locale} value={option.locale}>
+                      {option.nativeName}
+                      {option.testingOnly ? " (test)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </LanguageControl>
+            </div>
+          </Card>
+        </UiPanel>
+
+        <UiPanel title={t("systemSettings.panel.interface")} compact data-system-settings-region="panel" data-system-settings-panel="interface">
+          <Card data-system-settings-region="card" data-system-settings-card="interface">
+            <IconBox data-system-settings-region="icon">
               <TerminalSquare size={17} aria-hidden />
             </IconBox>
             <div>
-              <CardTitle>Choose your wtfOS interface</CardTitle>
-              <CardMeta>
-                Desktop is the default windowed experience. CLI is the full-screen safe
-                command-line interface powered by the same kernel as Terminal.
+              <CardTitle data-system-settings-region="card-title">{t("systemSettings.interface.title")}</CardTitle>
+              <CardMeta data-system-settings-region="card-meta">
+                {t("systemSettings.interface.detail")}
               </CardMeta>
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div data-system-settings-region="actions">
               <OpenButton
                 active={interfaceMode === "desktop"}
+                aria-pressed={interfaceMode === "desktop"}
+                data-system-settings-active={interfaceMode === "desktop" ? "true" : "false"}
+                data-system-settings-region="mode-button"
                 onClick={() => chooseInterfaceMode("desktop")}
               >
-                Use desktop
+                {t("systemSettings.interface.desktop")}
               </OpenButton>
               <OpenButton
                 active={interfaceMode === "cli"}
+                aria-pressed={interfaceMode === "cli"}
+                data-system-settings-active={interfaceMode === "cli" ? "true" : "false"}
+                data-system-settings-region="mode-button"
                 onClick={() => chooseInterfaceMode("cli")}
               >
-                Use CLI
+                {t("systemSettings.interface.cli")}
               </OpenButton>
             </div>
           </Card>
         </UiPanel>
 
-        <UiPanel title="Boundary" compact tone="info">
-          <Card>
-            <IconBox>
+        <UiPanel title={t("systemSettings.panel.boundary")} compact tone="info" data-system-settings-region="panel" data-system-settings-panel="boundary">
+          <Card data-system-settings-region="card" data-system-settings-card="boundary">
+            <IconBox data-system-settings-region="icon">
               <ShieldCheck size={17} aria-hidden />
             </IconBox>
             <div>
-              <CardTitle>Settings ownership stays with each app</CardTitle>
-              <CardMeta>
-                This hub routes to existing owner surfaces and does not bypass their permissions,
-                wallet preflights, CSRF rules, or admin gates.
+              <CardTitle data-system-settings-region="card-title">{t("systemSettings.boundary.title")}</CardTitle>
+              <CardMeta data-system-settings-region="card-meta">
+                {t("systemSettings.boundary.detail")}
               </CardMeta>
             </div>
             <OpenButton
+              data-system-settings-region="open-button"
               onClick={() =>
                 openSetting({
                   id: "mission",
-                  label: "Mission Control",
+                  label: t("route.missionControl.title"),
                   route: "/mission-control",
-                  owner: "Mission Control",
+                  owner: t("route.missionControl.title"),
                   detail: "",
                   icon: Settings,
                 })
               }
             >
               <Settings size={14} aria-hidden />
-              Open Mission Control
+              {t("systemSettings.boundary.openMissionControl")}
             </OpenButton>
           </Card>
         </UiPanel>

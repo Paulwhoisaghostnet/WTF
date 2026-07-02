@@ -1,0 +1,30 @@
+[Unit]
+Description=wtfOS Remote Application Host API
+Requires=wtfos-apphost-xvfb.service wtfos-apphost-pulse.service wtfos-apphost-wm.service
+After=wtfos-apphost-xvfb.service wtfos-apphost-pulse.service wtfos-apphost-wm.service network.target
+
+[Service]
+Type=simple
+User=wtfos-apphost
+Group=wtfos-apphost
+WorkingDirectory=/opt/wtfos/apphost
+Environment=HOME=/opt/wtfos/apphost/home
+Environment=DISPLAY=:99
+Environment=XDG_RUNTIME_DIR=/opt/wtfos/apphost/run/user
+Environment=PULSE_SERVER=unix:/opt/wtfos/apphost/run/pulse/native
+Environment=WTFOS_APPHOST_CLIENT_GROUP=1000
+ExecStartPre=/usr/bin/install -d -m 0750 -o wtfos-apphost -g wtfos-apphost /opt/wtfos/apphost/state /opt/wtfos/apphost/state/logs /opt/wtfos/apphost/run/user
+ExecStartPre=+/bin/sh -c '/usr/bin/install -d -m 0750 -o wtfos-apphost -g "${WTFOS_APPHOST_CLIENT_GROUP:-1000}" /run/wtf/apphost'
+ExecStartPre=+/bin/sh -c '/usr/bin/install -m 0640 -o wtfos-apphost -g "${WTFOS_APPHOST_CLIENT_GROUP:-1000}" /opt/wtfos/apphost/config/wtfos-apphost.env /run/wtf/apphost/wtfos-apphost.env'
+ExecStartPre=+/bin/rm -f /run/wtf/apphost/apphost.sock
+ExecStart=/usr/bin/python3 /opt/wtfos/apphost/apphostd.py --host 127.0.0.1 --port 8765 --socket-path /opt/wtfos/apphost/run/apphost.sock --socket-path /run/wtf/apphost/apphost.sock --socket-mode 0660 --manifest-dir /opt/wtfos/apphost/manifests --state-dir /opt/wtfos/apphost/state --display :99 --pulse-server unix:/opt/wtfos/apphost/run/pulse/native
+ExecStartPost=+/bin/sh -c 'i=0; while [ "$i" -lt 50 ]; do [ -S /run/wtf/apphost/apphost.sock ] && break; i=$((i + 1)); sleep 0.1; done; /bin/chgrp "${WTFOS_APPHOST_CLIENT_GROUP:-1000}" /run/wtf/apphost/apphost.sock /run/wtf/apphost/wtfos-apphost.env /run/wtf/apphost; /bin/chmod 0750 /run/wtf/apphost; /bin/chmod 0660 /run/wtf/apphost/apphost.sock; /bin/chmod 0640 /run/wtf/apphost/wtfos-apphost.env'
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/wtfos/apphost
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,9 @@
 import styled from "styled-components";
 
+const WTF_LIVE_CLASSIC_FONT_STACK = `"MS Sans Serif", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif`;
+
 export const MainLayout = styled.div`
+  font-family: ${WTF_LIVE_CLASSIC_FONT_STACK};
   display: grid;
   grid-template-columns: minmax(168px, 210px) minmax(0, 1fr);
   gap: 8px;
@@ -260,6 +263,11 @@ export const DialogOverlay = styled.div`
   place-items: center;
   z-index: 40;
   padding: 16px;
+
+  &[data-wtf-live-presentation-host="gamma"] {
+    background: rgba(7, 7, 6, 0.82);
+    color: #f2ead9;
+  }
 `;
 
 export const DialogCard = styled.div`
@@ -269,4 +277,19 @@ export const DialogCard = styled.div`
   width: min(420px, 100%);
   display: grid;
   gap: 8px;
+
+  [data-wtf-live-presentation-host="gamma"] & {
+    border: 1px solid rgba(242, 234, 217, 0.24);
+    border-radius: 6px;
+    background: #11110f;
+    color: #f2ead9;
+    box-shadow: none;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    strong {
+      color: #f2ead9;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+  }
 `;

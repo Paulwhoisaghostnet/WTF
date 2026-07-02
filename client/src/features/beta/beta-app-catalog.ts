@@ -528,7 +528,7 @@ export const BETA_PERSONAS: BetaPersona[] = [
     nextRoute: "/live",
     promise: "Find the community member path through existing WTFOS apps without guessing the next tool.",
     returnReason: "Replies, rooms, digest, quests, rewards, and visible people show what changed.",
-    confusion: "W Feed, WIM, WTF LIVE, Skywire, Mail, and Digest compete as social entrances.",
+    confusion: "W Feed, WIM, WTF LIVE, Skywire, Inbox, and Digest compete as social entrances.",
     failure: "Reads activity but does not join a room, reply, quest, or return loop.",
     hesitation: "Pauses if the page does not prove other people are currently active.",
     abandonment: "Leaves if WTFOS feels empty or only tool-focused.",
@@ -977,6 +977,7 @@ const desktopRoutes: Record<DesktopAppKey, string> = {
   "wtf-subdomains": "/wtf-subdomains",
   "rat-race": "/rat-race",
   "map-lab": "/map-lab",
+  agent: "/agent",
   mail: "/mail",
 };
 
@@ -1030,20 +1031,20 @@ const manualApps: BetaAppCatalogEntry[] = [
 const experimentalSet = new Set<DesktopAppKey>(EXPERIMENTAL_DESKTOP_APPS);
 function tierFor(appKey: DesktopAppKey): BetaTier {
   if (experimentalSet.has(appKey)) return 4;
-  if (["wtfiam", "tv", "console", "game-studio", "pasta-protocol", "tz2at", "crp-nominations"].includes(appKey)) return 2;
+  if (["wtfiam", "tv", "console", "game-studio", "pasta-protocol", "tz2at", "crp-nominations", "agent"].includes(appKey)) return 2;
   if (["map-lab", "casino", "ch-ease"].includes(appKey)) return 4;
   return 3;
 }
 function stageFor(appKey: DesktopAppKey): BetaStage {
   if (["wtfiam", "hoard", "gallery", "rat-race"].includes(appKey)) return "collect";
-  if (["studio", "game-studio", "pasta-protocol", "ch-ease"].includes(appKey)) return "create";
+  if (["studio", "game-studio", "pasta-protocol", "ch-ease", "agent"].includes(appKey)) return "create";
   if (["wim", "w", "tv", "dicksword", "i-hate-telegram", "skywire", "wtf-live", "mail"].includes(appKey)) return "connect";
   if (["arcade", "casino", "console", "dedrooms"].includes(appKey)) return "play";
   if (["ipfs-pinning", "wtf-subdomains"].includes(appKey)) return "publish";
   return "operate";
 }
 function personasFor(appKey: DesktopAppKey): BetaPersonaKey[] {
-  if (["studio", "game-studio", "pasta-protocol", "ch-ease", "ipfs-pinning"].includes(appKey)) return ["creator", "builder", "curator"];
+  if (["studio", "game-studio", "pasta-protocol", "ch-ease", "ipfs-pinning", "agent"].includes(appKey)) return ["creator", "builder", "curator"];
   if (["hoard", "gallery", "wtfiam", "rat-race"].includes(appKey)) return ["collector", "creator", "curator"];
   if (["w", "wim", "tv", "skywire", "wtf-live", "mail"].includes(appKey)) return ["community-member", "creator", "collector"];
   return allPersonas;
@@ -1332,7 +1333,7 @@ export const BETA_UNLOCK_PASSPORTS: BetaUnlockPassport[] = [
     proofAccess: "session",
     nextRoute: "/digest",
     nextAccess: "session",
-    visibleNow: "W, WIM, WTF LIVE, Calendar, Digest, Mail, and Notifications make active people, rooms, replies, and events visible.",
+    visibleNow: "W, WIM, WTF LIVE, Calendar, Digest, Inbox, and Notifications make active people, rooms, replies, and events visible.",
     nextSafeAction: "Choose one person, post, room, or event, then join, reply, follow up, or save it as a low-risk social action.",
     proofNeeded: "A real interaction, room visit, message, event interest, or digest item that shows participation without forcing noise.",
     unlocksNext: "WIM follow-up, WTF LIVE participation, event reminders, notification tuning, and community challenge progress become natural next steps.",
@@ -1682,9 +1683,9 @@ export const BETA_ROUTE_GROUP_GUIDE: BetaRouteGroupGuide[] = [
     atlasTier: "all",
     atlasQuery: "",
     userQuestion: "Which social route owns feed, direct follow-up, live presence, and catch-up?",
-    confusionResolved: "W, WIM, WTF LIVE, Calendar, Digest, Mail, Notifications, and Skywire become one communication chain with different jobs.",
+    confusionResolved: "W, WIM, WTF LIVE, Calendar, Digest, Inbox, Notifications, and Skywire become one communication chain with different jobs.",
     useFirst: "Use W or public people proof first when the user needs to know other people exist.",
-    useNext: "Use WTF LIVE for time-bound presence, WIM for direct follow-up, Calendar for return timing, Digest for catch-up, Mail for slower private work, and Notifications for personal changes.",
+    useNext: "Use WTF LIVE for time-bound presence, WIM for direct follow-up, Calendar for return timing, Digest for catch-up, Inbox for slower private work, and Notifications for personal changes.",
     proofToLookFor: "Feed activity, room presence, direct-message context, scheduled event, digest item, unread personal change, or external broadcast signal.",
     quietRule: "If live rooms or feeds are quiet, keep Calendar, Digest, Leaderboards, and Arcade visible so the community still has a return path.",
     countWatch: "The Count watches abuse signals, moderation pressure, low-effort completions, and notification fatigue before rewarding social loops.",
@@ -2235,7 +2236,7 @@ export const BETA_NOTIFICATION_GROUPS: BetaNotificationGroup[] = [
     access: "session",
     purpose: "Replies, mentions, follows, DMs, and buddy actions prove other people noticed the user.",
     userQuestion: "Who noticed me?",
-    returnLoop: "Open Notifications, then choose W, WIM, Mail, or Digest as the right reply surface.",
+    returnLoop: "Open Notifications, then choose W, WIM, Inbox, or Digest as the right reply surface.",
   },
   {
     key: "progress",

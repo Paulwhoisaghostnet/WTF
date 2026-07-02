@@ -32,7 +32,7 @@ export const DB_PATH = optionalEnv("DB_PATH", "./data/bot.db");
 
 // ── Tezos network ─────────────────────────────────────────────────────────────
 
-const NETWORK_RAW = optionalEnv("TEZOS_NETWORK", "ghostnet") as TezosNetwork;
+const NETWORK_RAW = optionalEnv("TEZOS_NETWORK", "shadownet") as TezosNetwork;
 const REGISTRAR_ADDRESS = requireEnv("REGISTRAR_ADDRESS");
 
 const NETWORK_CONFIGS: Record<TezosNetwork, Omit<NetworkConfig, "registrarAddress">> = {

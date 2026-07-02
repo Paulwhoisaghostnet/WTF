@@ -63,7 +63,7 @@ export const buybackWindows = pgTable("buyback_windows", {
   id: serial("id").primaryKey(),
   label: varchar("label", { length: 120 }).notNull(),
   contractAddress: varchar("contract_address", { length: 40 }).notNull(),
-  network: collectionContractNetworkEnum("network").default("ghostnet").notNull(),
+  network: collectionContractNetworkEnum("network").default("shadownet").notNull(),
   status: buybackWindowStatusEnum("status").default("draft").notNull(),
   rateMutezPerWtf: numeric("rate_mutez_per_wtf", { precision: 40, scale: 0 }).notNull(),
   perSellerCapWtf: numeric("per_seller_cap_wtf", { precision: 40, scale: 0 }).notNull(),
@@ -274,4 +274,3 @@ export const collectionContracts = pgTable("collection_contracts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
-

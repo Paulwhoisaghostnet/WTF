@@ -14,6 +14,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { MOBILE } from "../global-styles";
+import { usePresentationShell } from "../lib/presentation-shell";
 
 const WELCOME_DIARY_COMPOSE_KEY = "wtf.dearDiary.compose";
 
@@ -53,6 +54,76 @@ const Shell = styled.div`
   gap: 8px;
   height: 100%;
   min-height: 520px;
+
+  &[data-dear-diary-presentation-host="gamma"] {
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px;
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.12);
+    border-radius: 6px;
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  &[data-dear-diary-presentation-host="gamma"],
+  &[data-dear-diary-presentation-host="gamma"] * {
+    letter-spacing: 0 !important;
+    text-shadow: none !important;
+  }
+
+  &[data-dear-diary-presentation-host="gamma"] [data-dear-diary-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-dear-diary-presentation-host="gamma"] :where(fieldset, [data-dear-diary-region="stats"], [data-dear-diary-region="entry-list"], [data-dear-diary-region="cross-ref-panel"]) {
+    background: #11110f !important;
+    color: #f2ead9 !important;
+    border-color: rgba(242, 234, 217, 0.16) !important;
+    border-width: 1px !important;
+  }
+
+  &[data-dear-diary-presentation-host="gamma"] :where(legend, label, span, strong, h1, h2, h3) {
+    color: #f2ead9 !important;
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif !important;
+  }
+
+  &[data-dear-diary-presentation-host="gamma"] :where(input, textarea, select) {
+    background: #070706 !important;
+    color: #f2ead9 !important;
+    border: 1px solid rgba(242, 234, 217, 0.24) !important;
+    border-radius: 6px !important;
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif !important;
+  }
+
+  &[data-dear-diary-presentation-host="gamma"] :where(button) {
+    background: #11110f !important;
+    color: #f2ead9 !important;
+    border-color: rgba(0, 210, 255, 0.42) !important;
+    border-width: 1px !important;
+    border-radius: 6px !important;
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif !important;
+  }
+
+  &[data-dear-diary-presentation-host="gamma"] :where(button:hover, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible) {
+    border-color: #00d2ff !important;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
+
+  &[data-dear-diary-presentation-host="gamma"] [data-dear-diary-region="entry-button"][data-active="true"],
+  &[data-dear-diary-presentation-host="gamma"] [data-dear-diary-region="pill-button"][data-active="true"],
+  &[data-dear-diary-presentation-host="gamma"] [data-dear-diary-region="save-button"] {
+    color: #00d2ff !important;
+    border-color: #00d2ff !important;
+  }
+
+  &[data-dear-diary-presentation-host="gamma"] [data-dear-diary-region="meta"] {
+    color: rgba(242, 234, 217, 0.62);
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
 
   ${MOBILE} {
     grid-template-columns: 1fr;
@@ -303,6 +374,7 @@ function payloadFromDraft(draft: Draft) {
 }
 
 export function DearDiary() {
+  const presentation = usePresentationShell();
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [draft, setDraft] = useState<Draft>(() => newDraft());
@@ -434,21 +506,30 @@ export function DearDiary() {
 
   return (
     <AppWindow title="Dear Diary" toolbar={toolbar}>
-      <Shell>
-        <Sidebar>
-          <GroupBox label="Find Entries">
-            <Field>
+      <Shell
+        data-dear-diary-surface="private-diary"
+        data-dear-diary-presentation-host={presentation.host}
+        data-dear-diary-region="shell"
+      >
+        <Sidebar data-dear-diary-region="sidebar">
+          <GroupBox label="Find Entries" data-dear-diary-region="search-panel">
+            <Field data-dear-diary-region="search-field">
               Search
               <TextInput
+                data-dear-diary-region="search-input"
                 value={search}
                 onChange={(event) => setSearch(event.currentTarget.value)}
                 placeholder="title, body, classification"
                 fullWidth
               />
             </Field>
-            <Field>
+            <Field data-dear-diary-region="sort-field">
               Sort
-              <NativeSelect value={sort} onChange={(event) => setSort(event.currentTarget.value)}>
+              <NativeSelect
+                data-dear-diary-region="sort-select"
+                value={sort}
+                onChange={(event) => setSort(event.currentTarget.value)}
+              >
                 <option value="entry_desc">Newest entry first</option>
                 <option value="entry_asc">Oldest entry first</option>
                 <option value="updated_desc">Recently edited</option>
@@ -457,21 +538,28 @@ export function DearDiary() {
             </Field>
           </GroupBox>
 
-          <Stats>
+          <Stats data-dear-diary-region="stats">
             <strong>Index</strong>
             <span>{entries.length} visible entries</span>
             <span>{classifications.length} classifications</span>
             <span>{tags.length} tags</span>
           </Stats>
 
-          <GroupBox label="Classifications">
-            <PillRow>
-              <PillButton $active={!classificationFilter} onClick={() => setClassificationFilter("")}>
+          <GroupBox label="Classifications" data-dear-diary-region="classifications-panel">
+            <PillRow data-dear-diary-region="pill-row">
+              <PillButton
+                data-dear-diary-region="pill-button"
+                data-active={!classificationFilter ? "true" : "false"}
+                $active={!classificationFilter}
+                onClick={() => setClassificationFilter("")}
+              >
                 All
               </PillButton>
               {classifications.map((item) => (
                 <PillButton
                   key={item.name}
+                  data-dear-diary-region="pill-button"
+                  data-active={classificationFilter === item.name ? "true" : "false"}
                   $active={classificationFilter === item.name}
                   onClick={() => setClassificationFilter(item.name)}
                 >
@@ -481,14 +569,21 @@ export function DearDiary() {
             </PillRow>
           </GroupBox>
 
-          <GroupBox label="Tags">
-            <PillRow>
-              <PillButton $active={!tagFilter} onClick={() => setTagFilter("")}>
+          <GroupBox label="Tags" data-dear-diary-region="tags-panel">
+            <PillRow data-dear-diary-region="pill-row">
+              <PillButton
+                data-dear-diary-region="pill-button"
+                data-active={!tagFilter ? "true" : "false"}
+                $active={!tagFilter}
+                onClick={() => setTagFilter("")}
+              >
                 All
               </PillButton>
               {tags.slice(0, 18).map((item) => (
                 <PillButton
                   key={item.name}
+                  data-dear-diary-region="pill-button"
+                  data-active={tagFilter === item.name ? "true" : "false"}
                   $active={tagFilter === item.name}
                   onClick={() => setTagFilter(item.name)}
                 >
@@ -498,24 +593,28 @@ export function DearDiary() {
             </PillRow>
           </GroupBox>
 
-          <EntryList>
+          <EntryList data-dear-diary-region="entry-list">
             {entriesQuery.isLoading ? (
-              <EmptyState>
+              <EmptyState data-dear-diary-region="loading">
                 <Hourglass size={24} /> Loading entries...
               </EmptyState>
             ) : entries.length === 0 ? (
-              <EmptyState>No entries yet. Start one for future-you.</EmptyState>
+              <EmptyState data-dear-diary-region="empty">No entries yet. Start one for future-you.</EmptyState>
             ) : (
               entries.map((entry) => (
                 <EntryButton
                   key={entry.id}
+                  data-dear-diary-region="entry-button"
+                  data-active={entry.id === selectedId ? "true" : "false"}
                   $active={entry.id === selectedId}
                   onClick={() => chooseEntry(entry)}
                 >
                   <EntrySummary>
                     <EntryTitle>{entry.title}</EntryTitle>
-                    <Meta>{formatDate(entry.entryAt)} · {entry.classification}</Meta>
-                    <Meta>{entry.tags.length ? entry.tags.join(", ") : "untagged"}</Meta>
+                    <Meta data-dear-diary-region="meta">{formatDate(entry.entryAt)} · {entry.classification}</Meta>
+                    <Meta data-dear-diary-region="meta">
+                      {entry.tags.length ? entry.tags.join(", ") : "untagged"}
+                    </Meta>
                   </EntrySummary>
                 </EntryButton>
               ))
@@ -523,20 +622,25 @@ export function DearDiary() {
           </EntryList>
         </Sidebar>
 
-        <Editor>
-          <GroupBox label={selectedEntry ? `Entry #${selectedEntry.id}` : "New Entry"}>
-            <FieldGrid>
-              <Field>
+        <Editor data-dear-diary-region="editor">
+          <GroupBox
+            label={selectedEntry ? `Entry #${selectedEntry.id}` : "New Entry"}
+            data-dear-diary-region="entry-panel"
+          >
+            <FieldGrid data-dear-diary-region="field-grid">
+              <Field data-dear-diary-region="title-field">
                 Title
                 <TextInput
+                  data-dear-diary-region="title-input"
                   value={draft.title}
                   onChange={(event) => setDraft({ ...draft, title: event.currentTarget.value })}
                   fullWidth
                 />
               </Field>
-              <Field>
+              <Field data-dear-diary-region="date-field">
                 Date kept
                 <NativeInput
+                  data-dear-diary-region="date-input"
                   type="datetime-local"
                   value={draft.entryAtLocal}
                   onChange={(event) => setDraft({ ...draft, entryAtLocal: event.currentTarget.value })}
@@ -544,10 +648,11 @@ export function DearDiary() {
               </Field>
             </FieldGrid>
 
-            <FieldGrid>
-              <Field>
+            <FieldGrid data-dear-diary-region="field-grid">
+              <Field data-dear-diary-region="classification-field">
                 Classification
                 <TextInput
+                  data-dear-diary-region="classification-input"
                   value={draft.classification}
                   onChange={(event) =>
                     setDraft({ ...draft, classification: event.currentTarget.value })
@@ -555,9 +660,10 @@ export function DearDiary() {
                   fullWidth
                 />
               </Field>
-              <Field>
+              <Field data-dear-diary-region="tags-field">
                 Tags
                 <TextInput
+                  data-dear-diary-region="tags-input"
                   value={draft.tagsText}
                   onChange={(event) => setDraft({ ...draft, tagsText: event.currentTarget.value })}
                   placeholder="comma, separated"
@@ -566,9 +672,10 @@ export function DearDiary() {
               </Field>
             </FieldGrid>
 
-            <Field>
+            <Field data-dear-diary-region="body-field">
               Entry
               <TextArea
+                data-dear-diary-region="body-input"
                 value={draft.body}
                 onChange={(event) => setDraft({ ...draft, body: event.currentTarget.value })}
                 placeholder="Dear Diary..."
@@ -576,10 +683,10 @@ export function DearDiary() {
             </Field>
           </GroupBox>
 
-          <GroupBox label="Cross References">
-            <CrossRefPanel>
+          <GroupBox label="Cross References" data-dear-diary-region="cross-ref-section">
+            <CrossRefPanel data-dear-diary-region="cross-ref-panel">
               {entries.filter((entry) => entry.id !== selectedId).length === 0 ? (
-                <Meta>No other entries to reference yet.</Meta>
+                <Meta data-dear-diary-region="meta">No other entries to reference yet.</Meta>
               ) : (
                 entries
                   .filter((entry) => entry.id !== selectedId)
@@ -595,20 +702,35 @@ export function DearDiary() {
               )}
             </CrossRefPanel>
             {backlinkIds.length > 0 && (
-              <Meta>Backlinked from entries: {backlinkIds.map((id) => `#${id}`).join(", ")}</Meta>
+              <Meta data-dear-diary-region="meta">
+                Backlinked from entries: {backlinkIds.map((id) => `#${id}`).join(", ")}
+              </Meta>
             )}
           </GroupBox>
 
           <Separator />
 
-          <Footer>
-            <div>{status && (status.toLowerCase().includes("could not") ? <ErrorText>{status}</ErrorText> : <Meta>{status}</Meta>)}</div>
-            <ButtonRow>
-              <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+          <Footer data-dear-diary-region="footer">
+            <div data-dear-diary-region="status">
+              {status && (status.toLowerCase().includes("could not") ? (
+                <ErrorText>{status}</ErrorText>
+              ) : (
+                <Meta data-dear-diary-region="meta">{status}</Meta>
+              ))}
+            </div>
+            <ButtonRow data-dear-diary-region="button-row">
+              <Button
+                data-dear-diary-region="save-button"
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending}
+              >
                 {saveMutation.isPending ? "Saving..." : "Save Entry"}
               </Button>
-              <Button onClick={startNew}>New Entry</Button>
+              <Button data-dear-diary-region="new-button" onClick={startNew}>
+                New Entry
+              </Button>
               <Button
+                data-dear-diary-region="delete-button"
                 disabled={!selectedId || deleteMutation.isPending}
                 onClick={() => selectedId && deleteMutation.mutate(selectedId)}
               >

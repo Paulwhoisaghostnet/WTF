@@ -25,8 +25,12 @@ function InlineDialog({
   children: ReactNode;
 }) {
   return (
-    <SettingsOverlay onClick={onClose}>
+    <SettingsOverlay data-board-dialog-overlay="true" onClick={onClose}>
       <SettingsWin
+        aria-label={title}
+        aria-modal="true"
+        data-board-dialog="management"
+        role="dialog"
         style={{ width, maxWidth: "95vw" }}
         onClick={(event) => event.stopPropagation()}
       >

@@ -1,0 +1,40 @@
+{
+  "id": "jackbox-party-pack-11",
+  "name": "Jackbox Party Pack 11",
+  "category": "Party game",
+  "summary": "The latest remote-hosted Jackbox pack for shared-room play.",
+  "cover_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3364070/35c35317cc3f6ac5733896ab00c4cfbd5a1a025d/header.jpg?t=1774630140",
+  "cover_image_alt": "Jackbox Party Pack 11 cover art",
+  "executable": "/opt/wtfos/apphost/bin/steam-launch.sh",
+  "working_directory": "/opt/wtfos/apphost/home",
+  "environment": {
+    "HOME": "/opt/wtfos/apphost/home",
+    "XDG_RUNTIME_DIR": "/opt/wtfos/apphost/run/user",
+    "STEAM_APP_ID": "3364070",
+    "STEAM_RUNTIME": "1"
+  },
+  "startup_timeout": 360,
+  "health_check": {
+    "type": "process_name",
+    "pattern": "TJPP11_(OpenGL|Vulkan)",
+    "user": "wtfos-apphost",
+    "timeout": 5
+  },
+  "runtime": {
+    "display": {
+      "width": 1280,
+      "height": 720
+    },
+    "input": {
+      "pointer": true,
+      "keyboard": true,
+      "clipboard": false
+    },
+    "storage": {
+      "workspace_required": false,
+      "export_paths": []
+    }
+  },
+  "display_required": true,
+  "audio_required": true
+}

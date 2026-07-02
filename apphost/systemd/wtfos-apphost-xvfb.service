@@ -1,0 +1,21 @@
+[Unit]
+Description=wtfOS Application Host virtual X display
+After=network.target
+
+[Service]
+Type=simple
+User=wtfos-apphost
+Group=wtfos-apphost
+Environment=HOME=/opt/wtfos/apphost/home
+Environment=DISPLAY=:99
+ExecStartPre=/usr/bin/install -d -m 0750 -o wtfos-apphost -g wtfos-apphost /opt/wtfos/apphost/run
+ExecStart=/usr/bin/Xvfb :99 -screen 0 1280x720x24 -nolisten tcp +extension GLX +render -noreset
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/wtfos/apphost
+
+[Install]
+WantedBy=multi-user.target

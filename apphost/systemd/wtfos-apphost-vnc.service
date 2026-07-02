@@ -1,0 +1,16 @@
+[Unit]
+Description=wtfOS Remote Application Host VNC Bridge
+After=wtfos-apphost-xvfb.service wtfos-apphost-wm.service
+Requires=wtfos-apphost-xvfb.service
+PartOf=wtfos-apphost.service
+
+[Service]
+User=wtfos-apphost
+Group=wtfos-apphost
+Environment=DISPLAY=:99
+ExecStart=/usr/bin/x11vnc -display :99 -rfbport 5901 -localhost -forever -shared -nopw -noxdamage -repeat -quiet
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

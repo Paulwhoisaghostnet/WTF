@@ -5,6 +5,7 @@ import { Button, Checkbox, Hourglass, Panel, Separator, TextInput } from "react9
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { usePresentationShell } from "../lib/presentation-shell";
 
 type DickswordConfig = {
   guildId: string;
@@ -75,6 +76,8 @@ type DickswordMe = {
   roleMappings: RoleMapping[];
 };
 
+const gammaDickswordScope = `[data-dicksword-presentation-host="gamma"]`;
+
 const Shell = styled.div`
   min-height: 100%;
   background: #c0c0c0;
@@ -82,6 +85,12 @@ const Shell = styled.div`
   font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
   padding: 8px;
   box-sizing: border-box;
+
+  &[data-dicksword-presentation-host="gamma"] {
+    background: #070706;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
 `;
 
 const Header = styled(Panel).attrs({ variant: "well" })`
@@ -91,6 +100,15 @@ const Header = styled(Panel).attrs({ variant: "well" })`
   align-items: end;
   padding: 10px;
   margin-bottom: 8px;
+
+  ${gammaDickswordScope} & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+    color: #f2ead9;
+  }
 
   @media (max-width: 720px) {
     grid-template-columns: 1fr;
@@ -103,6 +121,12 @@ const Title = styled.h1`
   letter-spacing: -0.04em;
   line-height: 0.9;
   color: #000080;
+
+  ${gammaDickswordScope} & {
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
 `;
 
 const Subtitle = styled.p`
@@ -111,6 +135,10 @@ const Subtitle = styled.p`
   font-size: 13px;
   line-height: 1.5;
   margin: 10px 0 0;
+
+  ${gammaDickswordScope} & {
+    color: rgba(242, 234, 217, 0.72);
+  }
 `;
 
 const StatusBlock = styled.div`
@@ -120,6 +148,14 @@ const StatusBlock = styled.div`
   border: 2px inset #dfdfdf;
   font-size: 12px;
   line-height: 1.6;
+
+  ${gammaDickswordScope} & {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 6px;
+    color: #f2ead9;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  }
 `;
 
 const Layout = styled.div`
@@ -135,12 +171,28 @@ const Layout = styled.div`
 const Section = styled(Panel).attrs({ variant: "well" })`
   padding: 10px;
   margin-bottom: 8px;
+
+  ${gammaDickswordScope} & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+    color: #f2ead9;
+  }
 `;
 
 const SectionTitle = styled.h2`
   margin: 0 0 8px;
   font-size: 16px;
   color: #000080;
+
+  ${gammaDickswordScope} & {
+    color: #00d2ff;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
 `;
 
 const Muted = styled.p`
@@ -148,6 +200,10 @@ const Muted = styled.p`
   color: #404040;
   font-size: 12px;
   line-height: 1.5;
+
+  ${gammaDickswordScope} & {
+    color: rgba(242, 234, 217, 0.68);
+  }
 `;
 
 const Command = styled.code`
@@ -158,6 +214,14 @@ const Command = styled.code`
   padding: 5px 7px;
   margin: 3px 0;
   font-size: 11px;
+
+  ${gammaDickswordScope} & {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 4px;
+    color: #d6ff3f;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  }
 `;
 
 const ActivityRow = styled.div`
@@ -168,6 +232,11 @@ const ActivityRow = styled.div`
   padding: 8px 0;
   border-bottom: 1px solid #808080;
   font-size: 12px;
+
+  ${gammaDickswordScope} & {
+    border-bottom: 1px solid rgba(242, 234, 217, 0.12);
+    color: #f2ead9;
+  }
 `;
 
 const AvatarStage = styled.div`
@@ -181,6 +250,13 @@ const AvatarStage = styled.div`
   background-size: 24px 24px;
   border: 2px inset #dfdfdf;
   overflow: hidden;
+
+  ${gammaDickswordScope} & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 6px;
+  }
 `;
 
 const AvatarLayer = styled.img`
@@ -208,6 +284,13 @@ const LayerToggle = styled.label<{ $disabled?: boolean }>`
   border: 2px outset #ffffff;
   opacity: ${(p) => (p.$disabled ? 0.45 : 1)};
   font-size: 12px;
+
+  ${gammaDickswordScope} & {
+    background: rgba(242, 234, 217, 0.06);
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
 `;
 
 const AdminGrid = styled.div`
@@ -221,11 +304,27 @@ const Field = styled.label`
   gap: 4px;
   color: #101010;
   font-size: 11px;
+
+  ${gammaDickswordScope} & {
+    color: #f2ead9;
+  }
+
+  ${gammaDickswordScope} & select {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 5px;
+    color: #f2ead9;
+    min-height: 32px;
+  }
 `;
 
 const Tiny = styled.span`
   color: #505050;
   font-size: 11px;
+
+  ${gammaDickswordScope} & {
+    color: rgba(242, 234, 217, 0.58);
+  }
 `;
 
 const LoadingPanel = styled(Panel).attrs({ variant: "well" })`
@@ -233,6 +332,14 @@ const LoadingPanel = styled(Panel).attrs({ variant: "well" })`
   align-items: center;
   gap: 10px;
   padding: 14px;
+
+  ${gammaDickswordScope} & {
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+    color: #f2ead9;
+  }
 `;
 
 const FormBreak = styled(Separator)`
@@ -254,6 +361,7 @@ function isStaffRole(role: string | undefined) {
 
 export function Dicksword() {
   const { user } = useAuth();
+  const presentation = usePresentationShell();
   const qc = useQueryClient();
   const [claimCode, setClaimCode] = useState<string | null>(null);
   const [layerForm, setLayerForm] = useState({
@@ -372,7 +480,10 @@ export function Dicksword() {
   if (meQuery.isLoading) {
     return (
       <AppWindow title="Dicksword">
-        <Shell>
+        <Shell
+          data-dicksword-presentation-host={presentation.host}
+          data-dicksword-surface="true"
+        >
           <LoadingPanel>
             <Hourglass size={32} /> Loading Dicksword...
           </LoadingPanel>
@@ -383,8 +494,11 @@ export function Dicksword() {
 
   return (
     <AppWindow title="Dicksword">
-      <Shell>
-        <Header>
+      <Shell
+        data-dicksword-presentation-host={presentation.host}
+        data-dicksword-surface="true"
+      >
+        <Header data-dicksword-region="header">
           <div>
             <Title>Dicksword</Title>
             <Muted>
@@ -393,7 +507,7 @@ export function Dicksword() {
               you want to stay native.
             </Muted>
           </div>
-          <StatusBlock>
+          <StatusBlock data-dicksword-region="status">
             <div>Guild: {config?.guildId ?? "not configured"}</div>
             <div>
               Discord:{" "}
@@ -482,7 +596,7 @@ export function Dicksword() {
                 Layers render by stack order. Conflicting accessories are blocked
                 before saving so paper-doll combinations do not misprint.
               </Muted>
-              <AvatarStage>
+              <AvatarStage data-dicksword-region="avatar-stage">
                 {selectedLayers.map((layer) => (
                   <AvatarLayer key={layer.id} src={layer.assetUrl} alt={layer.label} />
                 ))}

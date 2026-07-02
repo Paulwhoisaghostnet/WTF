@@ -71,6 +71,8 @@ type CommunityBumpersPanelProps = {
   ) => void;
 };
 
+const gammaMyVideosScope = `[data-my-videos-presentation-host="gamma"]`;
+
 const ScrollWrap = styled.div`
   flex: 1;
   min-height: 0;
@@ -84,6 +86,10 @@ const Grid = styled.div`
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+
+  ${gammaMyVideosScope} & {
+    gap: 10px;
+  }
 `;
 
 const Card = styled.div`
@@ -93,6 +99,14 @@ const Card = styled.div`
   flex-direction: column;
   box-shadow: 1px 1px 0 #000;
   overflow: hidden;
+
+  ${gammaMyVideosScope} & {
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    color: #f2ead9;
+    box-shadow: none;
+  }
 `;
 
 const Thumb = styled.div`
@@ -110,6 +124,11 @@ const Thumb = styled.div`
     max-height: 100%;
     object-fit: contain;
   }
+
+  ${gammaMyVideosScope} & {
+    background: #050505;
+    border-bottom: 1px solid rgba(242, 234, 217, 0.14);
+  }
 `;
 
 const Info = styled.div`
@@ -123,6 +142,11 @@ const Title = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  ${gammaMyVideosScope} & {
+    color: #f8f1df;
+    font-weight: 700;
+  }
 `;
 
 const Meta = styled.div`
@@ -130,6 +154,11 @@ const Meta = styled.div`
   color: var(--wtf-app-muted, #4b5563);
   line-height: 1.3;
   margin-top: 3px;
+
+  ${gammaMyVideosScope} & {
+    color: rgba(242, 234, 217, 0.66);
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+  }
 `;
 
 const EmptyText = styled.p`
@@ -138,10 +167,19 @@ const EmptyText = styled.p`
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted, #4b5563);
   line-height: 1.35;
+
+  ${gammaMyVideosScope} & {
+    color: rgba(242, 234, 217, 0.68);
+  }
 `;
 
 const BumperWrap = styled.div`
   margin-top: 8px;
+
+  ${gammaMyVideosScope} & {
+    border-top: 1px solid rgba(242, 234, 217, 0.12);
+    padding-top: 8px;
+  }
 `;
 
 const CardActions = styled.div`
@@ -154,6 +192,11 @@ const CardActions = styled.div`
     min-height: 32px;
     font-size: var(--wtf-type-caption, 13px);
   }
+
+  ${gammaMyVideosScope} & {
+    border-top: 1px solid rgba(242, 234, 217, 0.14);
+    padding-top: 6px;
+  }
 `;
 
 const ErrorText = styled.p`
@@ -161,6 +204,11 @@ const ErrorText = styled.p`
   color: var(--wtf-app-danger, #b00020);
   font-size: var(--wtf-type-caption, 13px);
   line-height: 1.35;
+
+  ${gammaMyVideosScope} & {
+    color: #ff9d8c;
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+  }
 `;
 
 function mediaPlaybackUrl(item: MyVideoMediaItem): string {
@@ -233,8 +281,8 @@ function MediaCard(props: {
     onToggleBumper,
   } = props;
   return (
-    <Card>
-      <Thumb>
+    <Card data-my-videos-region="channel-media-card">
+      <Thumb data-my-videos-region="channel-media-thumb">
         <video
           src={mediaPlaybackUrl(item)}
           muted
@@ -243,10 +291,10 @@ function MediaCard(props: {
           style={{ pointerEvents: "none" }}
         />
       </Thumb>
-      <Info>
+      <Info data-my-videos-region="channel-media-info">
         <Title>{item.title}</Title>
         <Meta>{item.mimeType}</Meta>
-        <BumperWrap>
+        <BumperWrap data-my-videos-region="channel-bumper-wrap">
           <BumperControls
             item={item}
             assignments={bumperAssignments}
@@ -310,20 +358,20 @@ export function ChannelBucketsPanel({
         </div>
       ) : selectedChannelDetail ? (
         <ScrollWrap>
-          <GroupBox label={`${selectedChannelDetail.channel.title} Media`}>
+          <GroupBox label={`${selectedChannelDetail.channel.title} Media`} data-my-videos-region="channel-panel">
             {selectedChannelDetail.videos.length === 0 ? (
               <EmptyText>
                 No media on this channel yet.
               </EmptyText>
             ) : (
-              <Grid style={{ maxHeight: 360 }}>
+              <Grid style={{ maxHeight: 360 }} data-my-videos-region="channel-grid">
                 {selectedChannelDetail.videos.map((video) => {
                   const mediaItem = video.mediaItemId
                     ? mediaById.get(video.mediaItemId)
                     : null;
                   return (
-                    <Card key={video.id}>
-                      <Thumb>
+                    <Card key={video.id} data-my-videos-region="channel-media-card">
+                      <Thumb data-my-videos-region="channel-media-thumb">
                         <video
                           src={
                             mediaItem
@@ -337,13 +385,13 @@ export function ChannelBucketsPanel({
                           style={{ pointerEvents: "none" }}
                         />
                       </Thumb>
-                      <Info>
+                      <Info data-my-videos-region="channel-media-info">
                         <Title>
                           {mediaItem?.title || video.title || `Video #${video.id}`}
                         </Title>
                         <Meta>{video.mimeType}</Meta>
                         {mediaItem && (
-                          <BumperWrap>
+                          <BumperWrap data-my-videos-region="channel-bumper-wrap">
                             <BumperControls
                               item={mediaItem}
                               assignments={bumperAssignments}
@@ -358,7 +406,7 @@ export function ChannelBucketsPanel({
                             Import this token into My Videos to use bumper toggles.
                           </Meta>
                         )}
-                        <CardActions>
+                        <CardActions data-my-videos-region="channel-actions">
                           <Button
                             size="sm"
                             disabled={removeVideoPending}
@@ -382,13 +430,13 @@ export function ChannelBucketsPanel({
             )}
           </GroupBox>
 
-          <GroupBox label="Bumpers on This Channel">
+          <GroupBox label="Bumpers on This Channel" data-my-videos-region="channel-bumpers-panel">
             {uniqueBumperMedia.length === 0 ? (
               <EmptyText>
                 No media-library videos are assigned as bumpers yet.
               </EmptyText>
             ) : (
-              <Grid style={{ maxHeight: 320 }}>
+              <Grid style={{ maxHeight: 320 }} data-my-videos-region="channel-bumper-grid">
                 {uniqueBumperMedia.map((item) => (
                   <MediaCard
                     key={`channel-bumper-${item.id}`}
@@ -443,7 +491,7 @@ export function CommunityBumpersPanel({
   }
 
   return (
-    <Grid>
+    <Grid data-my-videos-region="community-bumper-grid">
       {communityBumperMedia.map((item) => (
         <MediaCard
           key={`community-bumper-${item.id}`}

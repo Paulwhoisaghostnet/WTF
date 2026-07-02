@@ -17,6 +17,7 @@ import type {
   HamsterGenetics,
   HamsterState,
 } from "./desktop";
+import type { LocalizationSettings } from "./localization";
 import { users } from "./schema-core";
 import { xpEvents } from "./schema-admin";
 
@@ -50,6 +51,10 @@ export const userDesktopSettings = pgTable("user_desktop_settings", {
     .notNull(),
   iconLayout: jsonb("icon_layout")
     .$type<DesktopIconLayout>()
+    .default(sql`'{}'::jsonb`)
+    .notNull(),
+  localization: jsonb("localization")
+    .$type<LocalizationSettings>()
     .default(sql`'{}'::jsonb`)
     .notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

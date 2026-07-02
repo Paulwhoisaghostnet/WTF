@@ -23,3 +23,10 @@ test("message user search supports WIM roster presence without exposing self", (
 test("DM conversation payload keeps participant id available to clients", () => {
   assert.match(messagesRoute, /id: users\.id,\s+userId: users\.id/s);
 });
+
+test("DM comms cards are indexed per participant, not as global digest items", () => {
+  assert.match(messagesRoute, /for \(const participant of participants\)/);
+  assert.match(messagesRoute, /externalRef: `dm:\$\{message\.id\}:user:\$\{participant\.userId\}`/);
+  assert.match(messagesRoute, /targetUserId: participant\.userId/);
+  assert.doesNotMatch(messagesRoute, /targetUserId:\s*null,\s*metadata:\s*\{\s*conversationId/s);
+});

@@ -18,10 +18,11 @@ Generated from the current wtfOS Pasta Protocol source, plans, route fixtures, a
 - `adversarial/`: break-the-story review matrix.
 - `gaps/`: remaining implementation and environment gaps.
 - `validation/`: coverage matrix.
+- `tests/`: generated validation manifest, feature test catalog, cross-app catalog, deployment catalog, adversarial catalog, and requirements traceability.
 
 ## Binding Product Notes
 
 - Macaroni remains Macaroni and is the proven base. Do not rename or rebrand it.
-- Tortellini is intentionally not a product in the current owner-approved model.
+- Tortellini is intentionally not a product in the current owner-approved model. `CH-EASE -> Tortellini` is a blocked-flow story, not permission to create a Tortellini app.
 - New Pasta apps use the AGENTS.md Tezos RPC defaults.
 - Embedded wtfOS pinning/hosting is trusted-creator-only and must not appear in standalone downloads.

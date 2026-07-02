@@ -13,6 +13,9 @@ test("desktop settings route exposes and enforces optimistic concurrency tokens"
   assert.match(route, /clientProvidedConcurrencyToken/);
   assert.match(route, /status\(409\)\.json/);
   assert.match(route, /desktop_settings_conflict/);
+  assert.match(route, /normalizeLocalizationSettings/);
+  assert.match(route, /localization: nextLocalization/);
+  assert.match(route, /localization: normalizeLocalizationSettings\(row\.localization\)/);
   assert.match(route, /expectedUpdatedAtDate = new Date\(expectedUpdatedAt\)/);
   assert.match(route, /eq\(userDesktopSettings\.updatedAt, expectedUpdatedAtDate\)/);
   assert.match(route, /onConflictDoNothing\(\)/);

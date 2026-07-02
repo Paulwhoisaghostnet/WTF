@@ -20,6 +20,8 @@ import { useAuth } from "../../lib/auth-context";
 import { CustomCursor } from "../../features/desktop/CustomCursor";
 import { CursedDesktopEffects } from "../../features/desktop/CursedDesktopEffects";
 import { DesktopPet, type DesktopObstacle } from "../../features/desktop/DesktopPet";
+import { DesktopScreenSaver } from "../../features/desktop/DesktopScreenSaver";
+import { ReggieAssistant } from "../../features/reggie/ReggieAssistant";
 import {
   DesktopWeatherCloud,
   loadDesktopWeatherRule,
@@ -72,11 +74,25 @@ import {
   type DesktopAppearance,
   type DesktopIconLayout,
 } from "@shared/desktop";
+import {
+  DEFAULT_LOCALIZATION_SETTINGS,
+  type LocalizationSettings,
+} from "@shared/localization";
 import type { DesktopAppsResponse } from "@shared/desktop-apps";
+import { useLocalization } from "../../lib/localization";
 
 type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
   iconLayout: DesktopIconLayout;
+  localization: LocalizationSettings;
+  updatedAt: string | null;
+};
+
+type InboxUnreadCountResponse = {
+  total: number;
+  notifications: number;
+  dms: number;
+  mail: number;
 };
 
 type DesktopClientEventPayload = {
@@ -313,60 +329,6 @@ const RouteLayer = styled.div`
   }
 `;
 
-const ScreenSaver = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: 5000;
-  background:
-    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.22) 0 1px, transparent 2px),
-    radial-gradient(circle at 76% 64%, rgba(255, 255, 255, 0.2) 0 1px, transparent 2px),
-    #020008;
-  overflow: hidden;
-  pointer-events: auto;
-`;
-
-const SaverLogo = styled.div`
-  position: absolute;
-  width: 220px;
-  height: 82px;
-  left: 8%;
-  top: 20%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #fff;
-  background: #000080;
-  color: #ffff00;
-  font-weight: 900;
-  font-size: 42px;
-  letter-spacing: 8px;
-  box-shadow: 4px 4px 0 #ff00ff;
-  animation: saver-drift 9s linear infinite alternate;
-
-  @keyframes saver-drift {
-    0% {
-      transform: translate(0, 0);
-    }
-    28% {
-      transform: translate(58vw, 15vh);
-    }
-    55% {
-      transform: translate(18vw, 58vh);
-    }
-    82% {
-      transform: translate(68vw, 48vh);
-    }
-    100% {
-      transform: translate(4vw, 70vh);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-`;
-
-
 export function Desktop({
   children,
   showTaskbar = true,
@@ -378,6 +340,7 @@ export function Desktop({
 }) {
   const wm = useWindowManager();
   const { user } = useAuth();
+  const { t, translateSystemText } = useLocalization();
   const qc = useQueryClient();
   const contentRef = useRef<HTMLDivElement>(null);
   const hotCornerTimer = useRef<number | null>(null);
@@ -432,6 +395,12 @@ export function Desktop({
           previous?.appearance ??
           DEFAULT_DESKTOP_APPEARANCE,
         iconLayout: payload.iconLayout ?? current?.iconLayout ?? previous?.iconLayout ?? {},
+        localization:
+          payload.localization ??
+          current?.localization ??
+          previous?.localization ??
+          DEFAULT_LOCALIZATION_SETTINGS,
+        updatedAt: current?.updatedAt ?? previous?.updatedAt ?? null,
       }));
       return { previous, revision };
     },
@@ -457,6 +426,13 @@ export function Desktop({
     !suspendDesktopEffects &&
     (customCursorStyle !== "system" || blangsCursed || invertedMouseCursed);
   const appAccessBlocked = !canOpenAppsForRole(user?.roles ?? user?.role ?? null);
+  const inboxUnreadQuery = useQuery({
+    queryKey: ["inbox", "unread-count"],
+    queryFn: () => api.get<InboxUnreadCountResponse>("/api/comms/unread-count"),
+    enabled: !!user && !appAccessBlocked,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
   const desktopPetEnabled = !suspendDesktopEffects && !!user && appearance.desktopPetEnabled;
   const desktopArtifacts = useDesktopArtifacts({
     enabled: !suspendDesktopEffects && !!user,
@@ -584,14 +560,18 @@ export function Desktop({
     "game-studio": sourceApps["game-studio"],
     dedrooms: sourceApps.dedrooms,
     studio: sourceApps.studio,
+    "ch-ease": sourceApps["ch-ease"],
+    "pasta-protocol": sourceApps["pasta-protocol"],
     gallery: sourceApps.gallery,
     "ipfs-pinning": sourceApps["ipfs-pinning"],
     skywire: sourceApps.skywire,
     "wtf-live": sourceApps["wtf-live"],
     tz2at: sourceApps.tz2at,
     "crp-nominations": sourceApps["crp-nominations"],
+    "wtf-subdomains": sourceApps["wtf-subdomains"],
     "rat-race": sourceApps["rat-race"],
     "map-lab": sourceApps["map-lab"],
+    agent: sourceApps.agent,
     mail: sourceApps.mail,
   };
 
@@ -620,6 +600,7 @@ export function Desktop({
       apps["crp-nominations"],
       apps["rat-race"],
       apps["map-lab"],
+      apps.agent,
       apps.studio,
       apps.tv,
       apps.wim,
@@ -631,13 +612,26 @@ export function Desktop({
   const visibleIcons = useMemo(() => iconDefs.filter((icon) => icon.enabled), [iconDefs]);
   const renderedVisibleIcons = useMemo<DesktopIconDef[]>(
     () =>
-      blangsCursed
-        ? visibleIcons.map((icon) => ({
-            ...icon,
-            icon: <BlangDesktopIcon src="/cursors/blang-side-eye.png" alt="" draggable={false} />,
-          }))
-        : visibleIcons,
-    [blangsCursed, visibleIcons]
+      visibleIcons.map((icon) => {
+        const renderedIcon = blangsCursed
+          ? {
+              ...icon,
+              icon: <BlangDesktopIcon src="/cursors/blang-side-eye.png" alt="" draggable={false} />,
+            }
+          : icon;
+        return renderedIcon.key === "mail"
+          ? { ...renderedIcon, badgeCount: inboxUnreadQuery.data?.total ?? 0 }
+          : renderedIcon;
+      }),
+    [blangsCursed, inboxUnreadQuery.data?.total, visibleIcons]
+  );
+  const localizedRenderedVisibleIcons = useMemo<DesktopIconDef[]>(
+    () =>
+      renderedVisibleIcons.map((icon) => ({
+        ...icon,
+        label: translateSystemText(icon.label),
+      })),
+    [renderedVisibleIcons, translateSystemText]
   );
   const shortcutIconDefs = useMemo<DesktopIconDef[]>(
     () =>
@@ -983,14 +977,14 @@ export function Desktop({
       event.stopPropagation();
       const entries: Win95ContextMenuEntry[] = [
         {
-          label: "Open",
+          label: t("desktop.context.open"),
           disabled: !def.openPath || appAccessBlocked,
           onSelect: () => handleDesktopIconOpen(def),
         },
       ];
       if (def.openPath && !appAccessBlocked) {
         entries.push({
-          label: "Create Shortcut",
+          label: t("desktop.context.createShortcut"),
           onSelect: () =>
             addDesktopShortcut(
               {
@@ -1006,7 +1000,7 @@ export function Desktop({
       entries.push(
         { kind: "separator" },
         {
-          label: "Properties",
+          label: t("desktop.context.properties"),
           disabled: true,
           onSelect: () => {},
         }
@@ -1020,7 +1014,7 @@ export function Desktop({
         metadata: { label: def.label },
       });
     },
-    [addDesktopShortcut, appAccessBlocked, handleDesktopIconOpen, reportDesktopEvent]
+    [addDesktopShortcut, appAccessBlocked, handleDesktopIconOpen, reportDesktopEvent, t]
   );
 
   const openShortcutContextMenu = useCallback(
@@ -1035,7 +1029,7 @@ export function Desktop({
         y: event.clientY,
         entries: [
           {
-            label: "Open",
+            label: t("desktop.context.open"),
             disabled: appAccessBlocked,
             onSelect: () => {
               if (appAccessBlocked) return;
@@ -1051,7 +1045,7 @@ export function Desktop({
           },
           { kind: "separator" },
           {
-            label: "Delete Shortcut",
+            label: t("desktop.context.deleteShortcut"),
             onSelect: () => {
               setDesktopShortcuts((current) => current.filter((item) => item.id !== shortcut.id));
               reportDesktopEvent({
@@ -1064,7 +1058,7 @@ export function Desktop({
             },
           },
           {
-            label: "Properties",
+            label: t("desktop.context.properties"),
             disabled: true,
             onSelect: () => {},
           },
@@ -1078,7 +1072,7 @@ export function Desktop({
         metadata: { label: shortcut.label, path: shortcut.path },
       });
     },
-    [appAccessBlocked, reportDesktopEvent, wm]
+    [appAccessBlocked, reportDesktopEvent, t, wm]
   );
 
   const openDesktopItemContextMenu = useCallback(
@@ -1106,14 +1100,14 @@ export function Desktop({
           },
           { kind: "separator" },
           {
-            label: "Remove from Desktop",
+            label: t("desktop.context.removeFromDesktop"),
             onSelect: () => {
               desktopArtifacts.removeDesktopItem(item.id);
               handleDesktopItemInteract(item, "context_remove");
             },
           },
           {
-            label: "Properties",
+            label: t("desktop.context.properties"),
             disabled: true,
             onSelect: () => {},
           },
@@ -1127,7 +1121,7 @@ export function Desktop({
         metadata: { label },
       });
     },
-    [desktopArtifacts, handleDesktopItemInteract, reportDesktopEvent]
+    [desktopArtifacts, handleDesktopItemInteract, reportDesktopEvent, t]
   );
 
   const handleShortcutMove = useCallback(
@@ -1237,19 +1231,19 @@ export function Desktop({
         y: event.clientY,
         entries: [
           {
-            label: "Refresh",
+            label: t("desktop.context.refresh"),
             onSelect: () => {
               void qc.invalidateQueries({ queryKey: ["desktop", "apps"] });
               void qc.invalidateQueries({ queryKey: DESKTOP_SETTINGS_QUERY_KEY });
             },
           },
           {
-            label: "Reset Native Icons",
+            label: t("desktop.context.resetNativeIcons"),
             onSelect: resetNativeIconLayout,
           },
           { kind: "separator" },
           {
-            label: "System Appearance",
+            label: t("desktop.context.systemAppearance"),
             disabled: appAccessBlocked,
             onSelect: () => wm.openPage("/desktop-settings"),
           },
@@ -1263,7 +1257,7 @@ export function Desktop({
         metadata: { source: "surface" },
       });
     },
-    [appAccessBlocked, qc, reportDesktopEvent, resetNativeIconLayout, targetOwnsDesktopInteraction, wm]
+    [appAccessBlocked, qc, reportDesktopEvent, resetNativeIconLayout, targetOwnsDesktopInteraction, t, wm]
   );
 
   const handleDesktopPointerDown = useCallback(
@@ -1356,7 +1350,7 @@ export function Desktop({
         {!suspendDesktopEffects ? (
           <>
             <DesktopSurface>
-              {renderedVisibleIcons.map((def) => (
+              {localizedRenderedVisibleIcons.map((def) => (
                 <DraggableIcon
                   key={def.key}
                   def={def}
@@ -1439,6 +1433,7 @@ export function Desktop({
           itemsRef={desktopArtifacts.itemsRef}
           setItems={desktopArtifacts.setItems}
         />
+        <ReggieAssistant />
       </ContentArea>
       {showTaskbar ? (
         <Taskbar
@@ -1449,11 +1444,7 @@ export function Desktop({
           onWeatherRuleChange={handleDesktopWeatherRuleChange}
         />
       ) : null}
-      {screensaverActive && (
-        <ScreenSaver aria-hidden="true">
-          <SaverLogo>WTF</SaverLogo>
-        </ScreenSaver>
-      )}
+      {screensaverActive && <DesktopScreenSaver />}
       {customCursorEnabled && !(invertedMouseCursed && !blangsCursed) ? (
         <CustomCursor style={customCursorStyle} />
       ) : null}

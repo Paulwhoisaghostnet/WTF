@@ -14,6 +14,7 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { TokenCard as SharedTokenCard, TokenDetailModal, TokenGrid, type TokenCardData, type TokenCardAction } from "../components/TokenCard";
 import { api } from "../lib/api";
 import { getTokenMimeType, isImageMime, cacheProxyUrl } from "../lib/media-resolve";
+import { usePresentationShell } from "../lib/presentation-shell";
 import {
   provenanceCreatorLabel,
   provenanceSupportLinks,
@@ -56,12 +57,44 @@ interface OwnedToken {
 
 /* ─── Styles ─────────────────────────────────────────── */
 
+const gammaMyPhotosScope = `[data-my-photos-presentation-host="gamma"]`;
+
 const Content = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
   height: 100%;
   min-height: 0;
+
+  &[data-my-photos-presentation-host="gamma"] {
+    background: #080807;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 4px;
+  }
+
+  &[data-my-photos-presentation-host="gamma"] [data-my-photos-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-my-photos-presentation-host="gamma"] button,
+  &[data-my-photos-presentation-host="gamma"] input {
+    font-family: inherit;
+  }
+
+  &[data-my-photos-presentation-host="gamma"] fieldset {
+    background: rgba(17, 17, 15, 0.96);
+    border: 1px solid rgba(242, 234, 217, 0.2);
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  &[data-my-photos-presentation-host="gamma"] legend {
+    color: #00d2ff;
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+  }
 `;
 
 const ToolBar = styled.div`
@@ -75,6 +108,11 @@ const InlineMeta = styled.span`
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted, #4b5563);
   white-space: nowrap;
+
+  ${gammaMyPhotosScope} & {
+    color: rgba(242, 234, 217, 0.68);
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+  }
 `;
 
 const LibGrid = styled.div`
@@ -84,6 +122,10 @@ const LibGrid = styled.div`
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+
+  ${gammaMyPhotosScope} & {
+    gap: 10px;
+  }
 `;
 
 const ScrollWrap = styled.div`
@@ -100,6 +142,14 @@ const PhotoCard = styled.div`
   cursor: pointer;
   box-shadow: 1px 1px 0 #000;
   overflow: hidden;
+
+  ${gammaMyPhotosScope} & {
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    color: #f2ead9;
+    box-shadow: none;
+  }
 `;
 
 const PhotoThumb = styled.div`
@@ -111,6 +161,11 @@ const PhotoThumb = styled.div`
   justify-content: center;
   overflow: hidden;
   img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+  ${gammaMyPhotosScope} & {
+    background: #050505;
+    border-bottom: 1px solid rgba(242, 234, 217, 0.14);
+  }
 `;
 
 const PhotoInfo = styled.div`
@@ -123,18 +178,37 @@ const PhotoTitle = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  ${gammaMyPhotosScope} & {
+    color: #f8f1df;
+    font-weight: 700;
+  }
 `;
 
 const PhotoMeta = styled.div`
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted, #4b5563);
   margin-top: 2px;
+
+  ${gammaMyPhotosScope} & {
+    color: rgba(242, 234, 217, 0.66);
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+  }
+
+  ${gammaMyPhotosScope} & a {
+    color: #00d2ff;
+  }
 `;
 
 const CardActions = styled.div`
   margin-top: 6px;
   display: flex;
   gap: 4px;
+
+  ${gammaMyPhotosScope} & {
+    border-top: 1px solid rgba(242, 234, 217, 0.14);
+    padding-top: 6px;
+  }
 `;
 
 const UploadArea = styled.div`
@@ -145,6 +219,19 @@ const UploadArea = styled.div`
   font-size: var(--wtf-type-body, 14px);
   cursor: pointer;
   &:hover { background: #e8e8e8; }
+
+  ${gammaMyPhotosScope} & {
+    background: #0b0b0a;
+    border: 1px dashed rgba(0, 210, 255, 0.54);
+    border-radius: 6px;
+    color: #f2ead9;
+    min-height: 128px;
+  }
+
+  ${gammaMyPhotosScope} &:hover {
+    background: #10100e;
+    border-color: #00d2ff;
+  }
 `;
 
 const UploadForm = styled.div`
@@ -163,6 +250,10 @@ const EmptyText = styled.p`
   padding: 8px;
   margin: 0;
   color: var(--wtf-app-muted, #4b5563);
+
+  ${gammaMyPhotosScope} & {
+    color: rgba(242, 234, 217, 0.68);
+  }
 `;
 
 const StateText = styled.p<{ $tone?: "success" | "danger" }>`
@@ -180,6 +271,7 @@ const MAX_UPLOAD_MB = 25;
 
 export function MyPhotos() {
   const qc = useQueryClient();
+  const presentation = usePresentationShell();
   const [tab, setTab] = useState(0);
   const [search, setSearch] = useState("");
   const [detailToken, setDetailToken] = useState<TokenCardData | null>(null);
@@ -303,13 +395,16 @@ export function MyPhotos() {
 
   return (
     <AppWindow title="🖼️ My Photos">
-      <Content>
+      <Content
+        data-my-photos-presentation-host={presentation.host}
+        data-my-photos-region="content"
+      >
         <Tabs value={tab} onChange={(v: number) => setTab(v)}>
           <Tab value={0}>Library</Tab>
           <Tab value={1}>Import from Tokens</Tab>
           <Tab value={2}>Upload</Tab>
         </Tabs>
-        <TabBody>
+        <TabBody data-my-photos-region="tab-body">
           {/* ─── Library tab ─── */}
           {tab === 0 && (
             <>
@@ -322,16 +417,16 @@ export function MyPhotos() {
                   No photos in your library yet. Import from tokens or upload directly.
                 </EmptyText>
               ) : (
-                <LibGrid>
+                <LibGrid data-my-photos-region="library-grid">
                   {mediaItems.map((item) => {
                     const provenance = readEmbeddedProvenance(item);
                     const supportLink = provenanceSupportLinks(provenance)[0] || null;
                     return (
-                      <PhotoCard key={item.id}>
-                        <PhotoThumb>
+                      <PhotoCard key={item.id} data-my-photos-region="photo-card">
+                        <PhotoThumb data-my-photos-region="photo-thumb">
                           <img src={getMediaUrl(item)} alt={item.title} loading="lazy" />
                         </PhotoThumb>
-                        <PhotoInfo>
+                        <PhotoInfo data-my-photos-region="photo-info">
                           <PhotoTitle>{item.title}</PhotoTitle>
                           <PhotoMeta>
                             {item.mimeType}
@@ -364,7 +459,7 @@ export function MyPhotos() {
                               )}
                             </PhotoMeta>
                           )}
-                          <CardActions>
+                          <CardActions data-my-photos-region="card-actions">
                             <Button
                               size="sm"
                               disabled={deleteMutation.isPending}
@@ -387,7 +482,7 @@ export function MyPhotos() {
           {/* ─── Import from Tokens tab ─── */}
           {tab === 1 && (
             <>
-              <ToolBar>
+              <ToolBar data-my-photos-region="token-toolbar">
                 <TextInput
                   aria-label="Search image tokens"
                   value={search}
@@ -410,7 +505,7 @@ export function MyPhotos() {
                   No image tokens found in your wallets. Sync your wallet in Profile.
                 </EmptyText>
               ) : (
-                <ScrollWrap>
+                <ScrollWrap data-my-photos-region="token-scroll">
                   <TokenGrid $size="md">
                     {filteredTokens.map((token) => (
                       <SharedTokenCard
@@ -428,15 +523,15 @@ export function MyPhotos() {
 
           {/* ─── Upload tab ─── */}
           {tab === 2 && (
-            <GroupBox label="Upload Image">
-              <UploadForm>
+            <GroupBox label="Upload Image" data-my-photos-region="upload-panel">
+              <UploadForm data-my-photos-region="upload-form">
                 <TextInput
                   aria-label="Image upload title"
                   value={uploadTitle}
                   onChange={(e: any) => setUploadTitle(e.target?.value ?? "")}
                   placeholder="Image title (optional)"
                 />
-                <UploadArea onClick={() => document.getElementById("photo-upload-input")?.click()}>
+                <UploadArea data-my-photos-region="upload-area" onClick={() => document.getElementById("photo-upload-input")?.click()}>
                   {uploadMutation.isPending ? (
                     <Hourglass size={24} />
                   ) : (

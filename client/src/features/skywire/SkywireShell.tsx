@@ -5,6 +5,7 @@ import {
   Bell,
   Bug,
   Clapperboard,
+  Flame,
   Home,
   Mail,
   PenLine,
@@ -326,6 +327,7 @@ const NAV_ICONS: Partial<Record<SkywireTab | "wtf-live", LucideIcon>> = {
   composer: PenLine,
   debug: Bug,
   discover: Search,
+  hot: Flame,
   home: Home,
   market: ShoppingCart,
   mentions: Bell,
@@ -337,7 +339,7 @@ const NAV_ICONS: Partial<Record<SkywireTab | "wtf-live", LucideIcon>> = {
   "wtf-live": Clapperboard,
 };
 
-const PRIMARY_NAV_IDS = new Set<SkywireTab>(["home", "market", "signals", "chat", "vault", "account"]);
+const PRIMARY_NAV_IDS = new Set<SkywireTab>(["home", "hot", "market", "chat", "vault", "account"]);
 
 export function SkywireSidebar({
   isAdmin,
@@ -368,6 +370,9 @@ export function SkywireSidebar({
         key={item.id}
         type="button"
         $active={sidebarTab === item.id}
+        data-skywire-region="nav-button"
+        data-skywire-active={sidebarTab === item.id ? "true" : "false"}
+        data-skywire-tab={item.id}
         aria-current={sidebarTab === item.id ? "page" : undefined}
         onClick={() => onSelect(item.id)}
         title={item.hint}
@@ -384,22 +389,29 @@ export function SkywireSidebar({
   };
 
   return (
-    <Sidebar aria-label="Skywire navigation">
-      <PrimaryNavRow>
+    <Sidebar aria-label="Skywire navigation" data-skywire-region="sidebar">
+      <PrimaryNavRow data-skywire-region="primary-nav">
         {primaryItems.map(renderNavButton)}
-        <MoreNavDetails open={Boolean(activeSecondaryItem)}>
-          <MoreNavSummary>{activeSecondaryItem ? activeSecondaryItem.label : "More"}</MoreNavSummary>
-          <SecondaryNavPanel>
+        <MoreNavDetails open={Boolean(activeSecondaryItem)} data-skywire-region="more-nav">
+          <MoreNavSummary data-skywire-region="more-nav-summary">{activeSecondaryItem ? activeSecondaryItem.label : "More"}</MoreNavSummary>
+          <SecondaryNavPanel data-skywire-region="secondary-nav">
             {secondaryGroups.map((group: SkywireNavGroup) => (
-              <NavGroup key={group.id}>
+              <NavGroup key={group.id} data-skywire-region="nav-group">
                 <NavGroupLabel>{group.label}</NavGroupLabel>
                 {group.items.map(renderNavButton)}
               </NavGroup>
             ))}
             {onOpenWtfLive ? (
-              <NavGroup>
+              <NavGroup data-skywire-region="nav-group">
                 <NavGroupLabel>Separate app</NavGroupLabel>
-                <NavButton type="button" onClick={onOpenWtfLive} title="Public rooms and stage broadcasts">
+                <NavButton
+                  type="button"
+                  data-skywire-region="nav-button"
+                  data-skywire-active="false"
+                  data-skywire-tab="wtf-live"
+                  onClick={onOpenWtfLive}
+                  title="Public rooms and stage broadcasts"
+                >
                   <NavIconSlot aria-hidden>
                     <Clapperboard size={16} strokeWidth={2.2} />
                   </NavIconSlot>
@@ -434,7 +446,7 @@ export function SkywireContextBar({
   if (!title) return null;
 
   return (
-    <ContextBar>
+    <ContextBar data-skywire-region="context-bar">
       <ContextTitle>{title}</ContextTitle>
       <Button size="sm" onClick={onBack}>
         ← Back
@@ -455,7 +467,7 @@ export function SkywireConnectWelcome({
   onHandleChange: (value: string) => void;
 }) {
   return (
-    <WelcomeCard>
+    <WelcomeCard data-skywire-region="welcome-card">
       <GroupBox label="Welcome to Skywire">
         <StepList>
           <li>Sign in to WTF OS first — Skywire uses your WTF session.</li>
@@ -496,7 +508,7 @@ export function SkywireCapabilityGate({
     : SKYWIRE_PERMISSION_TIER_OPTIONS[1].title;
 
   return (
-    <CapabilityCard>
+    <CapabilityCard data-skywire-region="capability-card">
       <strong>{title}</strong>
       <span>{body}</span>
       <span>
@@ -520,8 +532,8 @@ export function SkywireSettingsSection({
   children: ReactNode;
 }) {
   return (
-    <SettingsSection>
-      <SectionHeader>
+    <SettingsSection data-skywire-region="settings-section">
+      <SectionHeader data-skywire-region="settings-section-header">
         <strong>
           Step {step} · {title}
         </strong>
@@ -535,9 +547,9 @@ export function SkywireSettingsSection({
 export function SkywirePermissionOverview() {
   return (
     <GroupBox label="Permission tiers at a glance">
-      <TierGrid>
+      <TierGrid data-skywire-region="tier-grid">
         {SKYWIRE_PERMISSION_TIER_OPTIONS.map((option) => (
-          <TierCard key={option.key}>
+          <TierCard key={option.key} data-skywire-region="tier-card">
             <strong>{option.title}</strong>
             <span>{option.summary}</span>
           </TierCard>
@@ -555,7 +567,7 @@ export function SkywireAdminSettingsHint({
   onOpenWindowAdmin?: () => void;
 }) {
   return (
-    <AdminHint>
+    <AdminHint data-skywire-region="admin-hint">
       <strong>Admin controls</strong>
       <span>
         Use the <strong>Admin</strong> button in the window title bar to toggle desktop apps, rollout env vars, and
@@ -609,7 +621,7 @@ export function SkywireHomeCompose({
   }
 
   return (
-    <ComposeBox>
+    <ComposeBox data-skywire-region="compose-box">
       <strong>What's happening?</strong>
       <TextArea
         value={text}
@@ -653,9 +665,9 @@ export function SkywireMainLayout({
   children: ReactNode;
 }) {
   return (
-    <MainLayout>
+    <MainLayout data-skywire-region="main-layout">
       {sidebar}
-      <ContentPane>
+      <ContentPane data-skywire-region="content-pane">
         {contextBar}
         {children}
       </ContentPane>

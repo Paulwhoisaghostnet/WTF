@@ -24,6 +24,7 @@ test("Start Menu app gates hide disabled WTF OS launchers", () => {
   assert.equal(isStartMenuItemEnabled("/arcade", apps), true);
   assert.equal(isStartMenuItemEnabled("/console", apps), false);
   assert.equal(isStartMenuItemEnabled("/my-gallery", apps), false);
+  assert.equal(isStartMenuItemEnabled("/agent", { agent: false }), false);
   assert.equal(isStartMenuItemEnabled("/wtf-subdomains", { "wtf-subdomains": false }), false);
   assert.equal(isStartMenuItemEnabled("/tools/ch-ease", { "ch-ease": false }), false);
   assert.equal(isStartMenuItemEnabled("/tools/macaroni-packager", { "ch-ease": false }), false);
@@ -147,7 +148,7 @@ test("Start Menu model keeps Casino in Gaming and My Games in My Media", () => {
 
   assert.deepEqual(
     gaming.items.map((item) => item.label),
-    ["WTF Casino", "WTF Arcade", "Game Console", "Game Studio"]
+    ["WTF Casino", "WTF Arcade", "Game Console", "Game Studio", "DedRooms"]
   );
   assert.equal(gaming.items.find((item) => item.path === "/casino")?.disabled, true);
   assert.equal(myMedia.items.find((item) => item.label === "My Games")?.path, "/console");
@@ -169,6 +170,7 @@ test("Start Menu model respects auth roles and desktop app gates", () => {
       gallery: false,
       "pasta-protocol": false,
       "wtf-subdomains": false,
+      agent: false,
     },
     "contestant"
   );
@@ -182,6 +184,7 @@ test("Start Menu model respects auth roles and desktop app gates", () => {
   assert(!userPaths.includes("/tools/colander"));
   assert(!userPaths.includes("/tools/spaghetti"));
   assert(!userPaths.includes("/wtf-subdomains"));
+  assert(!userPaths.includes("/agent"));
   assert(!userPaths.includes("/admin"));
 
   const hostGroups = buildStartMenuGroups(
@@ -282,6 +285,6 @@ test("Start Menu search can open a whole category by group name", () => {
   assert.equal(groups[0].label, "Gaming");
   assert.deepEqual(
     groups[0].items.map((item) => item.label),
-    ["WTF Casino", "WTF Arcade", "Game Console", "Game Studio"]
+    ["WTF Casino", "WTF Arcade", "Game Console", "Game Studio", "DedRooms"]
   );
 });

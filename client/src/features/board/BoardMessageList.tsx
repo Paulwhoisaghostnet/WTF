@@ -217,7 +217,7 @@ export function BoardMessageList({
                       React
                     </MsgActBtn>
                     {showEmojiFor === message.id && (
-                      <EmojiPicker>
+                      <EmojiPicker data-board-popover="emoji">
                         {EMOJI_QUICK.map((emoji) => (
                           <button
                             key={emoji}

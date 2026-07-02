@@ -231,7 +231,7 @@ function parseNetwork(flags: Flags): PlatformWalletNetwork {
     flags.network ||
       process.env.WTF_E2E_PUPPET_NETWORK ||
       process.env.WTF_PLATFORM_WALLET_NETWORK ||
-      "ghostnet"
+      "shadownet"
   );
 }
 
@@ -244,7 +244,7 @@ function rpcForNetwork(network: PlatformWalletNetwork): string {
     case "mainnet":
       return "https://tezos-mainnet.octez.io/";
     case "custom":
-      return process.env.WTF_OPERATOR_SIGNER_RPC || "https://rpc.ghostnet.teztnets.com";
+      return process.env.WTF_OPERATOR_SIGNER_RPC || "https://tezos-shadownet.octez.io/";
   }
 }
 

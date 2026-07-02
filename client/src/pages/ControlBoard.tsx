@@ -21,12 +21,64 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { UserLink } from "../components/UserLink";
+import { usePresentationShell } from "../lib/presentation-shell";
 
 const Stack = styled.div`
   display: flex;
   flex-direction: column;
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
+
+  &[data-control-board-presentation-host="gamma"] {
+    padding: 16px;
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-control-board-presentation-host="gamma"],
+  &[data-control-board-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-control-board-presentation-host="gamma"] [data-control-board-region] {
+    background-image: none;
+    border-radius: 6px;
+  }
+
+  &[data-control-board-presentation-host="gamma"] :where(fieldset, table, [data-control-board-region="tab-body"], [data-control-board-region="modal"]) {
+    color: #f2ead9;
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-control-board-presentation-host="gamma"] :where(input, select) {
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 6px;
+  }
+
+  &[data-control-board-presentation-host="gamma"] :where(button) {
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(0, 210, 255, 0.54);
+    border-radius: 6px;
+  }
+
+  &[data-control-board-presentation-host="gamma"] :where(button:hover, button:focus-visible, input:focus-visible, select:focus-visible) {
+    color: #070706;
+    background: #00d2ff;
+    outline: 2px solid #00d2ff;
+    outline-offset: 2px;
+  }
+
+  &[data-control-board-presentation-host="gamma"] a {
+    color: #00d2ff;
+  }
 `;
 
 const Row = styled.div`
@@ -62,6 +114,29 @@ const ModalBody = styled.div`
   padding: var(--wtf-space-4, 16px);
   max-width: 420px;
   width: 92%;
+
+  &[data-control-board-presentation-host="gamma"] {
+    color: #f2ead9;
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-control-board-presentation-host="gamma"] :where(input) {
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 6px;
+  }
+
+  &[data-control-board-presentation-host="gamma"] :where(button) {
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(0, 210, 255, 0.54);
+    border-radius: 6px;
+  }
 `;
 
 const RULE_KINDS = [
@@ -141,6 +216,7 @@ function asArray<T>(value: unknown): T[] {
 }
 
 export function ControlBoard() {
+  const presentation = usePresentationShell();
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -300,7 +376,11 @@ export function ControlBoard() {
   if (seasonsQuery.isLoading) {
     return (
       <AppWindow title="Control Board">
-        <Stack>
+        <Stack
+          data-control-board-surface="gameshow-admin"
+          data-control-board-presentation-host={presentation.host}
+          data-control-board-region="surface"
+        >
           <Hourglass size={24} />
           <Muted>Loading seasons...</Muted>
         </Stack>
@@ -310,8 +390,12 @@ export function ControlBoard() {
 
   return (
     <AppWindow title="Control Board">
-      <Stack>
-        <Row>
+      <Stack
+        data-control-board-surface="gameshow-admin"
+        data-control-board-presentation-host={presentation.host}
+        data-control-board-region="surface"
+      >
+        <Row data-control-board-region="season-row">
           <Muted>Season:</Muted>
           <Select<number>
             options={
@@ -337,7 +421,7 @@ export function ControlBoard() {
           )}
         </Row>
 
-        <Tabs value={tab} onChange={(v) => setTab(v as typeof tab)}>
+        <Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} data-control-board-region="tabs">
           <Tab value="cohort">Cohort</Tab>
           <Tab value="round">Round</Tab>
           <Tab value="tickets">Tickets</Tab>
@@ -346,7 +430,7 @@ export function ControlBoard() {
           <Tab value="season3">Season 3</Tab>
         </Tabs>
 
-        <TabBody>
+        <TabBody data-control-board-region="tab-body" data-control-board-active-tab={tab}>
           {tab === "cohort" ? (
             <CohortTab
               active={activeContestants}
@@ -408,6 +492,7 @@ export function ControlBoard() {
           }
           submitting={eliminateMutation.isPending}
           error={(eliminateMutation.error as Error | null)?.message ?? null}
+          presentationHost={presentation.host}
         />
       ) : null}
     </AppWindow>
@@ -482,7 +567,7 @@ function ContestantTable(props: {
     return <Muted>{props.emptyText}</Muted>;
   }
   return (
-    <Table>
+    <Table data-control-board-region="contestant-table">
       <TableHead>
         <TableRow>
           <TableHeadCell>User</TableHeadCell>
@@ -541,7 +626,7 @@ function RoundTab(props: {
 
   return (
     <Stack>
-      <Row>
+      <Row data-control-board-region="round-selector">
         <Muted>Round:</Muted>
         <Select<number>
           options={props.rounds.map((r) => ({
@@ -561,8 +646,8 @@ function RoundTab(props: {
         <Muted>Select a round to manage.</Muted>
       ) : (
         <>
-          <GroupBox label="Elimination rule">
-            <Row>
+          <GroupBox label="Elimination rule" data-control-board-region="panel">
+            <Row data-control-board-region="row">
               <Select<RuleKind>
                 options={RULE_KINDS.map((k) => ({
                   value: k.value,
@@ -616,6 +701,7 @@ function RoundTab(props: {
           </GroupBox>
 
           <GroupBox
+            data-control-board-region="panel"
             label={`Draft eliminations (${props.draftsForRound.length})`}
           >
             {props.draftsForRound.length === 0 ? (
@@ -624,7 +710,7 @@ function RoundTab(props: {
                 list is empty.
               </Muted>
             ) : (
-              <Table>
+              <Table data-control-board-region="draft-table">
                 <TableHead>
                   <TableRow>
                     <TableHeadCell>User</TableHeadCell>
@@ -655,7 +741,7 @@ function RoundTab(props: {
             )}
           </GroupBox>
 
-          <Row>
+          <Row data-control-board-region="actions">
             <Button
               disabled={!props.canAdvance || props.advancing}
               onClick={() => props.onAdvance(round.id)}
@@ -676,7 +762,7 @@ function RoundTab(props: {
 function AuditTab(props: { feed: OperatorAction[] }) {
   if (props.feed.length === 0) return <Muted>No operator actions yet.</Muted>;
   return (
-    <Table>
+    <Table data-control-board-region="audit-table">
       <TableHead>
         <TableRow>
           <TableHeadCell>When</TableHeadCell>
@@ -786,7 +872,7 @@ function TicketsTab() {
 
   return (
     <Stack>
-      <Row>
+      <Row data-control-board-region="ticket-filter">
         <Muted>Queue:</Muted>
         <Select
           options={[
@@ -930,6 +1016,7 @@ function EliminateModal(props: {
   }) => void;
   submitting: boolean;
   error: string | null;
+  presentationHost: string;
 }) {
   const [typed, setTyped] = useState("");
   const [reason, setReason] = useState("");
@@ -939,8 +1026,8 @@ function EliminateModal(props: {
     typed.trim().toLowerCase() === props.contestant.username.toLowerCase();
 
   return (
-    <ModalBackdrop>
-      <ModalBody>
+    <ModalBackdrop data-control-board-region="modal-backdrop">
+      <ModalBody data-control-board-region="modal" data-control-board-presentation-host={props.presentationHost}>
         <h3 style={{ marginTop: 0 }}>Confirm elimination</h3>
         <p>
           Type the contestant's username exactly to confirm elimination of{" "}

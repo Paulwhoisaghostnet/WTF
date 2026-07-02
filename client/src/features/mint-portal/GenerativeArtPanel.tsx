@@ -266,8 +266,8 @@ export function GenerativeArtPanel() {
     : undefined;
 
   return (
-    <Stack>
-      <GroupBox label="Generative Art Minting Studio">
+    <Stack data-generative-art-surface="mint-portal-generative" data-generative-art-region="surface">
+      <GroupBox label="Generative Art Minting Studio" data-generative-art-region="editor-panel">
         <Muted>
           Write a p5.js sketch. Preview it live, then download as a
           self-contained ZIP for IPFS upload and on-chain minting.
@@ -275,10 +275,11 @@ export function GenerativeArtPanel() {
 
         <Separator style={{ margin: "8px 0" }} />
 
-        <Row>
+        <Row data-generative-art-region="metadata-row">
           <span style={{ fontSize: 12 }}>Artwork title:</span>
           <input
             value={title}
+            data-generative-art-region="title-input"
             onChange={(e) => setTitle(e.target.value)}
             style={{
               flex: 1,
@@ -295,11 +296,12 @@ export function GenerativeArtPanel() {
           onChange={(e) => setCode(e.target.value)}
           rows={18}
           spellCheck={false}
+          data-generative-art-region="editor"
         />
 
-        <Row style={{ marginTop: 6 }}>
-          <Button onClick={handlePreview}>▶ Preview</Button>
-          <Button onClick={handleDownloadZip}>⬇ Download ZIP</Button>
+        <Row style={{ marginTop: 6 }} data-generative-art-region="actions">
+          <Button onClick={handlePreview} data-generative-art-region="preview-action">▶ Preview</Button>
+          <Button onClick={handleDownloadZip} data-generative-art-region="export-action">⬇ Download ZIP</Button>
           <Muted>
             ZIP contains a standalone <code>index.html</code> ready for IPFS.
           </Muted>
@@ -307,13 +309,14 @@ export function GenerativeArtPanel() {
       </GroupBox>
 
       {showPreview && (
-        <GroupBox label="Live Preview">
+        <GroupBox label="Live Preview" data-generative-art-region="preview-panel">
           <PreviewFrame
             key={previewKey}
             ref={iframeRef}
             src={previewSrc}
             sandbox="allow-scripts"
             title="Generative art preview"
+            data-generative-art-region="preview-frame"
           />
           <Muted style={{ marginTop: 4 }}>
             Sandboxed iframe — click Preview again after editing to refresh.
@@ -321,7 +324,7 @@ export function GenerativeArtPanel() {
         </GroupBox>
       )}
 
-      <GroupBox label="Minting guide">
+      <GroupBox label="Minting guide" data-generative-art-region="guide">
         <p style={{ fontSize: 11 }}>
           1. Write your p5.js sketch in the editor above.{" "}
           <code>setup()</code> and <code>draw()</code> are the standard p5

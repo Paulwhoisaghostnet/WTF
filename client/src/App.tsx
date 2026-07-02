@@ -13,6 +13,7 @@ import { DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
 import { queryClient } from "./lib/query-client";
 import { api } from "./lib/api";
 import { AuthProvider, useAuth } from "./lib/auth-context";
+import { LocalizationProvider, useLocalization } from "./lib/localization";
 import { logClientSystemEvent } from "./lib/system-log";
 import { MusicPlayerProvider } from "./features/music/MusicPlayerContext";
 import { WalletProvider } from "./lib/wallet-context";
@@ -36,6 +37,7 @@ import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { WtfOsCliShell } from "./features/wtfos-cli/WtfOsCliShell";
 import { getInterfaceMode } from "./features/wtfos-cli/interface-mode";
+import { readPresentationHostFromSession } from "./lib/presentation-shell";
 import {
   getPageAccessState,
   type DesktopAppAvailability,
@@ -62,6 +64,28 @@ function isBetaHost(): boolean {
 function isGammaHost(): boolean {
   if (typeof window === "undefined") return false;
   return window.location.hostname === "gamma.wtfos.app";
+}
+
+function isGammaShellLocation(location: string): boolean {
+  if (isGammaHost()) return true;
+  if (isBetaHost()) return false;
+  const pathname = location.split("?")[0]?.split("#")[0] ?? location;
+  if (pathname === "/gamma" || pathname.startsWith("/gamma/")) return true;
+  if (pathname === "/beta" || pathname.startsWith("/beta/")) return false;
+  if (readPresentationHostFromSession() !== "gamma") return false;
+  if (pathname === "/") return true;
+  return Boolean(matchPage(location));
+}
+
+function isBetaShellLocation(location: string): boolean {
+  if (isBetaHost()) return true;
+  if (isGammaHost()) return false;
+  const pathname = location.split("?")[0]?.split("#")[0] ?? location;
+  if (pathname === "/beta" || pathname.startsWith("/beta/")) return true;
+  if (pathname === "/gamma" || pathname.startsWith("/gamma/")) return false;
+  if (readPresentationHostFromSession() !== "beta") return false;
+  if (pathname === "/") return true;
+  return Boolean(matchPage(location));
 }
 
 function locationHasSkywireStandaloneFlag(location: string): boolean {
@@ -97,9 +121,11 @@ function WindowCrashFallback({
   onClose: () => void;
 }) {
   const isDev = import.meta.env.DEV;
+  const { t, translateSystemText } = useLocalization();
+  const localizedTitle = translateSystemText(title);
 
   return (
-    <AppWindow title={`${title} - crashed`}>
+    <AppWindow title={t("appWindow.crashedTitle", { title: localizedTitle })}>
       <div
         role="alert"
         style={{
@@ -109,10 +135,9 @@ function WindowCrashFallback({
           padding: 8,
         }}
       >
-        <strong>This app hit a render error.</strong>
+        <strong>{t("appWindow.renderErrorTitle")}</strong>
         <span>
-          The rest of WTF OS is still running. You can retry this window or close
-          it and keep working.
+          {t("appWindow.renderErrorBody")}
         </span>
         {isDev && error ? (
           <pre
@@ -132,10 +157,10 @@ function WindowCrashFallback({
         ) : null}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="button" onClick={onReset}>
-            Retry
+            {t("common.retry")}
           </button>
           <button type="button" onClick={onClose}>
-            Close {path}
+            {t("appWindow.close", { title: path })}
           </button>
         </div>
       </div>
@@ -154,6 +179,10 @@ function AdminDisabledAppFallback({
   appKey: DesktopAppKey | null;
   onClose: () => void;
 }) {
+  const { t, translateSystemText } = useLocalization();
+  const localizedTitle = translateSystemText(title);
+  const localizedLabel = translateSystemText(appLabel);
+
   useEffect(() => {
     logClientSystemEvent({
       eventType: "desktop.app.disabled_by_admin",
@@ -162,7 +191,7 @@ function AdminDisabledAppFallback({
   }, [appKey, appLabel, title]);
 
   return (
-    <AppWindow title={`${title} - disabled`}>
+    <AppWindow title={t("appWindow.disabledTitle", { title: localizedTitle })}>
       <div
         role="alert"
         style={{
@@ -172,14 +201,11 @@ function AdminDisabledAppFallback({
           padding: 8,
         }}
       >
-        <strong>{appLabel} has been disabled by admin.</strong>
-        <span>
-          This app is currently unavailable. Ask an admin to re-enable it or
-          adjust role access before trying again.
-        </span>
+        <strong>{t("appWindow.disabledHeading", { label: localizedLabel })}</strong>
+        <span>{t("appWindow.disabledBody")}</span>
         <div>
           <button type="button" onClick={onClose}>
-            Close
+            {t("common.close")}
           </button>
         </div>
       </div>
@@ -426,6 +452,7 @@ function URLSync({ appAvailability }: { appAvailability: DesktopAppAvailability 
 function AppContent() {
   const [location, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
+  const { t } = useLocalization();
   const roleInput = user?.roles ?? user?.role ?? null;
   const desktopAppsQuery = useQuery({
     queryKey: ["desktop", "apps"],
@@ -452,8 +479,8 @@ function AppContent() {
   const showRegister = location === "/register";
   const showLanding = location === "/" && !user;
   const authOverlayActive = showLogin || showRegister || showLanding;
-  const gammaHomeMatch = isGammaHost() && location === "/" ? matchPage("/gamma") : null;
-  const betaHomeMatch = isBetaHost() && location === "/" ? matchPage("/beta") : null;
+  const gammaShellMatch = isGammaShellLocation(location) ? matchPage("/gamma") : null;
+  const betaShellMatch = isBetaShellLocation(location) ? matchPage("/beta") : null;
   const skywireStandaloneLocation = skywireStandaloneRouteLocation(location);
   const skywireStandaloneMatch = skywireStandaloneLocation
     ? matchPage(skywireStandaloneLocation)
@@ -478,6 +505,14 @@ function AppContent() {
     }
   }, [authOverlayActive, isLoading, location, setLocation, user]);
 
+  if (gammaShellMatch) {
+    return <FullscreenRouteRenderer match={gammaShellMatch} />;
+  }
+
+  if (betaShellMatch) {
+    return <FullscreenRouteRenderer match={betaShellMatch} />;
+  }
+
   if (location === "/cli") {
     if (isLoading || !user) {
       return (
@@ -491,19 +526,11 @@ function AppContent() {
             fontFamily: "var(--wtf-mono-font)",
           }}
         >
-          Loading wtfOS CLI…
+          {t("common.loadingCli")}
         </div>
       );
     }
     return <WtfOsCliShell />;
-  }
-
-  if (gammaHomeMatch) {
-    return <FullscreenRouteRenderer match={gammaHomeMatch} />;
-  }
-
-  if (betaHomeMatch) {
-    return <FullscreenRouteRenderer match={betaHomeMatch} />;
   }
 
   if (skywireStandaloneMatch) {
@@ -561,16 +588,18 @@ export default function App() {
         }
       >
         <AuthProvider>
-          <WtfOsAppearanceProvider>
-            <GlobalStyles />
-            <WalletProvider>
-              <EtherlinkWalletProvider>
-                <MusicPlayerProvider>
-                  <AppContent />
-                </MusicPlayerProvider>
-              </EtherlinkWalletProvider>
-            </WalletProvider>
-          </WtfOsAppearanceProvider>
+          <LocalizationProvider>
+            <WtfOsAppearanceProvider>
+              <GlobalStyles />
+              <WalletProvider>
+                <EtherlinkWalletProvider>
+                  <MusicPlayerProvider>
+                    <AppContent />
+                  </MusicPlayerProvider>
+                </EtherlinkWalletProvider>
+              </WalletProvider>
+            </WtfOsAppearanceProvider>
+          </LocalizationProvider>
         </AuthProvider>
       </StyleSheetManager>
     </QueryClientProvider>

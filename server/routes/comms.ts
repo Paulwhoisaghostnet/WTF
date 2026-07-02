@@ -1,7 +1,17 @@
 import { Router } from "express";
 import { z } from "zod";
+import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
+import { db } from "../db";
 import type { CommunicationItemKind } from "@shared/comms";
+import {
+  communicationItems,
+  communicationReadStates,
+  communicationSources,
+  dmConversationParticipants,
+  dmMessages,
+  userNotifications,
+} from "@shared/schema";
 import {
   ensureDefaultCommunicationSources,
   listCommunicationCards,
@@ -49,6 +59,79 @@ router.get("/api/comms/items", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error("[comms] items failed:", err);
     res.status(500).json({ error: "Failed to list communication items" });
+  }
+});
+
+router.get("/api/comms/unread-count", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const userId = Number(user.id);
+
+    const [[notificationUnread], [dmUnread], [mailUnread]] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(userNotifications)
+        .where(
+          and(
+            eq(userNotifications.userId, userId),
+            eq(userNotifications.read, false)
+          )
+        ),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(dmMessages)
+        .innerJoin(
+          dmConversationParticipants,
+          and(
+            eq(dmConversationParticipants.conversationId, dmMessages.conversationId),
+            eq(dmConversationParticipants.userId, userId)
+          )
+        )
+        .where(
+          and(
+            sql`${dmMessages.senderId} <> ${userId}`,
+            or(
+              isNull(dmConversationParticipants.lastReadAt),
+              gt(dmMessages.createdAt, dmConversationParticipants.lastReadAt)
+            )
+          )
+        ),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(communicationItems)
+        .innerJoin(
+          communicationSources,
+          eq(communicationItems.sourceId, communicationSources.id)
+        )
+        .leftJoin(
+          communicationReadStates,
+          and(
+            eq(communicationReadStates.itemId, communicationItems.id),
+            eq(communicationReadStates.userId, userId)
+          )
+        )
+        .where(
+          and(
+            eq(communicationSources.key, "mail"),
+            eq(communicationItems.targetUserId, userId),
+            isNull(communicationReadStates.id),
+            sql`coalesce(${communicationItems.metadata}->>'direction', 'inbound') = 'inbound'`
+          )
+        ),
+    ]);
+
+    const notifications = Number(notificationUnread?.count || 0);
+    const dms = Number(dmUnread?.count || 0);
+    const mail = Number(mailUnread?.count || 0);
+    res.json({
+      total: notifications + dms + mail,
+      notifications,
+      dms,
+      mail,
+    });
+  } catch (err) {
+    console.error("[comms] unread count failed:", err);
+    res.status(500).json({ error: "Failed to count unread communications" });
   }
 });
 

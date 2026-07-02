@@ -41,7 +41,57 @@ const state = {
   wtfLivePrivateRoom: null,
   wtfLivePrivateMembers: [],
   wtfLiveOwnedStage: { id: "my-stage", title: "My Stage", kind: "stage", description: "Owned stage", liveUrl: "/live", source: "user", ownerUserId: 1, isPublic: true },
+  wtfLiveStageMembers: [{ userId: 2, username: "wtf-user", displayName: "WTF User", role: "speaker" }],
 };
+
+const harnessAppHostApps = [
+  {
+    id: "jackbox-party-pack-10",
+    name: "Jackbox Party Pack 10",
+    displayRequired: true,
+    audioRequired: true,
+    startupTimeout: 60,
+    healthCheck: { type: "process" },
+  },
+  {
+    id: "jackbox-party-pack-11",
+    name: "Jackbox Party Pack 11",
+    displayRequired: true,
+    audioRequired: true,
+    startupTimeout: 60,
+    healthCheck: { type: "process" },
+  },
+];
+
+function makeHarnessAppHostStatus(appId, overrides = {}) {
+  const running = overrides.state === "running";
+  return {
+    appId,
+    state: overrides.state ?? "stopped",
+    pid: running ? 4242 : null,
+    startedAt: running ? nowIso() : null,
+    stoppedAt: running ? null : nowIso(),
+    exitCode: null,
+    health: { ok: running, type: "process" },
+    diagnostics: running
+      ? {
+          display: { ok: true, display: ":99" },
+          opengl: { ok: true, renderer: "llvmpipe" },
+          audio: { ok: true, server: "PulseAudio" },
+        }
+      : {},
+  };
+}
+
+let appHostStatuses = Object.fromEntries(
+  harnessAppHostApps.map((app) => [app.id, makeHarnessAppHostStatus(app.id)])
+);
+
+function resetHarnessAppHostState() {
+  appHostStatuses = Object.fromEntries(
+    harnessAppHostApps.map((app) => [app.id, makeHarnessAppHostStatus(app.id)])
+  );
+}
 
 function nowIso() {
   return new Date().toISOString();
@@ -331,6 +381,12 @@ app.post("/__test/state", (req, res) => {
   state.wtfLivePrivateRoom = null;
   state.wtfLivePrivateMembers = [];
   state.wtfLiveOwnedStage = { id: "my-stage", title: "My Stage", kind: "stage", description: "Owned stage", liveUrl: "/live", source: "user", ownerUserId: 1, isPublic: true };
+  state.wtfLiveStageMembers = [{ userId: 2, username: "wtf-user", displayName: "WTF User", role: "speaker" }];
+  Object.assign(
+    desktopLocalization,
+    req.body?.desktopLocalization ?? { locale: "en-US", region: "US" }
+  );
+  resetHarnessAppHostState();
   resetHarnessMarketState();
   res.json({
     ok: true,
@@ -497,7 +553,7 @@ app.post("/api/auth/gm-welcome/complete", (_req, res) => {
 const desktopAppearance = {
   appearanceStyleKey: "classic-95",
   colorSchemeKey: "wtf-teal",
-  fontPackKey: "mek-type",
+  fontPackKey: "wtfos-soft-system",
   chatTypographyPresetKey: "wtfos-default",
   wimChatStyle: {
     fontFamily: "Helvetica",
@@ -508,7 +564,7 @@ const desktopAppearance = {
     underline: false,
   },
   wtfLiveChatStyle: {
-    font: "mek-mono",
+    font: "classic-95",
     color: "ink",
     size: 12,
     bold: false,
@@ -529,6 +585,11 @@ const desktopAppearance = {
   desktopPhysicsEnabled: false,
   desktopGravityMode: "on",
   desktopPetEnabled: false,
+};
+
+const desktopLocalization = {
+  locale: "en-US",
+  region: "US",
 };
 
 const desktopApps = {
@@ -1357,6 +1418,32 @@ function apiMock(req, res) {
   const url = new URL(req.originalUrl, `http://127.0.0.1:${PORT}`);
   const pathName = url.pathname;
 
+  if (pathName === "/api/apphost/health" && req.method === "GET") {
+    return res.json({ ok: true, service: "wtfos-apphost", harness: true });
+  }
+  if (pathName === "/api/apphost/apps" && req.method === "GET") {
+    return res.json({ apps: harnessAppHostApps });
+  }
+  const appHostMatch = pathName.match(/^\/api\/apphost\/apps\/([^/]+)(?:\/(status|launch|stop))?$/);
+  if (appHostMatch) {
+    const appId = decodeURIComponent(appHostMatch[1]);
+    const action = appHostMatch[2] ?? null;
+    const app = harnessAppHostApps.find((candidate) => candidate.id === appId);
+    if (!app) return res.status(404).json({ error: "Application not found" });
+    if (!action && req.method === "GET") return res.json({ app });
+    if (action === "status" && req.method === "GET") {
+      return res.json({ status: appHostStatuses[appId] ?? makeHarnessAppHostStatus(appId) });
+    }
+    if (action === "launch" && req.method === "POST") {
+      appHostStatuses[appId] = makeHarnessAppHostStatus(appId, { state: "running" });
+      return res.json({ ok: true, app, status: appHostStatuses[appId] });
+    }
+    if (action === "stop" && req.method === "POST") {
+      appHostStatuses[appId] = makeHarnessAppHostStatus(appId, { state: "stopped" });
+      return res.json({ ok: true, app, status: appHostStatuses[appId] });
+    }
+  }
+
   if (pathName === "/api/apps/desktop" || pathName === "/api/admin/apps/desktop") {
     return res.json({
       apps: desktopApps,
@@ -1378,11 +1465,22 @@ function apiMock(req, res) {
     });
   }
   if (pathName === "/api/desktop/settings" && req.method === "GET") {
-    return res.json({ appearance: desktopAppearance, iconLayout: {}, updatedAt: null });
+    return res.json({
+      appearance: desktopAppearance,
+      iconLayout: {},
+      localization: desktopLocalization,
+      updatedAt: null,
+    });
   }
   if (pathName === "/api/desktop/settings" && req.method === "PUT") {
     Object.assign(desktopAppearance, req.body?.appearance ?? {});
-    return res.json({ appearance: desktopAppearance, iconLayout: {}, updatedAt: nowIso() });
+    Object.assign(desktopLocalization, req.body?.localization ?? {});
+    return res.json({
+      appearance: desktopAppearance,
+      iconLayout: req.body?.iconLayout ?? {},
+      localization: desktopLocalization,
+      updatedAt: nowIso(),
+    });
   }
   if (pathName === "/api/atproto/oauth/start") {
     const wantsChat = url.searchParams.get("chat") === "1" || url.searchParams.get("chat") === "true";
@@ -1489,7 +1587,11 @@ function apiMock(req, res) {
       ...(state.wtfLiveOwnedRoom?.isPublic && state.wtfLiveOwnedRoom.accessMode !== "private" ? [state.wtfLiveOwnedRoom] : []),
     ];
     const room = publicRooms.find((candidate) => candidate.id === roomId);
-    if (!room) return res.status(404).json({ error: "Room not found" });
+    if (!room) {
+      const stage = state.wtfLiveOwnedStage?.isPublic && state.wtfLiveOwnedStage.id === roomId ? state.wtfLiveOwnedStage : null;
+      if (!stage) return res.status(404).json({ error: "Room not found" });
+      return res.json(harnessStageEnvelope(stage, "audience"));
+    }
     return res.json({
       room: { ...room, presence: liveRoomPresence(room.id) },
       joinMode: "guest_room_only",
@@ -1505,10 +1607,16 @@ function apiMock(req, res) {
   }
   if (/^\/api\/wtf-live\/public\/rooms\/[^/]+\/messages$/.test(pathName) && req.method === "GET") {
     const roomId = pathName.split("/")[5];
+    if (state.wtfLiveOwnedStage?.id === roomId) {
+      return res.json({ roomId, collection: null, messages: [], cursor: null, source: "wtf-live.stageRealtimeOnly", upstreamAvailable: true });
+    }
     return res.json({ roomId, collection: "app.wtfgameshow.skywire.room.message", messages: [], cursor: null, source: "harness" });
   }
   if (/^\/api\/wtf-live\/rooms\/[^/]+\/messages$/.test(pathName) && req.method === "GET") {
     const roomId = pathName.split("/")[4];
+    if (state.wtfLiveOwnedStage?.id === roomId) {
+      return res.json({ roomId, collection: null, messages: [], cursor: null, source: "wtf-live.stageRealtimeOnly", upstreamAvailable: true, stageRole: harnessStageRole(state.wtfLiveOwnedStage) });
+    }
     if (state.wtfLivePrivateRoom?.id === roomId) {
       return res.json({
         roomId,
@@ -1576,7 +1684,13 @@ function apiMock(req, res) {
       state.wtfLivePrivateRoom,
     ].filter(Boolean);
     const room = candidates.find((candidate) => candidate.id === roomId);
-    if (!room) return res.status(404).json({ error: "Room not found" });
+    if (!room) {
+      const stage = state.wtfLiveOwnedStage?.id === roomId ? state.wtfLiveOwnedStage : null;
+      if (!stage) return res.status(404).json({ error: "Room not found" });
+      const role = harnessStageRole(stage);
+      if (!stage.isPublic && role === "audience") return res.status(404).json({ error: "Room not found" });
+      return res.json(harnessStageEnvelope(stage, role));
+    }
     return res.json({
       room: { ...room, presence: liveRoomPresence(room.id) },
       joinMode: room.accessMode === "private" ? "wtf_user_private_room" : "guest_room_only",
@@ -1630,17 +1744,17 @@ function apiMock(req, res) {
     return res.json({
       stages: [
         { id: "wtf-stage", title: "WTF Stage", kind: "stage", description: "Official stage", liveUrl: "/live", source: "system", isPublic: true },
-        ...(state.wtfLiveOwnedStage?.isPublic ? [state.wtfLiveOwnedStage] : []),
+        ...(state.wtfLiveOwnedStage?.isPublic ? [{ ...state.wtfLiveOwnedStage, accessMembers: state.wtfLiveStageMembers }] : []),
       ],
       collection: "app.wtfgameshow.skywire.stage.broadcast",
       storage: "public_atproto_repo_records",
-      mode: "one_way_broadcast",
+      mode: "role_gated_room",
       skywirePath: "/skywire?tab=account",
     });
   }
   if (pathName === "/api/wtf-live/stages/mine" && req.method === "GET") {
     return res.json({
-      stages: state.wtfLiveOwnedStage ? [state.wtfLiveOwnedStage] : [],
+      stages: state.wtfLiveOwnedStage ? [{ ...state.wtfLiveOwnedStage, accessMembers: state.wtfLiveStageMembers }] : [],
       collection: "app.wtfgameshow.skywire.stage.broadcast",
       storage: "wtf_live_stages",
     });
@@ -1648,9 +1762,41 @@ function apiMock(req, res) {
   if (pathName === "/api/wtf-live/stages" && req.method === "POST") {
     const title = String(req.body?.title || "New Stage").trim();
     state.wtfLiveOwnedStage = { id: "my-stage", title, kind: "stage", description: req.body?.description || "", liveUrl: req.body?.liveUrl || null, source: "user", ownerUserId: 1, isPublic: true };
+    const hostUsernames = Array.isArray(req.body?.hostUsernames) ? req.body.hostUsernames : [];
+    const speakerUsernames = Array.isArray(req.body?.speakerUsernames) ? req.body.speakerUsernames : [];
+    state.wtfLiveStageMembers = [
+      ...hostUsernames.map((username, index) => ({ userId: index + 3, username: String(username).replace(/^@/, ""), displayName: null, role: "host" })),
+      ...speakerUsernames.map((username, index) => ({ userId: index + 20, username: String(username).replace(/^@/, ""), displayName: null, role: "speaker" })),
+    ];
     return res.status(201).json({
-      stage: state.wtfLiveOwnedStage,
+      stage: { ...state.wtfLiveOwnedStage, accessMembers: state.wtfLiveStageMembers },
+      members: state.wtfLiveStageMembers,
+      missingUsernames: [],
     });
+  }
+  if (/^\/api\/wtf-live\/stages\/[^/]+\/access$/.test(pathName) && req.method === "GET") {
+    const stageId = pathName.split("/")[4];
+    if (!state.wtfLiveOwnedStage || state.wtfLiveOwnedStage.id !== stageId) {
+      return res.status(404).json({ error: "Managed stage not found" });
+    }
+    return res.json({ stageId, stage: { ...state.wtfLiveOwnedStage, accessMembers: state.wtfLiveStageMembers }, members: state.wtfLiveStageMembers });
+  }
+  if (/^\/api\/wtf-live\/stages\/[^/]+\/access$/.test(pathName) && req.method === "PATCH") {
+    const stageId = pathName.split("/")[4];
+    if (!state.wtfLiveOwnedStage || state.wtfLiveOwnedStage.id !== stageId) {
+      return res.status(404).json({ error: "Managed stage not found" });
+    }
+    const hostUsernames = Array.isArray(req.body?.hostUsernames) ? req.body.hostUsernames : [];
+    const speakerUsernames = Array.isArray(req.body?.speakerUsernames) ? req.body.speakerUsernames : [];
+    const hostNames = new Set(hostUsernames.map((username) => String(username).replace(/^@/, "")));
+    state.wtfLiveStageMembers = [
+      ...Array.from(hostNames).filter(Boolean).map((username, index) => ({ userId: index + 3, username, displayName: null, role: "host" })),
+      ...speakerUsernames
+        .map((username) => String(username).replace(/^@/, ""))
+        .filter((username) => username && !hostNames.has(username))
+        .map((username, index) => ({ userId: index + 20, username, displayName: null, role: "speaker" })),
+    ];
+    return res.json({ stage: { ...state.wtfLiveOwnedStage, accessMembers: state.wtfLiveStageMembers }, members: state.wtfLiveStageMembers, missingUsernames: [] });
   }
   if (/^\/api\/wtf-live\/stages\/[^/]+$/.test(pathName) && req.method === "PATCH") {
     const stageId = pathName.split("/")[4];
@@ -1666,6 +1812,7 @@ function apiMock(req, res) {
       return res.status(404).json({ error: "Owned stage not found" });
     }
     state.wtfLiveOwnedStage = null;
+    state.wtfLiveStageMembers = [];
     return res.json({ ok: true, stageId });
   }
   if (/^\/api\/wtf-live\/rooms\/[^/]+\/messages$/.test(pathName) && req.method === "GET") {
@@ -2126,6 +2273,45 @@ function apiMock(req, res) {
   if (pathName.startsWith("/api/skywire/chat-media/") && pathName.endsWith("/file")) {
     res.setHeader("Content-Type", "image/gif");
     return res.send(Buffer.from("R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==", "base64"));
+  }
+  if (pathName === "/api/skywire/trending-topics" && req.method === "GET") {
+    return res.json({
+      source: "app.bsky.unspecced.getTrendingTopics",
+      personalizesWithViewer: true,
+      limit: Number(url.searchParams.get("limit") || 14),
+      fetchedAt: nowIso(),
+      topics: [
+        {
+          topic: "Tezos art",
+          displayName: "Tezos art",
+          description: "Creators, collectors, and OBJKT market chatter.",
+          link: "/search?q=tezos%20art",
+          category: "topic",
+          startedAt: "2026-06-30T12:00:00.000Z",
+          postCount: 1280,
+        },
+        {
+          topic: "#WTFOS",
+          displayName: "#WTFOS",
+          description: "Show-native posts and Skywire signals.",
+          link: "/hashtag/WTFOS",
+          category: "tag",
+          startedAt: "2026-06-30T12:05:00.000Z",
+          postCount: 318,
+        },
+      ],
+      suggested: [
+        {
+          topic: "Starter packs",
+          displayName: "Starter packs",
+          description: "People discovery packages circulating on Bluesky.",
+          link: "/starter-pack/harness.bsky.social/3ltest",
+          category: "starter-pack",
+          startedAt: null,
+          postCount: null,
+        },
+      ],
+    });
   }
   if (pathName === "/api/skywire/feed") {
     const skywireHarnessGif =
@@ -4511,9 +4697,11 @@ const server = app.listen(PORT, () => {
 const livePeers = new Map();
 const liveWss = new WebSocketServer({ server, path: "/ws/wtf-live" });
 const MAX_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(512 * 1024 * 1.4);
-const LIVE_CHAT_FONTS = new Set(["mek-mono", "grout-display", "classic-95", "terminal", "serif-press"]);
+const LIVE_CHAT_FONTS = new Set(["classic-95", "terminal", "serif-press"]);
 const LIVE_LEGACY_CHAT_FONT_MAP = {
-  system: "mek-mono",
+  system: "classic-95",
+  "mek-mono": "classic-95",
+  "grout-display": "classic-95",
   mono: "terminal",
   serif: "serif-press",
   pixel: "classic-95",
@@ -4596,6 +4784,47 @@ function liveRoomPresence(roomId) {
   };
 }
 
+function harnessStageRole(stage) {
+  const user = currentAuthUser();
+  if (!user) return "audience";
+  if (Number(stage?.ownerUserId) === Number(user.id)) return "owner";
+  const member = state.wtfLiveStageMembers.find((entry) => Number(entry.userId) === Number(user.id) || entry.username === user.username);
+  return member?.role === "host" ? "host" : member?.role === "speaker" ? "speaker" : "audience";
+}
+
+function harnessStageEnvelope(stage, role = "audience") {
+  const canShare = ["owner", "host", "speaker"].includes(role);
+  const canManage = role === "owner" || role === "host";
+  return {
+    room: {
+      ...stage,
+      accessMode: "public",
+      presence: liveRoomPresence(stage.id),
+      accessMembers: canManage ? state.wtfLiveStageMembers : undefined,
+    },
+    joinMode: "wtf_live_stage",
+    roomPath: `/live/r/${stage.id}`,
+    capabilities: {
+      audio: canShare,
+      camera: canShare,
+      screen: canShare,
+      media: canShare,
+      transport: "webrtc_mesh_via_wtf_live_signaling",
+      stage: true,
+      canManageStage: canManage,
+      canSpeakOnStage: canShare,
+      stageRole: role,
+    },
+    stagePermissions: {
+      role,
+      canManage,
+      canSpeak: canShare,
+      hosts: state.wtfLiveStageMembers.filter((member) => member.role === "host"),
+      speakers: state.wtfLiveStageMembers.filter((member) => member.role === "speaker"),
+    },
+  };
+}
+
 function liveSanitizeTrackId(value) {
   const trackId = String(value || "").trim();
   return trackId && trackId.length <= 160 ? trackId : null;
@@ -4636,13 +4865,14 @@ function liveNormalizeMediaState(value) {
 }
 
 function liveNormalizeChatStyle(value) {
-  const style = value && typeof value === "object" ? value : {};
+  if (!value || typeof value !== "object") return undefined;
+  const style = value;
   const rawSize = Number(style.size);
   const size = Number.isFinite(rawSize) ? Math.min(14, Math.max(8, Math.round(rawSize))) : 12;
   const font = String(style.font || "");
   const color = String(style.color || "");
   return {
-    font: LIVE_CHAT_FONTS.has(font) ? font : LIVE_LEGACY_CHAT_FONT_MAP[font] || "mek-mono",
+    font: LIVE_CHAT_FONTS.has(font) ? font : LIVE_LEGACY_CHAT_FONT_MAP[font] || "classic-95",
     color: LIVE_CHAT_COLORS.has(color) ? color : "ink",
     size,
     bold: Boolean(style.bold),
@@ -4776,7 +5006,7 @@ liveWss.on("connection", (ws) => {
           peerId: client.peerId,
           guestName: client.guestName,
           text,
-          style,
+          ...(style ? { style } : {}),
           attachments,
           createdAt: new Date().toISOString(),
         },

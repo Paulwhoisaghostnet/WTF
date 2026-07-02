@@ -77,7 +77,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion:
       "The login wallet button starts from fresh Beacon/WalletConnect auth state, opens Octez Connect as the primary Tezos provider on mainnet, ignores Shadownet app-local preferences for auth identity, and either completes provider permission or shows a bounded retryable error instead of staying on Connecting forever.",
     durableSideEffectAssertion:
-      "Policy coverage keeps ACTIVE_ACCOUNT_SET subscribed before permission requests, keeps Beacon/Taquito as backup, clears wallet IndexedDB/localStorage for forced auth reconnects, forces auth challenge signing through the mainnet wallet lane, and keeps Octez-hosted app RPC defaults ahead of TzKT indexer fallbacks.",
+      "Policy coverage keeps ACTIVE_ACCOUNT_SET subscribed before permission requests, keeps Octez Connect as the wallet transport with a custom Taquito operation provider, clears legacy wallet IndexedDB/localStorage for forced auth reconnects, forces auth challenge signing through the mainnet wallet lane, and keeps Octez-hosted app RPC defaults ahead of TzKT indexer fallbacks.",
   },
   {
     id: "wallet.checkout-intent-bound-to-signed-session",
@@ -178,9 +178,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec: "tests/playwright/live/macaroni-shadownet.spec.mjs",
     verificationCommand: "npm run test:e2e:macaroni:shadownet",
     userVisibleAssertion:
-      "A trusted-creator puppet can open Macaroni, enter the Studio through the embedded creation-tool iframe, see Shadownet as the default rehearsal network, choose Macaroni V1 or V2 contract templates, see the wtfOS IPFS provider, see Fileship as the default IPFS gateway, see the 1 GB per-artifact hard max, 250 MB average artifact limit, and 1 MB square JPG/PNG collection logo/cover limit, define per-token edition quantity, configure optional minter royalty pool/split/updater policy, attach multiple unrevealed placeholder images for delayed reveal, connect a Shadownet puppet wallet without RPC errors, use Octez Connect as the primary wallet provider with Beacon retained as backup, route selected Kukai pairing to the Shadownet Kukai app, send named wallet permission networks without embedding the dApp RPC URL, serve stored legacy wtfOS-hosted Macaroni drop pages with Octez-primary bridge injection plus the same named-network wallet hardening, and block wtfOS publish until the drop has a deployed or resumed KT1 contract; a regular signed-in puppet loading the static Studio does not see the wtfOS IPFS provider; generated mint pages expose clean disconnect, prevent duplicate request-permission flows from rapid connect clicks, reuse/reconfigure the same Octez/Beacon client with active-account subscription before permission APIs, include basic accessibility landmarks/status/progress/quantity semantics, normalize live max_per_wallet storage before showing share/status copy, keep X share compose text within the standard post limit while preserving mint/media URLs where possible, expose prefilled ICS and Google Calendar links for sale stages, clamp requested mint quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance, show wallet balance/cost status, max-per-wallet status, minter royalty sync status, owned-mint recovery hooks, RPC pack/estimate fallback handling, and bounded theme styling instead of arbitrary stored CSS.",
+      "A trusted-creator puppet can open Macaroni, enter the Studio through the embedded creation-tool iframe, see Shadownet as the default rehearsal network, choose Macaroni V1 or V2 contract templates, see the wtfOS IPFS provider, see Fileship as the default IPFS gateway, see the 1 GB per-artifact hard max, 250 MB average artifact limit, and 1 MB square JPG/PNG collection logo/cover limit, define per-token edition quantity, configure optional minter royalty pool/split/updater policy, attach multiple unrevealed placeholder images for delayed reveal, connect a Shadownet puppet wallet without RPC errors, use Octez Connect as the primary wallet provider with legacy Taquito compatibility scoped to generated static bundles, route selected Kukai pairing to the Shadownet Kukai app, send named wallet permission networks without embedding the dApp RPC URL, serve stored legacy wtfOS-hosted Macaroni drop pages with Octez-primary bridge injection plus the same named-network wallet hardening, and block wtfOS publish until the drop has a deployed or resumed KT1 contract; a regular signed-in puppet loading the static Studio does not see the wtfOS IPFS provider; generated mint pages expose clean disconnect, prevent duplicate request-permission flows from rapid connect clicks, reuse/reconfigure the same Octez-primary client with active-account subscription before permission APIs, include basic accessibility landmarks/status/progress/quantity semantics, normalize live max_per_wallet storage before showing share/status copy, keep X share compose text within the standard post limit while preserving mint/media URLs where possible, expose prefilled ICS and Google Calendar links for sale stages, clamp requested mint quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance, show wallet balance/cost status, max-per-wallet status, minter royalty sync status, owned-mint recovery hooks, RPC pack/estimate fallback handling, and bounded theme styling instead of arbitrary stored CSS.",
     durableSideEffectAssertion:
-      "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves the contract-version selector exposes V1 and V2 template choices, proves the IPFS provider selector follows `trusted_market_creator` access, proves a mismatched RPC is blocked before wallet signing, confirms explicit connect uses the Octez-primary bridge while preserving Beacon backup behavior, checks from `/tools/macaroni` that the real Kukai option can escape the sandbox and load `https://shadownet.kukai.app` instead of a blank, mainnet, or Temple-only tab, asserts rapid generated-page connect clicks coalesce to one permission request, asserts the permission network object is `{ type: \"shadownet\" }` rather than Shadownet plus a dApp RPC override, asserts the server injects the Octez bridge and hardens Airporters-shaped stored legacy drop HTML before serving it, and keeps source-policy coverage for the 1 GB per-file and 250 MB average Macaroni artifact policy, contract-required wtfOS publishing, per-token edition quantities, delayed-reveal placeholder pools, request-time minter royalty metadata sync, non-image cover preview metadata, the generated mint page's validated wallet restore, disconnect, Octez/Beacon singleton reuse, ACTIVE_ACCOUNT_SET subscription, browser RPC fallback, share/calendar canonical handles, X URL-weight trimming, calendar file generation, accessible controls/status regions, balance preflight, max-per-wallet option normalization and allowlist remaining allowance clamping, TzKT-owned-mint lookup, Fileship gateway default, and CSS theme allowlist paths.",
+      "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves the contract-version selector exposes V1 and V2 template choices, proves the IPFS provider selector follows `trusted_market_creator` access, proves a mismatched RPC is blocked before wallet signing, confirms explicit connect uses the Octez-primary bridge with legacy static-bundle compatibility fenced to the generated runtime, checks from `/tools/macaroni` that the real Kukai option can escape the sandbox and load `https://shadownet.kukai.app` instead of a blank, mainnet, or Temple-only tab, asserts rapid generated-page connect clicks coalesce to one permission request, asserts the permission network object is `{ type: \"shadownet\" }` rather than Shadownet plus a dApp RPC override, asserts the server injects the Octez bridge and hardens Airporters-shaped stored legacy drop HTML before serving it, and keeps source-policy coverage for the 1 GB per-file and 250 MB average Macaroni artifact policy, contract-required wtfOS publishing, per-token edition quantities, delayed-reveal placeholder pools, request-time minter royalty metadata sync, non-image cover preview metadata, the generated mint page's validated wallet restore, disconnect, Octez-primary singleton reuse, ACTIVE_ACCOUNT_SET subscription, browser RPC fallback, share/calendar canonical handles, X URL-weight trimming, calendar file generation, accessible controls/status regions, balance preflight, max-per-wallet option normalization and allowlist remaining allowance clamping, TzKT-owned-mint lookup, Fileship gateway default, and CSS theme allowlist paths.",
   },
   {
     id: "macaroni.wtfos-package-source",
@@ -293,9 +293,22 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test client/src/features/appearance/font-packs.test.ts client/src/features/appearance/get-canvas-font.test.ts shared/desktop.test.ts && npx playwright test tests/playwright/inventory/desktop-settings-typography.spec.mjs",
     userVisibleAssertion:
-      "Theme Builder can select a system font pack and chat typography presets; WIM and WTF LIVE composer defaults stay inside their visible font, color, and size windows.",
+      "Theme Builder exposes a left-column settings category list, keeps Font controls behind the Font tab, defaults to the wtfOS Soft System font pack, can still select system font packs and chat typography presets, shows the static bottom-right SAVE control as red while the draft differs from profile settings and green after save, and WIM/WTF LIVE composer defaults stay inside their visible font, color, and size windows.",
     durableSideEffectAssertion:
-      "DesktopAppearance.fontPackKey, chatTypographyPresetKey, wimChatStyle, and wtfLiveChatStyle normalize to known values, persist through /api/desktop/settings, and canvas helpers read the same CSS variable roles.",
+      "DesktopAppearance.fontPackKey normalizes to wtfos-soft-system by default, chatTypographyPresetKey, wimChatStyle, and wtfLiveChatStyle normalize to known values, persist through /api/desktop/settings, and canvas helpers read the same CSS variable roles.",
+  },
+  {
+    id: "desktop.localization-language-region",
+    domain: "Desktop OS, Navigation, and Personal Environment",
+    ownerSurfaceIds: ["system-settings", "desktop-appearance"],
+    ownerSpec:
+      "shared/localization.test.ts, client/src/lib/localization-catalogs.test.ts, client/src/lib/localization-provider-policy.test.ts, client/src/pages/system-settings-presentation-policy.test.ts, tests/playwright/inventory/system-settings-localization.spec.mjs",
+    verificationCommand:
+      "npx tsx --test shared/localization.test.ts client/src/lib/localization-catalogs.test.ts client/src/lib/localization-provider-policy.test.ts client/src/pages/system-settings-presentation-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/system-settings-localization.spec.mjs",
+    userVisibleAssertion:
+      "A signed-in user can choose a display language in System Settings, see system-owned OS shell text switch to that locale, and use Arabic or pseudo-locale to prove document direction and expansion behavior.",
+    durableSideEffectAssertion:
+      "The selected localization writes through /api/desktop/settings, survives reload in the inventory harness, updates document lang/dir/data-wtf-locale, and leaves user-authored media, token, pet, and profile strings outside the exact system text translation map.",
   },
   {
     id: "desktop.app-gates-runtime-policy",
@@ -462,7 +475,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx tsx --test server/features/atproto/skywire-policy.test.ts && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"standalone AT login\"",
     userVisibleAssertion:
-      "Anonymous users can open Skywire directly as a public OVOID-style AT Protocol login screen with Handle-or-DID input, a Continue action, and signal examples before any WTF OS login page appears.",
+      "Anonymous users can open Skywire directly as a public OVOID-style AT Protocol login screen with Handle-or-DID input and a Continue action before any WTF OS login page appears; the dormant Signals publisher is not promoted on this public entry.",
     durableSideEffectAssertion:
       "Standalone OAuth start carries `standalone=1`, preserves the Skywire return path, accepts handles or DIDs, recovers durable callback state, creates or resumes the session-bound Skywire user only after the returned DID is known, and shares the production session cookie across wtfos.app and skywire.wtfos.app.",
   },
@@ -479,28 +492,40 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The server uses a search-capable Bluesky AppView for app.bsky.feed.searchPosts, domain-filters Objkt and Teia searches, filters normalized text/embed/facet hrefs through Skywire's token parser, and returns 502 when every upstream marketplace search fails.",
   },
   {
+    id: "skywire.trending-topics-hot-lane",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["skywire"],
+    ownerSpec: "server/features/atproto/skywire-policy.test.ts, tests/playwright/inventory/skywire-feed.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/features/atproto/skywire-policy.test.ts && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"hot topics\"",
+    userVisibleAssertion:
+      "Skywire has a Hot tab that renders current Bluesky trending topics, marks the selected topic, and opens matching posts in the normal Skywire feed card lane.",
+    durableSideEffectAssertion:
+      "The server reads `app.bsky.unspecced.getTrendingTopics`, personalizes with the connected viewer DID when available, and falls back to read-only search cards without writing repo records.",
+  },
+  {
     id: "skywire.live-status-visible-indicator",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["skywire"],
     ownerSpec: "tests/playwright/inventory/skywire-feed.spec.mjs",
     verificationCommand:
-      "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"live status\"",
+      "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"signals UI stays hidden\"",
     userVisibleAssertion:
-      "After a user goes live from Skywire, the main Skywire shell shows a WTF LIVE header badge and live banner outside the Signals form, with controls to open WTF LIVE or return to the live-status controls.",
+      "When a live-status record exists, the main Skywire shell shows a WTF LIVE header badge and live banner with an Open WTF LIVE action, while the hidden Signals panel does not expose update controls.",
     durableSideEffectAssertion:
-      "The same flow writes `app.bsky.actor.status/self`, stores the live URL in the Skywire live-status read model, and removes the local badge/banner after the user clears the status.",
+      "The live-status read model still reads `app.bsky.actor.status/self` and displays the live URL, but the user-facing Skywire UI no longer routes into the Signals/live-status editor while Signals is disabled.",
   },
   {
-    id: "skywire.signal-starter-presets",
+    id: "skywire.signals-hidden-from-navigation",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["skywire"],
     ownerSpec: "tests/playwright/inventory/skywire-feed.spec.mjs",
     verificationCommand:
-      "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"signal starter\"",
+      "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"signal starter publisher stays hidden\"",
     userVisibleAssertion:
-      "The Skywire Signals tab offers standard starter presets for recent sales, live broadcasts, open drops, collector calls, and proofs; selecting the recent-sale starter fills the signal type, text, and tags with creator-friendly defaults.",
+      "Skywire no longer exposes a Signals tab, signal starter presets, signal text fields, or Publish Signal button through visible navigation, public standalone login, quick actions, or direct `/skywire?tab=signals` links.",
     durableSideEffectAssertion:
-      "Publishing the recent-sale starter writes an `app.wtfgameshow.skywire.signal` repo record with `signalType=market.sale`, sale/collector/tezos tags, and an optional related token URL.",
+      "The dormant `/api/skywire/signals` route and `app.wtfgameshow.skywire.signal` record path remain intact for internal integrations, proving the feature was hidden from UX/UI rather than deleted from existence.",
   },
   {
     id: "skywire.oauth-original-window-permission-sync",
@@ -570,9 +595,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"mic test\"",
     userVisibleAssertion:
-      "A mobile WTF LIVE room user can run a pre-join microphone test that reports browser MediaDevices support, browser/site permission state when available, visible input devices, and operating-system/privacy-browser recovery guidance without changing the desktop room layout.",
+      "A mobile WTF LIVE room user can open the Sharing tray testing icon, run a pre-join microphone test from a minimal drawer, keep browser/permission/device guidance collapsed in a Details drawer, and expand it when recovery details are needed without changing the desktop room layout.",
     durableSideEffectAssertion:
-      "The inventory harness simulates unsupported MediaDevices, denied microphone permission, and a successful mobile-width mic probe; it verifies actionable guidance, no horizontal overflow, a 44px mobile Test mic target, and named input-device reporting while the successful test stream is stopped instead of publishing room audio.",
+      "The inventory harness verifies the testing drawer is hidden by default, simulates unsupported MediaDevices, denied microphone permission, and a successful mobile-width mic probe after opening the drawer; it verifies actionable guidance, no horizontal overflow, a 44px mobile Test mic target, and named input-device reporting while the successful test stream is stopped instead of publishing room audio.",
   },
   {
     id: "wtf-live.public-room-realtime-media-chat",
@@ -582,9 +607,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     userVisibleAssertion:
-      "WTF LIVE public-room guests see each other in collapsible attendance; camera, screen, and dedicated media-file deck sources can appear as simultaneous stage tiles for the same host while mic-only guests stay out of the stage with lit mic indicators in attendance, chat remains reachable, a compact emoji icon inserts emoji into chat drafts, a text-style icon opens and collapses the chat style panel for onboard wtfOS fonts/color/readable 8-14 size/basic emphasis, stage-level room reaction buttons send transient guest signals, Enter submits room chat while Shift+Enter composes multiline text, and shared media can open in pop-out frames/lightboxes.",
+      "WTF LIVE public-room guests see each other in collapsible attendance; camera, screen, and dedicated media-file deck sources can appear as simultaneous stage tiles for the same host while mic-only guests stay out of the stage with lit mic indicators in attendance, chat remains reachable, unstyled room chat follows the receiver's default WTFOS font-library setting, a compact emoji icon inserts emoji into chat drafts, a text-style icon opens and collapses the chat style panel for Classic/Terminal/Serif fonts, color, readable 8-14 size, basic emphasis, stage-level room reaction buttons send transient guest signals, Enter submits room chat while Shift+Enter composes multiline text, and shared media can open in pop-out frames/lightboxes.",
     durableSideEffectAssertion:
-      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, activeVideo/avatar/audioOpen media-state events, room reactions, and room chat, verifies push-to-talk changes another guest's attendance mic state without creating a stage tile, verifies camera-first then screen-share switching remains visible to another guest after camera stops, verifies stage pop-outs and chat media lightboxes open/close, verifies Enter sends and clears a chat message while Shift+Enter keeps a multiline draft until the next Enter, verifies the collapsed toolbar exposes emoji and style icons with 24px-or-larger targets, verifies the emoji picker inserts into the draft and relays through chat, verifies the style panel exposes only 8-14 font-size options plus MEK/GROUT/Classic/Terminal/Serif font choices, and a sanitized styled chat message relays to another guest, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests remain attendance-only without pushing the chat composer offscreen.",
+      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, activeVideo/avatar/audioOpen media-state events, room reactions, and room chat, verifies push-to-talk changes another guest's attendance mic state without creating a stage tile, verifies camera-first then screen-share switching remains visible to another guest after camera stops, verifies stage pop-outs and chat media lightboxes open/close, verifies Enter sends and clears a chat message while Shift+Enter keeps a multiline draft until the next Enter, verifies the collapsed toolbar exposes emoji and style icons with 24px-or-larger targets, verifies the emoji picker inserts into the draft and relays through chat, verifies the style panel exposes only 8-14 font-size options plus Classic/Terminal/Serif font choices, verifies unstyled chat relays without a forced style so receiver default Serif Press applies, verifies a sanitized styled chat message relays to another guest, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests remain attendance-only without pushing the chat composer offscreen.",
   },
   {
     id: "wtf-live.show-kit-soundboard",
@@ -654,9 +679,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     userVisibleAssertion:
-      "On mobile, WTF LIVE stacks and scales the display-name, Join, mic, camera, and screen controls before the stage without horizontal overflow or tap-target overlap; on desktop, chat and attendance have icon pop-out controls and the stage expands when both side panels are detached.",
+      "On mobile, WTF LIVE stacks and scales the display-name, Join, sharing controls, and shared-screens surface without horizontal overflow or tap-target overlap; on desktop, Connection, Sharing, Screens, Attendance, and Room chat sit in a transparent dockable bento workspace with per-tile pop-out buttons, drag handles, floating pop-in controls, and always-on-top pin toggles. Testing and Settings hide under the Sharing tray, and shared screen/camera/media sources can merge into hover-popout screen grids.",
     durableSideEffectAssertion:
-      "The inventory harness checks narrow-viewport element order/visibility, proves the mobile rail expands to its controls, stage/sidebar/chat stack vertically, the room remains vertically scrollable, and the attendance toggle is not intercepted by push-to-talk; it also opens chat and attendance panel pop-outs, verifies floating panel frames render, verifies both dock notices appear, and verifies the stage/sidebar layout changes while the panels are popped out.",
+      "The inventory harness checks narrow-viewport element order/visibility, proves the mobile rail expands to its controls, stage/sidebar/chat stack vertically, the room remains vertically scrollable, and the attendance toggle is not intercepted by push-to-talk; it also verifies the bento workspace and all five core tiles render, testing/settings are drawers rather than tiles, receiver default font selection affects unstyled chat, camera plus screen sources can drag into a screen grid with hover-only item popout controls, opens chat as a panel pop-out, verifies the chat tile leaves the bento, toggles the pop-out pinned state, and pops chat back into the bento.",
   },
   {
     id: "wtf-live.stage-owner-lifecycle-controls",
@@ -671,6 +696,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The inventory harness toggles the owned-stage fixture through the WTF LIVE stage PATCH API and deletes it through the DELETE API, then verifies the selected stage card reflects the lifecycle change.",
   },
   {
+    id: "wtf-live.stage-room-role-controls",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"stage rooms gate audience sharing\"",
+    userVisibleAssertion:
+      "A WTF LIVE stage owner can join the stage room, see in-room host/speaker controls, save role lists, and keep mic/camera/screen/media controls enabled while audience members can still join, chat, and react with share controls disabled.",
+    durableSideEffectAssertion:
+      "The inventory harness persists host/speaker lists through /api/wtf-live/stages/:stageId/access, verifies the owner room receives stage-role capabilities, and verifies an anonymous stage audience room receives audience capabilities with mic, camera, screen, and media load controls disabled.",
+  },
+  {
     id: "w.groupchat-readonly-config-source",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["w"],
@@ -679,6 +716,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion: "W users can read the configured Gameshow groupchat mirror without a send surface.",
     durableSideEffectAssertion:
       "The harness asserts the groupchat API is read-only, personal DM writes are disabled, and admin diagnostics expose the active config source.",
+  },
+  {
+    id: "inbox.compose-reply-send-actions",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["mail", "messages", "wim"],
+    ownerSpec:
+      "client/src/pages/mail-presentation-policy.test.ts; tests/e2e/inventory/domain-workflows.mjs; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      'node --test client/src/pages/mail-presentation-policy.test.ts && npm run test:e2e:inventory:coverage && npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "hosts Inbox mailbox" --project=chromium --reporter=list',
+    userVisibleAssertion:
+      "Inbox exposes explicit New message and New mail controls, selected mail reader Reply/Forward actions, and an inline WIM/Studio conversation reply composer so message cards and conversation tabs are not read-only dead ends.",
+    durableSideEffectAssertion:
+      "Source policy keeps Inbox sends on /api/mail/send, /api/messages/dms, and /api/messages/dms/:id/messages while the inventory workflow probes both mail send and DM send paths with bounded expected outcomes.",
   },
   {
     id: "ipfs-pinning.pds-backed-wallet-backup",
@@ -708,7 +758,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand: "npm run test:e2e:live:puppets",
     userVisibleAssertion:
-      "The live harness opens the FAFOlab/skllzrmy route family, including TezosBeats, Tusk/Mastodon, Porcupin, MindWalk, PixelPatterns, PenRose, Contract Factory, and Mint Portal surfaces.",
+      "The live harness opens the FAFOlab/skllzrmy route family, including TezosBeats, Tusk/Mastodon, Porcupin, MindWalk, PixelPatterns, PenRose, Contract Factory with its Shadownet-first network default, and Mint Portal surfaces.",
     durableSideEffectAssertion:
       "The same workflow probes the registered music, Mastodon, Porcupin, Discovery, social-automation, and factory API contracts against the real server/database status boundary.",
   },

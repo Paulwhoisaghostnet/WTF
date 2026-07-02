@@ -1,4 +1,5 @@
 import {
+  check,
   pgTable,
   serial,
   text,
@@ -9,6 +10,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { users } from "./schema-core";
 
 export const wtfLiveRooms = pgTable(
@@ -74,6 +76,30 @@ export const wtfLiveStages = pgTable(
   (table) => [
     uniqueIndex("wtf_live_stages_slug_idx").on(table.slug),
     index("wtf_live_stages_owner_idx").on(table.ownerUserId),
+  ],
+);
+
+export const wtfLiveStageAccessMembers = pgTable(
+  "wtf_live_stage_access_members",
+  {
+    id: serial("id").primaryKey(),
+    stageId: integer("stage_id")
+      .references(() => wtfLiveStages.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    role: varchar("role", { length: 24 }).notNull(),
+    addedByUserId: integer("added_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("wtf_live_stage_access_members_stage_user_idx").on(table.stageId, table.userId),
+    index("wtf_live_stage_access_members_user_idx").on(table.userId),
+    index("wtf_live_stage_access_members_stage_role_idx").on(table.stageId, table.role),
+    check("wtf_live_stage_access_members_role_check", sql`${table.role} IN ('host', 'speaker')`),
   ],
 );
 

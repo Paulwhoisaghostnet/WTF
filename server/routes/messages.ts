@@ -741,37 +741,46 @@ router.post("/api/messages/dms/:id/messages", isAuthenticated, async (req, res) 
       }
     }
 
-    void publishCommunicationItemBestEffort({
-      sourceKey: "dm",
-      externalRef: `dm:${message.id}`,
-      itemKind: "dm",
-      title:
-        conversation.title ||
-        (conversation.conversationType === "studio"
-          ? "Studio message"
-          : "Direct message"),
-      summary: content.slice(0, 260),
-      body: content,
-      authorLabel: user.displayName || user.username || "WTF user",
-      targetUserId: null,
-      routePath: `/messages/dms/${conversationId}`,
-      thread: {
-        externalThreadRef: `dm:${conversationId}`,
-        title: conversation.title || `DM ${conversationId}`,
+    const commsParticipants = await db
+      .select({ userId: dmConversationParticipants.userId })
+      .from(dmConversationParticipants)
+      .where(eq(dmConversationParticipants.conversationId, conversationId));
+
+    for (const participant of commsParticipants) {
+      void publishCommunicationItemBestEffort({
+        sourceKey: "dm",
+        externalRef: `dm:${message.id}:user:${participant.userId}`,
+        itemKind: "dm",
+        title:
+          conversation.title ||
+          (conversation.conversationType === "studio"
+            ? "Studio message"
+            : "Direct message"),
+        summary: content.slice(0, 260),
+        body: content,
+        authorLabel: user.displayName || user.username || "WTF user",
+        targetUserId: participant.userId,
         routePath: `/messages/dms/${conversationId}`,
+        thread: {
+          externalThreadRef: `dm:${conversationId}`,
+          title: conversation.title || `DM ${conversationId}`,
+          routePath: `/messages/dms/${conversationId}`,
+          metadata: {
+            conversationType: conversation.conversationType,
+            studioProjectId: conversation.studioProjectId,
+          },
+        },
         metadata: {
+          conversationId,
+          messageId: message.id,
+          senderId: user.id,
+          messageType: requestedType,
           conversationType: conversation.conversationType,
           studioProjectId: conversation.studioProjectId,
         },
-      },
-      metadata: {
-        conversationId,
-        messageId: message.id,
-        senderId: user.id,
-        messageType: requestedType,
-      },
-      occurredAt: message.createdAt,
-    });
+        occurredAt: message.createdAt,
+      });
+    }
 
     res.status(201).json(message);
   } catch {

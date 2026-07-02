@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { usePresentationShell } from "../lib/presentation-shell";
 import { getNetwork, mintOpenEditionFromWtf } from "../lib/tezos";
 import { useWallet } from "../lib/wallet-context";
 import { GenerativeArtPanel } from "../features/mint-portal/GenerativeArtPanel";
@@ -13,6 +14,55 @@ const Stack = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
+`;
+
+const PortalShell = styled(Stack)`
+  &[data-mint-portal-presentation-host="gamma"] {
+    background: #070706;
+    color: #f2ead9;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    font-family: var(--wtf-sans-font, "Inter", "Helvetica Neue", Arial, sans-serif);
+    padding: 12px;
+  }
+
+  &[data-mint-portal-presentation-host="gamma"],
+  &[data-mint-portal-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-mint-portal-presentation-host="gamma"] [data-mint-portal-region],
+  &[data-mint-portal-presentation-host="gamma"] [data-generative-art-region] {
+    background-image: none;
+    border-radius: 6px;
+  }
+
+  &[data-mint-portal-presentation-host="gamma"] :where(fieldset, input, textarea, select, button, iframe) {
+    color: #f2ead9;
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+  }
+
+  &[data-mint-portal-presentation-host="gamma"] :where(button:hover, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible) {
+    color: #070706;
+    background: #00d2ff;
+    outline: 2px solid #00d2ff;
+    outline-offset: 2px;
+  }
+
+  &[data-mint-portal-presentation-host="gamma"] code,
+  &[data-mint-portal-presentation-host="gamma"] [data-mint-portal-region="chip"] {
+    color: #00d2ff;
+    background: #070706;
+    border-color: rgba(0, 210, 255, 0.32);
+  }
+
+  &[data-mint-portal-presentation-host="gamma"] [data-mint-portal-region="status"] {
+    color: #070706;
+    background: #d6ff3f;
+  }
 `;
 
 const Row = styled.div`
@@ -140,8 +190,8 @@ function SubmissionRow({ s }: { s: Submission }) {
   const label =
     s.source === "mint_auto" ? "Auto (mint)" : s.source || "Manual";
   return (
-    <Row>
-      <StatusBadge $tone={tone}>
+    <Row data-mint-portal-region="submission-row">
+      <StatusBadge $tone={tone} data-mint-portal-region="status" data-tone={tone}>
         {s.grade !== null ? `graded ${s.grade}` : "awaiting review"}
       </StatusBadge>
       <Muted>{label}</Muted>
@@ -166,6 +216,7 @@ function SubmissionRow({ s }: { s: Submission }) {
 
 export function MintPortal() {
   const { user } = useAuth();
+  const presentation = usePresentationShell();
   const wallet = useWallet();
   const qc = useQueryClient();
   const [copied, setCopied] = useState<string | null>(null);
@@ -177,6 +228,7 @@ export function MintPortal() {
   const [mintQty, setMintQty] = useState("1");
   const [mintPriceMutez, setMintPriceMutez] = useState("0");
   const [recordChallengeId, setRecordChallengeId] = useState("");
+  const [activeTab, setActiveTab] = useState(0);
 
   const portalQuery = useQuery<MintPortalResponse>({
     queryKey: ["mint-portal"],
@@ -279,33 +331,40 @@ export function MintPortal() {
   if (!user) {
     return (
       <AppWindow title="Mint Portal">
-        <Stack>
+        <PortalShell
+          data-mint-portal-surface="mint-portal"
+          data-mint-portal-presentation-host={presentation.host}
+          data-mint-portal-region="surface"
+        >
           <p>Log in to use the Mint Portal.</p>
-        </Stack>
+        </PortalShell>
       </AppWindow>
     );
   }
 
-  const [activeTab, setActiveTab] = useState(0);
-
   return (
     <AppWindow title="Mint Portal">
-      <Tabs value={activeTab} onChange={(v) => setActiveTab(v as number)}>
-        <Tab value={0}>Challenges</Tab>
-        <Tab value={1}>Generative Art</Tab>
+      <PortalShell
+        data-mint-portal-surface="mint-portal"
+        data-mint-portal-presentation-host={presentation.host}
+        data-mint-portal-region="surface"
+      >
+      <Tabs value={activeTab} onChange={(v) => setActiveTab(v as number)} data-mint-portal-region="tabs">
+        <Tab value={0} data-mint-portal-region="tab">Challenges</Tab>
+        <Tab value={1} data-mint-portal-region="tab">Generative Art</Tab>
       </Tabs>
-      <TabBody>
+      <TabBody data-mint-portal-region="tab-body">
       {activeTab === 1 && (
-        <div style={{ padding: "8px 0" }}>
+        <div style={{ padding: "8px 0" }} data-mint-portal-region="generative-tab">
           <GenerativeArtPanel />
         </div>
       )}
       {activeTab === 0 && (
-      <Stack>
-        <GroupBox label="What is this?">
+      <Stack data-mint-portal-region="challenges-tab">
+        <GroupBox label="What is this?" data-mint-portal-region="panel">
           <p style={{ margin: 0 }}>
             Active challenges with a mint binding show up here. Mint the
-            required token with the shown <TagChip>submission tag</TagChip>{" "}
+            required token with the shown <TagChip data-mint-portal-region="chip">submission tag</TagChip>{" "}
             (and, where specified, on the shown contract or curation) and the
             portal will auto-create your challenge submission once your
             wallet event is indexed.
@@ -315,6 +374,7 @@ export function MintPortal() {
             <Button
               onClick={() => matchMutation.mutate()}
               disabled={matchMutation.isPending}
+              data-mint-portal-region="match-button"
             >
               {matchMutation.isPending
                 ? "Syncing..."
@@ -327,7 +387,7 @@ export function MintPortal() {
           </Row>
         </GroupBox>
 
-        <GroupBox label="Mint from WTF">
+        <GroupBox label="Mint from WTF" data-mint-portal-region="direct-mint">
           <Stack>
             <Row>
               <Muted>Network: {mintNetwork}</Muted>
@@ -343,6 +403,7 @@ export function MintPortal() {
               <label style={{ fontSize: 12 }}>Challenge</label>
               <select
                 value={recordChallengeId}
+                data-mint-portal-region="challenge-select"
                 onChange={(event) => {
                   const id = event.target.value;
                   setRecordChallengeId(id);
@@ -360,7 +421,7 @@ export function MintPortal() {
             </Row>
             <Row>
               <label style={{ fontSize: 12 }}>Contract</label>
-              <select value={mintContract} onChange={(event) => setMintContract(event.target.value)}>
+              <select value={mintContract} data-mint-portal-region="contract-select" onChange={(event) => setMintContract(event.target.value)}>
                 {mintContract ? null : <option value="">Select contract</option>}
                 {contractOptions.map((contract) => (
                   <option key={contract.id} value={contract.address}>
@@ -374,13 +435,14 @@ export function MintPortal() {
             </Row>
             <Row>
               <label style={{ fontSize: 12 }}>Token</label>
-              <TextInput value={mintTokenId} onChange={(event) => setMintTokenId(event.target.value)} width={90} />
+              <TextInput value={mintTokenId} onChange={(event) => setMintTokenId(event.target.value)} width={90} data-mint-portal-region="token-input" />
               <label style={{ fontSize: 12 }}>Qty</label>
-              <TextInput value={mintQty} onChange={(event) => setMintQty(event.target.value)} width={70} />
+              <TextInput value={mintQty} onChange={(event) => setMintQty(event.target.value)} width={70} data-mint-portal-region="qty-input" />
               <label style={{ fontSize: 12 }}>Price mutez</label>
-              <TextInput value={mintPriceMutez} onChange={(event) => setMintPriceMutez(event.target.value)} width={130} />
+              <TextInput value={mintPriceMutez} onChange={(event) => setMintPriceMutez(event.target.value)} width={130} data-mint-portal-region="price-input" />
               <Button
                 onClick={() => mintMutation.mutate()}
+                data-mint-portal-region="mint-button"
                 disabled={
                   mintMutation.isPending ||
                   wallet.isConnecting ||
@@ -412,7 +474,7 @@ export function MintPortal() {
         ) : null}
 
         {challenges.length === 0 && !portalQuery.isLoading ? (
-          <GroupBox label="Nothing minted-bound yet">
+          <GroupBox label="Nothing minted-bound yet" data-mint-portal-region="empty-state">
             <p style={{ margin: 0 }}>
               No active challenges currently require a mint. Host-created
               challenges with a submission tag, contract, or curation will
@@ -425,7 +487,7 @@ export function MintPortal() {
           <h3 style={{ margin: "6px 0" }}>Active challenges</h3>
         ) : null}
         {byStatus.active.map((c) => (
-          <ChallengeCard key={c.id} label={c.title}>
+          <ChallengeCard key={c.id} label={c.title} data-mint-portal-region="challenge-card">
             <Stack>
               <Row>
                 {c.seasonTitle ? <Muted>{c.seasonTitle}</Muted> : null}
@@ -439,9 +501,10 @@ export function MintPortal() {
               {c.submissionTag ? (
                 <Row>
                   <b>Submission tag:</b>
-                  <TagChip>#{c.submissionTag}</TagChip>
+                  <TagChip data-mint-portal-region="chip">#{c.submissionTag}</TagChip>
                   <Button
                     size="sm"
+                    data-mint-portal-region="copy-tag-button"
                     onClick={() => handleCopy(c.submissionTag, `tag-${c.id}`)}
                   >
                     {copied === `tag-${c.id}` ? "Copied!" : "Copy"}
@@ -451,9 +514,10 @@ export function MintPortal() {
               {c.submissionContract ? (
                 <Row>
                   <b>Target contract:</b>
-                  <TagChip>{c.submissionContract}</TagChip>
+                  <TagChip data-mint-portal-region="chip">{c.submissionContract}</TagChip>
                   <Button
                     size="sm"
+                    data-mint-portal-region="copy-contract-button"
                     onClick={() =>
                       handleCopy(c.submissionContract, `contract-${c.id}`)
                     }
@@ -465,9 +529,10 @@ export function MintPortal() {
               {c.submissionCuration ? (
                 <Row>
                   <b>Curation slug:</b>
-                  <TagChip>{c.submissionCuration}</TagChip>
+                  <TagChip data-mint-portal-region="chip">{c.submissionCuration}</TagChip>
                   <Button
                     size="sm"
+                    data-mint-portal-region="copy-curation-button"
                     onClick={() =>
                       handleCopy(c.submissionCuration, `cur-${c.id}`)
                     }
@@ -498,7 +563,7 @@ export function MintPortal() {
           <h3 style={{ margin: "6px 0" }}>In grading</h3>
         ) : null}
         {byStatus.grading.map((c) => (
-          <ChallengeCard key={c.id} label={c.title}>
+          <ChallengeCard key={c.id} label={c.title} data-mint-portal-region="challenge-card">
             <Stack>
               <Row>
                 <Muted>
@@ -518,6 +583,7 @@ export function MintPortal() {
       </Stack>
       )}
       </TabBody>
+      </PortalShell>
     </AppWindow>
   );
 }

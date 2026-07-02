@@ -2,8 +2,10 @@ import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, Panel } from "react95";
 import styled, { keyframes } from "styled-components";
+import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { useWindowManager } from "../lib/window-context";
 
 type AmountView = { mutez: string; xtz: string };
@@ -91,6 +93,69 @@ const Shell = styled.div`
   background:
     radial-gradient(circle at 50% 18%, rgba(255, 55, 78, 0.26), transparent 26%),
     linear-gradient(180deg, #211111 0%, #100d0d 100%);
+
+  &[data-casino-table-presentation-host="gamma"] {
+    color: #f2ead9;
+    background: #08090a;
+    border: 1px solid rgba(40, 215, 255, 0.18);
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  &[data-casino-table-presentation-host="gamma"],
+  &[data-casino-table-presentation-host="gamma"] * {
+    letter-spacing: 0;
+    text-shadow: none;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] [data-casino-table-region] {
+    background-image: none;
+    box-shadow: none;
+    text-shadow: none;
+    border-radius: 6px;
+  }
+
+  &[data-casino-table-presentation-host="gamma"]
+    :where(
+      [data-casino-table-region="title-panel"],
+      [data-casino-table-region="wallet"],
+      [data-casino-table-region="button-panel"],
+      [data-casino-table-region="stat"],
+      [data-casino-table-region="row"]
+    ) {
+    background: rgba(242, 234, 217, 0.045);
+    color: #f2ead9;
+    border: 1px solid rgba(242, 234, 217, 0.14);
+  }
+
+  &[data-casino-table-presentation-host="gamma"] fieldset {
+    background: rgba(242, 234, 217, 0.035);
+    color: #f2ead9;
+    border: 1px solid rgba(40, 215, 255, 0.2);
+    border-radius: 6px;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] legend {
+    color: #28d7ff;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 11px;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] button {
+    background: #0b0d0e;
+    color: #28d7ff;
+    border: 1px solid rgba(40, 215, 255, 0.55);
+    border-radius: 4px;
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] [data-casino-table-region="cursed-button"] {
+    background: #0b0d0e;
+    color: #f2ead9;
+    border: 1px solid rgba(40, 215, 255, 0.85);
+    box-shadow: none;
+    text-shadow: none;
+  }
 `;
 
 const Header = styled.div`
@@ -244,6 +309,8 @@ function postAction(path: string, body?: unknown) {
 function RugPullSurface() {
   const qc = useQueryClient();
   const wm = useWindowManager();
+  const presentation = usePresentationShell();
+  const [, setLocation] = useLocation();
   const query = useQuery({
     queryKey: ["casino", "rug-pull", "state"],
     queryFn: () => api.get<RugPullSnapshot>("/api/casino/rug-pull/state"),
@@ -269,12 +336,23 @@ function RugPullSurface() {
     () => [...(data?.players ?? [])].sort((a, b) => Number(BigInt(b.currentMicroshares) - BigInt(a.currentMicroshares))).slice(0, 6),
     [data?.players]
   );
+  const openCasinoLobby = () => {
+    if (presentation.host === "gamma") {
+      setLocation(presentationRouteHref("/casino", presentation.host));
+      return;
+    }
+    wm.openPage("/casino");
+  };
 
   if (!data) {
     return (
-      <Shell>
-        <BigButtonPanel>
-          {query.isLoading ? <Hourglass size={36} /> : <Button onClick={() => wm.openPage("/casino")}>Back to Casino</Button>}
+      <Shell
+        data-casino-table-presentation-host={presentation.host}
+        data-casino-table="rug-pull"
+        data-casino-table-region="surface"
+      >
+        <BigButtonPanel data-casino-table-region="button-panel">
+          {query.isLoading ? <Hourglass size={36} /> : <Button onClick={openCasinoLobby}>Back to Casino</Button>}
           {error && <div>{error}</div>}
         </BigButtonPanel>
       </Shell>
@@ -289,9 +367,13 @@ function RugPullSurface() {
       : "PRESS THE RUG";
 
   return (
-    <Shell>
-      <Header>
-        <TitlePanel>
+    <Shell
+      data-casino-table-presentation-host={presentation.host}
+      data-casino-table="rug-pull"
+      data-casino-table-region="surface"
+    >
+      <Header data-casino-table-region="header">
+        <TitlePanel data-casino-table-region="title-panel">
           <Title>Rug Pull: The Game</Title>
           <Badges>
             <Badge $danger={panic}>{data.round.phase.toUpperCase()}</Badge>
@@ -300,22 +382,26 @@ function RugPullSurface() {
             <span>Everyone sees the button. Someone always does.</span>
           </Badges>
         </TitlePanel>
-        <Wallet>
+        <Wallet data-casino-table-region="wallet">
           <div>{data.user.displayName}</div>
           <div>Balance: {data.user.balance.xtz} XTZ</div>
           <div>Join: {data.userActions.joinCost.xtz} XTZ</div>
           <div>Press: {data.userActions.pressCost.xtz} XTZ</div>
+          <Button size="sm" onClick={openCasinoLobby}>
+            Casino Lobby
+          </Button>
         </Wallet>
       </Header>
 
-      <Layout>
+      <Layout data-casino-table-region="layout">
         <div>
-          <BigButtonPanel>
+          <BigButtonPanel data-casino-table-region="button-panel">
             <div>
               <CursedButton
                 $panic={panic}
                 disabled={!data.userActions.canPress || action.isPending}
                 onClick={() => action.mutate({ path: "/api/casino/rug-pull/press" })}
+                data-casino-table-region="cursed-button"
               >
                 {buttonLabel}
               </CursedButton>
@@ -345,19 +431,19 @@ function RugPullSurface() {
           </BigButtonPanel>
 
           <StatsGrid>
-            <Stat>
+            <Stat data-casino-table-region="stat">
               <strong>Current Pot</strong>
               <div>{data.round.pot.xtz} XTZ</div>
             </Stat>
-            <Stat>
+            <Stat data-casino-table-region="stat">
               <strong>Next Seed</strong>
               <div>{data.round.nextSeedPot.xtz} XTZ</div>
             </Stat>
-            <Stat>
+            <Stat data-casino-table-region="stat">
               <strong>WTF Take</strong>
               <div>{data.round.platformTake.xtz} XTZ</div>
             </Stat>
-            <Stat>
+            <Stat data-casino-table-region="stat">
               <strong>Pressure</strong>
               <div>{(data.round.pressureMultiplierBps / 100).toFixed(0)}%</div>
             </Stat>
@@ -384,7 +470,7 @@ function RugPullSurface() {
           <Box label="Players">
             <Table>
               {topPlayers.map((player) => (
-                <Row key={player.walletId}>
+                <Row key={player.walletId} data-casino-table-region="row">
                   <strong>#{player.joinOrder}</strong>
                   <div>
                     <strong>{player.displayName}</strong>
@@ -402,7 +488,7 @@ function RugPullSurface() {
             <Table>
               {data.witnesses.length ? (
                 data.witnesses.map((witness) => (
-                  <Row key={witness.walletId}>
+                  <Row key={witness.walletId} data-casino-table-region="row">
                     <span>*</span>
                     <strong>{witness.displayName}</strong>
                     <span>{witness.vote ?? "watching"}</span>
@@ -428,7 +514,7 @@ function RugPullSurface() {
           )}
 
           <Box label="Timeline">
-            <EventFeed>
+            <EventFeed data-casino-table-region="feed">
               {data.timeline.map((event) => (
                 <div key={event.id}>{event.message}</div>
               ))}

@@ -1,5 +1,5 @@
 /**
- * Deploy the WTF Domains registrar to Ghostnet or Mainnet via Taquito.
+ * Deploy the WTF Domains registrar to Shadownet or Mainnet via Taquito.
  *
  * Usage:
  *   npx tsx contracts/wtf-subdomains/deploy.ts --code contracts/wtf-subdomains/registrar.tz --storage contracts/wtf-subdomains/storage.tz
@@ -8,14 +8,14 @@
  *   DEPLOYER_SK  — secret key (edsk...) for the deploying wallet (admin)
  *
  * Optional env vars:
- *   TEZOS_RPC    — RPC endpoint (default: https://rpc.ghostnet.teztnets.com)
+ *   TEZOS_RPC    — RPC endpoint (default: https://tezos-shadownet.octez.io/)
  *   STORAGE_LIMIT — storage limit for origination (default: 20000)
  *
  * Steps before running:
  *   1. Compile in SmartPy IDE → Download Michelson (.tz) files
  *   2. Place code file and storage file in contracts/wtf-subdomains/
- *   3. Fund your ghostnet wallet: https://faucet.ghostnet.teztnets.com/
- *   4. Export DEPLOYER_SK=edsk... (your ghostnet private key)
+ *   3. Fund your shadownet wallet: https://faucet.shadownet.teztnets.com/
+ *   4. Export DEPLOYER_SK=edsk... (your shadownet private key)
  *   5. npx tsx contracts/wtf-subdomains/deploy.ts --code <path> --storage <path>
  *
  * The script sets storageLimit=20000 by default to avoid
@@ -31,7 +31,7 @@ const { values } = parseArgs({
     options: {
         code: { type: "string" },
         storage: { type: "string" },
-        rpc: { type: "string", default: process.env.TEZOS_RPC || "https://rpc.ghostnet.teztnets.com" },
+        rpc: { type: "string", default: process.env.TEZOS_RPC || "https://tezos-shadownet.octez.io/" },
         "storage-limit": { type: "string", default: process.env.STORAGE_LIMIT || "20000" },
     },
 });
@@ -68,7 +68,7 @@ async function main() {
 
     if (balance.toNumber() < 2_000_000) {
         console.error("⚠️  Low balance. Origination needs ~2-5 ꜩ for storage burn.");
-        console.error("   Faucet: https://faucet.ghostnet.teztnets.com/");
+        console.error("   Faucet: https://faucet.shadownet.teztnets.com/");
     }
 
     console.log("\n🚀 Originating contract...");
@@ -88,7 +88,7 @@ async function main() {
         console.log(`   Op hash: ${op.hash}`);
         console.log(`\n📋 Next steps:`);
         console.log(`   1. Set VITE_REGISTRAR_ADDRESS=${contract.address} in your .env`);
-        console.log(`   2. Verify on TzKT: https://ghostnet.tzkt.io/${contract.address}`);
+        console.log(`   2. Verify on TzKT: https://shadownet.tzkt.io/${contract.address}`);
         console.log(`   3. Transfer/operator-enable ${parentDomain} ownership to ${contract.address} via TED`);
     } catch (err: unknown) {
         console.error("\n❌ Origination failed:");
@@ -99,7 +99,7 @@ async function main() {
                 console.error("   Example: --storage-limit 40000");
             }
             if (err.message.includes("balance_too_low")) {
-                console.error("\n💡 Need more ꜩ. Faucet: https://faucet.ghostnet.teztnets.com/");
+                console.error("\n💡 Need more ꜩ. Faucet: https://faucet.shadownet.teztnets.com/");
             }
         } else {
             console.error(err);

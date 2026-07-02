@@ -25,6 +25,7 @@ import {
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UiButton, UiPanel } from "../components/wtfos-ui";
+import { usePresentationShell } from "../lib/presentation-shell";
 import { BoardAdminTab } from "../features/admin/tabs/BoardAdminTab";
 import { ChallengeAutomationAdminTab } from "../features/admin/tabs/ChallengeAutomationAdminTab";
 import {
@@ -70,6 +71,8 @@ const ActionRow = styled.div`
   flex-wrap: wrap;
 `;
 
+const gammaAdminScope = `[data-admin-presentation-host="gamma"]`;
+
 const AdminFrame = styled.div`
   height: 100%;
   min-height: 0;
@@ -80,6 +83,77 @@ const AdminFrame = styled.div`
   background: var(--wtf-app-task-bg, var(--wtf-app-bg, #e8edf2));
   padding: var(--wtf-space-3, 12px);
   color: var(--wtf-app-text, #111);
+
+  &[data-admin-presentation-host="gamma"] {
+    background: #080807;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+    padding: 4px;
+  }
+
+  &[data-admin-presentation-host="gamma"] [data-admin-region],
+  &[data-admin-presentation-host="gamma"] section,
+  &[data-admin-presentation-host="gamma"] fieldset,
+  &[data-admin-presentation-host="gamma"] table,
+  &[data-admin-presentation-host="gamma"] th,
+  &[data-admin-presentation-host="gamma"] td {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-admin-presentation-host="gamma"] section,
+  &[data-admin-presentation-host="gamma"] fieldset,
+  &[data-admin-presentation-host="gamma"] [data-admin-region="suite-title"],
+  &[data-admin-presentation-host="gamma"] [data-admin-region="overview-box"],
+  &[data-admin-presentation-host="gamma"] [data-admin-region="tab-body"] {
+    border-color: rgba(242, 234, 217, 0.18) !important;
+    border-radius: 6px !important;
+    background: #10100e !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-admin-presentation-host="gamma"] table {
+    border-color: rgba(242, 234, 217, 0.18) !important;
+    background: #0a0a09 !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-admin-presentation-host="gamma"] th,
+  &[data-admin-presentation-host="gamma"] td {
+    border-color: rgba(242, 234, 217, 0.18) !important;
+    background: transparent !important;
+    color: rgba(242, 234, 217, 0.78) !important;
+  }
+
+  &[data-admin-presentation-host="gamma"] th {
+    color: #f2ead9 !important;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+
+  &[data-admin-presentation-host="gamma"] input,
+  &[data-admin-presentation-host="gamma"] select,
+  &[data-admin-presentation-host="gamma"] textarea {
+    border: 1px solid rgba(242, 234, 217, 0.22) !important;
+    border-radius: 4px !important;
+    background: #070706 !important;
+    color: #f2ead9 !important;
+    box-shadow: none !important;
+    letter-spacing: 0;
+  }
+
+  &[data-admin-presentation-host="gamma"] button {
+    background-image: none !important;
+    box-shadow: none !important;
+    letter-spacing: 0;
+  }
+
+  &[data-admin-presentation-host="gamma"] a {
+    color: #00d2ff;
+  }
 `;
 
 const SuiteHeader = styled.header`
@@ -99,6 +173,13 @@ const SuiteTitlePanel = styled.div`
   box-shadow: inset 0 2px 0 var(--wtf-app-primary, var(--wtf-app-link, #000080));
   padding: var(--wtf-space-4, 16px);
   min-width: 0;
+
+  ${gammaAdminScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    background: #10100e;
+    color: #f2ead9;
+    box-shadow: none;
+  }
 `;
 
 const SuiteKicker = styled.div`
@@ -106,6 +187,13 @@ const SuiteKicker = styled.div`
   font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   line-height: 1.25;
+
+  ${gammaAdminScope} & {
+    color: #00d2ff;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 12px;
+    text-transform: uppercase;
+  }
 `;
 
 const SuiteTitle = styled.h2`
@@ -120,11 +208,23 @@ const SuiteSubtitle = styled.div`
   color: var(--wtf-app-muted-text, #384352);
   font-size: var(--wtf-type-caption, 13px);
   line-height: 1.35;
+
+  ${gammaAdminScope} & {
+    color: rgba(242, 234, 217, 0.68);
+  }
 `;
 
 const OverviewBox = styled(UiPanel)`
   margin-bottom: 0;
   min-width: 0;
+
+  ${gammaAdminScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: #10100e;
+    color: #f2ead9;
+    box-shadow: none;
+  }
 `;
 
 const OverviewStats = styled.div`
@@ -142,10 +242,21 @@ const StatTile = styled.span`
   padding: var(--wtf-space-2, 8px);
   min-width: 0;
 
+  ${gammaAdminScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 5px;
+    background: #0a0a09;
+    color: rgba(242, 234, 217, 0.7);
+  }
+
   strong {
     font-size: 18px;
     line-height: 1;
     overflow-wrap: anywhere;
+
+    ${gammaAdminScope} & {
+      color: #f2ead9;
+    }
   }
 
   span {
@@ -153,6 +264,10 @@ const StatTile = styled.span`
     font-size: var(--wtf-type-caption, 13px);
     line-height: 1.25;
     overflow-wrap: anywhere;
+
+    ${gammaAdminScope} & {
+      color: rgba(242, 234, 217, 0.62);
+    }
   }
 `;
 
@@ -178,6 +293,14 @@ const SuiteNav = styled.nav`
   box-shadow: 4px 4px 0 #15171a;
   padding: 9px;
   scrollbar-gutter: stable;
+
+  ${gammaAdminScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: #0a0a09;
+    color: #f2ead9;
+    box-shadow: none;
+  }
 `;
 
 const NavGroup = styled.div`
@@ -191,6 +314,13 @@ const NavGroupTitle = styled.div`
   font-size: var(--wtf-type-caption, 13px);
   font-weight: 700;
   padding: 0 3px;
+
+  ${gammaAdminScope} & {
+    color: #00d2ff;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 12px;
+    text-transform: uppercase;
+  }
 `;
 
 const NavButton = styled.button<{ $active?: boolean; $accent: string }>`
@@ -208,9 +338,23 @@ const NavButton = styled.button<{ $active?: boolean; $accent: string }>`
   box-shadow: ${({ $active, $accent }) => ($active ? `3px 3px 0 ${$accent}` : "none")};
   cursor: pointer;
 
+  ${gammaAdminScope} & {
+    border-color: ${({ $active }) => ($active ? "#00d2ff" : "rgba(242, 234, 217, 0.18)")};
+    border-radius: 5px;
+    background: ${({ $active }) => ($active ? "#11110f" : "transparent")};
+    color: ${({ $active }) => ($active ? "#f2ead9" : "rgba(242, 234, 217, 0.72)")};
+    box-shadow: none;
+  }
+
   &:hover {
     border-color: ${({ $accent }) => $accent};
     background: ${({ $active }) => ($active ? "#ffffff" : "#383d43")};
+
+    ${gammaAdminScope} & {
+      border-color: #00d2ff;
+      background: #11110f;
+      color: #f2ead9;
+    }
   }
 `;
 
@@ -222,6 +366,13 @@ const NavIcon = styled.span<{ $accent: string }>`
   border: 1px solid ${({ $accent }) => $accent};
   background: rgba(255, 255, 255, 0.08);
   color: ${({ $accent }) => $accent};
+
+  ${gammaAdminScope} & {
+    border-color: rgba(0, 210, 255, 0.58);
+    border-radius: 4px;
+    background: transparent;
+    color: #00d2ff;
+  }
 `;
 
 const NavCopy = styled.span`
@@ -245,6 +396,11 @@ const NavDescription = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  ${gammaAdminScope} & {
+    color: rgba(242, 234, 217, 0.58);
+    opacity: 1;
+  }
 `;
 
 const AdminTabBody = styled.section`
@@ -255,6 +411,13 @@ const AdminTabBody = styled.section`
   background: var(--wtf-app-surface, #f4f4f4);
   padding: var(--wtf-space-4, 16px);
   scrollbar-gutter: stable;
+
+  ${gammaAdminScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    background: #10100e;
+    color: #f2ead9;
+  }
 `;
 
 const ActivePanelHeader = styled.div`
@@ -265,6 +428,10 @@ const ActivePanelHeader = styled.div`
   margin-bottom: 12px;
   border-bottom: 1px solid var(--wtf-app-border, #808080);
   padding-bottom: 8px;
+
+  ${gammaAdminScope} & {
+    border-color: rgba(242, 234, 217, 0.18);
+  }
 `;
 
 const ActivePanelTitle = styled.div`
@@ -283,6 +450,10 @@ const ActivePanelTitle = styled.div`
     color: var(--wtf-app-muted-text, #384352);
     font-size: var(--wtf-type-caption, 13px);
     line-height: 1.35;
+
+    ${gammaAdminScope} & {
+      color: rgba(242, 234, 217, 0.68);
+    }
   }
 `;
 
@@ -295,6 +466,13 @@ const ActivePanelIcon = styled.span<{ $accent: string }>`
   background: ${({ $accent }) => $accent};
   color: #111111;
   flex: 0 0 auto;
+
+  ${gammaAdminScope} & {
+    border-color: rgba(0, 210, 255, 0.58);
+    border-radius: 5px;
+    background: transparent;
+    color: #00d2ff;
+  }
 `;
 
 const ActivePanelBadge = styled.div<{ $accent: string }>`
@@ -305,6 +483,16 @@ const ActivePanelBadge = styled.div<{ $accent: string }>`
   font-weight: 700;
   font-size: var(--wtf-type-caption, 13px);
   white-space: nowrap;
+
+  ${gammaAdminScope} & {
+    border-color: rgba(0, 210, 255, 0.58);
+    border-radius: 5px;
+    background: transparent;
+    color: #00d2ff;
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 12px;
+    text-transform: uppercase;
+  }
 `;
 
 const EMPTY_JSON_OBJECT = "{}";
@@ -376,6 +564,7 @@ function ConfirmButton({
 }
 
 export function Admin() {
+  const presentation = usePresentationShell();
   const [activeTab, setActiveTab] = useState(0);
 
   const [xpLogUserFilter, setXpLogUserFilter] = useState("");
@@ -666,34 +855,38 @@ export function Admin() {
 
   return (
     <AppWindow title="Admin Panel">
-      <AdminFrame>
-        <SuiteHeader>
-          <SuiteTitlePanel>
+      <AdminFrame
+        data-admin-presentation-host={presentation.host}
+        data-admin-surface="control-suite"
+        data-admin-region="frame"
+      >
+        <SuiteHeader data-admin-region="suite-header">
+          <SuiteTitlePanel data-admin-region="suite-title">
             <SuiteKicker>wtfOS admin</SuiteKicker>
             <SuiteTitle>Control Suite</SuiteTitle>
             <SuiteSubtitle>{activeSection.group} / {activeSection.label}</SuiteSubtitle>
           </SuiteTitlePanel>
 
-          <OverviewBox title="Live inventory" compact>
-            <OverviewStats>
-              <StatTile><strong>{stats?.users ?? "-"}</strong><span>Users</span></StatTile>
-              <StatTile><strong>{stats?.seasons ?? "-"}</strong><span>Seasons</span></StatTile>
-              <StatTile><strong>{stats?.rounds ?? "-"}</strong><span>Rounds</span></StatTile>
-              <StatTile><strong>{stats?.challenges ?? "-"}</strong><span>Tasks</span></StatTile>
-              <StatTile><strong>{stats?.sideQuests ?? "-"}</strong><span>Quests</span></StatTile>
-              <StatTile><strong>{stats?.listings ?? "-"}</strong><span>Listings</span></StatTile>
-              <StatTile><strong>{stats?.threads ?? "-"}</strong><span>Threads</span></StatTile>
-              <StatTile><strong>{stats?.links ?? "-"}</strong><span>Links</span></StatTile>
-              <StatTile><strong>{stats?.faq ?? "-"}</strong><span>FAQ</span></StatTile>
+          <OverviewBox title="Live inventory" compact data-admin-region="overview-box">
+            <OverviewStats data-admin-region="overview-stats">
+              <StatTile data-admin-region="stat-tile"><strong>{stats?.users ?? "-"}</strong><span>Users</span></StatTile>
+              <StatTile data-admin-region="stat-tile"><strong>{stats?.seasons ?? "-"}</strong><span>Seasons</span></StatTile>
+              <StatTile data-admin-region="stat-tile"><strong>{stats?.rounds ?? "-"}</strong><span>Rounds</span></StatTile>
+              <StatTile data-admin-region="stat-tile"><strong>{stats?.challenges ?? "-"}</strong><span>Tasks</span></StatTile>
+              <StatTile data-admin-region="stat-tile"><strong>{stats?.sideQuests ?? "-"}</strong><span>Quests</span></StatTile>
+              <StatTile data-admin-region="stat-tile"><strong>{stats?.listings ?? "-"}</strong><span>Listings</span></StatTile>
+              <StatTile data-admin-region="stat-tile"><strong>{stats?.threads ?? "-"}</strong><span>Threads</span></StatTile>
+              <StatTile data-admin-region="stat-tile"><strong>{stats?.links ?? "-"}</strong><span>Links</span></StatTile>
+              <StatTile data-admin-region="stat-tile"><strong>{stats?.faq ?? "-"}</strong><span>FAQ</span></StatTile>
             </OverviewStats>
           </OverviewBox>
         </SuiteHeader>
 
-        <SuiteBody>
-          <SuiteNav aria-label="Admin suite panels">
+        <SuiteBody data-admin-region="suite-body">
+          <SuiteNav aria-label="Admin suite panels" data-admin-region="suite-nav">
             {Object.entries(groupedSections).map(([group, sections]) => (
-              <NavGroup key={group}>
-                <NavGroupTitle>{group}</NavGroupTitle>
+              <NavGroup key={group} data-admin-region="nav-group">
+                <NavGroupTitle data-admin-region="nav-group-title">{group}</NavGroupTitle>
                 {sections.map((section) => {
                   const Icon = section.Icon;
                   const isActive = section.value === activeTab;
@@ -704,9 +897,11 @@ export function Admin() {
                       $accent={section.accent}
                       title={section.title}
                       aria-current={isActive ? "page" : undefined}
+                      data-admin-region="nav-button"
+                      data-admin-section={section.title}
                       onClick={() => setActiveTab(section.value)}
                     >
-                      <NavIcon $accent={section.accent}>
+                      <NavIcon $accent={section.accent} data-admin-region="nav-icon">
                         <Icon size={16} strokeWidth={2.4} aria-hidden="true" />
                       </NavIcon>
                       <NavCopy>
@@ -720,10 +915,10 @@ export function Admin() {
             ))}
           </SuiteNav>
 
-          <AdminTabBody>
-          <ActivePanelHeader>
+          <AdminTabBody data-admin-region="tab-body" data-admin-active-section={activeSection.title}>
+          <ActivePanelHeader data-admin-region="active-panel-header">
             <ActivePanelTitle>
-              <ActivePanelIcon $accent={activeSection.accent}>
+              <ActivePanelIcon $accent={activeSection.accent} data-admin-region="active-panel-icon">
                 <ActiveSectionIcon size={18} strokeWidth={2.4} aria-hidden="true" />
               </ActivePanelIcon>
               <div>
@@ -731,7 +926,7 @@ export function Admin() {
                 <p>{activeSection.description}</p>
               </div>
             </ActivePanelTitle>
-            <ActivePanelBadge $accent={activeSection.accent}>
+            <ActivePanelBadge $accent={activeSection.accent} data-admin-region="active-panel-badge">
               {activeSection.group}
             </ActivePanelBadge>
           </ActivePanelHeader>

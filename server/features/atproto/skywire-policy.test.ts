@@ -167,6 +167,25 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.doesNotMatch(route, /sessionGetter\.getStored/);
 });
 
+test("Skywire imports Bluesky trending topics as a read-only hot lane", () => {
+  const route = readFileSync("server/routes/skywire.ts", "utf8");
+  const page = readFileSync("client/src/pages/Skywire.tsx", "utf8");
+  const nav = readFileSync("client/src/features/skywire/skywire-nav.ts", "utf8");
+  const permissions = readFileSync("shared/atproto-permissions.ts", "utf8");
+
+  assert.match(route, /"\/api\/skywire\/trending-topics"/);
+  assert.match(route, /getTrendingTopics/);
+  assert.match(route, /source:\s*"app\.bsky\.unspecced\.getTrendingTopics"/);
+  assert.match(route, /personalizesWithViewer:\s*Boolean\(viewer\)/);
+  assert.match(route, /"skywire\.trending_topics\.viewed"/);
+  assert.match(page, /function HotPanel/);
+  assert.match(page, /data-skywire-hot-topic="true"/);
+  assert.match(page, /feedType="search"/);
+  assert.match(nav, /\|\s*"hot"/);
+  assert.match(nav, /\{ id: "hot", label: "Hot"/);
+  assert.match(permissions, /app\.bsky\.unspecced\.getTrendingTopics/);
+});
+
 test("Skywire registration UI only offers official signup handoff", () => {
   const page = readFileSync("client/src/pages/Skywire.tsx", "utf8");
   const shell = readFileSync("client/src/features/skywire/SkywireShell.tsx", "utf8");
@@ -249,7 +268,7 @@ test("Skywire exposes a standalone OVOID-style AT login surface", () => {
   assert.match(pageDefs, /pattern:\s*"\/skywire"[\s\S]*auth:\s*false/);
   assert.match(browserRoutes, /\{\s*pattern:\s*"\/skywire",\s*auth:\s*false/);
   assert.match(access, /Standalone AT Protocol login surface/);
-  assert.match(caddy, /wtfos\.app,\s*skywire\.wtfos\.app,\s*dues\.wtfgameshow\.app\s*\{/);
+  assert.match(caddy, /wtfos\.app,[^{]*skywire\.wtfos\.app,[^{]*dues\.wtfgameshow\.app\s*\{/);
 });
 
 test("Skywire bridge exposes preferred Tezos identity and detected .tez domains", () => {

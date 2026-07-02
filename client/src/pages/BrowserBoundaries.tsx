@@ -19,6 +19,7 @@ import styled from "styled-components";
 import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 
 type AccessMode =
@@ -56,6 +57,71 @@ const Shell = styled.div`
   display: grid;
   gap: 8px;
   min-width: 0;
+
+  &[data-gamma-utility-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"],
+  &[data-gamma-utility-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region],
+  &[data-gamma-utility-presentation-host="gamma"] fieldset {
+    min-width: 0;
+    background-image: none;
+    border-radius: 6px;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] fieldset,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="status-cell"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="row"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="empty"] {
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    background: #11110f;
+    color: #f2ead9;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] legend,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="label"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="meta"] {
+    color: rgba(242, 234, 217, 0.7);
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] legend,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="label"] {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="icon"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="tag"] {
+    border: 1px solid rgba(0, 210, 255, 0.5);
+    background: #070706;
+    color: #00d2ff;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"] {
+    border: 1px solid rgba(0, 210, 255, 0.58);
+    border-radius: 4px;
+    background: transparent;
+    color: #00d2ff;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"]:hover,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"]:focus-visible {
+    border-color: #00d2ff;
+    color: #f2ead9;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
 `;
 
 const StatusGrid = styled.div`
@@ -197,6 +263,7 @@ function modeLabel(mode: AccessMode) {
 }
 
 export function BrowserBoundaries() {
+  const presentation = usePresentationShell();
   const [, setLocation] = useLocation();
   const manifestQuery = useQuery({
     queryKey: ["browser-boundaries", "access"],
@@ -304,9 +371,9 @@ export function BrowserBoundaries() {
         eventType: "browser_boundaries.action_opened",
         metadata: { path, action },
       });
-      setLocation(path);
+      setLocation(presentationRouteHref(path, presentation.host));
     },
-    [setLocation]
+    [presentation.host, setLocation]
   );
 
   useEffect(() => {
@@ -323,7 +390,11 @@ export function BrowserBoundaries() {
   if (manifestQuery.isLoading) {
     return (
       <AppWindow title="Browser Boundaries">
-        <EmptyState>
+        <EmptyState
+          data-gamma-utility-surface="browser-boundaries"
+          data-gamma-utility-presentation-host={presentation.host}
+          data-gamma-utility-region="empty"
+        >
           <Hourglass size={16} /> Loading access map...
         </EmptyState>
       </AppWindow>
@@ -332,22 +403,27 @@ export function BrowserBoundaries() {
 
   return (
     <AppWindow title="Browser Boundaries">
-      <Shell data-testid="browser-boundaries">
-        <StatusGrid>
-          <StatusCell>
-            <StatusLabel>Public Routes</StatusLabel>
+      <Shell
+        data-testid="browser-boundaries"
+        data-gamma-utility-surface="browser-boundaries"
+        data-gamma-utility-presentation-host={presentation.host}
+        data-gamma-utility-region="surface"
+      >
+        <StatusGrid data-gamma-utility-region="status-grid">
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Public Routes</StatusLabel>
             <StatusValue>{countByAccess(browserRoutes, "public")}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Session Routes</StatusLabel>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Session Routes</StatusLabel>
             <StatusValue>{countByAccess(browserRoutes, "browser-session")}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Role Gates</StatusLabel>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Role Gates</StatusLabel>
             <StatusValue>{countByAccess(browserRoutes, "role-gated-session")}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>API Routes</StatusLabel>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">API Routes</StatusLabel>
             <StatusValue>{apiRoutes.length}</StatusValue>
           </StatusCell>
         </StatusGrid>
@@ -359,15 +435,16 @@ export function BrowserBoundaries() {
             {boundaryRows.map((row) => {
               const Icon = row.icon;
               return (
-                <Row key={row.id}>
-                  <IconBox>
+                <Row key={row.id} data-gamma-utility-region="row">
+                  <IconBox data-gamma-utility-region="icon">
                     <Icon size={17} aria-hidden />
                   </IconBox>
                   <div>
                     <RowTitle>{row.label}</RowTitle>
-                    <RowMeta>{row.detail}</RowMeta>
+                    <RowMeta data-gamma-utility-region="meta">{row.detail}</RowMeta>
                   </div>
                   <OpenButton
+                    data-gamma-utility-region="button"
                     onClick={() => openBoundaryAction("/recovery-mode", row.id)}
                   >
                     <ShieldCheck size={14} aria-hidden />
@@ -384,15 +461,15 @@ export function BrowserBoundaries() {
             {browserModeRows.map((row) => {
               const Icon = row.icon;
               return (
-                <Row key={row.id}>
-                  <IconBox>
+                <Row key={row.id} data-gamma-utility-region="row">
+                  <IconBox data-gamma-utility-region="icon">
                     <Icon size={17} aria-hidden />
                   </IconBox>
                   <div>
                     <RowTitle>{row.label}</RowTitle>
-                    <RowMeta>{row.detail}</RowMeta>
+                    <RowMeta data-gamma-utility-region="meta">{row.detail}</RowMeta>
                   </div>
-                  <OpenButton onClick={() => openBoundaryAction(row.path, row.id)}>
+                  <OpenButton data-gamma-utility-region="button" onClick={() => openBoundaryAction(row.path, row.id)}>
                     <Route size={14} aria-hidden />
                     Open {row.action}
                   </OpenButton>
@@ -406,15 +483,15 @@ export function BrowserBoundaries() {
           <GroupBox label="Public Browser Routes">
             <Rows>
               {publicRoutes.map((route) => (
-                <Row key={route.path}>
-                  <IconBox>
+                <Row key={route.path} data-gamma-utility-region="row">
+                  <IconBox data-gamma-utility-region="icon">
                     <Globe2 size={17} aria-hidden />
                   </IconBox>
                   <div>
                     <RowTitle>{route.title ?? route.path}</RowTitle>
-                    <RowMeta>{route.path}</RowMeta>
+                    <RowMeta data-gamma-utility-region="meta">{route.path}</RowMeta>
                   </div>
-                  <Tag $mode={route.access}>{modeLabel(route.access)}</Tag>
+                  <Tag $mode={route.access} data-gamma-utility-region="tag">{modeLabel(route.access)}</Tag>
                 </Row>
               ))}
             </Rows>
@@ -423,8 +500,8 @@ export function BrowserBoundaries() {
           <GroupBox label="Protected Browser Routes">
             <Rows>
               {sessionRoutes.map((route) => (
-                <Row key={route.path}>
-                  <IconBox>
+                <Row key={route.path} data-gamma-utility-region="row">
+                  <IconBox data-gamma-utility-region="icon">
                     {route.access === "role-gated-session" ? (
                       <LockKeyhole size={17} aria-hidden />
                     ) : (
@@ -433,9 +510,9 @@ export function BrowserBoundaries() {
                   </IconBox>
                   <div>
                     <RowTitle>{route.title ?? route.path}</RowTitle>
-                    <RowMeta>{route.path}</RowMeta>
+                    <RowMeta data-gamma-utility-region="meta">{route.path}</RowMeta>
                   </div>
-                  <Tag $mode={route.access}>{modeLabel(route.access)}</Tag>
+                  <Tag $mode={route.access} data-gamma-utility-region="tag">{modeLabel(route.access)}</Tag>
                 </Row>
               ))}
             </Rows>
@@ -443,18 +520,19 @@ export function BrowserBoundaries() {
         </PanelGrid>
 
         <GroupBox label="Agent Boundary">
-          <Row>
-            <IconBox>
+          <Row data-gamma-utility-region="row">
+            <IconBox data-gamma-utility-region="icon">
               <Braces size={17} aria-hidden />
             </IconBox>
             <div>
               <RowTitle>{mcp?.endpoint ?? "/mcp"}</RowTitle>
-              <RowMeta>
+              <RowMeta data-gamma-utility-region="meta">
                 {mcpScopeCount} scopes, {mcp?.rateLimitPerMinute ?? 0}
                 /min, token API {mcp?.tokenManagementApi ?? "/api/mcp/tokens"}
               </RowMeta>
             </div>
             <OpenButton
+              data-gamma-utility-region="button"
               onClick={() => openBoundaryAction("/desktop-settings", "agent-tokens")}
             >
               <Bot size={14} aria-hidden />
@@ -464,7 +542,7 @@ export function BrowserBoundaries() {
         </GroupBox>
 
         {manifestQuery.isError && (
-          <EmptyState>Access manifest unavailable. Use Recovery Mode for current health.</EmptyState>
+          <EmptyState data-gamma-utility-region="empty">Access manifest unavailable. Use Recovery Mode for current health.</EmptyState>
         )}
       </Shell>
     </AppWindow>

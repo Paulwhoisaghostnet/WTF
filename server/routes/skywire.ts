@@ -165,6 +165,10 @@ const feedQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(30),
 });
 
+const trendingTopicsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(25).default(14),
+});
+
 const tokenLinkQuerySchema = z.object({
   url: z.string().trim().min(1).max(2000),
 });
@@ -1117,7 +1121,8 @@ function recordSkywireSystemEvent(
     | "skywire.tezos_vault.viewed"
     | "atproto.live_status.updated"
     | "atproto.live_status.cleared"
-    | "atproto.chat.group_created",
+    | "atproto.chat.group_created"
+    | "skywire.trending_topics.viewed",
   rawRefType: string,
   rawRefId: string,
   metadata: Record<string, unknown> = {},
@@ -1374,6 +1379,41 @@ function actorIdentityKeys(actor: any): string[] {
     .filter(Boolean);
 }
 
+function normalizeSkywireTrendingTopic(topic: any) {
+  const link = String(topic?.link || "").trim();
+  const topicName = String(topic?.topic || topic?.displayName || "").trim();
+  return {
+    topic: topicName,
+    displayName: String(topic?.displayName || topicName || link || "Trending topic"),
+    description: topic?.description ? String(topic.description) : null,
+    link,
+    category: topic?.category ? String(topic.category) : null,
+    startedAt: topic?.startedAt || null,
+    postCount: Number.isFinite(Number(topic?.postCount)) ? Number(topic.postCount) : null,
+  };
+}
+
+async function skywireTrendingTopicsAgent(userId: number) {
+  const account = await linkedAccountForUser(userId);
+  if (!account) return { agent: getPublicAtprotoAgent(), viewer: null };
+  try {
+    return {
+      agent: await getAtprotoAgentForDid(account.did),
+      viewer: account.did,
+    };
+  } catch (err) {
+    const payload = atprotoSessionPayload(err);
+    if (!payload) throw err;
+    return { agent: getPublicAtprotoAgent(), viewer: null };
+  }
+}
+
+async function getSkywireTrendingTopics(agent: any, params: { limit: number; viewer?: string }) {
+  const helper = agent?.app?.bsky?.unspecced?.getTrendingTopics;
+  if (typeof helper === "function") return helper.call(agent.app.bsky.unspecced, params);
+  return agent.call("app.bsky.unspecced.getTrendingTopics", params);
+}
+
 router.get("/api/skywire/share-intent", (req, res) => {
   res.json({ url: buildBskyIntentUrl(String(req.query.text || "")) });
 });
@@ -1389,6 +1429,33 @@ router.get("/api/skywire/status", isAuthenticated, requireSkywireRollout, async 
 
 router.use("/api/skywire", isAuthenticated, requireSkywireRollout);
 
+
+router.get("/api/skywire/trending-topics", async (req, res) => {
+  const parsed = trendingTopicsQuerySchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Skywire trending topic query" });
+  const user = req.user as any;
+  const { agent, viewer } = await skywireTrendingTopicsAgent((req.user as any).id);
+  const response = await getSkywireTrendingTopics(agent, {
+    limit: parsed.data.limit,
+    ...(viewer ? { viewer } : {}),
+  });
+  const topics = (response.data.topics ?? []).map(normalizeSkywireTrendingTopic);
+  const suggested = (response.data.suggested ?? []).map(normalizeSkywireTrendingTopic);
+  recordSkywireSystemEvent(user, "skywire.trending_topics.viewed", "atproto_xrpc", "app.bsky.unspecced.getTrendingTopics", {
+    topicCount: topics.length,
+    suggestedCount: suggested.length,
+    personalized: Boolean(viewer),
+    limit: parsed.data.limit,
+  });
+  res.json({
+    source: "app.bsky.unspecced.getTrendingTopics",
+    personalizesWithViewer: Boolean(viewer),
+    limit: parsed.data.limit,
+    topics,
+    suggested,
+    fetchedAt: new Date().toISOString(),
+  });
+});
 
 router.get("/api/skywire/pipelines", isAuthenticated, async (_req, res) => {
   res.json({

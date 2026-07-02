@@ -92,8 +92,14 @@ export function BoardChannelSettings({
   });
 
   return (
-    <SettingsOverlay onClick={onClose}>
-      <SettingsWin onClick={(event) => event.stopPropagation()}>
+    <SettingsOverlay data-board-dialog-overlay="true" onClick={onClose}>
+      <SettingsWin
+        aria-label={`Channel Settings - ${channel.title}`}
+        aria-modal="true"
+        data-board-dialog="channel-settings"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
         <SettingsTitleBar>
           <span>Channel Settings — #{channel.title}</span>
           <Button size="sm" onClick={onClose} style={{ fontSize: 10, padding: "1px 6px" }}>

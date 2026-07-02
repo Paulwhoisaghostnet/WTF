@@ -13,8 +13,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@taquito/signer": "^24.3.0",
-    "@taquito/taquito": "^24.3.0",
+    "@taquito/signer": "^25.0.0",
+    "@taquito/taquito": "^25.0.0",
     "dotenv": "^17.2.3",
     "pino": "^9.5.0",
     "zod": "^4.1.12"

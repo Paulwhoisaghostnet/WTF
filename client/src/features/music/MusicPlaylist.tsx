@@ -32,27 +32,29 @@ export function MusicPlaylist({ onTrackSelect, selectedPlaylistId, onPlaylistSel
   const playlists = playlistsQ.data ?? [];
 
   return (
-    <GroupBox label="Playlists">
-      <PlaylistWrap>
+    <div data-music-region="playlist-panel">
+      <GroupBox label="Playlists">
+      <PlaylistWrap data-music-region="playlist-list">
         {playlistsQ.isLoading ? (
-          <LoadRow><Hourglass size={18} /> Loading...</LoadRow>
+          <LoadRow data-music-region="playlist-loading"><Hourglass size={18} /> Loading...</LoadRow>
         ) : playlists.length === 0 ? (
-          <EmptyNote>No playlists yet.</EmptyNote>
+          <EmptyNote data-music-region="playlist-empty">No playlists yet.</EmptyNote>
         ) : (
           playlists.map((pl: MusicPlaylist) => (
             <PlaylistRow
               key={pl.id}
+              data-music-region="playlist-row"
               $active={pl.id === selectedPlaylistId}
               onClick={() => onPlaylistSelect(pl.id)}
             >
               {pl.name}
-              {pl.isPublic && <Badge>public</Badge>}
+              {pl.isPublic && <Badge data-music-region="playlist-badge">public</Badge>}
             </PlaylistRow>
           ))
         )}
 
         {creating ? (
-          <CreateRow>
+          <CreateRow data-music-region="playlist-create">
             <TextInput
               value={newName}
               onChange={(e) => setNewName((e.target as HTMLInputElement).value)}
@@ -69,12 +71,15 @@ export function MusicPlaylist({ onTrackSelect, selectedPlaylistId, onPlaylistSel
             <Button size="sm" onClick={() => setCreating(false)}>✕</Button>
           </CreateRow>
         ) : (
-          <Button size="sm" onClick={() => setCreating(true)}>+ New Playlist</Button>
+          <Button size="sm" data-music-region="playlist-create-button" onClick={() => setCreating(true)}>+ New Playlist</Button>
         )}
       </PlaylistWrap>
-    </GroupBox>
+      </GroupBox>
+    </div>
   );
 }
+
+const gammaMusicScope = `[data-music-presentation-host="gamma"]`;
 
 const PlaylistWrap = styled.div`
   display: flex;
@@ -82,6 +87,11 @@ const PlaylistWrap = styled.div`
   gap: 4px;
   max-height: 200px;
   overflow-y: auto;
+
+  ${gammaMusicScope} & {
+    gap: 6px;
+    padding: 2px;
+  }
 `;
 
 const PlaylistRow = styled.button<{ $active: boolean }>`
@@ -95,6 +105,15 @@ const PlaylistRow = styled.button<{ $active: boolean }>`
   gap: 6px;
   cursor: pointer;
   font-size: 11px;
+
+  ${gammaMusicScope} & {
+    min-height: 38px;
+    border: 1px solid ${(p) => (p.$active ? "rgba(0, 210, 255, 0.8)" : "rgba(242, 234, 217, 0.18)")};
+    border-radius: 6px;
+    background: ${(p) => (p.$active ? "rgba(0, 210, 255, 0.14)" : "rgba(17, 17, 15, 0.92)")};
+    color: #f2ead9;
+    font-size: var(--wtf-type-caption, 13px);
+  }
 `;
 
 const Badge = styled.span`
@@ -102,6 +121,15 @@ const Badge = styled.span`
   background: #0000aa;
   color: #fff;
   padding: 1px 4px;
+
+  ${gammaMusicScope} & {
+    border: 1px solid rgba(0, 210, 255, 0.5);
+    border-radius: 4px;
+    background: transparent;
+    color: #00d2ff;
+    font-family: var(--wtf-mono-font, "IBM Plex Mono", monospace);
+    font-size: 12px;
+  }
 `;
 
 const LoadRow = styled.div`
@@ -109,16 +137,30 @@ const LoadRow = styled.div`
   align-items: center;
   gap: 6px;
   font-size: 11px;
+
+  ${gammaMusicScope} & {
+    color: #f2ead9;
+    font-size: var(--wtf-type-caption, 13px);
+  }
 `;
 
 const EmptyNote = styled.div`
   font-size: 11px;
   color: #555;
   padding: 6px 0;
+
+  ${gammaMusicScope} & {
+    color: rgba(242, 234, 217, 0.72);
+    font-size: var(--wtf-type-caption, 13px);
+  }
 `;
 
 const CreateRow = styled.div`
   display: flex;
   gap: 4px;
   align-items: center;
+
+  ${gammaMusicScope} & {
+    gap: 6px;
+  }
 `;

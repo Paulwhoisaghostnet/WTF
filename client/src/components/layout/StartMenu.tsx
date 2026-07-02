@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import { DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
 import { useAuth } from "../../lib/auth-context";
 import { api } from "../../lib/api";
+import { useLocalization } from "../../lib/localization";
 import { useWindowManager } from "../../lib/window-context";
 import { MOBILE, MOBILE_BP } from "../../global-styles";
 import { PAGE_DEFS } from "../../routes/page-defs";
@@ -459,6 +460,7 @@ interface StartMenuProps {
 export function StartMenu({ onClose }: StartMenuProps) {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
+  const { t, translateSystemText } = useLocalization();
   const wm = useWindowManager();
   const ref = useRef<HTMLDivElement>(null);
   const [openSub, setOpenSub] = useState<string | null>(null);
@@ -553,12 +555,12 @@ export function StartMenu({ onClose }: StartMenuProps) {
       event.stopPropagation();
       const entries: Win95ContextMenuEntry[] = [
         {
-          label: "Open",
+          label: t("startMenu.context.open"),
           disabled: item.disabled,
           onSelect: () => openWindow(item.path),
         },
         {
-          label: "Create Desktop Shortcut",
+          label: t("startMenu.context.createShortcut"),
           disabled: item.disabled,
           onSelect: () => requestDesktopShortcut(item),
         },
@@ -575,7 +577,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
       }
       setContextMenu({ x: event.clientX, y: event.clientY, entries });
     },
-    [openWindow, requestDesktopShortcut]
+    [openWindow, requestDesktopShortcut, t]
   );
 
   const appAvailability = desktopAppsQuery.data?.apps ?? DISABLED_DESKTOP_APPS;
@@ -589,9 +591,42 @@ export function StartMenu({ onClose }: StartMenuProps) {
       }),
     [accessSurfaceIds, appAvailability, casinoStatusQuery.data?.membership.active, roleInput]
   );
+  const localizedRawMenuEntries = useMemo(
+    () =>
+      rawMenuEntries.map((entry) => {
+        if (entry.kind === "item") {
+          return {
+            ...entry,
+            item: {
+              ...entry.item,
+              label: translateSystemText(entry.item.label),
+              disabledReason: entry.item.disabledReason
+                ? translateSystemText(entry.item.disabledReason)
+                : entry.item.disabledReason,
+            },
+          };
+        }
+        if (entry.kind !== "group") return entry;
+        return {
+          ...entry,
+          group: {
+            ...entry.group,
+            label: translateSystemText(entry.group.label),
+            items: entry.group.items.map((item) => ({
+              ...item,
+              label: translateSystemText(item.label),
+              disabledReason: item.disabledReason
+                ? translateSystemText(item.disabledReason)
+                : item.disabledReason,
+            })),
+          },
+        };
+      }),
+    [rawMenuEntries, translateSystemText]
+  );
   const menuEntries = useMemo(
-    () => filterStartMenuEntriesByQuery(rawMenuEntries, query),
-    [query, rawMenuEntries]
+    () => filterStartMenuEntriesByQuery(localizedRawMenuEntries, query),
+    [localizedRawMenuEntries, query]
   );
 
   useEffect(() => {
@@ -609,9 +644,9 @@ export function StartMenu({ onClose }: StartMenuProps) {
       <MenuContent>
         <SearchPanel>
           <SearchInput
-            aria-label="Find stuff"
+            aria-label={t("startMenu.searchLabel")}
             autoFocus
-            placeholder="Find stuff..."
+            placeholder={t("startMenu.searchPlaceholder")}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
@@ -653,8 +688,8 @@ export function StartMenu({ onClose }: StartMenuProps) {
         {menuEntries.length === 0 && (
           <EmptySearch>
             {user
-              ? "No matching stuff. Try Mission, Wallet, Daily, Media, or Admin."
-              : "No matching stuff here. Log in for account, daily, wallet, and admin tools."}
+              ? t("startMenu.emptyUser")
+              : t("startMenu.emptyGuest")}
           </EmptySearch>
         )}
 
@@ -673,7 +708,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
             }}
           >
             <ItemIcon>🪦</ItemIcon>
-            <ItemLabel>Log Out</ItemLabel>
+            <ItemLabel>{t("startMenu.logout")}</ItemLabel>
           </ItemRow>
         ) : (
           <ItemRow
@@ -683,10 +718,10 @@ export function StartMenu({ onClose }: StartMenuProps) {
             }}
           >
             <ItemIcon>🎟️</ItemIcon>
-            <ItemLabel>Log In</ItemLabel>
+            <ItemLabel>{t("startMenu.login")}</ItemLabel>
           </ItemRow>
         )}
-        <MenuHint>Type to filter. Right-click or Shift-click an app for shortcuts.</MenuHint>
+        <MenuHint>{t("startMenu.hint")}</MenuHint>
       </MenuContent>
       {contextMenu && (
         <Win95ContextMenu

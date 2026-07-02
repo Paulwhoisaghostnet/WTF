@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TARGET_DIR="${WTFOS_APPHOST_DIR:-/opt/wtfos/apphost}"
+APPHOST_USER="${WTFOS_APPHOST_USER:-wtfos-apphost}"
+
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "Run as root on the Hetzner host." >&2
+  exit 77
+fi
+
+if ! id "$APPHOST_USER" >/dev/null 2>&1; then
+  echo "Apphost user is missing: $APPHOST_USER. Run install-apphost.sh first." >&2
+  exit 78
+fi
+
+install -d -m 0750 -o "$APPHOST_USER" -g "$APPHOST_USER" "$TARGET_DIR"
+install -d -m 0750 -o "$APPHOST_USER" -g "$APPHOST_USER" \
+  "$TARGET_DIR/bin" "$TARGET_DIR/config" "$TARGET_DIR/manifests" "$TARGET_DIR/scripts" "$TARGET_DIR/docs" \
+  "$TARGET_DIR/tests" "$TARGET_DIR/state" "$TARGET_DIR/state/logs" "$TARGET_DIR/run" \
+  "$TARGET_DIR/run/user" "$TARGET_DIR/home"
+
+install -m 0755 -o "$APPHOST_USER" -g "$APPHOST_USER" "$ROOT_DIR/apphostd.py" "$TARGET_DIR/apphostd.py"
+install -m 0755 -o "$APPHOST_USER" -g "$APPHOST_USER" "$ROOT_DIR/bin/"*.sh "$TARGET_DIR/bin/"
+if compgen -G "$ROOT_DIR/bin/*.py" >/dev/null; then
+  install -m 0755 -o "$APPHOST_USER" -g "$APPHOST_USER" "$ROOT_DIR/bin/"*.py "$TARGET_DIR/bin/"
+fi
+if compgen -G "$ROOT_DIR/config/*.env" >/dev/null; then
+  install -m 0640 -o "$APPHOST_USER" -g "$APPHOST_USER" "$ROOT_DIR/config/"*.env "$TARGET_DIR/config/"
+fi
+install -m 0644 -o "$APPHOST_USER" -g "$APPHOST_USER" "$ROOT_DIR/manifests/"*.json "$TARGET_DIR/manifests/"
+install -m 0755 -o "$APPHOST_USER" -g "$APPHOST_USER" "$ROOT_DIR/scripts/"*.sh "$TARGET_DIR/scripts/"
+
+if compgen -G "$ROOT_DIR/docs/*.md" >/dev/null; then
+  install -m 0644 -o "$APPHOST_USER" -g "$APPHOST_USER" "$ROOT_DIR/docs/"*.md "$TARGET_DIR/docs/"
+fi
+
+if compgen -G "$ROOT_DIR/tests/*.py" >/dev/null; then
+  install -m 0644 -o "$APPHOST_USER" -g "$APPHOST_USER" "$ROOT_DIR/tests/"*.py "$TARGET_DIR/tests/"
+fi
+
+install -m 0644 "$ROOT_DIR/systemd/"*.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl restart wtfos-apphost.service
+
+health_ok=0
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  if curl -fsS http://127.0.0.1:8765/health >/dev/null 2>&1; then
+    health_ok=1
+    break
+  fi
+  sleep 1
+done
+
+if [[ "$health_ok" != "1" ]]; then
+  systemctl --no-pager --full status wtfos-apphost.service || true
+  exit 1
+fi
+
+echo "Application host updated at $TARGET_DIR"

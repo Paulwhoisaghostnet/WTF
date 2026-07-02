@@ -1,4 +1,5 @@
 import type { ComponentProps } from "react";
+import { usePresentationShell } from "../../lib/presentation-shell";
 import type { ScreenView } from "./types";
 import {
   TVWrapper,
@@ -46,22 +47,27 @@ export function TVShellLayout({
   handleMenu,
   playbackSurfaceProps,
 }: TVShellLayoutProps) {
+  const presentation = usePresentationShell();
+
   return (
-    <TVWrapper>
-      <Cabinet>
-        <BrandStrip>
+    <TVWrapper
+      data-tv-presentation-host={presentation.host}
+      data-tv-surface="tv-shell"
+    >
+      <Cabinet data-tv-region="cabinet">
+        <BrandStrip data-tv-region="brand-strip">
           <BrandName>WTF</BrandName>
           <ModelLabel>MODEL CRT-95 · DIGITAL</ModelLabel>
         </BrandStrip>
 
         <BodyRow>
           <ScreenBay>
-            <ScreenBezel>
+            <ScreenBezel data-tv-region="screen-bezel">
               <TVPlaybackSurface {...playbackSurfaceProps} />
             </ScreenBezel>
           </ScreenBay>
 
-          <ControlPanel>
+          <ControlPanel data-tv-region="control-panel">
             <SpeakerGrill />
 
             <KnobGroup>
@@ -118,7 +124,7 @@ export function TVShellLayout({
           </ControlPanel>
         </BodyRow>
 
-        <FootStrip>
+        <FootStrip data-tv-region="foot-strip">
           <Foot />
           <Foot />
         </FootStrip>

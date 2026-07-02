@@ -83,7 +83,7 @@ export function BoardComposer({
   };
 
   return (
-    <Compose>
+    <Compose data-board-region="composer">
       {!user ? (
         <StatusText>Log in to post messages.</StatusText>
       ) : !channel.canPost ? (
@@ -166,7 +166,7 @@ export function BoardComposer({
               </Button>
             </div>
             {showComposeEmoji && (
-              <EmojiPicker style={{ bottom: "100%", right: 0, marginBottom: 4 }}>
+              <EmojiPicker data-board-popover="emoji" style={{ bottom: "100%", right: 0, marginBottom: 4 }}>
                 <div style={{ width: "100%", fontSize: 9, textAlign: "center", color: "#555", marginBottom: 2 }}>
                   {HAMSTER_SECTION_LABEL}
                 </div>

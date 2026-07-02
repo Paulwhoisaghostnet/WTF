@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { chromium, expect, test } from "@playwright/test";
 
 async function setHarnessState(request, state = {}) {
   const res = await request.post("/__test/state", { data: state });
@@ -11,6 +11,15 @@ async function openResearchDeck(page) {
     await page.locator("[data-beta-research-open]").click();
   }
   await expect(vault).toHaveAttribute("open", "");
+}
+
+async function expectBetaRouteReady(page, routePath) {
+  await expect(page.locator("[data-beta-wtfos]")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("[data-beta-workspace]")).toHaveAttribute("data-beta-route", routePath, {
+    timeout: 30_000,
+  });
+  await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  await expect(page.locator("[data-beta-route-loading]")).toHaveCount(0, { timeout: 30_000 });
 }
 
 test.describe("interaction inventory - WTFOS beta hub", () => {
@@ -539,5 +548,77 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await page.getByLabel("Search beta app atlas").fill("no-such-existing-route-name");
     await expect(page.locator("[data-beta-app-atlas-empty]")).toContainText("No existing route matches those filters.");
     await expect(page.locator("[data-beta-app-atlas-empty]")).toContainText("Reset atlas filters");
+  });
+
+  test("keeps launched application routes inside the Beta shell", async ({ page, request }) => {
+    await setHarnessState(request, { userRole: "anonymous" });
+    await page.goto("/beta", { waitUntil: "domcontentloaded" });
+
+    await page.locator('[data-beta-system-command]').getByRole("button", { name: "Gallery" }).click();
+    await expect(page).toHaveURL(/\/beta\/gallery$/);
+    await expectBetaRouteReady(page, "/gallery");
+    await expect(page.locator("[data-beta-ux-switcher]")).toBeVisible();
+    await expect(page.locator("[data-beta-ux-switcher]").getByRole("link", { name: "Classic" })).toHaveAttribute(
+      "href",
+      "https://wtfos.app/gallery"
+    );
+    await expect(page.locator("[data-beta-ux-switcher]").getByRole("link", { name: "Gamma" })).toHaveAttribute(
+      "href",
+      "https://gamma.wtfos.app/gallery"
+    );
+    await expect(page.locator("[data-beta-application-content]")).toBeVisible();
+
+    await page.locator('[data-beta-route-rail] [data-beta-launch="/leaderboard"]').click();
+    await expect(page).toHaveURL(/\/beta\/leaderboard$/);
+    await expectBetaRouteReady(page, "/leaderboard");
+  });
+
+  test("persists the Beta shell for same-session canonical route changes", async ({ page, request }) => {
+    await setHarnessState(request, { userRole: "anonymous" });
+    await page.goto("/beta", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-beta-wtfos]")).toBeVisible();
+
+    await page.evaluate(() => {
+      window.history.pushState({}, "", "/gallery");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    await expect(page).toHaveURL(/\/gallery$/);
+    await expectBetaRouteReady(page, "/gallery");
+    await page.locator('[data-beta-route-rail] [data-beta-launch="/calendar"]').click();
+    await expect(page).toHaveURL(/\/calendar$/);
+    await expectBetaRouteReady(page, "/calendar");
+  });
+
+  test("keeps production Beta hostname direct routes inside the Beta shell", async ({ request }) => {
+    await setHarnessState(request, { userRole: "anonymous" });
+    const port = Number(process.env.HARNESS_PORT || 4173);
+    const browser = await chromium.launch({
+      headless: true,
+      args: ["--host-resolver-rules=MAP beta.wtfos.app 127.0.0.1"],
+    });
+    const context = await browser.newContext({
+      baseURL: `http://beta.wtfos.app:${port}`,
+      viewport: { width: 1280, height: 800 },
+    });
+    const page = await context.newPage();
+
+    try {
+      await page.goto("/gallery", { waitUntil: "domcontentloaded" });
+      await expect(page).toHaveURL(new RegExp(`^http://beta\\.wtfos\\.app:${port}/gallery$`));
+      await expectBetaRouteReady(page, "/gallery");
+      await expect(page.locator("[data-beta-application-content]")).toBeVisible();
+      await expect(page.locator("[data-beta-ux-switcher]").getByRole("link", { name: "Classic" })).toHaveAttribute(
+        "href",
+        "https://wtfos.app/gallery"
+      );
+
+      await page.locator('[data-beta-route-rail] [data-beta-launch="/leaderboard"]').click();
+      await expect(page).toHaveURL(new RegExp(`^http://beta\\.wtfos\\.app:${port}/leaderboard$`));
+      await expectBetaRouteReady(page, "/leaderboard");
+    } finally {
+      await context.close();
+      await browser.close();
+    }
   });
 });

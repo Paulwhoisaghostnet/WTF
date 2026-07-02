@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass, Panel } from "react95";
 import styled, { css, keyframes } from "styled-components";
+import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { useWindowManager } from "../lib/window-context";
 
 type ButtonId = "red" | "green" | "blue";
@@ -159,6 +161,84 @@ const Shell = styled.div`
     linear-gradient(90deg, rgba(218, 36, 52, 0.18), transparent 24%),
     linear-gradient(270deg, rgba(41, 121, 255, 0.18), transparent 28%),
     linear-gradient(180deg, #191311 0%, #101010 100%);
+
+  &[data-casino-table-presentation-host="gamma"] {
+    color: #f2ead9;
+    background: #08090a;
+    border: 1px solid rgba(40, 215, 255, 0.18);
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  &[data-casino-table-presentation-host="gamma"],
+  &[data-casino-table-presentation-host="gamma"] * {
+    letter-spacing: 0;
+    text-shadow: none;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] [data-casino-table-region] {
+    background-image: none;
+    box-shadow: none;
+    text-shadow: none;
+    border-radius: 6px;
+  }
+
+  &[data-casino-table-presentation-host="gamma"]
+    :where(
+      [data-casino-table-region="title-panel"],
+      [data-casino-table-region="wallet"],
+      [data-casino-table-region="card"],
+      [data-casino-table-region="stage"],
+      [data-casino-table-region="panel"],
+      [data-casino-table-region="stat"],
+      [data-casino-table-region="timeline-item"],
+      [data-casino-table-region="loading"]
+    ) {
+    background: rgba(242, 234, 217, 0.045);
+    color: #f2ead9;
+    border: 1px solid rgba(242, 234, 217, 0.14);
+  }
+
+  &[data-casino-table-presentation-host="gamma"] fieldset {
+    background: rgba(242, 234, 217, 0.035);
+    color: #f2ead9;
+    border: 1px solid rgba(40, 215, 255, 0.2);
+    border-radius: 6px;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] legend {
+    color: #28d7ff;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 11px;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] :where(button, select, input) {
+    background: #0b0d0e;
+    color: #f2ead9;
+    border: 1px solid rgba(40, 215, 255, 0.55);
+    border-radius: 4px;
+    box-shadow: none;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] button {
+    color: #28d7ff;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] [data-casino-table-region="giant-button"] {
+    background: #0b0d0e;
+    color: #f2ead9;
+    border: 1px solid rgba(40, 215, 255, 0.85);
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-casino-table-presentation-host="gamma"] :where(th, td) {
+    border-color: rgba(242, 234, 217, 0.14);
+  }
+
+  &[data-casino-table-presentation-host="gamma"] th {
+    background: rgba(40, 215, 255, 0.1);
+    color: #f2ead9;
+  }
 `;
 
 const Header = styled.div`
@@ -553,6 +633,8 @@ function buildLocalQuote(table: TableView, mode: PriceProtectionMode, toleranceM
 
 function WtfButtonSurface() {
   const wm = useWindowManager();
+  const presentation = usePresentationShell();
+  const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState<ButtonId>("red");
   const [priceMode, setPriceMode] = useState<PriceProtectionMode>("strict");
@@ -635,11 +717,22 @@ function WtfButtonSurface() {
     pressMutation.error instanceof Error ? pressMutation.error.message : "";
   const visibleMessage =
     mutationError || stateError || snapshot?.message || (selectedTable?.userStats.cannotPressReason ?? "");
+  const openCasinoLobby = () => {
+    if (presentation.host === "gamma") {
+      setLocation(presentationRouteHref("/casino", presentation.host));
+      return;
+    }
+    wm.openPage("/casino");
+  };
 
   return (
-    <Shell>
-      <Header>
-        <TitlePanel>
+    <Shell
+      data-casino-table-presentation-host={presentation.host}
+      data-casino-table="wtf-button"
+      data-casino-table-region="surface"
+    >
+      <Header data-casino-table-region="header">
+        <TitlePanel data-casino-table-region="title-panel">
           <Title>{snapshot?.title ?? "WTF Does This Button Do?!!?"}</Title>
           <Subline>
             <StatusBadge $tone="warn">MOCK XTZ</StatusBadge>
@@ -649,12 +742,12 @@ function WtfButtonSurface() {
             <span>Real escrow disabled until contract wiring is ready.</span>
           </Subline>
         </TitlePanel>
-        <WalletPanel>
+        <WalletPanel data-casino-table-region="wallet">
           <div>Player: {snapshot?.user.displayName ?? "Loading"}</div>
           <div>Mock balance: {snapshot?.user.balance.xtz ?? "0"} XTZ</div>
           <div>Leader on: {snapshot?.user.leaderButtonId ?? "none"}</div>
           <div>WTF treasury mock: {snapshot?.wtfTreasury.xtz ?? "0"} XTZ</div>
-          <Button size="sm" onClick={() => wm.openPage("/casino")}>
+          <Button size="sm" onClick={openCasinoLobby}>
             Casino Lobby
           </Button>
         </WalletPanel>
@@ -662,29 +755,30 @@ function WtfButtonSurface() {
 
       {stateError && !snapshot ? (
         <Box label="Entry Required">
-          <InfoPanel>
+          <InfoPanel data-casino-table-region="panel">
             <PanelTitle>Casino Gate</PanelTitle>
             <p>
               WTF Casino app pass and active membership card are required before the
               mocked WTF Button tables open.
             </p>
-            <Button onClick={() => wm.openPage("/casino")}>Back to Casino</Button>
+            <Button onClick={openCasinoLobby}>Back to Casino</Button>
           </InfoPanel>
         </Box>
       ) : !snapshot || !selectedTable || !localQuote ? (
-        <Loading>
+        <Loading data-casino-table-region="loading">
           <Hourglass size={32} />
         </Loading>
       ) : (
-        <Layout>
+        <Layout data-casino-table-region="layout">
           <Box label="Three-Button Lobby">
-            <TableCards>
+            <TableCards data-casino-table-region="table-list">
               {snapshot.tables.map((table) => (
                 <TableCard
                   key={table.buttonId}
                   $selected={table.buttonId === selectedTable.buttonId}
                   $button={table.buttonId}
                   onClick={() => setSelectedId(table.buttonId)}
+                  data-casino-table-region="card"
                 >
                   <CardTitle>
                     <span>
@@ -720,14 +814,15 @@ function WtfButtonSurface() {
             </TableCards>
           </Box>
 
-          <MainGrid>
-            <StagePanel>
+          <MainGrid data-casino-table-region="main-grid">
+            <StagePanel data-casino-table-region="stage">
               <GiantButtonWrap>
                 <GiantButton
                   $button={selectedTable.buttonId}
                   $state={selectedTable.state}
                   disabled={!selectedTable.userQuote.canPress || pressMutation.isPending}
                   onClick={() => pressMutation.mutate()}
+                  data-casino-table-region="giant-button"
                 >
                   {selectedTable.state === "clash"
                     ? "RUG CLASH"
@@ -739,15 +834,15 @@ function WtfButtonSurface() {
                 </GiantButton>
               </GiantButtonWrap>
               <StageStats>
-                <StatTile>
+                <StatTile data-casino-table-region="stat">
                   <Label>Current Pot</Label>
                   <Value>{selectedTable.currentPot.xtz} XTZ</Value>
                 </StatTile>
-                <StatTile>
+                <StatTile data-casino-table-region="stat">
                   <Label>Countdown</Label>
                   <Value>{formatDuration(selectedTable.timeRemainingSeconds)}</Value>
                 </StatTile>
-                <StatTile>
+                <StatTile data-casino-table-region="stat">
                   <Label>Your Cost</Label>
                   <Value $flash={priceFlashed}>{selectedTable.userQuote.quotedCost.xtz} XTZ</Value>
                 </StatTile>
@@ -767,7 +862,7 @@ function WtfButtonSurface() {
             </StagePanel>
 
             <SideStack>
-              <InfoPanel>
+              <InfoPanel data-casino-table-region="panel">
                 <PanelTitle>Price Protection</PanelTitle>
                 <ControlGrid>
                   <Select
@@ -818,7 +913,7 @@ function WtfButtonSurface() {
                 </ControlGrid>
               </InfoPanel>
 
-              <InfoPanel>
+              <InfoPanel data-casino-table-region="panel">
                 <PanelTitle>Current Leader</PanelTitle>
                 <DataRows>
                   <DataRow>
@@ -852,7 +947,7 @@ function WtfButtonSurface() {
               </InfoPanel>
 
               {selectedTable.rugClash.active && (
-                <InfoPanel>
+                <InfoPanel data-casino-table-region="panel">
                   <PanelTitle>Rug Clash</PanelTitle>
                   <DataRows>
                     <DataRow>
@@ -882,8 +977,8 @@ function WtfButtonSurface() {
           </MainGrid>
 
           <Box label="Button Card Stats">
-            <MainGrid>
-              <InfoPanel>
+            <MainGrid data-casino-table-region="main-grid">
+              <InfoPanel data-casino-table-region="panel">
                 <PanelTitle>Your Position</PanelTitle>
                 <DataRows>
                   <DataRow>
@@ -913,7 +1008,7 @@ function WtfButtonSurface() {
                 </DataRows>
               </InfoPanel>
 
-              <InfoPanel>
+              <InfoPanel data-casino-table-region="panel">
                 <PanelTitle>Round Mechanics</PanelTitle>
                 <DataRows>
                   <DataRow>
@@ -945,11 +1040,11 @@ function WtfButtonSurface() {
             </MainGrid>
           </Box>
 
-          <MainGrid>
-            <InfoPanel>
+          <MainGrid data-casino-table-region="main-grid">
+            <InfoPanel data-casino-table-region="panel">
               <PanelTitle>Presser Leaderboard</PanelTitle>
               <TableScroll>
-                <ScoreTable>
+                <ScoreTable data-casino-table-region="score-table">
                   <thead>
                     <tr>
                       <th>Rank</th>
@@ -986,7 +1081,7 @@ function WtfButtonSurface() {
               </TableScroll>
             </InfoPanel>
 
-            <InfoPanel>
+            <InfoPanel data-casino-table-region="panel">
               <PanelTitle>Pot Contribution Breakdown</PanelTitle>
               <DataRows>
                 <DataRow>
@@ -1023,14 +1118,14 @@ function WtfButtonSurface() {
             </InfoPanel>
           </MainGrid>
 
-          <InfoPanel>
+          <InfoPanel data-casino-table-region="panel">
             <PanelTitle>Round Timeline</PanelTitle>
             <Timeline>
               {selectedTable.timeline.length === 0 ? (
-                <TimelineItem>Round started. The button is waiting for the first bad idea.</TimelineItem>
+                <TimelineItem data-casino-table-region="timeline-item">Round started. The button is waiting for the first bad idea.</TimelineItem>
               ) : (
                 selectedTable.timeline.map((event) => (
-                  <TimelineItem key={event.id}>
+                  <TimelineItem key={event.id} data-casino-table-region="timeline-item">
                     <strong>{formatTime(event.atMs)}</strong> {event.displayName} paid{" "}
                     {event.amount.xtz} XTZ. {event.wtfCut.xtz} XTZ to WTF.{" "}
                     {event.potAdd.xtz} XTZ added to pot. Timer extended by{" "}

@@ -10,6 +10,7 @@ import {
   DESKTOP_COLOR_SCHEMES,
   DESKTOP_CURSOR_STYLES,
   DESKTOP_ICON_LAYOUT_KEYS,
+  DESKTOP_WTF_LIVE_CHAT_FONTS,
   DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES,
   HAMSTER_COLOR_SCHEMES,
   HAMSTER_CORE_STAT_KEYS,
@@ -114,7 +115,7 @@ test("falls back to safe desktop appearance defaults for bad input", () => {
 
 test("desktop appearance defaults are aubergine-first with a broad preset set", () => {
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.appearanceStyleKey, "classic-95");
-  assert.equal(DEFAULT_DESKTOP_APPEARANCE.fontPackKey, "mek-type");
+  assert.equal(DEFAULT_DESKTOP_APPEARANCE.fontPackKey, "wtfos-soft-system");
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.chatTypographyPresetKey, "wtfos-default");
   assert.deepEqual(DEFAULT_DESKTOP_APPEARANCE.wimChatStyle, {
     fontFamily: "Helvetica",
@@ -125,12 +126,13 @@ test("desktop appearance defaults are aubergine-first with a broad preset set", 
     underline: false,
   });
   assert.deepEqual(DEFAULT_DESKTOP_APPEARANCE.wtfLiveChatStyle, {
-    font: "mek-mono",
+    font: "classic-95",
     color: "ink",
     size: 12,
     bold: false,
     italic: false,
   });
+  assert.deepEqual([...DESKTOP_WTF_LIVE_CHAT_FONTS], ["classic-95", "terminal", "serif-press"]);
   assert.equal(DEFAULT_DESKTOP_APPEARANCE.cursorStyle, "eggplant");
   assert.deepEqual(
     DESKTOP_APPEARANCE_STYLES.map((style) => style.key),
@@ -230,6 +232,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "crp-nominations",
     "rat-race",
     "map-lab",
+    "agent",
     "mail",
     "tv",
     "dicksword",

@@ -65,7 +65,7 @@ async function logOperatorAction(opts: {
 const createSchema = z.object({
   label: z.string().trim().min(1).max(120),
   contractAddress: z.string().startsWith("KT").length(36),
-  network: z.enum(["ghostnet", "mainnet"]).default("ghostnet"),
+  network: z.enum(["shadownet", "ghostnet", "mainnet"]).default("shadownet"),
   rateMutezPerWtf: z.string().regex(/^\d+$/),
   perSellerCapWtf: z.string().regex(/^\d+$/),
   totalXtzBudgetMutez: z.string().regex(/^\d+$/),

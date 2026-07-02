@@ -8,6 +8,8 @@ import { useAuth } from "../lib/auth-context";
 import { originateClubDuesContract, payClubMembership } from "../lib/tezos";
 import { useWallet } from "../lib/wallet-context";
 import { useWindowManager } from "../lib/window-context";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
+import { useLocation } from "wouter";
 
 type Network = "shadownet" | "ghostnet" | "mainnet";
 type MembershipAction = 0 | 1 | 2;
@@ -71,6 +73,49 @@ const Shell = styled.div`
   background:
     linear-gradient(90deg, rgba(51, 136, 153, 0.24), transparent 32%),
     linear-gradient(180deg, #e9e4d2 0%, #cfc7a8 100%);
+
+  &[data-dues-presentation-host="gamma"] {
+    min-height: 100%;
+    padding: 16px;
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 6px;
+    font-family: var(--wtf-sans-font, Inter, "Segoe UI", system-ui, sans-serif);
+  }
+
+  &[data-dues-presentation-host="gamma"],
+  &[data-dues-presentation-host="gamma"] * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  &[data-dues-presentation-host="gamma"] [data-dues-region] {
+    background-image: none !important;
+    border-color: rgba(242, 234, 217, 0.16) !important;
+    border-width: 1px !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-dues-presentation-host="gamma"] :where(fieldset, legend, input, textarea, select, button, pre) {
+    background-image: none !important;
+    background-color: #11110f !important;
+    color: #f2ead9 !important;
+    border-color: rgba(242, 234, 217, 0.18) !important;
+    border-width: 1px !important;
+    border-radius: 6px !important;
+    font-family: inherit !important;
+  }
+
+  &[data-dues-presentation-host="gamma"] :where(button:hover, input:focus, textarea:focus, select:focus) {
+    border-color: #00d2ff !important;
+    outline: 1px solid rgba(0, 210, 255, 0.5);
+    outline-offset: 1px;
+  }
+
+  &[data-dues-presentation-host="gamma"] :where(strong, h2) {
+    color: #fff7e8;
+  }
 `;
 
 const Header = styled.div`
@@ -218,6 +263,10 @@ const StatusLine = styled.div<{ $error?: boolean }>`
   color: ${(p) => (p.$error ? "#a10000" : "#174c1d")};
   font-size: 11px;
   overflow-wrap: anywhere;
+
+  [data-dues-presentation-host="gamma"] & {
+    color: ${(p) => (p.$error ? "#ff8c7a" : "#d6ff3f")};
+  }
 `;
 
 const DEFAULT_FORM = {
@@ -284,6 +333,8 @@ export function DuesManager() {
   const { user, isAdmin } = useAuth();
   const wallet = useWallet();
   const wm = useWindowManager();
+  const presentation = usePresentationShell();
+  const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [selectedSlug, setSelectedSlug] = useState("");
   const [months, setMonths] = useState(1);
@@ -427,11 +478,23 @@ export function DuesManager() {
   const setField = (key: keyof typeof DEFAULT_FORM, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
 
+  const goToRoute = (route: string) => {
+    if (presentation.host === "gamma") {
+      setLocation(presentationRouteHref(route, presentation.host));
+      return;
+    }
+    wm.openPage(route);
+  };
+
   return (
     <AppWindow title="Club Dues Manager">
-      <Shell>
-        <Header>
-          <TitlePanel>
+      <Shell
+        data-dues-surface="club-dues"
+        data-dues-presentation-host={presentation.host}
+        data-dues-region="surface"
+      >
+        <Header data-dues-region="header">
+          <TitlePanel data-dues-region="title-panel">
             <Title>Club Dues Manager</Title>
             <Subline>
               <Badge $good={Boolean(selected?.contractAddress)}>ON-CHAIN</Badge>
@@ -440,24 +503,25 @@ export function DuesManager() {
               <span>dues.wtfgameshow.app</span>
             </Subline>
           </TitlePanel>
-          <ContractCard>
+          <ContractCard data-dues-region="summary-card">
             <Micro>Active contracts: {contracts.length}</Micro>
             <Micro>My memberships: {membershipsQuery.data?.memberships.length ?? 0}</Micro>
             <Micro>Admin arrears: {adminQuery.data?.totals?.arrears ?? "n/a"}</Micro>
-            <Button size="sm" onClick={() => wm.openPage("/messages")}>Open Inbox</Button>
+            <Button size="sm" onClick={() => goToRoute("/messages")}>Open Inbox</Button>
           </ContractCard>
         </Header>
 
-        <Layout>
+        <Layout data-dues-region="layout">
           <Stack>
-            <GroupBox label="Pay or renew dues">
+            <GroupBox label="Pay or renew dues" data-dues-region="payment-panel">
               <Stack>
-                <ActionChooser>
+                <ActionChooser data-dues-region="action-chooser">
                   {PAYMENT_ACTIONS.map((action) => (
                     <ActionTile
                       key={action.id}
                       type="button"
                       $selected={membershipAction === action.id}
+                      data-dues-region="action-tile"
                       onClick={() => setMembershipAction(action.id)}
                     >
                       <strong>{action.label}</strong>
@@ -468,6 +532,7 @@ export function DuesManager() {
                 <Row>
                   <Select
                     value={selected?.slug ?? ""}
+                    data-dues-region="contract-select"
                     onChange={(event) => setSelectedSlug(event.target.value)}
                   >
                     {contracts.map((contract) => (
@@ -493,6 +558,7 @@ export function DuesManager() {
                   <Button
                     onClick={() => payMutation.mutate()}
                     disabled={!selected || payMutation.isPending}
+                    data-dues-region="payment-button"
                   >
                     {payMutation.isPending ? "Working" : "Send Payment"}
                   </Button>
@@ -505,9 +571,9 @@ export function DuesManager() {
                 ) : (
                   <Micro>No live dues contracts yet.</Micro>
                 )}
-                <ContractGrid>
+                <ContractGrid data-dues-region="membership-grid">
                   {(membershipsQuery.data?.memberships ?? []).map((membership) => (
-                    <ContractCard key={membership.id}>
+                    <ContractCard key={membership.id} data-dues-region="membership-card">
                       <strong>{membership.contract.name}</strong>
                       <Micro>Status: {membership.status}</Micro>
                       <Micro>Paid through: {formatDate(membership.paidThrough)}</Micro>
@@ -519,9 +585,9 @@ export function DuesManager() {
               </Stack>
             </GroupBox>
 
-            <GroupBox label="Developer contract customization">
+            <GroupBox label="Developer contract customization" data-dues-region="customization-panel">
               <Stack>
-                <Grid>
+                <Grid data-dues-region="customization-grid">
                   <Field>Name<TextInput value={form.name} onChange={(e) => setField("name", e.target.value)} /></Field>
                   <Field>Slug<TextInput value={form.slug} onChange={(e) => setField("slug", e.target.value)} /></Field>
                   <Field>Network
@@ -541,35 +607,35 @@ export function DuesManager() {
                   <Field>Treasury Address<TextInput value={form.treasuryAddress} onChange={(e) => setField("treasuryAddress", e.target.value)} /></Field>
                   <Field>Admin Address<TextInput value={form.adminAddress} onChange={(e) => setField("adminAddress", e.target.value)} /></Field>
                 </Grid>
-                <Field>Description<TextArea value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
+                <Field>Description<TextArea data-dues-region="description-input" value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
                 <Field>Metadata URI<TextInput value={form.metadataUri} onChange={(e) => setField("metadataUri", e.target.value)} /></Field>
                 <Row>
-                  <Button onClick={() => compileMutation.mutate()} disabled={compileMutation.isPending}>
+                  <Button data-dues-region="compile-button" onClick={() => compileMutation.mutate()} disabled={compileMutation.isPending}>
                     {compileMutation.isPending ? "Compiling" : "Compile Template"}
                   </Button>
-                  <Button onClick={() => externalDeployMutation.mutate()} disabled={externalDeployMutation.isPending}>
+                  <Button data-dues-region="wallet-deploy-button" onClick={() => externalDeployMutation.mutate()} disabled={externalDeployMutation.isPending}>
                     {externalDeployMutation.isPending ? "Deploying" : "Deploy From My Wallet"}
                   </Button>
                   {isAdmin ? (
-                    <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+                    <Button data-dues-region="admin-draft-button" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
                       Save Admin Draft
                     </Button>
                   ) : null}
                 </Row>
                 {compileMutation.isPending || externalDeployMutation.isPending ? <Hourglass size={20} /> : null}
-                {compileOutput ? <Pre>{JSON.stringify({ sourcePath: compileOutput.sourcePath, initialStorage: compileOutput.initialStorage, hasCode: Boolean(compileOutput.code), hasInit: Boolean(compileOutput.init) }, null, 2)}</Pre> : null}
-                {externalDeploy ? <Pre>{JSON.stringify(externalDeploy, null, 2)}</Pre> : null}
+                {compileOutput ? <Pre data-dues-region="compile-output">{JSON.stringify({ sourcePath: compileOutput.sourcePath, initialStorage: compileOutput.initialStorage, hasCode: Boolean(compileOutput.code), hasInit: Boolean(compileOutput.init) }, null, 2)}</Pre> : null}
+                {externalDeploy ? <Pre data-dues-region="external-deploy-output">{JSON.stringify(externalDeploy, null, 2)}</Pre> : null}
               </Stack>
             </GroupBox>
           </Stack>
 
           <Stack>
-            <GroupBox label="Contract registry">
+            <GroupBox label="Contract registry" data-dues-region="registry-panel">
               <Stack>
                 {contractsQuery.isLoading ? <Hourglass size={24} /> : null}
-                <ContractGrid>
+                <ContractGrid data-dues-region="registry-grid">
                   {contracts.map((contract) => (
-                    <ContractCard key={contract.id}>
+                    <ContractCard key={contract.id} data-dues-region="contract-card">
                       <strong>{contract.name}</strong>
                       <Micro>{contract.slug} / {contract.network} / {contract.status}</Micro>
                       <Micro>Contract: {contract.contractAddress ?? "not deployed"}</Micro>
@@ -577,6 +643,7 @@ export function DuesManager() {
                       {isAdmin ? (
                         <Button
                           size="sm"
+                          data-dues-region="manager-deploy-button"
                           onClick={() => managerDeployMutation.mutate(contract.id)}
                           disabled={managerDeployMutation.isPending || contract.status === "live"}
                         >
@@ -590,24 +657,24 @@ export function DuesManager() {
             </GroupBox>
 
             {isAdmin ? (
-              <GroupBox label="Admin operations">
+              <GroupBox label="Admin operations" data-dues-region="admin-panel">
                 <Stack>
                   <Micro>Signer configured: {adminQuery.data?.signerConfigured ? "yes" : "no"}</Micro>
                   <Micro>Total members: {adminQuery.data?.totals?.members ?? 0}</Micro>
                   <Micro>Members in arrears: {adminQuery.data?.totals?.arrears ?? 0}</Micro>
                   <Row>
-                    <Button onClick={() => sweepMutation.mutate()} disabled={sweepMutation.isPending}>
+                    <Button data-dues-region="sweep-button" onClick={() => sweepMutation.mutate()} disabled={sweepMutation.isPending}>
                       Sweep Arrears
                     </Button>
-                    <Button onClick={() => wm.openPage("/operator-wallet")}>Operator Wallet</Button>
+                    <Button data-dues-region="operator-wallet-button" onClick={() => goToRoute("/operator-wallet")}>Operator Wallet</Button>
                   </Row>
                   <Separator />
-                  <Pre>{JSON.stringify(adminQuery.data?.recentDeployments ?? [], null, 2)}</Pre>
+                  <Pre data-dues-region="admin-deployments">{JSON.stringify(adminQuery.data?.recentDeployments ?? [], null, 2)}</Pre>
                 </Stack>
               </GroupBox>
             ) : null}
 
-            <StatusLine $error={Boolean(error)}>{error || status || "Ready."}</StatusLine>
+            <StatusLine data-dues-region="status-line" $error={Boolean(error)}>{error || status || "Ready."}</StatusLine>
           </Stack>
         </Layout>
       </Shell>

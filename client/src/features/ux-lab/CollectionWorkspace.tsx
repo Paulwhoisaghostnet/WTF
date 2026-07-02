@@ -10,6 +10,10 @@ import {
 } from "../../components/wtfos-ui";
 import { api } from "../../lib/api";
 import { resolveTokenThumbnail, shortAddr } from "../../lib/media-resolve";
+import {
+  presentationRouteHref,
+  usePresentationShell,
+} from "../../lib/presentation-shell";
 import { OwnedTokensGallery, type OwnedToken } from "../../components/OwnedTokensGallery";
 
 interface WalletWithCount {
@@ -468,6 +472,7 @@ export function CollectionWorkspace({
   showQuickLinks = true,
   surface = "portfolio",
 }: CollectionWorkspaceProps) {
+  const presentation = usePresentationShell();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [selectedCollectionId, setSelectedCollectionId] = useState<number | null>(
@@ -537,6 +542,10 @@ export function CollectionWorkspace({
     collectedTokens?.pagination?.total ??
     Math.max(0, (portfolio?.totals.tokensHeld ?? 0) - createdCount);
   const isGallerySurface = surface === "gallery";
+
+  function openRoute(path: string) {
+    setLocation(presentationRouteHref(path, presentation.host));
+  }
 
   const renderStage = (
     items: OwnedToken[] | undefined,
@@ -631,7 +640,7 @@ export function CollectionWorkspace({
                   >
                     Show portfolio view
                   </UiButton>
-                  <UiButton compact onClick={() => setLocation("/marketplace")}>
+                  <UiButton compact onClick={() => openRoute("/marketplace")}>
                     Open marketplace
                   </UiButton>
                 </StageFooter>
@@ -687,15 +696,15 @@ export function CollectionWorkspace({
         <ActionRow>
           {isGallerySurface ? (
             <>
-              <UiButton onClick={() => setLocation("/dashboard")}>Open dashboard portfolio</UiButton>
-              <UiButton onClick={() => setLocation("/profile")}>Open profile and wallets</UiButton>
-              <UiButton onClick={() => setLocation("/messageboard")}>Open message board</UiButton>
+              <UiButton onClick={() => openRoute("/dashboard")}>Open dashboard portfolio</UiButton>
+              <UiButton onClick={() => openRoute("/profile")}>Open profile and wallets</UiButton>
+              <UiButton onClick={() => openRoute("/messageboard")}>Open message board</UiButton>
             </>
           ) : (
             <>
-              <UiButton onClick={() => setLocation("/my-gallery")}>Open exhibition</UiButton>
-              <UiButton onClick={() => setLocation("/profile")}>Open profile and wallets</UiButton>
-              <UiButton onClick={() => setLocation("/marketplace")}>Open marketplace</UiButton>
+              <UiButton onClick={() => openRoute("/my-gallery")}>Open exhibition</UiButton>
+              <UiButton onClick={() => openRoute("/profile")}>Open profile and wallets</UiButton>
+              <UiButton onClick={() => openRoute("/marketplace")}>Open marketplace</UiButton>
             </>
           )}
         </ActionRow>

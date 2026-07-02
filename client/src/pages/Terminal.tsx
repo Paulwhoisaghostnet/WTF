@@ -23,12 +23,76 @@ import { getInterfaceMode, setInterfaceMode } from "../features/wtfos-cli/interf
 import { useWtfOsCli } from "../features/wtfos-cli/use-wtfos-cli";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 
 const Shell = styled.div`
   display: grid;
   gap: 8px;
   min-width: 0;
+
+  &[data-gamma-utility-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"],
+  &[data-gamma-utility-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region],
+  &[data-gamma-utility-presentation-host="gamma"] fieldset {
+    min-width: 0;
+    background-image: none;
+    border-radius: 6px;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] fieldset,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="status-cell"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="command-row"] {
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    background: #11110f;
+    color: #f2ead9;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] legend,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="label"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="summary"] {
+    color: rgba(242, 234, 217, 0.7);
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] legend,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="label"] {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="icon"] {
+    border: 1px solid rgba(0, 210, 255, 0.5);
+    background: #070706;
+    color: #00d2ff;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"] {
+    border: 1px solid rgba(0, 210, 255, 0.58);
+    border-radius: 4px;
+    background: transparent;
+    color: #00d2ff;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"]:hover,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"]:focus-visible {
+    border-color: #00d2ff;
+    color: #f2ead9;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
 `;
 
 const StatusGrid = styled.div`
@@ -141,6 +205,7 @@ const commandRows = [
 ] as const;
 
 export function Terminal() {
+  const presentation = usePresentationShell();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const desktopAppsQuery = useQuery({
@@ -157,7 +222,7 @@ export function Terminal() {
   }, []);
 
   const cli = useWtfOsCli({
-    navigate: setLocation,
+    navigate: (path) => setLocation(presentationRouteHref(path, presentation.host)),
     setInterfaceMode,
     getInterfaceMode,
     username: user?.username ?? null,
@@ -174,22 +239,27 @@ export function Terminal() {
 
   return (
     <AppWindow title="Terminal">
-      <Shell data-testid="wtf-terminal">
-        <StatusGrid>
-          <StatusCell>
-            <StatusLabel>Mode</StatusLabel>
+      <Shell
+        data-testid="wtf-terminal"
+        data-gamma-utility-surface="terminal"
+        data-gamma-utility-presentation-host={presentation.host}
+        data-gamma-utility-region="surface"
+      >
+        <StatusGrid data-gamma-utility-region="status-grid">
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Mode</StatusLabel>
             <StatusValue>shared cli</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Commands</StatusLabel>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Commands</StatusLabel>
             <StatusValue>{commands.length}</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Shell</StatusLabel>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Shell</StatusLabel>
             <StatusValue>disabled</StatusValue>
           </StatusCell>
-          <StatusCell>
-            <StatusLabel>Full CLI</StatusLabel>
+          <StatusCell data-gamma-utility-region="status-cell">
+            <StatusLabel data-gamma-utility-region="label">Full CLI</StatusLabel>
             <StatusValue>/cli</StatusValue>
           </StatusCell>
         </StatusGrid>
@@ -213,15 +283,15 @@ export function Terminal() {
               const command = commandMap[key];
               const Icon = icon;
               return (
-                <CommandRow key={key}>
-                  <IconBox>
+                <CommandRow key={key} data-gamma-utility-region="command-row">
+                  <IconBox data-gamma-utility-region="icon">
                     <Icon size={17} aria-hidden />
                   </IconBox>
                   <div>
                     <CommandName>{command.name}</CommandName>
-                    <CommandSummary>{command.summary}</CommandSummary>
+                    <CommandSummary data-gamma-utility-region="summary">{command.summary}</CommandSummary>
                   </div>
-                  <RunButton onClick={() => void cli.runRawCommand(key)}>
+                  <RunButton data-gamma-utility-region="button" onClick={() => void cli.runRawCommand(key)}>
                     <CirclePlay size={14} aria-hidden />
                     Run
                   </RunButton>
@@ -232,19 +302,22 @@ export function Terminal() {
         </GroupBox>
 
         <GroupBox label="Boundary">
-          <CommandRow>
-            <IconBox>
+          <CommandRow data-gamma-utility-region="command-row">
+            <IconBox data-gamma-utility-region="icon">
               <TerminalSquare size={17} aria-hidden />
             </IconBox>
             <div>
               <CommandName>No arbitrary shell</CommandName>
-              <CommandSummary>
+              <CommandSummary data-gamma-utility-region="summary">
                 Commands are allowlisted browser actions and read-only diagnostics. The same CLI
                 kernel powers this window and `/cli`; route opens enforce browser login, role, and
                 app gates — not the public access manifest alone.
               </CommandSummary>
             </div>
-            <RunButton onClick={() => setLocation("/browser-boundaries")}>
+            <RunButton
+              data-gamma-utility-region="button"
+              onClick={() => setLocation(presentationRouteHref("/browser-boundaries", presentation.host))}
+            >
               <Braces size={14} aria-hidden />
               Access
             </RunButton>

@@ -22,6 +22,7 @@ import {
   provenanceXLabel,
   readEmbeddedProvenance,
 } from "../lib/provenance";
+import { usePresentationShell } from "../lib/presentation-shell";
 
 /* ─── Types ──────────────────────────────────────────── */
 
@@ -192,6 +193,11 @@ const ModalOverlay = styled.div`
   align-items: center;
   justify-content: center;
   padding: 16px;
+
+  &[data-token-detail-presentation-host="gamma"] {
+    background: rgba(7, 7, 6, 0.82);
+    color: #f2ead9;
+  }
 `;
 
 const ModalWindow = styled.div`
@@ -202,6 +208,15 @@ const ModalWindow = styled.div`
   width: 100%;
   max-height: 88vh;
   overflow-y: auto;
+
+  [data-token-detail-presentation-host="gamma"] & {
+    background: #11110f;
+    color: #f2ead9;
+    border: 1px solid rgba(242, 234, 217, 0.24);
+    border-radius: 6px;
+    box-shadow: none;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
 `;
 
 const ModalTitleBar = styled.div`
@@ -213,10 +228,24 @@ const ModalTitleBar = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
+
+  [data-token-detail-presentation-host="gamma"] & {
+    background: #070706;
+    background-image: none;
+    color: #f2ead9;
+    border-bottom: 1px solid rgba(242, 234, 217, 0.18);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13px;
+    letter-spacing: 0;
+  }
 `;
 
 const ModalBody = styled.div`
   padding: 12px;
+
+  [data-token-detail-presentation-host="gamma"] & {
+    padding: 14px;
+  }
 `;
 
 const MediaPreview = styled.div`
@@ -231,6 +260,12 @@ const MediaPreview = styled.div`
   overflow: hidden;
   img, video { max-width: 100%; max-height: 400px; object-fit: contain; }
   audio { width: calc(100% - 24px); }
+
+  [data-token-detail-presentation-host="gamma"] & {
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 4px;
+  }
 `;
 
 const DetailRow = styled.div`
@@ -240,6 +275,20 @@ const DetailRow = styled.div`
   margin-bottom: 4px;
   strong { min-width: 80px; color: var(--wtf-app-muted-text, #444); flex-shrink: 0; }
   span { overflow-wrap: anywhere; }
+
+  [data-token-detail-presentation-host="gamma"] & {
+    color: rgba(242, 234, 217, 0.9);
+    line-height: 1.45;
+
+    strong {
+      color: rgba(242, 234, 217, 0.62);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+  }
 `;
 
 const LinkRow = styled.div`
@@ -249,6 +298,10 @@ const LinkRow = styled.div`
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid #808080;
+
+  [data-token-detail-presentation-host="gamma"] & {
+    border-top-color: rgba(242, 234, 217, 0.18);
+  }
 `;
 
 const ExternalLinkButton = styled.a`
@@ -275,6 +328,29 @@ const ExternalLinkButton = styled.a`
   &:active {
     border-style: inset;
   }
+
+  [data-token-detail-presentation-host="gamma"] & {
+    min-height: 34px;
+    border: 1px solid rgba(0, 210, 255, 0.42);
+    border-radius: 4px;
+    background: transparent;
+    color: #00d2ff;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: none;
+
+    &:hover {
+      background: rgba(0, 210, 255, 0.1);
+      color: #00d2ff;
+      text-decoration: none;
+    }
+
+    &:active {
+      border-style: solid;
+      background: rgba(0, 210, 255, 0.16);
+    }
+  }
 `;
 
 const ModalActions = styled.div`
@@ -284,6 +360,10 @@ const ModalActions = styled.div`
   margin-top: 12px;
   padding-top: 8px;
   border-top: 1px solid #808080;
+
+  [data-token-detail-presentation-host="gamma"] & {
+    border-top-color: rgba(242, 234, 217, 0.18);
+  }
 `;
 
 const BoardBadge = styled.span`
@@ -293,6 +373,12 @@ const BoardBadge = styled.span`
   background: var(--wtf-app-success, #008000);
   color: #fff;
   border-radius: 2px;
+
+  [data-token-detail-presentation-host="gamma"] & {
+    background: #d6ff3f;
+    color: #070706;
+    border-radius: 4px;
+  }
 `;
 
 /* ─── TokenCard Component ────────────────────────────── */
@@ -369,6 +455,7 @@ interface TokenDetailModalProps {
 }
 
 export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalProps) {
+  const presentation = usePresentationShell();
   const meta = token.metadata || {};
   const description = meta.description || meta.Description || "";
   const tags = Array.isArray(meta.tags) ? meta.tags : [];
@@ -417,8 +504,17 @@ export function TokenDetailModal({ token, onClose, actions }: TokenDetailModalPr
   const mediaFallback = audioResolved?.fallbackSrc || videoResolved?.fallbackSrc || resolved?.fallbackSrc;
 
   return (
-    <ModalOverlay onClick={onClose}>
-      <ModalWindow onClick={(e: any) => e.stopPropagation()}>
+    <ModalOverlay
+      data-token-detail-modal="true"
+      data-token-detail-presentation-host={presentation.host}
+      onClick={onClose}
+    >
+      <ModalWindow
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Token details: ${displayName}`}
+        onClick={(e: any) => e.stopPropagation()}
+      >
         <ModalTitleBar>
           <span>{audio ? "♪" : playable ? "🎬" : "🖼️"}</span>
           Properties: {displayName}

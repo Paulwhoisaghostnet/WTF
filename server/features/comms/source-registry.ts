@@ -14,7 +14,7 @@ export type CommsSourceDefinition = {
 export const COMMS_SOURCE_DEFINITIONS: CommsSourceDefinition[] = [
   {
     key: "mail",
-    label: "WTF Mail",
+    label: "Inbox Mail",
     sourceKind: "mail",
     adapterKey: "resend",
     readOnly: false,
@@ -37,6 +37,15 @@ export const COMMS_SOURCE_DEFINITIONS: CommsSourceDefinition[] = [
     adapterKey: "wtf-board",
     readOnly: false,
     routeBase: "/messageboard",
+    enabled: true,
+  },
+  {
+    key: "system",
+    label: "wtfOS System",
+    sourceKind: "system",
+    adapterKey: "wtfos-system",
+    readOnly: false,
+    routeBase: "/notifications",
     enabled: true,
   },
   {

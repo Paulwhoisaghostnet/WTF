@@ -12,6 +12,7 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { UiButton, UiNotice } from "../components/wtfos-ui";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
+import { usePresentationShell } from "../lib/presentation-shell";
 import { executeSwap, type SwapParams } from "../lib/tezos/dex";
 import {
   type SpicyToken,
@@ -23,21 +24,96 @@ import {
   XTZ_TAG,
 } from "@shared/types";
 
+function swapRegionAttrs(region: string): any {
+  return { "data-swap-region": region };
+}
+
 const SwapContainer = styled.div`
   max-width: 420px;
   margin: 0 auto;
   display: grid;
   gap: var(--wtf-space-2, 8px);
+
+  &[data-swap-presentation-host="gamma"] {
+    max-width: 680px;
+    background: #070706;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    gap: 12px;
+    padding: 2px;
+  }
+
+  &[data-swap-presentation-host="gamma"],
+  &[data-swap-presentation-host="gamma"] * {
+    letter-spacing: 0 !important;
+    text-shadow: none !important;
+  }
+
+  &[data-swap-presentation-host="gamma"] [data-swap-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    border-color: rgba(242, 234, 217, 0.16) !important;
+    border-width: 1px !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-swap-presentation-host="gamma"] :where(fieldset, [data-swap-region="health"], [data-swap-region="info-panel"], [data-swap-region="status"], [data-swap-region="error"], [data-swap-region="route-link"], [data-swap-region="footer-note"]) {
+    background: #11110f !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-swap-presentation-host="gamma"] :where(legend, strong, label, span, p) {
+    color: #f2ead9 !important;
+  }
+
+  &[data-swap-presentation-host="gamma"] :where(input, select) {
+    background: #070706 !important;
+    color: #f2ead9 !important;
+    border: 1px solid rgba(242, 234, 217, 0.2) !important;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  }
+
+  &[data-swap-presentation-host="gamma"] :where(button) {
+    background: transparent !important;
+    color: #f2ead9 !important;
+    border-color: rgba(0, 210, 255, 0.42) !important;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  }
+
+  &[data-swap-presentation-host="gamma"] :where(button:hover, button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible) {
+    border-color: #00d2ff !important;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
+
+  &[data-swap-presentation-host="gamma"] [data-swap-region="slippage-button"][data-swap-active="true"],
+  &[data-swap-presentation-host="gamma"] [data-swap-region="submit-button"] {
+    color: #00d2ff !important;
+    border-color: #00d2ff !important;
+  }
+
+  &[data-swap-presentation-host="gamma"] [data-swap-region="health"][data-swap-online="true"] {
+    border-color: #d6ff3f !important;
+  }
+
+  &[data-swap-presentation-host="gamma"] [data-swap-region="error"] {
+    border-color: rgba(255, 107, 95, 0.62) !important;
+    color: #ff6b5f !important;
+  }
+
+  &[data-swap-presentation-host="gamma"] a {
+    color: #00d2ff !important;
+  }
 `;
 
-const TokenRow = styled.div`
+const TokenRow = styled.div.attrs(swapRegionAttrs("token-row"))`
   display: flex;
   gap: 8px;
   align-items: flex-end;
   margin-bottom: 8px;
 `;
 
-const TokenInfo = styled.div`
+const TokenInfo = styled.div.attrs(swapRegionAttrs("token-info"))`
   display: flex;
   align-items: center;
   gap: 6px;
@@ -51,7 +127,7 @@ const TokenIcon = styled.img`
   border: 1px solid var(--wtf-app-border, #808080);
 `;
 
-const InfoRow = styled.div`
+const InfoRow = styled.div.attrs(swapRegionAttrs("info-row"))`
   display: flex;
   justify-content: space-between;
   gap: var(--wtf-space-2, 8px);
@@ -65,7 +141,9 @@ const InfoRow = styled.div`
   }
 `;
 
-const StatusText = styled.p<{ $error?: boolean }>`
+const StatusText = styled.p.attrs<{ $error?: boolean }>((p) =>
+  swapRegionAttrs(p.$error ? "error" : "status")
+)`
   font-size: var(--wtf-type-body, 14px);
   line-height: 1.4;
   color: ${(p) =>
@@ -73,7 +151,7 @@ const StatusText = styled.p<{ $error?: boolean }>`
   margin: 6px 0;
 `;
 
-const SwapArrow = styled.button`
+const SwapArrow = styled.button.attrs(swapRegionAttrs("direction-button"))`
   display: inline-flex;
   justify-self: center;
   justify-content: center;
@@ -96,7 +174,7 @@ const SwapArrow = styled.button`
   }
 `;
 
-const RouteLink = styled.a`
+const RouteLink = styled.a.attrs(swapRegionAttrs("route-link"))`
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -108,6 +186,16 @@ const RouteLink = styled.a`
   margin-top: 6px;
   color: var(--wtf-app-link, #000080);
   text-decoration: underline;
+`;
+
+const SwapPanel = styled.div`
+  display: grid;
+  gap: 8px;
+`;
+
+const Footnote = styled.p.attrs(swapRegionAttrs("footer-note"))`
+  margin-top: 8px;
+  text-align: center;
 `;
 
 const DEFAULT_SLIPPAGE = 1;
@@ -186,6 +274,7 @@ function build3RouteUrl(from: SpicyToken, to: SpicyToken, amount?: number): stri
 }
 
 export function Swap() {
+  const presentation = usePresentationShell();
   const { address, connect } = useWallet();
   const { data: rawTokens, isLoading: tokensLoading } = useTokenList();
   const { data: rawPools, isLoading: poolsLoading } = usePoolList();
@@ -329,9 +418,17 @@ export function Swap() {
 
   return (
     <AppWindow title="Token Swap">
-      <SwapContainer>
+      <SwapContainer
+        data-swap-presentation-host={presentation.host}
+        data-swap-surface="swap"
+        data-swap-region="surface"
+      >
         {health && (
-          <UiNotice tone={health.spicyswap ? "success" : "danger"}>
+          <UiNotice
+            tone={health.spicyswap ? "success" : "danger"}
+            data-swap-region="health"
+            data-swap-online={health.spicyswap ? "true" : "false"}
+          >
             {health.spicyswap
               ? `SpicySwap online — ${health.activePools} active pools, ${health.activeTokens} tokens`
               : "SpicySwap API unreachable — swap may not work"}
@@ -339,53 +436,58 @@ export function Swap() {
         )}
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: 40 }}>
+          <div style={{ textAlign: "center", padding: 40 }} data-swap-region="loading">
             <Hourglass size={32} />
             <p style={{ fontSize: "var(--wtf-type-body, 14px)", marginTop: 8 }}>Loading pools...</p>
           </div>
         ) : (
           <>
-            <GroupBox label="From">
-              <TokenRow>
-                <div style={{ flex: 1 }}>
-                  <Select
-                    value={fromToken.tag}
-                    onChange={(e: any) => selectToken("from", e.value)}
-                    options={allTokenOptions}
-                    width="100%"
-                  />
-                </div>
-              </TokenRow>
-              <TokenInfo>
-                {fromToken.img && (
-                  <TokenIcon
-                    src={fromToken.img.replace(
-                      "ipfs://",
-                      "https://gateway.pinata.cloud/ipfs/",
-                    )}
-                    alt={fromToken.symbol}
-                    onError={(e: any) => {
-                      e.target.style.display = "none";
-                    }}
-                  />
-                )}
-                <span style={{ fontWeight: "bold", fontSize: "var(--wtf-type-body, 14px)" }}>
-                  {fromToken.symbol}
-                </span>
-                {fromToken.totalLiquidityXtz > 0 && (
-                  <span data-wtf-caption="true">
-                    Liq: {fromToken.totalLiquidityXtz.toFixed(0)} XTZ
+            <SwapPanel data-swap-region="from-panel">
+              <GroupBox label="From">
+                <TokenRow>
+                  <div style={{ flex: 1 }}>
+                    <Select
+                      value={fromToken.tag}
+                      onChange={(e: any) => selectToken("from", e.value)}
+                      options={allTokenOptions}
+                      width="100%"
+                      data-swap-region="from-token-select"
+                    />
+                  </div>
+                </TokenRow>
+                <TokenInfo>
+                  {fromToken.img && (
+                    <TokenIcon
+                      src={fromToken.img.replace(
+                        "ipfs://",
+                        "https://gateway.pinata.cloud/ipfs/",
+                      )}
+                      alt={fromToken.symbol}
+                      onError={(e: any) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  )}
+                  <span style={{ fontWeight: "bold", fontSize: "var(--wtf-type-body, 14px)" }}>
+                    {fromToken.symbol}
                   </span>
-                )}
-              </TokenInfo>
-              <TextInput
-                value={fromAmount}
-                onChange={(e: any) => setFromAmount(e.target.value)}
-                placeholder="0.0"
-                fullWidth
-                type="number"
-              />
-            </GroupBox>
+                  {fromToken.totalLiquidityXtz > 0 && (
+                    <span data-wtf-caption="true">
+                      Liq: {fromToken.totalLiquidityXtz.toFixed(0)} XTZ
+                    </span>
+                  )}
+                </TokenInfo>
+                <TextInput
+                  value={fromAmount}
+                  onChange={(e: any) => setFromAmount(e.target.value)}
+                  placeholder="0.0"
+                  fullWidth
+                  type="number"
+                  data-swap-region="amount-input"
+                  aria-label="Swap from amount"
+                />
+              </GroupBox>
+            </SwapPanel>
 
             <SwapArrow
               type="button"
@@ -397,57 +499,62 @@ export function Swap() {
               &#8597;
             </SwapArrow>
 
-            <GroupBox label={`To${counterparts ? ` (${toTokenOptions.length} available)` : ""}`}>
-              <TokenRow>
-                <div style={{ flex: 1 }}>
-                  <Select
-                    value={toToken.tag}
-                    onChange={(e: any) => selectToken("to", e.value)}
-                    options={toTokenOptions}
-                    width="100%"
-                  />
-                </div>
-              </TokenRow>
-              <TokenInfo>
-                {toToken.img && (
-                  <TokenIcon
-                    src={toToken.img.replace(
-                      "ipfs://",
-                      "https://gateway.pinata.cloud/ipfs/",
-                    )}
-                    alt={toToken.symbol}
-                    onError={(e: any) => {
-                      e.target.style.display = "none";
-                    }}
-                  />
-                )}
-                <span style={{ fontWeight: "bold", fontSize: "var(--wtf-type-body, 14px)" }}>
-                  {toToken.symbol}
-                </span>
-                {toToken.totalLiquidityXtz > 0 && (
-                  <span data-wtf-caption="true">
-                    Liq: {toToken.totalLiquidityXtz.toFixed(0)} XTZ
+            <SwapPanel data-swap-region="to-panel">
+              <GroupBox label={`To${counterparts ? ` (${toTokenOptions.length} available)` : ""}`}>
+                <TokenRow>
+                  <div style={{ flex: 1 }}>
+                    <Select
+                      value={toToken.tag}
+                      onChange={(e: any) => selectToken("to", e.value)}
+                      options={toTokenOptions}
+                      width="100%"
+                      data-swap-region="to-token-select"
+                    />
+                  </div>
+                </TokenRow>
+                <TokenInfo>
+                  {toToken.img && (
+                    <TokenIcon
+                      src={toToken.img.replace(
+                        "ipfs://",
+                        "https://gateway.pinata.cloud/ipfs/",
+                      )}
+                      alt={toToken.symbol}
+                      onError={(e: any) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  )}
+                  <span style={{ fontWeight: "bold", fontSize: "var(--wtf-type-body, 14px)" }}>
+                    {toToken.symbol}
                   </span>
-                )}
-              </TokenInfo>
-              <TextInput
-                value={
-                  toAmount > 0
-                    ? rawToBalance(
-                        Math.floor(toAmount * 10 ** toToken.decimals),
-                        toToken.decimals,
-                      ).toFixed(Math.min(toToken.decimals, 6))
-                    : ""
-                }
-                readOnly
-                placeholder="0.0"
-                fullWidth
-              />
-            </GroupBox>
+                  {toToken.totalLiquidityXtz > 0 && (
+                    <span data-wtf-caption="true">
+                      Liq: {toToken.totalLiquidityXtz.toFixed(0)} XTZ
+                    </span>
+                  )}
+                </TokenInfo>
+                <TextInput
+                  value={
+                    toAmount > 0
+                      ? rawToBalance(
+                          Math.floor(toAmount * 10 ** toToken.decimals),
+                          toToken.decimals,
+                        ).toFixed(Math.min(toToken.decimals, 6))
+                      : ""
+                  }
+                  readOnly
+                  placeholder="0.0"
+                  fullWidth
+                  data-swap-region="quote-output"
+                  aria-label="Swap quoted output"
+                />
+              </GroupBox>
+            </SwapPanel>
 
             <Separator style={{ margin: "8px 0" }} />
 
-            <GroupBox label="Slippage Tolerance">
+            <GroupBox label="Slippage Tolerance" data-swap-region="slippage-panel">
               <div style={{ display: "flex", gap: 4 }}>
                 {[0.5, 1, 2, 5].map((s) => (
                   <UiButton
@@ -456,6 +563,8 @@ export function Swap() {
                     active={slippage === s}
                     uiVariant={slippage === s ? "primary" : "default"}
                     onClick={() => setSlippage(s)}
+                    data-swap-region="slippage-button"
+                    data-swap-active={slippage === s ? "true" : "false"}
                   >
                     {s}%
                   </UiButton>
@@ -464,7 +573,7 @@ export function Swap() {
             </GroupBox>
 
             {currentPool && fromAmountNum > 0 && (
-              <GroupBox label="Swap Info" style={{ marginTop: 8 }}>
+              <GroupBox label="Swap Info" style={{ marginTop: 8 }} data-swap-region="info-panel">
                 <InfoRow>
                   <span>Rate</span>
                   <span>
@@ -534,6 +643,7 @@ export function Swap() {
               style={{ marginTop: 8 }}
               disabled={swapping || (!!address && (fromAmountNum <= 0 || !currentPool))}
               onClick={handleSwap}
+              data-swap-region="submit-button"
             >
               {swapping ? (
                 <>
@@ -557,14 +667,11 @@ export function Swap() {
               Open in 3Route for best execution across 8 DEXes
             </RouteLink>
 
-            <p
-              className="wtf-caption"
-              style={{ marginTop: 8, textAlign: "center" }}
-            >
+            <Footnote className="wtf-caption">
               Direct swap via SpicySwap. For larger trades, 3Route aggregates
               across SpicySwap, QuipuSwap, Plenty, Vortex, Sirius, and more
               for up to 50% better execution.
-            </p>
+            </Footnote>
           </>
         )}
       </SwapContainer>

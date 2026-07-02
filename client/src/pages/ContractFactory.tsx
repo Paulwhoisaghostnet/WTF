@@ -13,6 +13,7 @@ import {
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { Fa2WizardPanel } from "../features/contract-factory/Fa2WizardPanel";
+import { usePresentationShell } from "../lib/presentation-shell";
 
 // WTF Contract Factory — Phase 8 operator UI.
 //
@@ -34,6 +35,53 @@ const Stack = styled.div`
   flex-direction: column;
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
+
+  &[data-contract-factory-presentation-host="gamma"] {
+    padding: 16px;
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  &[data-contract-factory-presentation-host="gamma"],
+  &[data-contract-factory-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-contract-factory-presentation-host="gamma"] [data-contract-factory-region] {
+    background-image: none;
+    border-radius: 6px;
+  }
+
+  &[data-contract-factory-presentation-host="gamma"] :where(fieldset, table, pre, [data-contract-factory-region="step-card"], [data-contract-factory-region="panel"]) {
+    color: #f2ead9;
+    background: #11110f;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+  }
+
+  &[data-contract-factory-presentation-host="gamma"] :where(input, textarea, select) {
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 6px;
+  }
+
+  &[data-contract-factory-presentation-host="gamma"] :where(button) {
+    color: #f2ead9;
+    background: #070706;
+    border: 1px solid rgba(0, 210, 255, 0.54);
+    border-radius: 6px;
+  }
+
+  &[data-contract-factory-presentation-host="gamma"] :where(button:hover, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible) {
+    color: #070706;
+    background: #00d2ff;
+    outline: 2px solid #00d2ff;
+    outline-offset: 2px;
+  }
 `;
 
 const Row = styled.div`
@@ -174,8 +222,8 @@ const TEMPLATE_KIND_OPTIONS: { value: TemplateKind; label: string }[] = [
 ];
 
 const NETWORK_OPTIONS: { value: Network; label: string }[] = [
-  { value: "ghostnet", label: "Ghostnet (test)" },
   { value: "shadownet", label: "Shadownet (WTF local)" },
+  { value: "ghostnet", label: "Ghostnet (legacy test)" },
   { value: "mainnet", label: "Mainnet (requires confirmation)" },
 ];
 
@@ -189,6 +237,7 @@ const SIMULATION_WALLET_OPTIONS: { value: SimulationWallet; label: string }[] =
 const DEFAULT_SIMULATION_ARGS = "{}";
 
 export function ContractFactory() {
+  const presentation = usePresentationShell();
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -207,7 +256,7 @@ export function ContractFactory() {
   const [templateKind, setTemplateKind] =
     useState<TemplateKind>("teia_one_of_one");
   const [name, setName] = useState<string>("");
-  const [network, setNetwork] = useState<Network>("ghostnet");
+  const [network, setNetwork] = useState<Network>("shadownet");
   const [initialStorage, setInitialStorage] = useState<string>("");
   const [wallet, setWallet] = useState<"A" | "B">("A");
   const [confirmMainnet, setConfirmMainnet] = useState<boolean>(false);
@@ -325,17 +374,28 @@ export function ContractFactory() {
   if (!user) {
     return (
       <AppWindow title="Contract Factory">
-        <UiPanel title="Contract Factory" compact>
-          <Muted>Sign in to use the WTF Contract Factory.</Muted>
-        </UiPanel>
+        <Stack
+          data-contract-factory-surface="factory"
+          data-contract-factory-presentation-host={presentation.host}
+          data-contract-factory-region="surface"
+        >
+          <UiPanel title="Contract Factory" compact data-contract-factory-region="panel">
+            <Muted>Sign in to use the WTF Contract Factory.</Muted>
+          </UiPanel>
+        </Stack>
       </AppWindow>
     );
   }
 
   return (
     <AppWindow title="Contract Factory">
-      <Stack>
+      <Stack
+        data-contract-factory-surface="factory"
+        data-contract-factory-presentation-host={presentation.host}
+        data-contract-factory-region="surface"
+      >
         <UiTabs
+          data-contract-factory-region="tabs"
           activeId={activeTab}
           onChange={(id) => setActiveTab(id as "deploy" | "wizard")}
           tabs={[
@@ -345,14 +405,14 @@ export function ContractFactory() {
         />
 
       {activeTab === "deploy" && (
-      <>
-        <Muted>
+      <div data-contract-factory-region="deploy-tab">
+        <Muted data-contract-factory-region="endpoint">
           Kiln endpoint:{" "}
           <InlineCode>{templatesQuery.data?.kilnUrl ?? "(loading)"}</InlineCode>
         </Muted>
 
-        <UiPanel title="Template" compact>
-          <Row>
+        <UiPanel title="Template" compact data-contract-factory-region="panel">
+          <Row data-contract-factory-region="row">
             <ControlLabel>Kind</ControlLabel>
             <Select
               options={TEMPLATE_KIND_OPTIONS}
@@ -374,7 +434,7 @@ export function ContractFactory() {
           ) : null}
         </UiPanel>
 
-        <UiPanel title="Origination storage" compact>
+        <UiPanel title="Origination storage" compact data-contract-factory-region="panel">
           <TextArea
             value={initialStorage}
             aria-label="Origination storage"
@@ -384,11 +444,11 @@ export function ContractFactory() {
           />
         </UiPanel>
 
-        <UiPanel title="Browser Kiln test" compact>
+        <UiPanel title="Browser Kiln test" compact data-contract-factory-region="panel">
           <Stack>
             {simulationSteps.map((step, index) => (
-              <StepCard key={step.id}>
-                <Row>
+              <StepCard key={step.id} data-contract-factory-region="step-card">
+                <Row data-contract-factory-region="row">
                   <Muted>Step {index + 1}</Muted>
                   <ControlLabel>Wallet</ControlLabel>
                   <Select
@@ -437,7 +497,7 @@ export function ContractFactory() {
                 />
               </StepCard>
             ))}
-            <Row>
+            <Row data-contract-factory-region="actions">
               <UiButton onClick={addSimulationStep}>Add simulation step</UiButton>
               <UiButton
                 onClick={() => compileMutation.mutate()}
@@ -452,13 +512,13 @@ export function ContractFactory() {
               {compileMutation.isPending ? <Hourglass size={16} /> : null}
             </Row>
             {compileOutput ? (
-              <Pre>{JSON.stringify(compileOutput, null, 2)}</Pre>
+              <Pre data-contract-factory-region="output">{JSON.stringify(compileOutput, null, 2)}</Pre>
             ) : null}
           </Stack>
         </UiPanel>
 
-        <UiPanel title="Deploy" compact>
-          <Row>
+        <UiPanel title="Deploy" compact data-contract-factory-region="panel">
+          <Row data-contract-factory-region="row">
             <ControlLabel>Name</ControlLabel>
             <TextInput
               value={name}
@@ -470,7 +530,7 @@ export function ContractFactory() {
               style={{ width: 320 }}
             />
           </Row>
-          <Row>
+          <Row data-contract-factory-region="row">
             <ControlLabel>Network</ControlLabel>
             <Select
               options={NETWORK_OPTIONS}
@@ -492,7 +552,7 @@ export function ContractFactory() {
             />
           </Row>
           {network === "mainnet" ? (
-            <Row>
+            <Row data-contract-factory-region="row">
               <input
                 id="confirm-mainnet"
                 type="checkbox"
@@ -505,7 +565,7 @@ export function ContractFactory() {
               </ControlLabel>
             </Row>
           ) : null}
-          <Row>
+          <Row data-contract-factory-region="actions">
             <UiButton
               uiVariant="primary"
               onClick={() => deployMutation.mutate()}
@@ -524,20 +584,22 @@ export function ContractFactory() {
             <UiNotice tone="danger">{errorMsg}</UiNotice>
           ) : null}
           {deployOutput ? (
-            <Pre>{JSON.stringify(deployOutput, null, 2)}</Pre>
+            <Pre data-contract-factory-region="output">{JSON.stringify(deployOutput, null, 2)}</Pre>
           ) : null}
         </UiPanel>
 
-        <Separator />
+        <div data-contract-factory-region="separator">
+          <Separator />
+        </div>
 
-        <UiPanel title="Deployed WTF contracts" compact>
+        <UiPanel title="Deployed WTF contracts" compact data-contract-factory-region="panel">
           {contractsQuery.isLoading ? (
             <Row>
               <Hourglass size={16} /> <Muted>Loading…</Muted>
             </Row>
           ) : (
-            <TableWrap>
-              <Table>
+            <TableWrap data-contract-factory-region="table-wrap">
+              <Table data-contract-factory-region="table">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -595,11 +657,11 @@ export function ContractFactory() {
             </TableWrap>
           )}
         </UiPanel>
-      </>
+      </div>
       )}
 
       {activeTab === "wizard" && (
-        <div style={{ padding: "8px 0" }}>
+        <div style={{ padding: "8px 0" }} data-contract-factory-region="wizard-tab">
           <Fa2WizardPanel />
         </div>
       )}

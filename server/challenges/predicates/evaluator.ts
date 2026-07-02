@@ -12,6 +12,7 @@ import type {
   PredicateConditionNode,
 } from "../events/types";
 import { verifyTezosOwnership } from "./ownership";
+import { evaluateReggiePredicate } from "./reggie";
 
 export interface EvaluationContext {
   challengeId: number;
@@ -271,10 +272,21 @@ async function evaluatePredicateCondition(
       detail = { completionKey: key, alreadyClaimed: rows.length > 0 };
       break;
     }
-    default:
+    default: {
+      const reggieResult = await evaluateReggiePredicate(
+        condition.predicateKey,
+        params,
+        context.userId
+      );
+      if (reggieResult.handled) {
+        satisfied = reggieResult.satisfied;
+        detail = reggieResult.detail;
+        break;
+      }
       detail = { error: `Unknown predicate: ${condition.predicateKey}` };
       satisfied = false;
       break;
+    }
   }
 
   if (condition.comparator === "not_exists") {

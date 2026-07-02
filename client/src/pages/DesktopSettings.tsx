@@ -12,7 +12,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Panel, Separator } from "react95";
 import {
   Apple,
+  Bot,
   Bold,
+  Brush,
   Clipboard,
   Droplets,
   Gamepad2,
@@ -21,16 +23,22 @@ import {
   Italic,
   KeyRound,
   Moon,
+  MousePointer2,
+  Palette,
   RotateCcw,
   Save,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
+  Type as TypeIcon,
   Underline,
   Unplug,
 } from "lucide-react";
 import { AppWindow } from "../components/layout/AppWindow";
 import { HamsterPixelSprite } from "../components/layout/HamsterPixelSprite";
 import { api } from "../lib/api";
+import { useLocalization, type TranslateFn } from "../lib/localization";
+import { usePresentationShell } from "../lib/presentation-shell";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
   DESKTOP_APPEARANCE_STYLES,
@@ -51,21 +59,26 @@ import {
   DESKTOP_WTF_LIVE_CHAT_SIZES,
   HAMSTER_COLOR_SCHEMES,
   HAMSTER_CORE_STAT_KEYS,
-  HAMSTER_CORE_STAT_LABELS,
   mediaLibraryWallpaperUrl,
   tokenWallpaperUrl,
   type DesktopAppearance,
+  type HamsterCoreStatKey,
   type DesktopIconLayout,
   type DesktopWtfLiveChatFont,
   type HamsterAction,
   type HamsterState,
 } from "@shared/desktop";
+import {
+  DEFAULT_LOCALIZATION_SETTINGS,
+  type LocalizationSettings,
+} from "@shared/localization";
 import { getTokenMimeType, isImageMime } from "../lib/media-resolve";
 import { FONT_PACKS, getFontPack } from "../features/appearance/font-packs";
 
 type DesktopSettingsResponse = {
   appearance: DesktopAppearance;
   iconLayout: DesktopIconLayout;
+  localization: LocalizationSettings;
   updatedAt: string | null;
 };
 
@@ -95,6 +108,35 @@ type McpCreateTokenResponse = {
   tokenRecord: McpTokenRecord;
   warning: string;
 };
+
+type SettingsTabKey =
+  | "background"
+  | "appearance"
+  | "font"
+  | "cursor"
+  | "physics"
+  | "pet"
+  | "agent";
+
+type SettingsTabDefinition = {
+  key: SettingsTabKey;
+  label: string;
+  summary: string;
+  icon: ReactNode;
+};
+
+function stableSettingsString(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSettingsString(item)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, nested]) => `${JSON.stringify(key)}:${stableSettingsString(nested)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "undefined";
+}
 
 function reportDesktopSettingsEvent(payload: {
   eventType: string;
@@ -146,13 +188,298 @@ interface OwnedToken {
 }
 
 const Shell = styled.div`
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(220px, 0.85fr) minmax(280px, 1.15fr);
+  grid-template-columns: minmax(172px, 204px) minmax(0, 1fr);
+  grid-template-rows: minmax(420px, 1fr) auto;
+  grid-template-areas:
+    "nav content"
+    "nav save";
   gap: 10px;
+  align-items: start;
+  min-height: min(680px, calc(100vh - 140px));
+
+  &[data-desktop-settings-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family:
+      Inter, "IBM Plex Sans", "Neue Haas Grotesk Text", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+    letter-spacing: 0;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"],
+  &[data-desktop-settings-presentation-host="gamma"] * {
+    box-sizing: border-box;
+    text-shadow: none !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"]
+    :where(button, input, select, textarea, label, span, strong, div) {
+    font-family:
+      Inter, "IBM Plex Sans", "Neue Haas Grotesk Text", Arial, sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region] {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    border-radius: 6px !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"]
+    :where([data-desktop-settings-region="surface"], [data-desktop-settings-region="settings-nav"], [data-desktop-settings-region="tab-panel"], [data-desktop-settings-region="appearance-panel"], [data-desktop-settings-region="font-panel"], [data-desktop-settings-region="desktop-panel"], [data-desktop-settings-region="cursor-panel"], [data-desktop-settings-region="physics-panel"], [data-desktop-settings-region="pet-panel"], [data-desktop-settings-region="agent-panel"], [data-desktop-settings-region="global-save"]) {
+    min-width: 0;
+    border: 1px solid rgba(242, 234, 217, 0.16) !important;
+    background: #11110f !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"]
+    :where([data-desktop-settings-region="settings-tab"], [data-desktop-settings-region="style-button"], [data-desktop-settings-region="font-pack-button"], [data-desktop-settings-region="chat-preset-button"], [data-desktop-settings-region="color-preset-button"], [data-desktop-settings-region="source-button"], [data-desktop-settings-region="toolbar-button"], [data-desktop-settings-region="chat-toggle"], [data-desktop-settings-region="chat-color"], [data-desktop-settings-region="segment-button"], [data-desktop-settings-region="token-row"]) {
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    background: #070706 !important;
+    color: #f2ead9 !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"]
+    :where([data-desktop-settings-region="settings-tab"][aria-selected="true"], [data-desktop-settings-region="style-button"][aria-pressed="true"], [data-desktop-settings-region="font-pack-button"][aria-pressed="true"], [data-desktop-settings-region="chat-preset-button"][aria-pressed="true"], [data-desktop-settings-region="color-preset-button"][aria-pressed="true"], [data-desktop-settings-region="source-button"][aria-pressed="true"], [data-desktop-settings-region="segment-button"][aria-pressed="true"]) {
+    border-color: rgba(0, 210, 255, 0.72) !important;
+    color: #00d2ff !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="style-preview"] {
+    border: 1px solid rgba(0, 210, 255, 0.58) !important;
+    background: #070706 !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="style-preview"]::before {
+    content: "";
+    display: block;
+    height: 9px;
+    border-bottom: 1px solid rgba(0, 210, 255, 0.58);
+    background: #00d2ff;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"]
+    :where([data-desktop-settings-region="section-title"], [data-desktop-settings-region="mcp-endpoint"]) {
+    color: #00d2ff;
+    font-family:
+      "IBM Plex Mono", "Roboto Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"]
+    :where(input, select, textarea) {
+    border: 1px solid rgba(242, 234, 217, 0.22) !important;
+    border-radius: 4px !important;
+    background: #070706 !important;
+    color: #f2ead9 !important;
+    box-shadow: none !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] input[type="color"] {
+    min-height: 34px;
+    padding: 2px;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="help"],
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="summary"] {
+    color: rgba(242, 234, 217, 0.68) !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="chat-preview"] {
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    background: #070706 !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="swatch"] {
+    border: 1px solid rgba(242, 234, 217, 0.26) !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-thumb="true"] {
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="stat-bar"] {
+    border: 1px solid rgba(242, 234, 217, 0.18) !important;
+    background: #070706 !important;
+    box-shadow: none !important;
+    border-radius: 4px !important;
+  }
+
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="toolbar-button"]:hover,
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="toolbar-button"]:focus-visible,
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="segment-button"]:hover,
+  &[data-desktop-settings-presentation-host="gamma"] [data-desktop-settings-region="segment-button"]:focus-visible {
+    border-color: #00d2ff !important;
+    color: #00d2ff !important;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
 
   @media (max-width: 780px) {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "nav"
+      "content"
+      "save";
+    min-height: 0;
   }
+`;
+
+const SettingsNav = styled(Panel)`
+  grid-area: nav;
+  position: sticky;
+  top: 0;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  background: var(--wtf-window-color, #c0c0c0);
+  color: var(--wtf-text-color, #111);
+  z-index: 2;
+`;
+
+const NavTitle = styled.div`
+  font-size: var(--wtf-type-caption, 13px);
+  font-weight: 800;
+  line-height: 1.15;
+`;
+
+const TabList = styled.div`
+  display: grid;
+  gap: 4px;
+`;
+
+const SettingsTab = styled.button<{ $active: boolean }>`
+  min-width: 0;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  padding: 6px 7px;
+  border: 2px solid;
+  border-color: ${(p) => (p.$active ? "#000 #fff #fff #000" : "#fff #404040 #404040 #fff")};
+  background: ${(p) => (p.$active ? "#ffffff" : "var(--wtf-button-face, #c0c0c0)")};
+  color: var(--wtf-text-color, #111);
+  text-align: left;
+  line-height: 1.12;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  strong,
+  span {
+    min-width: 0;
+  }
+
+  strong {
+    display: block;
+    font-size: var(--wtf-type-caption, 13px);
+  }
+
+  span {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    opacity: 0.78;
+  }
+`;
+
+const SettingsMain = styled.div`
+  grid-area: content;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+
+  > [hidden] {
+    display: none !important;
+  }
+`;
+
+const TabSaveBar = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(64, 64, 64, 0.45);
+`;
+
+const GlobalSaveDock = styled.div`
+  grid-area: save;
+  position: sticky;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 0;
+  pointer-events: none;
+`;
+
+const GlobalSaveButton = styled.button<{ $dirty: boolean }>`
+  && {
+    pointer-events: auto;
+    min-width: 132px;
+    min-height: 46px;
+    height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 18px;
+    border: 2px solid #111;
+    border-color: #ffffff #202020 #202020 #ffffff;
+    background: ${(p) => (p.$dirty ? "#c01824" : "#138a34")} !important;
+    color: #ffffff;
+    font-weight: 900;
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: 0;
+    box-shadow:
+      inset 1px 1px 0 rgba(255, 255, 255, 0.5),
+      2px 2px 0 rgba(0, 0, 0, 0.42) !important;
+  }
+
+  &&:disabled {
+    cursor: wait;
+    opacity: 0.82;
+  }
+
+  &&:focus-visible {
+    outline: 3px solid var(--wtf-highlight, #000080);
+    outline-offset: 2px;
+  }
+
+  && svg {
+    width: 18px;
+    height: 18px;
+  }
+`;
+
+const VisuallyHidden = styled.span`
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 `;
 
 const Group = styled(Panel)`
@@ -645,8 +972,6 @@ function applyScheme(appearance: DesktopAppearance, key: string): DesktopAppeara
 
 function liveChatFontFamily(font: DesktopWtfLiveChatFont): string {
   switch (font) {
-    case "grout-display":
-      return getFontPack("mek-type").roles.display;
     case "classic-95":
       return getFontPack("classic-95").roles.app;
     case "terminal":
@@ -654,24 +979,26 @@ function liveChatFontFamily(font: DesktopWtfLiveChatFont): string {
     case "serif-press":
       return getFontPack("serif-press").roles.app;
     default:
-      return getFontPack("mek-type").roles.mono;
+      return getFontPack("classic-95").roles.app;
   }
 }
 
 function ColorField({
   label,
   value,
+  ariaLabel,
   onChange,
 }: {
   label: string;
   value: string;
+  ariaLabel: string;
   onChange: (value: string) => void;
 }) {
   return (
     <Field>
       <span>{label}</span>
       <input
-        aria-label={`${label} color`}
+        aria-label={ariaLabel}
         type="color"
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -685,18 +1012,29 @@ function formatBytes(bytes: number) {
   return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
 }
 
-function PetStats({ pet }: { pet: HamsterState }) {
+const HAMSTER_CORE_STAT_MESSAGE_IDS: Record<HamsterCoreStatKey, Parameters<TranslateFn>[0]> = {
+  metabolism: "themeBuilder.pet.gene.metabolism",
+  speed: "themeBuilder.pet.gene.speed",
+  strength: "themeBuilder.pet.gene.strength",
+  intelligence: "themeBuilder.pet.gene.intelligence",
+  stamina: "themeBuilder.pet.gene.stamina",
+  sociability: "themeBuilder.pet.gene.sociability",
+  grit: "themeBuilder.pet.gene.grit",
+  luck: "themeBuilder.pet.gene.luck",
+};
+
+function PetStats({ pet, t }: { pet: HamsterState; t: TranslateFn }) {
   const rows = [
-    ["Food", pet.hunger],
-    ["Water", pet.thirst],
-    ["Fun", pet.happiness],
-    ["Clean", pet.hygiene],
-    ["Energy", pet.energy],
-    ["Happy Index", pet.happinessIndexScore],
-    ["Trauma", pet.trauma],
+    [t("themeBuilder.pet.stat.food"), pet.hunger],
+    [t("themeBuilder.pet.stat.water"), pet.thirst],
+    [t("themeBuilder.pet.stat.fun"), pet.happiness],
+    [t("themeBuilder.pet.stat.clean"), pet.hygiene],
+    [t("themeBuilder.pet.stat.energy"), pet.energy],
+    [t("themeBuilder.pet.stat.happyIndex"), pet.happinessIndexScore],
+    [t("themeBuilder.pet.stat.trauma"), pet.trauma],
   ] as const;
   const geneRows = HAMSTER_CORE_STAT_KEYS.map((key) => [
-    HAMSTER_CORE_STAT_LABELS[key],
+    t(HAMSTER_CORE_STAT_MESSAGE_IDS[key]),
     pet.genetics.effectiveStats[key],
   ] as const);
 
@@ -706,15 +1044,19 @@ function PetStats({ pet }: { pet: HamsterState }) {
         {rows.map(([label, value]) => (
           <Fragment key={label}>
             <span>{label}</span>
-            <StatBar $value={value} />
+            <StatBar $value={value} data-desktop-settings-region="stat-bar" />
             <span>{value}</span>
           </Fragment>
         ))}
       </StatRows>
       <GenePanel>
         <div>
-          Gen {pet.genetics.generation} · Bond L{pet.bondLevel} ·{" "}
-          {pet.genetics.rarityTier.toUpperCase()} · {pet.genetics.phenotype.sizeClass}
+          {t("themeBuilder.pet.geneLine", {
+            generation: pet.genetics.generation,
+            bondLevel: pet.bondLevel,
+            rarity: pet.genetics.rarityTier.toUpperCase(),
+            size: pet.genetics.phenotype.sizeClass,
+          })}
         </div>
         <TraitRow>
           {pet.genetics.attributes.length > 0 ? (
@@ -724,14 +1066,14 @@ function PetStats({ pet }: { pet: HamsterState }) {
               </TraitChip>
             ))
           ) : (
-            <span>No rare traits</span>
+            <span>{t("themeBuilder.pet.noRareTraits")}</span>
           )}
         </TraitRow>
         <StatRows>
           {geneRows.map(([label, value]) => (
             <Fragment key={label}>
               <span>{label}</span>
-              <StatBar $value={value} />
+              <StatBar $value={value} data-desktop-settings-region="stat-bar" />
               <span>{value}</span>
             </Fragment>
           ))}
@@ -742,9 +1084,14 @@ function PetStats({ pet }: { pet: HamsterState }) {
 }
 
 export function DesktopSettings() {
+  const presentation = usePresentationShell();
   const qc = useQueryClient();
+  const { t, formatDate } = useLocalization();
   const fileRef = useRef<HTMLInputElement>(null);
+  const initialSettingsLoadedRef = useRef(false);
+  const [activeTab, setActiveTab] = useState<SettingsTabKey>("background");
   const [draft, setDraft] = useState<DesktopAppearance>(DEFAULT_DESKTOP_APPEARANCE);
+  const [savedAppearance, setSavedAppearance] = useState<DesktopAppearance | null>(null);
   const [petDraft, setPetDraft] = useState<{ name: string; colorSchemeKey: string }>({
     name: "",
     colorSchemeKey: HAMSTER_COLOR_SCHEMES[0].key,
@@ -803,12 +1150,16 @@ export function DesktopSettings() {
         qc.setQueryData(["desktop", "settings"], (current: DesktopSettingsResponse | undefined) => ({
           appearance: next,
           iconLayout: current?.iconLayout ?? settingsQuery.data?.iconLayout ?? {},
+          localization:
+            current?.localization ??
+            settingsQuery.data?.localization ??
+            DEFAULT_LOCALIZATION_SETTINGS,
           updatedAt: current?.updatedAt ?? settingsQuery.data?.updatedAt ?? null,
         }));
         return next;
       });
     },
-    [qc, settingsQuery.data?.iconLayout]
+    [qc, settingsQuery.data?.iconLayout, settingsQuery.data?.localization, settingsQuery.data?.updatedAt]
   );
 
   const patchDraft = useCallback(
@@ -860,6 +1211,8 @@ export function DesktopSettings() {
       }),
     onSuccess: (result) => {
       qc.setQueryData(["desktop", "settings"], result);
+      setDraft(result.appearance);
+      setSavedAppearance(result.appearance);
       reportThemeBuilderEvent("desktop.appearance.updated", "save", {
         appearanceStyleKey: result.appearance.appearanceStyleKey,
         colorSchemeKey: result.appearance.colorSchemeKey,
@@ -893,7 +1246,7 @@ export function DesktopSettings() {
       });
     },
     onError: (error) => {
-      setFileError(error instanceof Error ? error.message : "Upload failed.");
+      setFileError(error instanceof Error ? error.message : t("themeBuilder.upload.failed"));
     },
   });
 
@@ -966,9 +1319,10 @@ export function DesktopSettings() {
   const pet = petQuery.data?.pet;
 
   useEffect(() => {
-    if (settingsQuery.data?.appearance) {
-      setDraft(settingsQuery.data.appearance);
-    }
+    if (!settingsQuery.data?.appearance || initialSettingsLoadedRef.current) return;
+    initialSettingsLoadedRef.current = true;
+    setDraft(settingsQuery.data.appearance);
+    setSavedAppearance(settingsQuery.data.appearance);
   }, [settingsQuery.data?.appearance]);
 
   useEffect(() => {
@@ -989,11 +1343,15 @@ export function DesktopSettings() {
     setFileError("");
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setFileError("Image files only.");
+      setFileError(t("themeBuilder.upload.imagesOnly"));
       return;
     }
     if (file.size > DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES) {
-      setFileError(`Pick an image under ${formatBytes(DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES)}.`);
+      setFileError(
+        t("themeBuilder.upload.tooLarge", {
+          size: formatBytes(DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES),
+        })
+      );
       return;
     }
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -1041,22 +1399,122 @@ export function DesktopSettings() {
   );
   const petActions: Array<{ action: HamsterAction; label: string; icon: ReactNode }> =
     pet?.alive === false
-      ? [{ action: "revive", label: "Adopt", icon: <Heart /> }]
+      ? [{ action: "revive", label: t("themeBuilder.pet.action.adopt"), icon: <Heart /> }]
       : [
-          { action: "feed", label: "Feed", icon: <Apple /> },
-          { action: "water", label: "Water", icon: <Droplets /> },
-          { action: "play", label: "Play", icon: <Gamepad2 /> },
-          { action: "pet", label: "Pet", icon: <Heart /> },
-          { action: "clean", label: "Clean", icon: <Sparkles /> },
-          { action: "scoop", label: "Scoop", icon: <Trash2 /> },
-          { action: "nap", label: "Nap", icon: <Moon /> },
+          { action: "feed", label: t("themeBuilder.pet.action.feed"), icon: <Apple /> },
+          { action: "water", label: t("themeBuilder.pet.action.water"), icon: <Droplets /> },
+          { action: "play", label: t("themeBuilder.pet.action.play"), icon: <Gamepad2 /> },
+          { action: "pet", label: t("themeBuilder.pet.action.pet"), icon: <Heart /> },
+          { action: "clean", label: t("themeBuilder.pet.action.clean"), icon: <Sparkles /> },
+          { action: "scoop", label: t("themeBuilder.pet.action.scoop"), icon: <Trash2 /> },
+          { action: "nap", label: t("themeBuilder.pet.action.nap"), icon: <Moon /> },
         ];
 
+  const draftSignature = useMemo(() => stableSettingsString(draft), [draft]);
+  const savedAppearanceSignature = useMemo(
+    () => stableSettingsString(savedAppearance),
+    [savedAppearance]
+  );
+  const hasUnsavedAppearanceChanges =
+    Boolean(savedAppearance) && draftSignature !== savedAppearanceSignature;
+  const saveStateText = saveMutation.isPending
+    ? t("themeBuilder.saveState.saving")
+    : hasUnsavedAppearanceChanges
+      ? t("themeBuilder.saveState.unsaved")
+      : t("themeBuilder.saveState.recorded");
+  const settingsTabs = useMemo<SettingsTabDefinition[]>(
+    () => [
+      {
+        key: "background",
+        label: t("themeBuilder.tab.background"),
+        summary: t("themeBuilder.tab.background.summary"),
+        icon: <ImageIcon />,
+      },
+      {
+        key: "appearance",
+        label: t("themeBuilder.tab.appearance"),
+        summary: t("themeBuilder.tab.appearance.summary"),
+        icon: <Palette />,
+      },
+      {
+        key: "font",
+        label: t("themeBuilder.tab.font"),
+        summary: t("themeBuilder.tab.font.summary"),
+        icon: <TypeIcon />,
+      },
+      {
+        key: "cursor",
+        label: t("themeBuilder.tab.cursor"),
+        summary: t("themeBuilder.tab.cursor.summary"),
+        icon: <MousePointer2 />,
+      },
+      {
+        key: "physics",
+        label: t("themeBuilder.tab.physics"),
+        summary: t("themeBuilder.tab.physics.summary"),
+        icon: <SlidersHorizontal />,
+      },
+      {
+        key: "pet",
+        label: t("themeBuilder.tab.pet"),
+        summary: t("themeBuilder.tab.pet.summary"),
+        icon: <Brush />,
+      },
+      {
+        key: "agent",
+        label: t("themeBuilder.tab.agent"),
+        summary: t("themeBuilder.tab.agent.summary"),
+        icon: <Bot />,
+      },
+    ],
+    [t]
+  );
+
   return (
-    <AppWindow title="Theme Builder">
-      <Shell>
-        <Group variant="outside">
-          <GroupTitle>OS appearance</GroupTitle>
+    <AppWindow title={t("themeBuilder.title")}>
+      <Shell
+        data-desktop-settings-surface="theme-builder"
+        data-desktop-settings-presentation-host={presentation.host}
+        data-desktop-settings-region="surface"
+      >
+        <SettingsNav variant="outside" data-desktop-settings-region="settings-nav">
+          <NavTitle>{t("themeBuilder.title")}</NavTitle>
+          <TabList role="tablist" aria-label={t("themeBuilder.title")}>
+            {settingsTabs.map((tab) => (
+              <SettingsTab
+                key={tab.key}
+                id={`desktop-settings-tab-${tab.key}`}
+                type="button"
+                role="tab"
+                $active={activeTab === tab.key}
+                aria-selected={activeTab === tab.key}
+                aria-controls={`desktop-settings-panel-${tab.key}`}
+                data-testid={`desktop-settings-tab-${tab.key}`}
+                data-desktop-settings-region="settings-tab"
+                onClick={() => setActiveTab(tab.key)}
+              >
+                <span aria-hidden>{tab.icon}</span>
+                <span>
+                  <strong>{tab.label}</strong>
+                  <span>{tab.summary}</span>
+                </span>
+              </SettingsTab>
+            ))}
+          </TabList>
+        </SettingsNav>
+
+        <SettingsMain data-desktop-settings-region="tab-panel">
+        <Group
+          variant="outside"
+          id="desktop-settings-panel-appearance"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-appearance"
+          hidden={activeTab !== "appearance"}
+          data-desktop-settings-region="appearance-panel"
+        >
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.appearance")}
+          </GroupTitle>
           <StyleGrid>
             {DESKTOP_APPEARANCE_STYLES.map((style) => (
               <StyleButton
@@ -1064,18 +1522,111 @@ export function DesktopSettings() {
                 type="button"
                 $active={draft.appearanceStyleKey === style.key}
                 $styleKey={style.key}
+                aria-pressed={draft.appearanceStyleKey === style.key}
+                data-desktop-settings-region="style-button"
                 onClick={() => patchDraft({ appearanceStyleKey: style.key })}
               >
-                <StylePreview $styleKey={style.key} />
+                <StylePreview $styleKey={style.key} data-desktop-settings-region="style-preview" />
                 <StyleName>{style.label}</StyleName>
-                <StyleSummary>{style.summary}</StyleSummary>
+                <StyleSummary data-desktop-settings-region="summary">{style.summary}</StyleSummary>
               </StyleButton>
             ))}
           </StyleGrid>
           <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>System typography</GroupTitle>
-          <HelpText style={{ marginBottom: 8 }}>
-            Font packs apply instantly across the desktop shell and app windows.
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.colorSchemes")}
+          </GroupTitle>
+          <PresetGrid>
+            {DESKTOP_COLOR_SCHEMES.map((scheme) => (
+              <PresetButton
+                key={scheme.key}
+                type="button"
+                $active={draft.colorSchemeKey === scheme.key}
+                aria-pressed={draft.colorSchemeKey === scheme.key}
+                data-desktop-settings-region="color-preset-button"
+                onClick={() => setAppearanceDraft((prev) => applyScheme(prev, scheme.key))}
+              >
+                <Swatch
+                  $colors={[
+                    scheme.desktopColor,
+                    scheme.windowColor,
+                    scheme.activeTitleColor,
+                    scheme.textColor,
+                  ]}
+                  data-desktop-settings-region="swatch"
+                >
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </Swatch>
+                <span>{scheme.label}</span>
+              </PresetButton>
+            ))}
+          </PresetGrid>
+          <Separator style={{ margin: "10px 0" }} />
+          <FieldGrid>
+            <ColorField
+              label={t("themeBuilder.color.desktop")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.desktop") })}
+              value={draft.desktopColor}
+              onChange={(desktopColor) => patchDraft({ desktopColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.window")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.window") })}
+              value={draft.windowColor}
+              onChange={(windowColor) => patchDraft({ windowColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.activeFrame")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.activeFrame") })}
+              value={draft.activeTitleColor}
+              onChange={(activeTitleColor) => patchDraft({ activeTitleColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.inactiveFrame")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.inactiveFrame") })}
+              value={draft.inactiveTitleColor}
+              onChange={(inactiveTitleColor) => patchDraft({ inactiveTitleColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.text")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.text") })}
+              value={draft.textColor}
+              onChange={(textColor) => patchDraft({ textColor })}
+            />
+            <ColorField
+              label={t("themeBuilder.color.highlight")}
+              ariaLabel={t("themeBuilder.colorInput", { label: t("themeBuilder.color.highlight") })}
+              value={draft.highlightColor}
+              onChange={(highlightColor) => patchDraft({ highlightColor })}
+            />
+          </FieldGrid>
+          <TabSaveBar data-desktop-settings-region="toolbar">
+            <IconButton
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => saveMutation.mutate(draft)}
+              disabled={saveMutation.isPending}
+            >
+              <Save /> {t("common.save")}
+            </IconButton>
+          </TabSaveBar>
+        </Group>
+
+        <Group
+          variant="outside"
+          id="desktop-settings-panel-font"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-font"
+          hidden={activeTab !== "font"}
+          data-desktop-settings-region="font-panel"
+        >
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.typography")}
+          </GroupTitle>
+          <HelpText style={{ marginBottom: 8 }} data-desktop-settings-region="help">
+            {t("themeBuilder.typography.help")}
           </HelpText>
           <FontPackGrid>
             {FONT_PACKS.map((pack) => (
@@ -1083,8 +1634,10 @@ export function DesktopSettings() {
                 key={pack.key}
                 type="button"
                 $active={draft.fontPackKey === pack.key}
+                aria-pressed={draft.fontPackKey === pack.key}
                 aria-label={`Font pack ${pack.label}`}
                 data-testid={`font-pack-${pack.key}`}
+                data-desktop-settings-region="font-pack-button"
                 onClick={() => {
                   patchDraft({ fontPackKey: pack.key });
                   reportThemeBuilderEvent("desktop.font_pack.updated", "select", {
@@ -1093,7 +1646,10 @@ export function DesktopSettings() {
                 }}
               >
                 <FontPackLabel $fontFamily={pack.roles.display}>{pack.label}</FontPackLabel>
-                <span style={{ fontSize: "var(--wtf-type-caption, 13px)", lineHeight: 1.18 }}>
+                <span
+                  style={{ fontSize: "var(--wtf-type-caption, 13px)", lineHeight: 1.18 }}
+                  data-desktop-settings-region="summary"
+                >
                   {pack.description}
                 </span>
                 <FontPackPreview
@@ -1109,10 +1665,11 @@ export function DesktopSettings() {
             ))}
           </FontPackGrid>
           <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>Chat defaults</GroupTitle>
-          <HelpText>
-            These presets seed WIM messages and WTF LIVE room chat while keeping each composer inside
-            its own font and size window.
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.chatDefaults")}
+          </GroupTitle>
+          <HelpText data-desktop-settings-region="help">
+            {t("themeBuilder.chatDefaults.help")}
           </HelpText>
           <ChatPresetGrid>
             {DESKTOP_CHAT_TYPOGRAPHY_PRESETS.map((preset) => (
@@ -1120,7 +1677,9 @@ export function DesktopSettings() {
                 key={preset.key}
                 type="button"
                 $active={draft.chatTypographyPresetKey === preset.key}
+                aria-pressed={draft.chatTypographyPresetKey === preset.key}
                 aria-label={`Chat typography preset ${preset.label}`}
+                data-desktop-settings-region="chat-preset-button"
                 onClick={() => {
                   setAppearanceDraft((prev) => ({
                     ...prev,
@@ -1138,7 +1697,7 @@ export function DesktopSettings() {
                 }}
               >
                 <ChatPresetName>{preset.label}</ChatPresetName>
-                <ChatPresetSummary>{preset.summary}</ChatPresetSummary>
+                <ChatPresetSummary data-desktop-settings-region="summary">{preset.summary}</ChatPresetSummary>
                 <ChatPreviewStrip aria-hidden>
                   <ChatPreviewBubble
                     $fontFamily={preset.wim.fontFamily}
@@ -1147,6 +1706,7 @@ export function DesktopSettings() {
                     $bold={preset.wim.bold}
                     $italic={preset.wim.italic}
                     $underline={preset.wim.underline}
+                    data-desktop-settings-region="chat-preview"
                   >
                     WIM lorem ipsum
                   </ChatPreviewBubble>
@@ -1156,6 +1716,7 @@ export function DesktopSettings() {
                     $color={DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES[preset.wtfLive.color]}
                     $bold={preset.wtfLive.bold}
                     $italic={preset.wtfLive.italic}
+                    data-desktop-settings-region="chat-preview"
                   >
                     LIVE lorem ipsum
                   </ChatPreviewBubble>
@@ -1164,16 +1725,16 @@ export function DesktopSettings() {
             ))}
           </ChatPresetGrid>
           <ChatDefaultGrid>
-            <ChatDefaultPanel>
+            <ChatDefaultPanel data-desktop-settings-region="chat-default-panel">
               <ChatDefaultTitle>
-                <span>WIM messages</span>
+                <span>{t("themeBuilder.chat.wimMessages")}</span>
                 <span>{draft.wimChatStyle.fontSize}px</span>
               </ChatDefaultTitle>
               <FieldGrid>
                 <Field>
-                  <span>Font</span>
+                  <span>{t("themeBuilder.field.font")}</span>
                   <select
-                    aria-label="Default WIM font"
+                    aria-label={t("themeBuilder.chat.defaultWimFont")}
                     value={draft.wimChatStyle.fontFamily}
                     onChange={(e) =>
                       patchWimChatStyle({
@@ -1189,9 +1750,9 @@ export function DesktopSettings() {
                   </select>
                 </Field>
                 <Field>
-                  <span>Size</span>
+                  <span>{t("themeBuilder.field.size")}</span>
                   <select
-                    aria-label="Default WIM font size"
+                    aria-label={t("themeBuilder.chat.defaultWimFontSize")}
                     value={draft.wimChatStyle.fontSize}
                     onChange={(e) =>
                       patchWimChatStyle({
@@ -1209,20 +1770,21 @@ export function DesktopSettings() {
               </FieldGrid>
               <Inline>
                 <Field style={{ minWidth: 96 }}>
-                  <span>Color</span>
+                  <span>{t("themeBuilder.field.color")}</span>
                   <input
-                    aria-label="Default WIM text color"
+                    aria-label={t("themeBuilder.chat.defaultWimTextColor")}
                     type="color"
                     value={draft.wimChatStyle.color}
                     onChange={(e) => patchWimChatStyle({ color: e.target.value })}
                   />
                 </Field>
-                <ChatToggleRow aria-label="Default WIM emphasis">
+                <ChatToggleRow aria-label={t("themeBuilder.chat.defaultWimEmphasis")}>
                   <ChatToggleButton
                     type="button"
                     $active={draft.wimChatStyle.bold}
-                    aria-label="Default WIM bold"
+                    aria-label={t("themeBuilder.chat.defaultWimBold")}
                     aria-pressed={draft.wimChatStyle.bold}
+                    data-desktop-settings-region="chat-toggle"
                     onClick={() => patchWimChatStyle({ bold: !draft.wimChatStyle.bold })}
                   >
                     <Bold aria-hidden />
@@ -1230,8 +1792,9 @@ export function DesktopSettings() {
                   <ChatToggleButton
                     type="button"
                     $active={draft.wimChatStyle.italic}
-                    aria-label="Default WIM italic"
+                    aria-label={t("themeBuilder.chat.defaultWimItalic")}
                     aria-pressed={draft.wimChatStyle.italic}
+                    data-desktop-settings-region="chat-toggle"
                     onClick={() => patchWimChatStyle({ italic: !draft.wimChatStyle.italic })}
                   >
                     <Italic aria-hidden />
@@ -1239,8 +1802,9 @@ export function DesktopSettings() {
                   <ChatToggleButton
                     type="button"
                     $active={draft.wimChatStyle.underline}
-                    aria-label="Default WIM underline"
+                    aria-label={t("themeBuilder.chat.defaultWimUnderline")}
                     aria-pressed={draft.wimChatStyle.underline}
+                    data-desktop-settings-region="chat-toggle"
                     onClick={() => patchWimChatStyle({ underline: !draft.wimChatStyle.underline })}
                   >
                     <Underline aria-hidden />
@@ -1254,20 +1818,21 @@ export function DesktopSettings() {
                 $bold={draft.wimChatStyle.bold}
                 $italic={draft.wimChatStyle.italic}
                 $underline={draft.wimChatStyle.underline}
+                data-desktop-settings-region="chat-preview"
               >
                 WIM preview: Lorem ipsum dolor sit amet.
               </ChatPreviewBubble>
             </ChatDefaultPanel>
-            <ChatDefaultPanel>
+            <ChatDefaultPanel data-desktop-settings-region="chat-default-panel">
               <ChatDefaultTitle>
-                <span>WTF LIVE room chat</span>
+                <span>{t("themeBuilder.chat.liveRoomChat")}</span>
                 <span>{draft.wtfLiveChatStyle.size}px</span>
               </ChatDefaultTitle>
               <FieldGrid>
                 <Field>
-                  <span>Font</span>
+                  <span>{t("themeBuilder.field.font")}</span>
                   <select
-                    aria-label="Default WTF LIVE chat font"
+                    aria-label={t("themeBuilder.chat.defaultLiveFont")}
                     value={draft.wtfLiveChatStyle.font}
                     onChange={(e) =>
                       patchWtfLiveChatStyle({
@@ -1283,9 +1848,9 @@ export function DesktopSettings() {
                   </select>
                 </Field>
                 <Field>
-                  <span>Size</span>
+                  <span>{t("themeBuilder.field.size")}</span>
                   <select
-                    aria-label="Default WTF LIVE chat font size"
+                    aria-label={t("themeBuilder.chat.defaultLiveFontSize")}
                     value={draft.wtfLiveChatStyle.size}
                     onChange={(e) =>
                       patchWtfLiveChatStyle({
@@ -1302,26 +1867,30 @@ export function DesktopSettings() {
                 </Field>
               </FieldGrid>
               <Inline>
-                <ChatColorStrip role="group" aria-label="Default WTF LIVE chat color">
+                <ChatColorStrip role="group" aria-label={t("themeBuilder.chat.defaultLiveColor")}>
                   {DESKTOP_WTF_LIVE_CHAT_COLORS.map((color) => (
                     <ChatColorButton
-                      key={color}
-                      type="button"
-                      $color={DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES[color]}
-                      $active={draft.wtfLiveChatStyle.color === color}
-                      title={DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS[color]}
-                      aria-label={`Default WTF LIVE chat color ${DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS[color]}`}
-                      aria-pressed={draft.wtfLiveChatStyle.color === color}
-                      onClick={() => patchWtfLiveChatStyle({ color })}
-                    />
+                    key={color}
+                    type="button"
+                    $color={DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES[color]}
+                    $active={draft.wtfLiveChatStyle.color === color}
+                    title={DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS[color]}
+                    aria-label={t("themeBuilder.chat.defaultLiveColorChoice", {
+                      color: DESKTOP_WTF_LIVE_CHAT_COLOR_LABELS[color],
+                    })}
+                    aria-pressed={draft.wtfLiveChatStyle.color === color}
+                    data-desktop-settings-region="chat-color"
+                    onClick={() => patchWtfLiveChatStyle({ color })}
+                  />
                   ))}
                 </ChatColorStrip>
-                <ChatToggleRow aria-label="Default WTF LIVE emphasis">
+                <ChatToggleRow aria-label={t("themeBuilder.chat.defaultLiveEmphasis")}>
                   <ChatToggleButton
                     type="button"
                     $active={draft.wtfLiveChatStyle.bold}
-                    aria-label="Default WTF LIVE bold"
+                    aria-label={t("themeBuilder.chat.defaultLiveBold")}
                     aria-pressed={draft.wtfLiveChatStyle.bold}
+                    data-desktop-settings-region="chat-toggle"
                     onClick={() => patchWtfLiveChatStyle({ bold: !draft.wtfLiveChatStyle.bold })}
                   >
                     <Bold aria-hidden />
@@ -1329,8 +1898,9 @@ export function DesktopSettings() {
                   <ChatToggleButton
                     type="button"
                     $active={draft.wtfLiveChatStyle.italic}
-                    aria-label="Default WTF LIVE italic"
+                    aria-label={t("themeBuilder.chat.defaultLiveItalic")}
                     aria-pressed={draft.wtfLiveChatStyle.italic}
+                    data-desktop-settings-region="chat-toggle"
                     onClick={() => patchWtfLiveChatStyle({ italic: !draft.wtfLiveChatStyle.italic })}
                   >
                     <Italic aria-hidden />
@@ -1343,55 +1913,38 @@ export function DesktopSettings() {
                 $color={DESKTOP_WTF_LIVE_CHAT_COLOR_VALUES[draft.wtfLiveChatStyle.color]}
                 $bold={draft.wtfLiveChatStyle.bold}
                 $italic={draft.wtfLiveChatStyle.italic}
+                data-desktop-settings-region="chat-preview"
               >
                 LIVE preview: Lorem ipsum in the room.
               </ChatPreviewBubble>
             </ChatDefaultPanel>
           </ChatDefaultGrid>
-          <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>Color schemes</GroupTitle>
-          <PresetGrid>
-            {DESKTOP_COLOR_SCHEMES.map((scheme) => (
-              <PresetButton
-                key={scheme.key}
-                type="button"
-                $active={draft.colorSchemeKey === scheme.key}
-                onClick={() => setAppearanceDraft((prev) => applyScheme(prev, scheme.key))}
-              >
-                <Swatch
-                  $colors={[
-                    scheme.desktopColor,
-                    scheme.windowColor,
-                    scheme.activeTitleColor,
-                    scheme.textColor,
-                  ]}
-                >
-                  <i />
-                  <i />
-                  <i />
-                  <i />
-                </Swatch>
-                <span>{scheme.label}</span>
-              </PresetButton>
-            ))}
-          </PresetGrid>
-          <Separator style={{ margin: "10px 0" }} />
-          <FieldGrid>
-            <ColorField label="Desktop" value={draft.desktopColor} onChange={(desktopColor) => patchDraft({ desktopColor })} />
-            <ColorField label="Window" value={draft.windowColor} onChange={(windowColor) => patchDraft({ windowColor })} />
-            <ColorField label="Active frame" value={draft.activeTitleColor} onChange={(activeTitleColor) => patchDraft({ activeTitleColor })} />
-            <ColorField label="Inactive frame" value={draft.inactiveTitleColor} onChange={(inactiveTitleColor) => patchDraft({ inactiveTitleColor })} />
-            <ColorField label="Text" value={draft.textColor} onChange={(textColor) => patchDraft({ textColor })} />
-            <ColorField label="Highlight" value={draft.highlightColor} onChange={(highlightColor) => patchDraft({ highlightColor })} />
-          </FieldGrid>
+          <TabSaveBar data-desktop-settings-region="toolbar">
+            <IconButton
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => saveMutation.mutate(draft)}
+              disabled={saveMutation.isPending}
+            >
+              <Save /> {t("common.save")}
+            </IconButton>
+          </TabSaveBar>
         </Group>
 
-        <Group variant="outside">
-          <GroupTitle>Desktop</GroupTitle>
+        <Group
+          variant="outside"
+          id="desktop-settings-panel-background"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-background"
+          hidden={activeTab !== "background"}
+          data-desktop-settings-region="desktop-panel"
+        >
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.desktop")}
+          </GroupTitle>
           <Field>
-            <span>Background image URL</span>
+            <span>{t("themeBuilder.field.backgroundUrl")}</span>
             <input
-              aria-label="Background image URL"
+              aria-label={t("themeBuilder.field.backgroundUrl")}
               value={draft.backgroundImageUrl ?? ""}
               onChange={(e) => patchDraft({ backgroundImageUrl: e.target.value || null })}
               placeholder="https://..."
@@ -1399,7 +1952,7 @@ export function DesktopSettings() {
           </Field>
           <Inline style={{ marginTop: 7 }}>
             <input
-              aria-label="Upload background image"
+              aria-label={t("themeBuilder.action.uploadBackground")}
               ref={fileRef}
               type="file"
               accept="image/*"
@@ -1409,16 +1962,24 @@ export function DesktopSettings() {
                 e.currentTarget.value = "";
               }}
             />
-            <IconButton size="sm" onClick={() => fileRef.current?.click()}>
-              <ImageIcon /> Upload
+            <IconButton
+              size="sm"
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => fileRef.current?.click()}
+            >
+              <ImageIcon /> {t("themeBuilder.action.upload")}
             </IconButton>
-            <IconButton size="sm" onClick={() => patchDraft({ backgroundImageUrl: null })}>
-              <Trash2 /> Clear
+            <IconButton
+              size="sm"
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => patchDraft({ backgroundImageUrl: null })}
+            >
+              <Trash2 /> {t("themeBuilder.action.clear")}
             </IconButton>
             <Field style={{ minWidth: 112 }}>
-              <span>Fit</span>
+              <span>{t("themeBuilder.field.fit")}</span>
               <select
-                aria-label="Background image fit"
+                aria-label={t("themeBuilder.field.backgroundFit")}
                 value={draft.backgroundFit}
                 onChange={(e) => patchDraft({ backgroundFit: e.target.value as DesktopAppearance["backgroundFit"] })}
               >
@@ -1428,10 +1989,11 @@ export function DesktopSettings() {
               </select>
             </Field>
           </Inline>
-          <HelpText>
-            Uploads use your media library and accept images up to{" "}
-            {formatBytes(DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES)}.
-            {uploadMutation.isPending ? " Uploading..." : ""}
+          <HelpText data-desktop-settings-region="help">
+            {t("themeBuilder.upload.help", {
+              size: formatBytes(DESKTOP_WALLPAPER_UPLOAD_MAX_BYTES),
+            })}
+            {uploadMutation.isPending ? t("themeBuilder.upload.pending") : ""}
           </HelpText>
           {fileError && (
             <div style={{ color: "#b00000", fontSize: "var(--wtf-type-caption, 13px)", marginTop: 4 }}>
@@ -1440,13 +2002,21 @@ export function DesktopSettings() {
           )}
 
           <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>Saved images</GroupTitle>
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.savedImages")}
+          </GroupTitle>
           {mediaQuery.isLoading ? (
-            <HelpText>Loading saved media...</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.savedImages.loading")}
+            </HelpText>
           ) : mediaQuery.isError ? (
-            <HelpText>Saved media could not load.</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.savedImages.error")}
+            </HelpText>
           ) : mediaChoices.length === 0 ? (
-            <HelpText>No saved image media yet.</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.savedImages.empty")}
+            </HelpText>
           ) : (
             <SourceList>
               {mediaChoices.map(({ item, url }) => (
@@ -1454,10 +2024,12 @@ export function DesktopSettings() {
                   key={item.id}
                   type="button"
                   $active={draft.backgroundImageUrl === url}
+                  aria-pressed={draft.backgroundImageUrl === url}
+                  data-desktop-settings-region="source-button"
                   onClick={() => patchDraft({ backgroundImageUrl: url })}
                   title={item.title}
                 >
-                  <Thumb $src={url} />
+                  <Thumb $src={url} data-desktop-settings-thumb="true" />
                   <SourceLabel>{item.title || `Media #${item.id}`}</SourceLabel>
                 </SourceButton>
               ))}
@@ -1465,13 +2037,21 @@ export function DesktopSettings() {
           )}
 
           <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>Owned token art</GroupTitle>
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.tokenArt")}
+          </GroupTitle>
           {tokensQuery.isLoading ? (
-            <HelpText>Loading wallet art...</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.tokenArt.loading")}
+            </HelpText>
           ) : tokensQuery.isError ? (
-            <HelpText>Wallet art could not load.</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.tokenArt.error")}
+            </HelpText>
           ) : tokenChoices.length === 0 ? (
-            <HelpText>No image tokens found in your synced wallets.</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.tokenArt.empty")}
+            </HelpText>
           ) : (
             <SourceList>
               {tokenChoices.map(({ token, url }) => (
@@ -1479,6 +2059,8 @@ export function DesktopSettings() {
                   key={`${token.contract}:${token.tokenId}`}
                   type="button"
                   $active={draft.backgroundImageUrl === url}
+                  aria-pressed={draft.backgroundImageUrl === url}
+                  data-desktop-settings-region="source-button"
                   onClick={() => {
                     patchDraft({ backgroundImageUrl: url });
                     reportThemeBuilderEvent("desktop.wallpaper.token_set", "set-token-art", {
@@ -1488,34 +2070,74 @@ export function DesktopSettings() {
                   }}
                   title={`${token.name || "Token"} ${token.contract}:${token.tokenId}`}
                 >
-                  <Thumb $src={url} />
+                  <Thumb $src={url} data-desktop-settings-thumb="true" />
                   <SourceLabel>{token.name || `#${token.tokenId}`}</SourceLabel>
                 </SourceButton>
               ))}
             </SourceList>
           )}
+          <TabSaveBar data-desktop-settings-region="toolbar">
+            <IconButton
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => saveMutation.mutate(draft)}
+              disabled={saveMutation.isPending}
+            >
+              <Save /> {t("common.save")}
+            </IconButton>
+          </TabSaveBar>
+        </Group>
 
-          <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>Cursor</GroupTitle>
+        <Group
+          variant="outside"
+          id="desktop-settings-panel-cursor"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-cursor"
+          hidden={activeTab !== "cursor"}
+          data-desktop-settings-region="cursor-panel"
+        >
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.cursor")}
+          </GroupTitle>
           <SegmentGrid>
             {DESKTOP_CURSOR_STYLES.map((style) => (
               <Button
                 key={style}
                 size="sm"
                 active={draft.cursorStyle === style ? true : undefined}
+                aria-pressed={draft.cursorStyle === style}
+                data-desktop-settings-region="segment-button"
                 onClick={() => patchDraft({ cursorStyle: style })}
               >
                 {DESKTOP_CURSOR_LABELS[style]}
               </Button>
             ))}
           </SegmentGrid>
+          <TabSaveBar data-desktop-settings-region="toolbar">
+            <IconButton
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => saveMutation.mutate(draft)}
+              disabled={saveMutation.isPending}
+            >
+              <Save /> {t("common.save")}
+            </IconButton>
+          </TabSaveBar>
+        </Group>
 
-          <Separator style={{ margin: "10px 0" }} />
-          <GroupTitle>Physics</GroupTitle>
+        <Group
+          variant="outside"
+          id="desktop-settings-panel-physics"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-physics"
+          hidden={activeTab !== "physics"}
+          data-desktop-settings-region="physics-panel"
+        >
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.physics")}
+          </GroupTitle>
           <Inline>
             <label>
               <input
-                aria-label="Desktop physics"
+                aria-label={t("themeBuilder.field.physics")}
                 type="checkbox"
                 checked={draft.desktopPhysicsEnabled}
                 onChange={(e) => {
@@ -1526,12 +2148,12 @@ export function DesktopSettings() {
                   });
                 }}
               />{" "}
-              Desktop physics
+              {t("themeBuilder.field.physics")}
             </label>
             <Field style={{ minWidth: 120 }}>
-              <span>Gravity</span>
+              <span>{t("themeBuilder.field.gravity")}</span>
               <select
-                aria-label="Desktop gravity"
+                aria-label={t("themeBuilder.field.gravity")}
                 value={draft.desktopGravityMode}
                 disabled={!draft.desktopPhysicsEnabled}
                 onChange={(e) => {
@@ -1552,38 +2174,49 @@ export function DesktopSettings() {
             </Field>
           </Inline>
 
-          <Toolbar>
+          <Toolbar data-desktop-settings-region="toolbar">
             <IconButton
               size="sm"
+              data-desktop-settings-region="toolbar-button"
               onClick={() => resetIconsMutation.mutate()}
               disabled={resetIconsMutation.isPending}
             >
-              <RotateCcw /> Reset Icons
+              <RotateCcw /> {t("themeBuilder.action.resetIcons")}
             </IconButton>
             <IconButton
+              data-desktop-settings-region="toolbar-button"
               onClick={() => saveMutation.mutate(draft)}
               disabled={saveMutation.isPending}
             >
-              <Save /> Save
+              <Save /> {t("common.save")}
             </IconButton>
           </Toolbar>
         </Group>
 
-        <Group variant="outside" style={{ gridColumn: "1 / -1" }}>
-          <GroupTitle>Pet</GroupTitle>
+        <Group
+          variant="outside"
+          id="desktop-settings-panel-pet"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-pet"
+          hidden={activeTab !== "pet"}
+          data-desktop-settings-region="pet-panel"
+        >
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.pet")}
+          </GroupTitle>
           <Inline style={{ marginBottom: 8 }}>
             <label>
               <input
-                aria-label="Desktop pet enabled"
+                aria-label={t("themeBuilder.field.petEnabled")}
                 type="checkbox"
                 checked={draft.desktopPetEnabled}
                 onChange={(e) => patchDraft({ desktopPetEnabled: e.target.checked })}
               />{" "}
-              Desktop pet
+              {t("themeBuilder.field.petEnabled")}
             </label>
           </Inline>
           {draft.desktopPetEnabled && pet && (
-            <PetBox>
+            <PetBox data-desktop-settings-region="pet-box">
               <div>
                 <PetPreview>
                   <HamsterPixelSprite
@@ -1595,15 +2228,19 @@ export function DesktopSettings() {
                 </PetPreview>
                 <div style={{ textAlign: "center", fontWeight: "bold" }}>{pet.name}</div>
                 <div style={{ textAlign: "center", fontSize: "var(--wtf-type-caption, 13px)" }}>
-                  Lv {pet.level} · {pet.xpEarned} XP · {pet.carePoints} care
+                  {t("themeBuilder.pet.progress", {
+                    level: pet.level,
+                    xp: pet.xpEarned,
+                    care: pet.carePoints,
+                  })}
                 </div>
               </div>
               <div>
                 <FieldGrid style={{ marginBottom: 8 }}>
                   <Field>
-                    <span>Name</span>
+                    <span>{t("themeBuilder.pet.name")}</span>
                     <input
-                      aria-label="Pet name"
+                      aria-label={t("themeBuilder.pet.name")}
                       value={petDraft.name}
                       maxLength={40}
                       onChange={(e) =>
@@ -1612,9 +2249,9 @@ export function DesktopSettings() {
                     />
                   </Field>
                   <Field>
-                    <span>Coat</span>
+                    <span>{t("themeBuilder.pet.coat")}</span>
                     <select
-                      aria-label="Pet coat"
+                      aria-label={t("themeBuilder.pet.coat")}
                       value={petDraft.colorSchemeKey}
                       onChange={(e) =>
                         setPetDraft((prev) => ({
@@ -1634,18 +2271,20 @@ export function DesktopSettings() {
                 <Inline style={{ marginBottom: 8 }}>
                   <IconButton
                     size="sm"
+                    data-desktop-settings-region="toolbar-button"
                     disabled={petPatchMutation.isPending}
                     onClick={() => petPatchMutation.mutate(petDraft)}
                   >
-                    <Save /> Save Pet
+                    <Save /> {t("themeBuilder.action.savePet")}
                   </IconButton>
                 </Inline>
-                <PetStats pet={pet} />
+                <PetStats pet={pet} t={t} />
                 <Inline style={{ marginTop: 8 }}>
                   {petActions.map(({ action, label, icon }) => (
                     <IconButton
                       key={action}
                       size="sm"
+                      data-desktop-settings-region="toolbar-button"
                       disabled={petActionMutation.isPending}
                       onClick={() => petActionMutation.mutate(action)}
                     >
@@ -1656,7 +2295,7 @@ export function DesktopSettings() {
                 <EventList>
                   {(petQuery.data?.events ?? []).map((event) => (
                     <div key={event.id}>
-                      {new Date(event.createdAt).toLocaleString([], {
+                      {formatDate(event.createdAt, {
                         month: "short",
                         day: "numeric",
                         hour: "2-digit",
@@ -1669,84 +2308,153 @@ export function DesktopSettings() {
               </div>
             </PetBox>
           )}
+          <TabSaveBar data-desktop-settings-region="toolbar">
+            <IconButton
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => saveMutation.mutate(draft)}
+              disabled={saveMutation.isPending}
+            >
+              <Save /> {t("common.save")}
+            </IconButton>
+          </TabSaveBar>
         </Group>
 
-        <Group variant="outside" style={{ gridColumn: "1 / -1" }}>
-          <GroupTitle>Agent pairing</GroupTitle>
+        <Group
+          variant="outside"
+          id="desktop-settings-panel-agent"
+          role="tabpanel"
+          aria-labelledby="desktop-settings-tab-agent"
+          hidden={activeTab !== "agent"}
+          data-desktop-settings-region="agent-panel"
+        >
+          <GroupTitle data-desktop-settings-region="section-title">
+            {t("themeBuilder.section.agent")}
+          </GroupTitle>
           <FieldGrid>
             <Field>
-              <span>MCP endpoint</span>
+              <span data-desktop-settings-region="mcp-endpoint">
+                {t("themeBuilder.field.mcpEndpoint")}
+              </span>
               <input
-                aria-label="MCP endpoint"
+                aria-label={t("themeBuilder.field.mcpEndpoint")}
                 readOnly
                 value={mcpTokensQuery.data?.endpoint ?? `${window.location.origin}/mcp`}
               />
             </Field>
             <Field>
-              <span>Token name</span>
+              <span>{t("themeBuilder.field.tokenName")}</span>
               <input
-                aria-label="Token name"
+                aria-label={t("themeBuilder.field.tokenName")}
                 value={mcpTokenName}
                 maxLength={100}
                 onChange={(e) => setMcpTokenName(e.target.value)}
               />
             </Field>
           </FieldGrid>
-          <Toolbar>
+          <Toolbar data-desktop-settings-region="toolbar">
             <IconButton
               size="sm"
+              data-desktop-settings-region="toolbar-button"
               disabled={createMcpTokenMutation.isPending}
               onClick={() => createMcpTokenMutation.mutate()}
             >
-              <KeyRound /> Generate Token
+              <KeyRound /> {t("themeBuilder.action.generateToken")}
             </IconButton>
           </Toolbar>
           {generatedMcpToken && (
             <div style={{ marginTop: 8 }}>
               <Field>
-                <span>New token</span>
-                <SecretBox aria-label="New token" readOnly value={generatedMcpToken} />
+                <span>{t("themeBuilder.field.newToken")}</span>
+                <SecretBox
+                  aria-label={t("themeBuilder.field.newToken")}
+                  readOnly
+                  value={generatedMcpToken}
+                  data-desktop-settings-region="secret-box"
+                />
               </Field>
               <Inline style={{ marginTop: 6 }}>
                 <IconButton
                   size="sm"
+                  data-desktop-settings-region="toolbar-button"
                   onClick={() => void navigator.clipboard?.writeText(generatedMcpToken)}
                 >
-                  <Clipboard /> Copy
+                  <Clipboard /> {t("themeBuilder.action.copy")}
                 </IconButton>
-                <HelpText>{createMcpTokenMutation.data?.warning}</HelpText>
+                <HelpText data-desktop-settings-region="help">
+                  {createMcpTokenMutation.data?.warning}
+                </HelpText>
               </Inline>
             </div>
           )}
           <Separator style={{ margin: "10px 0" }} />
           {mcpTokensQuery.isLoading ? (
-            <HelpText>Loading paired agents...</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.agents.loading")}
+            </HelpText>
           ) : activeMcpTokens.length === 0 ? (
-            <HelpText>No active paired agents.</HelpText>
+            <HelpText data-desktop-settings-region="help">
+              {t("themeBuilder.agents.empty")}
+            </HelpText>
           ) : (
             activeMcpTokens.map((token) => (
-              <TokenRow key={token.id}>
+              <TokenRow key={token.id} data-desktop-settings-region="token-row">
                 <div>
                   <strong>{token.name}</strong>{" "}
                   <span>
-                    {token.tokenPrefix}... · created{" "}
-                    {new Date(token.createdAt).toLocaleDateString()}
+                    {t("themeBuilder.agents.created", {
+                      prefix: token.tokenPrefix,
+                      date: formatDate(token.createdAt),
+                    })}
                     {token.lastUsedAt
-                      ? ` · last used ${new Date(token.lastUsedAt).toLocaleString()}`
+                      ? t("themeBuilder.agents.lastUsed", {
+                          date: formatDate(token.lastUsedAt, {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          }),
+                        })
                       : ""}
                   </span>
                 </div>
                 <IconButton
                   size="sm"
+                  data-desktop-settings-region="toolbar-button"
                   disabled={revokeMcpTokenMutation.isPending}
                   onClick={() => revokeMcpTokenMutation.mutate(token.id)}
                 >
-                  <Unplug /> Revoke
+                  <Unplug /> {t("themeBuilder.action.revoke")}
                 </IconButton>
               </TokenRow>
             ))
           )}
+          <TabSaveBar data-desktop-settings-region="toolbar">
+            <IconButton
+              data-desktop-settings-region="toolbar-button"
+              onClick={() => saveMutation.mutate(draft)}
+              disabled={saveMutation.isPending}
+            >
+              <Save /> {t("common.save")}
+            </IconButton>
+          </TabSaveBar>
         </Group>
+        </SettingsMain>
+
+        <GlobalSaveDock data-desktop-settings-region="global-save">
+          <GlobalSaveButton
+            type="button"
+            $dirty={hasUnsavedAppearanceChanges}
+            data-testid="desktop-settings-global-save"
+            data-save-state={hasUnsavedAppearanceChanges ? "unsaved" : "recorded"}
+            data-desktop-settings-region="global-save-button"
+            aria-label={saveStateText}
+            title={saveStateText}
+            disabled={saveMutation.isPending}
+            onClick={() => saveMutation.mutate(draft)}
+          >
+            <Save aria-hidden />
+            <span>SAVE</span>
+            <VisuallyHidden aria-live="polite">{saveStateText}</VisuallyHidden>
+          </GlobalSaveButton>
+        </GlobalSaveDock>
       </Shell>
     </AppWindow>
   );

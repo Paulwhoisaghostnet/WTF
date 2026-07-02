@@ -38,6 +38,35 @@ function emitNotificationEvent(input: {
   }).catch((err) => console.warn("[notifications] failed to emit event", err));
 }
 
+function notificationUrgencyTier(input: {
+  eventKey: string;
+  title: string;
+  body: string | null;
+  metadata: Record<string, unknown> | null;
+}): "routine" | "attention" | "urgent" | "critical" {
+  const haystack = [
+    input.eventKey,
+    input.title,
+    input.body ?? "",
+    String(input.metadata?.urgency ?? ""),
+    String(input.metadata?.severity ?? ""),
+    String(input.metadata?.reason ?? ""),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  if (/\b(critical|safety|security|compromised|suspended|revoked|locked|ban|timeout)\b/.test(haystack)) {
+    return "critical";
+  }
+  if (/\b(urgent|wallet|identity|verify|verification|account|failed|failure|error|problem|required)\b/.test(haystack)) {
+    return "urgent";
+  }
+  if (/\b(invite|invited|member|studio|reward|challenge|quest|deadline|due)\b/.test(haystack)) {
+    return "attention";
+  }
+  return "routine";
+}
+
 router.get("/api/notifications/preferences", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
@@ -122,7 +151,10 @@ router.get("/api/notifications", isAuthenticated, async (req, res) => {
       .where(and(eq(userNotifications.userId, user.id), eq(userNotifications.read, false)));
 
     res.json({
-      items,
+      items: items.map((item) => ({
+        ...item,
+        urgencyTier: notificationUrgencyTier(item),
+      })),
       unreadCount: Number(unread?.count || 0),
       pagination: {
         limit,

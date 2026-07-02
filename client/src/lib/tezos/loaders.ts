@@ -29,10 +29,6 @@ export async function loadOctezConnect() {
   return import("@tezos-x/octez.connect-sdk");
 }
 
-export async function loadBeaconWallet() {
-  return import("@taquito/beacon-wallet");
-}
-
 export async function loadTaquito() {
   return import("@taquito/taquito");
 }

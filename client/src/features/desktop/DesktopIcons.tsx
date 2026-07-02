@@ -454,6 +454,28 @@ const IconLabel = styled.div`
   }
 `;
 
+const IconBadge = styled.span`
+  position: absolute;
+  top: -3px;
+  right: 8px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #d10000;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: none;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55);
+  box-sizing: border-box;
+`;
+
 export interface DesktopIconDef {
   key: string;
   label: string;
@@ -463,6 +485,7 @@ export interface DesktopIconDef {
   enabled: boolean;
   experimental?: boolean;
   openPath?: string;
+  badgeCount?: number;
 }
 
 interface DraggableIconProps {
@@ -642,38 +665,18 @@ export function DraggableIcon({
       }}
     >
       <IconGlyph>{def.icon}</IconGlyph>
+      {def.badgeCount && def.badgeCount > 0 ? (
+        <IconBadge aria-label={`${def.badgeCount} unread messages`}>
+          {def.badgeCount > 99 ? "99+" : def.badgeCount}
+        </IconBadge>
+      ) : null}
       <IconLabel>{def.label}</IconLabel>
     </DesktopIconRoot>
   );
 }
 
 
-export type DesktopAppAvailability = {
-  wtfiam: boolean;
-  hoard: boolean;
-  wim: boolean;
-  w: boolean;
-  tv: boolean;
-  dicksword: boolean;
-  "i-hate-telegram": boolean;
-  "dear-diary": boolean;
-  arcade: boolean;
-  casino: boolean;
-  "dues-manager": boolean;
-  console: boolean;
-  "game-studio": boolean;
-  dedrooms: boolean;
-  studio: boolean;
-  gallery: boolean;
-  "ipfs-pinning": boolean;
-  skywire: boolean;
-  "wtf-live": boolean;
-  tz2at: boolean;
-  "crp-nominations": boolean;
-  "rat-race": boolean;
-  "map-lab": boolean;
-  mail: boolean;
-};
+export type DesktopAppAvailability = Record<DesktopAppKey, boolean>;
 
 export function buildDesktopIconDefs(
   apps: DesktopAppAvailability,
@@ -799,8 +802,17 @@ export function buildDesktopIconDefs(
       openPath: "/map-lab",
     },
     {
+      key: "agent",
+      label: "Agent",
+      icon: <ConsoleDeskIcon>AI</ConsoleDeskIcon>,
+      defaultX: 252,
+      defaultY: 12,
+      enabled: canOpenApps && (apps.agent || canOpenDisabledApps),
+      openPath: "/agent",
+    },
+    {
       key: "mail",
-      label: "WTF Mail",
+      label: "Inbox",
       icon: <ConsoleDeskIcon>@</ConsoleDeskIcon>,
       defaultX: 252,
       defaultY: 100,

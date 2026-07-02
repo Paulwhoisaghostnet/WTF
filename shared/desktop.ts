@@ -246,6 +246,7 @@ export const DESKTOP_COLOR_SCHEMES = [
 export type DesktopColorSchemeKey = (typeof DESKTOP_COLOR_SCHEMES)[number]["key"];
 
 export const DESKTOP_FONT_PACK_KEYS = [
+  "wtfos-soft-system",
   "mek-type",
   "classic-95",
   "terminal",
@@ -255,13 +256,14 @@ export const DESKTOP_FONT_PACK_KEYS = [
 export type DesktopFontPackKey = (typeof DESKTOP_FONT_PACK_KEYS)[number];
 
 export const DESKTOP_FONT_PACK_LABELS: Record<DesktopFontPackKey, string> = {
+  "wtfos-soft-system": "wtfOS Soft System",
   "mek-type": "MEK Type",
   "classic-95": "Classic 95",
   terminal: "Terminal",
   "serif-press": "Serif Press",
 };
 
-export const DEFAULT_DESKTOP_FONT_PACK_KEY: DesktopFontPackKey = "mek-type";
+export const DEFAULT_DESKTOP_FONT_PACK_KEY: DesktopFontPackKey = "wtfos-soft-system";
 
 export const DESKTOP_WIM_CHAT_FONT_FAMILIES = [
   "Helvetica",
@@ -300,8 +302,6 @@ export const DEFAULT_DESKTOP_WIM_CHAT_STYLE: DesktopWimChatStyle = {
 };
 
 export const DESKTOP_WTF_LIVE_CHAT_FONTS = [
-  "mek-mono",
-  "grout-display",
   "classic-95",
   "terminal",
   "serif-press",
@@ -314,8 +314,6 @@ export const DESKTOP_WTF_LIVE_CHAT_FONT_LABELS: Record<
   DesktopWtfLiveChatFont,
   string
 > = {
-  "mek-mono": "MEK Mono",
-  "grout-display": "GROUT Display",
   "classic-95": "Classic 95",
   terminal: "Terminal",
   "serif-press": "Serif Press",
@@ -370,7 +368,7 @@ export interface DesktopWtfLiveChatStyle {
 }
 
 export const DEFAULT_DESKTOP_WTF_LIVE_CHAT_STYLE: DesktopWtfLiveChatStyle = {
-  font: "mek-mono",
+  font: "classic-95",
   color: "ink",
   size: 12,
   bold: false,
@@ -477,7 +475,7 @@ export const DESKTOP_CHAT_TYPOGRAPHY_PRESETS: readonly DesktopChatTypographyPres
       underline: false,
     },
     wtfLive: {
-      font: "grout-display",
+      font: "terminal",
       color: "red",
       size: 14,
       bold: true,
@@ -566,6 +564,7 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "crp-nominations",
   "rat-race",
   "map-lab",
+  "agent",
   "mail",
   "tv",
   "dicksword",
@@ -573,10 +572,12 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "dear-diary",
   "arcade",
   "casino",
+  "dedrooms",
   "dues-manager",
   "console",
   "game-studio",
   "studio",
+  "ipfs-pinning",
   "my-gallery",
 ] as const;
 
@@ -823,7 +824,9 @@ const DESKTOP_WTF_LIVE_CHAT_LEGACY_FONT_MAP: Record<
   string,
   DesktopWtfLiveChatFont
 > = {
-  system: "mek-mono",
+  system: "classic-95",
+  "mek-mono": "classic-95",
+  "grout-display": "classic-95",
   mono: "terminal",
   serif: "serif-press",
   pixel: "classic-95",

@@ -5,11 +5,78 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { UiButton, UiPanel } from "../components/wtfos-ui";
 import { useWindowManager } from "../lib/window-context";
 import { useAuth } from "../lib/auth-context";
+import { usePresentationShell } from "../lib/presentation-shell";
 
 const Shell = styled.div`
   display: grid;
   gap: 10px;
   min-width: 0;
+
+  &[data-gamma-utility-presentation-host="gamma"] {
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"],
+  &[data-gamma-utility-presentation-host="gamma"] * {
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region] {
+    min-width: 0;
+    background-image: none;
+    border-radius: 6px;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="panel"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="process-table"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="status-bar"] {
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    background: #11110f;
+    color: #f2ead9;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="muted"],
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="status-bar"] {
+    color: rgba(242, 234, 217, 0.7) !important;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="tab"] {
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 4px 4px 0 0;
+    background: #070706;
+    color: rgba(242, 234, 217, 0.75);
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="tab"][aria-selected="true"] {
+    border-color: rgba(0, 210, 255, 0.58);
+    color: #00d2ff;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"] {
+    border: 1px solid rgba(0, 210, 255, 0.58);
+    border-radius: 4px;
+    background: transparent;
+    color: #00d2ff;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"]:hover,
+  &[data-gamma-utility-presentation-host="gamma"] [data-gamma-utility-region="button"]:focus-visible {
+    border-color: #00d2ff;
+    color: #f2ead9;
+    outline: 1px solid #00d2ff;
+    outline-offset: 2px;
+  }
+
+  &[data-gamma-utility-presentation-host="gamma"] table,
+  &[data-gamma-utility-presentation-host="gamma"] th,
+  &[data-gamma-utility-presentation-host="gamma"] td {
+    border-color: rgba(242, 234, 217, 0.16);
+    background: #11110f;
+    color: #f2ead9;
+  }
 `;
 
 const Header = styled.div`
@@ -85,6 +152,7 @@ type ProcessEntry = {
 type TabId = "windows" | "performance" | "shortcuts";
 
 export function TaskManager() {
+  const presentation = usePresentationShell();
   const wm = useWindowManager();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>("windows");
@@ -134,21 +202,29 @@ export function TaskManager() {
 
   return (
     <AppWindow title="WTF Task Manager">
-      <Shell>
-        <Header>
+      <Shell
+        data-gamma-utility-surface="task-manager"
+        data-gamma-utility-presentation-host={presentation.host}
+        data-gamma-utility-region="surface"
+      >
+        <Header data-gamma-utility-region="header">
           <span style={{ fontSize: "var(--wtf-type-body, 15px)", fontWeight: "bold" }}>
             WTF Task Manager
           </span>
-          <span style={{ fontSize: "var(--wtf-type-caption, 13px)", color: "var(--wtf-app-muted-text, #384352)" }}>
+          <span
+            data-gamma-utility-region="muted"
+            style={{ fontSize: "var(--wtf-type-caption, 13px)", color: "var(--wtf-app-muted-text, #384352)" }}
+          >
             Ctrl+W+T+F
           </span>
         </Header>
 
-        <TabRow role="tablist" aria-label="Task Manager views">
+        <TabRow role="tablist" aria-label="Task Manager views" data-gamma-utility-region="tabs">
           <Tab
             $active={activeTab === "windows"}
             aria-selected={activeTab === "windows"}
             role="tab"
+            data-gamma-utility-region="tab"
             onClick={() => setActiveTab("windows")}
           >
             Windows
@@ -157,6 +233,7 @@ export function TaskManager() {
             $active={activeTab === "performance"}
             aria-selected={activeTab === "performance"}
             role="tab"
+            data-gamma-utility-region="tab"
             onClick={() => setActiveTab("performance")}
           >
             Performance
@@ -165,6 +242,7 @@ export function TaskManager() {
             $active={activeTab === "shortcuts"}
             aria-selected={activeTab === "shortcuts"}
             role="tab"
+            data-gamma-utility-region="tab"
             onClick={() => setActiveTab("shortcuts")}
           >
             Shortcuts
@@ -173,7 +251,7 @@ export function TaskManager() {
 
         {activeTab === "windows" && (
           <>
-            <ProcessTable>
+            <ProcessTable data-gamma-utility-region="process-table">
               <Table>
                 <TableHead>
                   <TableRow>
@@ -215,15 +293,16 @@ export function TaskManager() {
             <TaskActions>
               <TaskButton
                 size="sm"
+                data-gamma-utility-region="button"
                 disabled={!selectedPath || selectedPath === "/task-manager"}
                 onClick={handleEndTask}
               >
                 End selected task
               </TaskButton>
-              <TaskButton size="sm" disabled={!selectedPath} onClick={handleSwitchTo}>
+              <TaskButton size="sm" data-gamma-utility-region="button" disabled={!selectedPath} onClick={handleSwitchTo}>
                 Switch to selected window
               </TaskButton>
-              <TaskButton size="sm" onClick={() => wm.minimizeAll()}>
+              <TaskButton size="sm" data-gamma-utility-region="button" onClick={() => wm.minimizeAll()}>
                 Minimize all windows
               </TaskButton>
             </TaskActions>
@@ -231,7 +310,7 @@ export function TaskManager() {
         )}
 
         {activeTab === "performance" && (
-          <UiPanel title="System resources" compact>
+          <UiPanel title="System resources" compact data-gamma-utility-region="panel">
             <div style={{ display: "grid", gap: 8, padding: 4, fontSize: "var(--wtf-type-caption, 13px)" }}>
               <div>
                 <strong>Open Windows:</strong> {processes.length}
@@ -251,7 +330,10 @@ export function TaskManager() {
                   ? wm.titles[wm.focusedPath] || wm.focusedPath
                   : "No focused window"}
               </div>
-              <div style={{ marginTop: 4, fontSize: "var(--wtf-type-caption, 13px)", color: "var(--wtf-app-muted-text, #384352)" }}>
+              <div
+                data-gamma-utility-region="muted"
+                style={{ marginTop: 4, fontSize: "var(--wtf-type-caption, 13px)", color: "var(--wtf-app-muted-text, #384352)" }}
+              >
                 WTF OS v1.0, all systems nominal
               </div>
             </div>
@@ -259,7 +341,7 @@ export function TaskManager() {
         )}
 
         {activeTab === "shortcuts" && (
-          <UiPanel title="Keyboard shortcuts" compact>
+          <UiPanel title="Keyboard shortcuts" compact data-gamma-utility-region="panel">
             <div style={{ display: "grid", gap: 6, padding: 4, fontSize: "var(--wtf-type-caption, 13px)" }}>
               <div><strong>Ctrl+W+T+F</strong>: Open Task Manager</div>
               <div><strong>Ctrl+K / Cmd+K</strong>: Command Palette</div>
@@ -270,7 +352,7 @@ export function TaskManager() {
           </UiPanel>
         )}
 
-        <StatusBar>
+        <StatusBar data-gamma-utility-region="status-bar">
           <span>Processes: {processes.length}</span>
           <span>Uptime: {uptime}</span>
         </StatusBar>

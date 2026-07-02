@@ -10,6 +10,8 @@ type WTimelinePanelProps = {
   posts: WPost[];
 };
 
+const gammaWScope = `[data-w-presentation-host="gamma"]`;
+
 const Row = styled.div`
   display: flex;
   align-items: center;
@@ -21,12 +23,21 @@ const Row = styled.div`
 const Small = styled.span<{ $night?: boolean }>`
   font-size: var(--wtf-type-caption, 13px);
   color: ${({ $night }) => ($night ? "#b8c5da" : "#3c4956")};
+
+  ${gammaWScope} & {
+    color: rgba(242, 234, 217, 0.68);
+    font-family: var(--wtf-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  }
 `;
 
 const SummaryText = styled.div`
   margin-bottom: 8px;
   font-size: var(--wtf-type-caption, 13px);
   color: var(--wtf-app-muted, #374151);
+
+  ${gammaWScope} & {
+    color: rgba(242, 234, 217, 0.72);
+  }
 `;
 
 const ActionRow = styled.div`
@@ -44,6 +55,15 @@ const PostCard = styled.div<{ $night: boolean }>`
       : "linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%)"};
   margin-bottom: 14px;
   padding: 12px;
+
+  ${gammaWScope} & {
+    background: #11110f;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+    box-shadow: none;
+    color: #f2ead9;
+  }
 `;
 
 const PostHead = styled.div`
@@ -60,6 +80,13 @@ const EmbedFrame = styled.iframe<{ $night: boolean }>`
   border: 1px solid ${({ $night }) => ($night ? "#3f4f61" : "#cbd5df")};
   border-radius: 8px;
   background: ${({ $night }) => ($night ? "#03060a" : "#fff")};
+
+  ${gammaWScope} & {
+    background: #070706;
+    background-image: none;
+    border: 1px solid rgba(242, 234, 217, 0.18);
+    border-radius: 6px;
+  }
 `;
 
 function xIntentRepost(tweetId: string): string {
@@ -90,8 +117,8 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
         </Small>
       ) : (
         posts.map((post) => (
-          <PostCard $night={nightMode} key={post.id}>
-            <PostHead>
+          <PostCard $night={nightMode} key={post.id} data-w-region="post-card">
+            <PostHead data-w-region="post-header">
               <Small $night={nightMode}>
                 <strong>@{post.author.twitterHandle}</strong>
                 {" · "}
@@ -123,6 +150,7 @@ export function WTimelinePanel(props: WTimelinePanelProps) {
             </PostHead>
             <EmbedFrame
               $night={nightMode}
+              data-w-region="embed-frame"
               src={`https://platform.twitter.com/embed/Tweet.html?id=${encodeURIComponent(post.id)}&theme=${nightMode ? "dark" : "light"}&dnt=true`}
               title={`Post ${post.id} by @${post.author.twitterHandle}`}
               sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-same-origin"

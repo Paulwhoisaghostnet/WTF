@@ -309,6 +309,7 @@ function allowedOAuthReturnOrigins(): Set<string> {
       "https://wtfos.app",
       "https://www.wtfos.app",
       "https://skywire.wtfos.app",
+      "https://beta.wtfos.app",
       "https://wtfgameshow.app",
       "https://www.wtfgameshow.app",
       "http://127.0.0.1:3000",

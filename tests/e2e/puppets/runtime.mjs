@@ -139,7 +139,7 @@ export async function buildPuppetKeyringEnv() {
 
   return {
     WTF_OPERATOR_SIGNER_RPC:
-      process.env.WTF_OPERATOR_SIGNER_RPC || "https://rpc.ghostnet.teztnets.com",
+      process.env.WTF_OPERATOR_SIGNER_RPC || "https://tezos-shadownet.octez.io/",
     WTF_OPERATOR_SIGNER_SOCKET:
       process.env.WTF_OPERATOR_SIGNER_SOCKET || "/run/wtf/operator-signer.sock",
     WTF_OPERATOR_SIGNER_AUTH_TOKEN:

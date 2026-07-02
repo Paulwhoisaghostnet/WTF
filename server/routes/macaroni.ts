@@ -209,13 +209,21 @@ function requireMacaroniUploadTicket(req: Request, res: Response, next: NextFunc
   return next();
 }
 
+function isLoopbackInstallerHost(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
+}
+
 function safeInstallerUrl(value: string | undefined): string {
   const text = String(value || "").trim();
   if (!text) return "";
   if (text.startsWith("/") && !text.startsWith("//") && !/[\r\n]/.test(text)) return text;
   try {
     const url = new URL(text);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
+    if (url.protocol === "https:") return url.href;
+    if (process.env.NODE_ENV !== "production" && url.protocol === "http:" && isLoopbackInstallerHost(url.hostname)) {
+      return url.href;
+    }
+    return "";
   } catch (_) {
     return "";
   }
