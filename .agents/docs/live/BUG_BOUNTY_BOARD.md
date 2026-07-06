@@ -75,7 +75,7 @@ Priority labels:
 | WTF-BB-351 | Verified | Codex deploy cache-only recovery | 2026-07-02 | Deploy / production disk capacity | P2 | 8 | 14 | 2 | 3 | 0 | Deploy preflight now attempts Docker build-cache-only recovery when free space is below the 12 GiB floor, rechecks disk before image build, and still avoids broad system/image/volume pruning; PR #30 deployed as live commit `6f71f14` with Deploy to Hetzner `28570029612`, main Quality Gates `28570029603`, live health, and Pasta readiness proof |
 | WTF-BB-352 | Verified | Codex Remote Applications registry repair | 2026-07-02 | Desktop OS / Remote Applications registry | P1 | 12 | 7 | 2 | 5 | 1 | `/applications` and `/applications/:appId/play` existed, but Remote Applications was not a canonical `DesktopAppKey` across default desktop app config, Start Menu gates, desktop icon/layout persistence, admin surface, package acceptance, doc registry, universal app-registry seed/key, and domain registry docs; fixed with a first-class `applications` registry pass, focused 94/94 registry tests, app-registry backfill-policy 8/8 tests, inventory coverage, Docker app rebuild, app-only restart, live `https://wtfos.app/applications` 200, scoped `desktop:applications` DB registration/key issuance, and bundle/API/source markers proving the Start Menu, route registry, desktop icon, package, and doc gates now include Applications |
 | WTF-BB-354 | Verified | Codex apphost pre-live hardening + Cursor live playability verification | 2026-07-06 | Desktop OS / Remote Applications apphost | P1 | 14 | 3 | 3 | 4 | 3 | Local hardening (no provider passwords in user launches, room-join-gated `/ws/apphost` input, window-managed play surface coverage) plus live Hetzner verification: root-caused silent audio to a stale Steam client started without `PULSE_SERVER` (games inherit the running Steam daemon's env over `-applaunch` IPC), added a `steam-launch.sh` guard that restarts a Steam missing `PULSE_SERVER`, disabled double cursor via `show-pointer=false`, deployed with `--apply`, relaunched Jackbox 10, and proved playability end to end: remote input drove menu → Tee K.O. 2 → live lobby with on-screen `JOIN AT JACKBOX.TV / ROOM CODE MIIH`, PulseAudio sink-input present, monitor RMS 1079, and a real Chromium WebRTC peer received decoded video frames and audible OPUS audio (analyser max RMS 0.058, RTT 78 ms, jitter 4 ms) |
-| WTF-BB-355 | Fixed | Codex Pasta release-evidence guardrail | 2026-07-06 | Deploy / release metadata | P1 | 10 | 10 | 2 | 4 | 0 | Live `https://wtfos.app/api/health` currently reports `version.commitRef:"dev"` while `origin/main` is `c3b445ba`; source now blocks placeholder/mismatched deployment markers in Pasta readiness and production container startup, but production still needs a normal deploy before the live marker is restored |
+| WTF-BB-355 | Verified | Codex Pasta release-evidence guardrail + Cursor live deploy | 2026-07-06 | Deploy / release metadata | P1 | 10 | 10 | 2 | 4 | 0 | Source blocks placeholder/mismatched deployment markers in Pasta readiness and production container startup; guardrails shipped in commit `360bd6e7` and the normal Hetzner deploy of `f11291d3` (Deploy to Hetzner run 28829924929, all steps green) restored the live marker — `https://wtfos.app/api/health` now reports `version.commitRef:"f11291d3"` with `nodeEnv:"production"` and `db.ok:true` |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -390,8 +390,8 @@ Priority labels:
 ### WTF-BB-355 - Live health reports `commitRef:"dev"` on production
 
 - Category: Deploy / release metadata
-- Status: Fixed
-- Owner/Session: Codex Pasta release-evidence guardrail
+- Status: Verified
+- Owner/Session: Codex Pasta release-evidence guardrail + Cursor live deploy verification
 - Score: C2 + F4 + S0 + P1(4) = 10
 - Evidence:
   - On 2026-07-06, `curl -fsS https://wtfos.app/api/health` returned `status:"ok"`, `nodeEnv:"production"`, `chain:"mainnet"`, and `version.commitRef:"dev"`.
@@ -411,6 +411,9 @@ Priority labels:
   - After correction, `https://wtfos.app/api/health` should report the expected short commit for the deployed `main`, and blocker-allowed Pasta readiness should say `live deployment commit marker - commit <short-sha>` plus `live health - production health ok, chain mainnet`.
   - Local guardrail verification: `npm run pasta:live-readiness:check` passed 14/14, including the mock `commitRef:"dev"` regression.
   - Local deploy-path verification: `node --test scripts/deploy-dry-run-policy.test.mjs` passed 7/7, including the production entrypoint fail-closed metadata policy.
+- Live verification (2026-07-06, Cursor session):
+  - Guardrails landed on `main` in commit `360bd6e7` and were deployed together with the apphost playability commit `f11291d3` through the normal `Deploy to Hetzner` workflow (run 28829924929: Deploy on server and Health check steps green; Quality Gates run 28829924927 also green).
+  - Post-deploy, `curl -s https://wtfos.app/api/health` reports `version.commitRef:"f11291d3"`, `nodeEnv:"production"`, `status:"ok"`, `db.ok:true` — the placeholder `dev` marker is gone and the production container passed the new fail-closed entrypoint metadata check on startup.
 
 ### WTF-BB-354 - Remote apphost launch/input boundary needs pre-live hardening
 
@@ -446,6 +449,7 @@ Priority labels:
   - Deployed via `apphost/scripts/deploy-hetzner-apphost.sh --apply`; live launch of `jackbox-party-pack-10` reached `running` with the game window at 1280x720 on `:99`.
   - Playability proof: remote XTEST input drove Enter → game menu → Tee K.O. 2 → PLAY, and the live screen shows `JOIN AT JACKBOX.TV / ROOM CODE MIIH` with QR code (screenshot captured from the display).
   - Audio proof: `pactl list short sink-inputs` shows the game's 6ch/48kHz stream; `parec` on `auto_null.monitor` measured RMS 1079/peak 5928 in the lobby; a real Chromium `RTCPeerConnection` received the OPUS track with analyser max RMS 0.058 (audible), 66 KB audio in 8s, RTT 78 ms, jitter 4 ms, alongside decoded VP8 video frames.
+  - Production promotion: the web-app side (managed play window, room-gated `/ws/apphost` input queue, session UI) shipped on `main` in commit `f11291d3` and deployed through the normal Hetzner workflow (run 28829924929, health check green); live `https://wtfos.app/api/health` reports `version.commitRef:"f11291d3"` and `/api/apphost/apps` correctly returns `401` unauthenticated.
 
 ### WTF-BB-351 - Deploy disk preflight still depends on manual cache pruning
 
