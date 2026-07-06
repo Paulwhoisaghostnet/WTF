@@ -21,8 +21,12 @@ const checkInstallers = flag("PASTA_LIVE_READINESS_CHECK_INSTALLERS", true);
 const checkColanderProof = flag("PASTA_LIVE_READINESS_CHECK_COLANDER_PROOF", true);
 const checkRepoCleanup = flag("PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP", true);
 const host = String(process.env.PASTA_WTFME_LIVE_HOST || "").trim().toLowerCase();
+const expectedLiveCommitRef = String(
+  process.env.PASTA_LIVE_READINESS_EXPECT_COMMIT || process.env.WTFOS_EXPECT_COMMIT || ""
+).trim();
 const checks = [];
 const blockers = [];
+const PLACEHOLDER_COMMIT_REFS = new Set(["dev", "development", "local", "unknown", "undefined", "null"]);
 const WTFME_CREDENTIAL_DETAIL =
   "provision a dedicated Pasta WTF.ME account with a claimed/publishable .wtfos.me host, active WTFOS DID/repo, linked Tezos wallet, and WTF Pin Collector permission; set PASTA_WTFME_LIVE_COOKIE or PASTA_WTFME_LIVE_USERNAME/PASTA_WTFME_LIVE_PASSWORD for a dry-run/publish pass";
 
@@ -92,6 +96,54 @@ function blockedCheckDetails(checks) {
     .join("; ");
 }
 
+function normalizeLiveCommitRef(value) {
+  if (value == null) return "";
+  return String(value).trim();
+}
+
+function shortCommitRef(value) {
+  return normalizeLiveCommitRef(value).slice(0, 7);
+}
+
+function liveCommitMarkerProblem(commitRef) {
+  const normalized = normalizeLiveCommitRef(commitRef);
+  if (!normalized) return "missing version.commitRef";
+  if (PLACEHOLDER_COMMIT_REFS.has(normalized.toLowerCase())) {
+    return `placeholder version.commitRef ${JSON.stringify(normalized)}`;
+  }
+  if (!/^[0-9a-f]{7,40}$/i.test(normalized)) {
+    return `non-git version.commitRef ${JSON.stringify(normalized)}`;
+  }
+  return "";
+}
+
+function checkLiveDeploymentCommitMarker(health) {
+  const commitRef = normalizeLiveCommitRef(health.version?.commitRef);
+  const problem = liveCommitMarkerProblem(commitRef);
+  if (problem) {
+    block(
+      "live deployment commit marker",
+      `/api/health reported ${problem}; rerun the normal Hetzner deploy path so COMMIT_SHA/COMMIT_REF comes from the deployed checkout head before claiming Pasta live evidence`
+    );
+    return commitRef;
+  }
+
+  if (expectedLiveCommitRef && shortCommitRef(commitRef) !== shortCommitRef(expectedLiveCommitRef)) {
+    block(
+      "live deployment commit marker",
+      `/api/health reported commit ${commitRef}, expected ${shortCommitRef(expectedLiveCommitRef)} from PASTA_LIVE_READINESS_EXPECT_COMMIT/WTFOS_EXPECT_COMMIT`
+    );
+    return commitRef;
+  }
+
+  record(
+    "live deployment commit marker",
+    "pass",
+    expectedLiveCommitRef ? `commit ${commitRef} matches expected ${shortCommitRef(expectedLiveCommitRef)}` : `commit ${commitRef}`
+  );
+  return commitRef;
+}
+
 function checkFinalLaunchGuardrails() {
   if (!finalLaunch) return;
 
@@ -149,7 +201,8 @@ async function checkHealth() {
   if (health.version?.nodeEnv !== "production") {
     throw new Error(`/api/health did not report production nodeEnv: ${health.version?.nodeEnv || "missing"}`);
   }
-  record("live health", "pass", `commit ${health.version?.commitRef || "unknown"}, chain ${health.chain?.network || "unknown"}`);
+  checkLiveDeploymentCommitMarker(health);
+  record("live health", "pass", `production health ok, chain ${health.chain?.network || "unknown"}`);
 }
 
 function checkRepoCleanupAudit() {
@@ -159,7 +212,7 @@ function checkRepoCleanupAudit() {
   }
   const result = runPackageScriptResult("pasta:repo-cleanup:audit");
   if (result.ok) {
-    record("repo cleanup audit", "pass", "Pasta branches/worktrees classified against current origin/main");
+    record("repo cleanup audit", "pass", "Pasta branches, worktrees, and dirty release lanes classified against current origin/main");
     return;
   }
   block("repo cleanup audit", result.detail);

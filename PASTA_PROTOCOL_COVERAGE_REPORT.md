@@ -55,7 +55,7 @@ The current deployment boundary is tracked in `.agents/docs/live/PASTA_LIVE_READ
 - Colander Shadownet discovery passed through `npm run pasta:shadownet:colander`; the command wrote `.agents/docs/archive/contracts/pasta-protocol/shadownet-colander-discovery-report.md` after browser-opening all six current proof KT1s, proving adapter/action rendering, Shadownet explorer routing, relationship group decoding, and `colander.contract_opened` / `colander.graph_viewed` event emission.
 - Colander signer-backed Shadownet management action proof passed for the Lasagna `set_current_revision(0)` path; `npm run pasta:shadownet:colander:action-proof` rechecks the recorded report and TzKT operation `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h` without spending signer funds.
 - Static Pasta tool bundles are live on `wtfos.app`, and their Tezos vendor bundles now pass the Taquito `25.0.0` / no-`24.3.0` live marker probe.
-- The latest recorded production evidence snapshot reports `wtfos.app` health at live deploy-cache-recovery commit `6f71f14`, and `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proves live health, repo cleanup, static runtime markers, suite/individual installer assets, installer catalog auth, and recorded Colander action proof while still blocking only on missing dedicated WTF.ME publish credentials and missing `PASTA_WTFME_LIVE_HOST`. PR #28 promoted the named `npm run pasta:live-readiness:final` strict gate; PR #29 refreshed that evidence on live `c8e9e19`; PR #30 deployed Docker build-cache-only disk-preflight recovery and reconfirmed the same Pasta surfaces on live `6f71f14`. This does not claim full Pasta launch completion; `npm run pasta:live-readiness:final` still exits nonzero on the same WTF.ME blockers.
+- The latest recorded production evidence snapshot now distinguishes live service health from deployment identity. On 2026-07-06, `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved production health, repo cleanup, static runtime markers, suite/individual installer assets, installer catalog auth, and recorded Colander action proof, while blocking on `live deployment commit marker` because `https://wtfos.app/api/health` reports `version.commitRef:"dev"`, plus the existing missing dedicated WTF.ME publish credentials and missing `PASTA_WTFME_LIVE_HOST`. PR #28 promoted the named `npm run pasta:live-readiness:final` strict gate; PR #29 refreshed earlier evidence on live `c8e9e19`; PR #30 deployed Docker build-cache-only disk-preflight recovery and reconfirmed the same Pasta surfaces on live `6f71f14`. This does not claim full Pasta launch completion; `npm run pasta:live-readiness:final` now exits nonzero on the deployment-marker blocker and the same WTF.ME blockers.
 - Static reachability, branch-level mocked choreography, the Spaghetti/Gnocchi/Ravioli/Rotini/Penne/Lasagna signer-backed Shadownet proofs, Colander browser discovery, and the representative Colander signer-backed management action proof still do not prove live WTF.ME hosting, wtfOS hosted pinning/public recovery from a production Pasta host, broad real-wallet Colander operations, or mainnet deployment workflows.
 
 ## Risk Areas
@@ -63,6 +63,7 @@ The current deployment boundary is tracked in `.agents/docs/live/PASTA_LIVE_READ
 - Wallet/network drift between Macaroni's proven legacy RPC defaults and new Pasta AGENTS.md defaults.
 - Trusted-creator wtfOS pinning/hosting accidentally leaking into standalone builds.
 - Future individual app installer manifests falsely reporting downloads before GitHub release digests, production runtime env, deploy, and authenticated live verification are complete.
+- Live release evidence falsely looking green when `/api/health` reports a placeholder or mismatched deployment commit marker.
 - Public hosting falsely reporting live before WTF.ME serves the expected page.
 - Indexer lag or high-level token endpoint omissions causing operation hashes to be mistaken for full ownership/metadata proof; fresh Shadownet contracts should verify storage and big-map state directly when needed.
 - Colander now has one signer-backed management action proof, but real wallet-extension submission and broader safe-action coverage are still needed before treating Colander as a fully operational admin surface.
@@ -74,8 +75,9 @@ The current deployment boundary is tracked in `.agents/docs/live/PASTA_LIVE_READ
 2. Implement or verify shared Pasta package, metadata, relationship, and adapter helpers.
 3. Complete CH-EASE target-aware package export and handoff validation.
 4. Complete Spaghetti because it anchors standard collection/token-product publishing.
-5. Publish WTF.ME hosted pages on a dedicated production host and make the public host checker pass.
-6. Turn the current WTFOS pinning/recovery checks into a live host/provider proof for Pasta artifact and metadata durability.
-7. Extend the representative Colander management action proof to real wallet-extension submission and broader safe actions.
-8. Keep all standalone and suite installer verifiers as release gates while adding any future native Pasta installer.
-9. Use `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` as the live-push checklist, then only after Shadownet and hosted-page proof, plan mainnet/full-send deployment work.
+5. Restore a real live deployment commit marker through the normal deploy path before using live evidence for a Pasta launch claim.
+6. Publish WTF.ME hosted pages on a dedicated production host and make the public host checker pass.
+7. Turn the current WTFOS pinning/recovery checks into a live host/provider proof for Pasta artifact and metadata durability.
+8. Extend the representative Colander management action proof to real wallet-extension submission and broader safe actions.
+9. Keep all standalone and suite installer verifiers as release gates while adding any future native Pasta installer.
+10. Use `.agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md` as the live-push checklist, then only after Shadownet and hosted-page proof, plan mainnet/full-send deployment work.

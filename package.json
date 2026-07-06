@@ -10,7 +10,7 @@
     "dev": "NODE_ENV=development tsx server/index.ts",
     "preview:skywire": "node scripts/preview-skywire.mjs",
     "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.cjs --log-level=warning --external:pg-native --external:bufferutil --external:utf-8-validate --external:passport-twitter --external:playwright --external:playwright-core --external:esbuild --external:lightningcss && esbuild scripts/run-supabase-backup.ts --bundle --platform=node --format=cjs --outfile=dist/run-supabase-backup.cjs --log-level=warning --external:pg-native --external:bufferutil --external:utf-8-validate --external:esbuild --external:lightningcss && esbuild scripts/backfill-contract-metadata.ts --bundle --platform=node --format=cjs --outfile=dist/backfill-contract-metadata.cjs --log-level=warning --external:pg-native --external:bufferutil --external:utf-8-validate --external:esbuild --external:lightningcss && esbuild scripts/import-intel-csv.ts --bundle --platform=node --format=cjs --outfile=dist/import-intel-csv.cjs --log-level=warning --external:pg-native --external:bufferutil --external:utf-8-validate --external:esbuild --external:lightningcss",
-    "docker:up": "docker compose up -d --build",
+    "docker:up": "COMMIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f app",
     "deploy:netlify:status": "node scripts/netlify-status-local-cache.mjs",

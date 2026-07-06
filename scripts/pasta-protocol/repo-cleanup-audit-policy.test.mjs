@@ -54,6 +54,26 @@ test("Pasta repo cleanup audit classifies known stale and promoted branches", ()
   assert.match(source, /promoted_ancestor/);
 });
 
+test("Pasta repo cleanup audit classifies current dirty work into release lanes", () => {
+  assert.match(source, /dirtyLaneMatchers/);
+  assert.match(source, /pasta_deploy_release_evidence/);
+  assert.match(source, /pasta_evidence_docs/);
+  assert.match(source, /remote_apphost_hardening/);
+  assert.match(source, /shared_operational_docs/);
+  assert.match(source, /repo_cleanup_guardrail/);
+  assert.match(source, /unclassified_dirty_work/);
+  assert.match(source, /function classifyDirtyWork\(\)/);
+  assert.match(source, /gitStatus\(\["status", "--porcelain=v1"\]\)/);
+  assert.match(source, /docker-entrypoint\.sh/);
+  assert.match(source, /scripts\/pasta-protocol\/live-readiness-gate\.mjs/);
+  assert.match(source, /apphost\//);
+  assert.match(source, /server\/websocket\.ts/);
+  assert.match(source, /BUG_BOUNTY_BOARD\.md/);
+  assert.match(source, /scripts\/pasta-protocol\/repo-cleanup-audit\.mjs/);
+  assert.match(source, /line\.slice\(2\)\.trimStart\(\)/);
+  assert.match(source, /split by hunk when shipping only one release lane/);
+});
+
 test("Pasta repo cleanup audit treats tree-equivalent squash branches as prunable", () => {
   assert.match(source, /function hasNoReplayDelta/);
   assert.match(source, /replay\.fileCount === 0/);

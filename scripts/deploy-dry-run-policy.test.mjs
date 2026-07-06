@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const migrations = readFileSync("scripts/apply-production-migrations.sh", "utf8");
 const deploy = readFileSync("scripts/server-deploy.sh", "utf8");
 const compose = readFileSync("docker-compose.yml", "utf8");
+const entrypoint = readFileSync("docker-entrypoint.sh", "utf8");
 const health = readFileSync("server/lib/health.ts", "utf8");
 const healthTest = readFileSync("server/lib/health.test.ts", "utf8");
 
@@ -76,9 +78,20 @@ test("LAW.DR4/04 deploy dry-run evidence locks health readiness fields", () => {
   assert.match(healthTest, /snapshot\.version\.commitRef/);
 });
 
-test("LAW.DR5/04 deploy runtime metadata overrides stale env-file commit sha", () => {
+test("LAW.DR5/04 production app fails closed on placeholder commit metadata", () => {
+  assert.match(packageJson.scripts["docker:up"], /COMMIT_SHA=\$\(git rev-parse --short HEAD\) docker compose up -d --build/);
   assert.match(compose, /COMMIT_SHA:\s*\$\{COMMIT_SHA:-dev\}/);
   assert.match(compose, /COMMIT_REF:\s*\$\{COMMIT_SHA:-dev\}/);
+  assert.match(entrypoint, /is_placeholder_commit_ref\(\)/);
+  assert.match(entrypoint, /NODE_ENV:-.*production/);
+  assert.match(entrypoint, /production COMMIT_REF\/COMMIT_SHA is missing or placeholder/);
+  assert.match(entrypoint, /production COMMIT_REF\/COMMIT_SHA must be a git hex ref/);
+  assert.match(entrypoint, /\$\{#commit_ref\}.*-lt 7/);
+  assert.match(entrypoint, /\$\{#commit_ref\}.*-gt 40/);
+  assert.match(
+    deploy,
+    /COMMIT_SHA="\$\(git rev-parse --short HEAD\)"[\s\S]*export COMMIT_SHA[\s\S]*docker compose build[\s\S]*docker compose up -d --remove-orphans --force-recreate app caddy/
+  );
 });
 
 test("LAW.BB019 deploy preflight requires dedicated credential encryption keys", () => {

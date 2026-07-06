@@ -1,9 +1,59 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { createServer } from "node:http";
 import test from "node:test";
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const source = readFileSync("scripts/pasta-protocol/live-readiness-gate.mjs", "utf8");
+
+function runGateAgainstHealth(health, env = {}) {
+  return new Promise((resolve, reject) => {
+    const server = createServer((request, response) => {
+      if (request.url === "/api/health") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify(health));
+        return;
+      }
+      response.writeHead(404, { "content-type": "text/plain" });
+      response.end("not found");
+    });
+
+    server.on("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const baseUrl = `http://127.0.0.1:${address.port}`;
+      const child = spawn(process.execPath, ["scripts/pasta-protocol/live-readiness-gate.mjs"], {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          PASTA_LIVE_READINESS_BASE_URL: baseUrl,
+          PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP: "0",
+          PASTA_LIVE_READINESS_CHECK_STATIC: "0",
+          PASTA_LIVE_READINESS_CHECK_INSTALLERS: "0",
+          PASTA_LIVE_READINESS_CHECK_COLANDER_PROOF: "0",
+          PASTA_LIVE_READINESS_CHECK_WTFME: "0",
+          ...env,
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (chunk) => {
+        stdout += chunk;
+      });
+      child.stderr.on("data", (chunk) => {
+        stderr += chunk;
+      });
+      child.on("error", (error) => {
+        server.close(() => reject(error));
+      });
+      child.on("close", (status) => {
+        server.close(() => resolve({ status, stdout, stderr }));
+      });
+    });
+  });
+}
 
 test("Pasta live-readiness gate is wired as an explicit package command", () => {
   assert.equal(packageJson.scripts["pasta:live-readiness"], "node scripts/pasta-protocol/live-readiness-gate.mjs");
@@ -42,6 +92,11 @@ test("Pasta live-readiness gate has a strict final-launch mode", () => {
 test("Pasta live-readiness gate proves live health and static Pasta bundle markers", () => {
   assert.match(source, /\/api\/health/);
   assert.match(source, /health\.version\?\.nodeEnv !== "production"/);
+  assert.match(source, /function checkLiveDeploymentCommitMarker\(health\)/);
+  assert.match(source, /PLACEHOLDER_COMMIT_REFS/);
+  assert.match(source, /live deployment commit marker/);
+  assert.match(source, /Pasta live evidence/);
+  assert.match(source, /PASTA_LIVE_READINESS_EXPECT_COMMIT/);
   assert.match(source, /\/creation-tools\/\$\{app\}\/vendor\/tezos\.js/);
   assert.match(source, /24\.3\.0/);
   assert.match(source, /rpc\.shadownet\.teztnets\.com/);
@@ -52,11 +107,45 @@ test("Pasta live-readiness gate proves live health and static Pasta bundle marke
   assert.match(source, /loadPlatformCapabilities/);
 });
 
+test("Pasta live-readiness gate blocks placeholder production commit markers", async () => {
+  const result = await runGateAgainstHealth({
+    status: "ok",
+    ok: true,
+    version: { nodeEnv: "production", commitRef: "dev" },
+    chain: { network: "mainnet" },
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /blocked: live deployment commit marker/);
+  assert.match(result.stdout, /placeholder version\.commitRef "dev"/);
+  assert.doesNotMatch(result.stdout, /ok: live health - commit dev/);
+});
+
+test("Pasta live-readiness gate can enforce an expected live commit when supplied", async () => {
+  const result = await runGateAgainstHealth(
+    {
+      status: "ok",
+      ok: true,
+      version: { nodeEnv: "production", commitRef: "1234567890abcdef" },
+      chain: { network: "mainnet" },
+    },
+    {
+      PASTA_LIVE_READINESS_ALLOW_BLOCKERS: "1",
+      PASTA_LIVE_READINESS_EXPECT_COMMIT: "abcdef0123456789",
+    }
+  );
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /blocked: live deployment commit marker/);
+  assert.match(result.stdout, /expected abcdef0/);
+});
+
 test("Pasta live-readiness gate includes the repo cleanup audit by default", () => {
   assert.match(source, /PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP/);
   assert.match(source, /function checkRepoCleanupAudit\(\)/);
   assert.match(source, /runPackageScriptResult\("pasta:repo-cleanup:audit"\)/);
   assert.match(source, /repo cleanup audit/);
+  assert.match(source, /dirty release lanes classified against current origin\/main/);
   assert.match(source, /PASTA_LIVE_READINESS_CHECK_REPO_CLEANUP=0/);
   assert.match(source, /checkRepoCleanupAudit\(\)/);
   assert.doesNotMatch(source, /PASTA_REPO_CLEANUP_AUDIT_ALLOW_UNKNOWN:\s*"1"/);

@@ -15,6 +15,33 @@ set -eu
 WRITABLE_DIRS="/app/cache /app/uploads /app/uploads-staging /app/tmp-processing /app/backups"
 OWNERSHIP_MARKER=".node-owner-ok"
 
+is_placeholder_commit_ref() {
+  case "${1:-}" in
+    ""|"dev"|"development"|"local"|"unknown"|"undefined"|"null")
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+if [ "${NODE_ENV:-}" = "production" ]; then
+  commit_ref="${COMMIT_REF:-${COMMIT_SHA:-}}"
+  if is_placeholder_commit_ref "$commit_ref"; then
+    echo "[entrypoint] ERROR: production COMMIT_REF/COMMIT_SHA is missing or placeholder; use scripts/server-deploy.sh so live health can report the deployed commit"
+    exit 1
+  fi
+  case "$commit_ref" in
+    *[!0-9a-fA-F]*)
+      echo "[entrypoint] ERROR: production COMMIT_REF/COMMIT_SHA must be a git hex ref, got '$commit_ref'"
+      exit 1
+      ;;
+  esac
+  if [ "${#commit_ref}" -lt 7 ] || [ "${#commit_ref}" -gt 40 ]; then
+    echo "[entrypoint] ERROR: production COMMIT_REF/COMMIT_SHA must be 7-40 hex characters, got '$commit_ref'"
+    exit 1
+  fi
+fi
+
 if [ "$(id -u)" = "0" ]; then
   for d in $WRITABLE_DIRS; do
     if [ -d "$d" ]; then

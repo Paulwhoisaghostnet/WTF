@@ -35,6 +35,70 @@ const promotedAncestorBranches = new Set([
 const protectedReplayPattern =
   /apps\/.*-desktop|\.github\/workflows\/.*desktop-installers|live-readiness|standalone-installer|colander-action|pasta-protocol\/.*report|wtfme-live|pasta-proof|well-known-policy|server\/routes\/.*installers|shared\/pasta-shadownet-proof-contracts/i;
 
+const dirtyLaneMatchers = [
+  {
+    lane: "pasta_deploy_release_evidence",
+    action: "valid ongoing Pasta/deploy guardrail; verify and promote separately from apphost",
+    matches: (path) =>
+      [
+        "docker-entrypoint.sh",
+        "package.json",
+        "scripts/deploy-dry-run-policy.test.mjs",
+        "scripts/pasta-protocol/live-readiness-gate.mjs",
+        "scripts/pasta-protocol/live-readiness-gate-policy.test.mjs",
+      ].includes(path),
+  },
+  {
+    lane: "pasta_evidence_docs",
+    action: "valid ongoing Pasta release evidence; keep current with live readiness blockers",
+    matches: (path) =>
+      [
+        ".agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md",
+        ".agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md",
+        ".agents/docs/live/PASTA_WTFME_LIVE_PUBLISH_RUNBOOK.md",
+        "PASTA_PROTOCOL_COVERAGE_REPORT.md",
+      ].includes(path),
+  },
+  {
+    lane: "remote_apphost_hardening",
+    action: "valid ongoing Remote Applications/apphost work; verify and promote separately unless intentionally bundled",
+    matches: (path) =>
+      path.startsWith("apphost/") ||
+      path.startsWith("server/features/apphost/") ||
+      path === "server/routes/apphost.ts" ||
+      path === "server/websocket.ts" ||
+      path === "server/websocket-apphost-input-policy.test.ts" ||
+      path === "client/src/pages/Applications.tsx" ||
+      path === "client/src/pages/ApplicationSession.tsx" ||
+      path === "client/src/pages/application-session-policy.test.ts" ||
+      path === "client/src/pages/applications-policy.test.ts" ||
+      path === "client/src/pages/applications-presentation-policy.test.ts" ||
+      path === "client/src/routes/page-defs.ts" ||
+      path === "client/src/features/admin-os/admin-surface-registry.ts" ||
+      path === "tests/e2e/inventory/behavior-assertions.mjs" ||
+      path === ".gitignore",
+  },
+  {
+    lane: "shared_operational_docs",
+    action: "mixed operational evidence; split by hunk when shipping only one release lane",
+    matches: (path) =>
+      [
+        ".agents/docs/live/BUG_BOUNTY_BOARD.md",
+        ".agents/docs/live/LESSONS_LEARNED.md",
+        ".agents/docs/live/user-interaction-inventory.md",
+      ].includes(path),
+  },
+  {
+    lane: "repo_cleanup_guardrail",
+    action: "valid ongoing repo-cleanup audit guardrail; keep it with cleanup evidence refreshes",
+    matches: (path) =>
+      [
+        "scripts/pasta-protocol/repo-cleanup-audit.mjs",
+        "scripts/pasta-protocol/repo-cleanup-audit-policy.test.mjs",
+      ].includes(path),
+  },
+];
+
 const checks = [];
 const blockers = [];
 const warnings = [];
@@ -218,6 +282,59 @@ function dirtyCount(path) {
   return result.stdout.split("\n").filter((line) => line.trim()).length;
 }
 
+function dirtyStatusEntries() {
+  const output = gitStatus(["status", "--porcelain=v1"]).stdout.trim();
+  if (!output) return [];
+  return output
+    .split("\n")
+    .map((line) => {
+      const status = line.slice(0, 2);
+      const rawPath = line.slice(2).trimStart();
+      const path = rawPath.includes(" -> ") ? rawPath.split(" -> ").pop() : rawPath;
+      return { status, path };
+    })
+    .filter((entry) => entry.path);
+}
+
+function classifyDirtyPath(path) {
+  const lane = dirtyLaneMatchers.find((matcher) => matcher.matches(path));
+  if (!lane) {
+    return {
+      path,
+      lane: "unclassified_dirty_work",
+      action: "inspect before release; classify as ongoing, stale, or unrelated before pushing live",
+    };
+  }
+  return { path, lane: lane.lane, action: lane.action };
+}
+
+function classifyDirtyWork() {
+  const entries = dirtyStatusEntries().map((entry) => ({
+    ...entry,
+    ...classifyDirtyPath(entry.path),
+  }));
+  if (entries.length === 0) {
+    record("dirty work split", "pass", "working tree is clean");
+    return entries;
+  }
+
+  const lanes = new Map();
+  for (const entry of entries) {
+    const list = lanes.get(entry.lane) || [];
+    list.push(entry.path);
+    lanes.set(entry.lane, list);
+  }
+
+  for (const [lane, paths] of lanes) {
+    if (lane === "unclassified_dirty_work") {
+      record("dirty work split", "blocked", `${paths.length} unclassified dirty paths: ${paths.slice(0, 12).join(", ")}`);
+    } else {
+      record("dirty work split", "warn", `${lane}: ${paths.length} paths`);
+    }
+  }
+  return entries;
+}
+
 function classifyWorktrees(activeRef) {
   return parseWorktrees()
     .filter((worktree) => {
@@ -263,6 +380,7 @@ function main() {
 
   const branches = branchList().map((ref) => classifyBranch(ref, activeRef));
   const worktrees = classifyWorktrees(activeRef);
+  const dirtyWork = classifyDirtyWork();
   const unknownBranches = branches.filter((branch) => branch.classification === "needs_manual_review");
   if (unknownBranches.length > 0 && !allowUnknown) {
     record(
@@ -285,6 +403,7 @@ function main() {
     blockers,
     branches,
     worktrees,
+    dirtyWork,
   }, null, 2));
   if (!ok) process.exit(1);
 }

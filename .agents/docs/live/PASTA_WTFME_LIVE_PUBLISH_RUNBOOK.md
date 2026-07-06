@@ -2,7 +2,7 @@
 
 Purpose: publish the final Pasta Protocol public WTF.ME proof host without bypassing account ownership, wallet, PDS, pinning, TLS, or public collector-path checks.
 
-This runbook is the safe next step after `npm run pasta:live-readiness:final` proves every non-WTF.ME Pasta surface and exits only on the dedicated WTF.ME credential/host blockers.
+This runbook is the safe next step after `npm run pasta:live-readiness:final` proves every non-WTF.ME Pasta surface, including a real live deployment commit marker, and exits only on the dedicated WTF.ME credential/host blockers.
 
 ## Required Inputs
 
@@ -28,7 +28,7 @@ PASTA_WTFME_LIVE_PUBLISH=0 PASTA_WTFME_LIVE_VERIFY_AFTER_PUBLISH=0 npm run pasta
 npm run pasta:live-readiness:final
 ```
 
-The final command should still fail before publish, but only on missing public host proof. If inventory reports missing wallet, DID/repo, permission, site readiness, or host mismatch, fix that product/account state first.
+After the live deployment commit marker and credential inventory prerequisites are clean, the final command should still fail before publish on missing public host proof. If inventory reports missing wallet, DID/repo, permission, site readiness, host mismatch, or the readiness gate reports a deployment marker blocker, fix that product/account/deploy state first.
 
 ## Publish
 
