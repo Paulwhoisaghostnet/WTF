@@ -47,8 +47,8 @@ jackbox-party-pack-11: stopped, health.ok=false
 
 The apphost manifest API reports a `360` second startup timeout for both
 Jackbox applications. This timeout is intentionally longer than a normal game
-process start because Steam may need to finish client/session/runtime work before
-the Jackbox process appears.
+process start because the provider client/session/runtime may need to finish
+background work before the Jackbox process appears.
 
 The daemon also exposes a private Unix socket at:
 

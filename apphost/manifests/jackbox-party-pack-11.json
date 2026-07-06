@@ -3,7 +3,7 @@
   "name": "Jackbox Party Pack 11",
   "category": "Party game",
   "summary": "The latest remote-hosted Jackbox pack for shared-room play.",
-  "cover_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3364070/35c35317cc3f6ac5733896ab00c4cfbd5a1a025d/header.jpg?t=1774630140",
+  "cover_image_url": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 215'%3E%3Crect width='460' height='215' fill='%230c0d16'/%3E%3Crect x='18' y='18' width='424' height='179' rx='12' fill='%23211a3a'/%3E%3Ccircle cx='330' cy='108' r='84' fill='%239b5cff' opacity='.72'/%3E%3Ccircle cx='370' cy='70' r='26' fill='%2300d2ff' opacity='.9'/%3E%3Ccircle cx='106' cy='154' r='44' fill='%23f7d84a' opacity='.86'/%3E%3Ctext x='48' y='74' fill='%23ffffff' font-family='Arial Black,Arial,sans-serif' font-size='24'%3ETHE JACKBOX%3C/text%3E%3Ctext x='48' y='106' fill='%23ffffff' font-family='Arial Black,Arial,sans-serif' font-size='24'%3EPARTY PACK%3C/text%3E%3Ctext x='184' y='170' fill='%23f7d84a' font-family='Arial Black,Arial,sans-serif' font-size='86'%3E11%3C/text%3E%3C/svg%3E",
   "cover_image_alt": "Jackbox Party Pack 11 cover art",
   "executable": "/opt/wtfos/apphost/bin/steam-launch.sh",
   "working_directory": "/opt/wtfos/apphost/home",

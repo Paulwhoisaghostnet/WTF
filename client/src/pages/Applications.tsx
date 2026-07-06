@@ -18,6 +18,7 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { api, isApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { usePresentationShell } from "../lib/presentation-shell";
+import { useWindowManager } from "../lib/window-context";
 
 type HostedApplication = {
   id: string;
@@ -479,6 +480,26 @@ function applicationPlayPath(appId: string) {
   return `/applications/${encodeURIComponent(appId)}/play`;
 }
 
+function hostedAppWindowBounds() {
+  if (typeof window === "undefined") return null;
+  const margin = 24;
+  const taskbarReserve = 56;
+  const width = Math.min(
+    Math.max(960, Math.floor(window.innerWidth * 0.9)),
+    Math.max(320, window.innerWidth - margin),
+  );
+  const height = Math.min(
+    Math.max(620, Math.floor(window.innerHeight * 0.9)),
+    Math.max(300, window.innerHeight - taskbarReserve),
+  );
+  return {
+    width,
+    height,
+    x: Math.max(0, Math.floor((window.innerWidth - width) / 2)),
+    y: Math.max(0, Math.floor((window.innerHeight - height) / 2)),
+  };
+}
+
 function clampProgress(value: unknown) {
   const numeric = typeof value === "number" && Number.isFinite(value) ? value : 0;
   return Math.max(0, Math.min(100, Math.round(numeric)));
@@ -532,6 +553,7 @@ export function Applications() {
   const presentation = usePresentationShell();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const wm = useWindowManager();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const appsQuery = useQuery({
@@ -565,7 +587,7 @@ export function Applications() {
     queryKey: ["applications", "status", activeId],
     queryFn: () => fetchStatus(activeId ?? ""),
     enabled: Boolean(activeId),
-    refetchInterval: activeId ? 1000 : false,
+    refetchInterval: activeId ? 2500 : false,
   });
 
   const stopMutation = useMutation({
@@ -597,11 +619,13 @@ export function Applications() {
     setSelectedId(apps[next]?.id ?? null);
   }
 
-  function openApplicationTab(appId: string) {
-    const opened = window.open(applicationPlayPath(appId), "_blank", "noopener,noreferrer");
-    if (!opened) {
-      window.location.href = applicationPlayPath(appId);
-    }
+  function openApplicationWindow(appId: string) {
+    const path = applicationPlayPath(appId);
+    wm.openPage(path);
+    const bounds = hostedAppWindowBounds();
+    if (!bounds) return;
+    wm.setSize(path, bounds.width, bounds.height);
+    wm.setPosition(path, bounds.x, bounds.y);
   }
 
   return (
@@ -734,7 +758,7 @@ export function Applications() {
                   </StatusBlock>
                   <ActionRow data-applications-region="actions">
                     <ActionButton
-                      onClick={() => openApplicationTab(activeApp.id)}
+                      onClick={() => openApplicationWindow(activeApp.id)}
                       disabled={selectedBlockedByActiveSession}
                       data-applications-region="action-button"
                     >

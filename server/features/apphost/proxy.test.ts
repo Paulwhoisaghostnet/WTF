@@ -62,10 +62,12 @@ test("resolveAppHostTransport prefers the shared wtfOS runtime socket when it ex
   const socketPath = join(tmp, "apphost.sock");
   writeFileSync(socketPath, "");
   const previousSocketPath = process.env.WTFOS_APPHOST_SOCKET_PATH;
+  const previousEnvFile = process.env.WTFOS_APPHOST_CLIENT_ENV_FILE;
   const previousSharedSocketPath = process.env.WTFOS_APPHOST_SHARED_SOCKET_PATH;
   const previousUrl = process.env.WTFOS_APPHOST_URL;
   try {
     delete process.env.WTFOS_APPHOST_SOCKET_PATH;
+    process.env.WTFOS_APPHOST_CLIENT_ENV_FILE = join(tmp, "missing.env");
     process.env.WTFOS_APPHOST_SHARED_SOCKET_PATH = socketPath;
     delete process.env.WTFOS_APPHOST_URL;
     assert.deepEqual(
@@ -75,6 +77,8 @@ test("resolveAppHostTransport prefers the shared wtfOS runtime socket when it ex
   } finally {
     if (previousSocketPath === undefined) delete process.env.WTFOS_APPHOST_SOCKET_PATH;
     else process.env.WTFOS_APPHOST_SOCKET_PATH = previousSocketPath;
+    if (previousEnvFile === undefined) delete process.env.WTFOS_APPHOST_CLIENT_ENV_FILE;
+    else process.env.WTFOS_APPHOST_CLIENT_ENV_FILE = previousEnvFile;
     if (previousSharedSocketPath === undefined) delete process.env.WTFOS_APPHOST_SHARED_SOCKET_PATH;
     else process.env.WTFOS_APPHOST_SHARED_SOCKET_PATH = previousSharedSocketPath;
     if (previousUrl === undefined) delete process.env.WTFOS_APPHOST_URL;
@@ -106,6 +110,7 @@ test("resolveAppHostTransport uses explicit loopback HTTP over auto shared socke
   try {
     assert.deepEqual(
       resolveAppHostTransport({
+        WTFOS_APPHOST_CLIENT_ENV_FILE: join(tmp, "missing.env"),
         WTFOS_APPHOST_URL: "http://127.0.0.1:9876",
         WTFOS_APPHOST_SHARED_SOCKET_PATH: socketPath,
       }),
@@ -178,6 +183,51 @@ test("fetchAppHostJson forwards launch bodies over Unix sockets", async () => {
     assert.equal(seen.url, "/apps/jackbox-party-pack-10/launch");
     assert.equal(seen.contentType, "application/json");
     assert.equal(seen.body, '{"actor":{"userId":"7","displayName":"Seven"}}');
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    if (previousSocketPath === undefined) delete process.env.WTFOS_APPHOST_SOCKET_PATH;
+    else process.env.WTFOS_APPHOST_SOCKET_PATH = previousSocketPath;
+    if (previousEnvFile === undefined) delete process.env.WTFOS_APPHOST_CLIENT_ENV_FILE;
+    else process.env.WTFOS_APPHOST_CLIENT_ENV_FILE = previousEnvFile;
+    if (previousSharedSocketPath === undefined) delete process.env.WTFOS_APPHOST_SHARED_SOCKET_PATH;
+    else process.env.WTFOS_APPHOST_SHARED_SOCKET_PATH = previousSharedSocketPath;
+    if (previousUrl === undefined) delete process.env.WTFOS_APPHOST_URL;
+    else process.env.WTFOS_APPHOST_URL = previousUrl;
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("fetchAppHostJson honors per-call timeouts for slow apphost launches", async () => {
+  const tmp = mkdtempSync(join(tmpdir(), "wtfos-apphost-"));
+  const socketPath = join(tmp, "apphost.sock");
+  const previousSocketPath = process.env.WTFOS_APPHOST_SOCKET_PATH;
+  const previousEnvFile = process.env.WTFOS_APPHOST_CLIENT_ENV_FILE;
+  const previousSharedSocketPath = process.env.WTFOS_APPHOST_SHARED_SOCKET_PATH;
+  const previousUrl = process.env.WTFOS_APPHOST_URL;
+  const server = http.createServer((_req, res) => {
+    setTimeout(() => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+    }, 50);
+  });
+
+  try {
+    process.env.WTFOS_APPHOST_SOCKET_PATH = socketPath;
+    process.env.WTFOS_APPHOST_CLIENT_ENV_FILE = join(tmp, "missing.env");
+    delete process.env.WTFOS_APPHOST_SHARED_SOCKET_PATH;
+    delete process.env.WTFOS_APPHOST_URL;
+
+    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+
+    await assert.rejects(
+      () =>
+        fetchAppHostJson("/apps/jackbox-party-pack-11/launch", {
+          method: "POST",
+          body: "{}",
+          timeoutMs: 10,
+        }),
+      /timed out/,
+    );
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     if (previousSocketPath === undefined) delete process.env.WTFOS_APPHOST_SOCKET_PATH;

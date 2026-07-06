@@ -66,8 +66,8 @@ Virtual desktop
 - `wtfos-apphost-wm.service`: runs Openbox in the virtual display.
 - `wtfos-apphost.service`: exposes the launcher API on host loopback and
   private Unix sockets under `/opt/wtfos/apphost/run` and `/run/wtf/apphost`.
-- `wtfos-apphost-vnc.service`: optional loopback-only VNC bridge for one-time
-  Steam login or emergency desktop access.
+- `wtfos-apphost-vnc.service`: optional loopback-only VNC bridge for
+  operator-only provider/session repair or emergency desktop access.
 
 Each service runs as the dedicated `wtfos-apphost` system user with
 `HOME=/opt/wtfos/apphost/home`.
@@ -97,18 +97,20 @@ The apphost also publishes a non-secret client env file at:
 
 It is copied from `/opt/wtfos/apphost/config/wtfos-apphost.env` on service
 start. wtfOS may read this file to discover the socket path and client timeout.
-It must not contain Steam passwords or user credentials; Steam account/session
-state remains private to `/opt/wtfos/apphost/home` and users never receive Steam
-controls.
+It must not contain provider passwords or user credentials. Provider credential
+material, when configured by an operator, is kept in
+`/opt/wtfos/apphost/config/hosted-apps.env` with mode `0600` for
+`wtfos-apphost`. Provider session state remains private to
+`/opt/wtfos/apphost/home`, and users never receive provider controls.
 
 ## User Experience Boundary
 
 Applications are launched by manifest id through wtfOS. The user-facing surface
 shows manifest-generated title cards, cover images, the selected application, a
 sanitized launch progress bar, and Open/Stop/Status controls. Open creates a
-dedicated browser tab at `/applications/{id}/play`; that tab attaches to an
-already running remote app or launches the selected manifest if nothing is
-running. Steam, Steam runtime prompts, process IDs, health checks, and raw
+dedicated wtfOS app window at `/applications/{id}/play`; that window attaches to
+an already running remote app or launches the selected manifest if nothing is
+running. Provider runtime prompts, process IDs, health checks, and raw
 diagnostics are implementation details kept out of the normal application UI.
 
 The apphost enforces a single active external app across all of wtfOS. A launch
@@ -174,14 +176,37 @@ Source URLs:
 
 ## Authentication
 
-Steam authentication is not bypassed. Run:
+Provider authentication is not bypassed. Normal user launches require a
+remembered provider session for the isolated apphost account; they do not pass
+stored passwords to the provider. Operators can refresh that remembered session
+from the private hosted-application env file:
+
+```text
+/opt/wtfos/apphost/config/hosted-apps.env
+```
+
+For the current Jackbox provider, populate:
+
+```bash
+WTFOS_APPHOST_STEAM_ADMIN_LOGIN=1
+WTFOS_APPHOST_STEAM_USERNAME=...
+WTFOS_APPHOST_STEAM_PASSWORD=...
+# Optional, temporary, only while satisfying a one-time guard challenge:
+# WTFOS_APPHOST_STEAM_GUARD_CODE=...
+```
+
+The file is created by the installer/update scripts if missing and is never
+overwritten. It is local to the Hetzner host, gitignored in the repository, and
+must stay mode `0600` or `0400`. After the env is populated, refresh the
+provider session as an operator:
 
 ```bash
 sudo /opt/wtfos/apphost/scripts/steam-login-once.sh
 ```
 
-Complete the login in the virtual desktop once. Install prompts for owned games
-still require the authenticated account.
+Install prompts for owned apps still require the authenticated provider account.
+If a provider requires a one-time guard code, add it temporarily, run the login
+refresh, then remove that guard value from the env.
 
 For manual login without exposing a public desktop port, install the optional
 loopback VNC bridge:
@@ -233,8 +258,8 @@ copy. It does not touch existing containers, compose files, databases, or wtfOS
 service units. The installer creates only the `wtfos-apphost-*` systemd units
 listed above.
 
-After install, complete Steam login and app installation manually in the virtual
-desktop:
+After install, populate the private hosted-application env, refresh the provider
+session, and install the hosted apps:
 
 ```bash
 sudo /opt/wtfos/apphost/scripts/steam-login-once.sh
@@ -247,8 +272,8 @@ Then validate:
 sudo /opt/wtfos/apphost/scripts/validate-apps.sh
 ```
 
-`--validate` can also be passed to the deploy wrapper after Steam login and game
-installation are already complete:
+`--validate` can also be passed to the deploy wrapper after the provider session
+and game installation are already complete:
 
 ```bash
 apphost/scripts/deploy-hetzner-apphost.sh --validate

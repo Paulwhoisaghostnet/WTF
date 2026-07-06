@@ -191,6 +191,7 @@ class X11InputInjector:
         self.display_name = display_name
         self._display: Any | None = None
         self._xlib: dict[str, Any] | None = None
+        self._lock = threading.Lock()
 
     def _connect(self) -> tuple[Any, dict[str, Any]]:
         if self._display is not None and self._xlib is not None:
@@ -204,14 +205,15 @@ class X11InputInjector:
         return self._display, self._xlib
 
     def inject(self, event: dict[str, Any]) -> dict[str, Any]:
-        display, xlib = self._connect()
-        if event["type"] == "pointer":
-            self._inject_pointer(display, xlib, event)
-        elif event["type"] == "keyboard":
-            self._inject_keyboard(display, xlib, event)
-        else:
-            raise ValueError(f"unsupported input event type: {event['type']}")
-        display.sync()
+        with self._lock:
+            display, xlib = self._connect()
+            if event["type"] == "pointer":
+                self._inject_pointer(display, xlib, event)
+            elif event["type"] == "keyboard":
+                self._inject_keyboard(display, xlib, event)
+            else:
+                raise ValueError(f"unsupported input event type: {event['type']}")
+            display.sync()
         return {"ok": True, "method": "xtest"}
 
     def _inject_pointer(self, display: Any, xlib: dict[str, Any], event: dict[str, Any]) -> None:
@@ -347,6 +349,8 @@ class ApplicationHost:
         self._processes: dict[int, subprocess.Popen[Any]] = {}
         self._streams: dict[tuple[str, str], subprocess.Popen[Any]] = {}
         self._launch_lock = threading.RLock()
+        self._health_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+        self._health_cache_lock = threading.Lock()
         self._x11_input: X11InputInjector | None = None
         self.config.state_dir.mkdir(parents=True, exist_ok=True)
         (self.config.state_dir / "logs").mkdir(parents=True, exist_ok=True)
@@ -464,6 +468,39 @@ class ApplicationHost:
         tmp = self._state_path(app_id).with_suffix(".json.tmp")
         tmp.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
         tmp.replace(self._state_path(app_id))
+        self._invalidate_health_cache(app_id)
+
+    def _invalidate_health_cache(self, app_id: str) -> None:
+        with self._health_cache_lock:
+            self._health_cache.pop(app_id, None)
+
+    def _cached_health(self, manifest: dict[str, Any], state: dict[str, Any], *, ttl: float = 0.75) -> dict[str, Any]:
+        app_id = manifest["id"]
+        now = time.monotonic()
+        with self._health_cache_lock:
+            cached = self._health_cache.get(app_id)
+            if cached and now - cached[0] <= ttl:
+                return dict(cached[1])
+        health = self._health(manifest, state)
+        with self._health_cache_lock:
+            self._health_cache[app_id] = (now, dict(health))
+        return health
+
+    def _public_diagnostics(self, diagnostics: Any) -> dict[str, Any]:
+        if not isinstance(diagnostics, dict):
+            return {}
+        public: dict[str, Any] = {}
+        for key in ("startupConfirmed", "startupTimedOut", "startupRecoveredAfterTimeout"):
+            if key in diagnostics:
+                public[key] = bool(diagnostics.get(key))
+        if diagnostics.get("adminAuthRequired"):
+            public["adminMaintenanceRequired"] = True
+            public["startupFailure"] = "host maintenance required before application launch"
+        elif diagnostics.get("startupTimedOut"):
+            public["startupFailure"] = "application did not become ready before startup timeout"
+        elif diagnostics.get("startupFailure") and not diagnostics.get("launcherExitedBeforeHealth"):
+            public["startupFailure"] = "application launch did not complete"
+        return public
 
     def _known_process(self, pid: Any) -> subprocess.Popen[Any] | None:
         try:
@@ -517,7 +554,7 @@ class ApplicationHost:
                 pids.append(pid)
         return pids
 
-    def status(self, app_id: str) -> dict[str, Any]:
+    def status(self, app_id: str, *, private_diagnostics: bool = False) -> dict[str, Any]:
         manifest = self._require_manifest(app_id)
         state = self._read_state(app_id)
         process = self._known_process(state.get("pid"))
@@ -530,7 +567,7 @@ class ApplicationHost:
             )
             self._processes.pop(process.pid, None)
         pid_running = self._pid_is_running(state.get("pid"))
-        health = self._health(manifest, state)
+        health = self._cached_health(manifest, state)
         check_type = (manifest.get("health_check") or {}).get("type", "process")
         running = pid_running or (check_type != "process" and bool(health.get("ok")))
         state_changed = False
@@ -577,7 +614,9 @@ class ApplicationHost:
             "health": health if running else {"ok": False, "type": check_type},
             "progress": state.get("progress") or self._default_progress(state, running),
             "owner": state.get("owner") if running or state.get("state") == "launching" else None,
-            "diagnostics": state.get("diagnostics", {}),
+            "diagnostics": state.get("diagnostics", {})
+            if private_diagnostics
+            else self._public_diagnostics(state.get("diagnostics", {})),
         }
         if not running and status["state"] == "running":
             status["state"] = "exited"
@@ -653,6 +692,133 @@ class ApplicationHost:
                 return {"ok": False, "type": "command", "error": json_safe_error(exc)}
         return {"ok": True, "type": check_type}
 
+    def _steam_app_id(self, manifest: dict[str, Any]) -> str | None:
+        environment = manifest.get("environment") if isinstance(manifest.get("environment"), dict) else {}
+        return sanitized_optional_string(environment.get("STEAM_APP_ID")) or sanitized_optional_string(manifest.get("steam_app_id"))
+
+    def _steam_loginusers_path(self, env: dict[str, str]) -> Path:
+        return Path(env.get("HOME") or str(DEFAULT_ROOT / "home")) / ".local/share/Steam/config/loginusers.vdf"
+
+    def _credential_env_path(self) -> Path:
+        configured = (
+            os.environ.get("WTFOS_APPHOST_CREDENTIAL_ENV_FILE")
+            or os.environ.get("WTFOS_APPHOST_STEAM_ADMIN_ENV_FILE")
+            or str(DEFAULT_ROOT / "config" / "hosted-apps.env")
+        )
+        return Path(configured)
+
+    def _read_credential_env(self) -> dict[str, str]:
+        path = self._credential_env_path()
+        try:
+            source = path.read_text(encoding="utf-8")
+        except OSError:
+            return {}
+        values: dict[str, str] = {}
+        for raw_line in source.splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip("\"'")
+            if re.match(r"^WTFOS_APPHOST_[A-Z0-9_]+$", key):
+                values[key] = value
+        return values
+
+    def _stored_credentials_configured(self) -> bool:
+        values = self._read_credential_env()
+        return (
+            values.get("WTFOS_APPHOST_STEAM_ADMIN_LOGIN") == "1"
+            and bool(values.get("WTFOS_APPHOST_STEAM_USERNAME"))
+            and bool(values.get("WTFOS_APPHOST_STEAM_PASSWORD"))
+        )
+
+    def _steam_loginusers_status(self, env: dict[str, str]) -> dict[str, Any]:
+        path = self._steam_loginusers_path(env)
+        status: dict[str, Any] = {
+            "ok": False,
+            "loginUsersPath": str(path),
+            "accountConfigured": False,
+            "rememberPassword": False,
+            "allowAutoLogin": False,
+        }
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except FileNotFoundError:
+            status["reason"] = "loginusers.vdf is missing"
+            return status
+        except OSError as exc:
+            status["reason"] = json_safe_error(exc)
+            return status
+
+        status["accountConfigured"] = bool(re.search(r'"AccountName"\s+"[^"]+"', text))
+        status["rememberPassword"] = bool(re.search(r'"RememberPassword"\s+"1"', text))
+        status["allowAutoLogin"] = bool(re.search(r'"AllowAutoLogin"\s+"1"', text))
+        status["ok"] = bool(status["accountConfigured"] and status["rememberPassword"] and status["allowAutoLogin"])
+        if not status["ok"]:
+            status["reason"] = "remembered admin account is not configured"
+        return status
+
+    def _steam_recent_login_window_seen(self, env: dict[str, str]) -> bool:
+        log_path = Path(env.get("HOME") or str(DEFAULT_ROOT / "home")) / ".local/share/Steam/logs/webhelper.txt"
+        try:
+            with log_path.open("rb") as handle:
+                handle.seek(0, os.SEEK_END)
+                size = handle.tell()
+                handle.seek(max(0, size - 200_000))
+                text = handle.read().decode("utf-8", "replace")
+        except OSError:
+            return False
+        start = text.rfind("Startup - webhelper launched")
+        recent = text[start:] if start >= 0 else text
+        return "steamid=0" in recent and "DesktopLoginWindow" in recent
+
+    def _annotate_steam_admin_auth_preflight(
+        self,
+        manifest: dict[str, Any],
+        env: dict[str, str],
+        diagnostics: dict[str, Any],
+    ) -> bool:
+        if not self._steam_app_id(manifest):
+            return True
+        session_status = self._steam_loginusers_status(env)
+        credentials_configured = self._stored_credentials_configured()
+        diagnostics["deliveryAuth"] = {
+            "rememberedSessionConfigured": bool(session_status.get("ok")),
+            "storedCredentialsConfigured": credentials_configured,
+            "credentialEnvPath": str(self._credential_env_path()),
+        }
+        if session_status.get("ok"):
+            return True
+        diagnostics["adminAuthRequired"] = True
+        diagnostics["adminAuthProvider"] = "apphost"
+        diagnostics["startupConfirmed"] = False
+        diagnostics["startupTimedOut"] = False
+        diagnostics["startupFailure"] = "host maintenance required before application launch"
+        return False
+
+    def _annotate_steam_admin_auth_failure(
+        self,
+        manifest: dict[str, Any],
+        env: dict[str, str],
+        diagnostics: dict[str, Any],
+    ) -> None:
+        if not self._steam_app_id(manifest):
+            return
+        session_status = self._steam_loginusers_status(env)
+        recent_login_window = self._steam_recent_login_window_seen(env)
+        diagnostics["deliveryAuth"] = {
+            "rememberedSessionConfigured": bool(session_status.get("ok")),
+            "storedCredentialsConfigured": self._stored_credentials_configured(),
+            "credentialEnvPath": str(self._credential_env_path()),
+            "recentProviderLoginWindow": recent_login_window,
+        }
+        if recent_login_window or not session_status.get("ok"):
+            diagnostics["adminAuthRequired"] = True
+            diagnostics["adminAuthProvider"] = "apphost"
+            diagnostics["startupTimedOut"] = False
+            diagnostics["startupFailure"] = "host maintenance required before application launch"
+
     def _actor_owns_status(self, status: dict[str, Any], actor: dict[str, Any] | None) -> bool:
         owner = status.get("owner")
         if not owner and not actor:
@@ -718,6 +884,29 @@ class ApplicationHost:
         self._write_state(app_id, state)
         env, diagnostics = prepare_launch_environment(manifest, base_env, self.probe)
         state["diagnostics"] = diagnostics
+        if not self._annotate_steam_admin_auth_preflight(manifest, env, diagnostics):
+            state.update(
+                {
+                    "state": "failed",
+                    "pid": None,
+                    "stoppedAt": utc_now(),
+                    "exitCode": None,
+                    "owner": None,
+                    "progress": progress_payload(
+                        "blocked",
+                        "Admin maintenance required",
+                        100,
+                        "The remote application host needs administrator maintenance before this app can open.",
+                    ),
+                }
+            )
+            self._write_state(app_id, state)
+            return {
+                "ok": True,
+                "app": public_app(manifest),
+                "status": self.status(app_id),
+                "activeSession": self.active_session(),
+            }
         state["progress"] = progress_payload(
             "opening",
             "Opening application",
@@ -767,10 +956,12 @@ class ApplicationHost:
             state["stoppedAt"] = utc_now()
             state["exitCode"] = process.poll()
             state["progress"] = progress_payload(
-                "failed",
-                "Could not open application",
+                "blocked" if diagnostics.get("adminAuthRequired") else "failed",
+                "Admin maintenance required" if diagnostics.get("adminAuthRequired") else "Could not open application",
                 100,
-                "Diagnostics were captured for support.",
+                "The remote application host needs administrator maintenance before this app can open."
+                if diagnostics.get("adminAuthRequired")
+                else "Diagnostics were captured for support.",
             )
         self._write_state(app_id, state)
         return {"ok": True, "app": public_app(manifest), "status": self.status(app_id), "activeSession": self.active_session()}
@@ -796,16 +987,21 @@ class ApplicationHost:
         }
         if not confirmed:
             attempt["desktopEvidence"] = self._capture_desktop_evidence(manifest["id"], env)
+            self._annotate_steam_admin_auth_failure(manifest, env, diagnostics)
         attempts = diagnostics.setdefault("startupAttempts", [])
         if isinstance(attempts, list):
             attempts.append(attempt)
         else:
             diagnostics["startupAttempts"] = [attempt]
         diagnostics["startupConfirmed"] = confirmed
-        diagnostics["startupTimedOut"] = not confirmed
         diagnostics["lastStartupAttempt"] = attempt
         if not confirmed:
-            diagnostics["startupFailure"] = "health check did not become healthy before startup timeout"
+            diagnostics["startupTimedOut"] = bool(diagnostics.get("startupTimedOut", True))
+            diagnostics["startupFailure"] = str(
+                diagnostics.get("startupFailure") or "health check did not become healthy before startup timeout"
+            )
+        else:
+            diagnostics["startupTimedOut"] = False
 
     def _capture_desktop_evidence(self, app_id: str, env: dict[str, str]) -> dict[str, Any]:
         evidence_dir = self.config.state_dir / "diagnostics" / "api-launch"
@@ -957,22 +1153,56 @@ class ApplicationHost:
         next_progress_write = 0.0
         check_type = (manifest.get("health_check") or {}).get("type", "process")
         if check_type != "process":
+            check = manifest.get("health_check") or {}
+            try:
+                launcher_exit_grace = float(check.get("launcher_exit_grace", 10.0))
+            except (TypeError, ValueError):
+                launcher_exit_grace = 10.0
+            launcher_exit_grace = max(0.1, launcher_exit_grace)
+            launcher_exited_at: float | None = None
             while time.time() < deadline:
                 health = self._health(manifest, {"pid": process.pid})
                 if health.get("ok"):
                     return True
+                exit_code = process.poll()
+                now = time.time()
+                if exit_code is not None:
+                    if launcher_exited_at is None:
+                        launcher_exited_at = now
+                        if state is not None:
+                            diagnostics = state.setdefault("diagnostics", {})
+                            if isinstance(diagnostics, dict):
+                                diagnostics["launcherExitedBeforeHealth"] = True
+                                diagnostics["launcherExitCode"] = exit_code
+                                diagnostics["launcherExitObservedAt"] = utc_now()
+                                diagnostics["launcherExitGraceSeconds"] = launcher_exit_grace
+                    elif now - launcher_exited_at >= launcher_exit_grace:
+                        if state is not None:
+                            diagnostics = state.setdefault("diagnostics", {})
+                            if isinstance(diagnostics, dict):
+                                diagnostics["startupTimedOut"] = False
+                                diagnostics["startupFailure"] = "launcher exited before application health check became healthy"
+                                diagnostics["healthAfterLauncherExit"] = health
+                        return False
                 if state is not None and time.time() >= next_progress_write:
                     elapsed = time.time() - started
                     percent = 45 + min(48, int((elapsed / timeout_seconds) * 48))
+                    detail = "Waiting for the application window."
+                    if launcher_exited_at is not None:
+                        detail = "Waiting briefly for the application window after the launcher exited."
                     state["progress"] = progress_payload(
                         "opening",
                         "Opening application",
                         percent,
-                        "Waiting for the application window.",
+                        detail,
                     )
                     self._write_state(manifest["id"], state)
                     next_progress_write = time.time() + 1.0
                 time.sleep(0.5)
+            if state is not None:
+                diagnostics = state.setdefault("diagnostics", {})
+                if isinstance(diagnostics, dict):
+                    diagnostics.setdefault("startupTimedOut", True)
             return False
         while time.time() < deadline:
             if process.poll() is not None:
@@ -1006,7 +1236,23 @@ class ApplicationHost:
             }
         )
         self._write_state(app_id, state)
-        return {"ok": True, "app": public_app(manifest), "status": self.status(app_id)}
+        check_type = (manifest.get("health_check") or {}).get("type", "process")
+        return {
+            "ok": True,
+            "app": public_app(manifest),
+            "status": {
+                "appId": manifest["id"],
+                "state": "stopped",
+                "pid": None,
+                "startedAt": state.get("startedAt"),
+                "stoppedAt": state.get("stoppedAt"),
+                "exitCode": state.get("exitCode"),
+                "health": {"ok": False, "type": check_type},
+                "progress": state.get("progress"),
+                "owner": None,
+                "diagnostics": self._public_diagnostics(state.get("diagnostics", {})),
+            },
+        }
 
     def input_event(self, app_id: str, event: dict[str, Any]) -> dict[str, Any]:
         manifest = self._require_manifest(app_id)
@@ -1032,7 +1278,7 @@ class ApplicationHost:
         return {
             "ok": True,
             "app": public_app(manifest),
-            "status": self.status(app_id),
+            "status": status,
             "input": normalized,
             "injected": injected,
         }
@@ -1140,7 +1386,7 @@ class ApplicationHost:
         return {
             "ok": True,
             "app": public_app(manifest),
-            "status": self.status(app_id),
+            "status": status,
             "transport": "webrtc",
             "streamId": stream_id,
             **answer,
@@ -1472,6 +1718,7 @@ class ApplicationHost:
 
 class AppHostRequestHandler(BaseHTTPRequestHandler):
     host: ApplicationHost
+    protocol_version = "HTTP/1.0"
 
     def _read_json_body(self) -> dict[str, Any]:
         raw_length = self.headers.get("Content-Length", "0")
@@ -1489,11 +1736,16 @@ class AppHostRequestHandler(BaseHTTPRequestHandler):
 
     def _send_json(self, status: HTTPStatus, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, indent=2, sort_keys=True).encode("utf-8")
-        self.send_response(status.value)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        self.close_connection = True
+        try:
+            self.send_response(status.value)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            self.close_connection = True
 
     def _handle(self, method: str) -> None:
         parsed = urlparse(self.path)
@@ -1579,8 +1831,39 @@ class AppHostRequestHandler(BaseHTTPRequestHandler):
         print(f"[apphostd] {address} {fmt % args}", flush=True)
 
 
-class UnixThreadingHTTPServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
+class BoundedThreadingMixIn(socketserver.ThreadingMixIn):
     daemon_threads = True
+    block_on_close = False
+    request_queue_size = 128
+    max_request_threads = 48
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        self._request_semaphore = threading.BoundedSemaphore(self.max_request_threads)
+        super().__init__(*args, **kwargs)
+
+    def process_request(self, request: Any, client_address: Any) -> None:
+        if not self._request_semaphore.acquire(blocking=False):
+            request.close()
+            return
+        try:
+            super().process_request(request, client_address)
+        except Exception:
+            self._request_semaphore.release()
+            raise
+
+    def process_request_thread(self, request: Any, client_address: Any) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._request_semaphore.release()
+
+
+class AppHostThreadingHTTPServer(BoundedThreadingMixIn, ThreadingHTTPServer):
+    allow_reuse_address = True
+
+
+class UnixThreadingHTTPServer(BoundedThreadingMixIn, socketserver.UnixStreamServer):
+    pass
 
 
 def handler_for(app_host: ApplicationHost) -> type[AppHostRequestHandler]:
@@ -1591,12 +1874,12 @@ def handler_for(app_host: ApplicationHost) -> type[AppHostRequestHandler]:
     return Handler
 
 
-def build_server(config: AppHostConfig, host: str, port: int) -> ThreadingHTTPServer:
+def build_server(config: AppHostConfig, host: str, port: int) -> AppHostThreadingHTTPServer:
     return build_tcp_server(ApplicationHost(config), host, port)
 
 
-def build_tcp_server(app_host: ApplicationHost, host: str, port: int) -> ThreadingHTTPServer:
-    return ThreadingHTTPServer((host, port), handler_for(app_host))
+def build_tcp_server(app_host: ApplicationHost, host: str, port: int) -> AppHostThreadingHTTPServer:
+    return AppHostThreadingHTTPServer((host, port), handler_for(app_host))
 
 
 def build_unix_server(app_host: ApplicationHost, socket_path: Path, mode: int) -> UnixThreadingHTTPServer:

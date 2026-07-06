@@ -20,6 +20,8 @@ apps/lasagna-desktop/release/
 .env.*
 !.env.example
 wtf-app.env
+apphost/config/hosted-apps.env
+apphost/config/steam-admin.env
 *.local
 *.key
 *.pem

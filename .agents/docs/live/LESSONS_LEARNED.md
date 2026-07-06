@@ -1,3 +1,53 @@
+## 2026-07-06 - Gate summaries must match the audit surface they trust
+
+**What happened**: The Pasta repo cleanup audit had been hardened to classify current dirty files into release lanes, but the live-readiness wrapper still summarized the pass as only "branches/worktrees classified." The underlying JSON was correct, but the user-facing gate output under-described the most important current cleanup risk: accidentally bundling unrelated valid dirty lanes into one production push.
+
+**Why it mattered**: Release operators read the concise gate line first. If that line omits dirty-work classification, a mixed checkout can look cleaner than it is, and the next push can accidentally carry apphost, docs, and Pasta guardrail hunks together even though the audit knew they should be split.
+
+**Rule**: When an executable audit grows to cover a new release-safety surface, update the wrapper gate summary, policy tests, and evidence docs in the same pass. The short "ok" line must describe the evidence being trusted, not just the original subset of checks.
+
+---
+
+## 2026-07-06 - Cleanup docs need a current-state section before history
+
+**What happened**: The Pasta repo cleanup audit still opened with a July 2 branch/worktree story after the actual checkout had moved back to current `main` at `origin/main` with valid ongoing dirty work. Lower tables still described old proof worktrees and a stale dirty checkout as if they were live guidance.
+
+**Why it mattered**: Cleanup docs are operational instructions, not just archaeology. If historical branch/worktree classifications appear first or remain phrased as current truth, the next release pass can try to archive the active checkout, recreate missing historical refs, or push an over-broad dirty tree instead of splitting the valid work into safe lanes.
+
+**Rule**: When refreshing repo-cleanup evidence, put the current branch, worktree, dirty-state classification, and live blockers in the first section. Move older branch/worktree stories under explicit historical headings, and update any summary tables that still contradict the current audit output.
+
+---
+
+## 2026-07-06 - Production containers must refuse placeholder commit metadata
+
+**What happened**: The normal deploy script exported `COMMIT_SHA` from the checked-out repo before build/up, but Compose still defaulted runtime `COMMIT_REF` and `COMMIT_SHA` to `dev`. A direct compose recreate without the deploy script could therefore start a healthy-looking production container whose `/api/health` reported `commitRef:"dev"`.
+
+**Why it mattered**: Health metadata is release evidence, not decoration. If a production container can boot with placeholder metadata, live readiness can no longer prove which source revision is running even when the service, database, chain config, installers, and static assets all respond.
+
+**Rule**: Keep the normal deploy script responsible for exporting the checked-out git commit, and make production container startup fail closed when `COMMIT_REF` / `COMMIT_SHA` is missing, placeholder-like, non-hex, or outside the git-ref length range. Local compose helpers may supply the current git ref, but direct production recreates must not silently fall back to `dev`.
+
+---
+
+## 2026-07-06 - Release gates must separate health from deployment identity
+
+**What happened**: Pasta live readiness accepted `/api/health` when the service reported `nodeEnv:"production"`, then printed `commit dev` inside a passing live-health line. The live app was up, but the deployment identity was a placeholder rather than proof of the `main` revision running on `wtfos.app`.
+
+**Why it mattered**: Installer, static-runtime, repo-cleanup, and Colander checks only become credible production evidence when the live container can identify the deployed commit. A placeholder commit marker can make a direct compose recreate, stale build metadata, or wrong runtime env look like a valid release.
+
+**Rule**: Release gates must validate deployment identity as its own check. Treat missing, placeholder, non-git-shaped, or expected-commit-mismatched health markers as blockers while still allowing audit mode to collect the rest of the live evidence. Final launch mode must fail until `/api/health` reports a real commit from the normal deploy path.
+
+---
+
+## 2026-07-06 - Runtime launch paths must not replay provider passwords
+
+**What happened**: Remote Applications apphost hardening added private hosted-app provider credentials for operator refresh, but the normal Steam launch wrapper could source that env file and pass `-login` during user-triggered launches. The WebSocket input path also allowed an explicit app id before a joined apphost room, while inventory still described the play surface as a separate browser tab after it moved into a wtfOS window.
+
+**Why it mattered**: User-facing launches should depend on a remembered provider session for the isolated apphost account, not on replaying stored passwords. Remote input should stay bound to the same joined room as presence/signaling, and inventory should describe the actual interaction surface so E2E coverage follows the real product behavior.
+
+**Rule**: Keep provider credential files limited to explicit operator refresh helpers. Normal app launch wrappers must not source credential env files or pass provider login arguments. For realtime remote-control paths, require a joined session room before accepting control events, and update interaction inventory plus behavior assertions whenever a route changes from browser-tab behavior to managed window behavior.
+
+---
+
 ## 2026-07-02 - Credentialed publishers must reject response-host drift
 
 **What happened**: The Pasta WTF.ME publisher pinned credentials to the expected host before writes and verified the public host after publishing, but the write path did not explicitly reject a changed `site.host` in the publish response or a mismatched pin recovery host/scope before continuing.
@@ -7507,3 +7557,13 @@
 **Why it mattered**: wtfOS discoverability is registry-driven. A route that responds is still effectively missing when the desktop/start-menu/admin/package/doc gates cannot see the app key or decide whether the app is installable for a user.
 
 **Rule**: New route-first apps must land the whole app-key bundle in one pass: `DESKTOP_APPS`, `DESKTOP_APP_LABELS`, `DEFAULT_DESKTOP_APP_CONFIG`, Start Menu gate/icon mapping, desktop icon definition, `DESKTOP_ICON_LAYOUT_KEYS`, admin surface, package acceptance, doc-registry domain mapping, universal app-registry seed/key when `APP_REGISTRY_ENABLED` is on, domain docs, interaction inventory, and a focused policy test that fails if any gate drifts.
+
+---
+
+## 2026-07-06 - A long-lived Steam client silently poisons audio for every game it launches
+
+**What happened**: The apphost launched Jackbox correctly and the WebRTC pipeline negotiated VP8+OPUS, but the browser received pure silence. The game process had no `PULSE_SERVER` in its environment and PulseAudio showed zero sink-inputs while the game was "running with audio". Root cause: the Steam client on the host had been started manually days earlier (operator login session) without the PulseAudio environment. `steam -applaunch` against an already-running client is only an IPC message — the game inherits the *original* Steam daemon's environment, not the launcher script's. Everything downstream (pressure-vessel remap to `/run/pressure-vessel/pulse/native`, FMOD audio output, `pulsesrc` capture in the streamer) was fine once Steam itself was restarted with `PULSE_SERVER` set. Verified end to end: `pactl list short sink-inputs` shows the game's 6ch stream, `parec` on `auto_null.monitor` measures non-zero RMS, and a real Chromium `RTCPeerConnection` + `AnalyserNode` measured audible lobby music (max RMS ≈ 0.058) with 183 video frames decoded over 8s and ~78 ms RTT.
+
+**Why it mattered**: Every layer reported success — launch confirmed, health check green, WebRTC answer with an OPUS track, RTP audio bytes flowing (comfort noise) — while the user heard nothing. The one signal that actually proves audio is `sink-inputs` being non-empty plus a non-zero RMS on the monitor. Also, `show-pointer=true` in `ximagesrc` was double-drawing the remote X cursor under the browser's local cursor, which read as "input lag" even when injection was fast.
+
+**Rule**: For hosted-app audio, treat the long-lived provider client as part of the environment contract: `steam-launch.sh` must check a running Steam's `/proc/<pid>/environ` for `PULSE_SERVER` and restart it if missing before `-applaunch`. Prove audio with `pactl list short sink-inputs` + monitor RMS, and prove the full path with a real browser peer connection measuring decoded frames and analyser RMS — never accept "answer SDP has an audio m-line" as audio proof. Keep `show-pointer=false` in the capture pipeline so the only visible cursor is the user's local one. Note the apphost systemd service kills the game cgroup on restart, so any `--apply` deploy requires a relaunch afterward.

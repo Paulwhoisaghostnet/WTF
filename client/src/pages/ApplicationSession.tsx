@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type WheelEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type WheelEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "react95";
 import { ArrowLeft, Hourglass, MonitorUp, RefreshCw, Square } from "lucide-react";
 import styled from "styled-components";
 import { useLocation } from "wouter";
+import { AppWindow } from "../components/layout/AppWindow";
 import { api, isApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 
@@ -112,7 +113,8 @@ type StreamOfferResponse = {
 };
 
 const Page = styled.main`
-  min-height: 100vh;
+  height: 100%;
+  min-height: 420px;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   color: #f5f7fb;
@@ -189,11 +191,13 @@ const RemoteStage = styled.div`
   background: #050608;
   border: 1px solid #2c3038;
   overflow: hidden;
+  container-type: size;
 `;
 
-const RemoteFrame = styled.div<{ $aspect: string }>`
+const RemoteFrame = styled.div<{ $aspect: string; $aspectRatio: number }>`
   position: relative;
-  width: min(100%, calc((100vh - 118px) * ${(p) => p.$aspect}));
+  width: 100%;
+  width: min(100%, calc(100cqh * ${(p) => p.$aspectRatio}));
   max-height: 100%;
   aspect-ratio: ${(p) => p.$aspect};
   display: grid;
@@ -357,14 +361,14 @@ export function ApplicationSession({ appId }: { appId: string }) {
     queryKey: ["applications", "session", appId],
     queryFn: () => api.get<AppSessionResponse>(`/api/apphost/apps/${encodeURIComponent(appId)}/session`),
     enabled: Boolean(appId && user),
-    refetchInterval: 3000,
+    refetchInterval: 5000,
   });
 
   const statusQuery = useQuery({
     queryKey: ["applications", "status", appId],
     queryFn: () => api.get<StatusResponse>(`/api/apphost/apps/${encodeURIComponent(appId)}/status`),
     enabled: Boolean(appId && user),
-    refetchInterval: 1000,
+    refetchInterval: 2000,
   });
 
   const launchMutation = useMutation({
@@ -390,6 +394,7 @@ export function ApplicationSession({ appId }: { appId: string }) {
 
   const status = statusQuery.data?.status ?? sessionQuery.data?.status;
   const session = sessionQuery.data?.session;
+  const controlsReady = status?.state === "running";
   const iceServersKey = useMemo(
     () => JSON.stringify(session?.stream.iceServers ?? []),
     [session?.stream.iceServers],
@@ -398,23 +403,38 @@ export function ApplicationSession({ appId }: { appId: string }) {
     appId &&
       user &&
       status &&
-      ["running", "launching"].includes(status.state) &&
+      status.state === "running" &&
       streamState !== "connected",
   );
   const snapshotQuery = useQuery({
     queryKey: ["applications", "snapshot", appId],
     queryFn: () => api.get<AppSnapshotResponse>(`/api/apphost/apps/${encodeURIComponent(appId)}/snapshot`),
     enabled: shouldCapture,
-    refetchInterval: shouldCapture ? (status?.state === "running" ? 350 : 1000) : false,
+    refetchInterval: shouldCapture ? 1000 : false,
     staleTime: 0,
     gcTime: 1000,
   });
 
+  const resumeRemotePlayback = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = false;
+    const playAttempt = video.play();
+    if (playAttempt && typeof playAttempt.catch === "function") {
+      void playAttempt.catch(() => {
+        setStreamDetail("Audio will start after the remote session receives input.");
+      });
+    }
+  }, []);
+
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.srcObject = remoteStream;
+      if (remoteStream) {
+        resumeRemotePlayback();
+      }
     }
-  }, [remoteStream]);
+  }, [remoteStream, resumeRemotePlayback]);
 
   useEffect(() => {
     launchAttemptedRef.current = null;
@@ -556,12 +576,14 @@ export function ApplicationSession({ appId }: { appId: string }) {
   }, [appId, iceServersKey, session?.audio?.required, session?.stream.preferredTransport, status?.state, user]);
 
   function sendInput(event: Record<string, unknown>) {
+    if (!controlsReady) return;
     const ws = wsRef.current;
     const payload = JSON.stringify({ type: "apphost_input", appId, event });
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(payload);
       return;
     }
+    if (event.type === "pointer" && event.action === "move") return;
     void api.post(`/api/apphost/apps/${encodeURIComponent(appId)}/input`, event).catch(() => undefined);
   }
 
@@ -596,6 +618,8 @@ export function ApplicationSession({ appId }: { appId: string }) {
       const now = Date.now();
       if (now - lastMoveAtRef.current < 35) return;
       lastMoveAtRef.current = now;
+    } else {
+      resumeRemotePlayback();
     }
     const payload = pointerPayload(event, action);
     if (!payload) return;
@@ -607,6 +631,7 @@ export function ApplicationSession({ appId }: { appId: string }) {
 
   function handleWheelEvent(event: WheelEvent<HTMLDivElement>) {
     event.preventDefault();
+    resumeRemotePlayback();
     const frame = frameRef.current;
     if (!frame) return;
     const rect = frame.getBoundingClientRect();
@@ -622,6 +647,7 @@ export function ApplicationSession({ appId }: { appId: string }) {
 
   function handleKeyEvent(event: KeyboardEvent<HTMLDivElement>) {
     event.preventDefault();
+    resumeRemotePlayback();
     sendInput({
       type: "keyboard",
       action: event.type === "keydown" ? "down" : "up",
@@ -643,6 +669,12 @@ export function ApplicationSession({ appId }: { appId: string }) {
     const height = display?.height || 720;
     return `${width} / ${height}`;
   }, [sessionQuery.data?.session?.display]);
+  const aspectRatio = useMemo(() => {
+    const display = sessionQuery.data?.session?.display;
+    const width = display?.width || 1280;
+    const height = display?.height || 720;
+    return width / height;
+  }, [sessionQuery.data?.session?.display]);
   const loadError = sessionQuery.error || statusQuery.error || launchMutation.error || stopMutation.error || null;
 
   useEffect(() => {
@@ -652,88 +684,93 @@ export function ApplicationSession({ appId }: { appId: string }) {
   }, [isLoading, setLocation, user]);
 
   return (
-    <Page data-application-session-region="surface">
-      <Header data-application-session-region="header">
-        <TitleGroup>
-          <IconBox>
-            <MonitorUp size={18} />
-          </IconBox>
-          <TitleText>{appName}</TitleText>
-        </TitleGroup>
-        <HeaderActions>
-          <ChromeButton type="button" onClick={() => setLocation("/applications")}>
-            <ArrowLeft size={15} />
-            Applications
-          </ChromeButton>
-          <ChromeButton type="button" onClick={() => void statusQuery.refetch()}>
-            {statusQuery.isFetching ? <Hourglass size={15} /> : <RefreshCw size={15} />}
-            Status
-          </ChromeButton>
-          <ChromeButton type="button" onClick={() => stopMutation.mutate()} disabled={stopMutation.isPending || status?.state !== "running"}>
-            <Square size={15} />
-            Stop
-          </ChromeButton>
-        </HeaderActions>
-      </Header>
-      <Body>
-        {loadError ? (
-          <ErrorBar role="alert">
-            {isApiRequestError(loadError) ? loadError.message : "Application host is unavailable"}
-          </ErrorBar>
-        ) : null}
-        <RemoteStage data-application-session-region="stage">
-          <RemoteFrame
-            ref={frameRef}
-            $aspect={aspect}
-            tabIndex={0}
-            role="application"
-            aria-label={appName}
-            data-application-session-region="remote-surface"
-            onPointerDown={handlePointerEvent}
-            onPointerUp={handlePointerEvent}
-            onPointerMove={handlePointerEvent}
-            onWheel={handleWheelEvent}
-            onKeyDown={handleKeyEvent}
-            onKeyUp={handleKeyEvent}
-          >
-            {remoteStream ? (
-              <RemoteVideo
-                ref={videoRef}
-                autoPlay
-                playsInline
-                data-application-session-region="webrtc-video"
-              />
-            ) : snapshotQuery.data?.dataUrl ? (
-              <SnapshotImage
-                src={snapshotQuery.data.dataUrl}
-                alt=""
-                draggable={false}
-                data-application-session-region="snapshot"
-              />
-            ) : (
-              <WaitingSurface>
-                <Hourglass size={36} />
-              </WaitingSurface>
-            )}
-          </RemoteFrame>
-        </RemoteStage>
-        <StatusDock data-application-session-region="status">
-          <StatusLine>
-            <span>{progress.label}</span>
-            <span>{progress.percent}%</span>
-          </StatusLine>
-          <ProgressTrack
-            role="progressbar"
-            aria-label={`${appName} launch progress`}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress.percent}
-          >
-            <ProgressFill $percent={progress.percent} />
-          </ProgressTrack>
-          <Detail>{streamDetail || progress.detail || (socketReady ? "Session connected." : "Connecting session.")}</Detail>
-        </StatusDock>
-      </Body>
-    </Page>
+    <AppWindow title={appName}>
+      <Page data-application-session-region="surface">
+        <Header data-application-session-region="header">
+          <TitleGroup>
+            <IconBox>
+              <MonitorUp size={18} />
+            </IconBox>
+            <TitleText>{appName}</TitleText>
+          </TitleGroup>
+          <HeaderActions>
+            <ChromeButton type="button" onClick={() => setLocation("/applications")}>
+              <ArrowLeft size={15} />
+              Applications
+            </ChromeButton>
+            <ChromeButton type="button" onClick={() => void statusQuery.refetch()}>
+              {statusQuery.isFetching ? <Hourglass size={15} /> : <RefreshCw size={15} />}
+              Status
+            </ChromeButton>
+            <ChromeButton type="button" onClick={() => stopMutation.mutate()} disabled={stopMutation.isPending || status?.state !== "running"}>
+              <Square size={15} />
+              Stop
+            </ChromeButton>
+          </HeaderActions>
+        </Header>
+        <Body>
+          {loadError ? (
+            <ErrorBar role="alert">
+              {isApiRequestError(loadError) ? loadError.message : "Application host is unavailable"}
+            </ErrorBar>
+          ) : null}
+          <RemoteStage data-application-session-region="stage">
+            <RemoteFrame
+              ref={frameRef}
+              $aspect={aspect}
+              $aspectRatio={aspectRatio}
+              tabIndex={0}
+              role="application"
+              aria-label={appName}
+              data-application-session-region="remote-surface"
+              onPointerDown={handlePointerEvent}
+              onPointerUp={handlePointerEvent}
+              onPointerMove={handlePointerEvent}
+              onWheel={handleWheelEvent}
+              onKeyDown={handleKeyEvent}
+              onKeyUp={handleKeyEvent}
+            >
+              {remoteStream ? (
+                <RemoteVideo
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  onCanPlay={resumeRemotePlayback}
+                  onLoadedMetadata={resumeRemotePlayback}
+                  data-application-session-region="webrtc-video"
+                />
+              ) : snapshotQuery.data?.dataUrl ? (
+                <SnapshotImage
+                  src={snapshotQuery.data.dataUrl}
+                  alt=""
+                  draggable={false}
+                  data-application-session-region="snapshot"
+                />
+              ) : (
+                <WaitingSurface>
+                  <Hourglass size={36} />
+                </WaitingSurface>
+              )}
+            </RemoteFrame>
+          </RemoteStage>
+          <StatusDock data-application-session-region="status">
+            <StatusLine>
+              <span>{progress.label}</span>
+              <span>{progress.percent}%</span>
+            </StatusLine>
+            <ProgressTrack
+              role="progressbar"
+              aria-label={`${appName} launch progress`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progress.percent}
+            >
+              <ProgressFill $percent={progress.percent} />
+            </ProgressTrack>
+            <Detail>{streamDetail || progress.detail || (socketReady ? "Session connected." : "Connecting session.")}</Detail>
+          </StatusDock>
+        </Body>
+      </Page>
+    </AppWindow>
   );
 }

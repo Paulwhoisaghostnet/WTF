@@ -35,6 +35,27 @@ def quote_gst(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
+def offered_payload_type(sdp: str, media: str, codec: str, fallback: int) -> int:
+    in_media = False
+    codec_name = codec.lower()
+    for raw_line in sdp.splitlines():
+        line = raw_line.strip()
+        if line.startswith("m="):
+            in_media = line.startswith(f"m={media} ")
+            continue
+        if not in_media or not line.startswith("a=rtpmap:"):
+            continue
+        payload, _, encoding = line[len("a=rtpmap:") :].partition(" ")
+        encoding_name = encoding.split("/", 1)[0].lower()
+        if encoding_name != codec_name:
+            continue
+        try:
+            return int(payload)
+        except ValueError:
+            return fallback
+    return fallback
+
+
 def main() -> int:
     args = parse_args()
     offer_payload = json.loads(args.offer.read_text(encoding="utf-8"))
@@ -72,10 +93,11 @@ def main() -> int:
     local_answer: dict[str, str] = {}
 
     audio_required = bool((offer_payload.get("audio") or {}).get("required")) if isinstance(offer_payload, dict) else False
+    audio_payload_type = offered_payload_type(offer["sdp"], "audio", "opus", 111)
     width = max(320, min(7680, int(args.width)))
     height = max(240, min(4320, int(args.height)))
     video_chain = (
-        f'ximagesrc display-name="{quote_gst(args.display)}" use-damage=false show-pointer=true '
+        f'ximagesrc display-name="{quote_gst(args.display)}" use-damage=false show-pointer=false '
         f"! video/x-raw,framerate=30/1 "
         f"! videoconvert ! videoscale ! video/x-raw,width={width},height={height} "
         "! queue max-size-buffers=2 leaky=downstream "
@@ -88,10 +110,11 @@ def main() -> int:
     if audio_required and args.pulse_server:
         audio_chain = (
             f' pulsesrc server="{quote_gst(args.pulse_server)}" '
-            "! audioconvert ! audioresample "
+            "! audioconvert ! audioresample ! audio/x-raw,rate=48000,channels=2 "
+            "! queue max-size-buffers=8 leaky=downstream "
             "! opusenc inband-fec=true "
-            "! rtpopuspay pt=97 "
-            "! application/x-rtp,media=audio,encoding-name=OPUS,payload=97 "
+            f"! rtpopuspay pt={audio_payload_type} "
+            f"! application/x-rtp,media=audio,encoding-name=OPUS,payload={audio_payload_type},clock-rate=48000,encoding-params=(string)2 "
             "! webrtc."
         )
     pipeline_description = f"webrtcbin name=webrtc bundle-policy=max-bundle {video_chain}{audio_chain}"
@@ -128,7 +151,7 @@ def main() -> int:
                 "answer": local_answer,
                 "candidates": candidates,
                 "video": {"width": width, "height": height, "codec": "VP8"},
-                "audio": {"enabled": bool(audio_chain), "codec": "OPUS" if audio_chain else None},
+                "audio": {"enabled": bool(audio_chain), "codec": "OPUS" if audio_chain else None, "payloadType": audio_payload_type if audio_chain else None},
                 "capturedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             },
         )

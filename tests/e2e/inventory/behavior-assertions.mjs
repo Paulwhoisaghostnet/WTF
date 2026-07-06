@@ -334,6 +334,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The selected localization writes through /api/desktop/settings, survives reload in the inventory harness, updates document lang/dir/data-wtf-locale, and leaves user-authored media, token, pet, and profile strings outside the exact system text translation map.",
   },
   {
+    id: "applications.remote-apphost-window-input-boundary",
+    domain: "Desktop OS, Navigation, and Personal Environment",
+    ownerSurfaceIds: ["applications"],
+    ownerSpec:
+      "client/src/pages/applications-policy.test.ts, client/src/pages/applications-presentation-policy.test.ts, client/src/pages/application-session-policy.test.ts, server/websocket-apphost-input-policy.test.ts, apphost/tests/test_apphostd.py",
+    verificationCommand:
+      "npx tsx --test client/src/pages/applications-policy.test.ts client/src/pages/applications-presentation-policy.test.ts client/src/pages/application-session-policy.test.ts server/websocket-apphost-input-policy.test.ts && python3 -m unittest apphost.tests.test_apphostd",
+    userVisibleAssertion:
+      "A signed-in user opens Remote Applications into a managed wtfOS play window, sees public apphost maintenance states without provider/runtime secrets, and can send remote input only after joining the matching apphost session room.",
+    durableSideEffectAssertion:
+      "Source and apphost policy tests prove the Applications route uses the window manager instead of browser tabs, the play route is no longer fullscreen-only, apphost WebSocket input rejects pre-join or mismatched app ids, and normal hosted-app launches require a remembered provider session instead of reusing stored provider passwords.",
+  },
+  {
     id: "desktop.app-gates-runtime-policy",
     domain: "Desktop OS, Navigation, and Personal Environment",
     ownerSurfaceIds: ["admin-panel", "command-palette", "desktop-icons"],

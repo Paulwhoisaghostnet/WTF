@@ -31,6 +31,9 @@ const MAX_WTF_LIVE_AVATAR_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_AVATAR_BYTES 
 const MAX_WTF_LIVE_SIGNAL_LENGTH = 256 * 1024;
 const MAX_APPHOST_SIGNAL_LENGTH = 256 * 1024;
 const MAX_APPHOST_INPUT_LENGTH = 16 * 1024;
+const APPHOST_INPUT_TIMEOUT_MS = 2_000;
+const APPHOST_INPUT_MOVE_FLUSH_MS = 16;
+const APPHOST_INPUT_QUEUE_LIMIT = 32;
 const MAX_WTF_LIVE_SOUNDBOARD_BYTES = 1_200_000;
 const MAX_WTF_LIVE_SOUNDBOARD_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_SOUNDBOARD_BYTES * 1.4);
 const WTF_LIVE_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "video/mp4"]);
@@ -125,7 +128,25 @@ interface WsClient {
   greenRoomLocationId?: string;
   appHostAppId?: string;
   appHostPeerId?: string;
+  appHostInputQueue?: AppHostInputQueue;
 }
+
+type AppHostInputEvent = Record<string, unknown>;
+
+type AppHostQueuedInput = {
+  appId: string;
+  event: AppHostInputEvent;
+  ack: boolean;
+};
+
+type AppHostInputQueue = {
+  client: WsClient;
+  appId: string;
+  running: boolean;
+  latestMove: AppHostInputEvent | null;
+  queue: AppHostQueuedInput[];
+  flushTimer: ReturnType<typeof setTimeout> | null;
+};
 
 const clients = new Set<WsClient>();
 const SESSION_COOKIE_NAME = "connect.sid";
@@ -393,6 +414,126 @@ function normalizeAppHostAppId(value: unknown): string | null {
   const appId = String(value || "").trim();
   if (!/^[a-z0-9][a-z0-9._-]{1,80}$/i.test(appId)) return null;
   return appId;
+}
+
+function isAppHostPointerMove(event: AppHostInputEvent): boolean {
+  return event.type === "pointer" && event.action === "move";
+}
+
+function clearAppHostInputQueue(client: WsClient) {
+  const inputQueue = client.appHostInputQueue;
+  if (!inputQueue) return;
+  if (inputQueue.flushTimer) {
+    clearTimeout(inputQueue.flushTimer);
+  }
+  inputQueue.latestMove = null;
+  inputQueue.queue = [];
+  inputQueue.running = false;
+  client.appHostInputQueue = undefined;
+}
+
+function appHostInputQueueFor(client: WsClient, appId: string): AppHostInputQueue {
+  if (client.appHostInputQueue?.appId === appId) {
+    return client.appHostInputQueue;
+  }
+  clearAppHostInputQueue(client);
+  const inputQueue: AppHostInputQueue = {
+    client,
+    appId,
+    running: false,
+    latestMove: null,
+    queue: [],
+    flushTimer: null,
+  };
+  client.appHostInputQueue = inputQueue;
+  return inputQueue;
+}
+
+function scheduleAppHostInputDrain(inputQueue: AppHostInputQueue, delayMs = 0) {
+  if (inputQueue.flushTimer || inputQueue.running) return;
+  inputQueue.flushTimer = setTimeout(() => {
+    inputQueue.flushTimer = null;
+    void drainAppHostInputQueue(inputQueue);
+  }, delayMs);
+}
+
+function compactAppHostInputQueue(inputQueue: AppHostInputQueue) {
+  while (inputQueue.queue.length > APPHOST_INPUT_QUEUE_LIMIT) {
+    const dropIndex = inputQueue.queue.findIndex((item) => isAppHostPointerMove(item.event));
+    inputQueue.queue.splice(dropIndex >= 0 ? dropIndex : 0, 1);
+  }
+}
+
+function enqueueAppHostInput(client: WsClient, appId: string, event: AppHostInputEvent) {
+  const inputQueue = appHostInputQueueFor(client, appId);
+  if (isAppHostPointerMove(event)) {
+    inputQueue.latestMove = event;
+    scheduleAppHostInputDrain(inputQueue, APPHOST_INPUT_MOVE_FLUSH_MS);
+    return;
+  }
+
+  inputQueue.queue.push({ appId, event, ack: true });
+  compactAppHostInputQueue(inputQueue);
+  scheduleAppHostInputDrain(inputQueue);
+}
+
+async function sendQueuedAppHostInput(inputQueue: AppHostInputQueue, item: AppHostQueuedInput) {
+  const encoded = JSON.stringify(item.event);
+  try {
+    const upstream = await fetchAppHostJson(`/apps/${item.appId}/input`, {
+      method: "POST",
+      body: encoded,
+      headers: { "Content-Type": "application/json" },
+      timeoutMs: APPHOST_INPUT_TIMEOUT_MS,
+    });
+    if (item.ack) {
+      sendJson(inputQueue.client.ws, {
+        type: "apphost_input_ack",
+        appId: item.appId,
+        ok: upstream.status >= 200 && upstream.status < 300,
+        status: upstream.status,
+        result: upstream.body,
+      });
+    }
+  } catch (error) {
+    if (item.ack) {
+      sendJson(inputQueue.client.ws, {
+        type: "apphost_input_ack",
+        appId: item.appId,
+        ok: false,
+        status: 502,
+        result: { ok: false, error: error instanceof Error ? error.message : "Apphost input failed" },
+      });
+    }
+  }
+}
+
+async function drainAppHostInputQueue(inputQueue: AppHostInputQueue) {
+  if (inputQueue.running) return;
+  inputQueue.running = true;
+  try {
+    while (
+      inputQueue.client.ws.readyState === WebSocket.OPEN &&
+      inputQueue.client.appHostInputQueue === inputQueue
+    ) {
+      let item = inputQueue.queue.shift();
+      if (!item && inputQueue.latestMove) {
+        item = { appId: inputQueue.appId, event: inputQueue.latestMove, ack: false };
+        inputQueue.latestMove = null;
+      }
+      if (!item) break;
+      await sendQueuedAppHostInput(inputQueue, item);
+    }
+  } finally {
+    inputQueue.running = false;
+    if (
+      inputQueue.client.ws.readyState === WebSocket.OPEN &&
+      inputQueue.client.appHostInputQueue === inputQueue &&
+      (inputQueue.queue.length > 0 || inputQueue.latestMove)
+    ) {
+      scheduleAppHostInputDrain(inputQueue, inputQueue.latestMove && inputQueue.queue.length === 0 ? APPHOST_INPUT_MOVE_FLUSH_MS : 0);
+    }
+  }
 }
 
 function snapshotAppHostPeers(appId: string, exclude?: WsClient) {
@@ -891,8 +1032,8 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         sendJson(client.ws, { type: "error", message: "Use the apphost socket." });
         return;
       }
-      const appId = normalizeAppHostAppId(msg.appId) || client.appHostAppId;
-      if (!appId || (client.appHostAppId && client.appHostAppId !== appId)) {
+      const appId = normalizeAppHostAppId(msg.appId);
+      if (!client.appHostAppId || !appId || client.appHostAppId !== appId) {
         sendJson(client.ws, { type: "error", message: "Join the apphost room before sending input." });
         return;
       }
@@ -906,18 +1047,7 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         sendJson(client.ws, { type: "error", message: "Apphost input event is too large" });
         return;
       }
-      const upstream = await fetchAppHostJson(`/apps/${appId}/input`, {
-        method: "POST",
-        body: encoded,
-        headers: { "Content-Type": "application/json" },
-      });
-      sendJson(client.ws, {
-        type: "apphost_input_ack",
-        appId,
-        ok: upstream.status >= 200 && upstream.status < 300,
-        status: upstream.status,
-        result: upstream.body,
-      });
+      enqueueAppHostInput(client, appId, event);
       break;
     }
 
@@ -1507,6 +1637,7 @@ function leaveGreenRoomLocation(client: WsClient) {
 }
 
 function leaveAppHostRoom(client: WsClient) {
+  clearAppHostInputQueue(client);
   if (!client.appHostAppId || !client.appHostPeerId) return;
   const appId = client.appHostAppId;
   const peerId = client.appHostPeerId;

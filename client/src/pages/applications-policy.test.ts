@@ -10,11 +10,18 @@ test("Applications page is backed by the apphost launcher API", () => {
   assert.match(source, /api\.get<ApplicationsResponse>\("\/api\/apphost\/apps"\)/);
   assert.match(source, /api\.post<LaunchResponse>\(`\/api\/apphost\/apps\/\$\{encodeURIComponent\(appId\)\}\/stop`, \{\}\)/);
   assert.match(source, /api\.get<StatusResponse>\(`\/api\/apphost\/apps\/\$\{encodeURIComponent\(appId\)\}\/status`\)/);
+  assert.match(source, /refetchInterval: activeId \? 2500 : false/);
 });
 
-test("Applications open action launches the remote app in a browser play tab", () => {
+test("Applications open action launches the remote app inside a wtfOS window", () => {
   assert.match(source, /function applicationPlayPath\(appId: string\)/);
-  assert.match(source, /window\.open\(applicationPlayPath\(appId\), "_blank"/);
+  assert.match(source, /useWindowManager/);
+  assert.match(source, /function hostedAppWindowBounds\(\)/);
+  assert.match(source, /window\.innerWidth \* 0\.9/);
+  assert.match(source, /wm\.openPage\(path\)/);
+  assert.match(source, /wm\.setSize\(path, bounds\.width, bounds\.height\)/);
+  assert.match(source, /wm\.setPosition\(path, bounds\.x, bounds\.y\)/);
+  assert.doesNotMatch(source, /window\.open\(applicationPlayPath\(appId\), "_blank"/);
   assert.doesNotMatch(source, /launchMutation\.mutate\(activeApp\.id\)/);
 });
 
@@ -34,6 +41,7 @@ test("Applications is a session desktop route", () => {
   assert.match(pageDefs, /pattern: "\/applications\/:appId\/play"/);
   assert.match(pageDefs, /title: "Applications"/);
   assert.match(pageDefs, /title: "Remote Application"/);
+  assert.doesNotMatch(pageDefs, /FULLSCREEN_ROUTES[\s\S]*"\/applications\/:appId\/play"/);
   assert.match(browserRoutes, /\{ pattern: "\/applications", auth: true, title: "Applications" \}/);
   assert.match(browserRoutes, /\{ pattern: "\/applications\/:appId\/play", auth: true, title: "Remote Application" \}/);
 });

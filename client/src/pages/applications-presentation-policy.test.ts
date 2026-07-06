@@ -69,11 +69,13 @@ test("Applications presents remote titles from apphost manifests", () => {
   assert.match(applicationsSource, /selectedBlockedByActiveSession/);
 });
 
-test("Applications keeps shared apphost API behavior raw", () => {
+test("Applications keeps shared apphost API behavior raw and window-managed", () => {
   assert.match(applicationsSource, /api\.get<ApplicationsResponse>\("\/api\/apphost\/apps"\)/);
   assert.match(applicationsSource, /function fetchStatus\(appId: string\)/);
   assert.match(applicationsSource, /\/api\/apphost\/apps\/\$\{encodeURIComponent\(appId\)\}\/status/);
   assert.match(applicationsSource, /api\.post<LaunchResponse>\(`\/api\/apphost\/apps\/\$\{encodeURIComponent\(appId\)\}\/stop`, \{\}\)/);
-  assert.match(applicationsSource, /window\.open\(applicationPlayPath\(appId\), "_blank"/);
+  assert.match(applicationsSource, /wm\.openPage\(path\)/);
+  assert.match(applicationsSource, /wm\.setSize\(path, bounds\.width, bounds\.height\)/);
+  assert.doesNotMatch(applicationsSource, /window\.open\(applicationPlayPath\(appId\), "_blank"/);
   assert.doesNotMatch(applicationsSource, /\/api\/gamma/);
 });

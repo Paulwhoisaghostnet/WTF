@@ -625,6 +625,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "applications.stop_requested",
       "app.interaction.tracked",
     ],
+    behaviorAssertionIds: ["applications.remote-apphost-window-input-boundary"],
   },
   {
     id: "wim",

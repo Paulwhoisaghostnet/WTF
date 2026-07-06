@@ -46,6 +46,36 @@ Restart the audio service if the socket is missing:
 sudo systemctl restart wtfos-apphost-pulse.service
 ```
 
+## Game Runs But Has No Audio
+
+The Steam client keeps the environment it was first started with for its whole
+lifetime, and `steam -applaunch` against an already-running client only sends
+an IPC message. If Steam was ever started manually without `PULSE_SERVER`
+(for example during operator login/diagnostics), every game it launches will
+have a dead audio path even though the apphost passes the right environment.
+
+Confirm the symptom: the game process is running but PulseAudio has no clients:
+
+```bash
+sudo -u wtfos-apphost env \
+  XDG_RUNTIME_DIR=/opt/wtfos/apphost/run/user \
+  PULSE_SERVER=unix:/opt/wtfos/apphost/run/pulse/native \
+  pactl list short sink-inputs
+```
+
+An empty list while a game is running means the audio path is dead.
+`steam-launch.sh` now detects a running Steam without `PULSE_SERVER` in its
+environment and restarts it before launching, so a stop + relaunch through the
+apphost API self-heals this. To verify audio is actually flowing, record the
+null-sink monitor and check the RMS level is non-zero:
+
+```bash
+sudo -u wtfos-apphost env \
+  XDG_RUNTIME_DIR=/opt/wtfos/apphost/run/user \
+  PULSE_SERVER=unix:/opt/wtfos/apphost/run/pulse/native \
+  timeout 4 parec --device=auto_null.monitor --format=s16le --rate=48000 --channels=2 /tmp/audio.raw
+```
+
 ## Screenshots
 
 ```bash
@@ -131,8 +161,9 @@ installed for creative apps with drag-heavy workflows.
 
 ## Interactive Virtual Desktop
 
-The optional VNC bridge is for one-time Steam login and emergency desktop
-inspection. It binds to `127.0.0.1:5901` on the Hetzner host only.
+The optional VNC bridge is for operator-only credential/session repair and
+emergency desktop inspection. It binds to `127.0.0.1:5901` on the Hetzner host
+only.
 
 ```bash
 sudo systemctl status wtfos-apphost-vnc.service
@@ -165,33 +196,35 @@ continues across all manifests, captures OpenGL, Mesa fallback, audio, status,
 and screenshot artifacts for each application, and writes a `failures.txt`
 summary before exiting non-zero when any required check fails.
 
-To validate from a local checkout after the host is installed, Steam is logged
-in, and the games are installed:
+To validate from a local checkout after the host is installed, the private
+hosted-app credential env/session is configured, and the games are installed:
 
 ```bash
 apphost/scripts/deploy-hetzner-apphost.sh --validate
 ```
 
-## Steam Session Handoff Modal
+## Provider Session Handoff Modal
 
-Steam may block launch with a modal like:
+The current Jackbox provider may block launch with a modal like:
 
 ```text
 You are logged in on another computer already playing American Truck Simulator.
 Launching The Jackbox Party Pack 10 here will disconnect the other session from Steam.
 ```
 
-This is an account/session decision, not an apphost graphics failure. Do not
-click `Continue` unless disconnecting the other Steam session is acceptable.
+This is an account/session decision, not an apphost graphics failure. End users
+should see only generic host-maintenance progress while an operator resolves it.
+Do not click `Continue` unless disconnecting the other provider session is
+acceptable.
 
-Jackbox manifests use a 360 second startup timeout for the Steam launcher path.
-If Steam finishes launching after that window, the next status call records
+Jackbox manifests use a 360 second startup timeout for the provider launcher
+path. If the provider finishes launching after that window, the next status call records
 `startupRecoveredAfterTimeout: true` once the game process becomes healthy.
 
 When handoff is approved:
 
 1. Open the virtual desktop through the loopback VNC/noVNC path.
-2. Click `Continue` in the Steam modal.
+2. Click `Continue` in the provider modal.
 3. Rerun `sudo /opt/wtfos/apphost/scripts/validate-apps.sh`.
 4. Confirm `failures.txt` is absent or empty, each app status reports
    `state: running` during validation, and each app directory has
@@ -202,12 +235,18 @@ When handoff is approved:
 
 ## Game Does Not Launch
 
-1. Confirm the Steam account is logged in on the apphost user.
+1. Confirm a remembered provider session exists for the `wtfos-apphost` user.
+   Normal launches do not pass stored provider passwords.
 2. Confirm the game is owned and installed for that account.
-3. Confirm Steam is not already playing another game on a different computer;
-   Steam may require approving a session handoff before it launches Jackbox.
-4. Check `/opt/wtfos/apphost/state/logs/{app}.stderr.log`.
-5. Run `validate-apps.sh` and inspect the captured OpenGL, audio, and screenshot
+3. Confirm the provider account is not already playing another game on a
+   different computer; the provider may require approving a session handoff
+   before it launches Jackbox.
+4. If the remembered session is missing or stale, populate the private
+   `/opt/wtfos/apphost/config/hosted-apps.env` file with mode `0600` or `0400`,
+   then run `sudo /opt/wtfos/apphost/scripts/steam-login-once.sh` to refresh the
+   provider session as an operator. Remove any one-time guard code afterward.
+5. Check `/opt/wtfos/apphost/state/logs/{app}.stderr.log`.
+6. Run `validate-apps.sh` and inspect the captured OpenGL, audio, and screenshot
    artifacts.
 
 ## wtfOS Says Another User Is Already In An App

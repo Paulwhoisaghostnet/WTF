@@ -11,6 +11,15 @@ type AppHostTransport =
   | { type: "http"; baseUrl: string }
   | { type: "unix"; socketPath: string };
 
+type AppHostFetchInit = RequestInit & {
+  timeoutMs?: number;
+};
+
+function timeoutFrom(value: unknown, fallback: number): number {
+  const timeout = Number(value);
+  return Number.isFinite(timeout) && timeout > 0 ? timeout : fallback;
+}
+
 function isLoopbackHostname(hostname: string): boolean {
   return hostname === "127.0.0.1" || hostname === "localhost" || hostname === "::1" || hostname === "[::1]";
 }
@@ -87,23 +96,25 @@ export function appHostProxyPath(path: string): string {
   return normalized;
 }
 
-export async function fetchAppHostJson(path: string, init: RequestInit = {}) {
+export async function fetchAppHostJson(path: string, init: AppHostFetchInit = {}) {
   const upstreamPath = appHostProxyPath(path);
   const resolvedEnv = resolveAppHostEnv();
   const transport = resolveAppHostTransport(resolvedEnv);
-  const timeoutMs = Number(resolvedEnv.WTFOS_APPHOST_TIMEOUT_MS || 15_000);
+  const { timeoutMs: requestedTimeoutMs, ...requestInit } = init;
+  const defaultTimeoutMs = timeoutFrom(resolvedEnv.WTFOS_APPHOST_TIMEOUT_MS, 15_000);
+  const timeoutMs = timeoutFrom(requestedTimeoutMs, defaultTimeoutMs);
   if (transport.type === "unix") {
-    return fetchAppHostJsonOverSocket(transport.socketPath, upstreamPath, init, timeoutMs);
+    return fetchAppHostJsonOverSocket(transport.socketPath, upstreamPath, requestInit, timeoutMs);
   }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${transport.baseUrl}${upstreamPath}`, {
-      ...init,
+      ...requestInit,
       signal: controller.signal,
       headers: {
         Accept: "application/json",
-        ...(init.headers || {}),
+        ...(requestInit.headers || {}),
       },
     });
     const body = await response.json().catch(() => ({

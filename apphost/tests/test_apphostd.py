@@ -16,14 +16,27 @@ from apphostd import (  # noqa: E402
     AppHostConfig,
     AppHostInputError,
     AppHostStreamError,
+    AppHostThreadingHTTPServer,
     ApplicationHost,
+    BoundedThreadingMixIn,
     ProbeResult,
+    UnixThreadingHTTPServer,
+    X11InputInjector,
     build_unix_server,
     prepare_launch_environment,
 )
 
 
 class AppHostTests(unittest.TestCase):
+    def test_input_injector_and_servers_are_bounded_for_interactive_load(self):
+        injector = X11InputInjector(":99")
+
+        self.assertIsInstance(injector._lock, threading.Lock().__class__)  # noqa: SLF001
+        self.assertTrue(issubclass(AppHostThreadingHTTPServer, BoundedThreadingMixIn))
+        self.assertTrue(issubclass(UnixThreadingHTTPServer, BoundedThreadingMixIn))
+        self.assertEqual(AppHostThreadingHTTPServer.max_request_threads, 48)
+        self.assertEqual(UnixThreadingHTTPServer.max_request_threads, 48)
+
     def test_manifest_driven_launch_status_and_stop(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -256,6 +269,241 @@ class AppHostTests(unittest.TestCase):
             self.assertTrue(status["diagnostics"]["startupConfirmed"])
             self.assertFalse(status["diagnostics"]["startupTimedOut"])
 
+    def test_process_name_launcher_exit_fails_after_grace_instead_of_full_timeout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifests = root / "manifests"
+            state = root / "state"
+            bin_dir = root / "bin"
+            manifests.mkdir()
+            state.mkdir()
+            bin_dir.mkdir()
+
+            executable = bin_dir / "steam-style-launcher"
+            executable.write_text("#!/usr/bin/env sh\nexit 0\n", encoding="utf-8")
+            executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
+
+            (manifests / "steam-style.json").write_text(
+                json.dumps(
+                    {
+                        "id": "steam-style",
+                        "name": "Steam Style App",
+                        "executable": str(executable),
+                        "working_directory": str(root),
+                        "environment": {},
+                        "startup_timeout": 5,
+                        "health_check": {
+                            "type": "process_name",
+                            "pattern": "FakeGame",
+                            "launcher_exit_grace": 0.1,
+                        },
+                        "display_required": False,
+                        "audio_required": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            host = ApplicationHost(AppHostConfig(manifest_dir=manifests, state_dir=state))
+
+            started = time.monotonic()
+            launch = host.launch("steam-style")
+            elapsed = time.monotonic() - started
+
+            self.assertLess(elapsed, 2.5)
+            self.assertEqual(launch["status"]["state"], "failed")
+            self.assertEqual(launch["status"]["progress"]["phase"], "failed")
+            private_status = host.status("steam-style", private_diagnostics=True)
+            self.assertTrue(private_status["diagnostics"]["launcherExitedBeforeHealth"])
+            self.assertFalse(private_status["diagnostics"]["startupTimedOut"])
+            self.assertEqual(
+                private_status["diagnostics"]["startupFailure"],
+                "launcher exited before application health check became healthy",
+            )
+
+    def test_steam_manifest_without_admin_session_blocks_before_spawn(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifests = root / "manifests"
+            state = root / "state"
+            bin_dir = root / "bin"
+            steam_home = root / "steam-home"
+            manifests.mkdir()
+            state.mkdir()
+            bin_dir.mkdir()
+            steam_home.mkdir()
+
+            marker = state / "spawned"
+            executable = bin_dir / "hosted-launcher"
+            executable.write_text(f"#!/usr/bin/env sh\ntouch {marker}\nsleep 30\n", encoding="utf-8")
+            executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
+
+            (manifests / "hosted-style.json").write_text(
+                json.dumps(
+                    {
+                        "id": "hosted-style",
+                        "name": "Hosted Style App",
+                        "executable": str(executable),
+                        "working_directory": str(root),
+                        "environment": {"HOME": str(steam_home), "STEAM_APP_ID": "123"},
+                        "startup_timeout": 5,
+                        "health_check": {"type": "process"},
+                        "display_required": False,
+                        "audio_required": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            host = ApplicationHost(AppHostConfig(manifest_dir=manifests, state_dir=state))
+            launch = host.launch("hosted-style")
+
+            self.assertFalse(marker.exists())
+            self.assertEqual(launch["status"]["state"], "failed")
+            self.assertEqual(launch["status"]["progress"]["phase"], "blocked")
+            self.assertTrue(launch["status"]["diagnostics"]["adminMaintenanceRequired"])
+            self.assertFalse(launch["status"]["diagnostics"]["startupTimedOut"])
+            self.assertNotRegex(json.dumps(launch["status"]), r"Steam|steam|STEAM")
+            private_status = host.status("hosted-style", private_diagnostics=True)
+            self.assertTrue(private_status["diagnostics"]["adminAuthRequired"])
+            self.assertEqual(
+                private_status["diagnostics"]["startupFailure"],
+                "host maintenance required before application launch",
+            )
+
+    def test_steam_manifest_with_private_credentials_still_requires_remembered_session(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifests = root / "manifests"
+            state = root / "state"
+            bin_dir = root / "bin"
+            steam_home = root / "steam-home"
+            credential_env = root / "hosted-apps.env"
+            manifests.mkdir()
+            state.mkdir()
+            bin_dir.mkdir()
+            steam_home.mkdir()
+            credential_env.write_text(
+                "\n".join(
+                    [
+                        "WTFOS_APPHOST_STEAM_ADMIN_LOGIN=1",
+                        "WTFOS_APPHOST_STEAM_USERNAME=apphost",
+                        "WTFOS_APPHOST_STEAM_PASSWORD=secret",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            marker = state / "spawned"
+            executable = bin_dir / "hosted-launcher"
+            executable.write_text(f"#!/usr/bin/env sh\ntouch {marker}\nsleep 30\n", encoding="utf-8")
+            executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
+
+            (manifests / "hosted-style.json").write_text(
+                json.dumps(
+                    {
+                        "id": "hosted-style",
+                        "name": "Hosted Style App",
+                        "executable": str(executable),
+                        "working_directory": str(root),
+                        "environment": {"HOME": str(steam_home), "STEAM_APP_ID": "123"},
+                        "startup_timeout": 2,
+                        "health_check": {"type": "process"},
+                        "display_required": False,
+                        "audio_required": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            previous = os.environ.get("WTFOS_APPHOST_CREDENTIAL_ENV_FILE")
+            os.environ["WTFOS_APPHOST_CREDENTIAL_ENV_FILE"] = str(credential_env)
+            try:
+                host = ApplicationHost(AppHostConfig(manifest_dir=manifests, state_dir=state))
+                launch = host.launch("hosted-style")
+            finally:
+                if previous is None:
+                    os.environ.pop("WTFOS_APPHOST_CREDENTIAL_ENV_FILE", None)
+                else:
+                    os.environ["WTFOS_APPHOST_CREDENTIAL_ENV_FILE"] = previous
+
+            self.assertFalse(marker.exists())
+            self.assertEqual(launch["status"]["state"], "failed")
+            self.assertEqual(launch["status"]["progress"]["phase"], "blocked")
+            self.assertNotRegex(json.dumps(launch["status"]), r"Steam|steam|STEAM|secret")
+            private_status = host.status("hosted-style", private_diagnostics=True)
+            self.assertTrue(private_status["diagnostics"]["adminAuthRequired"])
+            self.assertTrue(private_status["diagnostics"]["deliveryAuth"]["storedCredentialsConfigured"])
+
+    def test_normal_steam_launch_wrapper_never_reads_private_credentials(self):
+        launch_source = (Path(__file__).resolve().parents[1] / "bin" / "steam-launch.sh").read_text(encoding="utf-8")
+
+        self.assertNotIn("source \"$STEAM_ENV_FILE\"", launch_source)
+        self.assertNotIn("WTFOS_APPHOST_STEAM_PASSWORD", launch_source)
+        self.assertNotIn("-login", launch_source)
+
+    def test_steam_login_window_failure_reports_admin_auth_required(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifests = root / "manifests"
+            state = root / "state"
+            bin_dir = root / "bin"
+            steam_home = root / "steam-home"
+            manifests.mkdir()
+            state.mkdir()
+            bin_dir.mkdir()
+            (steam_home / ".local/share/Steam/config").mkdir(parents=True)
+            (steam_home / ".local/share/Steam/logs").mkdir(parents=True)
+
+            (steam_home / ".local/share/Steam/config/loginusers.vdf").write_text(
+                '"users" { "76561190000000000" { "AccountName" "apphost" '
+                '"RememberPassword" "1" "AllowAutoLogin" "1" } }',
+                encoding="utf-8",
+            )
+            (steam_home / ".local/share/Steam/logs/webhelper.txt").write_text(
+                "[2026-07-05 01:49:39] Startup - webhelper launched pid: 123 "
+                "commandline: ./steamwebhelper -steamid=0\n"
+                "[2026-07-05 01:49:41] SP DesktopLoginWindow_uid0: Created window\n",
+                encoding="utf-8",
+            )
+
+            executable = bin_dir / "hosted-launcher"
+            executable.write_text("#!/usr/bin/env sh\nexit 0\n", encoding="utf-8")
+            executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
+
+            (manifests / "hosted-style.json").write_text(
+                json.dumps(
+                    {
+                        "id": "hosted-style",
+                        "name": "Hosted Style App",
+                        "executable": str(executable),
+                        "working_directory": str(root),
+                        "environment": {"HOME": str(steam_home), "STEAM_APP_ID": "123"},
+                        "startup_timeout": 5,
+                        "health_check": {
+                            "type": "process_name",
+                            "pattern": "FakeGame",
+                            "launcher_exit_grace": 0.1,
+                        },
+                        "display_required": False,
+                        "audio_required": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            host = ApplicationHost(AppHostConfig(manifest_dir=manifests, state_dir=state))
+            launch = host.launch("hosted-style")
+
+            self.assertEqual(launch["status"]["state"], "failed")
+            self.assertEqual(launch["status"]["progress"]["phase"], "blocked")
+            self.assertTrue(launch["status"]["diagnostics"]["adminMaintenanceRequired"])
+            self.assertFalse(launch["status"]["diagnostics"]["startupTimedOut"])
+            self.assertNotRegex(json.dumps(launch["status"]), r"Steam|steam|STEAM")
+            private_status = host.status("hosted-style", private_diagnostics=True)
+            self.assertTrue(private_status["diagnostics"]["adminAuthRequired"])
+            self.assertTrue(private_status["diagnostics"]["deliveryAuth"]["recentProviderLoginWindow"])
+
     def test_stop_terminates_process_name_health_targets_without_process_group(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -349,19 +597,20 @@ class AppHostTests(unittest.TestCase):
             self.assertEqual(launch["status"]["progress"]["label"], "Could not open application")
             self.assertNotRegex(json.dumps(launch["status"]["progress"]), r"Steam|steam")
             self.assertEqual(launch["status"]["health"]["type"], "process_name")
-            self.assertFalse(launch["status"]["diagnostics"]["mesaSoftwareFallback"])
-            self.assertNotIn("mesaRelaunchAfterEarlyExit", launch["status"]["diagnostics"])
-            self.assertFalse(launch["status"]["diagnostics"]["startupConfirmed"])
-            self.assertTrue(launch["status"]["diagnostics"]["startupTimedOut"])
+            private_status = host.status("steam-style", private_diagnostics=True)
+            self.assertFalse(private_status["diagnostics"]["mesaSoftwareFallback"])
+            self.assertNotIn("mesaRelaunchAfterEarlyExit", private_status["diagnostics"])
+            self.assertFalse(private_status["diagnostics"]["startupConfirmed"])
+            self.assertTrue(private_status["diagnostics"]["startupTimedOut"])
             self.assertEqual(
-                launch["status"]["diagnostics"]["startupFailure"],
+                private_status["diagnostics"]["startupFailure"],
                 "health check did not become healthy before startup timeout",
             )
             self.assertEqual(
-                launch["status"]["diagnostics"]["lastStartupAttempt"]["healthCheckType"],
+                private_status["diagnostics"]["lastStartupAttempt"]["healthCheckType"],
                 "process_name",
             )
-            self.assertIn("desktopEvidence", launch["status"]["diagnostics"]["lastStartupAttempt"])
+            self.assertIn("desktopEvidence", private_status["diagnostics"]["lastStartupAttempt"])
 
     def test_process_name_status_recovers_late_healthy_startup_timeout(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -412,7 +661,7 @@ class AppHostTests(unittest.TestCase):
                 },
             )
 
-            status = host.status("steam-style")
+            status = host.status("steam-style", private_diagnostics=True)
 
             self.assertEqual(status["state"], "running")
             self.assertIsNone(status["stoppedAt"])

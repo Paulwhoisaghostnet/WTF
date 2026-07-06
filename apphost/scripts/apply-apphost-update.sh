@@ -10,6 +10,37 @@ if [[ "$(id -u)" -ne 0 ]]; then
   exit 77
 fi
 
+seed_hosted_apps_env() {
+  local env_file="$TARGET_DIR/config/hosted-apps.env"
+  if [[ ! -e "$env_file" ]]; then
+    install -m 0600 -o "$APPHOST_USER" -g "$APPHOST_USER" /dev/null "$env_file"
+  fi
+  if [[ ! -s "$env_file" ]]; then
+    local tmp_file
+    tmp_file="$(mktemp)"
+    cat >"$tmp_file" <<'EOF'
+# Private hosted-application provider credentials.
+# This file is read only by the isolated apphost service and is never returned
+# through the public wtfOS API.
+#
+# Current provider: Steam, used internally for Jackbox manifests.
+# Set WTFOS_APPHOST_STEAM_ADMIN_LOGIN=1 only after username/password are filled.
+WTFOS_APPHOST_STEAM_ADMIN_LOGIN=0
+WTFOS_APPHOST_STEAM_USERNAME=
+WTFOS_APPHOST_STEAM_PASSWORD=
+
+# Optional and temporary. Fill only while satisfying a one-time Steam Guard
+# challenge, then remove the value after a successful session refresh.
+WTFOS_APPHOST_STEAM_GUARD_CODE=
+EOF
+    install -m 0600 -o "$APPHOST_USER" -g "$APPHOST_USER" "$tmp_file" "$env_file"
+    rm -f "$tmp_file"
+  else
+    chown "$APPHOST_USER:$APPHOST_USER" "$env_file"
+    chmod 0600 "$env_file"
+  fi
+}
+
 if ! id "$APPHOST_USER" >/dev/null 2>&1; then
   echo "Apphost user is missing: $APPHOST_USER. Run install-apphost.sh first." >&2
   exit 78
@@ -29,6 +60,7 @@ fi
 if compgen -G "$ROOT_DIR/config/*.env" >/dev/null; then
   install -m 0640 -o "$APPHOST_USER" -g "$APPHOST_USER" "$ROOT_DIR/config/"*.env "$TARGET_DIR/config/"
 fi
+seed_hosted_apps_env
 install -m 0644 -o "$APPHOST_USER" -g "$APPHOST_USER" "$ROOT_DIR/manifests/"*.json "$TARGET_DIR/manifests/"
 install -m 0755 -o "$APPHOST_USER" -g "$APPHOST_USER" "$ROOT_DIR/scripts/"*.sh "$TARGET_DIR/scripts/"
 

@@ -3,7 +3,7 @@
   "name": "Jackbox Party Pack 10",
   "category": "Party game",
   "summary": "Five remote-hosted party games for room-code play.",
-  "cover_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2216830/header.jpg?t=1728584851",
+  "cover_image_url": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 215'%3E%3Crect width='460' height='215' fill='%2310151b'/%3E%3Crect x='18' y='18' width='424' height='179' rx='12' fill='%23232c38'/%3E%3Ccircle cx='356' cy='74' r='54' fill='%2300d2ff' opacity='.82'/%3E%3Ccircle cx='290' cy='154' r='36' fill='%23f7d84a' opacity='.9'/%3E%3Cpath d='M48 160V56h42v104H48zm58 0V56h42v104h-42z' fill='%23ff3f93'/%3E%3Ctext x='174' y='82' fill='%23ffffff' font-family='Arial Black,Arial,sans-serif' font-size='24'%3ETHE JACKBOX%3C/text%3E%3Ctext x='174' y='114' fill='%23ffffff' font-family='Arial Black,Arial,sans-serif' font-size='24'%3EPARTY PACK%3C/text%3E%3Ctext x='174' y='170' fill='%23ff3f93' font-family='Arial Black,Arial,sans-serif' font-size='74'%3E10%3C/text%3E%3C/svg%3E",
   "cover_image_alt": "Jackbox Party Pack 10 cover art",
   "executable": "/opt/wtfos/apphost/bin/steam-launch.sh",
   "working_directory": "/opt/wtfos/apphost/home",

@@ -22,7 +22,17 @@ The shared client environment contract is written to:
 ```
 
 This file is non-secret. It contains the apphost socket path, client timeout,
-and allowed client actions only. Steam credentials are not stored in env files.
+and allowed client actions only. Provider credentials are never stored in this
+client contract and are never returned by the API. Private hosted-application
+credentials, when configured by an operator, live only in:
+
+```text
+/opt/wtfos/apphost/config/hosted-apps.env
+```
+
+That file is created with mode `0600` for the `wtfos-apphost` user. It is used
+only by the operator refresh helper; normal user launches require the remembered
+provider session and do not pass stored passwords to the provider.
 
 ## `GET /apps`
 
@@ -38,7 +48,7 @@ across all users.
       "name": "Jackbox Party Pack 10",
       "category": "Party game",
       "summary": "Five remote-hosted party games for room-code play.",
-      "coverImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2216830/header.jpg?t=1728584851",
+      "coverImageUrl": "data:image/svg+xml,%3Csvg%20...%3C/svg%3E",
       "coverImageAlt": "Jackbox Party Pack 10 cover art",
       "displayRequired": true,
       "audioRequired": true,
@@ -100,26 +110,8 @@ fails, it retries with Mesa software rendering:
       "percent": 100
     },
     "diagnostics": {
-      "mesaSoftwareFallback": true,
       "startupConfirmed": true,
-      "startupTimedOut": false,
-      "startupAttempts": [
-        {
-          "label": "initial",
-          "confirmed": true,
-          "timeoutSeconds": 360,
-          "healthCheckType": "process_name",
-          "healthAtTimeout": { "ok": true, "type": "process_name", "pids": [12345] },
-          "launcherPid": 1000,
-          "launcherExitCode": 0
-        }
-      ],
-      "probes": {
-        "display": { "ok": true, "output": "...", "error": "" },
-        "opengl": { "ok": false, "output": "", "error": "..." },
-        "openglMesa": { "ok": true, "output": "...", "error": "" },
-        "audio": { "ok": true, "output": "...", "error": "" }
-      }
+      "startupTimedOut": false
     }
   },
   "activeSession": {
@@ -168,48 +160,36 @@ HTTP `409`:
 
 `progress` is the user-facing launch state. It intentionally avoids naming the
 underlying delivery/runtime provider. wtfOS should render `progress.label`,
-`progress.detail`, and `progress.percent` while keeping `diagnostics` private to
-support and validation workflows.
+`progress.detail`, and `progress.percent`; `diagnostics` is intentionally
+redacted in public API responses.
 
 If the launcher starts but the manifest health check does not become healthy
-before `startup_timeout`, the response remains structured. `diagnostics` will
-include `startupTimedOut: true`, `startupFailure`, `lastStartupAttempt`, and
-best-effort desktop evidence paths:
+before `startup_timeout`, the response remains structured. Public
+`diagnostics` includes only redacted status:
 
 ```json
 {
   "startupConfirmed": false,
   "startupTimedOut": true,
-  "startupFailure": "health check did not become healthy before startup timeout",
-  "lastStartupAttempt": {
-    "label": "initial",
-    "confirmed": false,
-    "healthCheckType": "process_name",
-    "healthAtTimeout": { "ok": false, "type": "process_name", "pids": [] },
-    "launcherExitCode": 0,
-    "desktopEvidence": {
-      "screenshot": {
-        "ok": true,
-        "path": "/opt/wtfos/apphost/state/diagnostics/api-launch/jackbox-party-pack-10-20260629T212152Z-123.png"
-      },
-      "windowTree": {
-        "ok": true,
-        "path": "/opt/wtfos/apphost/state/diagnostics/api-launch/jackbox-party-pack-10-20260629T212152Z-123.xwininfo.txt"
-      }
-    }
-  }
+  "startupFailure": "application did not become ready before startup timeout"
 }
 ```
 
+Raw probes, provider-login hints, process IDs from launcher internals, and
+screenshot paths stay in private apphost state files for operator diagnostics.
+Public status responses expose only redacted launch progress and generic failure
+reasons.
+
 ## `POST /apps/{id}/stop`
 
-Stops the application process group and records the stop timestamp. Steam
-manifests use a `process_name` health check, so stop also terminates matching
-game processes that Steam started after the short-lived launcher command.
+Stops the application process group and records the stop timestamp. Provider
+backed manifests may use a `process_name` health check, so stop also terminates
+matching application processes that were started after a short-lived launcher
+command.
 
 ## `GET /apps/{id}/status`
 
-Returns the current process, health, private diagnostics, and sanitized
+Returns the current process, health, redacted diagnostics, and sanitized
 `progress` object. During a long startup, `state` is `launching` and `progress`
 advances while the apphost waits for the application window/process health.
 
@@ -405,7 +385,7 @@ Applications are data, not code:
   "name": "Jackbox Party Pack 11",
   "category": "Party game",
   "summary": "The latest remote-hosted Jackbox pack for shared-room play.",
-  "cover_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3364070/35c35317cc3f6ac5733896ab00c4cfbd5a1a025d/header.jpg?t=1774630140",
+  "cover_image_url": "data:image/svg+xml,%3Csvg%20...%3C/svg%3E",
   "cover_image_alt": "Jackbox Party Pack 11 cover art",
   "executable": "/opt/wtfos/apphost/bin/steam-launch.sh",
   "working_directory": "/opt/wtfos/apphost/home",
