@@ -6,6 +6,7 @@ import json
 import os
 import signal
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--framerate", type=int, default=24)
     parser.add_argument("--stream-id", required=True)
     parser.add_argument("--ice-wait-ms", type=int, default=1800)
+    parser.add_argument("--stats", type=Path, default=None)
     return parser.parse_args()
 
 
@@ -106,6 +108,7 @@ def main() -> int:
         "! queue max-size-buffers=1 max-size-time=0 max-size-bytes=0 leaky=downstream "
         f"! vp8enc deadline=1 cpu-used=8 threads=2 keyframe-max-dist={keyframe_max_dist} "
         "auto-alt-ref=false error-resilient=0 "
+        "! identity name=encodedtap silent=true "
         "! rtpvp8pay pt=96 "
         "! application/x-rtp,media=video,encoding-name=VP8,payload=96 "
         "! webrtc."
@@ -141,6 +144,59 @@ def main() -> int:
     if webrtc is None:
         write_answer(args.answer, {"ok": False, "error": "GStreamer pipeline did not create webrtcbin"})
         return 5
+
+    stats_path = args.stats if args.stats is not None else args.answer.with_name("stats.json")
+    started_monotonic = time.monotonic()
+    encode_counters = {"frames": 0, "bytes": 0, "lastFrames": 0, "lastBytes": 0, "lastAt": started_monotonic}
+    counters_lock = threading.Lock()
+
+    def on_encoded_buffer(_pad: Any, info: Any) -> Any:
+        buffer = info.get_buffer()
+        with counters_lock:
+            encode_counters["frames"] += 1
+            if buffer is not None:
+                encode_counters["bytes"] += buffer.get_size()
+        return Gst.PadProbeReturn.OK
+
+    encoded_tap = pipeline.get_by_name("encodedtap")
+    if encoded_tap is not None:
+        tap_pad = encoded_tap.get_static_pad("src")
+        if tap_pad is not None:
+            tap_pad.add_probe(Gst.PadProbeType.BUFFER, on_encoded_buffer)
+
+    def write_stats() -> bool:
+        now = time.monotonic()
+        with counters_lock:
+            frames = encode_counters["frames"]
+            total_bytes = encode_counters["bytes"]
+            window_seconds = max(0.001, now - encode_counters["lastAt"])
+            window_frames = frames - encode_counters["lastFrames"]
+            window_bytes = total_bytes - encode_counters["lastBytes"]
+            encode_counters["lastFrames"] = frames
+            encode_counters["lastBytes"] = total_bytes
+            encode_counters["lastAt"] = now
+        payload = {
+            "ok": True,
+            "streamId": args.stream_id,
+            "uptimeSeconds": round(now - started_monotonic, 1),
+            "video": {
+                "width": width,
+                "height": height,
+                "targetFramerate": framerate,
+                "framesEncoded": frames,
+                "encodeFps": round(window_frames / window_seconds, 1),
+                "encodeKbps": round(window_bytes * 8 / window_seconds / 1000, 1),
+            },
+            "audio": {"enabled": bool(audio_chain)},
+            "capturedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }
+        try:
+            write_answer(stats_path, payload)
+        except OSError:
+            pass
+        return True
+
+    GLib.timeout_add_seconds(2, write_stats)
 
     def finish_answer() -> bool:
         if answer_written["value"] or not local_answer:

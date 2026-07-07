@@ -1,3 +1,13 @@
+## 2026-07-07 - Kill the game, keep the launcher: warm provider clients are the difference between 3s and 40s starts
+
+**What happened**: Every apphost stop killed the tracked launch process group, which took the whole Steam client down with the game. The next launch paid the full ~35-40s Steam boot before `-applaunch` could even start the game. Separately, a background TV `ffmpeg` transcode sweep ran unniced with unlimited threads on the shared 4-core host and starved the live WebRTC VP8 encoder (encode fps dropped from 30 to ~12) while a game was streaming.
+
+**Why it mattered**: "Slow to open" was not the game or the stream - it was cold provider startup on every open, plus unrelated batch work competing at equal CPU priority with the latency-critical encoder.
+
+**Rule**: For provider-hosted apps, mark the manifest `lifecycle.keep_launcher_warm` so stop terminates only the health-target game processes and leaves the provider client running (warm relaunch measured at ~3.5s vs ~40s cold). When the tracked pid is a warm launcher, app liveness must follow the process-name health target, with a `launcher_exit_grace` boot-grace hold so Steam's reaper/precache chain briefly matching then dropping the pattern does not flap status to exited during boot. Any background batch encoder (ffmpeg sweeps and similar) on a shared host must run under `nice -n 19` with a bounded thread count so interactive streaming always wins the CPU.
+
+---
+
 ## 2026-07-07 - Remote apphost input must not wait on pointer-move HTTP before clicks land
 
 **What happened**: Jackbox audio was fixed, but play still felt laggy and unresponsive. The `/ws/apphost` input relay coalesced pointer moves correctly, yet the server-side drain loop still `await`ed every move's upstream HTTP call before processing queued clicks or keys. Combined with a 35ms client throttle, 16ms server flush, and synchronous X11 `display.sync()` on every warp, discrete input could sit behind slow move round-trips and feel seconds late on a CPU-heavy software-rendered game stream.

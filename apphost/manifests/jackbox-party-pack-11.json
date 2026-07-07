@@ -14,11 +14,15 @@
     "STEAM_RUNTIME": "1"
   },
   "startup_timeout": 360,
+  "lifecycle": {
+    "keep_launcher_warm": true
+  },
   "health_check": {
     "type": "process_name",
     "pattern": "TJPP11_(OpenGL|Vulkan)",
     "user": "wtfos-apphost",
-    "timeout": 5
+    "timeout": 5,
+    "launcher_exit_grace": 90
   },
   "runtime": {
     "display": {

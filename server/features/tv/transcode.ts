@@ -41,6 +41,9 @@ async function ffmpegTranscodeVideo(input: string, output: string): Promise<void
     "-pix_fmt", "yuv420p",
     "-profile:v", "high",
     "-level", "4.0",
+    // Cap threads so a background sweep can never saturate the host; latency-
+    // sensitive workloads (remote app streaming) share these cores.
+    "-threads", "2",
     "-c:a", "aac",
     "-b:a", "128k",
     "-ac", "2",
@@ -53,7 +56,9 @@ async function ffmpegTranscodeVideo(input: string, output: string): Promise<void
   ];
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] });
+    // Lowest CPU priority: this is an opportunistic cache job and must yield to
+    // interactive work such as the apphost game process and WebRTC encoder.
+    const child = spawn("nice", ["-n", "19", "ffmpeg", ...args], { stdio: ["ignore", "ignore", "pipe"] });
     let stderr = "";
     child.stderr?.on("data", (chunk) => {
       stderr += chunk.toString();

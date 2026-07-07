@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import calendar
 import json
 import os
 import queue
@@ -548,6 +549,10 @@ class ApplicationHost:
             self._health_cache[app_id] = (now, dict(health))
         return health
 
+    def _invalidate_health_cache(self, app_id: str) -> None:
+        with self._health_cache_lock:
+            self._health_cache.pop(app_id, None)
+
     def _public_diagnostics(self, diagnostics: Any) -> dict[str, Any]:
         if not isinstance(diagnostics, dict):
             return {}
@@ -631,7 +636,12 @@ class ApplicationHost:
         pid_running = self._pid_is_running(state.get("pid"))
         health = self._cached_health(manifest, state)
         check_type = (manifest.get("health_check") or {}).get("type", "process")
-        running = pid_running or (check_type != "process" and bool(health.get("ok")))
+        if check_type == "process_name" and self._keeps_launcher_warm(manifest):
+            # The tracked pid is a provider launcher (e.g. Steam) that outlives the
+            # game on warm stops, so app liveness must follow the health target.
+            running = bool(health.get("ok"))
+        else:
+            running = pid_running or (check_type != "process" and bool(health.get("ok")))
         state_changed = False
         if running:
             if state.get("state") != "running" or state.get("stoppedAt") is not None or state.get("exitCode") is not None:
@@ -655,6 +665,11 @@ class ApplicationHost:
                 diagnostics["startupRecoveredHealth"] = health
                 diagnostics.pop("startupFailure", None)
                 state_changed = True
+        if not running and state.get("state") == "running" and self._within_boot_grace(manifest, state):
+            # Provider launch chains (Steam shader precache, reaper wrappers) can
+            # briefly satisfy then drop a process_name probe while the real game
+            # binary is still booting; hold "running" instead of flapping to exited.
+            running = True
         if not running and state.get("state") == "running":
             state.update(
                 {
@@ -683,6 +698,27 @@ class ApplicationHost:
         if not running and status["state"] == "running":
             status["state"] = "exited"
         return status
+
+    def _keeps_launcher_warm(self, manifest: dict[str, Any]) -> bool:
+        lifecycle = manifest.get("lifecycle") if isinstance(manifest.get("lifecycle"), dict) else {}
+        return bool(lifecycle.get("keep_launcher_warm"))
+
+    def _within_boot_grace(self, manifest: dict[str, Any], state: dict[str, Any]) -> bool:
+        if not self._keeps_launcher_warm(manifest):
+            return False
+        started_at = state.get("startedAt")
+        if not isinstance(started_at, str):
+            return False
+        try:
+            started = calendar.timegm(time.strptime(started_at, "%Y-%m-%dT%H:%M:%SZ"))
+        except (ValueError, OverflowError):
+            return False
+        check = manifest.get("health_check") or {}
+        try:
+            grace = float(check.get("launcher_exit_grace", 10.0))
+        except (TypeError, ValueError):
+            grace = 10.0
+        return (time.time() - started) < max(grace, 10.0)
 
     def active_session(self, *, exclude_app_id: str | None = None) -> dict[str, Any] | None:
         for manifest in self._manifest_map().values():
@@ -1282,7 +1318,8 @@ class ApplicationHost:
         state = self._read_state(app_id)
         pid = state.get("pid")
         exit_code = None
-        if self._pid_is_running(pid):
+        keep_launcher_warm = self._keeps_launcher_warm(manifest)
+        if self._pid_is_running(pid) and not keep_launcher_warm:
             exit_code = self._terminate_pid(int(pid), process_group=True)
         target_exit_codes = self._terminate_health_targets(manifest)
         state.update(
@@ -1529,6 +1566,7 @@ class ApplicationHost:
                 "active": active,
                 "pid": process.pid if active and process is not None else None,
                 "exitCode": process.poll() if process is not None else None,
+                "stats": self._read_stream_stats(app_id, stream_id) if active else None,
             }
         streams = []
         for (candidate_app_id, candidate_stream_id), process in list(self._streams.items()):
@@ -1538,8 +1576,23 @@ class ApplicationHost:
             if not active:
                 self._streams.pop((candidate_app_id, candidate_stream_id), None)
                 continue
-            streams.append({"streamId": candidate_stream_id, "pid": process.pid, "active": True})
+            streams.append(
+                {
+                    "streamId": candidate_stream_id,
+                    "pid": process.pid,
+                    "active": True,
+                    "stats": self._read_stream_stats(app_id, candidate_stream_id),
+                }
+            )
         return {"ok": True, "app": public_app(manifest), "streams": streams}
+
+    def _read_stream_stats(self, app_id: str, stream_id: str) -> dict[str, Any] | None:
+        stats_path = self.config.state_dir / "streams" / app_id / stream_id / "stats.json"
+        try:
+            payload = json.loads(stats_path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            return None
+        return payload if isinstance(payload, dict) else None
 
     def stream_stop(self, app_id: str, stream_id: str | None = None) -> dict[str, Any]:
         manifest = self._require_manifest(app_id)

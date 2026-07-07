@@ -25,6 +25,15 @@ class WebRtcStreamerTests(unittest.TestCase):
         self.assertIn("auto-alt-ref=false", source)
         self.assertIn("threads=2", source)
 
+    def test_streamer_emits_periodic_encode_stats(self):
+        source = STREAMER_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("identity name=encodedtap", source)
+        self.assertIn("encodeFps", source)
+        self.assertIn("encodeKbps", source)
+        self.assertIn("timeout_add_seconds(2, write_stats)", source)
+        self.assertIn('with_name("stats.json")', source)
+
     def test_offered_payload_type_uses_audio_opus_from_browser_offer(self):
         sdp = "\r\n".join(
             [

@@ -587,6 +587,121 @@ class AppHostTests(unittest.TestCase):
             self.assertEqual(stopped["status"]["state"], "stopped")
             self.assertEqual(calls, [(12345, False)])
 
+    def test_keep_launcher_warm_stop_spares_launcher_and_status_follows_game(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifests = root / "manifests"
+            state = root / "state"
+            bin_dir = root / "bin"
+            manifests.mkdir()
+            state.mkdir()
+            bin_dir.mkdir()
+
+            executable = bin_dir / "launcher"
+            executable.write_text("#!/usr/bin/env sh\nsleep 30\n", encoding="utf-8")
+            executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
+
+            (manifests / "steam-style.json").write_text(
+                json.dumps(
+                    {
+                        "id": "steam-style",
+                        "name": "Steam Style",
+                        "executable": str(executable),
+                        "working_directory": str(root),
+                        "environment": {},
+                        "startup_timeout": 2,
+                        "lifecycle": {"keep_launcher_warm": True},
+                        "health_check": {"type": "process_name", "pattern": "FakeGame"},
+                        "display_required": False,
+                        "audio_required": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            host = ApplicationHost(AppHostConfig(manifest_dir=manifests, state_dir=state))
+            live_pids = [12345]
+            host._process_name_pids = lambda check: list(live_pids)  # type: ignore[method-assign]
+            calls = []
+
+            def terminate(pid, *, process_group):
+                calls.append((pid, process_group))
+                live_pids.clear()
+                return 0
+
+            host._terminate_pid = terminate  # type: ignore[method-assign]
+
+            launch = host.launch("steam-style")
+            self.assertEqual(launch["status"]["state"], "running")
+
+            stopped = host.stop("steam-style")
+            self.assertEqual(stopped["status"]["state"], "stopped")
+            # Only the game (health target) is terminated; the warm launcher pid is spared.
+            self.assertEqual(calls, [(12345, False)])
+
+            # With the game gone but the launcher pid alive, status must not report running.
+            status = host.status("steam-style")
+            self.assertEqual(status["state"], "stopped")
+
+            host._terminate_pid = lambda pid, *, process_group: 0  # type: ignore[method-assign]
+            host.stop("steam-style")
+
+    def test_keep_launcher_warm_status_holds_running_through_boot_grace_flap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifests = root / "manifests"
+            state_dir = root / "state"
+            manifests.mkdir()
+            state_dir.mkdir()
+
+            (manifests / "steam-style.json").write_text(
+                json.dumps(
+                    {
+                        "id": "steam-style",
+                        "name": "Steam Style",
+                        "executable": "/bin/true",
+                        "working_directory": str(root),
+                        "environment": {},
+                        "startup_timeout": 2,
+                        "lifecycle": {"keep_launcher_warm": True},
+                        "health_check": {
+                            "type": "process_name",
+                            "pattern": "FakeGame",
+                            "launcher_exit_grace": 90,
+                        },
+                        "display_required": False,
+                        "audio_required": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            host = ApplicationHost(AppHostConfig(manifest_dir=manifests, state_dir=state_dir))
+            # Health flaps empty right after launch (reaper matched, game still booting).
+            host._process_name_pids = lambda check: []  # type: ignore[method-assign]
+            host._write_state(
+                "steam-style",
+                {
+                    "state": "running",
+                    "pid": None,
+                    "startedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "stoppedAt": None,
+                    "exitCode": None,
+                    "diagnostics": {"startupConfirmed": True},
+                },
+            )
+
+            status = host.status("steam-style")
+            self.assertEqual(status["state"], "running")
+
+            # Outside the boot grace the same empty health means the game exited.
+            host._invalidate_health_cache("steam-style")
+            stale = host._read_state("steam-style")
+            stale["startedAt"] = "2020-01-01T00:00:00Z"
+            host._write_state("steam-style", stale)
+            status = host.status("steam-style")
+            self.assertEqual(status["state"], "exited")
+
     def test_process_name_launch_timeout_returns_structured_status_without_mesa_relaunch(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
