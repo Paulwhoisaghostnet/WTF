@@ -201,7 +201,7 @@ const RemoteStage = styled.div`
   container-type: size;
 `;
 
-const RemoteFrame = styled.div<{ $aspect: string; $aspectRatio: number }>`
+const RemoteFrame = styled.div<{ $aspect: string; $aspectRatio: number; $nativeCursor: boolean }>`
   position: relative;
   width: 100%;
   width: min(100%, calc(100cqh * ${(p) => p.$aspectRatio}));
@@ -212,6 +212,9 @@ const RemoteFrame = styled.div<{ $aspect: string; $aspectRatio: number }>`
   background: #000000;
   outline: none;
   touch-action: none;
+  /* The remote application streams its own native cursor, so the local
+     cursor is hidden over the play surface to avoid a duplicate pointer. */
+  cursor: ${(p) => (p.$nativeCursor ? "none" : "default")};
 `;
 
 const SnapshotImage = styled.img`
@@ -368,12 +371,15 @@ export function ApplicationSession({ appId }: { appId: string }) {
   const pendingMoveRef = useRef<Record<string, unknown> | null>(null);
   const moveFlushHandleRef = useRef<number | null>(null);
   const launchAttemptedRef = useRef<string | null>(null);
+  const virtualPointerRef = useRef({ x: 0.5, y: 0.5 });
   const [launchStartedAt, setLaunchStartedAt] = useState<number | null>(null);
   const [socketReady, setSocketReady] = useState(false);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [streamState, setStreamState] = useState<"idle" | "connecting" | "connected" | "failed">("idle");
   const [streamDetail, setStreamDetail] = useState<string | null>(null);
   const [streamStats, setStreamStats] = useState<StreamStats | null>(null);
+  const [streamAttempt, setStreamAttempt] = useState(0);
+  const [pointerLocked, setPointerLocked] = useState(false);
 
   const sessionQuery = useQuery({
     queryKey: ["applications", "session", appId],
@@ -436,27 +442,53 @@ export function ApplicationSession({ appId }: { appId: string }) {
   const resumeRemotePlayback = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
+    const wasMuted = video.muted;
     video.muted = false;
     const playAttempt = video.play();
     if (playAttempt && typeof playAttempt.catch === "function") {
       void playAttempt.catch(() => {
-        setStreamDetail("Audio will start after the remote session receives input.");
+        // Autoplay policy blocked unmuted playback (no user gesture yet).
+        // Fall back to muted playback so video keeps rendering; audio
+        // resumes on the next real interaction.
+        video.muted = true;
+        void video.play().catch(() => undefined);
+        if (!wasMuted) {
+          setStreamDetail("Click the game to enable audio.");
+        }
       });
     }
   }, []);
 
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.srcObject = remoteStream;
-      if (remoteStream) {
-        resumeRemotePlayback();
-      }
+    const video = videoRef.current;
+    if (!video) return;
+    video.srcObject = remoteStream;
+    if (remoteStream) {
+      // Start muted: muted autoplay is always permitted, so video frames are
+      // visible immediately even before any user gesture. Audio is enabled by
+      // resumeRemotePlayback on the first interaction.
+      video.muted = true;
+      void video.play().catch(() => undefined);
+      resumeRemotePlayback();
     }
   }, [remoteStream, resumeRemotePlayback]);
 
   useEffect(() => {
     launchAttemptedRef.current = null;
   }, [appId]);
+
+  useEffect(() => {
+    const handleLockChange = () => {
+      setPointerLocked(document.pointerLockElement === frameRef.current);
+    };
+    document.addEventListener("pointerlockchange", handleLockChange);
+    return () => {
+      document.removeEventListener("pointerlockchange", handleLockChange);
+      if (document.pointerLockElement === frameRef.current) {
+        document.exitPointerLock();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!user || !sessionQuery.data || launchMutation.isPending) return;
@@ -502,6 +534,9 @@ export function ApplicationSession({ appId }: { appId: string }) {
       return;
     }
 
+    // streamAttempt bumps when the zero-frame watchdog decides the current
+    // stream is stalled; changing it tears this connection down and renegotiates.
+    void streamAttempt;
     let cancelled = false;
     const streamId = createStreamId();
     streamIdRef.current = streamId;
@@ -591,7 +626,7 @@ export function ApplicationSession({ appId }: { appId: string }) {
       }
       void api.post(`/api/apphost/apps/${encodeURIComponent(appId)}/stream/stop`, { streamId }).catch(() => undefined);
     };
-  }, [appId, iceServersKey, session?.audio?.required, session?.stream.preferredTransport, status?.state, user]);
+  }, [appId, iceServersKey, session?.audio?.required, session?.stream.preferredTransport, status?.state, streamAttempt, user]);
 
   useEffect(() => {
     if (streamState !== "connected") {
@@ -600,6 +635,7 @@ export function ApplicationSession({ appId }: { appId: string }) {
     }
     let lastFramesDecoded = 0;
     let lastSampleAt = 0;
+    let zeroFrameSamples = 0;
     const interval = window.setInterval(() => {
       const peerConnection = peerConnectionRef.current;
       if (!peerConnection || peerConnection.connectionState !== "connected") return;
@@ -632,6 +668,21 @@ export function ApplicationSession({ appId }: { appId: string }) {
           jitterMs: jitterSeconds !== undefined ? Math.round(jitterSeconds * 1000) : null,
           framesDecoded,
         });
+        // Watchdog: a healthy stream decodes frames within a second or two of
+        // connecting. If the connection reports "connected" but no video frame
+        // ever arrives (e.g. the capture pipeline stalled while the game was
+        // still initialising its display), renegotiate a fresh stream instead
+        // of sitting on a black window until the user refreshes.
+        if (framesDecoded === 0) {
+          zeroFrameSamples += 1;
+          if (zeroFrameSamples >= 5) {
+            zeroFrameSamples = 0;
+            setStreamDetail("Restarting the live stream.");
+            setStreamAttempt((attempt) => attempt + 1);
+          }
+        } else {
+          zeroFrameSamples = 0;
+        }
       });
     }, 1000);
     return () => window.clearInterval(interval);
@@ -674,13 +725,36 @@ export function ApplicationSession({ appId }: { appId: string }) {
     const frame = frameRef.current;
     if (!frame) return null;
     const rect = frame.getBoundingClientRect();
+    if (document.pointerLockElement === frame) {
+      // Pointer lock: the OS cursor is trapped and clientX/Y freeze, so track
+      // a virtual position from relative movement. The game's streamed cursor
+      // is the visible pointer; Esc releases the lock.
+      if (action === "move" && rect.width > 0 && rect.height > 0) {
+        virtualPointerRef.current = {
+          x: Math.max(0, Math.min(1, virtualPointerRef.current.x + event.movementX / rect.width)),
+          y: Math.max(0, Math.min(1, virtualPointerRef.current.y + event.movementY / rect.height)),
+        };
+      }
+      return {
+        type: "pointer",
+        action,
+        x: virtualPointerRef.current.x,
+        y: virtualPointerRef.current.y,
+        button: event.button + 1,
+        pointerType: event.pointerType,
+      };
+    }
     const x = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
     const y = rect.height > 0 ? (event.clientY - rect.top) / rect.height : 0;
+    virtualPointerRef.current = {
+      x: Math.max(0, Math.min(1, x)),
+      y: Math.max(0, Math.min(1, y)),
+    };
     return {
       type: "pointer",
       action,
-      x: Math.max(0, Math.min(1, x)),
-      y: Math.max(0, Math.min(1, y)),
+      x: virtualPointerRef.current.x,
+      y: virtualPointerRef.current.y,
       button: event.button + 1,
       pointerType: event.pointerType,
     };
@@ -700,7 +774,23 @@ export function ApplicationSession({ appId }: { appId: string }) {
     resumeRemotePlayback();
     const payload = pointerPayload(event, action);
     if (!payload) return;
-    if (event.type === "pointerdown") {
+    const frame = frameRef.current;
+    if (
+      event.type === "pointerdown" &&
+      frame &&
+      remoteStream &&
+      event.pointerType === "mouse" &&
+      typeof frame.requestPointerLock === "function" &&
+      document.pointerLockElement !== frame
+    ) {
+      // Trap the cursor in the play surface so the game's native cursor and
+      // control scheme take priority; Esc hands the cursor back to wtfOS.
+      try {
+        void (frame.requestPointerLock() as Promise<void> | undefined)?.catch?.(() => undefined);
+      } catch {
+        // Pointer lock is best-effort; absolute coordinates keep working.
+      }
+    } else if (event.type === "pointerdown" && document.pointerLockElement !== frame) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
     sendInput(payload);
@@ -712,11 +802,12 @@ export function ApplicationSession({ appId }: { appId: string }) {
     const frame = frameRef.current;
     if (!frame) return;
     const rect = frame.getBoundingClientRect();
+    const locked = document.pointerLockElement === frame;
     sendInput({
       type: "pointer",
       action: "wheel",
-      x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
-      y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
+      x: locked ? virtualPointerRef.current.x : Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+      y: locked ? virtualPointerRef.current.y : Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
       deltaX: event.deltaX,
       deltaY: event.deltaY,
     });
@@ -796,10 +887,12 @@ export function ApplicationSession({ appId }: { appId: string }) {
               ref={frameRef}
               $aspect={aspect}
               $aspectRatio={aspectRatio}
+              $nativeCursor={Boolean(remoteStream)}
               tabIndex={0}
               role="application"
               aria-label={appName}
               data-application-session-region="remote-surface"
+              data-remote-cursor-surface={remoteStream ? "true" : undefined}
               onPointerDown={handlePointerEvent}
               onPointerUp={handlePointerEvent}
               onPointerMove={handlePointerEvent}
@@ -844,7 +937,11 @@ export function ApplicationSession({ appId }: { appId: string }) {
             >
               <ProgressFill $percent={progress.percent} />
             </ProgressTrack>
-            <Detail>{streamDetail || progress.detail || (socketReady ? "Session connected." : "Connecting session.")}</Detail>
+            <Detail>
+              {pointerLocked
+                ? "Cursor captured by the game. Press Esc to release it."
+                : streamDetail || progress.detail || (socketReady ? "Session connected." : "Connecting session.")}
+            </Detail>
             {streamStats ? (
               <StatsLine data-application-session-region="stream-stats">
                 <span>{streamStats.fps != null ? `${streamStats.fps} fps` : "fps —"}</span>

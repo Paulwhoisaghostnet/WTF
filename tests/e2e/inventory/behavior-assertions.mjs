@@ -338,13 +338,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Desktop OS, Navigation, and Personal Environment",
     ownerSurfaceIds: ["applications"],
     ownerSpec:
-      "client/src/pages/applications-policy.test.ts, client/src/pages/applications-presentation-policy.test.ts, client/src/pages/application-session-policy.test.ts, server/websocket-apphost-input-policy.test.ts, apphost/tests/test_apphostd.py",
+      "client/src/pages/applications-policy.test.ts, client/src/pages/applications-presentation-policy.test.ts, client/src/pages/application-session-policy.test.ts, server/websocket-apphost-input-policy.test.ts, server/apphost-rate-limit-policy.test.ts, apphost/tests/test_apphostd.py",
     verificationCommand:
-      "npx tsx --test client/src/pages/applications-policy.test.ts client/src/pages/applications-presentation-policy.test.ts client/src/pages/application-session-policy.test.ts server/websocket-apphost-input-policy.test.ts && python3 -m unittest apphost.tests.test_apphostd",
+      "npx tsx --test client/src/pages/applications-policy.test.ts client/src/pages/applications-presentation-policy.test.ts client/src/pages/application-session-policy.test.ts server/websocket-apphost-input-policy.test.ts server/apphost-rate-limit-policy.test.ts && python3 -m unittest apphost.tests.test_apphostd",
     userVisibleAssertion:
-      "A signed-in user opens Remote Applications into a managed wtfOS play window, sees public apphost maintenance states without provider/runtime secrets, and can send remote input only after joining the matching apphost session room.",
+      "A signed-in user opens Remote Applications into a managed wtfOS play window, sees remote video render before any gesture with the game's native cursor trapped by pointer lock (Esc releases), and can send remote input only after joining the matching apphost session room without gameplay traffic 429ing unrelated API calls.",
     durableSideEffectAssertion:
-      "Source and apphost policy tests prove the Applications route uses the window manager instead of browser tabs, the play route is no longer fullscreen-only, apphost WebSocket input rejects pre-join or mismatched app ids, and normal hosted-app launches require a remembered provider session instead of reusing stored provider passwords.",
+      "Source and apphost policy tests prove the Applications route uses the window manager instead of browser tabs, apphost WebSocket input rejects pre-join or mismatched app ids, apphost session traffic runs under a dedicated per-user rate limiter exempt from the generic /api/* quota, the session page starts video muted and self-heals zero-frame streams, and normal hosted-app launches require a remembered provider session instead of reusing stored provider passwords.",
   },
   {
     id: "desktop.app-gates-runtime-policy",

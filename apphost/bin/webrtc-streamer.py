@@ -102,7 +102,10 @@ def main() -> int:
     framerate = max(15, min(60, int(args.framerate)))
     keyframe_max_dist = max(framerate, min(framerate * 2, 60))
     video_chain = (
-        f'ximagesrc display-name="{quote_gst(args.display)}" use-damage=false show-pointer=false '
+        # show-pointer=true streams the application's native cursor; the client
+        # hides its local cursor over the play surface so only the game cursor
+        # is visible and game-driven cursor changes (hover states) are preserved.
+        f'ximagesrc display-name="{quote_gst(args.display)}" use-damage=false show-pointer=true '
         f"! video/x-raw,framerate={framerate}/1 "
         f"! videoconvert ! videoscale ! video/x-raw,width={width},height={height} "
         "! queue max-size-buffers=1 max-size-time=0 max-size-bytes=0 leaky=downstream "

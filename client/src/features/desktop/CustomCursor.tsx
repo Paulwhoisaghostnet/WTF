@@ -918,11 +918,16 @@ export function CustomCursor({ style }: { style: DesktopAppearance["cursorStyle"
       const direction = Math.abs(dx) > 1 ? (dx >= 0 ? 1 : -1) : last.direction;
       const speed = last.t > 0 ? Math.min(1200, (Math.hypot(dx, dy) / dt) * 1000) : 0;
       lastPointerRef.current = { x: event.clientX, y: event.clientY, t: now, direction };
+      // Remote application play surfaces stream the app's own native cursor;
+      // drawing the wtfOS custom cursor on top of it would duplicate pointers.
+      const overRemoteSurface =
+        event.target instanceof Element &&
+        Boolean(event.target.closest('[data-remote-cursor-surface="true"]'));
       setState((prev) => ({
         ...prev,
         x: event.clientX,
         y: event.clientY,
-        visible: true,
+        visible: !overRemoteSurface,
         direction,
         speed,
       }));

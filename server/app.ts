@@ -94,8 +94,20 @@ function isRateLimitExempt(req: Request): boolean {
   return isLocalE2eRateLimitBypass(req) || isAllowlistedLoadTestIp(req);
 }
 
+/**
+ * Remote application sessions poll status/session/snapshot continuously and
+ * historically posted per-event input. Sharing the generic 200-req/min quota
+ * meant a few seconds of gameplay 429'd the whole IP — including auth and
+ * desktop reads. Apphost traffic gets its own dedicated limiter below instead.
+ */
+function isAppHostSessionRequest(req: Request): boolean {
+  const rawUrl = String(req.originalUrl || req.url || req.path || "");
+  const url = rawUrl.split("?", 1)[0] || rawUrl;
+  return url.startsWith("/api/apphost/");
+}
+
 function shouldSkipApiRateLimit(req: Request): boolean {
-  return isMediaStreamRequest(req) || isRateLimitExempt(req);
+  return isMediaStreamRequest(req) || isAppHostSessionRequest(req) || isRateLimitExempt(req);
 }
 
 function sessionOrIpRateLimitKey(req: Request): string {
@@ -387,6 +399,22 @@ export async function createApp() {
 
   await setupAuth(app);
   app.use(csrfProtection);
+  app.use(
+    "/api/apphost/",
+    createRateLimit({
+      name: "apphost-session",
+      windowMs: 60 * 1000,
+      // An interactive remote-app session legitimately produces thousands of
+      // small requests per minute (coalesced pointer moves, key presses,
+      // status/session/snapshot polls), so it is exempted from the generic
+      // 200-req/min `/api/*` quota and bounded here instead. Registered after
+      // auth so the key is the signed-in user, not a shared IP.
+      max: 6_000,
+      keyGenerator: sessionOrIpRateLimitKey,
+      message: { error: "Too many remote application requests, please slow down" },
+      skip: isRateLimitExempt,
+    })
+  );
   app.use(
     "/api/tv/cache/prefetch",
     createRateLimit({
