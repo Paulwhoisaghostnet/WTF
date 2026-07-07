@@ -38,7 +38,14 @@ class AppHostTests(unittest.TestCase):
         self.assertEqual(AppHostThreadingHTTPServer.max_request_threads, 48)
         self.assertEqual(UnixThreadingHTTPServer.max_request_threads, 48)
 
-    def test_runtime_stream_defaults_keep_native_size_and_cap_large_displays(self):
+    def test_x11_input_injector_focuses_primary_window_before_events(self):
+        source = Path(__file__).resolve().parents[1] / "apphostd.py"
+        text = source.read_text(encoding="utf-8")
+        self.assertIn("_ensure_primary_window_focus", text)
+        self.assertIn("set_input_focus", text)
+        self.assertIn("windowfocus", text)
+        self.assertIn('"steam" not in lowered', text)
+
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             manifests = root / "manifests"

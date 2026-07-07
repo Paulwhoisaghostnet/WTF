@@ -76,6 +76,8 @@ Priority labels:
 | WTF-BB-352 | Verified | Codex Remote Applications registry repair | 2026-07-02 | Desktop OS / Remote Applications registry | P1 | 12 | 7 | 2 | 5 | 1 | `/applications` and `/applications/:appId/play` existed, but Remote Applications was not a canonical `DesktopAppKey` across default desktop app config, Start Menu gates, desktop icon/layout persistence, admin surface, package acceptance, doc registry, universal app-registry seed/key, and domain registry docs; fixed with a first-class `applications` registry pass, focused 94/94 registry tests, app-registry backfill-policy 8/8 tests, inventory coverage, Docker app rebuild, app-only restart, live `https://wtfos.app/applications` 200, scoped `desktop:applications` DB registration/key issuance, and bundle/API/source markers proving the Start Menu, route registry, desktop icon, package, and doc gates now include Applications |
 | WTF-BB-354 | Verified | Codex apphost pre-live hardening + Cursor live playability verification | 2026-07-06 | Desktop OS / Remote Applications apphost | P1 | 14 | 3 | 3 | 4 | 3 | Local hardening (no provider passwords in user launches, room-join-gated `/ws/apphost` input, window-managed play surface coverage) plus live Hetzner verification: root-caused silent audio to a stale Steam client started without `PULSE_SERVER` (games inherit the running Steam daemon's env over `-applaunch` IPC), added a `steam-launch.sh` guard that restarts a Steam missing `PULSE_SERVER`, disabled double cursor via `show-pointer=false`, deployed with `--apply`, relaunched Jackbox 10, and proved playability end to end: remote input drove menu → Tee K.O. 2 → live lobby with on-screen `JOIN AT JACKBOX.TV / ROOM CODE MIIH`, PulseAudio sink-input present, monitor RMS 1079, and a real Chromium WebRTC peer received decoded video frames and audible OPUS audio (analyser max RMS 0.058, RTT 78 ms, jitter 4 ms) |
 | WTF-BB-355 | Verified | Codex Pasta release-evidence guardrail + Cursor live deploy | 2026-07-06 | Deploy / release metadata | P1 | 10 | 10 | 2 | 4 | 0 | Source blocks placeholder/mismatched deployment markers in Pasta readiness and production container startup; guardrails shipped in commit `360bd6e7`, normal Hetzner deploys restored and preserved the live marker through current commit `9652a72d` (Deploy to Hetzner run `28830687989`, Quality Gates run `28830687933`), and `https://wtfos.app/api/health` now reports `version.commitRef:"9652a72d"` with `nodeEnv:"production"` and `db.ok:true` |
+| WTF-BB-356 | Verified | Codex Reggie lifecycle/WIM pass | 2026-07-07 | Desktop OS / Reggie assistant and WIM | P1 | 13 | 6 | 3 | 5 | 1 | Reggie now has an explicit dismiss/summon lifecycle, a desktop right-click Summon Reggie path, animated transient speech bubbles, and server-authored WIM/Inbox-backed assistant messages through `/api/reggie/messages`; verified with focused Reggie/WIM policy tests, TypeScript, inventory coverage, and full inventory E2E retry (`590 passed`) |
+| WTF-BB-357 | Verified | Codex Reggie personality script pass | 2026-07-07 | Desktop OS / Reggie assistant voice | P2 | 9 | 12 | 3 | 3 | 0 | Reggie now has deep authored script pools for every quest story plus summon/loading/locked/progress/empty-question states, with tests enforcing at least four intro/nudge/congrats variants per user story and deterministic no-repeat selection; verified with focused Reggie policy/model/dialogue tests, TypeScript, and diff whitespace |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -387,6 +389,51 @@ Priority labels:
 
 ## Issue Details
 
+### WTF-BB-357 - Reggie needs a richer sassy authored script
+
+- Category: Desktop OS / Reggie assistant voice
+- Status: Verified
+- Owner/Session: Codex Reggie personality script pass
+- Score: C3 + F3 + S0 + P2(3) = 9
+- Evidence:
+  - 2026-07-07 user report: Reggie needs a sassy personality, an elaborate script, multiple ways to say everything, and every user story represented so he does not feel sterile except where exact instructions matter.
+  - Current dialogue coverage represents the quest keys, but many step pools have only one nudge or one celebration, and operational messages such as summon, locked-step, loading, empty-progress, and progress-check copy still rely on fixed strings.
+- Why it matters:
+  - Reggie is the onboarding voice for wtfOS. Repetition makes the assistant feel mechanical, while over-randomizing critical instructions can make wallet, identity, publishing, and reward tasks harder to follow.
+- Correction:
+  - Expanded Reggie's greeting, nag, finale, empty-question, and assistant-state line pools so summon, loading, locked-step, empty-quest, progress-check, and out-of-scope moments rotate through authored sassy copy.
+  - Added a per-step story note layer for all 30 Reggie quest steps. Each user story now gets multiple generated-from-authored intro, nudge, and congrats variants while preserving the step-specific instruction and payoff.
+  - Wired `ReggieAssistant` to use the script engine for summon, loading, locked, empty, and progress states instead of fixed component strings; explicit summon messages from other surfaces still pass through unchanged.
+  - Strengthened dialogue tests so every quest step must have at least four intro/nudge/congrats variants, every assistant-state pool has multiple unique lines, placeholder replacement works, and deterministic no-immediate-repeat selection still holds.
+- Verification:
+  - `npx tsx --test client/src/features/reggie/reggie-dialogue.test.ts client/src/features/reggie/reggie-knowledge.test.ts client/src/features/reggie/reggie-model.test.ts client/src/features/reggie/reggie-assistant-policy.test.ts server/challenges/routes/reggie-policy.test.ts server/challenges/services/reggie-quest-policy.test.ts` passed 33/33.
+  - `npm run check -- --pretty false`
+  - `git diff --check`
+  - Inventory fixtures were not changed because this pass only expands authored assistant copy/script behavior and does not add, remove, rename, or materially change routes, handles, API surfaces, rewards, admin surfaces, or user interactions.
+
+### WTF-BB-356 - Reggie needs summon/dismiss lifecycle and durable WIM messages
+
+- Category: Desktop OS / Reggie assistant and WIM
+- Status: Verified
+- Owner/Session: Codex Reggie lifecycle/WIM pass
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - 2026-07-07 user report: Reggie mostly sits in a weird bottom-right mini-window, does not pop up/disappear like Clippy, cannot be dismissed and reliably summoned later, has no desktop right-click Summon Reggie entry, and cannot send temporary speech-bubble prompts that are also recorded as WIM instant messages.
+  - Current `ReggieAssistant` only gates visibility through a ten-minute snooze and local bubble state; the desktop surface context menu has refresh/reset/appearance entries but no Reggie command.
+  - WIM reads canonical DM conversations from `/api/messages/dms`, while Reggie speech currently lives only in client state and telemetry events.
+- Why it matters:
+  - Reggie is the onboarding assistant and quest guide. If he feels stuck, unrecoverable, or ephemeral, users lose a core help path and WIM/Inbox never become the durable source for assistant follow-ups.
+- Correction:
+  - Added a desktop-owned Reggie summon event and right-click context-menu command, separated assistant availability from sprite visibility, added dismiss/snooze wake behavior, and made Reggie speech transient on the desktop while optionally persisting the same assistant-authored text.
+  - Added authenticated `POST /api/reggie/messages`, which creates/uses a server-owned `reggie-assistant` identity, writes source-tagged DM rows into the existing WIM conversation tables, and publishes a comms item for Inbox recovery without trusting client-provided sender or target users.
+  - Updated WIM rendering metadata, admin surface handles, interaction inventory, inventory workflows, behavior assertions, and localization for the new `reggie.assistant.summoned`, `reggie.assistant.dismissed`, and `reggie.message.sent` handles.
+- Verification:
+  - `npx tsx --test client/src/features/reggie/reggie-model.test.ts client/src/features/reggie/reggie-assistant-policy.test.ts server/challenges/routes/reggie-policy.test.ts client/src/pages/Wim.test.ts client/src/lib/localization-catalogs.test.ts`
+  - `npm run check -- --pretty false`
+  - `npm run test:e2e:inventory:coverage`
+  - `git diff --check`
+  - `HARNESS_PORT=4331 npm run test:e2e:inventory -- --reporter=list` initially returned 587 passed and 3 unrelated transient failures outside the Reggie/WIM path; the requested retry with `HARNESS_PORT=4332 npm run test:e2e:inventory -- tests/playwright/inventory/macaroni-packager.spec.mjs:56 tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs:72 tests/playwright/inventory/wtf-live-owner-controls.spec.mjs:310 --reporter=list` ran the full inventory suite again and passed 590/590.
+
 ### WTF-BB-355 - Live health must not report placeholder deployment metadata
 
 - Category: Deploy / release metadata
@@ -467,6 +514,10 @@ Priority labels:
   - 429 cascade fixed: gameplay input (~60 coalesced move POSTs/sec) drained the generic `/api/*` 200-req/min IP quota, 429ing `/api/auth/user`, `/api/auth/csrf-token`, and `/api/apps/desktop` for the same user. `/api/apphost/*` is now exempt from the generic limiter and bounded by a dedicated `apphost-session` limiter (6000/min, keyed by user session, mounted after auth); policy test `server/apphost-rate-limit-policy.test.ts`.
   - Native game cursor now has priority: `webrtc-streamer.py` streams the app's own cursor (`show-pointer=true`), the play surface hides the local cursor (`cursor: none`) and suppresses the wtfOS `CustomCursor` overlay via `data-remote-cursor-surface`, and clicking the surface pointer-locks the mouse (Esc releases) with relative `movementX/Y` translated to absolute remote coordinates.
   - Black-video-until-refresh fixed: remote `<video>` now starts muted so autoplay always renders frames pre-gesture, unmutes on first interaction, and a zero-frames-decoded watchdog (5s while "connected") renegotiates the stream automatically instead of requiring a manual refresh.
+- Input/focus verification (2026-07-07, Cursor session, user-reported non-interactive splash):
+  - Root cause: XTEST events targeted Openbox's anonymous 1280×720 parent frame or Steam overlays instead of the titled `"The Jackbox Party Pack 10"` client; injected clicks/Enter returned `ok` but never reached the game. `_find_primary_window` now scores named non-Steam windows before equal-size parents.
+  - Client: accumulate all WebRTC tracks into one `MediaStream`, keep `<video muted>` until user gesture for audio, attach `pointer-events:none` on the video element, delay WebRTC until `progress.phase === "ready"` (snapshots during boot), and use a manual **Capture cursor** button instead of auto pointer-lock on first click.
+  - Live lobby proof after deploy: apphost input drove splash → Tee K.O. 2 → lobby with on-screen `JOIN AT JACKBOX.TV` / `ROOM CODE MZON` (snapshot `/tmp/jb-lobby-proof-99-final.png` on Hetzner host during verification).
 
 ### WTF-BB-351 - Deploy disk preflight still depends on manual cache pruning
 

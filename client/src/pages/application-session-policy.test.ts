@@ -22,7 +22,9 @@ test("Application session page owns launch attach stream and input", () => {
   assert.match(sessionSource, /status\.state === "running"/);
   assert.doesNotMatch(sessionSource, /\["running", "launching"\]\.includes\(status\.state\)/);
   assert.match(sessionSource, /const resumeRemotePlayback = useCallback/);
-  assert.match(sessionSource, /onLoadedMetadata=\{resumeRemotePlayback\}/);
+  assert.match(sessionSource, /pointer-events: none/);
+  assert.match(sessionSource, /receivedStream\.getTracks\(\)/);
+  assert.doesNotMatch(sessionSource, /onLoadedMetadata=\{resumeRemotePlayback\}/);
   assert.match(sessionSource, /const controlsReady = status\?\.state === "running" && socketReady/);
   assert.match(sessionSource, /if \(!controlsReady \|\| !appId\) return;/);
   assert.match(sessionSource, /pendingMoveRef\.current = event/);
@@ -40,22 +42,18 @@ test("Application session page monitors live stream latency and framerate", () =
 });
 
 test("Application session page gives the game's native cursor priority", () => {
-  // The remote stream carries the app's own cursor; the local cursor is
-  // hidden over the surface and pointer lock traps it until Esc.
   assert.match(sessionSource, /cursor: \$\{\(p\) => \(p\.\$nativeCursor \? "none" : "default"\)\}/);
   assert.match(sessionSource, /data-remote-cursor-surface=\{remoteStream \? "true" : undefined\}/);
   assert.match(sessionSource, /requestPointerLock/);
+  assert.match(sessionSource, /Capture cursor/);
   assert.match(sessionSource, /document\.pointerLockElement === frame/);
   assert.match(sessionSource, /event\.movementX/);
   assert.match(sessionSource, /Press Esc to release/);
 });
 
 test("Application session page always renders video and self-heals a stalled stream", () => {
-  // Muted autoplay is always permitted, so video frames render before any
-  // user gesture; audio is enabled on the first interaction.
   assert.match(sessionSource, /video\.muted = true;\s*\n\s*void video\.play\(\)\.catch\(\(\) => undefined\);/);
-  // Zero decoded frames while "connected" means the capture stalled;
-  // the watchdog renegotiates instead of waiting for a manual refresh.
+  assert.match(sessionSource, /status\?\.progress\?\.phase !== "ready"/);
   assert.match(sessionSource, /zeroFrameSamples \+= 1;/);
   assert.match(sessionSource, /setStreamAttempt\(\(attempt\) => attempt \+ 1\);/);
 });

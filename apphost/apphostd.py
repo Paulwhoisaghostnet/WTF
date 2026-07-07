@@ -190,6 +190,7 @@ class AppHostStreamError(RuntimeError):
 
 class X11InputInjector:
     MOVE_FLUSH_SECONDS = 0.012
+    FOCUS_CACHE_SECONDS = 0.35
 
     def __init__(self, display_name: str):
         self.display_name = display_name
@@ -199,6 +200,7 @@ class X11InputInjector:
         self._pending_move: dict[str, Any] | None = None
         self._discrete_queue: queue.SimpleQueue[dict[str, Any]] = queue.SimpleQueue()
         self._wake = threading.Event()
+        self._focus_cached_at = 0.0
         self._worker = threading.Thread(target=self._worker_loop, name="x11-input-injector", daemon=True)
         self._worker.start()
 
@@ -247,6 +249,7 @@ class X11InputInjector:
 
     def _apply_event(self, event: dict[str, Any]) -> None:
         display, xlib = self._connect()
+        self._ensure_primary_window_focus(display, xlib)
         if event["type"] == "pointer":
             self._inject_pointer(display, xlib, event)
         elif event["type"] == "keyboard":
@@ -254,6 +257,80 @@ class X11InputInjector:
         else:
             raise ValueError(f"unsupported input event type: {event['type']}")
         display.flush()
+
+    def _ensure_primary_window_focus(self, display: Any, xlib: dict[str, Any]) -> None:
+        now = time.time()
+        if now - self._focus_cached_at < self.FOCUS_CACHE_SECONDS:
+            return
+        target = self._find_primary_window(display, xlib)
+        if target is None:
+            return
+        X = xlib["X"]
+        root = display.screen().root
+        if target.id == root.id:
+            return
+        target.set_input_focus(X.RevertToParent, X.CurrentTime)
+        display.sync()
+        self._focus_cached_at = now
+
+    def _find_primary_window(self, display: Any, xlib: dict[str, Any]) -> Any | None:
+        X = xlib["X"]
+        root = display.screen().root
+        best: Any | None = None
+        best_score = -10**12
+
+        def visit(window: Any) -> None:
+            nonlocal best, best_score
+            try:
+                attrs = window.get_attributes()
+                if attrs.map_state != X.IsViewable:
+                    return
+                geom = window.get_geometry()
+            except Exception:
+                return
+            area = int(geom.width) * int(geom.height)
+            if area < 320 * 240:
+                return
+
+            name = ""
+            wm_class = ""
+            try:
+                wm_name = window.get_wm_name()
+                if isinstance(wm_name, str):
+                    name = wm_name.strip()
+            except Exception:
+                pass
+            try:
+                cls = window.get_wm_class()
+                if isinstance(cls, (tuple, list)) and cls:
+                    wm_class = " ".join(str(part) for part in cls)
+                elif isinstance(cls, str):
+                    wm_class = cls
+            except Exception:
+                pass
+
+            score = area
+            if name:
+                score += 10_000_000
+            lowered = wm_class.lower()
+            if lowered and "steam" not in lowered and "openbox" not in lowered:
+                score += 5_000_000
+            if lowered and "steam" in lowered:
+                score -= 50_000_000
+
+            if score > best_score:
+                best = window
+                best_score = score
+
+            try:
+                children = window.query_tree().children
+            except Exception:
+                return
+            for child in children:
+                visit(child)
+
+        visit(root)
+        return best
 
     def _inject_pointer(self, display: Any, xlib: dict[str, Any], event: dict[str, Any]) -> None:
         X = xlib["X"]
@@ -1728,9 +1805,65 @@ class ApplicationHost:
         except ModuleNotFoundError:
             return self._inject_input_event_with_xdotool(event)
 
+    def _xdotool_primary_window_id(self, env: dict[str, str]) -> str | None:
+        completed = subprocess.run(
+            ["xdotool", "search", "--onlyvisible", ".", "getwindowname"],
+            env=env,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if completed.returncode != 0 or not completed.stdout.strip():
+            return None
+        best_id: str | None = None
+        best_score = -10**12
+        current_id: str | None = None
+        current_name = ""
+        for line in completed.stdout.splitlines():
+            if line.startswith("Window "):
+                if current_id:
+                    score = 1
+                    lowered = current_name.lower()
+                    if current_name.strip():
+                        score += 10_000_000
+                    if lowered and "steam" not in lowered:
+                        score += 5_000_000
+                    if lowered and "steam" in lowered:
+                        score -= 50_000_000
+                    if score > best_score:
+                        best_id = current_id
+                        best_score = score
+                current_id = line.split()[1]
+                current_name = ""
+            else:
+                current_name = line.strip()
+        if current_id:
+            score = 1
+            lowered = current_name.lower()
+            if current_name.strip():
+                score += 10_000_000
+            if lowered and "steam" not in lowered:
+                score += 5_000_000
+            if lowered and "steam" in lowered:
+                score -= 50_000_000
+            if score > best_score:
+                best_id = current_id
+        return best_id
+
     def _inject_input_event_with_xdotool(self, event: dict[str, Any]) -> dict[str, Any]:
         env = dict(os.environ)
         env["DISPLAY"] = self.config.display
+        focus_window = self._xdotool_primary_window_id(env)
+        if focus_window:
+            subprocess.run(
+                ["xdotool", "windowfocus", "--sync", focus_window],
+                env=env,
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=2,
+            )
         if event["type"] == "pointer":
             command = ["xdotool", "mousemove", str(event["x"]), str(event["y"])]
             action = event["action"]

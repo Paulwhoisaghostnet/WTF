@@ -1,3 +1,13 @@
+## 2026-07-07 - Remote apphost input must focus the titled game window, not the largest anonymous X11 frame
+
+**What happened**: Injected pointer and keyboard events reported `ok` from apphostd/XTEST but Jackbox never left the splash screen. Root cause: `_find_primary_window` picked the first 1280×720 viewable window in the X tree — usually Openbox's anonymous parent frame — while the real `"The Jackbox Party Pack 10"` client (`TJPP10_Vulkan`) and multiple `steamwebhelper` overlays were siblings/children. Keyboard events went to the wrong target; Enter/clicks did nothing even though the stream showed the splash screen correctly.
+
+**Why it mattered**: Every downstream symptom looked like "controls don't work" or "latency" when the input path was simply missing the application window. This also made automated lobby proof impossible until focus targeted the named game client.
+
+**Rule**: Before every injected event, focus the primary hosted-app window by scoring candidates: strongly prefer non-Steam windows with a WM_NAME, deprioritize `steam`/`steamwebhelper`, then fall back to area. Never choose the first equal-size parent frame. Prove playability by driving past splash → game select → lobby and reading `JOIN AT JACKBOX.TV` + a room code from a live snapshot.
+
+---
+
 ## 2026-07-07 - Gameplay input must never share a rate-limit bucket with auth, and autoplay policy is why "audio works but video is black"
 
 **What happened**: A player interacting with a remote apphost game generated coalesced pointer-move POSTs at up to ~60/s. Those requests drained the generic `/api/*` limiter (200 req/min per IP) in a few seconds, after which the *same IP* got 429s on `/api/auth/user`, `/api/auth/csrf-token`, and `/api/apps/desktop` — the whole OS shell broke because someone moved a mouse. Separately, the play window stayed black until a manual refresh even though audio played: the session page set `video.muted = false` then called `play()`, which browsers reject without fresh user activation, so nothing rendered until an interaction happened to re-trigger playback. And the earlier `show-pointer=false` fix (made to kill the double cursor) left the user with a wtfOS cursor that visibly did nothing, because the game's own hover/cursor feedback was never streamed.
@@ -8,6 +18,16 @@
 
 ---
 
+## 2026-07-07 - Assistant personality needs testable script coverage
+
+**What happened**: Reggie gained summon/dismiss/WIM behavior, but sparse one-off component strings and shallow per-step dialogue pools still made repeated guidance feel mechanical. The questline technically covered the user stories, yet several stories had only one nudge or one celebration, so personality would disappear as soon as a user saw the same state twice.
+
+**Why it mattered**: A desktop assistant is a character surface as much as a control surface. If personality is scattered through component literals, it cannot be audited for coverage, variation, or safety; if critical instructions are over-randomized, users lose clear steps for wallets, identity, publishing, rewards, and messaging.
+
+**Rule**: Put assistant voice in a dedicated script engine with authored pools, deterministic no-immediate-repeat selection, and tests that enforce every quest/user story has multiple intro, nudge, and completion variants. Keep exact operational facts inside the script, but let state transitions, empty inputs, summons, progress checks, and reminders rotate through personality-safe lines.
+
+---
+
 ## 2026-07-07 - Kill the game, keep the launcher: warm provider clients are the difference between 3s and 40s starts
 
 **What happened**: Every apphost stop killed the tracked launch process group, which took the whole Steam client down with the game. The next launch paid the full ~35-40s Steam boot before `-applaunch` could even start the game. Separately, a background TV `ffmpeg` transcode sweep ran unniced with unlimited threads on the shared 4-core host and starved the live WebRTC VP8 encoder (encode fps dropped from 30 to ~12) while a game was streaming.
@@ -15,6 +35,16 @@
 **Why it mattered**: "Slow to open" was not the game or the stream - it was cold provider startup on every open, plus unrelated batch work competing at equal CPU priority with the latency-critical encoder.
 
 **Rule**: For provider-hosted apps, mark the manifest `lifecycle.keep_launcher_warm` so stop terminates only the health-target game processes and leaves the provider client running (warm relaunch measured at ~3.5s vs ~40s cold). When the tracked pid is a warm launcher, app liveness must follow the process-name health target, with a `launcher_exit_grace` boot-grace hold so Steam's reaper/precache chain briefly matching then dropping the pattern does not flap status to exited during boot. Any background batch encoder (ffmpeg sweeps and similar) on a shared host must run under `nice -n 19` with a bounded thread count so interactive streaming always wins the CPU.
+
+---
+
+## 2026-07-07 - Desktop assistants need service state separate from sprite visibility
+
+**What happened**: Reggie was implemented like a fixed mini-window whose presence depended on local bubble/snooze state. Users could snooze him, but there was no reliable wake timer, no desktop-owned summon path, no dismiss state that could be reversed from the shell, and no durable WIM record for assistant prompts.
+
+**Why it mattered**: An assistant that can disappear without a first-class way back feels broken instead of helpful. If assistant speech only lives in component state, users cannot recover it later from WIM/Inbox, and product guidance becomes ephemeral even when it should behave like an instant message.
+
+**Rule**: Keep desktop assistant availability mounted separately from visible sprite state. Provide a shell-owned summon event, dismiss and snooze recovery paths, reduced-motion-safe pop-in/out animation, and a server-owned durable message path for assistant-authored prompts so clients cannot spoof sender or target identity.
 
 ---
 

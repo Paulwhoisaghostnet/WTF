@@ -232,6 +232,7 @@ const RemoteVideo = styled.video`
   display: block;
   object-fit: contain;
   background: #000000;
+  pointer-events: none;
 `;
 
 const WaitingSurface = styled.div`
@@ -427,7 +428,8 @@ export function ApplicationSession({ appId }: { appId: string }) {
     appId &&
       user &&
       status &&
-      status.state === "running" &&
+      (status.state === "launching" ||
+        (status.state === "running" && status.progress?.phase !== "ready")) &&
       streamState !== "connected",
   );
   const snapshotQuery = useQuery({
@@ -461,17 +463,15 @@ export function ApplicationSession({ appId }: { appId: string }) {
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
-    video.srcObject = remoteStream;
-    if (remoteStream) {
-      // Start muted: muted autoplay is always permitted, so video frames are
-      // visible immediately even before any user gesture. Audio is enabled by
-      // resumeRemotePlayback on the first interaction.
-      video.muted = true;
-      void video.play().catch(() => undefined);
-      resumeRemotePlayback();
+    if (!video || !remoteStream) return;
+    if (video.srcObject !== remoteStream) {
+      video.srcObject = remoteStream;
     }
-  }, [remoteStream, resumeRemotePlayback]);
+    // Muted autoplay is always permitted, so video frames render before any
+    // user gesture. Audio is enabled by resumeRemotePlayback on interaction.
+    video.muted = true;
+    void video.play().catch(() => undefined);
+  }, [remoteStream]);
 
   useEffect(() => {
     launchAttemptedRef.current = null;
@@ -523,7 +523,13 @@ export function ApplicationSession({ appId }: { appId: string }) {
   }, [appId, user]);
 
   useEffect(() => {
-    if (!user || !appId || status?.state !== "running" || session?.stream.preferredTransport !== "webrtc") {
+    if (
+      !user ||
+      !appId ||
+      status?.state !== "running" ||
+      status?.progress?.phase !== "ready" ||
+      session?.stream.preferredTransport !== "webrtc"
+    ) {
       setRemoteStream(null);
       setStreamState("idle");
       return;
@@ -552,14 +558,16 @@ export function ApplicationSession({ appId }: { appId: string }) {
       peerConnection.addTransceiver("audio", { direction: "recvonly" });
     }
     peerConnection.addEventListener("track", (event) => {
-      if (event.streams[0]) {
-        setRemoteStream(event.streams[0]);
-      } else {
-        receivedStream.addTrack(event.track);
-        setRemoteStream(receivedStream);
-      }
+      receivedStream.addTrack(event.track);
+      setRemoteStream(new MediaStream(receivedStream.getTracks()));
       setStreamState("connected");
       setStreamDetail("Live stream connected.");
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = receivedStream;
+        video.muted = true;
+        void video.play().catch(() => undefined);
+      }
     });
     peerConnection.addEventListener("connectionstatechange", () => {
       if (cancelled) return;
@@ -774,26 +782,13 @@ export function ApplicationSession({ appId }: { appId: string }) {
     resumeRemotePlayback();
     const payload = pointerPayload(event, action);
     if (!payload) return;
-    const frame = frameRef.current;
-    if (
-      event.type === "pointerdown" &&
-      frame &&
-      remoteStream &&
-      event.pointerType === "mouse" &&
-      typeof frame.requestPointerLock === "function" &&
-      document.pointerLockElement !== frame
-    ) {
-      // Trap the cursor in the play surface so the game's native cursor and
-      // control scheme take priority; Esc hands the cursor back to wtfOS.
-      try {
-        void (frame.requestPointerLock() as Promise<void> | undefined)?.catch?.(() => undefined);
-      } catch {
-        // Pointer lock is best-effort; absolute coordinates keep working.
-      }
-    } else if (event.type === "pointerdown" && document.pointerLockElement !== frame) {
+    if (event.type === "pointerdown" && document.pointerLockElement !== frameRef.current) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
     sendInput(payload);
+    if (event.type === "pointerup" && payload.action === "up") {
+      sendInput({ ...payload, action: "click" });
+    }
   }
 
   function handleWheelEvent(event: WheelEvent<HTMLDivElement>) {
@@ -816,6 +811,15 @@ export function ApplicationSession({ appId }: { appId: string }) {
   function handleKeyEvent(event: KeyboardEvent<HTMLDivElement>) {
     event.preventDefault();
     resumeRemotePlayback();
+    if (event.type === "keydown" && (event.key === "Enter" || event.key === " ")) {
+      sendInput({
+        type: "keyboard",
+        action: "press",
+        key: event.key,
+        code: event.code,
+      });
+      return;
+    }
     sendInput({
       type: "keyboard",
       action: event.type === "keydown" ? "down" : "up",
@@ -874,6 +878,26 @@ export function ApplicationSession({ appId }: { appId: string }) {
               <Square size={15} />
               Stop
             </ChromeButton>
+            {remoteStream ? (
+              <ChromeButton
+                type="button"
+                onClick={() => {
+                  const frame = frameRef.current;
+                  if (!frame) return;
+                  if (document.pointerLockElement === frame) {
+                    document.exitPointerLock();
+                    return;
+                  }
+                  try {
+                    void (frame.requestPointerLock() as Promise<void> | undefined)?.catch?.(() => undefined);
+                  } catch {
+                    // Pointer lock is best-effort.
+                  }
+                }}
+              >
+                {pointerLocked ? "Release cursor" : "Capture cursor"}
+              </ChromeButton>
+            ) : null}
           </HeaderActions>
         </Header>
         <Body>
@@ -905,8 +929,7 @@ export function ApplicationSession({ appId }: { appId: string }) {
                   ref={videoRef}
                   autoPlay
                   playsInline
-                  onCanPlay={resumeRemotePlayback}
-                  onLoadedMetadata={resumeRemotePlayback}
+                  muted
                   data-application-session-region="webrtc-video"
                 />
               ) : snapshotQuery.data?.dataUrl ? (
@@ -940,7 +963,9 @@ export function ApplicationSession({ appId }: { appId: string }) {
             <Detail>
               {pointerLocked
                 ? "Cursor captured by the game. Press Esc to release it."
-                : streamDetail || progress.detail || (socketReady ? "Session connected." : "Connecting session.")}
+                : streamDetail ||
+                  progress.detail ||
+                  (socketReady ? "Click or press Enter to interact. Capture cursor traps the mouse for drag-heavy games." : "Connecting session.")}
             </Detail>
             {streamStats ? (
               <StatsLine data-application-session-region="stream-stats">
