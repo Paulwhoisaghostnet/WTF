@@ -32,7 +32,7 @@ const MAX_WTF_LIVE_SIGNAL_LENGTH = 256 * 1024;
 const MAX_APPHOST_SIGNAL_LENGTH = 256 * 1024;
 const MAX_APPHOST_INPUT_LENGTH = 16 * 1024;
 const APPHOST_INPUT_TIMEOUT_MS = 2_000;
-const APPHOST_INPUT_MOVE_FLUSH_MS = 16;
+const APPHOST_INPUT_MOVE_FLUSH_MS = 8;
 const APPHOST_INPUT_QUEUE_LIMIT = 32;
 const MAX_WTF_LIVE_SOUNDBOARD_BYTES = 1_200_000;
 const MAX_WTF_LIVE_SOUNDBOARD_DATA_URL_LENGTH = Math.ceil(MAX_WTF_LIVE_SOUNDBOARD_BYTES * 1.4);
@@ -472,39 +472,40 @@ function enqueueAppHostInput(client: WsClient, appId: string, event: AppHostInpu
     return;
   }
 
-  inputQueue.queue.push({ appId, event, ack: true });
+  inputQueue.queue.unshift({ appId, event, ack: true });
   compactAppHostInputQueue(inputQueue);
-  scheduleAppHostInputDrain(inputQueue);
+  scheduleAppHostInputDrain(inputQueue, 0);
 }
 
 async function sendQueuedAppHostInput(inputQueue: AppHostInputQueue, item: AppHostQueuedInput) {
   const encoded = JSON.stringify(item.event);
+  const request = fetchAppHostJson(`/apps/${item.appId}/input`, {
+    method: "POST",
+    body: encoded,
+    headers: { "Content-Type": "application/json" },
+    timeoutMs: APPHOST_INPUT_TIMEOUT_MS,
+  });
+  if (!item.ack) {
+    void request.catch(() => undefined);
+    return;
+  }
   try {
-    const upstream = await fetchAppHostJson(`/apps/${item.appId}/input`, {
-      method: "POST",
-      body: encoded,
-      headers: { "Content-Type": "application/json" },
-      timeoutMs: APPHOST_INPUT_TIMEOUT_MS,
+    const upstream = await request;
+    sendJson(inputQueue.client.ws, {
+      type: "apphost_input_ack",
+      appId: item.appId,
+      ok: upstream.status >= 200 && upstream.status < 300,
+      status: upstream.status,
+      result: upstream.body,
     });
-    if (item.ack) {
-      sendJson(inputQueue.client.ws, {
-        type: "apphost_input_ack",
-        appId: item.appId,
-        ok: upstream.status >= 200 && upstream.status < 300,
-        status: upstream.status,
-        result: upstream.body,
-      });
-    }
   } catch (error) {
-    if (item.ack) {
-      sendJson(inputQueue.client.ws, {
-        type: "apphost_input_ack",
-        appId: item.appId,
-        ok: false,
-        status: 502,
-        result: { ok: false, error: error instanceof Error ? error.message : "Apphost input failed" },
-      });
-    }
+    sendJson(inputQueue.client.ws, {
+      type: "apphost_input_ack",
+      appId: item.appId,
+      ok: false,
+      status: 502,
+      result: { ok: false, error: error instanceof Error ? error.message : "Apphost input failed" },
+    });
   }
 }
 

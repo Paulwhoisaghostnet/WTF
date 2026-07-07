@@ -26,6 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pulse-server", default="")
     parser.add_argument("--width", type=int, default=1280)
     parser.add_argument("--height", type=int, default=720)
+    parser.add_argument("--framerate", type=int, default=24)
     parser.add_argument("--stream-id", required=True)
     parser.add_argument("--ice-wait-ms", type=int, default=1800)
     return parser.parse_args()
@@ -96,12 +97,15 @@ def main() -> int:
     audio_payload_type = offered_payload_type(offer["sdp"], "audio", "opus", 111)
     width = max(320, min(7680, int(args.width)))
     height = max(240, min(4320, int(args.height)))
+    framerate = max(15, min(60, int(args.framerate)))
+    keyframe_max_dist = max(framerate, min(framerate * 2, 60))
     video_chain = (
         f'ximagesrc display-name="{quote_gst(args.display)}" use-damage=false show-pointer=false '
-        f"! video/x-raw,framerate=30/1 "
+        f"! video/x-raw,framerate={framerate}/1 "
         f"! videoconvert ! videoscale ! video/x-raw,width={width},height={height} "
-        "! queue max-size-buffers=2 leaky=downstream "
-        "! vp8enc deadline=1 cpu-used=8 threads=4 keyframe-max-dist=30 "
+        "! queue max-size-buffers=1 max-size-time=0 max-size-bytes=0 leaky=downstream "
+        f"! vp8enc deadline=1 cpu-used=8 threads=2 keyframe-max-dist={keyframe_max_dist} "
+        "auto-alt-ref=false error-resilient=0 "
         "! rtpvp8pay pt=96 "
         "! application/x-rtp,media=video,encoding-name=VP8,payload=96 "
         "! webrtc."
@@ -150,7 +154,7 @@ def main() -> int:
                 "transport": "webrtc",
                 "answer": local_answer,
                 "candidates": candidates,
-                "video": {"width": width, "height": height, "codec": "VP8"},
+                "video": {"width": width, "height": height, "codec": "VP8", "framerate": framerate},
                 "audio": {"enabled": bool(audio_chain), "codec": "OPUS" if audio_chain else None, "payloadType": audio_payload_type if audio_chain else None},
                 "capturedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             },

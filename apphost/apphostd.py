@@ -5,6 +5,7 @@ import argparse
 import base64
 import json
 import os
+import queue
 import re
 import signal
 import socketserver
@@ -187,11 +188,18 @@ class AppHostStreamError(RuntimeError):
 
 
 class X11InputInjector:
+    MOVE_FLUSH_SECONDS = 0.012
+
     def __init__(self, display_name: str):
         self.display_name = display_name
         self._display: Any | None = None
         self._xlib: dict[str, Any] | None = None
         self._lock = threading.Lock()
+        self._pending_move: dict[str, Any] | None = None
+        self._discrete_queue: queue.SimpleQueue[dict[str, Any]] = queue.SimpleQueue()
+        self._wake = threading.Event()
+        self._worker = threading.Thread(target=self._worker_loop, name="x11-input-injector", daemon=True)
+        self._worker.start()
 
     def _connect(self) -> tuple[Any, dict[str, Any]]:
         if self._display is not None and self._xlib is not None:
@@ -205,16 +213,46 @@ class X11InputInjector:
         return self._display, self._xlib
 
     def inject(self, event: dict[str, Any]) -> dict[str, Any]:
-        with self._lock:
-            display, xlib = self._connect()
-            if event["type"] == "pointer":
-                self._inject_pointer(display, xlib, event)
-            elif event["type"] == "keyboard":
-                self._inject_keyboard(display, xlib, event)
-            else:
-                raise ValueError(f"unsupported input event type: {event['type']}")
-            display.sync()
-        return {"ok": True, "method": "xtest"}
+        if event.get("type") == "pointer" and event.get("action") == "move":
+            with self._lock:
+                self._pending_move = event
+            self._wake.set()
+            return {"ok": True, "method": "xtest", "queued": True}
+        self._discrete_queue.put(event)
+        self._wake.set()
+        return {"ok": True, "method": "xtest", "queued": True}
+
+    def _worker_loop(self) -> None:
+        while True:
+            self._wake.wait(timeout=self.MOVE_FLUSH_SECONDS)
+            self._wake.clear()
+            while True:
+                try:
+                    event = self._discrete_queue.get_nowait()
+                except queue.Empty:
+                    break
+                try:
+                    self._apply_event(event)
+                except Exception as exc:  # noqa: BLE001 - keep worker alive
+                    print(f"[apphostd] input inject failed: {exc}", flush=True)
+            with self._lock:
+                move = self._pending_move
+                self._pending_move = None
+            if move:
+                try:
+                    self._apply_event(move)
+                except Exception as exc:  # noqa: BLE001 - keep worker alive
+                    print(f"[apphostd] move inject failed: {exc}", flush=True)
+
+    def _apply_event(self, event: dict[str, Any]) -> None:
+        display, xlib = self._connect()
+        if event["type"] == "pointer":
+            self._inject_pointer(display, xlib, event)
+        elif event["type"] == "keyboard":
+            self._inject_keyboard(display, xlib, event)
+        else:
+            raise ValueError(f"unsupported input event type: {event['type']}")
+        display.flush()
 
     def _inject_pointer(self, display: Any, xlib: dict[str, Any], event: dict[str, Any]) -> None:
         X = xlib["X"]
@@ -225,7 +263,6 @@ class X11InputInjector:
         x = int(event["x"])
         y = int(event["y"])
         root.warp_pointer(x, y)
-        display.sync()
         if action == "move":
             return
         if action == "down":
@@ -381,16 +418,24 @@ class ApplicationHost:
     def _runtime_config(self, manifest: dict[str, Any]) -> dict[str, Any]:
         runtime = manifest.get("runtime") if isinstance(manifest.get("runtime"), dict) else {}
         display = runtime.get("display") if isinstance(runtime.get("display"), dict) else {}
+        stream = runtime.get("stream") if isinstance(runtime.get("stream"), dict) else {}
         input_cfg = runtime.get("input") if isinstance(runtime.get("input"), dict) else {}
         storage = runtime.get("storage") if isinstance(runtime.get("storage"), dict) else {}
         width = self._bounded_int(display.get("width"), default=1280, minimum=320, maximum=7680)
         height = self._bounded_int(display.get("height"), default=720, minimum=240, maximum=4320)
+        stream_width, stream_height = self._stream_dimensions(width, height, stream)
+        framerate = self._bounded_int(stream.get("framerate"), default=30, minimum=15, maximum=60)
         export_paths = storage.get("export_paths")
         return {
             "display": {
                 "width": width,
                 "height": height,
                 "displayName": self.config.display,
+            },
+            "stream": {
+                "width": stream_width,
+                "height": stream_height,
+                "framerate": framerate,
             },
             "input": {
                 "pointer": bool(input_cfg.get("pointer", True)),
@@ -402,6 +447,23 @@ class ApplicationHost:
                 "exportPaths": [str(path) for path in export_paths] if isinstance(export_paths, list) else [],
             },
         }
+
+    def _stream_dimensions(self, width: int, height: int, stream: dict[str, Any]) -> tuple[int, int]:
+        configured_width = stream.get("width")
+        configured_height = stream.get("height")
+        if configured_width is not None or configured_height is not None:
+            stream_width = self._bounded_int(configured_width, default=width, minimum=320, maximum=7680)
+            stream_height = self._bounded_int(configured_height, default=height, minimum=240, maximum=4320)
+            return stream_width, stream_height
+        # Measured on the live host: encoding at the native capture size beats
+        # downscaling because videoscale costs as much CPU as the smaller encode
+        # saves. Only scale down when the display exceeds the software-encode cap.
+        max_width = 1280
+        max_height = 720
+        if width <= max_width and height <= max_height:
+            return width, height
+        scale = min(max_width / width, max_height / height)
+        return max(320, int(width * scale)), max(240, int(height * scale))
 
     def _bounded_int(self, value: Any, *, default: int, minimum: int, maximum: int) -> int:
         try:
@@ -1335,8 +1397,9 @@ class ApplicationHost:
             "offer": {"type": offer_type, "sdp": offer_sdp},
             "audio": {"required": bool(manifest.get("audio_required"))},
             "video": {
-                "width": runtime["display"]["width"],
-                "height": runtime["display"]["height"],
+                "width": runtime["stream"]["width"],
+                "height": runtime["stream"]["height"],
+                "framerate": runtime["stream"]["framerate"],
             },
         }
         offer_path.write_text(json.dumps(offer_payload, indent=2, sort_keys=True), encoding="utf-8")
@@ -1357,9 +1420,11 @@ class ApplicationHost:
             "--pulse-server",
             self.config.pulse_server or "",
             "--width",
-            str(runtime["display"]["width"]),
+            str(runtime["stream"]["width"]),
             "--height",
-            str(runtime["display"]["height"]),
+            str(runtime["stream"]["height"]),
+            "--framerate",
+            str(runtime["stream"]["framerate"]),
             "--stream-id",
             stream_id,
         ]
@@ -1496,7 +1561,45 @@ class ApplicationHost:
         for candidate_app_id, stream_id in list(self._streams):
             if candidate_app_id == app_id:
                 exit_codes[stream_id] = self._stop_stream_process(candidate_app_id, stream_id)
+        self._reap_orphaned_streamers(app_id)
         return exit_codes
+
+    def _reap_orphaned_streamers(self, app_id: str) -> None:
+        """Terminate streamer processes this daemon no longer tracks.
+
+        A daemon restart (deploy) loses the in-memory stream table, so streamers
+        started by the previous daemon keep encoding forever unless they are
+        matched by their per-app state path and terminated here.
+        """
+        marker = f"/streams/{app_id}/"
+        try:
+            result = subprocess.run(
+                ["pgrep", "-f", str(self.config.webrtc_streamer)],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return
+        tracked_pids = {process.pid for process in self._streams.values()}
+        for line in result.stdout.split():
+            try:
+                pid = int(line)
+            except ValueError:
+                continue
+            if pid in tracked_pids:
+                continue
+            try:
+                cmdline = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode("utf-8", "replace")
+            except OSError:
+                continue
+            if marker not in cmdline:
+                continue
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except (ProcessLookupError, PermissionError):
+                continue
 
     def _stop_stream_process(self, app_id: str, stream_id: str) -> int | None:
         process = self._streams.pop((app_id, stream_id), None)

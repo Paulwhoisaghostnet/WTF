@@ -1,3 +1,23 @@
+## 2026-07-07 - Remote apphost input must not wait on pointer-move HTTP before clicks land
+
+**What happened**: Jackbox audio was fixed, but play still felt laggy and unresponsive. The `/ws/apphost` input relay coalesced pointer moves correctly, yet the server-side drain loop still `await`ed every move's upstream HTTP call before processing queued clicks or keys. Combined with a 35ms client throttle, 16ms server flush, and synchronous X11 `display.sync()` on every warp, discrete input could sit behind slow move round-trips and feel seconds late on a CPU-heavy software-rendered game stream.
+
+**Why it mattered**: Remote desktop play lives or dies on click latency. Users experience "the cursor moved but nothing happened" when move acknowledgements block discrete events, even if video RTT looks acceptable.
+
+**Rule**: Treat pointer moves as fire-and-forget end to end (client rAF coalescing → REST post without waiting → apphost worker coalescing with `display.flush()`), prioritize discrete events ahead of moves, and keep WebRTC encode resolution/framerate below the native display size on software-rendered hosts so VP8 encoding does not steal the same CPU the game needs for input handling.
+
+---
+
+## 2026-07-07 - Downscaling before a software encode is not automatically cheaper
+
+**What happened**: To reduce encoder CPU on the 4-core Hetzner host, the stream profile was dropped from native 1280x720@30 to 960x540@24. Live A/B measurement with a real Chromium peer showed the smaller profile used the same ~50% encoder CPU but delivered lower fps (23 vs 29.8 avg on the same scene), because `videoscale` from the 1280x720 capture costs roughly what the smaller vp8enc saves.
+
+**Why it mattered**: An "obvious" optimization was measurably worse. Without the live A/B probe (fps, RTT, jitter, encoder %CPU per profile), the regression would have shipped as a latency improvement.
+
+**Rule**: Never tune remote-stream encode profiles by intuition. Measure candidate profiles on the live host with a real WebRTC peer and record fps/RTT/jitter plus encoder CPU. Default to encoding at the native capture size and only scale when the display exceeds the software-encode cap (1280x720@30 on this host), and keep the daemon-restart streamer-orphan reaper so A/B passes cannot leak encoders.
+
+---
+
 ## 2026-07-06 - Cleared blockers must be removed from every evidence layer
 
 **What happened**: The live deployment marker was restored on production and the readiness gate correctly stopped reporting it as a blocker, but the Pasta matrix, coverage report, cleanup audit, and top bounty rows still described `commitRef:"dev"` as current. That made the next launch step look like deployment metadata work instead of the actual remaining WTF.ME credential/host proof.

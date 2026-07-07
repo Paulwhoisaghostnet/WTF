@@ -32,10 +32,45 @@ class AppHostTests(unittest.TestCase):
         injector = X11InputInjector(":99")
 
         self.assertIsInstance(injector._lock, threading.Lock().__class__)  # noqa: SLF001
+        self.assertTrue(injector._worker.is_alive())
         self.assertTrue(issubclass(AppHostThreadingHTTPServer, BoundedThreadingMixIn))
         self.assertTrue(issubclass(UnixThreadingHTTPServer, BoundedThreadingMixIn))
         self.assertEqual(AppHostThreadingHTTPServer.max_request_threads, 48)
         self.assertEqual(UnixThreadingHTTPServer.max_request_threads, 48)
+
+    def test_runtime_stream_defaults_keep_native_size_and_cap_large_displays(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifests = root / "manifests"
+            state = root / "state"
+            manifests.mkdir()
+            state.mkdir()
+            for app_id, width, height in (("demo-app", 1280, 720), ("big-app", 1920, 1080)):
+                (manifests / f"{app_id}.json").write_text(
+                    json.dumps(
+                        {
+                            "id": app_id,
+                            "name": app_id,
+                            "executable": "/bin/true",
+                            "working_directory": str(root),
+                            "environment": {},
+                            "startup_timeout": 2,
+                            "health_check": {"type": "process"},
+                            "display_required": True,
+                            "audio_required": False,
+                            "runtime": {"display": {"width": width, "height": height}},
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+            host = ApplicationHost(AppHostConfig(manifest_dir=manifests, state_dir=state))
+            native = host._runtime_config(host._require_manifest("demo-app"))
+            self.assertEqual(native["stream"]["width"], 1280)
+            self.assertEqual(native["stream"]["height"], 720)
+            self.assertEqual(native["stream"]["framerate"], 30)
+            capped = host._runtime_config(host._require_manifest("big-app"))
+            self.assertEqual(capped["stream"]["width"], 1280)
+            self.assertEqual(capped["stream"]["height"], 720)
 
     def test_manifest_driven_launch_status_and_stop(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -899,6 +934,7 @@ class AppHostTests(unittest.TestCase):
                 "parser.add_argument('--pulse-server', required=True)\n"
                 "parser.add_argument('--width', required=True)\n"
                 "parser.add_argument('--height', required=True)\n"
+                "parser.add_argument('--framerate', required=True)\n"
                 "parser.add_argument('--stream-id', required=True)\n"
                 "args = parser.parse_args()\n"
                 "offer = json.load(open(args.offer, encoding='utf-8'))\n"
@@ -960,7 +996,7 @@ class AppHostTests(unittest.TestCase):
             self.assertEqual(offered["receivedOfferType"], "offer")
             self.assertEqual(offered["display"], ":55")
             self.assertEqual(offered["pulseServer"], "unix:/tmp/pulse/native")
-            self.assertEqual(offered["video"], {"width": 1024, "height": 768})
+            self.assertEqual(offered["video"], {"width": 960, "height": 720})
             self.assertTrue(host.stream_status("demo-app", "stream-test-1")["active"])
             self.assertTrue(host.stream_stop("demo-app", "stream-test-1")["stopped"])
             host.stop("demo-app")
@@ -990,6 +1026,7 @@ class AppHostTests(unittest.TestCase):
                 "parser.add_argument('--pulse-server', required=True)\n"
                 "parser.add_argument('--width', required=True)\n"
                 "parser.add_argument('--height', required=True)\n"
+                "parser.add_argument('--framerate', required=True)\n"
                 "parser.add_argument('--stream-id', required=True)\n"
                 "parser.parse_args()\n"
                 "time.sleep(30)\n",

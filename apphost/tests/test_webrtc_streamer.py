@@ -17,6 +17,14 @@ class WebRtcStreamerTests(unittest.TestCase):
         self.assertIn("encoding-params=(string)2", source)
         self.assertNotIn("encoding-params=2 ", source)
 
+    def test_video_pipeline_prefers_low_latency_settings(self):
+        source = STREAMER_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("--framerate", source)
+        self.assertIn("max-size-buffers=1", source)
+        self.assertIn("auto-alt-ref=false", source)
+        self.assertIn("threads=2", source)
+
     def test_offered_payload_type_uses_audio_opus_from_browser_offer(self):
         sdp = "\r\n".join(
             [

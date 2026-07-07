@@ -25,6 +25,11 @@
       "width": 1280,
       "height": 720
     },
+    "stream": {
+      "width": 1280,
+      "height": 720,
+      "framerate": 30
+    },
     "input": {
       "pointer": true,
       "keyboard": true,

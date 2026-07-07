@@ -6,6 +6,7 @@ import { fetchAppHostJson } from "../features/apphost/proxy";
 const router = Router();
 const DEFAULT_APPHOST_LAUNCH_TIMEOUT_MS = 390_000;
 const DEFAULT_APPHOST_INTERACTIVE_TIMEOUT_MS = 30_000;
+const DEFAULT_APPHOST_INPUT_TIMEOUT_MS = 2_000;
 
 function appHostLaunchTimeoutMs(): number {
   const timeout = Number(process.env.WTFOS_APPHOST_LAUNCH_TIMEOUT_MS || DEFAULT_APPHOST_LAUNCH_TIMEOUT_MS);
@@ -15,6 +16,11 @@ function appHostLaunchTimeoutMs(): number {
 function appHostInteractiveTimeoutMs(): number {
   const timeout = Number(process.env.WTFOS_APPHOST_INTERACTIVE_TIMEOUT_MS || DEFAULT_APPHOST_INTERACTIVE_TIMEOUT_MS);
   return Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_APPHOST_INTERACTIVE_TIMEOUT_MS;
+}
+
+function appHostInputTimeoutMs(): number {
+  const timeout = Number(process.env.WTFOS_APPHOST_INPUT_TIMEOUT_MS || DEFAULT_APPHOST_INPUT_TIMEOUT_MS);
+  return Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_APPHOST_INPUT_TIMEOUT_MS;
 }
 
 function encodeAppHostId(value: string | string[] | undefined): string {
@@ -90,7 +96,7 @@ router.post("/api/apphost/apps/:id/stop", isAuthenticated, (req, res) =>
 );
 
 router.post("/api/apphost/apps/:id/input", isAuthenticated, (req, res) =>
-  proxyAppHost(res, `/apps/${encodeAppHostId(req.params.id)}/input`, "POST", req.body, { timeoutMs: appHostInteractiveTimeoutMs() })
+  proxyAppHost(res, `/apps/${encodeAppHostId(req.params.id)}/input`, "POST", req.body, { timeoutMs: appHostInputTimeoutMs() })
 );
 
 router.post("/api/apphost/apps/:id/stream/offer", isAuthenticated, (req, res) =>

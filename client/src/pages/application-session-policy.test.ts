@@ -23,7 +23,18 @@ test("Application session page owns launch attach stream and input", () => {
   assert.doesNotMatch(sessionSource, /\["running", "launching"\]\.includes\(status\.state\)/);
   assert.match(sessionSource, /const resumeRemotePlayback = useCallback/);
   assert.match(sessionSource, /onLoadedMetadata=\{resumeRemotePlayback\}/);
-  assert.match(sessionSource, /const controlsReady = status\?\.state === "running"/);
-  assert.match(sessionSource, /if \(!controlsReady\) return;/);
-  assert.match(sessionSource, /if \(event\.type === "pointer" && event\.action === "move"\) return;/);
+  assert.match(sessionSource, /const controlsReady = status\?\.state === "running" && socketReady/);
+  assert.match(sessionSource, /if \(!controlsReady \|\| !appId\) return;/);
+  assert.match(sessionSource, /pendingMoveRef\.current = event/);
+  assert.match(sessionSource, /requestAnimationFrame\(flushPendingMove\)/);
+  assert.match(sessionSource, /api\.post\(`\/api\/apphost\/apps\/\$\{encodeURIComponent\(appId\)\}\/input`, event\)/);
+});
+
+test("Application session page monitors live stream latency and framerate", () => {
+  assert.match(sessionSource, /peerConnection\.getStats\(\)/);
+  assert.match(sessionSource, /framesPerSecond/);
+  assert.match(sessionSource, /currentRoundTripTime/);
+  assert.match(sessionSource, /data-application-session-region="stream-stats"/);
+  assert.match(sessionSource, /ms RTT/);
+  assert.match(sessionSource, /ms jitter/);
 });

@@ -112,6 +112,13 @@ type StreamOfferResponse = {
   error?: string;
 };
 
+type StreamStats = {
+  fps: number | null;
+  rttMs: number | null;
+  jitterMs: number | null;
+  framesDecoded: number;
+};
+
 const Page = styled.main`
   height: 100%;
   min-height: 420px;
@@ -273,6 +280,15 @@ const Detail = styled.div`
   font-size: 13px;
 `;
 
+const StatsLine = styled.div`
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: #8fd3a8;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+`;
+
 const ErrorBar = styled.div`
   padding: 8px 10px;
   border: 1px solid #7c5520;
@@ -349,13 +365,15 @@ export function ApplicationSession({ appId }: { appId: string }) {
   const wsRef = useRef<WebSocket | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const streamIdRef = useRef<string | null>(null);
-  const lastMoveAtRef = useRef(0);
+  const pendingMoveRef = useRef<Record<string, unknown> | null>(null);
+  const moveFlushHandleRef = useRef<number | null>(null);
   const launchAttemptedRef = useRef<string | null>(null);
   const [launchStartedAt, setLaunchStartedAt] = useState<number | null>(null);
   const [socketReady, setSocketReady] = useState(false);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [streamState, setStreamState] = useState<"idle" | "connecting" | "connected" | "failed">("idle");
   const [streamDetail, setStreamDetail] = useState<string | null>(null);
+  const [streamStats, setStreamStats] = useState<StreamStats | null>(null);
 
   const sessionQuery = useQuery({
     queryKey: ["applications", "session", appId],
@@ -394,7 +412,7 @@ export function ApplicationSession({ appId }: { appId: string }) {
 
   const status = statusQuery.data?.status ?? sessionQuery.data?.status;
   const session = sessionQuery.data?.session;
-  const controlsReady = status?.state === "running";
+  const controlsReady = status?.state === "running" && socketReady;
   const iceServersKey = useMemo(
     () => JSON.stringify(session?.stream.iceServers ?? []),
     [session?.stream.iceServers],
@@ -575,17 +593,82 @@ export function ApplicationSession({ appId }: { appId: string }) {
     };
   }, [appId, iceServersKey, session?.audio?.required, session?.stream.preferredTransport, status?.state, user]);
 
-  function sendInput(event: Record<string, unknown>) {
-    if (!controlsReady) return;
-    const ws = wsRef.current;
-    const payload = JSON.stringify({ type: "apphost_input", appId, event });
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(payload);
+  useEffect(() => {
+    if (streamState !== "connected") {
+      setStreamStats(null);
       return;
     }
-    if (event.type === "pointer" && event.action === "move") return;
-    void api.post(`/api/apphost/apps/${encodeURIComponent(appId)}/input`, event).catch(() => undefined);
-  }
+    let lastFramesDecoded = 0;
+    let lastSampleAt = 0;
+    const interval = window.setInterval(() => {
+      const peerConnection = peerConnectionRef.current;
+      if (!peerConnection || peerConnection.connectionState !== "connected") return;
+      void peerConnection.getStats().then((report) => {
+        let framesDecoded = 0;
+        let jitterSeconds: number | undefined;
+        let rttSeconds: number | undefined;
+        let reportedFps: number | undefined;
+        report.forEach((entry) => {
+          const stats = entry as Record<string, unknown>;
+          if (stats.type === "inbound-rtp" && stats.kind === "video") {
+            framesDecoded = Number(stats.framesDecoded) || 0;
+            if (typeof stats.framesPerSecond === "number") reportedFps = stats.framesPerSecond;
+            if (typeof stats.jitter === "number") jitterSeconds = stats.jitter;
+          }
+          if (stats.type === "candidate-pair" && stats.state === "succeeded" && typeof stats.currentRoundTripTime === "number") {
+            rttSeconds = stats.currentRoundTripTime;
+          }
+        });
+        const now = performance.now();
+        let fps: number | undefined = reportedFps;
+        if (fps === undefined && lastSampleAt > 0 && now > lastSampleAt) {
+          fps = ((framesDecoded - lastFramesDecoded) * 1000) / (now - lastSampleAt);
+        }
+        lastFramesDecoded = framesDecoded;
+        lastSampleAt = now;
+        setStreamStats({
+          fps: fps !== undefined ? Math.max(0, Math.round(fps)) : null,
+          rttMs: rttSeconds !== undefined ? Math.round(rttSeconds * 1000) : null,
+          jitterMs: jitterSeconds !== undefined ? Math.round(jitterSeconds * 1000) : null,
+          framesDecoded,
+        });
+      });
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [streamState]);
+
+  const flushPendingMove = useCallback(() => {
+    moveFlushHandleRef.current = null;
+    const payload = pendingMoveRef.current;
+    pendingMoveRef.current = null;
+    if (!payload || !appId) return;
+    void api.post(`/api/apphost/apps/${encodeURIComponent(appId)}/input`, payload).catch(() => undefined);
+  }, [appId]);
+
+  const sendInput = useCallback(
+    (event: Record<string, unknown>) => {
+      if (!controlsReady || !appId) return;
+      if (event.type === "pointer" && event.action === "move") {
+        pendingMoveRef.current = event;
+        if (moveFlushHandleRef.current == null) {
+          moveFlushHandleRef.current = window.requestAnimationFrame(flushPendingMove);
+        }
+        return;
+      }
+      void api.post(`/api/apphost/apps/${encodeURIComponent(appId)}/input`, event).catch(() => undefined);
+    },
+    [appId, controlsReady, flushPendingMove],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (moveFlushHandleRef.current != null) {
+        window.cancelAnimationFrame(moveFlushHandleRef.current);
+        moveFlushHandleRef.current = null;
+      }
+      pendingMoveRef.current = null;
+    };
+  }, [appId]);
 
   function pointerPayload(event: PointerEvent<HTMLDivElement>, action: string) {
     const frame = frameRef.current;
@@ -614,13 +697,7 @@ export function ApplicationSession({ appId }: { appId: string }) {
           : event.type === "pointermove"
             ? "move"
             : "click";
-    if (action === "move") {
-      const now = Date.now();
-      if (now - lastMoveAtRef.current < 35) return;
-      lastMoveAtRef.current = now;
-    } else {
-      resumeRemotePlayback();
-    }
+    resumeRemotePlayback();
     const payload = pointerPayload(event, action);
     if (!payload) return;
     if (event.type === "pointerdown") {
@@ -768,6 +845,13 @@ export function ApplicationSession({ appId }: { appId: string }) {
               <ProgressFill $percent={progress.percent} />
             </ProgressTrack>
             <Detail>{streamDetail || progress.detail || (socketReady ? "Session connected." : "Connecting session.")}</Detail>
+            {streamStats ? (
+              <StatsLine data-application-session-region="stream-stats">
+                <span>{streamStats.fps != null ? `${streamStats.fps} fps` : "fps —"}</span>
+                <span>{streamStats.rttMs != null ? `${streamStats.rttMs} ms RTT` : "RTT —"}</span>
+                <span>{streamStats.jitterMs != null ? `${streamStats.jitterMs} ms jitter` : "jitter —"}</span>
+              </StatsLine>
+            ) : null}
           </StatusDock>
         </Body>
       </Page>
