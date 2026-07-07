@@ -1,3 +1,13 @@
+## 2026-07-06 - Cleared blockers must be removed from every evidence layer
+
+**What happened**: The live deployment marker was restored on production and the readiness gate correctly stopped reporting it as a blocker, but the Pasta matrix, coverage report, cleanup audit, and top bounty rows still described `commitRef:"dev"` as current. That made the next launch step look like deployment metadata work instead of the actual remaining WTF.ME credential/host proof.
+
+**Why it mattered**: Release operators follow the shortest visible summary first. If a cleared blocker remains in top-level evidence, the next pass can spend time re-solving a fixed production problem, or worse, distrust the current live readiness output when the docs disagree with it.
+
+**Rule**: When a production blocker is cleared, update the readiness matrix, coverage report, cleanup audit, bounty summary row, and detailed bounty evidence in the same pass. Keep historical discovery notes, but make the current blocker list match the latest executable gate output.
+
+---
+
 ## 2026-07-06 - Gate summaries must match the audit surface they trust
 
 **What happened**: The Pasta repo cleanup audit had been hardened to classify current dirty files into release lanes, but the live-readiness wrapper still summarized the pass as only "branches/worktrees classified." The underlying JSON was correct, but the user-facing gate output under-described the most important current cleanup risk: accidentally bundling unrelated valid dirty lanes into one production push.
