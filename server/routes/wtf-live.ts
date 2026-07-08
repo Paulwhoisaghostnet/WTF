@@ -92,6 +92,7 @@ const quotedPostSnapshotSchema = z
 const createRoomSchema = z.object({
   title: z.string().trim().min(2).max(120),
   description: z.string().trim().max(500).optional().default(""),
+  roomKind: z.enum(["room", "game"]).optional().default("room"),
   accessMode: z.enum(["public", "private"]).optional().default("public"),
   accessUsernames: z.array(z.string().trim().min(1).max(50)).max(50).optional().default([]),
 });
@@ -109,7 +110,7 @@ const updateRoomRolesSchema = z.object({
   guestUsernames: z.array(z.string().trim().min(1).max(50)).max(50).default([]),
 });
 
-const roomKindSchema = z.enum(["room", "stage"]).default("room");
+const roomKindSchema = z.enum(["room", "game", "stage"]).default("room");
 
 const roomSettingsSchema = z.object({
   roomKind: roomKindSchema.optional(),
@@ -337,7 +338,8 @@ function stageCanShare(role: WtfLiveStageRoomRole): boolean {
 }
 
 function normalizeRoomKindParam(value: unknown): WtfLiveRoomKind {
-  return value === "stage" ? "stage" : "room";
+  if (value === "stage") return "stage";
+  return value === "game" ? "game" : "room";
 }
 
 function originForRequest(req: Request): string {
@@ -454,7 +456,7 @@ router.get("/api/wtf-live/public/rooms/:roomId", async (req, res) => {
     return res.json(await stageRoomEnvelope(stage, "audience", null));
   }
   const permissions = await getWtfLiveRoomPublishPermissions({
-    roomKind: "room",
+    roomKind: room.kind,
     roomId: room.id,
     userId: null,
   });
@@ -471,6 +473,7 @@ router.get("/api/wtf-live/public/rooms/:roomId", async (req, res) => {
       canManageRoom: permissions.canManageRoom,
       roomRole: permissions.roomRole,
       transport: "webrtc_mesh_via_wtf_live_signaling",
+      gameRoom: room.kind === "game",
     },
     roomSettings: permissions.settings,
   });
@@ -671,7 +674,7 @@ router.post("/api/wtf-live/rooms/:roomId/events", actionLimiter, async (req, res
 router.get("/api/wtf-live/rooms", async (_req, res) => {
   const rooms = await listWtfLiveRooms();
   res.json({
-    rooms: rooms.filter((room) => room.kind === "room").map(withWtfLivePresence),
+    rooms: rooms.map(withWtfLivePresence),
     collection: SKYWIRE_ROOM_MESSAGE_COLLECTION,
     storage: "public_atproto_repo_records",
     skywirePath: "/skywire?tab=account",
@@ -710,7 +713,7 @@ router.get("/api/wtf-live/rooms/:roomId/join", async (req, res) => {
     return res.json(await stageRoomEnvelope(stageAccess.stage, stageAccess.role, user.id));
   }
   const permissions = await getWtfLiveRoomPublishPermissions({
-    roomKind: "room",
+    roomKind: room.kind,
     roomId: room.id,
     userId: user.id,
   });
@@ -728,6 +731,7 @@ router.get("/api/wtf-live/rooms/:roomId/join", async (req, res) => {
       roomRole: permissions.roomRole,
       transport: "webrtc_mesh_via_wtf_live_signaling",
       privateRoom: room.accessMode === "private",
+      gameRoom: room.kind === "game",
     },
     roomSettings: permissions.settings,
   });
@@ -742,8 +746,21 @@ router.post("/api/wtf-live/rooms", actionLimiter, async (req, res) => {
       ownerUserId: user.id,
       title: parsed.data.title,
       description: parsed.data.description,
+      roomKind: parsed.data.roomKind,
       accessMode: parsed.data.accessMode,
     });
+    if (room.kind === "game") {
+      await updateWtfLiveRoomSettings({
+        actorUserId: user.id,
+        roomKind: "game",
+        roomId: room.id,
+        allowGuestAudio: true,
+        allowGuestCamera: true,
+        allowGuestScreen: false,
+        allowGuestMedia: false,
+        showKitEnabled: true,
+      });
+    }
     if (parsed.data.accessMode === "private") {
       const access = await replaceOwnedWtfLiveRoomAccessMembers({
         ownerUserId: user.id,

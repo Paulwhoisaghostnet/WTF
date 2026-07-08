@@ -307,6 +307,63 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     expect(fatalErrors(errors)).toEqual([]);
   });
 
+  test("game rooms let owners launch Jackbox host apps while room media remains available", async ({
+    page,
+    request,
+  }) => {
+    await setAdmin(request);
+    const errors = [];
+    capturePageErrors(page, errors, "game-room");
+
+    await page.goto("/live", { waitUntil: "domcontentloaded" });
+    await page.locator("[data-wtf-live-create-room-kind]").selectOption("game");
+    await page.getByPlaceholder("Room title").fill("Friday Jackbox");
+    await page.getByRole("button", { name: "Create Game Room" }).click();
+
+    await expect(page.getByText("Friday Jackbox created as a game room.")).toBeVisible();
+    const selectedGameRoom = page.locator("[data-wtf-live-room-card='game-room'][data-wtf-live-room-surface='selected']");
+    await expect(selectedGameRoom).toBeVisible();
+    await expect(selectedGameRoom).toHaveAttribute("data-wtf-live-game-room", "game-room");
+    await expect(selectedGameRoom.locator("[data-wtf-live-game-room-badge='game-room']")).toContainText("Jackbox");
+    await expect(selectedGameRoom.locator("[data-wtf-live-game-host-actions='game-room']")).toBeVisible();
+
+    const launchPopupPromise = page.waitForEvent("popup");
+    await selectedGameRoom.locator("[data-wtf-live-game-start='jackbox-party-pack-10']").click();
+    const launchPopup = await launchPopupPromise;
+    await launchPopup.waitForLoadState("domcontentloaded");
+    expect(new URL(launchPopup.url()).pathname).toBe("/applications/jackbox-party-pack-10/play");
+    await launchPopup.close();
+
+    const settings = await (await request.get("/api/wtf-live/rooms/game-room/settings?roomKind=game")).json();
+    expect(settings.settings.roomKind).toBe("game");
+    expect(settings.settings.allowGuestCamera).toBe(true);
+    expect(settings.settings.allowGuestScreen).toBe(false);
+    const joinEnvelope = await (await request.get("/api/wtf-live/rooms/game-room/join")).json();
+    expect(joinEnvelope.room.kind).toBe("game");
+    expect(joinEnvelope.capabilities.gameRoom).toBe(true);
+    expect(joinEnvelope.roomSettings.roomKind).toBe("game");
+
+    const roomPopupPromise = page.waitForEvent("popup");
+    await selectedGameRoom.getByRole("button", { name: "Join in New Tab" }).click();
+    const roomPage = await roomPopupPromise;
+    await roomPage.waitForLoadState("domcontentloaded");
+    expect(new URL(roomPage.url()).pathname).toBe("/live/r/game-room");
+    await expect(roomPage.locator("[data-wtf-live-room-frame='game']")).toBeVisible();
+    await expect(roomPage.getByRole("button", { name: "Join Game Room" })).toBeVisible();
+    await expect(roomPage.locator("[data-wtf-live-game-room-host-actions='game-room']")).toBeVisible();
+    await expect(roomPage.locator("[data-wtf-live-toggle-mic]")).toBeVisible();
+    await expect(roomPage.locator("[data-wtf-live-toggle-camera]")).toBeVisible();
+    const roomLaunchPopupPromise = roomPage.waitForEvent("popup");
+    await roomPage.locator("[data-wtf-live-game-start='jackbox-party-pack-11']").click();
+    const roomLaunchPopup = await roomLaunchPopupPromise;
+    await roomLaunchPopup.waitForLoadState("domcontentloaded");
+    expect(new URL(roomLaunchPopup.url()).pathname).toBe("/applications/jackbox-party-pack-11/play");
+    await roomLaunchPopup.close();
+    await roomPage.close();
+
+    expect(fatalErrors(errors)).toEqual([]);
+  });
+
   test("smart room owner controls select WTF users, save settings, schedule events, and attach Show Kits", async ({
     page,
     request,

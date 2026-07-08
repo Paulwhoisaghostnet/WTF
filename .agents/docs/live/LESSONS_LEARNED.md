@@ -7647,3 +7647,13 @@
 **Why it mattered**: Every layer reported success — launch confirmed, health check green, WebRTC answer with an OPUS track, RTP audio bytes flowing (comfort noise) — while the user heard nothing. The one signal that actually proves audio is `sink-inputs` being non-empty plus a non-zero RMS on the monitor. Also, `show-pointer=true` in `ximagesrc` was double-drawing the remote X cursor under the browser's local cursor, which read as "input lag" even when injection was fast.
 
 **Rule**: For hosted-app audio, treat the long-lived provider client as part of the environment contract: `steam-launch.sh` must check a running Steam's `/proc/<pid>/environ` for `PULSE_SERVER` and restart it if missing before `-applaunch`. Prove audio with `pactl list short sink-inputs` + monitor RMS, and prove the full path with a real browser peer connection measuring decoded frames and analyser RMS — never accept "answer SDP has an audio m-line" as audio proof. Keep `show-pointer=false` in the capture pipeline so the only visible cursor is the user's local one. Note the apphost systemd service kills the game cgroup on restart, so any `--apply` deploy requires a relaunch afterward.
+
+---
+
+## 2026-07-08 - Playable remote games need game-first chrome and durable room identity
+
+**What happened**: Jackbox was playable through the Remote Applications apphost, but the play route still presented it like a normal wtfOS utility page with permanent header/status framing around the remote video. WTF LIVE also had ordinary rooms and stages, but no durable `game` room kind, so game hosting would have blurred room settings, invitations, WebSocket publish permissions, and inventory coverage into the generic room bucket.
+
+**Why it mattered**: Party games depend on readable room codes, timers, prompts, and shared screen context. Every persistent strip of OS chrome steals from that core object. On the social side, a game room is not just a label: it needs its own persisted kind and settings scope so owners can host a game while players keep the normal WTF LIVE camera/audio experience without cross-contaminating ordinary rooms or stages.
+
+**Rule**: Treat remote game sessions as game-first surfaces: maximize the captured game, move app controls/status into overlays, and keep only the affordances needed to control or exit the session. When adding a new live-room mode, carry the room kind through schema, API envelopes, settings/show-kit/invite/event scopes, WebSocket permission checks, inventory docs, harness fixtures, and E2E coverage in the same pass. Reuse the existing apphost launch route for host actions until a room-owned media-source ingest path is explicitly designed.

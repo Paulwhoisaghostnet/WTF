@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type WheelEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "react95";
-import { ArrowLeft, Hourglass, MonitorUp, RefreshCw, Square } from "lucide-react";
+import { ArrowLeft, Hourglass, MonitorUp, Radio, RefreshCw, Square } from "lucide-react";
 import styled from "styled-components";
 import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api, isApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { useWindowManager } from "../lib/window-context";
 
 type HostedApplication = {
   id: string;
@@ -120,25 +121,34 @@ type StreamStats = {
 };
 
 const Page = styled.main`
+  position: relative;
   height: 100%;
   min-height: 420px;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: block;
+  overflow: hidden;
   color: #f5f7fb;
-  background: #101114;
+  background: #000000;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
 `;
 
 const Header = styled.header`
+  position: absolute;
+  z-index: 5;
+  top: 8px;
+  left: 8px;
+  right: 8px;
   min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
-  border-bottom: 1px solid #2c3038;
-  background: #181a20;
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(12, 14, 18, 0.78);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.34);
 `;
 
 const TitleGroup = styled.div`
@@ -149,19 +159,19 @@ const TitleGroup = styled.div`
 `;
 
 const IconBox = styled.span`
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border: 1px solid #3a3f49;
-  background: #22252d;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(34, 37, 45, 0.84);
 `;
 
 const TitleText = styled.h1`
   min-width: 0;
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
   line-height: 1.2;
   overflow-wrap: anywhere;
 `;
@@ -175,28 +185,29 @@ const HeaderActions = styled.div`
 `;
 
 const ChromeButton = styled(Button)`
-  min-height: 32px;
+  min-height: 30px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
 `;
 
 const Body = styled.section`
+  position: absolute;
+  inset: 0;
   min-width: 0;
   min-height: 0;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  padding: 12px;
-  gap: 10px;
+  display: block;
 `;
 
 const RemoteStage = styled.div`
+  width: 100%;
+  height: 100%;
   min-width: 0;
   min-height: 0;
   display: grid;
   place-items: center;
   background: #050608;
-  border: 1px solid #2c3038;
+  border: 0;
   overflow: hidden;
   container-type: size;
 `;
@@ -246,12 +257,21 @@ const WaitingSurface = styled.div`
 `;
 
 const StatusDock = styled.div`
+  position: absolute;
+  z-index: 5;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  max-width: 760px;
+  margin: 0 auto;
   min-width: 0;
   display: grid;
-  gap: 7px;
-  padding: 10px;
-  border: 1px solid #2c3038;
-  background: #181a20;
+  gap: 6px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(12, 14, 18, 0.78);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.28);
 `;
 
 const StatusLine = styled.div`
@@ -265,7 +285,7 @@ const StatusLine = styled.div`
 `;
 
 const ProgressTrack = styled.div`
-  height: 14px;
+  height: 8px;
   padding: 2px;
   border: 1px solid #414753;
   background: #050608;
@@ -294,6 +314,11 @@ const StatsLine = styled.div`
 `;
 
 const ErrorBar = styled.div`
+  position: absolute;
+  z-index: 6;
+  top: 56px;
+  left: 8px;
+  right: 8px;
   padding: 8px 10px;
   border: 1px solid #7c5520;
   background: #3a2b16;
@@ -364,6 +389,7 @@ export function ApplicationSession({ appId }: { appId: string }) {
   const [, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
   const queryClient = useQueryClient();
+  const wm = useWindowManager();
   const frameRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -849,6 +875,10 @@ export function ApplicationSession({ appId }: { appId: string }) {
   }, [sessionQuery.data?.session?.display]);
   const loadError = sessionQuery.error || statusQuery.error || launchMutation.error || stopMutation.error || null;
 
+  function openLiveRooms() {
+    wm.openPage("/live?tab=rooms");
+  }
+
   useEffect(() => {
     if (!isLoading && !user) {
       setLocation("/login", { replace: true });
@@ -857,8 +887,8 @@ export function ApplicationSession({ appId }: { appId: string }) {
 
   return (
     <AppWindow title={appName}>
-      <Page data-application-session-region="surface">
-        <Header data-application-session-region="header">
+      <Page data-application-session-region="surface" data-application-session-mode="game-first">
+        <Header data-application-session-region="overlay-controls">
           <TitleGroup>
             <IconBox>
               <MonitorUp size={18} />
@@ -869,6 +899,10 @@ export function ApplicationSession({ appId }: { appId: string }) {
             <ChromeButton type="button" onClick={() => setLocation("/applications")}>
               <ArrowLeft size={15} />
               Applications
+            </ChromeButton>
+            <ChromeButton type="button" onClick={openLiveRooms} data-application-session-region="live-room-action">
+              <Radio size={15} />
+              WTF LIVE
             </ChromeButton>
             <ChromeButton type="button" onClick={() => void statusQuery.refetch()}>
               {statusQuery.isFetching ? <Hourglass size={15} /> : <RefreshCw size={15} />}
@@ -946,7 +980,7 @@ export function ApplicationSession({ appId }: { appId: string }) {
               )}
             </RemoteFrame>
           </RemoteStage>
-          <StatusDock data-application-session-region="status">
+          <StatusDock data-application-session-region="status-overlay">
             <StatusLine>
               <span>{progress.label}</span>
               <span>{progress.percent}%</span>

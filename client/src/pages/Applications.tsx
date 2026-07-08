@@ -482,14 +482,14 @@ function applicationPlayPath(appId: string) {
 
 function hostedAppWindowBounds() {
   if (typeof window === "undefined") return null;
-  const margin = 24;
-  const taskbarReserve = 56;
+  const margin = 8;
+  const taskbarReserve = 44;
   const width = Math.min(
-    Math.max(960, Math.floor(window.innerWidth * 0.9)),
+    Math.max(1040, Math.floor(window.innerWidth * 0.98)),
     Math.max(320, window.innerWidth - margin),
   );
   const height = Math.min(
-    Math.max(620, Math.floor(window.innerHeight * 0.9)),
+    Math.max(680, Math.floor(window.innerHeight * 0.96)),
     Math.max(300, window.innerHeight - taskbarReserve),
   );
   return {

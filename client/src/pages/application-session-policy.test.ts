@@ -8,6 +8,7 @@ const sessionSource = existsSync(sessionPath) ? readFileSync(sessionPath, "utf8"
 test("Application session page owns launch attach stream and input", () => {
   assert.match(sessionSource, /export function ApplicationSession/);
   assert.match(sessionSource, /import \{ AppWindow \} from "\.\.\/components\/layout\/AppWindow"/);
+  assert.match(sessionSource, /import \{ useWindowManager \} from "\.\.\/lib\/window-context"/);
   assert.match(sessionSource, /<AppWindow title=\{appName\}/);
   assert.match(sessionSource, /api\.post<LaunchResponse>\(`\/api\/apphost\/apps\/\$\{encodeURIComponent\(appId\)\}\/launch`, \{\}\)/);
   assert.match(sessionSource, /api\.get<AppSessionResponse>\(`\/api\/apphost\/apps\/\$\{encodeURIComponent\(appId\)\}\/session`\)/);
@@ -30,6 +31,19 @@ test("Application session page owns launch attach stream and input", () => {
   assert.match(sessionSource, /pendingMoveRef\.current = event/);
   assert.match(sessionSource, /requestAnimationFrame\(flushPendingMove\)/);
   assert.match(sessionSource, /api\.post\(`\/api\/apphost\/apps\/\$\{encodeURIComponent\(appId\)\}\/input`, event\)/);
+});
+
+test("Application session page keeps the game surface first and wtfOS controls as overlays", () => {
+  assert.match(sessionSource, /data-application-session-mode="game-first"/);
+  assert.match(sessionSource, /data-application-session-region="overlay-controls"/);
+  assert.match(sessionSource, /data-application-session-region="status-overlay"/);
+  assert.match(sessionSource, /data-application-session-region="live-room-action"/);
+  assert.match(sessionSource, /wm\.openPage\("\/live\?tab=rooms"\)/);
+  assert.match(sessionSource, /const Page = styled\.main`[\s\S]*?position:\s*relative;[\s\S]*?overflow:\s*hidden;[\s\S]*?background:\s*#000000;/);
+  assert.match(sessionSource, /const Header = styled\.header`[\s\S]*?position:\s*absolute;[\s\S]*?backdrop-filter:\s*blur\(8px\);/);
+  assert.match(sessionSource, /const Body = styled\.section`[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;/);
+  assert.match(sessionSource, /const StatusDock = styled\.div`[\s\S]*?position:\s*absolute;[\s\S]*?bottom:\s*8px;/);
+  assert.doesNotMatch(sessionSource, /grid-template-rows:\s*auto minmax\(0,\s*1fr\)/);
 });
 
 test("Application session page monitors live stream latency and framerate", () => {

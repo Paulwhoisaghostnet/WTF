@@ -681,7 +681,7 @@ async function refreshWtfLivePublishPermissions(client: WsClient): Promise<boole
     return false;
   }
   const permissions = await getWtfLiveRoomPublishPermissions({
-    roomKind: "room",
+    roomKind: room.kind === "game" ? "game" : "room",
     roomId: client.wtfLiveRoomId,
     userId: actorUserId,
   });
@@ -1117,7 +1117,7 @@ async function handleMessage(client: WsClient, msg: Record<string, unknown>) {
         : normalizeWtfLiveGuestName(msg.guestName);
       client.wtfLiveGuestName = guestName;
       client.wtfLiveRoomId = roomId;
-      client.wtfLiveRoomKind = stageAccess ? "stage" : "room";
+      client.wtfLiveRoomKind = stageAccess ? "stage" : room?.kind === "game" ? "game" : "room";
       await refreshWtfLivePublishPermissions(client);
       client.wtfLiveMediaState = restrictWtfLiveMediaStateForClient(client, normalizeWtfLiveMediaState(msg.mediaState));
 

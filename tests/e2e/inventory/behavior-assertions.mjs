@@ -672,6 +672,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The harness persists /api/wtf-live/users, /show-kits, /rooms/:id/roles, /rooms/:id/invites, /rooms/:id/settings, /rooms/:id/show-kit, and /rooms/:id/events state, verifies saved Show Kits can be selected on a room, and proves the live-room Sharing settings drawer can patch publish permissions through the same settings endpoint.",
   },
   {
+    id: "wtf-live.game-room-jackbox-hosting",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["wtf-live"],
+    ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"game room\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A signed-in WTF LIVE owner can create a game room, see it represented as a game room in the room dashboard and public room frame, launch Jackbox host apps from owner-only controls, and keep room mic/camera controls available for players.",
+    durableSideEffectAssertion:
+      "The API persists room_kind=game, game room settings use the game roomKind bucket, the live-room join envelope returns game capabilities, and Jackbox host buttons open Applications play routes without replacing the WTF LIVE room session.",
+  },
+  {
     id: "wtf-live.wim-attendance-identity",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["wtf-live", "wim"],

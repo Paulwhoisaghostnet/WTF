@@ -25,3 +25,16 @@ test("WTF LIVE room handoffs and popouts preserve the active presentation host",
   assert.match(publicRoomSource, /\[data-wtf-live-presentation-host="gamma"\] &[\s\S]*?border-radius:\s*6px/);
   assert.match(publicRoomSource, /\[data-wtf-live-presentation-host="gamma"\] &[\s\S]*?background-image:\s*none/);
 });
+
+test("WTF LIVE game rooms launch Jackbox host apps through Applications", () => {
+  assert.match(appSource, /roomKind:\s*createRoomKind/);
+  assert.match(appSource, /data-wtf-live-create-room-kind/);
+  assert.match(appSource, /data-wtf-live-game-host-actions/);
+  assert.match(appSource, /data-wtf-live-game-start=\{game\.appId\}/);
+  assert.match(appSource, /presentationRouteHref\(`\/applications\/\$\{encodeURIComponent\(appId\)\}\/play`\)/);
+  assert.match(publicRoomSource, /const runtimeRoomKind = isStageRoom \? "stage" : isGameRoom \? "game" : "room"/);
+  assert.match(publicRoomSource, /show-kit\?roomKind=\$\{runtimeRoomKind\}/);
+  assert.match(publicRoomSource, /data-wtf-live-game-room-host-actions/);
+  assert.match(publicRoomSource, /data-wtf-live-room-frame=\{isStageRoom \? "stage" : isGameRoom \? "game" : "room"\}/);
+  assert.match(publicRoomSource, /presentationRouteHref\(`\/applications\/\$\{encodeURIComponent\(appId\)\}\/play`, presentation\.host\)/);
+});

@@ -20,6 +20,7 @@ export const wtfLiveRooms = pgTable(
     id: serial("id").primaryKey(),
     slug: varchar("slug", { length: 80 }).notNull(),
     title: varchar("title", { length: 120 }).notNull(),
+    roomKind: varchar("room_kind", { length: 24 }).default("room").notNull(),
     description: text("description").default("").notNull(),
     ownerUserId: integer("owner_user_id")
       .references(() => users.id, { onDelete: "cascade" })
@@ -34,6 +35,8 @@ export const wtfLiveRooms = pgTable(
     uniqueIndex("wtf_live_rooms_slug_idx").on(table.slug),
     index("wtf_live_rooms_owner_idx").on(table.ownerUserId),
     index("wtf_live_rooms_access_mode_idx").on(table.accessMode),
+    index("wtf_live_rooms_kind_idx").on(table.roomKind),
+    check("wtf_live_rooms_kind_check", sql`${table.roomKind} IN ('room', 'game')`),
   ],
 );
 
@@ -178,7 +181,7 @@ export const wtfLiveRoomSettings = pgTable(
     uniqueIndex("wtf_live_room_settings_kind_room_idx").on(table.roomKind, table.roomId),
     index("wtf_live_room_settings_owner_idx").on(table.ownerUserId),
     index("wtf_live_room_settings_show_kit_idx").on(table.showKitId),
-    check("wtf_live_room_settings_kind_check", sql`${table.roomKind} IN ('room', 'stage')`),
+    check("wtf_live_room_settings_kind_check", sql`${table.roomKind} IN ('room', 'game', 'stage')`),
   ],
 );
 
@@ -205,7 +208,7 @@ export const wtfLiveRoomInvites = pgTable(
     uniqueIndex("wtf_live_room_invites_unique_idx").on(table.roomKind, table.roomId, table.targetUserId, table.role),
     index("wtf_live_room_invites_target_idx").on(table.targetUserId, table.status),
     index("wtf_live_room_invites_room_idx").on(table.roomKind, table.roomId),
-    check("wtf_live_room_invites_kind_check", sql`${table.roomKind} IN ('room', 'stage')`),
+    check("wtf_live_room_invites_kind_check", sql`${table.roomKind} IN ('room', 'game', 'stage')`),
     check("wtf_live_room_invites_role_check", sql`${table.role} IN ('guest', 'host', 'speaker')`),
     check("wtf_live_room_invites_status_check", sql`${table.status} IN ('pending', 'accepted', 'declined', 'cancelled')`),
   ],
@@ -228,7 +231,7 @@ export const wtfLiveRoomCalendarEvents = pgTable(
   (table) => [
     index("wtf_live_room_calendar_events_room_idx").on(table.roomKind, table.roomId),
     index("wtf_live_room_calendar_events_event_idx").on(table.gameshowEventId),
-    check("wtf_live_room_calendar_events_kind_check", sql`${table.roomKind} IN ('room', 'stage')`),
+    check("wtf_live_room_calendar_events_kind_check", sql`${table.roomKind} IN ('room', 'game', 'stage')`),
     check("wtf_live_room_calendar_events_target_check", sql`${table.target} IN ('wtf', 'ttc', 'both')`),
   ],
 );

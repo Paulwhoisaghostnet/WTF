@@ -13,6 +13,7 @@ export type WtfLiveRoomAccessMember = {
 
 export type WtfLiveStageRole = "host" | "speaker";
 export type WtfLiveStageRoomRole = "owner" | WtfLiveStageRole | "audience";
+export type WtfLiveRoomType = "room" | "game";
 
 export type WtfLiveStageAccessMember = {
   userId: number;
@@ -24,7 +25,7 @@ export type WtfLiveStageAccessMember = {
 export type WtfLiveRoomRecord = {
   id: string;
   title: string;
-  kind: "room";
+  kind: WtfLiveRoomType;
   description: string;
   source: "system" | "user";
   ownerUserId: number | null;
@@ -102,6 +103,7 @@ function roomRecordFromRow(row: {
   slug: string;
   title: string;
   description: string;
+  roomKind?: string | null;
   ownerUserId: number;
   accessMode: string;
   isPublic: boolean;
@@ -109,7 +111,7 @@ function roomRecordFromRow(row: {
   return {
     id: row.slug,
     title: row.title,
-    kind: "room" as const,
+    kind: row.roomKind === "game" ? "game" : "room",
     description: row.description,
     source: "user" as const,
     ownerUserId: row.ownerUserId,
@@ -252,6 +254,7 @@ export async function listWtfLiveRooms(): Promise<WtfLiveRoomRecord[]> {
       slug: wtfLiveRooms.slug,
       title: wtfLiveRooms.title,
       description: wtfLiveRooms.description,
+      roomKind: wtfLiveRooms.roomKind,
       ownerUserId: wtfLiveRooms.ownerUserId,
       accessMode: wtfLiveRooms.accessMode,
       isPublic: wtfLiveRooms.isPublic,
@@ -273,6 +276,7 @@ export async function listOwnedWtfLiveRooms(ownerUserId: number): Promise<WtfLiv
       slug: wtfLiveRooms.slug,
       title: wtfLiveRooms.title,
       description: wtfLiveRooms.description,
+      roomKind: wtfLiveRooms.roomKind,
       ownerUserId: wtfLiveRooms.ownerUserId,
       accessMode: wtfLiveRooms.accessMode,
       isPublic: wtfLiveRooms.isPublic,
@@ -291,6 +295,7 @@ export async function listAccessiblePrivateWtfLiveRooms(userId: number): Promise
       slug: wtfLiveRooms.slug,
       title: wtfLiveRooms.title,
       description: wtfLiveRooms.description,
+      roomKind: wtfLiveRooms.roomKind,
       ownerUserId: wtfLiveRooms.ownerUserId,
       accessMode: wtfLiveRooms.accessMode,
       isPublic: wtfLiveRooms.isPublic,
@@ -319,6 +324,7 @@ export async function getWtfLiveRoom(roomId: string): Promise<WtfLiveRoomRecord 
       slug: wtfLiveRooms.slug,
       title: wtfLiveRooms.title,
       description: wtfLiveRooms.description,
+      roomKind: wtfLiveRooms.roomKind,
       ownerUserId: wtfLiveRooms.ownerUserId,
       accessMode: wtfLiveRooms.accessMode,
       isPublic: wtfLiveRooms.isPublic,
@@ -524,15 +530,18 @@ export async function createWtfLiveRoom(input: {
   title: string;
   description?: string;
   accessMode?: WtfLiveRoomAccessMode;
+  roomKind?: WtfLiveRoomType;
 }) {
   const slug = await uniqueRoomSlug(input.title);
   const accessMode = input.accessMode === "private" ? "private" : "public";
+  const roomKind = input.roomKind === "game" ? "game" : "room";
   const [row] = await db
     .insert(wtfLiveRooms)
     .values({
       slug,
       title: input.title.trim(),
       description: (input.description || "").trim(),
+      roomKind,
       ownerUserId: input.ownerUserId,
       accessMode,
     })
@@ -541,6 +550,7 @@ export async function createWtfLiveRoom(input: {
       slug: wtfLiveRooms.slug,
       title: wtfLiveRooms.title,
       description: wtfLiveRooms.description,
+      roomKind: wtfLiveRooms.roomKind,
       ownerUserId: wtfLiveRooms.ownerUserId,
       accessMode: wtfLiveRooms.accessMode,
       isPublic: wtfLiveRooms.isPublic,
@@ -570,6 +580,7 @@ export async function updateOwnedWtfLiveRoomVisibility(input: {
       slug: wtfLiveRooms.slug,
       title: wtfLiveRooms.title,
       description: wtfLiveRooms.description,
+      roomKind: wtfLiveRooms.roomKind,
       ownerUserId: wtfLiveRooms.ownerUserId,
       accessMode: wtfLiveRooms.accessMode,
       isPublic: wtfLiveRooms.isPublic,
@@ -621,6 +632,7 @@ export async function replaceOwnedWtfLiveRoomAccessMembers(input: {
         slug: wtfLiveRooms.slug,
         title: wtfLiveRooms.title,
         description: wtfLiveRooms.description,
+        roomKind: wtfLiveRooms.roomKind,
         ownerUserId: wtfLiveRooms.ownerUserId,
         accessMode: wtfLiveRooms.accessMode,
         isPublic: wtfLiveRooms.isPublic,

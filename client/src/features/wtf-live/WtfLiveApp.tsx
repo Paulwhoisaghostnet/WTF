@@ -67,6 +67,10 @@ import {
 } from "./soundboard";
 
 const SKYWIRE_SETTINGS_PATH = "/skywire?tab=account";
+const JACKBOX_WTF_LIVE_GAMES = [
+  { appId: "jackbox-party-pack-10", label: "Jackbox 10" },
+  { appId: "jackbox-party-pack-11", label: "Jackbox 11" },
+] as const;
 
 type AtprotoMe = {
   enabled: boolean;
@@ -86,7 +90,7 @@ type AtprotoMe = {
 type WtfLiveRoom = {
   id: string;
   title: string;
-  kind: string;
+  kind: "room" | "game" | string;
   description?: string;
   source?: "system" | "user";
   ownerUserId?: number | null;
@@ -168,7 +172,7 @@ type WtfLiveShowKit = {
 };
 
 type WtfLiveRoomSettings = {
-  roomKind: "room" | "stage";
+  roomKind: "room" | "game" | "stage";
   roomId: string;
   ownerUserId: number | null;
   allowGuestAudio: boolean;
@@ -182,7 +186,7 @@ type WtfLiveRoomSettings = {
 };
 
 type RoomControlTarget = {
-  roomKind: "room" | "stage";
+  roomKind: "room" | "game" | "stage";
   id: string;
   title: string;
 };
@@ -241,6 +245,14 @@ function publicRoomPath(roomId: string): string {
 function publicRoomUrl(roomId: string): string {
   if (typeof window === "undefined") return publicRoomPath(roomId);
   return `${window.location.origin}${publicRoomPath(roomId)}`;
+}
+
+function isGameRoom(room: WtfLiveRoom | null | undefined): boolean {
+  return room?.kind === "game";
+}
+
+function roomSettingsKind(room: WtfLiveRoom): "room" | "game" {
+  return isGameRoom(room) ? "game" : "room";
 }
 
 function parseAccessUsernames(value: string): string[] {
@@ -397,6 +409,7 @@ export function WtfLiveApp() {
   const [createTitle, setCreateTitle] = useState("");
   const [createDescription, setCreateDescription] = useState("");
   const [createLiveUrl, setCreateLiveUrl] = useState("");
+  const [createRoomKind, setCreateRoomKind] = useState<"room" | "game">("room");
   const [createRoomAccessMode, setCreateRoomAccessMode] = useState<"public" | "private">("public");
   const [createAccessList, setCreateAccessList] = useState("");
   const [selectedAccessList, setSelectedAccessList] = useState("");
@@ -575,7 +588,7 @@ export function WtfLiveApp() {
   const canRooms = Boolean(account && accountHasCapability(account, "rooms"));
   const canStages = Boolean(account && accountHasCapability(account, "stages"));
 
-  const publicRoomOptions = (roomsQuery.data?.rooms ?? []).filter((r) => r.kind === "room" && r.accessMode !== "private" && r.isPublic !== false);
+  const publicRoomOptions = (roomsQuery.data?.rooms ?? []).filter((r) => (r.kind === "room" || r.kind === "game") && r.accessMode !== "private" && r.isPublic !== false);
   const ownedRoomOptions = ownedRoomsQuery.data?.rooms ?? [];
   const privateRoomOptions = privateRoomsQuery.data?.rooms ?? [];
   const roomOptions = useMemo(() => {
@@ -598,6 +611,9 @@ export function WtfLiveApp() {
   const activePublicUserCount = activePublicRooms.reduce((total, room) => total + roomPresence(room).participantCount, 0);
   const selectedRoomManageable = selectedRoom ? canManageRoom(selectedRoom) : false;
   const selectedRoomPresence = selectedRoom ? roomPresence(selectedRoom) : null;
+  const selectedRoomControlTarget: RoomControlTarget | null = selectedRoom
+    ? { roomKind: roomSettingsKind(selectedRoom), id: selectedRoom.id, title: selectedRoom.title }
+    : null;
   const selectedStageManageable = selectedStage ? selectedStage.source === "user" && ownedStageOptions.some((stage) => stage.id === selectedStage.id) : false;
   const normalizedSoundboardShortcut = normalizeWtfLiveSoundboardShortcut(soundboardShortcut);
   const soundboardShortcutInvalid = Boolean(soundboardShortcut.trim() && !normalizedSoundboardShortcut);
@@ -711,12 +727,14 @@ export function WtfLiveApp() {
       api.post<{ room?: WtfLiveRoom; missingUsernames?: string[] }>("/api/wtf-live/rooms", {
         title: createTitle.trim(),
         description: createDescription.trim(),
+        roomKind: createRoomKind,
         accessMode: createRoomAccessMode,
         accessUsernames: parseAccessUsernames(createAccessList),
       }),
     onSuccess: (data: { room?: WtfLiveRoom; missingUsernames?: string[] }) => {
       setCreateTitle("");
       setCreateDescription("");
+      setCreateRoomKind("room");
       setCreateRoomAccessMode("public");
       setCreateAccessList("");
       if (data?.room?.id) {
@@ -724,7 +742,9 @@ export function WtfLiveApp() {
         setRoomId(data.room.id);
         setTab("rooms");
         setCopyStatus(
-          data.room.accessMode === "private"
+          isGameRoom(data.room)
+            ? `${data.room.title} created as a game room.`
+            : data.room.accessMode === "private"
             ? `${data.room.title} created as a private WTF-user room.`
             : `Public URL ready: ${publicRoomUrl(data.room.id)}`,
         );
@@ -1054,6 +1074,39 @@ export function WtfLiveApp() {
     setCopyStatus(`Opened ${room.title} in a new browser tab.`);
   }
 
+  function openHostedGame(appId: (typeof JACKBOX_WTF_LIVE_GAMES)[number]["appId"], label: string) {
+    window.open(presentationRouteHref(`/applications/${encodeURIComponent(appId)}/play`), "_blank", "noopener,noreferrer");
+    setCopyStatus(`Opening ${label} host app.`);
+  }
+
+  function renderGameRoomHostActions(room: WtfLiveRoom, manageable: boolean) {
+    if (!isGameRoom(room) || !manageable) return null;
+    return (
+      <ActionGrid data-wtf-live-game-host-actions={room.id}>
+        {JACKBOX_WTF_LIVE_GAMES.map((game) => (
+          <Button
+            key={game.appId}
+            size="sm"
+            onClick={() => openHostedGame(game.appId, game.label)}
+            data-wtf-live-game-start={game.appId}
+          >
+            <ButtonLabel><Play size={14} aria-hidden /> {game.label}</ButtonLabel>
+          </Button>
+        ))}
+        <Button
+          size="sm"
+          onClick={() => {
+            window.open(presentationRouteHref("/applications"), "_blank", "noopener,noreferrer");
+            setCopyStatus("Opening Applications.");
+          }}
+          data-wtf-live-game-start="applications"
+        >
+          <ButtonLabel><ExternalLink size={14} aria-hidden /> Applications</ButtonLabel>
+        </Button>
+      </ActionGrid>
+    );
+  }
+
   async function copyStageRoom(stage: WtfLiveStage) {
     await navigator.clipboard?.writeText(publicRoomUrl(stage.id));
     setCopyStatus(`Copied ${stage.title} stage room URL.`);
@@ -1275,6 +1328,7 @@ export function WtfLiveApp() {
 
   function roomBadgeLabel(room: WtfLiveRoom, owned: boolean) {
     if (room.isPublic === false) return "Closed";
+    if (isGameRoom(room)) return owned || canManageRoom(room) ? "Owned game" : "Game room";
     if (room.accessMode === "private") return owned || canManageRoom(room) ? "Private owned" : "Private";
     if (canManageRoom(room) || owned) return "Owned";
     return room.source === "system" ? "Official" : "Open";
@@ -1298,6 +1352,7 @@ export function WtfLiveApp() {
         key={`${owned ? "owned" : "public"}-${room.id}`}
         data-wtf-live-room-card={room.id}
         data-wtf-live-room-surface={owned ? "owned" : "public"}
+        data-wtf-live-game-room={isGameRoom(room) ? room.id : undefined}
         data-wtf-live-owned-room={manageable ? "true" : undefined}
         data-wtf-live-room-active={presence.active ? "true" : "false"}
         data-wtf-live-room-users={presence.participantCount}
@@ -1310,6 +1365,12 @@ export function WtfLiveApp() {
             <RoomPresenceBadge data-wtf-live-private-room={room.id}>
               <Lock size={11} aria-hidden />
               WTF users only
+            </RoomPresenceBadge>
+          ) : null}
+          {isGameRoom(room) ? (
+            <RoomPresenceBadge data-wtf-live-game-room-badge={room.id}>
+              <Play size={11} aria-hidden />
+              Jackbox
             </RoomPresenceBadge>
           ) : null}
           <RoomPresenceBadge
@@ -1378,6 +1439,7 @@ export function WtfLiveApp() {
             </Button>
           ) : null}
         </ActionGrid>
+        {renderGameRoomHostActions(room, manageable)}
       </RoomCard>
     );
   }
@@ -1419,6 +1481,15 @@ export function WtfLiveApp() {
             <GroupBox label="Create room">
               <Stack>
                 <NativeSelect
+                  aria-label="Room type"
+                  value={createRoomKind}
+                  onChange={(e) => setCreateRoomKind(e.target.value as "room" | "game")}
+                  data-wtf-live-create-room-kind
+                >
+                  <option value="room">Hangout room</option>
+                  <option value="game">Game room</option>
+                </NativeSelect>
+                <NativeSelect
                   aria-label="Room access type"
                   value={createRoomAccessMode}
                   onChange={(e) => setCreateRoomAccessMode(e.target.value as "public" | "private")}
@@ -1451,7 +1522,13 @@ export function WtfLiveApp() {
                   disabled={!createTitle.trim() || createRoom.isPending}
                   onClick={() => createRoom.mutate()}
                 >
-                  {createRoom.isPending ? "Creating..." : createRoomAccessMode === "private" ? "Create Private Room" : "Create Public Room"}
+                  {createRoom.isPending
+                    ? "Creating..."
+                    : createRoomKind === "game"
+                    ? "Create Game Room"
+                    : createRoomAccessMode === "private"
+                    ? "Create Private Room"
+                    : "Create Public Room"}
                 </Button>
                 {createRoom.isError ? <span>{(createRoom.error as Error).message}</span> : null}
               </Stack>
@@ -1789,6 +1866,7 @@ export function WtfLiveApp() {
                   <RoomCard
                     data-wtf-live-room-card={selectedRoom.id}
                     data-wtf-live-room-surface="selected"
+                    data-wtf-live-game-room={isGameRoom(selectedRoom) ? selectedRoom.id : undefined}
                     data-wtf-live-owned-room={selectedRoomManageable ? "true" : undefined}
                     data-wtf-live-room-active={selectedRoomPresence.active ? "true" : "false"}
                     data-wtf-live-room-users={selectedRoomPresence.participantCount}
@@ -1801,6 +1879,12 @@ export function WtfLiveApp() {
                         <RoomPresenceBadge data-wtf-live-private-room={selectedRoom.id}>
                           <Lock size={11} aria-hidden />
                           WTF users only
+                        </RoomPresenceBadge>
+                      ) : null}
+                      {isGameRoom(selectedRoom) ? (
+                        <RoomPresenceBadge data-wtf-live-game-room-badge={selectedRoom.id}>
+                          <Play size={11} aria-hidden />
+                          Jackbox
                         </RoomPresenceBadge>
                       ) : null}
                       <RoomPresenceBadge
@@ -1845,19 +1929,19 @@ export function WtfLiveApp() {
                           <ButtonLabel><ExternalLink size={14} aria-hidden /> Guest View</ButtonLabel>
                         </Button>
                       ) : null}
-                      {selectedRoomManageable ? (
+                      {selectedRoomManageable && selectedRoomControlTarget ? (
                         <Button
                           size="sm"
                           aria-label={`Schedule ${selectedRoom.title}`}
                           title="Schedule room event"
                           onPointerDown={(event) =>
                             activateInlinePointerAction(event, () =>
-                              openScheduleDialog({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title }),
+                              openScheduleDialog(selectedRoomControlTarget),
                             )
                           }
                           onClick={(event) =>
                             activateInlineKeyboardAction(event, () =>
-                              openScheduleDialog({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title }),
+                              openScheduleDialog(selectedRoomControlTarget),
                             )
                           }
                           data-wtf-live-room-schedule={selectedRoom.id}
@@ -1865,19 +1949,19 @@ export function WtfLiveApp() {
                           <CalendarDays size={14} aria-hidden />
                         </Button>
                       ) : null}
-                      {selectedRoomManageable ? (
+                      {selectedRoomManageable && selectedRoomControlTarget ? (
                         <Button
                           size="sm"
                           aria-label={`${selectedRoom.title} settings`}
                           title="Room settings"
                           onPointerDown={(event) =>
                             activateInlinePointerAction(event, () => {
-                              void openSettingsDialog({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title });
+                              void openSettingsDialog(selectedRoomControlTarget);
                             })
                           }
                           onClick={(event) =>
                             activateInlineKeyboardAction(event, () => {
-                              void openSettingsDialog({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title });
+                              void openSettingsDialog(selectedRoomControlTarget);
                             })
                           }
                           data-wtf-live-room-settings={selectedRoom.id}
@@ -1906,7 +1990,8 @@ export function WtfLiveApp() {
                         </Button>
                       ) : null}
                     </ActionGrid>
-                    {selectedRoomManageable ? (
+                    {renderGameRoomHostActions(selectedRoom, selectedRoomManageable)}
+                    {selectedRoomManageable && selectedRoomControlTarget ? (
                       <Stack
                         data-wtf-live-room-role-editor={selectedRoom.id}
                         data-wtf-live-private-access-editor={selectedRoom.accessMode === "private" ? selectedRoom.id : undefined}
@@ -1949,12 +2034,12 @@ export function WtfLiveApp() {
                               disabled={!selectedWtfUser || sendRoomInvite.isPending}
                               onPointerDown={(event) =>
                                 activateInlinePointerAction(event, () =>
-                                  inviteSelectedUser({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title }, "host"),
+                                  inviteSelectedUser(selectedRoomControlTarget, "host"),
                                 )
                               }
                               onClick={(event) =>
                                 activateInlineKeyboardAction(event, () =>
-                                  inviteSelectedUser({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title }, "host"),
+                                  inviteSelectedUser(selectedRoomControlTarget, "host"),
                                 )
                               }
                               data-wtf-live-room-invite-host={selectedRoom.id}
@@ -1965,12 +2050,12 @@ export function WtfLiveApp() {
                               disabled={!selectedWtfUser || sendRoomInvite.isPending}
                               onPointerDown={(event) =>
                                 activateInlinePointerAction(event, () =>
-                                  inviteSelectedUser({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title }, "guest"),
+                                  inviteSelectedUser(selectedRoomControlTarget, "guest"),
                                 )
                               }
                               onClick={(event) =>
                                 activateInlineKeyboardAction(event, () =>
-                                  inviteSelectedUser({ roomKind: "room", id: selectedRoom.id, title: selectedRoom.title }, "guest"),
+                                  inviteSelectedUser(selectedRoomControlTarget, "guest"),
                                 )
                               }
                               data-wtf-live-room-invite={selectedRoom.id}
@@ -2383,7 +2468,7 @@ export function WtfLiveApp() {
           >
             <strong>{settingsTarget.title} settings</strong>
             <Stack>
-              {settingsTarget.roomKind === "room" ? (
+              {settingsTarget.roomKind === "room" || settingsTarget.roomKind === "game" ? (
                 <Stack data-wtf-live-room-permission-settings={settingsTarget.id}>
                   <label>
                     <input

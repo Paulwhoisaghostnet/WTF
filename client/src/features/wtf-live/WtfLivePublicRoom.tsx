@@ -38,7 +38,7 @@ import {
 type PublicRoom = {
   id: string;
   title: string;
-  kind: "room" | "stage";
+  kind: "room" | "game" | "stage";
   description?: string;
   source?: "system" | "user";
   ownerUserId?: number | null;
@@ -67,6 +67,7 @@ type PublicRoomResponse = {
     transport?: string;
     stage?: boolean;
     showKit?: boolean;
+    gameRoom?: boolean;
     canManageRoom?: boolean;
     roomRole?: "owner" | "host" | "guest" | "audience";
     canManageStage?: boolean;
@@ -434,6 +435,10 @@ const BENTO_PANEL_LABELS: Record<BentoPanelId, string> = {
   attendance: "Attendance",
   chat: "Room chat",
 };
+const JACKBOX_WTF_LIVE_GAMES = [
+  { appId: "jackbox-party-pack-10", label: "Jackbox 10" },
+  { appId: "jackbox-party-pack-11", label: "Jackbox 11" },
+] as const;
 
 function parseStageUsernames(value: string): string[] {
   return Array.from(
@@ -3185,10 +3190,12 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   popoutFrameCountRef.current = popoutFrames.length;
   const room = roomQuery.data?.room;
   const joinMode = roomQuery.data?.joinMode ?? "guest_room_only";
-  const roomCapabilities = roomQuery.data?.capabilities;
-  const stagePermissions = roomQuery.data?.stagePermissions;
-  const isStageRoom = room?.kind === "stage" || joinMode === "wtf_live_stage" || Boolean(roomCapabilities?.stage);
-  const stageRole = stagePermissions?.role ?? roomCapabilities?.stageRole ?? "audience";
+	  const roomCapabilities = roomQuery.data?.capabilities;
+	  const stagePermissions = roomQuery.data?.stagePermissions;
+	  const isStageRoom = room?.kind === "stage" || joinMode === "wtf_live_stage" || Boolean(roomCapabilities?.stage);
+	  const isGameRoom = room?.kind === "game" || Boolean(roomCapabilities?.gameRoom);
+	  const runtimeRoomKind = isStageRoom ? "stage" : isGameRoom ? "game" : "room";
+	  const stageRole = stagePermissions?.role ?? roomCapabilities?.stageRole ?? "audience";
   const canShareAudio = roomCapabilities?.audio !== false;
   const canShareCamera = roomCapabilities?.camera !== false;
   const canShareScreen = roomCapabilities?.screen !== false;
@@ -3217,14 +3224,13 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     retry: false,
     staleTime: 15_000,
   });
-  const roomShowKitQuery = useQuery<RoomShowKitResponse>({
-    queryKey: ["wtf-live", "room-show-kit", roomId, viewerUserId],
-    enabled: canUseRoomSoundboard,
-    queryFn: () => api.get<RoomShowKitResponse>(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/show-kit`),
-    retry: false,
-    staleTime: 15_000,
-  });
-  const runtimeRoomKind = isStageRoom ? "stage" : "room";
+	  const roomShowKitQuery = useQuery<RoomShowKitResponse>({
+	    queryKey: ["wtf-live", "room-show-kit", runtimeRoomKind, roomId, viewerUserId],
+	    enabled: canUseRoomSoundboard,
+	    queryFn: () => api.get<RoomShowKitResponse>(`/api/wtf-live/rooms/${encodeURIComponent(roomId)}/show-kit?roomKind=${runtimeRoomKind}`),
+	    retry: false,
+	    staleTime: 15_000,
+	  });
   const runtimeRoomSettingsQuery = useQuery<{ settings: RuntimeRoomSettings }>({
     queryKey: ["wtf-live", "room-runtime-settings", runtimeRoomKind, roomId, viewerUserId],
     enabled: Boolean(viewerUserId && canManageRoom && room),
@@ -3248,8 +3254,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     onSuccess: (data) => {
       setRuntimeRoomSettings(data.settings);
       setRuntimeRoomSettingsStatus("Room settings saved.");
-      qc.invalidateQueries({ queryKey: ["wtf-live", "public-room", roomId] });
-      qc.invalidateQueries({ queryKey: ["wtf-live", "room-show-kit", roomId, viewerUserId] });
+	      qc.invalidateQueries({ queryKey: ["wtf-live", "public-room", roomId] });
+	      qc.invalidateQueries({ queryKey: ["wtf-live", "room-show-kit", runtimeRoomKind, roomId, viewerUserId] });
       qc.invalidateQueries({ queryKey: ["wtf-live", "room-runtime-settings", runtimeRoomKind, roomId, viewerUserId] });
     },
     onError: (error: unknown) => {
@@ -5595,8 +5601,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     );
   }
 
-  function renderRuntimeRoomSettings() {
-    if (!canManageRoom) return null;
+	  function renderRuntimeRoomSettings() {
+	    if (!canManageRoom) return null;
     const kits = runtimeShowKitsQuery.data?.kits ?? [];
     return (
       <SettingsGroup data-wtf-live-runtime-room-settings={roomId}>
@@ -5701,10 +5707,38 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
         </GuestGrid>
         {runtimeRoomSettingsStatus ? <StatusLine aria-live="polite">{runtimeRoomSettingsStatus}</StatusLine> : null}
       </SettingsGroup>
-    );
-  }
+	    );
+	  }
 
-  function renderTipTray() {
+	  function openHostedGame(appId: (typeof JACKBOX_WTF_LIVE_GAMES)[number]["appId"], label: string) {
+	    window.open(presentationRouteHref(`/applications/${encodeURIComponent(appId)}/play`, presentation.host), "_blank", "noopener,noreferrer");
+	    setStatus(`Opening ${label} host app.`);
+	  }
+
+	  function renderGameHostPanel() {
+	    if (!isGameRoom || !canManageRoom) return null;
+	    return (
+	      <SettingsGroup data-wtf-live-game-room-host-actions={roomId}>
+	        <LiveSectionHeader>
+	          <span><Play size={15} aria-hidden /> Host game</span>
+	          <ShareStatus>Jackbox</ShareStatus>
+	        </LiveSectionHeader>
+	        <GuestGrid>
+	          {JACKBOX_WTF_LIVE_GAMES.map((game) => (
+	            <Button
+	              key={game.appId}
+	              onClick={() => openHostedGame(game.appId, game.label)}
+	              data-wtf-live-game-start={game.appId}
+	            >
+	              <ButtonLabel><Play size={15} aria-hidden /> {game.label}</ButtonLabel>
+	            </Button>
+	          ))}
+	        </GuestGrid>
+	      </SettingsGroup>
+	    );
+	  }
+
+	  function renderTipTray() {
     if (!tipTrayOpen) return null;
     const targetValue = selectedTipTarget?.userId ? String(selectedTipTarget.userId) : "";
     const itemValue = selectedTipItem?.sku ?? "";
@@ -5853,8 +5887,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	            />
 	          )}
 	          <RoomActionGrid>
-	            <Button primary aria-label={isStageRoom ? "Join Stage" : "Join Room"} disabled={joined || authLoading} onClick={joinRoom} data-wtf-live-join-room>
-	              {joined ? "Joined" : isStageRoom ? "Join Stage" : "Join"}
+		            <Button primary aria-label={isStageRoom ? "Join Stage" : isGameRoom ? "Join Game Room" : "Join Room"} disabled={joined || authLoading} onClick={joinRoom} data-wtf-live-join-room>
+		              {joined ? "Joined" : isStageRoom ? "Join Stage" : isGameRoom ? "Join Game" : "Join"}
 	            </Button>
 	            <Button aria-label="Copy URL" onClick={copyRoomUrl}>
 	              <ButtonLabel><Copy size={16} aria-hidden /> Copy</ButtonLabel>
@@ -6139,6 +6173,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	          </MediaDeckPanel>
 	        </SettingsGroup>
 
+	        {renderGameHostPanel()}
+
 	        {renderSoundboardRuntime()}
 
 	        <SharingDrawer hidden={!sharingSettingsOpen} data-wtf-live-sharing-settings-drawer>
@@ -6406,7 +6442,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 
 	  return (
     <GuestShell>
-	      <RoomFrame data-wtf-live-room-frame={isStageRoom ? "stage" : "room"}>
+		      <RoomFrame data-wtf-live-room-frame={isStageRoom ? "stage" : isGameRoom ? "game" : "room"}>
         <TitleBar>
           <RoomTitleBlock>
             <h1>{room.title}</h1>
@@ -6414,7 +6450,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
           </RoomTitleBlock>
 	          <HeaderStatus>
 	            {socketReady ? <Wifi size={15} aria-hidden /> : <WifiOff size={15} aria-hidden />}{" "}
-	            <span>{joined ? (socketReady ? "Connected" : "Connecting") : isStageRoom ? "Stage room" : joinMode === "wtf_user_private_room" ? "Private room" : "Public room"}</span>
+		            <span>{joined ? (socketReady ? "Connected" : "Connecting") : isStageRoom ? "Stage room" : isGameRoom ? "Game room" : joinMode === "wtf_user_private_room" ? "Private room" : "Public room"}</span>
 	            <span>{joined ? attendeeDisplayName : signedInUsername ? signedInUsername : authLoading ? "Checking account" : "Guest setup"}</span>
 	            <span>{peerId ? peerId.slice(0, 12) : "not joined"}</span>
 	            <HeaderCloseButton aria-label="Close Window" onClick={closeRoomWindow} data-wtf-live-close-window>

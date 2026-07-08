@@ -16,7 +16,7 @@ import {
 import { createNotificationsForUsers } from "../../lib/notifications";
 import { slugifyWtfLiveId } from "./registry";
 
-export type WtfLiveRoomKind = "room" | "stage";
+export type WtfLiveRoomKind = "room" | "game" | "stage";
 export type WtfLiveRoomRole = "owner" | "host" | "guest" | "audience";
 export type WtfLiveInviteRole = "guest" | "host" | "speaker";
 
@@ -60,7 +60,8 @@ function normalizeUsernames(usernames: string[]): string[] {
 }
 
 function normalizeRoomKind(value: string): WtfLiveRoomKind {
-  return value === "stage" ? "stage" : "room";
+  if (value === "stage") return "stage";
+  return value === "game" ? "game" : "room";
 }
 
 function normalizeRoomRole(value: string | null | undefined): "host" | "guest" {
@@ -127,7 +128,13 @@ async function getRoomOwner(roomKind: WtfLiveRoomKind, roomId: string) {
       ownerUserId: wtfLiveRooms.ownerUserId,
     })
     .from(wtfLiveRooms)
-    .where(and(eq(wtfLiveRooms.slug, roomId), isNull(wtfLiveRooms.archivedAt)))
+    .where(
+      and(
+        eq(wtfLiveRooms.slug, roomId),
+        eq(wtfLiveRooms.roomKind, roomKind === "game" ? "game" : "room"),
+        isNull(wtfLiveRooms.archivedAt),
+      ),
+    )
     .limit(1);
   return room ? { ...room, roomKind } : null;
 }

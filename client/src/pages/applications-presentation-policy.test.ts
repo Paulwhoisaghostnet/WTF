@@ -79,3 +79,12 @@ test("Applications keeps shared apphost API behavior raw and window-managed", ()
   assert.doesNotMatch(applicationsSource, /window\.open\(applicationPlayPath\(appId\), "_blank"/);
   assert.doesNotMatch(applicationsSource, /\/api\/gamma/);
 });
+
+test("Applications opens hosted games close to full desktop size", () => {
+  assert.match(applicationsSource, /const margin = 8;/);
+  assert.match(applicationsSource, /const taskbarReserve = 44;/);
+  assert.match(applicationsSource, /Math\.floor\(window\.innerWidth \* 0\.98\)/);
+  assert.match(applicationsSource, /Math\.floor\(window\.innerHeight \* 0\.96\)/);
+  assert.match(applicationsSource, /Math\.max\(1040,/);
+  assert.match(applicationsSource, /Math\.max\(680,/);
+});

@@ -78,6 +78,7 @@ Priority labels:
 | WTF-BB-355 | Verified | Codex Pasta release-evidence guardrail + Cursor live deploy | 2026-07-06 | Deploy / release metadata | P1 | 10 | 10 | 2 | 4 | 0 | Source blocks placeholder/mismatched deployment markers in Pasta readiness and production container startup; guardrails shipped in commit `360bd6e7`, normal Hetzner deploys restored and preserved the live marker through current commit `9652a72d` (Deploy to Hetzner run `28830687989`, Quality Gates run `28830687933`), and `https://wtfos.app/api/health` now reports `version.commitRef:"9652a72d"` with `nodeEnv:"production"` and `db.ok:true` |
 | WTF-BB-356 | Verified | Codex Reggie lifecycle/WIM pass | 2026-07-07 | Desktop OS / Reggie assistant and WIM | P1 | 13 | 6 | 3 | 5 | 1 | Reggie now has an explicit dismiss/summon lifecycle, a desktop right-click Summon Reggie path, animated transient speech bubbles, and server-authored WIM/Inbox-backed assistant messages through `/api/reggie/messages`; verified with focused Reggie/WIM policy tests, TypeScript, inventory coverage, and full inventory E2E retry (`590 passed`) |
 | WTF-BB-357 | Verified | Codex Reggie personality script pass | 2026-07-07 | Desktop OS / Reggie assistant voice | P2 | 9 | 12 | 3 | 3 | 0 | Reggie now has deep authored script pools for every quest story plus summon/loading/locked/progress/empty-question states, with tests enforcing at least four intro/nudge/congrats variants per user story and deterministic no-repeat selection; verified with focused Reggie policy/model/dialogue tests, TypeScript, and diff whitespace |
+| WTF-BB-358 | Verified | Codex Jackbox game-room UX pass | 2026-07-08 | Desktop OS / Remote Applications + WTF LIVE game rooms | P1 | 13 | 6 | 4 | 5 | 0 | Jackbox apphost play now uses a game-first full-surface route with overlay controls/status and a WTF LIVE handoff, WTF LIVE has persistent `game` rooms with owner Jackbox launch actions and game-scoped settings/WebSocket permissions, and the inventory registry/harness cover the new workflow; verified with focused policy tests, TypeScript, build, inventory coverage, focused Playwright, and full inventory E2E (`592 passed`) |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -388,6 +389,29 @@ Priority labels:
 | WTF-BB-198 | Verified | Codex Skywire Teia link buy-option repair | 2026-06-04 | Skywire / Teia token links | P1 | 11 | 9 | 2 | 5 | 0 | Skywire misses buy options for contractful Teia `/objkt/{KT1}/{tokenId}` links |
 
 ## Issue Details
+
+### WTF-BB-358 - Jackbox needs game-first apphost UX and WTF LIVE game rooms
+
+- Category: Desktop OS / Remote Applications + WTF LIVE game rooms
+- Status: Verified
+- Owner/Session: Codex Jackbox game-room UX pass
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - 2026-07-08 user report: Jackbox games now work in Applications, but the game-open UX/UI is terrible because wtfOS framing dominates the actual game display.
+  - The current `/applications/:appId/play` route reserves permanent header and status-dock rows around a remote 16:9 game frame, shrinking the content that players actually need to see.
+  - WTF LIVE has rooms, private rooms, stages, role controls, camera/screen/audio/media sharing, and Show Kits, but does not expose a durable `game` room type or host actions for Jackbox sessions.
+- Why it matters:
+  - Remote party games need the game screen to be the primary shared object. Extra chrome directly hurts readability of room codes, prompts, timers, and player instructions.
+  - Jackbox should become a WTF LIVE social experience, not a separate apphost island, so room owners can host games while members talk and share camera/audio.
+- Correction direction:
+  - Make the apphost play route game-first: maximize the remote frame, collapse wtfOS controls into overlays, preserve stop/back/refresh/pointer-lock/status affordances, and keep video autoplay/native-cursor safeguards from prior lessons.
+  - Add a real WTF LIVE `game` room type with persistent schema support, creation UI, directory badges, host Jackbox actions, room runtime settings, and focused inventory/E2E coverage.
+  - Report whether WebRTC remains the best transport for Hetzner apphost control/viewing and identify the next integration step for broadcasting the apphost stream inside the WTF LIVE room media plane.
+- Verification idea:
+  - Focused source policy tests for apphost lean chrome and game-room typing, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and focused WTF LIVE/Application Playwright coverage.
+- Fix/verification notes:
+  - 2026-07-08: Apphost Jackbox play routes now prioritize the remote frame with only overlay controls/status; WTF LIVE game rooms persist as `room_kind='game'`, expose owner-only Jackbox launch actions, and keep mic/camera/screen sharing on the normal room plane.
+  - Verified with `npx tsx --test client/src/pages/application-session-policy.test.ts client/src/pages/applications-presentation-policy.test.ts client/src/features/wtf-live/wtf-live-presentation-policy.test.ts server/wtf-live-game-rooms-policy.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, `npm run build`, `HARNESS_PORT=4335 npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "game rooms" --project=chromium --reporter=list`, and `npm run test:e2e:inventory` (`592 passed`).
 
 ### WTF-BB-357 - Reggie needs a richer sassy authored script
 

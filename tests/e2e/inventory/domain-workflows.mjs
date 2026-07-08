@@ -466,10 +466,19 @@ export const DOMAIN_WORKFLOWS = [
         body: { title: "E2E Private Room", description: "inventory private probe", accessMode: "private", accessUsernames: ["wtf-admin"] },
         expectedStatuses: [201, 400, 401, 403, 409, 500],
       },
+      {
+        method: "POST",
+        path: "/api/wtf-live/rooms",
+        body: { title: "E2E Game Room", description: "inventory game probe", roomKind: "game" },
+        expectedStatuses: [201, 400, 401, 403, 409, 500],
+      },
       { method: "GET", path: "/api/wtf-live/rooms/e2e-private-room/join", expectedStatuses: [200, 400, 401, 403, 404, 409, 500] },
+      { method: "GET", path: "/api/wtf-live/rooms/e2e-game-room/join", expectedStatuses: [200, 400, 401, 403, 404, 409, 500] },
       { method: "GET", path: "/api/wtf-live/rooms/e2e-private-room/access", expectedStatuses: [200, 400, 401, 403, 404, 409, 500] },
       { method: "GET", path: "/api/wtf-live/rooms/e2e-room/settings", expectedStatuses: [200, 400, 401, 403, 404, 409, 500] },
+      { method: "GET", path: "/api/wtf-live/rooms/e2e-game-room/settings?roomKind=game", expectedStatuses: [200, 400, 401, 403, 404, 409, 500] },
       { method: "GET", path: "/api/wtf-live/rooms/e2e-room/show-kit", expectedStatuses: [200, 400, 401, 403, 404, 409, 500] },
+      { method: "GET", path: "/api/wtf-live/rooms/e2e-game-room/show-kit?roomKind=game", expectedStatuses: [200, 400, 401, 403, 404, 409, 500] },
       {
         method: "PATCH",
         path: "/api/wtf-live/rooms/e2e-private-room/access",
@@ -489,6 +498,12 @@ export const DOMAIN_WORKFLOWS = [
         expectedStatuses: [200, 400, 401, 403, 404, 409, 500],
       },
       {
+        method: "PATCH",
+        path: "/api/wtf-live/rooms/e2e-game-room/settings",
+        body: { roomKind: "game", allowGuestAudio: true, allowGuestCamera: true, allowGuestScreen: false, allowGuestMedia: false, showKitEnabled: true, showKitId: null },
+        expectedStatuses: [200, 400, 401, 403, 404, 409, 500],
+      },
+      {
         method: "POST",
         path: "/api/wtf-live/rooms/e2e-room/invites",
         body: { roomKind: "room", targetUserId: 2, role: "guest" },
@@ -496,8 +511,20 @@ export const DOMAIN_WORKFLOWS = [
       },
       {
         method: "POST",
+        path: "/api/wtf-live/rooms/e2e-game-room/invites",
+        body: { roomKind: "game", targetUserId: 2, role: "guest" },
+        expectedStatuses: [201, 400, 401, 403, 404, 409, 500],
+      },
+      {
+        method: "POST",
         path: "/api/wtf-live/rooms/e2e-room/events",
         body: { roomKind: "room", target: "both", title: "E2E WTF LIVE Event", startsAt: "2026-07-02T12:00:00.000Z", endsAt: null },
+        expectedStatuses: [201, 400, 401, 403, 404, 409, 500],
+      },
+      {
+        method: "POST",
+        path: "/api/wtf-live/rooms/e2e-game-room/events",
+        body: { roomKind: "game", target: "wtf", title: "E2E WTF LIVE Game Night", startsAt: "2026-07-02T13:00:00.000Z", endsAt: null },
         expectedStatuses: [201, 400, 401, 403, 404, 409, 500],
       },
       {
@@ -509,6 +536,11 @@ export const DOMAIN_WORKFLOWS = [
       {
         method: "DELETE",
         path: "/api/wtf-live/rooms/e2e-room",
+        expectedStatuses: [200, 400, 401, 403, 404, 409, 500],
+      },
+      {
+        method: "DELETE",
+        path: "/api/wtf-live/rooms/e2e-game-room",
         expectedStatuses: [200, 400, 401, 403, 404, 409, 500],
       },
       {
