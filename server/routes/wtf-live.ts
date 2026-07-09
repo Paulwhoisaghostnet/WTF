@@ -750,16 +750,20 @@ router.post("/api/wtf-live/rooms", actionLimiter, async (req, res) => {
       accessMode: parsed.data.accessMode,
     });
     if (room.kind === "game") {
-      await updateWtfLiveRoomSettings({
-        actorUserId: user.id,
-        roomKind: "game",
-        roomId: room.id,
-        allowGuestAudio: true,
-        allowGuestCamera: true,
-        allowGuestScreen: false,
-        allowGuestMedia: false,
-        showKitEnabled: true,
-      });
+      try {
+        await updateWtfLiveRoomSettings({
+          actorUserId: user.id,
+          roomKind: "game",
+          roomId: room.id,
+          allowGuestAudio: true,
+          allowGuestCamera: true,
+          allowGuestScreen: false,
+          allowGuestMedia: false,
+          showKitEnabled: true,
+        });
+      } catch (err) {
+        console.error("[wtf-live] failed to initialize game room settings:", err);
+      }
     }
     if (parsed.data.accessMode === "private") {
       const access = await replaceOwnedWtfLiveRoomAccessMembers({
@@ -775,7 +779,8 @@ router.post("/api/wtf-live/rooms", actionLimiter, async (req, res) => {
     }
     res.status(201).json({ room: withWtfLivePresence(room), members: [], missingUsernames: [] });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message || "Could not create room" });
+    console.error("[wtf-live] create room failed:", err);
+    res.status(500).json({ error: "Could not create room. Please try again." });
   }
 });
 

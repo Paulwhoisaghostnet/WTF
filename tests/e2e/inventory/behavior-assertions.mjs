@@ -679,9 +679,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"game room\" --project=chromium --reporter=list",
     userVisibleAssertion:
-      "A signed-in WTF LIVE owner can create a game room, see it represented as a game room in the room dashboard and public room frame, launch Jackbox host apps from owner-only controls, and keep room mic/camera controls available for players.",
+      "A signed-in WTF LIVE owner can create a game room, see it represented as a game room in the room dashboard and public room frame, start Jackbox host apps from owner-only controls inside that room, publish the hosted game stream as the room's shared screen, control the game from the room frame, and keep room mic/camera controls available for players.",
     durableSideEffectAssertion:
-      "The API persists room_kind=game, game room settings use the game roomKind bucket, the live-room join envelope returns game capabilities, and Jackbox host buttons open Applications play routes without replacing the WTF LIVE room session.",
+      "The API persists room_kind=game, game room settings use the game roomKind bucket, the live-room join envelope returns game capabilities, the room frame starts apphost launch/session/stream-offer/input flows for the selected Jackbox title, and the received apphost MediaStream is attached to WTF LIVE screen sharing rather than opening Applications as a side route.",
   },
   {
     id: "wtf-live.wim-attendance-identity",

@@ -26,15 +26,24 @@ test("WTF LIVE room handoffs and popouts preserve the active presentation host",
   assert.match(publicRoomSource, /\[data-wtf-live-presentation-host="gamma"\] &[\s\S]*?background-image:\s*none/);
 });
 
-test("WTF LIVE game rooms launch Jackbox host apps through Applications", () => {
+test("WTF LIVE game rooms host Jackbox inside the room as a shared screen", () => {
   assert.match(appSource, /roomKind:\s*createRoomKind/);
   assert.match(appSource, /data-wtf-live-create-room-kind/);
   assert.match(appSource, /data-wtf-live-game-host-actions/);
   assert.match(appSource, /data-wtf-live-game-start=\{game\.appId\}/);
-  assert.match(appSource, /presentationRouteHref\(`\/applications\/\$\{encodeURIComponent\(appId\)\}\/play`\)/);
+  assert.match(appSource, /function gameRoomHostPath\(roomId: string, appId: string\)/);
+  assert.match(appSource, /\?hostApp=\$\{encodeURIComponent\(appId\)\}/);
   assert.match(publicRoomSource, /const runtimeRoomKind = isStageRoom \? "stage" : isGameRoom \? "game" : "room"/);
   assert.match(publicRoomSource, /show-kit\?roomKind=\$\{runtimeRoomKind\}/);
   assert.match(publicRoomSource, /data-wtf-live-game-room-host-actions/);
   assert.match(publicRoomSource, /data-wtf-live-room-frame=\{isStageRoom \? "stage" : isGameRoom \? "game" : "room"\}/);
-  assert.match(publicRoomSource, /presentationRouteHref\(`\/applications\/\$\{encodeURIComponent\(appId\)\}\/play`, presentation\.host\)/);
+  assert.match(publicRoomSource, /const requestedGame = hostedGameFromAppId\(params\.get\("hostApp"\)\);[\s\S]*?joinRoom\(\);/);
+  assert.match(publicRoomSource, /api\.post<LaunchResponse>\(`\/api\/apphost\/apps\/\$\{encodeURIComponent\(hostedGameAppId \?\? ""\)\}\/launch`, \{\}\)/);
+  assert.match(publicRoomSource, /api\.post<StreamOfferResponse>\(\s*`\/api\/apphost\/apps\/\$\{encodeURIComponent\(appId\)\}\/stream\/offer`/);
+  assert.match(publicRoomSource, /api\.post\(`\/api\/apphost\/apps\/\$\{encodeURIComponent\(hostedGameAppId\)\}\/input`,/);
+  assert.match(publicRoomSource, /installHostedGameStream\(stream\)/);
+  assert.match(publicRoomSource, /setScreenStream\(stream\)/);
+  assert.match(publicRoomSource, /data-wtf-live-game-control-surface=\{hostedGame\.appId\}/);
+  assert.match(publicRoomSource, /data-wtf-live-game-room-stream=\{hostedGame\.appId\}/);
+  assert.doesNotMatch(publicRoomSource, /\/applications\/\$\{encodeURIComponent\(appId\)\}\/play/);
 });

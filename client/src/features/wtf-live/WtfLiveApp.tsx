@@ -247,6 +247,10 @@ function publicRoomUrl(roomId: string): string {
   return `${window.location.origin}${publicRoomPath(roomId)}`;
 }
 
+function gameRoomHostPath(roomId: string, appId: string): string {
+  return `${publicRoomPath(roomId)}?hostApp=${encodeURIComponent(appId)}`;
+}
+
 function isGameRoom(room: WtfLiveRoom | null | undefined): boolean {
   return room?.kind === "game";
 }
@@ -1074,9 +1078,9 @@ export function WtfLiveApp() {
     setCopyStatus(`Opened ${room.title} in a new browser tab.`);
   }
 
-  function openHostedGame(appId: (typeof JACKBOX_WTF_LIVE_GAMES)[number]["appId"], label: string) {
-    window.open(presentationRouteHref(`/applications/${encodeURIComponent(appId)}/play`), "_blank", "noopener,noreferrer");
-    setCopyStatus(`Opening ${label} host app.`);
+  function openHostedGame(room: WtfLiveRoom, appId: (typeof JACKBOX_WTF_LIVE_GAMES)[number]["appId"], label: string) {
+    window.open(presentationRouteHref(gameRoomHostPath(room.id, appId)), "_blank", "noopener,noreferrer");
+    setCopyStatus(`Opening ${room.title} to host ${label}.`);
   }
 
   function renderGameRoomHostActions(room: WtfLiveRoom, manageable: boolean) {
@@ -1087,7 +1091,7 @@ export function WtfLiveApp() {
           <Button
             key={game.appId}
             size="sm"
-            onClick={() => openHostedGame(game.appId, game.label)}
+            onClick={() => openHostedGame(room, game.appId, game.label)}
             data-wtf-live-game-start={game.appId}
           >
             <ButtonLabel><Play size={14} aria-hidden /> {game.label}</ButtonLabel>
@@ -1096,12 +1100,12 @@ export function WtfLiveApp() {
         <Button
           size="sm"
           onClick={() => {
-            window.open(presentationRouteHref("/applications"), "_blank", "noopener,noreferrer");
-            setCopyStatus("Opening Applications.");
+            window.open(presentationRouteHref(publicRoomPath(room.id)), "_blank", "noopener,noreferrer");
+            setCopyStatus(`Opening ${room.title} game room.`);
           }}
-          data-wtf-live-game-start="applications"
+          data-wtf-live-game-start="room"
         >
-          <ButtonLabel><ExternalLink size={14} aria-hidden /> Applications</ButtonLabel>
+          <ButtonLabel><Radio size={14} aria-hidden /> Game room</ButtonLabel>
         </Button>
       </ActionGrid>
     );

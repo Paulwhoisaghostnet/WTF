@@ -74,6 +74,82 @@ async function mockAnonymousUser(context) {
   });
 }
 
+async function mockApphost(context) {
+  const appStatus = (appId) => ({
+    appId,
+    state: "launching",
+    progress: {
+      phase: "opening",
+      label: "Opening game",
+      detail: "Inventory smoke is using a mocked hosted Jackbox stream.",
+      percent: 64,
+    },
+  });
+  const appPayload = (appId) => ({
+    id: appId,
+    name: appId === "jackbox-party-pack-11" ? "Jackbox 11" : "Jackbox 10",
+    audioRequired: true,
+  });
+  const appIdFromUrl = (url) => decodeURIComponent(new URL(url).pathname.split("/").at(4) || "jackbox-party-pack-10");
+
+  await context.route("**/api/apphost/apps/*/session", async (route) => {
+    const appId = appIdFromUrl(route.request().url());
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        app: appPayload(appId),
+        status: appStatus(appId),
+        session: {
+          appId,
+          appName: appPayload(appId).name,
+          display: { width: 1280, height: 720 },
+          audio: { required: true },
+          stream: { preferredTransport: "webrtc", iceServers: [] },
+        },
+      }),
+    });
+  });
+  await context.route("**/api/apphost/apps/*/status", async (route) => {
+    const appId = appIdFromUrl(route.request().url());
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ status: appStatus(appId) }),
+    });
+  });
+  await context.route("**/api/apphost/apps/*/launch", async (route) => {
+    const appId = appIdFromUrl(route.request().url());
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, app: appPayload(appId), status: appStatus(appId) }),
+    });
+  });
+  await context.route("**/api/apphost/apps/*/snapshot", async (route) => {
+    const appId = appIdFromUrl(route.request().url());
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        appId,
+        dataUrl:
+          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGOSHzRgQAAAABJRU5ErkJggg==",
+      }),
+    });
+  });
+  await context.route("**/api/apphost/apps/*/stop", async (route) => {
+    const appId = appIdFromUrl(route.request().url());
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, app: appPayload(appId), status: { appId, state: "stopped" } }),
+    });
+  });
+}
+
 async function installMediaMocks(page, fillStyle) {
   await page.addInitScript((color) => {
     function makeVideoStream(label) {
@@ -312,6 +388,7 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     request,
   }) => {
     await setAdmin(request);
+    await mockApphost(page.context());
     const errors = [];
     capturePageErrors(page, errors, "game-room");
 
@@ -331,7 +408,12 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     await selectedGameRoom.locator("[data-wtf-live-game-start='jackbox-party-pack-10']").click();
     const launchPopup = await launchPopupPromise;
     await launchPopup.waitForLoadState("domcontentloaded");
-    expect(new URL(launchPopup.url()).pathname).toBe("/applications/jackbox-party-pack-10/play");
+    const launchPopupUrl = new URL(launchPopup.url());
+    expect(launchPopupUrl.pathname).toBe("/live/r/game-room");
+    expect(launchPopupUrl.searchParams.get("hostApp")).toBe("jackbox-party-pack-10");
+    await expect(launchPopup.locator("[data-wtf-live-room-frame='game']")).toBeVisible();
+    await expect(launchPopup.locator("[data-wtf-live-game-room-apphost='jackbox-party-pack-10']")).toBeVisible({ timeout: 10_000 });
+    await expect(launchPopup.locator("[data-wtf-live-game-control-surface='jackbox-party-pack-10']")).toBeVisible();
     await launchPopup.close();
 
     const settings = await (await request.get("/api/wtf-live/rooms/game-room/settings?roomKind=game")).json();
@@ -350,15 +432,15 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     expect(new URL(roomPage.url()).pathname).toBe("/live/r/game-room");
     await expect(roomPage.locator("[data-wtf-live-room-frame='game']")).toBeVisible();
     await expect(roomPage.getByRole("button", { name: "Join Game Room" })).toBeVisible();
+    await roomPage.getByRole("button", { name: "Join Game Room" }).click();
+    await expect(roomPage.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
     await expect(roomPage.locator("[data-wtf-live-game-room-host-actions='game-room']")).toBeVisible();
     await expect(roomPage.locator("[data-wtf-live-toggle-mic]")).toBeVisible();
     await expect(roomPage.locator("[data-wtf-live-toggle-camera]")).toBeVisible();
-    const roomLaunchPopupPromise = roomPage.waitForEvent("popup");
     await roomPage.locator("[data-wtf-live-game-start='jackbox-party-pack-11']").click();
-    const roomLaunchPopup = await roomLaunchPopupPromise;
-    await roomLaunchPopup.waitForLoadState("domcontentloaded");
-    expect(new URL(roomLaunchPopup.url()).pathname).toBe("/applications/jackbox-party-pack-11/play");
-    await roomLaunchPopup.close();
+    await expect(roomPage.locator("[data-wtf-live-game-room-apphost='jackbox-party-pack-11']")).toBeVisible({ timeout: 10_000 });
+    await expect(roomPage.locator("[data-wtf-live-game-control-surface='jackbox-party-pack-11']")).toBeVisible();
+    expect(new URL(roomPage.url()).pathname).toBe("/live/r/game-room");
     await roomPage.close();
 
     expect(fatalErrors(errors)).toEqual([]);

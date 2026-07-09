@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, type WheelEvent as ReactWheelEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, Bold, Camera, Check, ChevronDown, ChevronRight, Copy, ExternalLink, FileAudio, Gauge, Gift, Image as ImageIcon, Italic, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Music2, Paperclip, Pause, Pin, Play, Radio, RotateCcw, Send, Settings, Smile, Square, Type as TypeIcon, UserPlus, Users, Volume2, VolumeX, Wifi, WifiOff, X } from "lucide-react";
 import styled from "styled-components";
@@ -176,6 +176,81 @@ type LivePeer = {
   mediaState: LiveMediaState;
   stream: MediaStream;
   connected: boolean;
+};
+
+type HostedGame = {
+  appId: (typeof JACKBOX_WTF_LIVE_GAMES)[number]["appId"];
+  label: string;
+};
+
+type AppProgress = {
+  phase: string;
+  label: string;
+  detail?: string;
+  percent: number;
+};
+
+type AppStatus = {
+  appId: string;
+  state: "running" | "stopped" | "exited" | "launching" | "failed" | string;
+  progress?: AppProgress;
+  health?: {
+    ok: boolean;
+    type: string;
+    error?: string;
+  };
+};
+
+type HostedApplication = {
+  id: string;
+  name: string;
+  audioRequired?: boolean;
+};
+
+type AppSessionResponse = {
+  ok: boolean;
+  app: HostedApplication;
+  status: AppStatus;
+  session: {
+    appId: string;
+    appName: string;
+    display: {
+      width: number;
+      height: number;
+    };
+    audio?: {
+      required: boolean;
+    };
+    stream: {
+      preferredTransport: string;
+      iceServers?: RTCIceServer[];
+    };
+  };
+};
+
+type StatusResponse = {
+  status: AppStatus;
+};
+
+type LaunchResponse = {
+  ok: boolean;
+  app: HostedApplication;
+  status: AppStatus;
+};
+
+type AppSnapshotResponse = {
+  ok: boolean;
+  appId: string;
+  dataUrl: string;
+};
+
+type StreamOfferResponse = {
+  ok: boolean;
+  streamId: string;
+  transport: "webrtc" | string;
+  answer: RTCSessionDescriptionInit;
+  candidates?: RTCIceCandidateInit[];
+  error?: string;
 };
 
 type PeerHealth = "good" | "fair" | "poor" | "connecting" | "offline";
@@ -439,6 +514,14 @@ const JACKBOX_WTF_LIVE_GAMES = [
   { appId: "jackbox-party-pack-10", label: "Jackbox 10" },
   { appId: "jackbox-party-pack-11", label: "Jackbox 11" },
 ] as const;
+
+const JACKBOX_WTF_LIVE_GAME_BY_ID = new Map<string, HostedGame>(
+  JACKBOX_WTF_LIVE_GAMES.map((game) => [game.appId, game]),
+);
+
+function hostedGameFromAppId(appId: string | null | undefined): HostedGame | null {
+  return appId ? JACKBOX_WTF_LIVE_GAME_BY_ID.get(appId) ?? null : null;
+}
 
 function parseStageUsernames(value: string): string[] {
   return Array.from(
@@ -1293,6 +1376,92 @@ const ButtonLabel = styled.span`
   white-space: nowrap;
 `;
 
+const HostedGamePanel = styled.div`
+  border: 2px inset #fff;
+  background: #050505;
+  color: #f5f5f5;
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  min-width: 0;
+`;
+
+const HostedGameFrame = styled.div<{ $aspectRatio: number; $nativeCursor: boolean }>`
+  position: relative;
+  width: 100%;
+  aspect-ratio: ${(p) => p.$aspectRatio};
+  min-height: 180px;
+  max-height: min(52dvh, 520px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #000;
+  outline: 1px solid #303030;
+  touch-action: none;
+  cursor: ${(p) => (p.$nativeCursor ? "none" : "default")};
+
+  &:focus-visible {
+    outline: 2px solid #72d2ff;
+  }
+`;
+
+const HostedGameVideo = styled.video`
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: #000;
+  pointer-events: none;
+`;
+
+const HostedGameSnapshot = styled.img`
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: #000;
+  user-select: none;
+  -webkit-user-drag: none;
+`;
+
+const HostedGameWaiting = styled.div`
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 16px;
+  color: #e9edf5;
+  text-align: center;
+`;
+
+const HostedGameToolbar = styled.div`
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+`;
+
+const HostedGameProgress = styled.div`
+  display: grid;
+  gap: 3px;
+  min-width: min(260px, 100%);
+  font-size: 12px;
+`;
+
+const HostedGameProgressTrack = styled.div`
+  height: 8px;
+  border: 1px solid #5a5a5a;
+  background: #101010;
+  overflow: hidden;
+`;
+
+const HostedGameProgressFill = styled.div<{ $percent: number }>`
+  width: ${(p) => p.$percent}%;
+  height: 100%;
+  background: #2ec7ff;
+`;
+
 const MicMeter = styled.div`
   border: 2px inset #fff;
   background: #ffffff;
@@ -2051,6 +2220,14 @@ function stopStream(stream: MediaStream | null) {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
+function stopStreamExcept(stream: MediaStream | null, keepStream: MediaStream | null) {
+  if (!stream) return;
+  const keepTrackIds = new Set(keepStream?.getTracks().map((track) => track.id) ?? []);
+  stream.getTracks().forEach((track) => {
+    if (!keepTrackIds.has(track.id)) track.stop();
+  });
+}
+
 const INITIAL_MIC_DIAGNOSTIC: MicDiagnosticState = {
   status: "idle",
   headline: "Run a mic test before going live.",
@@ -2261,6 +2438,51 @@ function useMediaStream<T extends HTMLMediaElement>(
 function liveSocketUrl(): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}/ws/wtf-live`;
+}
+
+function createHostedGameStreamId() {
+  const random =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID().replace(/-/g, "")
+      : `${Date.now()}${Math.random().toString(16).slice(2)}`;
+  return `wtf-live-game-${random}`.slice(0, 80);
+}
+
+function waitForIceGathering(peerConnection: RTCPeerConnection, timeoutMs: number) {
+  if (peerConnection.iceGatheringState === "complete") return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const timeout = window.setTimeout(done, timeoutMs);
+    function done() {
+      window.clearTimeout(timeout);
+      peerConnection.removeEventListener("icegatheringstatechange", handleChange);
+      resolve();
+    }
+    function handleChange() {
+      if (peerConnection.iceGatheringState === "complete") done();
+    }
+    peerConnection.addEventListener("icegatheringstatechange", handleChange);
+  });
+}
+
+function clampProgress(value: unknown) {
+  const numeric = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return Math.max(0, Math.min(100, Math.round(numeric)));
+}
+
+function hostedGameProgress(status: AppStatus | undefined, launchStartedAt: number | null): AppProgress {
+  if (status?.progress) return { ...status.progress, percent: clampProgress(status.progress.percent) };
+  if (launchStartedAt) {
+    const elapsed = Math.max(0, Date.now() - launchStartedAt);
+    return {
+      phase: "opening",
+      label: "Opening game",
+      detail: "Starting the hosted Jackbox app.",
+      percent: Math.min(92, Math.max(10, Math.round(elapsed / 1200))),
+    };
+  }
+  if (status?.state === "running") return { phase: "ready", label: "Game ready", detail: "The game is open in this room.", percent: 100 };
+  if (status?.state === "failed") return { phase: "failed", label: "Game failed", detail: "Try stopping and starting again.", percent: 100 };
+  return { phase: "idle", label: "Ready to host", detail: "Choose a Jackbox title.", percent: 0 };
 }
 
 function normalizeAvatarUrl(value: unknown): string | null {
@@ -3113,6 +3335,13 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const [stageSpeakerList, setStageSpeakerList] = useState("");
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [hostedGame, setHostedGame] = useState<HostedGame | null>(null);
+  const [hostedGameRemoteStream, setHostedGameRemoteStream] = useState<MediaStream | null>(null);
+  const [hostedGameStreamState, setHostedGameStreamState] = useState<"idle" | "connecting" | "connected" | "failed">("idle");
+  const [hostedGameStreamDetail, setHostedGameStreamDetail] = useState("");
+  const [hostedGameLaunchStartedAt, setHostedGameLaunchStartedAt] = useState<number | null>(null);
+  const [hostedGameStreamAttempt, setHostedGameStreamAttempt] = useState(0);
+  const [hostedGamePointerLocked, setHostedGamePointerLocked] = useState(false);
   const [soundboardOutputStream, setSoundboardOutputStream] = useState<MediaStream | null>(null);
   const [mediaDeck, setMediaDeck] = useState<MediaDeckState | null>(null);
   const [activeVideoSource, setActiveVideoSource] = useState<ActiveVideoSource>(null);
@@ -3153,6 +3382,16 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const popoutFrameCountRef = useRef(0);
   const cameraRef = useRef<HTMLVideoElement | null>(null);
   const screenRef = useRef<HTMLVideoElement | null>(null);
+  const hostedGameFrameRef = useRef<HTMLDivElement | null>(null);
+  const hostedGameVideoRef = useRef<HTMLVideoElement | null>(null);
+  const hostedGamePeerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const hostedGameStreamIdRef = useRef<string | null>(null);
+  const hostedGameSharedScreenRef = useRef<MediaStream | null>(null);
+  const hostedGameLaunchAttemptedRef = useRef<string | null>(null);
+  const hostedGameAutoStartRef = useRef<string | null>(null);
+  const hostedGamePendingMoveRef = useRef<Record<string, unknown> | null>(null);
+  const hostedGameMoveFlushHandleRef = useRef<number | null>(null);
+  const hostedGameVirtualPointerRef = useRef({ x: 0.5, y: 0.5 });
   const chatTextAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const stageStreamCacheRef = useRef<StageStreamCache>(new Map());
@@ -3202,8 +3441,68 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const canShareMedia = roomCapabilities?.media !== false;
   const canManageStageRoom = Boolean(stagePermissions?.canManage || roomCapabilities?.canManageStage);
   const canManageRoom = Boolean(roomCapabilities?.canManageRoom || canManageStageRoom);
+  const hostedGameAppId = hostedGame?.appId ?? null;
+  const hostedGameEnabled = Boolean(hostedGameAppId && user && isGameRoom && canManageRoom);
+  const hostedGameSessionQuery = useQuery({
+    queryKey: ["wtf-live", "game-room", roomId, "apphost-session", hostedGameAppId],
+    queryFn: () => api.get<AppSessionResponse>(`/api/apphost/apps/${encodeURIComponent(hostedGameAppId ?? "")}/session`),
+    enabled: hostedGameEnabled,
+    refetchInterval: hostedGameEnabled ? 5000 : false,
+  });
+  const hostedGameStatusQuery = useQuery({
+    queryKey: ["wtf-live", "game-room", roomId, "apphost-status", hostedGameAppId],
+    queryFn: () => api.get<StatusResponse>(`/api/apphost/apps/${encodeURIComponent(hostedGameAppId ?? "")}/status`),
+    enabled: hostedGameEnabled,
+    refetchInterval: hostedGameEnabled ? 2000 : false,
+  });
+  const hostedGameStatus = hostedGameStatusQuery.data?.status ?? hostedGameSessionQuery.data?.status;
+  const hostedGameSession = hostedGameSessionQuery.data?.session;
+  const hostedGameShouldCapture = Boolean(
+    hostedGameEnabled &&
+      hostedGameStatus &&
+      (hostedGameStatus.state === "launching" ||
+        (hostedGameStatus.state === "running" && hostedGameStatus.progress?.phase !== "ready")) &&
+      hostedGameStreamState !== "connected",
+  );
+  const hostedGameSnapshotQuery = useQuery({
+    queryKey: ["wtf-live", "game-room", roomId, "apphost-snapshot", hostedGameAppId],
+    queryFn: () => api.get<AppSnapshotResponse>(`/api/apphost/apps/${encodeURIComponent(hostedGameAppId ?? "")}/snapshot`),
+    enabled: hostedGameShouldCapture,
+    refetchInterval: hostedGameShouldCapture ? 1000 : false,
+    staleTime: 0,
+    gcTime: 1000,
+  });
+  const hostedGameLaunchMutation = useMutation({
+    mutationFn: () => api.post<LaunchResponse>(`/api/apphost/apps/${encodeURIComponent(hostedGameAppId ?? "")}/launch`, {}),
+    onMutate: () => setHostedGameLaunchStartedAt(Date.now()),
+    onSettled: () => {
+      setHostedGameLaunchStartedAt(null);
+      qc.invalidateQueries({ queryKey: ["wtf-live", "game-room", roomId, "apphost-status", hostedGameAppId] });
+      qc.invalidateQueries({ queryKey: ["wtf-live", "game-room", roomId, "apphost-session", hostedGameAppId] });
+      qc.invalidateQueries({ queryKey: ["applications"] });
+    },
+  });
+  const hostedGameStopMutation = useMutation({
+    mutationFn: () => api.post<LaunchResponse>(`/api/apphost/apps/${encodeURIComponent(hostedGameAppId ?? "")}/stop`, {}),
+    onSuccess: () => {
+      clearHostedGame("Game stopped.");
+      qc.invalidateQueries({ queryKey: ["wtf-live", "game-room", roomId, "apphost-status", hostedGameAppId] });
+      qc.invalidateQueries({ queryKey: ["applications"] });
+    },
+  });
   const defaultLiveChatStyle =
     desktopSettingsQuery.data?.appearance.wtfLiveChatStyle ?? DEFAULT_LIVE_CHAT_STYLE;
+  const hostedGameIceServersKey = useMemo(
+    () => JSON.stringify(hostedGameSession?.stream.iceServers ?? []),
+    [hostedGameSession?.stream.iceServers],
+  );
+  const hostedGameAspectRatio = useMemo(() => {
+    const display = hostedGameSession?.display;
+    const width = display?.width || 1280;
+    const height = display?.height || 720;
+    return width / height;
+  }, [hostedGameSession?.display]);
+  const hostedGameProgressValue = hostedGameProgress(hostedGameStatus, hostedGameLaunchStartedAt);
   const roomDefaultChatFontFamily = getFontPack(roomDefaultFontPack).roles.app;
   const viewerUserId = normalizeLiveUserId(user?.id);
   const signedInUsername = user?.username?.trim() || "";
@@ -3375,6 +3674,369 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 
   useMediaStream(cameraRef, cameraStream);
   useMediaStream(screenRef, screenStream);
+  useMediaStream(hostedGameVideoRef, hostedGameRemoteStream, streamSignature(hostedGameRemoteStream));
+
+  function installHostedGameStream(stream: MediaStream) {
+    const previousGameStream = hostedGameSharedScreenRef.current;
+    const currentScreenStream = localStreamsRef.current.screenStream;
+    if (currentScreenStream && currentScreenStream !== previousGameStream && currentScreenStream !== stream) {
+      stopStream(currentScreenStream);
+    }
+    if (previousGameStream && previousGameStream !== stream) {
+      stopStreamExcept(previousGameStream, stream);
+    }
+    hostedGameSharedScreenRef.current = stream;
+    localStreamsRef.current.screenStream = stream;
+    setHostedGameRemoteStream(stream);
+    setScreenStream(stream);
+    setActiveVideoSource("screen");
+    setScreenGridEntryIds((current) => (current.includes("self-screen") ? current : ["self-screen", ...current]));
+  }
+
+  function stopHostedGameShare(nextStatus = "Game share stopped.") {
+    const sharedStream = hostedGameSharedScreenRef.current;
+    hostedGameSharedScreenRef.current = null;
+    if (sharedStream) stopStream(sharedStream);
+    if (!sharedStream || localStreamsRef.current.screenStream === sharedStream) {
+      localStreamsRef.current.screenStream = null;
+      setScreenStream(null);
+      setActiveVideoSource((current) =>
+        current === "screen" ? resolveActiveVideoSource({ cameraStream, screenStream: null }, "camera") : current,
+      );
+    }
+    setHostedGameRemoteStream(null);
+    setHostedGameStreamState("idle");
+    setHostedGameStreamDetail("");
+    if (nextStatus) setStatus(nextStatus);
+  }
+
+  function startHostedGame(game: HostedGame) {
+    if (!isGameRoom) {
+      setStatus("Jackbox hosting is only available inside game rooms.");
+      return;
+    }
+    if (!canManageRoom) {
+      setStatus("Only the room owner or host can start the Jackbox screen.");
+      return;
+    }
+    if (!joined || !socketReady) {
+      setStatus("Join the game room before starting Jackbox.");
+      return;
+    }
+    hostedGameLaunchAttemptedRef.current = null;
+    setHostedGame(game);
+    setSharingTestingOpen(false);
+    setSharingSettingsOpen(false);
+    setStatus(`Starting ${game.label} in this game room.`);
+  }
+
+  function clearHostedGame(nextStatus = "Game share closed.") {
+    const appId = hostedGameAppId;
+    const streamId = hostedGameStreamIdRef.current;
+    hostedGamePeerConnectionRef.current?.close();
+    hostedGamePeerConnectionRef.current = null;
+    hostedGameStreamIdRef.current = null;
+    if (streamId && appId) {
+      void api.post(`/api/apphost/apps/${encodeURIComponent(appId)}/stream/stop`, { streamId }).catch(() => undefined);
+    }
+    stopHostedGameShare(nextStatus);
+    setHostedGame(null);
+    hostedGameLaunchAttemptedRef.current = null;
+  }
+
+  function resumeHostedGamePlayback() {
+    const video = hostedGameVideoRef.current;
+    if (!video) return;
+    video.muted = false;
+    const playAttempt = video.play();
+    if (playAttempt && typeof playAttempt.catch === "function") {
+      void playAttempt.catch(() => {
+        video.muted = true;
+        void video.play().catch(() => undefined);
+        setHostedGameStreamDetail("Click the game again to enable host audio.");
+      });
+    }
+  }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedGame = hostedGameFromAppId(params.get("hostApp"));
+    if (!requestedGame || !isGameRoom || !canManageRoom || joined || socketRef.current) return;
+    joinRoom();
+  }, [canManageRoom, isGameRoom, joined]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedGame = hostedGameFromAppId(params.get("hostApp"));
+    if (!requestedGame || hostedGameAutoStartRef.current === requestedGame.appId) return;
+    if (!isGameRoom || !canManageRoom || !joined || !socketReady) return;
+    hostedGameAutoStartRef.current = requestedGame.appId;
+    startHostedGame(requestedGame);
+  }, [canManageRoom, isGameRoom, joined, socketReady]);
+
+  useEffect(() => {
+    const handleLockChange = () => {
+      setHostedGamePointerLocked(document.pointerLockElement === hostedGameFrameRef.current);
+    };
+    document.addEventListener("pointerlockchange", handleLockChange);
+    return () => {
+      document.removeEventListener("pointerlockchange", handleLockChange);
+      if (document.pointerLockElement === hostedGameFrameRef.current) {
+        document.exitPointerLock();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hostedGameEnabled || !hostedGameSessionQuery.data || hostedGameLaunchMutation.isPending) return;
+    const state = hostedGameSessionQuery.data.status?.state;
+    if (state === "running" || state === "launching") return;
+    if (hostedGameLaunchAttemptedRef.current === hostedGameAppId) return;
+    hostedGameLaunchAttemptedRef.current = hostedGameAppId;
+    hostedGameLaunchMutation.mutate();
+  }, [hostedGameAppId, hostedGameEnabled, hostedGameLaunchMutation, hostedGameSessionQuery.data]);
+
+  useEffect(() => {
+    if (!hostedGameAppId) {
+      stopHostedGameShare("");
+      return;
+    }
+    hostedGameLaunchAttemptedRef.current = null;
+  }, [hostedGameAppId]);
+
+  useEffect(() => {
+    if (
+      !hostedGameEnabled ||
+      !hostedGameAppId ||
+      hostedGameStatus?.state !== "running" ||
+      hostedGameStatus?.progress?.phase !== "ready" ||
+      hostedGameSession?.stream.preferredTransport !== "webrtc"
+    ) {
+      if (hostedGameStreamState !== "connected") setHostedGameStreamState("idle");
+      return;
+    }
+    if (typeof RTCPeerConnection === "undefined" || typeof MediaStream === "undefined") {
+      setHostedGameStreamState("failed");
+      setHostedGameStreamDetail("This browser cannot attach the hosted game stream.");
+      return;
+    }
+
+    const appId = hostedGameAppId;
+    void hostedGameStreamAttempt;
+    let cancelled = false;
+    const streamId = createHostedGameStreamId();
+    hostedGameStreamIdRef.current = streamId;
+    const iceServers = JSON.parse(hostedGameIceServersKey) as RTCIceServer[];
+    const peerConnection = new RTCPeerConnection({ iceServers });
+    const receivedStream = new MediaStream();
+    hostedGamePeerConnectionRef.current = peerConnection;
+    setHostedGameStreamState("connecting");
+    setHostedGameStreamDetail("Connecting the hosted game stream.");
+
+    peerConnection.addTransceiver("video", { direction: "recvonly" });
+    if (hostedGameSession.audio?.required) {
+      peerConnection.addTransceiver("audio", { direction: "recvonly" });
+    }
+    peerConnection.addEventListener("track", (event) => {
+      const tracks = event.streams.length ? event.streams.flatMap((item) => item.getTracks()) : [event.track];
+      for (const track of tracks) {
+        if (!receivedStream.getTracks().some((existingTrack) => existingTrack.id === track.id)) {
+          receivedStream.addTrack(track);
+        }
+      }
+      const stream = new MediaStream(receivedStream.getTracks());
+      installHostedGameStream(stream);
+      setHostedGameStreamState("connected");
+      setHostedGameStreamDetail("Game is live as the room screen.");
+      setStatus("Game is live as the room screen.");
+    });
+    peerConnection.addEventListener("connectionstatechange", () => {
+      if (cancelled) return;
+      if (peerConnection.connectionState === "connected") {
+        setHostedGameStreamState("connected");
+        setHostedGameStreamDetail("Game is live as the room screen.");
+      }
+      if (["failed", "disconnected", "closed"].includes(peerConnection.connectionState)) {
+        setHostedGameStreamState("failed");
+        setHostedGameStreamDetail("Hosted game stream disconnected.");
+        stopHostedGameShare("Hosted game stream disconnected.");
+      }
+    });
+
+    async function attachHostedGameStream() {
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      await waitForIceGathering(peerConnection, 2500);
+      const localDescription = peerConnection.localDescription;
+      if (!localDescription) throw new Error("Browser did not create a local WebRTC offer.");
+      const response = await api.post<StreamOfferResponse>(
+        `/api/apphost/apps/${encodeURIComponent(appId)}/stream/offer`,
+        {
+          streamId,
+          offer: {
+            type: localDescription.type,
+            sdp: localDescription.sdp,
+          },
+        },
+      );
+      if (!response.ok || !response.answer) {
+        throw new Error(response.error || "Application host did not answer the WebRTC offer.");
+      }
+      await peerConnection.setRemoteDescription(response.answer);
+      for (const candidate of response.candidates ?? []) {
+        await peerConnection.addIceCandidate(candidate);
+      }
+      if (!cancelled) setHostedGameStreamDetail("Waiting for game frames.");
+    }
+
+    void attachHostedGameStream().catch((error) => {
+      if (cancelled) return;
+      setHostedGameStreamState("failed");
+      setHostedGameStreamDetail(error instanceof Error ? error.message : "Could not attach hosted game stream.");
+      stopHostedGameShare("");
+      peerConnection.close();
+      void api.post(`/api/apphost/apps/${encodeURIComponent(appId)}/stream/stop`, { streamId }).catch(() => undefined);
+    });
+
+    return () => {
+      cancelled = true;
+      peerConnection.close();
+      if (hostedGamePeerConnectionRef.current === peerConnection) hostedGamePeerConnectionRef.current = null;
+      if (hostedGameStreamIdRef.current === streamId) hostedGameStreamIdRef.current = null;
+      stopHostedGameShare("");
+      void api.post(`/api/apphost/apps/${encodeURIComponent(appId)}/stream/stop`, { streamId }).catch(() => undefined);
+    };
+  }, [
+    hostedGameAppId,
+    hostedGameEnabled,
+    hostedGameIceServersKey,
+    hostedGameSession?.audio?.required,
+    hostedGameSession?.stream.preferredTransport,
+    hostedGameStatus?.progress?.phase,
+    hostedGameStatus?.state,
+    hostedGameStreamAttempt,
+  ]);
+
+  const flushHostedGamePendingMove = () => {
+    hostedGameMoveFlushHandleRef.current = null;
+    const payload = hostedGamePendingMoveRef.current;
+    hostedGamePendingMoveRef.current = null;
+    if (!payload || !hostedGameAppId) return;
+    void api.post(`/api/apphost/apps/${encodeURIComponent(hostedGameAppId)}/input`, payload).catch(() => undefined);
+  };
+
+  function sendHostedGameInput(event: Record<string, unknown>) {
+    if (!hostedGameAppId || hostedGameStatus?.state !== "running") return;
+    if (event.type === "pointer" && event.action === "move") {
+      hostedGamePendingMoveRef.current = event;
+      if (hostedGameMoveFlushHandleRef.current == null) {
+        hostedGameMoveFlushHandleRef.current = window.requestAnimationFrame(flushHostedGamePendingMove);
+      }
+      return;
+    }
+    void api.post(`/api/apphost/apps/${encodeURIComponent(hostedGameAppId)}/input`, event).catch(() => undefined);
+  }
+
+  function hostedGamePointerPayload(event: ReactPointerEvent<HTMLDivElement>, action: string) {
+    const frame = hostedGameFrameRef.current;
+    if (!frame) return null;
+    const rect = frame.getBoundingClientRect();
+    if (document.pointerLockElement === frame) {
+      if (action === "move" && rect.width > 0 && rect.height > 0) {
+        hostedGameVirtualPointerRef.current = {
+          x: Math.max(0, Math.min(1, hostedGameVirtualPointerRef.current.x + event.movementX / rect.width)),
+          y: Math.max(0, Math.min(1, hostedGameVirtualPointerRef.current.y + event.movementY / rect.height)),
+        };
+      }
+      return {
+        type: "pointer",
+        action,
+        x: hostedGameVirtualPointerRef.current.x,
+        y: hostedGameVirtualPointerRef.current.y,
+        button: event.button + 1,
+        pointerType: event.pointerType,
+      };
+    }
+    const x = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
+    const y = rect.height > 0 ? (event.clientY - rect.top) / rect.height : 0;
+    hostedGameVirtualPointerRef.current = {
+      x: Math.max(0, Math.min(1, x)),
+      y: Math.max(0, Math.min(1, y)),
+    };
+    return {
+      type: "pointer",
+      action,
+      x: hostedGameVirtualPointerRef.current.x,
+      y: hostedGameVirtualPointerRef.current.y,
+      button: event.button + 1,
+      pointerType: event.pointerType,
+    };
+  }
+
+  function handleHostedGamePointer(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    hostedGameFrameRef.current?.focus();
+    resumeHostedGamePlayback();
+    const action =
+      event.type === "pointerdown"
+        ? "down"
+        : event.type === "pointerup"
+          ? "up"
+          : event.type === "pointermove"
+            ? "move"
+            : "click";
+    const payload = hostedGamePointerPayload(event, action);
+    if (!payload) return;
+    if (event.type === "pointerdown" && document.pointerLockElement !== hostedGameFrameRef.current) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    sendHostedGameInput(payload);
+    if (event.type === "pointerup") sendHostedGameInput({ ...payload, action: "click" });
+  }
+
+  function handleHostedGameWheel(event: ReactWheelEvent<HTMLDivElement>) {
+    event.preventDefault();
+    resumeHostedGamePlayback();
+    const frame = hostedGameFrameRef.current;
+    if (!frame) return;
+    const rect = frame.getBoundingClientRect();
+    const locked = document.pointerLockElement === frame;
+    sendHostedGameInput({
+      type: "pointer",
+      action: "wheel",
+      x: locked ? hostedGameVirtualPointerRef.current.x : Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+      y: locked ? hostedGameVirtualPointerRef.current.y : Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
+      deltaX: event.deltaX,
+      deltaY: event.deltaY,
+    });
+  }
+
+  function handleHostedGameKey(event: ReactKeyboardEvent<HTMLDivElement>) {
+    event.preventDefault();
+    resumeHostedGamePlayback();
+    if (event.type === "keydown" && (event.key === "Enter" || event.key === " ")) {
+      sendHostedGameInput({ type: "keyboard", action: "press", key: event.key, code: event.code });
+      return;
+    }
+    sendHostedGameInput({
+      type: "keyboard",
+      action: event.type === "keydown" ? "down" : "up",
+      key: event.key,
+      code: event.code,
+      altKey: event.altKey,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+    });
+  }
+
+  useEffect(() => () => {
+    if (hostedGameMoveFlushHandleRef.current != null) {
+      window.cancelAnimationFrame(hostedGameMoveFlushHandleRef.current);
+      hostedGameMoveFlushHandleRef.current = null;
+    }
+    hostedGamePendingMoveRef.current = null;
+  }, []);
 
   useEffect(() => {
     if (!tipSku && ownedTipItems[0]) setTipSku(ownedTipItems[0].sku);
@@ -4386,6 +5048,10 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       return;
     }
     if (screenStream) {
+      if (screenStream === hostedGameSharedScreenRef.current) {
+        clearHostedGame();
+        return;
+      }
       stopStream(screenStream);
       setScreenStream(null);
       setActiveVideoSource((current) =>
@@ -5710,30 +6376,121 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	    );
 	  }
 
-	  function openHostedGame(appId: (typeof JACKBOX_WTF_LIVE_GAMES)[number]["appId"], label: string) {
-	    window.open(presentationRouteHref(`/applications/${encodeURIComponent(appId)}/play`, presentation.host), "_blank", "noopener,noreferrer");
-	    setStatus(`Opening ${label} host app.`);
-	  }
-
 	  function renderGameHostPanel() {
 	    if (!isGameRoom || !canManageRoom) return null;
 	    return (
 	      <SettingsGroup data-wtf-live-game-room-host-actions={roomId}>
 	        <LiveSectionHeader>
 	          <span><Play size={15} aria-hidden /> Host game</span>
-	          <ShareStatus>Jackbox</ShareStatus>
+	          <ShareStatus>{hostedGame ? hostedGameProgressValue.label : "Jackbox"}</ShareStatus>
 	        </LiveSectionHeader>
 	        <GuestGrid>
 	          {JACKBOX_WTF_LIVE_GAMES.map((game) => (
 	            <Button
 	              key={game.appId}
-	              onClick={() => openHostedGame(game.appId, game.label)}
+	              onClick={() => startHostedGame(game)}
+	              disabled={!joined || !socketReady || hostedGameLaunchMutation.isPending}
 	              data-wtf-live-game-start={game.appId}
 	            >
 	              <ButtonLabel><Play size={15} aria-hidden /> {game.label}</ButtonLabel>
 	            </Button>
 	          ))}
 	        </GuestGrid>
+	        {hostedGame ? (
+	          <HostedGamePanel data-wtf-live-game-room-apphost={hostedGame.appId}>
+	            <HostedGameToolbar>
+	              <HostedGameProgress>
+	                <strong>{hostedGame.label}</strong>
+	                <span>{hostedGameStreamDetail || hostedGameProgressValue.detail}</span>
+	                <HostedGameProgressTrack
+	                  role="progressbar"
+	                  aria-label={`${hostedGame.label} launch progress`}
+	                  aria-valuemin={0}
+	                  aria-valuemax={100}
+	                  aria-valuenow={hostedGameProgressValue.percent}
+	                >
+	                  <HostedGameProgressFill $percent={hostedGameProgressValue.percent} />
+	                </HostedGameProgressTrack>
+	              </HostedGameProgress>
+	              <GuestGrid>
+	                <Button
+	                  onClick={() => {
+	                    const frame = hostedGameFrameRef.current;
+	                    if (!frame) return;
+	                    if (document.pointerLockElement === frame) {
+	                      document.exitPointerLock();
+	                      return;
+	                    }
+	                    try {
+	                      void (frame.requestPointerLock() as Promise<void> | undefined)?.catch?.(() => undefined);
+	                    } catch {
+	                      // Pointer lock is best-effort.
+	                    }
+	                  }}
+	                  disabled={!hostedGameRemoteStream}
+	                  data-wtf-live-game-cursor-capture
+	                >
+	                  {hostedGamePointerLocked ? "Release cursor" : "Capture cursor"}
+	                </Button>
+	                <Button
+	                  onClick={() => hostedGameStopMutation.mutate()}
+	                  disabled={hostedGameStopMutation.isPending || hostedGameStatus?.state !== "running"}
+	                  data-wtf-live-game-stop
+	                >
+	                  Stop game
+	                </Button>
+	                <Button
+	                  onClick={() => clearHostedGame()}
+	                  data-wtf-live-game-close-share
+	                >
+	                  Close share
+	                </Button>
+	              </GuestGrid>
+	            </HostedGameToolbar>
+	            <HostedGameFrame
+	              ref={hostedGameFrameRef}
+	              $aspectRatio={hostedGameAspectRatio}
+	              $nativeCursor={Boolean(hostedGameRemoteStream)}
+	              tabIndex={0}
+	              role="application"
+	              aria-label={`${hostedGame.label} host controls`}
+	              data-wtf-live-game-control-surface={hostedGame.appId}
+	              onPointerDown={handleHostedGamePointer}
+	              onPointerUp={handleHostedGamePointer}
+	              onPointerMove={handleHostedGamePointer}
+	              onWheel={handleHostedGameWheel}
+	              onKeyDown={handleHostedGameKey}
+	              onKeyUp={handleHostedGameKey}
+	            >
+	              {hostedGameRemoteStream ? (
+	                <HostedGameVideo
+	                  ref={hostedGameVideoRef}
+	                  autoPlay
+	                  playsInline
+	                  muted
+	                  data-wtf-live-game-room-stream={hostedGame.appId}
+	                />
+	              ) : hostedGameSnapshotQuery.data?.dataUrl ? (
+	                <HostedGameSnapshot
+	                  src={hostedGameSnapshotQuery.data.dataUrl}
+	                  alt=""
+	                  draggable={false}
+	                  data-wtf-live-game-room-snapshot={hostedGame.appId}
+	                />
+	              ) : (
+	                <HostedGameWaiting data-wtf-live-game-room-waiting={hostedGame.appId}>
+	                  <Hourglass size={28} />
+	                  <span>{hostedGameProgressValue.label}</span>
+	                </HostedGameWaiting>
+	              )}
+	            </HostedGameFrame>
+	            <StatusLine>
+	              {hostedGamePointerLocked
+	                ? "Cursor captured by the game. Press Esc to release it."
+	                : "This game video is also published as the room's shared screen."}
+	            </StatusLine>
+	          </HostedGamePanel>
+	        ) : null}
 	      </SettingsGroup>
 	    );
 	  }
