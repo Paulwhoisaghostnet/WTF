@@ -80,6 +80,7 @@ Priority labels:
 | WTF-BB-357 | Verified | Codex Reggie personality script pass | 2026-07-07 | Desktop OS / Reggie assistant voice | P2 | 9 | 12 | 3 | 3 | 0 | Reggie now has deep authored script pools for every quest story plus summon/loading/locked/progress/empty-question states, with tests enforcing at least four intro/nudge/congrats variants per user story and deterministic no-repeat selection; verified with focused Reggie policy/model/dialogue tests, TypeScript, and diff whitespace |
 | WTF-BB-358 | Verified | Codex Jackbox game-room UX pass | 2026-07-08 | Desktop OS / Remote Applications + WTF LIVE game rooms | P1 | 13 | 6 | 4 | 5 | 0 | Jackbox apphost play now uses a game-first full-surface route with overlay controls/status and a WTF LIVE handoff, WTF LIVE has persistent `game` rooms with owner Jackbox launch actions and game-scoped settings/WebSocket permissions, and the inventory registry/harness cover the new workflow; verified with focused policy tests, TypeScript, build, inventory coverage, focused Playwright, and full inventory E2E (`592 passed`) |
 | WTF-BB-359 | Verified | Codex WTF LIVE game-room hotfix | 2026-07-08 | WTF LIVE / game room settings and Jackbox controls | P1 | 13 | 6 | 3 | 5 | 1 | Game room settings repair migration drops the old anonymous and explicit room_kind checks, re-adds `room|game|stage`, and backfills existing game rooms; create-room errors are sanitized; Jackbox host buttons now deep-link to the game room with `hostApp`, auto-join the manager, start apphost in-room, attach the hosted WebRTC stream to WTF LIVE screen sharing, and keep input on the room control surface. Local verification passed focused WTF LIVE policy tests, TypeScript, build, inventory coverage, focused WTF LIVE Playwright game-room smoke, and full inventory E2E (`592 passed`). Production deploy run `28987385310` applied migration `0112`, live health reported commit `f438f8cf`, `/live` and `/live/r/paul-s-game-room` returned 200, and the public room API confirmed `kind:"game"` plus `wtf_live_room_settings.roomKind:"game"` for `paul-s-game-room` |
+| WTF-BB-360 | In Progress | Codex app marketplace UX ranking full-send | 2026-07-15 | Desktop OS / app store and role-gated launch UX | P1 | 14 | 3 | 4 | 5 | 1 | First-entry wtfOS can expose too many non-essential or role-gated apps directly on the desktop/Stuffs menu, while the in-app market does not yet act as the ranked unlock surface for optional apps; this pass ranks every wtfOS app by core necessity and role gate, moves optional unlocks into the WTFIAM app-store section, blocks role-ineligible purchases with explanatory disabled tooltips, updates Reggie's knowledge base, and is being promoted through the full-send production path |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
@@ -413,6 +414,36 @@ Priority labels:
 - Fix/verification notes:
   - 2026-07-08: Apphost Jackbox play routes now prioritize the remote frame with only overlay controls/status; WTF LIVE game rooms persist as `room_kind='game'`, expose owner-only Jackbox launch actions, and keep mic/camera/screen sharing on the normal room plane.
   - Verified with `npx tsx --test client/src/pages/application-session-policy.test.ts client/src/pages/applications-presentation-policy.test.ts client/src/features/wtf-live/wtf-live-presentation-policy.test.ts server/wtf-live-game-rooms-policy.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, `npm run build`, `HARNESS_PORT=4335 npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "game rooms" --project=chromium --reporter=list`, and `npm run test:e2e:inventory` (`592 passed`).
+
+### WTF-BB-360 - wtfOS app discovery needs a ranked store and role-gated purchase UX
+
+- Category: Desktop OS / app store and role-gated launch UX
+- Status: In Progress
+- Owner/Session: Codex app marketplace UX ranking full-send
+- Score: C4 + F5 + S1 + P1(4) = 14
+- Evidence:
+  - 2026-07-14 user goal: first entry to wtfOS is confusing because too many non-essential apps and role-gated apps appear as if they are equally launchable.
+  - The user wants an apps section in WTFIAM that behaves like an app store: optional/non-essential apps and role-gated apps can be bought/unlocked with WTF, then optionally placed on the desktop.
+  - Role-ineligible users must not be able to purchase gated apps; they should see a greyed-out option with a hover/focus explanation naming the role or prerequisite.
+  - Reggie's knowledge base must explain the new app-store and default-desktop model.
+- Why it matters:
+  - wtfOS is an operating-system shell. First-open clarity depends on a controlled default desktop and a clear unlock path for advanced, risky, creator, admin, or specialty tools.
+  - If purchase gating is only visual, users can spend rewards on apps they still cannot operate, and role policy becomes inconsistent across desktop, Start Menu, market, and assistant guidance.
+- Correction direction:
+  - Define a single ranked app catalog that marks each wtfOS app as core, default desktop, optional store, role-gated, hidden/admin, or unavailable.
+  - Use that catalog to keep the default desktop/Stuffs menu focused on core apps while WTFIAM exposes the optional app-store section.
+  - Block purchases when required roles/prerequisites are missing, with accessible disabled controls and tooltip/status copy.
+  - Update Reggie's deterministic knowledge base and inventory coverage so support guidance and tests track the new unlock model.
+- Verification idea:
+  - Focused source/policy tests proving every desktop app key has a ranking, every non-core/risky app is represented in store or default desktop/menu, and role-gated app purchases fail closed before checkout.
+  - `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, focused browser proof for the WTFIAM Apps section disabled tooltip behavior, production deploy workflow success, and live smoke proof after deploy.
+- Current pass verification:
+  - Added `shared/wtfos-app-catalog.ts` as the ranked entitlement catalog for every `DesktopAppKey`, with core/default desktop placement, app-store placement, WTF prices, role gates, prerequisite gates, and synthetic app-unlock SKU helpers.
+  - Desktop icons and Start Menu now default to the core app set, while WTFIAM exposes the Apps category as the app-store surface for optional and gated app unlocks.
+  - Server checkout now validates app-unlock SKUs, rejects EXP for app unlocks, blocks role/prereq-ineligible purchases as `purchase_blocked`, and personalizes `/api/apps/desktop` from owned app unlock inventory.
+  - Reggie knowledge, interaction inventory, behavior assertions, workflow probes, admin surface coverage, and Playwright harness ownership state were updated for the app-store model.
+  - Passed focused policy/source tests: `npx tsx --test shared/wtfos-app-catalog.test.ts client/src/features/desktop/DesktopIcons.test.tsx client/src/components/layout/start-menu-app-gates.test.ts client/src/features/wtfiam/wtfiam-presentation-policy.test.ts client/src/features/reggie/reggie-knowledge.test.ts server/routes/in-app-market-app-store-policy.test.ts`.
+  - Passed `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, focused WTFIAM Apps Playwright coverage, and full `npm run test:e2e:inventory` with 593/593 passing.
 
 ### WTF-BB-357 - Reggie needs a richer sassy authored script
 

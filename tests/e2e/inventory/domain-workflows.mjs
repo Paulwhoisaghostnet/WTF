@@ -752,6 +752,9 @@ export const DOMAIN_WORKFLOWS = [
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/wtfiam", "/marketplace", "/rat-race", "/trade-boards", "/hoard", "/swap", "/wtf-recapture"],
     eventHandles: [
+      "wtfiam.app_unlock.viewed",
+      "wtfiam.app_unlock.blocked",
+      "wtfiam.app_unlock.intent_created",
       "wtfiam.cart_intent.created",
       "wtfiam.admin.price_rebalanced",
       "wtfiam.admin.sale_updated",
@@ -774,8 +777,15 @@ export const DOMAIN_WORKFLOWS = [
       "swap.confirmed",
     ],
     apiProbes: [
+      { method: "GET", path: "/api/in-app-market?category=apps" },
       { method: "GET", path: "/api/in-app-market?category=desktop_pet" },
       { method: "GET", path: "/api/in-app-market?category=wtf_live" },
+      {
+        method: "POST",
+        path: "/api/in-app-market/intents",
+        body: { currency: "reward_wtf", items: [{ sku: "wtfos-app-skywire", quantity: 1 }] },
+        expectedStatuses: [200, 400, 401, 409, 500],
+      },
       {
         method: "POST",
         path: "/api/in-app-market/tips",

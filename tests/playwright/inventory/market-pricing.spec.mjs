@@ -5,6 +5,11 @@ async function setAdmin(request) {
   expect(response.ok()).toBeTruthy();
 }
 
+async function setRole(request, userRole) {
+  const response = await request.post("/__test/state", { data: { userRole } });
+  expect(response.ok()).toBeTruthy();
+}
+
 test.describe("interaction inventory — in-app market pricing", () => {
   test("admin anchors, rebalance, sales, and storefront pricing stay connected", async ({
     page,
@@ -74,5 +79,38 @@ test.describe("interaction inventory — in-app market pricing", () => {
     await expect(page.getByText("WTF Arcade Credit")).toBeVisible();
     await expect(page.getByText("-10%", { exact: true })).toBeVisible();
     await expect(page.getByText("9.00 WTF", { exact: true })).toBeVisible();
+  });
+
+  test("Apps category shows role-gated app unlocks as disabled with prerequisite copy", async ({
+    page,
+    request,
+  }) => {
+    await setRole(request, "witness");
+
+    const marketResponse = await request.get("/api/in-app-market?category=apps");
+    expect(marketResponse.ok()).toBeTruthy();
+    const marketPayload = await marketResponse.json();
+    const skywire = marketPayload.items.find((item) => item.sku === "wtfos-app-skywire");
+    expect(skywire).toMatchObject({
+      kind: "app-unlock",
+      stockQuantity: 0,
+      purchaseBlockedReason: "Requires Skywire staff-alpha access or an all-users rollout.",
+      appStore: {
+        appKey: "skywire",
+        canPurchase: false,
+      },
+    });
+
+    await page.goto("/wtfiam?category=apps", { waitUntil: "domcontentloaded" });
+    const skywireCard = page.locator('[data-wtfiam-sku="wtfos-app-skywire"]');
+    await expect(skywireCard).toBeVisible();
+    await expect(skywireCard).toHaveAttribute(
+      "data-wtfiam-disabled-reason",
+      /Skywire staff-alpha/
+    );
+    await expect(
+      skywireCard.locator('[data-wtfiam-region="item-disabled-reason"]')
+    ).toContainText("Requires Skywire staff-alpha access");
+    await expect(skywireCard.locator('[data-wtfiam-action="add-ticket"]')).toBeDisabled();
   });
 });

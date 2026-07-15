@@ -549,6 +549,12 @@ app.post("/__test/state", (req, res) => {
   );
   resetHarnessAppHostState();
   resetHarnessMarketState();
+  const ownedAppPasses = normalizeHarnessOwnedAppPasses(req.body?.ownedAppPasses);
+  if (state.authUser && ownedAppPasses.length) {
+    for (const appKey of ownedAppPasses) {
+      setHarnessInventoryQuantity(state.authUser.id, harnessAppUnlockSku(appKey), 1);
+    }
+  }
   res.json({
     ok: true,
     state: {
@@ -562,6 +568,7 @@ app.post("/__test/state", (req, res) => {
       wtfUserSiteClaimed: state.wtfUserSiteClaimed,
       wtfUserSiteStatus: state.wtfUserSiteStatus,
       wtfUserSitePages: state.wtfUserSitePages,
+      ownedAppPasses,
     },
   });
 });
@@ -784,17 +791,74 @@ const desktopApps = {
   "dues-manager": false,
   console: true,
   "game-studio": true,
+  dedrooms: true,
   studio: true,
+  "ch-ease": true,
+  "pasta-protocol": true,
   gallery: true,
   "ipfs-pinning": true,
-  "wtf-subdomains": true,
   skywire: true,
   "wtf-live": true,
   tz2at: true,
+  "crp-nominations": true,
+  "wtf-subdomains": true,
   "rat-race": true,
   "map-lab": true,
+  agent: true,
+  applications: true,
   mail: true,
 };
+
+const harnessAppStoreAppKeys = [
+  "tv",
+  "dicksword",
+  "i-hate-telegram",
+  "dear-diary",
+  "arcade",
+  "casino",
+  "dues-manager",
+  "console",
+  "game-studio",
+  "dedrooms",
+  "studio",
+  "ch-ease",
+  "pasta-protocol",
+  "ipfs-pinning",
+  "skywire",
+  "wtf-live",
+  "tz2at",
+  "crp-nominations",
+  "wtf-subdomains",
+  "rat-race",
+  "map-lab",
+  "agent",
+  "applications",
+];
+
+function harnessAppUnlockSku(appKey) {
+  return `wtfos-app-${appKey}`;
+}
+
+function normalizeHarnessOwnedAppPasses(input) {
+  if (input === "all") return harnessAppStoreAppKeys;
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((value) => String(value || "").trim())
+    .filter((key) => harnessAppStoreAppKeys.includes(key));
+}
+
+function personalizedHarnessDesktopApps(user = currentAuthUser()) {
+  const apps = { ...desktopApps };
+  for (const key of harnessAppStoreAppKeys) apps[key] = false;
+  if (!user) return apps;
+  for (const key of harnessAppStoreAppKeys) {
+    apps[key] = Boolean(
+      desktopApps[key] &&
+      harnessInventoryQuantity(user.id, harnessAppUnlockSku(key)) > 0
+    );
+  }
+  return apps;
+}
 
 const sampleSeason = {
   id: 1,
@@ -998,6 +1062,86 @@ function makeHarnessMarketItem(input) {
     priceScoreLocked: Boolean(input.priceScoreLocked),
     sortOrder: input.sortOrder ?? input.id,
     updatedAt: "2026-05-08T00:00:00.000Z",
+  };
+}
+
+const harnessWtfOsAppListings = [
+  {
+    key: "arcade",
+    name: "WTF Arcade",
+    description: "Community arcade games, play tickets, and score loops.",
+    route: "/arcade",
+    priceWtfWhole: 10,
+    necessity: "optional",
+    necessityRank: 3,
+    monogram: "PLY",
+    accent: "#a12f4b",
+  },
+  {
+    key: "skywire",
+    name: "Skywire",
+    description: "Bluesky client and AT Protocol social surface during staged rollout.",
+    route: "/skywire",
+    priceWtfWhole: 25,
+    necessity: "role-gated",
+    necessityRank: 5,
+    monogram: "AT",
+    accent: "#38bdf8",
+    requiredRoles: ["admin", "host", "cohost", "resident_wizard", COBWEBSAINTS_FULL_USER_ROLE, "test_subject"],
+    prerequisite: "Requires Skywire staff-alpha access or an all-users rollout.",
+  },
+];
+
+function harnessAppPurchaseBlockReason(entry, user = currentAuthUser()) {
+  const sku = harnessAppUnlockSku(entry.key);
+  if (user && harnessInventoryQuantity(user.id, sku) > 0) {
+    return "Already unlocked. Use the Start menu to open it or pin it to your desktop.";
+  }
+  if (!entry.requiredRoles?.length) return null;
+  if (entry.requiredRoles.includes(state.userRole)) return null;
+  return entry.prerequisite || "Requires an eligible role.";
+}
+
+function serializeHarnessAppStoreItem(entry, user = currentAuthUser()) {
+  const sku = harnessAppUnlockSku(entry.key);
+  const priceWtfUnits = wholeWtfUnits(entry.priceWtfWhole);
+  const lockedReason = harnessAppPurchaseBlockReason(entry, user);
+  const canPurchase = !lockedReason;
+  return {
+    id: -100 - harnessWtfOsAppListings.findIndex((candidate) => candidate.key === entry.key),
+    sku,
+    name: entry.name,
+    description: entry.description,
+    category: "apps",
+    kind: "app-unlock",
+    priceWtfUnits,
+    priceWtfFormatted: formatHarnessWtf(priceWtfUnits),
+    priceExp: 0,
+    contractAddress: null,
+    contractListingId: null,
+    metadata: {
+      kind: "app-unlock",
+      appKey: entry.key,
+      route: entry.route,
+      placement: "app-store",
+      necessity: entry.necessity,
+      necessityRank: entry.necessityRank,
+      accent: entry.accent,
+      monogram: entry.monogram,
+    },
+    stockQuantity: canPurchase ? 1 : 0,
+    quantityOwned: user ? harnessInventoryQuantity(user.id, sku) : 0,
+    sale: null,
+    purchaseBlockedReason: lockedReason,
+    appStore: {
+      appKey: entry.key,
+      placement: "app-store",
+      necessity: entry.necessity,
+      necessityRank: entry.necessityRank,
+      route: entry.route,
+      canPurchase,
+      lockedReason,
+    },
   };
 }
 
@@ -1652,7 +1796,17 @@ function apiMock(req, res) {
     }
   }
 
-  if (pathName === "/api/apps/desktop" || pathName === "/api/admin/apps/desktop") {
+  if (pathName === "/api/apps/desktop") {
+    const apps = personalizedHarnessDesktopApps();
+    return res.json({
+      apps,
+      list: Object.entries(apps).map(([key, enabled]) =>
+        desktopAppListEntry(key, enabled)
+      ),
+    });
+  }
+
+  if (pathName === "/api/admin/apps/desktop") {
     return res.json({
       apps: desktopApps,
       list: Object.entries(desktopApps).map(([key, enabled]) =>
@@ -2855,12 +3009,15 @@ function apiMock(req, res) {
   if (pathName === "/api/in-app-market" && req.method === "GET") {
     const authUser = currentAuthUser() || { id: 1 };
     const category = url.searchParams.get("category");
-    const items = marketState.items
-      .filter((item) => item.active && (!category || item.category === category))
-      .map((item) => ({
-        ...serializeHarnessMarketItem(item),
-        quantityOwned: harnessInventoryQuantity(authUser.id, item.sku),
-      }));
+    const items =
+      category === "apps"
+        ? harnessWtfOsAppListings.map((entry) => serializeHarnessAppStoreItem(entry, authUser))
+        : marketState.items
+            .filter((item) => item.active && (!category || item.category === category))
+            .map((item) => ({
+              ...serializeHarnessMarketItem(item),
+              quantityOwned: harnessInventoryQuantity(authUser.id, item.sku),
+            }));
     const inventory = Object.entries(marketState.inventoryByUserId?.[authUser.id] ?? {})
       .filter(([_sku, quantity]) => Number(quantity) > 0)
       .map(([sku, quantity]) => ({
@@ -2896,9 +3053,30 @@ function apiMock(req, res) {
     });
   }
   if (pathName === "/api/in-app-market/intents" && req.method === "POST") {
+    const authUser = currentAuthUser() || { id: 1 };
     const cartItems = Array.isArray(req.body?.items) ? req.body.items : [];
     let subtotalWtf = 0n;
     for (const cartItem of cartItems) {
+      const appEntry = harnessWtfOsAppListings.find(
+        (candidate) => harnessAppUnlockSku(candidate.key) === cartItem?.sku
+      );
+      if (appEntry) {
+        const lockedReason = harnessAppPurchaseBlockReason(appEntry, authUser);
+        if (lockedReason) {
+          return res.status(409).json({
+            error: "One or more apps require another role or prerequisite",
+            reason: "purchase_blocked",
+          });
+        }
+        if (req.body?.currency === "exp") {
+          return res.status(409).json({
+            error: "One or more items cannot be bought with that currency",
+            reason: "unsupported_currency",
+          });
+        }
+        subtotalWtf += BigInt(wholeWtfUnits(appEntry.priceWtfWhole));
+        continue;
+      }
       const item = marketState.items.find((candidate) => candidate.sku === cartItem?.sku);
       if (!item) continue;
       const quantity = Math.max(1, Math.min(99, Number(cartItem.quantity) || 1));

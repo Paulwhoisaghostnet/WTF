@@ -1,7 +1,9 @@
 import type { UserRoleInput } from "@shared/types";
+import { isDefaultDesktopAppKey } from "@shared/wtfos-app-catalog";
 import type { PageDef } from "../../routes/page-defs";
 import { canOpenPageDef } from "../../routes/page-defs";
 import {
+  START_MENU_APP_GATES,
   isStartMenuItemEnabled,
   type StartMenuAppAvailability,
 } from "./start-menu-app-gates";
@@ -282,6 +284,11 @@ function creationToolPaths(pageDefs: PageDef[]): string[] {
     .map((def) => def.pattern);
 }
 
+function isDefaultDesktopAppRoute(def: PageDef): boolean {
+  const appKey = START_MENU_APP_GATES[def.pattern];
+  return Boolean(appKey && isDefaultDesktopAppKey(appKey));
+}
+
 export function buildStartMenuEntries(
   pageDefs: PageDef[],
   apps: StartMenuAppAvailability,
@@ -296,7 +303,7 @@ export function buildStartMenuEntries(
   const entries: StartMenuEntry[] = [];
 
   const nativeAppPaths = pageDefs
-    .filter((def) => def.desktopIcon && !hasRouteParams(def.pattern))
+    .filter((def) => def.startMenu && !hasRouteParams(def.pattern) && isDefaultDesktopAppRoute(def))
     .map((def) => def.pattern);
   pushSection(entries, [
     groupFor("apps", itemsForPaths(nativeAppPaths, pages, apps, role, {

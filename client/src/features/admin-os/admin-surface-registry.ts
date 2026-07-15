@@ -842,6 +842,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "reward.ledger.created",
     ],
     behaviorAssertionIds: [
+      "desktop.app-store-ranked-unlocks",
       "wallet.checkout-intent-bound-to-signed-session",
       "inventory.temporary-grants-unlock-apps",
       "wtf-live.tip-items-transfer-redeem",
@@ -1491,6 +1492,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "app.interaction.tracked",
     ],
     behaviorAssertionIds: [
+      "desktop.app-store-ranked-unlocks",
       "desktop.app-gates-runtime-policy",
       "auth.time-out-app-lockdown",
     ],
@@ -1725,6 +1727,7 @@ export const DESKTOP_ITEM_ADMIN_SURFACES: AdminSurface[] = [
       "app.interaction.tracked",
     ],
     behaviorAssertionIds: [
+      "desktop.app-store-ranked-unlocks",
       "desktop.app-gates-runtime-policy",
       "auth.time-out-app-lockdown",
     ],

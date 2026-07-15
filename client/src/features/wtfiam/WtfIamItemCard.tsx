@@ -264,6 +264,18 @@ const ComingSoonNotice = styled.span`
   }
 `;
 
+const ActionHint = styled.span`
+  min-width: 0;
+  color: #555555;
+  font-size: var(--wtf-type-caption, 13px);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+
+  ${gammaWtfIamScope} & {
+    color: rgba(242, 234, 217, 0.66);
+  }
+`;
+
 type Props = {
   item: WtfIamListing;
   quantity: number;
@@ -274,8 +286,20 @@ export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
   const live = item.source === "live";
   const comingSoon = item.comingSoon === true;
   const inStock = live && item.stockQuantity > 0;
-  const canAdd = inStock && quantity < item.stockQuantity;
+  const blockedReason =
+    item.purchaseBlockedReason ??
+    (item.appStore?.canPurchase === false ? item.appStore.lockedReason : null);
+  const canPurchase = inStock && !blockedReason;
+  const canAdd = canPurchase && quantity < item.stockQuantity;
   const salePrice = item.sale?.salePriceWtfFormatted;
+  const primaryLabel =
+    blockedReason
+      ? item.quantityOwned > 0
+        ? "Owned"
+        : "Locked"
+      : inStock
+        ? "Add"
+        : "Sold Out";
   return (
     <Card
       $accent={item.accent}
@@ -283,6 +307,10 @@ export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
       data-wtfiam-region="item-card"
       data-wtfiam-sku={item.sku}
       data-wtfiam-source={item.source}
+      data-wtfiam-app-key={item.appStore?.appKey}
+      data-wtfiam-app-placement={item.appStore?.placement}
+      data-wtfiam-disabled-reason={blockedReason ?? undefined}
+      title={blockedReason ?? undefined}
     >
       <TitleBar $accent={item.accent} data-wtfiam-region="item-titlebar">
         <span>{item.name}</span>
@@ -316,7 +344,7 @@ export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
               <IconButton
                 size="sm"
                 disabled={!live || quantity <= 0}
-                title="Remove ticket"
+                title={blockedReason ?? "Remove ticket"}
                 onClick={() => onChangeTicket(item.sku, -1)}
                 data-wtfiam-action="remove-ticket"
               >
@@ -326,20 +354,30 @@ export function WtfIamItemCard({ item, quantity, onChangeTicket }: Props) {
               <IconButton
                 size="sm"
                 disabled={!canAdd}
-                title="Add ticket"
+                title={blockedReason ?? "Add ticket"}
                 onClick={() => onChangeTicket(item.sku, 1)}
                 data-wtfiam-action="add-ticket-stepper"
               >
                 <Plus />
               </IconButton>
             </Stepper>
+            {blockedReason ? (
+              <ActionHint
+                tabIndex={0}
+                title={blockedReason}
+                data-wtfiam-region="item-disabled-reason"
+              >
+                {blockedReason}
+              </ActionHint>
+            ) : null}
             <Button
               size="sm"
               disabled={!canAdd}
+              title={blockedReason ?? undefined}
               onClick={() => onChangeTicket(item.sku, 1)}
               data-wtfiam-action="add-ticket"
             >
-              {inStock ? "Add" : "Sold Out"}
+              {primaryLabel}
             </Button>
           </>
         )}

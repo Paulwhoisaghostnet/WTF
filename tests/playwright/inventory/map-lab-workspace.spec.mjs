@@ -220,6 +220,16 @@ test.describe("Map Lab workspace", () => {
     request,
   }) => {
     await setHarnessRole(request, "anonymous");
+    await page.route("**/api/apps/desktop", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          apps: { "map-lab": true },
+          list: [{ key: "map-lab", enabled: true, installable: true }],
+        }),
+      });
+    });
     await page.addInitScript(() => {
       window.localStorage.removeItem("wtfos.map-lab.repo-draft.v1");
       window.localStorage.removeItem("wtf-os.window-session.v1");

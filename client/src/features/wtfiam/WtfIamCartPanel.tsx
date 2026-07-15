@@ -168,6 +168,7 @@ const ActionRow = styled.div`
 
 type Props = {
   cartEntries: WtfIamCartEntry[];
+  cartHasAppUnlock?: boolean;
   currency: MarketCurrency;
   expBalance: number;
   rewardWtfBalance: number;
@@ -184,6 +185,7 @@ type Props = {
 
 export function WtfIamCartPanel({
   cartEntries,
+  cartHasAppUnlock = false,
   currency,
   expBalance,
   rewardWtfBalance,
@@ -231,12 +233,18 @@ export function WtfIamCartPanel({
         <CurrencySlot
           data-wtfiam-currency="exp"
           data-wtfiam-currency-active={currency === "exp" ? "true" : "false"}
-          onClick={() => onCurrencyChange("exp")}
+          onClick={() => {
+            if (!cartHasAppUnlock) onCurrencyChange("exp");
+          }}
         >
           <CurrencyButton
             size="sm"
+            disabled={cartHasAppUnlock}
             $active={currency === "exp"}
-            onClick={() => onCurrencyChange("exp")}
+            title={cartHasAppUnlock ? "App unlocks use WTF, not EXP" : undefined}
+            onClick={() => {
+              if (!cartHasAppUnlock) onCurrencyChange("exp");
+            }}
             data-wtfiam-currency-button="exp"
           >
             EXP

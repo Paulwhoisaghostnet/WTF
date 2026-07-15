@@ -82,6 +82,7 @@ test("answers in-scope wtfOS questions with topic knowledge", () => {
     { question: "what is the casino?", topicId: "casino", expect: /guinea pig/i },
     { question: "how do desktop pets work", topicId: "pet", expect: /care|feed/i },
     { question: "what are roles and titles?", topicId: "roles", expect: /role/i },
+    { question: "how do I unlock an app from the app store?", topicId: "app-store", expect: /Apps tab|desktop shortcut/i },
     { question: "who are you?", topicId: "reggie", expect: /not AI/i },
   ];
   for (const item of cases) {
@@ -146,6 +147,7 @@ test("knowledge base covers the core app surface", () => {
     "wtf-currency",
     "exp",
     "market",
+    "app-store",
     "roles",
     "arcade",
     "casino",

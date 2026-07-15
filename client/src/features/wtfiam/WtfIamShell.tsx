@@ -414,6 +414,7 @@ export function WtfIamShell() {
       qc.invalidateQueries({ queryKey: ["wtfiam"] });
       qc.invalidateQueries({ queryKey: ["rewards-account"] });
       qc.invalidateQueries({ queryKey: ["in-app-market"] });
+      qc.invalidateQueries({ queryKey: ["desktop", "apps"] });
     },
     onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : "Checkout failed.";
@@ -508,6 +509,7 @@ export function WtfIamShell() {
 
         <WtfIamCartPanel
           cartEntries={market.cartEntries}
+          cartHasAppUnlock={market.cartHasAppUnlock}
           currency={market.currency}
           expBalance={market.expBalance}
           rewardWtfBalance={market.rewardWtfBalance}
@@ -582,7 +584,7 @@ function TipLedger({
 }
 
 function initialCategoryFromUrl(): WtfIamCategoryKey {
-  if (typeof window === "undefined") return "desktop_pet";
+  if (typeof window === "undefined") return "apps";
   const category = new URLSearchParams(window.location.search).get("category");
-  return isWtfIamCategoryKey(category) ? category : "desktop_pet";
+  return isWtfIamCategoryKey(category) ? category : "apps";
 }

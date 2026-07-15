@@ -16,6 +16,17 @@ import {
 } from "@shared/schema";
 import { formatWtf } from "@shared/types";
 import {
+  WTFOS_APP_CATALOG,
+  WTFOS_APP_CATALOG_ENTRIES,
+  WTFOS_APP_STORE_CATEGORY,
+  desktopAppKeyFromWtfosMarketSku,
+  evaluateWtfOsAppPurchaseEligibility,
+  formatWtfOsAppPrice,
+  isWtfOsAppMarketSku,
+  wtfosAppMarketSku,
+  type WtfOsAppCatalogEntry,
+} from "@shared/wtfos-app-catalog";
+import {
   getInAppMarketConfig,
   runInAppMarketSync,
   verifyAndGrantInAppMarketPurchaseByHash,
@@ -140,9 +151,84 @@ function compactCartLines(
   }));
 }
 
+function roleInputForUser(user: any) {
+  return user?.roles ?? user?.role ?? null;
+}
+
+function ownedSkuSet(
+  inventory: Array<{ sku: string; quantity?: number | null }>
+): Set<string> {
+  return new Set(
+    inventory
+      .filter((row) => Number(row.quantity ?? 0) > 0)
+      .map((row) => row.sku)
+  );
+}
+
+function serializeWtfOsAppMarketItem(
+  entry: WtfOsAppCatalogEntry,
+  user: any,
+  inventoryBySku: Map<string, { quantity: number }>
+) {
+  const ownedSkus = ownedSkuSet(
+    Array.from(inventoryBySku, ([sku, row]) => ({ sku, quantity: row.quantity }))
+  );
+  const eligibility = evaluateWtfOsAppPurchaseEligibility(
+    entry,
+    roleInputForUser(user),
+    ownedSkus
+  );
+  const sku = wtfosAppMarketSku(entry.key);
+  const quantityOwned = inventoryBySku.get(sku)?.quantity ?? 0;
+  const canPurchase = eligibility.canPurchase && quantityOwned <= 0;
+  const lockedReason = canPurchase ? null : eligibility.reason;
+  const catalogIndex = WTFOS_APP_CATALOG_ENTRIES.findIndex((candidate) => candidate.key === entry.key);
+
+  return {
+    id: -1 - Math.max(0, catalogIndex),
+    sku,
+    name: entry.label,
+    description: entry.summary,
+    category: WTFOS_APP_STORE_CATEGORY,
+    kind: "app-unlock",
+    priceWtfUnits: entry.priceWtfUnits,
+    priceWtfFormatted: formatWtfOsAppPrice(entry.priceWtfUnits),
+    priceExp: entry.priceExp,
+    contractAddress: null,
+    contractListingId: null,
+    metadata: {
+      kind: "app-unlock",
+      appKey: entry.key,
+      route: entry.route,
+      placement: entry.placement,
+      necessity: entry.necessity,
+      necessityRank: entry.necessityRank,
+      requiredRoles: entry.requiredRoles ?? [],
+      requiredInventorySkus: entry.requiredInventorySkus ?? [],
+      prerequisite: entry.prerequisite ?? null,
+      accent: entry.accent,
+      monogram: entry.monogram,
+    },
+    stockQuantity: canPurchase ? 1 : 0,
+    quantityOwned,
+    sale: null,
+    purchaseBlockedReason: lockedReason,
+    appStore: {
+      appKey: entry.key,
+      placement: entry.placement,
+      necessity: entry.necessity,
+      necessityRank: entry.necessityRank,
+      route: entry.route,
+      canPurchase,
+      lockedReason,
+    },
+  };
+}
+
 async function buildCartIntentLines(
   currency: "wtf" | "reward_wtf" | "exp",
-  cartItems: Array<{ sku: string; quantity: number }>
+  cartItems: Array<{ sku: string; quantity: number }>,
+  buyer?: { userId: number; role: unknown }
 ): Promise<{
   ok: true;
   lines: Array<{
@@ -162,16 +248,32 @@ async function buildCartIntentLines(
   subtotalExp: number;
 } | {
   ok: false;
-  reason: "missing_item" | "unsupported_currency" | "invalid_total" | "out_of_stock";
+  reason: "missing_item" | "unsupported_currency" | "invalid_total" | "out_of_stock" | "purchase_blocked";
 }> {
-  const skus = cartItems.map((item) => item.sku);
+  const appCartItems = cartItems.filter((item) => isWtfOsAppMarketSku(item.sku));
+  const marketCartItems = cartItems.filter((item) => !isWtfOsAppMarketSku(item.sku));
+  const skus = marketCartItems.map((item) => item.sku);
   const [rows, activeSales] = await Promise.all([
-    db
-      .select()
-      .from(inAppMarketItems)
-      .where(and(eq(inAppMarketItems.active, true), inArray(inAppMarketItems.sku, skus))),
+    skus.length
+      ? db
+          .select()
+          .from(inAppMarketItems)
+          .where(and(eq(inAppMarketItems.active, true), inArray(inAppMarketItems.sku, skus)))
+      : Promise.resolve([]),
     listActiveMarketSales(),
   ]);
+  const ownedAppSkus =
+    buyer && appCartItems.length
+      ? ownedSkuSet(
+          await db
+            .select({
+              sku: inAppInventoryItems.sku,
+              quantity: inAppInventoryItems.quantity,
+            })
+            .from(inAppInventoryItems)
+            .where(eq(inAppInventoryItems.userId, buyer.userId))
+        )
+      : new Set<string>();
   const bySku = new Map(rows.map((row) => [row.sku, row]));
   let subtotalWtf = 0n;
   let subtotalExp = 0;
@@ -179,6 +281,49 @@ async function buildCartIntentLines(
 
   const lines = [];
   for (const cartItem of cartItems) {
+    const appKey = desktopAppKeyFromWtfosMarketSku(cartItem.sku);
+    if (appKey) {
+      const entry = WTFOS_APP_CATALOG[appKey];
+      if (!entry || cartItem.quantity !== 1 || !buyer) {
+        return { ok: false, reason: "purchase_blocked" };
+      }
+      const eligibility = evaluateWtfOsAppPurchaseEligibility(
+        entry,
+        buyer.role as any,
+        ownedAppSkus
+      );
+      if (!eligibility.canPurchase) return { ok: false, reason: "purchase_blocked" };
+
+      const unitWtf = BigInt(entry.priceWtfUnits);
+      if ((paysWithWtf && unitWtf <= 0n) || currency === "exp") {
+        return { ok: false, reason: "unsupported_currency" };
+      }
+      subtotalWtf += unitWtf;
+      lines.push({
+        sku: cartItem.sku,
+        name: entry.label,
+        kind: "app-unlock",
+        quantity: cartItem.quantity,
+        unitWtfUnits: unitWtf.toString(),
+        unitWtfFormatted: formatWtf(unitWtf.toString()),
+        unitExp: 0,
+        lineBaseWtfUnits: unitWtf.toString(),
+        lineBaseWtfFormatted: formatWtf(unitWtf.toString()),
+        lineDiscountedWtfUnits: unitWtf.toString(),
+        lineDiscountedWtfFormatted: formatWtf(unitWtf.toString()),
+        lineWtfUnits: unitWtf.toString(),
+        lineWtfFormatted: formatWtf(unitWtf.toString()),
+        lineExp: 0,
+        sale: null,
+        appKey: entry.key,
+        route: entry.route,
+        appPlacement: entry.placement,
+        necessity: entry.necessity,
+        necessityRank: entry.necessityRank,
+      });
+      continue;
+    }
+
     const item = bySku.get(cartItem.sku);
     if (!item) return { ok: false, reason: "missing_item" };
     if (Number(item.stockQuantity ?? 0) < cartItem.quantity) {
@@ -287,6 +432,7 @@ async function reserveMarketStock(
   now: Date
 ): Promise<boolean> {
   for (const line of lines) {
+    if (isWtfOsAppMarketSku(line.sku)) continue;
     if (!line.sku || !Number.isInteger(line.quantity) || line.quantity <= 0) {
       continue;
     }
@@ -438,11 +584,13 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
     }
 
     const [items, inventory, purchases, activeSales, rewardAccount, tipTransfers] = await Promise.all([
-      db
-        .select()
-        .from(inAppMarketItems)
-        .where(and(eq(inAppMarketItems.category, category), eq(inAppMarketItems.active, true)))
-        .orderBy(asc(inAppMarketItems.sortOrder), asc(inAppMarketItems.id)),
+      category === WTFOS_APP_STORE_CATEGORY
+        ? Promise.resolve([])
+        : db
+            .select()
+            .from(inAppMarketItems)
+            .where(and(eq(inAppMarketItems.category, category), eq(inAppMarketItems.active, true)))
+            .orderBy(asc(inAppMarketItems.sortOrder), asc(inAppMarketItems.id)),
       db
         .select()
         .from(inAppInventoryItems)
@@ -484,29 +632,37 @@ router.get("/api/in-app-market", isAuthenticated, async (req, res) => {
     ]);
 
     const inventoryBySku = new Map(inventory.map((row) => [row.sku, row]));
+    const serializedItems =
+      category === WTFOS_APP_STORE_CATEGORY
+        ? WTFOS_APP_CATALOG_ENTRIES
+            .filter((entry) => entry.placement === "app-store")
+            .map((entry) =>
+              serializeWtfOsAppMarketItem(entry, user, inventoryBySku)
+            )
+        : items.map((item) => ({
+            id: item.id,
+            sku: item.sku,
+            name: item.name,
+            description: item.description,
+            category: item.category,
+            kind: itemMetadataKind(item.metadata),
+            priceWtfUnits: String(item.priceWtfUnits),
+            priceWtfFormatted: formatWtf(String(item.priceWtfUnits)),
+            priceExp: item.priceExp ?? 0,
+            contractAddress: item.contractAddress ?? config.contractAddress,
+            contractListingId: item.contractListingId,
+            metadata: item.metadata,
+            stockQuantity: item.stockQuantity ?? 0,
+            quantityOwned: inventoryBySku.get(item.sku)?.quantity ?? 0,
+            sale: serializeSaleForItem(selectBestSaleForItem(activeSales, item), item.priceWtfUnits),
+          }));
     res.json({
       config,
       balances: {
         exp: Number(user.experiencePoints ?? 0),
         rewardWtf: rewardAccount.balances.availableWtf,
       },
-      items: items.map((item) => ({
-        id: item.id,
-        sku: item.sku,
-        name: item.name,
-        description: item.description,
-        category: item.category,
-        kind: itemMetadataKind(item.metadata),
-        priceWtfUnits: String(item.priceWtfUnits),
-        priceWtfFormatted: formatWtf(String(item.priceWtfUnits)),
-        priceExp: item.priceExp ?? 0,
-        contractAddress: item.contractAddress ?? config.contractAddress,
-        contractListingId: item.contractListingId,
-        metadata: item.metadata,
-        stockQuantity: item.stockQuantity ?? 0,
-        quantityOwned: inventoryBySku.get(item.sku)?.quantity ?? 0,
-        sale: serializeSaleForItem(selectBestSaleForItem(activeSales, item), item.priceWtfUnits),
-      })),
+      items: serializedItems,
       inventory: inventory.map((item) => ({
         sku: item.sku,
         quantity: item.quantity,
@@ -560,19 +716,40 @@ router.post("/api/in-app-market/intents", isAuthenticated, async (req, res) => {
     }
 
     const cartItems = compactCartLines(parsed.data.items);
+    const appUnlockSkus = cartItems
+      .map((item) => item.sku)
+      .filter(isWtfOsAppMarketSku);
     const totalTickets = cartItems.reduce((sum, item) => sum + item.quantity, 0);
     if (totalTickets <= 0 || totalTickets > 99) {
       return res.status(400).json({ error: "Cart has too many tickets" });
     }
 
-    const built = await buildCartIntentLines(parsed.data.currency, cartItems);
+    const built = await buildCartIntentLines(parsed.data.currency, cartItems, {
+      userId: Number(user.id),
+      role: roleInputForUser(user),
+    });
     if (!built.ok) {
+      if (built.reason === "purchase_blocked" && appUnlockSkus.length > 0) {
+        logSystemEvent({
+          source: "in-app-market",
+          eventType: "wtfiam.app_unlock.blocked",
+          severity: "info",
+          userId: Number(user.id),
+          message: "WTFIAM app unlock blocked by missing role or prerequisite",
+          metadata: {
+            skus: appUnlockSkus,
+            currency: parsed.data.currency,
+          },
+        });
+      }
       return res.status(409).json({
         error:
           built.reason === "unsupported_currency"
             ? "One or more items cannot be bought with that currency"
             : built.reason === "out_of_stock"
               ? "One or more items are out of stock"
+              : built.reason === "purchase_blocked"
+                ? "One or more apps require another role or prerequisite"
             : "One or more cart items are unavailable",
         reason: built.reason,
       });
@@ -616,6 +793,21 @@ router.post("/api/in-app-market/intents", isAuthenticated, async (req, res) => {
         updatedAt: new Date(),
       })
       .returning();
+
+    if (appUnlockSkus.length > 0) {
+      logSystemEvent({
+        source: "in-app-market",
+        eventType: "wtfiam.app_unlock.intent_created",
+        severity: "info",
+        userId: Number(user.id),
+        message: "WTFIAM app unlock checkout intent created",
+        metadata: {
+          skus: appUnlockSkus,
+          currency: parsed.data.currency,
+          purchaseRef: intent.purchaseRef,
+        },
+      });
+    }
 
     res.json({
       ok: true,

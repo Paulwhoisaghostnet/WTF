@@ -5,6 +5,7 @@ import {
   EXPERIMENTAL_DESKTOP_APPS,
   type DesktopAppKey,
 } from "@shared/types";
+import { isDefaultDesktopAppKey } from "@shared/wtfos-app-catalog";
 
 export const ICON_W = 78;
 export const ICON_H = 76;
@@ -22,6 +23,13 @@ function markExperimentalIconDefs(defs: DesktopIconDef[]): DesktopIconDef[] {
     const appKey = desktopAppKeyForIconKey(def.key);
     if (!appKey || !EXPERIMENTAL_DESKTOP_APP_SET.has(appKey)) return def;
     return { ...def, experimental: true };
+  });
+}
+
+function filterDefaultDesktopIconDefs(defs: DesktopIconDef[]): DesktopIconDef[] {
+  return defs.filter((def) => {
+    const appKey = desktopAppKeyForIconKey(def.key);
+    return !appKey || isDefaultDesktopAppKey(appKey);
   });
 }
 
@@ -681,34 +689,7 @@ export function DraggableIcon({
 }
 
 
-export type DesktopAppAvailability = {
-  wtfiam: boolean;
-  hoard: boolean;
-  wim: boolean;
-  w: boolean;
-  tv: boolean;
-  dicksword: boolean;
-  "i-hate-telegram": boolean;
-  "dear-diary": boolean;
-  arcade: boolean;
-  casino: boolean;
-  "dues-manager": boolean;
-  console: boolean;
-  "game-studio": boolean;
-  dedrooms: boolean;
-  studio: boolean;
-  gallery: boolean;
-  "ipfs-pinning": boolean;
-  skywire: boolean;
-  "wtf-live": boolean;
-  tz2at: boolean;
-  "crp-nominations": boolean;
-  "rat-race": boolean;
-  "map-lab": boolean;
-  agent: boolean;
-  applications: boolean;
-  mail: boolean;
-};
+export type DesktopAppAvailability = Partial<Record<DesktopAppKey, boolean>>;
 
 export function buildDesktopIconDefs(
   apps: DesktopAppAvailability,
@@ -982,5 +963,5 @@ export function buildDesktopIconDefs(
       openPath: "/ipfs-pinning",
     },
   ];
-  return markExperimentalIconDefs(defs);
+  return markExperimentalIconDefs(filterDefaultDesktopIconDefs(defs));
 }

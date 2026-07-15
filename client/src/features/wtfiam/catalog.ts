@@ -7,6 +7,14 @@ import type {
 
 export const WTFIAM_CATEGORIES: WtfIamCategory[] = [
   {
+    key: "apps",
+    label: "Apps",
+    shortLabel: "Apps",
+    monogram: "APP",
+    accent: "#0ea5e9",
+    shadow: "#075985",
+  },
+  {
     key: "desktop_pet",
     label: "Desktop Pet",
     shortLabel: "Pet",
@@ -81,6 +89,7 @@ export const WTFIAM_CATEGORIES: WtfIamCategory[] = [
 ];
 
 const STAGED_LISTINGS: Record<WtfIamCategoryKey, WtfIamListing[]> = {
+  apps: [],
   desktop_pet: [
     {
       sku: "pet-signal-biscuit",
@@ -89,8 +98,8 @@ const STAGED_LISTINGS: Record<WtfIamCategoryKey, WtfIamListing[]> = {
       kind: "food",
       category: "desktop_pet",
       source: "staged",
-    priceWtfUnits: "1500000000",
-    priceWtfFormatted: "15.00",
+      priceWtfUnits: "1500000000",
+      priceWtfFormatted: "15.00",
       priceExp: 150,
       stockQuantity: 0,
       quantityOwned: 0,
@@ -403,6 +412,12 @@ export function decorateLiveItem(
   categoryKey: WtfIamCategoryKey
 ): WtfIamListing {
   const category = categoryForKey(categoryKey);
+  const metadata = item.metadata && typeof item.metadata === "object" ? item.metadata : {};
+  const accent = typeof metadata.accent === "string" ? metadata.accent : category.accent;
+  const monogram =
+    typeof metadata.monogram === "string"
+      ? metadata.monogram.slice(0, 4).toUpperCase()
+      : String(item.kind || item.sku).slice(0, 4).toUpperCase();
   return {
     sku: item.sku,
     name: item.name,
@@ -416,9 +431,11 @@ export function decorateLiveItem(
     sale: item.sale,
     stockQuantity: item.stockQuantity,
     quantityOwned: item.quantityOwned,
-    accent: category.accent,
-    monogram: String(item.kind || item.sku).slice(0, 4).toUpperCase(),
+    accent,
+    monogram,
     metadata: item.metadata,
+    purchaseBlockedReason: item.purchaseBlockedReason,
+    appStore: item.appStore,
   };
 }
 

@@ -112,6 +112,16 @@ async function mockAuth(page) {
       }),
     });
   });
+  await page.route("**/api/apps/desktop", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        apps: { dedrooms: true },
+        list: [{ key: "dedrooms", enabled: true, installable: true }],
+      }),
+    });
+  });
 }
 
 async function mockDedRooms(page, options = {}) {

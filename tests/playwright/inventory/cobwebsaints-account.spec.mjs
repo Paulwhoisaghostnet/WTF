@@ -12,6 +12,7 @@ async function seedCobwebsaints(request, { wtfUserSiteClaimed = false } = {}) {
       username: "cobwebsaints",
       displayName: "Cobweb",
       wtfUserSiteClaimed,
+      ownedAppPasses: ["wtf-subdomains", "ipfs-pinning", "pasta-protocol"],
     },
   });
   expect(res.ok()).toBeTruthy();

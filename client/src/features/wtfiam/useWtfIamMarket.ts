@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatWtf } from "@shared/types";
 import { api } from "../../lib/api";
@@ -46,6 +46,7 @@ export function useWtfIamMarket(categoryKey: WtfIamCategoryKey) {
   const liveCount = listings.filter((item) => item.source === "live").length;
   const stagedCount = listings.length - liveCount;
   const cartTicketCount = cartEntries.reduce((sum, entry) => sum + entry.quantity, 0);
+  const cartHasAppUnlock = cartEntries.some((entry) => entry.item.kind === "app-unlock");
   const cartSubtotalWtfUnits = cartEntries
     .reduce((sum, entry) => {
       const units = BigInt(entry.item.priceWtfUnits);
@@ -65,9 +66,21 @@ export function useWtfIamMarket(categoryKey: WtfIamCategoryKey) {
     0
   );
 
+  useEffect(() => {
+    if (cartHasAppUnlock && currency === "exp") setCurrency("wtf");
+  }, [cartHasAppUnlock, currency]);
+
   function changeTicket(sku: string, delta: number) {
     const item = listings.find((candidate) => candidate.sku === sku);
-    if (!item || item.source !== "live" || item.stockQuantity <= 0) return;
+    if (
+      !item ||
+      item.source !== "live" ||
+      item.stockQuantity <= 0 ||
+      item.purchaseBlockedReason ||
+      item.appStore?.canPurchase === false
+    ) {
+      return;
+    }
     setCart((prev) => {
       const nextQty = Math.max(
         0,
@@ -89,6 +102,7 @@ export function useWtfIamMarket(categoryKey: WtfIamCategoryKey) {
     cartEntries,
     cartSubtotalExp,
     cartSubtotalWtfFormatted,
+    cartHasAppUnlock,
     cartTicketCount,
     category,
     changeTicket,

@@ -229,6 +229,34 @@ test("Start Menu keeps admin tools out of the first-class app rail", () => {
   assert(adminPaths.includes("/operator-wallet"));
 });
 
+test("Start Menu first-class app rail only contains ranked default desktop apps", () => {
+  const entries = buildStartMenuEntries(PAGE_DEFS, {}, "admin", {
+    casinoMembershipActive: true,
+  });
+  const appsGroup = entries.find(
+    (entry) => entry.kind === "group" && entry.group.key === "apps"
+  );
+  assert(appsGroup && appsGroup.kind === "group");
+  const appPaths = appsGroup.group.items.map((item) => item.path);
+
+  for (const corePath of ["/wtfiam", "/hoard", "/wim", "/w", "/mail", "/my-gallery"]) {
+    assert(appPaths.includes(corePath), `${corePath} should stay in the first app rail`);
+  }
+  for (const optionalPath of [
+    "/arcade",
+    "/casino",
+    "/console",
+    "/studio",
+    "/game-studio",
+    "/skywire",
+    "/live",
+    "/agent",
+    "/applications",
+  ]) {
+    assert(!appPaths.includes(optionalPath), `${optionalPath} should move to WTFIAM Apps`);
+  }
+});
+
 test("Start Menu groups settings and keeps every flyout chunkable into six-item columns", () => {
   const groups = buildStartMenuGroups(PAGE_DEFS, {}, "admin", {
     casinoMembershipActive: true,

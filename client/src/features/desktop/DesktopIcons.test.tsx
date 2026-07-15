@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DESKTOP_ICON_LAYOUT_KEYS } from "@shared/desktop";
 import { DESKTOP_APPS, EXPERIMENTAL_DESKTOP_APPS } from "@shared/types";
+import { isDefaultDesktopAppKey } from "@shared/wtfos-app-catalog";
 import {
   buildDesktopIconDefs,
   type DesktopAppAvailability,
@@ -26,11 +27,32 @@ test("native desktop icon defs are accepted by persisted layout normalization", 
   }
 });
 
-test("experimental desktop apps render with an explicit icon affordance", () => {
+test("native desktop icon defs only promote core default apps", () => {
+  const iconDefs = buildDesktopIconDefs(ENABLED_APPS, { appGateBypass: true });
+  const keys = iconDefs.map((def) => def.key);
+  const defaultAppIconKeys = DESKTOP_APPS.filter(isDefaultDesktopAppKey).map(iconKeyForAppKey);
+
+  for (const iconKey of ["recycle-bin", "mission-control", "command-palette"]) {
+    assert.ok(keys.includes(iconKey), `${iconKey} should remain a native desktop utility`);
+  }
+  for (const iconKey of defaultAppIconKeys) {
+    assert.ok(keys.includes(iconKey), `${iconKey} should remain a default desktop app`);
+  }
+  for (const appKey of DESKTOP_APPS) {
+    if (isDefaultDesktopAppKey(appKey)) continue;
+    assert.equal(
+      keys.includes(iconKeyForAppKey(appKey)),
+      false,
+      `${appKey} should be unlocked from WTFIAM Apps before desktop placement`
+    );
+  }
+});
+
+test("experimental default desktop apps render with an explicit icon affordance", () => {
   const iconDefs = buildDesktopIconDefs(ENABLED_APPS, { appGateBypass: true });
   const iconByKey = new Map(iconDefs.map((def) => [def.key, def]));
 
-  for (const appKey of EXPERIMENTAL_DESKTOP_APPS) {
+  for (const appKey of EXPERIMENTAL_DESKTOP_APPS.filter(isDefaultDesktopAppKey)) {
     const iconKey = iconKeyForAppKey(appKey);
     const icon = iconByKey.get(iconKey);
     assert.ok(icon, `${appKey} should have a native desktop icon`);
@@ -38,7 +60,7 @@ test("experimental desktop apps render with an explicit icon affordance", () => 
   }
 
   const experimentalApps = new Set<string>(EXPERIMENTAL_DESKTOP_APPS);
-  for (const appKey of DESKTOP_APPS) {
+  for (const appKey of DESKTOP_APPS.filter(isDefaultDesktopAppKey)) {
     if (experimentalApps.has(appKey)) continue;
     const icon = iconByKey.get(iconKeyForAppKey(appKey));
     if (icon) {

@@ -1,20 +1,77 @@
 import { Router } from "express";
+import { eq } from "drizzle-orm";
 import { requirePermission } from "../auth/passport";
 import { db } from "../db";
-import { desktopAppSettings } from "@shared/schema";
+import { desktopAppSettings, inAppInventoryItems } from "@shared/schema";
+import { DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
+import {
+  isAppStoreAppKey,
+  wtfosAppMarketSku,
+} from "@shared/wtfos-app-catalog";
 import {
   createInstallKeyMaterial,
   getDesktopAppRegistrations,
   isDesktopAppKey,
+  type DesktopAppsResponse,
   type DesktopAppDocStatus,
 } from "../lib/desktop-apps";
 
 const router = Router();
 
-router.get("/api/apps/desktop", async (_req, res) => {
+function viewerUserId(req: any): number | null {
+  const id = Number(req.user?.id ?? 0);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+async function personalizeDesktopAppsForViewer(
+  response: DesktopAppsResponse,
+  userId: number | null
+): Promise<DesktopAppsResponse> {
+  const apps = { ...response.apps };
+  const globallyEnabled = { ...response.apps };
+  const appStoreKeys = DESKTOP_APPS.filter(isAppStoreAppKey);
+
+  for (const key of appStoreKeys) {
+    apps[key] = false;
+  }
+
+  if (userId) {
+    const rows = await db
+      .select({
+        sku: inAppInventoryItems.sku,
+        quantity: inAppInventoryItems.quantity,
+      })
+      .from(inAppInventoryItems)
+      .where(eq(inAppInventoryItems.userId, userId));
+    const owned = new Set(
+      rows
+        .filter((row) => Number(row.quantity ?? 0) > 0)
+        .map((row) => row.sku)
+    );
+    for (const key of appStoreKeys) {
+      apps[key] = Boolean(globallyEnabled[key] && owned.has(wtfosAppMarketSku(key)));
+    }
+  }
+
+  return {
+    ...response,
+    apps,
+    list: response.list.map((row) =>
+      isAppStoreAppKey(row.key as DesktopAppKey)
+        ? {
+            ...row,
+            enabled: apps[row.key],
+            installable: row.installable && apps[row.key],
+          }
+        : row
+    ),
+  };
+}
+
+router.get("/api/apps/desktop", async (req, res) => {
   try {
-    const { apps, list } = await getDesktopAppRegistrations();
-    res.json({ apps, list });
+    const registrations = await getDesktopAppRegistrations();
+    res.json(await personalizeDesktopAppsForViewer(registrations, viewerUserId(req)));
   } catch (err) {
     console.error("[desktop-apps] failed to fetch app config:", err);
     res.status(500).json({ error: "Failed to fetch desktop app config" });

@@ -7667,3 +7667,23 @@
 **Why it mattered**: Users need one shared place to play: the WTF LIVE game room. If the hosted game opens as a separate app surface, players can join audio/camera in the room but never see the game as the room's shared screen. Leaking raw SQL also makes a recoverable settings backfill failure look like total room creation failure and exposes implementation details.
 
 **Rule**: When changing inline Postgres CHECK constraints, drop both generated and explicit constraint names before adding the replacement, and backfill rows that earlier failed after the durable parent row was created. A WTF LIVE game-room host action must deep-link back into `/live/r/:roomId?hostApp=...`, auto-join the room owner/host, start apphost from that room, attach the apphost WebRTC MediaStream to `screenStream`, and keep pointer/keyboard input on an in-room control surface. Sanitize create-room errors instead of returning database messages to the client.
+
+---
+
+## 2026-07-15 - Desktop app discovery needs one ranked entitlement catalog
+
+**What happened**: wtfOS app discovery was split across desktop icon flags, Start Menu gates, market listings, and role checks. That let optional or role-gated apps appear in the same first-entry surfaces as core apps, while the market could not clearly explain which apps were unlockable, already owned, or blocked by a role/prerequisite.
+
+**Why it mattered**: A desktop shell has to feel personalized before it feels powerful. If every tool is exposed at once, new users cannot tell what is essential, what is advanced, what costs WTF, and what their account is not allowed to buy yet. Visual-only gating is also not enough because users can still reach server checkout paths unless the entitlement model is shared.
+
+**Rule**: Every wtfOS desktop app needs a single ranked catalog entry that declares placement, necessity, price, and role/prerequisite gates. Default desktop and Stuffs surfaces should only show core/default apps plus user-created shortcuts, app-store apps should appear through WTFIAM until unlocked, and role/prereq checks must fail closed on both the disabled UI and the server intent path. Reggie and the inventory registry must be updated in the same pass.
+
+---
+
+## 2026-07-15 - Optional app route specs must seed app unlock ownership
+
+**What happened**: Moving non-essential desktop apps behind WTFIAM app-store placement made direct route specs for apps such as DedRooms, Map Lab, Cobwebsaints, and Gamma app routes land on locked or unavailable states when the harness did not grant the corresponding app unlock.
+
+**Why it mattered**: Those specs were meant to verify the app internals, not the no-entitlement recovery path. Without explicit owned-app state, a correct access gate looks like a broken route and encourages tests or code to bypass the store policy.
+
+**Rule**: When a desktop app moves to app-store placement, update route mocks or harness state with the required owned app pass for specs that verify the app itself. Keep separate focused coverage for the locked/no-pass state so entitlement policy remains fail-closed.

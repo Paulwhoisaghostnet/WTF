@@ -7,6 +7,7 @@ const tabsSource = readFileSync("client/src/features/wtfiam/WtfIamTabs.tsx", "ut
 const itemCardSource = readFileSync("client/src/features/wtfiam/WtfIamItemCard.tsx", "utf8");
 const cartPanelSource = readFileSync("client/src/features/wtfiam/WtfIamCartPanel.tsx", "utf8");
 const marketHookSource = readFileSync("client/src/features/wtfiam/useWtfIamMarket.ts", "utf8");
+const catalogSource = readFileSync("client/src/features/wtfiam/catalog.ts", "utf8");
 
 test("WTFIAM marketplace chrome is presentation-host aware", () => {
   assert.match(shellSource, /usePresentationShell/);
@@ -27,6 +28,8 @@ test("WTFIAM tabs, cards, and cart expose Gamma-scoped rendered regions", () => 
   assert.match(itemCardSource, /data-wtfiam-region="item-card"/);
   assert.match(itemCardSource, /data-wtfiam-region="item-titlebar"/);
   assert.match(itemCardSource, /data-wtfiam-region="item-mark"/);
+  assert.match(itemCardSource, /data-wtfiam-region="item-disabled-reason"/);
+  assert.match(itemCardSource, /data-wtfiam-disabled-reason=/);
   assert.match(itemCardSource, /data-wtfiam-action="add-ticket"/);
   assert.match(cartPanelSource, /data-wtfiam-region="cart-panel"/);
   assert.match(cartPanelSource, /data-wtfiam-region="currency-toggle"/);
@@ -57,4 +60,14 @@ test("WTFIAM keeps shared market, wallet, and reward APIs untouched", () => {
   ]) {
     assert.match(shellSource, new RegExp(endpoint.replaceAll("/", "\\/")));
   }
+});
+
+test("WTFIAM exposes a first-class Apps category with WTF-only app unlock affordances", () => {
+  assert.match(catalogSource, /key:\s*"apps"/);
+  assert.match(catalogSource, /label:\s*"Apps"/);
+  assert.match(shellSource, /return "apps"/);
+  assert.match(marketHookSource, /cartHasAppUnlock/);
+  assert.match(marketHookSource, /item\.kind === "app-unlock"/);
+  assert.match(marketHookSource, /item\.purchaseBlockedReason/);
+  assert.match(cartPanelSource, /App unlocks use WTF, not EXP/);
 });

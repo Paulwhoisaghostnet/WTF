@@ -183,14 +183,20 @@ export const REGGIE_KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
     id: "market",
     keywords: ["market", "wtfiam", "buy", "shop", "store", "upgrade", "item", "inventory"],
     answer: (context) =>
-      "WTFIAM (/wtfiam) is the in-app market: spend earned WTF on upgrades, items, and goodies. Purchases land in your inventory. Earning and spending is the whole loop — welcome to economics." +
+      "WTFIAM (/wtfiam) is the in-app market: spend earned WTF on apps, upgrades, items, and goodies. Purchases land in your inventory, and app unlocks open back up through the Start menu once your account owns them. Earning and spending is the whole loop — welcome to economics." +
       questProgressSuffix(context, "market"),
+  },
+  {
+    id: "app-store",
+    keywords: ["app store", "apps section", "apps tab", "unlock app", "install app", "buy app", "pin app", "desktop shortcut", "place on desktop", "app unlock"],
+    answer: () =>
+      "The default desktop only shows the core stuff you need first. Optional, specialist, and role-gated apps live in WTFIAM's Apps tab like an app store: buy the unlock with WTF, then open the app from Start. To put it on your desktop, right-click it in Start and choose Create Desktop Shortcut. If a card is greyed out, hover or focus it — it'll tell you the exact role, pass, or prerequisite you're missing.",
   },
   {
     id: "roles",
     keywords: ["role", "title", "permission", "access", "app access", "leaderboard", "rank"],
     answer: (context) =>
-      "Roles control what you can access — some apps and admin powers are role-gated. Titles come from XP tiers, and the leaderboard (/leaderboard) shows where everyone stands. Climb by doing, not by asking. Although asking was a good instinct." +
+      "Roles control what you can access — some apps and admin powers are role-gated. In WTFIAM's Apps tab, role-locked app cards stay greyed out until your account has the right role or pass, and the tooltip tells you what is missing. Titles come from XP tiers, and the leaderboard (/leaderboard) shows where everyone stands. Climb by doing, not by asking. Although asking was a good instinct." +
       questProgressSuffix(context, "titles_roles"),
   },
   {
@@ -232,7 +238,7 @@ export const REGGIE_KNOWLEDGE_TOPICS: KnowledgeTopic[] = [
     id: "navigation",
     keywords: ["navigate", "start menu", "command palette", "window", "taskbar", "find app", "where is", "how do i open"],
     answer: (context) =>
-      "Getting around: desktop icons open apps, the Start button (bottom-left) lists everything, windows drag/minimize/stack like the good old days, and the command palette is the fast lane to any app or route. Lost? Ask me — pointing at things is my whole job." +
+      "Getting around: desktop icons open core apps, the Start button (bottom-left) lists what your account has unlocked, and the command palette is the fast lane to any available route. Optional apps come from WTFIAM's Apps tab; once unlocked, right-click a Start item to make a desktop shortcut. Lost? Ask me — pointing at things is my whole job." +
       questProgressSuffix(context, "navigator"),
   },
   {

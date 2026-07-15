@@ -1,4 +1,5 @@
 export type WtfIamCategoryKey =
+  | "apps"
   | "desktop_pet"
   | "desktop_fun"
   | "system_appearance"
@@ -35,6 +36,16 @@ export type InAppMarketItem = {
   metadata: Record<string, unknown>;
   stockQuantity: number;
   quantityOwned: number;
+  purchaseBlockedReason?: string | null;
+  appStore?: {
+    appKey: string;
+    placement: string;
+    necessity: string;
+    necessityRank: number;
+    route: string;
+    canPurchase: boolean;
+    lockedReason: string | null;
+  };
 };
 
 export type InAppMarketResponse = {
@@ -151,6 +162,8 @@ export type WtfIamListing = {
   monogram: string;
   metadata?: Record<string, unknown>;
   comingSoon?: boolean;
+  purchaseBlockedReason?: string | null;
+  appStore?: InAppMarketItem["appStore"];
 };
 
 export type WtfIamCartEntry = {

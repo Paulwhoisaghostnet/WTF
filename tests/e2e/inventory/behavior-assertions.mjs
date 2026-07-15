@@ -791,6 +791,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "Source policy keeps Inbox sends on /api/mail/send, /api/messages/dms, and /api/messages/dms/:id/messages while the inventory workflow probes both mail send and DM send paths with bounded expected outcomes.",
   },
   {
+    id: "desktop.app-store-ranked-unlocks",
+    domain: "Desktop OS",
+    ownerSurfaceIds: ["wtfiam", "command-palette", "desktop-icons"],
+    ownerSpec:
+      "shared/wtfos-app-catalog.test.ts; client/src/features/desktop/DesktopIcons.test.tsx; client/src/components/layout/start-menu-app-gates.test.ts; client/src/features/wtfiam/wtfiam-presentation-policy.test.ts; server/routes/in-app-market-app-store-policy.test.ts",
+    verificationCommand:
+      "npx tsx --test shared/wtfos-app-catalog.test.ts client/src/features/desktop/DesktopIcons.test.tsx client/src/components/layout/start-menu-app-gates.test.ts client/src/features/wtfiam/wtfiam-presentation-policy.test.ts server/routes/in-app-market-app-store-policy.test.ts && npm run test:e2e:inventory:coverage",
+    userVisibleAssertion:
+      "The default desktop and first Start Apps rail show only ranked core apps; optional and role-gated wtfOS apps appear in WTFIAM's Apps category, locked cards show the missing role/pass/prerequisite on hover or focus, and unlocked apps can be pinned with the existing Start Menu desktop shortcut action.",
+    durableSideEffectAssertion:
+      "The shared app catalog covers every DesktopAppKey, `/api/in-app-market?category=apps` serializes app-unlock SKUs from that catalog, checkout intents reject missing prerequisites before payment, and `/api/apps/desktop` personalizes app availability from owned app-unlock inventory.",
+  },
+  {
     id: "ipfs-pinning.pds-backed-wallet-backup",
     domain: "Media, Storage, AT Protocol, and WTF Domains",
     ownerSurfaceIds: ["ipfs-pinning", "wtf-domains", "creation-tools"],

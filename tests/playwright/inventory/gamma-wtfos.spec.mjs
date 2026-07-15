@@ -3,7 +3,14 @@ import path from "node:path";
 import { chromium, expect, test } from "@playwright/test";
 
 async function setHarnessState(request, state = {}) {
-  const res = await request.post("/__test/state", { data: state });
+  const role = String(state.userRole || state.role || "admin");
+  const data = {
+    ...(role !== "anonymous" && !Object.prototype.hasOwnProperty.call(state, "ownedAppPasses")
+      ? { ownedAppPasses: "all" }
+      : {}),
+    ...state,
+  };
+  const res = await request.post("/__test/state", { data });
   expect(res.ok()).toBeTruthy();
 }
 
@@ -4057,7 +4064,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
   test("hosts WTFIAM economy chrome in the Gamma presentation style", async ({ page, request }) => {
     await setHarnessState(request, { userRole: "user", userId: 1, username: "gamma-economist", displayName: "Gamma Economist" });
 
-    await page.goto("/gamma/wtfiam", { waitUntil: "domcontentloaded" });
+    await page.goto("/gamma/wtfiam?category=desktop_pet", { waitUntil: "domcontentloaded" });
     await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
     await expect(page.locator("[data-gamma-workspace]")).toHaveAttribute("data-gamma-route", "/wtfiam");
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
