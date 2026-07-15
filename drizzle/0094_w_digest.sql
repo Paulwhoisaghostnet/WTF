@@ -33,7 +33,7 @@ VALUES
   ('artontezos_', true, 'seed'),
   ('thetezos', true, 'seed'),
   ('tezosartnetwork', true, 'seed'),
-  ('_transparentart', true, 'seed')
+  ('transparentart', true, 'seed')
 ON CONFLICT (handle) DO NOTHING;
 
 COMMENT ON TABLE w_digest_handles IS 'X handles scraped for the read-only W Tezos digest timeline.';

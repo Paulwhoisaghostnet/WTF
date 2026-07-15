@@ -109,6 +109,7 @@ Priority labels:
 | WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 8 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
 | WTF-BB-387 | Verified | Codex full-send cleanup pass | 2026-07-15 | Pasta Protocol / primary-sale authorization | P0 | 17 | 1 | 3 | 5 | 4 | Both fixed-sale contracts bind the seller to the authenticated administrator, Colander and native installers bind sale calls to the connected wallet, and forced third-party listings fail in SmartPy tests |
 | WTF-BB-388 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Suite Desktop / local page hosting | P1 | 13 | 6 | 3 | 5 | 1 | Native Colander safely installs publisher ZIPs atomically under the user-owned Pasta Suite site directory, lists complete sites, and serves them through loopback-only routes; traversal, malformed, duplicate, encrypted, and oversized archives are rejected |
+| WTF-BB-389 | Claimed | Codex full-send cleanup pass | 2026-07-15 | Deploy / immutable migration history | P0 | 17 | 1 | 3 | 5 | 4 | Production deploy correctly rejected an edited applied migration: `0008_cockpit_phase0.sql` no longer matched its ledger checksum; restore the applied bytes because the intended partial-index change already exists in forward migration `0078` |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Verified | Codex full-send cleanup pass | 2026-07-15 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Recovery Mode now completes both canonical and Beta-shell route smoke without fatal unauthenticated-probe noise; verified again in the complete 634/634 interaction inventory run |
@@ -8456,6 +8457,22 @@ Priority labels:
   - The archive/install suite passes 5/5, including atomic installation, manifest/listing, traversal and malformed-path rejection, duplicate rejection, and file/byte limits.
   - Fresh desktop asset preparation succeeds and the complete desktop package-policy batch passes 50/50.
   - The six-app self-hosted publishing browser story passes 3/3, deterministic hosted Colander passes 3/3, and native Colander passes 1/1.
+
+### WTF-BB-389 - Applied cockpit migration was edited in place
+
+- Category: Deploy / immutable migration history
+- Status: Claimed
+- Owner/Session: Codex full-send cleanup pass
+- Score: C3 + F5 + S1 + P0(8) = 17
+- Evidence:
+  - Hetzner deploy run `29454917140` stopped before app startup because the production ledger recorded SHA-256 `e82103799f1aa831419a1be64800c389654b0799048b0e93ff46585409a7fa03` for `0008_cockpit_phase0.sql`, while the repository file hashed to `8f991059165fb6101bf89d227f06a3dcc3fc709308d390cb05d6b80a14c1ad2d`.
+  - Git history proves the ledger hash is the original migration and the later revision copied the indexing-queue partial-index change backward from the already-applied forward migration `0078_indexing_queue_pending_partial.sql`.
+- Why it matters:
+  - Rewriting an applied migration makes production schema history non-reproducible and can silently diverge old and new databases.
+- Correction direction:
+  - Restore migration `0008` byte-for-byte; retain `0078` as the existing forward-only index replacement and do not create another duplicate migration.
+- Verification idea:
+  - Confirm the restored file matches the production ledger checksum, run migration policy coverage, redeploy, and verify the new migration is applied before the app health check succeeds.
 
 ## Backlog Intake Template
 

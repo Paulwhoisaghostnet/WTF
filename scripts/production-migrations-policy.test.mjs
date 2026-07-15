@@ -6,6 +6,10 @@ const migrations = readFileSync("scripts/apply-production-migrations.sh", "utf8"
 const deploy = readFileSync("scripts/server-deploy.sh", "utf8");
 const wtfLiveMigration = readFileSync("drizzle/0097_wtf_live_rooms.sql", "utf8");
 const wtfLiveTipMigration = readFileSync("drizzle/0100_wtf_live_tip_items.sql", "utf8");
+const transparentArtHandleMigration = readFileSync(
+  "drizzle/0113_w_digest_transparentart_handle.sql",
+  "utf8"
+);
 
 test("LAW.TT1/10 production migrations fail closed on SQL errors", () => {
   assert.match(migrations, /set -euo pipefail/);
@@ -85,4 +89,18 @@ test("WTF LIVE tip seed respects production in-app market score constraints", ()
   for (const score of scores) {
     assert.ok(score >= 1 && score <= 10, `price_score ${score} is outside 1..10`);
   }
+});
+
+test("W digest handle correction is forward-only and preserves referenced posts", () => {
+  assert.match(transparentArtHandleMigration, /BEGIN;/);
+  assert.match(transparentArtHandleMigration, /VALUES \('_transparentart', true, 'seed'\)/);
+  assert.match(
+    transparentArtHandleMigration,
+    /UPDATE w_digest_posts\s+SET handle = '_transparentart'\s+WHERE handle = 'transparentart';/
+  );
+  assert.match(
+    transparentArtHandleMigration,
+    /DELETE FROM w_digest_handles\s+WHERE handle = 'transparentart';/
+  );
+  assert.match(transparentArtHandleMigration, /COMMIT;/);
 });

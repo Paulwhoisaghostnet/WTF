@@ -1,4 +1,3 @@
--- Idempotent: table may already exist from a partial prior apply.
 CREATE TABLE IF NOT EXISTS "rate_limit_buckets" (
   "bucket_key" varchar(512) PRIMARY KEY NOT NULL,
   "hit_count" integer NOT NULL DEFAULT 1,

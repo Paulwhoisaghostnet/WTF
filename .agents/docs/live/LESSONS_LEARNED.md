@@ -8394,3 +8394,13 @@
 **Why it mattered**: A parser can reject obvious `../` entries while the actual filesystem and URL boundary still mishandles duplicates, partial installs, encoded paths, limits, or containment. Mocking the page registry does not prove the local host is safe.
 
 **Rule**: Extract archive ingestion into a pure, testable boundary; reject absolute, traversal, duplicate, encrypted, compressed, and over-limit entries; stage writes in a private temporary directory; publish only with an atomic rename; and unit-test the resulting manifest, listing, and loopback path resolution before marking local hosting verified.
+
+---
+
+## 2026-07-15 - Applied migrations are immutable release artifacts
+
+**What happened**: Production's migration ledger correctly rejected `0008_cockpit_phase0.sql` after a later commit rewrote its unique-index definition in place. The desired schema change was valid, but changing the historical file broke checksum parity with the already-applied migration.
+
+**Why it mattered**: An edited applied migration makes deploys non-reproducible and leaves old and newly bootstrapped databases following different histories. The fail-closed deploy guard prevented that drift from advancing unnoticed.
+
+**Rule**: Never edit a numbered migration after any environment has applied it. Restore the original bytes and carry every subsequent schema correction in a new forward-only migration; verify historical checksums against the production ledger before enabling immutable-ledger enforcement.
