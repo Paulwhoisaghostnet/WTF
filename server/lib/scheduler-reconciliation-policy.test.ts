@@ -7,7 +7,7 @@ const jobsSource = readFileSync("server/lib/background-jobs.ts", "utf8");
 
 test("scheduler reconciles abandoned durable runs before arming jobs", () => {
   assert.match(schedulerSource, /export async function reconcileAbandonedRuns/);
-  assert.match(schedulerSource, /status:\s*"error"/);
+  assert.match(schedulerSource, /status:\s*"cancelled"/);
   assert.match(schedulerSource, /abandoned by process restart/);
   assert.match(schedulerSource, /eq\(syncRuns\.status, "running"\)/);
   assert.match(schedulerSource, /isNull\(syncRuns\.finishedAt\)/);

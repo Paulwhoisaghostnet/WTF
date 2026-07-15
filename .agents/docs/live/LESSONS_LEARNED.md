@@ -8434,3 +8434,13 @@
 **Why it mattered**: Recovery code is most likely to encounter pathological old state. An otherwise correct stale-run cleanup became a boot blocker precisely when it was needed after an incident.
 
 **Rule**: When durable duration columns use 32-bit integers, clamp computed elapsed milliseconds to the database maximum before casting. Exercise reconciliation against rows older than 25 days, not only recent abandoned runs.
+
+---
+
+## 2026-07-15 - Process-restart cancellations are not job failures
+
+**What happened**: A clean deploy interrupted the daily object-storage usage job. Startup reconciliation correctly closed its durable `running` row, but labeled it `error`; readiness then rejected the otherwise healthy replacement until that daily job could run again.
+
+**Why it mattered**: Deploying necessarily terminates in-process work. Treating expected restart interruption as a job failure makes every deploy vulnerable to a false-negative readiness result based on whichever long-interval job happened to be active.
+
+**Rule**: Reconciled work abandoned by a process restart must use a non-success, non-error terminal status such as `cancelled`. Reserve `error` for work that actually failed while executing, so readiness remains sensitive to real failures without rejecting expected deploy interruption.
