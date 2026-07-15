@@ -73,7 +73,7 @@ export async function reconcileAbandonedRuns(
     .set({
       status: "error",
       finishedAt: now,
-      durationMs: sql<number>`GREATEST(0, EXTRACT(EPOCH FROM (${now} - ${syncRuns.startedAt})) * 1000)::integer`,
+      durationMs: sql<number>`LEAST(2147483647::numeric, GREATEST(0, EXTRACT(EPOCH FROM (${now} - ${syncRuns.startedAt})) * 1000))::integer`,
       error: "abandoned by process restart",
     })
     .where(

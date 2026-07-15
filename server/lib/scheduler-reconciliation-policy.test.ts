@@ -11,6 +11,7 @@ test("scheduler reconciles abandoned durable runs before arming jobs", () => {
   assert.match(schedulerSource, /abandoned by process restart/);
   assert.match(schedulerSource, /eq\(syncRuns\.status, "running"\)/);
   assert.match(schedulerSource, /isNull\(syncRuns\.finishedAt\)/);
+  assert.match(schedulerSource, /LEAST\(2147483647::numeric/);
   assert.match(jobsSource, /export async function startBackgroundJobs\(\): Promise<void>/);
   assert.match(jobsSource, /await reconcileAbandonedRuns\(\);[\s\S]*startScheduler\(\);/);
 });

@@ -8424,3 +8424,13 @@
 **Why it mattered**: Two valid safety mechanisms became an outage amplifier: migration integrity failed closed after traffic had already been removed, and the overwritten `latest` image could not serve as a rollback target. Cloudflare and Caddy stayed healthy while the origin returned 502 for every user.
 
 **Rule**: Run all fail-closed migration validation and application before stopping the serving container, pin the production Node major to the highest runtime floor declared by bundled dependencies, and prove a newly built image starts before it can replace the known-good production image.
+
+---
+
+## 2026-07-15 - Durable scheduler durations must saturate before integer storage
+
+**What happened**: Node 22 fixed the dependency crash, but startup reconciliation found 1,100 abandoned `running` rows dating back nearly three months. Converting their elapsed milliseconds directly to PostgreSQL `integer` exceeded 2,147,483,647 and restarted the app before it could serve.
+
+**Why it mattered**: Recovery code is most likely to encounter pathological old state. An otherwise correct stale-run cleanup became a boot blocker precisely when it was needed after an incident.
+
+**Rule**: When durable duration columns use 32-bit integers, clamp computed elapsed milliseconds to the database maximum before casting. Exercise reconciliation against rows older than 25 days, not only recent abandoned runs.
