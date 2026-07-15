@@ -35,7 +35,7 @@ describe("W X integration surgery policy", () => {
     assert.doesNotMatch(routeSource, /platformSent: true/);
   });
 
-  it("keeps the W client to timeline plus read-only groupchat", () => {
+  it("keeps the W client to a read-only Tezos digest", () => {
     const pageSource = readFileSync("client/src/pages/W.tsx", "utf8");
     const querySource = readFileSync("client/src/features/w/useWDataQueries.ts", "utf8");
     const messagesSource = readFileSync("client/src/features/w/messages/WMessagesPanel.tsx", "utf8");
@@ -52,18 +52,19 @@ describe("W X integration surgery policy", () => {
       assert.doesNotMatch(source, /\/api\/w\/follows/);
       assert.doesNotMatch(source, /\/api\/w\/spaces/);
     }
-    assert.match(pageSource, /label: "Timeline"/);
-    assert.match(pageSource, /label: "Media"/);
-    assert.match(pageSource, /label: "Gameshow Chat"/);
+    assert.match(pageSource, /label: "Tezos digest"/);
+    assert.doesNotMatch(pageSource, /label: "Media"/);
+    assert.doesNotMatch(pageSource, /label: "Gameshow Chat"/);
     assert.doesNotMatch(pageSource, /label: "Spaces"/);
     assert.doesNotMatch(pageSource, /label: "Settings"/);
     assert.doesNotMatch(timelineSource, /GroupBox label="New Post"/);
     assert.doesNotMatch(timelineSource, /Post in W/);
-    assert.match(timelineSource, /runTimelineAction/);
-    assert.match(timelineSource, /\/api\/w\/\$\{action\}/);
-    assert.match(timelineSource, /"like" \| "repost" \| "reply" \| "quote"/);
+    assert.match(timelineSource, /twitter\.com\/intent\/retweet/);
+    assert.match(timelineSource, /twitter\.com\/intent\/tweet/);
+    assert.doesNotMatch(timelineSource, /\/api\/w\/\$\{action\}/);
     assert.doesNotMatch(messagesSource, /Send to this X groupchat/);
     assert.doesNotMatch(messagesSource, />Send<\/Button>/);
+    assert.match(querySource, /enabled: Boolean\(capabilities\) && capabilities\?\.mode !== "digest"/);
   });
 
   it("registers only rate-limited timeline engagement routes, not compose/follow/social routes", () => {
@@ -82,6 +83,7 @@ describe("W X integration surgery policy", () => {
 
     assert.doesNotMatch(timelineRoute, /USE_LEGACY_TIMELINE_FANOUT/);
     assert.doesNotMatch(timelineRoute, /\/users\/\$\{encodeURIComponent\(userId\)\}\/tweets/);
-    assert.match(timelineRoute, /source: "filtered-stream-cache"/);
+    assert.match(timelineRoute, /\? "filtered-stream-cache"/);
+    assert.match(timelineRoute, /: "db-cache"/);
   });
 });

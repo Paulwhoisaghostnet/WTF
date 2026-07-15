@@ -19,7 +19,7 @@
 
 import { db } from "../db";
 import { syncRuns } from "@shared/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lte, sql } from "drizzle-orm";
 import { logSystemEvent } from "./system-log";
 
 export type JobResult = {
@@ -47,6 +47,49 @@ type Registered = {
 
 const registry = new Map<string, Registered>();
 let schedulerStarted = false;
+
+const DEFAULT_ABANDONED_RUN_MS = 15 * 60 * 1000;
+
+function abandonedRunMs(env: NodeJS.ProcessEnv = process.env): number {
+  const configured = Number(env.WTF_SCHEDULER_STALE_RUN_MS);
+  if (!Number.isFinite(configured) || configured < 60_000) {
+    return DEFAULT_ABANDONED_RUN_MS;
+  }
+  return Math.min(configured, 7 * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * Close durable `running` rows left behind by an unclean process exit.
+ * This is called once, before this process arms any jobs, so no live run can
+ * be mistaken for an abandoned one.
+ */
+export async function reconcileAbandonedRuns(
+  now = new Date(),
+  staleAfterMs = abandonedRunMs(),
+): Promise<number> {
+  const cutoff = new Date(now.getTime() - staleAfterMs);
+  const rows = await db
+    .update(syncRuns)
+    .set({
+      status: "error",
+      finishedAt: now,
+      durationMs: sql<number>`GREATEST(0, EXTRACT(EPOCH FROM (${now} - ${syncRuns.startedAt})) * 1000)::integer`,
+      error: "abandoned by process restart",
+    })
+    .where(
+      and(
+        eq(syncRuns.status, "running"),
+        isNull(syncRuns.finishedAt),
+        lte(syncRuns.startedAt, cutoff),
+      ),
+    )
+    .returning({ id: syncRuns.id });
+
+  if (rows.length > 0) {
+    console.warn(`[scheduler] reconciled ${rows.length} abandoned durable run(s)`);
+  }
+  return rows.length;
+}
 
 /**
  * Persist a sync_runs row with `status=running` and return its id.

@@ -119,17 +119,6 @@ relay.wtfos.me {
 	}
 }
 
-# ── PLC mirror (finalized in S2.2) ───────────────────────────────────────────
-plc.wtfos.me {
-	encode gzip zstd
-	reverse_proxy wtfos-plc:3000 {
-		header_up X-Real-IP {remote_host}
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-		header_up Host {host}
-	}
-}
-
 # ── Labeler (finalized in S2.8) ──────────────────────────────────────────────
 mod.wtfos.me {
 	encode gzip zstd

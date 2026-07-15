@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "publicAgentGovernance": [
+    ".agents/docs/live/BUG_BOUNTY_BOARD.md",
+    ".agents/docs/live/LESSONS_LEARNED.md",
+    ".agents/docs/live/user-interaction-inventory.md"
+  ],
+  "publicDocumentationRoots": [
+    "docs/"
+  ],
+  "privateLocalPatterns": [
+    ".agents/docs/archive/**",
+    ".agents/docs/live/**"
+  ],
+  "privatePatternExceptions": [
+    ".agents/docs/live/BUG_BOUNTY_BOARD.md",
+    ".agents/docs/live/LESSONS_LEARNED.md",
+    ".agents/docs/live/user-interaction-inventory.md"
+  ],
+  "historyScan": {
+    "scanner": "gitleaks 8.30.1",
+    "scope": "all refs",
+    "findingCount": 111,
+    "agentEvidenceFindingCount": 44,
+    "highConfidenceHistoricCredentialFindings": 1,
+    "rewritePerformed": false
+  }
+}

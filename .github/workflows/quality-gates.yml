@@ -9,7 +9,7 @@ on:
 
 jobs:
   app-quality:
-    name: Typecheck / Build / Link Safety
+    name: Unit / Audit / Typecheck / Build / Inventory
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,6 +24,34 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Production dependency audit
+        run: npm run security:audit
+
+      - name: Supply-chain policy
+        run: npm run security:supply-chain
+
+      - name: Public release boundary
+        run: npm run security:public-release-boundary
+
+      - name: Docker build-context boundary
+        run: npm run security:docker-context
+
+      - name: Environment inventory
+        run: npm run env:inventory:check
+
+      - name: Aggregate unit tests
+        run: npm run test:unit
+
+      - name: Generate CycloneDX SBOM
+        run: npm run security:sbom
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: wtfos-cyclonedx-sbom
+          path: artifacts/sbom.cdx.json
+          if-no-files-found: error
+
       - name: Typecheck
         run: npm run check
 
@@ -36,10 +64,10 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Inventory coverage
+      - name: Inventory registry coverage (skeleton, not feature completeness)
         run: npm run test:e2e:inventory:coverage
 
-      - name: Inventory Playwright smoke
+      - name: Inventory route smoke (reachability, not durable behavior)
         timeout-minutes: 30
         run: |
           set -euo pipefail

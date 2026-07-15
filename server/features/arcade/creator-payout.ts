@@ -60,7 +60,7 @@ export async function recordCreatorPayoutEvent(
     await db.insert(consoleAuditEvents).values({
       gameId: null as unknown as number, // resolved by settlement job
       actorUserId: event.playerUserId,
-      action: "arcade_creator_payout_pending",
+      action: "arcade.creator_payout.pending",
       reason: `Creator payout: ${event.creatorUsername} — ${event.gameSlug}`,
       payloadJson: {
         gameSlug: event.gameSlug,

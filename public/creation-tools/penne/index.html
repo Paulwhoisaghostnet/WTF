@@ -143,12 +143,20 @@
 
         <pre id="log" class="pp-log" aria-live="polite"></pre>
       </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>6 · Self-hosted claim page</h2>
+        <p class="pp-note">Download a recipient-facing site that reads the live claim window and calls <code>claim</code> from the connected wallet.</p>
+        <div class="pp-row"><button id="btnExportSite" type="button">Download claim site</button><span id="exportSiteStatus" class="pp-note" role="status" aria-live="polite"></span></div>
+      </section>
     </main>
 
     <script src="vendor/tezos.js"></script>
     <script src="vendor/octez-connect.js"></script>
     <script src="js/octez-wallet.js"></script>
     <script src="js/common.js"></script>
+    <script>window.PASTA_SITE_EXPORT = { app: "penne", label: "Penne", titleInput: "tokName", descriptionInput: "tokDesc", contractInput: "contractKt", tokenInput: "claimTokenId" };</script>
+    <script src="js/site-bundle.js"></script>
     <script type="module" src="js/studio.js"></script>
   </body>
 </html>

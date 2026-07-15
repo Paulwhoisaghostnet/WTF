@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  assistantStateLine,
+  emptyQuestionReply,
   greeting,
   nag,
   pickLine,
   questCompleteLine,
+  REGGIE_ASSISTANT_SCRIPT,
+  REGGIE_EMPTY_QUESTION_REPLIES,
   REGGIE_SMARTASS_REPLIES,
   REGGIE_STEP_DIALOGUE,
   smartAssReply,
@@ -48,10 +52,11 @@ test("every quest step has intro, nudge, and congrats dialogue", () => {
   for (const stepKey of EXPECTED_STEP_KEYS) {
     const dialogue = REGGIE_STEP_DIALOGUE[stepKey];
     assert.ok(dialogue, `missing dialogue for step: ${stepKey}`);
-    assert.ok(dialogue.intro.length >= 1, `${stepKey}: needs intro lines`);
-    assert.ok(dialogue.nudge.length >= 1, `${stepKey}: needs nudge lines`);
-    assert.ok(dialogue.congrats.length >= 1, `${stepKey}: needs congrats lines`);
+    assert.ok(dialogue.intro.length >= 4, `${stepKey}: needs several intro lines`);
+    assert.ok(dialogue.nudge.length >= 4, `${stepKey}: needs several nudge lines`);
+    assert.ok(dialogue.congrats.length >= 4, `${stepKey}: needs several congrats lines`);
     for (const pool of [dialogue.intro, dialogue.nudge, dialogue.congrats]) {
+      assert.equal(new Set(pool).size, pool.length, `${stepKey}: duplicate dialogue lines`);
       for (const line of pool) {
         assert.ok(line.trim().length > 10, `${stepKey}: line too short: "${line}"`);
       }
@@ -88,6 +93,36 @@ test("smart-ass pool is deep enough to feel endless", () => {
     new Set(REGGIE_SMARTASS_REPLIES).size,
     REGGIE_SMARTASS_REPLIES.length,
     "duplicate smart-ass replies"
+  );
+});
+
+test("empty question replies have more than one bit of attitude", () => {
+  assert.ok(REGGIE_EMPTY_QUESTION_REPLIES.length >= 5);
+  assert.equal(
+    new Set(REGGIE_EMPTY_QUESTION_REPLIES).size,
+    REGGIE_EMPTY_QUESTION_REPLIES.length,
+    "duplicate empty-question replies"
+  );
+  const first = emptyQuestionReply("blank-seed");
+  assert.notEqual(emptyQuestionReply("blank-seed", first), first);
+});
+
+test("assistant state scripts have varied sassy copy without losing placeholders", () => {
+  for (const [kind, pool] of Object.entries(REGGIE_ASSISTANT_SCRIPT)) {
+    assert.ok(pool.length >= 3, `${kind}: state script pool too shallow`);
+    assert.equal(new Set(pool).size, pool.length, `${kind}: duplicate state lines`);
+  }
+  assert.equal(
+    assistantStateLine("locked", "seed-1", { title: "Connect Wallet" }).includes("{title}"),
+    false
+  );
+  assert.match(
+    assistantStateLine("progress", "seed-2", { completed: 7, total: 30, percent: 23 }),
+    /7\/30|23%/
+  );
+  assert.notEqual(
+    assistantStateLine("summon", "same-seed"),
+    assistantStateLine("summon", "same-seed", {}, assistantStateLine("summon", "same-seed"))
   );
 });
 

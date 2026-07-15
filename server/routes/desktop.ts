@@ -452,7 +452,7 @@ router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
     const current = await getDesktopSettings(user.id);
     const body = safeObject(req.body);
     const expectedUpdatedAt = normalizeExpectedUpdatedAt(
-      body.updatedAt ?? body.ifUnmodifiedSince
+      body.updatedAt !== undefined ? body.updatedAt : body.ifUnmodifiedSince
     );
     const clientProvidedConcurrencyToken =
       body.updatedAt !== undefined || body.ifUnmodifiedSince !== undefined;

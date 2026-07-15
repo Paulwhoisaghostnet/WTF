@@ -189,4 +189,4 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 \
               "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
-              "curl -sf http://localhost:3000/api/health || echo 'health check soft-failed'"
+              "curl -sf http://localhost:3000/api/health/ready || echo 'readiness check soft-failed'"

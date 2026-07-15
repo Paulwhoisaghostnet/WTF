@@ -34,6 +34,8 @@ import { routeTimingMiddleware } from "./lib/runtime-metrics";
  */
 const MEDIA_RATE_LIMIT_BYPASS_PREFIXES: readonly string[] = [];
 
+const LEGACY_SCRIPT_EXCEPTION_PATHS = ["/games/installed", "/creation-tools"];
+
 const MEDIA_RATE_LIMIT_BYPASS_PATTERNS: readonly RegExp[] = [
   /^\/api\/console\/dependency$/,
   /^\/api\/tv\/cache\/media$/,
@@ -218,17 +220,47 @@ export async function createApp() {
   ];
   const trustedCalendarFrameSources = ["https://thetezos.com"];
   const trustedTvFrameSources = ["https://odysee.com"];
-  const strictProductionScripts =
-    process.env.NODE_ENV === "production" &&
-    String(process.env.CSP_STRICT_SCRIPTS || "").toLowerCase() === "1";
+  const trustedNetworkSources = [
+    "https://api.tzkt.io",
+    "https://*.tzkt.io",
+    "https://*.octez.io",
+    "https://tcinfra.net",
+    "https://*.tcinfra.net",
+    "https://api.pinata.cloud",
+    "https://gateway.pinata.cloud",
+    "https://ipfs.io",
+    "https://*.nftstorage.link",
+    "https://*.fileship.xyz",
+    "https://api.bsky.app",
+    "https://bsky.social",
+    "https://*.bsky.social",
+    "https://plc.directory",
+    "https://api.x.com",
+    "https://*.wtfos.app",
+    "https://*.wtfgameshow.app",
+    "https://*.wtfos.me",
+  ];
+  const trustedContentSources = [
+    "https://ipfs.io",
+    "https://gateway.pinata.cloud",
+    "https://*.nftstorage.link",
+    "https://*.fileship.xyz",
+    "https://*.backblazeb2.com",
+    "https://backblaze.pixellab.ai",
+    "https://*.objkt.com",
+    "https://objkt.com",
+    "https://*.bsky.app",
+    "https://cdn.bsky.app",
+    "https://pbs.twimg.com",
+    "https://abs.twimg.com",
+    "https://i.ytimg.com",
+    "https://odysee.com",
+    "https://*.wtfos.app",
+    "https://*.wtfgameshow.app",
+    "https://*.wtfos.me",
+  ];
   const baseScriptSrc = [
     "'self'",
-    // Vite production builds are module-only; drop inline script allowance when
-    // CSP_STRICT_SCRIPTS=1. Game cartridges keep their scoped unsafe-eval override.
-    ...(strictProductionScripts ? [] : ["'unsafe-inline'"]),
-    // `wasm-unsafe-eval` lets the js-dos DOSBox build execute its WebAssembly
-    // module without also opening the door to arbitrary JS `eval()`.
-    "'wasm-unsafe-eval'",
     // Cloudflare auto-injects the Web Analytics beacon at the edge.
     "https://static.cloudflareinsights.com",
   ];
@@ -236,11 +268,11 @@ export async function createApp() {
     "default-src": ["'self'"],
     "base-uri": ["'self'"],
     "object-src": ["'none'"],
-    "img-src": ["'self'", "data:", "blob:", "https:"],
-    "media-src": ["'self'", "data:", "blob:", "https:"],
-    "font-src": ["'self'", "data:", "https:"],
-    "connect-src": ["'self'", "https:", "wss:", "ws:", ...walletConnectNetworkSources],
-    "style-src": ["'self'", "'unsafe-inline'"],
+    "img-src": ["'self'", "data:", "blob:", ...trustedContentSources],
+    "media-src": ["'self'", "data:", "blob:", ...trustedContentSources],
+    "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
+    "connect-src": ["'self'", ...trustedNetworkSources, ...walletConnectNetworkSources],
+    "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     "script-src": baseScriptSrc,
     "frame-src": ["'self'", ...walletFrameSources, ...trustedCalendarFrameSources, ...trustedTvFrameSources],
     "child-src": ["'self'", ...walletFrameSources, ...trustedCalendarFrameSources, ...trustedTvFrameSources],
@@ -296,7 +328,9 @@ export async function createApp() {
       ...baseCspDirectives,
       "script-src": [
         ...(baseCspDirectives["script-src"] ?? []),
+        "'unsafe-inline'",
         "'unsafe-eval'",
+        "'wasm-unsafe-eval'",
         "blob:",
       ],
       "connect-src": [
@@ -307,7 +341,7 @@ export async function createApp() {
       "worker-src": ["'self'", "blob:"],
     };
     app.use(
-      ["/games/installed", "/creation-tools"],
+      LEGACY_SCRIPT_EXCEPTION_PATHS,
       helmet.contentSecurityPolicy({
         useDefaults: true,
         directives: gameCspDirectives,

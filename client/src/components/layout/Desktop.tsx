@@ -23,6 +23,10 @@ import { DesktopPet, type DesktopObstacle } from "../../features/desktop/Desktop
 import { DesktopScreenSaver } from "../../features/desktop/DesktopScreenSaver";
 import { ReggieAssistant } from "../../features/reggie/ReggieAssistant";
 import {
+  REGGIE_SUMMON_EVENT,
+  type ReggieSummonEventDetail,
+} from "../../features/reggie/reggie-quest-model";
+import {
   DesktopWeatherCloud,
   loadDesktopWeatherRule,
   saveDesktopWeatherRule,
@@ -1243,6 +1247,18 @@ export function Desktop({
             label: t("desktop.context.resetNativeIcons"),
             onSelect: resetNativeIconLayout,
           },
+          {
+            label: t("desktop.context.summonReggie"),
+            disabled: !user,
+            onSelect: () => {
+              const detail: ReggieSummonEventDetail = {
+                source: "desktop-context-menu",
+                x: event.clientX,
+                y: event.clientY,
+              };
+              window.dispatchEvent(new CustomEvent(REGGIE_SUMMON_EVENT, { detail }));
+            },
+          },
           { kind: "separator" },
           {
             label: t("desktop.context.systemAppearance"),
@@ -1259,7 +1275,7 @@ export function Desktop({
         metadata: { source: "surface" },
       });
     },
-    [appAccessBlocked, qc, reportDesktopEvent, resetNativeIconLayout, targetOwnsDesktopInteraction, t, wm]
+    [appAccessBlocked, qc, reportDesktopEvent, resetNativeIconLayout, targetOwnsDesktopInteraction, t, user, wm]
   );
 
   const handleDesktopPointerDown = useCallback(

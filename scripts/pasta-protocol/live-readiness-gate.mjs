@@ -123,7 +123,7 @@ function checkLiveDeploymentCommitMarker(health) {
   if (problem) {
     block(
       "live deployment commit marker",
-      `/api/health reported ${problem}; rerun the normal Hetzner deploy path so COMMIT_SHA/COMMIT_REF comes from the deployed checkout head before claiming Pasta live evidence`
+      `/api/health/ready reported ${problem}; rerun the normal Hetzner deploy path so COMMIT_SHA/COMMIT_REF comes from the deployed checkout head before claiming Pasta live evidence`
     );
     return commitRef;
   }
@@ -131,7 +131,7 @@ function checkLiveDeploymentCommitMarker(health) {
   if (expectedLiveCommitRef && shortCommitRef(commitRef) !== shortCommitRef(expectedLiveCommitRef)) {
     block(
       "live deployment commit marker",
-      `/api/health reported commit ${commitRef}, expected ${shortCommitRef(expectedLiveCommitRef)} from PASTA_LIVE_READINESS_EXPECT_COMMIT/WTFOS_EXPECT_COMMIT`
+      `/api/health/ready reported commit ${commitRef}, expected ${shortCommitRef(expectedLiveCommitRef)} from PASTA_LIVE_READINESS_EXPECT_COMMIT/WTFOS_EXPECT_COMMIT`
     );
     return commitRef;
   }
@@ -193,16 +193,16 @@ async function fetchStatus(pathname) {
 }
 
 async function checkHealth() {
-  const { text } = await fetchText("/api/health");
+  const { text } = await fetchText("/api/health/ready");
   const health = JSON.parse(text);
-  if (health.status !== "ok" || health.ok !== true) {
-    throw new Error(`/api/health is not ok: ${text.slice(0, 240)}`);
+  if (health.status !== "ready" || health.ok !== true) {
+    throw new Error(`/api/health/ready is not ready: ${text.slice(0, 240)}`);
   }
   if (health.version?.nodeEnv !== "production") {
-    throw new Error(`/api/health did not report production nodeEnv: ${health.version?.nodeEnv || "missing"}`);
+    throw new Error(`/api/health/ready did not report production nodeEnv: ${health.version?.nodeEnv || "missing"}`);
   }
   checkLiveDeploymentCommitMarker(health);
-  record("live health", "pass", `production health ok, chain ${health.chain?.network || "unknown"}`);
+  record("live readiness", "pass", "production dependencies and scheduler are ready");
 }
 
 function checkRepoCleanupAudit() {

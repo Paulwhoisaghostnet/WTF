@@ -7,7 +7,7 @@ import {
   progressPercent,
   recommendedStep,
 } from "./reggie-quest-model";
-import { smartAssReply } from "./reggie-dialogue";
+import { emptyQuestionReply, smartAssReply } from "./reggie-dialogue";
 
 /**
  * Reggie's knowledge base: keyword-matched topics over wtfOS. Not AI —
@@ -269,7 +269,7 @@ export function answerQuestion(
     return {
       matched: false,
       topicId: null,
-      answer: "You have to actually ask something. Silence is free; answers cost a question.",
+      answer: emptyQuestionReply(context.seed, context.lastReply),
     };
   }
 

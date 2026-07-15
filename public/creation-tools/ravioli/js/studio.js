@@ -194,6 +194,7 @@ async function originateCollection(provider, me) {
     bundles: new M(),
     redeemed: new M(),
     redeemed_by: new M(),
+    sales: new M(),
     minters: new M(),
     next_token_id: 0,
   };
@@ -224,6 +225,10 @@ async function publish() {
     const name = $("bnName").value.trim();
     if (!name) throw new Error("the bundle needs a name");
     const editions = Math.max(1, parseInt($("bnEditions").value, 10) || 1);
+    const forSale = $("bnForSale").checked;
+    const saleCount = Math.max(1, parseInt($("bnSaleCount").value, 10) || 1);
+    if (forSale && saleCount > editions) throw new Error("sale quantity exceeds minted bundle editions");
+    const priceMutez = Math.round(Math.max(0, Number($("bnPrice").value) || 0) * 1_000_000);
     const redeemable = $("bnRedeemable").checked;
     const mystery = $("bnMystery").checked;
     const provider = pinProvider();
@@ -311,6 +316,15 @@ async function publish() {
     const mintOp = await c.methodsObject.mint({ to_: me, token_id: startId, amount: editions }).send();
     await mintOp.confirmation();
     log("editions minted ✓");
+    if (forSale) {
+      log("opening direct bundle sale (sign in wallet)…");
+      const saleOp = await c.methodsObject.set_sale({
+        token_id: startId,
+        sale: { active: true, seller: me, treasury: me, price: priceMutez, remaining: saleCount, start: null, end: null },
+      }).send();
+      await saleOp.confirmation();
+      log("direct primary sale opened ✓");
+    }
 
     $("opKt").value = kt;
     $("opTokenId").value = String(startId);
@@ -319,6 +333,7 @@ async function publish() {
       log(`mystery pack: keep this manifest URI to reveal later → ${manifestUri}`);
     }
     if (targetMode() === "new_collection") {
+      MD.recordColanderContract(kt, "ravioli");
       MD.logEvent("ravioli.collection_deployed", "Ravioli deployed a bundle collection", {
         contract: kt,
         network: state.network,
@@ -486,6 +501,7 @@ function wire() {
     $("opKt").value = routeHandoff.contract;
     MD.notify(`Loaded ${routeHandoff.contract} from Colander.`, "success");
   }
+  if (routeHandoff?.projectTitle && !$("bnName").value) $("bnName").value = routeHandoff.projectTitle;
 }
 
 wire();

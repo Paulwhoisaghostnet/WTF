@@ -15,8 +15,13 @@
     "create_token",
     "mint",
     "burn",
+    "set_sale",
+    "set_sale_active",
+    "buy",
     "add_minter",
     "remove_minter",
-    "set_token_metadata"
+    "set_token_metadata",
+    "transfer_administration",
+    "accept_administration"
   ]
 }

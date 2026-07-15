@@ -9,12 +9,17 @@ import {
   GroupBox,
   Separator,
 } from "react95";
-import { useLocation, Redirect } from "wouter";
+import { useLocation, useSearch, Redirect } from "wouter";
 import { useAuth } from "../lib/auth-context";
 import { disconnectWallet } from "../lib/tezos";
 import { AuthScreenShell } from "../components/layout/AuthScreenShell";
 import { WTFOS_PLATFORM_NAME } from "@shared/platform-branding";
+import {
+  presentationRouteHref,
+  usePresentationShell,
+} from "../lib/presentation-shell";
 
+const GAMMA_DEFAULT_POST_AUTH_ROUTE = "/dashboard";
 const WALLET_LOGIN_TIMEOUT_MS = 38_000;
 const WALLET_LOGIN_TIMEOUT_MESSAGE =
   "Wallet login did not finish opening a provider. Clear the wallet connection and try again, or choose another Tezos wallet.";
@@ -37,6 +42,15 @@ function withWalletLoginTimeout<T>(task: Promise<T>): Promise<T> {
   return Promise.race([task, timeout]).finally(() => {
     if (timerId !== undefined) window.clearTimeout(timerId);
   });
+}
+
+function safeGammaAuthReturn(rawSearch: string): string | null {
+  const params = new URLSearchParams(rawSearch);
+  const raw = params.get("return") || "";
+  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
+  const path = raw.split(/[?#]/)[0] || "/";
+  if (path.startsWith("/api/") || path === "/login" || path === "/register") return null;
+  return raw;
 }
 
 const CenterWrapper = styled.div`
@@ -132,9 +146,31 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const { user, login, walletLogin } = useAuth();
+  const presentation = usePresentationShell();
   const [, setLocation] = useLocation();
+  const rawSearch = useSearch();
+  const isGamma = presentation.host === "gamma";
+  const gammaReturnRoute = isGamma ? safeGammaAuthReturn(rawSearch) : null;
+  const postAuthRoute =
+    isGamma
+      ? presentationRouteHref(gammaReturnRoute ?? GAMMA_DEFAULT_POST_AUTH_ROUTE, "gamma")
+      : "/";
+  const registerRoute =
+    isGamma
+      ? presentationRouteHref(
+          `/register${gammaReturnRoute ? `?return=${encodeURIComponent(gammaReturnRoute)}` : ""}`,
+          "gamma"
+        )
+      : "/register";
+  const destinationLabel = isGamma
+    ? gammaReturnRoute === GAMMA_DEFAULT_POST_AUTH_ROUTE
+      ? "Gamma dashboard"
+      : gammaReturnRoute
+      ? "the Gamma route you opened"
+      : "Gamma dashboard"
+    : "the desktop";
 
-  if (user) return <Redirect to="/" />;
+  if (user) return <Redirect to={postAuthRoute} />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,7 +183,7 @@ export function Login() {
     setLoading(true);
     try {
       await login(submittedUsername, submittedPassword);
-      setLocation("/", { replace: true });
+      setLocation(postAuthRoute, { replace: true });
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Login failed"));
     } finally {
@@ -163,13 +199,18 @@ export function Login() {
     try {
       const result = await withWalletLoginTimeout(walletLogin());
       if (result.action === "login") {
-        setLocation("/", { replace: true });
+        setLocation(postAuthRoute, { replace: true });
       } else {
         const params = new URLSearchParams({
           wallet: result.walletAddress || "",
           pk: result.publicKey || "",
         });
-        setLocation(`/register?${params.toString()}`);
+        if (gammaReturnRoute) params.set("return", gammaReturnRoute);
+        const walletRegisterRoute =
+          isGamma
+            ? presentationRouteHref(`/register?${params.toString()}`, "gamma")
+            : `/register?${params.toString()}`;
+        setLocation(walletRegisterRoute);
       }
     } catch (err: unknown) {
       if (isWalletLoginTimeout(err)) {
@@ -193,11 +234,11 @@ export function Login() {
             <Intro>
               <Title>Welcome back</Title>
               <Copy>
-                Sign in once, then you will land on the desktop. New account
+                Sign in once, then you will land in {destinationLabel}. New account
                 welcomes and daily GM messages appear there when they are due.
               </Copy>
             <StatusStrip aria-live="polite">
-              <span>{loading || walletLoading ? "Opening desktop..." : "Desktop ready"}</span>
+              <span>{loading || walletLoading ? `Opening ${destinationLabel}...` : `${destinationLabel} ready`}</span>
               <StatusLamp $active={loading || walletLoading} aria-hidden="true" />
             </StatusStrip>
           </Intro>
@@ -238,7 +279,7 @@ export function Login() {
             <ButtonRow>
               <Button
                 type="button"
-                onClick={() => setLocation("/register")}
+                onClick={() => setLocation(registerRoute)}
               >
                 Create Account
               </Button>

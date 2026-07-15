@@ -8,7 +8,7 @@
  * graph. Reads use the user's configured RPC; writes are signed by the connected wallet. Per Owner
  * Directive #3 it indexes nothing: it reads the public chain + the open contract at runtime only.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { AppWindow } from "../../../components/layout/AppWindow";
 import { MOBILE } from "../../../global-styles";
@@ -25,6 +25,18 @@ import {
   type PastaContractAdapter,
 } from "@shared/pasta-protocol";
 import type { OwnershipRelationshipMetadata } from "@shared/pasta-protocol";
+import {
+  attachContract,
+  COLANDER_WORKSPACE_STORAGE_KEY,
+  createPastaProject,
+  isPastaProject,
+  PASTA_TOOL_STORIES,
+  parsePastaProjects,
+  pastaToolHandoffPath,
+  toolIdForContractKind,
+  type PastaToolId,
+  type PastaWorkspaceProject,
+} from "./colander-workspace";
 
 type OpenedContract = {
   address: string;
@@ -108,6 +120,10 @@ function hexToUtf8(hex: string): string {
   }
 }
 
+function utf8ToHex(value: string): string {
+  return Array.from(new TextEncoder().encode(value), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function parseJsonDataUri(uri: string): Record<string, unknown> | undefined {
   const match = uri.match(/^data:application\/json(;charset=[^;,]+)?(;base64)?,(.+)$/i);
   if (!match) return undefined;
@@ -161,6 +177,40 @@ export function ColanderApp() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("Colander ready");
   const [error, setError] = useState("");
+  const [projects, setProjects] = useState<PastaWorkspaceProject[]>(() => {
+    if (typeof window === "undefined") return [];
+    return parsePastaProjects(window.localStorage.getItem(COLANDER_WORKSPACE_STORAGE_KEY));
+  });
+  const [activeProjectId, setActiveProjectId] = useState<string>("");
+  const [projectTitle, setProjectTitle] = useState("");
+  const [selectedToolId, setSelectedToolId] = useState<PastaToolId>("spaghetti");
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const activeProject = useMemo(
+    () => projects.find((project) => project.id === activeProjectId) ?? projects[0] ?? null,
+    [activeProjectId, projects],
+  );
+
+  useEffect(() => {
+    window.localStorage.setItem(COLANDER_WORKSPACE_STORAGE_KEY, JSON.stringify(projects));
+    if (!activeProjectId && projects[0]) setActiveProjectId(projects[0].id);
+  }, [activeProjectId, projects]);
+
+  useEffect(() => {
+    const refreshProjects = () => {
+      const stored = parsePastaProjects(window.localStorage.getItem(COLANDER_WORKSPACE_STORAGE_KEY));
+      setProjects((current) => JSON.stringify(current) === JSON.stringify(stored) ? current : stored);
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === COLANDER_WORKSPACE_STORAGE_KEY) refreshProjects();
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", refreshProjects);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", refreshProjects);
+    };
+  }, []);
 
   const groupedActions = useMemo(() => {
     const groups = new Map<string, PastaContractAction[]>();
@@ -181,6 +231,70 @@ export function ColanderApp() {
       setStatus(acc ? `Connected ${short(acc.address)}` : "Wallet not connected");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Connect failed");
+    }
+  }
+
+  function createProject(toolId: PastaToolId = selectedToolId, launch = false) {
+    const project = createPastaProject(projectTitle, toolId, network);
+    setProjects((current) => [project, ...current]);
+    setActiveProjectId(project.id);
+    setProjectTitle("");
+    setStatus(`Created ${project.title}`);
+    logClientSystemEvent({
+      eventType: "colander.project_created",
+      message: `Colander created ${project.title}`,
+      metadata: { app: "Colander", projectId: project.id, toolId, network },
+    });
+    if (launch) launchTool(toolId, project);
+  }
+
+  function launchTool(toolId: PastaToolId, projectOverride?: PastaWorkspaceProject) {
+    const project = projectOverride ?? activeProject;
+    if (!project) {
+      createProject(toolId, true);
+      return;
+    }
+    const path = pastaToolHandoffPath(toolId, project, network);
+    logClientSystemEvent({
+      eventType: "colander.tool_launched",
+      message: `Colander opened ${toolId} for ${project.title}`,
+      metadata: { app: "Colander", projectId: project.id, toolId, path, network },
+    });
+    window.open(presentationRouteHref(path, presentation.host), "_blank", "noopener");
+  }
+
+  function exportProject() {
+    if (!activeProject) return;
+    const blob = new Blob([JSON.stringify(activeProject, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${activeProject.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "pasta-project"}.pasta.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    logClientSystemEvent({
+      eventType: "colander.project_exported",
+      message: `Colander exported ${activeProject.title}`,
+      metadata: { app: "Colander", projectId: activeProject.id },
+    });
+  }
+
+  async function importProject(file: File) {
+    setError("");
+    try {
+      const parsed = JSON.parse(await file.text()) as unknown;
+      if (!isPastaProject(parsed)) throw new Error("That file is not a Pasta Project manifest.");
+      const imported = { ...parsed, updatedAt: new Date().toISOString() };
+      setProjects((current) => [imported, ...current.filter((project) => project.id !== imported.id)]);
+      setActiveProjectId(imported.id);
+      setStatus(`Imported ${imported.title}`);
+      logClientSystemEvent({
+        eventType: "colander.project_imported",
+        message: `Colander imported ${imported.title}`,
+        metadata: { app: "Colander", projectId: imported.id, toolId: imported.toolId },
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not import project");
     }
   }
 
@@ -245,6 +359,16 @@ export function ColanderApp() {
         ? await readContract(await colanderGetTezos())
         : await withTezosRpcFallback((tezos) => readContract(tezos), { network, attemptTimeoutMs: 10_000 });
       setOpened(next);
+      setProjects((current) => {
+        const target = current.find((project) => project.id === activeProject?.id);
+        if (target) return current.map((project) => project.id === target.id ? attachContract(project, kt) : project);
+        const recovered = attachContract(
+          createPastaProject(`${next.adapter?.label ?? "Recovered"} ${short(kt)}`, toolIdForContractKind(next.adapter?.kind), network),
+          kt,
+        );
+        setActiveProjectId(recovered.id);
+        return [recovered, ...current];
+      });
       setStatus(next.adapter ? `Opened ${next.adapter.label}` : "Opened (unrecognized contract)");
       logClientSystemEvent({
         eventType: "colander.contract_opened",
@@ -326,6 +450,26 @@ export function ColanderApp() {
         return c.methodsObject.remove_curator(v.curator);
       case "set_sale_active":
         return c.methodsObject.set_sale_active({ token_id: num("token_id"), active: bool("active") });
+      case "set_sale":
+        return c.methodsObject.set_sale({
+          token_id: num("token_id"),
+          sale: {
+            active: bool("active"),
+            seller: me,
+            treasury: v.treasury?.trim() || me,
+            price: num("price"),
+            remaining: num("remaining"),
+            start: iso("start"),
+            end: iso("end"),
+          },
+        });
+      case "redeem":
+        return c.methodsObject.redeem({ token_id: num("token_id"), amount: num("amount") });
+      case "set_bundle_contents":
+        return c.methodsObject.set_bundle_contents({
+          token_id: num("token_id"),
+          contents_uri: utf8ToHex(v.contents_uri?.trim() || ""),
+        });
       case "open_claim":
         return c.methodsObject.open_claim({ active: bool("active"), start: iso("start"), end: iso("end") });
       case "claim":
@@ -375,6 +519,17 @@ export function ColanderApp() {
           metadata: { app: "Colander", contract: opened.address, action: action.id },
         });
       }
+      logClientSystemEvent({
+        eventType: "colander.contract_action_submitted",
+        message: `Colander ${action.id} confirmed on ${opened.address}`,
+        metadata: {
+          app: "Colander",
+          contract: opened.address,
+          action: action.id,
+          group: action.group,
+          network: getNetwork(),
+        },
+      });
       setActiveAction(null);
       setFormValues({});
       await openContract();
@@ -414,7 +569,11 @@ export function ColanderApp() {
             <BrandBadge aria-hidden="true">CL</BrandBadge>
             <BrandCopy>
               <AppTitle>Colander</AppTitle>
-              <Acronym>Pasta Protocol ownership, management &amp; discovery control panel.</Acronym>
+              <Acronym>
+                {presentation.host === "gamma"
+                  ? "Pasta Protocol ownership workspace for creating, publishing, selling, and managing work."
+                  : "Your local-first workspace for creating, publishing, selling, and managing Pasta Protocol work."}
+              </Acronym>
             </BrandCopy>
           </BrandRow>
           <WalletBox>
@@ -424,6 +583,98 @@ export function ColanderApp() {
           </WalletBox>
         </Header>
 
+        <Workspace data-testid="colander-workspace">
+          <WorkspaceHead>
+            <div>
+              <WorkspaceTitle>Project workspace</WorkspaceTitle>
+              <Muted>Choose what you want to make. Colander keeps the project; the matching Pasta app does the specialized work.</Muted>
+            </div>
+            <WorkspaceActions>
+              <Button type="button" onClick={() => importInputRef.current?.click()}>Import manifest</Button>
+              <Button type="button" onClick={exportProject} disabled={!activeProject}>Export active</Button>
+              <input
+                ref={importInputRef}
+                hidden
+                type="file"
+                accept="application/json,.json"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void importProject(file);
+                  event.target.value = "";
+                }}
+              />
+            </WorkspaceActions>
+          </WorkspaceHead>
+
+          <WorkspaceGrid>
+            <ProjectRail aria-label="Pasta projects">
+              <Field>
+                Project name
+                <Input
+                  data-testid="colander-project-title"
+                  value={projectTitle}
+                  onChange={(event) => setProjectTitle(event.target.value)}
+                  placeholder="My next release"
+                />
+              </Field>
+              <Field>
+                Starting workflow
+                <Input
+                  as="select"
+                  data-testid="colander-project-tool"
+                  value={selectedToolId}
+                  onChange={(event) => setSelectedToolId(event.target.value as PastaToolId)}
+                >
+                  {PASTA_TOOL_STORIES.map((tool) => <option key={tool.id} value={tool.id}>{tool.label}</option>)}
+                </Input>
+              </Field>
+              <PrimaryButton data-testid="colander-create-project" type="button" onClick={() => createProject()}>
+                Create project
+              </PrimaryButton>
+              <ProjectList>
+                {projects.length ? projects.map((project) => (
+                  <ProjectButton
+                    key={project.id}
+                    type="button"
+                    $active={project.id === activeProject?.id}
+                    onClick={() => setActiveProjectId(project.id)}
+                  >
+                    <strong>{project.title}</strong>
+                    <span>{project.stage} · {project.contracts.length} contract{project.contracts.length === 1 ? "" : "s"} · {project.artifacts.length} site export{project.artifacts.length === 1 ? "" : "s"}</span>
+                  </ProjectButton>
+                )) : <Muted>No projects yet. Start with the outcome you want.</Muted>}
+              </ProjectList>
+              {activeProject?.artifacts.length ? (
+                <ArtifactList aria-label="Active project site exports">
+                  <strong>Self-hosted sites</strong>
+                  {activeProject.artifacts.slice(0, 3).map((artifact) => (
+                    <span key={artifact.id}>{artifact.fileName} · {short(artifact.contract)}</span>
+                  ))}
+                </ArtifactList>
+              ) : null}
+            </ProjectRail>
+
+            <ToolGrid aria-label="Pasta workflow chooser">
+              {PASTA_TOOL_STORIES.map((tool) => (
+                <ToolCard key={tool.id} data-colander-tool={tool.id}>
+                  <ToolPhase>{tool.phase}</ToolPhase>
+                  <ActionName>{tool.label}</ActionName>
+                  <Muted>{tool.story}</Muted>
+                  <Button type="button" onClick={() => launchTool(tool.id)}>
+                    {activeProject ? `Open for ${activeProject.title}` : `Start with ${tool.label}`} ↗
+                  </Button>
+                </ToolCard>
+              ))}
+            </ToolGrid>
+          </WorkspaceGrid>
+        </Workspace>
+
+        <ContractHeading>
+          <div>
+            <WorkspaceTitle>Contracts</WorkspaceTitle>
+            <Muted>Recover or manage any Pasta contract directly from its KT1 address. Opened contracts attach to the active project.</Muted>
+          </div>
+        </ContractHeading>
         <Toolbar>
           <Field>
             Contract address
@@ -572,7 +823,7 @@ export default ColanderApp;
 
 const Shell = styled.div`
   display: grid;
-  grid-template-rows: auto auto minmax(320px, 1fr) auto;
+  grid-template-rows: auto auto auto auto minmax(320px, 1fr) auto;
   gap: 10px;
   height: 100%;
   min-height: 0;
@@ -599,6 +850,146 @@ const Shell = styled.div`
     text-decoration: underline;
     text-underline-offset: 3px;
   }
+`;
+
+const Workspace = styled.section`
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #fff);
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #11110f;
+    border: 1px solid rgba(0, 210, 255, 0.28);
+    border-radius: 6px;
+  }
+`;
+
+const WorkspaceHead = styled.div`
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+
+  ${MOBILE} {
+    flex-direction: column;
+  }
+`;
+
+const WorkspaceTitle = styled.h2`
+  margin: 0 0 3px;
+  font-size: 17px;
+`;
+
+const WorkspaceActions = styled.div`
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+`;
+
+const WorkspaceGrid = styled.div`
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 10px;
+
+  ${MOBILE} {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ProjectRail = styled.div`
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding-right: 10px;
+  border-right: 1px solid var(--wtf-app-border, #d2d2d2);
+
+  [data-colander-presentation-host="gamma"] & {
+    border-right-color: rgba(242, 234, 217, 0.16);
+  }
+
+  ${MOBILE} {
+    padding-right: 0;
+    border-right: 0;
+  }
+`;
+
+const ProjectList = styled.div`
+  display: grid;
+  gap: 5px;
+  max-height: 190px;
+  overflow: auto;
+`;
+
+const ArtifactList = styled.div`
+  display: grid;
+  gap: 4px;
+  padding-top: 7px;
+  border-top: 1px solid var(--wtf-app-border, #d2d2d2);
+  font-size: 12px;
+
+  span { color: var(--wtf-app-muted-text, #58616c); overflow-wrap: anywhere; }
+
+  [data-colander-presentation-host="gamma"] & {
+    border-top-color: rgba(242, 234, 217, 0.16);
+  }
+`;
+
+const ProjectButton = styled.button<{ $active: boolean }>`
+  display: grid;
+  gap: 2px;
+  padding: 7px;
+  text-align: left;
+  border: 1px solid ${(p) => p.$active ? "#0b5cad" : "var(--wtf-app-border, #aaa)"};
+  border-left-width: ${(p) => p.$active ? "4px" : "1px"};
+  background: ${(p) => p.$active ? "#edf5ff" : "#fff"};
+  color: #111;
+  cursor: pointer;
+
+  span { font-size: 12px; color: #58616c; }
+
+  [data-colander-presentation-host="gamma"] & {
+    background: ${(p) => p.$active ? "#102027" : "#070706"};
+    border-color: ${(p) => p.$active ? "#00d2ff" : "rgba(242, 234, 217, 0.18)"};
+    color: #f2ead9;
+  }
+`;
+
+const ToolGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+  gap: 8px;
+`;
+
+const ToolCard = styled.article`
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 5px;
+  min-height: 134px;
+  padding: 9px;
+  border: 1px solid var(--wtf-app-border, #b8c6d4);
+  background: #fbfdff;
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #070706;
+    border-color: rgba(242, 234, 217, 0.14);
+    border-radius: 6px;
+  }
+`;
+
+const ToolPhase = styled.span`
+  color: #0b5cad;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+
+  [data-colander-presentation-host="gamma"] & { color: #00d2ff; }
+`;
+
+const ContractHeading = styled.div`
+  padding: 2px 2px 0;
 `;
 
 const Header = styled.section.attrs(colanderRegionAttrs("header"))`

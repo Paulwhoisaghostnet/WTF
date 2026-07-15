@@ -1,10 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  CANONICAL_PRESENTATION_HOST,
   PRESENTATION_HOST_SESSION_KEY,
+  PRESENTATION_SHELL_POLICY,
   presentationRouteHref,
   rememberPresentationHost,
 } from "./presentation-shell";
+
+test("Classic is the sole production authority; Gamma and Beta have explicit subordinate roles", () => {
+  assert.equal(CANONICAL_PRESENTATION_HOST, "classic");
+  assert.equal(PRESENTATION_SHELL_POLICY.classic.role, "canonical-production");
+  assert.equal(PRESENTATION_SHELL_POLICY.gamma.role, "successor-preview");
+  assert.equal(PRESENTATION_SHELL_POLICY.beta.role, "frozen-research");
+  assert.equal(
+    Object.values(PRESENTATION_SHELL_POLICY).filter((entry) => entry.role === "canonical-production").length,
+    1,
+  );
+});
 
 function withWindow<T>(href: string, run: () => T): T {
   const url = new URL(href);

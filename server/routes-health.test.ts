@@ -24,7 +24,7 @@ async function listen(app: express.Express): Promise<{
   };
 }
 
-test("disk health reports crit once cache usage reaches the configured budget", async (t) => {
+test("ops-facing disk health is not public", async (t) => {
   const cacheDir = await mkdtemp(path.join(tmpdir(), "wtf-health-cache-test-"));
   t.after(async () => {
     await rm(cacheDir, { recursive: true, force: true });
@@ -38,6 +38,10 @@ test("disk health reports crit once cache usage reaches the configured budget", 
 
   const { registerRoutes } = await import("./routes");
   const app = express();
+  app.use((req, _res, next) => {
+    (req as any).isAuthenticated = () => false;
+    next();
+  });
   registerRoutes(app);
   const server = await listen(app);
   t.after(server.close);
@@ -45,7 +49,45 @@ test("disk health reports crit once cache usage reaches the configured budget", 
   const response = await fetch(`${server.baseUrl}/api/health/disk`);
   const body = await response.json();
 
+  assert.equal(response.status, 401);
+  assert.equal(body.error, "Not authenticated");
+});
+
+test("public liveness is minimal and does not expose runtime, database, chain, or job diagnostics", async (t) => {
+  process.env.DATABASE_URL ||= "postgresql://wtf:wtf@127.0.0.1:1/wtf";
+  const { registerRoutes } = await import("./routes");
+  const app = express();
+  app.use((req, _res, next) => {
+    (req as any).isAuthenticated = () => false;
+    next();
+  });
+  registerRoutes(app);
+  const server = await listen(app);
+  t.after(server.close);
+
+  const response = await fetch(`${server.baseUrl}/api/health`);
+  const body = await response.json();
+
   assert.equal(response.status, 200);
-  assert.equal(body.status, "crit", JSON.stringify(body));
-  assert.equal(body.ok, false);
+  assert.equal(body.ok, true);
+  assert.equal(body.status, "alive");
+  for (const privateField of ["runtime", "db", "chain", "jobs", "uptime"]) {
+    assert.equal(privateField in body, false, `public liveness exposed ${privateField}`);
+  }
+});
+
+test("detailed health diagnostics require authentication", async (t) => {
+  process.env.DATABASE_URL ||= "postgresql://wtf:wtf@127.0.0.1:1/wtf";
+  const { registerRoutes } = await import("./routes");
+  const app = express();
+  app.use((req, _res, next) => {
+    (req as any).isAuthenticated = () => false;
+    next();
+  });
+  registerRoutes(app);
+  const server = await listen(app);
+  t.after(server.close);
+
+  const response = await fetch(`${server.baseUrl}/api/health/diagnostics`);
+  assert.equal(response.status, 401);
 });

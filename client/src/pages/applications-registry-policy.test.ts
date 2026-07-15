@@ -45,8 +45,11 @@ test("Applications is a first-class registry-gated desktop app", () => {
     [...DESKTOP_APPS, appKey].map((key) => [key, true])
   ) as DesktopAppAvailability;
   const icon = buildDesktopIconDefs(apps, { appGateBypass: true }).find((def) => def.key === appKey);
-  assert(icon, "Applications must have a native desktop icon");
-  assert.equal(icon?.openPath, "/applications");
+  assert.equal(
+    icon,
+    undefined,
+    "App-store Applications should be pinned as a user shortcut, not shipped as a native default icon",
+  );
   assert(
     (DESKTOP_ICON_LAYOUT_KEYS as readonly string[]).includes(appKey),
     "Applications icon position must persist"

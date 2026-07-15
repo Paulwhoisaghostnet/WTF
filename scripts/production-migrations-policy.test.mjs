@@ -21,7 +21,7 @@ test("LAW.TT1/10 production migrations fail closed on SQL errors", () => {
   assert.doesNotMatch(migrations, /psql_file "\$sql_file"\s*\|\|\s*true/);
 });
 
-test("LAW.TT1/10 production migrations refuse implicit fresh-db bootstrap", () => {
+test("LAW.TT1/10 production migrations refuse every implicit empty-ledger bootstrap", () => {
   assert.match(
     migrations,
     /fresh database detected with no production ledger; refusing implicit bootstrap/
@@ -32,8 +32,20 @@ test("LAW.TT1/10 production migrations refuse implicit fresh-db bootstrap", () =
   );
   assert.match(
     migrations,
-    /if \[\[ "\$ledger_count" == "0" && "\$schema_present" != "t" \]\]; then[\s\S]*exit 1[\s\S]*fi/
+    /if \[\[ "\$ledger_count" == "0" \]\]; then[\s\S]*exit 1[\s\S]*fi/
   );
+  assert.doesNotMatch(migrations, /bootstrap-existing-db/);
+  assert.doesNotMatch(migrations, /schema_present/);
+});
+
+test("LAW.TT1/10 applied migration filenames are bound to immutable checksums", () => {
+  assert.match(
+    migrations,
+    /SELECT sha256 FROM \$\{LEDGER_TABLE\} WHERE filename = '\$\{safe_filename\}' LIMIT 1;/
+  );
+  assert.match(migrations, /if \[\[ "\$stored_sha256" != "\$sha256" \]\]; then/);
+  assert.match(migrations, /checksum mismatch for applied migration \$\{filename\}/);
+  assert.doesNotMatch(migrations, /ON CONFLICT \(filename\) DO UPDATE/);
 });
 
 test("LAW.TT1/10 migration ledger records only after the SQL file applies", () => {

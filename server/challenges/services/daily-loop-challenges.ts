@@ -1,6 +1,11 @@
 import { sql } from "drizzle-orm";
 import { challengeAutomationDefinitions } from "@shared/schema";
-import type { ChallengeRewardAction, ConditionTree, SystemEventType } from "../events/types";
+import type {
+  ChallengeRewardAction,
+  ConditionTree,
+  EventConditionFilters,
+  SystemEventType,
+} from "../events/types";
 
 export type CanonicalDailyLoop = {
   seedKey: string;
@@ -10,6 +15,8 @@ export type CanonicalDailyLoop = {
   actionLabel: string;
   order: number;
   category: "social" | "creative";
+  requiresClaim?: boolean;
+  activeWeekdaysUtc?: number[];
   conditionTree: ConditionTree;
   rewardActions: ChallengeRewardAction[];
 };
@@ -24,7 +31,11 @@ function eventLoop(input: {
   category: CanonicalDailyLoop["category"];
   eventType: SystemEventType;
   triggerKey?: string;
+  filters?: EventConditionFilters;
   threshold?: number;
+  additionalConditions?: ConditionTree[];
+  requiresClaim?: boolean;
+  activeWeekdaysUtc?: number[];
   xp: number;
   wtf: number;
 }): CanonicalDailyLoop {
@@ -40,7 +51,9 @@ function eventLoop(input: {
         eventTypes: [input.eventType],
         comparator: input.threshold && input.threshold > 1 ? "count_gte" : "exists",
         threshold: input.threshold,
+        filters: input.filters,
       },
+      ...(input.additionalConditions ?? []),
       {
         id: `${input.seedKey}:daily-dedupe`,
         type: "predicate",
@@ -57,6 +70,8 @@ function eventLoop(input: {
     actionLabel: input.actionLabel,
     order: input.order,
     category: input.category,
+    requiresClaim: input.requiresClaim,
+    activeWeekdaysUtc: input.activeWeekdaysUtc,
     conditionTree,
     rewardActions: [
       {
@@ -196,7 +211,37 @@ export const CANONICAL_DAILY_LOOPS: CanonicalDailyLoop[] = [
     xp: 20,
     wtf: 2,
   }),
+  eventLoop({
+    seedKey: "mint_art_monday_v1",
+    title: "Mint Art Monday!",
+    description: "Mint art to a Tezos wallet linked to your wtfOS account on Monday.",
+    route: "/mint-portal",
+    actionLabel: "Mint art",
+    order: 11,
+    category: "creative",
+    eventType: "blockchain.tezos.token_mint",
+    triggerKey: "blockchain.tezos.activity",
+    filters: { sourceModule: "wallet-events" },
+    additionalConditions: [
+      {
+        id: "mint_art_monday_v1:monday",
+        type: "predicate",
+        predicateKey: "time.utc_weekday",
+        params: { weekdays: [1], label: "Monday" },
+      },
+    ],
+    requiresClaim: false,
+    activeWeekdaysUtc: [1],
+    xp: 40,
+    wtf: 5,
+  }),
 ];
+
+function activeWeekdaysForMetadata(loop: CanonicalDailyLoop) {
+  return Array.isArray(loop.activeWeekdaysUtc) && loop.activeWeekdaysUtc.length > 0
+    ? { activeWeekdaysUtc: loop.activeWeekdaysUtc }
+    : {};
+}
 
 export async function ensureCanonicalDailyLoopChallenges(createdBy?: number | null) {
   const { db } = await import("../../db");
@@ -207,13 +252,18 @@ export async function ensureCanonicalDailyLoopChallenges(createdBy?: number | nu
     const metadata = {
       seedKey: loop.seedKey,
       canonicalDailyLoop: true,
-      requiresClaim: true,
+      requiresClaim: loop.requiresClaim ?? true,
       resetAtUtc: "00:00",
       route: loop.route,
       actionLabel: loop.actionLabel,
       order: loop.order,
       category: loop.category,
+      ...activeWeekdaysForMetadata(loop),
     };
+    const rewardSummary =
+      loop.requiresClaim === false
+        ? `${loop.description} WTF OS verifies the linked-wallet mint and distributes the reward automatically for the current UTC day.`
+        : `${loop.description} Claim the reward after WTF OS verifies it for the current UTC day.`;
     const payload = {
       title: loop.title,
       description: loop.description,
@@ -222,7 +272,7 @@ export async function ensureCanonicalDailyLoopChallenges(createdBy?: number | nu
       rewardActions: loop.rewardActions as any,
       repeatability: { mode: "daily" },
       perUserCompletionLimit: 1,
-      summary: `${loop.description} Claim the reward after WTF OS verifies it for the current UTC day.`,
+      summary: rewardSummary,
       metadata,
       updatedAt: new Date(),
     };

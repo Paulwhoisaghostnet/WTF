@@ -10,7 +10,7 @@ const source = readFileSync("scripts/pasta-protocol/live-readiness-gate.mjs", "u
 function runGateAgainstHealth(health, env = {}) {
   return new Promise((resolve, reject) => {
     const server = createServer((request, response) => {
-      if (request.url === "/api/health") {
+      if (request.url === "/api/health/ready") {
         response.writeHead(200, { "content-type": "application/json" });
         response.end(JSON.stringify(health));
         return;
@@ -109,7 +109,7 @@ test("Pasta live-readiness gate proves live health and static Pasta bundle marke
 
 test("Pasta live-readiness gate blocks placeholder production commit markers", async () => {
   const result = await runGateAgainstHealth({
-    status: "ok",
+    status: "ready",
     ok: true,
     version: { nodeEnv: "production", commitRef: "dev" },
     chain: { network: "mainnet" },
@@ -124,7 +124,7 @@ test("Pasta live-readiness gate blocks placeholder production commit markers", a
 test("Pasta live-readiness gate can enforce an expected live commit when supplied", async () => {
   const result = await runGateAgainstHealth(
     {
-      status: "ok",
+      status: "ready",
       ok: true,
       version: { nodeEnv: "production", commitRef: "1234567890abcdef" },
       chain: { network: "mainnet" },

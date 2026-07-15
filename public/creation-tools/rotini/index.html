@@ -112,6 +112,10 @@
       <section class="pp-card pp-card-wide">
         <h2>6 · Publish</h2>
         <div class="pp-row">
+          <label><input id="saleEnabled" type="checkbox" checked /> List every generated token for direct sale</label>
+          <label>Price per token (tez) <input id="salePrice" type="number" min="0" step="0.000001" value="1" /></label>
+        </div>
+        <div class="pp-row">
           <button id="btnPublish" type="button" class="pp-primary">Publish generative collection</button>
           <button id="btnExportPkg" type="button">Export CH-EASE collection package</button>
         </div>
@@ -120,6 +124,12 @@
           mints one token per edition via the standard Pasta FA2; large drops can be heavy — start small.
         </p>
         <pre id="log" class="pp-log" aria-live="polite"></pre>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>7 · Self-hosted generative gallery</h2>
+        <p class="pp-note">Export a collector-facing page that reads the selected token's direct-sale state and lets a buyer purchase from the creator.</p>
+        <div class="pp-row"><label>Featured token id <input id="exportTokenId" type="number" min="0" value="0" /></label><button id="btnExportSite" type="button">Download gallery site</button><span id="exportSiteStatus" class="pp-note" role="status" aria-live="polite"></span></div>
       </section>
     </main>
 
@@ -149,6 +159,8 @@
     <script src="vendor/octez-connect.js"></script>
     <script src="js/octez-wallet.js"></script>
     <script src="js/common.js"></script>
+    <script>window.PASTA_SITE_EXPORT = { app: "rotini", label: "Rotini", titleInput: "collName", descriptionInput: "collDesc", contractInput: "existingKt", tokenInput: "exportTokenId" };</script>
+    <script src="js/site-bundle.js"></script>
     <script type="module" src="js/studio.js"></script>
   </body>
 </html>

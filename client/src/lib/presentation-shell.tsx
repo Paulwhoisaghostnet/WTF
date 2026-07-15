@@ -2,6 +2,29 @@ import { createContext, useContext, type ReactNode } from "react";
 
 export type PresentationHost = "classic" | "beta" | "gamma";
 
+export const CANONICAL_PRESENTATION_HOST = "classic" as const;
+
+export const PRESENTATION_SHELL_POLICY = {
+  classic: {
+    role: "canonical-production",
+    evolution: "active",
+    route: "/",
+  },
+  gamma: {
+    role: "successor-preview",
+    evolution: "compatibility-and-convergence-only",
+    route: "/gamma",
+  },
+  beta: {
+    role: "frozen-research",
+    evolution: "critical-fixes-only",
+    route: "/beta",
+  },
+} as const satisfies Record<
+  PresentationHost,
+  { role: string; evolution: string; route: string }
+>;
+
 export const PRESENTATION_HOST_SESSION_KEY = "wtfos:presentation-host";
 
 export interface PresentationShellContextValue {
@@ -9,7 +32,7 @@ export interface PresentationShellContextValue {
 }
 
 const PresentationShellContext = createContext<PresentationShellContextValue>({
-  host: "classic",
+  host: CANONICAL_PRESENTATION_HOST,
 });
 
 export function PresentationShellProvider({

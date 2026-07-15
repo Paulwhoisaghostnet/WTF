@@ -30,6 +30,7 @@ const MD = (() => {
   const TEZOS_MINIMAL_MUTEZ_PER_BYTE = 1;
   const TEZOS_MINIMAL_MUTEZ_PER_GAS_UNIT = 0.1;
   const DEFAULT_OPERATION_SIZE_BYTES = 1800;
+  const DEFAULT_RPC_READ_TIMEOUT_MS = 5_000;
 
   const ADDRESS_RE = /^(tz1|tz2|tz3|tz4|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
   const isAddress = (s) => ADDRESS_RE.test(String(s || "").trim());
@@ -123,7 +124,7 @@ const MD = (() => {
     if (!expected) return; // custom aliases stay opt-in for exploratory dev RPCs
     let actual;
     try {
-      actual = await withRpcFallback(() => getToolkit().rpc.getChainId());
+      actual = await withRpcReadFallback(() => getToolkit().rpc.getChainId());
     } catch (e) {
       if (!strict) return; // re-checked strictly before every operation
       throw new Error(
@@ -188,6 +189,28 @@ const MD = (() => {
       }
     }
     throw lastErr;
+  }
+
+  function withRpcReadDeadline(fn, timeoutMs) {
+    let timer;
+    return Promise.race([
+      Promise.resolve().then(fn),
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`RPC read timeout after ${timeoutMs}ms`)),
+          timeoutMs
+        );
+      }),
+    ]).finally(() => clearTimeout(timer));
+  }
+
+  async function withRpcReadFallback(fn, options) {
+    const requestedTimeout = Number(options && options.timeoutMs);
+    const timeoutMs =
+      Number.isFinite(requestedTimeout) && requestedTimeout > 0
+        ? requestedTimeout
+        : DEFAULT_RPC_READ_TIMEOUT_MS;
+    return withRpcFallback(() => withRpcReadDeadline(fn, timeoutMs));
   }
 
   function accountNeedsNetworkSync(acc) {
@@ -703,7 +726,7 @@ const MD = (() => {
   async function getBalanceMutez(address) {
     const target = address || activeAccount;
     if (!target) return null;
-    const balance = await getToolkit().tz.getBalance(target);
+    const balance = await withRpcReadFallback(() => getToolkit().tz.getBalance(target));
     if (balance && typeof balance.toNumber === "function") return balance.toNumber();
     return Number(balance);
   }
@@ -988,6 +1011,7 @@ const MD = (() => {
     objktUrl,
     fetchContractStatus,
     withRpcFallback,
+    withRpcReadFallback,
     estimateWalletOp,
     sendWalletOp,
     fetchOwnedTokenIds,

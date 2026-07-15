@@ -32,6 +32,9 @@ async function installSpaghettiPublishHarness(frame) {
           mint(payload) {
             return { __entrypoint: "mint", payload };
           },
+          set_sale(payload) {
+            return { __entrypoint: "set_sale", payload };
+          },
         },
       };
 
@@ -100,7 +103,8 @@ async function installSpaghettiPublishHarness(frame) {
             return fakeContract;
           },
           batch() {
-            const kind = operations.some((op) => op.kind === "create_batch") ? "mint_batch" : "create_batch";
+            const batchCount = operations.filter((op) => op.kind.endsWith("_batch")).length;
+            const kind = ["create_batch", "mint_batch", "sale_batch"][batchCount] || "extra_batch";
             return makeBatch(kind);
           },
         },
@@ -130,6 +134,138 @@ async function installSpaghettiPublishHarness(frame) {
 }
 
 test.describe("interaction inventory — Pasta Protocol publishing", () => {
+  test("all newer Pasta publishers export a self-hosted site and return it to Colander", async ({ page, request }) => {
+    await setHarnessRole(request, "admin");
+    const apps = [
+      { id: "spaghetti", label: "Spaghetti", contract: "#existingKt", token: "#exportTokenId" },
+      { id: "gnocchi", label: "Gnocchi", contract: "#mintKt", token: "#mintTokenId" },
+      { id: "ravioli", label: "Ravioli", contract: "#opKt", token: "#opTokenId" },
+      { id: "rotini", label: "Rotini", contract: "#existingKt", token: "#exportTokenId" },
+      { id: "penne", label: "Penne", contract: "#contractKt", token: "#claimTokenId" },
+      { id: "lasagna", label: "Lasagna", contract: "#contractKt" },
+    ];
+
+    await page.goto("/tools/colander", { waitUntil: "domcontentloaded" });
+    for (const app of apps) {
+      const projectId = `site-proof-${app.id}`;
+      await page.evaluate(
+        ({ id, title, toolId }) => {
+          const now = new Date().toISOString();
+          localStorage.setItem("wtfos.pasta.colander.workspace.v1", JSON.stringify([{ schema: "pasta-project@1", id, title, toolId, stage: "deployed", network: "shadownet", contracts: [], artifacts: [], createdAt: now, updatedAt: now }]));
+          localStorage.setItem("wtf:network", "shadownet");
+        },
+        { id: projectId, title: `${app.label} site proof`, toolId: app.id },
+      );
+
+      await page.goto(`/tools/${app.id}?handoff=colander-workspace&projectId=${projectId}&projectTitle=${encodeURIComponent(`${app.label} site proof`)}&network=shadownet&kind=${app.id}&contract=${PUPPET_COLLECTION}`, { waitUntil: "domcontentloaded" });
+      const frame = page.frameLocator(`iframe[title="${app.label}"]`);
+      await expect(frame.locator(app.contract)).toHaveValue(PUPPET_COLLECTION);
+      if (app.token) await frame.locator(app.token).fill("0");
+
+      const downloadPromise = page.waitForEvent("download");
+      await frame.locator("#btnExportSite").click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toBe(`${app.id}-site.zip`);
+      const stream = await download.createReadStream();
+      const firstChunk = await new Promise((resolve, reject) => {
+        stream.once("data", resolve);
+        stream.once("error", reject);
+      });
+      expect(Buffer.from(firstChunk).subarray(0, 2).toString()).toBe("PK");
+      await expect(frame.locator("#exportSiteStatus")).toContainText("Downloaded site zip");
+
+      const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("wtfos.pasta.colander.workspace.v1") || "[]"));
+      expect(stored[0].stage).toBe("published");
+      expect(stored[0].artifacts).toEqual([
+        expect.objectContaining({ kind: "self_hosted_site", toolId: app.id, contract: PUPPET_COLLECTION, fileName: `${app.id}-site.zip` }),
+      ]);
+    }
+  });
+
+  test("exported buy, mint, claim, redeem, and exhibition pages execute their public contract stories", async ({ page }) => {
+    const interactiveApps = [
+      { id: "spaghetti", action: "Buy editions", entrypoint: "buy", chainState: "Primary sale open" },
+      { id: "rotini", action: "Buy editions", entrypoint: "buy", chainState: "Primary sale open" },
+      { id: "gnocchi", action: "Mint editions", entrypoint: "open_mint", chainState: "Minting open" },
+      { id: "penne", action: "Claim allocation", entrypoint: "claim", chainState: "Claim open" },
+      { id: "ravioli", mode: "buy", action: "Buy bundle editions", entrypoint: "buy", chainState: "Primary sale open" },
+      { id: "ravioli", mode: "redeem", action: "Redeem editions", entrypoint: "redeem", chainState: "Redeemable" },
+    ];
+    const metadataUri = `data:application/json,${encodeURIComponent(JSON.stringify({ name: "Harness Exhibition", statement: "A self-hosted exhibition proof." }))}`;
+    const metadataHex = Array.from(metadataUri).map((char) => char.charCodeAt(0).toString(16).padStart(2, "0")).join("");
+
+    await page.route("**/creation-tools/*/pasta.config.js", async (route) => {
+      const app = new URL(route.request().url()).pathname.split("/")[2];
+      await route.fulfill({
+        contentType: "text/javascript",
+        body: `window.PASTA_SITE_CONFIG=${JSON.stringify({ app, label: app[0].toUpperCase() + app.slice(1), title: `${app} public proof`, description: "Independent collector page.", contract: PUPPET_COLLECTION, tokenId: 0, network: "shadownet" })};`,
+      });
+    });
+    await page.route("**/creation-tools/*/js/site.js", async (route) => {
+      const app = new URL(route.request().url()).pathname.split("/")[2];
+      const response = await route.fetch();
+      const runtime = await response.text();
+      const harness = `
+        (() => {
+          const operations = [];
+          const operation = (entrypoint, payload, options) => ({ async confirmation(){ operations.push({ entrypoint, payload, options, confirmed: true }); return 1; } });
+          const methodsObject = {
+            open_mint(payload){ return { async send(options){ operations.push({ entrypoint: "open_mint", payload, options }); return operation("open_mint", payload, options); } }; },
+            claim(payload){ return { async send(){ operations.push({ entrypoint: "claim", payload }); return operation("claim", payload); } }; },
+            redeem(payload){ return { async send(){ operations.push({ entrypoint: "redeem", payload }); return operation("redeem", payload); } }; },
+            buy(payload){ return { async send(options){ operations.push({ entrypoint: "buy", payload, options }); return operation("buy", payload, options); } }; }
+          };
+          const fixedSale = { active:true, price:1250000, remaining:3, seller:"${PUPPET_ACCOUNT}", treasury:"${PUPPET_ACCOUNT}" };
+          const storageByApp = {
+            spaghetti: { sales:new Map([["0", fixedSale]]), token_metadata:new Map() },
+            rotini: { sales:new Map([["0", fixedSale]]), token_metadata:new Map() },
+            gnocchi: { sales: new Map([["0", { active:true, base_price:1000000, increment:500000, step_size:2, max_supply:100 }]]), total_supply:new Map([["0", 2]]) },
+            penne: { claim_active:true, claim_start:null, claim_end:null },
+            ravioli: { bundles:new Map([["0", { redeemable:true, mystery:false, item_count:3, contents_uri:"697066733a2f2f62616679" }]]), sales: sessionStorage.getItem("pasta.ravioli.mode") === "buy" ? new Map([["0", fixedSale]]) : new Map() },
+            lasagna: { current_revision:0, revision_count:1, revisions:new Map([["0", { metadata_uri:"${metadataHex}", items:[{contract:"${PUPPET_COLLECTION}",token_id:0},{contract:"${PUPPET_COLLECTION}",token_id:1}] }]]) }
+          };
+          const fakeContract = { async storage(){ return storageByApp["${app}"]; }, methodsObject };
+          const toolkit = { contract:{ async at(){ return fakeContract; } }, wallet:{ async at(){ return fakeContract; } } };
+          window.__pastaPublicSiteProof = { operations };
+          MD.setupToolkit = () => toolkit;
+          MD.getToolkit = () => toolkit;
+          MD.connectWallet = async () => "${PUPPET_ACCOUNT}";
+          MD.assertOperationSafety = async () => "${PUPPET_ACCOUNT}";
+        })();
+      `;
+      await route.fulfill({ response, body: `${harness}\n${runtime}` });
+    });
+
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    for (const app of interactiveApps) {
+      await page.evaluate((mode) => mode ? sessionStorage.setItem("pasta.ravioli.mode", mode) : sessionStorage.removeItem("pasta.ravioli.mode"), app.mode || "");
+      await page.goto(`/creation-tools/${app.id}/site.html`, { waitUntil: "domcontentloaded" });
+      await expect(page.locator("#chainState")).toHaveText(app.chainState);
+      await expect(page.locator("#submit")).toHaveText(app.action);
+      if (app.id === "ravioli" && app.mode === "buy") {
+        await expect(page.locator("#secondarySubmit")).toHaveText("Redeem held editions");
+        await expect(page.locator("#secondarySubmit")).toBeVisible();
+      }
+      await page.locator("#connect").click();
+      if (app.id === "spaghetti") {
+        await page.locator("#amount").fill("4");
+        await page.locator("#submit").click();
+        await expect(page.locator("#status")).toHaveText("Only 3 editions remain.");
+        expect(await page.evaluate(() => window.__pastaPublicSiteProof.operations)).toHaveLength(0);
+        await page.locator("#amount").fill("1");
+      }
+      await page.locator("#submit").click();
+      await expect(page.locator("#status")).toHaveText("Confirmed on Tezos. On-chain state refreshed.");
+      const operations = await page.evaluate(() => window.__pastaPublicSiteProof.operations);
+      expect(operations).toEqual(expect.arrayContaining([expect.objectContaining({ entrypoint: app.entrypoint })]));
+    }
+
+    await page.goto("/creation-tools/lasagna/site.html", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#chainState")).toHaveText("1 revisions · 2 works shown");
+    await expect(page.locator("#submit")).toBeHidden();
+    await expect(page.locator("#actionTitle")).toHaveText("On-chain exhibition");
+  });
+
   test("imports CH-EASE handoff into Spaghetti and proves Shadownet publish choreography", async ({
     page,
     request,
@@ -229,6 +365,14 @@ test.describe("interaction inventory — Pasta Protocol publishing", () => {
         payloads: [
           { to_: PUPPET_ACCOUNT, token_id: 0, amount: 1 },
           { to_: PUPPET_ACCOUNT, token_id: 1, amount: 1 },
+        ],
+      },
+      {
+        kind: "sale_batch",
+        entrypoints: ["set_sale", "set_sale"],
+        payloads: [
+          { token_id: 0, sale: { active: true, seller: PUPPET_ACCOUNT, treasury: PUPPET_ACCOUNT, price: 1_000_000, remaining: 1, start: null, end: null } },
+          { token_id: 1, sale: { active: true, seller: PUPPET_ACCOUNT, treasury: PUPPET_ACCOUNT, price: 1_000_000, remaining: 1, start: null, end: null } },
         ],
       },
     ]);

@@ -276,6 +276,7 @@ async function originateCollection(provider, me) {
     operators: new M(),
     token_metadata: new M(),
     total_supply: new M(),
+    sales: new M(),
     minters: new M(),
     next_token_id: 0,
   };
@@ -360,8 +361,20 @@ async function publish() {
     );
     const mintOp = await mintBatch.send();
     await mintOp.confirmation();
+    if ($("saleEnabled").checked) {
+      const priceMutez = Math.round(Math.max(0, Number($("salePrice").value) || 0) * 1_000_000);
+      log(`opening ${prepared.length} direct sale(s) (sign in wallet)…`);
+      const saleBatch = tezos.wallet.batch();
+      prepared.forEach((_info, i) => saleBatch.withContractCall(contract.methodsObject.set_sale({
+        token_id: startId + i,
+        sale: { active: true, seller: me, treasury: me, price: priceMutez, remaining: 1, start: null, end: null },
+      })));
+      const saleOp = await saleBatch.send();
+      await saleOp.confirmation();
+    }
     log("generative collection published ✓");
     if (targetMode() === "new_collection") {
+      MD.recordColanderContract(kt, "rotini");
       MD.logEvent("rotini.collection_deployed", "Rotini deployed a generative collection", {
         contract: kt,
         network: state.network,
@@ -373,6 +386,8 @@ async function publish() {
       tokenCount: prepared.length,
       startTokenId: startId,
     });
+    $("existingKt").value = kt;
+    $("exportTokenId").value = String(startId);
     MD.notify(`Published ${prepared.length} generative token(s) to ${kt}.`, "success");
   } catch (e) {
     log("publish failed: " + (e.message || JSON.stringify(e)), "err");
@@ -463,6 +478,14 @@ function wire() {
   addLayer("Foreground");
   const handoff = MD.consumeCheaseHandoff("rotini");
   if (handoff) importCheasePackage(handoff, "handoff");
+  const routeHandoff = MD.readRouteHandoff();
+  if (routeHandoff?.contract) {
+    $("existingKt").value = routeHandoff.contract;
+    document.querySelector('input[name="target"][value="existing_contract"]').checked = true;
+    $("newCollectionFields").hidden = true;
+    $("existingContractFields").hidden = false;
+  }
+  if (routeHandoff?.projectTitle && !$("collName").value) $("collName").value = routeHandoff.projectTitle;
 }
 
 wire();

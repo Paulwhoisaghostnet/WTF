@@ -28,6 +28,8 @@ test("Colander exposes Gamma presentation ownership and route-preserving handoff
   assert.match(colanderSource, /const presentation = usePresentationShell\(\)/);
   assert.match(colanderSource, /data-colander-surface="control-panel"/);
   assert.match(colanderSource, /data-colander-presentation-host=\{presentation\.host\}/);
+  assert.match(colanderSource, /presentation\.host === "gamma"/);
+  assert.match(colanderSource, /Pasta Protocol ownership workspace/);
   assert.match(colanderSource, /window\.open\(presentationRouteHref\(path,\s*presentation\.host\),\s*"_blank",\s*"noopener"\)/);
 });
 

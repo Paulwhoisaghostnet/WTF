@@ -137,31 +137,29 @@ describe("WTF ecosystem wiring", () => {
     assert.match(wMessageRoutes, /requireOwnedWMediaId/);
   });
 
-  it("keeps W social settings connected to normalized social events", () => {
+  it("keeps read-only W social capability diagnostics connected", () => {
     const wSocialRoutes = readFileSync("server/features/w/social-routes.ts", "utf8");
     const wMessageRoutes = readFileSync("server/features/w/message-routes.ts", "utf8");
 
-    for (const eventType of [
-      "w.follow.created",
-      "w.spaces.viewed",
-      "w.capabilities.viewed",
-    ]) {
-      assert.match(wSocialRoutes, new RegExp(`eventType: "${eventType.replaceAll(".", "\\.")}"`));
-    }
+    assert.match(wSocialRoutes, /eventType: "w\.capabilities\.viewed"/);
+    assert.doesNotMatch(wSocialRoutes, /eventType: "w\.follow\.created"/);
+    assert.doesNotMatch(wSocialRoutes, /eventType: "w\.spaces\.viewed"/);
+    assert.match(wSocialRoutes, /router\.post\("\/api\/w\/follows"[\s\S]*?res\.status\(410\)/);
+    assert.match(wSocialRoutes, /router\.get\("\/api\/w\/spaces"[\s\S]*?res\.status\(410\)/);
     assert.match(wMessageRoutes, /eventType: "w\.diagnostics\.viewed"/);
   });
 
-  it("keeps W chats and DMs connected to normalized social events", () => {
+  it("keeps W groupchat and personal DMs fail-closed while preserving read events", () => {
     const wMessageRoutes = readFileSync("server/features/w/message-routes.ts", "utf8");
 
     for (const eventType of [
       "w.groupchat.viewed",
-      "w.groupchat.message_sent",
       "w.admin.stream_rule.updated",
     ]) {
       assert.match(wMessageRoutes, new RegExp(`eventType: "${eventType.replaceAll(".", "\\.")}"`));
     }
-    assert.match(wMessageRoutes, /policy: "w_groupchat_only"/);
+    assert.doesNotMatch(wMessageRoutes, /eventType: "w\.groupchat\.message_sent"/);
+    assert.match(wMessageRoutes, /router\.post\("\/api\/w\/groupchat\/messages"[\s\S]*?res\.status\(410\)/);
     assert.match(wMessageRoutes, /router\.get\("\/api\/w\/user-dms"/);
     assert.match(wMessageRoutes, /router\.post\("\/api\/w\/direct-messages"/);
   });

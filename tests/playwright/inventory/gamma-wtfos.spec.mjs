@@ -60,6 +60,53 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(shell).toContainText("Tezos arcade operating floor");
     await expect(shell).not.toContainText("First-Minute Wayfinder");
     await expect(shell).not.toContainText("DISCOVERY_REPORT");
+    const bootAccount = page.locator("[data-gamma-boot-account]");
+    await expect(bootAccount).toBeVisible();
+    await expect(bootAccount).toHaveAttribute("data-gamma-boot-account-state", "guest");
+    await expect(bootAccount).toHaveAttribute("data-gamma-boot-resume-target", "/dashboard");
+    await expect(bootAccount).toHaveAttribute("data-gamma-launch", "/login?return=%2Fdashboard");
+    await expect(bootAccount).toContainText("Guest");
+    await expect(bootAccount).toContainText("Dashboard");
+    await expect(page.locator("[data-gamma-session-checklist]")).toBeVisible();
+    await expect(page.locator("[data-gamma-session-check]")).toHaveCount(3);
+    await expect(page.locator('[data-gamma-session-check="apps"]')).toHaveAttribute("data-gamma-launch", "/wtfiam?category=apps");
+    await expect(page.locator('[data-gamma-session-check="daily"]')).toHaveAttribute("data-gamma-launch", "/side-quests");
+    await expect(page.locator('[data-gamma-session-check="people"]')).toHaveAttribute("data-gamma-launch", "/w");
+    await expect(page.locator("[data-gamma-session-console]")).toBeVisible();
+    await expect(page.locator("[data-gamma-session-console]")).toHaveAttribute(
+      "data-gamma-session-console-state",
+      "guest"
+    );
+    const sessionMount = page.locator("[data-gamma-session-mount]");
+    await expect(sessionMount).toBeVisible();
+    await expect(sessionMount).toHaveAttribute("data-gamma-session-mount-state", "locked");
+    await expect(sessionMount).toHaveAttribute("data-gamma-session-mount-workspace", "/dashboard");
+    await expect(sessionMount.locator("[data-gamma-session-mount-row]")).toHaveCount(4);
+    await expect(sessionMount.locator('[data-gamma-session-mount-row="account"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/login?return=%2Fdashboard"
+    );
+    await expect(sessionMount.locator('[data-gamma-session-mount-row="workspace"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/login?return=%2Fdashboard"
+    );
+    await expect(sessionMount.locator('[data-gamma-session-mount-row="apps"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/wtfiam?category=apps"
+    );
+    await expect(sessionMount.locator('[data-gamma-session-mount-row="shell"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/"
+    );
+    await expect(page.locator("[data-gamma-session-shortcut]")).toHaveCount(4);
+    await expect(page.locator("[data-gamma-session-resume-action]")).toHaveCount(3);
+    await expect(page.locator("[data-gamma-daily-return]")).toBeVisible();
+    await expect(page.locator("[data-gamma-daily-return]")).toContainText("Return for a small proof");
+    await expect(page.locator("[data-gamma-daily-action]")).toHaveCount(4);
+    await expect(page.locator('[data-gamma-daily-action="sidequests"]')).toHaveAttribute("data-gamma-launch", "/side-quests");
+    await expect(page.locator('[data-gamma-daily-action="challenges"]')).toHaveAttribute("data-gamma-launch", "/challenges");
+    await expect(page.locator('[data-gamma-daily-action="people"]')).toHaveAttribute("data-gamma-launch", "/w");
+    await expect(page.locator('[data-gamma-daily-action="notifications"]')).toHaveAttribute("data-gamma-launch", "/notifications");
 
     const typography = await page.evaluate(() => {
       const shellNode = document.querySelector("[data-gamma-wtfos]");
@@ -158,6 +205,786 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     expect(stationMetrics.every((station) => station.height >= 100)).toBe(true);
   });
 
+  test("routes the Gamma boot account tile like an OS login tile", async ({ page, request }) => {
+    await setHarnessState(request, { userRole: "anonymous" });
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+
+    const guestAccount = page.locator("[data-gamma-boot-account]");
+    await expect(guestAccount).toHaveAttribute("data-gamma-boot-account-state", "guest");
+    await expect(guestAccount).toHaveAttribute("data-gamma-launch", "/login?return=%2Fdashboard");
+    await expect(guestAccount).toHaveAttribute("data-gamma-boot-resume-target", "/dashboard");
+    await guestAccount.click();
+    await expect(page).toHaveURL(/\/gamma\/login\?return=%2Fdashboard$/);
+    await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-account",
+      displayName: "Gamma Account",
+    });
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    const signedInAccount = page.locator("[data-gamma-boot-account]");
+    await expect(signedInAccount).toHaveAttribute("data-gamma-boot-account-state", "signed-in");
+    await expect(signedInAccount).toHaveAttribute("data-gamma-launch", "/user/gamma-account");
+    await expect(signedInAccount).toHaveAttribute("data-gamma-boot-resume-target", "/dashboard");
+    await expect(signedInAccount).toContainText("@gamma-account");
+    await signedInAccount.click();
+    await expect(page).toHaveURL(/\/gamma\/user\/gamma-account$/);
+    await expectGammaRouteReady(page, "/user/gamma-account");
+  });
+
+  test("renders a signed-in OS session console with route-preserving shortcuts", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-home",
+      displayName: "Gamma Home",
+    });
+    await page.addInitScript(() => window.localStorage.removeItem("wtfos.gamma.recentRoutes"));
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+
+    const consoleSurface = page.locator("[data-gamma-session-console]");
+    await expect(consoleSurface).toBeVisible();
+    await expect(consoleSurface).toHaveAttribute("data-gamma-session-console-state", "signed-in");
+    await expect(consoleSurface.locator("[data-gamma-session-console-identity]")).toContainText("@gamma-home");
+    const sessionMount = consoleSurface.locator("[data-gamma-session-mount]");
+    await expect(sessionMount).toBeVisible();
+    await expect(sessionMount).toHaveAttribute("data-gamma-session-mount-state", "mounted");
+    await expect(sessionMount).toHaveAttribute("data-gamma-session-mount-workspace", "/dashboard");
+    await expect(sessionMount.locator("[data-gamma-session-mount-row]")).toHaveCount(4);
+    await expect(sessionMount.locator('[data-gamma-session-mount-row="account"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/user/gamma-home"
+    );
+    await expect(sessionMount.locator('[data-gamma-session-mount-row="workspace"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/dashboard"
+    );
+    await expect(sessionMount.locator('[data-gamma-session-mount-row="workspace"]')).toContainText("Dashboard");
+    await expect(sessionMount.locator('[data-gamma-session-mount-row="shell"]')).toContainText("Gamma");
+    await expect(consoleSurface.locator("[data-gamma-session-shortcut]")).toHaveCount(4);
+    await expect(consoleSurface.locator('[data-gamma-session-shortcut="home"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/dashboard"
+    );
+    await expect(consoleSurface.locator('[data-gamma-session-shortcut="inbox"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/messages"
+    );
+    await expect(consoleSurface.locator('[data-gamma-session-shortcut="apps"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/wtfiam?category=apps"
+    );
+    await expect(consoleSurface.locator('[data-gamma-session-shortcut="settings"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/settings"
+    );
+    await expect(consoleSurface.locator('[data-gamma-session-resume-action="daily"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/side-quests"
+    );
+    await expect(consoleSurface.locator('[data-gamma-session-resume-action="people"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/w"
+    );
+    await expect(consoleSurface.locator('[data-gamma-session-resume-action="gallery"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/gallery"
+    );
+
+    await consoleSurface.locator('[data-gamma-session-shortcut="settings"]').click();
+    await expect(page).toHaveURL(/\/gamma\/settings$/);
+    await expectGammaRouteReady(page, "/settings");
+
+    await page.evaluate(() => window.localStorage.removeItem("wtfos.gamma.recentRoutes"));
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await page.locator('[data-gamma-session-resume-action="people"]').click();
+    await expect(page).toHaveURL(/\/gamma\/w$/);
+    await expectGammaRouteReady(page, "/w");
+  });
+
+  test("prioritizes a Gamma wake queue from recent route, inbox, daily, people, and apps", async ({
+    page,
+    request,
+  }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-wake",
+      displayName: "Gamma Wake",
+    });
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => window.localStorage.removeItem("wtfos.gamma.recentRoutes"));
+    await gotoGammaRoute(page, "/gallery");
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem("wtfos.gamma.recentRoutes")))
+      .toContain("/gallery");
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+
+    const wakeQueue = page.locator("[data-gamma-wake-queue]");
+    await expect(wakeQueue).toBeVisible();
+    await expect(wakeQueue).toHaveAttribute("data-gamma-wake-state", "signed-in");
+    await expect(wakeQueue.locator("[data-gamma-wake-action]")).toHaveCount(5);
+    await expect(wakeQueue.locator('[data-gamma-wake-action="resume"]')).toHaveAttribute(
+      "data-gamma-wake-rank",
+      "1"
+    );
+    await expect(wakeQueue.locator('[data-gamma-wake-action="resume"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/gallery"
+    );
+    await expect(wakeQueue.locator('[data-gamma-wake-action="inbox"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/messages"
+    );
+    await expect(wakeQueue.locator('[data-gamma-wake-action="daily"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/side-quests"
+    );
+    await expect(wakeQueue.locator('[data-gamma-wake-action="people"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/w"
+    );
+    await expect(wakeQueue.locator('[data-gamma-wake-action="apps"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/wtfiam?category=apps"
+    );
+
+    await wakeQueue.locator('[data-gamma-wake-action="daily"]').click();
+    await expect(page).toHaveURL(/\/gamma\/side-quests$/);
+    await expectGammaRouteReady(page, "/side-quests");
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await page.locator('[data-gamma-wake-action="people"]').click();
+    await expect(page).toHaveURL(/\/gamma\/w$/);
+    await expectGammaRouteReady(page, "/w");
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await page.locator('[data-gamma-wake-action="apps"]').click();
+    await expect(page).toHaveURL(/\/gamma\/wtfiam\?category=apps$/);
+    await expectGammaRouteReady(page, "/wtfiam");
+  });
+
+  test("keeps a persistent system tray on Gamma home and app routes", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-tray",
+      displayName: "Gamma Tray",
+    });
+    await page.setViewportSize({ width: 390, height: 760 });
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+
+    const tray = page.locator("[data-gamma-system-tray]");
+    await expect(tray).toBeVisible();
+    await expect(tray).toHaveAttribute("data-gamma-system-state", "online");
+    await expect(tray.locator("[data-gamma-tray-status='online']")).toContainText("Gamma session online");
+    await expect(tray.locator("[data-gamma-tray-action]")).toHaveCount(7);
+    await expect(tray.locator('[data-gamma-tray-action="session"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/user/gamma-tray"
+    );
+    const clock = tray.locator('[data-gamma-tray-action="clock"]');
+    await expect(clock).toHaveAttribute("data-gamma-launch", "/calendar");
+    await expect(clock).toHaveAttribute("data-gamma-system-clock", "tray");
+    const clockSnapshot = await clock.evaluate((button) => ({
+      iso: button.getAttribute("data-gamma-clock-iso") || "",
+      time: button.getAttribute("data-gamma-clock-time") || "",
+      date: button.getAttribute("data-gamma-clock-date") || "",
+    }));
+    expect(clockSnapshot.iso).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(clockSnapshot.time.length).toBeGreaterThan(0);
+    expect(clockSnapshot.date.length).toBeGreaterThan(0);
+    await expect(tray.locator('[data-gamma-tray-action="network"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/settings"
+    );
+    await expect(tray.locator('[data-gamma-tray-action="network"]')).toHaveAttribute("data-gamma-live", "true");
+    await expect(tray.locator('[data-gamma-tray-action="network"]')).toContainText("Online");
+    const signals = tray.locator('[data-gamma-tray-action="signals"]');
+    await expect(signals).toHaveAttribute("data-gamma-launch", "/notifications");
+    await expect(signals).toHaveAttribute("data-gamma-tray-action-state", "unread");
+    await expect(signals).toHaveAttribute("data-gamma-tray-unread-count", "1");
+    await expect(signals).toHaveAttribute("data-gamma-live", "true");
+    await expect(signals).toContainText("1 unread");
+    await expect(tray.locator('[data-gamma-tray-action="daily"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/side-quests"
+    );
+    await expect(tray.locator('[data-gamma-tray-action="apps"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/wtfiam?category=apps"
+    );
+    await expect(tray.locator('[data-gamma-tray-action="people"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/w"
+    );
+    const powerMenu = page.locator("[data-gamma-power-menu]");
+    await expect(powerMenu).toBeVisible();
+    await expect(powerMenu).toHaveAttribute("data-gamma-power-state", "signed-in");
+    await expect(powerMenu.locator("[data-gamma-power-action]")).toHaveCount(4);
+    await expect(powerMenu.locator('[data-gamma-power-action="desk"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/"
+    );
+    await expect(powerMenu.locator('[data-gamma-power-action="settings"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/settings"
+    );
+    await expect(powerMenu.locator('[data-gamma-power-action="lock"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/"
+    );
+    await expect(powerMenu.locator('[data-gamma-power-action="lock"]')).toHaveAttribute(
+      "data-gamma-power-session",
+      "retained"
+    );
+    await expect(powerMenu.locator('[data-gamma-power-action="signout"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/"
+    );
+    const trayTargetHeights = await tray.locator("[data-gamma-tray-action]").evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height)
+    );
+    expect(trayTargetHeights.every((height) => height >= 44)).toBe(true);
+    const powerTargetHeights = await powerMenu.locator("button").evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height)
+    );
+    expect(powerTargetHeights.every((height) => height >= 44)).toBe(true);
+
+    await clock.click();
+    await expect(page).toHaveURL(/\/gamma\/calendar$/);
+    await expectGammaRouteReady(page, "/calendar");
+    await expect(page.locator("[data-gamma-system-tray]")).toBeVisible();
+
+    await signals.click();
+    await expect(page).toHaveURL(/\/gamma\/notifications$/);
+    await expectGammaRouteReady(page, "/notifications");
+    await expect(page.locator("[data-gamma-system-tray]")).toBeVisible();
+
+    await page.locator('[data-gamma-tray-action="network"]').click();
+    await expect(page).toHaveURL(/\/gamma\/settings$/);
+    await expectGammaRouteReady(page, "/settings");
+
+    await page.locator('[data-gamma-tray-action="daily"]').click();
+    await expect(page).toHaveURL(/\/gamma\/side-quests$/);
+    await expectGammaRouteReady(page, "/side-quests");
+
+    await page.goto("/gamma/gallery", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/gallery");
+    await expect(page.locator("[data-gamma-system-tray]")).toBeVisible();
+    await page.locator('[data-gamma-tray-action="apps"]').click();
+    await expect(page).toHaveURL(/\/gamma\/wtfiam\?category=apps$/);
+    await expectGammaRouteReady(page, "/wtfiam");
+  });
+
+  test("locks Gamma back to the desk without ending the signed-in session", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-lock",
+      displayName: "Gamma Lock",
+    });
+    await gotoGammaRoute(page, "/settings");
+
+    const powerMenu = page.locator("[data-gamma-power-menu]");
+    await expect(powerMenu).toHaveAttribute("data-gamma-power-state", "signed-in");
+    const lockAction = powerMenu.locator('[data-gamma-power-action="lock"]');
+    await expect(lockAction).toHaveAttribute("data-gamma-power-session", "retained");
+    await lockAction.click();
+    await expect(page).toHaveURL(/\/gamma\/?$/);
+    await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+    await expect(page.locator("[data-gamma-boot-desk]")).toHaveAttribute("data-gamma-session-state", "signed-in");
+    await expect(page.locator("[data-gamma-boot-account]")).toContainText("@gamma-lock");
+    await expect(page.locator("[data-gamma-power-menu]")).toHaveAttribute("data-gamma-power-state", "signed-in");
+
+    await gotoGammaRoute(page, "/leaderboard");
+    await expectGammaRouteReady(page, "/leaderboard");
+    await page.keyboard.press("Control+Alt+L");
+    await expect(page).toHaveURL(/\/gamma\/?$/);
+    await expect(page.locator("[data-gamma-boot-desk]")).toHaveAttribute("data-gamma-session-state", "signed-in");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
+  test("signs out from Gamma session controls without leaving the shell", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-power",
+      displayName: "Gamma Power",
+    });
+    await gotoGammaRoute(page, "/settings");
+
+    const powerMenu = page.locator("[data-gamma-power-menu]");
+    await expect(powerMenu).toBeVisible();
+    await expect(powerMenu).toHaveAttribute("data-gamma-power-state", "signed-in");
+    await powerMenu.locator('[data-gamma-power-action="signout"]').click();
+    await expect(page).toHaveURL(/\/gamma\/?$/);
+    await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+    await expect(page.locator("[data-gamma-boot-desk]")).toHaveAttribute("data-gamma-session-state", "guest");
+
+    const guestPowerMenu = page.locator("[data-gamma-power-menu]");
+    await expect(guestPowerMenu).toHaveAttribute("data-gamma-power-state", "guest");
+    await expect(guestPowerMenu.locator('[data-gamma-power-action="login"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/login?return=%2Fdashboard"
+    );
+    await guestPowerMenu.locator('[data-gamma-power-action="login"]').click();
+    await expect(page).toHaveURL(/\/gamma\/login\?return=%2Fdashboard$/);
+    await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
+  test("surfaces degraded shared API status in the Gamma system tray with Settings recovery", async ({
+    page,
+    request,
+  }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-degraded",
+      displayName: "Gamma Degraded",
+    });
+    await page.route("**/api/leaderboard/rewards/exp**", async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "xp unavailable" }),
+      });
+    });
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+
+    const tray = page.locator("[data-gamma-system-tray]");
+    await expect(tray).toHaveAttribute("data-gamma-system-state", "degraded");
+    await expect(tray.locator('[data-gamma-tray-status="degraded"]')).toContainText("Gamma session degraded");
+    const network = tray.locator('[data-gamma-tray-action="network"]');
+    await expect(network).toContainText("Degraded");
+    await expect(network).toContainText("Settings");
+    await expect(network).toHaveAttribute("data-gamma-live", "false");
+
+    await network.click();
+    await expect(page).toHaveURL(/\/gamma\/settings$/);
+    await expectGammaRouteReady(page, "/settings");
+  });
+
+  test("launches known routes from Gamma command search before Gallery fallback", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-command",
+      displayName: "Gamma Command",
+    });
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+
+    const bootCommand = page.locator("[data-gamma-boot-command-search]");
+    await expect(bootCommand).toBeVisible();
+    await bootCommand.locator("input").fill("Broot");
+    const bootBroot = bootCommand.locator('[data-gamma-command-route="/tools/broot"]').first();
+    await expect(bootBroot).toBeVisible();
+    await expect(bootBroot).toContainText("Broot");
+    await expect(bootBroot).toHaveAttribute("data-gamma-command-locked", "false");
+    await bootBroot.click();
+    await expect(page).toHaveURL(/\/gamma\/tools\/broot$/);
+    await expectGammaRouteReady(page, "/tools/broot");
+
+    const routeCommand = page.locator("[data-gamma-route-command-search]");
+    await expect(routeCommand).toBeVisible();
+    await routeCommand.locator("input").fill("Settings");
+    const settingsResult = routeCommand.locator('[data-gamma-command-route="/settings"]').first();
+    await expect(settingsResult).toBeVisible();
+    await expect(settingsResult).toContainText("Settings");
+    await settingsResult.click();
+    await expect(page).toHaveURL(/\/gamma\/settings$/);
+    await expectGammaRouteReady(page, "/settings");
+
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-gamma-boot-command-search]")).toBeVisible();
+    await page.locator("[data-gamma-boot-command-search] input").fill("unmatched comet");
+    const fallback = page
+      .locator("[data-gamma-boot-command-search]")
+      .locator('[data-gamma-command-result="gallery-search"]');
+    await expect(fallback).toBeVisible();
+    await expect(fallback).toContainText("Search Gallery");
+    await fallback.click();
+    await expect(page).toHaveURL(/\/gamma\/gallery\?search=unmatched(?:\+|%20)comet$/);
+    await expectGammaRouteReady(page, "/gallery");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
+  test("focuses Gamma command search from the OS keyboard shortcut", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-keyboard",
+      displayName: "Gamma Keyboard",
+    });
+
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    const bootInput = page.locator('[data-gamma-boot-command-search] input[data-gamma-command-input="true"]');
+    await expect(bootInput).toBeVisible();
+    await page.keyboard.press("Control+K");
+    await expect(bootInput).toBeFocused();
+    await page.keyboard.type("Broot");
+    await expect(bootInput).toHaveValue("Broot");
+    await expect(
+      page.locator('[data-gamma-boot-command-search] [data-gamma-command-route="/tools/broot"]').first()
+    ).toBeVisible();
+
+    await page.goto("/gamma/gallery", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/gallery");
+    const routeInput = page.locator('[data-gamma-route-command-search] input[data-gamma-command-input="true"]');
+    await page.locator("[data-gamma-taskbar-current-app]").click();
+    await page.keyboard.press("Control+K");
+    await expect(routeInput).toBeFocused();
+    await page.keyboard.type("Settings");
+    await expect(routeInput).toHaveValue("Settings");
+
+    const settingsResult = page
+      .locator("[data-gamma-route-command-search]")
+      .locator('[data-gamma-command-route="/settings"]')
+      .first();
+    await expect(settingsResult).toBeVisible();
+    await settingsResult.click();
+    await expect(page).toHaveURL(/\/gamma\/settings$/);
+    await expectGammaRouteReady(page, "/settings");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
+  test("continues from the Gamma boot desk with Enter", async ({ page, request }) => {
+    await setHarnessState(request, { userRole: "anonymous" });
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-gamma-boot-desk]")).toHaveAttribute(
+      "data-gamma-session-state",
+      "guest"
+    );
+    await expect(page.locator("[data-gamma-primary-boot-action]")).toHaveAttribute(
+      "data-gamma-primary-boot-action",
+      "/login?return=%2Fdashboard"
+    );
+    await expect(page.locator("[data-gamma-primary-boot-action]")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/gamma\/login\?return=%2Fdashboard$/);
+    await expectGammaRouteReady(page, "/login");
+    await expect(page.locator("[data-gamma-application-content]")).toContainText("Gamma dashboard ready");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-enter",
+      displayName: "Gamma Enter",
+    });
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-gamma-boot-desk]")).toHaveAttribute(
+      "data-gamma-session-state",
+      "signed-in"
+    );
+    await expect(page.locator("[data-gamma-primary-boot-action]")).toHaveAttribute(
+      "data-gamma-primary-boot-action",
+      "/dashboard"
+    );
+    await expect(page.locator("[data-gamma-primary-boot-action]")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/gamma\/dashboard$/);
+    await expectGammaRouteReady(page, "/dashboard");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
+  test("logs into the Gamma dashboard from the boot desk with Enter", async ({ page, request }) => {
+    await setHarnessState(request, { userRole: "anonymous" });
+    let loggedIn = false;
+    const authUser = {
+      id: 45,
+      username: "gamma-boot-login",
+      displayName: "Gamma Boot Login",
+      role: "user",
+      roles: ["user"],
+      welcomedToWtfOs: true,
+      gmWelcomeUtcDay: "2026-07-14",
+      gmWelcomeLastSeenAt: "2026-07-14T00:00:00.000Z",
+      gmWelcome: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      effectivePermissions: {},
+    };
+
+    await page.route("**/api/auth/user", async (route) => {
+      if (!loggedIn) {
+        await route.fulfill({
+          status: 401,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Not authenticated" }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(authUser),
+      });
+    });
+    await page.route("**/api/auth/login", async (route) => {
+      loggedIn = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(authUser),
+      });
+    });
+
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-gamma-primary-boot-action]")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/gamma\/login\?return=%2Fdashboard$/);
+    await expectGammaRouteReady(page, "/login");
+    await expect(page.getByLabel("Username")).toBeFocused();
+
+    await page.getByLabel("Username").fill(authUser.username);
+    await page.getByLabel("Password").fill("correct-password");
+    await page
+      .locator("[data-gamma-application-content]")
+      .getByRole("button", { name: "Log In", exact: true })
+      .click();
+
+    await expect(page).toHaveURL(/\/gamma\/dashboard$/);
+    await expectGammaRouteReady(page, "/dashboard");
+    await expect(page.locator("[data-gamma-application-content]")).toBeVisible();
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
+  test("launches Gamma command results from keyboard focus movement", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-command-arrows",
+      displayName: "Gamma Command Arrows",
+    });
+
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    const bootInput = page.locator('[data-gamma-boot-command-search] input[data-gamma-command-input="true"]');
+    await expect(bootInput).toBeVisible();
+    await page.keyboard.press("Control+K");
+    await expect(bootInput).toBeFocused();
+    await page.keyboard.type("Broot");
+
+    const bootBroot = page
+      .locator("[data-gamma-boot-command-search]")
+      .locator('[data-gamma-command-route="/tools/broot"]')
+      .first();
+    await expect(bootBroot).toBeVisible();
+    await page.keyboard.press("ArrowDown");
+    await expect(bootBroot).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(bootInput).toBeFocused();
+    await expect(bootInput).toHaveValue("Broot");
+    await page.keyboard.press("ArrowDown");
+    await expect(bootBroot).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/gamma\/tools\/broot$/);
+    await expectGammaRouteReady(page, "/tools/broot");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+
+    await page.goto("/gamma/gallery", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/gallery");
+    const routeInput = page.locator('[data-gamma-route-command-search] input[data-gamma-command-input="true"]');
+    await page.locator("[data-gamma-taskbar-current-app]").click();
+    await page.keyboard.press("Control+K");
+    await expect(routeInput).toBeFocused();
+    await page.keyboard.type("unmatched comet");
+
+    const fallback = page
+      .locator("[data-gamma-route-command-search]")
+      .locator('[data-gamma-command-result="gallery-search"]');
+    await expect(fallback).toBeVisible();
+    await page.keyboard.press("ArrowDown");
+    await expect(fallback).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(routeInput).toBeFocused();
+    await expect(routeInput).toHaveValue("unmatched comet");
+    await page.keyboard.press("ArrowDown");
+    await expect(fallback).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/gamma\/gallery\?search=unmatched(?:\+|%20)comet$/);
+    await expectGammaRouteReady(page, "/gallery");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
+  test("dismisses Gamma command search with Escape without leaving Gamma", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-escape",
+      displayName: "Gamma Escape",
+    });
+
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    const bootInput = page.locator('[data-gamma-boot-command-search] input[data-gamma-command-input="true"]');
+    await expect(bootInput).toBeVisible();
+    await page.keyboard.press("Control+K");
+    await expect(bootInput).toBeFocused();
+    await page.keyboard.type("Broot");
+    await expect(bootInput).toHaveValue("Broot");
+    await page.keyboard.press("Escape");
+    await expect(bootInput).toHaveValue("");
+    await expect(bootInput).not.toBeFocused();
+    await expect(page).toHaveURL(/\/gamma$/);
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+
+    await page.goto("/gamma/gallery", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/gallery");
+    const routeInput = page.locator('[data-gamma-route-command-search] input[data-gamma-command-input="true"]');
+    await page.locator("[data-gamma-taskbar-current-app]").click();
+    await page.keyboard.press("Control+K");
+    await expect(routeInput).toBeFocused();
+    await page.keyboard.type("Settings");
+    await expect(routeInput).toHaveValue("Settings");
+    await page.keyboard.press("Escape");
+    await expect(routeInput).toHaveValue("");
+    await expect(routeInput).not.toBeFocused();
+    await expect(page).toHaveURL(/\/gamma\/gallery$/);
+    await expectGammaRouteReady(page, "/gallery");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
+  test("returns from a Gamma app route to the desk with the OS keyboard shortcut", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-desk-keyboard",
+      displayName: "Gamma Desk Keyboard",
+    });
+
+    await page.goto("/gamma/gallery", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/gallery");
+    const routeInput = page.locator('[data-gamma-route-command-search] input[data-gamma-command-input="true"]');
+    await routeInput.focus();
+    await page.keyboard.press("Alt+Home");
+    await expect(page).toHaveURL(/\/gamma\/gallery$/);
+    await expectGammaRouteReady(page, "/gallery");
+
+    await page.locator("[data-gamma-taskbar-current-app]").click();
+    await page.keyboard.press("Alt+Home");
+    await expect(page).toHaveURL(/\/gamma$/);
+    await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
+  test("restores recent route restore from browser-local Gamma session state", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-recents",
+      displayName: "Gamma Recents",
+    });
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => window.localStorage.removeItem("wtfos.gamma.recentRoutes"));
+    await page.reload({ waitUntil: "domcontentloaded" });
+
+    await expect(page.locator("[data-gamma-session-resume]")).toHaveAttribute(
+      "data-gamma-session-recents-state",
+      "fallback"
+    );
+    await expect(page.locator('[data-gamma-session-resume-action="daily"]')).toHaveAttribute(
+      "data-gamma-session-recent-fallback",
+      "true"
+    );
+
+    await page.goto("/gamma/gallery", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/gallery");
+    await page.goto("/gamma/settings", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/settings");
+    await expect
+      .poll(async () =>
+        page.evaluate(() => JSON.parse(window.localStorage.getItem("wtfos.gamma.recentRoutes") || "[]"))
+      )
+      .toEqual(["/settings", "/gallery"]);
+
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-gamma-session-resume]")).toHaveAttribute(
+      "data-gamma-session-recents-state",
+      "stored"
+    );
+    const sessionDock = page.locator("[data-gamma-session-dock]");
+    await expect(sessionDock).toBeVisible();
+    await expect(sessionDock).toHaveAttribute("data-gamma-session-dock-state", "open");
+    await expect(sessionDock).toHaveAttribute("data-gamma-session-dock-keyboard-target", "/settings");
+    await expect(page.locator('[data-gamma-start-action="continue"]')).toHaveAttribute(
+      "data-gamma-launch",
+      "/settings"
+    );
+    await expect(page.locator('[data-gamma-session-dock-route="/settings"]')).toHaveAttribute(
+      "data-gamma-session-dock-front",
+      "true"
+    );
+    await expect(page.locator('[data-gamma-session-dock-route="/gallery"]')).toHaveAttribute(
+      "data-gamma-session-dock-front",
+      "false"
+    );
+    await expect(page.locator('[data-gamma-session-recent-route="/settings"]')).toBeVisible();
+    await expect(page.locator('[data-gamma-session-recent-route="/gallery"]')).toBeVisible();
+    await expect(page.locator('[data-gamma-session-recent-route="/settings"]')).toHaveAttribute(
+      "data-gamma-session-recent-fallback",
+      "false"
+    );
+
+    const bootInput = page.locator('[data-gamma-boot-command-search] input[data-gamma-command-input="true"]');
+    await bootInput.focus();
+    await page.keyboard.press("Alt+PageDown");
+    await expect(page).toHaveURL(/\/gamma$/);
+    await expect(page.locator("[data-gamma-boot-desk]")).toBeVisible();
+
+    await bootInput.evaluate((input) => input.blur());
+    await expect(bootInput).not.toBeFocused();
+    await page.keyboard.press("Alt+PageDown");
+    await expect(page).toHaveURL(/\/gamma\/settings$/);
+    await expectGammaRouteReady(page, "/settings");
+
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await page.locator('[data-gamma-session-recent-route="/gallery"]').click();
+    await expect(page).toHaveURL(/\/gamma\/gallery$/);
+    await expectGammaRouteReady(page, "/gallery");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
+  test("keeps route history recovery inside the Gamma shell", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-history",
+      displayName: "Gamma History",
+    });
+
+    await page.goto("/gamma/gallery", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/gallery");
+
+    const historyControls = page.locator("[data-gamma-history-controls]");
+    await expect(historyControls).toBeVisible();
+    await expect(historyControls.locator('[data-gamma-history-action="back"]')).toBeDisabled();
+    await expect(historyControls.locator('[data-gamma-history-action="forward"]')).toBeDisabled();
+    await expect(historyControls.locator('[data-gamma-history-action="desk"]')).toHaveAttribute(
+      "data-gamma-history-target",
+      "/"
+    );
+
+    await page.locator('[data-gamma-taskbar-action="settings"]').click();
+    await expect(page).toHaveURL(/\/gamma\/settings$/);
+    await expectGammaRouteReady(page, "/settings");
+    await expect(historyControls).toHaveAttribute("data-gamma-history-back-target", "/gallery");
+    await expect(historyControls.locator('[data-gamma-history-action="back"]')).toHaveAttribute(
+      "data-gamma-history-target",
+      "/gallery"
+    );
+    await expect(historyControls.locator('[data-gamma-history-action="forward"]')).toBeDisabled();
+
+    await historyControls.locator('[data-gamma-history-action="back"]').click();
+    await expect(page).toHaveURL(/\/gamma\/gallery$/);
+    await expectGammaRouteReady(page, "/gallery");
+    await expect(historyControls).toHaveAttribute("data-gamma-history-forward-target", "/settings");
+
+    await historyControls.locator('[data-gamma-history-action="forward"]').click();
+    await expect(page).toHaveURL(/\/gamma\/settings$/);
+    await expectGammaRouteReady(page, "/settings");
+
+    await page.keyboard.press("Alt+ArrowLeft");
+    await expect(page).toHaveURL(/\/gamma\/gallery$/);
+    await expectGammaRouteReady(page, "/gallery");
+
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(page).toHaveURL(/\/gamma\/settings$/);
+    await expectGammaRouteReady(page, "/settings");
+
+    await historyControls.locator('[data-gamma-history-action="desk"]').click();
+    await expect(page).toHaveURL(/\/gamma$/);
+    await expect(page.locator("[data-gamma-boot-desk]")).toBeVisible();
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
   test("keeps launched application routes inside the Gamma shell", async ({ page, request }) => {
     await setHarnessState(request, { userRole: "anonymous" });
     await page.goto("/gamma", { waitUntil: "domcontentloaded" });
@@ -176,6 +1003,14 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       "href",
       "https://beta.wtfos.app/gallery"
     );
+    await expect(page.locator("[data-gamma-app-taskbar]")).toBeVisible();
+    await expect(page.locator("[data-gamma-taskbar-current-app]")).toContainText("Gallery");
+    await expect(page.locator('[data-gamma-route-focus-target="active-app"]')).toBeFocused();
+    await expect(page.locator('[data-gamma-taskbar-action="close"]')).toHaveAttribute("data-gamma-launch", "/");
+    await expect(page.locator('[data-gamma-taskbar-action="inbox"]')).toHaveAttribute("data-gamma-launch", "/messages");
+    await expect(page.locator('[data-gamma-taskbar-action="daily"]')).toHaveAttribute("data-gamma-launch", "/side-quests");
+    await expect(page.locator('[data-gamma-taskbar-action="apps"]')).toHaveAttribute("data-gamma-launch", "/wtfiam?category=apps");
+    await expect(page.locator('[data-gamma-taskbar-action="settings"]')).toHaveAttribute("data-gamma-launch", "/settings");
     await expect(page.locator("[data-gamma-application-content]")).toBeVisible();
     await expect(page.locator("[data-gamma-inline-app-window]")).toContainText("Gallery");
 
@@ -184,7 +1019,283 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
     await expect(page.locator('[data-gamma-route-gate="auth-required"]')).toBeVisible();
+    await expect(page.locator('[data-gamma-route-focus-target="active-app"]')).toHaveCount(0);
     await expect(page.locator("[data-gamma-breadcrumbs]")).toContainText("Broot");
+  });
+
+  test("keeps app-route taskbar navigation inside the Gamma shell", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-taskbar",
+      displayName: "Gamma Taskbar",
+    });
+    await page.setViewportSize({ width: 390, height: 760 });
+    await page.goto("/gamma/gallery", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/gallery");
+
+    const taskbar = page.locator("[data-gamma-app-taskbar]");
+    await expect(taskbar).toBeVisible();
+    await expect(taskbar.locator("[data-gamma-taskbar-current-app]")).toContainText("Gallery");
+    await expect(taskbar.locator('[data-gamma-route-focus-target="active-app"]')).toBeFocused();
+    await expect(taskbar.locator("[data-gamma-taskbar-action]")).toHaveCount(6);
+    const taskbarHeights = await taskbar.locator("[data-gamma-taskbar-action]").evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height)
+    );
+    expect(taskbarHeights.every((height) => height >= 44)).toBe(true);
+
+    await taskbar.locator('[data-gamma-taskbar-action="daily"]').click();
+    await expect(page).toHaveURL(/\/gamma\/side-quests$/);
+    await expectGammaRouteReady(page, "/side-quests");
+    await expect(page.locator("[data-gamma-taskbar-current-app]")).toContainText("Side Quests");
+    await expect(page.locator('[data-gamma-route-focus-target="active-app"]')).toBeFocused();
+
+    await page.locator('[data-gamma-taskbar-action="inbox"]').click();
+    await expect(page).toHaveURL(/\/gamma\/messages$/);
+    await expectGammaRouteReady(page, "/messages");
+    await expect(page.locator('[data-gamma-route-focus-target="active-app"]')).toBeFocused();
+
+    await page.locator('[data-gamma-taskbar-action="close"]').click();
+    await expect(page).toHaveURL(/\/gamma$/);
+    await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
+  test("switches between recent app routes from the Gamma app taskbar", async ({ page, request }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-switcher",
+      displayName: "Gamma Switcher",
+    });
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => window.localStorage.removeItem("wtfos.gamma.recentRoutes"));
+
+    await page.goto("/gamma/gallery", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/gallery");
+    await page.goto("/gamma/settings", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/settings");
+    await page.goto("/gamma/leaderboard", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/leaderboard");
+    await expect
+      .poll(async () =>
+        page.evaluate(() => JSON.parse(window.localStorage.getItem("wtfos.gamma.recentRoutes") || "[]"))
+      )
+      .toEqual(["/leaderboard", "/settings", "/gallery"]);
+
+    const switcher = page.locator("[data-gamma-taskbar-switcher]");
+    await expect(switcher).toBeVisible();
+    await expect(switcher).toHaveAttribute("data-gamma-taskbar-switcher-state", "stored");
+    await expect(switcher).toHaveAttribute("data-gamma-taskbar-keyboard-switch", "/settings");
+    await expect(switcher.locator('[data-gamma-taskbar-switch-route="/settings"]')).toBeVisible();
+    await expect(switcher.locator('[data-gamma-taskbar-switch-route="/gallery"]')).toBeVisible();
+    await expect(switcher.locator('[data-gamma-taskbar-switch-route="/leaderboard"]')).toHaveCount(0);
+    await expect(switcher.locator('[data-gamma-taskbar-switch-route="/settings"]')).toHaveAttribute(
+      "data-gamma-taskbar-switch-fallback",
+      "false"
+    );
+
+    const routeInput = page.locator('[data-gamma-route-command-search] input[data-gamma-command-input="true"]');
+    await routeInput.focus();
+    await page.keyboard.press("Alt+PageDown");
+    await expect(page).toHaveURL(/\/gamma\/leaderboard$/);
+    await expectGammaRouteReady(page, "/leaderboard");
+
+    await page.locator("[data-gamma-taskbar-current-app]").click();
+    await page.keyboard.press("Alt+PageDown");
+    await expect(page).toHaveURL(/\/gamma\/settings$/);
+    await expectGammaRouteReady(page, "/settings");
+    await expect(page.locator("[data-gamma-taskbar-current-app]")).toContainText("Settings");
+    await expect(page.locator('[data-gamma-taskbar-switch-route="/leaderboard"]')).toBeVisible();
+    await expect(page.locator("[data-gamma-taskbar-switcher]")).toHaveAttribute(
+      "data-gamma-taskbar-keyboard-switch",
+      "/leaderboard"
+    );
+
+    await page.locator('[data-gamma-taskbar-switch-route="/leaderboard"]').click();
+    await expect(page).toHaveURL(/\/gamma\/leaderboard$/);
+    await expectGammaRouteReady(page, "/leaderboard");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
+  test("routes daily return actions through the Gamma shell", async ({ page, request }) => {
+    await setHarnessState(request, { userRole: "user", username: "gamma-daily", displayName: "Gamma Daily" });
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-gamma-daily-return]")).toBeVisible();
+
+    await page.locator('[data-gamma-daily-action="sidequests"]').click();
+    await expect(page).toHaveURL(/\/gamma\/side-quests$/);
+    await expectGammaRouteReady(page, "/side-quests");
+
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await page.locator('[data-gamma-daily-action="people"]').click();
+    await expect(page).toHaveURL(/\/gamma\/w$/);
+    await expectGammaRouteReady(page, "/w");
+
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await page.locator('[data-gamma-daily-action="notifications"]').click();
+    await expect(page).toHaveURL(/\/gamma\/notifications$/);
+    await expectGammaRouteReady(page, "/notifications");
+  });
+
+  test("starts the daily side quest handoff from Gamma and keeps reward next steps in shell", async ({
+    page,
+    request,
+  }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-quester",
+      displayName: "Gamma Quester",
+    });
+
+    await page.route("**/api/challenge-automation/daily-loops", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          completionKey: "2026-07-14",
+          resetAtUtc: "2026-07-15T00:00:00.000Z",
+          loops: [
+            {
+              id: 601,
+              title: "Daily social check-in",
+              description: "Post one useful signal on the messageboard.",
+              route: "/messageboard",
+              actionLabel: "Post on Message Board",
+              category: "social",
+              order: 1,
+              rewards: { xp: 25, wtf: 1 },
+              completedByCount: 15,
+              verifiedByCount: 3,
+              claimableToday: false,
+              verifiedToday: false,
+              claimedToday: false,
+              completedToday: false,
+            },
+            {
+              id: 602,
+              title: "Verified daily proof",
+              description: "WTF OS already verified this signal.",
+              route: "/messageboard",
+              actionLabel: "Review proof",
+              category: "social",
+              order: 2,
+              rewards: { xp: 30, wtf: 2 },
+              completedByCount: 7,
+              verifiedByCount: 7,
+              claimableToday: true,
+              verifiedToday: true,
+              claimedToday: false,
+              completedToday: false,
+            },
+          ],
+        }),
+      });
+    });
+    await page.route("**/api/challenge-automation/daily-loops/602/claim", async (route) => {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true }) });
+    });
+    await page.route("**/api/side-quests", async (route) => {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify([]) });
+    });
+    await page.route("**/api/side-quests/my/completions", async (route) => {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify([]) });
+    });
+    await page.route("**/api/rewards/account", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          balances: {
+            totalEarnedWtf: 9,
+            availableWtf: 4,
+            pendingCashoutWtf: 0,
+            alreadyPaidWtf: 0,
+            marketSpentWtf: 0,
+          },
+          cashout: { minimumWtf: 20 },
+          primaryWallet: { walletAddress: "tz1GammaDailyWallet0000000000000000" },
+        }),
+      });
+    });
+
+    const channel = {
+      id: 1,
+      title: "Daily Signals",
+      body: "Gamma daily check-in channel",
+      categoryId: 1,
+      channelType: "general",
+      topic: "One visible proof per day.",
+      position: 1,
+      slowModeSeconds: 0,
+      viewRoles: ["witness", "contestant", "admin"],
+      replyRoles: ["witness", "contestant", "admin"],
+      active: true,
+      pinned: false,
+      locked: false,
+      messageCount: 1,
+      createdAt: "2026-07-14T00:00:00.000Z",
+      updatedAt: "2026-07-14T00:00:00.000Z",
+    };
+    await page.route("**/api/board/categories", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([{ id: 1, name: "General", position: 1, collapsed: false }]),
+      });
+    });
+    await page.route("**/api/board/channels", async (route) => {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify([channel]) });
+    });
+    await page.route("**/api/board/channels/1/messages**", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          channel: { ...channel, canPost: true, canManage: false },
+          messages: [
+            {
+              id: 71,
+              threadId: 1,
+              userId: 71,
+              username: "gamma-quester",
+              displayName: "Gamma Quester",
+              avatarUrl: null,
+              role: "contestant",
+              content: "Daily check-in proof stays in Gamma.",
+              attachments: [],
+              pinned: false,
+              parentReplyId: null,
+              webhookId: null,
+              createdAt: "2026-07-14T12:00:00.000Z",
+              editedAt: null,
+              reactions: [],
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-gamma-daily-return]")).toBeVisible();
+    await page.locator('[data-gamma-daily-action="sidequests"]').click();
+    await expect(page).toHaveURL(/\/gamma\/side-quests$/);
+    await expectGammaRouteReady(page, "/side-quests");
+
+    const sideQuestSurface = page.locator('[data-gamma-application-content] [data-progression-surface="side-quests"]');
+    await expect(sideQuestSurface).toHaveAttribute("data-progression-presentation-host", "gamma");
+    await expect(sideQuestSurface).toContainText("Daily social check-in");
+    await expect(sideQuestSurface).toContainText("Verified daily proof");
+
+    await sideQuestSurface.getByRole("button", { name: "Post on Message Board" }).click();
+    await expect(page).toHaveURL(/\/gamma\/messageboard$/);
+    await expectGammaRouteReady(page, "/messageboard");
+    const boardSurface = page.locator('[data-gamma-application-content] [data-board-surface="messageboard"]');
+    await expect(boardSurface).toHaveAttribute("data-board-presentation-host", "gamma");
+    await expect(boardSurface).toContainText("Daily check-in proof stays in Gamma.");
+
+    await page.goto("/gamma/side-quests", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/side-quests");
+    await sideQuestSurface.getByRole("button", { name: "Claim" }).click();
+    await expect(sideQuestSurface).toContainText("You earned WTF");
+
+    await sideQuestSurface.getByRole("link", { name: /Market/ }).click();
+    await expect(page).toHaveURL(/\/gamma\/wtfiam$/);
+    await expectGammaRouteReady(page, "/wtfiam");
   });
 
   test("persists the Gamma shell for same-session canonical route changes", async ({ page, request }) => {
@@ -286,6 +1397,33 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       "data-gamma-interface-switch",
       "true"
     );
+  });
+
+  test("routes locked app-store routes to WTFIAM Apps instead of a dead Gamma placeholder", async ({
+    page,
+    request,
+  }) => {
+    await setHarnessState(request, {
+      userRole: "user",
+      username: "gamma-locked",
+      displayName: "Gamma Locked",
+      ownedAppPasses: [],
+    });
+
+    await page.goto("/gamma/tv", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
+    await expect(page.locator("[data-gamma-workspace]")).toHaveAttribute("data-gamma-route", "/tv");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+
+    const lockedGate = page.locator('[data-gamma-route-gate="app-disabled"]');
+    await expect(lockedGate).toHaveAttribute("data-gamma-route-gate-app", "tv");
+    await expect(lockedGate).toContainText("WTF TV is not installed for this session");
+    const appsButton = lockedGate.locator('[data-gamma-locked-app-action="apps"]');
+    await expect(appsButton).toHaveAttribute("data-gamma-launch", "/wtfiam?category=apps");
+    await appsButton.click();
+    await expect(page).toHaveURL(/\/gamma\/wtfiam\?category=apps$/);
+    await expect(page.locator("[data-gamma-workspace]")).toHaveAttribute("data-gamma-route", "/wtfiam");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
   });
 
   test("keeps documented static nested and console routes inside the Gamma shell", async ({ page, request }) => {
@@ -1355,6 +2493,76 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(page.locator('[data-gamma-application-content] [data-gamma-ui="table"]').first()).toBeVisible();
   });
 
+  test("preserves the attempted Gamma route through auth return", async ({ page, request }) => {
+    await setHarnessState(request, { userRole: "anonymous" });
+
+    let loggedIn = false;
+    const authUser = {
+      id: 44,
+      username: "gamma-login-return",
+      displayName: "Gamma Login Return",
+      role: "user",
+      roles: ["user"],
+      welcomedToWtfOs: true,
+      gmWelcomeUtcDay: "2026-07-14",
+      gmWelcomeLastSeenAt: "2026-07-14T00:00:00.000Z",
+      gmWelcome: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      effectivePermissions: {},
+    };
+
+    await page.route("**/api/auth/user", async (route) => {
+      if (!loggedIn) {
+        await route.fulfill({
+          status: 401,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Not authenticated" }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(authUser),
+      });
+    });
+    await page.route("**/api/auth/login", async (route) => {
+      loggedIn = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(authUser),
+      });
+    });
+
+    await page.goto("/gamma/tools/broot", { waitUntil: "domcontentloaded" });
+    await expectGammaRouteReady(page, "/tools/broot");
+    const gate = page.locator('[data-gamma-route-gate="auth-required"]');
+    await expect(gate).toBeVisible();
+    const returnButton = gate.locator('[data-gamma-auth-primary-action="enter-return"]');
+    await expect(returnButton).toHaveAttribute("data-gamma-auth-return", "/tools/broot");
+    await expect(returnButton).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    await expect(page).toHaveURL(/\/gamma\/login\?return=%2Ftools%2Fbroot$/);
+    await expectGammaRouteReady(page, "/login");
+    await expect(page.locator("[data-gamma-application-content]")).toContainText(
+      "the Gamma route you opened"
+    );
+    await expect(page.getByLabel("Username")).toBeFocused();
+
+    await page.getByLabel("Username").fill(authUser.username);
+    await page.getByLabel("Password").fill("correct-password");
+    await page
+      .locator("[data-gamma-application-content]")
+      .getByRole("button", { name: "Log In", exact: true })
+      .click();
+
+    await expect(page).toHaveURL(/\/gamma\/tools\/broot$/);
+    await expectGammaRouteReady(page, "/tools/broot");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+  });
+
   test("hosts creation tool iframe chrome in the Gamma presentation style", async ({ page, request }) => {
     await setHarnessState(request, { userRole: "user", username: "gamma-creator", displayName: "Gamma Creator" });
     await gotoGammaRoute(page, "/tools/broot");
@@ -1676,7 +2884,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(colanderSurface).toHaveAttribute("data-colander-presentation-host", "gamma");
     await expect(colanderSurface).toContainText("Pasta Protocol ownership");
     await expect(colanderSurface).toContainText("Open a contract to manage it");
-    await expect(colanderSurface.locator('[data-colander-region="input"]')).toHaveAttribute("placeholder", "KT1…");
+    await expect(colanderSurface.getByTestId("colander-address")).toHaveAttribute("placeholder", "KT1…");
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
 
     const colanderMetrics = await readGammaMetrics(colanderSurface, {
@@ -2831,6 +4039,14 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(dashboardSurface.locator('[data-dashboard-region="activity-row"]').filter({ hasText: "Gamma Purchase" })).toBeVisible();
     await expect(dashboardSurface.locator('[data-dashboard-region="activity-row"]').filter({ hasText: "Gamma Sale" })).toBeVisible();
     await expect(dashboardSurface.locator('[data-dashboard-region="discovery"]')).toContainText("Gamma Discovery");
+    const nextActions = dashboardSurface.locator("[data-dashboard-gamma-next-actions]");
+    await expect(nextActions).toBeVisible();
+    await expect(nextActions.locator('[data-dashboard-gamma-action="daily"]')).toContainText("Daily proof");
+    await expect(nextActions.locator('[data-dashboard-gamma-action="challenges"]')).toContainText("Challenges");
+    await expect(nextActions.locator('[data-dashboard-gamma-action="people"]')).toContainText("People");
+    await expect(nextActions.locator('[data-dashboard-gamma-action="apps"]')).toContainText("Apps");
+    await expect(nextActions.locator('[data-dashboard-gamma-action="inbox"]')).toContainText("Inbox");
+    await expect(nextActions.locator('[data-dashboard-gamma-action="profile"]')).toContainText("Profile");
 
     const dashboardMetrics = await dashboardSurface.evaluate((surface) => {
       const read = (selector) => {
@@ -2853,6 +4069,8 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       return {
         surface: read('[data-dashboard-region="surface"]'),
         tabs: read('[data-dashboard-region="tabs"]'),
+        nextActions: read('[data-dashboard-region="gamma-daily-actions"]'),
+        nextActionButton: read('[data-dashboard-region="gamma-daily-action"]'),
         panel: read('[data-dashboard-region="panel"]'),
         metric: read('[data-dashboard-region="metric"]'),
         walletRow: read('[data-dashboard-region="wallet-row"]'),
@@ -2875,6 +4093,12 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     expect(dashboardMetrics.pnl?.borderWidth).toBeLessThanOrEqual(1);
     expect(dashboardMetrics.pnl?.borderWidth).toBeGreaterThan(0);
     expect(dashboardMetrics.discoveryGradientNodes).toBe(0);
+    const nextActionHeights = await nextActions.locator("[data-dashboard-gamma-action]").evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height)
+    );
+    expect(nextActionHeights.every((height) => height >= 44)).toBe(true);
+    await nextActions.locator('[data-dashboard-gamma-action="daily"]').click();
+    await expectGammaRouteReady(page, "/side-quests");
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
   });
 
@@ -4074,7 +5298,9 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(economySurface.locator('[data-wtfiam-region="title"]')).toContainText("WTF In-App Marketplace");
     await expect(economySurface.locator('[data-wtfiam-region="meter"]')).toContainText("EXP:");
     await expect(economySurface.locator('[data-wtfiam-region="tabs"]')).toBeVisible();
-    await expect(economySurface.locator('[data-wtfiam-region="item-card"]').first()).toContainText(/Desktop|Signal|Mop|Vacuum/);
+    await expect(economySurface.locator('[data-wtfiam-region="item-card"]').first()).toContainText(
+      /Arcade|Desktop|Signal|Mop|Vacuum/
+    );
     await expect(economySurface.locator('[data-wtfiam-region="cart-panel"]')).toContainText("Cart");
 
     await economySurface.locator('[data-wtfiam-action="add-ticket"]').first().click();
@@ -8183,20 +9409,84 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await page.setViewportSize({ width: 390, height: 760 });
     await page.goto("/gamma", { waitUntil: "domcontentloaded" });
 
-    await expect(page.locator("[data-gamma-primary-actions]")).toBeInViewport();
-    await expect(page.locator("[data-gamma-live-summary]")).toBeInViewport();
-    await expect(page.locator('[data-gamma-launch="/gallery"]').first()).toBeInViewport();
-    await expect(page.locator('[data-gamma-launch="/tools/broot"]').first()).toBeInViewport();
-    await expect(page.locator('[data-gamma-comms-action]').first()).toBeInViewport();
+    await expect(page.locator("[data-gamma-boot-desk]")).toBeInViewport();
+    await expect(page.locator("[data-gamma-session-panel]")).toBeInViewport();
+    await expect(page.locator("[data-gamma-boot-account]")).toBeInViewport();
+    await expect(page.locator("[data-gamma-boot-search]")).toBeInViewport();
+    await expect(page.locator("[data-gamma-session-checklist]")).toBeInViewport();
+    await expect(page.locator("[data-gamma-start-menu]")).toBeInViewport();
+    await expect(page.locator('[data-gamma-start-action="continue"]')).toBeInViewport();
+    await expect(page.locator('[data-gamma-start-action="gallery"]')).toBeInViewport();
+    await expect(page.locator('[data-gamma-launch="/wtfiam?category=apps"]').first()).toBeInViewport();
+    await expect(page.locator("[data-gamma-session-console]")).toBeVisible();
+    await expect(page.locator("[data-gamma-session-mount]")).toBeVisible();
+    await expect(page.locator("[data-gamma-session-mount-row]")).toHaveCount(4);
+    await expect(page.locator("[data-gamma-wake-queue]")).toBeVisible();
+    await expect(page.locator("[data-gamma-wake-action]")).toHaveCount(5);
+    await expect(page.locator("[data-gamma-power-menu]")).toBeVisible();
 
     const hasHorizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth + 2
     );
     expect(hasHorizontalOverflow).toBe(false);
 
-    const primaryTargetHeights = await page.locator("[data-gamma-primary-actions] button").evaluateAll((buttons) =>
+    const primaryTargetHeights = await page.locator("[data-gamma-start-menu] button").evaluateAll((buttons) =>
       buttons.map((button) => button.getBoundingClientRect().height)
     );
     expect(primaryTargetHeights.every((height) => height >= 44)).toBe(true);
+    const checklistTargetHeights = await page.locator("[data-gamma-session-checklist] button").evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height)
+    );
+    expect(checklistTargetHeights.every((height) => height >= 44)).toBe(true);
+    const bootAccountHeight = await page.locator("[data-gamma-boot-account]").evaluate((button) =>
+      button.getBoundingClientRect().height
+    );
+    expect(bootAccountHeight).toBeGreaterThanOrEqual(44);
+    const sessionConsoleHeights = await page.locator("[data-gamma-session-console] button").evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height)
+    );
+    expect(sessionConsoleHeights.every((height) => height >= 44)).toBe(true);
+    const sessionMountHeights = await page.locator("[data-gamma-session-mount] button").evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height)
+    );
+    expect(sessionMountHeights.every((height) => height >= 44)).toBe(true);
+    const wakeQueueHeights = await page.locator("[data-gamma-wake-queue] button").evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height)
+    );
+    expect(wakeQueueHeights.every((height) => height >= 44)).toBe(true);
+    const powerTargetHeights = await page.locator("[data-gamma-power-menu] button").evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height)
+    );
+    expect(powerTargetHeights.every((height) => height >= 44)).toBe(true);
+    const dailyTargetHeights = await page.locator("[data-gamma-daily-return] button").evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height)
+    );
+    expect(dailyTargetHeights.every((height) => height >= 44)).toBe(true);
+  });
+
+  test("explains EXP, app unlocks, and Count admin review through route-backed passport actions", async ({ page, request }) => {
+    await setHarnessState(request, { userRole: "admin" });
+    await page.goto("/gamma", { waitUntil: "domcontentloaded" });
+
+    const passport = page.locator("[data-gamma-access-passport]");
+    await expect(passport).toBeVisible();
+    await expect(page.locator("[data-gamma-passport-role]")).toContainText("Admin");
+    await expect(page.locator("[data-gamma-passport-exp]")).toContainText("EXP");
+    await expect(page.locator("[data-gamma-passport-app-count]")).toContainText("app-store tools open");
+    await expect(page.locator("[data-gamma-boot-account]")).not.toHaveAttribute("data-gamma-launch", /\/login/);
+    await expect(page.locator('[data-gamma-session-check="daily"]')).toHaveAttribute("data-gamma-launch", "/side-quests");
+    await expect(page.locator('[data-gamma-passport-action="sidequests"]')).toHaveAttribute("data-gamma-launch", "/side-quests");
+    await expect(page.locator('[data-gamma-passport-action="challenges"]')).toHaveAttribute("data-gamma-launch", "/challenges");
+    await expect(page.locator('[data-gamma-passport-action="apps"]')).toHaveAttribute("data-gamma-launch", "/wtfiam?category=apps");
+    await expect(page.locator('[data-gamma-passport-action="levels"]')).toHaveAttribute("data-gamma-launch", "/leaderboard");
+    await expect(page.locator("[data-gamma-passport-app]")).toHaveCount(3);
+    await expect(page.locator("[data-gamma-passport-role-gate]")).toHaveCount(3);
+
+    const countLane = page.locator("[data-gamma-count-admin-lane]");
+    await expect(countLane).toBeVisible();
+    await expect(countLane).toContainText("The Count");
+    await expect(page.locator('[data-gamma-count-action="users"]')).toHaveAttribute("data-gamma-launch", "/admin");
+    await expect(page.locator('[data-gamma-count-action="loops"]')).toHaveAttribute("data-gamma-launch", "/challenges");
+    await expect(page.locator('[data-gamma-count-action="market"]')).toHaveAttribute("data-gamma-launch", "/wtfiam");
   });
 });

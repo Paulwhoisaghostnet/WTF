@@ -80,6 +80,11 @@
           <label class="pp-import">Name <input id="bnName" type="text" placeholder="Mystery Art Pack" /></label>
           <label>Editions to mint <input id="bnEditions" type="number" min="1" value="1" /></label>
         </div>
+        <div class="pp-row">
+          <label><input id="bnForSale" type="checkbox" checked /> List wrapper editions for direct sale</label>
+          <label>Price per edition (tez) <input id="bnPrice" type="number" min="0" step="0.000001" value="1" /></label>
+          <label>Quantity for sale <input id="bnSaleCount" type="number" min="1" value="1" /></label>
+        </div>
         <label>Description <textarea id="bnDesc" rows="2" placeholder="Optional"></textarea></label>
         <label>Tags (comma separated) <input id="bnTags" type="text" placeholder="bundle, pack" /></label>
         <label>Wrapper artwork <input id="bnArtifact" type="file" accept="image/*,video/*,audio/*" /></label>
@@ -131,6 +136,12 @@
           <button id="btnReveal" type="button">Reveal mystery contents</button>
         </div>
       </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>7 · Self-hosted bundle page</h2>
+        <p class="pp-note">Download a buyer-and-holder page that supports direct primary purchase, reveal state, and wrapper redemption.</p>
+        <div class="pp-row"><button id="btnExportSite" type="button">Download bundle site</button><span id="exportSiteStatus" class="pp-note" role="status" aria-live="polite"></span></div>
+      </section>
     </main>
 
     <template id="memberRowTpl">
@@ -152,6 +163,8 @@
     <script src="vendor/octez-connect.js"></script>
     <script src="js/octez-wallet.js"></script>
     <script src="js/common.js"></script>
+    <script>window.PASTA_SITE_EXPORT = { app: "ravioli", label: "Ravioli", titleInput: "bnName", descriptionInput: "bnDesc", contractInput: "opKt", tokenInput: "opTokenId" };</script>
+    <script src="js/site-bundle.js"></script>
     <script type="module" src="js/studio.js"></script>
   </body>
 </html>

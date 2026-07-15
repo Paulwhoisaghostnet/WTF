@@ -187,10 +187,10 @@ else
   echo "$compose_up_output"
 fi
 
-echo "[server-deploy] waiting for health"
+echo "[server-deploy] waiting for readiness"
 health_ok=0
 for _ in 1 2 3 4 5 6 7 8 9 10; do
-  if curl -fsS http://localhost:3000/api/health >/dev/null 2>&1; then
+  if curl -fsS http://localhost:3000/api/health/ready >/dev/null 2>&1; then
     docker compose ps
     health_ok=1
     break
@@ -199,7 +199,7 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
 done
 
 if [[ "$health_ok" == "1" ]]; then
-  echo "[server-deploy] health check passed"
+  echo "[server-deploy] readiness check passed"
   echo "[server-deploy] verifying repo doctor heartbeat timer"
   sudo WTF_APP_DIR="$ROOT_DIR" bash scripts/install-systemd-timers.sh repo-doctor-heartbeat.timer
   sudo systemctl is-enabled repo-doctor-heartbeat.timer

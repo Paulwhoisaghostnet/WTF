@@ -292,7 +292,7 @@ export function RecoveryMode() {
 
   const healthQuery = useQuery({
     queryKey: ["recovery-mode", "health"],
-    queryFn: () => fetchHealthJson<RecoveryHealthSummary>("/api/health"),
+    queryFn: () => fetchHealthJson<RecoveryHealthSummary>("/api/health/diagnostics"),
     refetchInterval: 60_000,
   });
 

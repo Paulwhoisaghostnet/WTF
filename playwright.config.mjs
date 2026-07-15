@@ -26,7 +26,10 @@ export default defineConfig({
   webServer: {
     command: "node tests/playwright/harness.mjs",
     url: `http://127.0.0.1:${PORT}/`,
-    reuseExistingServer: !process.env.CI,
+    // Never attach inventory tests to an arbitrary harness left running by
+    // another worktree. Concurrent local runs must choose distinct
+    // HARNESS_PORT values so their mutable fixture state stays isolated.
+    reuseExistingServer: false,
     timeout: 30_000,
     env: { HARNESS_PORT: String(PORT) },
   },

@@ -450,6 +450,7 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(page, /ExternalThumb/);
   assert.match(wtfLiveApp, /Send Room Message/);
   assert.match(wtfLiveApp, /Send Broadcast/);
+  assert.match(wtfLiveApp, /data-wtf-live-stage-broadcast-send/);
   assert.match(wtfLiveApp, /Create Public Room|Create Private Room/);
   assert.match(wtfLiveApp, /Create Stage/);
   assert.match(page, /onChatQuote/);

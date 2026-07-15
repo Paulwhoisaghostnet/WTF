@@ -16,7 +16,7 @@ const TEIA = "KT1PHubm9HtyQEJ4BBpMTVomq6mhbfNZ9z5w";
 const HEN_V2 = "KT1HbQepzV1nVGg8QVznG7z4RcHseD5kwqBn";
 
 test("external marketplace contracts expose canonical identity and cancel metadata", () => {
-  assert.equal(EXTERNAL_MARKETPLACE_CONTRACTS.length, 9);
+  assert.equal(EXTERNAL_MARKETPLACE_CONTRACTS.length, 10);
   assert.equal(externalMarketplaceName(OBJKT_V6), "objkt v6");
   assert.equal(externalMarketplaceKey(OBJKT_V6), "objkt");
   assert.equal(externalCancelEntrypoint(OBJKT_V6), "retract_ask");

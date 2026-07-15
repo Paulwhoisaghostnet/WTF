@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 
 import { TezosToolkit } from "@taquito/taquito";
 import type { InMemorySigner } from "@taquito/signer";
+import { HttpBackend } from "@taquito/http-utils";
+import { RpcClient } from "@taquito/rpc";
 
 import keyringModule from "../../extensions/wtf-operator-signer/src/keyring";
 import type { SignerEnv } from "../../extensions/wtf-operator-signer/src/env";
@@ -23,6 +25,8 @@ const DEFAULT_KEYRING_PATH = path.join(homedir(), ".wtf-gameshow", "platform-wal
 const DEFAULT_MASTER_KEY_FILE = path.join(homedir(), ".wtf-gameshow", "platform-keyring-master.key");
 const DEFAULT_CREATOR_WALLET_ID = "wtf-os-root";
 const DEFAULT_COLLECTOR_WALLET_ID = "arcade-treasury";
+const HTTP_TIMEOUT_MS = Math.max(1_000, Number(process.env.PASTA_SHADOWNET_HTTP_TIMEOUT_MS || "15000"));
+const TAQUITO_TIMEOUT_MS = Math.max(30_000, Number(process.env.PASTA_SHADOWNET_TAQUITO_TIMEOUT_MS || "120000"));
 const { PlatformWalletKeyring } = keyringModule as any;
 
 export type ProofStatus = "BLOCKED" | "FAILED" | "PASSED";
@@ -118,6 +122,7 @@ export async function writeProofReport(options: {
 export async function fetchText(url: string, userAgent: string): Promise<{ status: number; text: string }> {
   const response = await fetch(url, {
     headers: { "user-agent": userAgent },
+    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
   });
   return { status: response.status, text: await response.text() };
 }
@@ -128,6 +133,7 @@ export async function fetchJson(
 ): Promise<{ status: number; json: any; text: string }> {
   const response = await fetch(url, {
     headers: { "user-agent": userAgent },
+    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
   });
   const text = await response.text();
   let json: any = null;
@@ -242,7 +248,7 @@ export async function signerEnv(
 }
 
 export function buildToolkit(signer: InMemorySigner, rpcUrl: string): TezosToolkit {
-  const tezos = new TezosToolkit(rpcUrl);
+  const tezos = new TezosToolkit(new RpcClient(rpcUrl, "main", new HttpBackend(TAQUITO_TIMEOUT_MS)));
   tezos.setProvider({ signer });
   return tezos;
 }

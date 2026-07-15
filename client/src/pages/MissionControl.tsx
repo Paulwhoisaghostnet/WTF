@@ -394,7 +394,7 @@ export function MissionControl() {
   });
   const healthQuery = useQuery({
     queryKey: ["mission-control", "health"],
-    queryFn: () => api.get<HealthResponse>("/api/health"),
+    queryFn: () => api.get<HealthResponse>("/api/health/diagnostics"),
     refetchInterval: 60_000,
   });
   const syncQuery = useQuery({

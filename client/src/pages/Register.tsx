@@ -13,6 +13,21 @@ import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import { AuthScreenShell } from "../components/layout/AuthScreenShell";
 import { WTFOS_PLATFORM_NAME } from "@shared/platform-branding";
+import {
+  presentationRouteHref,
+  usePresentationShell,
+} from "../lib/presentation-shell";
+
+const GAMMA_DEFAULT_POST_AUTH_ROUTE = "/dashboard";
+
+function safeGammaAuthReturn(rawSearch: string): string | null {
+  const params = new URLSearchParams(rawSearch);
+  const raw = params.get("return") || "";
+  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
+  const path = raw.split(/[?#]/)[0] || "/";
+  if (path.startsWith("/api/") || path === "/login" || path === "/register") return null;
+  return raw;
+}
 
 const CenterWrapper = styled.div`
   display: grid;
@@ -110,6 +125,27 @@ export function Register() {
   const { user, register, walletRegister } = useAuth();
   const [, setLocation] = useLocation();
   const rawSearch = useSearch();
+  const presentation = usePresentationShell();
+  const isGamma = presentation.host === "gamma";
+  const gammaReturnRoute = isGamma ? safeGammaAuthReturn(rawSearch) : null;
+  const postAuthRoute =
+    isGamma
+      ? presentationRouteHref(gammaReturnRoute ?? GAMMA_DEFAULT_POST_AUTH_ROUTE, "gamma")
+      : "/";
+  const loginRoute =
+    isGamma
+      ? presentationRouteHref(
+          `/login${gammaReturnRoute ? `?return=${encodeURIComponent(gammaReturnRoute)}` : ""}`,
+          "gamma"
+        )
+      : "/login";
+  const destinationLabel = isGamma
+    ? gammaReturnRoute === GAMMA_DEFAULT_POST_AUTH_ROUTE
+      ? "Gamma dashboard"
+      : gammaReturnRoute
+      ? "the Gamma route you opened"
+      : "Gamma dashboard"
+    : "the desktop";
 
   const walletParams = useMemo(() => {
     const params = new URLSearchParams(rawSearch);
@@ -146,7 +182,7 @@ export function Register() {
     return () => { cancelled = true; };
   }, [walletParams]);
 
-  if (user) return <Redirect to="/" />;
+  if (user) return <Redirect to={postAuthRoute} />;
 
   const isWalletFlow = !!walletParams;
 
@@ -183,7 +219,7 @@ export function Register() {
           password: form.password,
         });
       }
-      setLocation("/", { replace: true });
+      setLocation(postAuthRoute, { replace: true });
     } catch (err: any) {
       setError(err.message || "Registration failed");
     } finally {
@@ -202,8 +238,8 @@ export function Register() {
             <Intro>
               <Title>Set up your desktop</Title>
               <Copy>
-                Pick a handle and we will take you straight into {WTFOS_PLATFORM_NAME}. Your
-                first welcome message will appear on the desktop after the account
+                Pick a handle and we will take you straight into {destinationLabel}. Your
+                first welcome message will appear there after the account
                 is created.
               </Copy>
             <StatusStrip aria-live="polite">
@@ -269,7 +305,7 @@ export function Register() {
             {error && <ErrorMsg>{error}</ErrorMsg>}
 
             <ButtonRow>
-              <Button type="button" onClick={() => setLocation("/login")}>
+              <Button type="button" onClick={() => setLocation(loginRoute)}>
                 Back to Login
               </Button>
               <Button

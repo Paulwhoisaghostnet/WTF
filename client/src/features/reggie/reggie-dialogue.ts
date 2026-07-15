@@ -46,6 +46,12 @@ export const REGGIE_GREETINGS: string[] = [
   "Greetings, user. I've prepared a full onboarding itinerary and three unrelated opinions.",
   "You again! Excellent. My quest log doesn't fill itself. Well, technically it does — that's the whole system — but you know what I mean.",
   "Hi. Reggie. Hamster. Assistant. Questions welcome, cheek-pouch jokes tolerated.",
+  "Look who booted up. I had a whole speech ready and only some of it is legally advice-adjacent.",
+  "There you are. I was about to organize your quest log by emotional damage.",
+  "Welcome back to wtfOS. I swept the desktop, alphabetized the side quests, and judged your progress quietly.",
+  "Ah, my favorite user. Do not ask how many users I say that to. Numbers ruin magic.",
+  "Reggie online. Clipboard loaded. Opinions sharpened. Tiny feet: unstoppable.",
+  "Good timing. I was two seconds from giving the taskbar a performance review.",
 ];
 
 export const REGGIE_NAGS: string[] = [
@@ -57,15 +63,82 @@ export const REGGIE_NAGS: string[] = [
   "The rewards ledger called. It's lonely.",
   "You know what would look great on you? A completed quest step. Very slimming.",
   "I've seen glaciers onboard faster. Adorable glaciers, but still.",
+  "Your next unlock is sitting there with a little bow on it. I tied the bow. It took forever.",
+  "I am not saying you are procrastinating. The evidence is saying it and I am merely holding the folder.",
+  "The OS has snacks for doers. Metaphorical snacks. Sometimes actual rewards. Either way: move.",
+  "If side quests could sigh, yours would be fogging up the monitor.",
+  "Tiny reminder from a tiny professional: completed steps unlock better mischief.",
+  "The quest tree is not going to climb itself, and I refuse to grow thumbs.",
+];
+
+export const REGGIE_EMPTY_QUESTION_REPLIES: string[] = [
+  "You have to actually ask something. Silence is free; answers cost a question.",
+  "I received a beautiful blank. Minimalist. Useless. Type a question.",
+  "That was not a question; that was air with punctuation dreams.",
+  "Ask me with words, please. I left my mind-reading helmet in the other burrow.",
+  "Tiny input, tiny answer: try typing the actual question.",
+  "I respect the dramatic pause. Now add nouns.",
 ];
 
 export const REGGIE_QUEST_COMPLETE_LINES: string[] = [
   "That's it. That's the whole questline. You went from wtf newbie to wtf rockstar and I have the paperwork to prove it. I'm... actually tearing up. Hamsters can do that.",
   "Quest complete. My work here is done. I'll be in my burrow if you need me — which you won't, because I trained you perfectly.",
   "You did everything. Identity, wallets, apps, pets, pasta. I'm retiring my clipboard. Wear the graduation cap with pride.",
+  "Finale complete. The OS has witnessed you. I have witnessed you. The quest log is glowing in a way finance will ask about later.",
+  "You cleared the board. Somewhere a progress bar just fainted from happiness.",
+  "Rockstar status confirmed. I would throw confetti, but I live on a desktop and respect your GPU.",
+  "All stories complete. You learned the OS, used the tools, talked to humans, made things, earned things, spent things, and somehow survived my commentary.",
+  "Graduation achieved. I am proud, impressed, and only slightly annoyed that you made it look teachable.",
 ];
 
-export const REGGIE_STEP_DIALOGUE: Record<string, StepDialogue> = {
+export const REGGIE_ASSISTANT_SCRIPT = {
+  summon: [
+    "You rang? Reggie, reporting for desktop duty. I brought advice and absolutely no chill.",
+    "Summoned from the depths of the taskbar. What are we fixing, finding, or theatrically overexplaining?",
+    "Behold: one assistant, freshly summoned, lightly caffeinated by vibes.",
+    "I'm here. The desktop context menu has taste now.",
+    "Reggie has entered the chat bubble. Try not to act surprised; you literally summoned me.",
+    "At your service. Unless the service is math after midnight. Then at your emotional support.",
+    "I popped back in because you asked nicely. Or clicked aggressively. I accept both.",
+    "The assistant has been summoned. The clipboard is loaded. The opinions are unsupervised.",
+  ],
+  loading: [
+    "Give me a second to load your quest state. Even hamsters have latency.",
+    "Fetching your quest state. The database is thinking, which is adorable when it is fast.",
+    "One beat. I am asking the quest ledger what you've been up to and whether it should be proud.",
+    "Loading the books. If this takes too long, I will stare at the API until it improves itself.",
+    "Hold that thought. I am rummaging through the quest drawer.",
+    "Quest state is still landing. Please enjoy this premium pause, handcrafted by network reality.",
+  ],
+  empty: [
+    "Nothing is available right now, which should be impossible. Try 'Check progress' and I'll re-run the books.",
+    "The quest list says 'no obvious next move,' which is rude and suspicious. Let's re-check progress.",
+    "No available step surfaced. Either you're between unlocks or the quest ledger is being dramatic.",
+    "I don't see a next quest yet. Hit progress check and I'll shake the vending machine.",
+    "The tree looks temporarily quiet. Quiet trees worry me. Let's ask the system again.",
+  ],
+  locked: [
+    "\"{title}\" is still locked. Finish its prerequisites first — check the quest list and I'll point the way.",
+    "\"{title}\" is behind a prerequisite door. I know, doors are rude. Finish the earlier step and I'll unlock the gossip.",
+    "\"{title}\" is not ignoring you; it is locked with paperwork. Clear the required quests first.",
+    "Not yet: \"{title}\" needs its prerequisite stack done. We are orderly now. I also hate it.",
+    "\"{title}\" is currently in the velvet-rope section. Finish the opener quests and I will personally unclip the rope.",
+  ],
+  progress: [
+    "Running the books... you're at {completed}/{total} ({percent}%). I've asked the system to re-verify everything — give it a beat and check the quest list.",
+    "Audit time: {completed}/{total} side quests, {percent}% complete. I pinged verification because I enjoy accountability when it happens to other people.",
+    "Ledger check: {completed}/{total}, which is {percent}%. Re-verification is underway; the quest machinery is stretching its little legs.",
+    "Progress report: {completed}/{total} complete, {percent}% done. Respectable. Improvable. Conveniently, I have suggestions.",
+    "I re-ran the numbers: {completed}/{total}, {percent}%. The system is double-checking; I am single-judging.",
+  ],
+  progressUnknown: [
+    "Re-checking everything now. The quest ledger is somewhere between 'loading' and 'performing mystery.'",
+    "I asked the system to re-verify. If progress appears, I will pretend I caused it through leadership.",
+    "Refreshing the books. Please stand by while I make intense eye contact with a loading state.",
+  ],
+} as const;
+
+const BASE_REGGIE_STEP_DIALOGUE: Record<string, StepDialogue> = {
   profile: {
     intro: [
       "First things first: who ARE you? Head to your Profile and set a display name. I refuse to keep calling you 'hey, you'.",
@@ -441,6 +514,263 @@ export const REGGIE_STEP_DIALOGUE: Record<string, StepDialogue> = {
   },
 };
 
+interface StepStoryNote {
+  action: string;
+  why: string;
+  nag: string;
+  win: string;
+  flair: string;
+}
+
+const REGGIE_STEP_STORY_NOTES: Record<string, StepStoryNote> = {
+  profile: {
+    action: "set a display name in Profile",
+    why: "The OS needs a name to put on your posts, messages, and rewards paperwork.",
+    nag: "Unnamed users make my spreadsheet itch.",
+    win: "You have a name now, which is a bold leap into civilization.",
+    flair: "Identity first; everything else gets less weird after that.",
+  },
+  quest_hq: {
+    action: "visit Side Quests and Challenges",
+    why: "Those two screens are the reward engine room, and I refuse to guide you blindfolded.",
+    nag: "Quest HQ is still waiting with the lights on.",
+    win: "You found the machinery that proves and pays your work.",
+    flair: "Very glamorous, if your glamour standard includes state machines.",
+  },
+  pfp: {
+    action: "set an avatar or owned-token PFP",
+    why: "The default silhouette has served bravely, but it is time to retire the mystery blob.",
+    nag: "Your face slot is still doing community theater as an empty box.",
+    win: "You are recognizable now, which is dangerous but useful.",
+    flair: "A little vanity is just user experience with cheekbones.",
+  },
+  x_link: {
+    action: "link your X account from Profile",
+    why: "OAuth proof beats 'trust me bro' in every identity court I recognize.",
+    nag: "Your X handle is still floating around without a receipt.",
+    win: "Your X account is verified and attached to your wtfOS identity.",
+    flair: "Social proof: now with fewer vibes and more evidence.",
+  },
+  bsky_link: {
+    action: "link your Bluesky account",
+    why: "That opens Skywire, AT identity features, and the atmosphere-shaped part of the OS.",
+    nag: "The atmosphere is open and your account is still indoors.",
+    win: "Your Bluesky account is linked and ready for the AT Protocol funhouse.",
+    flair: "Portable identity looks good on you.",
+  },
+  wallet: {
+    action: "connect a Tezos wallet with a signed challenge",
+    why: "No funds move; the signature just proves the wallet is yours so indexing and rewards can work.",
+    nag: "The on-chain half of wtfOS is still tapping its foot.",
+    win: "Your Tezos wallet is verified, indexed, and ready for grown-up chain business.",
+    flair: "Cryptographic ownership: finally, a flex with receipts.",
+  },
+  did_claim: {
+    action: "claim a wtfos.me handle",
+    why: "It gives your AT identity a WTF-hosted home that resolves cleanly through the system.",
+    nag: "Your wtfos.me name is still sitting there like an unclaimed crown.",
+    win: "Your DID handle resolves, which is more than I can say for some meetings.",
+    flair: "Decentralized identity, but make it yours.",
+  },
+  wtf_tez: {
+    action: "register a personal wtf.tez subdomain",
+    why: "Names are kinder than tz-address soup when people want to recognize your wallet.",
+    nag: "Your wallet is still wearing its serial number in public.",
+    win: "Your wallet has a human-readable name now.",
+    flair: "On-chain dignity: acquired.",
+  },
+  multi_wallet: {
+    action: "connect a second Tezos wallet and set a primary",
+    why: "Primary wallet decides cashouts, and separate vault/spend wallets keep life less chaotic.",
+    nag: "One wallet is brave; two wallets with a primary is planning.",
+    win: "Your wallet setup has layers now.",
+    flair: "Portfolio management, but with fewer neckties.",
+  },
+  etherlink: {
+    action: "connect an Etherlink wallet",
+    why: "Etherlink covers the EVM side so wtfOS can see both halves of your on-chain footprint.",
+    nag: "Your EVM side is still a blank hallway.",
+    win: "Etherlink is connected and your account speaks EVM now.",
+    flair: "Bilingual chain energy. Very cosmopolitan.",
+  },
+  appearance: {
+    action: "open Theme Builder and change the desktop look",
+    why: "Style grammar, colors, fonts, and wallpaper are how the OS stops feeling borrowed.",
+    nag: "Default appearance is fine, and 'fine' is how joy goes missing.",
+    win: "The desktop looks more like yours now.",
+    flair: "Taste was exercised. No injuries reported.",
+  },
+  navigator: {
+    action: "tour navigation with icons, Start, windows, and command palette",
+    why: "Knowing how to move around turns wtfOS from a maze into a place you own.",
+    nag: "You are still navigating like a guest with a polite map.",
+    win: "You can get around the OS without needing me to squeak directions every time.",
+    flair: "Power user training: tiny edition.",
+  },
+  pet_adopt: {
+    action: "enable and adopt a desktop pet",
+    why: "Pets make the desktop feel alive and introduce the care loop that earns activity XP.",
+    nag: "A tiny companion is waiting in settings and honestly handling rejection with grace.",
+    win: "You adopted a desktop pet and the OS feels less lonely.",
+    flair: "I am not jealous. Please note how normal I am being.",
+  },
+  pet_care: {
+    action: "complete five pet care interactions",
+    why: "Food, water, cleaning, and play prove you can keep a small desktop life thriving.",
+    nag: "Your pet care quota is still looking at an empty snack dish.",
+    win: "Your pet has been cared for and your responsibility rating has improved.",
+    flair: "As a fellow small mammal, I approve this message.",
+  },
+  wim: {
+    action: "open WIM and send a direct message",
+    why: "Instant messages are the social glue, and the first hello is the only awkward one.",
+    nag: "WIM is waiting for you to type one brave sentence.",
+    win: "You sent a WIM message and became socially load-bearing.",
+    flair: "Human contact: installed successfully.",
+  },
+  live_room: {
+    action: "join or create a WTF LIVE room and participate",
+    why: "Rooms are where text, voice, video, screen share, and community presence converge.",
+    nag: "The live rooms are doing live-room things without your commentary.",
+    win: "You participated in WTF LIVE and survived real-time community.",
+    flair: "A room heard from you. History will cope.",
+  },
+  calendar: {
+    action: "visit the Calendar",
+    why: "It shows rounds, stages, events, and the things future-you would otherwise miss.",
+    nag: "Time continues to pass in public and your Calendar tour remains undone.",
+    win: "You know where the schedule lives now.",
+    flair: "Being informed is almost unfairly powerful.",
+  },
+  live_stage: {
+    action: "create a WTF LIVE stage and submit it to the Calendar",
+    why: "Stages turn you from attendee into host, with speakers, guests, audience, and a listing.",
+    nag: "Your stage era is still trapped behind setup.",
+    win: "You made a stage and gave people a scheduled reason to show up.",
+    flair: "Event production: less glamorous than it looks, more impressive than it sounds.",
+  },
+  skywire: {
+    action: "open Skywire with your linked Bluesky identity",
+    why: "It lets you use the AT Protocol from inside the OS instead of wandering off-site.",
+    nag: "Skywire is fueled and you are still on the runway.",
+    win: "You toured Skywire and the atmosphere behaved.",
+    flair: "Posting from the OS: extremely on brand.",
+  },
+  tz2at: {
+    action: "tour Tz2at",
+    why: "It shows how Tezos wallet identity can publish into the AT Protocol firehose.",
+    nag: "The chain-to-atmosphere bridge is still waiting for its dramatic walkthrough.",
+    win: "You understand the Tz2at bridge now, which makes you dangerous at parties.",
+    flair: "Nerdy bridge, elegant result.",
+  },
+  broot: {
+    action: "open Broot and make art",
+    why: "Creation tools are the point; even a suspicious doodle counts as forward motion.",
+    nag: "Your canvas is still blank and judging everyone in silence.",
+    win: "You made something, and the OS is richer for it.",
+    flair: "Art happened. Critics may recover.",
+  },
+  studio: {
+    action: "create a Studio project",
+    why: "Projects give collaborators, files, notes, and plans a durable home.",
+    nag: "Your collaboration empire still lacks a front door.",
+    win: "You created a Studio project and now have a place to point ambition.",
+    flair: "Project energy: officially detectable.",
+  },
+  macaroni: {
+    action: "package and finalize a Macaroni blind mint drop",
+    why: "It turns your art into a real Pasta Protocol drop with metadata and publishable structure.",
+    nag: "The Macaroni package remains uncooked, and I am choosing courage.",
+    win: "You finalized a real drop package.",
+    flair: "Al dente achievement unlocked.",
+  },
+  earn_exp: {
+    action: "earn EXP from verified activity",
+    why: "EXP drives levels, titles, leaderboards, and the feeling of a number going up.",
+    nag: "Your XP meter wants attention and I support its boundaries.",
+    win: "EXP landed, and the ladder noticed.",
+    flair: "Number went up. Civilization persists.",
+  },
+  earn_wtf: {
+    action: "earn WTF from a verified quest or challenge",
+    why: "WTF is the reward currency you can spend in-app or cash out through your primary wallet.",
+    nag: "Your reward ledger is still doing a quiet little shrug.",
+    win: "You earned WTF and the ledger has proof.",
+    flair: "Money-ish reward: acquired responsibly.",
+  },
+  market: {
+    action: "buy something in WTFIAM with earned WTF",
+    why: "Spending closes the earn-spend loop and turns reward currency into inventory.",
+    nag: "Currency sitting unused is just potential with commitment issues.",
+    win: "You made a market purchase and completed the economy loop.",
+    flair: "Retail therapy, but make it system design.",
+  },
+  titles_roles: {
+    action: "tour titles, roles, and the leaderboard",
+    why: "Titles show XP status; roles decide access; the leaderboard shows the climb.",
+    nag: "The ladder is visible and you still have not looked up.",
+    win: "You know what titles and roles mean now.",
+    flair: "Mild app-gated power has entered the chat.",
+  },
+  arcade: {
+    action: "visit the Arcade and play something",
+    why: "Community games, high scores, and reports live there, and losing politely builds lore.",
+    nag: "The Arcade machines are blinking attract mode at nobody.",
+    win: "You toured the Arcade and put some play into the OS.",
+    flair: "High score optional. Vibes mandatory.",
+  },
+  casino: {
+    action: "tour the Casino after earning WTF",
+    why: "Wagered games make more sense once you know exactly what currency is at risk.",
+    nag: "The Casino tour is pending, not the betting part. We are responsible and nosy.",
+    win: "You toured the Casino without making your ledger cry.",
+    flair: "Informed risk: the only acceptable flavor.",
+  },
+  finale: {
+    action: "finish every side quest in Reggie's questline",
+    why: "The finale proves you understand identity, wallets, apps, creation, rewards, social, and play.",
+    nag: "The graduation cap is within reach and I am emotionally prepared-ish.",
+    win: "You completed the whole onboarding saga.",
+    flair: "Rockstar status, clipboard-certified.",
+  },
+};
+
+function uniqueLines(lines: string[]): string[] {
+  return Array.from(new Set(lines.map((line) => line.trim()).filter(Boolean)));
+}
+
+function enrichStepDialogue(stepKey: string, dialogue: StepDialogue): StepDialogue {
+  const note = REGGIE_STEP_STORY_NOTES[stepKey];
+  if (!note) return dialogue;
+  return {
+    intro: uniqueLines([
+      ...dialogue.intro,
+      `Your next little assignment: ${note.action}. ${note.why} ${note.flair}`,
+      `I have a clipboard and zero chill: ${note.action}. ${note.why}`,
+      `Here comes a user story with teeth: ${note.action}. ${note.flair}`,
+    ]),
+    nudge: uniqueLines([
+      ...dialogue.nudge,
+      `${note.nag} Please ${note.action}.`,
+      `Still pending: ${note.action}. ${note.flair}`,
+      `The quest log is making eye contact again. ${note.nag}`,
+    ]),
+    congrats: uniqueLines([
+      ...dialogue.congrats,
+      `${note.win} ${note.flair}`,
+      `Verified. ${note.win}`,
+      `Look at you doing the thing: ${note.win}`,
+    ]),
+  };
+}
+
+export const REGGIE_STEP_DIALOGUE: Record<string, StepDialogue> = Object.fromEntries(
+  Object.entries(BASE_REGGIE_STEP_DIALOGUE).map(([stepKey, dialogue]) => [
+    stepKey,
+    enrichStepDialogue(stepKey, dialogue),
+  ])
+);
+
 /**
  * Smart-ass replies for questions outside Reggie's wheelhouse. Deliberately
  * enormous so the well never feels dry.
@@ -492,12 +822,35 @@ export const REGGIE_SMARTASS_REPLIES: string[] = [
   "Look, I peaked at 'explains wallet signatures'. Let me have this.",
 ];
 
+export type ReggieAssistantScriptKind = keyof typeof REGGIE_ASSISTANT_SCRIPT;
+
+function fillTemplate(line: string, values: Record<string, string | number> = {}): string {
+  return line.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key: string) => {
+    const value = values[key];
+    return value === undefined ? match : String(value);
+  });
+}
+
+export function assistantStateLine(
+  kind: ReggieAssistantScriptKind,
+  seed: string,
+  values?: Record<string, string | number>,
+  avoid?: string
+): string {
+  const pool = REGGIE_ASSISTANT_SCRIPT[kind];
+  return fillTemplate(pickLine([...pool], `${kind}:${seed}`, avoid), values);
+}
+
 export function greeting(seed: string): string {
   return pickLine(REGGIE_GREETINGS, `greet:${seed}`);
 }
 
 export function nag(seed: string, avoid?: string): string {
   return pickLine(REGGIE_NAGS, `nag:${seed}`, avoid);
+}
+
+export function emptyQuestionReply(seed: string, avoid?: string): string {
+  return pickLine(REGGIE_EMPTY_QUESTION_REPLIES, `empty-question:${seed}`, avoid);
 }
 
 export function smartAssReply(seed: string, avoid?: string): string {

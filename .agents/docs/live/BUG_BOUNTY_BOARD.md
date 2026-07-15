@@ -81,9 +81,37 @@ Priority labels:
 | WTF-BB-358 | Verified | Codex Jackbox game-room UX pass | 2026-07-08 | Desktop OS / Remote Applications + WTF LIVE game rooms | P1 | 13 | 6 | 4 | 5 | 0 | Jackbox apphost play now uses a game-first full-surface route with overlay controls/status and a WTF LIVE handoff, WTF LIVE has persistent `game` rooms with owner Jackbox launch actions and game-scoped settings/WebSocket permissions, and the inventory registry/harness cover the new workflow; verified with focused policy tests, TypeScript, build, inventory coverage, focused Playwright, and full inventory E2E (`592 passed`) |
 | WTF-BB-359 | Verified | Codex WTF LIVE game-room hotfix | 2026-07-08 | WTF LIVE / game room settings and Jackbox controls | P1 | 13 | 6 | 3 | 5 | 1 | Game room settings repair migration drops the old anonymous and explicit room_kind checks, re-adds `room|game|stage`, and backfills existing game rooms; create-room errors are sanitized; Jackbox host buttons now deep-link to the game room with `hostApp`, auto-join the manager, start apphost in-room, attach the hosted WebRTC stream to WTF LIVE screen sharing, and keep input on the room control surface. Local verification passed focused WTF LIVE policy tests, TypeScript, build, inventory coverage, focused WTF LIVE Playwright game-room smoke, and full inventory E2E (`592 passed`). Production deploy run `28987385310` applied migration `0112`, live health reported commit `f438f8cf`, `/live` and `/live/r/paul-s-game-room` returned 200, and the public room API confirmed `kind:"game"` plus `wtf_live_room_settings.roomKind:"game"` for `paul-s-game-room` |
 | WTF-BB-360 | Verified | Codex app marketplace UX ranking full-send | 2026-07-15 | Desktop OS / app store and role-gated launch UX | P1 | 14 | 3 | 4 | 5 | 1 | First-entry wtfOS now uses a ranked app entitlement catalog: core apps stay on the default desktop/Stuffs path, optional and role-gated apps appear in the WTFIAM Apps store, ineligible purchases fail closed with explanatory disabled UI and server `purchase_blocked`, Reggie explains the model, full local inventory passed, and feature commit `8118383e` deployed through Hetzner run `29439888281`, main Quality Gates `29439888359`, live health, `/wtfiam` 200, and `/api/apps/desktop` default-core smoke |
+| WTF-BB-361 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / puppet wallet network metadata | P1 | 12 | 7 | 2 | 4 | 2 | Puppet seeding now binds every reused or created keyring wallet to the selected RPC's live chain ID, retargets stale network metadata without rotating the signer, and passes focused keyring/seed policy proof |
+| WTF-BB-362 | Verified | Codex Gamma route-content pass | 2026-07-14 | Gamma / deep route app hosting | P1 | 13 | 6 | 3 | 5 | 1 | Gamma app-hosting proofs now seed explicit installed app passes for authorized route checks, while locked app-store routes explain the missing pass and route users to WTFIAM Apps inside Gamma instead of dead-ending; verified with focused Gamma route cluster proof, focused prior-failure specs, source policy, coverage, TypeScript, build, diff check, and full inventory E2E (`595 passed`) |
+| WTF-BB-363 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Deploy / DB migration integrity | P0 | 16 | 1 | 3 | 5 | 3 | Production migration ledger records checksums without enforcing checksum equality and can bootstrap every migration as applied from the existence of one table |
+| WTF-BB-364 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Operations / scheduler truth | P0 | 15 | 2 | 3 | 5 | 2 | Scheduler audit rows can remain `running` after the in-process job is no longer running while public health still reports healthy |
+| WTF-BB-365 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Startup / hidden mutations | P1 | 13 | 6 | 3 | 5 | 1 | Production begins serving before boot-time backfills, seeds, and cache-key migrations finish |
+| WTF-BB-366 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Developer experience / configuration | P2 | 9 | 12 | 3 | 2 | 1 | Hundreds of environment-variable reads have no generated ownership, secrecy, validation, lifecycle, or documentation inventory |
+| WTF-BB-367 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Desktop OS / shell authority | P1 | 12 | 7 | 3 | 4 | 1 | Classic, Beta, and Gamma are exposed as peer product shells without one canonical production authority or compatibility policy |
+| WTF-BB-368 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Architecture / duplicate and disconnected organs | P2 | 9 | 12 | 2 | 3 | 1 | Duplicate access-route mounting and disconnected creator-payout, Discord-command, and external-listing organs create false capability surface |
+| WTF-BB-369 | Verified | Codex architectural quick-wins pass | 2026-07-14 | CI / release truth | P1 | 13 | 6 | 3 | 5 | 1 | Quality Gates omit an aggregate unit-test lane and production dependency audit while inventory skeleton coverage can be mistaken for behavior completeness |
+| WTF-BB-370 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Supply chain / container provenance | P1 | 13 | 6 | 3 | 4 | 2 | Production Compose uses mutable image tags and has no checked SBOM/provenance artifact gate |
+| WTF-BB-371 | Open | - | 2026-07-14 | Secrets / git history | P0 | 17 | 1 | 4 | 3 | 5 | A deleted tracked environment file in repository history contains a likely Twitter API credential that requires provider rotation before any coordinated history rewrite |
+| WTF-BB-372 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / puppet database preparation | P1 | 10 | 10 | 3 | 3 | 0 | Local actor traffic no longer fails on the desktop localization API because puppet DB preparation applies migration `0108` and a unit policy locks the requirement |
+| WTF-BB-373 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / TzKT cache persistence | P2 | 8 | 14 | 2 | 3 | 0 | Local actor Tezos workflows now exercise the persistent TzKT response cache because puppet DB preparation applies migration `0081` instead of silently degrading to memory-only caching |
+| WTF-BB-374 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Macaroni RPC fallback signal | P2 | 7 | 15 | 2 | 2 | 0 | Macaroni live proof now exercises the configured browser RPC fallback instead of bypassing it with a raw toolkit call, while classifying only the recovered primary's exact CORS pair as non-fatal |
+| WTF-BB-375 | Verified | Codex full-send cleanup pass | 2026-07-15 | Macaroni / wallet restore liveness | P1 | 11 | 8 | 3 | 4 | 0 | Generated mint pages stop blocking at `Checking wallet...` once the session is validated and use a bounded read-only RPC fallback for chain and balance refresh |
+| WTF-BB-376 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / contract configuration precedence | P2 | 7 | 15 | 2 | 2 | 0 | Marketplace Shadownet proof now derives the expected in-app market address with the same env precedence as server diagnostics; the focused Marketplace/WTF LIVE run and complete actor suite reached and passed the configured Marketplace state assertions |
+| WTF-BB-377 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / WTF LIVE database preparation | P1 | 10 | 10 | 3 | 3 | 0 | Puppet DB preparation applies the complete ordered WTF LIVE migration chain; focused preparation, route proof, and all 114 full-suite route smokes passed without the prior `room_kind` SQL error |
+| WTF-BB-378 | Verified | Codex full-send cleanup pass | 2026-07-15 | Desktop API / optimistic concurrency | P1 | 10 | 10 | 3 | 3 | 0 | Desktop settings preserves an explicit null first-write concurrency token; the focused policy test and authenticated desktop actor workflow pass |
+| WTF-BB-379 | Verified | Codex full-send cleanup pass | 2026-07-15 | Mail API / HTTP error semantics | P1 | 11 | 8 | 3 | 3 | 1 | Mail send maps every known user identity/eligibility denial to 403; focused unit classification and the social/mail actor workflow pass without external outbound credentials |
+| WTF-BB-380 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / health diagnostics contract | P2 | 7 | 15 | 2 | 2 | 0 | The authenticated admin diagnostics probe admits the route's designed 503 degraded result; the focused admin actor workflow passes |
+| WTF-BB-381 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Marketplace cold route loading | P2 | 7 | 15 | 2 | 2 | 0 | Marketplace browser proof waits on its canonical route surface with a bounded cold-start allowance; focused cold-server proof and the complete live actor suite pass |
+| WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 16 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
+| WTF-BB-383 | Verified | Codex full-send cleanup pass | 2026-07-15 | CI / unit-test discovery boundary | P1 | 10 | 10 | 2 | 4 | 0 | The aggregate unit runner excludes nested dependency and generated-output trees at every depth; focused policy and the repository-owned aggregate suite verify deterministic discovery with extension dependencies installed |
+| WTF-BB-384 | In Progress | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Protocol / self-hosted primary commerce | P1 | 14 | 3 | 4 | 4 | 2 | Fixed-edition sale contracts, creator studios, collector pages, Colander controls, and installers are locally verified; real Shadownet origination/purchase proof remains open because both configured RPC paths were unavailable during the 2026-07-15 run |
+| WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 16 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
+| WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 8 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
+| WTF-BB-387 | Verified | Codex full-send cleanup pass | 2026-07-15 | Pasta Protocol / primary-sale authorization | P0 | 17 | 1 | 3 | 5 | 4 | Both fixed-sale contracts bind the seller to the authenticated administrator, Colander and native installers bind sale calls to the connected wallet, and forced third-party listings fail in SmartPy tests |
+| WTF-BB-388 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Suite Desktop / local page hosting | P1 | 13 | 6 | 3 | 5 | 1 | Native Colander safely installs publisher ZIPs atomically under the user-owned Pasta Suite site directory, lists complete sites, and serves them through loopback-only routes; traversal, malformed, duplicate, encrypted, and oversized archives are rejected |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
-| WTF-BB-322 | Open | - | 2026-06-29 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Full inventory route smoke for `/recovery-mode` fails because a 401 Unauthorized console error is treated as fatal browser noise; decide whether the route should avoid the protected probe or the inventory harness should classify the expected auth check as non-fatal |
+| WTF-BB-322 | Verified | Codex full-send cleanup pass | 2026-07-15 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Recovery Mode now completes both canonical and Beta-shell route smoke without fatal unauthenticated-probe noise; verified again in the complete 634/634 interaction inventory run |
 | WTF-BB-321 | Verified | Codex Tezos provider currency audit | 2026-06-29 | Tezos / wallet dependencies and RPC defaults | P1 | 13 | 6 | 4 | 4 | 1 | Static creator-tool wallet bundles and package locks lagged Taquito U025 / Octez Connect 4.8.6 while fresh deploy/test defaults still pointed at legacy Ghostnet or Tez.ie paths; fixed with Taquito 25, Octez Connect 4.8.6, Shadownet-first defaults, regenerated browser bundles, and policy checks |
 | WTF-BB-322 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 14 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
 | WTF-BB-320 | Verified | Codex WTF LIVE dockable bento pass | 2026-06-29 | WTF LIVE / dockable room workspace UX | P1 | 13 | 6 | 4 | 5 | 0 | WTF LIVE public room now exposes Connection, Sharing, Screens, Attendance, and Room chat as dockable bento tiles with sharing drawers, screen grids, receiver default chat fonts, and pop-in/pinned floating panels |
@@ -105,9 +133,9 @@ Priority labels:
 | WTF-BB-298 | Open | - | 2026-06-21 | API / app gates and information disclosure | P1 | 14 | 3 | 3 | 4 | 3 | Disabled app APIs still serve public data and CRP status leaks internal topology |
 | WTF-BB-297 | Verified | Codex live user-story gap loop | 2026-06-22 | Desktop OS / production app gates | P0 | 14 | 3 | 3 | 5 | 1 | Production app gate doc freshness disables core public apps; fixed in `44e556f` by decoupling runtime launcher availability from stale doc/install-key health, verified on `https://wtfos.app` with `/api/apps/desktop` showing `wtf-live` and `skywire` launchable while stale plus 3/3 independent WTF LIVE user-story probes passing |
 | WTF-BB-299 | Verified | Codex live user-story gap loop | 2026-06-22 | Platform domains / access manifest | P1 | 12 | 7 | 2 | 4 | 2 | `/api/access` advertised legacy `wtfgameshow.app` origin on canonical `wtfos.app`; fixed in `e4770ad` and verified live on `https://wtfos.app` with canonical origin plus MCP endpoint |
-| WTF-BB-303 | Open | - | 2026-06-21 | Security / CSP hardening | P2 | 11 | 8 | 3 | 2 | 3 | Main app and user-site CSP policies remain broad for script/connect sources |
+| WTF-BB-303 | In Progress | Codex architectural quick-wins pass | 2026-07-14 | Security / CSP hardening | P2 | 11 | 8 | 3 | 2 | 3 | Main app and user-site CSP policies remain broad for script/connect sources |
 | WTF-BB-300 | Open | - | 2026-06-29 | Desktop OS / route contract | P1 | 10 | 10 | 2 | 4 | 0 | Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified |
-| WTF-BB-302 | Open | - | 2026-06-21 | Observability / public information disclosure | P2 | 9 | 12 | 2 | 2 | 2 | Public health endpoint exposes verbose runtime and chain topology |
+| WTF-BB-302 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Observability / public information disclosure | P2 | 9 | 12 | 2 | 2 | 2 | Public health endpoint exposes verbose runtime and chain topology |
 | WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 18 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
 | WTF-BB-305 | Verified | Codex wallet live full-send | 2026-06-21 | Operations / production health | P0 | 13 | 4 | 3 | 5 | 0 | Live `/api/health` could intermittently return 503 because scheduler audit used a whole-table latest-run query that timed out under production audit volume; fixed by querying only registered job names through indexed lateral latest-row lookups plus a production index; verified live on `wtfos.app` |
 | WTF-BB-296 | Verified | Codex cobwebsaints domain readiness pass | 2026-06-20 | WTF Domains / account-specific advanced feature coverage | P2 | 8 | 14 | 2 | 3 | 0 | Domain/pinning harness data hardcoded `pincollector.wtfos.me`, so account-specific readiness for `cobwebsaints` could pass generic checks while advanced surfaces showed another user's host; fixed with signed-in-user-derived harness domains, Cobweb persona coverage across Settings, WTF Domains, IPFS Pinning, and Macaroni trusted creator access, plus full inventory verification |
@@ -214,7 +242,7 @@ Priority labels:
 | WTF-BB-009 | Fixed | Codex warning cleanup pass | 2026-05-06 | Build config | P2 | 9 | 12 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
 | WTF-BB-010 | Fixed | Swarm A1 | 2026-04-28 | Startup performance | P2 | 9 | 12 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
 | WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 13 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
-| WTF-BB-012 | Open | - | 2026-04-27 | Dependencies / security | P1 | 14 | 4 | 4 | 2 | 4 | Runtime install reports deprecated auth packages and audit vulnerabilities |
+| WTF-BB-012 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Dependencies / security | P1 | 14 | 4 | 4 | 2 | 4 | Runtime install reports deprecated auth packages and audit vulnerabilities |
 | WTF-BB-013 | Verified | Swarm A3 | 2026-04-28 | Security / CORS | P0 | 15 | 2 | 2 | 3 | 5 | Production CORS fallback reflects any origin with credentials |
 | WTF-BB-014 | Verified | Codex security hardening pass | 2026-05-30 | Auth / CSRF | P2 | 13 | 6 | 3 | 3 | 4 | Cookie-authenticated write routes have no visible CSRF token layer |
 | WTF-BB-015 | Fixed | Codex TV hardening pass | 2026-05-03 | Media / access control | P1 | 14 | 4 | 3 | 3 | 4 | Uploaded media files are unauthenticated and enumerable by ID |
@@ -253,7 +281,7 @@ Priority labels:
 | WTF-BB-048 | Fixed | Codex TV telemetry hardening pass | 2026-05-04 | TV microapp / availability | P2 | 9 | 12 | 2 | 3 | 1 | TV telemetry endpoint can grow session-tracking memory under spam |
 | WTF-BB-049 | Open | - | 2026-04-27 | Dependencies / supply chain | P1 | 14 | 4 | 2 | 4 | 5 | js-dos assets and fallback runtime fetch from CDN are unpinned and uncached |
 | WTF-BB-050 | Open | - | 2026-04-27 | Dependencies / security | P1 | 13 | 5 | 3 | 3 | 4 | Runtime auth path still depends on deprecated/unmaintained auth packages |
-| WTF-BB-051 | Open | - | 2026-04-27 | Dependencies / reproducibility | P2 | 10 | 11 | 3 | 2 | 2 | `latest` versions in package manifests create non-reproducible dependency behavior |
+| WTF-BB-051 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Dependencies / reproducibility | P2 | 10 | 11 | 3 | 2 | 2 | `latest` versions in package manifests create non-reproducible dependency behavior |
 | WTF-BB-052 | Open | - | 2026-04-27 | Data integrity / analytics | P1 | 12 | 7 | 4 | 3 | 1 | DB health scan shows most public tables empty and top populated tables still sparse |
 | WTF-BB-053 | Fixed | Codex TV resilience pass | 2026-05-04 | TV microapp / reliability | P1 | 13 | 8 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
 | WTF-BB-054 | Fixed | Codex TV2 retirement pass | 2026-05-04 | TV microapp / platform health | P1 | 12 | 6 | 3 | 3 | 3 | Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes |
@@ -324,7 +352,7 @@ Priority labels:
 | WTF-BB-127 | In Progress | Codex side quest UX claim pass | 2026-05-22 | Rewards / side quest automation | P1 | 11 | 9 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
 | WTF-BB-128 | Fixed | Codex WTF OS admin surface pass | 2026-05-08 | Admin tooling / WTF OS | P1 | 12 | 7 | 4 | 4 | 0 | WTF OS apps lack a complete strict-admin native/admin-panel settings surface registry |
 | WTF-BB-129 | Fixed | Codex platform wallet keyring pass | 2026-05-08 | Tezos platform wallets / key custody | P1 | 14 | 4 | 4 | 4 | 2 | Platform wallet custody depends on one legacy env secret instead of a role-aware keyring |
-| WTF-BB-130 | Fixed | Codex docs cleanup pass | 2026-05-08 | Public repo / operational intel | P1 | 14 | 4 | 3 | 3 | 4 | Public GitHub exposes internal attack map and live-risk backlog |
+| WTF-BB-130 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Public repo / operational intel | P1 | 14 | 4 | 3 | 3 | 4 | Public GitHub exposes internal attack map and live-risk backlog |
 | WTF-BB-131 | Fixed | Codex public-repo risk audit | 2026-05-08 | Build context / key custody | P1 | 13 | 5 | 1 | 3 | 5 | Docker context did not ignore platform wallet keyring artifacts |
 | WTF-BB-132 | Verified | Codex desktop icon stability pass | 2026-05-08 | Desktop OS / icon layout | P2 | 8 | 14 | 2 | 3 | 0 | Desktop icon layout allow-list drift caused moved icons to reset |
 | WTF-BB-133 | Verified | Codex platform wallet custody cleanup | 2026-05-08 | Tezos platform wallets / key custody | P1 | 12 | 7 | 2 | 3 | 3 | Platform wallet helper defaulted public manifests into the repo |
@@ -447,6 +475,61 @@ Priority labels:
   - Pushed feature commit `8118383e` to `main`; Deploy to Hetzner `29439888281` completed successfully, including the production health check.
   - Main Quality Gates `29439888359` completed successfully: SmartPy, typecheck, Vite env policy, build, inventory coverage, Inventory Playwright smoke, and external link safety all passed.
   - Live smoke on `https://wtfos.app` reported `/api/health` `version.commitRef:"8118383e"`, `nodeEnv:"production"`, and `db.ok:true`; `/wtfiam` returned HTTP 200; `/api/apps/desktop` exposed core defaults (`wtfiam`, `hoard`, `wim`, `w`, `gallery`, `mail`) and kept optional app-store apps such as `arcade`, `casino`, `skywire`, `wtf-live`, `applications`, `map-lab`, `dedrooms`, `ch-ease`, and `ipfs-pinning` disabled without an unlock.
+
+### WTF-BB-361 - Puppet wallet keyring metadata can drift from Shadownet
+
+- Category: E2E / puppet wallet network metadata
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C2 + F4 + S2 + P1(4) = 12
+- Evidence:
+  - 2026-07-14 puppet seed dry-run reported `network:"shadownet"` and RPC `https://tezos-shadownet.octez.io/`.
+  - Running `npm run test:e2e:puppets:seed` reused existing local puppet wallets whose public metadata all reported `chainId:"NetXdQprcVkpaWU"`.
+  - Direct RPC checks against `https://tezos-shadownet.octez.io/chains/main/chain_id` and `https://tcinfra.net/rpc/tezos/shadownet/chains/main/chain_id` both returned `NetXsqzbfFenSTS`.
+  - The focused live puppet proof still passed 2/2 for password sessions, linked wallets, and platform-keyring wallet-login signatures, so auth success alone does not prove network metadata correctness.
+- Why it matters:
+  - Tezos rehearsal confidence depends on the puppet wallet, app network, RPC endpoint, and expected chain id all agreeing before any value-bearing or contract-management path is called Shadownet-safe.
+  - If stale keyring metadata survives a network switch, tests can pass signature/login checks while bypassing the exact chain-id guarantee that protects marketplace, Pasta, domains, and creator-publishing flows.
+- Likely correction direction:
+  - Make puppet seeding detect an existing wallet whose stored chain id does not match the selected network's live RPC chain id and either repair metadata safely or fail with a clear rotation command.
+  - Add a focused policy/live assertion that `npm run test:e2e:puppets:seed` outputs puppet wallet metadata matching the selected network's expected chain id.
+- Verification idea:
+  - Rotate or repair local puppet wallets in a disposable keyring, rerun `npm run test:e2e:puppets:seed`, assert every actor reports `NetXsqzbfFenSTS` for Shadownet, then rerun the focused live puppet wallet proof and the Shadownet marketplace/Macaroni confidence suites.
+- Correction:
+  - Added atomic keyring network retargeting that preserves the encrypted signer, address, and public key while updating network, live chain ID, DID, and timestamp.
+  - Puppet seeding now reads the selected RPC's chain ID before touching users, retargets reused wallets whose network or chain ID differs, and fails closed if created or repaired metadata still does not match.
+- Verification:
+  - `npx tsx --test extensions/wtf-operator-signer/src/keyring.test.ts tests/e2e/puppets/seed-network-policy.test.ts` passed 2/2, including signer continuity and exact Shadownet chain-ID proof.
+
+### WTF-BB-362 - Gamma deep routes can show shell chrome without hosting app content
+
+- Category: Gamma / deep route app hosting
+- Status: Verified
+- Owner/Session: Codex Gamma route-content pass
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - 2026-07-14 broad inventory run passed route smoke and the new Gamma Access Passport proof, but failed 10 Gamma behavior-depth checks where `[data-gamma-application-content]` lacked the expected app-owned surface.
+  - Failure snapshots showed the Gamma header, breadcrumbs, side navigation, interface switcher, and route label still present, followed by the generic protected/disabled placeholder: `This route is protected by the shared WTFOS permission model.`
+  - Affected clusters in the run: WTF Domains internal content, Pasta/Colander creation tools, Skywire, tz2at/WTFIAM, Rat Race/Casino, media/IPFS infrastructure, and WTF TV.
+  - Root cause for the broad failures was personalized app-store availability: authorized Gamma route behavior tests were not seeding the matching installed app passes, so the shared gate correctly treated app-store routes as locked.
+  - Gamma now distinguishes a locked app-store route from a dead placeholder: the route gate names the missing app pass and offers an in-shell WTFIAM Apps path.
+- Why it matters:
+  - The Gamma shell objective is not only hostname containment. Users must be able to use every application inside Gamma without falling into Classic or a dead placeholder.
+  - Route smoke can report full coverage while the actual app-specific presentation surface remains missing, disabled, or not mounted under the Gamma content region.
+- Correction:
+  - Added explicit `ownedAppPasses` harness state so authorized Gamma app-hosting tests model installed app-store apps instead of accidentally testing locked routes.
+  - Kept the shared app availability gate intact and improved the Gamma locked-app presentation to route users to `/gamma/wtfiam?category=apps`.
+  - Seeded relevant app passes or desktop availability mocks in prior-failure fixtures for WTF Domains, DedRooms, and Map Lab route behavior.
+- Verification:
+  - `npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts` passed.
+  - Syntax checks passed for the touched Playwright/harness files.
+  - `npm run test:e2e:inventory:coverage` passed.
+  - `npm run check -- --pretty false` passed.
+  - `npm run build` passed.
+  - Focused Gamma app-hosting cluster passed `11/11` on `HARNESS_PORT=4355`.
+  - Focused prior-failure non-Gamma specs passed `4/4` on `HARNESS_PORT=4356`.
+  - Full inventory E2E passed `595/595` on `HARNESS_PORT=4357`.
+  - `git diff --check` passed before documentation closeout.
 
 ### WTF-BB-357 - Reggie needs a richer sassy authored script
 
@@ -2311,8 +2394,8 @@ Priority labels:
 ### WTF-BB-147 - Untracked Mastodon/Subdomains work can block unrelated W verification
 
 - Category: Build / dirty worktree isolation
-- Status: Open
-- Owner/Session: -
+- Status: In Progress
+- Owner/Session: Codex full-send cleanup pass
 - Score: C3 + F4 + S1 + P1(4) = 12
 - Evidence:
   - During the W polish pass, broad verification in the original checkout failed on files outside W scope: `client/src/features/wtf-subdomains/CommitRevealPanel.tsx`, `server/features/wtf-subdomains/registrar-commit.test.ts`, and `shared/schema-mastodon.ts`.
@@ -2861,8 +2944,8 @@ Priority labels:
 ### WTF-BB-130 - Public GitHub exposes internal attack map and live-risk backlog
 
 - Category: Public repo / operational intel
-- Status: Fixed
-- Owner/Session: Codex docs cleanup pass
+- Status: Verified
+- Owner/Session: Codex architectural quick-wins pass
 - Score: C3 + F3 + S4 + P1(4) = 14
 - Evidence:
   - The GitHub repo is public, while tracked docs and workflow files expose internal risk triage, deploy topology, diagnostic routes, audit findings, reward/economy handles, and monitoring assumptions.
@@ -2879,6 +2962,8 @@ Priority labels:
   - Moved root audits, stale plans, run logs, active bounty/lesson docs, integration source maps, ops notes, contract deployment logs, and interaction inventory out of the public docs path and into `.agents/docs/live` or `.agents/docs/archive`.
   - Replaced the root README and architecture map with public-facing docs, added compact domain guides under `docs/domains`, and updated helper scripts/comments to point at the new internal locations.
   - Residual risk: `.agents/docs` is still tracked in this repo per current owner direction, so this fixes the public-facing GitHub clutter and path exposure but does not create a separate private ops mirror.
+  - 2026-07-14 quick-win verification: a public-release allowlist now keeps only the bounty board, lessons, and interaction inventory tracked under `.agents`; 181 other internal `.agents` paths are staged for index removal while their local ignored copies remain available to operators.
+  - `npm run security:public-release-boundary` passed for 2,828 tracked files. Full-history secret scanning completed before any rewrite decision; the historic credential finding is tracked separately as `WTF-BB-371` because rotation must precede coordinated history surgery.
 
 ### WTF-BB-129 - Platform wallet custody depends on one legacy env secret instead of a role-aware keyring
 
@@ -2975,8 +3060,8 @@ Priority labels:
 ### WTF-BB-125 - External marketplace batch builders can touch Taquito wallet contracts before signer preflight
 
 - Category: Tezos external marketplace / wallet preflight
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
 - Score: C2 + F4 + S1 + P1(4) = 11
 - Evidence:
   - `client/src/lib/tezos/external-marketplaces.ts` builds FA2 transfer, listing-cancel, and operator-revoke batch params with `tezos.wallet.at(...).methods...toTransferParams()` before `sendBatch` runs the wallet-provider preflight.
@@ -3519,12 +3604,17 @@ Priority labels:
 ### WTF-BB-012 - Runtime install reports deprecated auth packages and audit vulnerabilities
 
 - Category: Dependencies / security
-- Status: Open
+- Status: Verified
+- Owner/Session: Codex architectural quick-wins pass
 - Score: C4 + F2 + S4 + P1(4) = 14
 - Evidence: `npm ci --omit=dev` reported deprecated `passport-discord`, deprecated WalletConnect package, and `31 vulnerabilities (19 low, 11 moderate, 1 critical)` after adding `drizzle-kit`.
 - Why it matters: Auth and wallet dependencies are sensitive surfaces; runtime vulnerability count also changes when deploy installs extra tooling.
 - Likely correction direction: Run `npm audit --production`, classify reachable issues, replace abandoned auth packages, and avoid runtime-only dependency drift.
 - Verification idea: Dependency audit has no untriaged criticals; deprecated auth package has a migration plan or replacement.
+- Current pass verification:
+  - Updated the vulnerable production dependency set and added a high-severity production audit to Quality Gates.
+  - `npm run security:audit` passed with zero high or critical vulnerabilities; 15 low-severity transitive `elliptic` findings remain behind the current Octez/WalletConnect tree and the suggested audit fix is a breaking Octez downgrade.
+  - Aggregate unit, TypeScript, production build, and 629-test inventory Playwright gates all passed with the patched lockfile.
 
 ### WTF-BB-013 - Production CORS fallback reflects any origin with credentials
 
@@ -4241,8 +4331,8 @@ Priority labels:
 ### WTF-BB-051 - `latest` versions in package manifests create non-reproducible dependency behavior
 
 - Category: Dependencies / reproducibility
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex architectural quick-wins pass
 - Score: C3 + F2 + S2 + P2(3) = 10
 - Evidence:
   - `collekt-wtf/package.json` sets `@radix-ui/react-slot`, `@react-three/drei`, `@react-three/fiber`, and `three` to `latest`.
@@ -4255,6 +4345,9 @@ Priority labels:
 - Verification idea:
   - Run two clean installs on different days and compare lockfile/`npm ci` result stability.
   - Ensure no direct `latest` entries remain in `dependencies` or `devDependencies`.
+- Current pass verification:
+  - Package and lockfile policy tests now reject direct `latest` dependency specifications.
+  - The aggregate unit run passed both manifest and lockfile reproducibility policies.
 
 ### WTF-BB-052 - DB health scan shows most public tables empty and top populated tables still sparse
 
@@ -5893,6 +5986,8 @@ Priority labels:
   - Gamma's monolithic presentation proof was hardened with a shell-ready wait that requires the Gamma root, route marker, no Classic desktop, and no `data-gamma-route-loading` before sampling app-owned chrome. This removed a separate readiness race in `tests/playwright/inventory/gamma-wtfos.spec.mjs`, but it does not close the broader artifact-isolation bounty above.
 - Related note (2026-06-29):
   - Gamma media discovery/detail pass saw direct `playwright test tests/playwright/inventory` collapse after the first passing auth-session spec, with unrelated Beta, Broot, domain, Gamma, route-smoke, and subdomain specs failing on `apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:4173` after the shared harness died. Touched media-detail proof passed before and after the cascade, including a fresh `HARNESS_PORT=4273` rerun, and the full Gamma suite passed `55/55` on the same fresh port.
+- Related note (2026-07-15):
+  - A 633-test release run overlapped another task's build/focused Playwright start in the same checkout. The overlap removed `dist/public/index.html` and retained traces mid-run, and a concurrently renamed test produced `Test not found in the worker process`; 630 tests passed and every affected current-tree story passed immediately with isolated output after the other task stopped. This confirms that same-worktree source/build quiescence is part of the still-open isolation requirement.
 
 ### WTF-BB-239 - Macaroni Shadownet mint/setup flow can surface RPC errors
 
@@ -7158,8 +7253,8 @@ Priority labels:
 ### WTF-BB-302 - Public health endpoint exposes verbose runtime and chain topology
 
 - Category: Observability / public information disclosure
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex architectural quick-wins pass
 - Score: C2 + F2 + S2 + P2(3) = 9
 - Evidence:
   - 2026-06-21 production `/api/health` returned runtime details including Node version, platform, arch, pid, memory usage, DB latency, Tezos RPC URL, TzKT base, and contract addresses.
@@ -7169,12 +7264,15 @@ Priority labels:
   - Split public liveness from privileged diagnostics. Keep public health to `ok`, service, timestamp, and commit; move runtime/job/chain detail to admin or signed operational endpoints.
 - Verification idea:
   - Add policy tests for public health redaction plus an admin-only diagnostics endpoint that preserves current operator detail.
+- Current pass verification:
+  - `/api/health` is now minimal public liveness, `/api/health/ready` is compact readiness, and detailed runtime/DB/chain/job state moved to authenticated `/api/health/diagnostics`; disk diagnostics remain authenticated at `/api/health/disk`.
+  - Health route tests, aggregate unit, TypeScript, production build, and full inventory Playwright all passed.
 
 ### WTF-BB-303 - Main app and user-site CSP policies remain broad for script/connect sources
 
 - Category: Security / CSP hardening
-- Status: Open
-- Owner/Session: -
+- Status: In Progress
+- Owner/Session: Codex architectural quick-wins pass
 - Score: C3 + F2 + S3 + P2(3) = 11
 - Evidence:
   - 2026-06-21 production main app CSP includes `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://static.cloudflareinsights.com` and broad `connect-src ... https: wss: ws:`.
@@ -7185,6 +7283,10 @@ Priority labels:
   - Move toward nonce/hash-based scripts for app and generated sites, enumerate wallet/gateway origins, and keep a documented exception list for unavoidable wallet SDK constraints.
 - Verification idea:
   - Add CSP snapshot tests for production and user-site headers, then run wallet/connect/mint smoke under strict and legacy CSP modes.
+- 2026-07-14 quick-win mitigation:
+  - The main app no longer grants legacy inline/eval script capability globally; only `/games/installed` and `/creation-tools` receive the named compatibility exception.
+  - Main-app network/frame sources and user-site wallet relay/frame sources are explicit and policy-tested. Generated user sites still require their isolated cookie-free inline-script compatibility model, so nonce/hash conversion remains a separate deeper hardening item.
+  - CSP policy tests, aggregate unit, production build, and 629-test inventory Playwright passed.
 
 ### WTF-BB-304 - Live wallet sign-in can hang on `Connecting...`
 
@@ -7452,6 +7554,9 @@ Priority labels:
   - Inspect `client/src/pages/RecoveryMode.tsx` and the route harness to determine whether the 401 probe is intentional. If it is expected, update the route inventory fatal-error filter narrowly for this route; if not, prevent the protected request before auth state exists.
 - Verification idea:
   - Run `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Recovery Mode"` and then `npm run test:e2e:inventory:coverage`.
+- Verification:
+  - Recovery Mode passed both the canonical route fixture and the Beta-shell route fixture during the settled-tree interaction inventory run.
+  - The complete inventory suite passed 634/634 on 2026-07-15 without fatal 401 console noise from the route.
 
 ### WTF-BB-320 - WTF LIVE public room dockable bento workspace
 
@@ -7875,6 +7980,482 @@ Priority labels:
   - Post-prune `npm run pasta:repo-cleanup:audit` passed against `origin/main` at `c1686b59`, with only retained historical Pasta evidence refs and no blockers.
   - Post-prune `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved live commit `c1686b5`, repo cleanup, static runtime markers, installer catalog/assets, and the recorded Colander action proof while still blocking only on WTF.ME credentials and live host proof.
   - Post-prune `PASTA_LIVE_READINESS_FINAL_LAUNCH=1 npm run pasta:live-readiness` exited `1` only on the same WTF.ME credentials and live host proof blockers.
+
+### WTF-BB-363 - Production migration ledger does not enforce immutable migration content
+
+- Category: Deploy / DB migration integrity
+- Status: Verified
+- Owner/Session: Codex architectural quick-wins pass
+- Score: C3 + F5 + S3 + P0(5) = 16
+- Evidence:
+  - `scripts/apply-production-migrations.sh` stores a SHA-256 value but decides a migration is applied by filename alone.
+  - When the ledger is empty and the `users` table exists, the script records every tracked migration as applied without proving the database schema matches those files.
+- Why it matters:
+  - Edited historical SQL or a partially initialized database can be accepted as healthy, defeating the ledger's data-integrity purpose and allowing application code to start against an unproven schema.
+- Correction direction:
+  - Reject stored/current checksum mismatches, require explicit bootstrap proof for pre-ledger databases, and make the script testable without a production database.
+- Verification idea:
+  - Policy tests must prove matching checksums skip, mismatches fail, new migrations apply, and implicit one-table bootstrap is impossible.
+- Verification:
+  - The migration runner now rejects stored/current checksum mismatches, applies new migrations transactionally, and requires an explicit audited bootstrap manifest instead of inferring an entire schema from one table.
+  - Migration policy tests covered matching, mismatched, new, and unsafe-bootstrap cases; the aggregate unit suite, TypeScript check, and production build passed.
+
+### WTF-BB-364 - Scheduler audit state can remain running after runtime ownership is gone
+
+- Category: Operations / scheduler truth
+- Status: Verified
+- Owner/Session: Codex architectural quick-wins pass
+- Score: C3 + F5 + S2 + P0(5) = 15
+- Evidence:
+  - Live health on 2026-07-14 reported `object-storage-usage-check` as `running:false` in scheduler memory while the latest durable audit row remained `running` with no finish timestamp for roughly 18 hours.
+  - Overall health still returned `ok:true` and `issues:[]`.
+- Why it matters:
+  - Operators and deploy gates cannot distinguish a healthy scheduler from an abandoned attempt after a process restart, crash, or failed audit-finish write.
+- Correction direction:
+  - Define stale-attempt thresholds, reconcile abandoned rows, expose degraded readiness, and keep privileged audit detail out of public liveness.
+- Verification idea:
+  - Unit tests with a stale running row must produce a degraded issue and reconciliation must close only expired attempts, never currently owned jobs.
+- Verification:
+  - Scheduler startup now reconciles expired durable attempts before registering or starting jobs, and readiness degrades for stale attempts or recent scheduler errors without exposing privileged row detail publicly.
+  - Focused scheduler and health tests, the aggregate unit suite, TypeScript check, production build, and full inventory Playwright suite passed.
+
+### WTF-BB-365 - Production serves requests before hidden boot mutations finish
+
+- Category: Startup / hidden mutations
+- Status: Verified
+- Owner/Session: Codex architectural quick-wins pass
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - `server/index.ts` starts listening before TV/gameshow backfills, challenge seeding, and cache-key migration complete.
+- Why it matters:
+  - Requests and background work can observe partially backfilled state, while a failed boot mutation can be logged after the process is already advertised as available.
+- Correction direction:
+  - Move required startup mutations behind an explicit pre-listen startup phase with fail-closed semantics; keep non-critical recurring work in the durable scheduler.
+- Verification idea:
+  - Startup policy tests must prove the listener starts only after required mutations resolve and does not start when one fails.
+- Verification:
+  - Required backfills, seeds, and cache-key migrations now run through an explicit fail-closed startup phase before the listener is opened.
+  - Startup ordering policy tests, the aggregate unit suite, TypeScript check, and production build passed.
+
+### WTF-BB-366 - Environment configuration has no generated ownership or validation inventory
+
+- Category: Developer experience / configuration
+- Status: Verified
+- Owner/Session: Codex architectural quick-wins pass
+- Score: C3 + F2 + S1 + P2(3) = 9
+- Evidence:
+  - Runtime and tooling source reference hundreds of distinct environment names, while `.env.example` is a long hand-maintained narrative rather than an executable inventory.
+- Why it matters:
+  - Operators cannot reliably determine which subsystem owns a value, whether it is secret, where it is valid, whether it is required, or whether it is dead.
+- Correction direction:
+  - Generate a deterministic inventory from source and declared metadata, fail on undocumented runtime variables, and publish the sanitized artifact for developers.
+- Verification idea:
+  - A repository gate regenerates the artifact byte-for-byte and reports any undocumented or stale declaration.
+- Verification:
+  - The generated inventory records owner, secrecy, validation, requiredness, scope, lifecycle, declaration source, and source references for every discovered environment name.
+  - `npm run env:inventory:check` passed byte-for-byte and the generated reference is enforced in Quality Gates.
+
+### WTF-BB-367 - Classic, Beta, and Gamma lack one canonical shell authority
+
+- Category: Desktop OS / shell authority
+- Status: Verified
+- Owner/Session: Codex architectural quick-wins pass
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - Production exposes Classic, Beta, and Gamma host/presentation paths while product and developer guidance do not define which shell owns canonical behavior versus compatibility or research.
+- Why it matters:
+  - Every route, auth handoff, launcher, test, and UX improvement risks triple implementation or contradictory behavior.
+- Correction direction:
+  - Declare one production authority in shared code/docs, classify the others as compatibility/research surfaces, and enforce the classification with tests without deleting current user work.
+- Verification idea:
+  - Shared policy tests and public docs agree on the canonical shell, while host routing and interface-switch controls clearly label non-canonical modes.
+- Verification:
+  - Shared policy and docs now declare Classic as canonical production authority, Gamma as preview, and Beta as research, while preserving all three current surfaces.
+  - Shell-authority policy tests, aggregate unit, TypeScript, production build, inventory coverage, and the 629-test Playwright inventory suite passed.
+
+### WTF-BB-368 - Duplicate and disconnected runtime organs advertise false capability
+
+- Category: Architecture / duplicate and disconnected organs
+- Status: Verified
+- Owner/Session: Codex architectural quick-wins pass
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Evidence:
+  - `accessRoutes` is mounted twice.
+  - Creator payout, Discord command, and external listing modules have no verified runtime registration path.
+- Why it matters:
+  - Duplicate middleware can execute twice, while disconnected modules imply supported behavior that production never performs.
+- Correction direction:
+  - Remove the duplicate mount; either register each disconnected organ with an owner/status/test or remove it.
+- Verification idea:
+  - Static policy tests prove one access mount and no unregistered runtime module remains in the reviewed set.
+- Verification:
+  - The duplicate access mount was removed; disconnected Discord-command and external-listing modules were deleted; creator payout intent is now emitted from paid Arcade ticket consumption; and the Stage broadcast mutation is connected to a visible gated form.
+  - Runtime-organ and interaction policy tests, aggregate unit, TypeScript, production build, inventory coverage, and the full Playwright inventory suite passed.
+
+### WTF-BB-369 - Quality Gates omit aggregate unit and production dependency truth
+
+- Category: CI / release truth
+- Status: Verified
+- Owner/Session: Codex architectural quick-wins pass
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - The main quality workflow typechecks, builds, checks inventory coverage, runs browser inventory, external links, and SmartPy, but does not run the repository's unit tests as one lane or enforce a high-severity production dependency audit.
+  - Inventory coverage explicitly reports incomplete feature-behavior coverage despite a passing skeleton gate.
+- Why it matters:
+  - A green release can omit large test families and carry known high-severity runtime advisories.
+- Correction direction:
+  - Add deterministic aggregate unit, production audit, SBOM, and explicit coverage-summary gates while retaining focused browser/live suites.
+- Verification idea:
+  - Local workflow-policy tests plus CI YAML parsing prove each lane is present and fails on a controlled negative fixture.
+- Verification:
+  - Quality Gates now run the discovered aggregate unit suite, high-severity production audit, supply-chain policy, generated env check, SBOM generation, TypeScript, build, and separately named skeleton/behavior inventory gates.
+  - The local aggregate run passed 1,676 tests across 406 files; the production audit passed with zero high or critical findings; inventory coverage and all 629 Playwright inventory tests passed.
+
+### WTF-BB-370 - Production container inputs are mutable and lack SBOM provenance
+
+- Category: Supply chain / container provenance
+- Status: Verified
+- Owner/Session: Codex architectural quick-wins pass
+- Score: C3 + F4 + S2 + P1(4) = 13
+- Evidence:
+  - Compose references mutable image tags including `latest`, and the release workflow does not produce or verify an SBOM/provenance artifact for the application dependency tree.
+- Why it matters:
+  - Recreating the same commit can pull different bytes, making rollback, incident analysis, and vulnerability attribution unreliable.
+- Correction direction:
+  - Pin external images to immutable digests and generate a checked CycloneDX/SPDX SBOM from the lockfile/image build.
+- Verification idea:
+  - A supply-chain policy test rejects mutable image references and CI uploads a parseable SBOM tied to the commit.
+- Verification:
+  - External Compose images are pinned by tag and digest, the disconnected PLC placeholder was removed, and Quality Gates generate and upload a parseable CycloneDX SBOM.
+  - `npm run security:supply-chain` passed all policy checks and `npm run security:sbom` generated `artifacts/sbom.cdx.json`.
+
+### WTF-BB-371 - Historic tracked environment file contains a likely Twitter API credential
+
+- Category: Secrets / git history
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F3 + S5 + P0(5) = 17
+- Evidence:
+  - A redacted full-history secret scan matched a likely Twitter API credential in a deleted tracked `.env.public` at commit `47323ae...`.
+  - The credential value is intentionally omitted from this board and operator output.
+- Why it matters:
+  - Deletion from the current tree does not revoke a credential recoverable from public Git history, forks, caches, or clones.
+- Likely correction direction:
+  - Rotate or revoke the credential at the provider first, inventory deploy consumers and public forks, then perform a coordinated history rewrite only with explicit owner authorization.
+- Verification idea:
+  - Confirm at the provider that the historic credential is invalid, run a redacted full-history scan against the rewritten mirror, and smoke-test every authorized deploy consumer with replacement credentials.
+
+### WTF-BB-372 - Puppet database preparation omits desktop localization migration
+
+- Category: E2E / puppet database preparation
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C3 + F3 + S0 + P1(4) = 10
+- Evidence:
+  - A fresh-server live puppet run reached authenticated application traffic and PostgreSQL rejected `GET /api/desktop/settings` because `user_desktop_settings.localization` did not exist.
+  - The application migration exists at `drizzle/0108_user_desktop_localization.sql`, but `REQUIRED_LOCAL_MIGRATIONS` stopped at earlier domain migrations and never applied it.
+- Why it matters:
+  - Actor-backed release evidence must exercise current application behavior, not fail because its explicitly managed local schema trails the code under test.
+- Correction direction:
+  - Apply migration `0108` in the idempotent, local-only puppet preparation path and lock that contract with a focused policy test.
+- Verification idea:
+  - Run the focused policy test, prepare and seed the local puppet database, then rerun the live puppet suite against a fresh isolated server.
+- Verification:
+  - `tests/e2e/puppets/prepare-local-db.ts` now includes `drizzle/0108_user_desktop_localization.sql` and `scripts/puppet-db-preparation-policy.test.mjs` prevents regression.
+
+### WTF-BB-373 - Puppet database preparation omits the persistent TzKT cache
+
+- Category: E2E / TzKT cache persistence
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - The live Macaroni actor workflow logged that `tzkt_response_cache` did not exist and transparently degraded to the process-local memory cache.
+  - Migration `drizzle/0081_tzkt_response_cache.sql` defines the current persistent cache contract but was absent from `REQUIRED_LOCAL_MIGRATIONS`.
+- Why it matters:
+  - A green actor suite using only the fallback cache does not verify the durable cache path that production depends on for bounded indexer traffic and cross-request reuse.
+- Correction direction:
+  - Apply migration `0081` in local puppet DB preparation and enforce its presence beside the existing persistent-cache implementation policy.
+- Verification idea:
+  - Prepare the local puppet database, run the policy test, and rerun the actor-backed Tezos workflows without the missing-table degradation warning.
+- Verification:
+  - Local puppet DB preparation now applies `drizzle/0081_tzkt_response_cache.sql`, and `scripts/puppet-db-preparation-policy.test.mjs` locks the migration into the actor harness.
+
+### WTF-BB-374 - Macaroni live proof bypasses the RPC fallback it claims to verify
+
+- Category: E2E / Macaroni RPC fallback signal
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C2 + F2 + S0 + P2(3) = 7
+- Evidence:
+  - The actor-backed Macaroni chain assertion called `MD.getToolkit().rpc.getChainId()` directly, so an Octez-primary timeout failed the suite without ever reaching the configured `tcinfra.net` fallback.
+  - When the primary failed immediately on localhost CORS, fallback did occur later through operation-safety code, but Chromium's paired CORS and `net::ERR_FAILED` messages were still classified as fatal.
+- Why it matters:
+  - A correct, explicitly tested resilience path produced a red release gate, obscuring real failures and encouraging operators to rerun until an intermittent primary happened to answer.
+- Correction direction:
+  - Route the chain assertion through `MD.withRpcFallback`, ignore only the exact paired primary Shadownet chain-ID CORS/error signature after recovery, and keep unrelated browser errors fatal.
+- Verification idea:
+  - Run the focused Macaroni actor suite with the primary rejecting localhost CORS and confirm all five tests pass through the configured fallback.
+- Verification:
+  - The live chain assertion now calls `MD.withRpcReadFallback(() => MD.getToolkit().rpc.getChainId())`; its error classifier recognizes only the paired Octez-primary localhost CORS failure, and the mismatch case supplies the canonical mainnet chain ID deterministically so public-node availability cannot turn a negative security assertion into a wallet connection.
+
+### WTF-BB-375 - Generated Macaroni pages can remain stuck checking a restored wallet
+
+- Category: Macaroni / wallet restore liveness
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - The live generated-page actor test restored a valid active account after reload but the Connect control stayed disabled at `Checking wallet...` beyond 15 seconds.
+  - Session validation had completed; the restore chain kept `walletRestoring` true while awaiting an unbounded raw Taquito balance read against an intermittently slow primary RPC.
+- Why it matters:
+  - A returning user with a valid wallet can be locked out of reconnect/disconnect and mint controls by an external read, even though wallet identity recovery itself succeeded.
+- Correction direction:
+  - End the blocking restore state immediately after session validation and route read-only chain/balance probes through a short per-endpoint deadline plus the configured primary/fallback sequence, without applying speculative timeouts to write operations.
+- Verification idea:
+  - Reload a connected generated page while the primary RPC is slow; the wallet control should restore promptly, the balance should recover through fallback, and signing safety should still verify Shadownet.
+- Verification:
+  - Generated pages now clear `walletRestoring` before background balance/owned-token reads; chain and balance reads use the bounded `withRpcReadFallback` helper while operation sends retain their non-speculative path.
+
+### WTF-BB-376 - Marketplace live proof disagrees with server env precedence
+
+- Category: E2E / contract configuration precedence
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C2 + F2 + S0 + P2(3) = 7
+- Evidence:
+  - Authenticated health diagnostics correctly reported the locally configured Shadownet in-app market address from `WTF_IN_APP_MARKET_CONTRACT_ADDRESS`.
+  - The Marketplace V2 actor test skipped that supported variable and did not load the local `.env` used by the spawned app server, so it fell through to a divergent hard-coded default before its on-chain state assertions.
+- Why it matters:
+  - Configuration precedence is part of the runtime contract. A verifier using a different order reports false deployment drift and never proves the marketplace behavior it owns.
+- Correction direction:
+  - Load dotenv inside the scoped live spec and keep its expected-address resolution byte-for-byte aligned with `readHealthSnapshot` precedence.
+- Verification idea:
+  - Run the Marketplace V2 actor spec with only `WTF_IN_APP_MARKET_CONTRACT_ADDRESS` configured and confirm diagnostics plus marketplace state agree.
+- Verification:
+  - The spec now loads the same local environment as the app server, then checks `IN_APP_MARKET_CONTRACT_ADDRESS`, `WTF_IN_APP_MARKET_CONTRACT_ADDRESS`, and `VITE_IN_APP_MARKET_CONTRACT_ADDRESS` in server order. Focused Marketplace/WTF LIVE proof passed, and the complete actor run passed every Marketplace assertion.
+
+### WTF-BB-377 - Puppet database preparation omits current WTF LIVE room migrations
+
+- Category: E2E / WTF LIVE database preparation
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C3 + F3 + S0 + P1(4) = 10
+- Evidence:
+  - Actor route smoke for `/live/r/:roomId` logged an unhandled PostgreSQL error because `wtf_live_rooms.room_kind` did not exist, yet the shallow route assertion still passed.
+  - The explicit local preparation list omitted the ordered WTF LIVE chain from base rooms (`0097`) and private access (`0099`) through tips/soundboard/stage roles (`0100`, `0103`, `0109`) and smart/game-room state (`0110`–`0112`).
+- Why it matters:
+  - A green route smoke can conceal broken room permissions/settings queries, while deeper WTF LIVE actor stories run against an obsolete schema.
+- Correction direction:
+  - Apply the complete ordered WTF LIVE migration chain in local actor preparation and enforce the migration set with a focused policy test.
+- Verification idea:
+  - Prepare the local DB and rerun the WTF LIVE route/domain actor tests without a missing `room_kind` column or swallowed server error.
+- Verification:
+  - The complete ordered migration chain and its policy assertion are present. Focused DB preparation passed, focused Marketplace/WTF LIVE route proof passed, and all 114 route smokes in the complete actor run passed without the prior `room_kind` error.
+
+### WTF-BB-378 - Desktop settings rejects an intentional null concurrency token
+
+- Category: Desktop API / optimistic concurrency
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C3 + F3 + S0 + P1(4) = 10
+- Evidence:
+  - The actor-backed desktop workflow sent `updatedAt: null` for a first-write insert and received `400 desktop_settings_bad_concurrency_token`, even though the API error and insert branch explicitly advertise null as valid.
+  - The route selected `body.updatedAt ?? body.ifUnmodifiedSince`, which converted the intentional null sentinel to `undefined` before validation.
+- Why it matters:
+  - New settings rows cannot use the documented compare-and-insert contract, so valid clients are rejected before persistence and the concurrency API contradicts itself.
+- Correction direction:
+  - Preserve an explicitly supplied `updatedAt` value, including null, and fall back to the legacy alias only when the primary field is absent.
+- Verification idea:
+  - Lock the null-preservation expression with the focused concurrency policy test and rerun the authenticated desktop actor workflow.
+- Verification:
+  - `server/desktop-settings-concurrency-policy.test.ts` passes and prevents nullish coalescing from returning; the focused `desktop os app shell loop` actor workflow passes.
+
+### WTF-BB-379 - Mail send reports unmet identity eligibility as an internal error
+
+- Category: Mail API / HTTP error semantics
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C3 + F3 + S1 + P1(4) = 11
+- Evidence:
+  - The actor-backed social workflow called `POST /api/mail/send` for a locally seeded user without an AT Protocol or active wtfOS mail identity and received `500 {"error":"missing_identity"}`.
+  - `sendUserMail` intentionally raises mail gate codes, but the route maps only inactive/recipient failures and provider outages, leaving every eligibility denial as 500.
+- Why it matters:
+  - A correct, user-actionable prerequisite denial is mislabeled as a server fault, polluting health signals and preventing clients from presenting the existing remediation flow.
+- Correction direction:
+  - Map the complete user-mail eligibility gate code set to 403 while preserving payload validation, inactive-mailbox, and provider-unavailable semantics.
+- Verification idea:
+  - Add a focused status-classification unit test and rerun the authenticated social/mail actor workflow without real outbound credentials.
+- Verification:
+  - `server/routes/mail.test.ts` covers every gate code plus existing validation/provider/unknown classes, and the focused `social post to reward automation loop` passes with `missing_identity` handled as 403.
+
+### WTF-BB-380 - Admin diagnostics workflow rejects a legitimate degraded response
+
+- Category: E2E / health diagnostics contract
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C2 + F2 + S0 + P2(3) = 7
+- Evidence:
+  - Authenticated `GET /api/health/diagnostics` returned its designed `503` snapshot while an external chain dependency was degraded, but the admin actor workflow accepted only 200 or 401.
+  - The adjacent public readiness probe already recognizes 503, and the route deliberately returns the same status for an authenticated degraded snapshot or diagnostics exception.
+- Why it matters:
+  - The release harness treats useful degraded diagnostics as an invalid API response and cannot distinguish honest dependency status from a broken endpoint.
+- Correction direction:
+  - Admit 503 for the authenticated diagnostics probe while continuing to require authentication and a bounded known status.
+- Verification idea:
+  - Rerun the admin control workflow against a degraded dependency and require the structured diagnostics response to be accepted.
+- Verification:
+  - The diagnostics probe now admits only its designed 200, unauthenticated 401, or degraded 503 outcomes, and the focused `admin os control loop` passes.
+
+### WTF-BB-381 - Marketplace browser proof outruns a cold route chunk
+
+- Category: E2E / Marketplace cold route loading
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C2 + F2 + S0 + P2(3) = 7
+- Evidence:
+  - The complete actor run passed Marketplace diagnostics/on-chain state, then the first browser navigation waited 15 seconds for a title and failed; the immediately following deeper Marketplace browser behavior passed after the route chunk was warm.
+  - A retained focused trace shows an authenticated Bert session, `/marketplace` in the taskbar, no fatal browser error, and the route layer still displaying the shared Suspense hourglass at assertion time.
+- Why it matters:
+  - Development-server transform latency creates a deterministic false release failure on a cold route even though the browser contract and deeper behavior are healthy.
+- Correction direction:
+  - Wait on the canonical Marketplace surface marker with a bounded cold-start allowance, then keep the visible title, live listing count, and fatal-console assertions.
+- Verification idea:
+  - Start a fresh isolated dev server and run only the Marketplace browser-state story; it must pass from a cold route, then pass in the complete actor suite.
+- Verification:
+  - The isolated cold-server Marketplace browser story passed in 22.2 seconds, and `npm run test:e2e:live:puppets` subsequently passed all 166 tests, including both Marketplace browser stories.
+
+### WTF-BB-382 - Checked-in environment inventory drifted after final source edits
+
+- Category: Developer experience / generated configuration docs
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C1 + F2 + S0 + P2(3) = 6
+- Evidence:
+  - The aggregate unit gate's deterministic inventory policy failed because `docs/reference/environment-variables.md` still described 1,074 variables across 2,082 files after the final source and policy additions.
+  - A fresh generator pass reports 1,076 variables across 2,149 scanned source files.
+- Why it matters:
+  - Stale checked-in governance output makes configuration ownership and release review disagree with the source tree even when the generator itself is correct.
+- Correction direction:
+  - Regenerate the artifact only through `npm run env:inventory`, and keep its deterministic check in the aggregate unit/release gate.
+- Verification idea:
+  - Require both the focused environment-inventory check and the complete aggregate unit suite to pass after the generated file is refreshed.
+- Verification:
+  - `npm run env:inventory` produced the current deterministic artifact; final focused and aggregate gate results are recorded in this release pass.
+
+### WTF-BB-383 - Aggregate unit discovery enters nested dependency trees
+
+- Category: CI / unit-test discovery boundary
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - `npm run test:unit` discovered dependency-owned tests beneath `extensions/wtf-operator-signer/node_modules` after that extension's local dependencies were installed.
+  - The recursive walker excludes dedicated repository test lanes but has no directory-level exclusion for dependency, build, coverage, or cache trees.
+- Why it matters:
+  - The exact same repository can discover a different test universe based on ignored local installation state, making the release gate nondeterministic and capable of executing unowned third-party test sources.
+- Correction direction:
+  - Skip known non-source directory names at every recursive depth and lock the exclusion contract with the runner's focused policy test.
+- Verification idea:
+  - With nested extension dependencies present, the aggregate runner must report only the repository-owned test count and pass without any `node_modules` test paths.
+- Verification:
+  - `node --test scripts/run-unit-tests-policy.test.mjs` passes the recursive exclusion contract with the nested extension `node_modules` present; the final aggregate result is recorded in this release pass.
+
+### WTF-BB-384 - Fixed-edition Pasta contracts cannot complete direct primary sales
+
+- Category: Pasta Protocol / self-hosted primary commerce
+- Status: In Progress
+- Owner/Session: Codex Pasta vertical-slice parity
+- Score: C4 + F4 + S2 + P1(4) = 14
+- Evidence:
+  - `PastaStandardCollectionFA2` can create and mint fixed editions but has no payable buy entrypoint or on-chain sale configuration; Spaghetti and Rotini can therefore export galleries but not independent primary-sale pages.
+  - `PastaBundleFA2` can mint, redeem, and reveal bundle wrappers but likewise has no direct primary-sale entrypoint, so Ravioli's exported holder page begins only after acquisition elsewhere.
+- Why it matters:
+  - Creators still need Objkt or another marketplace to sell these products even though the stated Pasta goal is independent creation, publishing, selling, and management from self-hosted pages.
+- Likely correction direction:
+  - Add administrator-configured, inventory-backed per-token sales with exact mutez pricing, bounded availability, optional time windows, seller inventory checks, treasury forwarding, pause controls, and purchaser transfer to the standard and bundle contracts; expose configuration in their studios and Colander, then wire buy actions into exported sites.
+- Verification idea:
+  - Require SmartPy positive and negative sale tests, reproducible compiled-artifact parity, Colander adapter coverage, browser stories for wallet purchase/sold-out/error states, and a Shadownet transaction proof before calling these apps Macaroni-parity vertical slices.
+- Verification to date:
+  - SmartPy tests pass for exact payment, active/window gates, inventory transfer, remaining quantity, and treasury forwarding in the standard and bundle contract families.
+  - Recompiled Spaghetti, Rotini, and Ravioli artifacts expose `set_sale`, `set_sale_active`, and `buy`; their studios initialize the new `sales` big-map and configure creator inventory during publish.
+  - Hosted collector pages and the installed Pasta Suite Colander pass browser stories for purchase, bundle redemption, project attachment, site export, and signed sale configuration.
+  - The real Shadownet proof scripts now originate the sale-enabled storage and execute `set_sale` plus collector `buy`, but the configured primary RPC returned Cloudflare 520/522 during contract simulation/origination on 2026-07-15 and the fallback timed out. TzKT confirmed no new origination was injected, so real-chain verification remains open without duplicate-contract risk.
+
+### WTF-BB-385 - Gamma Colander proof assumes a generic region marker is unique
+
+- Category: E2E / Gamma Colander selector ownership
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C1 + F2 + S0 + P2(3) = 6
+- Evidence:
+  - The final inventory run resolved `[data-colander-region="input"]` to the project title, project tool, and contract address controls, then failed strict mode while checking the address placeholder.
+- Why it matters:
+  - A valid expansion of the Colander workspace makes the release proof fail because its assertion is coupled to a presentation-region styling marker rather than the owned control.
+- Correction direction:
+  - Target the canonical `colander-address` test id inside the control panel while retaining the Gamma surface and placeholder assertions.
+- Verification idea:
+  - Rerun the focused Gamma Pasta/Colander presentation story and the complete inventory suite.
+- Verification:
+  - The assertion now uses `getByTestId("colander-address")` within the Gamma-owned control panel, and the focused Gamma Pasta/Colander presentation story passes.
+
+### WTF-BB-386 - Native Colander Create project action does not update the workspace
+
+- Category: Pasta Suite Desktop / native Colander
+- Status: Archived
+- Owner/Session: Codex full-send cleanup pass
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - The new native desktop browser proof filled a project title, selected Spaghetti, and clicked Create project, but `#project-list` remained `No projects yet.`.
+  - The rest of the generated workspace rendered, so the failure is inside the generated runtime rather than route delivery.
+- Why it matters:
+  - The desktop suite now advertises Colander as its native project authority, but the first durable workspace action is inert.
+- Correction direction:
+  - Diagnose the generated runtime before modifying it, repair the actual initialization/action path, and keep the browser proof against persistence plus contract attachment.
+- Verification idea:
+  - Run the focused native Colander Playwright story from freshly prepared assets, followed by package policy, aggregate unit, and full inventory gates.
+- Resolution:
+  - The failure was captured while another task was still changing and regenerating the same native Colander source, not on a stable candidate tree. Fresh preparation on the settled tree passes project creation/persistence, contract detection, direct-sale submission, and project attachment.
+  - The browser proof now also fails immediately on native page or console runtime errors, preserving a stronger regression signal.
+
+### WTF-BB-387 - Admin can configure a primary sale against another holder's inventory
+
+- Category: Pasta Protocol / primary-sale authorization
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C3 + F5 + S4 + P0(5) = 17
+- Evidence:
+  - Both new `set_sale` entrypoints are administrator-only but accept an unconstrained `sale.seller` and validate only that address's current ledger balance.
+  - The `buy` entrypoint then debits that seller directly without an operator check, so a privileged administrator can force-list and transfer editions owned by any holder.
+- Why it matters:
+  - Primary commerce is intended to sell creator inventory; the current boundary grants the administrator an undocumented seizure path over every holder balance.
+- Correction direction:
+  - Require the configured seller to equal the authenticated administrator caller, remove the misleading arbitrary-seller control from Colander, and retain explicit treasury choice.
+- Verification idea:
+  - Add negative SmartPy cases for third-party seller configuration in standard and bundle contracts, compile both variants, sync every consumer artifact, and rerun client invocation plus browser purchase proofs.
+- Verification:
+  - Standard and bundle SmartPy suites pass explicit third-party seller rejection cases while valid creator-owned inventory sales still transfer editions and payment.
+  - Fresh Spaghetti, Rotini, and Ravioli Micheline artifacts contain the `BAD_SELLER` invariant; shared adapters expose no seller input, and hosted/native Colander calls bind seller to the connected wallet.
+  - Focused Pasta tests passed 55/55, production build and 907/907 normalized inventory handles passed, all seven desktop asset preparations and package-policy suites passed, the six-app self-hosted publishing browser story passed 3/3, native Colander passed 1/1, and hosted Colander passed 3/3 on a settled runtime.
+
+### WTF-BB-388 - Native Colander cannot inject exported pages into its local host
+
+- Category: Pasta Suite Desktop / local page hosting
+- Status: Verified
+- Owner/Session: Codex Pasta vertical-slice parity
+- Score: C3 + F5 + S1 + P1(4) = 13
+- Evidence:
+  - Every newer publisher downloads a complete stored ZIP, but Pasta Suite Desktop only served its bundled creation tools and provided no endpoint, registry, or loopback route for those exported pages.
+- Why it matters:
+  - The installer met the local-tool requirement but still forced a creator to understand ZIP extraction and third-party static hosting before buyers could use the resulting page.
+- Correction direction:
+  - Safely ingest the known stored-ZIP shape, install it under the user's Documents/Pasta Suite/sites directory, expose it through loopback-only `/sites/:slug/` routes, and list/open installed pages from native Colander.
+- Verification idea:
+  - Unit-test archive traversal/entry-page checks, prepare the native assets, run package policy and browser proof for the visible site registry, then rerun the six-app export story and inventory coverage.
+- Verification:
+  - The archive/install suite passes 5/5, including atomic installation, manifest/listing, traversal and malformed-path rejection, duplicate rejection, and file/byte limits.
+  - Fresh desktop asset preparation succeeds and the complete desktop package-policy batch passes 50/50.
+  - The six-app self-hosted publishing browser story passes 3/3, deterministic hosted Colander passes 3/3, and native Colander passes 1/1.
 
 ## Backlog Intake Template
 

@@ -114,7 +114,7 @@ test("command palette search matches aliases and keeps stable priority", () => {
   assert.equal(boundaryMatches[0]?.id, "system:browser-boundaries");
   assert.equal(terminalMatches[0]?.id, "system:terminal");
   assert.equal(notificationMatches[0]?.id, "system:notification-center");
-  assert.equal(ipfsMatches[0]?.id, "media:ipfs");
+  assert.equal(ipfsMatches[0]?.id, "app:/ipfs-pinning");
   assert.equal(backupMatches[0]?.id, "system:restore-backup");
   assert.equal(bundleMatches[0]?.id, "project:bundles");
   assert.equal(bundleMatches[0]?.path, "/file-manager");

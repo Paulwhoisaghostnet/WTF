@@ -2086,6 +2086,7 @@ $("btnDisconnect").addEventListener("click", async () => {
 setWalletButtons(false);
 MD.restoreWallet(CFG.title || "Macaroni")
   .then(async (addr) => {
+    walletRestoring = false;
     setWalletButtons(!!addr);
     if (addr) {
       await refreshBalance("restored");
@@ -2096,6 +2097,7 @@ MD.restoreWallet(CFG.title || "Macaroni")
     render();
   })
   .catch(async (err) => {
+    walletRestoring = false;
     console.warn("Macaroni wallet restore failed", err);
     await MD.disconnectWallet().catch(() => {});
     setText("walletBalance", "Wallet session expired. Connect again to mint.");

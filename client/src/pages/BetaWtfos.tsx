@@ -3819,6 +3819,7 @@ const BetaRouteMeta = styled.div`
 const betaPresentationHostSelector = `:is(
   [data-admin-presentation-host="beta"],
   [data-agent-presentation-host="beta"],
+  [data-applications-presentation-host="beta"],
   [data-arcade-console-presentation-host="beta"],
   [data-backup-manager-presentation-host="beta"],
   [data-board-presentation-host="beta"],

@@ -183,6 +183,11 @@ async function readJobHealth(deps: HealthDeps): Promise<JobHealth> {
     const recentErrors = latest.filter((row) => row.status === "error").length;
     const requiresJobs = deps.env.NODE_ENV === "production";
     const issues: JobHealth["issues"] = [];
+    const nowMs = (deps.now ?? (() => new Date()))().getTime();
+    const configuredStaleMs = Number(deps.env.WTF_SCHEDULER_STALE_RUN_MS);
+    const staleRunMs = Number.isFinite(configuredStaleMs) && configuredStaleMs >= 60_000
+      ? Math.min(configuredStaleMs, 7 * 24 * 60 * 60 * 1000)
+      : 15 * 60 * 1000;
     for (const row of latest) {
       if (row.status === "error") {
         issues.push({
@@ -193,11 +198,24 @@ async function readJobHealth(deps: HealthDeps): Promise<JobHealth> {
       }
     }
     for (const job of jobs) {
-      if (!latestByName.has(job.name) && job.lastStartedAt) {
+      const latestRun = latestByName.get(job.name);
+      if (!latestRun && job.lastStartedAt) {
         issues.push({
           name: job.name,
           status: "missing_latest",
           message: "registered job has started but has no audit row",
+        });
+      }
+      if (
+        latestRun?.status === "running" &&
+        !job.running &&
+        latestRun.startedAt &&
+        nowMs - new Date(latestRun.startedAt).getTime() > staleRunMs
+      ) {
+        issues.push({
+          name: job.name,
+          status: "stale_running",
+          message: "durable run is still marked running but is not active in this process",
         });
       }
     }
@@ -208,7 +226,7 @@ async function readJobHealth(deps: HealthDeps): Promise<JobHealth> {
       return max === null || iso > max ? iso : max;
     }, null);
     return {
-      ok: (!requiresJobs || jobs.length > 0),
+      ok: (!requiresJobs || jobs.length > 0) && issues.length === 0,
       registered: jobs.length,
       running: jobs.filter((job) => job.running).length,
       recentErrors,

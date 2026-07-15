@@ -27,7 +27,7 @@ export function createBrowserRemote(input: {
 }) {
   return {
     async getHealth(): Promise<WtfOsHealthResponse> {
-      return api.get<WtfOsHealthResponse>("/api/health");
+      return api.get<WtfOsHealthResponse>("/api/health/diagnostics");
     },
     async getAccess(): Promise<WtfOsAccessManifest> {
       return api.get<WtfOsAccessManifest>("/api/access");

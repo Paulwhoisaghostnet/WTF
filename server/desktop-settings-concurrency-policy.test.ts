@@ -10,6 +10,11 @@ test("desktop settings route exposes and enforces optimistic concurrency tokens"
 
   assert.match(route, /updatedAt: row\?\.updatedAt \? row\.updatedAt\.toISOString\(\) : null/);
   assert.match(route, /normalizeExpectedUpdatedAt/);
+  assert.match(
+    route,
+    /body\.updatedAt !== undefined \? body\.updatedAt : body\.ifUnmodifiedSince/
+  );
+  assert.doesNotMatch(route, /body\.updatedAt \?\? body\.ifUnmodifiedSince/);
   assert.match(route, /clientProvidedConcurrencyToken/);
   assert.match(route, /status\(409\)\.json/);
   assert.match(route, /desktop_settings_conflict/);

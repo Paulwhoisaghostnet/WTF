@@ -55,12 +55,29 @@ test("production CSP keeps WalletConnect/Reown relay traffic explicit", () => {
   }
 
   assert.match(appSource, /const walletConnectNetworkSources = \[/);
-  assert.match(appSource, /"connect-src": \["'self'", "https:", "wss:", "ws:", \.\.\.walletConnectNetworkSources\]/);
+  assert.match(appSource, /"connect-src": \["'self'", \.\.\.trustedNetworkSources, \.\.\.walletConnectNetworkSources\]/);
+  assert.doesNotMatch(appSource, /"connect-src": \[[^\]]*"https:"/);
+  assert.doesNotMatch(appSource, /"connect-src": \[[^\]]*"wss:"/);
+  assert.doesNotMatch(appSource, /"connect-src": \[[^\]]*"ws:"/);
   assert.match(appSource, /contentSecurityPolicy:[\s\S]*directives: baseCspDirectives/);
 });
 
-test("production CSP can drop unsafe-inline scripts when CSP_STRICT_SCRIPTS=1", () => {
-  assert.match(appSource, /CSP_STRICT_SCRIPTS/);
-  assert.match(appSource, /strictProductionScripts/);
-  assert.match(appSource, /strictProductionScripts \? \[\] : \["'unsafe-inline'"\]/);
+test("production shell scripts are strict by default", () => {
+  const baseScriptBlock = appSource.match(/const baseScriptSrc = \[([\s\S]*?)\n  \];/)?.[1] || "";
+  assert.match(baseScriptBlock, /"'self'"/);
+  assert.doesNotMatch(baseScriptBlock, /unsafe-inline/);
+  assert.doesNotMatch(baseScriptBlock, /unsafe-eval/);
+  assert.doesNotMatch(baseScriptBlock, /blob:/);
+  assert.doesNotMatch(baseScriptBlock, /data:/);
+  assert.doesNotMatch(baseScriptBlock, /wasm-unsafe-eval/);
+  assert.doesNotMatch(appSource, /CSP_STRICT_SCRIPTS/);
+});
+
+test("legacy cartridge capabilities are isolated to named route exceptions", () => {
+  assert.match(appSource, /const LEGACY_SCRIPT_EXCEPTION_PATHS = \["\/games\/installed", "\/creation-tools"\]/);
+  assert.match(appSource, /"'unsafe-inline'"/);
+  assert.match(appSource, /"'unsafe-eval'"/);
+  assert.match(appSource, /"'wasm-unsafe-eval'"/);
+  assert.match(appSource, /"worker-src": \["'self'", "blob:"\]/);
+  assert.match(appSource, /LEGACY_SCRIPT_EXCEPTION_PATHS,[\s\S]*helmet\.contentSecurityPolicy/);
 });

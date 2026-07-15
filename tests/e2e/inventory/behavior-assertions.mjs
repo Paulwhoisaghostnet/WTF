@@ -44,6 +44,252 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused harness expires the session on `/api/auth/welcome/complete`, verifies the client emits `auth.session.invalidated`, and confirms the welcome modal is removed after the protected 401.",
   },
   {
+    id: "gamma.login-daily-return-strip",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"renders an inhabited|account tile|routes daily return|keeps the first mobile|signed-in OS session console|Gamma wake queue|signs out from Gamma session controls\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Gamma home opens like a usable OS login surface: the boot desk shows a route-backed account tile plus app/daily/people status checks, the session console shows a mounted-workspace table for account, restore target, app passes, and active Gamma shell, the wake queue ranks Resume/Login, Inbox, Daily, People, and Apps as route-backed next steps, persistent session controls offer Desk, Settings, and Sign out/Login, the daily return strip offers Side Quests, Challenges, W people discovery, and Notifications, and all controls stay readable with mobile-sized targets.",
+    durableSideEffectAssertion:
+      "The source policy keeps Gamma on shared routes with no Gamma-specific API, the interaction inventory binds the Gamma shell to existing public/session/admin routes, and the browser proof routes the account tile, mounted-workspace rows, and wake queue to `/gamma/login?return=/dashboard`, `/gamma/user/:username`, `/gamma/dashboard` or a browser-local recent route, Inbox, Daily, People, Apps, and Gamma home; shared logout returns signed-in users to the Gamma desk and exposes the Gamma login action while daily return actions still open `/gamma/side-quests`, `/gamma/w`, and `/gamma/notifications` without leaving the Gamma presentation host.",
+  },
+  {
+    id: "gamma.command-search-launcher",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"command search\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Gamma search behaves like an OS launcher: typing a known app, tool, or system route shows command results and opens the matching Gamma route before falling back to Gallery search for unmatched text.",
+    durableSideEffectAssertion:
+      "The source policy builds command entries from existing Gamma stations, app catalog entries, and static PAGE_DEFS routes while preserving shared route gates, app availability, and no Gamma-specific API; the browser proof launches Broot and Settings under `/gamma/...` from search results.",
+  },
+  {
+    id: "gamma.command-keyboard-shortcut",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"OS keyboard shortcut\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Gamma behaves like an operating-system shell: pressing Ctrl/Cmd+K focuses the mounted command search from either the home desk or an app route, then the user can type and launch a Gamma route without pointer-hunting for the field.",
+    durableSideEffectAssertion:
+      "The source policy keeps the shortcut inside the Gamma shell, focuses only mounted `data-gamma-command-input` fields, removes the keydown listener on unmount, and the browser proof launches `/gamma/settings` from an app route without Classic fallback or Gamma-specific API calls.",
+  },
+  {
+    id: "gamma.home-enter-continue",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"boot desk with Enter\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Gamma home behaves like a standard OS start surface: the visible primary Continue/Login action owns focus on the boot desk, and pressing Enter launches it, sending guests to Gamma-hosted login that opens `/gamma/dashboard` after authentication and signed-in users to their Continue route or dashboard.",
+    durableSideEffectAssertion:
+      "The source policy keeps the default action in the Gamma shell, carries a sanitized `/dashboard` return through Login/Register, ignores editable and interactive controls for the fallback Enter shortcut, waits for shared auth state before routing, and the browser proof opens `/gamma/login?return=/dashboard`, submits through the shared login API, and lands on `/gamma/dashboard` without Classic fallback or Gamma-specific APIs.",
+  },
+  {
+    id: "gamma.dashboard-next-actions",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell", "dashboard"],
+    ownerSpec:
+      "client/src/pages/dashboard-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/dashboard-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"Dashboard cockpit\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "After logging into Gamma, the hosted Dashboard starts with a compact next-action rail for Daily proof, Challenges, People, Apps, Inbox, and Profile so the first workspace gives a clear OS-like next step.",
+    durableSideEffectAssertion:
+      "The source policy renders the rail only when `presentation.host` is Gamma, routes every action to existing shared WTFOS routes without Gamma-specific APIs, and the browser proof clicks Daily proof from `/gamma/dashboard` into `/gamma/side-quests` without mounting the Classic desktop.",
+  },
+  {
+    id: "gamma.command-result-keyboard-navigation",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"command results from keyboard\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Gamma command search behaves like an OS launcher: after typing in the start-desk or app-route search box, ArrowDown moves focus into the visible results, ArrowUp/ArrowDown cycle result buttons, Escape returns focus to the command input with the query intact, and Enter launches the focused route or Gallery fallback without using the pointer.",
+    durableSideEffectAssertion:
+      "The source policy keeps result focus movement and result-to-input recovery inside the Gamma command surface and uses existing route results with no Gamma-specific API; the browser proof recovers from focused Broot and Gallery fallback results, then launches `/gamma/tools/broot` and the Gallery fallback from keyboard-focused command results while confirming the Classic desktop never mounts.",
+  },
+  {
+    id: "gamma.command-escape-dismissal",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"command search with Escape\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Gamma command search behaves like an OS field: pressing Escape after typing in the start-desk or app-route command input clears the query, dismisses focus, and leaves the current Gamma route unchanged.",
+    durableSideEffectAssertion:
+      "The source policy keeps dismissal inside the Gamma shell with no Gamma-specific API, and the browser proof clears both home and route command inputs while confirming the URL remains `/gamma` or `/gamma/gallery` and the Classic desktop never mounts.",
+  },
+  {
+    id: "gamma.app-route-keyboard-desk-shortcut",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"keyboard shortcut\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A Gamma user can press Alt+Home from a Gamma app route to return to the Gamma desk without using pointer navigation, while editable fields keep the shortcut for normal text/input behavior.",
+    durableSideEffectAssertion:
+      "The source policy keeps the shortcut inside the Gamma shell, ignores input/textarea/select/contenteditable targets, removes the keydown listener on unmount, and the browser proof returns `/gamma/gallery` to `/gamma` without Classic fallback or Gamma-specific API calls.",
+  },
+  {
+    id: "gamma.route-history-recovery",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"route history recovery\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A Gamma app route exposes standard OS-style Back, Forward, and Desk controls in shell chrome, plus Alt+ArrowLeft and Alt+ArrowRight shortcuts, so users can recover route context without relying on browser chrome or leaving Gamma.",
+    durableSideEffectAssertion:
+      "The source policy keeps a bounded sanitized Gamma route stack in presentation state, rejects API and unregistered paths, disables unavailable history directions, ignores editable shortcut targets, avoids raw `window.history` calls, and the browser proof moves `/gamma/gallery` to `/gamma/settings` and back/forward/desk without Classic fallback or Gamma-specific APIs.",
+  },
+  {
+    id: "gamma.recent-route-restore",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"recent route restore\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Gamma remembers recently opened registered routes in the browser session, promotes the newest route into Continue, shows route-backed open-app dock buttons on the home session console, and lets the user recover the front recent app from the Gamma desk by keyboard without scanning the page.",
+    durableSideEffectAssertion:
+      "The source policy stores only sanitized registered route strings in browser localStorage under `wtfos.gamma.recentRoutes`, excludes auth/home/API paths, derives labels from existing route/station metadata, exposes the first stored recent route as the home dock keyboard target, ignores editable fields, and the browser proof keeps every pointer or keyboard restore inside Gamma with shared auth/app gates intact and no Gamma-specific API.",
+  },
+  {
+    id: "gamma.app-task-switcher-recents",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"recent app routes\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A signed-in Gamma user can move between recent app routes directly from the app-route taskbar, by pointer or keyboard, without returning to Gamma home or seeing the Classic desktop.",
+    durableSideEffectAssertion:
+      "The source policy reuses the browser-local sanitized `wtfos.gamma.recentRoutes` list, excludes the active route from switch buttons, exposes the first switch target as a Gamma keyboard route, falls back to route-backed quick switches when no stored recents exist, and the browser proof switches `/gamma/leaderboard` to `/gamma/settings` by keyboard while editable fields are ignored, then switches back by pointer while shared route gates remain intact and no Gamma API is introduced.",
+  },
+  {
+    id: "gamma.daily-sidequest-handoff",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSurfaceIds: ["gamma-shell", "side-quests", "messageboard"],
+    ownerSpec: "tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"daily side quest handoff\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A signed-in Gamma user can start on `/gamma`, open the daily return strip, see the daily messageboard check-in inside the Side Quests app, follow its task button to Message Board inside Gamma, claim a verified daily proof, and continue to WTFIAM market unlocks without falling back to Classic.",
+    durableSideEffectAssertion:
+      "The focused browser proof uses the existing Side Quests daily-loop API, Message Board read APIs, and daily-loop claim API while preserving Gamma route prefixes; the live puppet assertion `gameshow.side-quests-messageboard-check-in` remains the durable post/claim/XP/WTF ledger proof.",
+  },
+  {
+    id: "gamma.session-console-shortcuts",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"signed-in OS session console|first mobile\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A signed-in Gamma user lands on a compact OS session console with profile identity, Home, Inbox, Apps, Settings, Daily proof, People, and Objects controls, with mobile-sized targets instead of a report-style landing page.",
+    durableSideEffectAssertion:
+      "The browser proof opens Settings and W through the session console while preserving `/gamma/...` routing, with all controls backed by existing shared routes and no Gamma-specific API or duplicated app state.",
+  },
+  {
+    id: "gamma.system-tray-session-status",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"system tray\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Gamma keeps a persistent OS system tray on home and app routes, showing session, shared API health (checking/online/degraded), Signals, Daily, Apps, and People status controls with readable touch-sized targets and a Settings recovery target when shared reads degrade.",
+    durableSideEffectAssertion:
+      "The focused browser proof clicks Gamma tray actions from `/gamma` and `/gamma/gallery` into shared `/gamma/notifications`, `/gamma/settings`, `/gamma/side-quests`, and `/gamma/wtfiam?category=apps` routes, then mocks a degraded leaderboard read and proves the network tray control opens `/gamma/settings`, proving the tray is route-backed shell navigation with no Gamma-specific API or Classic fallback.",
+  },
+  {
+    id: "gamma.tray-notification-signals",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"system tray\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Gamma's persistent Signals tray control reports notification state as guest, checking, clear, unread, or degraded, shows an unread count when available, and opens the shared Notification Center inside `/gamma/notifications`.",
+    durableSideEffectAssertion:
+      "The source policy reads existing `/api/notifications?limit=6` only for signed-in users, exposes notification state and unread-count attributes on the tray action, and the browser proof confirms the unread signal routes to `/gamma/notifications` without Classic fallback or Gamma-specific APIs.",
+  },
+  {
+    id: "gamma.session-lock-return",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"locks Gamma\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A signed-in Gamma user can choose Lock from the persistent session controls, or press Ctrl+Alt+L outside editable fields, to return to the Gamma desk while staying signed in.",
+    durableSideEffectAssertion:
+      "The source policy proves the Lock action routes to `/` with retained session state and does not call logout; the browser proof confirms `/gamma` renders a signed-in boot desk after button and keyboard lock paths with no Classic fallback or auth mutation.",
+  },
+  {
+    id: "gamma.system-clock-calendar-handoff",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"system tray\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Gamma shows a persistent browser-local clock/date in the system tray on home and app routes, and activating it opens the existing Calendar app inside `/gamma/calendar`.",
+    durableSideEffectAssertion:
+      "The source policy derives the clock from browser Date/Intl state, exposes ISO/time/date attributes on the tray action, routes to the existing `/calendar` route, and the browser proof confirms the Calendar handoff stays in Gamma with no Gamma-specific API, auth mutation, or Classic fallback.",
+  },
+  {
+    id: "gamma.auth-return-continuity",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"auth return\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A guest opening a protected Gamma route lands on a lock-screen-style gate whose Enter and return action is focused; pressing Enter opens Gamma-hosted login, focuses Username, and after login returns to the attempted Gamma route instead of Classic or the Gamma home page.",
+    durableSideEffectAssertion:
+      "The focused browser proof uses the shared auth login API while the Gamma shell carries only a sanitized local return route in the login query string; Login/Register use presentationRouteHref for Gamma, default plain Gamma auth to `/dashboard`, preserve form focus, and do not introduce Gamma-specific auth APIs.",
+  },
+  {
+    id: "gamma.app-route-taskbar-navigation",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["gamma-shell"],
+    ownerSpec:
+      "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"app-route taskbar\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A Gamma app route shows an OS taskbar with the active app identity plus Close app, Desk/Login, Inbox, Daily, Apps, and Settings controls; real hosted app routes move focus to the active-app strip so the route feels activated, while the buttons remain touch-sized in a narrow viewport.",
+    durableSideEffectAssertion:
+      "The focused browser proof starts on `/gamma/gallery`, verifies the active-app strip owns focus, uses the taskbar to open `/gamma/side-quests`, `/gamma/messages`, and close the current app route back to `/gamma`, and verifies every app step keeps focus, the Gamma shell, and shared route ownership instead of loading Classic UI or a Gamma-specific API.",
+  },
+  {
     id: "profile.x-oauth-expected-account",
     domain: "Entry, Authentication, and Account Identity",
     platformOwner: "profile-social",
@@ -180,7 +426,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion:
       "A trusted-creator puppet can open Macaroni, enter the Studio through the embedded creation-tool iframe, see Shadownet as the default rehearsal network, choose Macaroni V1 or V2 contract templates, see the wtfOS IPFS provider, see Fileship as the default IPFS gateway, see the 1 GB per-artifact hard max, 250 MB average artifact limit, and 1 MB square JPG/PNG collection logo/cover limit, define per-token edition quantity, configure optional minter royalty pool/split/updater policy, attach multiple unrevealed placeholder images for delayed reveal, connect a Shadownet puppet wallet without RPC errors, use Octez Connect as the primary wallet provider with legacy Taquito compatibility scoped to generated static bundles, route selected Kukai pairing to the Shadownet Kukai app, send named wallet permission networks without embedding the dApp RPC URL, serve stored legacy wtfOS-hosted Macaroni drop pages with Octez-primary bridge injection plus the same named-network wallet hardening, and block wtfOS publish until the drop has a deployed or resumed KT1 contract; a regular signed-in puppet loading the static Studio does not see the wtfOS IPFS provider; generated mint pages expose clean disconnect, prevent duplicate request-permission flows from rapid connect clicks, reuse/reconfigure the same Octez-primary client with active-account subscription before permission APIs, include basic accessibility landmarks/status/progress/quantity semantics, normalize live max_per_wallet storage before showing share/status copy, keep X share compose text within the standard post limit while preserving mint/media URLs where possible, expose prefilled ICS and Google Calendar links for sale stages, clamp requested mint quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance, show wallet balance/cost status, max-per-wallet status, minter royalty sync status, owned-mint recovery hooks, RPC pack/estimate fallback handling, and bounded theme styling instead of arbitrary stored CSS.",
     durableSideEffectAssertion:
-      "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves the contract-version selector exposes V1 and V2 template choices, proves the IPFS provider selector follows `trusted_market_creator` access, proves a mismatched RPC is blocked before wallet signing, confirms explicit connect uses the Octez-primary bridge with legacy static-bundle compatibility fenced to the generated runtime, checks from `/tools/macaroni` that the real Kukai option can escape the sandbox and load `https://shadownet.kukai.app` instead of a blank, mainnet, or Temple-only tab, asserts rapid generated-page connect clicks coalesce to one permission request, asserts the permission network object is `{ type: \"shadownet\" }` rather than Shadownet plus a dApp RPC override, asserts the server injects the Octez bridge and hardens Airporters-shaped stored legacy drop HTML before serving it, and keeps source-policy coverage for the 1 GB per-file and 250 MB average Macaroni artifact policy, contract-required wtfOS publishing, per-token edition quantities, delayed-reveal placeholder pools, request-time minter royalty metadata sync, non-image cover preview metadata, the generated mint page's validated wallet restore, disconnect, Octez-primary singleton reuse, ACTIVE_ACCOUNT_SET subscription, browser RPC fallback, share/calendar canonical handles, X URL-weight trimming, calendar file generation, accessible controls/status regions, balance preflight, max-per-wallet option normalization and allowlist remaining allowance clamping, TzKT-owned-mint lookup, Fileship gateway default, and CSS theme allowlist paths.",
+      "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves the contract-version selector exposes V1 and V2 template choices, proves the IPFS provider selector follows `trusted_market_creator` access, proves a mismatched RPC is blocked before wallet signing, confirms explicit connect uses the Octez-primary bridge with legacy static-bundle compatibility fenced to the generated runtime, checks from `/tools/macaroni` that the real Kukai option can escape the sandbox and load `https://shadownet.kukai.app` instead of a blank, mainnet, or Temple-only tab, asserts rapid generated-page connect clicks coalesce to one permission request, asserts the permission network object is `{ type: \"shadownet\" }` rather than Shadownet plus a dApp RPC override, asserts the server injects the Octez bridge and hardens Airporters-shaped stored legacy drop HTML before serving it, and keeps source-policy coverage for the 1 GB per-file and 250 MB average Macaroni artifact policy, contract-required wtfOS publishing, per-token edition quantities, delayed-reveal placeholder pools, request-time minter royalty metadata sync, non-image cover preview metadata, the generated mint page's validated non-blocking wallet restore, disconnect, Octez-primary singleton reuse, ACTIVE_ACCOUNT_SET subscription, bounded browser RPC read fallback, share/calendar canonical handles, X URL-weight trimming, calendar file generation, accessible controls/status regions, balance preflight, max-per-wallet option normalization and allowlist remaining allowance clamping, TzKT-owned-mint lookup, Fileship gateway default, and CSS theme allowlist paths.",
   },
   {
     id: "macaroni.wtfos-package-source",
@@ -217,6 +463,32 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "CH-EASE can open a target Pasta publisher with the current package preloaded through a same-origin sessionStorage handoff, the creation-tool iframe preserves the handoff query context, the publisher confirms import with inline status, and Spaghetti can rehearse the Shadownet-safe publish choreography from that imported package.",
     durableSideEffectAssertion:
       "The CH-EASE handoff emits chease.package_handoff_opened; the six Pasta studios expose the shared MD runtime to their module scripts and consume the shared handoff key without mutating server storage before the creator chooses to deploy or export; the focused browser proof records Spaghetti's chain guard, origination, create_token batch, mint batch, pinned collection metadata, pinned token metadata, and spaghetti.collection_deployed / spaghetti.token_published events.",
+  },
+  {
+    id: "pasta-protocol.self-hosted-site-exports",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec:
+      "scripts/pasta-protocol/site-kit/*, public/creation-tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/site.html, public/creation-tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/js/site*.js, client/src/features/pasta-protocol/colander/ColanderApp.tsx, client/src/features/pasta-protocol/colander/colander-workspace.ts, apps/pasta-suite-desktop/src/main.cjs, apps/pasta-suite-desktop/src/site-archive.cjs, apps/pasta-suite-desktop/scripts/prepare-assets.mjs, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs, tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs",
+    verificationCommand:
+      "node scripts/pasta-protocol/sync-site-kit.mjs && npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run build && HARNESS_PORT=4321 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Every post-Macaroni Pasta publisher can download a standalone site ZIP: Spaghetti and Rotini expose inventory-backed direct purchase, Gnocchi exposes open-edition mint, Penne exposes claim, Ravioli exposes direct purchase plus redeem/reveal state, and Lasagna resolves the current exhibition revision. Inside Pasta Suite Desktop, the same export also appears in Colander's Self-hosted pages registry and opens from a loopback URL.",
+    durableSideEffectAssertion:
+      "Each ZIP contains index.html, pasta.config.js, shared site styling/runtime, wallet support, and Tezos dependencies; export emits the app-owned *.site_exported event; a Colander-launched export appends a self_hosted_site artifact to the portable workspace manifest and advances the project to published; and native Colander safely expands the stored ZIP under Documents/Pasta Suite/sites, writes a manifest, and emits pasta_suite.site_installed.",
+  },
+  {
+    id: "pasta-protocol.colander-project-workspace",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec:
+      "client/src/features/pasta-protocol/colander/ColanderApp.tsx, client/src/features/pasta-protocol/colander/colander-workspace.ts, public/creation-tools/*/js/common.js, public/creation-tools/*/js/studio.js, tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs",
+    verificationCommand:
+      "npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run pasta:shadownet:colander",
+    userVisibleAssertion:
+      "A creator can make a named local project in Colander, choose the outcome-specific Pasta app, reopen the project after reload, export or import its versioned manifest, and launch the owner app with project context without losing direct KT1 contract management.",
+    durableSideEffectAssertion:
+      "The project persists under wtfos.pasta.colander.workspace.v1; Colander emits project lifecycle and tool-launch events; and each Pasta publisher attaches a newly deployed KT1 to the originating project and advances it to deployed without requiring Objkt, Teia, or a wtfOS database.",
   },
   {
     id: "pasta-protocol.colander-context-handoff",
@@ -454,6 +726,17 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "Contestants can see at least ten daily social/creative side quests with XP and WTF rewards, including the messageboard check-in.",
     durableSideEffectAssertion:
       "The live harness seeds canonical side quests, creates a temporary board channel, posts as a contestant, verifies the daily check-in is ready to claim for the current UTC day, claims it, verifies XP action completion, verifies a queued WTF reward ledger row, and removes the temporary channel.",
+  },
+  {
+    id: "gameshow.mint-art-monday-linked-wallet",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSurfaceIds: ["mint-portal", "side-quests"],
+    ownerSpec: "server/challenges/services/daily-loop-challenges.test.ts",
+    verificationCommand: "npx tsx --test server/challenges/services/daily-loop-challenges.test.ts",
+    userVisibleAssertion:
+      "Every UTC Monday, a signed-in user can complete Mint Art Monday by minting art to a Tezos wallet linked to their wtfOS account.",
+    durableSideEffectAssertion:
+      "The canonical side quest listens for linked-wallet `blockchain.tezos.token_mint` events from wallet surveillance, requires the `time.utc_weekday` Monday predicate, dedupes by current UTC day, and executes WTF reward actions immediately without a claim step.",
   },
   {
     id: "dedrooms.mud-core-flow",
@@ -789,6 +1072,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "Inbox exposes explicit New message and New mail controls, selected mail reader Reply/Forward actions, and an inline WIM/Studio conversation reply composer so message cards and conversation tabs are not read-only dead ends.",
     durableSideEffectAssertion:
       "Source policy keeps Inbox sends on /api/mail/send, /api/messages/dms, and /api/messages/dms/:id/messages while the inventory workflow probes both mail send and DM send paths with bounded expected outcomes.",
+  },
+  {
+    id: "desktop-reggie.summon-wim-messages",
+    domain: "Desktop OS",
+    ownerSurfaceIds: ["desktop-reggie", "wim", "messages", "mail"],
+    ownerSpec:
+      "client/src/features/reggie/reggie-assistant-policy.test.ts; server/challenges/routes/reggie-policy.test.ts; tests/e2e/inventory/domain-workflows.mjs",
+    verificationCommand:
+      "node --test client/src/features/reggie/reggie-assistant-policy.test.ts server/challenges/routes/reggie-policy.test.ts && npm run test:e2e:inventory:coverage",
+    userVisibleAssertion:
+      "The desktop context menu exposes Summon Reggie, Reggie can be hidden or snoozed and later pops back in with a temporary speech bubble, and WIM identifies assistant-authored messages as Reggie messages.",
+    durableSideEffectAssertion:
+      "Reggie speech posts through /api/reggie/messages, which chooses the authenticated user server-side, writes a Reggie-authored DM conversation/message, tags the message metadata as assistant=reggie/source=reggie-assistant, and indexes the item for WIM/Inbox recovery.",
   },
   {
     id: "desktop.app-store-ranked-unlocks",

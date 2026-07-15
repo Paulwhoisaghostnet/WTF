@@ -253,6 +253,7 @@ async function deploy() {
       log(`allocations loaded: ${loaded}/${allocs.length}`);
     }
     log(`done — ${loaded} allocations live on ${kt}. Choose a distribution mode below.`);
+    MD.recordColanderContract(kt, "penne");
     MD.logEvent("penne.collection_deployed", "Penne deployed a distribution contract", {
       contract: kt,
       network: state.network,
@@ -411,6 +412,7 @@ function wire() {
     $("contractKt").value = routeHandoff.contract;
     MD.notify(`Loaded ${routeHandoff.contract} from Colander.`, "success");
   }
+  if (routeHandoff?.projectTitle && !$("tokName").value) $("tokName").value = routeHandoff.projectTitle;
 }
 
 wire();

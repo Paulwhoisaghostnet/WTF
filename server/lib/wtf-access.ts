@@ -91,7 +91,10 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
 ];
 
 export const WTF_STANDARD_API_ROUTES: WtfApiAccessRoute[] = [
-  { method: "GET", path: "/api/health", access: "public", purpose: "Kernel readiness snapshot for DB, chain/config, contracts, version, scheduler audit visibility, uptime, and timestamp." },
+  { method: "GET", path: "/api/health", access: "public", purpose: "Minimal process liveness without dependency or runtime diagnostics." },
+  { method: "GET", path: "/api/health/ready", access: "public", purpose: "Compact orchestrator readiness for database, chain configuration, and scheduler state." },
+  { method: "GET", path: "/api/health/diagnostics", access: "browser-session", purpose: "Authenticated database, chain/config, contract, runtime, version, and scheduler diagnostics." },
+  { method: "GET", path: "/api/health/disk", access: "browser-session", purpose: "Authenticated TV cache capacity diagnostics." },
   { method: "GET", path: "/api/access", access: "public", purpose: "Read-only standard access manifest for browser, API, and MCP clients." },
   { method: "GET", path: "/api/cli/can-open", access: "public", purpose: "Evaluate whether the current browser session (if any) may open a registered browser route using the same gates as the web UI." },
   { method: "GET", path: "/api/cli/routes", access: "public", purpose: "List registered browser routes the current session may open; anonymous callers receive public routes only." },

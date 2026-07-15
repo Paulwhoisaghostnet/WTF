@@ -30,7 +30,7 @@ x-wtfos-pds-healthcheck: &wtfos-pds-healthcheck
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
     restart: unless-stopped
     environment:
       POSTGRES_USER: wtf
@@ -104,7 +104,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   wtfos-pds:
-    image: ghcr.io/bluesky-social/pds:0.4
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
     restart: unless-stopped
     profiles:
       - wtfos-pds
@@ -137,7 +137,7 @@ services:
 
   # ── Domain PDSes (one repo per subdomain; hold canonical topical records) ─
   wtfos-pds-social:
-    image: ghcr.io/bluesky-social/pds:0.4
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -151,7 +151,7 @@ services:
     healthcheck: *wtfos-pds-healthcheck
 
   wtfos-pds-commerce:
-    image: ghcr.io/bluesky-social/pds:0.4
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -165,7 +165,7 @@ services:
     healthcheck: *wtfos-pds-healthcheck
 
   wtfos-pds-media:
-    image: ghcr.io/bluesky-social/pds:0.4
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -179,7 +179,7 @@ services:
     healthcheck: *wtfos-pds-healthcheck
 
   wtfos-pds-arcade:
-    image: ghcr.io/bluesky-social/pds:0.4
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -193,7 +193,7 @@ services:
     healthcheck: *wtfos-pds-healthcheck
 
   wtfos-pds-tezos:
-    image: ghcr.io/bluesky-social/pds:0.4
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -207,7 +207,7 @@ services:
     healthcheck: *wtfos-pds-healthcheck
 
   wtfos-pds-ops:
-    image: ghcr.io/bluesky-social/pds:0.4
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -221,7 +221,7 @@ services:
     healthcheck: *wtfos-pds-healthcheck
 
   wtfos-pds-os:
-    image: ghcr.io/bluesky-social/pds:0.4
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -236,7 +236,7 @@ services:
 
   # ── Users PDS (WTF-hosted did:plc user repos) ────────────────────────────
   wtfos-pds-users:
-    image: ghcr.io/bluesky-social/pds:0.4
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -273,7 +273,7 @@ services:
 
   # ── Private PDS (encrypted DM/room records; NOT federated) ───────────────
   wtfos-pds-private:
-    image: ghcr.io/bluesky-social/pds:0.4
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -290,7 +290,7 @@ services:
 
   # ── Indigo relay (aggregated subscribeRepos firehose) ────────────────────
   wtfos-relay-db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -333,43 +333,10 @@ services:
       start_period: 30s
       retries: 3
 
-  # ── Self-hosted PLC mirror (dual with public plc.directory) ──────────────
-  # NOTE: image/build is finalized in S2.2 (DID register + dual PLC). Override
-  # WTFOS_PLC_IMAGE or switch to a build: stanza then. Profile-gated until then.
-  wtfos-plc-db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    profiles: [wtfos-atproto]
-    environment:
-      POSTGRES_USER: plc
-      POSTGRES_PASSWORD: ${WTFOS_PLC_DB_PASSWORD:-}
-      POSTGRES_DB: plc
-    volumes:
-      - ${WTFOS_PLC_DB_DATA_DIR:-/mnt/wtf-data/plc-db}:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U plc"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  wtfos-plc:
-    image: ${WTFOS_PLC_IMAGE:-ghcr.io/did-method-plc/plc:latest}
-    restart: unless-stopped
-    profiles: [wtfos-atproto]
-    depends_on:
-      wtfos-plc-db:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://plc:${WTFOS_PLC_DB_PASSWORD}@wtfos-plc-db:5432/plc
-      PORT: "3000"
-      DEBUG_MODE: "0"
-      LOG_ENABLED: "true"
-      NODE_ENV: production
-
   # ── Labeler (com.atproto.label bans/labels) ──────────────────────────────
   # NOTE: image + full config finalized in S2.8 (labeler service). Profile-gated.
   wtfos-labeler-db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -385,7 +352,7 @@ services:
       retries: 5
 
   wtfos-labeler:
-    image: ${WTFOS_LABELER_IMAGE:-ghcr.io/bluesky-social/ozone:latest}
+    image: ghcr.io/bluesky-social/ozone:0.1.104@sha256:4473001d2c22edef278a84a7714c93f52b4884669144bdcfef0f270befdd21d7
     restart: unless-stopped
     profiles: [wtfos-atproto]
     depends_on:
@@ -400,7 +367,7 @@ services:
       NODE_ENV: production
 
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
     restart: unless-stopped
     depends_on:
       - app

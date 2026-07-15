@@ -32,6 +32,20 @@ const botProvisionSchema = z.object({
   botLabel: z.string().trim().min(1).max(120).optional(),
 });
 
+const USER_MAIL_GATE_ERRORS = new Set([
+  "missing_tezos_wallet",
+  "missing_identity",
+  "wtfos_identity_incomplete",
+  "guest_not_registered",
+]);
+
+export function mailSendErrorStatus(message: string): number {
+  if (USER_MAIL_GATE_ERRORS.has(message)) return 403;
+  if (message === "mailbox_not_active" || message === "recipient_required") return 400;
+  if (message.includes("resend") || message.includes("mail_outbound")) return 503;
+  return 500;
+}
+
 const mailProvisionRateLimit = createInMemoryRateLimit({
   windowMs: 60_000,
   max: 6,
@@ -249,12 +263,7 @@ router.post("/api/mail/send", isAuthenticated, mailSendRateLimit, async (req, re
     res.status(201).json({ message });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const status =
-      message === "mailbox_not_active" || message === "recipient_required"
-        ? 400
-        : message.includes("resend") || message.includes("mail_outbound")
-          ? 503
-          : 500;
+    const status = mailSendErrorStatus(message);
     res.status(status).json({ error: message || "Failed to send mail" });
   }
 });

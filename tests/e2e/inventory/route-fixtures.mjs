@@ -69,7 +69,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/tools/rotini", path: "/tools/rotini", title: "Rotini", domain: "pasta-protocol", subdomain: "Rotini generative publisher", auth: true },
   { pattern: "/tools/penne", path: "/tools/penne", title: "Penne", domain: "pasta-protocol", subdomain: "Penne distribution publisher", auth: true },
   { pattern: "/tools/lasagna", path: "/tools/lasagna", title: "Lasagna", domain: "pasta-protocol", subdomain: "Lasagna curation publisher", auth: true },
-  { pattern: "/tools/colander", path: "/tools/colander", title: "Colander", domain: "pasta-protocol", subdomain: "Colander ownership and management", auth: true },
+  { pattern: "/tools/colander", path: "/tools/colander", title: "Colander", domain: "pasta-protocol", subdomain: "Colander project workspace and contract management", auth: true },
   { pattern: "/swap", path: "/swap", title: "Swap", domain: "commerce", subdomain: "Swap/DEX", auth: true },
   { pattern: "/profile", path: "/profile", title: "Profile", domain: "identity", subdomain: "Profile identity", auth: true },
   { pattern: "/desktop-settings", path: "/desktop-settings", title: "System Appearance", domain: "desktop-os", subdomain: "Desktop appearance", auth: true },

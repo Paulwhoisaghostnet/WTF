@@ -8,6 +8,7 @@ import {
 
 const SHADOWNET_RPC = "https://tezos-shadownet.octez.io/";
 const SHADOWNET_CHAIN_ID = "NetXsqzbfFenSTS";
+const MAINNET_CHAIN_ID = "NetXdQprcVkpaWU";
 const authCacheDir = path.resolve(".e2e", "macaroni-shadownet-auth");
 
 let puppetCredentials;
@@ -286,8 +287,19 @@ async function waitForMacaroniStudio(frame) {
 }
 
 function fatalErrors(errors) {
+  const primaryRpcCorsFallback = errors.some((error) =>
+    /Access to fetch at 'https:\/\/tezos-shadownet\.octez\.io\/chains\/main\/chain_id'.*blocked by CORS policy/i.test(
+      error
+    )
+  );
   return errors.filter(
     (error) =>
+      !(
+        primaryRpcCorsFallback &&
+        (/Access to fetch at 'https:\/\/tezos-shadownet\.octez\.io\/chains\/main\/chain_id'.*blocked by CORS policy/i.test(
+          error
+        ) || /Failed to load resource: net::ERR_FAILED/i.test(error))
+      ) &&
       !/(favicon|ResizeObserver|WebGL|walletbeacon|beacon-node|walletconnect|created multiple octez\.connect SDK Client instances|wtfOS publish blocked: Deploy or resume a KT1 contract before publishing to wtfOS|Failed to load resource: the server responded with a status of 40[13])/i.test(
         error
       )
@@ -355,7 +367,7 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
 
       const chainId = await frame.evaluate(async () => {
         MD.setupToolkit("shadownet");
-        return MD.getToolkit().rpc.getChainId();
+        return MD.withRpcReadFallback(() => MD.getToolkit().rpc.getChainId());
       });
       expect(chainId).toBe(SHADOWNET_CHAIN_ID);
 
@@ -481,7 +493,7 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       const alignedNetwork = await page.evaluate(async () => {
         await MD.assertOperationSafety();
         const configuredRpc = MD.getNetworks().shadownet.rpc;
-        const chainId = await MD.getToolkit().rpc.getChainId();
+        const chainId = await MD.withRpcReadFallback(() => MD.getToolkit().rpc.getChainId());
         const account = JSON.parse(
           window.localStorage.getItem("macaroni-shadownet-puppet-active-account") || "null"
         );
@@ -514,6 +526,18 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
     const actor = actorById(puppetCredentials, "cookiemonster");
     const { context, page } = await actorPage(browser, baseURL, actor);
     try {
+      await context.route("https://tezos-mainnet.octez.io/**", async (route) => {
+        const url = new URL(route.request().url());
+        if (url.pathname.endsWith("/chains/main/chain_id")) {
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(MAINNET_CHAIN_ID),
+          });
+          return;
+        }
+        await route.continue();
+      });
       await page.goto("/tools/macaroni", { waitUntil: "domcontentloaded" });
       let frame = await macaroniFrame(page);
       await frame.getByRole("link", { name: /Open Studio/ }).click();

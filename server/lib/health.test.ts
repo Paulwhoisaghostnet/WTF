@@ -133,7 +133,9 @@ test("health snapshot exposes compact job issue summaries", async () => {
     })
   );
 
-  assert.equal(snapshot.jobs.ok, true);
+  assert.equal(snapshot.ok, false);
+  assert.equal(snapshot.status, "degraded");
+  assert.equal(snapshot.jobs.ok, false);
   assert.equal(snapshot.jobs.recentErrors, 1);
   assert.deepEqual(snapshot.jobs.issues, [
     {
@@ -142,4 +144,57 @@ test("health snapshot exposes compact job issue summaries", async () => {
       message: "latest run failed",
     },
   ]);
+});
+
+test("health snapshot degrades when an old durable running row is not active in this process", async () => {
+  const snapshot = await buildHealthSnapshot(
+    deps({
+      now: () => new Date("2026-05-11T02:00:00.000Z"),
+      latestPerJob: async () => [
+        {
+          jobName: "wallet-events-global",
+          status: "running",
+          startedAt: new Date("2026-05-11T00:00:00.000Z"),
+          finishedAt: null,
+          durationMs: null,
+        },
+      ],
+    })
+  );
+
+  assert.equal(snapshot.ok, false);
+  assert.equal(snapshot.jobs.ok, false);
+  assert.deepEqual(snapshot.jobs.issues, [
+    {
+      name: "wallet-events-global",
+      status: "stale_running",
+      message: "durable run is still marked running but is not active in this process",
+    },
+  ]);
+});
+
+test("health snapshot allows a fresh durable running row during the reconciliation grace window", async () => {
+  const snapshot = await buildHealthSnapshot(
+    deps({
+      env: {
+        NODE_ENV: "production",
+        COMMIT_REF: "abc123",
+        TEZOS_RPC_URL: "https://tezos-mainnet.octez.io/",
+        WTF_SCHEDULER_STALE_RUN_MS: "300000",
+      },
+      now: () => new Date("2026-05-11T00:04:00.000Z"),
+      latestPerJob: async () => [
+        {
+          jobName: "wallet-events-global",
+          status: "running",
+          startedAt: new Date("2026-05-11T00:00:00.000Z"),
+          finishedAt: null,
+          durationMs: null,
+        },
+      ],
+    })
+  );
+
+  assert.equal(snapshot.jobs.ok, true);
+  assert.deepEqual(snapshot.jobs.issues, []);
 });

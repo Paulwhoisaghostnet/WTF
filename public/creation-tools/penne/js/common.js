@@ -196,7 +196,24 @@ const MD = (() => {
       contract: params.get("contract") || "",
       network: params.get("network") || "",
       kind: params.get("kind") || "",
+      projectId: params.get("projectId") || "",
+      projectTitle: params.get("projectTitle") || "",
     };
+  }
+
+  function recordColanderContract(contract, toolId) {
+    const handoff = readRouteHandoff();
+    if (handoff?.source !== "colander-workspace" || !handoff.projectId || !contract) return false;
+    try {
+      const key = "wtfos.pasta.colander.workspace.v1";
+      const projects = JSON.parse(localStorage.getItem(key) || "[]");
+      const next = projects.map((project) => project.id === handoff.projectId ? {
+        ...project, toolId: toolId || project.toolId, stage: "deployed",
+        contracts: Array.from(new Set([...(project.contracts || []), contract])), updatedAt: new Date().toISOString(),
+      } : project);
+      localStorage.setItem(key, JSON.stringify(next));
+      return true;
+    } catch (_) { return false; }
   }
 
   function logEvent(eventType, message, metadata, severity) {
@@ -789,6 +806,7 @@ const MD = (() => {
     pinProviderFromForm,
     consumeCheaseHandoff,
     readRouteHandoff,
+    recordColanderContract,
     logEvent,
     pinBlob,
     pinJson,

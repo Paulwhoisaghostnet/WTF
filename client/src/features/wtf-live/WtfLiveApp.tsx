@@ -2401,6 +2401,60 @@ export function WtfLiveApp() {
                 </FeedList>
               </Stack>
             </GroupBox>
+            <GroupBox label="Send broadcast">
+              <Stack data-wtf-live-stage-broadcast-form>
+                {pendingQuote ? (
+                  <QuoteCard>
+                    Quote loaded
+                    <div>{pendingQuote.text || pendingQuote.uri}</div>
+                    <Button size="sm" onClick={() => setPendingQuote(null)}>
+                      Remove quote
+                    </Button>
+                  </QuoteCard>
+                ) : null}
+                <TextArea
+                  value={stageText}
+                  maxLength={600}
+                  placeholder="Stage broadcast"
+                  onChange={(event) => setStageText(event.target.value)}
+                  data-wtf-live-stage-broadcast-text
+                />
+                <SettingsField>
+                  Broadcast mode
+                  <NativeSelect
+                    value={stageMode}
+                    onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
+                      setStageMode(event.target.value as "text" | "voice" | "video" | "link")
+                    }
+                    data-wtf-live-stage-broadcast-mode
+                  >
+                    <option value="text">Text</option>
+                    <option value="voice">Voice</option>
+                    <option value="video">Video</option>
+                    <option value="link">Link</option>
+                  </NativeSelect>
+                </SettingsField>
+                <TextField
+                  value={stageLiveUrl}
+                  placeholder="Live or replay URL (optional)"
+                  fullWidth
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => setStageLiveUrl(event.target.value)}
+                  data-wtf-live-stage-broadcast-url
+                />
+                <Button
+                  disabled={!selectedStage || selectedStage.isPublic === false || !sessionOk || !canStages || !stageText.trim() || sendStage.isPending}
+                  onClick={() => sendStage.mutate()}
+                  data-wtf-live-stage-broadcast-send
+                >
+                  {sendStage.isPending ? "Sending..." : "Send Broadcast"}
+                </Button>
+                {!account ? <span>Connect Bluesky in Skywire first.</span> : null}
+                {account && !sessionOk ? <span>Reconnect Bluesky from Skywire Settings.</span> : null}
+                {account && sessionOk && !canStages ? <span>Need Be Heard or Be Bold for stages.</span> : null}
+                {selectedStage?.isPublic === false ? <span>Reopen this stage before broadcasting.</span> : null}
+                {sendStage.isError ? <span>{(sendStage.error as Error).message}</span> : null}
+              </Stack>
+            </GroupBox>
             <GroupBox label="Stage room policy">
               <Stack>
                 <FeedItem>

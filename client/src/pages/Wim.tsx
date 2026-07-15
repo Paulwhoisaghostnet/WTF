@@ -1815,6 +1815,13 @@ function wimRichMetadataFromMessage(message: DmMessage): WimRichMetadata {
   };
 }
 
+function isReggieAssistantMessage(message: DmMessage): boolean {
+  return (
+    message.metadata?.assistant === "reggie" ||
+    message.metadata?.source === "reggie-assistant"
+  );
+}
+
 function cssPropertiesForWimStyle(style: WimMessageStyle): CSSProperties {
   return {
     fontFamily: style.fontFamily,
@@ -2041,12 +2048,13 @@ function ChatWindowPane({
       >
         {(messagesQuery.data ?? []).map((message) => {
           const mine = message.senderId === currentUserId;
+          const fromReggie = isReggieAssistantMessage(message);
           const rich = wimRichMetadataFromMessage(message);
           const richStyle = cssPropertiesForWimStyle(rich.style);
           return (
-            <Message key={message.id} $mine={mine}>
+            <Message key={message.id} $mine={mine} data-wim-reggie-message={fromReggie ? "true" : undefined}>
               <Meta>
-                {message.displayName || message.username || "WTF user"}
+                {fromReggie ? "Reggie" : message.displayName || message.username || "WTF user"}
                 {shortTime(message.createdAt) ? ` at ${shortTime(message.createdAt)}` : ""}
               </Meta>
               <Bubble $mine={mine} style={richStyle}>

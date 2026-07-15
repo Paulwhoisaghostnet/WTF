@@ -92,16 +92,6 @@ relay.wtfos.me {
 	}
 }
 
-plc.wtfos.me {
-	encode gzip zstd
-	reverse_proxy wtfos-plc:3000 {
-		header_up X-Real-IP {remote_host}
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-		header_up Host {host}
-	}
-}
-
 mod.wtfos.me {
 	encode gzip zstd
 	reverse_proxy wtfos-labeler:3000 {

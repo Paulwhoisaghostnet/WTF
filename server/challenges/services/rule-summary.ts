@@ -58,6 +58,20 @@ function describePredicate(node: Record<string, unknown>) {
       return "be in the contestant role";
     case "reward.not_already_claimed":
       return "not have already claimed this reward";
+    case "time.utc_weekday": {
+      const rawDays = Array.isArray(params.weekdays)
+        ? params.weekdays
+        : Array.isArray(params.days)
+          ? params.days
+          : [params.weekday ?? params.day].filter((value) => value !== undefined);
+      const days =
+        typeof params.label === "string" && params.label.trim()
+          ? params.label.trim()
+          : rawDays.length > 0
+            ? rawDays.map(String).join(", ")
+            : "the configured day";
+      return `act on UTC weekday ${days}`;
+    }
     default:
       return `satisfy ${String(node.predicateKey || "a configured predicate")}`;
   }

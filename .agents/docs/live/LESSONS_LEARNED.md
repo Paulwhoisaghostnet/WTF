@@ -1,3 +1,93 @@
+## 2026-07-15 - Inventory UI proofs should not depend on live Shadownet RPC timing
+
+**What happened**: The full inventory rerun repeatedly failed Colander's proven-contract discovery test because both Shadownet RPC attempts timed out before the UI could render the first KT1 fact row.
+
+**Why it mattered**: The test was meant to prove Colander renders known Pasta adapter labels, actions, explorer links, and relationship metadata. Depending on public Shadownet RPC made that UI proof fail for network health instead of product behavior.
+
+**Rule**: Browser inventory tests for presentation, route, adapter, and action rendering should use the existing localhost-only harness for deterministic chain fixtures. Keep separate live-chain proofs when needed, but do not let the core inventory suite depend on external RPC timing.
+
+---
+
+## 2026-07-15 - Gamma app purpose text must be visible, not comments-only
+
+**What happened**: The full inventory run caught Gamma Colander rendering without the visible "Pasta Protocol ownership" cue even though the component source comment still described Colander as an ownership, management, and discovery control panel.
+
+**Why it mattered**: Gamma can keep an app inside the correct shell and still fail as a human-facing OS if the app's purpose is only visible to maintainers. Purpose language is part of discovery and should survive presentation-host rendering.
+
+**Rule**: When a Gamma route test asserts an app's purpose, keep that wording in user-visible Gamma presentation copy or an equivalent visible affordance. Do not satisfy discovery requirements only through code comments or hidden implementation notes.
+
+---
+
+## 2026-07-15 - Gamma system time should be an OS affordance, not decoration
+
+**What happened**: Gamma had session controls, tray state, recents, wake queues, and route recovery, but no standard clock/date affordance. That left the shell feeling less like a normal login session even though the route and auth behavior were covered.
+
+**Why it mattered**: Users expect an operating-system surface to orient them in time and offer an obvious calendar handoff. If the clock is only decorative text, it does not improve navigation or daily return behavior.
+
+**Rule**: Gamma system time should be browser-local presentation state, exposed in the persistent tray with testable ISO/time/date attributes, and route to the existing Calendar app inside Gamma. Do not add a Gamma time API, mutate calendar state, or let the clock become non-actionable chrome.
+
+---
+
+## 2026-07-14 - Gamma session controls need lock without logout
+
+**What happened**: Gamma had Desk, Settings, and sign-out/login controls, but no low-risk signed-in Lock action for returning to the OS desk while keeping the session mounted.
+
+**Why it mattered**: A standard OS lets users step back to the desk/lock surface without ending their account session. If Gamma only offers sign-out, users have to choose between staying deep in an app route or losing session continuity.
+
+**Rule**: Gamma session Lock should be presentation-owned navigation back to the Gamma desk with auth retained, backed by a visible power-menu action and keyboard shortcut that ignore editable fields. Do not route Lock through logout or shared auth mutations.
+
+---
+
+## 2026-07-14 - Gamma-only action buttons need explicit thin borders
+
+**What happened**: A new Gamma Dashboard next-action rail used native styled buttons, and the browser proof caught a 2px inherited button border even though the source-level styling looked aligned with the Gamma visual contract.
+
+**Why it mattered**: Gamma's design direction depends on thin operational grouping. A component can satisfy route and host behavior while still violating the visual contract in computed browser styles.
+
+**Rule**: For new Gamma-owned buttons, set an explicit `1px solid` border and prove computed border width in Playwright when the surface participates in the Gamma style contract.
+
+---
+
+## 2026-07-14 - Gamma lock-screen login needs a concrete session destination
+
+**What happened**: Gamma guest entrypoints visually stayed inside the Gamma shell, but the default login route could return a successful sign-in to `/gamma`, which made the user feel like they had logged back into the lock screen instead of entering the OS.
+
+**Why it mattered**: Hostname continuity is not enough for an OS-like session. A standard login flow needs to land on a useful first workspace after authentication while still respecting protected-route return targets.
+
+**Rule**: Gamma guest login launchers should carry a concrete post-auth destination, currently `/dashboard`, and Gamma Login/Register should default to that same destination when no return target exists. Keep protected-route return URLs authoritative, and prove the flow with an actual browser login from boot desk to dashboard.
+
+---
+
+## 2026-07-14 - Gamma app routes need an active focus target, not only visible containment
+
+**What happened**: Gamma app routes could be visually contained in the Gamma shell and still feel inert after launch because focus often stayed on the clicked launcher/taskbar button instead of moving to the newly active app surface.
+
+**Why it mattered**: Hostname containment proves the user did not fall back to Classic, but it does not prove the route behaves like an operating-system app. Keyboard users need an obvious active surface after navigation, and protected/auth routes must keep their own focused gate controls.
+
+**Rule**: When Gamma hosts real app content, move focus to a shell-owned active-app frame with a visible outline and browser proof. Skip that focus target for auth pages, protected-route gates, loading placeholders, and missing-route notices so route-specific recovery controls keep focus.
+
+---
+
+## 2026-07-14 - Gamma visual-contract tests ban `blur(` even for input dismissal
+
+**What happened**: A Gamma command-search Escape handler correctly cleared the query and dismissed focus with `event.currentTarget.blur()`, but the full Gamma inventory spec failed its source-level visual contract because it bans `/\bblur\(/` to prevent CSS blur/glassmorphism effects.
+
+**Why it mattered**: The behavior was presentation-only and browser-proofed, but the source policy intentionally scans the entire Gamma file. A plain DOM `blur()` method call can look like forbidden visual blur in that broad guard.
+
+**Rule**: When a Gamma UX affordance needs to dismiss focus, use `HTMLInputElement.prototype.blur.call(event.currentTarget)` or another explicit non-CSS form, and update source policy tests to distinguish focus dismissal from visual blur effects.
+
+---
+
+## 2026-07-14 - Gamma shell shortcut effects need route constants before hook registration
+
+**What happened**: A Gamma shell keyboard shortcut effect was added above the `routeLocation` / `routePathname` declarations it depended on. TypeScript correctly failed with `Block-scoped variable 'routePathname' used before its declaration`, even though the shortcut logic itself was presentation-only and otherwise narrow.
+
+**Why it mattered**: Gamma shell affordances often live near global shortcut/effect wiring. If route-derived state is declared after an effect that uses it, a small UX pass can break compile before browser proof runs.
+
+**Rule**: When adding Gamma shell effects that depend on the current route, declare `routeLocation` and `routePathname` before the effect registration, then include the route value in the dependency list. Let TypeScript catch hook-order drift before running Playwright.
+
+---
+
 ## 2026-07-07 - Remote apphost input must focus the titled game window, not the largest anonymous X11 frame
 
 **What happened**: Injected pointer and keyboard events reported `ok` from apphostd/XTEST but Jackbox never left the splash screen. Root cause: `_find_primary_window` picked the first 1280×720 viewable window in the X tree — usually Openbox's anonymous parent frame — while the real `"The Jackbox Party Pack 10"` client (`TJPP10_Vulkan`) and multiple `steamwebhelper` overlays were siblings/children. Keyboard events went to the wrong target; Enter/clicks did nothing even though the stream showed the splash screen correctly.
@@ -7670,6 +7760,36 @@
 
 ---
 
+## 2026-07-14 - Puppet wallet auth proof is not Shadownet network proof
+
+**What happened**: The local puppet seed dry-run selected `network:"shadownet"` and `https://tezos-shadownet.octez.io/`, and the real seed refreshed all 12 puppet users successfully. The existing platform-keyring wallets were reused, but their public metadata still reported `chainId:"NetXdQprcVkpaWU"` while both configured Shadownet RPC endpoints returned `NetXsqzbfFenSTS`. A focused live puppet proof still passed password login, linked-wallet reads, and platform-keyring wallet-login signatures for all 12 accounts, proving auth success can hide network metadata drift.
+
+**Why it mattered**: Tezos rehearsal confidence depends on wallet metadata, app network, RPC chain id, contracts, and indexers agreeing before a flow is called Shadownet-safe. If a reused puppet wallet can keep stale mainnet-shaped metadata while signing local auth challenges, a test can pass the identity layer without proving the wallet is aligned for marketplace, Pasta, domains, or creator-publishing operations.
+
+**Rule**: Treat puppet seeding as a network assertion, not just an account/key assertion. When a selected network has a known live chain id, seeding must compare every reused platform-keyring wallet's stored chain id to the selected RPC's chain id and either repair metadata safely or fail with an explicit rotation command. Focused wallet-login tests are necessary, but they are not sufficient evidence for Shadownet write readiness.
+
+---
+
+## 2026-07-14 - Behavior assertions need reciprocal surface registration
+
+**What happened**: Mint Art Monday added a domain behavior assertion owned by the Side Quests and Mint Portal surfaces, but the first inventory coverage run failed because those app surfaces did not yet list the new behavior assertion id in the admin surface registry.
+
+**Why it mattered**: The inventory can know a behavior exists while the user-facing app registry still cannot prove which surfaces own it. That mismatch turns route and workflow coverage into partial evidence instead of a complete interaction contract.
+
+**Rule**: When adding a behavior assertion with `ownerSurfaceIds`, update every matching app surface's `behaviorAssertionIds` in the same pass before running `npm run test:e2e:inventory:coverage`.
+
+---
+
+## 2026-07-14 - Behavior assertion owners must be concrete registry surfaces
+
+**What happened**: The app-store ranked unlock assertion used conceptual owner names (`desktop`, `start-menu`) instead of concrete admin surface ids. `npm run test:e2e:inventory:coverage` correctly failed because those ids do not exist in `admin-surface-registry.ts`, and because the real surfaces had not reciprocally listed `desktop.app-store-ranked-unlocks`.
+
+**Why it mattered**: Conceptual UI areas are useful design language, but the inventory coverage gate only proves ownership when each behavior assertion points at registered surfaces that can be found, routed, and audited. A label like "Start Menu" can hide the actual launch surfaces that need coverage: the app marketplace, command palette, and desktop icons.
+
+**Rule**: Behavior assertion `ownerSurfaceIds` must always use concrete ids from `ALL_ADMIN_SURFACES`, and every named surface must include the assertion id in `behaviorAssertionIds`. Map conceptual launch areas to their real registry owners before running coverage.
+
+---
+
 ## 2026-07-15 - Desktop app discovery needs one ranked entitlement catalog
 
 **What happened**: wtfOS app discovery was split across desktop icon flags, Start Menu gates, market listings, and role checks. That let optional or role-gated apps appear in the same first-entry surfaces as core apps, while the market could not clearly explain which apps were unlockable, already owned, or blocked by a role/prerequisite.
@@ -7680,6 +7800,16 @@
 
 ---
 
+## 2026-07-15 - Plain tsx commands may require Unix-socket permission outside the managed sandbox
+
+**What happened**: `npm run creation-tools:check` failed before loading the repository verifier because the plain `tsx` CLI could not bind its temporary Unix-domain IPC socket. The failure reproduced in isolation and after relocating `TMPDIR`; the unchanged verifier passed once executed with the required permission.
+
+**Why it mattered**: Treating the infrastructure error as an asset defect would have encouraged unnecessary source changes even though all 15 creation-tool modules were valid.
+
+**Rule**: When a plain `tsx` command fails in `node:net` while binding a `tsx-*/...pipe` path, first prove whether the repository script ever started. If the managed sandbox blocks Unix sockets, rerun the unchanged command through the approved execution boundary; do not patch application code or weaken the gate.
+
+---
+
 ## 2026-07-15 - Optional app route specs must seed app unlock ownership
 
 **What happened**: Moving non-essential desktop apps behind WTFIAM app-store placement made direct route specs for apps such as DedRooms, Map Lab, Cobwebsaints, and Gamma app routes land on locked or unavailable states when the harness did not grant the corresponding app unlock.
@@ -7687,3 +7817,580 @@
 **Why it mattered**: Those specs were meant to verify the app internals, not the no-entitlement recovery path. Without explicit owned-app state, a correct access gate looks like a broken route and encourages tests or code to bypass the store policy.
 
 **Rule**: When a desktop app moves to app-store placement, update route mocks or harness state with the required owned app pass for specs that verify the app itself. Keep separate focused coverage for the locked/no-pass state so entitlement policy remains fail-closed.
+
+---
+
+## 2026-07-14 - Gamma route smoke is not Gamma app hosting
+
+**What happened**: A Gamma pass added a useful Access Passport and the focused Gamma proof passed, but the broad inventory run still exposed deep-route failures where Gamma chrome remained visible while the actual app-owned surface did not mount under `[data-gamma-application-content]`. The content region fell back to the protected/disabled placeholder on several app clusters even though route smoke and hostname containment were healthy.
+
+**Why it mattered**: A user does not experience a working Gamma OS because the URL and header stay Gamma. They experience it as working only when the selected app is usable inside the Gamma shell, with its existing app logic intact and no Classic fallback or dead placeholder in the way.
+
+**Rule**: Count Gamma progress in layers: hostname containment, route smoke, and app-content behavior. A Gamma route is not truly covered until the expected app surface renders inside `[data-gamma-application-content]` with the Gamma presentation host markers, and full inventory failures should be grouped by route cluster before estimating remaining passes.
+
+---
+
+## 2026-07-14 - App-store route tests must say whether the app is installed
+
+**What happened**: Gamma app-content behavior tests were signed in as normal users, but they did not seed the app-store passes that make optional WTFOS apps available through `/api/apps/desktop`. After the ranked app marketplace work, the shared availability model correctly returned those apps as locked, so Gamma rendered a protected/disabled gate instead of the expected app content. The broad inventory run made this look like broken Gamma hosting across WTF Domains, Pasta/Colander, Skywire, tz2at/WTFIAM, Rat Race/Casino, media/IPFS, and WTF TV.
+
+**Why it mattered**: A shell test has to distinguish two different truths: "this user owns the app and the app must render inside Gamma" versus "this user does not own the app and Gamma must explain how to unlock it." Without an explicit installed-app fixture, the test accidentally audits entitlement state and presentation hosting at the same time.
+
+**Rule**: For app-store-backed routes, browser harness state must declare installed passes explicitly. Authorized app-hosting tests should seed the needed app passes, and locked-route tests should separately prove the Gamma recovery path routes users to WTFIAM Apps inside the same shell. Do not weaken shared app gates to make a presentation test pass.
+
+---
+
+## 2026-07-14 - Focused Gamma browser proofs need a fresh built bundle
+
+**What happened**: A focused Gamma Playwright run failed to find newly added boot-desk selectors even though the source policy and TypeScript passed. The browser server was serving the previous built `dist/public` bundle, so the failure described stale artifact state rather than the current source. After `npm run build`, the same focused Gamma browser proof passed.
+
+**Why it mattered**: Gamma shell work is presentation-heavy, and false browser failures can send the next pass toward nonexistent layout or selector bugs. Source-level tests prove the code exists, but the rendered harness only proves what the server actually serves.
+
+**Rule**: After changing Gamma TSX or presentation adapters, run `npm run build` before focused Playwright browser proof unless the test command is known to rebuild the client bundle. If selectors are missing while source policy passes, check bundle freshness before changing the UI again.
+
+---
+
+## 2026-07-14 - Gamma daily loops need shell-started behavior proof
+
+**What happened**: Gamma had route smoke, Side Quests app hosting proof, Message Board app hosting proof, and live puppet coverage for the canonical messageboard check-in, but the evidence did not prove that a signed-in user could start from the Gamma home daily return strip, recognize the side quest, follow its task handoff, claim a verified proof, and continue to market unlocks without leaving Gamma.
+
+**Why it mattered**: A daily loop is a user journey, not a pile of individually green routes. If the proof starts at `/gamma/side-quests`, it can miss whether the Gamma OS shell actually teaches the return behavior and preserves the next-step path between apps.
+
+**Rule**: For Gamma journey work, add at least one shell-started browser proof per loop: begin on `/gamma`, use the visible Gamma control, follow the app-owned next action into the related route, and verify reward/unlock/communication next steps stay under `/gamma/...`. Keep durable mutation proof owned by the existing live puppet or domain behavior assertion rather than changing shared app logic for the shell.
+
+---
+
+## 2026-07-14 - Gamma home chrome needs mobile target proof
+
+**What happened**: The signed-in Gamma session console added useful OS-home shortcuts, but the first focused mobile proof found one profile/login control below the 44px target floor while the desktop route proof was already green.
+
+**Why it mattered**: Shell chrome can look compact and professional on desktop while becoming fragile on phones or narrow app windows. Gamma is meant to feel like logging into an OS, so account, inbox, settings, resume, and daily controls must remain touch-operable instead of decorative.
+
+**Rule**: Whenever Gamma home gains a new button family, extend the mobile viewport proof to measure every button in that family at 44px or taller before accepting the pass. Fix the CSS geometry rather than weakening the assertion.
+
+---
+
+## 2026-07-14 - Gamma route chrome labels must be product copy
+
+**What happened**: The Gamma app-route taskbar browser proof reached `/gamma/side-quests` correctly, but the active-app slot displayed the registry label `Sidequests` while the proof expected the human-facing title `Side Quests`.
+
+**Why it mattered**: Gamma is an OS shell, so its persistent chrome is the user's map. Even when routing and app hosting are correct, cramped or implementation-shaped labels make navigation feel less standard and make active context harder to scan.
+
+**Rule**: When adding Gamma shell chrome, validate active labels from the visible UI, not just route keys. Station labels should be polished product copy, while keys and routes can remain stable implementation identifiers.
+
+---
+
+## 2026-07-14 - Gamma home chrome must not displace the boot desk
+
+**What happened**: Adding a persistent Gamma system tray above the home boot desk made the full Gamma suite fail the first mobile viewport proof: the boot search and checklist remained visible, but the Start menu fell below the initial 390x760 viewport.
+
+**Why it mattered**: Gamma is supposed to feel like turning on a computer. The first mobile viewport must keep the boot desk and first launch controls visible before secondary status chrome, or the user loses the immediate "what do I do now" affordance.
+
+**Rule**: New Gamma home chrome must be placed or compacted so `[data-gamma-boot-desk]`, boot search, session checklist, Start menu, and primary start actions remain in the first mobile viewport. Keep persistent route chrome on app routes, but let the home boot desk own the first screen.
+
+---
+
+## 2026-07-14 - Gamma auth redirects need presentation-owned return targets
+
+**What happened**: A guest who opened a protected Gamma route was sent to shared Login/Register without a Gamma-owned return target. Successful auth still used the Classic default `/` return behavior, so the user could lose the app they were trying to open or feel like Gamma had fallen back to the old desktop flow.
+
+**Why it mattered**: A real OS shell remembers what the user was doing before login. Gamma cannot feel like a complete WTFOS session layer if authentication breaks task continuity at the exact moment a user is trying to unlock a route.
+
+**Rule**: Protected Gamma route gates must pass a sanitized local return route into shared auth screens, and Login/Register must use `presentationRouteHref(..., "gamma")` for Gamma post-auth navigation while preserving Classic's existing default landing behavior. Browser proofs should start from the protected route, authenticate, and verify the attempted `/gamma/...` route returns without Classic desktop UI.
+
+---
+
+## 2026-07-14 - Gamma search must behave like an OS launcher before content search
+
+**What happened**: Gamma's start-desk and route-toolbar search looked like shell search, but submitting `Broot`, `Settings`, or another known app/tool name only produced a Gallery search. Users had to already know which visible button or rail group contained the tool, so search was not reducing discovery friction like a normal operating-system launcher.
+
+**Why it mattered**: An OS shell should let users type the thing they want and open it. If the search box only searches objects, Gamma still feels like a themed website instead of a session-level skin for the WTFOS ecosystem.
+
+**Rule**: Gamma search should first match existing station routes, app catalog entries, and registered static route definitions, then launch the selected route through Gamma navigation with existing auth/app gates intact. Only unmatched text should fall back to content search, and browser proof should cover both command launch and fallback search inside `/gamma/...`.
+
+---
+
+## 2026-07-14 - Gamma fallback launcher tests must clear presentation recents
+
+**What happened**: Adding browser-local recent-route restore made the older session-console proof time out while looking for the fallback `people` resume action after the test itself had already opened Settings. Gamma correctly promoted Settings into the recent-route list, so the fallback People button was no longer supposed to be present.
+
+**Why it mattered**: Gamma is becoming a real session shell, which means some UI is intentionally stateful. Tests that prove fallback boot behavior must request a fresh shell state; tests that prove restore behavior must seed or create recent state.
+
+**Rule**: When a Gamma proof expects fallback launchers, clear `wtfos.gamma.recentRoutes` before loading `/gamma`. When a proof expects session restore, create registered route history first and assert the stored route buttons. Do not weaken recents to keep older fallback-only tests green.
+
+---
+
+## 2026-07-14 - Gamma recents tests must clear storage only once when proving route history
+
+**What happened**: The first focused Gamma task-switcher proof cleared `wtfos.gamma.recentRoutes` with `page.addInitScript`, which reran before each subsequent `page.goto`. The app correctly stored the current route after every load, but the test erased older entries on every navigation, leaving only the final route in localStorage.
+
+**Why it mattered**: Gamma route history is intentionally browser-local session state. A proof for task switching must preserve accumulated state across multiple registered route navigations, or it will falsely report a product regression when the harness is deleting the evidence.
+
+**Rule**: For Gamma recents/restore/switcher proofs, clear `wtfos.gamma.recentRoutes` once with `page.evaluate` after loading a setup page, then navigate through the route sequence. Reserve `page.addInitScript` clears for tests that need a fresh state on every document load.
+
+---
+
+## 2026-07-14 - Gamma status chrome must distinguish healthy from degraded reads
+
+**What happened**: The Gamma system tray always presented the shared API/network control as online, even when route-backed reads such as the EXP leaderboard could fail. Users would see a healthy OS-style status surface while peer/activity visibility was actually degraded.
+
+**Why it mattered**: Gamma is meant to feel like a reliable operating-system shell. A standard OS status area must tell users when shared services are checking, healthy, or degraded, and it must provide an obvious recovery route without changing the underlying app/API logic.
+
+**Rule**: Gamma status chrome should derive health from existing shared query state, expose that state in browser-testable attributes, and prove degraded recovery through existing routes such as Settings. Do not add Gamma-specific APIs just to make status UI easier to test.
+
+---
+
+## 2026-07-14 - Gamma boot account identity should be a first-class lock-screen target
+
+**What happened**: Gamma had login/status controls, but Account lived as one small checklist row next to App access, Daily loop, and People. That made the first boot moment less like a standard OS login surface and made it less obvious that login/profile routing had a restore target.
+
+**Why it mattered**: Gamma is meant to feel like turning on a computer. The account identity/guest state should be the obvious lock-screen target, while secondary readiness checks should stay compact and scannable.
+
+**Rule**: Keep Gamma boot identity as a route-backed account tile with testable guest/signed-in states, a visible restore target, and native button semantics. Prove guest login and signed-in profile routing plus mobile target size without changing shared auth behavior or adding Gamma-specific APIs.
+
+---
+
+## 2026-07-14 - Gamma session login needs a mounted workspace summary
+
+**What happened**: Gamma could show profile identity, shortcuts, and recents after login, but the session console did not summarize the mounted account, restore target, app-pass state, and active shell the way a normal OS session does after sign-in.
+
+**Why it mattered**: Users should not have to infer that login succeeded from scattered buttons. A standard OS makes the active account, desktop target, available apps, and current shell state obvious before the user chooses the next app.
+
+**Rule**: Keep Gamma's session console backed by existing auth/app/recents state and expose a compact mounted-workspace table with native buttons, route-backed rows, signed-in/locked states, and mobile target proof. Do not create new Gamma auth or app-access logic for the summary.
+---
+
+## 2026-07-14 - Gamma needs real session controls, not just identity display
+
+**What happened**: Gamma showed account identity, system status, recents, and login routing, but it did not expose a standard OS-style way to leave the session from the Gamma shell. Users could enter the desktop, but there was no persistent sign-out/control strip equivalent to a normal Start/session area.
+
+**Why it mattered**: A standard OS makes session control obvious: return to desk, open settings, and end the session without hunting. Gamma should use shared auth/logout behavior while preserving its own shell and routes.
+
+**Rule**: Keep Gamma session controls persistent on home and app routes, backed by existing `useAuth().logout()` and Gamma routing. Prove sign-out returns to the Gamma desk, exposes the guest login action, preserves mobile target size, and never falls back to Classic.
+
+---
+
+## 2026-07-14 - Gamma wake queues should rank existing session state into action order
+
+**What happened**: Gamma had boot controls, recents, mounted-workspace rows, daily return actions, and persistent system tray shortcuts, but those surfaces still made users assemble their own next-step order after signing in.
+
+**Why it mattered**: A normal OS wake moment should answer "what now?" without making the user scan every panel. Gamma can improve that by ranking existing shared state into a short queue: resume the newest safe route or log in, then check messages, daily work, people, and app unlocks.
+
+**Rule**: Build Gamma wake/resume queues from existing auth, recent-route, app availability, and visible-peer state. Keep every row route-backed through Gamma navigation, keep mobile targets measured, and avoid adding Gamma-specific APIs or new business logic just to prioritize the queue.
+
+---
+
+## 2026-07-14 - Gamma app switching needs keyboard recovery, not only taskbar buttons
+
+**What happened**: Gamma app routes had a route-backed taskbar switcher, but the recovery path was pointer-first. A user who was already using the keyboard could return to the desk with Alt+Home, but could not jump to the previous Gamma app with the same OS-like flow.
+
+**Why it mattered**: A standard OS lets users recover an app context without scanning the page. Gamma needs pointer and keyboard routes into the same recent-app switcher, while still ignoring text fields so normal typing is safe.
+
+**Rule**: Keep Gamma app switching derived from sanitized recent-route state, expose the first switch target in testable shell chrome, support a keyboard app-switch shortcut on app routes, ignore editable targets, and prove the switch stays inside Gamma with no Classic fallback or Gamma-specific API.
+---
+
+## 2026-07-14 - Gamma home recents should behave like a dock, not just a list
+
+**What happened**: Gamma remembered recent routes and could switch apps from an app route, but the home desk still presented recents as a passive list. A user who returned to the desk could see recent routes, but keyboard recovery to the front recent app was not part of the home session model.
+
+**Why it mattered**: A standard OS desktop exposes running/open app state from the home surface. Gamma needs the same route-backed recovery from the desk without adding new app logic, and keyboard shortcuts must ignore editable fields so search and forms keep normal ownership.
+
+**Rule**: Treat Gamma home recents as a session dock: expose open/pinned state, mark the front recent route, provide a keyboard recovery target only for sanitized stored routes, ignore editable targets, and prove the desk shortcut stays in Gamma without Classic fallback or Gamma-specific APIs. Browser proofs should not click a dock container when they mean to test a keyboard path, because child route buttons can legitimately receive the click first.
+---
+
+## 2026-07-14 - Gamma route recovery needs shell-local history, not browser chrome
+
+**What happened**: Gamma route chrome had breadcrumbs, Desk, taskbar, recents, and command search, but a user who moved between app routes did not have an obvious in-shell Back/Forward recovery path. Depending on browser chrome would be fragile because browser history can include non-Gamma entries or explicit interface switches.
+
+**Why it mattered**: A standard OS makes route/window recovery visible inside the shell. Gamma needs users to feel they can explore without getting lost, while still preserving hostname containment and shared route/auth/app gates.
+
+**Rule**: Keep Gamma route history as bounded presentation state derived from sanitized registered routes. Render disabled Back/Forward controls when no target exists, keep Desk explicit, support Alt+ArrowLeft/Alt+ArrowRight outside editable fields, and never call raw `window.history.back()` / `forward()` from Gamma shell recovery controls.
+
+---
+
+## 2026-07-14 - Gamma tray signals should read existing notification state
+
+**What happened**: Gamma's persistent system tray had a Signals shortcut, but it could only say "Inbox" and always reported as non-live even when the shared notification API had unread items for the signed-in user.
+
+**Why it mattered**: A standard OS tray should help users notice attention-worthy state before they open an app. If the communication signal is static, Gamma feels like a navigation list rather than a session layer that is aware of existing WTFOS activity.
+
+**Rule**: Gamma tray notification state should be derived from the existing notifications API, disabled for guests, and exposed as testable shell state before routing to `/gamma/notifications`. Do not add Gamma-specific notification APIs or mutate read/preference behavior just to make the tray feel active.
+
+---
+
+## 2026-07-14 - Guided assistant placement must reserve bubble geometry and target clearance
+
+**What happened**: Reggie constrained only his sprite when walking to a guided icon. His fixed above/right speech bubble could therefore leave the viewport near top/right targets and capture pointer input over the control he was explaining.
+
+**Why it mattered**: An assistant instruction is only useful when it remains readable and the indicated control can still be clicked. Sprite-only positioning made edge-of-screen guidance contradictory.
+
+**Rule**: Compute guided-assistant placement from the full bubble footprint, reserve vertical room for its maximum height, and place the sprite beside the target with the bubble extending away from it. Cover left- and right-edge targets with pure geometry tests and keep an in-bubble scroll fallback for long instructions.
+
+---
+
+## 2026-07-14 - Nonzero CLI reports must flush structured output before exit
+
+**What happened**: The cleanup auditor printed an 84 KiB JSON failure report and immediately called `process.exit(1)`. When its output was piped, Node terminated before the whole report flushed, leaving a truncated 64 KiB document that downstream tooling could not parse.
+
+**Why it mattered**: The auditor correctly detected a failure but destroyed the structured evidence needed to diagnose it. That made a healthy fail-closed control look flaky and could hide the final blockers in large repositories.
+
+**Rule**: After emitting structured output, set `process.exitCode` and let streams drain naturally. Never call immediate process exit after a potentially large report, and keep a regression test that parses a large failure payload.
+
+---
+
+## 2026-07-14 - State and mutation code do not prove an interaction is connected
+
+**What happened**: The WTF LIVE Stage page had broadcast state and a mutation function, but no visible control invoked the mutation. A shallow architecture scan therefore counted a capability that users could not reach.
+
+**Why it mattered**: Disconnected organs inflate the apparent feature surface, mislead inventory and audit work, and leave server behavior unexercised by real user paths.
+
+**Rule**: Prove every interaction as a vertical slice from visible control through gate and mutation to user-visible or durable side effect. Inventory and policy tests must name that complete path, not merely the existence of state or a handler.
+
+---
+
+## 2026-07-14 - Passport authentication mocks must respect type-predicate contracts
+
+**What happened**: A health-route test assigned a plain boolean function to Passport's `isAuthenticated` request method. Runtime behavior was correct, but TypeScript rejected the mock because the real method is a type predicate.
+
+**Why it mattered**: Focused runtime tests passed while the repository type gate remained red, delaying final verification for a test-only contract mismatch.
+
+**Rule**: Use a typed request helper or an explicit test-boundary cast for Passport predicate mocks, and run the full TypeScript gate after route-test changes even when the focused tests pass.
+
+---
+
+## 2026-07-15 - Endpoint migrations must update both the probe target and its success contract
+
+**What happened**: The Hetzner workflow was changed from `/api/health` to `/api/health/ready`, but its shell matcher still required `"status":"ok"`. The readiness endpoint correctly returns `"status":"ready"`, so every healthy deployment would have exhausted retries and failed after the application was already ready.
+
+**Why it mattered**: A deployment probe is a consumer of an API contract, not just a URL. Changing only the route created a release-blocking false negative that unit and browser suites did not cover.
+
+**Rule**: Whenever a deploy or monitor moves to a new health endpoint, migrate the expected status/body contract in the same patch and add a policy test that binds the workflow URL to the exact success state while rejecting the superseded matcher.
+
+---
+
+## 2026-07-15 - A verification file is not evidence until its referenced implementation exists and runs
+
+**What happened**: The bounty detail marked puppet wallet network retargeting verified and an untracked policy test named the intended method, but the keyring had no `retargetWalletNetwork` implementation and the seed path never compared wallet metadata with the selected RPC chain ID. Running the focused tests produced two deterministic failures.
+
+**Why it mattered**: Narrative status and test-file presence made an incomplete vertical slice look finished. Had the tree been committed unchanged, local wallet-login checks could still pass while Shadownet rehearsal metadata remained on mainnet.
+
+**Rule**: Before promoting a bounty, execute every named verification command from the current tree and trace each asserted symbol into a real call path. Untracked or unexecuted tests are hypotheses, not proof; require failing-before and passing-after evidence for the complete implementation.
+
+---
+
+## 2026-07-15 - A package script is part of the release contract only when its target is tracked and exercised
+
+**What happened**: The repository advertised `security:docker-context`, but the referenced `scripts/check-docker-context.mjs` file did not exist. The surrounding Docker-ignore policy looked sound, yet invoking the named release gate failed before it could inspect anything.
+
+**Why it mattered**: A missing gate implementation turns a security control into dead configuration and lets manual verification overstate what CI or an operator can actually run.
+
+**Rule**: Execute every package-script gate by its public command before release, keep its target file tracked, and cover the checker itself with a focused regression test that proves both failure and success behavior.
+
+---
+
+## 2026-07-15 - Mutable browser harnesses must not be reused across worktrees
+
+**What happened**: A local inventory run reused whatever server answered on the default Playwright port. Another active worktree owned that port, so the run attached to foreign mutable fixture state and then emitted cascading connection failures when that other harness exited.
+
+**Why it mattered**: A green run could have exercised stale code, while a red run looked like dozens of application regressions. Both outcomes make the release evidence untrustworthy.
+
+**Rule**: Inventory Playwright must start its own harness and fail fast on a port collision. Concurrent worktrees must use distinct `HARNESS_PORT` values; never let a release gate silently reuse an existing mutable test server.
+
+---
+
+## 2026-07-15 - Release probes need a deadline and a configured fallback
+
+**What happened**: Puppet seeding verified the selected Tezos chain before writing wallet metadata, but the chain-ID fetch had no abort deadline. A half-open Shadownet connection left the seed process asleep indefinitely before it could report success or failure.
+
+**Why it mattered**: Fail-closed network verification is only operationally useful when it terminates. The unbounded probe blocked the actor-backed release gate and made a healthy fallback endpoint unreachable.
+
+**Rule**: Bound every release-critical network probe, try only the configured primary and fallback endpoints, validate the returned chain ID against the named network, and report all attempted endpoints when the bounded candidates fail.
+
+---
+
+## 2026-07-15 - Cross-package TypeScript imports must honor the owning package's module format
+
+**What happened**: The puppet seed imported named exports from the operator-signer package, whose nearest `package.json` is CommonJS. Focused tests inside that package passed, but the root ESM seed command failed at module instantiation because the cross-package runtime exposed the CommonJS namespace rather than named ESM exports.
+
+**Why it mattered**: TypeScript accepted the source shape while the real CLI could not start, so unit evidence inside one package did not prove the executable integration boundary.
+
+**Rule**: When root ESM code imports a TypeScript module owned by a CommonJS subpackage, use the package namespace interop pattern and execute the real public CLI command as part of verification.
+
+---
+
+## 2026-07-15 - Actor-backed test databases must advance with the schema they exercise
+
+**What happened**: The live puppet server reached authenticated desktop settings traffic, but its explicit local migration list omitted `0108_user_desktop_localization.sql`. PostgreSQL rejected the current API query because the local `user_desktop_settings` table had no `localization` column.
+
+**Why it mattered**: The actor suite appeared to expose an application regression, but the failure came from stale test infrastructure. That blocks trustworthy release proof and can hide later user-story failures behind bootstrap noise.
+
+**Rule**: When application code begins reading a migrated table or column, update every explicitly managed actor-test database preparation path in the same pass and add a policy assertion for the required migration before claiming live-puppet coverage.
+
+---
+
+## 2026-07-15 - Graceful cache fallback can conceal actor-harness schema drift
+
+**What happened**: The Macaroni puppet workflow continued after PostgreSQL reported that `tzkt_response_cache` did not exist because the cache layer correctly fell back to memory. The explicit local database preparation list had omitted migration `0081`.
+
+**Why it mattered**: The suite could stay green while never exercising the persistent cache behavior it was expected to cover, and repeated actor requests would put unnecessary load on the external indexer.
+
+**Rule**: Treat fallback/degraded-path warnings during actor-backed release tests as coverage gaps. When the normal target environment includes the durable dependency, provision it in the harness and assert its migration explicitly rather than accepting a superficially green fallback run.
+
+---
+
+## 2026-07-15 - Resilience tests must distinguish recovered transport noise from final failure
+
+**What happened**: Macaroni correctly switched from the Octez Shadownet primary to the configured fallback after Chromium rejected the localhost-origin chain-ID request. The live test proved the expected chain and operation safety, but its console collector still failed on the primary request's CORS and `net::ERR_FAILED` messages.
+
+**Why it mattered**: The test turned a working fallback into a release-blocking false negative. Broadly suppressing network errors would be equally unsafe because it could hide failures from unrelated application requests.
+
+**Rule**: When a browser test intentionally proves fallback, suppress only the exact paired error signature from the failed primary and require a successful final-state assertion through the fallback. All unpaired or unrelated transport errors must remain fatal.
+
+---
+
+## 2026-07-15 - Correction: the fallback proof must invoke the fallback boundary
+
+**What happened**: The first diagnosis of the Macaroni actor failure assumed the chain-ID assertion used `withRpcFallback`. Line-level inspection after a second timeout showed that the test called `MD.getToolkit().rpc.getChainId()` directly, bypassing the very resilience boundary it claimed to prove.
+
+**Why it mattered**: Filtering the primary's recovered CORS noise was necessary but insufficient. A slow primary still failed after 30 seconds because the assertion never authorized the configured fallback.
+
+**Rule**: For every resilience claim, trace the exact test call through the retry/fallback wrapper. Final-state success elsewhere in the workflow does not prove that a direct low-level probe used the intended boundary.
+
+---
+
+## 2026-07-15 - Wallet restoration must not wait for optional network enrichment
+
+**What happened**: A generated Macaroni page successfully recovered its stored active account, then kept the wallet control disabled at `Checking wallet...` while a raw balance read waited on the primary RPC's 30-second HTTP timeout.
+
+**Why it mattered**: Session identity was already known, but an optional balance refresh held the entire wallet interaction hostage. Returning users could neither use nor disconnect a valid session during an upstream stall.
+
+**Rule**: Separate wallet-session validation from network enrichment in the UI state machine. Clear the blocking restore state as soon as identity is validated, and use short, read-only deadlines with configured fallback for chain/balance reads; never apply speculative timeout retries to potentially submitted write operations.
+
+---
+
+## 2026-07-15 - Negative network-identity tests need deterministic counterexamples
+
+**What happened**: The Macaroni mismatch story pointed its Shadownet configuration at the public mainnet RPC and expected the mainnet chain ID. When that public endpoint timed out from localhost, the intentionally lax pairing preflight treated the result as inconclusive and the puppet wallet connected, so the test never reached its mismatch assertion.
+
+**Why it mattered**: The security property under test was deterministic chain-identity rejection, but external availability controlled whether the counterexample existed. A timeout tested a different policy branch.
+
+**Rule**: For negative chain-identity tests, provide the canonical wrong chain ID through a deterministic browser route fixture. Keep separate live probes for endpoint availability and fallback; never make a mismatch assertion depend on a public node answering at that moment.
+
+---
+
+## 2026-07-15 - Live verifiers must share runtime configuration precedence
+
+**What happened**: Marketplace diagnostics resolved the in-app market contract from `WTF_IN_APP_MARKET_CONTRACT_ADDRESS`, but the live test expected only `IN_APP_MARKET_CONTRACT_ADDRESS`, then `VITE_IN_APP_MARKET_CONTRACT_ADDRESS`, then a default. Both values were valid Shadownet contracts, so the test failed on its own divergent precedence.
+
+**Why it mattered**: The actor verifier stopped before marketplace state proof and falsely labeled correct runtime configuration as drift.
+
+**Rule**: Centralize configuration resolution where practical; when a test must independently compute an expected value, mirror every supported variable and its exact precedence from the runtime owner and cover non-primary aliases.
+
+---
+
+## 2026-07-15 - Passing route smoke does not excuse server-side SQL errors
+
+**What happened**: The `/live/r/:roomId` puppet route rendered enough UI to pass while the server logged an unhandled query error for missing `wtf_live_rooms.room_kind`. The local actor bootstrap had not applied the three current WTF LIVE room migrations.
+
+**Why it mattered**: A shallow page assertion hid a broken permissions/settings path. Later user interactions could fail even though the route appeared reachable.
+
+**Rule**: Treat server error logs during browser smoke as test failures in release review, even if the visible route assertion passes. Keep explicit actor DB preparation current with every schema-owned workflow and prove ordered migration prerequisites.
+
+---
+
+## 2026-07-15 - Latest migrations are not substitutes for their ordered prerequisites
+
+**What happened**: Adding WTF LIVE migrations `0110`–`0112` to puppet preparation failed immediately because the local database did not have the base room/access tables from `0097` and `0099`. The actor migration list had drifted across the whole WTF LIVE feature chain, including tip, soundboard, and stage-role schema.
+
+**Why it mattered**: Applying only the migration that mentions the missing column cannot reconstruct the target schema. Selective catch-up must preserve the same dependency order as production.
+
+**Rule**: When a local harness explicitly selects migrations, trace every referenced table/column back to its creating migration and include the complete ordered feature chain. Run the preparation command itself; file-presence tests alone cannot prove dependency closure.
+
+---
+
+## 2026-07-15 - Spawned servers and Playwright specs do not automatically share dotenv state
+
+**What happened**: The Marketplace spec gained the server's env precedence but still expected the fallback address. `npm run dev` loaded `.env` inside the spawned server process, while the Playwright spec evaluated `process.env` without loading that file.
+
+**Why it mattered**: Identical resolver code still saw different inputs, so the verifier disagreed with the application it had just launched.
+
+**Rule**: When a live spec computes expected values from local dotenv configuration, load dotenv explicitly in that scoped spec (or once in an intentionally shared config) before reading `process.env`. Do not assume a child web server's environment mutations propagate back to the Playwright process.
+
+---
+
+## 2026-07-15 - Nullish coalescing can erase an intentional concurrency sentinel
+
+**What happened**: The desktop settings route documented null as the compare-and-insert token, but selected `updatedAt ?? ifUnmodifiedSince`. An explicit null therefore became undefined and failed validation before reaching the null-specific insert branch.
+
+**Why it mattered**: The API rejected a valid first-write request and contradicted both its error message and persistence implementation.
+
+**Rule**: When null and missing carry different protocol meanings, test for `undefined` explicitly. Never use nullish coalescing to choose between primary and legacy request fields when null is a valid primary value.
+
+---
+
+## 2026-07-15 - Domain eligibility denials are not internal server errors
+
+**What happened**: Mail send correctly detected a user's missing identity prerequisite, then the route's incomplete error mapping turned that known gate code into HTTP 500.
+
+**Why it mattered**: Expected, user-actionable state polluted operational failure signals and prevented clients and actor tests from distinguishing remediation from an application crash.
+
+**Rule**: Centralize route error classification and enumerate every domain gate result. Return a bounded 4xx for user/account prerequisites, 503 for provider availability, and reserve 500 for unknown failures; unit-test the complete mapping.
+
+---
+
+## 2026-07-15 - Diagnostic endpoints may be healthy while reporting unhealthy dependencies
+
+**What happened**: The authenticated diagnostics endpoint returned its designed structured 503 snapshot during an external chain degradation, while the admin actor fixture accepted only 200 or unauthenticated 401.
+
+**Why it mattered**: Honest degraded-state reporting was mistaken for a broken diagnostics contract, making the release harness less reliable precisely when diagnostic detail was useful.
+
+**Rule**: For health and diagnostics probes, assert the endpoint's documented status contract and structured payload semantics. A 503 can be the correct successful observation of degraded dependencies; do not flatten it into an unconditional 200 expectation.
+
+---
+
+## 2026-07-15 - Cold route proof should wait on the route-owned surface
+
+**What happened**: The first Marketplace browser story opened an authenticated window on a fresh Vite server but timed out after 15 seconds waiting for title text while the lazy route chunk was still inside the shared Suspense loader. The immediately following deeper story passed once the chunk was warm.
+
+**Why it mattered**: A development transform delay looked like a product failure and kept an otherwise sound actor gate red, while a generic title locator did not identify whether the route itself had mounted.
+
+**Rule**: For cold lazy routes, wait on a route-owned semantic surface marker with a bounded cold-start allowance, then assert visible content and browser errors normally. Retain traces before increasing a timeout so a redirect, auth failure, or real hang is not mislabeled as compilation latency.
+
+---
+
+## 2026-07-15 - Persistence tests must not clear storage on every document load
+
+**What happened**: The first Colander project-persistence browser proof installed an initialization script that removed the workspace localStorage key. Playwright reruns initialization scripts on reload, so the test erased the project immediately before asserting that it survived the reload.
+
+**Why it mattered**: Correct local-first persistence appeared broken because test isolation was applied at the wrong lifecycle boundary.
+
+**Rule**: Seed stable browser configuration in `addInitScript`, but perform destructive storage cleanup once after the initial navigation. Any test that proves reload persistence must verify that its cleanup hook does not also execute on the reload under test.
+
+---
+
+## 2026-07-15 - Regenerate checked-in governance artifacts after the final source edit
+
+**What happened**: The environment inventory had been generated earlier in the pass, but later source and policy additions changed both the set of environment reads and the scan population. The aggregate unit gate correctly rejected the now-stale checked-in artifact.
+
+**Why it mattered**: Reviewers would have received configuration documentation that no longer matched the exact release tree, undermining the deterministic governance contract the inventory was added to provide.
+
+**Rule**: Treat generated governance documents like compiled release inputs: regenerate them after the last source edit, then run their check-only command and aggregate release gate against the exact tree that will be committed.
+
+---
+
+## 2026-07-15 - Recursive test discovery must exclude local dependency trees by structure
+
+**What happened**: The aggregate unit runner recursively scanned the whole `extensions` root. Once the operator-signer extension had its own ignored dependencies installed, the runner discovered and executed hundreds of tests shipped inside those dependencies.
+
+**Why it mattered**: Test scope depended on untracked local installation state, wasted release time, and produced third-party failures unrelated to the repository's code.
+
+**Rule**: Every recursive repository test discoverer must prune dependency, build, coverage, and cache directory names at every depth. Do not rely on Git ignore rules or a clean CI image to define the owned test boundary.
+
+---
+
+## 2026-07-15 - Presentation markers are not unique control selectors
+
+**What happened**: Colander correctly applied a shared Gamma presentation marker to three workspace controls, but the Gamma proof still treated that styling-region marker as the unique contract-address input.
+
+**Why it mattered**: A valid workspace expansion triggered Playwright strict-mode failure even though the intended address control remained present and correct.
+
+**Rule**: Use route/surface markers to establish presentation ownership, then use a control-owned test id or accessible role/name for a specific interaction. Never assume a styling or region marker is unique unless the contract explicitly enforces uniqueness.
+
+---
+
+## 2026-07-15 - Release evidence requires a quiescent source and artifact boundary
+
+**What happened**: A full inventory run overlapped another task editing the same test sources, rebuilding `dist`, regenerating native assets, and starting Playwright with the shared output directory. The running suite lost build/trace files and later reloaded a renamed test title, producing unrelated failures that all passed on the settled tree.
+
+**Why it mattered**: The run was internally inconsistent: its test list, worker source, served build, and trace store did not represent one candidate revision, so neither passes nor failures could certify the release.
+
+**Rule**: Run release gates only against a quiescent candidate tree. Concurrent work must use a separate worktree plus isolated build, harness port, and Playwright output directory; after any overlap, discard the broad result and rerun against the final settled tree.
+
+---
+
+## 2026-07-15 - Rebuild served assets after synchronizing a shared static kit
+
+**What happened**: The first Pasta public-page browser proof exercised an older `dist` copy of the generated site runtime after the canonical source and public copies had already been corrected. The stale bundle still assumed the wallet helper returned an object instead of its actual address string.
+
+**Why it mattered**: Source parity was green while the browser tested a different artifact, making a fixed integration appear broken and obscuring whether the fault lived in source, generation, or serving.
+
+**Rule**: After synchronizing checked-in static assets, rebuild the exact served distribution before browser verification. A source-parity test proves generation consistency, not freshness of a previously built runtime.
+
+---
+
+## 2026-07-15 - Browser storage proofs require an origin before scenario setup
+
+**What happened**: A Playwright contract-story matrix tried to select a Ravioli scenario through `sessionStorage` while the page was still the initial `about:blank` document, where storage access is denied.
+
+**Why it mattered**: The harness failed before loading any Pasta page, which could be mistaken for a collector-runtime regression if the execution boundary was not inspected.
+
+**Rule**: Navigate to a same-origin page before reading or writing Web Storage through `page.evaluate`. Use initialization scripts only for values that intentionally need to be established on every subsequent document.
+
+---
+
+## 2026-07-15 - Transaction choreography harnesses must evolve with the signed workflow
+
+**What happened**: Spaghetti gained a required post-mint `set_sale` batch, but its browser wallet harness still exposed only `create_token` and `mint`, so the full publishing story failed after the new production steps had already succeeded in focused tests.
+
+**Why it mattered**: An incomplete fake contract could neither finish the user story nor prove the exact sale payload that makes self-hosted commerce independent of a marketplace.
+
+**Rule**: When a signed workflow gains an entrypoint or batch, extend the executable wallet harness and its ordered payload assertions in the same edit. Do not weaken the story to stop before the new durable side effect.
+
+---
+
+## 2026-07-15 - Generated inline JavaScript needs an executable artifact proof
+
+**What happened**: The Pasta Suite HTML generator embedded `\n` inside its outer template literal. Generation converted those escapes into literal newlines inside a quoted JavaScript string, making the native Colander controller fail to parse before any button handlers were installed.
+
+**Why it mattered**: Source-level policy checks and successful asset copying both passed while the installed central dashboard was visually present but inert.
+
+**Rule**: Escape inline-script literals through every generation layer and execute the generated HTML in a browser test after preparation. Generator-source assertions alone do not prove that the emitted application parses or responds.
+
+---
+
+## 2026-07-15 - External proof probes need bounded request timeouts
+
+**What happened**: A real Pasta Shadownet proof waited more than fourteen minutes before its first log because the initial RPC `fetch` had no abort deadline and the configured primary endpoint did not complete the request.
+
+**Why it mattered**: The proof never reached its existing fallback RPC, emitted no diagnostic evidence, and had to be interrupted manually without knowing whether any chain write had begun.
+
+**Rule**: Every external preflight and indexer fetch in a deployment proof must have a bounded timeout. Endpoint fallbacks are not real fallbacks when the primary request can wait forever.
+
+---
+
+## 2026-07-15 - Contract simulation needs a larger timeout than a chain-id probe
+
+**What happened**: The Shadownet endpoint answered lightweight chain and balance reads, but Taquito's default 30-second backend timeout expired while estimating the newly expanded FA2 origination.
+
+**Why it mattered**: The endpoint was healthy enough for preflight yet the proof failed before origination, making a large simulation look like total RPC unavailability.
+
+**Rule**: Keep short bounded timeouts for endpoint selection, but configure a separate longer Taquito backend timeout for contract simulation, origination, and confirmation. Both limits must remain finite and environment-overridable.
+
+---
+
+## 2026-07-15 - A browser proof is invalid when its source line and trace store change during execution
+
+**What happened**: A Colander fixture-backed browser test unexpectedly used the live RPC fallback and then failed to preserve its trace files. Immediately afterward, the same test appeared at different source line numbers and passed both alone and in its complete suite on the settled runtime.
+
+**Why it mattered**: The failed process did not execute against one stable combination of test source, served build, and Playwright artifact directory, so its timeout could not diagnose the Colander read path.
+
+**Rule**: If a browser failure includes missing shared trace artifacts or changed source locations, stop treating it as product evidence. Wait for a quiescent tree, rerun the smallest affected story, then rerun its complete owning suite before changing application code.
+
+---
+
+## 2026-07-15 - Primary-sale inventory authority must follow the authenticated seller
+
+**What happened**: The first fixed-edition sale design made `set_sale` administrator-only but still accepted any holder as `sale.seller`. A later purchase debited that holder directly, giving the administrator an unintended forced-listing path over user inventory.
+
+**Why it mattered**: Administrative configuration authority is not transfer authority. A creator contract that can seize a holder's editions through a sale listing violates the ownership boundary even when the payment and inventory math are otherwise correct.
+
+**Rule**: Inventory-backed primary sales must bind the debited seller to the authenticated configuration caller, or require an explicit owner/operator authorization that is verified on-chain. Add negative tests for non-admin configuration, third-party sellers, invalid windows, and insufficient creator inventory before compiling consumer artifacts.
+
+---
+
+## 2026-07-15 - Archive parsing is not proof of a safe local-site installer
+
+**What happened**: Native Colander initially had parser tests for stored ZIPs, while directory installation, manifest creation, listing, and loopback path resolution remained embedded in Electron. A failed write could leave residue, and encoded traversal behavior was not executable outside the app shell.
+
+**Why it mattered**: A parser can reject obvious `../` entries while the actual filesystem and URL boundary still mishandles duplicates, partial installs, encoded paths, limits, or containment. Mocking the page registry does not prove the local host is safe.
+
+**Rule**: Extract archive ingestion into a pure, testable boundary; reject absolute, traversal, duplicate, encrypted, compressed, and over-limit entries; stage writes in a private temporary directory; publish only with an atomic rename; and unit-test the resulting manifest, listing, and loopback path resolution before marking local hosting verified.

@@ -123,6 +123,7 @@ router.get(
         "user.has_role",
         "user.is_contestant",
         "reward.not_already_claimed",
+        "time.utc_weekday",
       ],
     });
   }

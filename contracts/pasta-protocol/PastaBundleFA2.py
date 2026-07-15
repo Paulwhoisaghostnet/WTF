@@ -44,6 +44,18 @@ def main():
     CreateBundleType: type = sp.record(token_info=sp.map[sp.string, sp.bytes], config=BundleConfigType)
     SetBundleContentsType: type = sp.record(token_id=sp.nat, contents_uri=sp.bytes)
     RedeemParamType: type = sp.record(token_id=sp.nat, amount=sp.nat)
+    SaleConfigType: type = sp.record(
+        active=sp.bool,
+        seller=sp.address,
+        treasury=sp.address,
+        price=sp.mutez,
+        remaining=sp.nat,
+        start=sp.option[sp.timestamp],
+        end=sp.option[sp.timestamp],
+    )
+    SetSaleType: type = sp.record(token_id=sp.nat, sale=SaleConfigType)
+    SetSaleActiveType: type = sp.record(token_id=sp.nat, active=sp.bool)
+    BuyParamType: type = sp.record(token_id=sp.nat, amount=sp.nat)
 
     class PastaBundleFA2(sp.Contract):
         def __init__(self, administrator, metadata):
@@ -57,6 +69,7 @@ def main():
             self.data.bundles = sp.cast(sp.big_map(), sp.big_map[sp.nat, BundleConfigType])
             self.data.redeemed = sp.cast(sp.big_map(), sp.big_map[sp.nat, sp.nat])
             self.data.redeemed_by = sp.cast(sp.big_map(), sp.big_map[LedgerKeyType, sp.nat])
+            self.data.sales = sp.cast(sp.big_map(), sp.big_map[sp.nat, SaleConfigType])
             self.data.minters = sp.cast(sp.big_map(), sp.big_map[sp.address, sp.unit])
             self.data.next_token_id = sp.nat(0)
 
@@ -210,6 +223,74 @@ def main():
             cur_supply = self.data.total_supply.get(params.token_id, default=sp.nat(0))
             self.data.total_supply[params.token_id] = sp.as_nat(cur_supply - params.amount)
 
+        # ---- Inventory-backed primary sales ----
+
+        @sp.entrypoint
+        def set_sale(self, params):
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
+            sp.cast(params, SetSaleType)
+            self._only_admin()
+            assert params.token_id in self.data.bundles, "NO_BUNDLE"
+            assert params.sale.seller == sp.sender, "BAD_SELLER"
+            if params.sale.start.is_some() and params.sale.end.is_some():
+                assert params.sale.start.unwrap_some() <= params.sale.end.unwrap_some(), "BAD_WINDOW"
+            seller_key = sp.record(owner=params.sale.seller, token_id=params.token_id)
+            assert self.data.ledger.get(seller_key, default=sp.nat(0)) >= params.sale.remaining, "LOW_INVENTORY"
+            self.data.sales[params.token_id] = params.sale
+
+        @sp.entrypoint
+        def set_sale_active(self, params):
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
+            sp.cast(params, SetSaleActiveType)
+            self._only_admin()
+            assert params.token_id in self.data.sales, "NO_SALE"
+            sale = self.data.sales[params.token_id]
+            self.data.sales[params.token_id] = sp.record(
+                active=params.active,
+                seller=sale.seller,
+                treasury=sale.treasury,
+                price=sale.price,
+                remaining=sale.remaining,
+                start=sale.start,
+                end=sale.end,
+            )
+
+        @sp.entrypoint
+        def buy(self, params):
+            sp.cast(params, BuyParamType)
+            assert params.amount > 0, "BAD_AMOUNT"
+            assert params.token_id in self.data.sales, "NO_SALE"
+            sale = self.data.sales[params.token_id]
+            assert sale.active, "SALE_INACTIVE"
+            if sale.start.is_some():
+                assert sp.now >= sale.start.unwrap_some(), "NOT_STARTED"
+            if sale.end.is_some():
+                assert sp.now <= sale.end.unwrap_some(), "ENDED"
+            assert sale.remaining >= params.amount, "SOLD_OUT"
+            expected = sp.split_tokens(sale.price, params.amount, 1)
+            assert sp.amount == expected, "BAD_PAYMENT"
+            seller_key = sp.record(owner=sale.seller, token_id=params.token_id)
+            seller_balance = self.data.ledger.get(seller_key, default=sp.nat(0))
+            assert seller_balance >= params.amount, "LOW_INVENTORY"
+            next_seller_balance = sp.as_nat(seller_balance - params.amount)
+            if next_seller_balance == 0:
+                if seller_key in self.data.ledger:
+                    del self.data.ledger[seller_key]
+            else:
+                self.data.ledger[seller_key] = next_seller_balance
+            buyer_key = sp.record(owner=sp.sender, token_id=params.token_id)
+            self.data.ledger[buyer_key] = self.data.ledger.get(buyer_key, default=sp.nat(0)) + params.amount
+            self.data.sales[params.token_id] = sp.record(
+                active=sale.active,
+                seller=sale.seller,
+                treasury=sale.treasury,
+                price=sale.price,
+                remaining=sp.as_nat(sale.remaining - params.amount),
+                start=sale.start,
+                end=sale.end,
+            )
+            sp.send(sale.treasury, sp.amount)
+
         # ---- Admin ----
 
         @sp.entrypoint
@@ -326,10 +407,62 @@ def test():
     c.mint(sp.record(to_=alice.address, token_id=0, amount=4), _sender=admin)
     scenario.verify(c.data.total_supply[0] == 4)
 
+    scenario.h2("Admin cannot force-list Alice's wrappers")
+    third_party_sale = sp.record(
+        active=True,
+        seller=alice.address,
+        treasury=admin.address,
+        price=sp.mutez(2_000_000),
+        remaining=sp.nat(2),
+        start=sp.cast(None, sp.option[sp.timestamp]),
+        end=sp.cast(None, sp.option[sp.timestamp]),
+    )
+    c.set_sale(sp.record(token_id=0, sale=third_party_sale), _sender=alice, _valid=False)
+    c.set_sale(sp.record(token_id=0, sale=third_party_sale), _sender=admin, _valid=False)
+
+    scenario.h2("Admin cannot create an invalid sale window or exceed creator inventory")
+    bad_window_sale = sp.record(
+        active=True,
+        seller=admin.address,
+        treasury=admin.address,
+        price=sp.mutez(2_000_000),
+        remaining=sp.nat(0),
+        start=sp.some(sp.timestamp(20)),
+        end=sp.some(sp.timestamp(10)),
+    )
+    c.set_sale(sp.record(token_id=0, sale=bad_window_sale), _sender=admin, _valid=False)
+    low_inventory_sale = sp.record(
+        active=True,
+        seller=admin.address,
+        treasury=admin.address,
+        price=sp.mutez(2_000_000),
+        remaining=sp.nat(1),
+        start=sp.cast(None, sp.option[sp.timestamp]),
+        end=sp.cast(None, sp.option[sp.timestamp]),
+    )
+    c.set_sale(sp.record(token_id=0, sale=low_inventory_sale), _sender=admin, _valid=False)
+
+    scenario.h2("Admin lists two creator-owned wrappers and Bob buys one directly")
+    c.mint(sp.record(to_=admin.address, token_id=0, amount=2), _sender=admin)
+    sale = sp.record(
+        active=True,
+        seller=admin.address,
+        treasury=admin.address,
+        price=sp.mutez(2_000_000),
+        remaining=sp.nat(2),
+        start=sp.cast(None, sp.option[sp.timestamp]),
+        end=sp.cast(None, sp.option[sp.timestamp]),
+    )
+    c.set_sale(sp.record(token_id=0, sale=sale), _sender=admin)
+    c.buy(sp.record(token_id=0, amount=1), _sender=bob, _amount=sp.tez(1), _valid=False)
+    c.buy(sp.record(token_id=0, amount=1), _sender=bob, _amount=sp.tez(2))
+    scenario.verify(c.data.sales[0].remaining == 1)
+    scenario.verify(c.data.ledger[sp.record(owner=bob.address, token_id=0)] == 1)
+
     scenario.h2("Alice redeems 2 — wrapper burned, redemption recorded")
     c.redeem(sp.record(token_id=0, amount=2), _sender=alice)
     scenario.verify(c.data.ledger[sp.record(owner=alice.address, token_id=0)] == 2)
-    scenario.verify(c.data.total_supply[0] == 2)
+    scenario.verify(c.data.total_supply[0] == 4)
     scenario.verify(c.data.redeemed[0] == 2)
     scenario.verify(c.data.redeemed_by[sp.record(owner=alice.address, token_id=0)] == 2)
     scenario.verify(c.get_redeemed(0) == 2)

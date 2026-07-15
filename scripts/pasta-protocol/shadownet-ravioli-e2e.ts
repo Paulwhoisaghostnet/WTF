@@ -177,6 +177,7 @@ function buildOriginationStorage(admin: string, collectionMetadataUri: string) {
     bundles: new MichelsonMap(),
     redeemed: new MichelsonMap(),
     redeemed_by: new MichelsonMap(),
+    sales: new MichelsonMap(),
     minters: new MichelsonMap(),
     next_token_id: 0,
   };
@@ -280,20 +281,21 @@ async function main(): Promise<void> {
   await mint.confirmation(1);
   ok(`minted bundle token 0 supply with ${mint.hash}`);
 
-  await assertShadownet(creatorTezos, "before transfer");
-  const transfer = await contract.methodsObject
-    .transfer([
-      {
-        from_: creator.address,
-        txs: [{ to_: collector.address, token_id: 0, amount: 2 }],
-      },
-    ])
-    .send();
-  await transfer.confirmation(1);
-  ok(`transferred bundle editions to collector with ${transfer.hash}`);
+  await assertShadownet(creatorTezos, "before set_sale");
+  const setSale = await contract.methodsObject.set_sale({
+    token_id: 0,
+    sale: { active: true, seller: creator.address, treasury: creator.address, price: 1_000, remaining: 2, start: null, end: null },
+  }).send();
+  await setSale.confirmation(1);
+  ok(`opened direct bundle sale with ${setSale.hash}`);
+
+  const collectorContract = await collectorTezos.contract.at(originated.address);
+  await assertShadownet(collectorTezos, "before buy");
+  const buy = await collectorContract.methodsObject.buy({ token_id: 0, amount: 2 }).send({ amount: 2_000, mutez: true });
+  await buy.confirmation(1);
+  ok(`collector bought two bundle editions directly with ${buy.hash}`);
 
   await assertShadownet(collectorTezos, "before redeem");
-  const collectorContract = await collectorTezos.contract.at(originated.address);
   const redeem = await collectorContract.methodsObject.redeem({ token_id: 0, amount: 1 }).send();
   await redeem.confirmation(1);
   ok(`collector redeemed one bundle edition with ${redeem.hash}`);
@@ -307,7 +309,8 @@ async function main(): Promise<void> {
       Number(json?.token_metadata) > 0 &&
       Number(json?.total_supply) > 0 &&
       Number(json?.bundles) > 0 &&
-      Number(json?.redeemed) > 0,
+      Number(json?.redeemed) > 0 &&
+      Number(json?.sales) > 0,
   );
   const ledgerUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.ledger}/keys?limit=100`;
   const ledgerKeys = await pollJson(
@@ -353,6 +356,13 @@ async function main(): Promise<void> {
     (json) => Array.isArray(json) && json.some((entry) => String(entry?.key) === "0" && Number(entry?.value || 0) >= 1),
   );
   const redeemedEntry = redeemedKeys.find((entry: any) => String(entry?.key) === "0");
+  const salesUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.sales}/keys?limit=100`;
+  const salesKeys = await pollJson(
+    "bundle sale big map key",
+    salesUrl,
+    (json) => Array.isArray(json) && json.some((entry) => String(entry?.key) === "0" && Number(entry?.value?.remaining) === 0),
+  );
+  const saleEntry = salesKeys.find((entry: any) => String(entry?.key) === "0");
   const tokenMetadataUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.token_metadata}/keys?limit=100`;
   const tokenMetadataKeys = await pollJson(
     "token metadata big map key",
@@ -370,7 +380,7 @@ async function main(): Promise<void> {
   await writeReport("PASSED", [
     "## Result",
     "",
-    "- Signer-backed Ravioli Shadownet bundle deploy/create/mint/transfer/redeem proof passed.",
+    "- Signer-backed Ravioli Shadownet bundle deploy/create/mint/direct-sale/redeem proof passed.",
     `- Creator wallet: \`${creator.id}\` / \`${creator.address}\``,
     `- Collector wallet: \`${collector.id}\` / \`${collector.address}\``,
     `- Contract: \`${originated.address}\``,
@@ -381,7 +391,8 @@ async function main(): Promise<void> {
     `- Origination: \`${originate.hash}\``,
     `- Create bundle: \`${createBundle.hash}\``,
     `- Mint: \`${mint.hash}\``,
-    `- Transfer/collect: \`${transfer.hash}\``,
+    `- Configure direct sale: \`${setSale.hash}\``,
+    `- Direct purchase: \`${buy.hash}\``,
     `- Redeem: \`${redeem.hash}\``,
     "",
     "## Indexed Proof",
@@ -391,12 +402,13 @@ async function main(): Promise<void> {
     `- Total supply big-map entry returned \`${totalSupplyEntry?.value}\` for token 0 after one redeemed burn.`,
     `- Bundle big-map entry returned redeemable=\`${bundleEntry?.value?.redeemable}\`, mystery=\`${bundleEntry?.value?.mystery}\`, item_count=\`${bundleEntry?.value?.item_count}\`.`,
     `- Redeemed big-map entry returned \`${redeemedEntry?.value}\` for token 0.`,
+    `- Sale big-map entry returned remaining=\`${saleEntry?.value?.remaining}\` after purchase.`,
     `- Token metadata big-map entry decoded to \`${indexedTokenMetadata.name}\` with relationship and bundle manifest metadata intact.`,
     `- Relationship group: \`${metadata.relationship.collection_group}\``,
     "",
     "## Scope",
     "",
-    "- This proves signer-backed Shadownet origination, bundle creation, minting, transfer/collect, redeem/burn, bundle config, redeemed count, metadata decoding, total supply, and ownership resolution for Ravioli bundles.",
+    "- This proves signer-backed Shadownet origination, bundle creation, minting, creator-configured primary sale, collector purchase, redeem/burn, bundle config, redeemed count, metadata decoding, total supply, and ownership resolution for Ravioli bundles.",
     "- It does not yet prove WTF.ME page hosting, wtfOS hosted pinning, Colander real-contract discovery, mystery reveal, or every Pasta publisher variant.",
   ]);
 }

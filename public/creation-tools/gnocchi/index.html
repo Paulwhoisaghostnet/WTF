@@ -128,12 +128,20 @@
         </div>
         <p id="mintInfo" class="pp-note" aria-live="polite"></p>
       </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>6 · Self-hosted mint page</h2>
+        <p class="pp-note">Download a complete public mint site that reads the live price and supply, connects a wallet, and calls <code>open_mint</code> without a marketplace.</p>
+        <div class="pp-row"><button id="btnExportSite" type="button">Download mint site</button><span id="exportSiteStatus" class="pp-note" role="status" aria-live="polite"></span></div>
+      </section>
     </main>
 
     <script src="vendor/tezos.js"></script>
     <script src="vendor/octez-connect.js"></script>
     <script src="js/octez-wallet.js"></script>
     <script src="js/common.js"></script>
+    <script>window.PASTA_SITE_EXPORT = { app: "gnocchi", label: "Gnocchi", titleInput: "oeName", descriptionInput: "oeDesc", contractInput: "mintKt", tokenInput: "mintTokenId" };</script>
+    <script src="js/site-bundle.js"></script>
     <script type="module" src="js/studio.js"></script>
   </body>
 </html>

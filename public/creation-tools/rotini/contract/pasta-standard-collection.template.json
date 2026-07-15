@@ -4,7 +4,7 @@
   "source": "contracts/pasta-protocol/PastaStandardCollectionFA2.py",
   "compileScript": "scripts/pasta-protocol/compile-fa2-template.mjs",
   "smartpyBinaryEnv": "SMARTPY_BIN",
-  "compiledContract": "public/creation-tools/spaghetti/contract/pasta-standard-collection.contract.json",
+  "compiledContract": "public/creation-tools/rotini/contract/pasta-standard-collection.contract.json",
   "storage": {
     "note": "Origination storage: { admin: tz address, metadata: MichelsonMap { '' : hex(ipfs uri) } }. Other big_maps initialize empty."
   },
@@ -15,8 +15,13 @@
     "create_token",
     "mint",
     "burn",
+    "set_sale",
+    "set_sale_active",
+    "buy",
     "add_minter",
     "remove_minter",
-    "set_token_metadata"
+    "set_token_metadata",
+    "transfer_administration",
+    "accept_administration"
   ]
 }

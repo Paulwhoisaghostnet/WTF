@@ -71,8 +71,8 @@ jobs:
           sleep 15
           for i in 1 2 3 4 5; do
             STATUS=$(ssh -i ~/.ssh/id_ed25519 "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
-              "curl -sf http://localhost:3000/api/health 2>/dev/null || echo FAIL")
-            if echo "$STATUS" | grep -q '"status":"ok"'; then
+              "curl -sf http://localhost:3000/api/health/ready 2>/dev/null || echo FAIL")
+            if echo "$STATUS" | grep -q '"status":"ready"'; then
               echo "Health check passed: $STATUS"
               exit 0
             fi

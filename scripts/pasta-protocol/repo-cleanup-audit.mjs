@@ -405,7 +405,7 @@ function main() {
     worktrees,
     dirtyWork,
   }, null, 2));
-  if (!ok) process.exit(1);
+  if (!ok) process.exitCode = 1;
 }
 
 try {

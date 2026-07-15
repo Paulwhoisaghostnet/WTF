@@ -9,6 +9,11 @@ build
 coverage
 test-results
 playwright-report
+artifacts
+tests
+**/*.test.*
+**/*.spec.*
+**/__snapshots__
 .e2e
 e2e-puppets*.json
 *.puppet-credentials.json

@@ -296,6 +296,7 @@ async function publish() {
     log("open edition live ✓ — token id 0");
     $("mintKt").value = kt;
     $("mintTokenId").value = "0";
+    MD.recordColanderContract(kt, "gnocchi");
     MD.logEvent("gnocchi.collection_deployed", "Gnocchi deployed an open-edition collection", {
       contract: kt,
       network: state.network,
@@ -432,6 +433,9 @@ function wire() {
   refreshCurvePreview();
   const handoff = MD.consumeCheaseHandoff("gnocchi");
   if (handoff) importCheasePackage(handoff, "handoff");
+  const routeHandoff = MD.readRouteHandoff();
+  if (routeHandoff?.contract) $("mintKt").value = routeHandoff.contract;
+  if (routeHandoff?.projectTitle && !$("oeName").value) $("oeName").value = routeHandoff.projectTitle;
 }
 
 wire();

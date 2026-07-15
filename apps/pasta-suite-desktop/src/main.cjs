@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const http = require("node:http");
 const path = require("node:path");
+const { installStoredSite, listStoredSites, resolveHostedSitePath } = require("./site-archive.cjs");
 
 const MIME = {
   ".css": "text/css; charset=utf-8",
@@ -35,6 +36,10 @@ function pastaRoot() {
 
 function macaroniRoot() {
   return path.join(pastaRoot(), "creation-tools", "macaroni");
+}
+
+function hostedSitesRoot() {
+  return path.join(app.getPath("documents"), "Pasta Suite", "sites");
 }
 
 function sendJson(res, status, payload) {
@@ -94,6 +99,56 @@ async function readJsonBody(req, limitBytes) {
   }
   const raw = Buffer.concat(chunks).toString("utf8");
   return raw ? JSON.parse(raw) : {};
+}
+
+async function readBinaryBody(req, limitBytes) {
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of req) {
+    total += chunk.length;
+    if (total > limitBytes) throw new Error("request body too large");
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+function hostedSitePath(urlPath) {
+  return resolveHostedSitePath(hostedSitesRoot(), urlPath);
+}
+
+async function listHostedSites() {
+  return listStoredSites(hostedSitesRoot());
+}
+
+async function installHostedSite(req, res, parsed) {
+  try {
+    const archive = await readBinaryBody(req, 25 * 1024 * 1024);
+    const site = await installStoredSite(archive, {
+      root: hostedSitesRoot(),
+      appId: parsed.searchParams.get("app") || "pasta",
+      title: parsed.searchParams.get("title"),
+    });
+    return sendJson(res, 201, { ok: true, ...site });
+  } catch (err) {
+    return sendJson(res, 400, { ok: false, error: err.message || "Site install failed" });
+  }
+}
+
+async function sendFile(req, res, filePath) {
+  try {
+    const stats = await fsp.stat(filePath);
+    if (!stats.isFile()) return sendText(res, 404, "Not found");
+    const ext = path.extname(filePath).toLowerCase();
+    res.writeHead(200, {
+      "Content-Type": MIME[ext] || "application/octet-stream",
+      "Content-Length": stats.size,
+      "Cache-Control": "no-store",
+    });
+    if (req.method === "HEAD") return res.end();
+    return fs.createReadStream(filePath).pipe(res);
+  } catch (_) {
+    return sendText(res, 404, "Not found");
+  }
 }
 
 async function copyDropAsset(rel, outRoot) {
@@ -198,25 +253,21 @@ async function handleRequest(req, res) {
     });
   }
   if (req.method === "POST" && parsed.pathname === "/export") return exportMacaroniSite(req, res);
+  if (req.method === "GET" && parsed.pathname === "/api/pasta/sites") {
+    return sendJson(res, 200, { ok: true, sites: await listHostedSites() });
+  }
+  if (req.method === "POST" && parsed.pathname === "/api/pasta/sites/install") {
+    return installHostedSite(req, res, parsed);
+  }
 
   if (req.method !== "GET" && req.method !== "HEAD") return sendText(res, 405, "Method not allowed");
 
+  const hostedPath = hostedSitePath(parsed.pathname);
+  if (hostedPath) return sendFile(req, res, hostedPath);
+
   const filePath = safeStaticPath(parsed.pathname);
   if (!filePath) return sendText(res, 403, "Forbidden");
-  try {
-    const stats = await fsp.stat(filePath);
-    if (!stats.isFile()) return sendText(res, 404, "Not found");
-    const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, {
-      "Content-Type": MIME[ext] || "application/octet-stream",
-      "Content-Length": stats.size,
-      "Cache-Control": "no-store",
-    });
-    if (req.method === "HEAD") return res.end();
-    return fs.createReadStream(filePath).pipe(res);
-  } catch (_) {
-    return sendText(res, 404, "Not found");
-  }
+  return sendFile(req, res, filePath);
 }
 
 function startLocalServer() {
@@ -248,6 +299,7 @@ function shouldAllowPopup(value) {
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+    if (baseUrl && value.startsWith(baseUrl)) return true;
     return [
       "kukai.app",
       "shadownet.kukai.app",
@@ -283,9 +335,9 @@ function createWindow() {
       return {
         action: "allow",
         overrideBrowserWindowOptions: {
-          width: 520,
-          height: 760,
-          title: "Pasta wallet",
+          width: url.startsWith(baseUrl) ? 1200 : 520,
+          height: url.startsWith(baseUrl) ? 850 : 760,
+          title: url.startsWith(baseUrl) ? "Pasta tool" : "Pasta wallet",
           webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,

@@ -17,6 +17,8 @@ import {
   Fieldset,
 } from "react95";
 import styled from "styled-components";
+import type { LucideIcon } from "lucide-react";
+import { Inbox, Store, Trophy, UserRound, UsersRound, Zap } from "lucide-react";
 import { AppWindow } from "../components/layout/AppWindow";
 import { YearProgressWidget } from "../features/desktop/widgets/YearProgressWidget";
 import { WalletButton } from "../components/WalletButton";
@@ -30,6 +32,59 @@ import { useLocation } from "wouter";
 import { DiscoveryCard } from "../features/discovery/DiscoveryCard";
 
 const DASHBOARD_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
+
+type GammaDashboardAction = {
+  key: string;
+  label: string;
+  detail: string;
+  route: string;
+  icon: LucideIcon;
+};
+
+const GAMMA_DASHBOARD_ACTIONS: GammaDashboardAction[] = [
+  {
+    key: "daily",
+    label: "Daily proof",
+    detail: "Side quests open today's XP path.",
+    route: "/side-quests",
+    icon: Zap,
+  },
+  {
+    key: "challenges",
+    label: "Challenges",
+    detail: "See active game loops and rewards.",
+    route: "/challenges",
+    icon: Trophy,
+  },
+  {
+    key: "people",
+    label: "People",
+    detail: "Find active creators and collectors.",
+    route: "/w",
+    icon: UsersRound,
+  },
+  {
+    key: "apps",
+    label: "Apps",
+    detail: "Unlock tools and app passes.",
+    route: "/wtfiam?category=apps",
+    icon: Store,
+  },
+  {
+    key: "inbox",
+    label: "Inbox",
+    detail: "Messages, alerts, and replies.",
+    route: "/messages",
+    icon: Inbox,
+  },
+  {
+    key: "profile",
+    label: "Profile",
+    detail: "Identity, wallet, and public card.",
+    route: "/profile",
+    icon: UserRound,
+  },
+];
 
 // ── Formatting helpers for the new analytics cards ─────────────────
 //
@@ -230,6 +285,52 @@ const CompactAction = styled(Button)`
   font-size: var(--wtf-type-caption, 13px);
   padding: 2px 4px;
   min-height: var(--wtf-control-min-height, 32px);
+`;
+
+const GammaDailyActionRail = styled.section.attrs(dashboardRegionAttrs("gamma-daily-actions"))`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+
+  @media (max-width: 760px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 440px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const GammaDailyActionButton = styled.button.attrs(dashboardRegionAttrs("gamma-daily-action"))`
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(242, 234, 217, 0.2);
+  text-align: left;
+
+  svg {
+    margin-top: 2px;
+    color: #00d2ff;
+  }
+
+  b,
+  span {
+    display: block;
+  }
+
+  b {
+    margin-bottom: 2px;
+    font-size: 13px;
+  }
+
+  span {
+    font-size: ${DASHBOARD_CAPTION_TYPE};
+    line-height: 1.35;
+  }
 `;
 
 // ── Portfolio analytics card styling ───────────────────────────────
@@ -495,6 +596,26 @@ export function Dashboard() {
         data-dashboard-surface="cockpit"
         data-dashboard-presentation-host={presentation.host}
       >
+      {presentation.host === "gamma" ? (
+        <GammaDailyActionRail aria-label="Gamma dashboard next actions" data-dashboard-gamma-next-actions>
+          {GAMMA_DASHBOARD_ACTIONS.map((action) => (
+            <GammaDailyActionButton
+              key={action.key}
+              type="button"
+              onClick={() => setLocation(action.route)}
+              aria-label={`Open ${action.label}: ${action.detail}`}
+              data-dashboard-gamma-action={action.key}
+              data-dashboard-launch={action.route}
+            >
+              <action.icon size={18} aria-hidden="true" />
+              <span>
+                <b>{action.label}</b>
+                <span>{action.detail}</span>
+              </span>
+            </GammaDailyActionButton>
+          ))}
+        </GammaDailyActionRail>
+      ) : null}
       <div data-dashboard-region="tabs">
         <Tabs value={activeTab} onChange={(v: number) => setActiveTab(v)}>
           <Tab value={0}>Overview</Tab>

@@ -62,6 +62,7 @@ import {
 } from "../features/tz2at/wtfos-outbox";
 import {
   register as registerJob,
+  reconcileAbandonedRuns,
   start as startScheduler,
   stop as stopScheduler,
 } from "./scheduler";
@@ -78,8 +79,10 @@ const APP_REGISTRY_INTEGRITY_INTERVAL = 6 * 60 * 60 * 1000;
 const IPFS_PINNING_MANAGER_INTERVAL = 10 * 60 * 1000;
 const WTFOS_ATPROTO_OUTBOX_PUBLISHER_INTERVAL = 60 * 1000;
 
-export function startBackgroundJobs(): void {
+export async function startBackgroundJobs(): Promise<void> {
   console.log("[jobs] Registering background jobs with scheduler");
+
+  await reconcileAbandonedRuns();
 
   registerJob({
     name: "portfolio-sync",

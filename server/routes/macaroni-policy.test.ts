@@ -521,6 +521,7 @@ test("Macaroni generated pages use Fileship defaults, accessible controls, and o
   assert.match(dropSource, /const busy = walletConnecting \|\| walletRestoring/);
   assert.match(dropSource, /connect\.disabled = busy \|\| connected/);
   assert.match(dropSource, /walletRestoring \? "Checking wallet\.\.\."/);
+  assert.match(dropSource, /\.then\(async \(addr\) => \{\s*walletRestoring = false;\s*setWalletButtons/s);
   assert.match(dropSource, /if \(walletRestoring \|\| walletConnecting \|\| MD\.getAccount\(\)\) return/);
   assert.match(dropSource, /Wallet session expired\. Connect again to mint\./);
   assert.match(dropHtml, /<main class="wrap narrow" id="main">/);
@@ -696,7 +697,10 @@ test("Macaroni treats Shadownet as a first-class RPC and chain-id guarded networ
   assert.match(commonSource, /beaconNetwork:\s*"shadownet"/);
   assert.match(commonSource, /shadownet:\s*"NetXsqzbfFenSTS"/);
   assert.match(commonSource, /await assertRpcChainId\(true\)/);
-  assert.match(commonSource, /withRpcFallback\(\(\) => getToolkit\(\)\.rpc\.getChainId\(\)\)/);
+  assert.match(commonSource, /withRpcReadFallback\(\(\) => getToolkit\(\)\.rpc\.getChainId\(\)\)/);
+  assert.match(commonSource, /DEFAULT_RPC_READ_TIMEOUT_MS = 5_000/);
+  assert.match(commonSource, /withRpcFallback\(\(\) => withRpcReadDeadline\(fn, timeoutMs\)\)/);
+  assert.match(commonSource, /withRpcReadFallback\(\(\) => getToolkit\(\)\.tz\.getBalance\(target\)\)/);
   assert.match(commonSource, /pack_data/);
   assert.match(commonSource, /preferredNetwork:\s*beaconPreferredNetwork\(\)/);
   assert.match(commonSource, /enableMetrics:\s*false/);

@@ -93,13 +93,13 @@ import socialAutomationRoutes from "./features/social-automation/routes";
 import musicRoutes from "./routes/music";
 import mastodonRoutes from "./routes/mastodon";
 import porcupinRoutes from "./routes/porcupin";
-import { buildHealthSnapshot } from "./lib/health";
+import { buildHealthSnapshot, type HealthSnapshot } from "./lib/health";
 import {
   buildRuntimeMetricsSnapshot,
   resetRuntimeMetricWindows,
 } from "./lib/runtime-metrics";
 import { getWebSocketStats } from "./websocket";
-import { requirePermission } from "./auth/passport";
+import { isAuthenticated, requirePermission } from "./auth/passport";
 import { timingSafeEqual } from "crypto";
 import type { NextFunction, Request, Response } from "express";
 import { WTF_IN_APP_MARKET_CONTRACT } from "@shared/types";
@@ -130,58 +130,109 @@ function metricsGate(req: Request, res: Response, next: NextFunction): void {
   requirePermission("access_admin_panel")(req, res, next);
 }
 
+function publicVersion() {
+  return {
+    packageVersion: packageJson.version ?? null,
+    commitRef: process.env.COMMIT_REF ?? null,
+  };
+}
+
+function livenessPayload() {
+  return {
+    status: "alive" as const,
+    ok: true,
+    service: "wtf-gameshow-api" as const,
+    version: publicVersion(),
+    timestamp: new Date().toISOString(),
+  };
+}
+
+async function readHealthSnapshot(): Promise<HealthSnapshot> {
+  const [{ pool }, scheduler, contractConfig] = await Promise.all([
+    import("./db"),
+    import("./lib/scheduler"),
+    import("./lib/contract-config"),
+  ]);
+  return buildHealthSnapshot({
+    env: process.env,
+    uptime: () => process.uptime(),
+    packageVersion: packageJson.version ?? null,
+    checkDb: async () => {
+      await pool.query("select 1");
+    },
+    listJobs: scheduler.listJobs,
+    latestPerJob: scheduler.latestPerJob,
+    getContractConfig: () => ({
+      network: String(contractConfig.getNetwork()),
+      tzktBase: contractConfig.getTzktBase(),
+      marketplace: contractConfig.getMarketplaceAddressOrNull(),
+      barter: contractConfig.getBarterAddressOrNull(),
+      inAppMarket:
+        process.env.IN_APP_MARKET_CONTRACT_ADDRESS ||
+        process.env.WTF_IN_APP_MARKET_CONTRACT_ADDRESS ||
+        process.env.VITE_IN_APP_MARKET_CONTRACT_ADDRESS ||
+        (String(contractConfig.getNetwork()) === "shadownet"
+          ? SHADOWNET_IN_APP_MARKET_CONTRACT
+          : null) ||
+        WTF_IN_APP_MARKET_CONTRACT ||
+        null,
+    }),
+  });
+}
+
+function readinessPayload(snapshot: HealthSnapshot) {
+  return {
+    status: snapshot.ok ? "ready" as const : "degraded" as const,
+    ok: snapshot.ok,
+    service: snapshot.service,
+    version: {
+      ...publicVersion(),
+      nodeEnv: process.env.NODE_ENV ?? null,
+    },
+    checks: {
+      db: snapshot.db.ok,
+      chain: snapshot.chain.ok,
+      jobs: snapshot.jobs.ok,
+      jobIssues: snapshot.jobs.issues.length,
+    },
+    timestamp: snapshot.timestamp,
+  };
+}
+
 export function registerRoutes(app: Express) {
-  app.get("/api/health", async (_req, res) => {
+  // Liveness answers only whether the HTTP process can respond. It never
+  // touches dependencies or exposes operational internals.
+  app.get("/api/health", (_req, res) => {
+    res.json(livenessPayload());
+  });
+
+  // Readiness is public for orchestrators but deliberately compact. Detailed
+  // failure context lives behind the authenticated diagnostics endpoint.
+  app.get("/api/health/ready", async (_req, res) => {
     try {
-      const [{ pool }, scheduler, contractConfig] = await Promise.all([
-        import("./db"),
-        import("./lib/scheduler"),
-        import("./lib/contract-config"),
-      ]);
-      const snapshot = await buildHealthSnapshot({
-        env: process.env,
-        uptime: () => process.uptime(),
-        packageVersion: packageJson.version ?? null,
-        checkDb: async () => {
-          await pool.query("select 1");
-        },
-        listJobs: scheduler.listJobs,
-        latestPerJob: scheduler.latestPerJob,
-        getContractConfig: () => ({
-          network: String(contractConfig.getNetwork()),
-          tzktBase: contractConfig.getTzktBase(),
-          marketplace: contractConfig.getMarketplaceAddressOrNull(),
-          barter: contractConfig.getBarterAddressOrNull(),
-          inAppMarket:
-            process.env.IN_APP_MARKET_CONTRACT_ADDRESS ||
-            process.env.WTF_IN_APP_MARKET_CONTRACT_ADDRESS ||
-            process.env.VITE_IN_APP_MARKET_CONTRACT_ADDRESS ||
-            (String(contractConfig.getNetwork()) === "shadownet"
-              ? SHADOWNET_IN_APP_MARKET_CONTRACT
-              : null) ||
-            WTF_IN_APP_MARKET_CONTRACT ||
-            null,
-        }),
+      const snapshot = await readHealthSnapshot();
+      res.status(snapshot.ok ? 200 : 503).json(readinessPayload(snapshot));
+    } catch {
+      res.status(503).json({
+        status: "unavailable",
+        ok: false,
+        service: "wtf-gameshow-api",
+        version: publicVersion(),
+        timestamp: new Date().toISOString(),
       });
+    }
+  });
+
+  app.get("/api/health/diagnostics", isAuthenticated, async (_req, res) => {
+    try {
+      const snapshot = await readHealthSnapshot();
       res.status(snapshot.ok ? 200 : 503).json(snapshot);
     } catch (err) {
       res.status(503).json({
         status: "error",
         ok: false,
         service: "wtf-gameshow-api",
-        uptime: process.uptime(),
-        version: {
-          packageVersion: packageJson.version ?? null,
-          commitRef: process.env.COMMIT_REF ?? null,
-          nodeEnv: process.env.NODE_ENV ?? null,
-        },
-        db: {
-          ok: false,
-          latencyMs: null,
-          error: err instanceof Error ? err.message : String(err),
-        },
-        chain: null,
-        jobs: null,
+        error: err instanceof Error ? err.message : String(err),
         timestamp: new Date().toISOString(),
       });
     }
@@ -220,10 +271,9 @@ export function registerRoutes(app: Express) {
   });
 
   // Disk/cache health: ops-facing endpoint that reports current TV cache
-  // consumption vs the configured budget. Alert threshold is 90% of the
-  // budget ceiling. Cheap (single readdir + stat per entry) and safe to
-  // poll from an external monitor.
-  app.get("/api/health/disk", async (_req, res) => {
+  // consumption vs the configured budget. Directory and capacity details are
+  // authenticated diagnostics, not public process liveness.
+  app.get("/api/health/disk", isAuthenticated, async (_req, res) => {
     try {
       const stats = await readTvCacheStats();
       const usage = stats.maxTotalBytes > 0
@@ -296,7 +346,6 @@ export function registerRoutes(app: Express) {
   app.use(desktopAppRoutes);
   app.use(desktopRoutes);
   app.use(inAppMarketRoutes);
-  app.use(accessRoutes);
   app.use(mcpRoutes);
   app.use(contractActivityRoutes);
   app.use(notificationRoutes);

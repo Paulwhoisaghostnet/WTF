@@ -183,6 +183,7 @@ async function deploy() {
     log("explorer: " + MD.explorerUrl(state.network, kt));
     $("contractKt").value = kt;
     log("you are the admin curator. Publish the first revision below.");
+    MD.recordColanderContract(kt, "lasagna");
     MD.logEvent("lasagna.registry_updated", "Lasagna deployed an exhibition registry", {
       contract: kt,
       network: state.network,
@@ -338,6 +339,7 @@ function wire() {
     $("contractKt").value = routeHandoff.contract;
     MD.notify(`Loaded ${routeHandoff.contract} from Colander.`, "success");
   }
+  if (routeHandoff?.projectTitle && !$("exName").value) $("exName").value = routeHandoff.projectTitle;
 }
 
 wire();

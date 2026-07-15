@@ -34,6 +34,15 @@ function requiresClaim(metadata: Record<string, unknown>) {
   return metadata.requiresClaim === true;
 }
 
+function activeToday(metadata: Record<string, unknown>, now = new Date()) {
+  const days = Array.isArray(metadata.activeWeekdaysUtc)
+    ? metadata.activeWeekdaysUtc
+    : [];
+  if (days.length === 0) return true;
+  const weekday = now.getUTCDay();
+  return days.some((day) => Number(day) === weekday);
+}
+
 function parseRewardActions(value: unknown): ChallengeRewardAction[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -81,7 +90,8 @@ router.get("/api/challenge-automation/daily-loops", isAuthenticated, async (req,
       )
       .orderBy(desc(challengeAutomationDefinitions.updatedAt));
 
-    const ids = loops.map((loop) => loop.id);
+    const activeLoops = loops.filter((loop) => activeToday(metadataFor(loop.metadata)));
+    const ids = activeLoops.map((loop) => loop.id);
     const completions =
       ids.length === 0
         ? []
@@ -135,7 +145,7 @@ router.get("/api/challenge-automation/daily-loops", isAuthenticated, async (req,
       completionKey,
       resetAtUtc: "00:00",
       nextResetAt: nextUtcReset(),
-      loops: loops.map((loop) => {
+      loops: activeLoops.map((loop) => {
         const metadata = metadataFor(loop.metadata);
         const completion = completionByChallenge.get(loop.id);
         const claimRequired = requiresClaim(metadata);

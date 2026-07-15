@@ -1,14 +1,30 @@
 import { Router } from "express";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { z } from "zod";
 import {
   challengeAutomationCompletions,
   challengeAutomationDefinitions,
+  dmConversationParticipants,
+  dmConversations,
+  dmMessages,
+  users,
 } from "@shared/schema";
 import { isAuthenticated } from "../../auth/passport";
 import { db } from "../../db";
 import { REGGIE_FINALE_STEP_KEY } from "../services/reggie-quest";
+import { publishCommunicationItemBestEffort } from "../../features/comms/publisher";
 
 const router = Router();
+const REGGIE_ASSISTANT_USERNAME = "reggie-assistant";
+const REGGIE_ASSISTANT_DISPLAY_NAME = "Reggie";
+
+const reggieMessageSchema = z
+  .object({
+    content: z.string().trim().min(1).max(1_200),
+    source: z.string().trim().min(1).max(64).optional(),
+    context: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+  })
+  .strict();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -28,6 +44,157 @@ function readRewardAmounts(actions: unknown) {
     }
   }
   return reward;
+}
+
+async function ensureReggieAssistantUser(): Promise<number> {
+  const [existing] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.username, REGGIE_ASSISTANT_USERNAME))
+    .limit(1);
+
+  if (existing) return existing.id;
+
+  try {
+    const [created] = await db
+      .insert(users)
+      .values({
+        username: REGGIE_ASSISTANT_USERNAME,
+        displayName: REGGIE_ASSISTANT_DISPLAY_NAME,
+        role: "witness",
+      })
+      .returning({ id: users.id });
+    return created.id;
+  } catch {
+    const [createdByAnotherRequest] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, REGGIE_ASSISTANT_USERNAME))
+      .limit(1);
+    if (createdByAnotherRequest) return createdByAnotherRequest.id;
+    throw new Error("Failed to create Reggie assistant user");
+  }
+}
+
+async function writeReggieWimMessage(input: {
+  targetUserId: number;
+  content: string;
+  source: string;
+  context: Record<string, string | number | boolean | null>;
+}) {
+  const reggieUserId = await ensureReggieAssistantUser();
+  const [lockA, lockB] =
+    reggieUserId < input.targetUserId
+      ? [reggieUserId, input.targetUserId]
+      : [input.targetUserId, reggieUserId];
+
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${lockA}, ${lockB})`);
+
+    const existingRows = await tx.execute(sql<{ conversation_id: number }>`
+      SELECT c.id AS conversation_id
+      FROM dm_conversations c
+      JOIN dm_conversation_participants p1
+        ON p1.conversation_id = c.id AND p1.user_id = ${reggieUserId}
+      JOIN dm_conversation_participants p2
+        ON p2.conversation_id = c.id AND p2.user_id = ${input.targetUserId}
+      WHERE c.active = true
+        AND c.conversation_type = 'direct'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM dm_conversation_participants p3
+          WHERE p3.conversation_id = c.id
+            AND p3.user_id NOT IN (${reggieUserId}, ${input.targetUserId})
+        )
+      ORDER BY c.id ASC
+      LIMIT 1
+    `);
+
+    const now = new Date();
+    const existingConversationId =
+      existingRows.rows[0] && "conversation_id" in existingRows.rows[0]
+        ? Number((existingRows.rows[0] as { conversation_id: unknown }).conversation_id)
+        : null;
+    let conversationId: number | null =
+      typeof existingConversationId === "number" &&
+      Number.isInteger(existingConversationId) &&
+      existingConversationId > 0
+        ? existingConversationId
+        : null;
+
+    if (conversationId) {
+      await tx
+        .update(dmConversations)
+        .set({
+          title: REGGIE_ASSISTANT_DISPLAY_NAME,
+          updatedAt: now,
+        })
+        .where(eq(dmConversations.id, conversationId));
+    } else {
+      const [conversation] = await tx
+        .insert(dmConversations)
+        .values({
+          createdBy: reggieUserId,
+          active: true,
+          conversationType: "direct",
+          title: REGGIE_ASSISTANT_DISPLAY_NAME,
+          lastMessageAt: now,
+          updatedAt: now,
+        })
+        .returning({ id: dmConversations.id });
+      conversationId = conversation.id;
+
+      await tx.insert(dmConversationParticipants).values([
+        {
+          conversationId,
+          userId: reggieUserId,
+          lastReadAt: now,
+        },
+        {
+          conversationId,
+          userId: input.targetUserId,
+          lastReadAt: null,
+        },
+      ]);
+    }
+
+    const [message] = await tx
+      .insert(dmMessages)
+      .values({
+        conversationId,
+        senderId: reggieUserId,
+        content: input.content,
+        messageType: "text",
+        metadata: {
+          assistant: "reggie",
+          source: "reggie-assistant",
+          surface: input.source,
+          context: input.context,
+        },
+      })
+      .returning();
+
+    await tx
+      .update(dmConversations)
+      .set({ lastMessageAt: now, updatedAt: now })
+      .where(eq(dmConversations.id, conversationId));
+
+    await tx
+      .update(dmConversationParticipants)
+      .set({ lastReadAt: now })
+      .where(
+        and(
+          eq(dmConversationParticipants.conversationId, conversationId),
+          eq(dmConversationParticipants.userId, reggieUserId)
+        )
+      );
+
+    return {
+      conversationId,
+      message,
+      reggieUserId,
+    };
+  });
 }
 
 /**
@@ -127,6 +294,63 @@ router.get("/api/reggie/quest", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error("[reggie] quest state failed:", err);
     res.status(500).json({ error: "Failed to fetch Reggie quest state" });
+  }
+});
+
+router.post("/api/reggie/messages", isAuthenticated, async (req, res) => {
+  const parsed = reggieMessageSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Invalid Reggie message" });
+  }
+
+  try {
+    const user = req.user as any;
+    const result = await writeReggieWimMessage({
+      targetUserId: user.id,
+      content: parsed.data.content,
+      source: parsed.data.source ?? "desktop-assistant",
+      context: parsed.data.context ?? {},
+    });
+
+    void publishCommunicationItemBestEffort({
+      sourceKey: "dm",
+      externalRef: `dm:${result.message.id}:user:${user.id}`,
+      itemKind: "dm",
+      title: REGGIE_ASSISTANT_DISPLAY_NAME,
+      summary: parsed.data.content.slice(0, 260),
+      body: parsed.data.content,
+      authorLabel: REGGIE_ASSISTANT_DISPLAY_NAME,
+      targetUserId: user.id,
+      routePath: `/messages/dms/${result.conversationId}`,
+      thread: {
+        externalThreadRef: `dm:${result.conversationId}`,
+        title: REGGIE_ASSISTANT_DISPLAY_NAME,
+        routePath: `/messages/dms/${result.conversationId}`,
+        metadata: {
+          conversationType: "direct",
+          assistant: "reggie",
+        },
+      },
+      metadata: {
+        conversationId: result.conversationId,
+        messageId: result.message.id,
+        senderId: result.reggieUserId,
+        messageType: "text",
+        conversationType: "direct",
+        assistant: "reggie",
+        source: parsed.data.source ?? "desktop-assistant",
+      },
+      occurredAt: result.message.createdAt,
+    });
+
+    res.status(201).json({
+      ok: true,
+      conversationId: result.conversationId,
+      message: result.message,
+    });
+  } catch (err) {
+    console.error("[reggie] message write failed:", err);
+    res.status(500).json({ error: "Failed to send Reggie message" });
   }
 });
 

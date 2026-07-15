@@ -8,6 +8,7 @@ import {
 import type { ConsoleAuthUser } from "../console/types";
 import { getArcadeCartridgeBySlug, getDbBackedArcadeGameBySlug } from "./catalog";
 import { consumeArcadePlayTicket, createArcadePlayIntent } from "./payment";
+import { onArcadePlayConsumed } from "./creator-payout";
 
 export async function createArcadePlaySession(
   user: ConsoleAuthUser,
@@ -38,6 +39,13 @@ export async function createArcadePlaySession(
       surface: "arcade",
     });
     await auditArcadePlay(user.id, dbGame.id, slug, ticket);
+    if (ticket.consumed) {
+      await onArcadePlayConsumed({
+        gameSlug: slug,
+        playerUserId: user.id,
+        creditsConsumed: ticket.creditsPerPlay,
+      });
+    }
     return {
       ...session,
     arcade: {
@@ -50,6 +58,13 @@ export async function createArcadePlaySession(
   }
 
   await auditArcadePlay(user.id, null, slug, ticket);
+  if (ticket.consumed) {
+    await onArcadePlayConsumed({
+      gameSlug: slug,
+      playerUserId: user.id,
+      creditsConsumed: ticket.creditsPerPlay,
+    });
+  }
   return {
     runId: null,
     sessionId: null,

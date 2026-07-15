@@ -33,8 +33,12 @@ import { isConsoleStockCartridge } from "../../../server/features/console/surfac
 import { PUPPET_ACTOR_COUNT, PUPPET_ACTORS, puppetEmail } from "./registry.mjs";
 import { runLocalE2eDbPreparation } from "./prepare-local-db";
 import type { SignerEnv } from "../../../extensions/wtf-operator-signer/src/env";
+import networkModule from "../../../extensions/wtf-operator-signer/src/network";
 
 const { PlatformWalletKeyring } = keyringModule as any;
+const { probeRpcChainId, TEZOS_RPC_PRIMARY_BY_NETWORK } = networkModule as typeof import(
+  "../../../extensions/wtf-operator-signer/src/network"
+);
 
 const scryptAsync = promisify(scryptCb);
 const defaultSecretDir = join(homedir(), ".wtf-gameshow");
@@ -236,16 +240,11 @@ function parseNetwork(flags: Flags): PlatformWalletNetwork {
 }
 
 function rpcForNetwork(network: PlatformWalletNetwork): string {
-  switch (network) {
-    case "ghostnet":
-      return "https://rpc.ghostnet.teztnets.com";
-    case "shadownet":
-      return "https://tezos-shadownet.octez.io/";
-    case "mainnet":
-      return "https://tezos-mainnet.octez.io/";
-    case "custom":
-      return process.env.WTF_OPERATOR_SIGNER_RPC || "https://tezos-shadownet.octez.io/";
-  }
+  return (
+    TEZOS_RPC_PRIMARY_BY_NETWORK[network] ||
+    process.env.WTF_OPERATOR_SIGNER_RPC ||
+    TEZOS_RPC_PRIMARY_BY_NETWORK.shadownet!
+  );
 }
 
 async function readOrCreateMasterKey(filePath: string): Promise<string> {
@@ -338,18 +337,42 @@ async function createWalletIfMissing(
     id: string;
     label: string;
     network: PlatformWalletNetwork;
+    expectedChainId: string;
   }
 ): Promise<PlatformWalletPublic> {
-  const existing = (await keyring.listPublicWallets()).find(
+  const wallet = (await keyring.listPublicWallets()).find(
     (wallet) => wallet.id === input.id
   );
-  if (existing) return existing;
-  return keyring.createWallet({
+  if (wallet) {
+    if (
+      wallet.network !== input.network ||
+      wallet.chainId !== input.expectedChainId
+    ) {
+      const retargeted = await keyring.retargetWalletNetwork({
+        id: input.id,
+        network: input.network,
+      });
+      if (retargeted.chainId !== input.expectedChainId) {
+        throw new Error(
+          `Puppet wallet ${input.id} chain mismatch after retarget: expected ${input.expectedChainId}, got ${retargeted.chainId || "missing"}`
+        );
+      }
+      return retargeted;
+    }
+    return wallet;
+  }
+  const created = await keyring.createWallet({
     id: input.id,
     label: input.label,
     role: platformWalletRoleSchema.parse("testing"),
     network: input.network,
   });
+  if (created.chainId !== input.expectedChainId) {
+    throw new Error(
+      `Puppet wallet ${input.id} chain mismatch after creation: expected ${input.expectedChainId}, got ${created.chainId || "missing"}`
+    );
+  }
+  return created;
 }
 
 async function verifyWalletSignerUsable(
@@ -717,6 +740,12 @@ async function main() {
     });
   }
   const env = await buildEnv(flags, network);
+  const chainProbe = await probeRpcChainId({
+    network,
+    rpcUrl: env.WTF_OPERATOR_SIGNER_RPC,
+  });
+  env.WTF_OPERATOR_SIGNER_RPC = chainProbe.rpcUrl;
+  const expectedChainId = chainProbe.chainId;
   const existingCredentials = await readExistingCredentials(credentialsPath);
   const keyring = new PlatformWalletKeyring(env);
   const seeded: SeededActor[] = [];
@@ -727,6 +756,7 @@ async function main() {
       id: actor.walletId,
       label: `${actor.displayName} E2E Puppet`,
       network,
+      expectedChainId,
     });
     await verifyWalletSignerUsable(keyring, {
       actorId: actor.id,

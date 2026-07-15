@@ -1,4 +1,4 @@
-FROM node:20-slim AS builder
+FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS builder
 
 WORKDIR /app
 
@@ -28,7 +28,7 @@ ENV VITE_BARTER_CONTRACT_ADDRESS=$VITE_BARTER_CONTRACT_ADDRESS
 COPY . .
 RUN npm run build
 
-FROM node:20-slim
+FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
 
 # Runtime deps:
 #   • ffmpeg               — TV cache transcoding
@@ -107,7 +107,7 @@ COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD curl -sf http://localhost:3000/api/health || exit 1
+  CMD curl -sf http://localhost:3000/api/health/ready || exit 1
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "dist/index.cjs"]

@@ -8,16 +8,11 @@ import type {
   PlatformWalletPublic,
   PlatformWalletRole,
 } from "../../../shared/operator-signer";
+import { probeRpcChainId, TEZOS_CHAIN_ID_BY_NETWORK } from "./network";
 
 const KEYRING_VERSION = 1;
 const TEZOS_DERIVATION_PATH = "m/44'/1729'/0'/0'";
 const AAD = Buffer.from("wtf-platform-wallet-keyring-v1");
-const TEZOS_CHAIN_ID_BY_NETWORK: Partial<Record<PlatformWalletNetwork, string>> = {
-  mainnet: "NetXdQprcVkpaWU",
-  ghostnet: "NetXnHfVqm9iesp",
-  shadownet: "NetXsqzbfFenSTS",
-};
-
 type StoredSecret = {
   alg: "aes-256-gcm";
   iv: string;
@@ -113,6 +108,29 @@ export class PlatformWalletKeyring {
     };
 
     store.wallets.push(wallet);
+    await this.writeStore(store);
+    return this.toPublicWallet(wallet);
+  }
+
+  async retargetWalletNetwork(input: {
+    id: string;
+    network: PlatformWalletNetwork;
+  }): Promise<PlatformWalletPublic> {
+    if (!this.isConfigured()) {
+      throw new Error(`platform keyring is locked; cannot retarget wallet ${input.id}`);
+    }
+
+    const store = await this.readStore();
+    const wallet = store.wallets.find((candidate) => candidate.id === input.id);
+    if (!wallet) {
+      throw new Error(`platform wallet not found: ${input.id}`);
+    }
+
+    const identity = await this.resolvePublicIdentity(wallet.address, input.network);
+    wallet.network = input.network;
+    wallet.chainId = identity.chainId;
+    wallet.did = identity.did;
+    wallet.updatedAt = new Date().toISOString();
     await this.writeStore(store);
     return this.toPublicWallet(wallet);
   }
@@ -264,14 +282,14 @@ export class PlatformWalletKeyring {
   private async resolveChainId(
     network: PlatformWalletNetwork
   ): Promise<string | undefined> {
-    const inferredNetwork = inferNetwork(this.env.WTF_OPERATOR_SIGNER_RPC);
-    if (network === inferredNetwork || network === "custom") {
-      const rpcChainId = await readRpcChainId(
-        this.env.WTF_OPERATOR_SIGNER_RPC
-      ).catch(() => undefined);
-      if (rpcChainId) return rpcChainId;
-    }
-    return TEZOS_CHAIN_ID_BY_NETWORK[network];
+    const namedChainId = TEZOS_CHAIN_ID_BY_NETWORK[network];
+    if (namedChainId) return namedChainId;
+    return (
+      await probeRpcChainId({
+        network,
+        rpcUrl: this.env.WTF_OPERATOR_SIGNER_RPC,
+      }).catch(() => undefined)
+    )?.chainId;
   }
 
   private async toPublicWallet(
@@ -295,19 +313,4 @@ function inferNetwork(rpcUrl: string): PlatformWalletNetwork {
   if (lower.includes("shadownet")) return "shadownet";
   if (lower.includes("mainnet") || lower.includes("tzkt.io")) return "mainnet";
   return "custom";
-}
-
-async function readRpcChainId(rpcUrl: string): Promise<string> {
-  const response = await fetch(
-    `${rpcUrl.replace(/\/+$/, "")}/chains/main/chain_id`
-  );
-  if (!response.ok) {
-    throw new Error(`chain id probe failed: HTTP ${response.status}`);
-  }
-  const text = (await response.text()).trim();
-  try {
-    return String(JSON.parse(text)).trim();
-  } catch {
-    return text.replace(/^"|"$/g, "");
-  }
 }

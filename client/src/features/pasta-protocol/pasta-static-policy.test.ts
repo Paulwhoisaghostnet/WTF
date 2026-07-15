@@ -79,6 +79,61 @@ test("Colander external actions pass contract context to matching Pasta tools", 
   }
 });
 
+test("Colander workspace projects receive deployments from every Pasta publisher", () => {
+  for (const appId of PASTA_APPS) {
+    const common = readRepoFile(commonPath(appId));
+    const studio = readRepoFile(studioPath(appId));
+    assert.match(common, /projectId:\s*params\.get\("projectId"\)/, `${appId} should read Colander project context`);
+    assert.match(common, /function recordColanderContract/, `${appId} should expose the project deployment bridge`);
+    assert.match(common, /wtfos\.pasta\.colander\.workspace\.v1/, `${appId} should write the versioned local workspace`);
+    assert.match(studio, new RegExp(`MD\\.recordColanderContract\\([^,]+, "${appId}"\\)`), `${appId} should attach a deployed KT1 to its Colander project`);
+  }
+});
+
+test("every Pasta publisher exports the shared self-hosted collector site vertical slice", () => {
+  const canonicalHtml = readRepoFile("scripts/pasta-protocol/site-kit/site.html");
+  const canonicalCss = readRepoFile("scripts/pasta-protocol/site-kit/site.css");
+  const canonicalRuntime = readRepoFile("scripts/pasta-protocol/site-kit/site.js");
+  const canonicalBundle = readRepoFile("scripts/pasta-protocol/site-kit/site-bundle.js");
+
+  assert.match(canonicalHtml, /pasta\.config\.js/);
+  assert.match(canonicalHtml, /vendor\/octez-connect\.js/);
+  assert.match(canonicalRuntime, /MD\.assertOperationSafety\(\)/);
+  assert.match(canonicalRuntime, /open_mint/);
+  assert.match(canonicalRuntime, /methodsObject\.claim/);
+  assert.match(canonicalRuntime, /methodsObject\.redeem/);
+  assert.match(canonicalRuntime, /methodsObject\.buy/);
+  assert.match(canonicalRuntime, /Primary sale open/);
+  assert.match(canonicalRuntime, /Number\.isSafeInteger\(amount\)/);
+  assert.match(canonicalRuntime, /Only \$\{state\.maxAmount\} editions remain/);
+  assert.match(canonicalBundle, /recordColanderSite/);
+
+  for (const appId of PASTA_APPS) {
+    const index = readRepoFile(`public/creation-tools/${appId}/index.html`);
+    assert.match(index, /id="btnExportSite"/, `${appId} should expose site export`);
+    assert.match(index, new RegExp(`app: "${appId}"`), `${appId} should configure its collector action`);
+    assert.equal(readRepoFile(`public/creation-tools/${appId}/site.html`), canonicalHtml, `${appId} site HTML drift`);
+    assert.equal(readRepoFile(`public/creation-tools/${appId}/css/site.css`), canonicalCss, `${appId} site CSS drift`);
+    assert.equal(readRepoFile(`public/creation-tools/${appId}/js/site.js`), canonicalRuntime, `${appId} site runtime drift`);
+    assert.equal(readRepoFile(`public/creation-tools/${appId}/js/site-bundle.js`), canonicalBundle, `${appId} site bundle drift`);
+  }
+});
+
+test("fixed-edition publishers originate the sale-enabled storage shape and configure primary sales", () => {
+  for (const appId of ["spaghetti", "rotini", "ravioli"]) {
+    const studio = readRepoFile(`public/creation-tools/${appId}/js/studio.js`);
+    const manifestName = appId === "ravioli" ? "pasta-bundle.template.json" : "pasta-standard-collection.template.json";
+    const manifest = JSON.parse(readRepoFile(`public/creation-tools/${appId}/contract/${manifestName}`));
+    assert.match(studio, /sales: new M\(\)/, `${appId} origination must initialize sales storage`);
+    assert.match(studio, /methodsObject\.set_sale/, `${appId} publish must configure its direct sale`);
+    assert(manifest.entrypoints.includes("set_sale"), `${appId} artifact manifest must expose set_sale`);
+    assert(manifest.entrypoints.includes("set_sale_active"), `${appId} artifact manifest must expose set_sale_active`);
+    assert(manifest.entrypoints.includes("buy"), `${appId} artifact manifest must expose buy`);
+    assert(manifest.entrypoints.includes("transfer_administration"), `${appId} artifact manifest must expose admin transfer`);
+    assert(manifest.entrypoints.includes("accept_administration"), `${appId} artifact manifest must expose admin acceptance`);
+  }
+});
+
 test("Colander discovery supports Shadownet proof contracts before signed actions", () => {
   const colander = readRepoFile("client/src/features/pasta-protocol/colander/ColanderApp.tsx");
   assert.match(colander, /shadownet\.tzkt\.io/, "Colander should link Shadownet contracts to Shadownet TzKT");
@@ -88,7 +143,12 @@ test("Colander discovery supports Shadownet proof contracts before signed action
   assert.match(colander, /\^https:\\\/\\\//, "Colander should allow HTTPS relationship metadata reads");
   assert.match(
     colander,
-    /await assertNetworkReadyForSend\(me\)/,
+    /await colanderAssertNetworkReadyForSend\(me\)/,
     "Colander should verify wallet account and chain id before signed writes",
+  );
+  assert.match(
+    colander,
+    /\?\? assertNetworkReadyForSend\)\(address\)/,
+    "Colander's test harness seam must delegate to the production preflight by default",
   );
 });

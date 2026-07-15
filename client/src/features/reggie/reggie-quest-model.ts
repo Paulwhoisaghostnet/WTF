@@ -34,6 +34,15 @@ export interface ReggieQuestState {
   finale: ReggieQuestStepState | null;
 }
 
+export const REGGIE_SUMMON_EVENT = "wtf:reggie:summon";
+
+export interface ReggieSummonEventDetail {
+  source?: string;
+  x?: number;
+  y?: number;
+  message?: string;
+}
+
 /**
  * Anchors Reggie can walk to. Each anchor maps to an ordered list of CSS
  * selectors; the first match wins. Desktop icons already carry

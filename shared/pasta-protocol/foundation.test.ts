@@ -433,3 +433,31 @@ test("availableActions only returns actions whose entrypoint exists", () => {
   const ids = availableActions(adapter, eps).map((a) => a.id);
   assert.deepEqual(ids.sort(), ["mint", "transfer"]);
 });
+
+test("fixed-edition adapters expose direct-sale management when the contract supports it", () => {
+  const standardEntrypoints = [...FA2_BASE, "create_token", "set_sale", "set_sale_active", "buy"];
+  const standard = detectPastaContract(standardEntrypoints)!;
+  assert.deepEqual(
+    availableActions(standard, standardEntrypoints).filter((action) => action.group === "sale").map((action) => action.id),
+    ["set_sale", "set_sale_active"]
+  );
+
+  const bundleEntrypoints = [...FA2_BASE, "create_bundle", "redeem", "set_sale", "set_sale_active", "buy"];
+  const bundle = detectPastaContract(bundleEntrypoints)!;
+  assert.deepEqual(
+    availableActions(bundle, bundleEntrypoints).filter((action) => action.group === "sale").map((action) => action.id),
+    ["set_sale", "set_sale_active"]
+  );
+});
+
+test("bundle and open-edition adapters route their complete management stories", () => {
+  const bundleEntrypoints = [...FA2_BASE, "create_bundle", "redeem", "set_bundle_contents", "set_sale", "set_sale_active", "buy"];
+  const bundleActions = availableActions(detectPastaContract(bundleEntrypoints)!, bundleEntrypoints);
+  assert(bundleActions.some((action) => action.id === "redeem" && !action.external));
+  assert(bundleActions.some((action) => action.id === "set_bundle_contents" && !action.external));
+
+  const openEntrypoints = [...FA2_BASE, "create_open_edition", "set_sale", "set_sale_active", "open_mint"];
+  const openActions = availableActions(detectPastaContract(openEntrypoints)!, openEntrypoints);
+  assert(openActions.some((action) => action.id === "set_sale" && action.external === "gnocchi"));
+  assert(openActions.some((action) => action.id === "set_sale_active" && !action.external));
+});

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Cold-storage backup for the wtfOS AT DATA BOX (dedicated PDS fleet + self-hosted PLC).
+# Cold-storage backup for the wtfOS AT DATA BOX (dedicated PDS fleet).
 #
 # Context: as of the storage split, the PDS fleet (master + 7 domain + users + private)
-# and the self-hosted PLC run on a dedicated, privately-networked box (private 10.0.0.3).
+# run on a dedicated, privately-networked box (private 10.0.0.3).
 # Their data lives in HOST BIND MOUNTS under /mnt/wtf-data/<vol> (NOT Docker named volumes).
 # The wtfOS app/AppView + canonical Postgres stay on the main box and are backed up by the
 # existing Supabase/Postgres job; THIS script covers only the data-box volumes.
@@ -24,8 +24,8 @@ STAMP="$(date +%F-%H%M%S)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-# The 10 PDS data dirs + the PLC postgres dir (see docker-compose.yml WTFOS_PDS_*_DATA_DIR).
-VOLS="pds pds-social pds-commerce pds-media pds-arcade pds-tezos pds-ops pds-os pds-users pds-private plc-db"
+# The 10 PDS data dirs (see docker-compose.yml WTFOS_PDS_*_DATA_DIR).
+VOLS="pds pds-social pds-commerce pds-media pds-arcade pds-tezos pds-ops pds-os pds-users pds-private"
 
 echo "[databox-backup] $STAMP snapshotting under $DATA_ROOT"
 for v in $VOLS; do
@@ -40,5 +40,5 @@ echo "[databox-backup] uploading to ${STORAGE_USER}@${STORAGE_HOST}:${STORAGE_PO
 ssh -p "$STORAGE_PORT" "${STORAGE_USER}@${STORAGE_HOST}" "mkdir -p ${REMOTE_DIR}/${STAMP}" 2>/dev/null || true
 scp -P "$STORAGE_PORT" "$WORK"/*.tar.gz "${STORAGE_USER}@${STORAGE_HOST}:${REMOTE_DIR}/${STAMP}/"
 echo "[databox-backup] done: $(ls "$WORK"/*.tar.gz | wc -l) archives -> ${REMOTE_DIR}/${STAMP}/"
-echo "[databox-backup] reminder: PLC rotation keys + WTFOS_PRIVATE_PDS_ENC_KEY are NOT in these"
+echo "[databox-backup] reminder: PDS rotation keys + WTFOS_PRIVATE_PDS_ENC_KEY are NOT in these"
 echo "                 volumes — keep them in the secrets manager + offline escrow (see runbook)."

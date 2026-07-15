@@ -6,6 +6,7 @@ import {
   describeAccountState,
   progressPercent,
   recommendedStep,
+  REGGIE_SUMMON_EVENT,
   REGGIE_ROUTE_CHECKPOINTS,
   selectorsForAnchor,
   shouldShowReggie,
@@ -99,6 +100,10 @@ test("shouldShowReggie gates on user, completion, and snooze", () => {
   );
   // Quest state not yet loaded: still show Reggie for signed-in users.
   assert.equal(shouldShowReggie({ hasUser: true, questState: null, dismissedUntil: null }), true);
+});
+
+test("Reggie summon event has a stable desktop contract", () => {
+  assert.equal(REGGIE_SUMMON_EVENT, "wtf:reggie:summon");
 });
 
 test("checkpointsForRoute matches exact routes and subroutes only", () => {

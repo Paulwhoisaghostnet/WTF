@@ -6,9 +6,16 @@ const hostRouter = readFileSync("server/features/wtf-sites/host-router.ts", "utf
 const pdsRenderer = readFileSync("scripts/wtfos-user-site-renderer.ts", "utf8");
 
 test("user-site CSP allows WalletConnect relay and verification frame", () => {
+  assert.match(hostRouter, /const USER_SITE_WALLET_CONNECT_SOURCES = \[/);
+  assert.match(hostRouter, /`connect-src 'self' https: \$\{USER_SITE_WALLET_CONNECT_SOURCES\.join\(" "\)\}`/);
+  assert.match(hostRouter, /const USER_SITE_WALLET_FRAME_SOURCES = \[/);
+  assert.match(hostRouter, /`frame-src \$\{USER_SITE_WALLET_FRAME_SOURCES\.join\(" "\)\}`/);
+  assert.match(pdsRenderer, /connect-src 'self' https: wss:\/\/relay\.walletconnect\.org/);
+  assert.match(pdsRenderer, /frame-src https:\/\/verify\.walletconnect\.org/);
+
   for (const source of [hostRouter, pdsRenderer]) {
-    assert.match(source, /connect-src 'self' https: wss:\/\/relay\.walletconnect\.org/);
-    assert.match(source, /frame-src https:\/\/verify\.walletconnect\.org/);
+    assert.match(source, /wss:\/\/relay\.walletconnect\.org/);
+    assert.match(source, /https:\/\/verify\.walletconnect\.org/);
     assert.match(source, /wss:\/\/\*\.octez\.io/);
     assert.match(source, /wss:\/\/walletbeacon\.io/);
     assert.match(source, /wss:\/\/\*\.walletbeacon\.io/);

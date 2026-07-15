@@ -37,6 +37,41 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
+const UTC_WEEKDAY_NAMES = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+] as const;
+
+function parseUtcWeekdays(params: Record<string, unknown>) {
+  const values = Array.isArray(params.weekdays)
+    ? params.weekdays
+    : Array.isArray(params.days)
+      ? params.days
+      : [params.weekday ?? params.day].filter((value) => value !== undefined);
+  const weekdays = new Set<number>();
+  for (const value of values) {
+    if (typeof value === "number" && Number.isInteger(value)) {
+      if (value >= 0 && value <= 6) weekdays.add(value);
+      continue;
+    }
+    const raw = String(value ?? "").trim().toLowerCase();
+    if (!raw) continue;
+    const numeric = Number(raw);
+    if (Number.isInteger(numeric) && numeric >= 0 && numeric <= 6) {
+      weekdays.add(numeric);
+      continue;
+    }
+    const index = UTC_WEEKDAY_NAMES.findIndex((name) => name === raw);
+    if (index >= 0) weekdays.add(index);
+  }
+  return [...weekdays].sort((a, b) => a - b);
+}
+
 function secondsForWindow(window?: EventConditionNode["window"]) {
   if (!window) return null;
   const amount = Number(window.amount);
@@ -270,6 +305,21 @@ async function evaluatePredicateCondition(
         .limit(1);
       satisfied = rows.length === 0;
       detail = { completionKey: key, alreadyClaimed: rows.length > 0 };
+      break;
+    }
+    case "time.utc_weekday": {
+      const weekdays = parseUtcWeekdays(params);
+      const now = context.now ?? new Date();
+      const currentWeekday = now.getUTCDay();
+      satisfied = weekdays.includes(currentWeekday);
+      detail = {
+        timezone: "UTC",
+        currentWeekday,
+        currentDay: UTC_WEEKDAY_NAMES[currentWeekday],
+        requiredWeekdays: weekdays,
+        requiredDays: weekdays.map((day) => UTC_WEEKDAY_NAMES[day]),
+        now: now.toISOString(),
+      };
       break;
     }
     default: {

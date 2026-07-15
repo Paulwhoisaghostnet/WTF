@@ -189,6 +189,7 @@ function buildOriginationStorage(admin: string, collectionMetadataUri: string) {
     operators: new MichelsonMap(),
     token_metadata: new MichelsonMap(),
     total_supply: new MichelsonMap(),
+    sales: new MichelsonMap(),
     minters: new MichelsonMap(),
     next_token_id: 0,
   };
@@ -226,14 +227,18 @@ async function main(): Promise<void> {
   await assertShadownet(collectorTezos, "collector startup");
 
   const creatorBalance = await creatorTezos.tz.getBalance(creator.address);
+  const collectorBalance = await collectorTezos.tz.getBalance(collector.address);
   const creatorBalanceMutez = Number(creatorBalance.toString());
-  if (creatorBalanceMutez < MIN_PREFLIGHT_BALANCE_MUTEZ) {
-    block("creator wallet has insufficient Shadownet balance", [
+  const collectorBalanceMutez = Number(collectorBalance.toString());
+  if (creatorBalanceMutez < MIN_PREFLIGHT_BALANCE_MUTEZ || collectorBalanceMutez < MIN_PREFLIGHT_BALANCE_MUTEZ) {
+    block("creator or collector wallet has insufficient Shadownet balance", [
       `Creator \`${creator.address}\` has only \`${creatorBalance.toString()}\` mutez on Shadownet.`,
-      "Fund the signer with Shadownet test tez, then rerun with `PASTA_SHADOWNET_E2E_EXECUTE=1`.",
+      `Collector \`${collector.address}\` has only \`${collectorBalance.toString()}\` mutez on Shadownet.`,
+      "Fund both signers with Shadownet test tez, then rerun with `PASTA_SHADOWNET_E2E_EXECUTE=1`.",
     ]);
   }
   ok(`creator ${creator.address} has ${creatorBalance.toString()} mutez`);
+  ok(`collector ${collector.address} has ${collectorBalance.toString()} mutez`);
 
   const code = await readContractArtifact();
   const entrypoints = collectAnnotations(code);
@@ -288,23 +293,25 @@ async function main(): Promise<void> {
     mintOps.push(mint.hash);
   }
 
-  await assertShadownet(creatorTezos, "before transfer");
-  const transfer = await contract.methodsObject
-    .transfer([
-      {
-        from_: creator.address,
-        txs: [{ to_: collector.address, token_id: 1, amount: 1 }],
-      },
-    ])
-    .send();
-  await transfer.confirmation(1);
-  ok(`transferred generated token 1 to collector with ${transfer.hash}`);
+  await assertShadownet(creatorTezos, "before set_sale");
+  const setSale = await contract.methodsObject.set_sale({
+    token_id: 1,
+    sale: { active: true, seller: creator.address, treasury: creator.address, price: 1_000, remaining: 1, start: null, end: null },
+  }).send();
+  await setSale.confirmation(1);
+  ok(`opened generated token 1 direct sale with ${setSale.hash}`);
+
+  await assertShadownet(collectorTezos, "before buy");
+  const collectorContract = await collectorTezos.contract.at(originated.address);
+  const buy = await collectorContract.methodsObject.buy({ token_id: 1, amount: 1 }).send({ amount: 1_000, mutez: true });
+  await buy.confirmation(1);
+  ok(`collector bought generated token 1 directly with ${buy.hash}`);
 
   const storageUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/contracts/${encodeURIComponent(originated.address)}/storage`;
   const indexedStorage = await pollJson(
     "contract storage",
     storageUrl,
-    (json) => Number(json?.ledger) > 0 && Number(json?.token_metadata) > 0 && Number(json?.total_supply) > 0,
+    (json) => Number(json?.ledger) > 0 && Number(json?.token_metadata) > 0 && Number(json?.total_supply) > 0 && Number(json?.sales) > 0,
   );
   const ledgerUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.ledger}/keys?limit=100`;
   const ledgerKeys = await pollJson(
@@ -331,6 +338,13 @@ async function main(): Promise<void> {
   const collectorLedgerEntry = ledgerKeys.find(
     (entry: any) => entry?.key?.owner === collector.address && String(entry?.key?.token_id) === "1",
   );
+  const salesUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.sales}/keys?limit=100`;
+  const salesKeys = await pollJson(
+    "generated sale big map key",
+    salesUrl,
+    (json) => Array.isArray(json) && json.some((entry) => String(entry?.key) === "1" && Number(entry?.value?.remaining) === 0),
+  );
+  const saleEntry = salesKeys.find((entry: any) => String(entry?.key) === "1");
 
   const totalSupplyUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.total_supply}/keys?limit=100`;
   const totalSupplyKeys = await pollJson(
@@ -372,7 +386,7 @@ async function main(): Promise<void> {
   await writeReport("PASSED", [
     "## Result",
     "",
-    "- Signer-backed Rotini Shadownet generative deploy/create/mint/collect proof passed.",
+    "- Signer-backed Rotini Shadownet generative deploy/create/mint/direct-sale proof passed.",
     `- Creator wallet: \`${creator.id}\` / \`${creator.address}\``,
     `- Collector wallet: \`${collector.id}\` / \`${collector.address}\``,
     `- Contract: \`${originated.address}\``,
@@ -383,13 +397,15 @@ async function main(): Promise<void> {
     `- Origination: \`${originate.hash}\``,
     `- Create tokens: ${createTokenOps.map((hash) => `\`${hash}\``).join(", ")}`,
     `- Mint generated editions: ${mintOps.map((hash) => `\`${hash}\``).join(", ")}`,
-    `- Transfer/collect: \`${transfer.hash}\``,
+    `- Configure direct sale: \`${setSale.hash}\``,
+    `- Direct purchase: \`${buy.hash}\``,
     "",
     "## Indexed Proof",
     "",
     `- Contract storage indexed ledger big map \`${indexedStorage.ledger}\`, token_metadata big map \`${indexedStorage.token_metadata}\`, and total_supply big map \`${indexedStorage.total_supply}\`.`,
     `- Creator ledger big-map entry returned balance \`${creatorLedgerEntry?.value}\` for token 0.`,
     `- Collector ledger big-map entry returned balance \`${collectorLedgerEntry?.value}\` for token 1.`,
+    `- Sale big-map entry returned remaining=\`${saleEntry?.value?.remaining}\` after purchase.`,
     `- Total supply big-map entries returned ${totalSupplySummary}.`,
     `- Token metadata big-map entries decoded to \`${indexedTokenMetadatas[0].name}\` and \`${indexedTokenMetadatas[1].name}\` with relationship, trait attributes, and Rotini DNA intact.`,
     `- Relationship group: \`${metadata.relationship.collection_group}\``,
@@ -397,7 +413,7 @@ async function main(): Promise<void> {
     "",
     "## Scope",
     "",
-    "- This proves signer-backed Shadownet origination, deterministic generated-token metadata, token creation, minting, transfer/collect, total supply, and ownership resolution for Rotini generative collections.",
+    "- This proves signer-backed Shadownet origination, deterministic generated-token metadata, token creation, minting, creator-configured primary sale, collector purchase, total supply, and ownership resolution for Rotini generative collections.",
     "- It does not yet prove WTF.ME page hosting, wtfOS hosted pinning, Colander real-contract discovery, browser wallet batching, or every Pasta publisher variant.",
   ]);
 }

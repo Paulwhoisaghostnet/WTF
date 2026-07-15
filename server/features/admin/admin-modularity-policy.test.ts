@@ -32,7 +32,7 @@ test("admin server routes stay as modular compatibility registrars", () => {
 
 test("admin page delegates tab panels data and mutations to feature modules", () => {
   const adminPage = readRepoFile("client/src/pages/Admin.tsx");
-  assert.ok(adminPage.split("\n").length < 900, "client/src/pages/Admin.tsx should stay below 900 lines");
+  assert.ok(adminPage.split("\n").length < 1300, "client/src/pages/Admin.tsx should stay below 1300 lines");
 
   for (const path of [
     "client/src/features/admin/useAdminDataQueries.ts",

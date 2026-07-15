@@ -25,6 +25,20 @@ test("Dashboard Gamma chrome overrides app-owned cockpit panels without changing
   assert.match(dashboardSource, /#f2ead9/);
 });
 
+test("Dashboard Gamma next-action rail is presentation-only and route-backed", () => {
+  assert.match(dashboardSource, /GAMMA_DASHBOARD_ACTIONS/);
+  assert.match(dashboardSource, /presentation\.host === "gamma"/);
+  assert.match(dashboardSource, /data-dashboard-gamma-next-actions/);
+  assert.match(dashboardSource, /data-dashboard-gamma-action=\{action\.key\}/);
+  assert.match(dashboardSource, /data-dashboard-launch=\{action\.route\}/);
+  assert.match(dashboardSource, /route: "\/side-quests"/);
+  assert.match(dashboardSource, /route: "\/challenges"/);
+  assert.match(dashboardSource, /route: "\/w"/);
+  assert.match(dashboardSource, /route: "\/wtfiam\?category=apps"/);
+  assert.match(dashboardSource, /route: "\/messages"/);
+  assert.match(dashboardSource, /route: "\/profile"/);
+});
+
 test("Dashboard keeps shared cockpit, wallet, reward, and portfolio behavior", () => {
   assert.match(dashboardSource, /api\.get<any\[]>\("\/api\/wallets"\)/);
   assert.match(dashboardSource, /api\.get<\{ balance: string \}>\(`\/api\/wallets\/\$\{balanceAddr\}\/balance`\)/);

@@ -23,7 +23,10 @@ test("frontend bundle stubs Node-only wallet imports for the browser", () => {
   ]) {
     const quoted = JSON.stringify(alias);
     const unquoted = /^[a-z]+$/.test(alias) ? escapeRegExp(alias) : quoted;
-    assert.match(viteConfig, new RegExp(`(?:${quoted}|${unquoted}):\\s*emptyModule`));
+    assert.match(
+      viteConfig,
+      new RegExp(`(?:${quoted}|${unquoted}):\\s*emptyModule|find:\\s*${quoted},\\s*replacement:\\s*emptyModule`),
+    );
   }
 });
 

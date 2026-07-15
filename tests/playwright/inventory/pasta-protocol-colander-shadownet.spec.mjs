@@ -15,7 +15,7 @@ const PROVEN_CONTRACTS = [
     label: "Open edition",
     group: "gnocchi-shadownet-e2e-mr1oadsz",
     facts: ["Token types", "1"],
-    actions: ["Pause / resume sale", "Transfer token", "Mint more"],
+    actions: ["Edit sale configuration", "Pause / resume sale", "Transfer token", "Mint more"],
   },
   {
     app: "Ravioli",
@@ -23,7 +23,7 @@ const PROVEN_CONTRACTS = [
     label: "Bundle",
     group: "ravioli-shadownet-e2e-mr1pdpt4",
     facts: ["Token types", "1"],
-    actions: ["Transfer token", "Mint more", "Transfer admin"],
+    actions: ["Transfer token", "Mint more", "Redeem bundle", "Reveal / update contents", "Transfer admin"],
   },
   {
     app: "Rotini",
@@ -53,6 +53,7 @@ const PROVEN_CONTRACTS = [
 const LASAGNA_PROOF_CONTRACT = "KT1TEz2Rq8nUiNcJEAssrdrTqPj1h3ZN9B8r";
 const LASAGNA_ADMIN = "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej";
 const SHADOWNET_CHAIN_ID = "NetXsqzbfFenSTS";
+const COLANDER_FIXTURE_ADMIN = "tz1ColanderShadownetFixtureAdmin1111111111";
 
 async function setHarnessRole(request, role) {
   const res = await request.post("/__test/state", { data: { userRole: role } });
@@ -66,8 +67,141 @@ function fatalErrors(errors) {
   });
 }
 
+async function installColanderReadFixture(page) {
+  await page.addInitScript(
+    ({ contracts, admin }) => {
+      const FA2_BASE = ["transfer", "update_operators", "balance_of", "mint", "burn"];
+      const entrypointsByApp = {
+        Spaghetti: [...FA2_BASE, "create_token", "transfer_administration", "accept_administration"],
+        Gnocchi: [...FA2_BASE, "create_open_edition", "set_sale", "set_sale_active", "open_mint"],
+        Ravioli: [
+          ...FA2_BASE,
+          "create_bundle",
+          "redeem",
+          "set_bundle_contents",
+          "transfer_administration",
+          "accept_administration",
+        ],
+        Rotini: [...FA2_BASE, "create_token", "transfer_administration", "accept_administration"],
+        Penne: [
+          ...FA2_BASE,
+          "create_token",
+          "set_allocations",
+          "open_claim",
+          "claim",
+          "airdrop",
+          "transfer_administration",
+          "accept_administration",
+        ],
+        Lasagna: [
+          "add_curator",
+          "remove_curator",
+          "publish_revision",
+          "set_current_revision",
+          "transfer_administration",
+          "accept_administration",
+        ],
+      };
+      const toHex = (value) =>
+        Array.from(value)
+          .map((char) => char.charCodeAt(0).toString(16).padStart(2, "0"))
+          .join("");
+      const fixtures = new Map(
+        contracts.map((contract) => {
+          const metadataUri = `data:application/json;base64,${btoa(JSON.stringify({
+            name: `${contract.app} Colander Proof`,
+            relationships: {
+              parent_contract: contracts[0].address,
+              collection_group: contract.group,
+            },
+          }))}`;
+          return [
+            contract.address,
+            {
+              ...contract,
+              metadataHex: toHex(metadataUri),
+              entrypoints: entrypointsByApp[contract.app] || [],
+              factName: contract.facts[0],
+              factValue: Number(contract.facts[1]),
+            },
+          ];
+        }),
+      );
+
+      window.localStorage.setItem("wtf:network", "shadownet");
+      window.__wtfColanderTezosHarness = {
+        async getTezos() {
+          return {
+            contract: {
+              async at(address) {
+                const fixture = fixtures.get(address);
+                if (!fixture) throw new Error(`Missing Colander fixture for ${address}`);
+                return {
+                  address,
+                  entrypoints: {
+                    entrypoints: Object.fromEntries(fixture.entrypoints.map((entrypoint) => [entrypoint, {}])),
+                  },
+                  async storage() {
+                    return {
+                      administrator: admin,
+                      pending_administrator: null,
+                      next_token_id:
+                        fixture.factName === "Token types"
+                          ? { toNumber: () => fixture.factValue }
+                          : undefined,
+                      revision_count:
+                        fixture.factName === "Revisions"
+                          ? { toNumber: () => fixture.factValue }
+                          : undefined,
+                      metadata: { get: async () => fixture.metadataHex },
+                    };
+                  },
+                };
+              },
+            },
+          };
+        },
+      };
+    },
+    { contracts: PROVEN_CONTRACTS, admin: COLANDER_FIXTURE_ADMIN },
+  );
+}
+
 test.describe("interaction inventory - Pasta Protocol Colander Shadownet discovery", () => {
   test.setTimeout(180_000);
+
+  test("creates and persists a central project, then routes its context to a specialized app", async ({ page, request }) => {
+    await setHarnessRole(request, "admin");
+    await page.addInitScript(() => {
+      window.localStorage.setItem("wtf:network", "shadownet");
+    });
+
+    await page.goto("/tools/colander", { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => window.localStorage.removeItem("wtfos.pasta.colander.workspace.v1"));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    const workspace = page.getByTestId("colander-workspace");
+    await expect(workspace).toBeVisible({ timeout: 30_000 });
+    await workspace.getByTestId("colander-project-title").fill("Forever OE release");
+    await workspace.getByTestId("colander-project-tool").selectOption("gnocchi");
+    await workspace.getByTestId("colander-create-project").click();
+    await expect(workspace).toContainText("Forever OE release");
+    await expect(workspace).toContainText("planning · 0 contracts");
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("colander-workspace")).toContainText("Forever OE release");
+
+    const popupPromise = page.waitForEvent("popup");
+    await page.locator('[data-colander-tool="gnocchi"]').getByRole("button").click();
+    const popup = await popupPromise;
+    expect(popup.url()).toContain("/tools/gnocchi?");
+    expect(popup.url()).toContain("handoff=colander-workspace");
+    expect(popup.url()).toContain("projectTitle=Forever+OE+release");
+
+    await expect.poll(async () => {
+      const state = await (await request.get("/__test/state")).json();
+      return state.interactionLog.map((event) => event.eventType);
+    }).toEqual(expect.arrayContaining(["colander.project_created", "colander.tool_launched"]));
+  });
 
   test("opens proven Shadownet Pasta contracts with adapters, actions, explorer links, and metadata graph", async ({
     page,
@@ -80,9 +214,7 @@ test.describe("interaction inventory - Pasta Protocol Colander Shadownet discove
       if (message.type() === "error") errors.push(`console: ${message.text()}`);
     });
 
-    await page.addInitScript(() => {
-      window.localStorage.setItem("wtf:network", "shadownet");
-    });
+    await installColanderReadFixture(page);
 
     await page.goto("/tools/colander", { waitUntil: "domcontentloaded" });
     const surface = page.locator('[data-testid="colander-app"]');

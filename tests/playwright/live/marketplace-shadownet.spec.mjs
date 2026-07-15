@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { access, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { test, expect } from "@playwright/test";
@@ -12,6 +13,7 @@ const EXPECTED_MARKETPLACE =
   "KT1U9cZBQAZwTTnSrwdgBso5W25LqjgeSsYy";
 const EXPECTED_IN_APP_MARKET =
   process.env.IN_APP_MARKET_CONTRACT_ADDRESS ||
+  process.env.WTF_IN_APP_MARKET_CONTRACT_ADDRESS ||
   process.env.VITE_IN_APP_MARKET_CONTRACT_ADDRESS ||
   "KT1MdvE9hYFpQP7boybqSJ9XNfXjLUG6QZrC";
 const EXPECTED_SAMPLE_FA2 =
@@ -204,7 +206,7 @@ test.describe("local Shadownet Marketplace V2 puppet confidence", () => {
       const user = await expectOkJson(await request.get("/api/auth/user"), "puppet auth user");
       expect(user.username).toBe(bert.username);
 
-      const healthResponse = await request.get("/api/health");
+      const healthResponse = await request.get("/api/health/diagnostics");
       expect([200, 503]).toContain(healthResponse.status());
       const health = await healthResponse.json();
       expect(health.chain?.network).toBe("shadownet");
@@ -269,6 +271,9 @@ test.describe("local Shadownet Marketplace V2 puppet confidence", () => {
     );
     try {
       await page.goto("/marketplace", { waitUntil: "domcontentloaded" });
+      await expect(
+        page.locator('[data-marketplace-surface="marketplace"]')
+      ).toBeVisible({ timeout: 45_000 });
       await expect(
         page.locator("span").filter({ hasText: "WTF On Chain Market + Trade Boards" })
       ).toBeVisible();

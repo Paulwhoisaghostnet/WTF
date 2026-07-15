@@ -58,6 +58,9 @@ function addTokenRow(initial) {
     name: initial?.name || "",
     description: initial?.description || "",
     editions: initial?.editions || 1,
+    forSale: initial?.forSale !== false,
+    priceTez: initial?.priceTez ?? 1,
+    saleCount: initial?.saleCount || initial?.editions || 1,
     tags: initial?.tags || [],
     file: null,
     artifactUri: initial?.artifactUri || "",
@@ -66,6 +69,9 @@ function addTokenRow(initial) {
   tpl.querySelector(".t-name").value = token.name;
   tpl.querySelector(".t-desc").value = token.description;
   tpl.querySelector(".t-editions").value = String(token.editions);
+  tpl.querySelector(".t-for-sale").checked = token.forSale;
+  tpl.querySelector(".t-price").value = String(token.priceTez);
+  tpl.querySelector(".t-sale-count").value = String(token.saleCount);
   tpl.querySelector(".t-tags").value = token.tags.join(", ");
   if (token.artifactUri) tpl.querySelector(".t-status").textContent = `artifact: ${token.artifactUri}`;
 
@@ -86,6 +92,10 @@ function readTokenRow(token) {
   token.name = token.el.querySelector(".t-name").value.trim();
   token.description = token.el.querySelector(".t-desc").value.trim();
   token.editions = Math.max(1, parseInt(token.el.querySelector(".t-editions").value, 10) || 1);
+  token.forSale = token.el.querySelector(".t-for-sale").checked;
+  token.priceTez = Math.max(0, Number(token.el.querySelector(".t-price").value) || 0);
+  token.saleCount = Math.max(1, parseInt(token.el.querySelector(".t-sale-count").value, 10) || 1);
+  if (token.saleCount > token.editions) throw new Error(`sale quantity for "${token.name || "token"}" exceeds minted editions`);
   token.tags = token.el
     .querySelector(".t-tags")
     .value.split(",")
@@ -226,6 +236,7 @@ async function originateCollection(provider, me) {
     operators: new M(),
     token_metadata: new M(),
     total_supply: new M(),
+    sales: new M(),
     minters: new M(),
     next_token_id: 0,
   };
@@ -280,7 +291,7 @@ async function publishTokens(provider, kt, me, startId) {
     const cid = await MD.pinJson(provider, meta, "token.json");
     const info = new M();
     info.set("", MD.utf8ToHex("ipfs://" + cid));
-    prepared.push({ info, editions: token.editions });
+    prepared.push({ info, editions: token.editions, forSale: token.forSale, priceMutez: Math.round(token.priceTez * 1_000_000), saleCount: token.saleCount });
   }
 
   log(`creating ${prepared.length} token type(s) (sign in wallet)…`);
@@ -300,6 +311,19 @@ async function publishTokens(provider, kt, me, startId) {
   const mintOp = await mintBatch.send();
   await mintOp.confirmation();
   log("editions minted ✓");
+
+  const listed = prepared.map((p, index) => ({ ...p, tokenId: startId + index })).filter((p) => p.forSale);
+  if (listed.length) {
+    log(`opening ${listed.length} direct sale(s) (sign in wallet)…`);
+    const saleBatch = tezos.wallet.batch();
+    listed.forEach((p) => saleBatch.withContractCall(contract.methodsObject.set_sale({
+      token_id: p.tokenId,
+      sale: { active: true, seller: me, treasury: me, price: p.priceMutez, remaining: p.saleCount, start: null, end: null },
+    })));
+    const saleOp = await saleBatch.send();
+    await saleOp.confirmation();
+    log("direct primary sales opened ✓");
+  }
 }
 
 async function publish() {
@@ -322,8 +346,11 @@ async function publish() {
       startId = await startTokenId(kt);
     }
     await publishTokens(provider, kt, me, startId);
+    $("existingKt").value = kt;
+    $("exportTokenId").value = String(startId);
     log(`done — collection ${kt}`);
     if (targetMode() === "new_collection") {
+      MD.recordColanderContract(kt, "spaghetti");
       MD.logEvent("spaghetti.collection_deployed", "Spaghetti deployed a standard collection", {
         contract: kt,
         network: state.network,
@@ -378,6 +405,14 @@ function wire() {
   addTokenRow();
   const handoff = MD.consumeCheaseHandoff("spaghetti");
   if (handoff) importCheasePackage(handoff, "handoff");
+  const routeHandoff = MD.readRouteHandoff();
+  if (routeHandoff?.contract) {
+    $("existingKt").value = routeHandoff.contract;
+    document.querySelector('input[name="target"][value="existing_contract"]').checked = true;
+    $("newCollectionFields").hidden = true;
+    $("existingContractFields").hidden = false;
+  }
+  if (routeHandoff?.projectTitle && !$("collName").value) $("collName").value = routeHandoff.projectTitle;
 }
 
 wire();

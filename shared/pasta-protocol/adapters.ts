@@ -41,7 +41,10 @@ export type PastaContractActionId =
   | "add_minter"
   | "remove_minter"
   | "set_token_metadata"
+  | "set_sale"
   | "set_sale_active"
+  | "redeem"
+  | "set_bundle_contents"
   | "open_claim"
   | "claim"
   | "set_allocations"
@@ -157,12 +160,45 @@ const A_ACCEPT_ADMIN: PastaContractAction = {
   description: "Step 2: the pending admin accepts administration.",
 };
 
+const A_SET_FIXED_SALE: PastaContractAction = {
+  id: "set_sale",
+  label: "Configure direct sale",
+  group: "sale",
+  entrypoint: "set_sale",
+  access: "admin",
+  inputs: [
+    { name: "token_id", label: "Token id", type: "nat" },
+    { name: "treasury", label: "Treasury (defaults to connected wallet)", type: "address", optional: true, placeholder: "tz1…" },
+    { name: "price", label: "Price per edition (mutez)", type: "amount_mutez" },
+    { name: "remaining", label: "Quantity for sale", type: "nat" },
+    { name: "active", label: "Active", type: "bool" },
+    { name: "start", label: "Start", type: "datetime", optional: true },
+    { name: "end", label: "End", type: "datetime", optional: true },
+  ],
+  description: "List creator-held inventory for exact-price purchase from a self-hosted page.",
+};
+
+const A_SET_SALE_ACTIVE: PastaContractAction = {
+  id: "set_sale_active",
+  label: "Pause / resume sale",
+  group: "sale",
+  entrypoint: "set_sale_active",
+  access: "admin",
+  inputs: [
+    { name: "token_id", label: "Token id", type: "nat" },
+    { name: "active", label: "Active", type: "bool" },
+  ],
+  description: "Toggle the public primary-sale entrypoint without changing its price or inventory.",
+};
+
 // ---- per-type adapters ----
 
 const STANDARD_ACTIONS: PastaContractAction[] = [
   A_TRANSFER,
   A_MINT,
   A_BURN,
+  A_SET_FIXED_SALE,
+  A_SET_SALE_ACTIVE,
   A_ADD_MINTER,
   A_REMOVE_MINTER,
   A_TRANSFER_ADMIN,
@@ -187,17 +223,16 @@ export const OPEN_EDITION_ADAPTER: PastaContractAdapter = {
   actions: [
     A_TRANSFER,
     {
-      id: "set_sale_active",
-      label: "Pause / resume sale",
+      id: "set_sale",
+      label: "Edit sale configuration",
       group: "sale",
-      entrypoint: "set_sale_active",
+      entrypoint: "set_sale",
       access: "admin",
-      inputs: [
-        { name: "token_id", label: "Token id", type: "nat" },
-        { name: "active", label: "Active", type: "bool" },
-      ],
-      description: "Toggle whether the public can mint this open edition.",
+      inputs: [],
+      external: "gnocchi",
+      description: "Price curves, supply caps, treasury, and sale windows are composed in Gnocchi.",
     },
+    A_SET_SALE_ACTIVE,
     A_MINT,
     A_BURN,
     A_ADD_MINTER,
@@ -217,6 +252,32 @@ export const BUNDLE_ADAPTER: PastaContractAdapter = {
     A_TRANSFER,
     A_MINT,
     A_BURN,
+    {
+      id: "redeem",
+      label: "Redeem bundle",
+      group: "transfer",
+      entrypoint: "redeem",
+      access: "owner",
+      inputs: [
+        { name: "token_id", label: "Token id", type: "nat" },
+        { name: "amount", label: "Amount", type: "nat" },
+      ],
+      description: "Burn wrapper editions you hold and record their redemption on-chain.",
+    },
+    {
+      id: "set_bundle_contents",
+      label: "Reveal / update contents",
+      group: "metadata",
+      entrypoint: "set_bundle_contents",
+      access: "admin",
+      inputs: [
+        { name: "token_id", label: "Token id", type: "nat" },
+        { name: "contents_uri", label: "Contents manifest URI", type: "text", placeholder: "ipfs://…" },
+      ],
+      description: "Reveal a mystery bundle or point it at a replacement pinned contents manifest.",
+    },
+    A_SET_FIXED_SALE,
+    A_SET_SALE_ACTIVE,
     A_ADD_MINTER,
     A_REMOVE_MINTER,
     A_TRANSFER_ADMIN,
