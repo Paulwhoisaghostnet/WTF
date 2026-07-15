@@ -1,4 +1,4 @@
-FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS builder
+FROM node:22-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS builder
 
 WORKDIR /app
 
@@ -28,7 +28,7 @@ ENV VITE_BARTER_CONTRACT_ADDRESS=$VITE_BARTER_CONTRACT_ADDRESS
 COPY . .
 RUN npm run build
 
-FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
+FROM node:22-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3
 
 # Runtime deps:
 #   • ffmpeg               — TV cache transcoding

@@ -165,12 +165,12 @@ until docker compose exec -T postgres pg_isready -U wtf -d wtf >/dev/null 2>&1; 
   sleep 2
 done
 
-echo "[server-deploy] stopping app before migrations"
-docker compose stop app >/dev/null 2>&1 || true
-docker compose rm -f app >/dev/null 2>&1 || true
-
 echo "[server-deploy] applying production migrations"
 bash "$ROOT_DIR/scripts/apply-production-migrations.sh"
+
+echo "[server-deploy] migrations passed; replacing app"
+docker compose stop app >/dev/null 2>&1 || true
+docker compose rm -f app >/dev/null 2>&1 || true
 
 echo "[server-deploy] starting app + caddy"
 compose_up_output=""

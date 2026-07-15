@@ -9,6 +9,8 @@ const compose = readFileSync("docker-compose.yml", "utf8");
 const entrypoint = readFileSync("docker-entrypoint.sh", "utf8");
 const health = readFileSync("server/lib/health.ts", "utf8");
 const healthTest = readFileSync("server/lib/health.test.ts", "utf8");
+const dockerfile = readFileSync("Dockerfile", "utf8");
+const packageLock = JSON.parse(readFileSync("package-lock.json", "utf8"));
 
 const deploySurface = `${migrations}\n${deploy}`;
 
@@ -31,7 +33,7 @@ test("LAW.DR2/04 deploy dry-run evidence has no interactive schema prompt path",
 test("LAW.DR3/04 deploy dry-run evidence starts app only after schema readiness", () => {
   assert.match(
     deploy,
-    /docker compose up -d postgres[\s\S]*pg_isready[\s\S]*docker compose stop app[\s\S]*apply-production-migrations\.sh[\s\S]*docker compose up -d --remove-orphans --force-recreate app caddy/
+    /docker compose up -d postgres[\s\S]*pg_isready[\s\S]*apply-production-migrations\.sh[\s\S]*docker compose stop app[\s\S]*docker compose up -d --remove-orphans --force-recreate app caddy/
   );
   assert.match(deploy, /if curl -fsS http:\/\/localhost:3000\/api\/health/);
   assert.doesNotMatch(deploy, /exit 0/);
@@ -92,6 +94,12 @@ test("LAW.DR5/04 production app fails closed on placeholder commit metadata", ()
     deploy,
     /COMMIT_SHA="\$\(git rev-parse --short HEAD\)"[\s\S]*export COMMIT_SHA[\s\S]*docker compose build[\s\S]*docker compose up -d --remove-orphans --force-recreate app caddy/
   );
+});
+
+test("production Node runtime satisfies bundled ATProto fetch dependencies", () => {
+  assert.doesNotMatch(dockerfile, /FROM node:20-/);
+  assert.equal((dockerfile.match(/FROM node:22-slim@sha256:/g) ?? []).length, 2);
+  assert.match(packageLock.packages["node_modules/undici_v8"].engines.node, />=22/);
 });
 
 test("LAW.BB019 deploy preflight requires dedicated credential encryption keys", () => {

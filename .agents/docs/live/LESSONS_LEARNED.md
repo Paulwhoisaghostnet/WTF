@@ -8414,3 +8414,13 @@
 **Why it mattered**: The governance artifact documented inputs outside the release boundary and made a clean build irreproducible even though the committed source itself was sound.
 
 **Rule**: Repository-generated inventories must discover inputs from Git-tracked files (or another explicit release manifest), never from an unrestricted workspace walk. Verify the generator in both a residue-heavy workspace and a clean checkout.
+
+---
+
+## 2026-07-15 - Failed migration validation must not stop the serving app
+
+**What happened**: A production deploy built a new image, stopped the live app, and only then ran immutable migration validation. The checksum guard correctly rejected a rewritten migration, but `set -e` exited with the app stopped. The replacement image also crashed because an ATProto dependency upgrade bundled `undici@8`, which requires Node 22, while both Docker stages still used Node 20.
+
+**Why it mattered**: Two valid safety mechanisms became an outage amplifier: migration integrity failed closed after traffic had already been removed, and the overwritten `latest` image could not serve as a rollback target. Cloudflare and Caddy stayed healthy while the origin returned 502 for every user.
+
+**Rule**: Run all fail-closed migration validation and application before stopping the serving container, pin the production Node major to the highest runtime floor declared by bundled dependencies, and prove a newly built image starts before it can replace the known-good production image.
