@@ -1,7 +1,27 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
-import { buildEnvironmentInventory } from "./generate-environment-inventory.mjs";
+import {
+  buildEnvironmentInventory,
+  listEnvironmentSourceFiles,
+} from "./generate-environment-inventory.mjs";
+
+test("environment inventory only scans Git-tracked release inputs", async () => {
+  const tracked = new Set(
+    execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" })
+      .split("\0")
+      .filter(Boolean),
+  );
+  const sources = await listEnvironmentSourceFiles();
+
+  assert.ok(sources.length > 0);
+  for (const source of sources) {
+    const relative = path.relative(process.cwd(), source).split(path.sep).join("/");
+    assert.ok(tracked.has(relative), `untracked inventory source: ${relative}`);
+  }
+});
 
 test("generated environment inventory exposes the required governance fields", async () => {
   const generated = await buildEnvironmentInventory();

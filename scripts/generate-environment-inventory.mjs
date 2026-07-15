@@ -1,6 +1,8 @@
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -31,22 +33,30 @@ const ROOT_FILES = [
 ];
 const SOURCE_EXTENSION = /(?:^|\.)(?:env\.example|env\.sample|env\.template|ts|tsx|js|mjs|cjs|sh|yml|yaml|json)$/;
 const SKIP_DIRS = new Set([".git", ".next", "artifacts", "coverage", "dist", "node_modules", "test-results"]);
+const execFileAsync = promisify(execFile);
 
 function normalizePath(file) {
   return path.relative(ROOT, file).split(path.sep).join("/");
 }
 
-async function walk(directory) {
-  const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
-  entries.sort((a, b) => a.name.localeCompare(b.name));
-  const files = [];
-  for (const entry of entries) {
-    if (entry.isDirectory() && SKIP_DIRS.has(entry.name)) continue;
-    const candidate = path.join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...await walk(candidate));
-    else if (SOURCE_EXTENSION.test(entry.name)) files.push(candidate);
-  }
-  return files;
+function hasSkippedSegment(file) {
+  return file.split("/").some((segment) => SKIP_DIRS.has(segment));
+}
+
+export async function listEnvironmentSourceFiles() {
+  const { stdout } = await execFileAsync(
+    "git",
+    ["ls-files", "-z", "--", ...SOURCE_ROOTS, ...ROOT_FILES],
+    { cwd: ROOT, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+  );
+
+  return stdout
+    .split("\0")
+    .filter(Boolean)
+    .filter((file) => !hasSkippedSegment(file))
+    .filter((file) => ROOT_FILES.includes(file) || SOURCE_EXTENSION.test(path.basename(file)))
+    .sort()
+    .map((file) => path.join(ROOT, file));
 }
 
 function scopeFor(file, source) {
@@ -146,9 +156,7 @@ function escapeCell(value) {
 }
 
 export async function buildEnvironmentInventory() {
-  const nested = (await Promise.all(SOURCE_ROOTS.map((root) => walk(path.join(ROOT, root))))).flat();
-  const rootFiles = ROOT_FILES.map((file) => path.join(ROOT, file));
-  const files = [...new Set([...nested, ...rootFiles])].sort();
+  const files = await listEnvironmentSourceFiles();
   const records = new Map();
 
   for (const absolute of files) {

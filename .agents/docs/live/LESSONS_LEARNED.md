@@ -8404,3 +8404,13 @@
 **Why it mattered**: An edited applied migration makes deploys non-reproducible and leaves old and newly bootstrapped databases following different histories. The fail-closed deploy guard prevented that drift from advancing unnoticed.
 
 **Rule**: Never edit a numbered migration after any environment has applied it. Restore the original bytes and carry every subsequent schema correction in a new forward-only migration; verify historical checksums against the production ledger before enabling immutable-ledger enforcement.
+
+---
+
+## 2026-07-15 - Generated release inventories must ignore untracked workspace residue
+
+**What happened**: The environment inventory passed locally but failed in a clean GitHub checkout because its recursive filesystem walk included ignored desktop assets prepared during local testing. Those generated files were absent from the release commit, so CI produced a different inventory.
+
+**Why it mattered**: The governance artifact documented inputs outside the release boundary and made a clean build irreproducible even though the committed source itself was sound.
+
+**Rule**: Repository-generated inventories must discover inputs from Git-tracked files (or another explicit release manifest), never from an unrestricted workspace walk. Verify the generator in both a residue-heavy workspace and a clean checkout.
