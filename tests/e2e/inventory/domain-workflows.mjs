@@ -1010,7 +1010,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "admin os control loop",
     domain: "Administration, Governance, and Operations",
-    routes: ["/admin", "/control-board", "/operator-wallet", "/contract-factory", "/desktop-settings"],
+    routes: ["/admin", "/control-board", "/operator-wallet", "/objkt-operator", "/contract-factory", "/desktop-settings"],
     eventHandles: [
       "admin.dashboard.viewed",
       "admin.os_surface.viewed",
@@ -1028,6 +1028,10 @@ export const DOMAIN_WORKFLOWS = [
       "desktop.app.disabled_by_admin",
       "wtfiam.admin.price_rebalanced",
       "operator.disbursement.previewed",
+      "objkt_operator.creator_reviewed",
+      "objkt_operator.market_scanned",
+      "objkt_operator.candidate_queued",
+      "objkt_operator.purchase_signed",
       "contract_factory.compiled",
       "system.log.viewed",
     ],
@@ -1040,6 +1044,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/admin/role-access" },
       { method: "PUT", path: "/api/admin/users/1/curses/green_lens", body: { active: true, reason: "inventory smoke" }, expectedStatuses: [200, 401, 403, 404] },
       { method: "GET", path: "/api/operator-wallet/summary" },
+      { method: "GET", path: "/api/objkt-operator/state", expectedStatuses: [200, 401, 403] },
       { method: "GET", path: "/api/factory/templates" },
       { method: "GET", path: "/api/admin/challenge-automation/events?limit=100" },
       { method: "GET", path: "/api/health" },

@@ -143,6 +143,7 @@ const ICONS: Record<string, string> = {
   "/control-board": "CTL",
   "/contract-factory": "KT1",
   "/operator-wallet": "OP",
+  "/objkt-operator": "OBJ",
   "/tv": "📺",
 };
 
@@ -186,7 +187,7 @@ const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
     "/terminal",
     "/cli",
   ],
-  admin: ["/admin", "/control-board", "/contract-factory", "/operator-wallet"],
+  admin: ["/admin", "/control-board", "/contract-factory", "/operator-wallet", "/objkt-operator"],
 };
 
 function hasRouteParams(pattern: string): boolean {

@@ -107,6 +107,7 @@ export * from "./schema-macaroni";
 export * from "./schema-atproto-appview";
 export * from "./schema-app-registry";
 export * from "./schema-wtf-sites";
+export * from "./schema-objkt-operator";
 
 // TODO(schema modularization): keep the cross-domain user relation fan-out
 // in the compatibility barrel until the relation graph has domain-owned edges.

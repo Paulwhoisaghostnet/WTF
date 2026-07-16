@@ -82,6 +82,7 @@ import calendarRoutes from "./routes/calendar";
 import collectionFactoryRoutes from "./routes/collection-factory";
 import mintPortalRoutes from "./routes/mint-portal";
 import operatorWalletRoutes from "./routes/operator-wallet";
+import objktOperatorRoutes from "./routes/objkt-operator";
 import etherlinkWalletRoutes from "./routes/etherlink-wallets";
 import tokenArchiveRoutes from "./routes/token-archive";
 import tezosIntelRoutes from "./features/tezos-intel/routes";
@@ -392,6 +393,7 @@ export function registerRoutes(app: Express) {
   app.use(collectionFactoryRoutes);
   app.use(mintPortalRoutes);
   app.use(operatorWalletRoutes);
+  app.use(objktOperatorRoutes);
   app.use(etherlinkWalletRoutes);
   app.use(tokenArchiveRoutes);
   app.use(tezosIntelRoutes);

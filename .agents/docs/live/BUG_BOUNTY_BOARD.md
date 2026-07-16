@@ -112,6 +112,7 @@ Priority labels:
 | WTF-BB-388 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Suite Desktop / local page hosting | P1 | 13 | 6 | 3 | 5 | 1 | Native Colander safely installs publisher ZIPs atomically under the user-owned Pasta Suite site directory, lists complete sites, and serves them through loopback-only routes; traversal, malformed, duplicate, encrypted, and oversized archives are rejected |
 | WTF-BB-389 | Claimed | Codex full-send cleanup pass | 2026-07-15 | Deploy / immutable migration history | P0 | 17 | 1 | 3 | 5 | 4 | Production deploy correctly rejected an edited applied migration: `0008_cockpit_phase0.sql` no longer matched its ledger checksum; restore the applied bytes because the intended partial-index change already exists in forward migration `0078` |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 8 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-392 | Fixed | Codex Objkt Operator persistence | 2026-07-15 | Commerce / private Objkt operator availability | P1 | 15 | 2 | 4 | 5 | 2 | Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Verified | Codex full-send cleanup pass | 2026-07-15 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Recovery Mode now completes both canonical and Beta-shell route smoke without fatal unauthenticated-probe noise; verified again in the complete 634/634 interaction inventory run |
@@ -8491,6 +8492,24 @@ Priority labels:
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-392 - Objkt operator disappeared with its temporary dev server
+
+- Category: Commerce / private Objkt operator availability
+- Status: Fixed
+- Owner/Session: Codex Objkt Operator persistence
+- Score: C4 + F5 + S2 + P1(4) = 15
+- Evidence:
+  - The original operator portal stored approvals, scan results, spend policy, and queue progress in browser-local state served only by an ad hoc local development process.
+  - Stopping that process removed access to the interface, and no deployed wtfOS route or durable server state existed.
+  - The replacement now has an owner-gated `/objkt-operator` AppWindow, owner-keyed `objkt_operator_states` PostgreSQL row, and a focused browser proof covering score review, approval, and reload persistence.
+- Why it matters:
+  - The user needs a private operator available independently of a Codex conversation. Ephemeral browser state cannot support a persistent acquisition workflow or trustworthy spending controls.
+  - Moving state server-side must not turn the wtfOS database into wallet custody; mnemonic words and signing passwords remain explicitly out of scope.
+- Correction direction:
+  - Deploy the registered wtfOS app and forward-only migration, retain the server owner gate, and keep Kukai as the external signer.
+- Verification idea:
+  - Run policy, type, build, inventory, and browser persistence coverage; deploy to production; authenticate as the configured owner; verify initial state creation, creator approval persistence across reload, and denial for a non-owner admin.
 
 ## Backlog Intake Template
 

@@ -1132,6 +1132,17 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The same workflow probes the registered music, Mastodon, Porcupin, Discovery, social-automation, and factory API contracts against the real server/database status boundary.",
   },
   {
+    id: "objkt-operator.owner-persistence-and-score-review",
+    domain: "Commerce, Wallets, and Private Operations",
+    ownerSurfaceIds: ["objkt-operator"],
+    ownerSpec: "tests/playwright/inventory/objkt-operator.spec.mjs",
+    verificationCommand: "npx tsx --test server/features/objkt-operator/policy.test.ts && npm run test:e2e:inventory",
+    userVisibleAssertion:
+      "The configured wtf-admin owner can open Objkt Operator, inspect every creator's weighted sales, buyers, volume, recency, verification, inventory-depth, and floor-fit score before approving or rejecting, then scan approved creators and manage a Kukai-backed signing queue.",
+    durableSideEffectAssertion:
+      "Creator decisions, spend controls, wallet address, Objkt scans, queue transitions, and operator events persist in the owner-keyed objkt_operator_states PostgreSQL row; recovery material and signing passwords are never accepted by the API or stored in wtfOS.",
+  },
+  {
     id: "routes.all-registered-pages-open",
     domain: "Desktop OS, Navigation, and Personal Environment",
     platformOwner: "inventory-route-smoke",

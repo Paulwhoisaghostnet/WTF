@@ -8444,3 +8444,25 @@
 **Why it mattered**: Deploying necessarily terminates in-process work. Treating expected restart interruption as a job failure makes every deploy vulnerable to a false-negative readiness result based on whichever long-interval job happened to be active.
 
 **Rule**: Reconciled work abandoned by a process restart must use a non-success, non-error terminal status such as `cancelled`. Reserve `error` for work that actually failed while executing, so readiness remains sensitive to real failures without rejecting expected deploy interruption.
+
+---
+
+## 2026-07-15 - A temporary localhost operator is not a durable personal app
+
+**What happened**: The first Objkt operator portal kept its working state in browser storage and depended on a development server started inside an active Codex session.
+
+**Why it mattered**: Creator approvals, market scans, spend controls, and signing progress were unavailable whenever that temporary process stopped, so the user did not have a 24/7 operator surface.
+
+**Rule**: Personal operator apps must run inside the deployed product, enforce ownership on the server, and persist operational state in the product database. Wallet recovery material and signing passwords remain outside that persistence boundary.
+
+---
+
+## 2026-07-15 - wtfOS routes have both presentation and policy registries
+
+**What happened**: Objkt Operator was added to the React PageDef and Start Menu model but omitted from the shared browser route metadata used by the authorization evaluator. The app appeared in the build yet direct navigation was rejected back to the desktop.
+
+**Why it mattered**: A successful build and visible launcher entry did not prove the window could open. The missing policy registration made the private app look installed while keeping it unusable.
+
+**Rule**: Every new wtfOS route must be registered in the PageDef, shared browser-route policy, launch model, admin surface inventory, and focused browser proof. Exercise the real launcher and reload path before calling the app available.
+
+---

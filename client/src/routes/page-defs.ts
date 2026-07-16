@@ -225,6 +225,9 @@ const ContractFactoryPage = lazy(() =>
 const OperatorWalletPage = lazy(() =>
   import("../pages/OperatorWallet").then((m) => ({ default: m.OperatorWallet }))
 );
+const ObjktOperatorPage = lazy(() =>
+  import("../pages/ObjktOperator").then((m) => ({ default: m.ObjktOperator }))
+);
 const TezosIntelPage = lazy(() =>
   import("../pages/TezosIntel").then((m) => ({ default: m.TezosIntel }))
 );
@@ -627,6 +630,15 @@ export const PAGE_DEFS: PageDef[] = [
     auth: true,
     roles: ["admin"],
     title: "Operator Wallet",
+    group: "admin",
+    startMenu: true,
+  },
+  {
+    pattern: "/objkt-operator",
+    component: ObjktOperatorPage,
+    auth: true,
+    roles: ["admin"],
+    title: "Objkt Operator",
     group: "admin",
     startMenu: true,
   },
