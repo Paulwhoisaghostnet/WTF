@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const http = require("node:http");
 const path = require("node:path");
-const { installStoredSite, listStoredSites, resolveHostedSitePath } = require("./site-archive.cjs");
+const { installStoredSite, listStoredSites, removeStoredSite, resolveHostedSitePath } = require("./site-archive.cjs");
 
 const MIME = {
   ".css": "text/css; charset=utf-8",
@@ -134,6 +134,16 @@ async function installHostedSite(req, res, parsed) {
   }
 }
 
+async function removeHostedSite(res, slug) {
+  try {
+    const site = await removeStoredSite(hostedSitesRoot(), slug);
+    return sendJson(res, 200, { ok: true, site });
+  } catch (err) {
+    const message = err.message || "Site uninstall failed";
+    return sendJson(res, message === "stored site not found" ? 404 : 400, { ok: false, error: message });
+  }
+}
+
 async function sendFile(req, res, filePath) {
   try {
     const stats = await fsp.stat(filePath);
@@ -258,6 +268,10 @@ async function handleRequest(req, res) {
   }
   if (req.method === "POST" && parsed.pathname === "/api/pasta/sites/install") {
     return installHostedSite(req, res, parsed);
+  }
+  const removeSiteMatch = parsed.pathname.match(/^\/api\/pasta\/sites\/([a-z0-9-]+)$/);
+  if (req.method === "DELETE" && removeSiteMatch) {
+    return removeHostedSite(res, removeSiteMatch[1]);
   }
 
   if (req.method !== "GET" && req.method !== "HEAD") return sendText(res, 405, "Method not allowed");

@@ -29,6 +29,11 @@ const INSTALLER_PLATFORMS = [
 
 const BUNDLED_PASTA_APPS = [
   {
+    key: "ch-ease",
+    label: "CH-EASE",
+    purpose: "Local media and metadata package preparation",
+  },
+  {
     key: "macaroni",
     label: "Macaroni",
     purpose: "Blind-mint drop publisher",
@@ -75,6 +80,21 @@ type InstallerPlatformDescriptor = {
 };
 
 const INDIVIDUAL_PASTA_INSTALLER_PRODUCTS = [
+  {
+    key: "ch-ease",
+    product: "ch-ease",
+    label: "CH-EASE Desktop",
+    purpose: "Local media and metadata package preparation with bundled publisher handoffs",
+    manifestPath: "/api/ch-ease/installers",
+    releaseTag: "ch-ease-desktop-v1.0.0",
+    versionEnv: "CH_EASE_INSTALLER_VERSION",
+    envPrefix: "CH_EASE_INSTALLER",
+    fileNames: {
+      macos: "CH-EASE-Studio.dmg",
+      windows: "CH-EASE-Studio.exe",
+      "raspberry-pi": "ch-ease-studio-arm64.deb",
+    },
+  },
   {
     key: "macaroni",
     product: "macaroni",
@@ -242,7 +262,7 @@ function suiteManifest() {
     key: "pasta-suite",
     label: "Pasta Suite Desktop",
     kind: "suite",
-    purpose: "Bundled local desktop suite for Macaroni and Pasta publishers",
+    purpose: "Bundled local desktop suite for CH-EASE, Macaroni, and Pasta publishers",
     manifestPath: "/api/pasta/installers",
     releaseTag: "pasta-suite-desktop-v1.0.0",
     version: version || null,

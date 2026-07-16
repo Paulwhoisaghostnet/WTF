@@ -89,9 +89,10 @@ function importCheasePackage(parsed, source) {
 
 // ---------- layers & variants ----------
 
-function addLayer(initialName) {
+function addLayer(initial) {
   const tpl = $("layerTpl").content.firstElementChild.cloneNode(true);
   const layer = { el: tpl, variantsEl: tpl.querySelector(".l-variants"), variants: [] };
+  const initialName = typeof initial === "string" ? initial : initial?.name;
   if (initialName) tpl.querySelector(".l-name").value = initialName;
   tpl.querySelector(".l-add-variant").addEventListener("click", () => addVariant(layer));
   tpl.querySelector(".pp-layer-del").addEventListener("click", () => {
@@ -101,13 +102,18 @@ function addLayer(initialName) {
   });
   $("layers").appendChild(tpl);
   state.layers.push(layer);
-  addVariant(layer);
+  const variants = typeof initial === "object" && Array.isArray(initial?.variants) && initial.variants.length
+    ? initial.variants
+    : [{}];
+  variants.forEach((variant) => addVariant(layer, variant));
   return layer;
 }
 
-function addVariant(layer) {
+function addVariant(layer, initial) {
   const tpl = $("variantTpl").content.firstElementChild.cloneNode(true);
   const variant = { el: tpl, img: null };
+  if (initial?.value) tpl.querySelector(".v-label").value = initial.value;
+  if (initial?.weight != null) tpl.querySelector(".v-weight").value = String(initial.weight);
   tpl.querySelector(".v-file").addEventListener("change", (e) => {
     const file = e.target.files?.[0];
     if (!file) {
@@ -152,6 +158,25 @@ function readLayerConfig() {
         .filter((v) => v.value),
     }))
     .filter((l) => l.name && l.variants.length > 0);
+}
+
+function collectDraftLayers() {
+  return state.layers.map((layer) => ({
+    name: layer.el.querySelector(".l-name").value,
+    variants: layer.variants.map((variant) => ({
+      value: variant.el.querySelector(".v-label").value,
+      weight: variant.el.querySelector(".v-weight").value,
+    })),
+  }));
+}
+
+function applyDraftLayers(layers) {
+  state.layers.forEach((layer) => layer.el.remove());
+  state.layers = [];
+  (Array.isArray(layers) && layers.length ? layers : ["Background", "Foreground"]).forEach(addLayer);
+  state.editions = [];
+  $("preview").replaceChildren();
+  $("genStatus").textContent = "Recovered layer settings. Reselect layer images, then generate a new preview.";
 }
 
 function engineLayers(config) {
@@ -486,6 +511,28 @@ function wire() {
     $("existingContractFields").hidden = false;
   }
   if (routeHandoff?.projectTitle && !$("collName").value) $("collName").value = routeHandoff.projectTitle;
+
+  window.PastaStudioDraft.start({
+    app: "rotini",
+    summary: () => $("collName").value.trim() || "Rotini generative draft",
+    collect: () => ({ layers: collectDraftLayers() }),
+    apply: (extra) => applyDraftLayers(extra.layers),
+    afterApply: () => {
+      state.network = $("network").value;
+      document.querySelector('input[name="target"]:checked')?.dispatchEvent(new Event("change"));
+      refreshCombos();
+    },
+  });
+  window.PastaStudioContracts.start({
+    app: "rotini",
+    label: "Rotini",
+    contractInputs: ["existingKt"],
+    title: () => $("collName").value.trim(),
+    onResume: () => {
+      document.querySelector('input[name="target"][value="existing_contract"]').checked = true;
+      document.querySelector('input[name="target"]:checked')?.dispatchEvent(new Event("change"));
+    },
+  });
 }
 
 wire();

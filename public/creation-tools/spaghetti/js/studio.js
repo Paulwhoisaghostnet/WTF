@@ -104,6 +104,26 @@ function readTokenRow(token) {
   return token;
 }
 
+function collectDraftTokens() {
+  return state.tokens.map((token) => ({
+    name: token.el.querySelector(".t-name").value,
+    description: token.el.querySelector(".t-desc").value,
+    editions: token.el.querySelector(".t-editions").value,
+    forSale: token.el.querySelector(".t-for-sale").checked,
+    priceTez: token.el.querySelector(".t-price").value,
+    saleCount: token.el.querySelector(".t-sale-count").value,
+    tags: token.el.querySelector(".t-tags").value.split(",").map((tag) => tag.trim()).filter(Boolean),
+    artifactUri: token.artifactUri || "",
+    mimeType: token.mimeType || "",
+  }));
+}
+
+function applyDraftTokens(tokens) {
+  state.tokens.forEach((token) => token.el.remove());
+  state.tokens = [];
+  (Array.isArray(tokens) && tokens.length ? tokens : [{}]).forEach(addTokenRow);
+}
+
 // ---------- CH-EASE package import/export ----------
 
 async function importPackage(file) {
@@ -413,6 +433,27 @@ function wire() {
     $("existingContractFields").hidden = false;
   }
   if (routeHandoff?.projectTitle && !$("collName").value) $("collName").value = routeHandoff.projectTitle;
+
+  window.PastaStudioDraft.start({
+    app: "spaghetti",
+    summary: () => $("collName").value.trim() || "Spaghetti collection draft",
+    collect: () => ({ tokens: collectDraftTokens() }),
+    apply: (extra) => applyDraftTokens(extra.tokens),
+    afterApply: () => {
+      state.network = $("network").value;
+      document.querySelector('input[name="target"]:checked')?.dispatchEvent(new Event("change"));
+    },
+  });
+  window.PastaStudioContracts.start({
+    app: "spaghetti",
+    label: "Spaghetti",
+    contractInputs: ["existingKt"],
+    title: () => $("collName").value.trim(),
+    onResume: () => {
+      document.querySelector('input[name="target"][value="existing_contract"]').checked = true;
+      document.querySelector('input[name="target"]:checked')?.dispatchEvent(new Event("change"));
+    },
+  });
 }
 
 wire();

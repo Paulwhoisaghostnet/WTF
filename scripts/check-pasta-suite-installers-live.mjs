@@ -29,6 +29,7 @@ const EXPECTED_ASSETS = {
 };
 
 const EXPECTED_BUNDLED_APPS = [
+  { key: "ch-ease", label: "CH-EASE" },
   { key: "macaroni", label: "Macaroni" },
   { key: "spaghetti", label: "Spaghetti" },
   { key: "gnocchi", label: "Gnocchi" },

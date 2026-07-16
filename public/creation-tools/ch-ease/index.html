@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CH-EASE — Pasta Protocol preparation studio</title>
+    <link rel="stylesheet" href="css/theme.css" />
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Pasta Protocol · preparation</p>
+          <h1>CH-EASE</h1>
+          <p>Creator Handoff: Edit, Arrange, Stage, Export. Prepare media and metadata locally, then carry one portable package into the correct publisher.</p>
+        </div>
+        <div class="status" id="status" role="status" aria-live="polite">Local studio ready.</div>
+      </header>
+
+      <section class="workspace" aria-label="CH-EASE package workspace">
+        <aside class="panel package-panel">
+          <h2>Package</h2>
+          <label>Collection title <input id="title" autocomplete="off" value="Untitled collection" /></label>
+          <label>Symbol <input id="symbol" maxlength="12" autocomplete="off" value="PASTA" /></label>
+          <label>Description <textarea id="description" rows="4"></textarea></label>
+          <label>Publisher
+            <select id="target-app">
+              <option value="spaghetti">Spaghetti · fixed editions</option>
+              <option value="gnocchi">Gnocchi · open editions</option>
+              <option value="ravioli">Ravioli · bundles</option>
+              <option value="rotini">Rotini · generative</option>
+              <option value="penne">Penne · claims / distributions</option>
+              <option value="lasagna">Lasagna · exhibitions</option>
+            </select>
+          </label>
+          <label>Package kind
+            <select id="package-kind">
+              <option value="collection">Collection</option>
+              <option value="single_token">Single token</option>
+            </select>
+          </label>
+          <div class="actions">
+            <label class="button file-button">Add media<input id="media-files" type="file" multiple /></label>
+            <label class="button file-button secondary">Import package<input id="import-package" type="file" accept="application/json,.json" /></label>
+          </div>
+          <fieldset class="pinning-panel">
+            <legend>Make media durable</legend>
+            <label>Pinning provider
+              <select id="pin-provider">
+                <option value="pinata">My Pinata account</option>
+                <option value="node">My IPFS node</option>
+              </select>
+            </label>
+            <label id="pinata-row">Pinata JWT
+              <input id="pinata-jwt" type="password" autocomplete="off" spellcheck="false" placeholder="Used for this session only" />
+            </label>
+            <label id="node-row" hidden>IPFS HTTP API
+              <input id="node-url" type="url" autocomplete="off" spellcheck="false" placeholder="http://127.0.0.1:5001" />
+            </label>
+            <button id="pin-media" type="button" class="secondary">Pin unpinned media</button>
+            <p class="hint">Credentials stay in memory and are never saved in drafts or Colander. Your IPFS node must allow this app's local origin.</p>
+          </fieldset>
+          <p class="hint">Draft metadata is saved on this device. File bytes are intentionally excluded from browser storage; reselect them after a restart.</p>
+        </aside>
+
+        <section class="panel items-panel">
+          <div class="section-head">
+            <div><p class="eyebrow">Prepared work</p><h2>Token items</h2></div>
+            <button id="add-item" type="button" class="secondary">Add metadata-only item</button>
+          </div>
+          <div id="items" class="items"></div>
+          <template id="item-template">
+            <article class="item">
+              <div class="item-head"><strong class="file-name"></strong><button type="button" class="remove danger">Remove</button></div>
+              <div class="item-grid">
+                <label>Name <input class="token-name" autocomplete="off" /></label>
+                <label>Artifact URI or CID <input class="artifact-uri" autocomplete="off" placeholder="ipfs://…" /></label>
+                <label class="wide">Description <textarea class="token-description" rows="2"></textarea></label>
+                <label>Tags <input class="tags" autocomplete="off" placeholder="portrait, red" /></label>
+                <label>Attributes JSON <textarea class="attributes" rows="2" placeholder='[{"name":"medium","value":"ink"}]'></textarea></label>
+              </div>
+              <small class="item-note"></small>
+            </article>
+          </template>
+        </section>
+      </section>
+
+      <section class="panel output-panel" aria-label="CH-EASE package output">
+        <div><p class="eyebrow">Portable output</p><h2>Prepare package</h2><p id="summary">No token items yet.</p></div>
+        <div class="actions output-actions">
+          <button id="download-json" type="button" class="secondary">Download package JSON</button>
+          <button id="download-archive" type="button" class="secondary">Download media archive ZIP</button>
+          <button id="open-publisher" type="button">Open selected publisher ↗</button>
+        </div>
+      </section>
+    </main>
+    <script src="vendor/jszip.min.js"></script>
+    <script src="js/studio.js"></script>
+  </body>
+</html>

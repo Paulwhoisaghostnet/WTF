@@ -7,15 +7,19 @@ const mainSource = readFileSync("apps/pasta-suite-desktop/src/main.cjs", "utf8")
 const preloadSource = readFileSync("apps/pasta-suite-desktop/src/preload.cjs", "utf8");
 const siteArchiveSource = readFileSync("apps/pasta-suite-desktop/src/site-archive.cjs", "utf8");
 const prepareSource = readFileSync("apps/pasta-suite-desktop/scripts/prepare-assets.mjs", "utf8");
+const portableCheaseSource = readFileSync("public/creation-tools/ch-ease/js/studio.js", "utf8");
 const workflowSource = readFileSync(".github/workflows/pasta-suite-desktop-installers.yml", "utf8");
 const routeSource = readFileSync("server/routes/pasta-installers.ts", "utf8");
 const routesSource = readFileSync("server/routes.ts", "utf8");
 const rootPackage = JSON.parse(readFileSync("package.json", "utf8"));
 const gitignoreSource = readFileSync(".gitignore", "utf8");
 const liveCheckSource = readFileSync("scripts/check-pasta-suite-installers-live.mjs", "utf8");
+const artifactSmokeSource = readFileSync("scripts/pasta-suite-desktop-artifact-smoke.mjs", "utf8");
+const reviewManifestSource = readFileSync("scripts/pasta-suite-desktop-review-manifest.mjs", "utf8");
 const envExampleSource = readFileSync(".env.example", "utf8");
 
-const pastaTools = ["macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"];
+const bundledPastaTools = ["ch-ease", "macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"];
+const individualPastaTools = ["macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"];
 
 test("Pasta suite desktop package bundles all Pasta tools in an Electron shell", () => {
   assert.equal(desktopPackage.main, "src/main.cjs");
@@ -31,7 +35,33 @@ test("Pasta suite desktop package bundles all Pasta tools in an Electron shell",
   assert.match(desktopPackage.scripts["dist:raspberry-pi"], /--linux deb --arm64/);
   assert.deepEqual(desktopPackage.build.files, ["package.json", "src/**/*", "pasta/**/*"]);
   assert.equal(desktopPackage.build.artifactName, "Pasta-Suite-${version}-${os}-${arch}.${ext}");
-  assert.equal(desktopPackage.build.executableName, "pasta-suite");
+  assert.equal(desktopPackage.build.executableName, undefined);
+  assert.equal(desktopPackage.build.directories.buildResources, "build");
+  assert.equal(desktopPackage.build.mac.icon, "build/icon.icns");
+  assert.equal(desktopPackage.build.mac.entitlements, "build/entitlements.mac.plist");
+  assert.equal(desktopPackage.build.mac.entitlementsInherit, "build/entitlements.mac.plist");
+  assert.equal(desktopPackage.build.win.icon, "build/icon.ico");
+  assert.equal(desktopPackage.build.nsis.oneClick, false);
+  assert.equal(desktopPackage.build.dmg.license, "build/license_mac.txt");
+  assert.equal(desktopPackage.build.nsis.license, "build/license_en.rtf");
+  assert.equal(desktopPackage.build.nsis.perMachine, false);
+  assert.equal(desktopPackage.build.nsis.allowToChangeInstallationDirectory, true);
+  assert.equal(desktopPackage.build.nsis.createDesktopShortcut, true);
+  assert.equal(desktopPackage.build.nsis.createStartMenuShortcut, true);
+  assert.equal(desktopPackage.build.nsis.runAfterFinish, true);
+  assert.equal(desktopPackage.build.nsis.deleteAppDataOnUninstall, false);
+  for (const asset of [
+    "apps/pasta-suite-desktop/build/icon.svg",
+    "apps/pasta-suite-desktop/build/icon.png",
+    "apps/pasta-suite-desktop/build/icon.icns",
+    "apps/pasta-suite-desktop/build/icon.ico",
+    "apps/pasta-suite-desktop/build/entitlements.mac.plist",
+    "apps/pasta-suite-desktop/build/license_en.rtf",
+    "apps/pasta-suite-desktop/build/license_mac.txt",
+    "apps/pasta-suite-desktop/build/README.txt",
+  ]) {
+    assert.ok(existsSync(asset), `${asset} should exist`);
+  }
   assert.equal(desktopPackage.build.linux.maintainer, "wtfOS <support@wtfos.app>");
   assert.equal(desktopPackage.build.linux.syncDesktopName, true);
   assert.equal(desktopPackage.build.deb.packageName, "pasta-suite");
@@ -42,7 +72,7 @@ test("Pasta suite desktop package bundles all Pasta tools in an Electron shell",
 });
 
 test("Pasta suite asset preparation preserves production creation-tool paths", () => {
-  for (const id of pastaTools) {
+  for (const id of bundledPastaTools) {
     assert.match(prepareSource, new RegExp(`id: "${id}"`));
     assert.match(prepareSource, /public\/creation-tools/);
     assert.match(prepareSource, new RegExp(`/creation-tools/${id}/`));
@@ -52,6 +82,9 @@ test("Pasta suite asset preparation preserves production creation-tool paths", (
   assert.match(prepareSource, /suite-manifest\.json/);
   assert.match(prepareSource, /Pasta Suite/);
   assert.match(prepareSource, /<h1>Colander<\/h1>/);
+  assert.match(prepareSource, /id="project-network"/);
+  assert.match(prepareSource, /Shadownet \(recommended for testing\)/);
+  assert.match(prepareSource, /localStorage\.getItem\("wtf:network"\) \|\| "shadownet"/);
   assert.match(prepareSource, /wtfos\.pasta\.colander\.workspace\.v1/);
   assert.match(prepareSource, /handoff: "colander-workspace"/);
   assert.match(prepareSource, /Export active manifest/);
@@ -60,12 +93,43 @@ test("Pasta suite asset preparation preserves production creation-tool paths", (
   assert.match(prepareSource, /Self-hosted pages/);
   assert.match(prepareSource, /\/api\/pasta\/sites/);
   assert.match(prepareSource, /Open local page/);
+  assert.match(prepareSource, /function normalizeProject/);
+  assert.match(prepareSource, /pasta-studio-draft-ref@1/);
+  assert.match(prepareSource, /pasta-contract-ref@1/);
+  assert.match(prepareSource, /project-drafts/);
+  assert.match(prepareSource, /project-contracts/);
+  assert.match(prepareSource, /project-sites/);
+  assert.match(prepareSource, /Resume draft/);
+  assert.match(prepareSource, /Open in contract manager/);
+  assert.match(prepareSource, /Open installed page/);
+  assert.match(prepareSource, /Uninstall local page/);
+  assert.match(prepareSource, /Confirm uninstall page/);
+  assert.match(prepareSource, /Forget record only/);
+  assert.match(prepareSource, /pasta_suite\.site_uninstalled/);
+  assert.match(prepareSource, /colander\.site_record_forgotten/);
+  assert.match(prepareSource, /Resume in owner app/);
+  assert.match(prepareSource, /Duplicate as new project/);
+  assert.match(prepareSource, /Confirm permanent delete/);
+  assert.match(prepareSource, /colander\.project_archived/);
+  assert.match(prepareSource, /colander\.project_restored/);
+  assert.match(prepareSource, /toolId === "ch-ease" \? "preparing" : "planning"/);
+  assert.match(prepareSource, /Prepare package/);
+  assert.match(portableCheaseSource, /wtfos\.pasta\.chease-package\.v1/);
+  assert.match(portableCheaseSource, /wtfos\.pasta\.chease\.draft\.v1/);
+  assert.match(portableCheaseSource, /pasta-studio-draft-ref@1/);
+  assert.match(portableCheaseSource, /sessionStorage\.setItem/);
+  assert.match(portableCheaseSource, /Local file bytes remain available in the ZIP only/);
+  assert.match(portableCheaseSource, /api\.pinata\.cloud\/pinning\/pinFileToIPFS/);
+  assert.match(portableCheaseSource, /api\/v0\/add\?pin=true&cid-version=1/);
+  assert.match(portableCheaseSource, /chease\.media_pinned/);
+  assert.doesNotMatch(portableCheaseSource, /state\.(?:pinataJwt|pinNode|pinProvider)/);
   assert.match(prepareSource, /connect-wallet/);
   assert.match(prepareSource, /function contractType/);
   assert.match(prepareSource, /Configure direct sale/);
   assert.match(prepareSource, /Reveal bundle contents/);
   assert.match(prepareSource, /MD\.assertOperationSafety/);
   assert.match(prepareSource, /project\.contracts = \[kt/);
+  assert.match(prepareSource, /project\.contractRecords/);
   assert.match(prepareSource, /Hosted wtfOS pinning, publishing, and authenticated package records are intentionally disabled/);
   assert.match(prepareSource, /contract\/pasta-standard-collection\.contract\.json/);
   assert.match(prepareSource, /contract\/pasta-open-edition\.contract\.json/);
@@ -89,10 +153,15 @@ test("Pasta suite desktop runtime serves local assets and blocks hosted wtfOS AP
   assert.match(mainSource, /async function exportMacaroniSite\(req, res\)/);
   assert.match(mainSource, /app\.getPath\("documents"\), "Pasta Suite", "macaroni-site"/);
   assert.match(mainSource, /parsed\.pathname === "\/api\/pasta\/sites\/install"/);
+  assert.match(mainSource, /req\.method === "DELETE" && removeSiteMatch/);
+  assert.match(mainSource, /removeStoredSite/);
   assert.match(mainSource, /path\.join\(app\.getPath\("documents"\), "Pasta Suite", "sites"\)/);
   assert.match(mainSource, /installStoredSite/);
   assert.match(mainSource, /hostedSitePath/);
   assert.match(siteArchiveSource, /resolveHostedSitePath/);
+  assert.match(siteArchiveSource, /async function removeStoredSite/);
+  assert.match(siteArchiveSource, /\.removing-/);
+  assert.match(siteArchiveSource, /stats\.isSymbolicLink\(\)/);
   assert.match(siteArchiveSource, /\.installing/);
   assert.match(siteArchiveSource, /site archive must contain index\.html/);
   assert.match(siteArchiveSource, /unencrypted stored ZIP entries/);
@@ -123,6 +192,22 @@ test("Pasta suite installer workflow builds all target packages", () => {
   assert.match(workflowSource, /npm run dist:raspberry-pi --prefix apps\/pasta-suite-desktop/);
   assert.match(workflowSource, /actions\/upload-artifact@v4/);
   assert.match(workflowSource, /softprops\/action-gh-release@v2/);
+  assert.match(workflowSource, /Smoke packaged macOS application/);
+  assert.match(workflowSource, /Install and smoke packaged Windows application/);
+  assert.match(workflowSource, /pasta-suite:desktop:artifact-smoke/);
+  assert.match(workflowSource, /Pasta-Suite-\$version-win-x64\.exe/);
+  assert.match(workflowSource, /Start-Process -FilePath \$installer -ArgumentList "\/S"/);
+  assert.match(workflowSource, /Pasta Suite desktop shortcut was not created/);
+  assert.match(workflowSource, /Pasta Suite Start menu shortcut was not created/);
+  assert.match(workflowSource, /Get-ChildItem \$installed\.DirectoryName -Filter "Uninstall\*\.exe"/);
+  assert.match(workflowSource, /Pasta Suite executable remained after uninstall/);
+  assert.match(artifactSmokeSource, /PASTA_SUITE_DESKTOP_EXECUTABLE/);
+  assert.match(artifactSmokeSource, /bundledTools: 8/);
+  assert.match(artifactSmokeSource, /colanderProjectCreated: true/);
+  assert.match(artifactSmokeSource, /chEaseOpened: true/);
+  assert.match(reviewManifestSource, /requiresTerminal: false/);
+  assert.match(reviewManifestSource, /SHA256SUMS\.txt/);
+  assert.match(reviewManifestSource, /developer-review/);
 });
 
 test("Pasta suite production installer manifest keeps Macaroni hardening rules", () => {
@@ -140,12 +225,14 @@ test("Pasta suite production installer manifest keeps Macaroni hardening rules",
   assert.match(routeSource, /fileName: "Pasta-Suite\.exe"/);
   assert.doesNotMatch(routeSource, /fileName: "Pasta-Suite\.msi"/);
   assert.match(routeSource, /const BUNDLED_PASTA_APPS = \[/);
-  for (const id of pastaTools) {
+  for (const id of bundledPastaTools) {
     assert.match(routeSource, new RegExp(`key: "${id}"`));
   }
   assert.match(routeSource, /bundledApps: BUNDLED_PASTA_APPS/);
   assert.match(routeSource, /const INDIVIDUAL_PASTA_INSTALLER_PRODUCTS = \[/);
-  for (const id of pastaTools) {
+  assert.match(routeSource, /manifestPath: "\/api\/ch-ease\/installers"/);
+  assert.match(routeSource, /versionEnv: "CH_EASE_INSTALLER_VERSION"/);
+  for (const id of individualPastaTools) {
     assert.match(routeSource, new RegExp(`manifestPath: "/api/${id}/installers"`));
     assert.match(routeSource, new RegExp(`${id.toUpperCase()}_INSTALLER_VERSION`));
   }
@@ -178,6 +265,8 @@ test("Pasta suite production installer manifest keeps Macaroni hardening rules",
   assert.match(liveCheckSource, /manifest\.bundledApps/);
   assert.equal(rootPackage.scripts["pasta-suite:desktop:prepare"], "npm run prepare --prefix apps/pasta-suite-desktop");
   assert.equal(rootPackage.scripts["pasta-suite:desktop:check"], "node --test scripts/pasta-suite-desktop-package-policy.test.mjs");
+  assert.equal(rootPackage.scripts["pasta-suite:desktop:artifact-smoke"], "node scripts/pasta-suite-desktop-artifact-smoke.mjs");
+  assert.equal(rootPackage.scripts["pasta-suite:desktop:review-manifest"], "node scripts/pasta-suite-desktop-review-manifest.mjs");
   assert.equal(rootPackage.scripts["pasta-suite:installers:live-check"], "node scripts/check-pasta-suite-installers-live.mjs");
   assert.equal(rootPackage.scripts["pasta-suite:desktop:dist"], "npm run dist --prefix apps/pasta-suite-desktop");
 });

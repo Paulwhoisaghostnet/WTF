@@ -340,6 +340,23 @@ function wire() {
     MD.notify(`Loaded ${routeHandoff.contract} from Colander.`, "success");
   }
   if (routeHandoff?.projectTitle && !$("exName").value) $("exName").value = routeHandoff.projectTitle;
+
+  window.PastaStudioDraft.start({
+    app: "lasagna",
+    summary: () => $("exName").value.trim() || "Lasagna exhibition draft",
+    collect: () => ({}),
+    apply: () => undefined,
+    afterApply: () => {
+      state.network = $("network").value;
+      parseRefs();
+    },
+  });
+  window.PastaStudioContracts.start({
+    app: "lasagna",
+    label: "Lasagna",
+    contractInputs: ["contractKt"],
+    title: () => $("exName").value.trim(),
+  });
 }
 
 wire();

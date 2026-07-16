@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Pasta Suite colander icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b153f"/>
+      <stop offset="1" stop-color="#130d22"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff7da"/>
+      <stop offset="1" stop-color="#d8bd82"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="28" stdDeviation="28" flood-color="#09050f" flood-opacity=".55"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" rx="218" fill="url(#bg)"/>
+  <path d="M235 203c82 0 125 80 112 160-10 64-49 118-67 179-24 80-4 148 62 207" fill="none" stroke="#f3ca4f" stroke-width="34" stroke-linecap="round"/>
+  <path d="M370 190c76 35 86 117 50 189-28 56-78 97-113 149-47 70-48 141 1 217" fill="none" stroke="#e9a836" stroke-width="34" stroke-linecap="round"/>
+  <path d="M506 184c65 51 57 134 7 195-40 48-98 77-143 119-61 58-76 127-45 213" fill="none" stroke="#f7da72" stroke-width="34" stroke-linecap="round"/>
+  <g filter="url(#shadow)">
+    <path d="M236 435h552c0 225-111 363-276 363S236 660 236 435Z" fill="url(#metal)" stroke="#fff4cf" stroke-width="22"/>
+    <path d="M203 432h618" stroke="#fff7dd" stroke-width="38" stroke-linecap="round"/>
+    <path d="M272 775l-55 75M752 775l55 75" stroke="#d8bd82" stroke-width="34" stroke-linecap="round"/>
+    <g fill="#2b153f">
+      <circle cx="354" cy="532" r="21"/><circle cx="446" cy="532" r="21"/><circle cx="538" cy="532" r="21"/><circle cx="630" cy="532" r="21"/>
+      <circle cx="400" cy="614" r="21"/><circle cx="492" cy="614" r="21"/><circle cx="584" cy="614" r="21"/><circle cx="676" cy="614" r="21"/>
+      <circle cx="446" cy="696" r="21"/><circle cx="538" cy="696" r="21"/><circle cx="630" cy="696" r="21"/>
+    </g>
+  </g>
+</svg>

@@ -436,6 +436,27 @@ function wire() {
   const routeHandoff = MD.readRouteHandoff();
   if (routeHandoff?.contract) $("mintKt").value = routeHandoff.contract;
   if (routeHandoff?.projectTitle && !$("oeName").value) $("oeName").value = routeHandoff.projectTitle;
+
+  window.PastaStudioDraft.start({
+    app: "gnocchi",
+    summary: () => $("oeName").value.trim() || "Gnocchi open-edition draft",
+    collect: () => ({ artifactUri: state.artifactUri, artifactMime: state.artifactMime }),
+    apply: (extra) => {
+      state.artifactUri = extra.artifactUri || "";
+      state.artifactMime = extra.artifactMime || "";
+      $("oeArtifactStatus").textContent = state.artifactUri ? `artifact: ${state.artifactUri}` : "";
+    },
+    afterApply: () => {
+      state.network = $("network").value;
+      $("saleMode").dispatchEvent(new Event("change"));
+    },
+  });
+  window.PastaStudioContracts.start({
+    app: "gnocchi",
+    label: "Gnocchi",
+    contractInputs: ["mintKt"],
+    title: () => $("oeName").value.trim(),
+  });
 }
 
 wire();

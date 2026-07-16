@@ -413,6 +413,27 @@ function wire() {
     MD.notify(`Loaded ${routeHandoff.contract} from Colander.`, "success");
   }
   if (routeHandoff?.projectTitle && !$("tokName").value) $("tokName").value = routeHandoff.projectTitle;
+
+  window.PastaStudioDraft.start({
+    app: "penne",
+    summary: () => $("tokName").value.trim() || "Penne distribution draft",
+    collect: () => ({ artifactUri: state.artifactUri, artifactMime: state.artifactMime }),
+    apply: (extra) => {
+      state.artifactUri = extra.artifactUri || "";
+      state.artifactMime = extra.artifactMime || "";
+      $("tokArtifactStatus").textContent = state.artifactUri ? `artifact: ${state.artifactUri}` : "";
+    },
+    afterApply: () => {
+      state.network = $("network").value;
+      parseList();
+    },
+  });
+  window.PastaStudioContracts.start({
+    app: "penne",
+    label: "Penne",
+    contractInputs: ["contractKt"],
+    title: () => $("tokName").value.trim(),
+  });
 }
 
 wire();

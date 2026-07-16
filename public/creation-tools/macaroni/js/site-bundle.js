@@ -115,9 +115,54 @@ const MDSiteBundle = (() => {
 
   async function downloadSiteZip(configJs, filename) {
     const zip = await buildSiteZip(configJs);
+    let installed = null;
+    if (window.PASTA_SUITE_DESKTOP?.suite) {
+      const params = new URLSearchParams({ app: "macaroni", title: "Macaroni mint site" });
+      const response = await fetch(`/api/pasta/sites/install?${params}`, {
+        method: "POST",
+        headers: { "content-type": "application/zip" },
+        body: zip,
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Could not install the site in local Colander.");
+      installed = payload;
+      localStorage.setItem("wtfos.pasta.local-sites.changed", String(Date.now()));
+    }
     triggerDownload(zip, filename || "macaroni-site.zip");
-    return zip;
+    return { blob: zip, fileName: filename || "macaroni-site.zip", installed };
   }
 
-  return { ASSETS, buildSiteZip, downloadSiteZip };
+  function recordColanderSite(config, result) {
+    const handoff = window.MD?.readRouteHandoff?.();
+    if (!handoff?.projectId) return false;
+    try {
+      const key = "wtfos.pasta.colander.workspace.v1";
+      const projects = JSON.parse(localStorage.getItem(key) || "[]");
+      const now = new Date().toISOString();
+      const artifact = {
+        id: typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `site-${Date.now()}`,
+        kind: "self_hosted_site",
+        toolId: "macaroni",
+        contract: config.contract || "",
+        fileName: result.fileName,
+        localUrl: result.installed?.url,
+        createdAt: now,
+      };
+      const next = projects.map((project) => project.id === handoff.projectId ? {
+        ...project,
+        toolId: "macaroni",
+        stage: "published",
+        artifacts: [...(project.artifacts || []), artifact],
+        updatedAt: now,
+      } : project);
+      localStorage.setItem(key, JSON.stringify(next));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  return { ASSETS, buildSiteZip, downloadSiteZip, recordColanderSite };
 })();
+
+window.MDSiteBundle = MDSiteBundle;
