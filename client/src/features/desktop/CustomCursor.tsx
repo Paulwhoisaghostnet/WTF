@@ -3,6 +3,10 @@ import styled from "styled-components";
 import { type DesktopAppearance } from "@shared/desktop";
 import { getPrimaryFontFamily } from "../appearance/get-canvas-font";
 
+// Reggie and other assistant prompts are interactive overlays. The pointer
+// must stay above them so people can see exactly which control they are aiming at.
+const CUSTOM_CURSOR_Z_INDEX = 9200;
+
 const CustomCursorRoot = styled.div<{
   $x: number;
   $y: number;
@@ -11,7 +15,7 @@ const CustomCursorRoot = styled.div<{
   position: fixed;
   left: 0;
   top: 0;
-  z-index: 7000;
+  z-index: ${CUSTOM_CURSOR_Z_INDEX};
   pointer-events: none;
   opacity: ${(p) => (p.$visible ? 1 : 0)};
   transform: translate3d(${(p) => p.$x}px, ${(p) => p.$y}px, 0);

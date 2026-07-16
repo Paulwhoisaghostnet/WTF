@@ -4,6 +4,7 @@ import test from "node:test";
 
 const assistantSource = readFileSync("client/src/features/reggie/ReggieAssistant.tsx", "utf8");
 const desktopSource = readFileSync("client/src/components/layout/Desktop.tsx", "utf8");
+const customCursorSource = readFileSync("client/src/features/desktop/CustomCursor.tsx", "utf8");
 const wimSource = readFileSync("client/src/pages/Wim.tsx", "utf8");
 const localizationSource = readFileSync("client/src/lib/localization-catalogs.ts", "utf8");
 
@@ -24,6 +25,12 @@ test("Reggie positions the bubble away from a guided control and inside the view
   assert.match(assistantSource, /placementForAnchor\(rect, currentViewport\(\)\)/);
   assert.match(assistantSource, /<Bubble \$side=\{bubbleSide\}/);
   assert.match(assistantSource, /max-height: min\(320px, calc\(100vh - 24px\)\)/);
+});
+
+test("custom cursor remains above Reggie's interactive speech bubble", () => {
+  assert.match(assistantSource, /const REGGIE_Z_INDEX = 9100/);
+  assert.match(customCursorSource, /const CUSTOM_CURSOR_Z_INDEX = 9200/);
+  assert.match(customCursorSource, /pointer-events: none/);
 });
 
 test("desktop context menu exposes Summon Reggie through the shared event", () => {

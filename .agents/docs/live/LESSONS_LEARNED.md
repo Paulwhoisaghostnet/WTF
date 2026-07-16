@@ -28,6 +28,16 @@
 
 ---
 
+## 2026-07-16 - The desktop cursor must outrank interactive assistant overlays
+
+**What happened**: REggie's speech bubble and its buttons rendered at z-index `9100`, but the custom desktop cursor rendered at `7000`. The pointer became invisible while hovering the very controls users needed to click.
+
+**Why it mattered**: Pointer feedback is part of desktop control precision. A transparent cursor layer can sit above an interactive surface without capturing events, but placing it below the surface hides the user's aim at the critical moment.
+
+**Rule**: Keep the custom cursor glyph above interactive assistant overlays while retaining `pointer-events: none`. Add a regression guard whenever desktop overlay z-index bands change.
+
+---
+
 ## 2026-07-14 - Gamma session controls need lock without logout
 
 **What happened**: Gamma had Desk, Settings, and sign-out/login controls, but no low-risk signed-in Lock action for returning to the OS desk while keeping the session mounted.
