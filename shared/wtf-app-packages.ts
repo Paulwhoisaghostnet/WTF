@@ -279,7 +279,7 @@ const PASTA_CREATION_TOOLS = [
   {
     id: "rotini",
     label: "Rotini",
-    contractEvidence: "public/creation-tools/rotini/contract/pasta-standard-collection.contract.json",
+    contractEvidence: "public/creation-tools/rotini/contract/pasta-generative-collection.contract.json",
   },
   {
     id: "penne",

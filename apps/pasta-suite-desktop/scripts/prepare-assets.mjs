@@ -13,6 +13,13 @@ const outToolsDir = path.join(outDir, "creation-tools");
 
 const tools = [
   {
+    id: "ch-ease",
+    title: "CH-EASE",
+    summary: "Prepare package metadata, media archives, and publisher handoffs locally.",
+    entry: "/creation-tools/ch-ease/index.html",
+    required: ["index.html", "css/theme.css", "js/studio.js", "vendor/jszip.min.js"],
+  },
+  {
     id: "macaroni",
     title: "Macaroni",
     summary: "Blind-mint drop studio and exported mint-site builder.",
@@ -92,7 +99,7 @@ const tools = [
   {
     id: "rotini",
     title: "Rotini",
-    summary: "Generative edition builder and standard-collection handoff.",
+    summary: "Collector-minted generative project builder.",
     entry: "/creation-tools/rotini/index.html",
     required: [
       "index.html",
@@ -106,7 +113,7 @@ const tools = [
       "js/pasta-foundation.js",
       "vendor/tezos.js",
       "vendor/octez-connect.js",
-      "contract/pasta-standard-collection.contract.json",
+      "contract/pasta-generative-collection.contract.json",
     ],
   },
   {
@@ -295,6 +302,20 @@ function suiteIndexHtml() {
       .project { text-align: left; display: grid; gap: 2px; }
       .project[aria-current="true"] { border-left: 4px solid var(--accent); }
       .project small { color: var(--muted); }
+      .project-manager { display: grid; gap: 7px; padding: 9px; border: 1px solid var(--line); background: var(--panel); }
+      .project-manager[hidden] { display: none; }
+      .project-manager-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+      .project-manager-actions button { min-height: 34px; flex: 1 1 120px; font-size: 12px; }
+      .project-manager .danger { color: var(--danger, #ff8178); border-color: var(--danger, #ff8178); }
+      .archived-project { display: grid; gap: 5px; padding-top: 7px; border-top: 1px solid var(--line); }
+      .archived-project small { color: var(--muted); }
+      .project-resources { display: grid; gap: 10px; margin-top: 8px; }
+      .project-resource-group { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+      .project-resource-group h3 { margin: 0; font-size: 14px; }
+      .project-resource { display: grid; gap: 5px; padding: 8px; border: 1px solid var(--line); background: var(--panel); overflow-wrap: anywhere; }
+      .project-resource small { color: var(--muted); }
+      .project-resource-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+      .project-resource-actions button { min-height: 34px; flex: 1 1 120px; font-size: 12px; color: var(--accent); }
       .tool-card {
         min-height: 150px;
         display: flex;
@@ -344,6 +365,9 @@ function suiteIndexHtml() {
       .local-site { display: grid; gap: 7px; border: 1px solid var(--line); padding: 12px; }
       .local-site small { color: var(--muted); overflow-wrap: anywhere; }
       .local-site button { color: var(--accent); }
+      .local-site-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+      .local-site-actions button { flex: 1 1 130px; }
+      .local-site-actions .danger { color: var(--danger, #ff8178); border-color: var(--danger, #ff8178); }
       .contract-action { border: 1px solid var(--line); padding: 12px; }
       .contract-action h3 { margin: 0 0 8px; font-size: 16px; }
       .action-fields label { flex: 1 1 130px; }
@@ -370,10 +394,27 @@ function suiteIndexHtml() {
         <aside class="projects">
           <label>Project name <input id="project-title" placeholder="My next release" /></label>
           <label>Starting workflow <select id="project-tool">${tools.map((tool) => `<option value="${tool.id}">${tool.title}</option>`).join("")}</select></label>
+          <label>Network <select id="project-network"><option value="shadownet">Shadownet (recommended for testing)</option><option value="mainnet">Mainnet</option></select></label>
           <button id="create-project" type="button">Create project</button>
           <button id="export-project" type="button">Export active manifest</button>
           <label>Import manifest <input id="import-project" type="file" accept="application/json,.json" /></label>
           <div id="project-list"><small>No projects yet.</small></div>
+          <section id="active-project-manager" class="project-manager" aria-label="Active project management" hidden>
+            <strong>Manage active project</strong>
+            <label>Project title <input id="active-project-title" autocomplete="off" /></label>
+            <div class="project-manager-actions">
+              <button id="rename-project" type="button">Save name</button>
+              <button id="duplicate-project" type="button">Duplicate as new project</button>
+              <button id="archive-project" type="button" class="danger">Archive project</button>
+            </div>
+            <small>Duplicates start clean and do not share contracts, drafts, or exported sites.</small>
+          </section>
+          <section id="archived-projects" class="project-manager" aria-label="Archived Pasta projects" hidden></section>
+          <div class="project-resources" aria-label="Active project lifecycle">
+            <section class="project-resource-group" aria-label="Recoverable drafts"><h3>Recoverable drafts</h3><div id="project-drafts"><small>No saved studio drafts.</small></div></section>
+            <section class="project-resource-group" aria-label="Remembered contracts"><h3>Remembered contracts</h3><div id="project-contracts"><small>No remembered contracts.</small></div></section>
+            <section class="project-resource-group" aria-label="Project self-hosted pages"><h3>Project pages</h3><div id="project-sites"><small>No self-hosted page exports.</small></div></section>
+          </div>
         </aside>
         <section class="grid" aria-label="Pasta tools">${cards}
         </section>
@@ -384,7 +425,7 @@ function suiteIndexHtml() {
           <button id="connect-wallet" type="button">Connect wallet</button>
         </div>
         <div class="manager-row">
-          <label>Network <select id="contract-network"><option value="mainnet">Mainnet</option><option value="shadownet">Shadownet</option></select></label>
+          <label>Network <select id="contract-network"><option value="shadownet">Shadownet</option><option value="mainnet">Mainnet</option></select></label>
           <label id="contract-address">Contract address <input id="contract-kt" placeholder="KT1…" /></label>
           <button id="open-contract" type="button">Open contract</button>
         </div>
@@ -408,42 +449,229 @@ function suiteIndexHtml() {
       (() => {
         const KEY = "wtfos.pasta.colander.workspace.v1";
         const SCHEMA = "pasta-project@1";
+        const TOOL_IDS = new Set(["ch-ease", "macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"]);
+        const PROJECT_STAGES = new Set(["planning", "preparing", "deployed", "published", "archived"]);
+        const CONTRACT_SOURCES = new Set(["deployed", "remembered", "colander"]);
+        const isText = (value) => typeof value === "string";
+        const isKt = (value) => isText(value) && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(value);
+        const safeLocalSiteUrl = (value) => {
+          if (!isText(value) || !value.startsWith("/sites/") || !value.endsWith("/")) return undefined;
+          const slug = value.slice(7, -1);
+          return /^[a-z0-9][a-z0-9-]*$/.test(slug) ? value : undefined;
+        };
+        function normalizeProject(value) {
+          if (!value || typeof value !== "object" || value.schema !== SCHEMA || !isText(value.id) || !isText(value.title)) return null;
+          const now = new Date().toISOString();
+          const contracts = Array.isArray(value.contracts) ? Array.from(new Set(value.contracts.filter(isKt))) : [];
+          const drafts = Array.isArray(value.drafts) ? value.drafts.filter((draft) =>
+            draft && draft.schema === "pasta-studio-draft-ref@1" && TOOL_IDS.has(draft.toolId) && isText(draft.storageKey) && isText(draft.savedAt) && isText(draft.summary)
+          ).map((draft) => ({ schema: "pasta-studio-draft-ref@1", toolId: draft.toolId, storageKey: draft.storageKey, savedAt: draft.savedAt, summary: draft.summary })) : [];
+          const contractRecords = Array.isArray(value.contractRecords) ? value.contractRecords.filter((record) =>
+            record && record.schema === "pasta-contract-ref@1" && isKt(record.address) && TOOL_IDS.has(record.toolId) && isText(record.network) && isText(record.label) && CONTRACT_SOURCES.has(record.source) && isText(record.recordedAt) && (record.lastVerifiedAt == null || isText(record.lastVerifiedAt))
+          ).map((record) => ({ schema: "pasta-contract-ref@1", address: record.address, toolId: record.toolId, network: record.network, label: record.label, source: record.source, recordedAt: record.recordedAt, lastVerifiedAt: record.lastVerifiedAt })) : [];
+          const artifacts = Array.isArray(value.artifacts) ? value.artifacts.filter((artifact) =>
+            artifact && isText(artifact.id) && artifact.kind === "self_hosted_site" && TOOL_IDS.has(artifact.toolId) && isKt(artifact.contract) && isText(artifact.fileName) && isText(artifact.createdAt)
+          ).map((artifact) => ({ id: artifact.id, kind: "self_hosted_site", toolId: artifact.toolId, contract: artifact.contract, tokenId: Number.isSafeInteger(Number(artifact.tokenId)) ? Number(artifact.tokenId) : undefined, fileName: artifact.fileName, localUrl: safeLocalSiteUrl(artifact.localUrl), createdAt: artifact.createdAt })) : [];
+          const normalized = {
+            schema: SCHEMA,
+            id: value.id,
+            title: value.title.trim() || "Untitled Pasta project",
+            toolId: TOOL_IDS.has(value.toolId) ? value.toolId : "spaghetti",
+            stage: PROJECT_STAGES.has(value.stage) ? value.stage : "planning",
+            network: value.network === "shadownet" ? "shadownet" : "mainnet",
+            contracts,
+            contractRecords,
+            artifacts,
+            drafts,
+            createdAt: isText(value.createdAt) ? value.createdAt : now,
+            updatedAt: isText(value.updatedAt) ? value.updatedAt : now,
+          };
+          if (normalized.stage === "archived" && ["planning", "preparing", "deployed", "published"].includes(value.archivedFromStage)) normalized.archivedFromStage = value.archivedFromStage;
+          return normalized;
+        }
+        function normalizeProjects(value) {
+          return (Array.isArray(value) ? value : [value]).map(normalizeProject).filter(Boolean);
+        }
         let projects = [];
         let activeId = "";
-        try { projects = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch (_) { projects = []; }
+        try { projects = normalizeProjects(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch (_) { projects = []; }
         const byId = (id) => document.getElementById(id);
         let openedContract = null;
         let openedEntrypoints = new Set();
         let walletAddress = "";
         const save = () => localStorage.setItem(KEY, JSON.stringify(projects));
-        const active = () => projects.find((project) => project.id === activeId) || projects[0];
+        const activeProjects = () => projects.filter((project) => project.stage !== "archived");
+        const active = () => activeProjects().find((project) => project.id === activeId) || activeProjects()[0];
+        const emit = (type, detail = {}) => window.dispatchEvent(new CustomEvent("pasta-protocol", { detail: { type, app: "colander", ...detail } }));
+        const toolCard = (toolId) => Array.from(document.querySelectorAll(".tool-card")).find((card) => card.dataset.tool === toolId);
+        function launchTool(toolId, project, contract) {
+          const card = toolCard(toolId);
+          if (!card) { byId("suite-status").textContent = "The owner app for this record is not installed in this suite."; return false; }
+          const query = new URLSearchParams({ handoff: "colander-workspace", projectId: project.id, projectTitle: project.title, network: project.network, kind: toolId });
+          const address = contract || project.contracts?.[0];
+          if (address) query.set("contract", address);
+          window.open(card.dataset.entry + "?" + query, "_blank", "noopener");
+          return true;
+        }
+        function resourceCard(titleText, detailText) {
+          const card = document.createElement("article"); card.className = "project-resource";
+          const title = document.createElement("strong"); title.textContent = titleText; card.appendChild(title);
+          const detail = document.createElement("small"); detail.textContent = detailText; card.appendChild(detail);
+          const actions = document.createElement("div"); actions.className = "project-resource-actions"; card.appendChild(actions);
+          return { card, actions };
+        }
+        function actionButton(label, handler) {
+          const button = document.createElement("button"); button.type = "button"; button.textContent = label; button.onclick = handler; return button;
+        }
+        function siteSlugFromUrl(value) {
+          const raw = String(value || ""); if (!raw.startsWith("/sites/") || !raw.endsWith("/")) return "";
+          const slug = raw.slice(7, -1); const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789-"; const first = "abcdefghijklmnopqrstuvwxyz0123456789";
+          return slug.length > 0 && slug.length <= 80 && first.includes(slug[0]) && Array.from(slug).every((char) => alphabet.includes(char)) ? slug : "";
+        }
+        function forgetProjectArtifact(projectId, artifactId) {
+          const project = projects.find((candidate) => candidate.id === projectId); if (!project) return;
+          const artifact = project.artifacts.find((candidate) => candidate.id === artifactId); if (!artifact) return;
+          project.artifacts = project.artifacts.filter((candidate) => candidate.id !== artifactId); project.updatedAt = new Date().toISOString(); save(); render();
+          byId("suite-status").textContent = "Forgot site record " + artifact.fileName + ". Installed bytes and the contract are unchanged.";
+          emit("colander.site_record_forgotten", { projectId, artifactId, contract: artifact.contract });
+        }
+        function requestForgetProjectArtifact(project, artifact, actions) {
+          actions.replaceChildren();
+          const confirm = actionButton("Confirm forget record", () => forgetProjectArtifact(project.id, artifact.id)); confirm.classList.add("danger"); actions.appendChild(confirm);
+          actions.appendChild(actionButton("Cancel", render));
+        }
+        function pruneSiteArtifacts(url) {
+          let changed = false; const now = new Date().toISOString();
+          projects.forEach((project) => { const next = project.artifacts.filter((artifact) => artifact.localUrl !== url); if (next.length !== project.artifacts.length) { project.artifacts = next; project.updatedAt = now; changed = true; } });
+          if (changed) save();
+        }
+        async function uninstallSite(site) {
+          const slug = site.slug || siteSlugFromUrl(site.url); if (!slug) throw new Error("That page does not have a managed local slug.");
+          const response = await fetch("/api/pasta/sites/" + encodeURIComponent(slug), { method: "DELETE" }); const payload = await response.json();
+          if (!response.ok || !payload.ok) throw new Error(payload.error || "Could not uninstall the local page.");
+          const url = payload.site?.url || site.url || "/sites/" + slug + "/"; pruneSiteArtifacts(url); render(); await refreshSites();
+          byId("suite-status").textContent = "Uninstalled " + (payload.site?.title || site.title || slug) + " and removed its project records.";
+          emit("pasta_suite.site_uninstalled", { slug, url });
+        }
+        function requestUninstallSite(site, actions, cancel = refreshSites) {
+          actions.replaceChildren();
+          const confirm = actionButton("Confirm uninstall page", async () => { confirm.disabled = true; try { await uninstallSite(site); } catch (error) { byId("suite-status").textContent = "Could not uninstall page: " + (error.message || error); render(); await refreshSites(); } }); confirm.classList.add("danger"); actions.appendChild(confirm);
+          actions.appendChild(actionButton("Cancel", cancel));
+        }
+        function renderProjectResources(project) {
+          const draftsRoot = byId("project-drafts"); draftsRoot.replaceChildren();
+          const contractsRoot = byId("project-contracts"); contractsRoot.replaceChildren();
+          const sitesRoot = byId("project-sites"); sitesRoot.replaceChildren();
+          if (!project) {
+            for (const [root, copy] of [[draftsRoot, "No saved studio drafts."], [contractsRoot, "No remembered contracts."], [sitesRoot, "No self-hosted page exports."]]) { const empty = document.createElement("small"); empty.textContent = copy; root.appendChild(empty); }
+            return;
+          }
+          if (!project.drafts.length) { const empty = document.createElement("small"); empty.textContent = "No saved studio drafts."; draftsRoot.appendChild(empty); }
+          project.drafts.slice().reverse().slice(0, 6).forEach((draft) => {
+            const row = resourceCard(draft.summary, draft.toolId + " · saved " + new Date(draft.savedAt).toLocaleString());
+            row.actions.appendChild(actionButton("Resume draft", () => launchTool(draft.toolId, project)));
+            draftsRoot.appendChild(row.card);
+          });
+          if (!project.contractRecords.length) { const empty = document.createElement("small"); empty.textContent = "No remembered contracts."; contractsRoot.appendChild(empty); }
+          project.contractRecords.slice().reverse().slice(0, 8).forEach((record) => {
+            const verified = record.lastVerifiedAt ? "verified " + new Date(record.lastVerifiedAt).toLocaleString() : "not re-verified on this device";
+            const row = resourceCard(record.label, record.address + " · " + record.network + " · " + verified);
+            row.actions.appendChild(actionButton("Open in contract manager", () => {
+              byId("contract-network").value = record.network === "shadownet" ? "shadownet" : "mainnet";
+              byId("contract-kt").value = record.address;
+              byId("open-contract").click();
+            }));
+            row.actions.appendChild(actionButton("Resume in owner app", () => launchTool(record.toolId, project, record.address)));
+            contractsRoot.appendChild(row.card);
+          });
+          if (!project.artifacts.length) { const empty = document.createElement("small"); empty.textContent = "No self-hosted page exports."; sitesRoot.appendChild(empty); }
+          project.artifacts.slice().reverse().slice(0, 8).forEach((artifact) => {
+            const row = resourceCard(artifact.fileName, artifact.toolId + " · " + artifact.contract);
+            if (artifact.localUrl) row.actions.appendChild(actionButton("Open installed page", () => window.open(artifact.localUrl, "_blank", "noopener")));
+            row.actions.appendChild(actionButton("Rebuild in owner app", () => launchTool(artifact.toolId, project, artifact.contract)));
+            if (siteSlugFromUrl(artifact.localUrl)) row.actions.appendChild(actionButton("Uninstall local page", () => requestUninstallSite({ slug: siteSlugFromUrl(artifact.localUrl), url: artifact.localUrl, title: artifact.fileName }, row.actions, render)));
+            const forget = actionButton("Forget record only", () => requestForgetProjectArtifact(project, artifact, row.actions)); forget.classList.add("danger"); row.actions.appendChild(forget);
+            sitesRoot.appendChild(row.card);
+          });
+        }
         function render() {
           const list = byId("project-list");
           list.innerHTML = "";
-          if (!projects.length) list.innerHTML = "<small>No projects yet.</small>";
-          projects.forEach((project) => {
+          if (!activeProjects().length) list.innerHTML = "<small>No active projects. Start a new one or restore an archived project.</small>";
+          activeProjects().forEach((project) => {
             const button = document.createElement("button");
             button.className = "project";
             button.setAttribute("aria-current", String(project.id === active()?.id));
-            button.innerHTML = "<strong>" + project.title.replace(/[<>&]/g, "") + "</strong><small>" + project.stage + " · " + (project.contracts || []).length + " contracts · " + (project.artifacts || []).length + " site exports</small>";
+            const title = document.createElement("strong"); title.textContent = project.title; button.appendChild(title);
+            const detail = document.createElement("small"); detail.textContent = project.stage + " · " + project.contracts.length + " contracts · " + project.drafts.length + " drafts · " + project.artifacts.length + " site exports"; button.appendChild(detail);
             button.onclick = () => { activeId = project.id; render(); };
             list.appendChild(button);
           });
           document.querySelectorAll(".tool-card").forEach((card) => {
-            card.querySelector("button").textContent = active() ? "Open for " + active().title + " ↗" : "Start with " + card.querySelector("span").textContent + " ↗";
+              card.querySelector("button").textContent = active() ? "Open for " + active().title + " ↗" : "Start with " + card.querySelector("span").textContent + " ↗";
           });
+          const current = active();
+          const manager = byId("active-project-manager"); manager.hidden = !current;
+          byId("active-project-title").value = current?.title || "";
+          const archiveRoot = byId("archived-projects"); archiveRoot.replaceChildren();
+          const archived = projects.filter((project) => project.stage === "archived"); archiveRoot.hidden = !archived.length;
+          if (archived.length) { const heading = document.createElement("strong"); heading.textContent = "Archived projects"; archiveRoot.appendChild(heading); }
+          archived.forEach((project) => {
+            const row = document.createElement("div"); row.className = "archived-project";
+            const title = document.createElement("strong"); title.textContent = project.title; row.appendChild(title);
+            const detail = document.createElement("small"); detail.textContent = "archived from " + (project.archivedFromStage || "legacy state"); row.appendChild(detail);
+            const actions = document.createElement("div"); actions.className = "project-manager-actions";
+            actions.appendChild(actionButton("Restore project", () => restoreProject(project.id)));
+            const remove = actionButton("Delete permanently", () => requestDeleteProject(project.id, actions)); remove.classList.add("danger"); actions.appendChild(remove);
+            row.appendChild(actions); archiveRoot.appendChild(row);
+          });
+          renderProjectResources(active());
         }
         function createProject(toolId) {
           const now = new Date().toISOString();
-          const project = { schema: SCHEMA, id: crypto.randomUUID(), title: byId("project-title").value.trim() || "Untitled Pasta project", toolId, stage: "planning", network: localStorage.getItem("wtf:network") || "mainnet", contracts: [], artifacts: [], createdAt: now, updatedAt: now };
-          projects.unshift(project); activeId = project.id; byId("project-title").value = ""; save(); render(); return project;
+          const network = byId("project-network").value === "mainnet" ? "mainnet" : "shadownet";
+          const project = { schema: SCHEMA, id: crypto.randomUUID(), title: byId("project-title").value.trim() || "Untitled Pasta project", toolId, stage: toolId === "ch-ease" ? "preparing" : "planning", network, contracts: [], contractRecords: [], artifacts: [], drafts: [], createdAt: now, updatedAt: now };
+          projects.unshift(project); activeId = project.id; byId("project-title").value = ""; save(); render(); emit("colander.project_created", { projectId: project.id, toolId }); return project;
+        }
+        function renameProject() {
+          const project = active(); if (!project) return;
+          const title = byId("active-project-title").value.trim();
+          if (!title) { byId("suite-status").textContent = "Project name cannot be empty."; return; }
+          if (title === project.title) { byId("suite-status").textContent = "Project name is unchanged."; return; }
+          project.title = title; project.updatedAt = new Date().toISOString(); save(); render(); byId("suite-status").textContent = "Renamed project to " + title + "."; emit("colander.project_renamed", { projectId: project.id });
+        }
+        function duplicateProject() {
+          const project = active(); if (!project) return;
+          const now = new Date().toISOString();
+          const duplicate = { ...project, id: crypto.randomUUID(), title: project.title + " copy", stage: project.toolId === "ch-ease" ? "preparing" : "planning", contracts: [], contractRecords: [], artifacts: [], drafts: [], createdAt: now, updatedAt: now };
+          delete duplicate.archivedFromStage; projects.unshift(duplicate); activeId = duplicate.id; save(); render(); byId("suite-status").textContent = "Created independent copy " + duplicate.title + "."; emit("colander.project_duplicated", { projectId: project.id, duplicateProjectId: duplicate.id });
+        }
+        function archiveProject() {
+          const project = active(); if (!project) return;
+          project.archivedFromStage = project.stage; project.stage = "archived"; project.updatedAt = new Date().toISOString();
+          activeId = activeProjects().find((candidate) => candidate.id !== project.id)?.id || ""; save(); render(); byId("suite-status").textContent = "Archived " + project.title + ". You can restore it below."; emit("colander.project_archived", { projectId: project.id, previousStage: project.archivedFromStage });
+        }
+        function restoreProject(projectId) {
+          const project = projects.find((candidate) => candidate.id === projectId && candidate.stage === "archived"); if (!project) return;
+          project.stage = ["planning", "preparing", "deployed", "published"].includes(project.archivedFromStage) ? project.archivedFromStage : project.contracts.length ? "deployed" : project.toolId === "ch-ease" ? "preparing" : "planning";
+          delete project.archivedFromStage; project.updatedAt = new Date().toISOString(); activeId = project.id; save(); render(); byId("suite-status").textContent = "Restored " + project.title + "."; emit("colander.project_restored", { projectId: project.id, stage: project.stage });
+        }
+        function requestDeleteProject(projectId, actions) {
+          actions.replaceChildren();
+          const confirm = actionButton("Confirm permanent delete", () => deleteProject(projectId)); confirm.classList.add("danger"); actions.appendChild(confirm);
+          actions.appendChild(actionButton("Cancel", render));
+        }
+        function deleteProject(projectId) {
+          const project = projects.find((candidate) => candidate.id === projectId && candidate.stage === "archived"); if (!project) return;
+          projects = projects.filter((candidate) => candidate.id !== projectId); save(); render(); byId("suite-status").textContent = "Permanently deleted " + project.title + "."; emit("colander.project_deleted", { projectId });
         }
         byId("create-project").onclick = () => createProject(byId("project-tool").value);
+        byId("rename-project").onclick = renameProject;
+        byId("duplicate-project").onclick = duplicateProject;
+        byId("archive-project").onclick = archiveProject;
         document.querySelectorAll(".tool-card").forEach((card) => card.querySelector("button").onclick = () => {
           const project = active() || createProject(card.dataset.tool);
-          const query = new URLSearchParams({ handoff: "colander-workspace", projectId: project.id, projectTitle: project.title, network: project.network, kind: card.dataset.tool });
-          if (project.contracts?.[0]) query.set("contract", project.contracts[0]);
-          window.open(card.dataset.entry + "?" + query, "_blank", "noopener");
+          launchTool(card.dataset.tool, project);
         });
         byId("export-project").onclick = () => {
           const project = active(); if (!project) return;
@@ -453,7 +681,7 @@ function suiteIndexHtml() {
         };
         byId("import-project").onchange = async (event) => {
           const file = event.target.files?.[0]; if (!file) return;
-          try { const project = JSON.parse(await file.text()); if (project.schema !== SCHEMA || !project.id) throw new Error(); projects = [project, ...projects.filter((item) => item.id !== project.id)]; activeId = project.id; save(); render(); byId("suite-status").textContent = "Imported " + project.title + "."; } catch (_) { byId("suite-status").textContent = "That file is not a Pasta Project manifest."; }
+          try { const project = normalizeProject(JSON.parse(await file.text())); if (!project) throw new Error(); projects = [project, ...projects.filter((item) => item.id !== project.id)]; activeId = project.id; save(); render(); byId("suite-status").textContent = "Imported " + project.title + "."; } catch (_) { byId("suite-status").textContent = "That file is not a Pasta Project manifest."; }
         };
 
         async function refreshSites() {
@@ -468,7 +696,9 @@ function suiteIndexHtml() {
               const card = document.createElement("article"); card.className = "local-site";
               const title = document.createElement("strong"); title.textContent = site.title || site.app || "Pasta page"; card.appendChild(title);
               const detail = document.createElement("small"); detail.textContent = site.url + " · " + site.fileCount + " files"; card.appendChild(detail);
-              const open = document.createElement("button"); open.type = "button"; open.textContent = "Open local page ↗"; open.onclick = () => window.open(site.url, "_blank", "noopener"); card.appendChild(open);
+              const actions = document.createElement("div"); actions.className = "local-site-actions";
+              const open = document.createElement("button"); open.type = "button"; open.textContent = "Open local page ↗"; open.onclick = () => window.open(site.url, "_blank", "noopener"); actions.appendChild(open);
+              const remove = actionButton("Uninstall local page", () => requestUninstallSite(site, actions)); remove.classList.add("danger"); actions.appendChild(remove); card.appendChild(actions);
               root.appendChild(card);
             });
           } catch (error) {
@@ -503,6 +733,14 @@ function suiteIndexHtml() {
           if (entrypoints.has("create_token")) return "Spaghetti / Rotini collection";
           if (entrypoints.has("transfer")) return "FA2 contract";
           return "Unrecognized contract";
+        }
+        function toolIdForEntrypoints(entrypoints, project) {
+          if (entrypoints.has("publish_revision")) return "lasagna";
+          if (entrypoints.has("set_allocations")) return "penne";
+          if (entrypoints.has("open_mint")) return "gnocchi";
+          if (entrypoints.has("create_bundle")) return "ravioli";
+          if (entrypoints.has("create_token") && project?.toolId === "rotini") return "rotini";
+          return "spaghetti";
         }
         function buildMethod(action, values) {
           const m = openedContract.methodsObject;
@@ -567,17 +805,48 @@ function suiteIndexHtml() {
             const storage = await readContract.storage();
             byId("contract-facts").textContent = contractType(openedEntrypoints) + "\\n" + kt + "\\n" + openedEntrypoints.size + " entrypoints" + (storage.administrator ? "\\nAdmin: " + storage.administrator : "");
             const project = active();
-            if (project && !(project.contracts || []).includes(kt)) { project.contracts = [kt, ...(project.contracts || [])]; project.stage = "deployed"; project.updatedAt = new Date().toISOString(); save(); render(); }
+            if (project) {
+              const now = new Date().toISOString();
+              const toolId = toolIdForEntrypoints(openedEntrypoints, project);
+              const existing = project.contractRecords.find((record) => record.address === kt);
+              project.contracts = [kt, ...project.contracts.filter((address) => address !== kt)];
+              project.contractRecords = [
+                ...project.contractRecords.filter((record) => record.address !== kt),
+                {
+                  schema: "pasta-contract-ref@1",
+                  address: kt,
+                  toolId,
+                  network,
+                  label: contractType(openedEntrypoints),
+                  source: "colander",
+                  recordedAt: existing?.recordedAt || now,
+                  lastVerifiedAt: now,
+                },
+              ];
+              project.toolId = toolId;
+              project.network = network;
+              if (project.stage === "planning" || project.stage === "preparing") project.stage = "deployed";
+              project.updatedAt = now;
+              save(); render();
+            }
             renderActions();
           } catch (error) { openedContract = null; openedEntrypoints = new Set(); byId("contract-actions").innerHTML = ""; byId("contract-facts").textContent = "Could not open contract: " + (error.message || error); }
         };
-        byId("contract-network").value = localStorage.getItem("wtf:network") || "mainnet";
+        byId("contract-network").value = localStorage.getItem("wtf:network") || "shadownet";
+        function refreshProjects() {
+          try {
+            const next = normalizeProjects(JSON.parse(localStorage.getItem(KEY) || "[]"));
+            projects = next;
+            if (activeId && !projects.some((project) => project.id === activeId)) activeId = projects[0]?.id || "";
+            render();
+          } catch (_) { /* keep the last valid workspace */ }
+        }
         window.addEventListener("storage", (event) => {
           if (event.key === "wtfos.pasta.local-sites.changed") { refreshSites(); return; }
           if (event.key !== KEY) return;
-          try { projects = JSON.parse(event.newValue || "[]"); render(); } catch (_) { /* keep the last valid workspace */ }
+          refreshProjects();
         });
-        window.addEventListener("focus", refreshSites);
+        window.addEventListener("focus", () => { refreshProjects(); refreshSites(); });
         render();
         refreshSites();
       })();

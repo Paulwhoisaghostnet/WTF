@@ -64,6 +64,65 @@ jobs:
       - name: Build installer
         run: ${{ matrix.command }}
 
+      - name: Smoke packaged macOS application
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          rm -rf "$RUNNER_TEMP/pasta-suite-smoke"
+          mkdir -p "$RUNNER_TEMP/pasta-suite-smoke"
+          VERSION=$(node -p "require('./apps/pasta-suite-desktop/package.json').version")
+          ditto -x -k "apps/pasta-suite-desktop/release/Pasta-Suite-${VERSION}-mac-universal.zip" "$RUNNER_TEMP/pasta-suite-smoke"
+          PASTA_SUITE_DESKTOP_EXECUTABLE="$RUNNER_TEMP/pasta-suite-smoke/Pasta Suite.app/Contents/MacOS/Pasta Suite" npm run pasta-suite:desktop:artifact-smoke
+
+      - name: Install and smoke packaged Windows application
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = node -p "require('./apps/pasta-suite-desktop/package.json').version"
+          $installer = Join-Path "${{ github.workspace }}" "apps\pasta-suite-desktop\release\Pasta-Suite-$version-win-x64.exe"
+          if (-not (Test-Path $installer)) {
+            throw "Windows installer was not produced: $installer"
+          }
+
+          $before = @(Get-ChildItem "$env:LOCALAPPDATA\Programs" -Filter "Pasta Suite.exe" -File -Recurse -ErrorAction SilentlyContinue | ForEach-Object FullName)
+          $process = Start-Process -FilePath $installer -ArgumentList "/S" -PassThru -Wait
+          if ($process.ExitCode -ne 0) {
+            throw "Pasta Suite installer exited with code $($process.ExitCode)"
+          }
+
+          $installed = @(Get-ChildItem "$env:LOCALAPPDATA\Programs" -Filter "Pasta Suite.exe" -File -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $before -notcontains $_.FullName } |
+            Select-Object -First 1)
+          if ($installed.Count -ne 1) {
+            throw "Installed Pasta Suite executable was not found under LOCALAPPDATA\Programs"
+          }
+
+          $desktopShortcut = Join-Path ([Environment]::GetFolderPath("Desktop")) "Pasta Suite.lnk"
+          $startMenuShortcut = Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" -Filter "Pasta Suite.lnk" -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not (Test-Path $desktopShortcut)) {
+            throw "Pasta Suite desktop shortcut was not created"
+          }
+          if (-not $startMenuShortcut) {
+            throw "Pasta Suite Start menu shortcut was not created"
+          }
+
+          $env:PASTA_SUITE_DESKTOP_EXECUTABLE = $installed.FullName
+          npm run pasta-suite:desktop:artifact-smoke
+
+          $uninstaller = Get-ChildItem $installed.DirectoryName -Filter "Uninstall*.exe" -File | Select-Object -First 1
+          if (-not $uninstaller) {
+            throw "Pasta Suite uninstaller was not installed"
+          }
+          $process = Start-Process -FilePath $uninstaller.FullName -ArgumentList "/S" -PassThru -Wait
+          if ($process.ExitCode -ne 0) {
+            throw "Pasta Suite uninstaller exited with code $($process.ExitCode)"
+          }
+          Start-Sleep -Seconds 2
+          if (Test-Path $installed.FullName) {
+            throw "Pasta Suite executable remained after uninstall"
+          }
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
@@ -75,6 +134,8 @@ jobs:
             apps/pasta-suite-desktop/release/*.deb
             apps/pasta-suite-desktop/release/*.blockmap
             apps/pasta-suite-desktop/release/latest*.yml
+            apps/pasta-suite-desktop/build/README.txt
+            apps/pasta-suite-desktop/build/license_en.rtf
           if-no-files-found: error
 
   release:

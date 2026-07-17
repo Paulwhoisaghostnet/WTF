@@ -22,7 +22,7 @@ const required = [
   "js/pasta-foundation.js",
   "vendor/tezos.js",
   "vendor/octez-connect.js",
-  "contract/pasta-standard-collection.contract.json",
+  "contract/pasta-generative-collection.contract.json",
 ];
 
 if (!existsSync(sourceDir)) {

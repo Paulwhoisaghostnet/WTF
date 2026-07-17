@@ -33,6 +33,21 @@
         <button id="submit" type="button" disabled>Continue</button>
         <button id="secondarySubmit" type="button" hidden>Secondary action</button>
       </section>
+      <section id="rotiniStorage" class="storage" aria-label="Iteration artifact storage" hidden>
+        <div>
+          <h2>Artifact pinning</h2>
+          <p>Rotini renders the reserved iteration here, then pins the finished artifact before the token is finalized. Credentials stay in this browser session.</p>
+        </div>
+        <label>Provider
+          <select id="pinProvider">
+            <option value="pinata">Pinata (JWT)</option>
+            <option value="node">IPFS node (Kubo HTTP API)</option>
+            <option value="wtfos">wtfOS platform pinner</option>
+          </select>
+        </label>
+        <label id="pinJwtRow">Pinata JWT <input id="pinJwt" type="password" autocomplete="off" placeholder="eyJ…" /></label>
+        <label id="pinNodeRow" hidden>Node URL <input id="pinNode" type="url" placeholder="http://127.0.0.1:5001" /></label>
+      </section>
       <p id="status" role="status" aria-live="polite">Opening published work…</p>
       <footer>Creator-owned and self-hosted with Pasta Protocol.</footer>
     </main>

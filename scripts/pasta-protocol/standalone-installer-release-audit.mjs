@@ -9,6 +9,17 @@ const DEFAULT_REPOSITORY = "Paulwhoisaghostnet/WTF";
 
 const APPS = [
   {
+    key: "ch-ease",
+    label: "CH-EASE",
+    envPrefix: "CH_EASE_INSTALLER",
+    releaseTag: "ch-ease-desktop-v1.0.0",
+    assets: [
+      "CH-EASE-Studio-1.0.0-mac-universal.dmg",
+      "CH-EASE-Studio-1.0.0-win-x64.exe",
+      "CH-EASE-Studio-1.0.0-linux-arm64.deb",
+    ],
+  },
+  {
     key: "gnocchi",
     label: "Gnocchi",
     envPrefix: "GNOCCHI_INSTALLER",

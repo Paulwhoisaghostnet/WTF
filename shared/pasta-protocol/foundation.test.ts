@@ -407,6 +407,25 @@ test("detectPastaContract identifies the open edition over generic FA2", () => {
   assert.equal(detectPastaContract(eps)?.kind, "open_edition_collection");
 });
 
+test("detectPastaContract identifies the collector-finalized generative collection", () => {
+  const eps = [
+    "transfer",
+    "update_operators",
+    "balance_of",
+    "create_project",
+    "reserve_iteration",
+    "finalize_iteration",
+    "cancel_expired_reservation",
+    "set_project_active",
+  ];
+  const adapter = detectPastaContract(eps)!;
+  assert.equal(adapter.kind, "generative_collection");
+  assert(adapter.actions.some((action) => action.id === "reserve_iteration" && action.external === "rotini"));
+  assert(adapter.actions.some((action) => action.id === "finalize_iteration" && action.external === "rotini"));
+  assert(adapter.actions.some((action) => action.id === "cancel_expired_reservation" && !action.external));
+  assert(adapter.actions.some((action) => action.id === "set_project_active"));
+});
+
 test("detectPastaContract identifies the bundle collection", () => {
   const eps = [...FA2_BASE, "create_bundle", "set_bundle_contents", "redeem"];
   assert.equal(detectPastaContract(eps)?.kind, "bundle_collection");
@@ -458,6 +477,8 @@ test("bundle and open-edition adapters route their complete management stories",
 
   const openEntrypoints = [...FA2_BASE, "create_open_edition", "set_sale", "set_sale_active", "open_mint"];
   const openActions = availableActions(detectPastaContract(openEntrypoints)!, openEntrypoints);
+  assert(openActions.some((action) => action.id === "create_open_edition" && action.external === "gnocchi" && action.access === "admin"));
+  assert(openActions.some((action) => action.id === "open_mint" && action.external === "gnocchi" && action.access === "public"));
   assert(openActions.some((action) => action.id === "set_sale" && action.external === "gnocchi"));
   assert(openActions.some((action) => action.id === "set_sale_active" && !action.external));
 });

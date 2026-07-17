@@ -30,6 +30,7 @@ import {
   type RoleDefinition,
 } from "@shared/types";
 import type {
+  AdminUser,
   AdminSurfaceAccess,
   ResetRoleSurfaceAccessPayload,
   ResetPermissionPayload,
@@ -39,6 +40,12 @@ import type {
   TogglePermissionPayload,
   UpsertRolePayload,
 } from "../types";
+import {
+  AdminScopeSearch,
+  AdminScopeTable,
+  AdminScopeToolbar,
+  type AdminScopeColumn,
+} from "../components/AdminScopeWorkspace";
 
 const PERMISSION_CATEGORY_LABELS: Record<PermissionCategory, string> = {
   general: "General",
@@ -508,12 +515,25 @@ const EmptyState = styled.div`
   font-size: var(--wtf-type-caption, 13px);
 `;
 
+const RoleUserButton = styled.button`
+  border: 0;
+  background: transparent;
+  color: var(--wtf-app-link, #000080);
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+`;
+
 type AdminMutation<TPayload> = {
   mutate: (payload: TPayload) => void;
   isPending: boolean;
 };
 
 type RolesAdminTabProps = {
+  allUsers: AdminUser[];
+  onOpenUser: (userId: number) => void;
   permCategoryFilter: PermissionCategory | "";
   setPermCategoryFilter: Dispatch<SetStateAction<PermissionCategory | "">>;
   rolePerms: RolePermissionMatrix | undefined;
@@ -625,6 +645,8 @@ function PanelLabel({
 }
 
 export function RolesAdminTab({
+  allUsers,
+  onOpenUser,
   permCategoryFilter,
   setPermCategoryFilter,
   rolePerms,
@@ -674,6 +696,7 @@ export function RolesAdminTab({
   const [surfaceDomainFilter, setSurfaceDomainFilter] = useState("");
   const [surfaceKindFilter, setSurfaceKindFilter] = useState("");
   const [surfaceSearch, setSurfaceSearch] = useState("");
+  const [roleSearch, setRoleSearch] = useState("");
 
   useEffect(() => {
     if (!roles.length) return;
@@ -704,6 +727,90 @@ export function RolesAdminTab({
   const selectedNativeSettingsCount = new Set(selectedSurfaces.flatMap((surface) => surface.nativeSettings)).size;
   const selectedAutomationCount = new Set(selectedSurfaces.flatMap((surface) => surface.automationHandles)).size;
   const selectedRoleLocked = selectedRole?.slug === "admin";
+  const selectedRoleUsers = selectedRole
+    ? allUsers.filter((user) => user.roles.includes(selectedRole.slug))
+    : [];
+
+  const visibleRoles = useMemo(() => {
+    const query = roleSearch.trim().toLowerCase();
+    if (!query) return roles;
+    return roles.filter((role) => [
+      role.slug,
+      role.label,
+      role.category,
+      role.purpose,
+      role.description,
+      ...allUsers
+        .filter((user) => user.roles.includes(role.slug))
+        .flatMap((user) => [user.username, user.displayName, user.email]),
+    ].some((value) => String(value ?? "").toLowerCase().includes(query)));
+  }, [allUsers, roleSearch, roles]);
+
+  const roleColumns = useMemo<AdminScopeColumn<RoleDefinition>[]>(() => [
+    {
+      key: "role",
+      label: "Role",
+      width: "24%",
+      sortValue: (role) => role.label,
+      render: (role) => <><RoleAccent $color={role.color} /><strong>{role.label}</strong><RoleSlug>{role.slug}</RoleSlug></>,
+    },
+    {
+      key: "level",
+      label: "Level",
+      align: "right",
+      sortValue: (role) => role.accessLevel,
+      render: (role) => <strong>L{role.accessLevel}</strong>,
+    },
+    {
+      key: "category",
+      label: "Category",
+      sortValue: (role) => role.category,
+      render: (role) => role.category,
+    },
+    {
+      key: "users",
+      label: "Users",
+      align: "right",
+      sortValue: (role) => allUsers.filter((user) => user.roles.includes(role.slug)).length,
+      render: (role) => allUsers.filter((user) => user.roles.includes(role.slug)).length,
+    },
+    {
+      key: "permissions",
+      label: "Permissions",
+      align: "right",
+      sortValue: (role) => countPermissionsForRole(role.slug, rolePerms),
+      render: (role) => `${countPermissionsForRole(role.slug, rolePerms)}/${PERMISSIONS.length}`,
+    },
+    {
+      key: "surfaces",
+      label: "Surfaces",
+      align: "right",
+      sortValue: (role) => countSurfacesForRole(role.slug, roleAccess),
+      render: (role) => countSurfacesForRole(role.slug, roleAccess),
+    },
+  ], [allUsers, roleAccess, rolePerms]);
+
+  const selectedRoleUserColumns = useMemo<AdminScopeColumn<AdminUser>[]>(() => [
+    {
+      key: "user",
+      label: "Assigned user",
+      sortValue: (user) => user.displayName || user.username,
+      render: (user) => <RoleUserButton type="button" onClick={(event) => { event.stopPropagation(); onOpenUser(user.id); }}>{user.displayName || `@${user.username}`}</RoleUserButton>,
+    },
+    {
+      key: "highest",
+      label: "Highest role",
+      sortValue: (user) => user.highestRole?.accessLevel ?? 0,
+      render: (user) => `${user.highestRole?.label ?? user.role} · L${user.highestRole?.accessLevel ?? 0}`,
+    },
+    {
+      key: "roles",
+      label: "Assigned roles",
+      align: "right",
+      sortValue: (user) => user.roles.length,
+      render: (user) => user.roles.length,
+    },
+  ], [onOpenUser]);
 
   const categoryPermissionCounts = useMemo(() => {
     return Object.fromEntries(
@@ -863,37 +970,37 @@ export function RolesAdminTab({
             <PanelHeader>
               <PanelLabel icon={ShieldCheck} color="#facc15" title="Role catalog" detail="Access keys in the environment" />
             </PanelHeader>
-            <RoleCardGrid>
-              {roles.map((role) => {
-                const rolePermissionCount = countPermissionsForRole(role.slug, rolePerms);
-                const roleSurfaceCount = countSurfacesForRole(role.slug, roleAccess);
-                return (
-                  <RoleCard
-                    key={role.slug}
-                    $active={role.slug === selectedRole.slug}
-                    $color={role.color}
-                    onClick={() => setSelectedRoleSlug(role.slug)}
-                    title={role.label}
-                  >
-                    <RoleCardTop>
-                      <div>
-                        <RoleName>{role.label}</RoleName>
-                        <RoleSlug>{role.slug}</RoleSlug>
-                      </div>
-                      <MetaChip $tone={role.category === "restriction" ? "warn" : "plain"}>
-                        {role.accessLevel}
-                      </MetaChip>
-                    </RoleCardTop>
-                    <RoleStatsLine>
-                      <TinyChip>{role.category}</TinyChip>
-                      <TinyChip>{rolePermissionCount}/{PERMISSIONS.length} perms</TinyChip>
-                      <TinyChip>{roleSurfaceCount} surfaces</TinyChip>
-                      {role.defaultWtfOsAccess ? <TinyChip>default OS</TinyChip> : null}
-                    </RoleStatsLine>
-                  </RoleCard>
-                );
-              })}
-            </RoleCardGrid>
+            <AdminScopeToolbar>
+              <AdminScopeSearch label="Search role catalog" placeholder="Role, level, category, or assigned user…" value={roleSearch} onChange={setRoleSearch} />
+              {roleSearch ? <UiButton compact onClick={() => setRoleSearch("")}>Clear</UiButton> : null}
+            </AdminScopeToolbar>
+            <AdminScopeTable
+              ariaLabel="Role catalog with access level and assigned user counts"
+              rows={visibleRoles}
+              columns={roleColumns}
+              rowKey={(role) => role.slug}
+              selectedKey={selectedRole.slug}
+              onSelect={(role) => setSelectedRoleSlug(role.slug)}
+              defaultSortKey="level"
+              defaultSortDirection="desc"
+              emptyTitle="No roles match this search"
+            />
+          </Panel>
+
+          <Panel>
+            <PanelHeader>
+              <PanelLabel icon={UserCog} color="#bbf7d0" title="Assigned users" detail={`Accounts currently carrying ${selectedRole.label}`} />
+            </PanelHeader>
+            {selectedRoleUsers.length ? (
+              <AdminScopeTable
+                ariaLabel={`Users assigned the ${selectedRole.label} role`}
+                rows={selectedRoleUsers}
+                columns={selectedRoleUserColumns}
+                rowKey={(user) => user.id}
+                onSelect={(user) => onOpenUser(user.id)}
+                defaultSortKey="user"
+              />
+            ) : <EmptyState>No users currently carry this role.</EmptyState>}
           </Panel>
 
           <Panel>

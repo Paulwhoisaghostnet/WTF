@@ -19,10 +19,10 @@
     {
       "app": "gnocchi",
       "kind": "mint",
-      "title": "Gnocchi Proof Open Edition",
-      "contract": "KT1W2ijLhjRHeH7wWYnvYcDwDsgRM7TpAFZK",
+      "title": "Gnocchi Multi-edition Proof",
+      "contract": "KT1DxL652xGhAwWnsaC32TcdDP7BL7KwrStw",
       "tokenId": "0",
-      "relationshipGroup": "gnocchi-shadownet-e2e-mr1oadsz",
+      "relationshipGroup": "gnocchi-oe-modes-proof-mrofko63",
       "route": "/mint",
       "mintEntrypoint": "open_mint",
       "priceMutez": "1"
@@ -39,10 +39,10 @@
     {
       "app": "rotini",
       "kind": "generative",
-      "title": "Rotini Proof Seeds",
-      "contract": "KT1HqzEFqbwcR8BpXZrrfPALY6bJaPGQgDHQ",
-      "tokenId": "1",
-      "relationshipGroup": "rotini-shadownet-e2e-mr1q9kcr",
+      "title": "Rotini Collector-Minted Generator Proof",
+      "contract": "KT1BYMrRC1ZvoHJWaSvFpiRsd5ZM2YcRh3Ls",
+      "tokenId": "0",
+      "relationshipGroup": "rotini-public-mint-proof-mro5axe7",
       "route": "/"
     },
     {

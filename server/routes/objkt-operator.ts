@@ -7,7 +7,10 @@ import {
   type ObjktOperatorSettings,
   type ObjktQueueStatus,
 } from "@shared/objkt-operator";
-import { requireObjktOperatorOwner } from "../features/objkt-operator/owner";
+import {
+  isObjktOperatorOwner,
+  requireObjktOperatorOwner,
+} from "../features/objkt-operator/owner";
 import {
   discoverObjktCreators,
   isObjktTezosAddress,
@@ -19,8 +22,24 @@ import {
   operatorEvent,
   patchObjktOperatorState,
 } from "../features/objkt-operator/state";
+import { listRolesForUserSnapshot } from "../lib/user-roles";
 
 const router = Router();
+
+// The shell uses this read-only probe to keep the private app out of other
+// users' desktops without creating an operator state row as a side effect.
+router.get("/api/objkt-operator/access", async (req, res) => {
+  if (!req.isAuthenticated()) return res.json({ allowed: false });
+  try {
+    const user = req.user as { id?: number; username?: string | null };
+    const roles = await listRolesForUserSnapshot(user as any);
+    return res.json({ allowed: isObjktOperatorOwner(user, roles) });
+  } catch (error) {
+    console.error("[objkt-operator] access probe failed:", error);
+    return res.json({ allowed: false });
+  }
+});
+
 router.use("/api/objkt-operator", requireObjktOperatorOwner);
 
 function routeUserId(req: any) {

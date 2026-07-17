@@ -549,6 +549,7 @@ app.post("/__test/state", (req, res) => {
   );
   resetHarnessAppHostState();
   resetHarnessMarketState();
+  harnessAdminDesktopSettings = defaultHarnessAdminDesktopSettings();
   const ownedAppPasses = normalizeHarnessOwnedAppPasses(req.body?.ownedAppPasses);
   if (state.authUser && ownedAppPasses.length) {
     for (const appKey of ownedAppPasses) {
@@ -1501,6 +1502,197 @@ const harnessRoleCatalog = [
     isAssignable: true,
   },
 ];
+
+function harnessXpTier(label, index = 1) {
+  return {
+    index,
+    key: label.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+    label,
+    minXp: index * 500,
+    nextMinXp: (index + 1) * 500,
+    progress: 0.5,
+  };
+}
+
+function harnessCurse(key, label, effect, reason) {
+  return {
+    key,
+    label,
+    summary: effect,
+    effect,
+    reason,
+    assignedBy: 1,
+    assignedAt: "2026-07-14T16:00:00.000Z",
+    expiresAt: null,
+  };
+}
+
+function harnessAdminUsers() {
+  const adminRole = harnessRoleCatalog.find((role) => role.slug === "admin");
+  const hostRole = harnessRoleCatalog.find((role) => role.slug === "host");
+  const contestantRole = harnessRoleCatalog.find((role) => role.slug === "contestant");
+  return [
+    {
+      id: 1,
+      username: "wtf-admin",
+      email: "admin@example.test",
+      displayName: "WTF Admin",
+      avatarUrl: null,
+      role: "admin",
+      roles: ["admin"],
+      highestRole: adminRole,
+      experiencePoints: 12500,
+      xpTier: harnessXpTier("Operator", 10),
+      curses: [],
+      twitterHandle: "wtf_admin",
+      twitterVerified: true,
+      discordHandle: "wtf-admin",
+      discordVerified: true,
+      welcomedToWtfOs: true,
+      hasTemporaryPassword: false,
+      tempPasswordExpiresAt: null,
+      createdAt: "2025-01-01T00:00:00.000Z",
+      updatedAt: "2026-07-15T12:00:00.000Z",
+    },
+    {
+      id: 2,
+      username: "complaint-user",
+      email: "complaint@example.test",
+      displayName: "Complaint User",
+      avatarUrl: null,
+      role: "host",
+      roles: ["host", "contestant"],
+      highestRole: hostRole,
+      experiencePoints: 4200,
+      xpTier: harnessXpTier("Broadcaster", 6),
+      curses: [harnessCurse("green_lens", "Green Lens", "Final wtfOS rendering is tinted green.", "Live-show visual test")],
+      twitterHandle: "complaint_user",
+      twitterVerified: false,
+      discordHandle: "complaint-user",
+      discordVerified: true,
+      welcomedToWtfOs: true,
+      hasTemporaryPassword: false,
+      tempPasswordExpiresAt: null,
+      createdAt: "2026-02-01T00:00:00.000Z",
+      updatedAt: "2026-07-14T16:00:00.000Z",
+    },
+    {
+      id: 3,
+      username: "recovery-user",
+      email: "recovery@example.test",
+      displayName: "Recovery User",
+      avatarUrl: null,
+      role: "contestant",
+      roles: ["contestant"],
+      highestRole: contestantRole,
+      experiencePoints: 850,
+      xpTier: harnessXpTier("Contestant", 2),
+      curses: [],
+      twitterHandle: null,
+      twitterVerified: false,
+      discordHandle: null,
+      discordVerified: false,
+      welcomedToWtfOs: false,
+      hasTemporaryPassword: true,
+      tempPasswordExpiresAt: "2026-07-16T12:00:00.000Z",
+      createdAt: "2026-06-01T00:00:00.000Z",
+      updatedAt: "2026-07-15T11:00:00.000Z",
+    },
+  ];
+}
+
+function defaultHarnessAdminDesktopSettings() {
+  return {
+    appearance: {
+      appearanceStyleKey: "classic-95",
+      colorSchemeKey: "wtf-teal",
+      fontPackKey: "wtfos-soft-system",
+      chatTypographyPresetKey: "wtfos-default",
+      wimChatStyle: { fontFamily: "wtfOS Soft Sans", fontSize: 12, color: "#06135f", bold: false, italic: false, underline: false },
+      wtfLiveChatStyle: { font: "wtfos-soft-system", color: "ink", size: 12, bold: false, italic: false },
+      desktopColor: "#008080",
+      windowColor: "#c0c0c0",
+      activeTitleColor: "#000080",
+      activeTitleTextColor: "#ffffff",
+      inactiveTitleColor: "#808080",
+      inactiveTitleTextColor: "#c0c0c0",
+      textColor: "#111111",
+      highlightColor: "#000080",
+      buttonFace: "#c0c0c0",
+      backgroundImageUrl: null,
+      backgroundFit: "cover",
+      cursorStyle: "eggplant",
+      desktopPhysicsEnabled: true,
+      desktopGravityMode: "on",
+      desktopPetEnabled: true,
+    },
+    iconLayout: { profile: { x: 24, y: 24 }, settings: { x: 24, y: 112 } },
+    localization: { locale: "en-US", region: "US" },
+    updatedAt: "2026-07-15T12:00:00.000Z",
+  };
+}
+
+let harnessAdminDesktopSettings = defaultHarnessAdminDesktopSettings();
+
+function harnessAdminPassport(userId) {
+  const user = harnessAdminUsers().find((candidate) => candidate.id === Number(userId));
+  if (!user) return null;
+  const roles = harnessRoleCatalog.filter((role) => user.roles.includes(role.slug));
+  return {
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      bio: user.id === 2 ? "Harness account for acute admin complaint resolution." : null,
+      experiencePoints: user.experiencePoints,
+      twitterHandle: user.twitterHandle,
+      twitterVerified: user.twitterVerified,
+      twitterPublic: Boolean(user.twitterHandle),
+      discordHandle: user.discordHandle,
+      discordVerified: user.discordVerified,
+      discordPublic: Boolean(user.discordHandle),
+      emailPublic: false,
+      googleLinked: user.id === 2,
+      githubLinked: false,
+      pfpTokenContract: null,
+      pfpTokenId: null,
+      pfpImageUrl: null,
+      welcomedToWtfOs: user.welcomedToWtfOs,
+      welcomedToWtfOsAt: user.welcomedToWtfOs ? "2026-02-02T00:00:00.000Z" : null,
+      gmWelcomeUtcDay: "2026-07-15",
+      gmWelcomeLastSeenAt: "2026-07-15T08:00:00.000Z",
+      hasPassword: true,
+      hasTemporaryPassword: user.hasTemporaryPassword,
+      tempPasswordExpiresAt: user.tempPasswordExpiresAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    },
+    roles,
+    highestRole: user.highestRole,
+    xpTier: user.xpTier,
+    curses: user.curses,
+    effectivePermissions: {
+      view_dashboard: true,
+      edit_own_profile: true,
+      view_rounds: true,
+      view_challenges: true,
+      manage_gameshow: user.roles.includes("host"),
+    },
+    wtfOsAccess: {
+      surfaceIds: ["dashboard", "profile", ...(user.roles.includes("host") ? ["control-board"] : [])],
+      routePatterns: ["/dashboard", "/user/:username", ...(user.roles.includes("host") ? ["/control-board"] : [])],
+      adminPanelTabs: user.roles.includes("host") ? ["Rounds", "Challenges"] : [],
+      automationHandles: ["app.interaction.tracked", "xp.awarded"],
+    },
+    desktopSettings: harnessAdminDesktopSettings,
+    wallets: user.id === 2 ? [{ id: 22, walletAddress: "tz1ComplaintWallet", tezDomain: "complaint.tez", isPrimary: true, linkedAt: "2026-02-02T00:00:00.000Z", lastActivityAt: "2026-07-14T00:00:00.000Z", lastSyncedAt: "2026-07-15T00:00:00.000Z" }] : [],
+    subdomains: user.id === 2 ? [{ id: 12, fullName: "complaint.wtf.tez", status: "active", walletAddress: "tz1ComplaintWallet", notes: "Harness domain", createdAt: "2026-02-03T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z" }] : [],
+    recentXpEvents: [{ id: 42, amount: 250, reason: "harness_proof", awardedBy: 1, createdAt: "2026-07-14T15:00:00.000Z" }],
+    generatedAt: nowIso(),
+  };
+}
 
 const harnessRoleSurfaces = [
   {
@@ -4725,7 +4917,72 @@ function apiMock(req, res) {
     marketState.sales = marketState.sales.filter((candidate) => candidate.id !== id);
     return res.json(harnessMarketAdminPayload());
   }
-  if (pathName === "/api/admin/users") return res.json([]);
+  if (pathName === "/api/admin/help-index") {
+    const query = String(req.query?.q || "").trim();
+    const topics = [
+      {
+        id: "section:users",
+        kind: "section",
+        title: "Users",
+        summary: "Role review and WTF Passports",
+        risk: "sensitive",
+        destinations: [{ sectionSlug: "users", sectionLabel: "Users", href: "/admin?section=users", reason: "Canonical account workspace" }],
+      },
+      {
+        id: "curse:green_lens",
+        kind: "curse",
+        title: "Green Lens",
+        summary: "Final wtfOS rendering is tinted green.",
+        risk: "sensitive",
+        destinations: [{ sectionSlug: "curses", sectionLabel: "Curses", href: "/admin?section=curses", reason: "Canonical curse management" }],
+      },
+    ].filter((topic) => !query || JSON.stringify(topic).toLowerCase().includes(query.toLowerCase()));
+    return res.json({
+      schemaVersion: "1.0.0",
+      catalogVersion: "harness",
+      generatedAt: nowIso(),
+      sourceCounts: { sections: 23, surfaces: 1, permissions: 1, curses: 5, totalTopics: 30 },
+      query: query || null,
+      filters: { id: null, kind: null },
+      topics,
+      resultCount: topics.length,
+    });
+  }
+  const passportSettingsMatch = pathName.match(/^\/api\/admin\/users\/(\d+)\/passport\/desktop-settings$/);
+  if (passportSettingsMatch && req.method === "PUT") {
+    harnessAdminDesktopSettings = {
+      appearance: req.body?.appearance ?? harnessAdminDesktopSettings.appearance,
+      iconLayout: req.body?.iconLayout ?? harnessAdminDesktopSettings.iconLayout,
+      localization: req.body?.localization ?? harnessAdminDesktopSettings.localization,
+      updatedAt: nowIso(),
+    };
+    recordHarnessInteraction("admin.user.desktop_settings.updated", {
+      targetUserId: Number(passportSettingsMatch[1]),
+    });
+    return res.json(harnessAdminDesktopSettings);
+  }
+  const passportMatch = pathName.match(/^\/api\/admin\/users\/(\d+)\/passport$/);
+  if (passportMatch && req.method === "GET") {
+    const passport = harnessAdminPassport(Number(passportMatch[1]));
+    if (!passport) return res.status(404).json({ error: "User not found" });
+    recordHarnessInteraction("admin.user.passport.viewed", { targetUserId: Number(passportMatch[1]) });
+    return res.json(passport);
+  }
+  const dossierMatch = pathName.match(/^\/api\/admin\/users\/(\d+)\/dossier$/);
+  if (dossierMatch && req.method === "GET") {
+    return res.json({
+      userId: Number(dossierMatch[1]),
+      wallets: [],
+      aggregate: { total: 0, firstEventAt: null, lastEventAt: null },
+      capped: false,
+    });
+  }
+  const tempPasswordMatch = pathName.match(/^\/api\/admin\/users\/(\d+)\/temp-password$/);
+  if (tempPasswordMatch && req.method === "POST") {
+    return res.json({ password: "Harness-Temporary-42!", expiresAt: "2026-07-16T12:00:00.000Z" });
+  }
+  if (tempPasswordMatch && req.method === "DELETE") return res.json({ ok: true });
+  if (pathName === "/api/admin/users" && req.method === "GET") return res.json(harnessAdminUsers());
   if (pathName === "/api/admin/xp/events") return res.json([]);
   if (pathName === "/api/admin/reward-ledger") return res.json([]);
   if (pathName === "/api/admin/contract-activity") return res.json([]);

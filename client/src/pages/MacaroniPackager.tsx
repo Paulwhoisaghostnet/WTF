@@ -102,6 +102,8 @@ const APP_BADGE = "CHZ";
 const APP_ACRONYM = "Creator Handoff: Edit, Arrange, Stage, Export";
 const DEFAULT_PACKAGE_TITLE = `${APP_NAME} Package`;
 const PASTA_HANDOFF_PREFIX = "wtfos.pasta.handoff.v1";
+const PASTA_HANDOFF_ENVELOPE = "pasta-handoff-envelope@1";
+const PASTA_HANDOFF_TTL_MS = 5 * 60 * 1000;
 
 const DEFAULT_DROP_CONFIG: DropConfig = {
   exportTarget: "macaroni",
@@ -1221,6 +1223,17 @@ async function readJson<T>(res: Response): Promise<T> {
 
 export function MacaroniPackager() {
   const presentation = usePresentationShell();
+  const colanderContext = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const incoming = new URLSearchParams(window.location.search);
+    if (incoming.get("handoff") !== "colander-workspace" || !incoming.get("projectId")) return "";
+    const preserved = new URLSearchParams({ colanderHandoff: "colander-workspace" });
+    for (const key of ["projectId", "projectTitle", "network"]) {
+      const value = incoming.get(key);
+      if (value) preserved.set(key, value);
+    }
+    return preserved.toString();
+  }, []);
   const [packages, setPackages] = useState<PackageSummary[]>([]);
   const [activePackage, setActivePackage] = useState<PackageSummary | null>(null);
   const [items, setItems] = useState<PackageItem[]>([]);
@@ -1581,13 +1594,29 @@ export function MacaroniPackager() {
     }
     setError("");
     const key = `${PASTA_HANDOFF_PREFIX}:${pastaTarget}`;
+    const encoded = JSON.stringify(payload.pkg);
+    let staged = false;
     try {
-      window.sessionStorage.setItem(key, JSON.stringify(payload.pkg));
-    } catch {
-      setError("Browser session storage is unavailable; download the Pasta package instead.");
+      window.sessionStorage.setItem(key, encoded);
+      staged = true;
+    } catch { /* the one-use local fallback below supports isolated noopener windows */ }
+    try {
+      window.localStorage.setItem(key, JSON.stringify({
+        schema: PASTA_HANDOFF_ENVELOPE,
+        expiresAt: Date.now() + PASTA_HANDOFF_TTL_MS,
+        payload: payload.pkg,
+      }));
+      staged = true;
+    } catch { /* download remains available when browser storage is disabled */ }
+    if (!staged) {
+      setError("Browser storage is unavailable; download the Pasta package instead.");
       return;
     }
-    const path = `/tools/${pastaTarget}?handoff=chease-package&handoffKey=${encodeURIComponent(key)}`;
+    const params = new URLSearchParams({ handoff: "chease-package", handoffKey: key });
+    if (colanderContext) {
+      for (const [name, value] of new URLSearchParams(colanderContext)) params.set(name, value);
+    }
+    const path = `/tools/${pastaTarget}?${params.toString()}`;
     logClientSystemEvent({
       eventType: "chease.package_handoff_opened",
       message: `${APP_NAME} opened ${pastaTarget} with a package handoff`,
@@ -1621,7 +1650,11 @@ export function MacaroniPackager() {
     }
     setHandoffBusy("macaroni");
     setError("");
-    const path = `/tools/macaroni?source=wtfos-package&packageId=${activePackage.id}`;
+    const params = new URLSearchParams({ source: "wtfos-package", packageId: String(activePackage.id) });
+    if (colanderContext) {
+      for (const [name, value] of new URLSearchParams(colanderContext)) params.set(name, value);
+    }
+    const path = `/tools/macaroni?${params.toString()}`;
     try {
       await api.get(`/api/macaroni/packages/${activePackage.id}/source`);
       logHandoff("macaroni-studio-source", path);

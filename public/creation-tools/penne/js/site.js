@@ -3,7 +3,7 @@
 (() => {
   const config = window.PASTA_SITE_CONFIG || {};
   const $ = (id) => document.getElementById(id);
-  const state = { account: "", contract: null, storage: null, unitPrice: 0, maxAmount: null, action: "", secondaryAction: "" };
+  const state = { account: "", contract: null, storage: null, unitPrice: 0, maxAmount: null, action: "", secondaryAction: "", rotiniProject: null };
   const gateway = config.ipfsGateway || "https://ipfs.fileship.xyz/";
 
   function setStatus(message, error) {
@@ -23,6 +23,22 @@
   function bytesToText(value) {
     if (typeof value !== "string") return "";
     try { return MD.hexToUtf8(value); } catch (_) { return value; }
+  }
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[data-pasta-runtime="${src}"]`);
+      if (existing?.dataset.loaded === "true") return resolve();
+      const script = existing || document.createElement("script");
+      script.dataset.pastaRuntime = src;
+      script.src = src;
+      script.onload = () => { script.dataset.loaded = "true"; resolve(); };
+      script.onerror = () => reject(new Error(`Could not load ${src}.`));
+      if (!existing) document.head.appendChild(script);
+    });
+  }
+  async function ensureRotiniRuntime() {
+    if (!window.RotiniArtifacts) await loadScript("js/rotini-artifact.js");
+    if (!window.PastaRotiniMint) await loadScript("js/rotini-mint.js");
   }
   async function mapGet(map, key) {
     if (!map || typeof map.get !== "function") return undefined;
@@ -90,7 +106,8 @@
     $("secondarySubmit").hidden = true;
     if (app === "gnocchi") {
       const sale = await mapGet(state.storage.sales, tokenId);
-      const minted = number(await mapGet(state.storage.total_supply, tokenId));
+      const currentSupply = number(await mapGet(state.storage.total_supply, tokenId));
+      const minted = number(await mapGet(state.storage.total_minted || state.storage.total_supply, tokenId));
       if (!sale) throw new Error("No open-edition sale exists for this token.");
       const steps = Math.floor(minted / Math.max(1, number(sale.step_size)));
       state.unitPrice = number(sale.base_price) + number(sale.increment) * steps;
@@ -98,10 +115,36 @@
       const soldOut = sale.max_supply != null && minted >= number(sale.max_supply);
       state.maxAmount = sale.max_supply == null ? null : Math.max(0, number(sale.max_supply) - minted);
       state.action = windowState.open && !soldOut ? "open_mint" : "";
-      $("actionTitle").textContent = "Mint this open edition";
-      $("actionDetail").textContent = `${minted} minted · ${(state.unitPrice / 1_000_000).toFixed(6)} tez each`;
+      const hasWindow = sale.start != null || sale.end != null;
+      const hasCap = sale.max_supply != null;
+      const label = hasWindow && hasCap ? "Limited Edition" : hasWindow ? "Timed OE" : hasCap ? "Capped OE" : "Forever OE";
+      $("actionTitle").textContent = `Mint this ${label}`;
+      $("actionDetail").textContent = `${minted} lifetime minted${currentSupply === minted ? "" : ` · ${currentSupply} current supply`} · ${(state.unitPrice / 1_000_000).toFixed(6)} tez each`;
       $("chainState").textContent = soldOut ? "Sold out" : windowState.open ? "Minting open" : windowState.label;
       $("submit").textContent = "Mint editions";
+      $("submit").disabled = !state.action;
+      return;
+    }
+    if (app === "rotini") {
+      const project = await mapGet(state.storage.projects, tokenId);
+      if (!project) throw new Error("No generative project exists at this id.");
+      const minted = number(project.minted);
+      const reserved = number(project.reserved);
+      const maxSupply = project.max_supply == null ? null : number(project.max_supply);
+      const soldOut = maxSupply != null && minted + reserved >= maxSupply;
+      state.unitPrice = number(project.price);
+      state.maxAmount = soldOut ? 0 : 1;
+      state.rotiniProject = project;
+      state.action = project.active && !soldOut ? "rotini_finalize" : "";
+      const projectName = bytesToText(project.name || "");
+      const outputMode = bytesToText(project.output_mode || "").toUpperCase() || "ARTIFACT";
+      if (!config.title && projectName) $("title").textContent = projectName;
+      $("actionTitle").textContent = `Generate a ${outputMode} iteration`;
+      $("actionDetail").textContent = `${minted} finalized + ${reserved} rendering${maxSupply == null ? "" : ` / ${maxSupply}`} · ${(state.unitPrice / 1_000_000).toFixed(6)} tez`;
+      $("chainState").textContent = soldOut ? "Sold out" : project.active ? "Generation open" : "Generation closed";
+      $("amountRow").hidden = true;
+      $("rotiniStorage").hidden = false;
+      $("submit").textContent = "Reserve, render & mint";
       $("submit").disabled = !state.action;
       return;
     }
@@ -144,7 +187,7 @@
       $("submit").disabled = !bundle.redeemable;
       return;
     }
-    if (app === "spaghetti" || app === "rotini") {
+    if (app === "spaghetti") {
       const sale = await mapGet(state.storage.sales, tokenId);
       const windowState = saleWindow(sale);
       if (windowState.open && number(sale.remaining) > 0) {
@@ -183,6 +226,11 @@
     document.title = `${config.title || "Published work"} · Pasta Protocol`;
     if (!MD.isAddress(config.contract) || !config.contract.startsWith("KT1")) throw new Error("This site package needs a valid KT1 contract address.");
     MD.setupToolkit(config.network || "mainnet");
+    if (config.app === "rotini") {
+      await MD.loadPlatformCapabilities();
+      MD.updatePinProviderRows();
+      await ensureRotiniRuntime();
+    }
     state.contract = await MD.getToolkit().contract.at(config.contract);
     state.storage = await state.contract.storage();
     if (config.app === "lasagna") await loadExhibition();
@@ -212,6 +260,10 @@
       setStatus("Waiting for wallet signature…");
       let operation;
       const action = actionOverride || state.action;
+      if (action === "rotini_finalize") {
+        await window.PastaRotiniMint.run({ config, state, project: state.rotiniProject, setStatus, reload: load });
+        return;
+      }
       const payment = state.unitPrice * amount;
       if ((action === "open_mint" || action === "buy") && !Number.isSafeInteger(payment)) throw new Error("The total mutez amount is outside the safe transaction range.");
       if (action === "open_mint") operation = await contract.methodsObject.open_mint({ token_id: tokenId, amount }).send({ amount: payment, mutez: true });

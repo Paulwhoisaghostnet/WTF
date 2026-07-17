@@ -4734,7 +4734,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     expect(adminMetrics.activeBadge?.borderColor).toMatch(/0,\s*210,\s*255/);
 
     for (const [section, label] of [
-      ["Roles", "Role Control"],
+      ["Roles", "Roles"],
       ["In-App Market", "Market"],
       ["Automation", "Automation"],
     ]) {

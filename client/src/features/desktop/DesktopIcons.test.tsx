@@ -68,3 +68,19 @@ test("experimental default desktop apps render with an explicit icon affordance"
     }
   }
 });
+
+test("private Objkt Operator desktop icon is owner-gated", () => {
+  const hidden = buildDesktopIconDefs(ENABLED_APPS, {
+    appGateBypass: true,
+    objktOperatorAvailable: false,
+  });
+  assert.equal(hidden.find((icon) => icon.key === "objkt-operator")?.enabled, false);
+
+  const visible = buildDesktopIconDefs(ENABLED_APPS, {
+    appGateBypass: true,
+    objktOperatorAvailable: true,
+  });
+  const operator = visible.find((icon) => icon.key === "objkt-operator");
+  assert.equal(operator?.openPath, "/objkt-operator");
+  assert.equal(operator?.enabled, true);
+});

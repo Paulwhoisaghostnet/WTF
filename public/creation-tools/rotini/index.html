@@ -10,7 +10,7 @@
     <header class="pp-top">
       <div class="pp-brand">
         <h1>Rotini</h1>
-        <span class="pp-tag">Pasta Protocol · Generative Publisher (layers · rarity · deterministic seed)</span>
+        <span class="pp-tag">Pasta Protocol · Collector-Minted Generative Publisher</span>
       </div>
       <div class="pp-wallet">
         <label>
@@ -84,10 +84,22 @@
         <h2>3 · Generator</h2>
         <div class="pp-row">
           <label>Output size (px) <input id="genSize" type="number" min="64" max="2048" value="512" /></label>
-          <label>Collection size <input id="genCount" type="number" min="1" value="20" /></label>
-          <label>Seed <input id="genSeed" type="text" placeholder="any text or number" value="wtf-rotini" /></label>
+          <label>Maximum iterations <input id="genCount" type="number" min="1" value="20" /></label>
+          <label>Preview seed <input id="genSeed" type="text" placeholder="any text or number" value="wtf-rotini" /></label>
           <label><input type="checkbox" id="genUnique" checked /> Unique trait combos</label>
         </div>
+        <div class="pp-row">
+          <label>
+            Minted artifact
+            <select id="outputMode">
+              <option value="png">PNG image</option>
+              <option value="gif">Animated GIF</option>
+              <option value="zip">Interactive ZIP</option>
+            </select>
+          </label>
+          <label>Render reservation window (minutes) <input id="reservationMinutes" type="number" min="5" max="1440" value="60" /></label>
+        </div>
+        <p class="pp-note">Every iteration becomes a normal IPFS artifact. Interactive ZIPs include a top-level <code>index.html</code>, local relative assets, and no external requests.</p>
         <p id="genCombos" class="pp-note"></p>
       </section>
 
@@ -112,24 +124,40 @@
       <section class="pp-card pp-card-wide">
         <h2>6 · Publish</h2>
         <div class="pp-row">
-          <label><input id="saleEnabled" type="checkbox" checked /> List every generated token for direct sale</label>
-          <label>Price per token (tez) <input id="salePrice" type="number" min="0" step="0.000001" value="1" /></label>
+          <label><input id="saleEnabled" type="checkbox" checked /> Open collector minting immediately</label>
+          <label>Price per iteration (tez) <input id="salePrice" type="number" min="0" step="0.000001" value="1" /></label>
+          <label>Max per wallet (optional) <input id="saleWalletCap" type="number" min="1" placeholder="no wallet cap" /></label>
         </div>
         <div class="pp-row">
           <button id="btnPublish" type="button" class="pp-primary">Publish generative collection</button>
           <button id="btnExportPkg" type="button">Export CH-EASE collection package</button>
         </div>
         <p class="pp-warn">
-          Rehearse on Shadownet before mainnet. Publishing pins every composite + per-token metadata and
-          mints one token per edition via the standard Pasta FA2; large drops can be heavy — start small.
+          Rehearse on Shadownet before mainnet. Publishing pins the generator and creates no iteration
+          tokens. A collector first reserves a token id and seed, then Rotini renders and pins the finished
+          PNG, GIF, or interactive ZIP before a second signature finalizes metadata, supply, and ownership.
         </p>
         <pre id="log" class="pp-log" aria-live="polite"></pre>
       </section>
 
       <section class="pp-card pp-card-wide">
-        <h2>7 · Self-hosted generative gallery</h2>
-        <p class="pp-note">Export a collector-facing page that reads the selected token's direct-sale state and lets a buyer purchase from the creator.</p>
-        <div class="pp-row"><label>Featured token id <input id="exportTokenId" type="number" min="0" value="0" /></label><button id="btnExportSite" type="button">Download gallery site</button><span id="exportSiteStatus" class="pp-note" role="status" aria-live="polite"></span></div>
+        <h2>7 · Public iteration mint</h2>
+        <p class="pp-note">Load a project and mint as a collector. The token does not exist until its self-contained artifact has been pinned and the reservation is finalized.</p>
+        <div class="pp-row">
+          <label>Contract <input id="mintKt" type="text" placeholder="KT1…" /></label>
+          <label>Project id <input id="mintProjectId" type="number" min="0" value="0" /></label>
+          <button id="btnLoadProject" type="button">Load project</button>
+        </div>
+        <div class="pp-row">
+          <button id="btnMintIteration" type="button" class="pp-primary">Reserve, render &amp; mint</button>
+          <span id="mintInfo" class="pp-note" role="status" aria-live="polite"></span>
+        </div>
+      </section>
+
+      <section class="pp-card pp-card-wide">
+        <h2>8 · Self-hosted generative mint page</h2>
+        <p class="pp-note">Export a collector-facing page that reserves the immutable seed, creates and pins a standard PNG/GIF/offline ZIP, then finalizes the NFT without a marketplace.</p>
+        <div class="pp-row"><label>Featured project id <input id="exportTokenId" type="number" min="0" value="0" /></label><button id="btnExportSite" type="button">Download mint site</button><span id="exportSiteStatus" class="pp-note" role="status" aria-live="polite"></span></div>
       </section>
     </main>
 
@@ -159,6 +187,9 @@
     <script src="vendor/octez-connect.js"></script>
     <script src="js/octez-wallet.js"></script>
     <script src="js/common.js"></script>
+    <script src="js/studio-draft.js"></script>
+    <script src="js/studio-contracts.js"></script>
+    <script src="js/rotini-artifact.js"></script>
     <script>window.PASTA_SITE_EXPORT = { app: "rotini", label: "Rotini", titleInput: "collName", descriptionInput: "collDesc", contractInput: "existingKt", tokenInput: "exportTokenId" };</script>
     <script src="js/site-bundle.js"></script>
     <script type="module" src="js/studio.js"></script>

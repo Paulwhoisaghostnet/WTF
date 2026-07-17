@@ -50,6 +50,38 @@ const MD = (() => {
     return `${WALLET_SESSION_PREFIX}:${netKey || "unknown"}:${path}`;
   }
 
+  function readRouteHandoff() {
+    const params = new URLSearchParams(location.search || "");
+    const source = params.get("colanderHandoff") || params.get("handoff") || "";
+    if (source !== "colander-workspace") return null;
+    return {
+      source,
+      projectId: params.get("projectId") || "",
+      projectTitle: params.get("projectTitle") || "",
+      network: params.get("network") || "",
+    };
+  }
+
+  function recordColanderContract(contract) {
+    const handoff = readRouteHandoff();
+    if (!handoff?.projectId || !contract) return false;
+    try {
+      const key = "wtfos.pasta.colander.workspace.v1";
+      const projects = JSON.parse(localStorage.getItem(key) || "[]");
+      const next = projects.map((project) => project.id === handoff.projectId ? {
+        ...project,
+        toolId: "macaroni",
+        stage: "deployed",
+        contracts: Array.from(new Set([...(project.contracts || []), contract])),
+        updatedAt: new Date().toISOString(),
+      } : project);
+      localStorage.setItem(key, JSON.stringify(next));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function readWalletSession() {
     try {
       const raw = localStorage.getItem(walletSessionKey());
@@ -1018,7 +1050,11 @@ const MD = (() => {
     fetchMintedTokenIds,
     fetchRecentMintTransfers,
     fetchWalletIdentities,
+    readRouteHandoff,
+    recordColanderContract,
     TZKT_API,
     DEFAULT_GATEWAY,
   };
 })();
+
+window.MD = MD;

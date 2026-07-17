@@ -59,6 +59,9 @@ test("owner reviews creator score evidence and the decision survives reload", as
 
   await page.route("**/api/objkt-operator/**", async (route) => {
     const url = new URL(route.request().url());
+    if (route.request().method() === "GET" && url.pathname === "/api/objkt-operator/access") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ allowed: true }) });
+    }
     if (route.request().method() === "GET" && url.pathname === "/api/objkt-operator/state") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ state: persisted }) });
     }

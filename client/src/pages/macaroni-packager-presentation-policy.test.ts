@@ -21,11 +21,10 @@ test("CH-EASE exposes Gamma presentation ownership without forking package logic
 test("CH-EASE Gamma handoffs preserve shell routes while keeping exports raw", () => {
   assert.match(cheaseSource, /window\.open\(presentationRouteHref\(path,\s*presentation\.host\)/);
   assert.match(cheaseSource, /window\.open\(presentationRouteHref\(path,\s*presentation\.host\), "_blank", "noopener"\)/);
-  assert.equal(cheaseSource.includes("const path = `/tools/${pastaTarget}?handoff=chease-package"), true);
-  assert.equal(
-    cheaseSource.includes("const path = `/tools/macaroni?source=wtfos-package&packageId=${activePackage.id}`"),
-    true
-  );
+  assert.match(cheaseSource, /new URLSearchParams\(\{ handoff: "chease-package", handoffKey: key \}\)/);
+  assert.match(cheaseSource, /const path = `\/tools\/\$\{pastaTarget\}\?\$\{params\.toString\(\)\}`/);
+  assert.match(cheaseSource, /new URLSearchParams\(\{ source: "wtfos-package", packageId: String\(activePackage\.id\) \}\)/);
+  assert.match(cheaseSource, /const path = `\/tools\/macaroni\?\$\{params\.toString\(\)\}`/);
   assert.equal(
     cheaseSource.includes(
       "const path = `/api/macaroni/packages/${activePackage.id}/export.csv?target=${dropConfig.exportTarget}`"

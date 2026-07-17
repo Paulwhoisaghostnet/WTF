@@ -4,6 +4,8 @@ apps/macaroni-desktop/macaroni/
 apps/macaroni-desktop/release/
 apps/pasta-suite-desktop/pasta/
 apps/pasta-suite-desktop/release/
+apps/ch-ease-desktop/pasta/
+apps/ch-ease-desktop/release/
 apps/spaghetti-desktop/spaghetti/
 apps/spaghetti-desktop/release/
 apps/gnocchi-desktop/gnocchi/
@@ -48,6 +50,9 @@ Screenshot *.png
 .netlify/
 .npm-cache/
 build/
+!apps/pasta-suite-desktop/build/
+!apps/pasta-suite-desktop/build/**
+apps/pasta-suite-desktop/build/icon.iconset/
 .cache/
 .tmp/
 .cursor/

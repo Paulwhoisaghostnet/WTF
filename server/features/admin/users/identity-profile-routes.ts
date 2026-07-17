@@ -3,15 +3,20 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import { requirePermission } from "../../../auth/passport";
 import { db as defaultDb } from "../../../db";
 import { users } from "@shared/schema";
-import { isSystemUserRole, type UserRole } from "@shared/types";
+import {
+  getXpTierForTotal,
+  isSystemUserRole,
+  type UserRole,
+} from "@shared/types";
 import {
   ensureUserRole,
   listUserRoles,
+  listUserRolesForUsers,
   removeUserRole,
   setUserRoles,
 } from "../../../lib/user-roles";
-import { listActiveUserCurses, setUserCurse } from "../../../lib/user-curses";
-import { assignableRoleExists } from "../../../lib/role-catalog";
+import { listActiveUserCursesForUsers, setUserCurse } from "../../../lib/user-curses";
+import { assignableRoleExists, listRoleCatalog } from "../../../lib/role-catalog";
 import { isWtfCurseKey } from "@shared/curses";
 import { logSystemEvent } from "../../../lib/system-log";
 
@@ -53,22 +58,44 @@ export function registerAdminUserIdentityProfileRoutes(
             discordHandle: users.discordHandle,
             discordVerified: users.discordVerified,
             avatarUrl: users.avatarUrl,
+            welcomedToWtfOs: users.welcomedToWtfOs,
+            tempPasswordExpiresAt: users.tempPasswordExpiresAt,
             createdAt: users.createdAt,
+            updatedAt: users.updatedAt,
           })
           .from(users)
           .orderBy(desc(users.createdAt));
-        const allUsers = await Promise.all(
-          rows.map(async (user) => {
-            const roles = await listUserRoles(user.id, user.role as UserRole, db);
-            const curses = await listActiveUserCurses(user.id, db);
+        const roleCatalog = await listRoleCatalog(db);
+        const [rolesByUser, cursesByUser] = await Promise.all([
+          listUserRolesForUsers(
+            rows.map((user) => ({ id: user.id, role: user.role as UserRole })),
+            db
+          ),
+          listActiveUserCursesForUsers(rows.map((user) => user.id), db),
+        ]);
+        const allUsers = rows.map((user) => {
+            const roles = rolesByUser.get(user.id) ?? [user.role as UserRole];
+            const curses = cursesByUser.get(user.id) ?? [];
+            const highestRole = roles
+              .map((role) => roleCatalog.find((definition) => definition.slug === role))
+              .filter((definition) => Boolean(definition))
+              .sort(
+                (a, b) =>
+                  (b?.accessLevel ?? 0) - (a?.accessLevel ?? 0) ||
+                  (a?.sortOrder ?? 10_000) - (b?.sortOrder ?? 10_000)
+              )[0] ?? null;
             return {
               ...user,
               role: roles[0] ?? user.role,
               roles,
               curses,
+              highestRole,
+              xpTier: getXpTierForTotal(user.experiencePoints),
+              hasTemporaryPassword: Boolean(
+                user.tempPasswordExpiresAt && user.tempPasswordExpiresAt > new Date()
+              ),
             };
-          })
-        );
+          });
         res.json(allUsers);
       } catch (err) {
         res.status(500).json({ error: "Failed to fetch users" });

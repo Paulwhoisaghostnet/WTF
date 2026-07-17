@@ -105,14 +105,29 @@ Priority labels:
 | WTF-BB-381 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Marketplace cold route loading | P2 | 7 | 15 | 2 | 2 | 0 | Marketplace browser proof waits on its canonical route surface with a bounded cold-start allowance; focused cold-server proof and the complete live actor suite pass |
 | WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 16 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
 | WTF-BB-383 | Verified | Codex full-send cleanup pass | 2026-07-15 | CI / unit-test discovery boundary | P1 | 10 | 10 | 2 | 4 | 0 | The aggregate unit runner excludes nested dependency and generated-output trees at every depth; focused policy and the repository-owned aggregate suite verify deterministic discovery with extension dependencies installed |
-| WTF-BB-384 | In Progress | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Protocol / self-hosted primary commerce | P1 | 14 | 3 | 4 | 4 | 2 | Fixed-edition sale contracts, creator studios, collector pages, Colander controls, and installers are locally verified; real Shadownet origination/purchase proof remains open because both configured RPC paths were unavailable during the 2026-07-15 run |
+| WTF-BB-384 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Protocol / self-hosted primary commerce | P1 | 14 | 3 | 4 | 4 | 2 | Fresh signer-backed Shadownet proofs complete originate, inventory mint, creator-configured direct sale, collector buy, and indexed state validation for Spaghetti, Rotini, and Ravioli; Ravioli also completes redeem |
 | WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 16 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
 | WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 8 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
 | WTF-BB-387 | Verified | Codex full-send cleanup pass | 2026-07-15 | Pasta Protocol / primary-sale authorization | P0 | 17 | 1 | 3 | 5 | 4 | Both fixed-sale contracts bind the seller to the authenticated administrator, Colander and native installers bind sale calls to the connected wallet, and forced third-party listings fail in SmartPy tests |
 | WTF-BB-388 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Suite Desktop / local page hosting | P1 | 13 | 6 | 3 | 5 | 1 | Native Colander safely installs publisher ZIPs atomically under the user-owned Pasta Suite site directory, lists complete sites, and serves them through loopback-only routes; traversal, malformed, duplicate, encrypted, and oversized archives are rejected |
 | WTF-BB-389 | Claimed | Codex full-send cleanup pass | 2026-07-15 | Deploy / immutable migration history | P0 | 17 | 1 | 3 | 5 | 4 | Production deploy correctly rejected an edited applied migration: `0008_cockpit_phase0.sql` no longer matched its ledger checksum; restore the applied bytes because the intended partial-index change already exists in forward migration `0078` |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 8 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-391 | Verified | Codex Pasta central-workspace continuity | 2026-07-15 | Pasta Protocol / Colander cross-app ownership | P1 | 13 | 6 | 4 | 5 | 0 | Colander project identity now survives CH-EASE package handoffs; Macaroni preserves it through its landing page, attaches deployed/resumed KT1s, records exported mint sites, and installs those ZIPs into native Colander; focused policy, build, browser, inventory-coverage, and desktop packaging gates pass |
 | WTF-BB-392 | Fixed | Codex Objkt Operator persistence | 2026-07-15 | Commerce / private Objkt operator availability | P1 | 15 | 2 | 4 | 5 | 2 | Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending |
+| WTF-BB-393 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Protocol / studio draft recovery | P1 | 13 | 6 | 4 | 5 | 0 | All six newer studios now share project-scoped autosave/reload recovery and portable backup/import, Colander exposes resumable draft references, secrets/files are excluded, and mounted-window app identity is fenced; focused policy/build/browser proof passes |
+| WTF-BB-394 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Protocol / standalone contract resume | P1 | 13 | 6 | 4 | 5 | 0 | All six newer studios now persist confirmed deployments, chain-verify manually remembered KT1s, restore app-owned fields after restart, and feed structured app/network/verification records into Colander; focused browser, policy, build, installer, and inventory coverage gates pass |
+| WTF-BB-395 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Suite Desktop / native Colander parity | P1 | 13 | 6 | 4 | 5 | 0 | Installed Colander now normalizes current/legacy Pasta Projects, renders drafts, structured contract records, and project sites, routes owner-app resume and native manager reopen, filters malformed/unsafe imports, and passes package plus focused browser proof |
+| WTF-BB-396 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Suite Desktop / portable CH-EASE preparation | P1 | 13 | 6 | 4 | 5 | 0 | CH-EASE is now a bundled standalone local preparation app with metadata recovery, media ZIP/JSON export, durable-URI publisher handoff, and project-scoped Colander draft ownership; native Colander preserves and resumes `ch-ease`, with focused browser, installer, build, and inventory gates passing |
+| WTF-BB-397 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Protocol / CH-EASE individual installer | P1 | 12 | 7 | 3 | 5 | 0 | CH-EASE now has its own macOS/Windows/Raspberry Pi Electron package, protected checksum-gated manifest, workflow, live verifier, and central catalog entry; it bundles all six publishers as same-origin dependencies, and a real noopener popup proof consumes the package successfully |
+| WTF-BB-398 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Protocol / portable CH-EASE media durability | P1 | 13 | 6 | 4 | 5 | 0 | Portable CH-EASE now pins selected originals through creator-controlled Pinata or Kubo, writes returned CIDs into package items, excludes credentials from recovery state, and proceeds directly to publisher handoff |
+| WTF-BB-399 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Protocol / Colander project lifecycle | P1 | 13 | 6 | 4 | 5 | 0 | Web and installed Colander now share rename, clean duplicate, reversible archive/restore, and archived-only confirmed deletion semantics through the portable Pasta Project contract |
+| WTF-BB-400 | Verified | Codex Pasta vertical-slice parity | 2026-07-15 | Pasta Suite Desktop / self-hosted page lifecycle | P1 | 13 | 6 | 4 | 5 | 0 | Web Colander now rebuilds exact site artifacts or forgets only their portable records; installed Colander atomically uninstalls exact managed pages and prunes every matching project artifact |
+| WTF-BB-401 | Verified | Codex admin UX control-suite pass | 2026-07-16 | Admin console / operator UX | P1 | 13 | 6 | 4 | 4 | 1 | Task-first navigation, broad-to-acute Users/Roles/Curses workspaces, deep-linked WTF Passports, and exhaustive human/agent Help replace the panel-first control maze; typecheck, build, focused tests, 4/4 admin browser stories, and the complete 655/655 inventory suite pass |
+| WTF-BB-402 | Fixed | Codex Pasta final packaging | 2026-07-15 | Pasta Suite Desktop / consumer installer readiness | P0 | 17 | 1 | 4 | 5 | 3 | Branded universal macOS DMG/ZIP and Windows x64 NSIS wizard now build with license, GUI-only unsigned-install guidance, checksums, review manifest, and packaged-app smoke wiring; Mac artifact smoke passes, while the Windows runner proof remains the final cross-platform verification gate |
+| WTF-BB-403 | Claimed | Codex Ravioli fulfillment repair | 2026-07-16 | Pasta Protocol / Ravioli on-chain pack fulfillment | P0 | 18 | 0 | 4 | 5 | 4 | Ravioli currently burns a wrapper without delivering assets; replace the false bundle semantics with composable escrow-transfer, allocated-mint, and generative-mint recipes covering deterministic, blind, and hybrid packs |
+| WTF-BB-405 | Verified | Codex Rotini/Gnocchi Shadownet proof | 2026-07-16 | Pasta Protocol / generative and open-edition mint truth | P0 | 18 | 0 | 4 | 5 | 4 | Fresh app-artifact Shadownet contracts now prove collector-created Rotini iterations plus capped and vaultable forever Gnocchi OEs with two independent collectors, indexed ownership/supply/metadata, closed-state rejections, reopen, local SmartPy invariants, browser choreography, and installer asset policy |
+| WTF-BB-407 | Verified | Codex Gnocchi multi-edition pass | 2026-07-16 | Pasta Protocol / Gnocchi multi-edition collection publishing | P1 | 13 | 6 | 4 | 4 | 1 | Gnocchi now publishes locked Timed OEs, Forever OEs, and capped-plus-timed LEs into one new or existing collection; current contract `KT1DxL652xGhAwWnsaC32TcdDP7BL7KwrStw` passed the complete signer-backed three-token Shadownet lifecycle with two collectors and TzKT state proof |
+| WTF-BB-404 | Verified | Codex admin UX control-suite pass | 2026-07-16 | Desktop rendering / admin UX | P1 | 11 | 8 | 3 | 4 | 0 | Removed the filtered fixed custom-cursor compositor layer that produced black tiles over nested admin workspaces; screenshot-pixel regression coverage and the focused 4/4 admin browser suite verify the cursor, Reggie, roster, and Passport render together |
 | WTF-BB-324 | Verified | Codex Gamma shell continuation | 2026-06-30 | E2E / Gamma Swap harness wallet state | P2 | 8 | 14 | 2 | 3 | 0 | Gamma Swap proof now seeds the accepted Octez wallet session provider (`octez.connect`) instead of stale Beacon state; verified by focused source policy, focused Gamma Swap Playwright, and full Gamma suite `62/62` on `HARNESS_PORT=4307` |
 | WTF-BB-323 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / WTF Domains Settings applet wallet prefill | P2 | 8 | 14 | 2 | 3 | 0 | Settings Subdomain Setup and cobwebsaints inventory specs now seed the accepted Octez wallet session provider instead of stale Beacon state; verified by focused fresh-harness proof plus branch/main Quality Gates through `28467035060` |
 | WTF-BB-322 | Verified | Codex full-send cleanup pass | 2026-07-15 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 12 | 2 | 3 | 1 | Recovery Mode now completes both canonical and Beta-shell route smoke without fatal unauthenticated-probe noise; verified again in the complete 634/634 interaction inventory run |
@@ -2398,7 +2413,7 @@ Priority labels:
 ### WTF-BB-147 - Untracked Mastodon/Subdomains work can block unrelated W verification
 
 - Category: Build / dirty worktree isolation
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex full-send cleanup pass
 - Score: C3 + F4 + S1 + P1(4) = 12
 - Evidence:
@@ -3080,8 +3095,8 @@ Priority labels:
 ### WTF-BB-124 - Marketplace and barter writes do not bind contract sends to the expected wallet
 
 - Category: Tezos marketplace / wallet binding
-- Status: Open
-- Owner/Session: -
+- Status: Claimed
+- Owner/Session: Codex Gnocchi multi-edition pass
 - Score: C3 + F4 + S2 + P1(4) = 13
 - Evidence:
   - `client/src/lib/tezos/marketplace.ts` calls `assertNetworkReadyForSend()` without an expected wallet for create listing, create auction, buy, bid, settle, cancel, offer, and accept offer sends.
@@ -3728,8 +3743,8 @@ Priority labels:
 ### WTF-BB-019 - OAuth and Studio secret encryption fall back to `SESSION_SECRET`
 
 - Category: Secrets / key management
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex Gnocchi multi-edition pass
 - Score: C3 + F2 + S4 + P1(4) = 13
 - Evidence: `server/auth/oauth-crypto.ts:8-22` uses `SESSION_SECRET` when `TWITTER_TOKEN_ENCRYPTION_KEY` is missing. `server/lib/studio/crypto.ts:35-50` uses `SESSION_SECRET` when `STUDIO_CRYPTO_KEY` is missing.
 - Why it matters: Session signing, Twitter OAuth token encryption, and Studio credential encryption can collapse onto one secret. That couples rotation plans and widens blast radius if one secret leaks or must be rotated quickly.
@@ -8384,7 +8399,10 @@ Priority labels:
   - SmartPy tests pass for exact payment, active/window gates, inventory transfer, remaining quantity, and treasury forwarding in the standard and bundle contract families.
   - Recompiled Spaghetti, Rotini, and Ravioli artifacts expose `set_sale`, `set_sale_active`, and `buy`; their studios initialize the new `sales` big-map and configure creator inventory during publish.
   - Hosted collector pages and the installed Pasta Suite Colander pass browser stories for purchase, bundle redemption, project attachment, site export, and signed sale configuration.
-  - The real Shadownet proof scripts now originate the sale-enabled storage and execute `set_sale` plus collector `buy`, but the configured primary RPC returned Cloudflare 520/522 during contract simulation/origination on 2026-07-15 and the fallback timed out. TzKT confirmed no new origination was injected, so real-chain verification remains open without duplicate-contract risk.
+  - On 2026-07-15 both approved RPCs returned Shadownet chain id `NetXsqzbfFenSTS`; the guarded proof-wallet tool funded the shared collector with operation `ooYTxKoosraNnkkDU3hU9Dq5bJfdLPfgLsWmWmycUq9ZsiVmELR` after explicitly rejecting an unflagged run.
+  - Spaghetti originated `KT1E5mXCQNj9gsaw3ZYNg5fC8TLk4XHKeU6i`, configured sale `ooeBpcmKBT97Nup2ARn2hoY3HxyA8b9gHu3r2MykBh8wXeb1Mrg`, and completed collector purchase `opE7BLynzUF626HNnVgpPFMvUADW99MKgJSevLnxa8HbecJPJsQ`; TzKT verified exhausted sale inventory, metadata, supply, and collector ownership.
+  - Rotini originated `KT1HEz9SAxdXvuo2f7wGdHMdYcsDG5D46uSb`, configured sale `opPqAQHp6JUv4ggfoUTzmBxnAYsNq7r6Hg3M8FYw1S7DGSQERmd`, and completed collector purchase `onjsFDZMshbBte1APMxP9Utdc7c7md11aisX5gjQ176xd5vHgbH`; TzKT verified generated metadata, traits, DNA, exhausted inventory, supply, and ownership.
+  - Ravioli originated `KT1LF14kfDc3nGq8Vs26J2BykYixWeEfYqMQ`, configured sale `opWu4Ghhs9BoKSQhssPfdsiewFJSumHrHxrn7WGL3PZpqbq3cs9`, completed two-edition purchase `ooPBHZWB74ppuxstayREF5pEv9yqgzhkmURUVC7yzNT4H7Miaah`, and redeemed one with `ooaJQKbrdAprz31EwKrdcV4fcVk9TaounY8a3jThxw7s4CfrEYS`; TzKT verified exhausted sale inventory, bundle configuration, redeemed count, supply, metadata, and collector ownership.
 
 ### WTF-BB-385 - Gamma Colander proof assumes a generic region marker is unique
 
@@ -8461,38 +8479,6 @@ Priority labels:
   - Fresh desktop asset preparation succeeds and the complete desktop package-policy batch passes 50/50.
   - The six-app self-hosted publishing browser story passes 3/3, deterministic hosted Colander passes 3/3, and native Colander passes 1/1.
 
-### WTF-BB-389 - Applied cockpit migration was edited in place
-
-- Category: Deploy / immutable migration history
-- Status: Claimed
-- Owner/Session: Codex full-send cleanup pass
-- Score: C3 + F5 + S1 + P0(8) = 17
-- Evidence:
-  - Hetzner deploy run `29454917140` stopped before app startup because the production ledger recorded SHA-256 `e82103799f1aa831419a1be64800c389654b0799048b0e93ff46585409a7fa03` for `0008_cockpit_phase0.sql`, while the repository file hashed to `8f991059165fb6101bf89d227f06a3dcc3fc709308d390cb05d6b80a14c1ad2d`.
-  - Git history proves the ledger hash is the original migration and the later revision copied the indexing-queue partial-index change backward from the already-applied forward migration `0078_indexing_queue_pending_partial.sql`.
-- Why it matters:
-  - Rewriting an applied migration makes production schema history non-reproducible and can silently diverge old and new databases.
-- Correction direction:
-  - Restore migration `0008` byte-for-byte; retain `0078` as the existing forward-only index replacement and do not create another duplicate migration.
-- Verification idea:
-  - Confirm the restored file matches the production ledger checksum, run migration policy coverage, redeploy, and verify the new migration is applied before the app health check succeeds.
-
-### WTF-BB-390 - Environment inventory scans ignored local build outputs
-
-- Category: CI / environment inventory determinism
-- Status: Claimed
-- Owner/Session: Codex full-send cleanup pass
-- Score: C3 + F4 + S0 + P1(4) = 11
-- Evidence:
-  - Quality run `29454917061` failed `env:inventory:check` in a clean checkout while the same command passed in the release workspace.
-  - The generator recursively walks broad source roots and therefore includes ignored prepared desktop assets that exist only in the local workspace, producing a 2,224-file inventory that cannot be reproduced from the repository.
-- Why it matters:
-  - A generated governance artifact that depends on ignored local build residue makes clean CI red and can silently document environment variables from code that is not part of the release.
-- Correction direction:
-  - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
-- Verification idea:
-  - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
 ### WTF-BB-392 - Objkt operator disappeared with its temporary dev server
 
 - Category: Commerce / private Objkt operator availability
@@ -8510,6 +8496,426 @@ Priority labels:
   - Deploy the registered wtfOS app and forward-only migration, retain the server owner gate, and keep Kukai as the external signer.
 - Verification idea:
   - Run policy, type, build, inventory, and browser persistence coverage; deploy to production; authenticate as the configured owner; verify initial state creation, creator approval persistence across reload, and denial for a non-owner admin.
+
+### WTF-BB-393 - Newer Pasta studios lose creator work on refresh
+
+- Category: Pasta Protocol / studio draft recovery
+- Status: Verified
+- Owner/Session: Codex Pasta vertical-slice parity
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna keep unsent metadata and app-specific structures only in live DOM/module state.
+  - None of the six studios owns a versioned local draft, automatic recovery, or portable backup/import workflow.
+  - Colander can launch and track contracts/sites, but cannot report that an active project has recoverable studio work.
+- Why it matters:
+  - A reload, browser restart, or accidental navigation can destroy token metadata, recipients, bundle members, generative layers, or exhibition references before an on-chain operation exists.
+  - Standalone installers and a central dashboard are not a complete creator vertical slice unless unfinished work survives and remains discoverable without Objkt, Teia, or wtfOS services.
+- Correction direction:
+  - Add one shared, versioned draft/recovery runtime with app-specific serializers, project-scoped autosave, portable JSON backup/import, and explicit file-reselection warnings.
+  - Record draft summaries in the Colander workspace so the central app exposes saved state and resumes the correct underlying studio.
+- Verification idea:
+  - Lock shared-runtime parity with policy tests; browser-test representative fixed and dynamic studio drafts across reload; verify portable import and Colander resume visibility; rerun desktop asset/package, inventory, and production build gates.
+- Verification:
+  - Shared-runtime and workspace policy tests pass 16/16, including byte-identical app copies, versioned storage, secret/file exclusion, and legacy project normalization.
+  - The production build passes, and the focused browser proof reload-recovers fixed and dynamic state in all six studios, exports/imports a Spaghetti backup, displays the Lasagna draft in Colander, observes save/export/import/clear events, and prevents stale mounted apps from contaminating the active project's draft ledger.
+  - The complete Pasta publishing browser suite passes 5/5, all seven affected desktop prepare/package-policy lanes pass 41/41, normalized inventory coverage passes 916/916 handles, and the complete interaction inventory passes 640/640 browser stories.
+
+### WTF-BB-400 - Colander cannot retire or repair self-hosted pages
+
+- Category: Pasta Suite Desktop / self-hosted page lifecycle
+- Status: Verified
+- Owner/Session: Codex Pasta vertical-slice parity
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - Pasta Suite's loopback service exposes only list/install/serve operations. Once a publisher injects a site under `Documents/Pasta Suite/sites`, no suite UI or API can remove it.
+  - Installed Colander can open a listed site and rebuild a project-linked artifact, while web Colander renders project site artifacts as inert filename text with no owner-app recovery or record cleanup.
+- Why it matters:
+  - The self-hosting manager accumulates stale or broken public pages forever unless the creator edits the filesystem manually. Colander cannot credibly own exported products if it cannot distinguish forgetting a record from uninstalling the actual served bytes.
+- Correction direction:
+  - Add a slug-scoped atomic site removal primitive and DELETE endpoint; expose confirmed uninstall in installed Colander; prune matching project artifacts; and give both Colander surfaces safe open, owner-app rebuild, and record-only forget semantics.
+- Verification idea:
+  - Unit-test path/slug rejection and atomic removal; browser-test project/global uninstall confirmation, directory-list removal, artifact pruning, web record-only cleanup, and rebuild handoff; rerun package, inventory, build, and affected Pasta browser gates.
+- Resolution:
+  - Added strict managed-slug validation and a symlink-rejecting removal primitive that atomically renames a hosted directory out of service before deletion, plus a loopback `DELETE /api/pasta/sites/:slug` endpoint.
+  - Web Colander now exposes exact owner/contract rebuild and an explicit record-only forget action that leaves ZIPs, native files, and chain state untouched. Installed Colander additionally provides confirmed uninstall from both project artifacts and the global local-site registry, then prunes every matching project artifact after success.
+  - Added canonical `colander.site_record_forgotten` and `pasta_suite.site_uninstalled` events and documented the ownership boundary across the interaction inventory, admin registry, behavior assertion, and Pasta coverage report.
+- Verification:
+  - Archive/workspace/admin tests pass 27/27, Pasta Suite desktop package policy passes 5/5, and freshly emitted native JavaScript passes a direct syntax check.
+  - The complete affected browser set passes 12/12 across web and installed Colander plus every Pasta publisher and collector page. Production build and TypeScript check pass; normalized inventory coverage passes 929/929 handles and 145/145 app-owned behavior registrations.
+  - The full inventory suite was not repeated because this shared checkout contains separately owned Objkt/desktop work; every changed Colander interaction and all affected Pasta cross-app paths are covered by the focused 12-story suite.
+
+### WTF-BB-399 - Colander cannot manage the lifecycle of its own projects
+
+- Category: Pasta Protocol / Colander project lifecycle
+- Status: Verified
+- Owner/Session: Codex Pasta vertical-slice parity
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - Web Colander can create/import/export projects, and installed Colander can additionally resume their drafts/contracts/sites, but neither surface can rename, duplicate, archive, restore, or delete a project.
+  - `pasta-project@1` already declares `archived` as a stage without defining the transition or the stage to restore, so an external editor can produce an archived record that neither Colander can manage correctly.
+- Why it matters:
+  - Colander is supposed to be the central user experience and durable authority for creator work. A growing project rail with immutable names and no reversible retirement or deliberate cleanup is not a usable management surface.
+- Correction direction:
+  - Define shared project lifecycle helpers and an optional archived-stage recovery field, then expose matching keyboard-accessible controls in web and installed Colander with inline permanent-delete confirmation and canonical events.
+- Verification idea:
+  - Unit-test versioned transitions and legacy restore inference; browser-test web and installed rename/duplicate/archive/restore/delete persistence plus archived workflow exclusion; rerun desktop, inventory, and build gates.
+- Resolution:
+  - Added shared web project lifecycle helpers with optional `archivedFromStage`, exact restore for current manifests, safe stage inference for legacy archives, and clean duplication that generates a new id while excluding draft, contract, and site ledgers.
+  - Added matching web and installed Colander management surfaces. Active projects can be renamed, independently duplicated, or archived; archived projects are excluded from workflow selection until restored and can be permanently removed only through an explicit inline confirmation step.
+  - Added canonical rename/duplicate/archive/restore/delete events to both owner surfaces and the Pasta inventory/admin event spine.
+- Verification:
+  - Shared workspace lifecycle tests pass 9/9; admin plus workspace tests pass 20/20; Pasta Suite desktop package policy passes 5/5; emitted native JavaScript syntax-checks after fresh generation.
+  - The complete affected browser set passes 11/11 across web/installed project lifecycle plus Macaroni return, six-app draft/contract/site continuity, public collector pages, and CH-EASE publishing. Production build and TypeScript check pass; normalized inventory coverage passes 927/927 handles and 145/145 app-owned behavior registrations.
+  - The full inventory suite was not repeated because this shared checkout still contains the separately owned Objkt Operator launcher failure already isolated in the prior run; every changed Colander interaction and all affected Pasta cross-app paths are covered by the 11-story focused suite.
+
+### WTF-BB-398 - Portable CH-EASE cannot make selected media durable
+
+- Category: Pasta Protocol / portable CH-EASE media durability
+- Status: Verified
+- Owner/Session: Codex Pasta vertical-slice parity
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - Portable CH-EASE accepts original local files and keeps their bytes in memory for ZIP export, but its publisher handoff rejects every item until the creator manually supplies a durable artifact URI.
+  - All six downstream publishers already support creator-controlled Pinata or Kubo pinning, so the suite owns the capability but exposes it only after CH-EASE has already required the CID.
+- Why it matters:
+  - The nominal preparation-to-publisher workflow contains an unavoidable external detour: upload each file outside CH-EASE, recover every CID, paste it into the matching item, and then retry the handoff.
+  - That breaks the intended self-contained local workflow in both Pasta Suite Desktop and the individual CH-EASE installer.
+- Correction direction:
+  - Add in-memory Pinata JWT and creator-owned Kubo HTTP API controls to portable CH-EASE, pin loaded files directly, write returned CIDs into their matching package items, and never persist provider credentials.
+- Verification idea:
+  - Browser-prove local file selection through mocked provider upload, CID assignment, credential exclusion from drafts/Colander, reload persistence of only the URI, and immediate publisher handoff; rerun desktop asset, policy, inventory, and build gates.
+- Resolution:
+  - Added session-only Pinata JWT and creator-owned Kubo HTTP API controls to portable CH-EASE. Loaded unpinned files are uploaded sequentially, each returned CID is written to its matching item, durable readiness is visible in the package summary, and the existing fail-closed publisher handoff becomes immediately available.
+  - Provider credentials and node configuration never enter `pasta-chease-draft@1`, the Colander manifest, exports, or handoff payloads. File bytes remain memory-only and still require reselection after restart.
+- Verification:
+  - Focused browser proof passes for both Pinata and Kubo, including multipart upload routing, CID assignment, immediate package export/handoff, reload recovery of only the durable URI, and exclusion of the Pinata JWT and Kubo endpoint from local storage.
+  - CH-EASE and Pasta Suite desktop assets regenerated; both installer policies pass 5/5; the complete focused CH-EASE/native-Colander browser set passes 6/6; normalized inventory coverage passes 922/922 handles and 145/145 app-owned behavior registrations; the production build passes.
+
+### WTF-BB-397 - CH-EASE has no individual desktop installer
+
+- Category: Pasta Protocol / CH-EASE individual installer
+- Status: Verified
+- Owner/Session: Codex Pasta vertical-slice parity
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - Macaroni plus Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna each have an Electron package, three-platform workflow, protected installer manifest, checksum verifier, and root packaging commands.
+  - Portable CH-EASE is bundled only through Pasta Suite Desktop, so a creator cannot install the preparation app independently as requested for suite tools where possible.
+  - A naive CH-EASE-only shell would break its defining same-origin session-storage handoff because the selected publisher assets would not exist locally.
+- Correction direction:
+  - Package CH-EASE as the entry app with all six publisher static runtimes as local handoff dependencies; keep Colander and Macaroni outside this individual package.
+  - Add macOS, Windows, and Raspberry Pi builder workflow, protected manifest with URL plus SHA-256 fail-closed availability, central installer catalog entry, local/live policy, and inventory ownership.
+- Verification idea:
+  - Lock asset scope and same-origin target availability in policy tests, prepare the package, browser-prove the packaged CH-EASE-to-publisher route, and rerun installer/inventory/build gates.
+- Resolution:
+  - Added `apps/ch-ease-desktop` with a loopback-only Electron shell, CH-EASE as its entry app, and all six publisher runtimes bundled as explicit same-origin handoff dependencies. Colander and Macaroni remain outside the individual package.
+  - Added a three-platform installer workflow, protected `/api/ch-ease/installers` manifest, fail-closed URL plus SHA-256 validation, central Pasta installer-catalog entry, GitHub-release verifier, root package commands, release-audit registration, env inventory, and interaction/behavior ownership.
+  - Replaced the broken sessionStorage-only noopener transport with a five-minute `pasta-handoff-envelope@1` local fallback. Each publisher validates expiry, consumes once, and deletes the fallback while retaining the existing session transport for same-context use.
+- Verification:
+  - CH-EASE desktop preparation and policy pass 5/5; package locks and runtime scripts validate; Pasta Suite package and standalone release-audit policies remain green.
+  - Focused Playwright passes 5/5 across portable preparation, real packaged noopener handoff into Spaghetti, native Colander sale/lifecycle, and CH-EASE owner resume. The packaged publisher visibly imports the handed-off token and consumes the local fallback.
+  - Production build, generated environment inventory, admin registry, normalized inventory coverage (921/921 handles), app-owned behavior registry (145/145), and whitespace checks pass. No installer artifacts were built or published in this pass, so the individual CH-EASE download is source-ready rather than live.
+
+### WTF-BB-396 - Installed Colander silently replaces CH-EASE with Spaghetti
+
+- Category: Pasta Suite Desktop / portable CH-EASE preparation
+- Status: Verified
+- Owner/Session: Codex Pasta vertical-slice parity
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - Web Colander treats `ch-ease` as the preparation owner and routes that user story to `/tools/ch-ease`, but the desktop asset manifest bundles only Macaroni plus the six publisher studios.
+  - Native Colander excludes `ch-ease` from `TOOL_IDS`; normalization therefore mutates a valid imported CH-EASE project into Spaghetti, changing both its stage semantics and resume owner.
+  - The existing CH-EASE implementation depends on authenticated wtfOS package APIs, so it cannot run from the self-hosted installer and has no portable static preparation surface comparable to the publisher apps.
+- Why it matters:
+  - The central dashboard cannot employ the correct underlying app when the installed suite silently changes the app. Creators who leave wtfOS lose media/metadata preparation and package handoff before they ever reach a contract publisher.
+- Correction direction:
+  - Add a standalone CH-EASE app that prepares metadata locally, preserves selected files for an exported archive, exports the shared versioned package, hands it to the selected publisher in same-origin session storage, and records a recoverable project-scoped draft without storing file bytes.
+  - Bundle it in Pasta Suite Desktop, preserve `ch-ease` in native project normalization, and make Colander launch/resume it as the preparation owner.
+- Verification idea:
+  - Lock the static asset and package contract in policy tests, browser-test local file preparation, reload recovery, export/handoff, and native Colander ownership, then rerun desktop, inventory, and build gates.
+- Resolution:
+  - Added a dependency-free CH-EASE preparation studio under `public/creation-tools/ch-ease`. It accepts original files, edits collection/token metadata, exports the shared `wtfos.pasta.chease-package.v1` contract as JSON, creates a ZIP with collision-safe numbered media paths, imports v1 packages, and requires durable artifact URIs before a same-origin publisher handoff.
+  - Metadata autosaves as `pasta-chease-draft@1` under the originating project id, excludes file bytes, visibly requests file reselection after reload, and records a `pasta-studio-draft-ref@1` owned by `ch-ease` in the portable Colander manifest.
+  - Pasta Suite Desktop now bundles CH-EASE, advertises it in the protected installer manifest, creates preparation projects at the `preparing` stage, preserves it through normalization, and resumes its drafts into the installed local app instead of Spaghetti.
+- Verification:
+  - Portable CH-EASE plus native Colander Playwright passes 4/4, including media selection, JSON/ZIP export, reload recovery, session-storage handoff, and installed owner-app resume.
+  - Pasta Suite preparation/package policy passes 5/5, all individual desktop and standalone release-audit policies pass 46/46, generated installer JavaScript is syntactically valid, source/generated/build copies match, production build passes, inventory coverage passes 920/920 handles and 145/145 app-owned behavior registrations, and `git diff --check` passes.
+  - The complete inventory suite was not rerun because the same shared checkout still contains the independently owned Objkt Operator launcher failure already isolated in the prior 641-story run; that run passed all 640 non-Objkt stories, and this pass adds focused coverage for every new CH-EASE interaction.
+
+### WTF-BB-395 - Installed Colander does not consume the complete Pasta Project lifecycle
+
+- Category: Pasta Suite Desktop / native Colander parity
+- Status: Verified
+- Owner/Session: Codex Pasta vertical-slice parity
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - The desktop generator creates projects with only `contracts` and `artifacts`; it neither normalizes nor renders `drafts` or `contractRecords`, even though every bundled newer studio now writes both through the shared localStorage workspace.
+  - Its project cards expose only counts, and tool launches pass the first bare contract. There is no central resume path for an app-owned draft or remembered contract and no link from a project artifact to an installed local page.
+  - Native import accepts any object with the schema/id fields and re-emits it directly, so malformed lifecycle records can remain in the installed authority surface.
+- Why it matters:
+  - The installer is the required self-hosted management path. If native Colander is a reduced parallel implementation, creators lose the central recovery and ownership model precisely when they leave wtfOS and Objkt behind.
+- Resolution:
+  - Native project creation, startup load, import, cross-window storage refresh, and focus recovery now normalize `pasta-project@1` with backward-compatible `drafts`, `contractRecords`, and `artifacts` ledgers. Malformed records and unsafe local-site paths are discarded rather than becoming dashboard actions.
+  - The active project renders recoverable studio work, full KT1/app/network/verification records, and linked site exports. Colander can resume the correct bundled owner app, reopen a record through the wallet-safe native manager, open a loopback-installed page, or reopen the owner app to rebuild an export.
+  - Contracts opened directly in the native manager now attach a `pasta-contract-ref@1` record with detected owner app, network, label, and verification timestamp without downgrading an already-published project.
+- Verification:
+  - Pasta Suite asset preparation and package policy pass 5/5; generated inline JavaScript passes syntax validation; focused native Colander Playwright passes 2/2 for the pre-existing sale flow plus the complete lifecycle recovery flow.
+
+### WTF-BB-394 - Newer Pasta studios forget deployed contracts after restart
+
+- Category: Pasta Protocol / standalone contract resume
+- Status: Verified
+- Owner/Session: Codex Pasta vertical-slice parity
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna can deploy or operate a pasted KT1, but none keeps a durable app-owned deployment ledger comparable to Macaroni's resume panel.
+  - Restarting a standalone installer loses the creator's contract list unless the KT1 survives in a separate draft or the creator manually recorded it elsewhere.
+  - Colander stores bare contract strings, so it cannot show which specialized app owns a remembered contract, when it was last verified, or which network should reopen it.
+- Why it matters:
+  - A self-hosted creator suite cannot depend on Objkt indexing or human clipboard discipline to recover its own contracts.
+  - Standalone apps need a durable reopen path, while Colander needs structured lifecycle records to remain the central authority without duplicating specialized editors.
+- Resolution:
+  - Added one versioned, byte-identical `pasta-studio-contract@1` runtime to Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna. Confirmed deployments save automatically; pasted KT1s must pass a selected-network contract read; resume restores each app's owning inputs/mode; verify and device-local forget remain explicit; wallet credentials and signing material are excluded.
+  - Added backward-compatible `pasta-contract-ref@1` records to Colander projects and a central remembered-contract surface showing the complete address, owner app, network, last verification time, central-manager reopen, and owner-app resume.
+- Verification:
+  - Workspace/static policy passes 18/18, production build passes, and the complete Pasta publishing browser suite passes 6/6 including all six restart/resume mappings, manual on-chain verification, malformed-import filtering, and structured Colander persistence.
+  - Pasta Suite plus six standalone desktop prepare/package-policy lanes pass 41/41; admin registry passes 11/11; normalized inventory coverage passes 920/920 handles. The complete 641-story inventory run passed all 640 non-Objkt stories and failed only the unrelated concurrent Objkt Operator launcher test at its 60-second timeout.
+
+### WTF-BB-391 - Colander project ownership breaks across CH-EASE and Macaroni
+
+- Category: Pasta Protocol / Colander cross-app ownership
+- Status: Verified
+- Owner/Session: Codex Pasta central-workspace continuity
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - Colander launched every app with a project id, but CH-EASE replaced the route handoff when opening a publisher and Macaroni had no workspace bridge at all.
+  - A creator using the proven Macaroni vertical slice could deploy and export successfully while the central dashboard still showed a planning project with no contract or site artifact.
+- Why it matters:
+  - Colander cannot be the suite authority if prep and blind-drop workflows silently fork into untracked browser state.
+- Resolution:
+  - CH-EASE preserves the Colander project id, title, and network through publisher and Macaroni package-source handoffs; all six newer publishers recover that secondary context alongside the CH-EASE package payload.
+  - Macaroni preserves route context from landing page to Studio, attaches deployed and resumed KT1 contracts, records exported `macaroni-site.zip` artifacts, and uses the Pasta Suite loopback installer when running inside native Colander.
+  - Focused workspace/static policy passed 15/15, the production build passed, the complete Pasta publishing browser suite passed 4/4, final inventory coverage passed 912/912 handles, and affected desktop package/archive policies passed 14/14 after fresh asset preparation.
+
+### WTF-BB-389 - Applied cockpit migration was edited in place
+
+- Category: Deploy / immutable migration history
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C3 + F5 + S1 + P0(8) = 17
+- Evidence:
+  - Hetzner deploy run `29454917140` stopped before app startup because the production ledger recorded SHA-256 `e82103799f1aa831419a1be64800c389654b0799048b0e93ff46585409a7fa03` for `0008_cockpit_phase0.sql`, while the repository file hashed to `8f991059165fb6101bf89d227f06a3dcc3fc709308d390cb05d6b80a14c1ad2d`.
+  - Git history proves the ledger hash is the original migration and the later revision copied the indexing-queue partial-index change backward from the already-applied forward migration `0078_indexing_queue_pending_partial.sql`.
+- Why it matters:
+  - Rewriting an applied migration makes production schema history non-reproducible and can silently diverge old and new databases.
+- Correction direction:
+  - Restore migration `0008` byte-for-byte; retain `0078` as the existing forward-only index replacement and do not create another duplicate migration.
+- Verification idea:
+  - Confirm the restored file matches the production ledger checksum, run migration policy coverage, redeploy, and verify the new migration is applied before the app health check succeeds.
+
+### WTF-BB-390 - Environment inventory scans ignored local build outputs
+
+- Category: CI / environment inventory determinism
+- Status: Verified
+- Owner/Session: Codex full-send cleanup pass
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - Quality run `29454917061` failed `env:inventory:check` in a clean checkout while the same command passed in the release workspace.
+  - The generator recursively walks broad source roots and therefore includes ignored prepared desktop assets that exist only in the local workspace, producing a 2,224-file inventory that cannot be reproduced from the repository.
+- Why it matters:
+  - A generated governance artifact that depends on ignored local build residue makes clean CI red and can silently document environment variables from code that is not part of the release.
+- Correction direction:
+  - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
+- Verification idea:
+  - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-402 - Pasta Suite build commands did not produce a review-ready consumer package
+
+- Category: Pasta Suite Desktop / consumer installer readiness
+- Status: Fixed
+- Owner/Session: Codex Pasta final packaging
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Evidence:
+  - The suite declared DMG and NSIS targets but had no product icon, installer license or reviewer instructions, mounted-artifact smoke, checksum manifest, or documented GUI path around unsigned-build warnings.
+  - The generic executable override leaked into the DMG as `pasta-suite.app`, and source policy did not inspect the user-visible mounted bundle.
+- Why it matters:
+  - A creator should receive one normal application installer, not a source tree or developer runtime. A package that builds but has the wrong app identity, broken icon, or inert bundled surface is not ready for external UX review or beta testing.
+- Resolution:
+  - Added a branded Colander icon in SVG, PNG, ICNS, and ICO formats; corrected the user-facing macOS bundle and Windows executable name; added a drag-to-Applications DMG layout, per-user NSIS wizard, install-location choice, desktop/Start shortcuts, launch-on-finish, pre-release license, and GUI-only Gatekeeper/SmartScreen instructions.
+  - Added a reviewer manifest/checksum generator, a developer review guide, and an artifact-level Electron smoke that creates a real Colander project and opens packaged CH-EASE.
+  - The GitHub installer workflow now runs the artifact smoke against the packaged app on `macos-latest` and `windows-latest` before uploading artifacts.
+- Verification:
+  - Built `Pasta-Suite-1.0.0-mac-universal.dmg` and ZIP; mounted the DMG, accepted its license, verified `Pasta Suite.app`, bundle id `app.wtfos.pasta-suite`, version `1.0.0`, universal `x86_64 arm64` executable, Applications shortcut, and complete ASAR.
+  - The mounted-DMG artifact smoke passes with all eight tools, real Colander project creation, and packaged CH-EASE launch without runtime errors.
+  - Built `Pasta-Suite-1.0.0-win-x64.exe` as a valid NSIS GUI installer with an x64 `Pasta Suite.exe` payload and complete ASAR. Execution on a real Windows runner is wired but has not yet run from this uncommitted shared checkout.
+
+### WTF-BB-403 - Ravioli wrappers do not fulfill their packaged token recipes
+
+- Category: Pasta Protocol / Ravioli on-chain pack fulfillment
+- Status: Claimed
+- Owner/Session: Codex Ravioli custody repair
+- Score: C4 + F5 + S4 + P0(5) = 18
+- Evidence:
+  - `PastaBundleFA2.redeem` only subtracts the caller's wrapper balance, reduces wrapper supply, and increments redemption counters. The contract comment explicitly says contents delivery is off-chain through a manifest URI.
+  - Ravioli Studio pins a contents manifest and mints wrapper editions, but never transfers the listed FA2 assets into contract custody or verifies funded inventory.
+  - Objkt Art Pack operation `opNFvF96dV3GE1bRidGHNfSvSNBoyRkFhiYQHCTyphiKYr9AuP4` calls `reveal_booster`, creates three artwork-token mints to the pack owner, then burns the pack atomically. Ravioli's current redemption delivers no comparable on-chain assets.
+  - The required product also includes allocation-backed packs, generative packs whose iteration token and metadata do not exist until opening, and hybrid packs containing escrowed, allocated-mint, and generative-mint ingredients together. The current manifest has no executable representation for any of those fulfillment obligations.
+- Why it matters:
+  - A token whose metadata names other tokens is not an enforceable token bundle. Buyers can burn the wrapper and receive nothing, while the creator can transfer or sell the alleged contents independently.
+  - Calling this behavior a bundle, wrapped set, redeemable pack, or mystery pack creates a material mismatch between product language and on-chain guarantees.
+- Correction direction:
+  - Implement one composable recipe engine with three atomic fulfillment primitives: transfer an escrowed FA2 asset, exercise a capacity-backed fixed mint allocation through an authorized adapter, and invoke an authorized generative minter that creates the iteration token/metadata during opening.
+  - Expose five first-class Studio modes built from those primitives: deterministic vaulted bundle, blind funded-pool pack, blind allocated-mint pack, blind generative-mint pack, and a hybrid pack containing any combination of all three primitive types.
+  - Commit blind allocations before unopened packs circulate. Treat creator-local shuffling as hidden and tamper-evident, not protocol-unbiased randomness; do not claim Tezos supplies unpredictable native RNG.
+  - Require every recipe and its backing/capacity authorization to be finalized before wrapper mint or sale. Opening must atomically execute every recipe action and burn the wrapper; if one transfer or adapter mint fails, the entire operation must revert and the unopened pack must remain owned.
+  - Remove manifest-only redemption so it cannot be mistaken for enforceable fulfillment; update Ravioli Studio, exported pages, Colander records, installer assets, and behavior coverage.
+- Verification idea:
+  - Compile and sync the SmartPy artifacts; test operator-authorized deposits, exact reserve accounting, mint-capacity consumption, generative iteration creation, recipe commitments, wrapper supply invariants, atomic opening, insufficient backing, duplicate assets, unauthorized withdrawal, post-finalization mutation, and multi-primitive hybrid execution.
+  - Run Shadownet flows using real FA2 and Pasta fulfillment contracts: exercise all five modes, transfer unopened wrappers, open from a second wallet, and prove TzKT records every child transfer/mint in the same operation group as wrapper burn.
+- Progress / release boundary:
+  - The bounded commitment-backed router prototype now compiles and models escrow transfer, allocated-mint adapters, generative-mint adapters, recipe commitments, backing reservations, atomic opening, lifetime wrapper supply, and direct sales.
+  - The prototype is preserved as `contracts/pasta-protocol/PastaPackRouterFA2.py`. It is deliberately not the shipped Ravioli artifact because the required typed helper adapters, five-mode Studio composer, exported opener, Colander action model, and signer-backed Shadownet lifecycle are not complete.
+  - `PastaBundleFA2.py`, the checked-in `pasta-bundle.contract.json`, and the current Ravioli Studio remain on one matching v1 interface for this release. This prevents the repository from claiming that the unconnected router source generated the manifest-only production artifact.
+
+### WTF-BB-405 - Rotini and Gnocchi lack the multi-collector mint proof their product claims require
+
+- Category: Pasta Protocol / generative and open-edition mint truth
+- Status: Verified
+- Owner/Session: Codex Rotini/Gnocchi Shadownet proof
+- Score: C4 + F5 + S4 + P0(5) = 18
+- Evidence:
+  - Rotini Studio pins fully rendered edition artwork and metadata, calls `create_token`, creator-mints every edition, and optionally lists that inventory. Its historical Shadownet proof follows the same path and has one collector call `buy`; no collector creates a generative iteration.
+  - The Rotini report nevertheless describes this as a generative mint proof, which is insufficient for the mint-time generative primitive required by Ravioli.
+  - Gnocchi has a real payable `open_mint`, but its historical proof uses one collector wallet once. It does not prove multiple independent collectors, pause/vault rejection, unvault/reopen, continuing supply, or a conventional capped OE alongside forever issuance.
+- Why it matters:
+  - Ravioli cannot safely reserve or invoke Rotini/Gnocchi mint capacity until those public interfaces are stable and proven with the same adversarial boundaries buyers will exercise.
+  - A creator pre-mint followed by resale is a different token lifecycle from collector-triggered generation. Calling them equivalent would repeat Ravioli's metadata-only bundle mistake at the generative layer.
+- Correction direction:
+  - Give Rotini a dedicated public generative-iteration contract and Studio flow in which the project/generator exists before collection but each iteration token, seed, ownership entry, and token metadata are created by the collector mint transaction.
+  - Treat the current pre-generated layer compositor as an explicitly labeled batch-generation mode or migrate it into the project-generator input; do not call creator inventory sales collector generative minting.
+  - Extend Gnocchi's OE state and Studio language so a forever OE is explicitly vaultable/unvaultable without resetting supply, while conventional capped/windowed OEs retain their existing rules.
+  - Use at least two independent collector puppet wallets per fresh Shadownet collection and prove operations, indexed balances, supply, metadata, payments, rejection while closed, and resumption after reopening.
+- Verification idea:
+  - Compile SmartPy sources and sync exact app artifacts; test authorization, payment, supply, uniqueness, wrong-network guards, and pause/vault state locally.
+  - Originate fresh dummy Rotini and Gnocchi collections from their app-owned artifacts on Shadownet, fund two independent collectors, execute public mints from both, and record TzKT/RPC evidence plus operation hashes in reproducible proof reports.
+- Resolution:
+  - Replaced Rotini's standard fixed-inventory contract flow with the dedicated `PastaGenerativeCollectionFA2`; each `mint_iteration` now creates the token id, seed, direct metadata, NFT supply, and collector ownership in the collector transaction.
+  - Hardened `PastaOpenEditionFA2` so capped supply also constrains administrator/delegated mints and a sale cap cannot be lowered below current supply; Gnocchi now exposes explicit vault/unvault management for the same forever-OE token.
+  - Corrected Rotini Studio's selected-file handoff so layer previews can actually proceed through generator pinning and project publication, and routed the public Gnocchi `open_mint` capability through Colander.
+- Verification:
+  - Rotini: fresh Shadownet contract `KT1BYMrRC1ZvoHJWaSvFpiRsd5ZM2YcRh3Ls`; TzKT indexed two distinct collector-created token ids/seeds and rejected the second collector while generation was closed before succeeding after reopen.
+  - Gnocchi: fresh Shadownet contract `KT1Sso134UuSX9cRZ5a5Sq9vxAFY9tc8wy6W`; TzKT indexed both collectors owning capped token 0 and forever token 1, rejected a third capped mint as `SOLD_OUT`, rejected a vaulted forever mint as `SALE_INACTIVE`, and preserved supply through unvault.
+  - Gnocchi's current policy-lock/lifetime-issuance artifact was subsequently re-proven under WTF-BB-407 on `KT1DxL652xGhAwWnsaC32TcdDP7BL7KwrStw`; the address above remains the historical proof for this bounty's original two-policy milestone.
+  - SmartPy contract tests, shared adapter/static policy tests, inventory coverage, production build, focused Playwright Studio/public-page stories, Rotini Desktop policy, Pasta Suite Desktop policy, and native site-archive tests pass.
+
+### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
+
+- Category: Pasta Protocol / Rotini artifact interoperability
+- Status: In progress — local v2 lifecycle verified; fresh Shadownet artifact proof awaits a durable IPFS pinner
+- Owner/Session: Codex Rotini self-contained artifact repair
+- Score: C4 + F5 + S4 + P0(5) = 18
+- Evidence:
+  - `PastaGenerativeCollectionFA2.mint_iteration` writes the project `generator_uri` into every token's `artifactUri`; that URI resolves to a `pasta-rotini-generator@1` JSON manifest, not a PNG, GIF, or interactive ZIP.
+  - The manifest references separately pinned layer files and therefore is neither a standard display artifact nor a self-contained interactive token.
+  - Rotini's public mint page calls `mint_iteration` directly and never renders, packages, pins, or validates a finished iteration artifact.
+  - Objkt's current interactive-token requirements call for a ZIP with top-level `index.html`, relative local references, and no external requests; its supported direct image formats include PNG and GIF.
+- Why it matters:
+  - A minted token can have valid FA2 ownership and a unique seed while still displaying as a JSON document or failing to render on ordinary Tezos marketplaces.
+  - Requiring a custom Pasta/Objkt renderer would contradict Rotini's portability and creator-independence goals.
+- Correction direction:
+  - Replace direct recipe minting with bounded reservation/finalization: reserve a collector-specific token id and seed on-chain, render from that immutable seed in the local mint application, pin a finished PNG/GIF/self-contained ZIP plus TZIP-21 metadata, and only then finalize FA2 supply and ownership.
+  - Store the finalized metadata URI, artifact URI, MIME type, artifact digest, project id, and seed on-chain. Allow only `image/png`, `image/gif`, or `application/zip`; require a PNG/GIF display and thumbnail for ZIP output.
+  - Keep payment in contract custody until finalization, cap reservations against project and wallet limits, and provide expiry/refund so abandoned renders cannot permanently consume supply.
+  - Interactive ZIPs must contain a top-level `index.html`, use only relative local references, make no network requests, and pass offline sandbox validation before pinning.
+- Verification idea:
+  - Compile and size-check the revised contract, synchronize the exact Rotini and Pasta Suite artifacts, and test authorization, reservation capacity, payment custody, finalization, MIME allowlist, immutable metadata, expiry/refund, transfer, close/reopen, and abandoned reservations.
+  - Browser-test all three output modes from reserved seed through local render/package, offline validation, pinning, metadata creation, and finalization with no creator pre-mint.
+  - Originate a fresh Shadownet collection and have independent puppet collectors finalize a PNG, GIF, and self-contained interactive ZIP; verify TzKT ownership/state and Objkt-compatible metadata/artifact MIME values.
+- Progress/verification:
+  - Replaced recipe-as-artifact minting with `reserve_iteration` and `finalize_iteration`; no FA2 supply or ownership exists until the collector has rendered and pinned the final artifact, and abandoned paid reservations can be refunded after expiry.
+  - The finalization allowlist accepts only `image/png`, `image/gif`, and `application/zip`, records the artifact SHA-256 on-chain, and requires direct display/thumbnail images for interactive ZIP output.
+  - Added a dependency-free browser artifact kernel that produces real PNG bytes, bounded animated GIF89a files, and ZIPs with a top-level `index.html`, relative packaged assets, and offline request validation. Browser coverage decodes PNG/GIF output and validates ZIP contents before mocked pinning.
+  - SmartPy compilation/tests, Rotini artifact unit tests, the full Pasta publishing browser suite, Colander fixtures, shared adapter/static policy tests, desktop package policies, inventory coverage, and the production build pass locally.
+  - The fresh v2 Shadownet proof script now pins and byte-verifies all three artifact types and checks independent collector ownership through TzKT. It intentionally refuses to originate or mint without a durable Pinata credential or Kubo endpoint, neither of which is configured in the current environment; the historical Rotini v1 address is not accepted as proof of this repair.
+
+### WTF-BB-401 - Admin control suite is organized around panels instead of operator tasks
+
+- Category: Admin console / operator UX
+- Status: Claimed
+- Owner/Session: Codex admin UX control-suite pass
+- Score: C4 + F4 + S1 + P1(4) = 13
+- Evidence:
+  - `/admin` opens directly into Users and presents twenty peer sections in a long navigation rail with no command search, durable section URL, overview/task queue, or recovery-oriented entry point.
+  - The Users surface combines identity edits, additive roles, curses, XP adjustments, social resets, temporary credentials, wallet surveillance, and permanent deletion inside each wide table row.
+  - Native `ADM` handoffs open generic `/admin` instead of the mapped owning section, so admins must re-find context after leaving an app.
+  - Existing visual coverage proves shell styling but does not prove task discovery, keyboard navigation, narrow-window use, or context-preserving admin handoffs.
+- Why it matters:
+  - Admins must remember product taxonomy before they can act, then visually parse unrelated and differently risky controls. That increases training cost, wrong-object actions, and recovery time during live operations.
+  - High-risk identity, permission, payout, credential, and app-gate actions need predictable context, explicit consequences, and a calm path back to the owning task.
+- Likely correction direction:
+  - Add a task-first command-center entry, searchable grouped navigation, URL-backed section identity, contextual native admin handoffs, consistent panel/action/risk grammar, and responsive/keyboard behavior.
+  - Split dense object management into scan-first list or roster views with deliberate detail/action workspaces, beginning with Users and then applying the shared grammar across all admin sections.
+- Verification idea:
+  - Add focused model/policy tests plus a real browser story that proves overview entry, search-to-section, URL restore, native handoff context, keyboard operation, user detail selection, destructive confirmation, and narrow/internal-scroll usability; rerun inventory coverage and the owning admin/Gamma browser suites.
+- Resolution:
+  - Replaced the panel-first entry with a task-first overview, searchable grouped navigation, stable `?section=` URLs, and context-preserving native admin handoffs. The same canonical section catalog now drives central navigation, native destinations, and Help ownership.
+  - Added reusable searchable/sortable broad-to-acute workspaces. Users now have a full role review with highest assigned role and level plus deep-linked WTF Passports; Roles and Curses now expose sortable scope tables before focused record controls and assigned-user handoffs.
+  - Added an exhaustive human and machine-readable Help index covering every central admin section, registered WTF surface, permission, and curse, with ranked symptom search, stable IDs, risk, source-of-truth files, routes, APIs, settings, and automation handles through both UI and admin-only JSON API.
+  - WTF Passports now compose safe account health, roles, curses, effective permissions/access, durable wtfOS settings, recovery controls, wallets, domains, and recent EXP without exposing password or OAuth credential material. Desktop settings updates share the normal concurrency-protected service and are audited.
+- Verification:
+  - `npm run check`, `npm run build`, and 24 focused admin/help/settings policy tests passed.
+  - `npm run test:e2e:inventory:coverage` passed with 224 inventory rows, 934 normalized handles, 115 registered routes, 16 domain workflows, and 102 behavior assertions accounted for.
+  - The focused desktop/narrow admin suite passed 4/4 for role review → Passport/settings persistence, Roles/Curses scope → detail, human Help → agent contract/API, and 430px master/detail containment.
+  - The complete inventory browser suite passed 655/655 after updating intentional admin labels/native handoffs and making the private Objkt owner fixture answer its access probe explicitly.
+  - A final screenshot audit found and fixed unused detail space in broad scope; the focused suite now also proves the unselected roster owns at least 95% of the workspace.
+
+### WTF-BB-404 - Filtered custom cursor can black out nested admin scroll panes
+
+- Category: Desktop rendering / admin UX
+- Status: Verified
+- Owner/Session: Codex admin UX control-suite pass
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - With the custom cursor visible over an opened WTF Passport, Chromium screenshots contained large pure-black compositor tiles even though the DOM and computed backgrounds underneath were healthy.
+  - Hiding Reggie did not change the defect. Hiding the cursor or overriding only the translated fixed cursor root's `drop-shadow()` filter restored the complete admin surface.
+- Why it matters:
+  - A cursor decoration must never obscure the controls it is meant to target. The failure appeared only after a nested broad/detail scroll surface opened, so route smoke and DOM visibility assertions did not detect it.
+- Resolution:
+  - Removed the global CSS filter from the fixed translated custom-cursor layer. Individual cursor glyphs retain their high-contrast outlines without forcing the browser to promote an unbounded filtered compositor surface.
+- Verification:
+  - Added a real screenshot-pixel assertion to the user roster → WTF Passport browser story; it samples both sides of the admin header while the cursor is visible and rejects pure-black compositor tiles.
+  - Production build, full typecheck, focused admin policy tests, and the 4/4 admin browser suite pass. A post-fix screenshot visually confirms the cursor, Reggie, roster, and Passport render together without black tiles.
+
+### WTF-BB-407 - Gnocchi cannot publish its supported edition policies into one collection
+
+- Category: Pasta Protocol / Gnocchi multi-edition collection publishing
+- Status: Open
+- Owner/Session: -
+- Score: C4 + F4 + S1 + P1(4) = 13
+- Evidence:
+  - `PastaOpenEditionFA2` stores metadata, supply, and sale configuration by token id, and `create_open_edition` increments `next_token_id`; one KT1 can therefore hold multiple independently configured editions.
+  - Its sale record independently supports optional start, optional end, and optional maximum supply, so it can represent an uncapped timed OE, an uncapped/no-window forever OE, and a capped timed LE.
+  - Gnocchi Studio exposes mutually exclusive `forever`, `timed`, and `capped` modes. `readWindow()` discards dates outside timed mode and `readMaxSupply()` discards the cap outside capped mode, making capped-plus-timed issuance impossible through the form.
+  - Every Publish action originates a fresh contract, initializes `next_token_id` to zero, and creates only token id 0. There is no creator workflow to select an existing Gnocchi KT1 and add the next edition.
+  - `open_mint` enforces active state, start, end, and cap, but administrator/delegated `mint` enforces only the cap. The administrator can also replace the sale record later with `set_sale`, including extending the window or raising the cap, so a declared LE policy is not currently immutable.
+  - The current Shadownet proof creates capped token 0 and forever token 1 directly through the contract, but does not prove an uncapped timed token or a capped timed token through the Gnocchi UI.
+- Why it matters:
+  - Contract expressiveness is not an out-of-box user capability. A creator cannot currently build the requested three-token collection without bypassing Gnocchi and manually calling contract entrypoints.
+  - Labeling supply-capped issuance as a separate mode from timed issuance hides a valid and expected limited-edition policy: both a hard cap and a closing time, with whichever boundary arrives first ending minting.
+- Likely correction direction:
+  - Replace the exclusive mode model with explicit presets backed by independent policy controls: Timed OE (window, no cap), Forever OE (no window, no cap), and Limited Edition (window plus cap), while retaining an advanced custom policy if useful.
+  - Split publishing into `Create new collection` and `Add edition to existing collection`; verify the existing KT1's code/interface, network, and connected administrator before calling `create_open_edition`, and derive the assigned token id from confirmed indexed storage rather than assuming zero.
+  - Add contract validation for invalid windows, preserve cap-below-supply protection, decide whether creators may later expand a declared LE cap/window or can irreversibly freeze policy, and surface each token independently in Colander and exported mint/gallery pages.
+- Verification idea:
+  - Browser-publish all three presets into one fresh Shadownet KT1 as token ids 0, 1, and 2. Prove an uncapped timed OE closes at its end, a forever OE remains mintable across time and survives vault/unvault, and a capped timed LE rejects after either its cap or end time.
+  - Verify TzKT metadata, per-token sale records, ownership, total supply, transaction sources, and Objkt indexing/display for all three token ids; then rerun contract, Studio, Colander, installer, and inventory-owned coverage.
+- Resolution:
+  - Added explicit Timed OE, Forever OE, Limited Edition, and custom presets; split publishing between a new collection and a verified existing Gnocchi collection; and added collection edition discovery/management to Studio.
+  - Added cumulative lifetime issuance, creator reserves, irreversible policy locks, valid-window checks, locked admin-mint boundaries, and burn-resistant cap/curve accounting to `PastaOpenEditionFA2`.
+  - Added Colander's `Add edition to collection` handoff, policy-aware exported pages, synchronized desktop assets, interaction inventory ownership, and exact three-edition browser choreography.
+- Verification:
+  - SmartPy scenarios and artifact compilation passed, including same-contract mixed policies, creator reserve, lifetime cap, burn behavior, policy lock, invalid window, vault/unvault, and admin handoff.
+  - The full Pasta publishing Playwright suite passed 11/11; focused Colander Shadownet-shaped browser coverage passed 3/3; focused unit/static/foundation/hosting tests passed 56/56; desktop packaging and funding policies passed 12/12; production build, TypeScript, and interaction-inventory coverage passed.
+  - The guarded signer proof originated `KT1DxL652xGhAwWnsaC32TcdDP7BL7KwrStw`, created Timed OE token 0, Forever OE token 1, and Limited Edition token 2, used two independent collectors, and confirmed `ENDED`, `SOLD_OUT`, `SALE_INACTIVE`, and `POLICY_LOCKED` rejection boundaries plus TzKT-indexed ledger, supply, lifetime-minted, sales, locks, and metadata state.
 
 ## Backlog Intake Template
 

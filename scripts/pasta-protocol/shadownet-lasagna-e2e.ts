@@ -61,9 +61,9 @@ const ok = createLogger("pasta-shadownet-lasagna-e2e");
 
 const PROVEN_CONTRACTS = {
   spaghetti: "KT1WTFnZAyWqcC2SB32xEjMS4F4cutnGsyVc",
-  gnocchi: "KT1W2ijLhjRHeH7wWYnvYcDwDsgRM7TpAFZK",
+  gnocchi: "KT1DxL652xGhAwWnsaC32TcdDP7BL7KwrStw",
   ravioli: "KT194igzFGez1pB3HHhU8HFqyMzMLSLAPskB",
-  rotini: "KT1HqzEFqbwcR8BpXZrrfPALY6bJaPGQgDHQ",
+  rotini: "KT1BYMrRC1ZvoHJWaSvFpiRsd5ZM2YcRh3Ls",
   penne: "KT1EPdyxCjmosesvJ21cr8WqoCnTXoomCpRz",
 } as const;
 

@@ -238,10 +238,12 @@ function itemsForPaths(
     casinoLocked?: boolean;
     labels?: Record<string, string>;
     accessSurfaceIds?: readonly string[];
+    privateRouteAvailability?: Readonly<Record<string, boolean>>;
   } = {}
 ): StartMenuItem[] {
   return paths.flatMap((path) => {
     const def = pages.get(path);
+    if (options.privateRouteAvailability && options.privateRouteAvailability[path] === false) return [];
     if (!def || !canShowRoute(def, role, options.accessSurfaceIds, apps)) return [];
     const item = itemFor(def, apps, {
       casinoLocked: options.casinoLocked,
@@ -297,6 +299,7 @@ export function buildStartMenuEntries(
   options: {
     casinoMembershipActive?: boolean;
     accessSurfaceIds?: readonly string[];
+    privateRouteAvailability?: Readonly<Record<string, boolean>>;
   } = {}
 ): StartMenuEntry[] {
   const pages = pageMap(pageDefs);
@@ -340,7 +343,10 @@ export function buildStartMenuEntries(
   pushSection(entries, [
     groupFor("account", itemsForPaths(CATEGORY_ITEMS.account, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
     groupFor("settings", itemsForPaths(CATEGORY_ITEMS.settings, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
-    groupFor("admin", itemsForPaths(CATEGORY_ITEMS.admin, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
+    groupFor("admin", itemsForPaths(CATEGORY_ITEMS.admin, pages, apps, role, {
+      accessSurfaceIds: options.accessSurfaceIds,
+      privateRouteAvailability: options.privateRouteAvailability,
+    })),
   ]);
 
   pushSection(entries, [
@@ -357,6 +363,7 @@ export function buildStartMenuGroups(
   options: {
     casinoMembershipActive?: boolean;
     accessSurfaceIds?: readonly string[];
+    privateRouteAvailability?: Readonly<Record<string, boolean>>;
   } = {}
 ): StartMenuGroup[] {
   return buildStartMenuEntries(pageDefs, apps, role, options).flatMap((entry) =>

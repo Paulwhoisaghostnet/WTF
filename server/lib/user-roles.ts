@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { users, userRoles } from "@shared/schema";
 import {
@@ -57,6 +57,44 @@ export async function listUserRoles(
   } catch (err) {
     if (isMissingRelationError(err)) return normalizeRoleSet(fallbackRole);
     throw err;
+  }
+}
+
+export async function listUserRolesForUsers(
+  userSnapshots: Array<{ id: number; role: UserRole | string | null | undefined }>,
+  database: DbLike = db
+): Promise<Map<number, UserRole[]>> {
+  const result = new Map<number, UserRole[]>();
+  const validUsers = userSnapshots.filter(
+    (user) => Number.isInteger(user.id) && user.id > 0
+  );
+  if (!validUsers.length) return result;
+
+  try {
+    const rows = await database
+      .select({ userId: userRoles.userId, role: userRoles.role })
+      .from(userRoles)
+      .where(inArray(userRoles.userId, validUsers.map((user) => user.id)));
+    const grouped = new Map<number, UserRole[]>();
+    for (const row of rows) {
+      if (!isValidRole(row.role)) continue;
+      grouped.set(row.userId, [...(grouped.get(row.userId) ?? []), row.role]);
+    }
+    for (const user of validUsers) {
+      const fallback = isValidRole(user.role) ? user.role : "witness";
+      const assigned = grouped.get(user.id) ?? [];
+      result.set(user.id, normalizeRoleSet(assigned.length ? assigned : fallback));
+    }
+    return result;
+  } catch (err) {
+    if (!isMissingRelationError(err)) throw err;
+    for (const user of validUsers) {
+      result.set(
+        user.id,
+        normalizeRoleSet(isValidRole(user.role) ? user.role : "witness")
+      );
+    }
+    return result;
   }
 }
 

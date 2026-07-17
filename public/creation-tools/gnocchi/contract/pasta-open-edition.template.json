@@ -6,7 +6,7 @@
   "smartpyBinaryEnv": "SMARTPY_BIN",
   "compiledContract": "public/creation-tools/gnocchi/contract/pasta-open-edition.contract.json",
   "storage": {
-    "note": "Origination storage: { admin: tz address, metadata: MichelsonMap { '' : hex(ipfs uri) } }. Other big_maps initialize empty."
+    "note": "Origination storage uses an administrator address, TZIP-16 metadata map, app-specific counters, and empty app-specific big_maps."
   },
   "entrypoints": [
     "transfer",
@@ -15,6 +15,7 @@
     "create_open_edition",
     "set_sale",
     "set_sale_active",
+    "lock_sale_policy",
     "open_mint",
     "mint",
     "burn",

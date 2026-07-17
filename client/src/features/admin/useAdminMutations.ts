@@ -309,6 +309,7 @@ export function useAdminMutations({
       api.post(`/api/admin/users/${id}/roles`, { role }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "user-passport"] });
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     },
   });
@@ -318,6 +319,7 @@ export function useAdminMutations({
       api.delete(`/api/admin/users/${id}/roles/${role}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "user-passport"] });
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     },
   });
@@ -327,6 +329,7 @@ export function useAdminMutations({
       api.put(`/api/admin/users/${id}/curses/${curseKey}`, { active, reason }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "user-passport"] });
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     },
   });
@@ -336,6 +339,7 @@ export function useAdminMutations({
       api.post(`/api/admin/users/${id}/xp`, { amount, reason }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "user-passport"] });
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     },
   });
@@ -345,6 +349,7 @@ export function useAdminMutations({
       api.put(`/api/admin/users/${id}/profile`, { username, displayName }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "user-passport"] });
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     },
   });
@@ -354,6 +359,7 @@ export function useAdminMutations({
       api.delete(`/api/admin/users/${id}/social/${provider}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "user-passport"] });
       qc.invalidateQueries({ queryKey: ["profile-social"] });
     },
   });
@@ -362,6 +368,7 @@ export function useAdminMutations({
     mutationFn: (id: number) => api.delete(`/api/admin/users/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.removeQueries({ queryKey: ["admin", "user-passport"] });
       qc.invalidateQueries({ queryKey: ["admin", "stats"] });
     },
   });
@@ -378,6 +385,8 @@ export function useAdminMutations({
         expiresAt: data.expiresAt,
       });
       resetTempPasswordInput(vars.id);
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "user-passport", vars.id] });
     },
   });
 
@@ -385,6 +394,8 @@ export function useAdminMutations({
     mutationFn: (id: number) => api.delete(`/api/admin/users/${id}/temp-password`),
     onSuccess: (_data, id) => {
       recordTempPasswordResult(id, null);
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "user-passport", id] });
     },
   });
 

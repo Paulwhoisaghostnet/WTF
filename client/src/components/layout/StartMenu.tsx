@@ -487,6 +487,14 @@ export function StartMenu({ onClose }: StartMenuProps) {
     retry: false,
   });
 
+  const objktOperatorAccessQuery = useQuery({
+    queryKey: ["objkt-operator", "access"],
+    queryFn: () => api.get<{ allowed: boolean }>("/api/objkt-operator/access"),
+    enabled: Boolean(user),
+    staleTime: 30_000,
+    retry: false,
+  });
+
   useEffect(() => {
     const handler = (e: MouseEvent | TouchEvent) => {
       const target = "touches" in e ? e.touches[0]?.target : e.target;
@@ -588,8 +596,17 @@ export function StartMenu({ onClose }: StartMenuProps) {
       buildStartMenuEntries(PAGE_DEFS, appAvailability, roleInput, {
         casinoMembershipActive: casinoStatusQuery.data?.membership.active,
         accessSurfaceIds,
+        privateRouteAvailability: {
+          "/objkt-operator": objktOperatorAccessQuery.data?.allowed === true,
+        },
       }),
-    [accessSurfaceIds, appAvailability, casinoStatusQuery.data?.membership.active, roleInput]
+    [
+      accessSurfaceIds,
+      appAvailability,
+      casinoStatusQuery.data?.membership.active,
+      objktOperatorAccessQuery.data?.allowed,
+      roleInput,
+    ]
   );
   const localizedRawMenuEntries = useMemo(
     () =>

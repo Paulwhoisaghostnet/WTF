@@ -6,7 +6,11 @@
 # Forked from PastaStandardCollectionFA2 (same proven SmartPy 0.24.x `assert` syntax + FA2 core) with
 # the open-edition sale module added:
 #   - per-token `sales` config (active, window, base_price, increment, step_size, min/max clamps,
-#     max_supply, treasury)
+#     max_supply, treasury) plus an optional immutable issuance-policy lock
+#   - one FA2 can hold timed uncapped OEs, forever OEs, and capped timed LEs as independent token ids
+#   - cumulative `total_minted` accounting keeps burns from reopening a declared edition cap or rewinding
+#     the bonding curve
+#   - creator reserves are declared and minted atomically when an edition is registered
 #   - public payable `open_mint` priced along a bonding curve that steps BETWEEN calls (flat unit price
 #     per call), matching shared/pasta-protocol/pricing.ts (`priceAtSupply` / `costForBatch`) exactly so
 #     the studio preview and on-chain charge agree.
@@ -47,7 +51,12 @@ def main():
         max_supply=sp.option[sp.nat],
         treasury=sp.address,
     )
-    CreateOpenEditionType: type = sp.record(token_info=sp.map[sp.string, sp.bytes], sale=SaleConfigType)
+    CreateOpenEditionType: type = sp.record(
+        token_info=sp.map[sp.string, sp.bytes],
+        sale=SaleConfigType,
+        creator_reserve=sp.nat,
+        lock_policy=sp.bool,
+    )
     SetSaleType: type = sp.record(token_id=sp.nat, sale=SaleConfigType)
     SetSaleActiveType: type = sp.record(token_id=sp.nat, active=sp.bool)
     OpenMintType: type = sp.record(token_id=sp.nat, amount=sp.nat)
@@ -61,13 +70,31 @@ def main():
             self.data.operators = sp.cast(sp.big_map(), sp.big_map[OperatorKeyType, sp.unit])
             self.data.token_metadata = sp.cast(sp.big_map(), sp.big_map[sp.nat, TokenMetadataType])
             self.data.total_supply = sp.cast(sp.big_map(), sp.big_map[sp.nat, sp.nat])
+            self.data.total_minted = sp.cast(sp.big_map(), sp.big_map[sp.nat, sp.nat])
             self.data.sales = sp.cast(sp.big_map(), sp.big_map[sp.nat, SaleConfigType])
+            self.data.policy_locked = sp.cast(sp.big_map(), sp.big_map[sp.nat, sp.bool])
             self.data.minters = sp.cast(sp.big_map(), sp.big_map[sp.address, sp.unit])
             self.data.next_token_id = sp.nat(0)
 
         @sp.private(with_storage="read-only")
         def _only_admin(self):
             assert sp.sender == self.data.administrator, "NOT_ADMIN"
+
+        @sp.private(with_storage="read-only")
+        def _assert_sale_valid(self, sale):
+            sp.cast(sale, SaleConfigType)
+            assert sale.step_size > 0, "BAD_STEP"
+            if sale.start.is_some() and sale.end.is_some():
+                assert sale.start.unwrap_some() <= sale.end.unwrap_some(), "BAD_WINDOW"
+
+        @sp.private(with_storage="read-only")
+        def _assert_issuance_open(self, sale):
+            sp.cast(sale, SaleConfigType)
+            assert sale.active, "SALE_INACTIVE"
+            if sale.start.is_some():
+                assert sp.now >= sale.start.unwrap_some(), "NOT_STARTED"
+            if sale.end.is_some():
+                assert sp.now <= sale.end.unwrap_some(), "ENDED"
 
         @sp.private(with_storage="read-only")
         def _unit_price(self, params):
@@ -158,11 +185,18 @@ def main():
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(params, CreateOpenEditionType)
             self._only_admin()
-            assert params.sale.step_size > 0, "BAD_STEP"
+            self._assert_sale_valid(params.sale)
+            if params.sale.max_supply.is_some():
+                assert params.creator_reserve <= params.sale.max_supply.unwrap_some(), "RESERVE_EXCEEDS_CAP"
             token_id = self.data.next_token_id
             self.data.token_metadata[token_id] = sp.record(token_id=token_id, token_info=params.token_info)
-            self.data.total_supply[token_id] = sp.nat(0)
+            self.data.total_supply[token_id] = params.creator_reserve
+            self.data.total_minted[token_id] = params.creator_reserve
             self.data.sales[token_id] = params.sale
+            self.data.policy_locked[token_id] = params.lock_policy
+            if params.creator_reserve > 0:
+                reserve_key = sp.record(owner=self.data.administrator, token_id=token_id)
+                self.data.ledger[reserve_key] = params.creator_reserve
             self.data.next_token_id += 1
 
         @sp.entrypoint
@@ -171,8 +205,24 @@ def main():
             sp.cast(params, SetSaleType)
             self._only_admin()
             assert params.token_id in self.data.token_metadata, "TOKEN_UNDEFINED"
-            assert params.sale.step_size > 0, "BAD_STEP"
+            self._assert_sale_valid(params.sale)
+            issued = self.data.total_minted.get(params.token_id, default=sp.nat(0))
+            if params.sale.max_supply.is_some():
+                assert params.sale.max_supply.unwrap_some() >= issued, "CAP_BELOW_MINTED"
+            if self.data.policy_locked.get(params.token_id, default=False):
+                current = self.data.sales[params.token_id]
+                assert params.sale.start == current.start, "POLICY_LOCKED"
+                assert params.sale.end == current.end, "POLICY_LOCKED"
+                assert params.sale.max_supply == current.max_supply, "POLICY_LOCKED"
             self.data.sales[params.token_id] = params.sale
+
+        @sp.entrypoint
+        def lock_sale_policy(self, token_id):
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
+            sp.cast(token_id, sp.nat)
+            self._only_admin()
+            assert token_id in self.data.sales, "NO_SALE"
+            self.data.policy_locked[token_id] = True
 
         @sp.entrypoint
         def set_sale_active(self, params):
@@ -200,12 +250,8 @@ def main():
             assert params.amount > 0, "BAD_AMOUNT"
             assert params.token_id in self.data.sales, "NO_SALE"
             sale = self.data.sales[params.token_id]
-            assert sale.active, "SALE_INACTIVE"
-            if sale.start.is_some():
-                assert sp.now >= sale.start.unwrap_some(), "NOT_STARTED"
-            if sale.end.is_some():
-                assert sp.now <= sale.end.unwrap_some(), "ENDED"
-            minted = self.data.total_supply.get(params.token_id, default=sp.nat(0))
+            self._assert_issuance_open(sale)
+            minted = self.data.total_minted.get(params.token_id, default=sp.nat(0))
             if sale.max_supply.is_some():
                 assert minted + params.amount <= sale.max_supply.unwrap_some(), "SOLD_OUT"
             unit = self._unit_price(sp.record(sale=sale, minted=minted))
@@ -213,7 +259,10 @@ def main():
             assert sp.amount == expected, "BAD_PAYMENT"
             to_key = sp.record(owner=sp.sender, token_id=params.token_id)
             self.data.ledger[to_key] = self.data.ledger.get(to_key, default=sp.nat(0)) + params.amount
-            self.data.total_supply[params.token_id] = minted + params.amount
+            self.data.total_supply[params.token_id] = self.data.total_supply.get(
+                params.token_id, default=sp.nat(0)
+            ) + params.amount
+            self.data.total_minted[params.token_id] = minted + params.amount
             sp.send(sale.treasury, sp.amount)
 
         @sp.entrypoint
@@ -224,16 +273,24 @@ def main():
             assert sp.sender == self.data.administrator or sp.sender in self.data.minters, "NOT_MINTER"
             assert params.token_id in self.data.token_metadata, "TOKEN_UNDEFINED"
             assert params.amount > 0, "BAD_AMOUNT"
+            current_supply = self.data.total_supply.get(params.token_id, default=sp.nat(0))
+            issued = self.data.total_minted.get(params.token_id, default=sp.nat(0))
+            if params.token_id in self.data.sales:
+                sale = self.data.sales[params.token_id]
+                if self.data.policy_locked.get(params.token_id, default=False):
+                    self._assert_issuance_open(sale)
+                if sale.max_supply.is_some():
+                    assert issued + params.amount <= sale.max_supply.unwrap_some(), "SOLD_OUT"
             to_key = sp.record(owner=params.to_, token_id=params.token_id)
             self.data.ledger[to_key] = self.data.ledger.get(to_key, default=sp.nat(0)) + params.amount
-            self.data.total_supply[params.token_id] = (
-                self.data.total_supply.get(params.token_id, default=sp.nat(0)) + params.amount
-            )
+            self.data.total_supply[params.token_id] = current_supply + params.amount
+            self.data.total_minted[params.token_id] = issued + params.amount
 
         @sp.entrypoint
         def burn(self, params):
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(params, BurnParamType)
+            assert params.amount > 0, "BAD_AMOUNT"
             from_key = sp.record(owner=sp.sender, token_id=params.token_id)
             from_bal = self.data.ledger.get(from_key, default=sp.nat(0))
             assert from_bal >= params.amount, "LOW_BALANCE"
@@ -304,12 +361,17 @@ def main():
             return self.data.total_supply.get(token_id, default=sp.nat(0))
 
         @sp.onchain_view
+        def get_total_minted(self, token_id):
+            sp.cast(token_id, sp.nat)
+            return self.data.total_minted.get(token_id, default=sp.nat(0))
+
+        @sp.onchain_view
         def current_price(self, token_id):
             # Unit price (mutez) at current supply for the next open_mint call.
             sp.cast(token_id, sp.nat)
             assert token_id in self.data.sales, "NO_SALE"
             sale = self.data.sales[token_id]
-            minted = self.data.total_supply.get(token_id, default=sp.nat(0))
+            minted = self.data.total_minted.get(token_id, default=sp.nat(0))
             return self._unit_price(sp.record(sale=sale, minted=minted))
 
 
@@ -342,51 +404,295 @@ def test():
     c = main.PastaOpenEditionFA2(administrator=admin.address, metadata=metadata)
     scenario += c
 
-    scenario.h2("Admin creates an open edition: base 1tez, +0.5tez every 2 mints")
-    sale = sp.record(
+    timed_sale = sp.record(
         active=True,
-        start=sp.none,
-        end=sp.none,
+        start=sp.some(sp.timestamp(100)),
+        end=sp.some(sp.timestamp(200)),
         base_price=sp.tez(1),
         increment=sp.mutez(500000),
         step_size=sp.nat(2),
+        min_price=sp.none,
+        max_price=sp.none,
+        max_supply=sp.none,
+        treasury=treasury.address,
+    )
+
+    scenario.h2("Token 0 is a locked timed OE with no supply ceiling")
+    c.create_open_edition(
+        sp.record(
+            token_info={"": bytes_of_string("ipfs://QmTimedOE")},
+            sale=timed_sale,
+            creator_reserve=sp.nat(0),
+            lock_policy=True,
+        ),
+        _sender=admin,
+    )
+    scenario.verify(c.data.next_token_id == 1)
+    scenario.verify(c.current_price(0) == sp.tez(1))
+    c.open_mint(
+        sp.record(token_id=0, amount=1),
+        _sender=alice,
+        _amount=sp.tez(1),
+        _now=sp.timestamp(99),
+        _valid=False,
+    )
+    c.open_mint(
+        sp.record(token_id=0, amount=2),
+        _sender=alice,
+        _amount=sp.tez(2),
+        _now=sp.timestamp(150),
+    )
+    scenario.verify(c.data.ledger[sp.record(owner=alice.address, token_id=0)] == 2)
+    scenario.verify(c.data.total_supply[0] == 2)
+    scenario.verify(c.data.total_minted[0] == 2)
+    scenario.verify(c.current_price(0) == sp.mutez(1500000))
+    c.mint(
+        sp.record(to_=bob.address, token_id=0, amount=1),
+        _sender=admin,
+        _now=sp.timestamp(201),
+        _valid=False,
+    )
+    c.set_sale(
+        sp.record(
+            token_id=0,
+            sale=sp.record(
+                active=True,
+                start=sp.some(sp.timestamp(100)),
+                end=sp.some(sp.timestamp(201)),
+                base_price=sp.tez(1),
+                increment=sp.mutez(0),
+                step_size=sp.nat(1),
+                min_price=sp.none,
+                max_price=sp.none,
+                max_supply=sp.none,
+                treasury=treasury.address,
+            ),
+        ),
+        _sender=admin,
+        _valid=False,
+    )
+
+    scenario.h2("Token 1 is a locked forever OE that can be vaulted and reopened")
+    forever_sale = sp.record(
+        active=True,
+        start=sp.none,
+        end=sp.none,
+        base_price=sp.mutez(250000),
+        increment=sp.mutez(0),
+        step_size=sp.nat(1),
+        min_price=sp.none,
+        max_price=sp.none,
+        max_supply=sp.none,
+        treasury=treasury.address,
+    )
+    c.create_open_edition(
+        sp.record(
+            token_info={"": bytes_of_string("ipfs://QmForeverOE")},
+            sale=forever_sale,
+            creator_reserve=sp.nat(0),
+            lock_policy=True,
+        ),
+        _sender=admin,
+    )
+    c.open_mint(
+        sp.record(token_id=1, amount=1),
+        _sender=alice,
+        _amount=sp.mutez(250000),
+        _now=sp.timestamp(1000),
+    )
+    scenario.verify(c.data.total_supply[1] == 1)
+
+    scenario.h2("Only the admin can vault; vault blocks public issuance")
+    c.set_sale_active(sp.record(token_id=1, active=False), _sender=alice, _valid=False)
+    c.set_sale_active(sp.record(token_id=1, active=False), _sender=admin)
+    c.open_mint(
+        sp.record(token_id=1, amount=1),
+        _sender=bob,
+        _amount=sp.mutez(250000),
+        _valid=False,
+    )
+    scenario.verify(c.data.total_supply[1] == 1)
+
+    scenario.h2("Unvault resumes the same forever OE without changing prior supply")
+    c.set_sale_active(sp.record(token_id=1, active=True), _sender=admin)
+    c.open_mint(
+        sp.record(token_id=1, amount=1),
+        _sender=bob,
+        _amount=sp.mutez(250000),
+        _now=sp.timestamp(1000000),
+    )
+    scenario.verify(c.data.total_supply[1] == 2)
+    scenario.verify(c.data.ledger[sp.record(owner=alice.address, token_id=1)] == 1)
+    scenario.verify(c.data.ledger[sp.record(owner=bob.address, token_id=1)] == 1)
+
+    scenario.h2("Token 2 is a locked timed LE with a creator reserve inside its lifetime cap")
+    limited_sale = sp.record(
+        active=True,
+        start=sp.some(sp.timestamp(100)),
+        end=sp.some(sp.timestamp(200)),
+        base_price=sp.mutez(500000),
+        increment=sp.mutez(0),
+        step_size=sp.nat(1),
+        min_price=sp.none,
+        max_price=sp.none,
+        max_supply=sp.some(sp.nat(3)),
+        treasury=treasury.address,
+    )
+    c.create_open_edition(
+        sp.record(
+            token_info={"": bytes_of_string("ipfs://QmLimited")},
+            sale=limited_sale,
+            creator_reserve=sp.nat(1),
+            lock_policy=True,
+        ),
+        _sender=admin,
+    )
+    scenario.verify(c.data.ledger[sp.record(owner=admin.address, token_id=2)] == 1)
+    scenario.verify(c.data.total_supply[2] == 1)
+    scenario.verify(c.data.total_minted[2] == 1)
+    c.open_mint(
+        sp.record(token_id=2, amount=1),
+        _sender=alice,
+        _amount=sp.mutez(500000),
+        _now=sp.timestamp(150),
+    )
+    c.open_mint(
+        sp.record(token_id=2, amount=1),
+        _sender=bob,
+        _amount=sp.mutez(500000),
+        _now=sp.timestamp(150),
+    )
+    c.burn(sp.record(token_id=2, amount=1), _sender=alice)
+    scenario.verify(c.data.total_supply[2] == 2)
+    scenario.verify(c.data.total_minted[2] == 3)
+    c.open_mint(
+        sp.record(token_id=2, amount=1),
+        _sender=alice,
+        _amount=sp.mutez(500000),
+        _now=sp.timestamp(150),
+        _valid=False,
+    )
+    c.set_sale(
+        sp.record(
+            token_id=2,
+            sale=sp.record(
+                active=True,
+                start=sp.some(sp.timestamp(100)),
+                end=sp.some(sp.timestamp(200)),
+                base_price=sp.mutez(750000),
+                increment=sp.mutez(0),
+                step_size=sp.nat(1),
+                min_price=sp.none,
+                max_price=sp.none,
+                max_supply=sp.some(sp.nat(3)),
+                treasury=treasury.address,
+            ),
+        ),
+        _sender=admin,
+    )
+    c.set_sale(
+        sp.record(
+            token_id=2,
+            sale=sp.record(
+                active=True,
+                start=sp.some(sp.timestamp(100)),
+                end=sp.some(sp.timestamp(200)),
+                base_price=sp.mutez(750000),
+                increment=sp.mutez(0),
+                step_size=sp.nat(1),
+                min_price=sp.none,
+                max_price=sp.none,
+                max_supply=sp.some(sp.nat(4)),
+                treasury=treasury.address,
+            ),
+        ),
+        _sender=admin,
+        _valid=False,
+    )
+
+    scenario.h2("Invalid windows and reserves above the cap are rejected")
+    c.create_open_edition(
+        sp.record(
+            token_info={"": bytes_of_string("ipfs://QmBadWindow")},
+            sale=sp.record(
+                active=True,
+                start=sp.some(sp.timestamp(300)),
+                end=sp.some(sp.timestamp(200)),
+                base_price=sp.mutez(0),
+                increment=sp.mutez(0),
+                step_size=sp.nat(1),
+                min_price=sp.none,
+                max_price=sp.none,
+                max_supply=sp.none,
+                treasury=treasury.address,
+            ),
+            creator_reserve=sp.nat(0),
+            lock_policy=True,
+        ),
+        _sender=admin,
+        _valid=False,
+    )
+    c.create_open_edition(
+        sp.record(
+            token_info={"": bytes_of_string("ipfs://QmBadReserve")},
+            sale=limited_sale,
+            creator_reserve=sp.nat(4),
+            lock_policy=True,
+        ),
+        _sender=admin,
+        _valid=False,
+    )
+    scenario.verify(c.data.next_token_id == 3)
+
+    scenario.h2("An intentionally mutable custom policy can be finalized with an irreversible admin lock")
+    mutable_sale = sp.record(
+        active=False,
+        start=sp.none,
+        end=sp.none,
+        base_price=sp.mutez(0),
+        increment=sp.mutez(0),
+        step_size=sp.nat(1),
         min_price=sp.none,
         max_price=sp.none,
         max_supply=sp.some(sp.nat(5)),
         treasury=treasury.address,
     )
     c.create_open_edition(
-        sp.record(token_info={"": bytes_of_string("ipfs://QmOE0")}, sale=sale), _sender=admin
+        sp.record(
+            token_info={"": bytes_of_string("ipfs://QmMutable")},
+            sale=mutable_sale,
+            creator_reserve=sp.nat(0),
+            lock_policy=False,
+        ),
+        _sender=admin,
     )
-    scenario.verify(c.data.next_token_id == 1)
-    scenario.verify(c.current_price(0) == sp.tez(1))
-
-    scenario.h2("Alice buys 2 at 1tez each = 2tez")
-    c.open_mint(sp.record(token_id=0, amount=2), _sender=alice, _amount=sp.tez(2))
-    scenario.verify(c.data.ledger[sp.record(owner=alice.address, token_id=0)] == 2)
-    scenario.verify(c.data.total_supply[0] == 2)
-
-    scenario.h2("Price stepped up to 1.5tez after 2 sold")
-    scenario.verify(c.current_price(0) == sp.mutez(1500000))
-
-    scenario.h2("Wrong payment reverts")
-    c.open_mint(sp.record(token_id=0, amount=1), _sender=bob, _amount=sp.tez(1), _valid=False)
-
-    scenario.h2("Bob buys 1 at correct 1.5tez")
-    c.open_mint(sp.record(token_id=0, amount=1), _sender=bob, _amount=sp.mutez(1500000))
-    scenario.verify(c.data.total_supply[0] == 3)
-
-    scenario.h2("Cannot exceed max_supply of 5")
-    c.open_mint(sp.record(token_id=0, amount=3), _sender=bob, _amount=sp.mutez(4500000), _valid=False)
-
-    scenario.h2("Admin pauses sale; mint reverts")
-    c.set_sale_active(sp.record(token_id=0, active=False), _sender=admin)
-    c.open_mint(sp.record(token_id=0, amount=1), _sender=alice, _amount=sp.mutez(1500000), _valid=False)
-
-    scenario.h2("Admin free mint still works while paused")
-    c.set_sale_active(sp.record(token_id=0, active=True), _sender=admin)
-    c.mint(sp.record(to_=alice.address, token_id=0, amount=1), _sender=admin)
-    scenario.verify(c.data.total_supply[0] == 4)
+    c.set_sale(
+        sp.record(
+            token_id=3,
+            sale=sp.record(
+                active=False,
+                start=sp.none,
+                end=sp.none,
+                base_price=sp.mutez(0),
+                increment=sp.mutez(0),
+                step_size=sp.nat(1),
+                min_price=sp.none,
+                max_price=sp.none,
+                max_supply=sp.some(sp.nat(4)),
+                treasury=treasury.address,
+            ),
+        ),
+        _sender=admin,
+    )
+    c.lock_sale_policy(3, _sender=alice, _valid=False)
+    c.lock_sale_policy(3, _sender=admin)
+    c.set_sale(
+        sp.record(token_id=3, sale=mutable_sale),
+        _sender=admin,
+        _valid=False,
+    )
+    scenario.verify(c.data.policy_locked[3])
+    scenario.verify(c.data.next_token_id == 4)
 
     scenario.h2("Two-step admin handoff")
     c.transfer_administration(bob.address, _sender=admin)

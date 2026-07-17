@@ -229,6 +229,20 @@ test("Start Menu keeps admin tools out of the first-class app rail", () => {
   assert(adminPaths.includes("/operator-wallet"));
 });
 
+test("Start Menu only exposes private Objkt Operator after the owner probe", () => {
+  const hidden = buildStartMenuGroups(PAGE_DEFS, {}, "admin", {
+    privateRouteAvailability: { "/objkt-operator": false },
+  });
+  const hiddenAdmin = hidden.find((group) => group.key === "admin");
+  assert(!hiddenAdmin?.items.some((item) => item.path === "/objkt-operator"));
+
+  const visible = buildStartMenuGroups(PAGE_DEFS, {}, "admin", {
+    privateRouteAvailability: { "/objkt-operator": true },
+  });
+  const visibleAdmin = visible.find((group) => group.key === "admin");
+  assert(visibleAdmin?.items.some((item) => item.path === "/objkt-operator"));
+});
+
 test("Start Menu first-class app rail only contains ranked default desktop apps", () => {
   const entries = buildStartMenuEntries(PAGE_DEFS, {}, "admin", {
     casinoMembershipActive: true,

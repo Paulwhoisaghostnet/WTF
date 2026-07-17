@@ -10,6 +10,8 @@ const workflowSource = readFileSync(".github/workflows/gnocchi-desktop-installer
 const routeSource = readFileSync("server/routes/gnocchi-installers.ts", "utf8");
 const routesSource = readFileSync("server/routes.ts", "utf8");
 const studioSource = readFileSync("public/creation-tools/gnocchi/js/studio.js", "utf8");
+const gnocchiIndexSource = readFileSync("public/creation-tools/gnocchi/index.html", "utf8");
+const gnocchiContractManifest = JSON.parse(readFileSync("public/creation-tools/gnocchi/contract/pasta-open-edition.template.json", "utf8"));
 const commonSource = readFileSync("public/creation-tools/gnocchi/js/common.js", "utf8");
 const rootPackage = JSON.parse(readFileSync("package.json", "utf8"));
 const gitignoreSource = readFileSync(".gitignore", "utf8");
@@ -53,6 +55,20 @@ test("Gnocchi desktop asset preparation preserves the static publisher contract"
   assert.ok(existsSync("public/creation-tools/gnocchi/contract/pasta-open-edition.contract.json"), "Gnocchi contract artifact should exist");
   assert.match(studioSource, /Pasta Protocol open-edition publisher/);
   assert.match(studioSource, /gnocchi\.edition_published/);
+  assert.match(studioSource, /gnocchi\.collection_verified/);
+  assert.match(studioSource, /gnocchi\.collection_editions_viewed/);
+  assert.match(studioSource, /total_minted: new M\(\)/);
+  assert.match(studioSource, /policy_locked: new M\(\)/);
+  assert.match(gnocchiIndexSource, /value="timed"/);
+  assert.match(gnocchiIndexSource, /value="forever"/);
+  assert.match(gnocchiIndexSource, /value="limited"/);
+  assert.match(gnocchiIndexSource, /id="existingCollectionKt"/);
+  assert.match(gnocchiIndexSource, /id="lockPolicy"/);
+  assert.deepEqual(gnocchiContractManifest.entrypoints.filter((entrypoint) => /open_edition|sale_policy|open_mint/.test(entrypoint)), [
+    "create_open_edition",
+    "lock_sale_policy",
+    "open_mint",
+  ]);
   assert.match(commonSource, /window\.MD/);
 });
 

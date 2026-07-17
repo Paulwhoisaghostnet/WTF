@@ -114,6 +114,16 @@ input[type="radio"] {
   margin: 0 0.4rem 0 0;
 }
 
+input[type="checkbox"] {
+  display: inline-block;
+  width: auto;
+  margin: 0 0.45rem 0 0;
+}
+
+.pp-check {
+  color: var(--ink);
+}
+
 button {
   padding: 0.5rem 0.9rem;
   border: 1px solid var(--border);

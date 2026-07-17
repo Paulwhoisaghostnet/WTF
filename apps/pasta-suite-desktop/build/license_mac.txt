@@ -1,0 +1,11 @@
+PASTA SUITE PRE-RELEASE SOFTWARE LICENSE
+
+Copyright (c) 2026 wtfOS. All rights reserved.
+
+This build is provided for development review and authorized beta testing. You may install and use it to evaluate Pasta Suite, create test projects, and report defects. You may not redistribute, sell, sublicense, reverse engineer, or use this pre-release build to hold or manage assets on behalf of another person without written permission from wtfOS.
+
+Pasta Suite interacts with public blockchain networks and third-party wallet, RPC, storage, and indexing services. Blockchain operations are irreversible. Review every wallet request before approving it and test with Shadownet before using mainnet. You remain responsible for wallet security, contract configuration, hosted content, fees, and backups.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. TO THE MAXIMUM EXTENT PERMITTED BY LAW, WTFOS SHALL NOT BE LIABLE FOR ANY CLAIM, LOSS, OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
+
+Installing or using this pre-release build means you accept these terms.

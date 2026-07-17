@@ -43,6 +43,12 @@ export type PastaContractActionId =
   | "set_token_metadata"
   | "set_sale"
   | "set_sale_active"
+  | "create_open_edition"
+  | "open_mint"
+  | "set_project_active"
+  | "reserve_iteration"
+  | "finalize_iteration"
+  | "cancel_expired_reservation"
   | "redeem"
   | "set_bundle_contents"
   | "open_claim"
@@ -208,20 +214,97 @@ const STANDARD_ACTIONS: PastaContractAction[] = [
 export const STANDARD_COLLECTION_ADAPTER: PastaContractAdapter = {
   kind: "standard_collection",
   label: "Standard collection",
-  description: "Spaghetti / Rotini multi-asset FA2 collection.",
+  description: "Spaghetti multi-asset FA2 collection.",
   signature: ["transfer", "create_token"],
   specificity: 1,
   actions: STANDARD_ACTIONS,
 };
 
+export const GENERATIVE_COLLECTION_ADAPTER: PastaContractAdapter = {
+  kind: "generative_collection",
+  label: "Generative collection",
+  description: "Rotini projects whose collectors reserve a seed, render a self-contained artifact, and finalize the NFT.",
+  signature: ["create_project", "reserve_iteration", "finalize_iteration", "set_project_active"],
+  specificity: 4,
+  actions: [
+    A_TRANSFER,
+    {
+      id: "reserve_iteration",
+      label: "Reserve, render & mint",
+      group: "mint",
+      entrypoint: "reserve_iteration",
+      access: "public",
+      inputs: [{ name: "project_id", label: "Project id", type: "nat" }],
+      external: "rotini",
+      description: "Open Rotini to reserve an immutable seed, create a PNG/GIF/offline ZIP, pin it, and finalize its NFT.",
+    },
+    {
+      id: "finalize_iteration",
+      label: "Resume unfinished iteration",
+      group: "mint",
+      entrypoint: "finalize_iteration",
+      access: "public",
+      inputs: [],
+      external: "rotini",
+      description: "Resume a paid reservation in Rotini and finalize it only after its self-contained artifact is pinned.",
+    },
+    {
+      id: "cancel_expired_reservation",
+      label: "Refund expired reservation",
+      group: "mint",
+      entrypoint: "cancel_expired_reservation",
+      access: "public",
+      inputs: [{ name: "reservation_id", label: "Reservation id", type: "nat" }],
+      description: "Release an expired reservation and return its locked payment to the collector.",
+    },
+    {
+      id: "set_project_active",
+      label: "Close / reopen generation",
+      group: "sale",
+      entrypoint: "set_project_active",
+      access: "admin",
+      inputs: [
+        { name: "project_id", label: "Project id", type: "nat" },
+        { name: "active", label: "Active", type: "bool" },
+      ],
+      description: "Stop or resume collector generation without changing existing iteration tokens.",
+    },
+    A_TRANSFER_ADMIN,
+    A_ACCEPT_ADMIN,
+  ],
+};
+
 export const OPEN_EDITION_ADAPTER: PastaContractAdapter = {
   kind: "open_edition_collection",
-  label: "Open edition",
-  description: "Gnocchi open-edition collection with on-chain priced minting.",
+  label: "Multi-edition issuance collection",
+  description: "Gnocchi collection with independent Timed OE, Forever OE, and Limited Edition policies per token.",
   signature: ["open_mint", "set_sale_active"],
   specificity: 3,
   actions: [
     A_TRANSFER,
+    {
+      id: "create_open_edition",
+      label: "Add edition to collection",
+      group: "metadata",
+      entrypoint: "create_open_edition",
+      access: "admin",
+      inputs: [],
+      external: "gnocchi",
+      description: "Open Gnocchi with this KT1 to publish its next token id using an independent timed, forever, limited, or custom issuance policy.",
+    },
+    {
+      id: "open_mint",
+      label: "Mint edition",
+      group: "mint",
+      entrypoint: "open_mint",
+      access: "public",
+      inputs: [
+        { name: "token_id", label: "Token id", type: "nat" },
+        { name: "amount", label: "Amount", type: "nat" },
+      ],
+      external: "gnocchi",
+      description: "Read the live curve price and mint through Gnocchi so the exact payable amount is calculated before signing.",
+    },
     {
       id: "set_sale",
       label: "Edit sale configuration",
@@ -230,7 +313,7 @@ export const OPEN_EDITION_ADAPTER: PastaContractAdapter = {
       access: "admin",
       inputs: [],
       external: "gnocchi",
-      description: "Price curves, supply caps, treasury, and sale windows are composed in Gnocchi.",
+      description: "Price curves and treasury remain manageable in Gnocchi; a locked token's declared start, end, and maximum supply cannot be changed.",
     },
     A_SET_SALE_ACTIVE,
     A_MINT,
@@ -397,6 +480,7 @@ export const GENERIC_FA2_ADAPTER: PastaContractAdapter = {
 
 /** Registry of every known Pasta contract adapter, plus the generic FA2 fallback. */
 export const PASTA_ADAPTERS: PastaContractAdapter[] = [
+  GENERATIVE_COLLECTION_ADAPTER,
   STANDARD_COLLECTION_ADAPTER,
   OPEN_EDITION_ADAPTER,
   BUNDLE_ADAPTER,

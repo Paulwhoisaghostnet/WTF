@@ -10,7 +10,7 @@
     <header class="pp-top">
       <div class="pp-brand">
         <h1>Gnocchi</h1>
-        <span class="pp-tag">Pasta Protocol · Open-Edition Publisher (timed · forever · capped · bonding curve)</span>
+        <span class="pp-tag">Pasta Protocol · Multi-edition publisher (Timed OE · Forever OE · Limited Edition)</span>
       </div>
       <div class="pp-wallet">
         <label>
@@ -76,15 +76,16 @@
         <h2>3 · Sale &amp; pricing</h2>
         <div class="pp-row">
           <label>
-            Mode
+            Issuance policy
             <select id="saleMode">
-              <option value="forever">Forever (open-ended)</option>
-              <option value="timed">Timed window</option>
-              <option value="capped">Supply capped</option>
+              <option value="timed">Timed OE · time limit, no supply limit</option>
+              <option value="forever">Forever OE · no time or supply limit</option>
+              <option value="limited">Limited Edition · time and supply limits</option>
+              <option value="custom">Custom · choose either boundary</option>
             </select>
           </label>
-          <label id="windowStartRow" hidden>Start <input id="saleStart" type="datetime-local" /></label>
-          <label id="windowEndRow" hidden>End <input id="saleEnd" type="datetime-local" /></label>
+          <label id="windowStartRow">Start <input id="saleStart" type="datetime-local" /></label>
+          <label id="windowEndRow">End <input id="saleEnd" type="datetime-local" /></label>
           <label id="supplyCapRow" hidden>Max supply <input id="saleMaxSupply" type="number" min="1" placeholder="100" /></label>
         </div>
         <div class="pp-row">
@@ -96,14 +97,29 @@
           <label>Min price (tez, optional) <input id="minPrice" type="number" min="0" step="0.000001" placeholder="" /></label>
           <label>Max price (tez, optional) <input id="maxPrice" type="number" min="0" step="0.000001" placeholder="" /></label>
           <label>Treasury (proceeds) <input id="treasury" type="text" placeholder="defaults to your wallet" /></label>
+          <label>Creator reserve <input id="creatorReserve" type="number" min="0" value="0" /></label>
         </div>
+        <label class="pp-check"><input id="lockPolicy" type="checkbox" checked /> Lock the time and supply boundaries when this edition is published</label>
+        <p class="pp-note">A locked policy can still be vaulted or reopened and its price/treasury can be managed, but its declared start, end, and maximum supply cannot be expanded. Creator reserves count inside the lifetime minted total.</p>
         <p id="curvePreview" class="pp-note" aria-live="polite"></p>
         <p id="curveError" class="pp-warn" aria-live="polite"></p>
       </section>
 
       <section class="pp-card pp-card-wide">
         <h2>4 · Publish</h2>
-        <button id="btnPublish" type="button" class="pp-primary">Deploy open edition to Tezos</button>
+        <div class="pp-row">
+          <label>
+            Destination
+            <select id="publishTarget">
+              <option value="new">Create a new Gnocchi collection</option>
+              <option value="existing">Add this edition to an existing Gnocchi collection</option>
+            </select>
+          </label>
+          <label id="existingCollectionRow" hidden>Existing collection <input id="existingCollectionKt" type="text" placeholder="KT1…" /></label>
+          <button id="btnVerifyCollection" type="button" hidden>Verify collection</button>
+        </div>
+        <p id="publishTargetStatus" class="pp-note" role="status" aria-live="polite"></p>
+        <button id="btnPublish" type="button" class="pp-primary">Create collection &amp; publish edition</button>
         <p class="pp-warn">
           Rehearse the full flow on Shadownet before mainnet. Origination, sale config, and mints are
           signed by your connected wallet and are permanent.
@@ -112,7 +128,7 @@
       </section>
 
       <section class="pp-card pp-card-wide">
-        <h2>5 · Public mint (buy editions)</h2>
+        <h2>5 · Public mint &amp; creator lifecycle</h2>
         <p class="pp-note">
           Anyone can mint from a deployed Gnocchi open edition. Load the live price, then mint — the
           exact bonding-curve cost is sent to the sale treasury on-chain.
@@ -121,12 +137,24 @@
           <label>Contract <input id="mintKt" type="text" placeholder="KT1…" /></label>
           <label>Token id <input id="mintTokenId" type="number" min="0" value="0" /></label>
           <button id="btnLoadPrice" type="button">Load price</button>
+          <button id="btnLoadCollectionEditions" type="button">List collection editions</button>
         </div>
+        <div id="editionList" class="pp-tokens" aria-live="polite"></div>
         <div class="pp-row">
           <label>Amount <input id="mintAmount" type="number" min="1" value="1" /></label>
           <button id="btnMint" type="button" class="pp-primary">Mint editions</button>
         </div>
         <p id="mintInfo" class="pp-note" aria-live="polite"></p>
+        <hr />
+        <p class="pp-note">
+          The collection administrator can vault an edition to stop new issuance, then unvault the
+          same token later. Existing editions and supply remain intact. This is how a Forever OE can
+          stay demand-driven without surrendering creator control.
+        </p>
+        <div class="pp-row">
+          <button id="btnVaultEdition" type="button">Vault · stop new mints</button>
+          <button id="btnUnvaultEdition" type="button">Unvault · resume mints</button>
+        </div>
       </section>
 
       <section class="pp-card pp-card-wide">
@@ -140,6 +168,8 @@
     <script src="vendor/octez-connect.js"></script>
     <script src="js/octez-wallet.js"></script>
     <script src="js/common.js"></script>
+    <script src="js/studio-draft.js"></script>
+    <script src="js/studio-contracts.js"></script>
     <script>window.PASTA_SITE_EXPORT = { app: "gnocchi", label: "Gnocchi", titleInput: "oeName", descriptionInput: "oeDesc", contractInput: "mintKt", tokenInput: "mintTokenId" };</script>
     <script src="js/site-bundle.js"></script>
     <script type="module" src="js/studio.js"></script>

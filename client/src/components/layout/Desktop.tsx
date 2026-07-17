@@ -430,6 +430,13 @@ export function Desktop({
     !suspendDesktopEffects &&
     (customCursorStyle !== "system" || blangsCursed || invertedMouseCursed);
   const appAccessBlocked = !canOpenAppsForRole(user?.roles ?? user?.role ?? null);
+  const objktOperatorAccessQuery = useQuery({
+    queryKey: ["objkt-operator", "access"],
+    queryFn: () => api.get<{ allowed: boolean }>("/api/objkt-operator/access"),
+    enabled: Boolean(user) && !appAccessBlocked,
+    staleTime: 30_000,
+    retry: false,
+  });
   const inboxUnreadQuery = useQuery({
     queryKey: ["inbox", "unread-count"],
     queryFn: () => api.get<InboxUnreadCountResponse>("/api/comms/unread-count"),
@@ -581,10 +588,15 @@ export function Desktop({
   };
 
   const iconDefs = useMemo<DesktopIconDef[]>(
-    () => buildDesktopIconDefs(apps, { appAccessBlocked, appGateBypass }),
+    () => buildDesktopIconDefs(apps, {
+      appAccessBlocked,
+      appGateBypass,
+      objktOperatorAvailable: objktOperatorAccessQuery.data?.allowed === true,
+    }),
     [
       appAccessBlocked,
       appGateBypass,
+      objktOperatorAccessQuery.data?.allowed,
       apps.console,
       apps.dicksword,
       apps["dear-diary"],

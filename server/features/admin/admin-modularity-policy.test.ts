@@ -25,6 +25,7 @@ test("admin server routes stay as modular compatibility registrars", () => {
     "registerAdminUserRoutes",
     "registerAdminStatsRoutes",
     "registerAdminInAppMarketRoutes",
+    "registerAdminHelpIndexRoutes",
   ]) {
     assert.match(adminRoutes, new RegExp(`${registrar}\\(router\\)`));
   }
@@ -43,9 +44,14 @@ test("admin page delegates tab panels data and mutations to feature modules", ()
     "client/src/features/admin/tabs/InAppMarketAdminTab.tsx",
     "client/src/features/admin/tabs/RewardsAdminTab.tsx",
     "client/src/features/admin/tabs/UsersAdminTab.tsx",
+    "client/src/features/admin/tabs/CursesAdminTab.tsx",
+    "client/src/features/admin/tabs/AdminHelpTab.tsx",
+    "client/src/features/admin/components/AdminUserPassport.tsx",
     "client/src/features/admin/tabs/WtfTvAdminTab.tsx",
     "server/features/admin/permissions-routes.ts",
     "server/features/admin/users/index.ts",
+    "server/features/admin/users/passport-routes.ts",
+    "server/features/admin/help-index-routes.ts",
     "shared/schema-admin.ts",
     "shared/schema-market.ts",
     "shared/schema-desktop.ts",

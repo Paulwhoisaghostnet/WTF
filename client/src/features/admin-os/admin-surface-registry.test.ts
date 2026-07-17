@@ -53,6 +53,29 @@ test("admin registry tracks current shell event handles", () => {
   assert(surfaceById("notifications")?.automationHandles.includes("notification_center.viewed"));
 });
 
+test("admin panel registry exposes the broad-to-acute suite and help contracts", () => {
+  const surface = surfaceById("admin-panel");
+  assert(surface, "admin-panel should be registered");
+  for (const setting of [
+    "task-first admin overview",
+    "sortable user highest-role and level review",
+    "user WTF Passport acute account controls",
+    "curse catalog and assignment scope",
+    "exhaustive human and agent help index",
+  ]) {
+    assert(surface?.nativeSettings.includes(setting), `${setting} must remain indexed`);
+  }
+  for (const route of [
+    "/api/admin/users/:id/passport",
+    "/api/admin/users/:id/passport/desktop-settings",
+    "/api/admin/help-index",
+  ]) {
+    assert(surface?.adminRoutes?.includes(route), `${route} must remain agent-discoverable`);
+  }
+  assert(surface?.behaviorAssertionIds?.includes("admin.broad-acute-control-suite"));
+  assert(surface?.behaviorAssertionIds?.includes("admin.help-index-coverage"));
+});
+
 test("admin registry covers every desktop app key", () => {
   for (const appKey of DESKTOP_APPS) {
     const surface = ALL_ADMIN_SURFACES.find((candidate) => candidate.desktopAppKey === appKey);
@@ -117,13 +140,24 @@ test("Pasta Protocol owns Colander and static publisher routes", () => {
   assert.equal(findAdminSurfaceForPath("/tools/spaghetti")?.id, "pasta-protocol");
   assert.equal(getAdminSurfaceDoctrineDomain(surface!), DOCTRINE_DOMAIN_GUIDES.pastaProtocol);
   assert(surface?.automationHandles.includes("chease.package_handoff_opened"));
+  assert(surface?.automationHandles.includes("chease.installer_manifest.viewed"));
   assert(surface?.automationHandles.includes("colander.handoff_opened"));
   assert(surface?.automationHandles.includes("colander.contract_action_submitted"));
   assert(surface?.automationHandles.includes("penne.distribution_configured"));
   assert(surface?.automationHandles.includes("gnocchi.site_exported"));
   assert(surface?.automationHandles.includes("lasagna.site_exported"));
+  assert(surface?.automationHandles.includes("pasta_protocol.draft_saved"));
+  assert(surface?.automationHandles.includes("pasta_protocol.draft_imported"));
+  assert(surface?.automationHandles.includes("pasta_protocol.contract_recorded"));
+  assert(surface?.automationHandles.includes("pasta_protocol.contract_verified"));
+  assert(surface?.automationHandles.includes("pasta_protocol.contract_resumed"));
+  assert(surface?.automationHandles.includes("pasta_protocol.contract_forgotten"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.sandbox-safe-feedback"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.chease-handoff"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.studio-draft-recovery"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.contract-resume-ledger"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.native-colander-lifecycle"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.portable-chease-preparation"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.self-hosted-site-exports"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.colander-project-workspace"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.colander-context-handoff"));

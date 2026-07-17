@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, or } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import { db } from "../db";
 import { userCurses } from "@shared/schema";
 import {
@@ -49,6 +49,38 @@ export async function listActiveUserCurses(
     });
   } catch (err) {
     if (isMissingRelationError(err)) return [];
+    throw err;
+  }
+}
+
+export async function listActiveUserCursesForUsers(
+  userIds: number[],
+  database: DbLike = db
+): Promise<Map<number, WtfCurseStatus[]>> {
+  const ids = [...new Set(userIds.filter((id) => Number.isInteger(id) && id > 0))];
+  const result = new Map<number, WtfCurseStatus[]>(ids.map((id) => [id, []]));
+  if (!ids.length) return result;
+
+  try {
+    const now = new Date();
+    const rows = await database
+      .select()
+      .from(userCurses)
+      .where(
+        and(
+          inArray(userCurses.userId, ids),
+          eq(userCurses.active, true),
+          or(isNull(userCurses.expiresAt), gt(userCurses.expiresAt, now))
+        )
+      );
+    for (const row of rows) {
+      const status = toCurseStatus(row);
+      if (!status) continue;
+      result.set(row.userId, [...(result.get(row.userId) ?? []), status]);
+    }
+    return result;
+  } catch (err) {
+    if (isMissingRelationError(err)) return result;
     throw err;
   }
 }

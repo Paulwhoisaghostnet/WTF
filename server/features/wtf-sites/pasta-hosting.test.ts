@@ -67,21 +67,24 @@ test("Pasta WTF.ME proof fixture uses the current Shadownet proof contracts", ()
   const fixture = readFileSync("shared/pasta-shadownet-proof-contracts.json", "utf8");
   for (const current of [
     "KT1WTFnZAyWqcC2SB32xEjMS4F4cutnGsyVc",
-    "KT1W2ijLhjRHeH7wWYnvYcDwDsgRM7TpAFZK",
+    "KT1DxL652xGhAwWnsaC32TcdDP7BL7KwrStw",
     "KT194igzFGez1pB3HHhU8HFqyMzMLSLAPskB",
-    "KT1HqzEFqbwcR8BpXZrrfPALY6bJaPGQgDHQ",
+    "KT1BYMrRC1ZvoHJWaSvFpiRsd5ZM2YcRh3Ls",
     "KT1EPdyxCjmosesvJ21cr8WqoCnTXoomCpRz",
     "KT1TEz2Rq8nUiNcJEAssrdrTqPj1h3ZN9B8r",
   ]) {
     assert.match(fixture, new RegExp(current));
   }
   for (const stale of [
+    "KT1Sso134UuSX9cRZ5a5Sq9vxAFY9tc8wy6W",
     "KT1LPXV5b83MU8LsvyVM76YCAH25JtNCBJPH",
     "KT1FwS1JifrUakeGqFwGYmMHMmfjuwJABaax",
     "KT1CeJYHodXy8dvmNFgXxk4zh6SjVB5KYLaG",
     "KT1SHHPFkthiSTf9CAmhAzWmbi7t5rTcUeYz",
     "KT1DDY9Pyr7PYNJgXxnHnJn9T7WHaVx7ztdx",
     "KT1GrrYTevWKExvhFWVigUdGKR86SQKwYceN",
+    "KT1W2ijLhjRHeH7wWYnvYcDwDsgRM7TpAFZK",
+    "KT1HqzEFqbwcR8BpXZrrfPALY6bJaPGQgDHQ",
   ]) {
     assert.doesNotMatch(fixture, new RegExp(stale));
   }

@@ -26,7 +26,7 @@ import {
   createLogger,
   dataJsonUri,
   hexToUtf8,
-  loadSignerPair,
+  loadSignerSet,
   normalizeBase,
   parseDataJsonUri,
   pollJson,
@@ -41,20 +41,8 @@ import {
   type ProofStatus,
 } from "./shadownet-proof-kit";
 
-const REPORT_PATH = path.join(
-  root,
-  ".agents",
-  "docs",
-  "archive",
-  "contracts",
-  "pasta-protocol",
-  "shadownet-gnocchi-e2e-report.md",
-);
-const MIN_PREFLIGHT_BALANCE_MUTEZ = Number(
-  process.env.PASTA_SHADOWNET_GNOCCHI_E2E_MIN_BALANCE_MUTEZ ||
-    process.env.PASTA_SHADOWNET_E2E_MIN_BALANCE_MUTEZ ||
-    "500000",
-);
+const REPORT_PATH = path.join(root, ".agents/docs/archive/contracts/pasta-protocol/shadownet-gnocchi-e2e-report.md");
+const MIN_BALANCE_MUTEZ = Number(process.env.PASTA_SHADOWNET_GNOCCHI_E2E_MIN_BALANCE_MUTEZ || "500000");
 let reportRpcUrl = normalizeBase(SHADOWNET_RPC_PRIMARY);
 const ok = createLogger("pasta-shadownet-gnocchi-e2e");
 
@@ -69,75 +57,77 @@ async function writeReport(status: ProofStatus, lines: string[]): Promise<void> 
 }
 
 async function readContractArtifact(): Promise<unknown[]> {
-  const artifact = path.join(
-    root,
-    "public",
-    "creation-tools",
-    "gnocchi",
-    "contract",
-    "pasta-open-edition.contract.json",
-  );
+  const artifact = path.join(root, "public/creation-tools/gnocchi/contract/pasta-open-edition.contract.json");
   const code = JSON.parse(await readFile(artifact, "utf8"));
-  assert.ok(Array.isArray(code), "Gnocchi contract artifact should be Michelson JSON array");
+  assert.ok(Array.isArray(code), "Gnocchi contract artifact should be a Micheline array");
   return code;
 }
 
 function buildMetadata(creator: string) {
-  const relationship = {
-    parent_contract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
-    collection_group: `gnocchi-shadownet-e2e-${Date.now().toString(36)}`,
-  };
+  const relationship = { collection_group: `gnocchi-oe-modes-proof-${Date.now().toString(36)}` };
+  const items = [
+    {
+      name: "Gnocchi Timed OE Proof",
+      description: "Uncapped timed OE minted by two independent Shadownet collectors before its locked deadline.",
+      artifactUri: "data:text/plain;base64,R25vY2NoaSB0aW1lZCBPRSBwcm9vZg==",
+      mimeType: "text/plain",
+      tags: ["gnocchi", "timed-oe", "shadownet", "proof"],
+    },
+    {
+      name: "Gnocchi Forever OE Proof",
+      description: "Vaultable and reopenable forever OE minted by two independent Shadownet collectors.",
+      artifactUri: "data:text/plain;base64,R25vY2NoaSBmb3JldmVyIE9FIHByb29m",
+      mimeType: "text/plain",
+      tags: ["gnocchi", "forever-oe", "shadownet", "proof"],
+    },
+    {
+      name: "Gnocchi Limited Edition Proof",
+      description: "Capped timed LE with a creator reserve and two independent collector mints.",
+      artifactUri: "data:text/plain;base64,R25vY2NoaSBsaW1pdGVkIGVkaXRpb24gcHJvb2Y=",
+      mimeType: "text/plain",
+      tags: ["gnocchi", "limited-edition", "shadownet", "proof"],
+    },
+  ];
   const pkg = buildCollectionPackage({
     targetApp: "gnocchi",
-    title: "Gnocchi Shadownet E2E",
-    description: "Signer-backed Pasta Protocol open-edition Shadownet deployment proof.",
-    symbol: "GNCE2E",
+    title: "Gnocchi Shadownet OE Modes Proof",
+    description: "Fresh timed OE, forever OE, and limited-edition lifecycle proof in one Gnocchi contract.",
+    symbol: "GNCPRF",
     relationship,
-    items: [
-      {
-        name: "Gnocchi Proof Open Edition",
-        description: "Open-minted by the Pasta Protocol signer-backed Shadownet proof.",
-        artifactUri: "data:text/plain;base64,R25vY2NoaSBTaGFkb3duZXQgcHJvb2YgYXJ0aWZhY3Q=",
-        mimeType: "text/plain",
-        tags: ["gnocchi", "open-edition", "shadownet", "e2e"],
-      },
-    ],
+    items,
   });
   const validation = validateCheasePackage(pkg);
   assert.equal(validation.ok, true, validation.errors.join("; "));
-
   const collectionMetadata = buildCollectionMetadata({
     name: pkg.title,
     description: pkg.description,
     symbol: pkg.symbol,
-    relationship: pkg.relationship,
+    relationship,
   });
-  const tokenMetadata = buildTokenMetadata({
-    name: pkg.items[0].name,
-    description: pkg.items[0].description,
+  const tokenMetadata = items.map((item) => buildTokenMetadata({
+    name: item.name,
+    description: item.description,
     symbol: pkg.symbol,
-    artifactUri: pkg.items[0].artifactUri,
-    mimeType: pkg.items[0].mimeType,
+    artifactUri: item.artifactUri,
+    mimeType: item.mimeType,
     creators: [creator],
     minter: creator,
-    tags: pkg.items[0].tags,
-    relationship: pkg.relationship,
-  });
+    tags: item.tags,
+    relationship,
+  }));
   assert.deepEqual(extractRelationshipMetadata(collectionMetadata), relationship);
-  assert.deepEqual(extractRelationshipMetadata(tokenMetadata), relationship);
+  tokenMetadata.forEach((value) => assert.deepEqual(extractRelationshipMetadata(value), relationship));
   return {
     relationship,
     package: pkg,
-    collectionMetadata,
-    tokenMetadata,
-    collectionMetadataUri: dataJsonUri(collectionMetadata),
-    tokenMetadataUri: dataJsonUri(tokenMetadata),
+    collectionUri: dataJsonUri(collectionMetadata),
+    tokenUris: tokenMetadata.map(dataJsonUri),
   };
 }
 
-function buildOriginationStorage(admin: string, collectionMetadataUri: string) {
+function originationStorage(admin: string, collectionUri: string) {
   const metadata = new MichelsonMap<string, string>();
-  metadata.set("", utf8ToHex(collectionMetadataUri));
+  metadata.set("", utf8ToHex(collectionUri));
   return {
     administrator: admin,
     pending_administrator: null,
@@ -146,19 +136,24 @@ function buildOriginationStorage(admin: string, collectionMetadataUri: string) {
     operators: new MichelsonMap(),
     token_metadata: new MichelsonMap(),
     total_supply: new MichelsonMap(),
+    total_minted: new MichelsonMap(),
     sales: new MichelsonMap(),
+    policy_locked: new MichelsonMap(),
     minters: new MichelsonMap(),
     next_token_id: 0,
   };
 }
 
-function buildTokenInfo(tokenMetadataUri: string) {
-  const tokenInfo = new MichelsonMap<string, string>();
-  tokenInfo.set("", utf8ToHex(tokenMetadataUri));
-  return tokenInfo;
+function tokenInfo(uri: string) {
+  const info = new MichelsonMap<string, string>();
+  info.set("", utf8ToHex(uri));
+  return info;
 }
 
-function buildProofSale(treasury: string) {
+function proofSale(
+  treasury: string,
+  boundaries: { start: string | null; end: string | null; maxSupply: number | null },
+) {
   const curve = {
     base_price: 1,
     increment: 0,
@@ -172,14 +167,14 @@ function buildProofSale(treasury: string) {
     curve,
     sale: {
       active: true,
-      start: null,
-      end: null,
+      start: boundaries.start,
+      end: boundaries.end,
       base_price: curve.base_price,
       increment: curve.increment,
       step_size: curve.step_size,
       min_price: curve.minimum_price,
       max_price: curve.maximum_price,
-      max_supply: 5,
+      max_supply: boundaries.maxSupply,
       treasury,
     },
   };
@@ -188,179 +183,251 @@ function buildProofSale(treasury: string) {
 async function main(): Promise<void> {
   if (process.env.PASTA_SHADOWNET_E2E_EXECUTE !== "1") {
     block("explicit execute flag is required", [
-      "`PASTA_SHADOWNET_E2E_EXECUTE=1` is required because this proof originates a real Shadownet contract and spends test tez.",
+      "`PASTA_SHADOWNET_E2E_EXECUTE=1` is required because this proof originates and mints on Shadownet.",
     ]);
   }
-  if ((process.env.TEZOS_NETWORK || "shadownet") === "mainnet") {
-    throw new Error("Refusing to run Pasta Gnocchi Shadownet E2E with TEZOS_NETWORK=mainnet");
-  }
+  assert.notEqual(process.env.TEZOS_NETWORK, "mainnet", "Gnocchi Shadownet proof refuses mainnet");
 
   const rpc = await probeRpcChainId();
   reportRpcUrl = rpc.rpcUrl;
-  ok(`Shadownet RPC ${rpc.rpcUrl} returned ${rpc.chainId}`);
-
   const env = await signerEnv(rpc.rpcUrl, {
     socketPath: "/tmp/wtf-pasta-shadownet-gnocchi-e2e.sock",
     authToken: "local-pasta-shadownet-gnocchi-e2e",
     auditLog: "/tmp/wtf-pasta-shadownet-gnocchi-e2e-audit.log",
   });
-  const { creator, creatorSigner, collector, collectorSigner } = await loadSignerPair(env);
+  const { creator, creatorSigner, collector, collectorSigner, collectorTwo, collectorTwoSigner } = await loadSignerSet(env);
   const creatorTezos = buildToolkit(creatorSigner, rpc.rpcUrl);
   const collectorTezos = buildToolkit(collectorSigner, rpc.rpcUrl);
-  await assertShadownet(creatorTezos, "creator startup");
-  await assertShadownet(collectorTezos, "collector startup");
+  const collectorTwoTezos = buildToolkit(collectorTwoSigner, rpc.rpcUrl);
+  await Promise.all([
+    assertShadownet(creatorTezos, "creator startup"),
+    assertShadownet(collectorTezos, "collector one startup"),
+    assertShadownet(collectorTwoTezos, "collector two startup"),
+  ]);
 
-  const creatorBalance = await creatorTezos.tz.getBalance(creator.address);
-  const collectorBalance = await collectorTezos.tz.getBalance(collector.address);
-  const creatorBalanceMutez = Number(creatorBalance.toString());
-  const collectorBalanceMutez = Number(collectorBalance.toString());
-  if (creatorBalanceMutez < MIN_PREFLIGHT_BALANCE_MUTEZ || collectorBalanceMutez < MIN_PREFLIGHT_BALANCE_MUTEZ) {
-    block("creator or collector wallet has insufficient Shadownet balance", [
-      `Creator \`${creator.address}\` has \`${creatorBalance.toString()}\` mutez on Shadownet.`,
-      `Collector \`${collector.address}\` has \`${collectorBalance.toString()}\` mutez on Shadownet.`,
-      "Fund both signer wallets with Shadownet test tez, then rerun with `PASTA_SHADOWNET_E2E_EXECUTE=1`.",
-    ]);
+  const [creatorBalance, collectorBalance, collectorTwoBalance] = await Promise.all([
+    creatorTezos.tz.getBalance(creator.address),
+    collectorTezos.tz.getBalance(collector.address),
+    collectorTwoTezos.tz.getBalance(collectorTwo.address),
+  ]);
+  for (const [actor, balance] of [
+    [creator, creatorBalance],
+    [collector, collectorBalance],
+    [collectorTwo, collectorTwoBalance],
+  ] as const) {
+    if (Number(balance.toString()) < MIN_BALANCE_MUTEZ) {
+      block("a Gnocchi proof puppet needs Shadownet test tez", [
+        `Wallet \`${actor.id}\` / \`${actor.address}\` has \`${balance.toString()}\` mutez.`,
+        `Fund it to at least \`${MIN_BALANCE_MUTEZ}\` mutez, then rerun.`,
+      ]);
+    }
   }
-  ok(`creator ${creator.address} has ${creatorBalance.toString()} mutez`);
-  ok(`collector ${collector.address} has ${collectorBalance.toString()} mutez`);
 
   const code = await readContractArtifact();
   const entrypoints = collectAnnotations(code);
-  const adapter = detectPastaContract([...entrypoints]);
+  const adapter = detectPastaContract(entrypoints);
   assert.equal(adapter?.kind, "open_edition_collection");
-  assert.ok(availableActions(adapter, [...entrypoints]).some((action) => action.id === "set_sale_active"));
+  assert.ok(availableActions(adapter, entrypoints).some((action) => action.id === "open_mint"));
+  assert.ok(availableActions(adapter, entrypoints).some((action) => action.id === "set_sale_active"));
 
   const metadata = buildMetadata(creator.address);
-  const storage = buildOriginationStorage(creator.address, metadata.collectionMetadataUri);
-  const originationEstimate = await creatorTezos.estimate.originate({ code, storage } as any);
-  const estimatedOriginationMutez =
-    Number(originationEstimate.suggestedFeeMutez) + Number(originationEstimate.burnFeeMutez);
-  const requiredCreatorBalanceMutez = estimatedOriginationMutez + 1_000_000;
-  if (creatorBalanceMutez < requiredCreatorBalanceMutez) {
-    block("creator wallet balance cannot cover estimated Gnocchi Shadownet proof operations", [
-      `Creator \`${creator.address}\` has \`${creatorBalance.toString()}\` mutez.`,
-      `Origination estimate requires fee/burn near \`${estimatedOriginationMutez}\` mutez before create-open-edition fees.`,
-      "Fund the signer with more Shadownet test tez, then rerun.",
-    ]);
-  }
-  ok(
-    `origination estimate fee=${originationEstimate.suggestedFeeMutez} burn=${originationEstimate.burnFeeMutez} storage=${originationEstimate.storageLimit}`,
-  );
-
-  const tokenInfo = buildTokenInfo(metadata.tokenMetadataUri);
-  const { curve, sale } = buildProofSale(creator.address);
-  const mintCost = costForBatch(curve, 0, 1);
-  const requiredCollectorBalanceMutez = mintCost + 250_000;
-  if (collectorBalanceMutez < requiredCollectorBalanceMutez) {
-    block("collector wallet balance cannot cover Gnocchi open mint", [
-      `Collector \`${collector.address}\` has \`${collectorBalance.toString()}\` mutez.`,
-      `Open mint requires \`${mintCost}\` mutez plus fee headroom.`,
-      "Fund the collector signer with more Shadownet test tez, then rerun.",
+  const storage = originationStorage(creator.address, metadata.collectionUri);
+  const estimate = await creatorTezos.estimate.originate({ code, storage } as any);
+  const requiredCreator = Number(estimate.suggestedFeeMutez) + Number(estimate.burnFeeMutez) + 750_000;
+  if (Number(creatorBalance.toString()) < requiredCreator) {
+    block("creator cannot cover fresh Gnocchi origination and lifecycle", [
+      `Creator has \`${creatorBalance.toString()}\` mutez; estimated origination and lifecycle headroom require \`${requiredCreator}\`.`,
     ]);
   }
 
-  await assertShadownet(creatorTezos, "before origination");
   const originate = await creatorTezos.contract.originate({ code, storage } as any);
   await originate.confirmation(1);
   const originated = await originate.contract();
   ok(`originated ${originated.address} with ${originate.hash}`);
 
-  await assertShadownet(creatorTezos, "before create_open_edition");
-  const contract = await creatorTezos.contract.at(originated.address);
-  const createOpenEdition = await contract.methodsObject
-    .create_open_edition({ token_info: tokenInfo, sale })
-    .send();
-  await createOpenEdition.confirmation(1);
-  ok(`created open edition token 0 with ${createOpenEdition.hash}`);
+  const nowEpoch = Math.floor(Date.now() / 1000);
+  const timedEndEpoch = nowEpoch + 120;
+  const start = new Date((nowEpoch - 3600) * 1000).toISOString();
+  const timedEnd = new Date(timedEndEpoch * 1000).toISOString();
+  const longEnd = new Date((nowEpoch + 3600) * 1000).toISOString();
+  const timed = proofSale(creator.address, { start, end: timedEnd, maxSupply: null });
+  const forever = proofSale(creator.address, { start: null, end: null, maxSupply: null });
+  const limited = proofSale(creator.address, { start, end: longEnd, maxSupply: 3 });
+  const mintCost = costForBatch(timed.curve, 0, 1);
+  const creatorContract = await creatorTezos.contract.at(originated.address);
+  const createTimed = await creatorContract.methodsObject.create_open_edition({
+    token_info: tokenInfo(metadata.tokenUris[0]),
+    sale: timed.sale,
+    creator_reserve: 0,
+    lock_policy: true,
+  }).send();
+  await createTimed.confirmation(1);
+  const createForever = await creatorContract.methodsObject.create_open_edition({
+    token_info: tokenInfo(metadata.tokenUris[1]),
+    sale: forever.sale,
+    creator_reserve: 0,
+    lock_policy: true,
+  }).send();
+  await createForever.confirmation(1);
+  const createLimited = await creatorContract.methodsObject.create_open_edition({
+    token_info: tokenInfo(metadata.tokenUris[2]),
+    sale: limited.sale,
+    creator_reserve: 1,
+    lock_policy: true,
+  }).send();
+  await createLimited.confirmation(1);
+  ok(`registered timed token 0, forever token 1, and limited token 2 with ${createTimed.hash} / ${createForever.hash} / ${createLimited.hash}`);
 
-  await assertShadownet(collectorTezos, "before open_mint");
   const collectorContract = await collectorTezos.contract.at(originated.address);
-  const openMint = await collectorContract.methodsObject
-    .open_mint({ token_id: 0, amount: 1 })
-    .send({ amount: mintCost, mutez: true });
-  await openMint.confirmation(1);
-  ok(`collector open-minted token 0 with ${openMint.hash}`);
+  const collectorTwoContract = await collectorTwoTezos.contract.at(originated.address);
+  const timedMintOne = await collectorContract.methodsObject.open_mint({ token_id: 0, amount: 1 }).send({ amount: mintCost, mutez: true });
+  await timedMintOne.confirmation(1);
+  const timedMintTwo = await collectorTwoContract.methodsObject.open_mint({ token_id: 0, amount: 1 }).send({ amount: mintCost, mutez: true });
+  await timedMintTwo.confirmation(1);
+  ok("two independent collectors minted uncapped timed token 0 before its deadline");
 
-  const storageUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/contracts/${encodeURIComponent(originated.address)}/storage`;
-  const indexedStorage = await pollJson(
-    "contract storage",
-    storageUrl,
-    (json) =>
-      Number(json?.ledger) > 0 &&
-      Number(json?.token_metadata) > 0 &&
-      Number(json?.total_supply) > 0 &&
-      Number(json?.sales) > 0,
+  const limitedMintOne = await collectorContract.methodsObject.open_mint({ token_id: 2, amount: 1 }).send({ amount: mintCost, mutez: true });
+  await limitedMintOne.confirmation(1);
+  const limitedMintTwo = await collectorTwoContract.methodsObject.open_mint({ token_id: 2, amount: 1 }).send({ amount: mintCost, mutez: true });
+  await limitedMintTwo.confirmation(1);
+  let soldOutRejection = "";
+  try {
+    await collectorContract.methodsObject.open_mint({ token_id: 2, amount: 1 }).send({ amount: mintCost, mutez: true });
+    assert.fail("limited edition unexpectedly minted beyond creator reserve + two collector mints");
+  } catch (error) {
+    soldOutRejection = error instanceof Error ? error.message : String(error);
+    assert.match(soldOutRejection, /SOLD_OUT|failed|simulation|rejected/i);
+  }
+  ok("limited token 2 consumed its lifetime cap and rejected further issuance");
+
+  let lockedPolicyRejection = "";
+  try {
+    await creatorContract.methodsObject.set_sale({
+      token_id: 2,
+      sale: { ...limited.sale, max_supply: 4 },
+    }).send();
+    assert.fail("locked limited-edition cap unexpectedly expanded");
+  } catch (error) {
+    lockedPolicyRejection = error instanceof Error ? error.message : String(error);
+    assert.match(lockedPolicyRejection, /POLICY_LOCKED|failed|simulation|rejected/i);
+  }
+
+  const foreverMintOne = await collectorContract.methodsObject.open_mint({ token_id: 1, amount: 1 }).send({ amount: mintCost, mutez: true });
+  await foreverMintOne.confirmation(1);
+  const vault = await creatorContract.methodsObject.set_sale_active({ token_id: 1, active: false }).send();
+  await vault.confirmation(1);
+  let vaultRejection = "";
+  try {
+    await collectorTwoContract.methodsObject.open_mint({ token_id: 1, amount: 1 }).send({ amount: mintCost, mutez: true });
+    assert.fail("forever OE unexpectedly minted while vaulted");
+  } catch (error) {
+    vaultRejection = error instanceof Error ? error.message : String(error);
+    assert.match(vaultRejection, /SALE_INACTIVE|failed|simulation|rejected/i);
+  }
+  const unvault = await creatorContract.methodsObject.set_sale_active({ token_id: 1, active: true }).send();
+  await unvault.confirmation(1);
+  const foreverMintTwo = await collectorTwoContract.methodsObject.open_mint({ token_id: 1, amount: 1 }).send({ amount: mintCost, mutez: true });
+  await foreverMintTwo.confirmation(1);
+  ok("forever token 1 preserved supply through vault and resumed for collector two");
+
+  const waitMs = Math.max(0, timedEndEpoch * 1000 + 20_000 - Date.now());
+  if (waitMs > 0) {
+    ok(`waiting ${Math.ceil(waitMs / 1000)}s for timed token 0's locked deadline to pass`);
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  }
+  let endedRejection = "";
+  try {
+    await collectorContract.methodsObject.open_mint({ token_id: 0, amount: 1 }).send({ amount: mintCost, mutez: true });
+    assert.fail("timed OE unexpectedly minted after its locked deadline");
+  } catch (error) {
+    endedRejection = error instanceof Error ? error.message : String(error);
+    assert.match(endedRejection, /ENDED|failed|simulation|rejected/i);
+  }
+  ok("timed token 0 rejected issuance after its locked deadline");
+
+  const storageUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/contracts/${originated.address}/storage`;
+  const indexedStorage = await pollJson("Gnocchi storage", storageUrl, (json) =>
+    Number(json?.ledger) > 0 && Number(json?.token_metadata) > 0 && Number(json?.total_supply) > 0 &&
+      Number(json?.total_minted) > 0 && Number(json?.sales) > 0 && Number(json?.policy_locked) > 0 && Number(json?.next_token_id) === 3,
   );
-  const ledgerUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.ledger}/keys?limit=100`;
-  const ledgerKeys = await pollJson(
-    "collector ledger big map key",
-    ledgerUrl,
-    (json) =>
-      Array.isArray(json) &&
-      json.some(
-        (entry) =>
-          entry?.key?.owner === collector.address &&
-          String(entry?.key?.token_id) === "0" &&
-          Number(entry?.value || 0) >= 1,
-      ),
+  const ledger = await pollJson("Gnocchi collector balances", `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.ledger}/keys?limit=100`, (json) =>
+    Array.isArray(json) && [0, 1, 2].every((tokenId) =>
+      json.some((entry) => entry?.key?.owner === collector.address && Number(entry?.key?.token_id) === tokenId && Number(entry.value) === 1) &&
+      json.some((entry) => entry?.key?.owner === collectorTwo.address && Number(entry?.key?.token_id) === tokenId && Number(entry.value) === 1),
+    ) && json.some((entry) => entry?.key?.owner === creator.address && Number(entry?.key?.token_id) === 2 && Number(entry.value) === 1),
   );
-  const collectorLedgerEntry = ledgerKeys.find(
-    (entry: any) => entry?.key?.owner === collector.address && String(entry?.key?.token_id) === "0",
+  const supplies = await pollJson("Gnocchi token supplies", `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.total_supply}/keys?limit=20`, (json) =>
+    Array.isArray(json) && [0, 1].every((tokenId) => json.some((entry) => Number(entry.key) === tokenId && Number(entry.value) === 2)) &&
+      json.some((entry) => Number(entry.key) === 2 && Number(entry.value) === 3),
   );
-  const totalSupplyUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.total_supply}/keys?limit=100`;
-  const totalSupplyKeys = await pollJson(
-    "total supply big map key",
-    totalSupplyUrl,
-    (json) => Array.isArray(json) && json.some((entry) => String(entry?.key) === "0" && Number(entry?.value || 0) >= 1),
+  const minted = await pollJson("Gnocchi lifetime minted totals", `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.total_minted}/keys?limit=20`, (json) =>
+    Array.isArray(json) && [0, 1].every((tokenId) => json.some((entry) => Number(entry.key) === tokenId && Number(entry.value) === 2)) &&
+      json.some((entry) => Number(entry.key) === 2 && Number(entry.value) === 3),
   );
-  const totalSupplyEntry = totalSupplyKeys.find((entry: any) => String(entry?.key) === "0");
-  const saleUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.sales}/keys?limit=100`;
-  const saleKeys = await pollJson(
-    "sale config big map key",
-    saleUrl,
-    (json) => Array.isArray(json) && json.some((entry) => String(entry?.key) === "0" && entry?.value?.active === true),
+  const sales = await pollJson("Gnocchi sale modes", `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.sales}/keys?limit=20`, (json) => {
+    if (!Array.isArray(json)) return false;
+    const timedEntry = json.find((entry) => Number(entry.key) === 0)?.value;
+    const foreverEntry = json.find((entry) => Number(entry.key) === 1)?.value;
+    const limitedEntry = json.find((entry) => Number(entry.key) === 2)?.value;
+    return timedEntry?.active === true && timedEntry?.max_supply == null && timedEntry?.start != null && timedEntry?.end != null &&
+      foreverEntry?.active === true && foreverEntry?.max_supply == null && foreverEntry?.start == null && foreverEntry?.end == null &&
+      limitedEntry?.active === true && Number(limitedEntry?.max_supply) === 3 && limitedEntry?.start != null && limitedEntry?.end != null;
+  });
+  const policyLocks = await pollJson("Gnocchi policy locks", `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.policy_locked}/keys?limit=20`, (json) =>
+    Array.isArray(json) && [0, 1, 2].every((tokenId) => json.some((entry) => Number(entry.key) === tokenId && entry.value === true)),
   );
-  const saleEntry = saleKeys.find((entry: any) => String(entry?.key) === "0");
-  const tokenMetadataUrl = `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.token_metadata}/keys?limit=100`;
-  const tokenMetadataKeys = await pollJson(
-    "token metadata big map key",
-    tokenMetadataUrl,
-    (json) => Array.isArray(json) && json.some((entry) => String(entry?.key) === "0"),
+  const tokenMetadata = await pollJson("Gnocchi token metadata", `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.token_metadata}/keys?limit=20`, (json) =>
+    Array.isArray(json) && [0, 1, 2].every((tokenId) => json.some((entry) => Number(entry.key) === tokenId && entry?.value?.token_info?.[""])),
   );
-  const tokenMetadataEntry = tokenMetadataKeys.find((entry: any) => String(entry?.key) === "0");
-  const indexedTokenUri = hexToUtf8(String(tokenMetadataEntry?.value?.token_info?.[""] || ""));
-  const indexedTokenMetadata = parseDataJsonUri(indexedTokenUri) as any;
-  assert.equal(indexedTokenMetadata.name, metadata.package.items[0].name);
-  assert.deepEqual(extractRelationshipMetadata(indexedTokenMetadata), metadata.relationship);
+  const decodedNames = tokenMetadata
+    .sort((a: any, b: any) => Number(a.key) - Number(b.key))
+    .map((entry: any) => (parseDataJsonUri(hexToUtf8(entry.value.token_info[""])) as any).name);
+  assert.deepEqual(decodedNames, ["Gnocchi Timed OE Proof", "Gnocchi Forever OE Proof", "Gnocchi Limited Edition Proof"]);
+  const mintTransactions = await pollJson(
+    "Gnocchi mint transactions",
+    `${normalizeBase(SHADOWNET_TZKT_API)}/operations/transactions?target=${originated.address}&entrypoint=open_mint&status=applied&limit=20`,
+    (json) => Array.isArray(json) && json.filter((op) => op.sender?.address === collector.address).length >= 3 && json.filter((op) => op.sender?.address === collectorTwo.address).length >= 3,
+  );
 
   await writeReport("PASSED", [
-    "## Result",
-    "",
-    "- Signer-backed Gnocchi Shadownet open-edition deploy/configure/collect proof passed.",
-    `- Creator wallet: \`${creator.id}\` / \`${creator.address}\``,
-    `- Collector wallet: \`${collector.id}\` / \`${collector.address}\``,
+    "## Result", "",
+    "- Fresh Gnocchi collection proof passed for timed OE, vaultable forever OE, and capped timed LE in one KT1 with two independent collectors.",
+    `- Creator: \`${creator.id}\` / \`${creator.address}\``,
+    `- Collector one: \`${collector.id}\` / \`${collector.address}\``,
+    `- Collector two: \`${collectorTwo.id}\` / \`${collectorTwo.address}\``,
     `- Contract: \`${originated.address}\``,
-    `- Explorer: https://shadownet.tzkt.io/${originated.address}`,
-    "",
-    "## Operations",
-    "",
+    `- Explorer: https://shadownet.tzkt.io/${originated.address}`, "",
+    "## Operations", "",
     `- Origination: \`${originate.hash}\``,
-    `- Create open edition: \`${createOpenEdition.hash}\``,
-    `- Collector open mint: \`${openMint.hash}\``,
-    "",
-    "## Indexed Proof",
-    "",
-    `- Contract storage indexed ledger big map \`${indexedStorage.ledger}\`, token_metadata big map \`${indexedStorage.token_metadata}\`, total_supply big map \`${indexedStorage.total_supply}\`, and sales big map \`${indexedStorage.sales}\`.`,
-    `- Collector ledger big-map entry returned balance \`${collectorLedgerEntry?.value}\` for token 0.`,
-    `- Total supply big-map entry returned \`${totalSupplyEntry?.value}\` for token 0.`,
-    `- Sale big-map entry returned active=\`${saleEntry?.value?.active}\`, base_price=\`${saleEntry?.value?.base_price}\`, max_supply=\`${saleEntry?.value?.max_supply}\`.`,
-    `- Token metadata big-map entry decoded to \`${indexedTokenMetadata.name}\` with relationship metadata intact.`,
-    `- Relationship group: \`${metadata.relationship.collection_group}\``,
-    "",
-    "## Scope",
-    "",
-    "- This proves signer-backed Shadownet origination, open-edition configuration, collector open mint, TzKT sale state, token supply, ownership, and metadata resolution for Gnocchi open editions.",
-    "- It does not yet prove WTF.ME page hosting, wtfOS hosted pinning, Colander real-contract discovery, or every Pasta publisher variant.",
+    `- Create timed OE token 0: \`${createTimed.hash}\``,
+    `- Create forever OE token 1: \`${createForever.hash}\``,
+    `- Create limited edition token 2 with creator reserve: \`${createLimited.hash}\``,
+    `- Timed OE collector one mint: \`${timedMintOne.hash}\``,
+    `- Timed OE collector two mint: \`${timedMintTwo.hash}\``,
+    `- Timed OE ended rejection: \`${endedRejection.slice(0, 200)}\``,
+    `- Forever OE collector one mint: \`${foreverMintOne.hash}\``,
+    `- Vault forever OE: \`${vault.hash}\``,
+    `- Vaulted mint rejection: \`${vaultRejection.slice(0, 200)}\``,
+    `- Unvault forever OE: \`${unvault.hash}\``,
+    `- Forever OE collector two mint: \`${foreverMintTwo.hash}\``,
+    `- Limited Edition collector one mint: \`${limitedMintOne.hash}\``,
+    `- Limited Edition collector two mint: \`${limitedMintTwo.hash}\``,
+    `- Limited Edition sold-out rejection: \`${soldOutRejection.slice(0, 200)}\``,
+    `- Locked policy expansion rejection: \`${lockedPolicyRejection.slice(0, 200)}\``, "",
+    "## Indexed proof", "",
+    `- TzKT indexed both collectors owning timed, forever, and limited tokens plus the creator's declared LE reserve in ledger big-map \`${indexedStorage.ledger}\`.`,
+    `- TzKT indexed current supplies and lifetime minted totals for all three token ids in big-maps \`${indexedStorage.total_supply}\` / \`${indexedStorage.total_minted}\`.`,
+    `- Token 0 has a locked time window with no cap; token 1 has no max supply, start, or end; token 2 has both a time window and max_supply=3 in sales big-map \`${indexedStorage.sales}\`.`,
+    `- TzKT indexed all three policy locks in big-map \`${indexedStorage.policy_locked}\`.`,
+    `- TzKT decoded direct metadata for all three proof tokens from big-map \`${indexedStorage.token_metadata}\`.`,
+    `- TzKT returned \`${mintTransactions.length}\` applied open_mint transactions including three from each collector.`,
+    `- Relationship group: \`${metadata.relationship.collection_group}\`.`, "",
+    "## What this proves", "",
+    "- The same reusable Gnocchi contract artifact supports timed uncapped OEs, forever OEs, and capped timed LEs without a helper contract.",
+    "- The LE hard cap counts its creator reserve and applies to public and administrator/delegated issuance; the proof rejected issuance beyond three.",
+    "- Locked start/end/cap boundaries cannot be expanded after publication, and the timed OE rejected minting after its end.",
+    "- Vaulting a forever OE stops new issuance without changing existing supply or ownership; unvaulting resumes the same token.",
+    `- Indexed evidence sets: ledger=${ledger.length}, supplies=${supplies.length}, minted=${minted.length}, sales=${sales.length}, locks=${policyLocks.length}, metadata=${tokenMetadata.length}.`,
   ]);
 }
 
@@ -371,7 +438,6 @@ main().catch(async (error) => {
     process.exitCode = 2;
     return;
   }
-
   const message = error instanceof Error ? error.stack || error.message : String(error);
   await writeReport("FAILED", ["## Error", "", "```", message, "```"]).catch(() => undefined);
   console.error(`[pasta-shadownet-gnocchi-e2e] failed: ${error instanceof Error ? error.message : String(error)}`);

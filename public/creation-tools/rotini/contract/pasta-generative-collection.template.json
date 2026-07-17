@@ -1,0 +1,23 @@
+{
+  "templateName": "PastaGenerativeCollectionFA2",
+  "artifactSlug": "pasta-generative-collection",
+  "source": "contracts/pasta-protocol/PastaGenerativeCollectionFA2.py",
+  "compileScript": "scripts/pasta-protocol/compile-fa2-template.mjs",
+  "smartpyBinaryEnv": "SMARTPY_BIN",
+  "compiledContract": "public/creation-tools/rotini/contract/pasta-generative-collection.contract.json",
+  "storage": {
+    "note": "Origination storage uses an administrator address, TZIP-16 metadata map, app-specific counters, and empty app-specific big_maps."
+  },
+  "entrypoints": [
+    "transfer",
+    "update_operators",
+    "balance_of",
+    "create_project",
+    "set_project_active",
+    "reserve_iteration",
+    "finalize_iteration",
+    "cancel_expired_reservation",
+    "transfer_administration",
+    "accept_administration"
+  ]
+}

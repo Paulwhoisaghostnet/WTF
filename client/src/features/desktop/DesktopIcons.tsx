@@ -693,7 +693,11 @@ export type DesktopAppAvailability = Partial<Record<DesktopAppKey, boolean>>;
 
 export function buildDesktopIconDefs(
   apps: DesktopAppAvailability,
-  options: { appAccessBlocked?: boolean; appGateBypass?: boolean } = {}
+  options: {
+    appAccessBlocked?: boolean;
+    appGateBypass?: boolean;
+    objktOperatorAvailable?: boolean;
+  } = {}
 ): DesktopIconDef[] {
   const canOpenApps = !options.appAccessBlocked;
   const canOpenDisabledApps = Boolean(options.appGateBypass);
@@ -723,6 +727,15 @@ export function buildDesktopIconDefs(
       defaultY: 12,
       enabled: canOpenApps,
       openPath: "/command-palette",
+    },
+    {
+      key: "objkt-operator",
+      label: "Objkt Operator",
+      icon: <ConsoleDeskIcon>OBJ</ConsoleDeskIcon>,
+      defaultX: 332,
+      defaultY: 540,
+      enabled: canOpenApps && Boolean(options.objktOperatorAvailable),
+      openPath: "/objkt-operator",
     },
     {
       key: "wtfiam",

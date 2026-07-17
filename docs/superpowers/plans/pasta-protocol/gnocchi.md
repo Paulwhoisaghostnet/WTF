@@ -1,12 +1,11 @@
-# Subplan — Gnocchi (open-edition publisher) — DONE (static studio, Phase 2)
+# Subplan — Gnocchi (multi-edition issuance publisher)
 
 Surface: static creation tool (`public/creation-tools/gnocchi/`), forked from the Spaghetti kernel
 (itself the proven Macaroni kernel).
 
 ## Status
 
-DONE (Phase 2 static studio). Remaining: live Shadownet rehearsal of originate → create_open_edition →
-public open_mint before mainnet.
+Local multi-edition contract, Studio, and browser choreography implemented. Fresh three-policy Shadownet proof is the release gate before this version is treated as chain-proven.
 
 Implemented:
 
@@ -15,24 +14,27 @@ Implemented:
   port and parity-tested (`tests/unit/pasta-foundation-parity.test.mjs`) + unit-tested
   (`shared/pasta-protocol/foundation.test.ts`).
 - Contract `contracts/pasta-protocol/PastaOpenEditionFA2.py` (SmartPy 0.24.x `assert` syntax, FA2 core
-  forked from `PastaStandardCollectionFA2`) with a per-token `sales` config and a public payable
-  `open_mint`. Pricing steps **between** calls (flat unit price per call) so the on-chain charge equals
-  `costForBatch` exactly. Proceeds forwarded to the sale treasury via `sp.send`. SmartPy test scenario
-  covers payment, wrong-payment revert, supply cap, pause, free admin mint, and admin handoff.
+  forked from `PastaStandardCollectionFA2`) with per-token sale config, issuance-policy locks, current
+  supply, cumulative lifetime mint accounting, creator reserves, and public payable `open_mint`.
+  Pricing steps between calls so the on-chain charge equals `costForBatch`; burns change current supply
+  without reopening cap/curve capacity. Locked start/end/cap boundaries apply to public and delegated
+  mint paths while vault/unvault and price/treasury management remain available.
 - Compile via `node scripts/pasta-protocol/compile-fa2-template.mjs contracts/pasta-protocol/PastaOpenEditionFA2.py pasta-open-edition gnocchi`
   → `public/creation-tools/gnocchi/contract/pasta-open-edition.{contract,template}.json`.
 - Static studio (`index.html`, `js/studio.js`, `css/theme.css`) reusing the copied kernel
   (`common.js` with `gnocchi.wallet.session.v1`, `octez-wallet.js`, `pasta-foundation.js`, vendored
-  Taquito/octez-connect). Configures mode (forever/timed/capped), window, bonding curve (base +
-  increment + step + min/max clamps), supply cap, treasury, with a live price preview. Deploys +
-  registers the edition, and a public mint surface loads the live price and mints paying the exact cost.
+  Taquito/octez-connect). Offers Timed OE, Forever OE, Limited Edition, and Custom presets with
+  independent window/cap controls, creator reserve, policy lock, and bonding curve. It can originate a
+  collection or verify administrator ownership of a current Gnocchi KT1 and append the next token id,
+  then list every token's live policy/supply/lock state. The public mint surface loads lifetime issuance
+  and pays the exact cost.
 - Imports CH-EASE single-token packages; CH-EASE already lists Gnocchi as an export target.
 - Registered assets in `tool-registry.ts` (verified by `npm run creation-tools:check`).
 
 ## Role
 
-Publish open-edition Token Products / collections: timed, forever, supply-limited, and **bonding-curve**
-pricing.
+Publish multiple independently managed token products under one FA2 collection: timed uncapped OE,
+forever OE, capped timed LE, custom boundary combinations, and optional bonding-curve pricing.
 
 ## Modules vs Macaroni base
 
@@ -48,6 +50,8 @@ fake on-chain success; surface real operation hashes and failures.
 
 ## Handles
 
-`gnocchi.collection_deployed`, `gnocchi.edition_published`, `gnocchi.curve_configured`.
+`gnocchi.collection_deployed`, `gnocchi.collection_verified`, `gnocchi.collection_editions_viewed`,
+`gnocchi.edition_published`, `gnocchi.edition_minted`, `gnocchi.edition_vaulted`,
+`gnocchi.edition_unvaulted`.
 
 ## Phase 2.

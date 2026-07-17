@@ -9,11 +9,14 @@ describe("indexing queue schema policy", () => {
     const all = readFileSync("drizzle/cockpit_all.sql", "utf8");
     const schema = readFileSync("shared/schema-wallet.ts", "utf8");
 
-    for (const source of [migration, bootstrap, all]) {
+    for (const source of [migration, all]) {
       assert.match(source, /uq_indexing_queue_target_pending/);
       assert.match(source, /WHERE "status" = 'pending'/);
       assert.doesNotMatch(source, /"target", "target_kind", "status"/);
     }
+    assert.match(bootstrap, /uq_indexing_queue_target_pending/);
+    assert.match(bootstrap, /"target", "target_kind", "status"/);
+    assert.doesNotMatch(bootstrap, /WHERE "status" = 'pending'/);
     assert.match(schema, /where\(sql`\$\{t\.status\} = 'pending'`\)/);
   });
 });

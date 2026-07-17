@@ -4,10 +4,10 @@
  * common.js) and Taquito bundle (window.TZ). Pure metadata/package/pricing logic comes from the
  * parity-tested pasta-foundation.js (shared/pasta-protocol port).
  *
- * Chain flow (user-signed): pin cover + artifact + metadata -> originate PastaOpenEditionFA2 ->
- * create_open_edition (token + sale config). A separate public mint surface calls open_mint, paying the
- * exact bonding-curve cost computed locally with the same math the contract enforces. The on-chain
- * `current_price` view and `priceAtSupply` here agree. Rehearse on Shadownet before mainnet.
+ * Chain flow (user-signed): pin artifact + metadata -> originate a new PastaOpenEditionFA2 or verify an
+ * existing app-owned collection -> create_open_edition with an independent timed OE, forever OE, or
+ * capped timed LE policy. A separate public mint surface calls open_mint, paying the exact bonding-curve
+ * cost computed locally with the same math the contract enforces. Rehearse on Shadownet before mainnet.
  */
 import {
   buildCollectionMetadata,
@@ -30,6 +30,7 @@ const state = {
   network: "shadownet",
   artifactUri: "",
   artifactMime: "",
+  verifiedCollection: null,
 };
 
 function log(message, kind) {
@@ -89,19 +90,58 @@ function saleMode() {
 }
 
 function readMaxSupply() {
-  if (saleMode() !== "capped") return null;
+  if (!new Set(["limited", "custom"]).has(saleMode())) return null;
   const n = parseInt($("saleMaxSupply").value, 10);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 function readWindow() {
-  if (saleMode() !== "timed") return { start: null, end: null };
+  if (!new Set(["timed", "limited", "custom"]).has(saleMode())) return { start: null, end: null };
   const startRaw = $("saleStart").value;
   const endRaw = $("saleEnd").value;
   return {
     start: startRaw ? new Date(startRaw).toISOString() : null,
     end: endRaw ? new Date(endRaw).toISOString() : null,
   };
+}
+
+function readCreatorReserve() {
+  const value = parseInt($("creatorReserve").value, 10);
+  return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+}
+
+function readIssuancePolicy() {
+  const mode = saleMode();
+  const window = readWindow();
+  const maxSupply = readMaxSupply();
+  const creatorReserve = readCreatorReserve();
+  if ((mode === "timed" || mode === "limited") && (!window.start || !window.end)) {
+    throw new Error(`${mode === "limited" ? "Limited Edition" : "Timed OE"} requires both a start and end time`);
+  }
+  if (mode === "limited" && maxSupply == null) throw new Error("Limited Edition requires a maximum supply");
+  if (window.start && window.end && Date.parse(window.start) > Date.parse(window.end)) {
+    throw new Error("the issuance start must be before the end");
+  }
+  if (maxSupply != null && creatorReserve > maxSupply) {
+    throw new Error("creator reserve cannot exceed the maximum supply");
+  }
+  return {
+    mode,
+    start: window.start,
+    end: window.end,
+    maxSupply,
+    creatorReserve,
+    lockPolicy: $("lockPolicy").checked,
+  };
+}
+
+function issuanceLabel(sale) {
+  const hasWindow = sale?.start != null || sale?.end != null;
+  const hasCap = sale?.max_supply != null;
+  if (hasWindow && hasCap) return "Limited Edition";
+  if (hasWindow) return "Timed OE";
+  if (hasCap) return "Capped OE";
+  return "Forever OE";
 }
 
 function refreshCurvePreview() {
@@ -119,6 +159,7 @@ function refreshCurvePreview() {
   const last = cap ? priceAtSupply(config, Math.max(0, cap - 1)) : null;
   let text = `First mint: ${fmtTez(first)} · after ${config.step_size} sold: ${fmtTez(afterStep)}`;
   if (last != null) text += ` · final (#${cap}): ${fmtTez(last)}`;
+  text += ` · preset: ${saleMode() === "limited" ? "Limited Edition" : saleMode() === "timed" ? "Timed OE" : saleMode() === "forever" ? "Forever OE" : "Custom"}`;
   $("curvePreview").textContent = text;
 }
 
@@ -182,6 +223,50 @@ async function loadContractArtifact() {
   return res.json();
 }
 
+function publishTarget() {
+  return $("publishTarget").value;
+}
+
+function clearVerifiedCollection() {
+  state.verifiedCollection = null;
+  $("publishTargetStatus").textContent = "";
+}
+
+async function verifyExistingCollection({ announce = true } = {}) {
+  if (!MD.getAccount()) throw new Error("connect the collection administrator wallet first");
+  const kt = $("existingCollectionKt").value.trim();
+  if (!MD.isAddress(kt) || !kt.startsWith("KT1")) throw new Error("enter a valid Gnocchi KT1 collection address");
+  const tezos = MD.getToolkit();
+  const contract = await tezos.contract.at(kt);
+  if (
+    typeof contract.methodsObject?.create_open_edition !== "function" ||
+    typeof contract.methodsObject?.lock_sale_policy !== "function" ||
+    typeof contract.methodsObject?.open_mint !== "function"
+  ) {
+    throw new Error("that contract does not expose the current Gnocchi multi-edition interface");
+  }
+  const storage = await contract.storage();
+  if (!storage.total_minted || !storage.policy_locked || !storage.sales || !storage.token_metadata) {
+    throw new Error("that contract uses an older or incompatible Gnocchi storage version");
+  }
+  if (String(storage.administrator) !== MD.getAccount()) {
+    throw new Error("the connected wallet is not this Gnocchi collection's administrator");
+  }
+  const nextTokenId = bigToNum(storage.next_token_id);
+  if (!Number.isSafeInteger(nextTokenId) || nextTokenId < 0) throw new Error("collection returned an invalid next token id");
+  state.verifiedCollection = { contract: kt, nextTokenId };
+  $("publishTargetStatus").textContent = `Verified administrator · next edition will be token #${nextTokenId}`;
+  if (announce) {
+    MD.logEvent("gnocchi.collection_verified", "Gnocchi verified an existing multi-edition collection", {
+      contract: kt,
+      network: state.network,
+      nextTokenId,
+    });
+    MD.notify(`Collection verified. The next edition will be token #${nextTokenId}.`, "success");
+  }
+  return { contract, storage, nextTokenId };
+}
+
 async function publish() {
   $("btnPublish").disabled = true;
   try {
@@ -193,6 +278,7 @@ async function publish() {
     const config = readCurveConfig();
     const curve = validateBondingCurve(config);
     if (!curve.ok) throw new Error("fix the pricing: " + curve.errors.join("; "));
+    const policy = readIssuancePolicy();
 
     const treasury = $("treasury").value.trim() || me;
     if (!MD.isAddress(treasury)) throw new Error("treasury must be a valid tz/KT address");
@@ -201,6 +287,9 @@ async function publish() {
     await MD.assertOperationSafety();
     const relationship = readRelationship();
     const symbol = $("oeSymbol").value.trim() || undefined;
+    const target = publishTarget();
+    let existing = null;
+    if (target === "existing") existing = await verifyExistingCollection({ announce: false });
 
     // 1. Artifact
     let artifactUri = state.artifactUri;
@@ -212,22 +301,25 @@ async function publish() {
       mimeType = artifactFile.type || mimeType;
     }
 
-    // 2. Cover + collection metadata
+    // 2. Cover + collection metadata (only a new KT1 owns new collection metadata).
     let coverUri;
-    const coverFile = $("oeCover").files?.[0];
-    if (coverFile) {
-      log("pinning cover image…");
-      coverUri = "ipfs://" + (await MD.pinBlob(provider, coverFile, coverFile.name));
+    let collCid = "";
+    if (target === "new") {
+      const coverFile = $("oeCover").files?.[0];
+      if (coverFile) {
+        log("pinning collection cover image…");
+        coverUri = "ipfs://" + (await MD.pinBlob(provider, coverFile, coverFile.name));
+      }
+      const collectionMeta = buildCollectionMetadata({
+        name,
+        description: $("oeDesc").value.trim() || undefined,
+        symbol,
+        imageUri: coverUri,
+        relationship,
+      });
+      log("pinning collection metadata…");
+      collCid = await MD.pinJson(provider, collectionMeta, "collection.json");
     }
-    const collectionMeta = buildCollectionMetadata({
-      name,
-      description: $("oeDesc").value.trim() || undefined,
-      symbol,
-      imageUri: coverUri,
-      relationship,
-    });
-    log("pinning collection metadata…");
-    const collCid = await MD.pinJson(provider, collectionMeta, "collection.json");
 
     // 3. Token metadata
     const tags = $("oeTags")
@@ -248,67 +340,103 @@ async function publish() {
     log("pinning token metadata…");
     const tokenCid = await MD.pinJson(provider, tokenMeta, "token.json");
 
-    // 4. Originate the open-edition contract
-    const code = await loadContractArtifact();
+    // 4. Originate a collection or use the verified existing multi-edition KT1.
     const M = TZ.MichelsonMap;
-    const metadataMap = new M();
-    metadataMap.set("", MD.utf8ToHex("ipfs://" + collCid));
-    const storage = {
-      administrator: me,
-      pending_administrator: null,
-      metadata: metadataMap,
-      ledger: new M(),
-      operators: new M(),
-      token_metadata: new M(),
-      total_supply: new M(),
-      sales: new M(),
-      minters: new M(),
-      next_token_id: 0,
-    };
-    log("originating open-edition contract (sign in wallet)…");
     const tezos = MD.getToolkit();
-    const op = await tezos.wallet.originate({ code, storage }).send();
-    const contract = await op.contract();
-    const kt = contract.address;
-    log("contract deployed: " + kt);
-    log("explorer: " + MD.explorerUrl(state.network, kt));
+    let kt;
+    let tokenId;
+    let c;
+    if (target === "new") {
+      const code = await loadContractArtifact();
+      const metadataMap = new M();
+      metadataMap.set("", MD.utf8ToHex("ipfs://" + collCid));
+      const storage = {
+        administrator: me,
+        pending_administrator: null,
+        metadata: metadataMap,
+        ledger: new M(),
+        operators: new M(),
+        token_metadata: new M(),
+        total_supply: new M(),
+        total_minted: new M(),
+        sales: new M(),
+        policy_locked: new M(),
+        minters: new M(),
+        next_token_id: 0,
+      };
+      log("originating multi-edition Gnocchi collection (sign in wallet)…");
+      const op = await tezos.wallet.originate({ code, storage }).send();
+      const contract = await op.contract();
+      kt = contract.address;
+      const originatedStorage = await (await tezos.contract.at(kt)).storage();
+      tokenId = bigToNum(originatedStorage.next_token_id);
+      if (!Number.isSafeInteger(tokenId) || tokenId < 0) throw new Error("originated collection returned an invalid next token id");
+      c = await tezos.wallet.at(kt);
+      log("collection deployed: " + kt);
+      log("explorer: " + MD.explorerUrl(state.network, kt));
+      MD.logEvent("gnocchi.collection_deployed", "Gnocchi deployed a multi-edition collection", {
+        contract: kt,
+        network: state.network,
+      });
+    } else {
+      kt = existing.contract.address;
+      tokenId = existing.nextTokenId;
+      c = await tezos.wallet.at(kt);
+      log(`adding edition token #${tokenId} to verified collection ${kt}`);
+    }
 
-    // 5. create_open_edition (token + sale)
-    const win = readWindow();
+    // 5. Register the next token id and its independently locked issuance policy.
     const info = new M();
     info.set("", MD.utf8ToHex("ipfs://" + tokenCid));
     const sale = {
       active: true,
-      start: win.start,
-      end: win.end,
+      start: policy.start,
+      end: policy.end,
       base_price: config.base_price,
       increment: config.increment,
       step_size: config.step_size,
       min_price: config.minimum_price ?? null,
       max_price: config.maximum_price ?? null,
-      max_supply: readMaxSupply(),
+      max_supply: policy.maxSupply,
       treasury,
     };
-    log("registering open edition + sale config (sign in wallet)…");
-    const c = await tezos.wallet.at(kt);
-    const createOp = await c.methodsObject.create_open_edition({ token_info: info, sale }).send();
+    log(`publishing ${policy.mode} edition #${tokenId} (sign in wallet)…`);
+    const createOp = await c.methodsObject.create_open_edition({
+      token_info: info,
+      sale,
+      creator_reserve: policy.creatorReserve,
+      lock_policy: policy.lockPolicy,
+    }).send();
     await createOp.confirmation();
-    log("open edition live ✓ — token id 0");
+    const confirmedStorage = await (await tezos.contract.at(kt)).storage();
+    const confirmedNextTokenId = bigToNum(confirmedStorage.next_token_id);
+    if (confirmedNextTokenId !== tokenId + 1) {
+      throw new Error(`confirmed collection state did not advance from token #${tokenId}`);
+    }
+    const confirmedSale = await confirmedStorage.sales.get(String(tokenId));
+    if (!confirmedSale) throw new Error(`confirmed collection state is missing sale policy for token #${tokenId}`);
+    log(`${issuanceLabel(confirmedSale)} live ✓ — token id ${tokenId}`);
     $("mintKt").value = kt;
-    $("mintTokenId").value = "0";
+    $("mintTokenId").value = String(tokenId);
+    $("existingCollectionKt").value = kt;
+    state.verifiedCollection = { contract: kt, nextTokenId: confirmedNextTokenId };
+    $("publishTargetStatus").textContent = `Collection now has ${confirmedNextTokenId} edition${confirmedNextTokenId === 1 ? "" : "s"} · next token #${confirmedNextTokenId}`;
     MD.recordColanderContract(kt, "gnocchi");
-    MD.logEvent("gnocchi.collection_deployed", "Gnocchi deployed an open-edition collection", {
-      contract: kt,
-      network: state.network,
-    });
     MD.logEvent("gnocchi.edition_published", "Gnocchi published an open edition", {
       contract: kt,
       network: state.network,
-      tokenId: 0,
-      saleMode: saleMode(),
+      tokenId,
+      saleMode: policy.mode,
       basePriceMutez: config.base_price,
+      maxSupply: policy.maxSupply,
+      start: policy.start,
+      end: policy.end,
+      creatorReserve: policy.creatorReserve,
+      policyLocked: policy.lockPolicy,
+      collectionTarget: target,
     });
-    MD.notify("Open edition deployed. Token id 0 is live for minting. See the log for explorer links.", "success");
+    MD.notify(`${issuanceLabel(confirmedSale)} token #${tokenId} is live in ${MD.short(kt)}.`, "success");
+    await loadCollectionEditions();
   } catch (e) {
     log("publish failed: " + (e.message || JSON.stringify(e)), "err");
     MD.notify("Publish failed: " + (e.message || e), "error");
@@ -330,8 +458,11 @@ async function readSale(kt, tokenId) {
   const st = await c.storage();
   const sale = await st.sales.get(String(tokenId));
   if (!sale) throw new Error("no sale configured for that token id");
-  const mintedRaw = await st.total_supply.get(String(tokenId));
+  const currentSupplyRaw = await st.total_supply.get(String(tokenId));
+  const mintedRaw = st.total_minted ? await st.total_minted.get(String(tokenId)) : currentSupplyRaw;
   const minted = bigToNum(mintedRaw) || 0;
+  const currentSupply = bigToNum(currentSupplyRaw) || 0;
+  const lockedRaw = st.policy_locked ? await st.policy_locked.get(String(tokenId)) : false;
   const config = {
     base_price: bigToNum(sale.base_price) || 0,
     increment: bigToNum(sale.increment) || 0,
@@ -341,7 +472,105 @@ async function readSale(kt, tokenId) {
   const max = bigToNum(sale.max_price);
   if (min != null) config.minimum_price = min;
   if (max != null) config.maximum_price = max;
-  return { sale, config, minted, active: sale.active, maxSupply: bigToNum(sale.max_supply) };
+  return {
+    sale,
+    config,
+    minted,
+    currentSupply,
+    locked: lockedRaw === true,
+    active: sale.active,
+    maxSupply: bigToNum(sale.max_supply),
+  };
+}
+
+async function loadCollectionEditions() {
+  const button = $("btnLoadCollectionEditions");
+  button.disabled = true;
+  try {
+    const kt = $("mintKt").value.trim();
+    if (!MD.isAddress(kt) || !kt.startsWith("KT1")) throw new Error("enter a valid Gnocchi KT1 collection address");
+    const contract = await MD.getToolkit().contract.at(kt);
+    const storage = await contract.storage();
+    if (!storage.sales || !storage.total_supply || !storage.token_metadata) {
+      throw new Error("that contract is not a readable Gnocchi collection");
+    }
+    const total = bigToNum(storage.next_token_id);
+    if (!Number.isSafeInteger(total) || total < 0) throw new Error("collection returned an invalid edition count");
+    const visibleTotal = Math.min(total, 250);
+    const editions = await Promise.all(
+      Array.from({ length: visibleTotal }, async (_, tokenId) => {
+        const [sale, supplyRaw, mintedRaw, lockedRaw] = await Promise.all([
+          storage.sales.get(String(tokenId)),
+          storage.total_supply.get(String(tokenId)),
+          storage.total_minted ? storage.total_minted.get(String(tokenId)) : null,
+          storage.policy_locked ? storage.policy_locked.get(String(tokenId)) : null,
+        ]);
+        return {
+          tokenId,
+          sale,
+          supply: bigToNum(supplyRaw) || 0,
+          minted: bigToNum(mintedRaw ?? supplyRaw) || 0,
+          locked: lockedRaw === true,
+        };
+      })
+    );
+    const list = $("editionList");
+    list.replaceChildren();
+    for (const edition of editions) {
+      if (!edition.sale) continue;
+      const card = document.createElement("article");
+      card.className = "pp-token";
+      const heading = document.createElement("div");
+      heading.className = "pp-token-head";
+      const title = document.createElement("strong");
+      title.textContent = `Token #${edition.tokenId} · ${issuanceLabel(edition.sale)}`;
+      const use = document.createElement("button");
+      use.type = "button";
+      use.textContent = "Manage";
+      use.addEventListener("click", () => {
+        $("mintTokenId").value = String(edition.tokenId);
+        void loadPrice();
+      });
+      heading.append(title, use);
+      const facts = document.createElement("p");
+      facts.className = "pp-note";
+      const cap = bigToNum(edition.sale.max_supply);
+      const boundaries = [];
+      if (edition.sale.start) boundaries.push(`starts ${new Date(edition.sale.start).toLocaleString()}`);
+      if (edition.sale.end) boundaries.push(`ends ${new Date(edition.sale.end).toLocaleString()}`);
+      facts.textContent = [
+        `${edition.supply} current supply`,
+        `${edition.minted}${cap == null ? "" : ` / ${cap}`} lifetime minted`,
+        edition.sale.active ? "issuance open" : "vaulted",
+        edition.locked ? "policy locked" : "policy mutable",
+        ...boundaries,
+      ].join(" · ");
+      card.append(heading, facts);
+      list.append(card);
+    }
+    if (!editions.length) {
+      const empty = document.createElement("p");
+      empty.className = "pp-note";
+      empty.textContent = "This collection does not contain any editions yet.";
+      list.append(empty);
+    }
+    if (total > visibleTotal) {
+      const bounded = document.createElement("p");
+      bounded.className = "pp-warn";
+      bounded.textContent = `Showing the first ${visibleTotal} of ${total} editions.`;
+      list.append(bounded);
+    }
+    MD.logEvent("gnocchi.collection_editions_viewed", "Gnocchi listed collection editions", {
+      contract: kt,
+      network: state.network,
+      editionCount: total,
+    });
+  } catch (error) {
+    $("editionList").replaceChildren();
+    MD.notify(`Could not list collection editions: ${error.message || error}`, "error");
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function loadPrice() {
@@ -349,15 +578,60 @@ async function loadPrice() {
     const kt = $("mintKt").value.trim();
     if (!MD.isAddress(kt)) return MD.notify("Enter the KT1 contract address.", "error");
     const tokenId = parseInt($("mintTokenId").value, 10) || 0;
-    const { config, minted, active, maxSupply } = await readSale(kt, tokenId);
+    const { sale, config, minted, currentSupply, locked, active, maxSupply } = await readSale(kt, tokenId);
     const unit = priceAtSupply(config, minted);
-    let info = `unit price now: ${fmtTez(unit)} · ${minted} minted`;
+    let info = `${issuanceLabel(sale)} · unit price now: ${fmtTez(unit)} · ${minted} lifetime minted`;
     if (maxSupply != null) info += ` / ${maxSupply} cap`;
-    if (!active) info += " · SALE PAUSED";
+    if (currentSupply !== minted) info += ` · ${currentSupply} current supply after burns`;
+    if (sale.start) info += ` · starts ${new Date(sale.start).toLocaleString()}`;
+    if (sale.end) info += ` · ends ${new Date(sale.end).toLocaleString()}`;
+    info += locked ? " · POLICY LOCKED" : " · POLICY MUTABLE";
+    info += active ? " · ISSUANCE OPEN" : " · VAULTED — EXISTING TOKENS UNAFFECTED";
     $("mintInfo").textContent = info;
   } catch (e) {
     $("mintInfo").textContent = "";
     MD.notify("Could not load price: " + (e.message || e), "error");
+  }
+}
+
+async function setIssuanceActive(active) {
+  const button = active ? $("btnUnvaultEdition") : $("btnVaultEdition");
+  button.disabled = true;
+  try {
+    if (!MD.getAccount()) throw new Error("connect the collection administrator wallet first");
+    const kt = $("mintKt").value.trim();
+    if (!MD.isAddress(kt)) throw new Error("enter the KT1 contract address");
+    const tokenId = parseInt($("mintTokenId").value, 10) || 0;
+    await MD.assertOperationSafety();
+
+    const { active: current } = await readSale(kt, tokenId);
+    if (current === active) {
+      MD.notify(active ? "Issuance is already open." : "This edition is already vaulted.", "success");
+      await loadPrice();
+      return;
+    }
+
+    log(`${active ? "unvaulting" : "vaulting"} edition ${tokenId} (sign in administrator wallet)…`);
+    const tezos = MD.getToolkit();
+    const c = await tezos.wallet.at(kt);
+    const op = await c.methodsObject.set_sale_active({ token_id: tokenId, active }).send();
+    await op.confirmation();
+    log(active ? "issuance reopened ✓" : "issuance vaulted ✓");
+    MD.logEvent(
+      active ? "gnocchi.edition_unvaulted" : "gnocchi.edition_vaulted",
+      active ? "Gnocchi reopened open-edition issuance" : "Gnocchi vaulted open-edition issuance",
+      { contract: kt, network: state.network, tokenId }
+    );
+    MD.notify(
+      active ? "Edition unvaulted. New public mints are open again." : "Edition vaulted. New mints are closed; existing tokens are unchanged.",
+      "success"
+    );
+    await loadPrice();
+  } catch (e) {
+    log(`${active ? "unvault" : "vault"} failed: ${e.message || JSON.stringify(e)}`, "err");
+    MD.notify(`${active ? "Unvault" : "Vault"} failed: ${e.message || e}`, "error");
+  } finally {
+    button.disabled = false;
   }
 }
 
@@ -408,34 +682,94 @@ function wire() {
   void MD.loadPlatformCapabilities();
   $("network").addEventListener("change", () => {
     state.network = $("network").value;
+    clearVerifiedCollection();
   });
   $("btnConnect").addEventListener("click", connect);
   $("btnPublish").addEventListener("click", publish);
+  $("btnVerifyCollection").addEventListener("click", async () => {
+    $("btnVerifyCollection").disabled = true;
+    try {
+      await verifyExistingCollection();
+    } catch (error) {
+      clearVerifiedCollection();
+      MD.notify(`Collection verification failed: ${error.message || error}`, "error");
+    } finally {
+      $("btnVerifyCollection").disabled = false;
+    }
+  });
   $("btnLoadPrice").addEventListener("click", loadPrice);
+  $("btnLoadCollectionEditions").addEventListener("click", loadCollectionEditions);
   $("btnMint").addEventListener("click", mint);
+  $("btnVaultEdition").addEventListener("click", () => setIssuanceActive(false));
+  $("btnUnvaultEdition").addEventListener("click", () => setIssuanceActive(true));
   $("importPkg").addEventListener("change", (e) => {
     const file = e.target.files?.[0];
     if (file) importPackage(file);
     e.target.value = "";
   });
   $("pinProvider").addEventListener("change", MD.updatePinProviderRows);
-  $("saleMode").addEventListener("change", () => {
+  const refreshPolicyControls = () => {
     const mode = saleMode();
-    $("windowStartRow").hidden = mode !== "timed";
-    $("windowEndRow").hidden = mode !== "timed";
-    $("supplyCapRow").hidden = mode !== "capped";
+    const showWindow = mode === "timed" || mode === "limited" || mode === "custom";
+    const showCap = mode === "limited" || mode === "custom";
+    $("windowStartRow").hidden = !showWindow;
+    $("windowEndRow").hidden = !showWindow;
+    $("supplyCapRow").hidden = !showCap;
+    $("saleStart").required = mode === "timed" || mode === "limited";
+    $("saleEnd").required = mode === "timed" || mode === "limited";
+    $("saleMaxSupply").required = mode === "limited";
     refreshCurvePreview();
-  });
-  ["basePrice", "increment", "stepSize", "minPrice", "maxPrice", "saleMaxSupply"].forEach((id) =>
+  };
+  $("saleMode").addEventListener("change", refreshPolicyControls);
+  const refreshPublishTarget = () => {
+    const existing = publishTarget() === "existing";
+    $("existingCollectionRow").hidden = !existing;
+    $("btnVerifyCollection").hidden = !existing;
+    $("oeCover").disabled = existing;
+    $("btnPublish").textContent = existing ? "Add edition to verified collection" : "Create collection & publish edition";
+    clearVerifiedCollection();
+  };
+  $("publishTarget").addEventListener("change", refreshPublishTarget);
+  $("existingCollectionKt").addEventListener("input", clearVerifiedCollection);
+  ["basePrice", "increment", "stepSize", "minPrice", "maxPrice", "saleMaxSupply", "creatorReserve"].forEach((id) =>
     $(id).addEventListener("input", refreshCurvePreview)
   );
 
-  refreshCurvePreview();
+  refreshPolicyControls();
+  refreshPublishTarget();
   const handoff = MD.consumeCheaseHandoff("gnocchi");
   if (handoff) importCheasePackage(handoff, "handoff");
   const routeHandoff = MD.readRouteHandoff();
-  if (routeHandoff?.contract) $("mintKt").value = routeHandoff.contract;
+  if (routeHandoff?.contract) {
+    $("mintKt").value = routeHandoff.contract;
+    $("existingCollectionKt").value = routeHandoff.contract;
+    $("publishTarget").value = "existing";
+    refreshPublishTarget();
+  }
   if (routeHandoff?.projectTitle && !$("oeName").value) $("oeName").value = routeHandoff.projectTitle;
+
+  window.PastaStudioDraft.start({
+    app: "gnocchi",
+    summary: () => $("oeName").value.trim() || "Gnocchi open-edition draft",
+    collect: () => ({ artifactUri: state.artifactUri, artifactMime: state.artifactMime }),
+    apply: (extra) => {
+      state.artifactUri = extra.artifactUri || "";
+      state.artifactMime = extra.artifactMime || "";
+      $("oeArtifactStatus").textContent = state.artifactUri ? `artifact: ${state.artifactUri}` : "";
+    },
+    afterApply: () => {
+      state.network = $("network").value;
+      if (!["timed", "forever", "limited", "custom"].includes(saleMode())) $("saleMode").value = "custom";
+      refreshPolicyControls();
+      refreshPublishTarget();
+    },
+  });
+  window.PastaStudioContracts.start({
+    app: "gnocchi",
+    label: "Gnocchi",
+    contractInputs: ["mintKt", "existingCollectionKt"],
+    title: () => $("oeName").value.trim(),
+  });
 }
 
 wire();
