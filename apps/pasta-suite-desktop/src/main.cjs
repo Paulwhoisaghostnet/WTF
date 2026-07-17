@@ -6,6 +6,7 @@ const fsp = require("node:fs/promises");
 const http = require("node:http");
 const path = require("node:path");
 const { installStoredSite, listStoredSites, removeStoredSite, resolveHostedSitePath } = require("./site-archive.cjs");
+const { resolveStaticPath } = require("./static-path.cjs");
 
 const MIME = {
   ".css": "text/css; charset=utf-8",
@@ -80,13 +81,7 @@ function setBaseHeaders(res) {
 }
 
 function safeStaticPath(urlPath) {
-  const cleanPath = decodeURIComponent(urlPath.split("?")[0] || "/");
-  const normalized = path.normalize(cleanPath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const rel = normalized === "/" || normalized === "." ? "index.html" : normalized.replace(/^[/\\]+/, "");
-  const fullPath = path.join(pastaRoot(), rel);
-  const root = pastaRoot();
-  if (!fullPath.startsWith(root + path.sep) && fullPath !== root) return null;
-  return fullPath;
+  return resolveStaticPath(pastaRoot(), urlPath);
 }
 
 async function readJsonBody(req, limitBytes) {

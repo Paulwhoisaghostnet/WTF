@@ -8920,7 +8920,7 @@ Priority labels:
 ### WTF-BB-408 - Quality Gates run below the supported Node floor and before browser prerequisites
 
 - Category: CI / release integrity
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex full-send release pass
 - Score: C4 + F5 + S3 + P0(5) = 17
 - Evidence:
@@ -8946,11 +8946,12 @@ Priority labels:
 - Verification:
   - Focused aggregate-runner and CI workflow policy tests pass 6/6.
   - The complete aggregate suite passes 1,752/1,752 under Node 22 with `DATABASE_URL=postgresql://wtf:wtf@127.0.0.1:5432/wtf_test`, proving a clean environment does not depend on the developer `.env` or a live database.
+  - Push run `29560769332` and pull-request run `29560773233` both passed the complete Node 22 Quality Gates, including aggregate unit, SmartPy, build, and 658/658 inventory browser stories.
 
 ### WTF-BB-409 - CH-EASE desktop browser proof depends on ignored prepared assets
 
 - Category: CI / desktop release integrity
-- Status: Fixed — focused proof green; complete remote Quality Gates pending
+- Status: Verified
 - Owner/Session: Codex full-send release pass
 - Score: C3 + F4 + S2 + P0(5) = 14
 - Evidence:
@@ -8968,7 +8969,32 @@ Priority labels:
   - Derived desktop assets remain out of source control, so the proof exercises the same copy-and-validation path used by installer builds.
 - Verification:
   - Focused `pasta-chease-standalone.spec.mjs` coverage passes 3/3 locally, including the generated-package same-origin handoff story.
-  - GitHub run `29559674518` established that the rest of the clean browser matrix passes 657/657; a new complete run is required for the repaired head.
+  - Push run `29560769332` and pull-request run `29560773233` passed all 658/658 browser stories from clean checkouts, including the generated-package same-origin handoff.
+
+### WTF-BB-410 - Pasta Suite Windows serves the package directory at `/`
+
+- Category: Desktop / Windows release integrity
+- Status: Verified
+- Owner/Session: Codex full-send release pass
+- Score: C4 + F5 + S2 + P0(5) = 16
+- Evidence:
+  - Pasta Suite installer run `29562326011` built and silently installed the Windows NSIS package, created the expected executable and shortcuts, then timed out waiting for the Colander heading in the installed application.
+  - The same packaged-app smoke passed on macOS, and the Windows failure occurred only after launch.
+  - `safeStaticPath("/")` treats only normalized `/` or `.` as the root document. Node's Windows path implementation normalizes `/` to `\`, leaving an empty relative path and causing the server to send the `pasta` directory rather than `pasta/index.html`.
+- Why it matters:
+  - The installer can appear to install correctly while opening a 404/blank local application, violating the out-of-box Windows requirement.
+- Likely correction direction:
+  - Move static-path resolution into a pure cross-platform helper, treat an empty separator-stripped path as `index.html`, and retain root-containment rejection.
+  - Lock POSIX and `path.win32` behavior in package policy tests, then rerun the real Windows install/shortcut/launch/uninstall workflow.
+- Verification idea:
+  - Prove `/` resolves to the packaged `index.html` under both path implementations, traversal stays blocked, local package policy and inventory coverage pass, and the native Windows workflow completes the installed-app Colander and CH-EASE smoke.
+- Resolution:
+  - Extracted package path resolution into a pure helper that strips either platform's leading separator, maps an empty root request to `index.html`, rejects malformed encoding and parent escapes, and confirms the resolved file remains inside the package root.
+  - The Electron server now uses that helper, and the package policy exercises both `path.posix` and `path.win32` with the exact `/` request that failed in the installed app.
+- Verification:
+  - Pasta Suite desktop policy passes 6/6, including POSIX root, Windows root, nested asset, traversal, and malformed-encoding cases.
+  - Native Colander browser behavior passes 4/4 and inventory registry coverage remains complete.
+  - Installer run `29562793478` passed on Windows x64, macOS universal, and Raspberry Pi arm64. The Windows job silently installed the NSIS package, found both shortcuts, rendered Colander, created a Shadownet project, opened bundled CH-EASE, and uninstalled without leaving the executable behind.
 
 ## Backlog Intake Template
 

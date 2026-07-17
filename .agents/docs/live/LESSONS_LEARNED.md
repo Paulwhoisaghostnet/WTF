@@ -8687,3 +8687,13 @@
 **Rule**: Tests that inspect ignored, generated, or packaged output must invoke the canonical producer inside their own setup—or consume an explicit artifact from a declared prior job. Never let residue in a developer checkout satisfy a release prerequisite. Keep derived assets ignored, and verify the source-to-package path on every clean run.
 
 ---
+
+## 2026-07-17 - URL roots must survive the host platform's path semantics
+
+**What happened**: The Pasta Suite package built and installed on Windows, but its loopback server normalized the URL path `/` with `node:path`. Windows converted that value to `\`; the root special case recognized only `/` and `.`, so it resolved the package directory instead of `index.html` and the installed app opened without Colander. The same artifact smoke passed on macOS because POSIX normalization preserves `/`.
+
+**Why it mattered**: Installer existence, shortcut creation, and even process launch all passed while the first user-visible screen was broken. A platform-specific path semantic defeated an otherwise cross-platform server at its most basic route.
+
+**Rule**: Keep URL parsing separate from filesystem path semantics. For local desktop servers, normalize and strip both separator styles, explicitly map an empty relative URL root to the entry document, verify the final path remains under the package root, and test with both `path.posix` and `path.win32`. A Windows installer is not proven until the installed executable renders its first screen and completes a real interaction.
+
+---
