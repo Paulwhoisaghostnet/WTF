@@ -3095,7 +3095,7 @@ Priority labels:
 ### WTF-BB-124 - Marketplace and barter writes do not bind contract sends to the expected wallet
 
 - Category: Tezos marketplace / wallet binding
-- Status: Claimed
+- Status: Fixed — local clean-environment proof green; remote Quality Gates pending
 - Owner/Session: Codex Gnocchi multi-edition pass
 - Score: C3 + F4 + S2 + P1(4) = 13
 - Evidence:
@@ -8916,6 +8916,36 @@ Priority labels:
   - SmartPy scenarios and artifact compilation passed, including same-contract mixed policies, creator reserve, lifetime cap, burn behavior, policy lock, invalid window, vault/unvault, and admin handoff.
   - The full Pasta publishing Playwright suite passed 11/11; focused Colander Shadownet-shaped browser coverage passed 3/3; focused unit/static/foundation/hosting tests passed 56/56; desktop packaging and funding policies passed 12/12; production build, TypeScript, and interaction-inventory coverage passed.
   - The guarded signer proof originated `KT1DxL652xGhAwWnsaC32TcdDP7BL7KwrStw`, created Timed OE token 0, Forever OE token 1, and Limited Edition token 2, used two independent collectors, and confirmed `ENDED`, `SOLD_OUT`, `SALE_INACTIVE`, and `POLICY_LOCKED` rejection boundaries plus TzKT-indexed ledger, supply, lifetime-minted, sales, locks, and metadata state.
+
+### WTF-BB-408 - Quality Gates run below the supported Node floor and before browser prerequisites
+
+- Category: CI / release integrity
+- Status: Claimed
+- Owner/Session: Codex full-send release pass
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Evidence:
+  - The root package advertised Node `>=20` and `.github/workflows/quality-gates.yml` selected Node 20 even though current AT Protocol packages in the lockfile require Node 22.
+  - GitHub run `29559279457` failed 28 aggregate tests on the verified release commit. The common `undici_v8` failure was `webidl.util.markAsUncloneable is not a function` under Node 20.
+  - The aggregate suite includes `server/features/arcade/source-proxy.test.ts`, which launches Chromium, but the workflow installed Playwright browsers only after the aggregate suite.
+  - Clean CI checkouts do not contain the developer `.env`; imports that intentionally avoid a real database still failed before their assertions because the aggregate runner supplied no syntactically valid test-only `DATABASE_URL`.
+- Why it matters:
+  - The default branch had accumulated nine consecutive failed Quality Gate runs, so a green local suite could not be promoted through the repository's own release path.
+  - Unsupported runtime and missing prerequisite failures bury actual regressions in dozens of secondary errors and make the branch protection signal unreliable.
+- Likely correction direction:
+  - Align the declared engine and Quality Gate runner with the Node 22 production image and current dependency floor.
+  - Install Chromium before any discovered test that launches it.
+  - Give only the aggregate test subprocess a local, non-secret PostgreSQL URI fallback so import-only tests remain deterministic without weakening production startup validation.
+  - Lock all three assumptions with CI-policy and aggregate-runner tests.
+- Verification idea:
+  - Run focused policy tests and the complete aggregate suite under Node 22 with an explicit unreachable test database URI.
+  - Push the repair and require both push and pull-request Quality Gate runs to complete successfully before merging.
+- Resolution:
+  - Raised the root engine declaration and Quality Gate runtime to Node 22, matching the production container and current dependency floor.
+  - Moved Chromium installation ahead of the aggregate suite and added CI policy assertions for the runtime and ordering.
+  - Added a non-secret, unreachable PostgreSQL URI only to the aggregate test subprocess when no caller-provided `DATABASE_URL` exists; production startup still fails closed when configuration is absent.
+- Verification:
+  - Focused aggregate-runner and CI workflow policy tests pass 6/6.
+  - The complete aggregate suite passes 1,752/1,752 under Node 22 with `DATABASE_URL=postgresql://wtf:wtf@127.0.0.1:5432/wtf_test`, proving a clean environment does not depend on the developer `.env` or a live database.
 
 ## Backlog Intake Template
 

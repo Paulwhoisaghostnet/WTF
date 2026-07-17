@@ -8667,3 +8667,13 @@
 **Rule**: Policy tests should assert stable behavior and current ownership boundaries. When query construction becomes compositional, assert required parameters and routed output rather than one literal string; when a registered surface joins a canonical allow-list, update its exhaustive test in the same pass; and when a forward migration supersedes schema behavior, test the old migration as immutable history while testing the forward migration, cumulative bootstrap, and shared schema as the current state.
 
 ---
+
+## 2026-07-17 - A release gate must declare and provision the runtime its discovered tests actually require
+
+**What happened**: The complete suite passed on the Node 22 development machine, but GitHub's Quality Gate still selected Node 20 while current AT Protocol dependencies required Node 22. The clean runner then produced 28 secondary failures: `undici_v8` called a WebIDL API missing under Node 20, a browser-backed test ran before Chromium installation, and import-only server tests had no harmless test database URI because CI had no developer `.env`.
+
+**Why it mattered**: Nine consecutive default-branch Quality Gate runs had failed for infrastructure reasons, so the release signal no longer distinguished a product regression from an unsupported runner. A local green run was also weaker than it appeared because the developer environment silently supplied prerequisites absent from a clean checkout.
+
+**Rule**: Keep `engines.node`, CI setup, and the production image on the same supported major. Install prerequisites before the earliest discovered test that uses them, and make aggregate test subprocess defaults explicit, local, non-secret, and unable to weaken production fail-closed validation. Reproduce CI with a clean-environment override before blaming individual tests, and lock runtime plus step ordering in policy tests.
+
+---

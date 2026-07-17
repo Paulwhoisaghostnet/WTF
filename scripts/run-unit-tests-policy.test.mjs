@@ -12,7 +12,10 @@ test("aggregate unit runner discovers every product unit-test root deterministic
   assert.match(runner, /entries\.sort\(\(a, b\) => a\.name\.localeCompare\(b\.name\)\)/);
   assert.match(runner, /--test-concurrency=4/);
   assert.match(runner, /WTF_UNIT_TEST_REPORTER/);
+  assert.match(runner, /DATABASE_URL:[\s\S]*postgresql:\/\/wtf:wtf@127\.0\.0\.1:5432\/wtf_test/);
+  assert.match(runner, /env: testEnv/);
   assert.equal(packageJson.scripts["test:unit"], "node scripts/run-unit-tests.mjs");
+  assert.equal(packageJson.engines.node, ">=22");
 });
 
 test("aggregate unit runner keeps browser and live actor suites in their dedicated lanes", () => {

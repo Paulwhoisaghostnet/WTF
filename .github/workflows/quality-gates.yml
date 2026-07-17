@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -38,6 +38,9 @@ jobs:
 
       - name: Environment inventory
         run: npm run env:inventory:check
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
       - name: Aggregate unit tests
         run: npm run test:unit
@@ -60,9 +63,6 @@ jobs:
 
       - name: Build
         run: npm run build
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
 
       - name: Inventory registry coverage (skeleton, not feature completeness)
         run: npm run test:e2e:inventory:coverage
