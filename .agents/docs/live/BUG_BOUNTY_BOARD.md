@@ -8974,7 +8974,7 @@ Priority labels:
 ### WTF-BB-410 - Pasta Suite Windows serves the package directory at `/`
 
 - Category: Desktop / Windows release integrity
-- Status: Fixed — local cross-platform proof green; native Windows rerun pending
+- Status: Verified
 - Owner/Session: Codex full-send release pass
 - Score: C4 + F5 + S2 + P0(5) = 16
 - Evidence:
@@ -8993,7 +8993,8 @@ Priority labels:
   - The Electron server now uses that helper, and the package policy exercises both `path.posix` and `path.win32` with the exact `/` request that failed in the installed app.
 - Verification:
   - Pasta Suite desktop policy passes 6/6, including POSIX root, Windows root, nested asset, traversal, and malformed-encoding cases.
-  - Native Colander browser behavior passes 4/4 and inventory registry coverage remains complete. The real Windows install/shortcut/launch/uninstall workflow is the remaining independent proof.
+  - Native Colander browser behavior passes 4/4 and inventory registry coverage remains complete.
+  - Installer run `29562793478` passed on Windows x64, macOS universal, and Raspberry Pi arm64. The Windows job silently installed the NSIS package, found both shortcuts, rendered Colander, created a Shadownet project, opened bundled CH-EASE, and uninstalled without leaving the executable behind.
 
 ## Backlog Intake Template
 
