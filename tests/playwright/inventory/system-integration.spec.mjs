@@ -19,7 +19,7 @@ test.describe("interaction inventory — system integration", () => {
     await page.getByRole("button", { name: "ADM" }).first().click();
     await expect(page.getByText("Dashboard Admin").first()).toBeVisible();
     await expect(page.getByText("Automation").first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Open Builder" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open Users" }).first()).toBeVisible();
 
     await page.goto("/admin", { waitUntil: "domcontentloaded" });
     await expect(page.getByTitle("OS Admin").first()).toBeVisible({ timeout: 15_000 });

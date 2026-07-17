@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import archiveModule from "../apps/pasta-suite-desktop/src/site-archive.cjs";
 
-const { installStoredSite, listStoredSites, parseStoredZip, resolveHostedSitePath } = archiveModule;
+const { exactSiteSlug, installStoredSite, listStoredSites, parseStoredZip, removeStoredSite, resolveHostedSitePath } = archiveModule;
 
 function storedEntry(name, content) {
   const fileName = Buffer.from(name, "utf8");
@@ -57,6 +57,13 @@ test("native Colander resolves hosted assets without encoded traversal", () => {
   assert.equal(resolveHostedSitePath(root, "/sites/spaghetti-proof/%E0%A4%A"), null);
 });
 
+test("native Colander requires an exact managed slug for site removal", () => {
+  assert.equal(exactSiteSlug("spaghetti-proof"), "spaghetti-proof");
+  for (const unsafe of ["../spaghetti-proof", "/absolute", "Spaghetti", "spaghetti/proof", ".hidden", ""]) {
+    assert.throws(() => exactSiteSlug(unsafe), /invalid site slug/);
+  }
+});
+
 test("native Colander installs and lists a complete site atomically", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "pasta-sites-install-"));
   try {
@@ -78,6 +85,12 @@ test("native Colander installs and lists a complete site atomically", async () =
     assert.equal(sites.length, 1);
     assert.equal(sites[0].title, "Collector page");
     assert.equal(sites[0].fileCount, 2);
+    const removed = await removeStoredSite(root, installed.slug);
+    assert.equal(removed.slug, installed.slug);
+    assert.equal(removed.title, "Collector page");
+    await assert.rejects(access(path.join(root, installed.slug)), /ENOENT/);
+    assert.deepEqual(await listStoredSites(root), []);
+    await assert.rejects(removeStoredSite(root, installed.slug), /not found/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

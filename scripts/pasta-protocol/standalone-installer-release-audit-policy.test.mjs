@@ -17,7 +17,7 @@ test("standalone installer release audit is wired as package commands", () => {
 });
 
 test("standalone installer release audit covers every remaining static Pasta desktop app", () => {
-  for (const app of ["gnocchi", "ravioli", "rotini", "penne", "lasagna"]) {
+  for (const app of ["ch-ease", "gnocchi", "ravioli", "rotini", "penne", "lasagna"]) {
     assert.match(source, new RegExp(`key: "${app}"`));
     assert.match(source, new RegExp(`${app}-desktop-v1\\.0\\.0`));
     assert.match(source, new RegExp(`/api/\\$\\{app\\.key\\}/installers`));

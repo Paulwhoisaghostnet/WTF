@@ -26,6 +26,17 @@ Platform-specific package commands:
 - Windows x64 NSIS installer: `npm run dist:windows --prefix apps/pasta-suite-desktop`
 - Raspberry Pi arm64 Debian package: `npm run dist:raspberry-pi --prefix apps/pasta-suite-desktop`
 
+The resulting macOS DMG uses the normal drag-to-Applications experience. The Windows EXE uses a per-user NSIS wizard with install-location selection, Start menu and desktop shortcuts, and an optional launch-on-finish step. End users do not need Node.js, npm, Homebrew, or a terminal.
+
+### Unsigned review builds
+
+Unsigned artifacts are supported for developer review and early beta distribution. They include GUI-only fallback instructions in `apps/pasta-suite-desktop/build/README.txt`:
+
+- macOS: Control-click the installed app, choose **Open**, then confirm **Open**.
+- Windows: choose **More info**, verify the build name, then choose **Run anyway**.
+
+Signing removes these warnings but does not change the packaged application. Public release builds should use an Apple Developer ID plus notarization and an Authenticode certificate when those credentials are available.
+
 ## GitHub Release Builds
 
 Run the **Pasta Suite Desktop Installers** workflow manually or push a tag like:

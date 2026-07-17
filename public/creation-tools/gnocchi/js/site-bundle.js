@@ -2,6 +2,7 @@
 
 const PastaSiteKit = (() => {
   const FILES = ["site.html", "css/site.css", "js/site.js", "js/common.js", "js/octez-wallet.js", "vendor/octez-connect.js", "vendor/tezos.js"];
+  const ROTINI_FILES = ["js/rotini-artifact.js", "js/rotini-mint.js"];
   const CRC_TABLE = (() => { const table = new Uint32Array(256); for (let i = 0; i < 256; i++) { let value = i; for (let bit = 0; bit < 8; bit++) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1; table[i] = value >>> 0; } return table; })();
   const u32 = (view, offset, value) => view.setUint32(offset, value, true);
   const u16 = (view, offset, value) => view.setUint16(offset, value, true);
@@ -22,7 +23,8 @@ const PastaSiteKit = (() => {
   async function asset(path) { const response = await fetch(path, { cache: "no-store" }); if (!response.ok) throw new Error(`Could not load ${path} (${response.status}).`); return new Uint8Array(await response.arrayBuffer()); }
   async function build(config) {
     const files = [{ path: "pasta.config.js", data: `window.PASTA_SITE_CONFIG = ${JSON.stringify(config, null, 2)};\n` }];
-    for (const path of FILES) files.push({ path: path === "site.html" ? "index.html" : path, data: await asset(path) });
+    const selected = config.app === "rotini" ? [...FILES, ...ROTINI_FILES] : FILES;
+    for (const path of selected) files.push({ path: path === "site.html" ? "index.html" : path, data: await asset(path) });
     return zip(files);
   }
   async function download(config) {

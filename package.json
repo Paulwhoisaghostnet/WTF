@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
@@ -77,8 +77,14 @@
     "macaroni:desktop:dist": "npm run dist --prefix apps/macaroni-desktop",
     "pasta-suite:desktop:prepare": "npm run prepare --prefix apps/pasta-suite-desktop",
     "pasta-suite:desktop:check": "node --test scripts/pasta-suite-desktop-package-policy.test.mjs",
+    "pasta-suite:desktop:artifact-smoke": "node scripts/pasta-suite-desktop-artifact-smoke.mjs",
+    "pasta-suite:desktop:review-manifest": "node scripts/pasta-suite-desktop-review-manifest.mjs",
     "pasta-suite:installers:live-check": "node scripts/check-pasta-suite-installers-live.mjs",
     "pasta-suite:desktop:dist": "npm run dist --prefix apps/pasta-suite-desktop",
+    "ch-ease:desktop:prepare": "npm run prepare --prefix apps/ch-ease-desktop",
+    "ch-ease:desktop:check": "node --test scripts/ch-ease-desktop-package-policy.test.mjs",
+    "ch-ease:installers:live-check": "node scripts/check-ch-ease-installers-live.mjs",
+    "ch-ease:desktop:dist": "npm run dist --prefix apps/ch-ease-desktop",
     "spaghetti:desktop:prepare": "npm run prepare --prefix apps/spaghetti-desktop",
     "spaghetti:desktop:check": "node --test scripts/spaghetti-desktop-package-policy.test.mjs",
     "spaghetti:installers:live-check": "node scripts/check-spaghetti-installers-live.mjs",
@@ -109,6 +115,7 @@
     "pasta:standalone-installers:audit:check": "node --test scripts/pasta-protocol/standalone-installer-release-audit-policy.test.mjs",
     "pasta:shadownet:preflight": "tsx scripts/pasta-protocol/shadownet-preflight.ts",
     "pasta:shadownet:e2e": "tsx scripts/pasta-protocol/shadownet-spaghetti-e2e.ts",
+    "pasta:shadownet:fund-proof-wallet": "tsx scripts/pasta-protocol/fund-shadownet-proof-wallet.ts",
     "pasta:shadownet:gnocchi:e2e": "tsx scripts/pasta-protocol/shadownet-gnocchi-e2e.ts",
     "pasta:shadownet:ravioli:e2e": "tsx scripts/pasta-protocol/shadownet-ravioli-e2e.ts",
     "pasta:shadownet:rotini:e2e": "tsx scripts/pasta-protocol/shadownet-rotini-e2e.ts",

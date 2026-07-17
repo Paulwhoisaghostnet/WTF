@@ -8457,6 +8457,16 @@
 
 ---
 
+## 2026-07-15 - Persistence fixtures must not compete with a mounted owner app
+
+**What happened**: The combined Pasta publishing browser suite seeded a Colander project through `localStorage` while the Colander React surface was still mounting. Its initial empty-state persistence effect could run afterward and overwrite the seeded project, even though the same story passed alone.
+
+**Why it mattered**: Cross-app project continuity appeared nondeterministic only when the full owning suite ran. The product bridge was correct, but the fixture shared a persistence boundary with the mounted owner it was trying to prepare.
+
+**Rule**: Establish same-origin storage fixtures from a neutral page, then navigate to the owner or consumer surface. Do not seed an application's durable storage while that application's initialization effects can still write competing state.
+
+---
+
 ## 2026-07-15 - A temporary localhost operator is not a durable personal app
 
 **What happened**: The first Objkt operator portal kept its working state in browser storage and depended on a development server started inside an active Codex session.
@@ -8474,5 +8484,206 @@
 **Why it mattered**: A successful build and visible launcher entry did not prove the window could open. The missing policy registration made the private app look installed while keeping it unusable.
 
 **Rule**: Every new wtfOS route must be registered in the PageDef, shared browser-route policy, launch model, admin surface inventory, and focused browser proof. Exercise the real launcher and reload path before calling the app available.
+
+---
+
+## 2026-07-15 - Mounted app windows must not trust ambient route context
+
+**What happened**: The six-app draft recovery proof navigated from Spaghetti to Gnocchi while wtfOS kept the earlier Spaghetti window mounted. The older iframe observed the new top-level handoff query and initially attached a Spaghetti autosave reference to the Gnocchi project.
+
+**Why it mattered**: A central workspace cannot rely on whichever route is currently visible when multiple owner apps remain alive. Ambient project ids without app identity fencing can silently mix unrelated creator work.
+
+**Rule**: Every cross-app persistence write must bind both project identity and owner-app identity. Reject Colander writes when the handoff kind does not match the writing studio, and test sequential app launches with prior windows still mounted.
+
+---
+
+## 2026-07-15 - Recovery dashboards must display canonical identifiers
+
+**What happened**: The new Colander remembered-contract surface persisted the complete KT1 correctly but rendered it through the shared shortened-address helper. The six-app browser proof therefore reached the correct durable record and still failed because the central recovery surface did not expose the canonical identifier a creator needs to compare, copy, and audit.
+
+**Why it mattered**: A recovery dashboard is an authority surface, not a decorative summary. Abbreviating the only durable contract identifier can make correct persistence look unverifiable and forces the creator back to an explorer or clipboard—the dependency the local-first workflow is meant to remove.
+
+**Rule**: Show complete canonical addresses, operation hashes, and other recovery identifiers on management and audit surfaces. Reserve shortened identifiers for compact discovery cards that also provide an immediate path to the full value.
+
+---
+
+## 2026-07-15 - Validate generated JavaScript, not only its template source
+
+**What happened**: Native Colander's generator template contained a valid regular expression with escaped path separators, but the outer JavaScript template literal consumed those escapes. The emitted installer HTML contained an invalid regular expression and stopped before project lifecycle initialization.
+
+**Why it mattered**: Source policy passed against the generator while the actual packaged dashboard could not execute. Multi-layer generation changes the syntax boundary, so validity at the template layer is not evidence of validity in the emitted asset.
+
+**Rule**: After modifying inline JavaScript produced by a generator, regenerate the artifact and syntax-check the extracted emitted script before browser tests. Prefer generator-safe string operations over escape-heavy literals when crossing template layers.
+
+---
+## 2026-07-15 — Initialize portable draft helpers before recovery runs
+
+- What went wrong: CH-EASE wrote a valid local draft, but reload replaced it with a fresh project draft because startup recovery called `normalizeDraft()` before its `const` helper functions had initialized. The recovery wrapper caught the temporal-dead-zone `ReferenceError` and treated it like malformed storage.
+- Why it was deceptive: Package download and publisher handoff both rebuilt from the live form, so they proved current output while masking that durable recovery was stale. The stored draft was correct immediately before reload and was only overwritten during the next startup.
+- Rule going forward: In dependency-free static apps, initialize parsing/normalization helpers before invoking startup recovery, and test both the stored payload before navigation and the restored user-visible fields after a real reload. Do not catch all recovery exceptions without a browser proof that distinguishes corrupt data from a runtime initialization defect.
+
+---
+
+## 2026-07-15 — `noopener` windows do not inherit sessionStorage handoffs
+
+- What went wrong: CH-EASE staged publisher packages only in `sessionStorage` and opened targets with `noopener`. The isolation is correct, but the new top-level publisher window has no opener-derived session storage, so it rendered an empty studio even though the route contained a valid handoff key.
+- Why it was deceptive: Tests that replaced `window.open` proved the URL and source-window payload separately but never let the isolated target consume it. A first popup proof also accidentally served stale built assets because `page.route()` does not own the popup; the real packaged proof required `browserContext.route()`.
+- Rule going forward: Cross-window, same-origin one-use handoffs opened with `noopener` must use an expiry-wrapped localStorage fallback (or another explicit cross-context transport), validate it in the destination, and delete it on consumption. Browser proofs must open the real target and route popup assets at the context level.
+
+---
+
+## 2026-07-15 — A preparation app must own durability before handoff
+
+- What went wrong: Portable CH-EASE accepted local media and advertised a direct publisher handoff, but rejected that handoff until the creator left the app, uploaded every file elsewhere, recovered each CID, and pasted those CIDs back into the matching items.
+- Why it was deceptive: ZIP export and manual artifact-URI entry made the package format technically portable, while the primary local-file user story still had an unavoidable external gap between preparation and publishing.
+- Rule going forward: When an app owns local media preparation and its downstream contract requires durable URIs, it must offer creator-controlled durability at that boundary. Keep provider credentials and bytes ephemeral, persist only returned content identifiers, and browser-prove the complete local file to durable URI to consumer path.
+
+---
+
+## 2026-07-15 — Optional manifest fields must remain absent when unused
+
+- What went wrong: The first Pasta Project lifecycle normalizer added `archivedFromStage: undefined` to every active project. The lifecycle value was semantically empty, but the normalized object no longer deep-equaled the original portable v1 manifest.
+- Why it mattered: Portable project files are an interoperability boundary between web Colander, installed Colander, and standalone apps. Adding explicit undefined keys can create noisy export drift, weaken exact compatibility tests, and encourage divergent serializers.
+- Rule going forward: Versioned portable schemas must omit optional fields unless they carry a valid value. Normalize by stripping the optional property first and conditionally adding it back, then deep-compare an untouched current manifest before accepting the change.
+
+---
+
+## 2026-07-15 — Run signer tooling through repository modules, not inline eval
+
+- What went wrong: A one-line `tsx -e` funding helper first rejected top-level `await`, then changed ESM/CommonJS interop enough that the platform keyring default import became undefined. Both failures happened before signing, but the ad hoc execution path could not faithfully load the same signer stack as the proven file-based scripts.
+- Why it mattered: Testnet funding is a real signed operation. A convenient eval command had weaker reproducibility and guard coverage than the repository's normal TypeScript module path, making a sensitive prerequisite harder to audit.
+- Rule going forward: Put reusable signer operations in a checked-in, policy-tested script with explicit execution flags, network assertions, bounded amounts, and canonical operation output. Use the same file-based `tsx` path as the proof suite; do not improvise signed operations through inline eval.
+
+---
+
+## 2026-07-15 — Inspect rendered installer resources and mounted artifacts
+
+- What went wrong: The first packaging pass trusted a valid SVG and a green electron-builder run. ImageMagick rendered the gradient-heavy icon as mostly black, the executable-name override produced `pasta-suite.app` instead of `Pasta Suite.app`, and a Windows packaging pass added a UTF-8 BOM to the shared license file that later broke macOS DMG creation.
+- Why it mattered: Source correctness and a successful packaging command did not prove the artifact looked or behaved like the application a reviewer would receive. Cross-target build tools also mutated a shared resource in a platform-specific way.
+- Rule going forward: Visually inspect generated platform icons, mount the final DMG, inspect the final PE/ASAR, and launch the packaged executable. Keep platform-sensitive license inputs separate, and rebuild every target after any shared visual-resource change before regenerating checksums.
+
+---
+
+## 2026-07-15 — First-run screenshots are safety audits, not marketing extras
+
+- What went wrong: The packaged application passed functional project and tool-launch smoke, but its first-run screenshot showed that both project creation and the contract manager silently defaulted to Mainnet while the review guide told users to begin on Shadownet. Project creation did not expose a network selector at all.
+- Why it mattered: A technically functional default could steer a reviewer or new creator toward irreversible, fee-bearing operations before they had deliberately chosen production. The mismatch was visible immediately in the artifact but not asserted by the earlier lifecycle tests.
+- Rule going forward: Capture and inspect a clean-profile first-run screen for every desktop release. Networked creator tools must show the target network before project creation, default pre-release builds to the designated test network, require explicit Mainnet opt-in, and assert that default in both browser and packaged-artifact tests.
+## 2026-07-15 - Wine under Apple-silicon containers is not a Windows installer acceptance gate
+
+**What happened**: The final Pasta Suite NSIS artifact was exercised through two isolated `linux/amd64` Wine containers on an Apple-silicon Docker host. Docker's x86-64 emulation worked, but the conventional Wine image failed while creating its prefix with `kernel32.dll` unavailable, and a Wine 11 modern-WoW64 image segfaulted during `wineboot` before the installer process began.
+
+**Why it mattered**: Those failures occurred in the host compatibility layer, not in the NSIS installer. Treating them as product failures would be inaccurate, while treating a Wine success as equivalent to Windows 10/11 would also overstate the evidence.
+
+**Rule**: Use Wine only as supplemental packaging evidence. Native Windows installer acceptance must run on a Windows runner or Windows machine and prove wizard completion, installed executable launch, first-run defaults, shortcuts, and uninstall behavior. When host emulation fails before the installer starts, report the compatibility limitation separately from product status.
+
+---
+
+## 2026-07-16 - Broad admin diagnosis and acute repair must share one canonical control map
+
+**What happened**: Admin users could technically change roles, curses, credentials, and desktop settings, but the controls were distributed across dense rows, generic native handoffs, and panel labels that operators had to memorize. Building a broad roster and acute WTF Passport also exposed two implementation traps: per-user role/curse reads created an N+1 path, and moving desktop concurrency into a shared service left route-owned policy tests checking the wrong source file. The complete browser run then caught stale label fixtures and a private Objkt launcher fixture whose access probe returned 404.
+
+**Why it mattered**: An admin console is a support and incident-response surface. Search, sorting, deep-link identity, effective access, assigned settings, and recovery actions must agree on the same object model for humans and agents; otherwise the UI can look organized while still producing slow rosters, context-losing handoffs, or misleading verification.
+
+**Rule**: Model admin work as broad searchable scope followed by an explicit acute workspace. Drive navigation, Help topics, native handoffs, routes, permissions, handles, and E2E ownership from stable catalogs; batch aggregate data for scope tables; keep mutation/concurrency policy in a shared service with tests split by service and HTTP ownership; and make browser fixtures answer every private access probe before asserting a launcher. Every changed admin label or handoff must be updated in both Classic and Gamma browser stories.
+
+---
+
+## 2026-07-16 - Fixed filtered cursor layers need screenshot-level regression proof
+
+**What happened**: The custom cursor remained present, clickable controls remained visible to the DOM, and every interaction assertion passed, but its `drop-shadow()` on a translated fixed root caused Chromium to paint large black compositor tiles when an admin WTF Passport opened inside nested scrolling panes.
+
+**Why it mattered**: Accessibility-tree and bounding-box assertions could not see a paint-layer failure that made most of the control suite visually unusable. The defect only became obvious during a real screenshot review, and hiding unrelated fixed overlays did not resolve it.
+
+**Rule**: Do not apply CSS filters to fixed, transform-positioned cursor roots over complex scrolling application windows. Keep contrast inside the cursor glyph, visually inspect broad and acute states, and use screenshot-pixel assertions for compositor regressions that DOM checks cannot observe.
+
+---
+## 2026-07-16 - Ravioli pack fulfillment should be a bounded router, not a Michelson monolith
+
+**What happened**: Expanding Ravioli from manifest-only wrapper burns to five enforceable pack modes made it tempting to place custody, commitment verification, allocated minting, generative minting, sales, and every external protocol shape in one FA2 contract. The first commitment-and-fulfillment router draft compiled to about 12.2 KB in forged script plus initial storage, while current Mainnet reports a 32,768-byte maximum operation-data length for the entire origination operation.
+
+**Why it mattered**: The workflow is expressible on Tezos, but a single contract would spend origination headroom on protocol-specific code, make audits and upgrades harder, and force every new minter integration into the wrapper contract. Large unbounded recipes would also turn opening gas and operation payload size into user-facing failures.
+
+**Rule**: Keep Ravioli's primary contract responsible for wrapper FA2 state, recipe commitments, bounded pack-specific reserves, capacity accounting, and atomic opening. Transfer escrowed FA2 assets directly, but route allocated and generative fulfillment through small typed adapters with explicit reserve/fulfill interfaces. Cap recipe action and payload sizes, reuse adapters by minter family, and measure forged origination and worst-case opening operations against live protocol constants before release.
+
+---
+
+## 2026-07-16 - Product proofs must exercise the claimed mint authority and the complete Studio path
+
+**What happened**: Rotini's historical “generative” proof had the creator pre-render and pre-mint inventory before a collector bought it, which did not prove collector-triggered generation. After replacing that lifecycle, the contract and direct Shadownet script passed, but the real Studio still could not publish because `readLayerConfig()` preserved each preview image while discarding the selected `File` needed by generator pinning. A browser publish story found the failure. The first fresh second collector also needed more test tez than the mint estimate alone because its first outgoing operation had reveal/allocation overhead.
+
+**Why it mattered**: A valid contract, successful preview, or downstream purchase can each look like success while proving a different user story from the product claim. Fresh implicit test accounts also make a narrow transfer-price balance check unreliable for an end-to-end wallet proof.
+
+**Rule**: Define blockchain proof by who invokes the state transition and what state that transaction creates. For publisher apps, verify the entire selected-file → pin → originate → configure → independent collector action path through the real browser surface and exact app artifact. Preflight fresh puppets with explicit reveal/allocation and retry headroom, then require indexed source addresses, ownership, supply, metadata, rejection boundaries, and reopen behavior before calling the lifecycle proven.
+
+---
+
+## 2026-07-16 - An iframe element being visible does not mean its application bridge is ready
+
+**What happened**: The complete Pasta browser pass found the Gnocchi iframe and its final URL, then immediately tried to replace `window.MD` wallet methods for a lifecycle proof. On a cold full-suite run, the document existed before the module bridge initialized, so the harness failed while setting `getAccount` even though the same test passed when run alone.
+
+**Why it mattered**: A visible iframe and matching URL only prove navigation. They do not prove that the embedded application has initialized the exact API the test or host intends to use, which can turn load-order variance into misleading product failures.
+
+**Rule**: Synchronize embedded-app tests on the narrowest real readiness condition—such as `window.MD` or a named ready event—before installing a harness or invoking app APIs. Always rerun the full owning suite after fixing an iframe race, because focused timing can hide initialization defects.
+
+---
+
+## 2026-07-16 - A unique seed is not a display artifact
+
+**What happened**: Rotini's first collector-generative contract correctly assigned a unique token id and seed, but wrote the shared generator-recipe JSON URI into each token's `artifactUri`. That proved mint authority and deterministic inputs, not that the resulting token was independently viewable. After the contract source changed, stale templates, packaged assets, tests, and an old production build also continued to advertise the obsolete `mint_iteration` lifecycle.
+
+**Why it mattered**: A valid FA2 token can still display as raw JSON or fail outside Pasta if its artifact requires a custom renderer or separately hosted dependencies. Source-level correctness was also insufficient while generated and packaged copies retained the old interface.
+
+**Rule**: A Rotini token is not minted until its final `artifactUri` resolves directly to a PNG, GIF, or self-contained interactive ZIP. Reserve the immutable seed first, render/package and validate locally, then pin and finalize ownership with the artifact MIME type and digest on-chain. Verify every synchronized contract template and packaged runtime, decode image bytes in browser coverage, inspect ZIPs offline, rebuild distribution assets, and require a fresh chain proof before treating an older address as evidence.
+
+---
+
+## 2026-07-16 - Contract expressiveness is not an out-of-box publisher workflow
+
+**What happened**: Gnocchi's FA2 already stored sale policy per token, but Studio always originated token 0 in a new contract and its exclusive form modes could not express both a cap and a time window. The contract also measured caps and curve steps from burnable current supply, allowed administrator issuance outside the advertised window, and allowed later cap/window expansion.
+
+**Why it mattered**: A manually callable entrypoint did not give creators the promised same-collection workflow, and mutable or rewindable issuance boundaries made a Limited Edition label weaker than the buyer-facing promise. Contract capability, creator UX, and public policy truth had diverged.
+
+**Rule**: For edition publishers, prove the exact creator surface and the exact mint authorities, not only the storage type. Same-KT multi-token publishing must be a first-class Studio path; hard issuance boundaries must count lifetime minting across public and administrator routes, survive burns, and be irreversibly lockable; and a current signer-backed proof must exercise every advertised preset before the app calls it supported.
+
+---
+
+## 2026-07-16 - A compiling contract prototype must not replace the source authority for a legacy artifact
+
+**What happened**: Ravioli's new commitment-backed pack router compiled successfully, but it had replaced `PastaBundleFA2.py` while the checked-in artifact, Studio storage, and browser calls still used the legacy `create_bundle` and `redeem` interface. The router instead exposes `create_pack`, `finalize_pack`, and `open_pack`, and its required allocated/generative helper adapters do not yet exist.
+
+**Why it mattered**: Shipping that state would make the artifact manifest name a source file that could not have produced it. A later compile would silently replace the working production artifact with an incompatible contract, while the current Studio would fail at origination or its first entrypoint call.
+
+**Rule**: Experimental Tezos contracts must live under an explicit prototype source name until their adapters, Studio, storage constructor, compiled artifact, entrypoint map, exported client, and signer-backed lifecycle advance together. A full-send gate must compare source entrypoints to both the manifest and real client calls; compilation alone is not release readiness.
+
+---
+
+## 2026-07-16 - Aggregate policy tests must follow the current owner without rewriting historical truth
+
+**What happened**: The full unit gate found three stale ownership assertions after otherwise correct changes. CH-EASE's handoff test still searched for pre-context literal query strings after the implementation moved to `URLSearchParams`; the desktop layout allow-list omitted the newly registered private Objkt Operator icon; and the indexing-queue schema test demanded a partial index inside immutable migration `0008` even though forward migration `0078`, the cumulative bootstrap, and the live schema correctly own that repair.
+
+**Why it mattered**: Two tests rejected valid current behavior because they encoded implementation text instead of the owned contract. The migration test was more dangerous: satisfying it would require re-corrupting applied migration history and could break production deployment checksums.
+
+**Rule**: Policy tests should assert stable behavior and current ownership boundaries. When query construction becomes compositional, assert required parameters and routed output rather than one literal string; when a registered surface joins a canonical allow-list, update its exhaustive test in the same pass; and when a forward migration supersedes schema behavior, test the old migration as immutable history while testing the forward migration, cumulative bootstrap, and shared schema as the current state.
+
+---
+
+## 2026-07-17 - A release gate must declare and provision the runtime its discovered tests actually require
+
+**What happened**: The complete suite passed on the Node 22 development machine, but GitHub's Quality Gate still selected Node 20 while current AT Protocol dependencies required Node 22. The clean runner then produced 28 secondary failures: `undici_v8` called a WebIDL API missing under Node 20, a browser-backed test ran before Chromium installation, and import-only server tests had no harmless test database URI because CI had no developer `.env`.
+
+**Why it mattered**: Nine consecutive default-branch Quality Gate runs had failed for infrastructure reasons, so the release signal no longer distinguished a product regression from an unsupported runner. A local green run was also weaker than it appeared because the developer environment silently supplied prerequisites absent from a clean checkout.
+
+**Rule**: Keep `engines.node`, CI setup, and the production image on the same supported major. Install prerequisites before the earliest discovered test that uses them, and make aggregate test subprocess defaults explicit, local, non-secret, and unable to weaken production fail-closed validation. Reproduce CI with a clean-environment override before blaming individual tests, and lock runtime plus step ordering in policy tests.
+
+---
+
+## 2026-07-17 - A package proof must invoke the package producer
+
+**What happened**: The full CH-EASE browser story passed locally because an ignored `apps/ch-ease-desktop/pasta` directory remained from an earlier packaging run. On GitHub's clean checkout, the same story intercepted its page request, looked for the absent derived file, and aborted navigation; the other 657 browser stories passed.
+
+**Why it mattered**: The test claimed to prove the standalone desktop package, but actually proved only that a developer's stale prepared output was usable. The missing prerequisite appeared near the end of a long release gate and kept a correct application change out of production.
+
+**Rule**: Tests that inspect ignored, generated, or packaged output must invoke the canonical producer inside their own setup—or consume an explicit artifact from a declared prior job. Never let residue in a developer checkout satisfy a release prerequisite. Keep derived assets ignored, and verify the source-to-package path on every clean run.
 
 ---

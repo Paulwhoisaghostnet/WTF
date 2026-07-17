@@ -11,11 +11,11 @@ const PROVEN_CONTRACTS = [
   },
   {
     app: "Gnocchi",
-    address: "KT1W2ijLhjRHeH7wWYnvYcDwDsgRM7TpAFZK",
-    label: "Open edition",
-    group: "gnocchi-shadownet-e2e-mr1oadsz",
-    facts: ["Token types", "1"],
-    actions: ["Edit sale configuration", "Pause / resume sale", "Transfer token", "Mint more"],
+    address: "KT1DxL652xGhAwWnsaC32TcdDP7BL7KwrStw",
+    label: "Multi-edition issuance collection",
+    group: "gnocchi-oe-modes-proof-mrofko63",
+    facts: ["Token types", "3"],
+    actions: ["Add edition to collection", "Mint edition", "Edit sale configuration", "Pause / resume sale", "Transfer token", "Mint more"],
   },
   {
     app: "Ravioli",
@@ -27,11 +27,18 @@ const PROVEN_CONTRACTS = [
   },
   {
     app: "Rotini",
-    address: "KT1HqzEFqbwcR8BpXZrrfPALY6bJaPGQgDHQ",
-    label: "Standard collection",
-    group: "rotini-shadownet-e2e-mr1q9kcr",
+    address: "KT1BYMrRC1ZvoHJWaSvFpiRsd5ZM2YcRh3Ls",
+    label: "Generative collection",
+    group: "rotini-public-mint-proof-mro5axe7",
     facts: ["Token types", "2"],
-    actions: ["Transfer token", "Mint more", "Transfer admin"],
+    actions: [
+      "Transfer token",
+      "Reserve, render & mint",
+      "Resume unfinished iteration",
+      "Refund expired reservation",
+      "Close / reopen generation",
+      "Transfer admin",
+    ],
   },
   {
     app: "Penne",
@@ -73,7 +80,7 @@ async function installColanderReadFixture(page) {
       const FA2_BASE = ["transfer", "update_operators", "balance_of", "mint", "burn"];
       const entrypointsByApp = {
         Spaghetti: [...FA2_BASE, "create_token", "transfer_administration", "accept_administration"],
-        Gnocchi: [...FA2_BASE, "create_open_edition", "set_sale", "set_sale_active", "open_mint"],
+        Gnocchi: [...FA2_BASE, "create_open_edition", "lock_sale_policy", "set_sale", "set_sale_active", "open_mint"],
         Ravioli: [
           ...FA2_BASE,
           "create_bundle",
@@ -82,7 +89,18 @@ async function installColanderReadFixture(page) {
           "transfer_administration",
           "accept_administration",
         ],
-        Rotini: [...FA2_BASE, "create_token", "transfer_administration", "accept_administration"],
+        Rotini: [
+          "transfer",
+          "update_operators",
+          "balance_of",
+          "create_project",
+          "reserve_iteration",
+          "finalize_iteration",
+          "cancel_expired_reservation",
+          "set_project_active",
+          "transfer_administration",
+          "accept_administration",
+        ],
         Penne: [
           ...FA2_BASE,
           "create_token",
@@ -203,7 +221,7 @@ test.describe("interaction inventory - Pasta Protocol Colander Shadownet discove
     }).toEqual(expect.arrayContaining(["colander.project_created", "colander.tool_launched"]));
   });
 
-  test("opens proven Shadownet Pasta contracts with adapters, actions, explorer links, and metadata graph", async ({
+  test("opens Shadownet-shaped Pasta contract fixtures with current adapters, actions, explorer links, and metadata graph", async ({
     page,
     request,
   }) => {

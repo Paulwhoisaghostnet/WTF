@@ -19,7 +19,12 @@ const CustomCursorRoot = styled.div<{
   pointer-events: none;
   opacity: ${(p) => (p.$visible ? 1 : 0)};
   transform: translate3d(${(p) => p.$x}px, ${(p) => p.$y}px, 0);
-  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.35));
+  /*
+   * Keep filters off this translated fixed layer. Chromium can promote an
+   * unbounded filtered cursor surface that paints black compositor tiles over
+   * nested scrolling windows. The cursor glyphs already carry their own
+   * high-contrast outlines.
+   */
 `;
 
 const CrosshairImpact = styled.div<{ $x: number; $y: number }>`

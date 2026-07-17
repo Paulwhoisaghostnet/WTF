@@ -296,7 +296,7 @@ export const CREATION_TOOLS = [
       "/creation-tools/rotini/js/pasta-foundation.js",
       "/creation-tools/rotini/vendor/tezos.js",
       "/creation-tools/rotini/vendor/octez-connect.js",
-      "/creation-tools/rotini/contract/pasta-standard-collection.contract.json",
+      "/creation-tools/rotini/contract/pasta-generative-collection.contract.json",
     ],
     provenance: {
       creatorName: "WTF OS",

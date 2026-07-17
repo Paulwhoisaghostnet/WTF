@@ -25,6 +25,7 @@ const DEFAULT_KEYRING_PATH = path.join(homedir(), ".wtf-gameshow", "platform-wal
 const DEFAULT_MASTER_KEY_FILE = path.join(homedir(), ".wtf-gameshow", "platform-keyring-master.key");
 const DEFAULT_CREATOR_WALLET_ID = "wtf-os-root";
 const DEFAULT_COLLECTOR_WALLET_ID = "arcade-treasury";
+const DEFAULT_COLLECTOR_TWO_WALLET_ID = "e2e-bert";
 const HTTP_TIMEOUT_MS = Math.max(1_000, Number(process.env.PASTA_SHADOWNET_HTTP_TIMEOUT_MS || "15000"));
 const TAQUITO_TIMEOUT_MS = Math.max(30_000, Number(process.env.PASTA_SHADOWNET_TAQUITO_TIMEOUT_MS || "120000"));
 const { PlatformWalletKeyring } = keyringModule as any;
@@ -47,6 +48,11 @@ export type SignerPair = {
   creatorSigner: InMemorySigner;
   collector: PlatformWallet;
   collectorSigner: InMemorySigner;
+};
+
+export type SignerSet = SignerPair & {
+  collectorTwo: PlatformWallet;
+  collectorTwoSigner: InMemorySigner;
 };
 
 export class ProofBlocked extends Error {
@@ -272,6 +278,26 @@ export async function loadSignerPair(env: SignerEnv): Promise<SignerPair> {
     block("platform keyring signer is unavailable", [
       `Creator wallet id: \`${creatorWalletId}\`.`,
       `Collector wallet id: \`${collectorWalletId}\`.`,
+      `Keyring path: \`${env.WTF_PLATFORM_KEYRING_PATH}\`.`,
+      `Reason: ${error instanceof Error ? error.message : String(error)}`,
+    ]);
+  }
+}
+
+export async function loadSignerSet(env: SignerEnv): Promise<SignerSet> {
+  const pair = await loadSignerPair(env);
+  const keyring = new PlatformWalletKeyring(env);
+  const collectorTwoWalletId =
+    process.env.PASTA_SHADOWNET_COLLECTOR_TWO_WALLET_ID || DEFAULT_COLLECTOR_TWO_WALLET_ID;
+  try {
+    const { wallet: collectorTwo, signer: collectorTwoSigner } = await keyring.getSigner(collectorTwoWalletId);
+    assert.equal(collectorTwo.network, "shadownet", `collector wallet ${collectorTwo.id} is not Shadownet`);
+    assert.notEqual(collectorTwo.address, pair.collector.address, "collector wallets must be independent");
+    assert.notEqual(collectorTwo.address, pair.creator.address, "second collector must not be the creator");
+    return { ...pair, collectorTwo, collectorTwoSigner };
+  } catch (error) {
+    block("second platform keyring collector signer is unavailable", [
+      `Second collector wallet id: \`${collectorTwoWalletId}\`.`,
       `Keyring path: \`${env.WTF_PLATFORM_KEYRING_PATH}\`.`,
       `Reason: ${error instanceof Error ? error.message : String(error)}`,
     ]);

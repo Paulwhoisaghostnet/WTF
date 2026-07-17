@@ -3,27 +3,31 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("desktop settings route exposes and enforces optimistic concurrency tokens", async () => {
-  const [route, page] = await Promise.all([
+  const [route, service, page] = await Promise.all([
     readFile(new URL("./routes/desktop.ts", import.meta.url), "utf8"),
+    readFile(new URL("./lib/user-desktop-settings.ts", import.meta.url), "utf8"),
     readFile(new URL("../client/src/pages/DesktopSettings.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(route, /updatedAt: row\?\.updatedAt \? row\.updatedAt\.toISOString\(\) : null/);
-  assert.match(route, /normalizeExpectedUpdatedAt/);
+  assert.match(route, /const user = req\.user as any/);
+  assert.match(route, /getUserDesktopSettings\(user\.id\)/);
+  assert.match(route, /updateUserDesktopSettings\(user\.id, req\.body\)/);
+  assert.match(service, /updatedAt: row\?\.updatedAt \? row\.updatedAt\.toISOString\(\) : null/);
+  assert.match(service, /normalizeExpectedUpdatedAt/);
   assert.match(
-    route,
+    service,
     /body\.updatedAt !== undefined \? body\.updatedAt : body\.ifUnmodifiedSince/
   );
-  assert.doesNotMatch(route, /body\.updatedAt \?\? body\.ifUnmodifiedSince/);
-  assert.match(route, /clientProvidedConcurrencyToken/);
+  assert.doesNotMatch(service, /body\.updatedAt \?\? body\.ifUnmodifiedSince/);
+  assert.match(service, /clientProvidedConcurrencyToken/);
   assert.match(route, /status\(409\)\.json/);
-  assert.match(route, /desktop_settings_conflict/);
-  assert.match(route, /normalizeLocalizationSettings/);
-  assert.match(route, /localization: nextLocalization/);
-  assert.match(route, /localization: normalizeLocalizationSettings\(row\.localization \?\? {}\)/);
-  assert.match(route, /expectedUpdatedAtDate = new Date\(expectedUpdatedAt\)/);
-  assert.match(route, /eq\(userDesktopSettings\.updatedAt, expectedUpdatedAtDate\)/);
-  assert.match(route, /onConflictDoNothing\(\)/);
+  assert.match(service, /desktop_settings_conflict/);
+  assert.match(service, /normalizeLocalizationSettings/);
+  assert.match(service, /localization: nextLocalization/);
+  assert.match(service, /localization: normalizeLocalizationSettings\(row\.localization \?\? {}\)/);
+  assert.match(service, /expectedUpdatedAtDate = new Date\(String\(expectedUpdatedAt\)\)/);
+  assert.match(service, /eq\(userDesktopSettings\.updatedAt, expectedUpdatedAtDate\)/);
+  assert.match(service, /onConflictDoNothing\(\)/);
 
   assert.match(page, /updatedAt: settingsQuery\.data\?\.updatedAt \?\? null/);
 });

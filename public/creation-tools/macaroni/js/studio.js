@@ -1501,6 +1501,7 @@ async function deploy() {
     const contract = await op.contract();
     state.contract = contract.address;
     $("contractAddr").value = contract.address;
+    MD.recordColanderContract(contract.address);
     save();
     $("deployStatus").textContent = "deployed ✓";
     $("btnSync").disabled = false;
@@ -1901,7 +1902,8 @@ async function exportSite() {
     log("folder export: " + e.message + " — downloading zip instead", wroteFolder ? "err" : "");
   }
   try {
-    await MDSiteBundle.downloadSiteZip(body, "macaroni-site.zip");
+    const result = await MDSiteBundle.downloadSiteZip(body, "macaroni-site.zip");
+    MDSiteBundle.recordColanderSite(currentConfig(), result);
     const msg = wroteFolder
       ? "Exported to site/ folder and macaroni-site.zip downloaded (includes wallet connect)."
       : "Downloaded macaroni-site.zip — unzip and upload; includes index.html, drop.config.js, and wallet stack.";
@@ -2027,7 +2029,8 @@ async function downloadSitePackage(body) {
   if (body === null) return;
   setExportStatus("Building site package…", true);
   try {
-    await MDSiteBundle.downloadSiteZip(body, "macaroni-site.zip");
+    const result = await MDSiteBundle.downloadSiteZip(body, "macaroni-site.zip");
+    MDSiteBundle.recordColanderSite(currentConfig(), result);
     const blob = new Blob([body], { type: "text/javascript" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -2490,6 +2493,7 @@ $("contractAddr").addEventListener("change", () => {
   const kt = $("contractAddr").value.trim();
   if (isValidKt1Address(kt)) {
     state.contract = kt;
+    MD.recordColanderContract(kt);
     $("resumeAddr").value = kt;
     $("btnSync").disabled = false;
     save();

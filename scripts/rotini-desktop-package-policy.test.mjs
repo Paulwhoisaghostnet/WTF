@@ -11,6 +11,9 @@ const routeSource = readFileSync("server/routes/rotini-installers.ts", "utf8");
 const routesSource = readFileSync("server/routes.ts", "utf8");
 const studioSource = readFileSync("public/creation-tools/rotini/js/studio.js", "utf8");
 const commonSource = readFileSync("public/creation-tools/rotini/js/common.js", "utf8");
+const artifactSource = readFileSync("public/creation-tools/rotini/js/rotini-artifact.js", "utf8");
+const mintSource = readFileSync("public/creation-tools/rotini/js/rotini-mint.js", "utf8");
+const contractManifest = JSON.parse(readFileSync("public/creation-tools/rotini/contract/pasta-generative-collection.template.json", "utf8"));
 const rootPackage = JSON.parse(readFileSync("package.json", "utf8"));
 const gitignoreSource = readFileSync(".gitignore", "utf8");
 const liveCheckSource = readFileSync("scripts/check-rotini-installers-live.mjs", "utf8");
@@ -45,14 +48,29 @@ test("Rotini desktop package bundles the generative publisher in an Electron she
 
 test("Rotini desktop asset preparation preserves the static publisher contract", () => {
   assert.match(prepareSource, /public\/creation-tools\/rotini/);
-  assert.match(prepareSource, /contract\/pasta-standard-collection\.contract\.json/);
+  assert.match(prepareSource, /contract\/pasta-generative-collection\.contract\.json/);
   assert.match(prepareSource, /js\/pasta-foundation\.js/);
   assert.match(prepareSource, /vendor\/tezos\.js/);
   assert.match(prepareSource, /vendor\/octez-connect\.js/);
   assert.ok(existsSync("public/creation-tools/rotini/index.html"), "Rotini source page should exist");
-  assert.ok(existsSync("public/creation-tools/rotini/contract/pasta-standard-collection.contract.json"), "Rotini contract artifact should exist");
+  assert.ok(existsSync("public/creation-tools/rotini/contract/pasta-generative-collection.contract.json"), "Rotini generative contract artifact should exist");
+  assert.ok(existsSync("public/creation-tools/rotini/js/rotini-artifact.js"), "Rotini artifact kernel should exist");
+  assert.ok(existsSync("public/creation-tools/rotini/js/rotini-mint.js"), "Rotini exported-page mint runtime should exist");
   assert.match(studioSource, /Pasta Protocol generative publisher/);
-  assert.match(studioSource, /rotini\.tokens_published/);
+  assert.match(studioSource, /rotini\.project_published/);
+  assert.match(studioSource, /reserve_iteration/);
+  assert.match(studioSource, /finalize_iteration/);
+  assert.match(artifactSource, /pasta-rotini-interactive@1/);
+  assert.match(artifactSource, /interactive ZIP requires top-level index\.html/);
+  assert.match(artifactSource, /contains an external URL/);
+  assert.match(mintSource, /reserve_iteration/);
+  assert.match(mintSource, /finalize_iteration/);
+  assert.match(mintSource, /pasta:artifactSha256/);
+  assert.deepEqual(contractManifest.entrypoints.filter((entrypoint) => /iteration|reservation/.test(entrypoint)), [
+    "reserve_iteration",
+    "finalize_iteration",
+    "cancel_expired_reservation",
+  ]);
   assert.match(commonSource, /window\.MD/);
 });
 

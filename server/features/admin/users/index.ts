@@ -23,6 +23,7 @@ import {
   registerAdminUserXpRoutes,
   type AdminUserXpRouteDeps,
 } from "./xp-routes";
+import { registerAdminUserPassportRoutes } from "./passport-routes";
 
 export type AdminUserRoutesDeps = Partial<{
   identityProfile: AdminUserIdentityProfileRouteDeps;
@@ -43,11 +44,13 @@ export function registerAdminUsersRoutes(
   registerAdminUserTempPasswordRoutes(router, deps.tempPassword);
   registerAdminUserDossierRoutes(router, deps.dossier);
   registerAdminUserResyncRoutes(router, deps.resync);
+  registerAdminUserPassportRoutes(router);
 }
 
 export * from "./deletion-routes";
 export * from "./dossier-routes";
 export * from "./identity-profile-routes";
 export * from "./resync-routes";
+export * from "./passport-routes";
 export * from "./temp-password-routes";
 export * from "./xp-routes";

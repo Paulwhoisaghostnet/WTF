@@ -63,6 +63,7 @@ import ipfsPinningRoutes from "./routes/ipfs-pinning";
 import macaroniRoutes from "./routes/macaroni";
 import macaroniPackagesRoutes from "./routes/macaroni-packages";
 import pastaInstallerRoutes from "./routes/pasta-installers";
+import chEaseInstallerRoutes from "./routes/ch-ease-installers";
 import spaghettiInstallerRoutes from "./routes/spaghetti-installers";
 import gnocchiInstallerRoutes from "./routes/gnocchi-installers";
 import ravioliInstallerRoutes from "./routes/ravioli-installers";
@@ -381,6 +382,7 @@ export function registerRoutes(app: Express) {
   app.use(macaroniRoutes);
   app.use(macaroniPackagesRoutes);
   app.use(pastaInstallerRoutes);
+  app.use(chEaseInstallerRoutes);
   app.use(spaghettiInstallerRoutes);
   app.use(gnocchiInstallerRoutes);
   app.use(ravioliInstallerRoutes);

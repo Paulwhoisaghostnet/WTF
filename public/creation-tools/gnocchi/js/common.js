@@ -178,10 +178,16 @@ const MD = (() => {
     if (params.get("handoff") !== "chease-package") return null;
     const key = params.get("handoffKey") || handoffStorageKey(appId);
     try {
-      const raw = sessionStorage.getItem(key);
+      const raw = sessionStorage.getItem(key) || localStorage.getItem(key);
       if (!raw) return null;
       sessionStorage.removeItem(key);
-      return JSON.parse(raw);
+      localStorage.removeItem(key);
+      const value = JSON.parse(raw);
+      if (value?.schema === "pasta-handoff-envelope@1") {
+        if (!Number.isFinite(value.expiresAt) || value.expiresAt < Date.now()) return null;
+        return value.payload || null;
+      }
+      return value;
     } catch (_) {
       return null;
     }
@@ -189,7 +195,7 @@ const MD = (() => {
 
   function readRouteHandoff() {
     const params = new URLSearchParams(location.search || "");
-    const source = params.get("handoff") || "";
+    const source = params.get("colanderHandoff") || params.get("handoff") || "";
     if (!source || source === "chease-package") return null;
     return {
       source,
@@ -204,6 +210,9 @@ const MD = (() => {
 
   function recordColanderContract(contract, toolId) {
     const handoff = readRouteHandoff();
+    window.PastaStudioContracts?.recordConfirmed(contract, {
+      toolId: toolId || appIdFromPath(), network: handoff?.network || document.getElementById("network")?.value || "shadownet", source: "deployed",
+    });
     if (handoff?.source !== "colander-workspace" || !handoff.projectId || !contract) return false;
     try {
       const key = "wtfos.pasta.colander.workspace.v1";

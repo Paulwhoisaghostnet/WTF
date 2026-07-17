@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import type {
   ArcadeStatsResponse,
+  AdminUser,
   BoardThread,
   ConsoleAuditResponse,
   ConsoleModerationResponse,
@@ -42,7 +43,7 @@ export function useAdminDataQueries({
 
   const allUsersQuery = useQuery({
     queryKey: ["admin", "users"],
-    queryFn: () => api.get<any[]>("/api/admin/users"),
+    queryFn: () => api.get<AdminUser[]>("/api/admin/users"),
   });
 
   const allSeasonsQuery = useQuery({

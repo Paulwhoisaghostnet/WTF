@@ -17,36 +17,29 @@ import {
 import {
   desktopPetEvents,
   desktopPetStates,
-  userDesktopSettings,
 } from "@shared/schema";
 import { ingestSystemEvent } from "../challenges/events/ingest";
 import { logSystemEvent } from "../lib/system-log";
 import {
   applyHamsterAction,
   dateKey,
-  DEFAULT_DESKTOP_APPEARANCE,
   DEFAULT_HAMSTER_STATE,
   createGeneratedHamsterState,
   deriveHamsterSnapshot,
-  DESKTOP_ICON_LAYOUT_KEYS,
   getHamsterColorScheme,
   HAMSTER_EMOTION_COUNT_KEYS,
   HAMSTER_ACTIONS,
   HAMSTER_HEALTH_COUNT_KEYS,
   normalizeHamsterGenetics,
-  normalizeDesktopAppearance,
-  normalizeIconLayout,
   resolveHamsterColorSchemeKey,
   serializeHamsterInteractionCounts,
-  type DesktopAppearance,
-  type DesktopIconLayout,
   type HamsterAction,
   type HamsterState,
 } from "@shared/desktop";
 import {
-  normalizeLocalizationSettings,
-  type LocalizationSettings,
-} from "@shared/localization";
+  getUserDesktopSettings,
+  updateUserDesktopSettings,
+} from "../lib/user-desktop-settings";
 
 const router = Router();
 
@@ -223,36 +216,6 @@ function hamsterValues(userId: number, state: HamsterState) {
   };
 }
 
-async function getDesktopSettings(userId: number): Promise<{
-  appearance: DesktopAppearance;
-  iconLayout: DesktopIconLayout;
-  localization: LocalizationSettings;
-  updatedAt: string | null;
-}> {
-  const [row] = await db
-    .select()
-    .from(userDesktopSettings)
-    .where(eq(userDesktopSettings.userId, userId));
-
-  return {
-    appearance: normalizeDesktopAppearance({
-      ...DEFAULT_DESKTOP_APPEARANCE,
-      ...(row?.appearance ?? {}),
-    }),
-    iconLayout: normalizeIconLayout(row?.iconLayout ?? {}, DESKTOP_ICON_LAYOUT_KEYS),
-    localization: normalizeLocalizationSettings(row?.localization ?? {}),
-    updatedAt: row?.updatedAt ? row.updatedAt.toISOString() : null,
-  };
-}
-
-function normalizeExpectedUpdatedAt(value: unknown): string | null | undefined {
-  if (value === undefined) return undefined;
-  if (value === null || value === "") return null;
-  const date = new Date(String(value));
-  if (Number.isNaN(date.getTime())) return undefined;
-  return date.toISOString();
-}
-
 async function persistPetState(userId: number, state: HamsterState) {
   const values = hamsterValues(userId, state);
   await db
@@ -338,7 +301,7 @@ async function getOrCreatePetState(userId: number, now = new Date()) {
 router.get("/api/desktop/settings", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
-    res.json(await getDesktopSettings(user.id));
+    res.json(await getUserDesktopSettings(user.id));
   } catch (err) {
     console.error("GET /api/desktop/settings error:", err);
     res.status(500).json({ error: "Failed to fetch desktop settings" });
@@ -449,121 +412,21 @@ router.post("/api/desktop/events", isAuthenticated, async (req, res) => {
 router.put("/api/desktop/settings", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
-    const current = await getDesktopSettings(user.id);
-    const body = safeObject(req.body);
-    const expectedUpdatedAt = normalizeExpectedUpdatedAt(
-      body.updatedAt !== undefined ? body.updatedAt : body.ifUnmodifiedSince
-    );
-    const clientProvidedConcurrencyToken =
-      body.updatedAt !== undefined || body.ifUnmodifiedSince !== undefined;
-
-    if (clientProvidedConcurrencyToken && expectedUpdatedAt === undefined) {
+    const result = await updateUserDesktopSettings(user.id, req.body);
+    if (!result.ok && result.code === "desktop_settings_bad_concurrency_token") {
       return res.status(400).json({
         error: "updatedAt must be null or a valid settings timestamp.",
-        code: "desktop_settings_bad_concurrency_token",
+        code: result.code,
       });
     }
-
-    if (
-      clientProvidedConcurrencyToken &&
-      expectedUpdatedAt !== current.updatedAt
-    ) {
+    if (!result.ok) {
       return res.status(409).json({
         error: "Desktop settings changed before this save completed.",
-        code: "desktop_settings_conflict",
-        current,
+        code: result.code,
+        current: result.current,
       });
     }
-
-    const appearancePatch = safeObject(body.appearance);
-    const nextAppearance = normalizeDesktopAppearance({
-      ...current.appearance,
-      ...appearancePatch,
-    });
-    const nextIconLayout =
-      body.iconLayout === undefined
-        ? current.iconLayout
-        : normalizeIconLayout(body.iconLayout, DESKTOP_ICON_LAYOUT_KEYS);
-    const nextLocalization =
-      body.localization === undefined
-        ? current.localization
-        : normalizeLocalizationSettings(body.localization, current.localization);
-
-    const now = new Date();
-    let row: typeof userDesktopSettings.$inferSelect | undefined;
-
-    if (!clientProvidedConcurrencyToken) {
-      [row] = await db
-        .insert(userDesktopSettings)
-        .values({
-          userId: user.id,
-          appearance: nextAppearance,
-          iconLayout: nextIconLayout,
-          localization: nextLocalization,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: userDesktopSettings.userId,
-          set: {
-            appearance: nextAppearance,
-            iconLayout: nextIconLayout,
-            localization: nextLocalization,
-            updatedAt: now,
-          },
-        })
-        .returning();
-    } else if (expectedUpdatedAt === null) {
-      [row] = await db
-        .insert(userDesktopSettings)
-        .values({
-          userId: user.id,
-          appearance: nextAppearance,
-          iconLayout: nextIconLayout,
-          localization: nextLocalization,
-          updatedAt: now,
-        })
-        .onConflictDoNothing()
-        .returning();
-    } else {
-      if (typeof expectedUpdatedAt !== "string") {
-        return res.status(400).json({
-          error: "updatedAt must be null or a valid settings timestamp.",
-          code: "desktop_settings_bad_concurrency_token",
-        });
-      }
-      const expectedUpdatedAtDate = new Date(expectedUpdatedAt);
-      [row] = await db
-        .update(userDesktopSettings)
-        .set({
-          appearance: nextAppearance,
-          iconLayout: nextIconLayout,
-          localization: nextLocalization,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(userDesktopSettings.userId, user.id),
-            eq(userDesktopSettings.updatedAt, expectedUpdatedAtDate)
-          )
-        )
-        .returning();
-    }
-
-    if (!row) {
-      const latest = await getDesktopSettings(user.id);
-      return res.status(409).json({
-        error: "Desktop settings changed before this save completed.",
-        code: "desktop_settings_conflict",
-        current: latest,
-      });
-    }
-
-    res.json({
-      appearance: normalizeDesktopAppearance(row.appearance),
-      iconLayout: normalizeIconLayout(row.iconLayout, DESKTOP_ICON_LAYOUT_KEYS),
-      localization: normalizeLocalizationSettings(row.localization ?? {}),
-      updatedAt: row.updatedAt.toISOString(),
-    });
+    res.json(result.settings);
   } catch (err) {
     console.error("PUT /api/desktop/settings error:", err);
     res.status(500).json({ error: "Failed to save desktop settings" });

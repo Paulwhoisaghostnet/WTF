@@ -641,6 +641,7 @@ export const PAGE_DEFS: PageDef[] = [
     title: "Objkt Operator",
     group: "admin",
     startMenu: true,
+    desktopIcon: true,
   },
   {
     pattern: "/control-board",

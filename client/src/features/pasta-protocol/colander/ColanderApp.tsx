@@ -26,13 +26,18 @@ import {
 } from "@shared/pasta-protocol";
 import type { OwnershipRelationshipMetadata } from "@shared/pasta-protocol";
 import {
+  archivePastaProject,
   attachContract,
   COLANDER_WORKSPACE_STORAGE_KEY,
   createPastaProject,
+  duplicatePastaProject,
+  forgetPastaProjectArtifact,
   isPastaProject,
   PASTA_TOOL_STORIES,
   parsePastaProjects,
   pastaToolHandoffPath,
+  renamePastaProject,
+  restorePastaProject,
   toolIdForContractKind,
   type PastaToolId,
   type PastaWorkspaceProject,
@@ -183,18 +188,29 @@ export function ColanderApp() {
   });
   const [activeProjectId, setActiveProjectId] = useState<string>("");
   const [projectTitle, setProjectTitle] = useState("");
+  const [projectNameEdit, setProjectNameEdit] = useState("");
+  const [pendingDeleteProjectId, setPendingDeleteProjectId] = useState("");
+  const [pendingForgetArtifactId, setPendingForgetArtifactId] = useState("");
   const [selectedToolId, setSelectedToolId] = useState<PastaToolId>("spaghetti");
   const importInputRef = useRef<HTMLInputElement>(null);
 
+  const activeProjects = useMemo(() => projects.filter((project) => project.stage !== "archived"), [projects]);
+  const archivedProjects = useMemo(() => projects.filter((project) => project.stage === "archived"), [projects]);
   const activeProject = useMemo(
-    () => projects.find((project) => project.id === activeProjectId) ?? projects[0] ?? null,
-    [activeProjectId, projects],
+    () => activeProjects.find((project) => project.id === activeProjectId) ?? activeProjects[0] ?? null,
+    [activeProjectId, activeProjects],
   );
 
   useEffect(() => {
     window.localStorage.setItem(COLANDER_WORKSPACE_STORAGE_KEY, JSON.stringify(projects));
-    if (!activeProjectId && projects[0]) setActiveProjectId(projects[0].id);
-  }, [activeProjectId, projects]);
+    if (!activeProjects.some((project) => project.id === activeProjectId)) setActiveProjectId(activeProjects[0]?.id ?? "");
+  }, [activeProjectId, activeProjects, projects]);
+
+  useEffect(() => {
+    setProjectNameEdit(activeProject?.title ?? "");
+    setPendingDeleteProjectId("");
+    setPendingForgetArtifactId("");
+  }, [activeProject?.id, activeProject?.title]);
 
   useEffect(() => {
     const refreshProjects = () => {
@@ -248,13 +264,73 @@ export function ColanderApp() {
     if (launch) launchTool(toolId, project);
   }
 
-  function launchTool(toolId: PastaToolId, projectOverride?: PastaWorkspaceProject) {
+  function renameActiveProject() {
+    if (!activeProject) return;
+    const title = projectNameEdit.trim();
+    if (!title) { setError("Project name cannot be empty."); return; }
+    const renamed = renamePastaProject(activeProject, title);
+    if (renamed === activeProject) { setStatus("Project name is unchanged."); return; }
+    setProjects((current) => current.map((project) => project.id === renamed.id ? renamed : project));
+    setError("");
+    setStatus(`Renamed project to ${renamed.title}`);
+    logClientSystemEvent({ eventType: "colander.project_renamed", message: `Colander renamed project to ${renamed.title}`, metadata: { app: "Colander", projectId: renamed.id } });
+  }
+
+  function duplicateActiveProject() {
+    if (!activeProject) return;
+    const duplicate = duplicatePastaProject(activeProject);
+    setProjects((current) => [duplicate, ...current]);
+    setActiveProjectId(duplicate.id);
+    setStatus(`Created independent copy ${duplicate.title}`);
+    logClientSystemEvent({ eventType: "colander.project_duplicated", message: `Colander duplicated ${activeProject.title}`, metadata: { app: "Colander", projectId: activeProject.id, duplicateProjectId: duplicate.id } });
+  }
+
+  function archiveActiveProject() {
+    if (!activeProject) return;
+    const archived = archivePastaProject(activeProject);
+    const nextActive = activeProjects.find((project) => project.id !== activeProject.id);
+    setProjects((current) => current.map((project) => project.id === archived.id ? archived : project));
+    setActiveProjectId(nextActive?.id ?? "");
+    setStatus(`Archived ${archived.title}. You can restore it below.`);
+    logClientSystemEvent({ eventType: "colander.project_archived", message: `Colander archived ${archived.title}`, metadata: { app: "Colander", projectId: archived.id, previousStage: archived.archivedFromStage } });
+  }
+
+  function restoreProject(projectId: string) {
+    const project = projects.find((candidate) => candidate.id === projectId);
+    if (!project) return;
+    const restored = restorePastaProject(project);
+    setProjects((current) => current.map((candidate) => candidate.id === projectId ? restored : candidate));
+    setActiveProjectId(restored.id);
+    setStatus(`Restored ${restored.title}`);
+    logClientSystemEvent({ eventType: "colander.project_restored", message: `Colander restored ${restored.title}`, metadata: { app: "Colander", projectId: restored.id, stage: restored.stage } });
+  }
+
+  function deleteArchivedProject(projectId: string) {
+    const project = projects.find((candidate) => candidate.id === projectId && candidate.stage === "archived");
+    if (!project) return;
+    setProjects((current) => current.filter((candidate) => candidate.id !== projectId));
+    setPendingDeleteProjectId("");
+    setStatus(`Permanently deleted ${project.title}`);
+    logClientSystemEvent({ eventType: "colander.project_deleted", message: `Colander permanently deleted ${project.title}`, metadata: { app: "Colander", projectId } });
+  }
+
+  function forgetSiteRecord(artifactId: string) {
+    if (!activeProject) return;
+    const artifact = activeProject.artifacts.find((candidate) => candidate.id === artifactId);
+    if (!artifact) return;
+    setProjects((current) => current.map((project) => project.id === activeProject.id ? forgetPastaProjectArtifact(project, artifactId) : project));
+    setPendingForgetArtifactId("");
+    setStatus(`Forgot local site record ${artifact.fileName}. The exported ZIP, installed bytes, and contract are unchanged.`);
+    logClientSystemEvent({ eventType: "colander.site_record_forgotten", message: `Colander forgot ${artifact.fileName}`, metadata: { app: "Colander", projectId: activeProject.id, artifactId, contract: artifact.contract } });
+  }
+
+  function launchTool(toolId: PastaToolId, projectOverride?: PastaWorkspaceProject, contractOverride?: string) {
     const project = projectOverride ?? activeProject;
     if (!project) {
       createProject(toolId, true);
       return;
     }
-    const path = pastaToolHandoffPath(toolId, project, network);
+    const path = pastaToolHandoffPath(toolId, project, network, contractOverride);
     logClientSystemEvent({
       eventType: "colander.tool_launched",
       message: `Colander opened ${toolId} for ${project.title}`,
@@ -284,7 +360,9 @@ export function ColanderApp() {
     try {
       const parsed = JSON.parse(await file.text()) as unknown;
       if (!isPastaProject(parsed)) throw new Error("That file is not a Pasta Project manifest.");
-      const imported = { ...parsed, updatedAt: new Date().toISOString() };
+      const normalized = parsePastaProjects(JSON.stringify(parsed))[0];
+      if (!normalized) throw new Error("That file is not a recoverable Pasta Project manifest.");
+      const imported = { ...normalized, updatedAt: new Date().toISOString() };
       setProjects((current) => [imported, ...current.filter((project) => project.id !== imported.id)]);
       setActiveProjectId(imported.id);
       setStatus(`Imported ${imported.title}`);
@@ -298,8 +376,9 @@ export function ColanderApp() {
     }
   }
 
-  async function openContract() {
-    const kt = addressInput.trim();
+  async function openContract(contractOverride?: string) {
+    const kt = (contractOverride ?? addressInput).trim();
+    if (contractOverride) setAddressInput(kt);
     if (!isKt(kt)) {
       setError("Enter a valid KT1 contract address.");
       return;
@@ -359,12 +438,21 @@ export function ColanderApp() {
         ? await readContract(await colanderGetTezos())
         : await withTezosRpcFallback((tezos) => readContract(tezos), { network, attemptTimeoutMs: 10_000 });
       setOpened(next);
+      const toolId = toolIdForContractKind(next.adapter?.kind);
+      const contractRecord = {
+        toolId,
+        network,
+        label: next.adapter?.label ?? `Contract ${short(kt)}`,
+        source: "colander" as const,
+        lastVerifiedAt: new Date().toISOString(),
+      };
       setProjects((current) => {
         const target = current.find((project) => project.id === activeProject?.id);
-        if (target) return current.map((project) => project.id === target.id ? attachContract(project, kt) : project);
+        if (target) return current.map((project) => project.id === target.id ? attachContract(project, kt, contractRecord) : project);
         const recovered = attachContract(
-          createPastaProject(`${next.adapter?.label ?? "Recovered"} ${short(kt)}`, toolIdForContractKind(next.adapter?.kind), network),
+          createPastaProject(`${next.adapter?.label ?? "Recovered"} ${short(kt)}`, toolId, network),
           kt,
+          contractRecord,
         );
         setActiveProjectId(recovered.id);
         return [recovered, ...current];
@@ -450,6 +538,10 @@ export function ColanderApp() {
         return c.methodsObject.remove_curator(v.curator);
       case "set_sale_active":
         return c.methodsObject.set_sale_active({ token_id: num("token_id"), active: bool("active") });
+      case "set_project_active":
+        return c.methodsObject.set_project_active({ project_id: num("project_id"), active: bool("active") });
+      case "cancel_expired_reservation":
+        return c.methodsObject.cancel_expired_reservation(num("reservation_id"));
       case "set_sale":
         return c.methodsObject.set_sale({
           token_id: num("token_id"),
@@ -632,7 +724,7 @@ export function ColanderApp() {
                 Create project
               </PrimaryButton>
               <ProjectList>
-                {projects.length ? projects.map((project) => (
+                {activeProjects.length ? activeProjects.map((project) => (
                   <ProjectButton
                     key={project.id}
                     type="button"
@@ -640,16 +732,90 @@ export function ColanderApp() {
                     onClick={() => setActiveProjectId(project.id)}
                   >
                     <strong>{project.title}</strong>
-                    <span>{project.stage} · {project.contracts.length} contract{project.contracts.length === 1 ? "" : "s"} · {project.artifacts.length} site export{project.artifacts.length === 1 ? "" : "s"}</span>
+                    <span>{project.stage} · {project.contracts.length} contract{project.contracts.length === 1 ? "" : "s"} · {project.drafts.length} saved draft{project.drafts.length === 1 ? "" : "s"} · {project.artifacts.length} site export{project.artifacts.length === 1 ? "" : "s"}</span>
                   </ProjectButton>
-                )) : <Muted>No projects yet. Start with the outcome you want.</Muted>}
+                )) : <Muted>No active projects. Start a new one or restore an archived project.</Muted>}
               </ProjectList>
+              {activeProject ? (
+                <ProjectManager aria-label="Active project management" data-testid="colander-project-manager">
+                  <strong>Manage active project</strong>
+                  <Field>
+                    Project title
+                    <Input value={projectNameEdit} onChange={(event) => setProjectNameEdit(event.target.value)} />
+                  </Field>
+                  <ProjectManagerActions>
+                    <Button type="button" onClick={renameActiveProject}>Save name</Button>
+                    <Button type="button" onClick={duplicateActiveProject}>Duplicate as new project</Button>
+                    <DangerButton type="button" onClick={archiveActiveProject}>Archive project</DangerButton>
+                  </ProjectManagerActions>
+                  <Muted>Duplicates start clean and do not share contracts, drafts, or exported sites.</Muted>
+                </ProjectManager>
+              ) : null}
+              {archivedProjects.length ? (
+                <ProjectManager aria-label="Archived Pasta projects" data-testid="colander-archived-projects">
+                  <strong>Archived projects</strong>
+                  {archivedProjects.map((project) => (
+                    <ArchivedProjectRow key={project.id}>
+                      <span><strong>{project.title}</strong><Muted>archived from {project.archivedFromStage ?? "legacy state"}</Muted></span>
+                      <ProjectManagerActions>
+                        <Button type="button" onClick={() => restoreProject(project.id)}>Restore project</Button>
+                        {pendingDeleteProjectId === project.id ? (
+                          <>
+                            <DangerButton type="button" onClick={() => deleteArchivedProject(project.id)}>Confirm permanent delete</DangerButton>
+                            <Button type="button" onClick={() => setPendingDeleteProjectId("")}>Cancel</Button>
+                          </>
+                        ) : <DangerButton type="button" onClick={() => setPendingDeleteProjectId(project.id)}>Delete permanently</DangerButton>}
+                      </ProjectManagerActions>
+                    </ArchivedProjectRow>
+                  ))}
+                </ProjectManager>
+              ) : null}
+              {activeProject?.drafts.length ? (
+                <ArtifactList aria-label="Active project saved drafts" data-testid="colander-saved-drafts">
+                  <strong>Recoverable studio work</strong>
+                  {activeProject.drafts.slice(0, 3).map((draft) => (
+                    <span key={`${draft.toolId}-${draft.storageKey}`}>
+                      {draft.summary} · saved {new Date(draft.savedAt).toLocaleString()}
+                      {" "}<Button type="button" onClick={() => launchTool(draft.toolId, activeProject)}>Resume draft ↗</Button>
+                    </span>
+                  ))}
+                </ArtifactList>
+              ) : null}
+              {activeProject?.contractRecords.length ? (
+                <ArtifactList aria-label="Active project remembered contracts" data-testid="colander-remembered-contracts">
+                  <strong>Remembered contracts</strong>
+                  {activeProject.contractRecords.slice().reverse().slice(0, 6).map((record) => (
+                    <span key={`${record.toolId}-${record.address}`}>
+                      {record.label} · {record.address} · {record.network}
+                      {record.lastVerifiedAt ? ` · verified ${new Date(record.lastVerifiedAt).toLocaleString()}` : " · not re-verified on this device"}
+                      {" "}<Button type="button" onClick={() => void openContract(record.address)}>Open in Colander manager</Button>
+                      {" "}<Button type="button" onClick={() => launchTool(record.toolId, activeProject)}>Resume in {PASTA_TOOL_STORIES.find((tool) => tool.id === record.toolId)?.label ?? record.toolId} ↗</Button>
+                    </span>
+                  ))}
+                </ArtifactList>
+              ) : null}
               {activeProject?.artifacts.length ? (
-                <ArtifactList aria-label="Active project site exports">
+                <ArtifactList aria-label="Active project site exports" data-testid="colander-site-artifacts">
                   <strong>Self-hosted sites</strong>
                   {activeProject.artifacts.slice(0, 3).map((artifact) => (
-                    <span key={artifact.id}>{artifact.fileName} · {short(artifact.contract)}</span>
+                    <ArtifactRecord key={artifact.id}>
+                      <span>{artifact.fileName} · {artifact.contract}{artifact.localUrl ? ` · installed URL ${artifact.localUrl}` : " · portable ZIP record"}</span>
+                      <ProjectManagerActions>
+                        <Button
+                          type="button"
+                          aria-label={`Rebuild ${artifact.fileName} in owner app`}
+                          onClick={() => launchTool(artifact.toolId, activeProject, artifact.contract)}
+                        >Rebuild in {PASTA_TOOL_STORIES.find((tool) => tool.id === artifact.toolId)?.label ?? artifact.toolId} ↗</Button>
+                        {pendingForgetArtifactId === artifact.id ? (
+                          <>
+                            <DangerButton type="button" onClick={() => forgetSiteRecord(artifact.id)}>Confirm forget record</DangerButton>
+                            <Button type="button" onClick={() => setPendingForgetArtifactId("")}>Cancel</Button>
+                          </>
+                        ) : <DangerButton type="button" onClick={() => setPendingForgetArtifactId(artifact.id)}>Forget record</DangerButton>}
+                      </ProjectManagerActions>
+                    </ArtifactRecord>
                   ))}
+                  <Muted>Installed URLs belong to the originating Pasta Suite. Forgetting this record does not uninstall its files.</Muted>
                 </ArtifactList>
               ) : null}
             </ProjectRail>
@@ -685,7 +851,7 @@ export function ColanderApp() {
               data-testid="colander-address"
             />
           </Field>
-          <PrimaryButton type="button" onClick={openContract} disabled={busy}>
+          <PrimaryButton type="button" onClick={() => void openContract()} disabled={busy}>
             Open contract
           </PrimaryButton>
         </Toolbar>
@@ -922,6 +1088,36 @@ const ProjectList = styled.div`
   overflow: auto;
 `;
 
+const ProjectManager = styled.section`
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid var(--wtf-app-border, #b8c6d4);
+  background: var(--wtf-app-surface, #f7f7f7);
+
+  [data-colander-presentation-host="gamma"] & {
+    background: #070706;
+    border-color: rgba(242, 234, 217, 0.18);
+  }
+`;
+
+const ProjectManagerActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+
+  > button { flex: 1 1 118px; }
+`;
+
+const ArchivedProjectRow = styled.div`
+  display: grid;
+  gap: 6px;
+  padding-top: 7px;
+  border-top: 1px solid var(--wtf-app-border, #d2d2d2);
+
+  > span { display: grid; gap: 2px; }
+`;
+
 const ArtifactList = styled.div`
   display: grid;
   gap: 4px;
@@ -934,6 +1130,15 @@ const ArtifactList = styled.div`
   [data-colander-presentation-host="gamma"] & {
     border-top-color: rgba(242, 234, 217, 0.16);
   }
+`;
+
+const ArtifactRecord = styled.div`
+  display: grid;
+  gap: 5px;
+  padding: 6px 0;
+  border-top: 1px solid var(--wtf-app-border, #d2d2d2);
+
+  > span { overflow-wrap: anywhere; }
 `;
 
 const ProjectButton = styled.button<{ $active: boolean }>`
@@ -1252,6 +1457,18 @@ const Button = styled.button.attrs(colanderRegionAttrs("button"))`
 
   [data-colander-presentation-host="gamma"] &:disabled {
     color: rgba(242, 234, 217, 0.42);
+  }
+`;
+
+const DangerButton = styled(Button)`
+  border-color: #9b1c1c;
+  color: #8d1010;
+
+  &:hover:not(:disabled) { background: #fff0f0; }
+
+  [data-colander-presentation-host="gamma"] & {
+    border-color: #ff8178;
+    color: #ff8178;
   }
 `;
 

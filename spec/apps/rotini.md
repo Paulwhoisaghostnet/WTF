@@ -9,36 +9,37 @@
 
 ## Purpose
 
-Generative collection publisher for trait layers, rarity weighting, deterministic edition generation, and standard FA2 output.
+Generative collection publisher for weighted trait layers and collector-finalized standard FA2 tokens whose final artifact is a self-contained PNG, animated GIF, or offline interactive ZIP.
 
 ## Inputs
 
 - layer assets
 - trait names and rarity weights
-- edition count and deterministic seed
+- supply/cap/reservation policy; the contract assigns each collector's immutable seed
+- output mode: PNG, GIF, or interactive ZIP
 - collection metadata or existing contract target
 - wallet/network/pinning settings
 
 ## Outputs
 
-- generated edition metadata
-- rendered or referenced artifacts
-- standard collection contract or minted token set
-- generation proof and DNA map
+- pinned `pasta-rotini-generator@2` project manifest and source layers
+- directly displayable PNG/GIF token artifacts or dependency-free interactive ZIP artifacts with PNG covers
+- direct TZIP-21 metadata and exact on-chain SHA-256 artifact bindings
+- dedicated generative FA2 contract with reservation/finalization/refund lifecycle
 
 ## Dependencies
 
-- shared deterministic generative engine
-- PastaStandardCollectionFA2 template
+- shared deterministic generative engine and browser artifact kernel
+- dedicated PastaGenerativeCollectionFA2 template
 - Macaroni-derived wallet/pinning kernel
 - CH-EASE package import
 
 ## Produced Assets
 
-- edition manifests
-- trait/DNA table
-- generated token metadata
-- standard collection contract or token products
+- generator manifests and source-layer CIDs
+- trait selections, immutable reservation seeds, and artifact hashes
+- direct token metadata
+- self-contained PNG, GIF, or ZIP token products
 
 ## Consumed Assets
 
@@ -65,4 +66,6 @@ Generative collection publisher for trait layers, rarity weighting, deterministi
 - CH-EASE packages use schema `wtfos.pasta.chease-package.v1` for app handoff when this app consumes package input.
 - Tezos L1 network choices must stay explicit. New Pasta apps use Tezos Mainnet `https://tezos-mainnet.octez.io/` with fallback `https://tcinfra.net/rpc/tezos/mainnet`, and Tezos Shadownet `https://tezos-shadownet.octez.io/` with fallback `https://tcinfra.net/rpc/tezos/shadownet`.
 - Embedded wtfOS trusted-creator storage/pinning/hosting must be hidden from downloaded standalone builds.
+- Interactive ZIPs must keep `index.html` at archive root, use only packaged relative dependencies, reject network APIs/external URLs, and provide a <=2 MB PNG cover; every token artifact stays <=250 MB.
+- No NFT exists at generator publication or reservation. `finalize_iteration` is the token-creation boundary after durable artifact and metadata pinning.
 - Tortellini is intentionally absent; Macaroni remains the blind-mint product.

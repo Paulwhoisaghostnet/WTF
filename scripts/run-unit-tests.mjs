@@ -34,10 +34,16 @@ const reporter = process.env.WTF_UNIT_TEST_REPORTER?.trim();
 const testArgs = ["--import", "tsx", "--test", "--test-concurrency=4"];
 if (reporter) testArgs.push(`--test-reporter=${reporter}`);
 testArgs.push(...files);
+const testEnv = {
+  ...process.env,
+  DATABASE_URL:
+    process.env.DATABASE_URL?.trim()
+    || "postgresql://wtf:wtf@127.0.0.1:5432/wtf_test",
+};
 const child = spawn(
   process.execPath,
   testArgs,
-  { cwd: process.cwd(), env: process.env, stdio: "inherit" },
+  { cwd: process.cwd(), env: testEnv, stdio: "inherit" },
 );
 child.on("error", (error) => {
   console.error("[unit] failed to launch test process", error);

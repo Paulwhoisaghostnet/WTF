@@ -37,6 +37,12 @@ function safeSiteSlug(value) {
   return slug;
 }
 
+function exactSiteSlug(value) {
+  const slug = String(value || "");
+  if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(slug)) throw new Error("invalid site slug");
+  return slug;
+}
+
 function parseStoredZip(input, options = {}) {
   const archive = Buffer.isBuffer(input) ? input : Buffer.from(input);
   const maxFiles = options.maxFiles ?? 64;
@@ -144,11 +150,37 @@ async function listStoredSites(root) {
   return sites.sort((a, b) => String(b.installedAt).localeCompare(String(a.installedAt)));
 }
 
+async function removeStoredSite(root, value) {
+  const slug = exactSiteSlug(value);
+  const resolvedRoot = path.resolve(root);
+  const target = path.join(resolvedRoot, slug);
+  const tombstone = path.join(resolvedRoot, `.${slug}.removing-${crypto.randomBytes(4).toString("hex")}`);
+  let manifest;
+  try {
+    const stats = await fsp.lstat(target);
+    if (!stats.isDirectory() || stats.isSymbolicLink()) throw new Error("stored site is not a managed directory");
+    manifest = JSON.parse(await fsp.readFile(path.join(target, "pasta-site.json"), "utf8"));
+    await fsp.rename(target, tombstone);
+  } catch (error) {
+    if (error?.code === "ENOENT") throw new Error("stored site not found");
+    throw error;
+  }
+  try {
+    await fsp.rm(tombstone, { recursive: true, force: true });
+  } catch (error) {
+    await fsp.rename(tombstone, target).catch(() => {});
+    throw error;
+  }
+  return { ...manifest, slug, url: `/sites/${slug}/` };
+}
+
 module.exports = {
+  exactSiteSlug,
   installStoredSite,
   listStoredSites,
   parseStoredZip,
   resolveHostedSitePath,
+  removeStoredSite,
   safeArchivePath,
   safeSiteSlug,
 };

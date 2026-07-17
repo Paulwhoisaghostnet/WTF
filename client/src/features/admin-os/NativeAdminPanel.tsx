@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Select } from "react95";
 import styled from "styled-components";
@@ -6,6 +7,7 @@ import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { useWindowManager } from "../../lib/window-context";
 import { findAdminSurfaceForPath, type AdminSurface } from "./admin-surface-registry";
+import { adminSectionHrefForPanelLabel } from "../admin/admin-section-catalog";
 
 const Panel = styled.div`
   border: 2px inset #fff;
@@ -80,6 +82,11 @@ export function NativeAdminPanel({
   const qc = useQueryClient();
   const surface = findAdminSurfaceForPath(path);
   const isStrictAdmin = user?.role === "admin";
+  const [selectedPanel, setSelectedPanel] = useState("");
+
+  useEffect(() => {
+    setSelectedPanel(surface?.adminPanelTabs[0] ?? "OS Admin");
+  }, [surface?.id]);
 
   const desktopAppsQuery = useQuery({
     queryKey: ["admin", "native", "desktop-apps"],
@@ -102,6 +109,11 @@ export function NativeAdminPanel({
   const desktopEnabled = surface.desktopAppKey
     ? desktopAppsQuery.data?.apps?.[surface.desktopAppKey]
     : undefined;
+  const effectiveSelectedPanel =
+    selectedPanel || surface.adminPanelTabs[0] || "OS Admin";
+  const selectedAdminHref = adminSectionHrefForPanelLabel(effectiveSelectedPanel);
+  const uiAdminRoutes = (surface.adminRoutes ?? []).filter((route) => !route.startsWith("/api/"));
+  const apiAdminRoutes = (surface.adminRoutes ?? []).filter((route) => route.startsWith("/api/"));
 
   return (
     <Panel>
@@ -143,29 +155,40 @@ export function NativeAdminPanel({
         <GroupBox label="Automation">
           <AutomationHandles surface={surface} />
           <div style={{ marginTop: 8 }}>
-            <Button size="sm" onClick={() => wm.openPage("/admin")}>
-              Open Builder
+            <Button size="sm" onClick={() => wm.openPage("/admin?section=automation")}>
+              Open Automation
             </Button>
           </div>
         </GroupBox>
 
         <GroupBox label="Admin Panel">
           <Select
-            value={surface.adminPanelTabs[0] ?? "OS Admin"}
-            onChange={() => undefined}
+            value={effectiveSelectedPanel}
+            onChange={(event: any) => setSelectedPanel(String(event.value || "OS Admin"))}
             options={surface.adminPanelTabs.map((tab) => ({ label: tab, value: tab }))}
             width={180}
           />
           <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <Button size="sm" onClick={() => wm.openPage("/admin")}>
-              Admin Panel
+            <Button size="sm" onClick={() => wm.openPage(selectedAdminHref)}>
+              Open {effectiveSelectedPanel}
             </Button>
-            {(surface.adminRoutes ?? []).map((route) => (
+            <Button size="sm" onClick={() => wm.openPage(`/admin?section=help&q=${encodeURIComponent(surface.id)}`)}>
+              Find in Help
+            </Button>
+            {uiAdminRoutes.map((route) => (
               <Button key={route} size="sm" onClick={() => wm.openPage(route)}>
                 {route}
               </Button>
             ))}
           </div>
+          {apiAdminRoutes.length ? (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>Admin APIs</div>
+              <TagList>
+                {apiAdminRoutes.map((route) => <Tag key={route}>{route}</Tag>)}
+              </TagList>
+            </div>
+          ) : null}
         </GroupBox>
       </Grid>
     </Panel>

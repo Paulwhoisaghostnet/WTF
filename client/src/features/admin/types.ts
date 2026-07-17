@@ -3,12 +3,116 @@ import type {
   PermissionKey,
   RoleDefinition,
   UserRole,
+  XpTierInfo,
 } from "@shared/types";
 import type {
   DesktopAppsResponse as SharedDesktopAppsResponse,
   DesktopAppDocStatus,
 } from "@shared/desktop-apps";
-import type { WtfCurseKey } from "@shared/curses";
+import type { WtfCurseKey, WtfCurseStatus } from "@shared/curses";
+import type { DesktopAppearance, DesktopIconLayout } from "@shared/desktop";
+import type { LocalizationSettings } from "@shared/localization";
+
+export type AdminUser = {
+  id: number;
+  username: string;
+  email: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  role: UserRole;
+  roles: UserRole[];
+  highestRole: RoleDefinition | null;
+  experiencePoints: number;
+  xpTier: XpTierInfo;
+  curses: WtfCurseStatus[];
+  twitterHandle: string | null;
+  twitterVerified: boolean;
+  discordHandle: string | null;
+  discordVerified: boolean;
+  welcomedToWtfOs: boolean;
+  hasTemporaryPassword: boolean;
+  tempPasswordExpiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminUserDesktopSettings = {
+  appearance: DesktopAppearance;
+  iconLayout: DesktopIconLayout;
+  localization: LocalizationSettings;
+  updatedAt: string | null;
+};
+
+export type AdminUserPassport = {
+  user: {
+    id: number;
+    username: string;
+    email: string | null;
+    displayName: string | null;
+    avatarUrl: string | null;
+    bio: string | null;
+    experiencePoints: number;
+    twitterHandle: string | null;
+    twitterVerified: boolean;
+    twitterPublic: boolean;
+    discordHandle: string | null;
+    discordVerified: boolean;
+    discordPublic: boolean;
+    emailPublic: boolean;
+    googleLinked: boolean;
+    githubLinked: boolean;
+    pfpTokenContract: string | null;
+    pfpTokenId: string | null;
+    pfpImageUrl: string | null;
+    welcomedToWtfOs: boolean;
+    welcomedToWtfOsAt: string | null;
+    gmWelcomeUtcDay: string | null;
+    gmWelcomeLastSeenAt: string | null;
+    hasPassword: boolean;
+    hasTemporaryPassword: boolean;
+    tempPasswordExpiresAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+  roles: RoleDefinition[];
+  highestRole: RoleDefinition | null;
+  xpTier: XpTierInfo;
+  curses: WtfCurseStatus[];
+  effectivePermissions: Record<PermissionKey, boolean>;
+  wtfOsAccess: {
+    surfaceIds: string[];
+    routePatterns: string[];
+    adminPanelTabs: string[];
+    automationHandles: string[];
+  };
+  desktopSettings: AdminUserDesktopSettings;
+  wallets: Array<{
+    id: number;
+    walletAddress: string;
+    tezDomain: string | null;
+    isPrimary: boolean;
+    linkedAt: string;
+    lastActivityAt: string | null;
+    lastSyncedAt: string | null;
+  }>;
+  subdomains: Array<{
+    id: number;
+    fullName: string;
+    status: string;
+    walletAddress: string | null;
+    notes: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  recentXpEvents: Array<{
+    id: number;
+    amount: number;
+    reason: string;
+    awardedBy: number | null;
+    createdAt: string;
+  }>;
+  generatedAt: string;
+};
 
 export type BoardThread = {
   id: number;

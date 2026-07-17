@@ -599,6 +599,7 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "studio",
   "ipfs-pinning",
   "my-gallery",
+  "objkt-operator",
 ] as const;
 
 export type DesktopIconKey = (typeof DESKTOP_ICON_LAYOUT_KEYS)[number];

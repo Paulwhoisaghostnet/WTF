@@ -8,6 +8,7 @@ import { registerAdminUserRoutes } from "../features/admin/user-routes";
 import { registerAdminStatsRoutes } from "../features/admin/stats-routes";
 import { registerAdminInAppMarketRoutes } from "../features/admin/in-app-market-routes";
 import { registerAdminWDigestRoutes } from "../features/admin/w-digest-routes";
+import { registerAdminHelpIndexRoutes } from "../features/admin/help-index-routes";
 import { registerSpineAdminRoutes } from "../features/atproto-spine/admin-routes";
 import { registerAppRegistryRoutes } from "../features/app-registry/admin-routes";
 
@@ -24,5 +25,6 @@ registerAdminInAppMarketRoutes(router);
 registerSpineAdminRoutes(router);
 registerAppRegistryRoutes(router);
 registerAdminWDigestRoutes(router);
+registerAdminHelpIndexRoutes(router);
 
 export default router;

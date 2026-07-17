@@ -88,6 +88,12 @@ function readMemberRow(member) {
   };
 }
 
+function applyDraftMembers(members) {
+  state.members.forEach((member) => member.el.remove());
+  state.members = [];
+  (Array.isArray(members) && members.length ? members : [{}]).forEach(addMemberRow);
+}
+
 // ---------- CH-EASE package import ----------
 
 async function importPackage(file) {
@@ -502,6 +508,28 @@ function wire() {
     MD.notify(`Loaded ${routeHandoff.contract} from Colander.`, "success");
   }
   if (routeHandoff?.projectTitle && !$("bnName").value) $("bnName").value = routeHandoff.projectTitle;
+
+  window.PastaStudioDraft.start({
+    app: "ravioli",
+    summary: () => $("bnName").value.trim() || "Ravioli bundle draft",
+    collect: () => ({ members: state.members.map(readMemberRow) }),
+    apply: (extra) => applyDraftMembers(extra.members),
+    afterApply: () => {
+      state.network = $("network").value;
+      updateMysteryNote();
+      document.querySelector('input[name="target"]:checked')?.dispatchEvent(new Event("change"));
+    },
+  });
+  window.PastaStudioContracts.start({
+    app: "ravioli",
+    label: "Ravioli",
+    contractInputs: ["existingKt", "opKt"],
+    title: () => $("bnName").value.trim(),
+    onResume: () => {
+      document.querySelector('input[name="target"][value="existing_contract"]').checked = true;
+      document.querySelector('input[name="target"]:checked')?.dispatchEvent(new Event("change"));
+    },
+  });
 }
 
 wire();

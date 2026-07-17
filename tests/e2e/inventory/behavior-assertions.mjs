@@ -462,7 +462,46 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion:
       "CH-EASE can open a target Pasta publisher with the current package preloaded through a same-origin sessionStorage handoff, the creation-tool iframe preserves the handoff query context, the publisher confirms import with inline status, and Spaghetti can rehearse the Shadownet-safe publish choreography from that imported package.",
     durableSideEffectAssertion:
-      "The CH-EASE handoff emits chease.package_handoff_opened; the six Pasta studios expose the shared MD runtime to their module scripts and consume the shared handoff key without mutating server storage before the creator chooses to deploy or export; the focused browser proof records Spaghetti's chain guard, origination, create_token batch, mint batch, pinned collection metadata, pinned token metadata, and spaghetti.collection_deployed / spaghetti.token_published events.",
+      "The CH-EASE handoff emits chease.package_handoff_opened; Colander project identity survives CH-EASE and the next publisher handoff; the six newer Pasta studios expose the shared MD runtime to their module scripts and consume the shared handoff key without mutating server storage before the creator chooses to deploy or export; the focused browser proof records Spaghetti's chain guard, origination, create_token batch, mint batch, pinned collection metadata, pinned token metadata, and spaghetti.collection_deployed / spaghetti.token_published events.",
+  },
+  {
+    id: "pasta-protocol.studio-draft-recovery",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec:
+      "scripts/pasta-protocol/studio-kit/studio-draft.js, public/creation-tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/js/studio*.js, client/src/features/pasta-protocol/colander/ColanderApp.tsx, client/src/features/pasta-protocol/colander/colander-workspace.ts, client/src/features/pasta-protocol/pasta-static-policy.test.ts, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs",
+    verificationCommand:
+      "node scripts/pasta-protocol/sync-site-kit.mjs && npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run build && HARNESS_PORT=4321 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --grep \"recover drafts\" --reporter=list",
+    userVisibleAssertion:
+      "Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna visibly autosave unfinished work, restore fixed and app-specific dynamic fields after reload, export/import a portable Pasta draft backup, warn that local files must be reselected, and report resumable work inside the originating Colander project.",
+    durableSideEffectAssertion:
+      "Each draft uses pasta-studio-draft@1 under a project-scoped wtfos.pasta.studio.draft.v1 key; passwords and local file bytes are excluded; Colander stores only a recovery reference in the portable project manifest; stale mounted studios cannot write another app's project because handoff kind must match the studio owner; and the browser proof observes save/export/import/clear events plus six-app reload recovery.",
+  },
+  {
+    id: "pasta-protocol.gnocchi-multi-edition-collection",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec:
+      "contracts/pasta-protocol/PastaOpenEditionFA2.py, public/creation-tools/gnocchi/index.html, public/creation-tools/gnocchi/js/studio.js, scripts/pasta-protocol/shadownet-gnocchi-e2e.ts, client/src/features/pasta-protocol/pasta-static-policy.test.ts, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs",
+    verificationCommand:
+      "node scripts/pasta-protocol/compile-fa2-template.mjs contracts/pasta-protocol/PastaOpenEditionFA2.py pasta-open-edition gnocchi && npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run build && HARNESS_PORT=4391 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --grep 'Gnocchi publishes timed' --reporter=list",
+    userVisibleAssertion:
+      "A Gnocchi creator can create one collection, publish a Timed OE as token 0, verify and reuse that KT1 for a Forever OE as token 1 and Limited Edition as token 2, then list and manage all three independent policies without manually calling a contract or originating helper contracts.",
+    durableSideEffectAssertion:
+      "The SmartPy contract stores per-token policy locks and lifetime minted totals, counts creator reserves inside caps, prevents locked start/end/cap changes, enforces locked windows for public and delegated minting, and does not reopen cap or curve capacity after burns; the browser proof confirms one origination followed by three create_open_edition calls and renders all three token policies from confirmed collection storage.",
+  },
+  {
+    id: "pasta-protocol.rotini-self-contained-artifacts",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec:
+      "contracts/pasta-protocol/PastaGenerativeCollectionFA2.py, public/creation-tools/rotini/js/rotini-artifact.js, public/creation-tools/rotini/js/rotini-mint.js, scripts/pasta-protocol/rotini-artifact.test.mjs, scripts/pasta-protocol/shadownet-rotini-e2e.ts, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs",
+    verificationCommand:
+      "node scripts/pasta-protocol/compile-fa2-template.mjs contracts/pasta-protocol/PastaGenerativeCollectionFA2.py pasta-generative-collection rotini && node --test scripts/pasta-protocol/rotini-artifact.test.mjs && npm run build && HARNESS_PORT=4390 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --grep 'exported Rotini page materializes' --reporter=list",
+    userVisibleAssertion:
+      "A Rotini creator chooses PNG, animated GIF, or interactive ZIP for a generator project, and a collector's self-hosted page reserves an immutable seed/token id, creates and pins that normal artifact plus direct metadata, then finalizes a token that displays without Rotini, wtfOS, Objkt, a CDN script, or any external display software.",
+    durableSideEffectAssertion:
+      "The SmartPy contract creates no FA2 token before finalize_iteration, enforces project output MIME, stores the final artifact/display/thumbnail URIs and SHA-256, protects paid finalization across project closure, and refunds expired reservations; artifact tests validate deterministic selection, PNG/GIF/ZIP signatures, ZIP root index and offline policy, and SHA-256; the browser proof executes reserve_iteration and finalize_iteration for all three output types and inspects each pinned TZIP-21 payload.",
   },
   {
     id: "pasta-protocol.self-hosted-site-exports",
@@ -471,24 +510,63 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "scripts/pasta-protocol/site-kit/*, public/creation-tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/site.html, public/creation-tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/js/site*.js, client/src/features/pasta-protocol/colander/ColanderApp.tsx, client/src/features/pasta-protocol/colander/colander-workspace.ts, apps/pasta-suite-desktop/src/main.cjs, apps/pasta-suite-desktop/src/site-archive.cjs, apps/pasta-suite-desktop/scripts/prepare-assets.mjs, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs, tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs",
     verificationCommand:
-      "node scripts/pasta-protocol/sync-site-kit.mjs && npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run build && HARNESS_PORT=4321 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --reporter=list",
+      "node scripts/pasta-protocol/sync-site-kit.mjs && npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && node --test scripts/pasta-suite-site-archive.test.mjs && npm run pasta-suite:desktop:prepare && npm run build && HARNESS_PORT=4321 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "Every post-Macaroni Pasta publisher can download a standalone site ZIP: Spaghetti and Rotini expose inventory-backed direct purchase, Gnocchi exposes open-edition mint, Penne exposes claim, Ravioli exposes direct purchase plus redeem/reveal state, and Lasagna resolves the current exhibition revision. Inside Pasta Suite Desktop, the same export also appears in Colander's Self-hosted pages registry and opens from a loopback URL.",
+      "Macaroni and every newer Pasta publisher can download a standalone site ZIP: Macaroni exposes blind mint and reveal, Spaghetti exposes inventory-backed direct purchase, Rotini exposes reserve/render/pin/finalize for self-contained iterations, Gnocchi exposes open-edition mint, Penne exposes claim, Ravioli exposes direct purchase plus redeem/reveal state, and Lasagna resolves the current exhibition revision. Inside Pasta Suite Desktop, the same export appears in Colander's Self-hosted pages registry, opens from a loopback URL, rebuilds in its exact owner app, or can be explicitly uninstalled; web Colander can rebuild or forget only its portable record without claiming to delete native files.",
     durableSideEffectAssertion:
-      "Each ZIP contains index.html, pasta.config.js, shared site styling/runtime, wallet support, and Tezos dependencies; export emits the app-owned *.site_exported event; a Colander-launched export appends a self_hosted_site artifact to the portable workspace manifest and advances the project to published; and native Colander safely expands the stored ZIP under Documents/Pasta Suite/sites, writes a manifest, and emits pasta_suite.site_installed.",
+      "Each ZIP contains index.html, its app-owned config, site styling/runtime, wallet support, and Tezos dependencies; export emits the app-owned event; a Colander-launched Macaroni or newer-publisher export appends a self_hosted_site artifact to the portable workspace manifest and advances the project to published; native Colander safely expands the stored ZIP under Documents/Pasta Suite/sites, writes a manifest, and emits pasta_suite.site_installed; uninstall accepts only an exact managed slug, atomically removes the served directory, prunes matching artifacts, and emits pasta_suite.site_uninstalled, while record-only cleanup emits colander.site_record_forgotten without deleting bytes or touching chain state.",
+  },
+  {
+    id: "pasta-protocol.contract-resume-ledger",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec:
+      "scripts/pasta-protocol/studio-kit/studio-contracts.js, public/creation-tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/js/studio-contracts.js, client/src/features/pasta-protocol/colander/ColanderApp.tsx, client/src/features/pasta-protocol/colander/colander-workspace.ts, client/src/features/pasta-protocol/pasta-static-policy.test.ts, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs",
+    verificationCommand:
+      "node scripts/pasta-protocol/sync-site-kit.mjs && npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run build && HARNESS_PORT=4372 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --grep \"remember confirmed contracts\" --reporter=list",
+    userVisibleAssertion:
+      "Each newer standalone Pasta studio lists confirmed deployments after restart, verifies pasted KT1 contracts on the selected network before remembering them, restores the correct app-owned contract fields on resume, and lets the creator forget only the local reference; Colander shows the complete KT1, owner app, network, and last verification time with central-manager and owner-app reopen controls.",
+    durableSideEffectAssertion:
+      "Public lifecycle references use pasta-studio-contract@1 under the app-scoped wtfos.pasta.studio.contracts.v1 key and pasta-contract-ref@1 inside backward-compatible Colander projects; no wallet signing material is stored; confirmed deployments emit recorded events, manual and repeat reads emit verified events, resume/forget actions emit their normalized events, and the browser proof covers all six field mappings plus structured Colander persistence.",
+  },
+  {
+    id: "pasta-protocol.portable-chease-preparation",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec:
+      "public/creation-tools/ch-ease/index.html, public/creation-tools/ch-ease/css/theme.css, public/creation-tools/ch-ease/js/studio.js, public/creation-tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/js/common.js, apps/ch-ease-desktop, .github/workflows/ch-ease-desktop-installers.yml, server/routes/ch-ease-installers.ts, scripts/ch-ease-desktop-package-policy.test.mjs, apps/pasta-suite-desktop/scripts/prepare-assets.mjs, tests/playwright/inventory/pasta-chease-standalone.spec.mjs, tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs",
+    verificationCommand:
+      "npm run ch-ease:desktop:prepare && npm run ch-ease:desktop:check && npm run pasta-suite:desktop:prepare && npm run pasta-suite:desktop:check && HARNESS_PORT=4377 npx playwright test tests/playwright/inventory/pasta-chease-standalone.spec.mjs tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A creator can open or individually install CH-EASE without hosted wtfOS, select original media, pin it through their own Pinata account or Kubo node, edit collection and token metadata, choose the correct Pasta publisher, download the shared v1 package as JSON or a ZIP with original files, recover metadata after reload with a clear file-reselection warning, and immediately hand durable artifact URIs to any of the six locally bundled publisher targets.",
+    durableSideEffectAssertion:
+      "Portable CH-EASE writes provider-returned CIDs into the matching package items and emits chease.media_pinned while keeping Pinata JWTs, node configuration, and file bytes out of pasta-chease-draft@1 and the Colander manifest; it adds a pasta-studio-draft-ref@1 owned by ch-ease, stages a validated wtfos.pasta.chease-package.v1 payload in sessionStorage plus an expiry-wrapped one-use local fallback for noopener windows, deletes that fallback on publisher consumption, exposes the individual installer only when URL and SHA-256 are both configured, and native Colander preserves and resumes ch-ease rather than coercing it to Spaghetti.",
+  },
+  {
+    id: "pasta-protocol.native-colander-lifecycle",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec:
+      "apps/pasta-suite-desktop/scripts/prepare-assets.mjs, apps/pasta-suite-desktop/package.json, apps/pasta-suite-desktop/build/*, scripts/pasta-suite-desktop-package-policy.test.mjs, scripts/pasta-suite-desktop-artifact-smoke.mjs, scripts/pasta-suite-desktop-review-manifest.mjs, .github/workflows/pasta-suite-desktop-installers.yml, tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs",
+    verificationCommand:
+      "npm run pasta-suite:desktop:prepare && npm run pasta-suite:desktop:check && HARNESS_PORT=4375 npx playwright test tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Installed Colander displays the active project's recoverable drafts, complete remembered-contract lifecycle records, and self-hosted page artifacts, then resumes the correct bundled owner app, reopens a KT1 in the native manager, or opens the installed loopback page without requiring Objkt, Teia, or wtfOS hosting.",
+    durableSideEffectAssertion:
+      "Native project create/load/import/storage-refresh paths normalize pasta-project@1 records, preserve backward compatibility, filter malformed draft/contract/site references and unsafe local URLs, attach chain-read contracts as pasta-contract-ref@1 records, and pass project/network/contract context back to the same bundled standalone tools that own the records. Fresh project and contract-manager controls default visibly to Shadownet while preserving explicit Mainnet opt-in. Branded universal macOS DMG and Windows NSIS artifacts include all eight tools without external runtimes; the installer workflow launches each packaged executable on its owning OS and proves Shadownet-default Colander project creation plus CH-EASE launch before upload.",
   },
   {
     id: "pasta-protocol.colander-project-workspace",
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol"],
     ownerSpec:
-      "client/src/features/pasta-protocol/colander/ColanderApp.tsx, client/src/features/pasta-protocol/colander/colander-workspace.ts, public/creation-tools/*/js/common.js, public/creation-tools/*/js/studio.js, tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs",
+      "client/src/features/pasta-protocol/colander/ColanderApp.tsx, client/src/features/pasta-protocol/colander/colander-workspace.ts, apps/pasta-suite-desktop/scripts/prepare-assets.mjs, public/creation-tools/*/js/common.js, public/creation-tools/*/js/studio.js, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs, tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs, tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs",
     verificationCommand:
-      "npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run pasta:shadownet:colander",
+      "npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run pasta-suite:desktop:prepare && npm run pasta-suite:desktop:check && HARNESS_PORT=4379 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs --project=chromium --grep 'project lifecycle|web Colander owns' --reporter=list && npm run pasta:shadownet:colander",
     userVisibleAssertion:
-      "A creator can make a named local project in Colander, choose the outcome-specific Pasta app, reopen the project after reload, export or import its versioned manifest, and launch the owner app with project context without losing direct KT1 contract management.",
+      "A creator can make and rename a local project in web or installed Colander, duplicate its workflow as an independent clean project, reversibly archive and restore it, permanently delete it only after explicit confirmation, reopen it after reload, export or import its versioned manifest, and launch the owner app with project context without losing direct KT1 contract management.",
     durableSideEffectAssertion:
-      "The project persists under wtfos.pasta.colander.workspace.v1; Colander emits project lifecycle and tool-launch events; and each Pasta publisher attaches a newly deployed KT1 to the originating project and advances it to deployed without requiring Objkt, Teia, or a wtfOS database.",
+      "The project persists under wtfos.pasta.colander.workspace.v1; archive stores its prior stage for exact restore while legacy archives infer a safe stage; duplicates receive a new id and empty draft/contract/site ledgers; deletion is restricted to archived records; web and installed Colander emit normalized lifecycle events; CH-EASE preserves project ownership through package preparation; and Macaroni plus each newer Pasta publisher attaches a newly deployed or resumed KT1 to the originating project and advances it to deployed without requiring Objkt, Teia, or a wtfOS database.",
   },
   {
     id: "pasta-protocol.colander-context-handoff",
@@ -617,6 +695,32 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "A signed-in user opens Remote Applications into a managed wtfOS play window, sees remote video render before any gesture with the game's native cursor trapped by pointer lock (Esc releases), and can send remote input only after joining the matching apphost session room without gameplay traffic 429ing unrelated API calls.",
     durableSideEffectAssertion:
       "Source and apphost policy tests prove the Applications route uses the window manager instead of browser tabs, apphost WebSocket input rejects pre-join or mismatched app ids, apphost session traffic runs under a dedicated per-user rate limiter exempt from the generic /api/* quota, the session page starts video muted and self-heals zero-frame streams, and normal hosted-app launches require a remembered provider session instead of reusing stored provider passwords.",
+  },
+  {
+    id: "admin.broad-acute-control-suite",
+    domain: "Administration, Governance, and Operations",
+    ownerSurfaceIds: ["admin-panel"],
+    ownerSpec:
+      "client/src/features/admin/admin-control-suite-policy.test.ts; server/features/admin/help-index-policy.test.ts; tests/playwright/inventory/admin-control-suite.spec.mjs",
+    verificationCommand:
+      "npx tsx --test client/src/features/admin/admin-control-suite-policy.test.ts server/features/admin/help-index-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs",
+    userVisibleAssertion:
+      "An admin starts from task routing, searches URL-backed sections, reviews users in a sortable table with highest assigned role and level, opens a user name into a complete WTF Passport, reviews roles and curses in broad tables, and narrows into an acute record without hunting through one giant action row.",
+    durableSideEffectAssertion:
+      "The focused source and browser harness assert the user Passport composes canonical roles, permissions, curses, wtfOS access, desktop settings, wallets, domains, and EXP activity; desktop settings saves use optimistic concurrency and audited admin routes; role and curse handoffs preserve the selected user context.",
+  },
+  {
+    id: "admin.help-index-coverage",
+    domain: "Administration, Governance, and Operations",
+    ownerSurfaceIds: ["admin-panel"],
+    ownerSpec:
+      "client/src/features/admin/help/admin-help-index.test.ts; server/features/admin/help-index-policy.test.ts; tests/playwright/inventory/admin-control-suite.spec.mjs",
+    verificationCommand:
+      "npx tsx --test client/src/features/admin/help/admin-help-index.test.ts server/features/admin/help-index-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs -g \"help index\"",
+    userVisibleAssertion:
+      "An admin can describe a complaint in human language or search an exact surface ID, route, native setting, permission, curse, API path, or automation handle and receive a ranked destination plus a human resolution guide and an agent contract.",
+    durableSideEffectAssertion:
+      "Coverage fails unless every central admin section, registered WTF surface and element, permission, and curse has a unique stable help topic; the admin-only versioned Help API supports query, kind, and stable-ID filters and records searched queries without exposing credential data.",
   },
   {
     id: "desktop.app-gates-runtime-policy",

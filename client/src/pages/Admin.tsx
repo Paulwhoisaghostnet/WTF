@@ -1,27 +1,4 @@
 import { useState, useEffect } from "react";
-import type { LucideIcon } from "lucide-react";
-import {
-  BadgeCheck,
-  Bot,
-  Boxes,
-  ClipboardList,
-  Coins,
-  FileText,
-  Gamepad2,
-  Gift,
-  HardDrive,
-  Layers,
-  MonitorCog,
-  Package,
-  RadioTower,
-  ReceiptText,
-  ShieldCheck,
-  ShoppingBag,
-  Trophy,
-  Tv,
-  UserCog,
-  Users,
-} from "lucide-react";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UiButton, UiPanel } from "../components/wtfos-ui";
@@ -51,6 +28,9 @@ import {
 } from "../features/admin/tabs/SideQuestsAdminTab";
 import { StudioAdminTab } from "../features/admin/tabs/StudioAdminTab";
 import { UsersAdminTab } from "../features/admin/tabs/UsersAdminTab";
+import { CursesAdminTab } from "../features/admin/tabs/CursesAdminTab";
+import { AdminHelpTab } from "../features/admin/tabs/AdminHelpTab";
+import { AdminOverviewTab } from "../features/admin/tabs/AdminOverviewTab";
 import { WDigestAdminTab } from "../features/admin/tabs/WDigestAdminTab";
 import { WtfTezAdminTab } from "../features/admin/tabs/WtfTezAdminTab";
 import { WtfTvAdminTab } from "../features/admin/tabs/WtfTvAdminTab";
@@ -63,6 +43,11 @@ import type {
   TempPasswordResult,
 } from "../features/admin/types";
 import { type PermissionCategory } from "@shared/types";
+import { ADMIN_SECTIONS, type AdminSection } from "../features/admin/admin-navigation";
+import {
+  findAdminSectionBySlug,
+  findAdminSectionByValue,
+} from "../features/admin/admin-section-catalog";
 
 const ActionRow = styled.div`
   display: flex;
@@ -303,6 +288,26 @@ const SuiteNav = styled.nav`
   }
 `;
 
+const NavSearch = styled.input`
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #5b626b;
+  background: #15171a;
+  color: #f7f7f4;
+  padding: 7px 8px;
+  margin-bottom: 10px;
+  font: inherit;
+
+  &::placeholder {
+    color: #b7bdc5;
+  }
+
+  &:focus {
+    outline: 2px solid #67e8f9;
+    outline-offset: 1px;
+  }
+`;
+
 const NavGroup = styled.div`
   display: grid;
   gap: 5px;
@@ -497,38 +502,14 @@ const ActivePanelBadge = styled.div<{ $accent: string }>`
 
 const EMPTY_JSON_OBJECT = "{}";
 
-type AdminSection = {
-  value: number;
-  title: string;
-  label: string;
-  description: string;
-  group: string;
-  accent: string;
-  Icon: LucideIcon;
-};
-
-const ADMIN_SECTIONS: AdminSection[] = [
-  { value: 0, title: "Users", label: "Users", description: "Accounts, XP, roles", group: "Identity & Access", accent: "#86efac", Icon: Users },
-  { value: 11, title: "Roles", label: "Role Control", description: "Permissions, apps, visibility", group: "Identity & Access", accent: "#facc15", Icon: ShieldCheck },
-  { value: 17, title: "OS Admin", label: "OS Surfaces", description: "App registry, native ADM", group: "Identity & Access", accent: "#38bdf8", Icon: MonitorCog },
-  { value: 9, title: "Desktop and Start Menu Apps", label: "App Gates", description: "Launchers, docs, install keys", group: "Identity & Access", accent: "#fb7185", Icon: Boxes },
-  { value: 1, title: "Seasons", label: "Seasons", description: "Season structure", group: "Gameshow Ops", accent: "#fda4af", Icon: Trophy },
-  { value: 2, title: "Rounds", label: "Rounds", description: "Rounds and windows", group: "Gameshow Ops", accent: "#fdba74", Icon: Layers },
-  { value: 3, title: "Challenges", label: "Tasks", description: "Challenges and grading", group: "Gameshow Ops", accent: "#a7f3d0", Icon: ClipboardList },
-  { value: 4, title: "Side Quests", label: "Quests", description: "Daily/social quests", group: "Gameshow Ops", accent: "#fde68a", Icon: BadgeCheck },
-  { value: 18, title: "Automation", label: "Automation", description: "Triggers and rewards", group: "Gameshow Ops", accent: "#c4b5fd", Icon: Bot },
-  { value: 8, title: "Rewards", label: "Rewards", description: "Ledger and payouts", group: "Economy", accent: "#bbf7d0", Icon: Gift },
-  { value: 7, title: "XP Log", label: "XP", description: "Experience audit", group: "Economy", accent: "#bae6fd", Icon: Coins },
-  { value: 10, title: "Contract Ledger", label: "Ledger", description: "On-chain activity", group: "Economy", accent: "#fecaca", Icon: ReceiptText },
-  { value: 15, title: "In-App Market", label: "Market", description: "Catalog and pricing", group: "Economy", accent: "#bef264", Icon: ShoppingBag },
-  { value: 14, title: "WTF Tez", label: "Domains", description: "Subdomain grants", group: "Platform Apps", accent: "#93c5fd", Icon: Package },
-  { value: 12, title: "WTF TV", label: "TV", description: "Channels and source mode", group: "Platform Apps", accent: "#f0abfc", Icon: Tv },
-  { value: 13, title: "Studio", label: "Studio", description: "Storage and Drive", group: "Platform Apps", accent: "#5eead4", Icon: HardDrive },
-  { value: 16, title: "Arcade", label: "Arcade", description: "Games and reports", group: "Platform Apps", accent: "#fdba74", Icon: Gamepad2 },
-  { value: 19, title: "W Digest", label: "W", description: "Digest handles", group: "Platform Apps", accent: "#d8b4fe", Icon: RadioTower },
-  { value: 5, title: "Board", label: "Board", description: "Threads and moderation", group: "Content", accent: "#f9a8d4", Icon: FileText },
-  { value: 6, title: "Content", label: "Content", description: "Links and FAQ", group: "Content", accent: "#cbd5e1", Icon: FileText },
-];
+function adminTabFromLocation() {
+  if (typeof window === "undefined") return 20;
+  const params = new URLSearchParams(window.location.search);
+  const bySlug = findAdminSectionBySlug(params.get("section"));
+  if (bySlug) return bySlug.value;
+  const legacyValue = Number(params.get("tab"));
+  return findAdminSectionByValue(legacyValue)?.value ?? 20;
+}
 
 function ConfirmButton({
   label,
@@ -565,7 +546,8 @@ function ConfirmButton({
 
 export function Admin() {
   const presentation = usePresentationShell();
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(adminTabFromLocation);
+  const [navSearch, setNavSearch] = useState("");
 
   const [xpLogUserFilter, setXpLogUserFilter] = useState("");
   const [ledgerFilter, setLedgerFilter] = useState<RewardLedgerFilter>("unpaid");
@@ -598,19 +580,56 @@ export function Admin() {
 
   // ─── Users state ───────────────────────────────────────
   const [userSearch, setUserSearch] = useState("");
-  const [xpInputs, setXpInputs] = useState<Record<number, { amount: string; reason: string }>>({});
-  const [identityInputs, setIdentityInputs] = useState<
-    Record<number, { username: string; displayName: string }>
-  >({});
-
-  const [tempPwPanels, setTempPwPanels] = useState<Record<number, boolean>>({});
   const [tempPwInputs, setTempPwInputs] = useState<
     Record<number, { password: string; expiryHours: string }>
   >({});
   const [tempPwResults, setTempPwResults] = useState<
     Record<number, TempPasswordResult | null>
   >({});
-  const [dossierPanels, setDossierPanels] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    const syncFromLocation = () => setActiveTab(adminTabFromLocation());
+    window.addEventListener("popstate", syncFromLocation);
+    return () => window.removeEventListener("popstate", syncFromLocation);
+  }, []);
+
+  useEffect(() => {
+    const focusNavigationSearch = (event: KeyboardEvent) => {
+      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+      document.querySelector<HTMLInputElement>("[data-admin-nav-search]")?.focus();
+    };
+    window.addEventListener("keydown", focusNavigationSearch);
+    return () => window.removeEventListener("keydown", focusNavigationSearch);
+  }, []);
+
+  function navigateAdmin(value: number, context: Record<string, string | number | null> = {}) {
+    const section = findAdminSectionByValue(value);
+    if (!section) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("section", section.slug);
+    url.searchParams.delete("tab");
+    if (section.slug !== "users") url.searchParams.delete("user");
+    if (section.slug !== "curses") url.searchParams.delete("curse");
+    for (const [key, rawValue] of Object.entries(context)) {
+      if (rawValue == null || rawValue === "") url.searchParams.delete(key);
+      else url.searchParams.set(key, String(rawValue));
+    }
+    window.history.pushState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    setActiveTab(section.value);
+  }
+
+  function navigateAdminSlug(slug: string) {
+    const section = findAdminSectionBySlug(slug) ?? findAdminSectionBySlug("help");
+    if (section) navigateAdmin(section.value);
+  }
+
+  function openUserPassport(userId: number) {
+    const usersSection = findAdminSectionBySlug("users");
+    if (usersSection) navigateAdmin(usersSection.value, { user: userId });
+  }
 
   const [subdomainGrantForm, setSubdomainGrantForm] = useState({
     userId: "",
@@ -832,20 +851,22 @@ export function Admin() {
     clearEditingFaq: () => setEditingFaq(null),
   });
 
-  const filteredUsers = (allUsers || []).filter((u: any) => {
-    if (!userSearch) return true;
-    const q = userSearch.toLowerCase();
-    return (
-      u.username?.toLowerCase().includes(q) ||
-      u.displayName?.toLowerCase().includes(q) ||
-      u.email?.toLowerCase().includes(q)
-    );
-  });
-
   const activeSection =
     ADMIN_SECTIONS.find((section) => section.value === activeTab) ?? ADMIN_SECTIONS[0];
   const ActiveSectionIcon = activeSection.Icon;
-  const groupedSections = ADMIN_SECTIONS.reduce<Record<string, AdminSection[]>>(
+  const normalizedNavSearch = navSearch.trim().toLowerCase();
+  const visibleAdminSections = normalizedNavSearch
+    ? ADMIN_SECTIONS.filter((section) => [
+        section.title,
+        section.label,
+        section.description,
+        section.group,
+        section.slug,
+        ...section.keywords,
+        ...section.tasks,
+      ].some((value) => value.toLowerCase().includes(normalizedNavSearch)))
+    : ADMIN_SECTIONS;
+  const groupedSections = visibleAdminSections.reduce<Record<string, AdminSection[]>>(
     (acc, section) => {
       acc[section.group] = [...(acc[section.group] ?? []), section];
       return acc;
@@ -884,6 +905,13 @@ export function Admin() {
 
         <SuiteBody data-admin-region="suite-body">
           <SuiteNav aria-label="Admin suite panels" data-admin-region="suite-nav">
+            <NavSearch
+              data-admin-nav-search
+              aria-label="Filter admin suite navigation"
+              placeholder="Find admin view…  /"
+              value={navSearch}
+              onChange={(event) => setNavSearch(event.target.value)}
+            />
             {Object.entries(groupedSections).map(([group, sections]) => (
               <NavGroup key={group} data-admin-region="nav-group">
                 <NavGroupTitle data-admin-region="nav-group-title">{group}</NavGroupTitle>
@@ -899,7 +927,7 @@ export function Admin() {
                       aria-current={isActive ? "page" : undefined}
                       data-admin-region="nav-button"
                       data-admin-section={section.title}
-                      onClick={() => setActiveTab(section.value)}
+                      onClick={() => navigateAdmin(section.value)}
                     >
                       <NavIcon $accent={section.accent} data-admin-region="nav-icon">
                         <Icon size={16} strokeWidth={2.4} aria-hidden="true" />
@@ -930,23 +958,20 @@ export function Admin() {
               {activeSection.group}
             </ActivePanelBadge>
           </ActivePanelHeader>
+        {/* ═══ TAB 20: TASK-FIRST OVERVIEW ═══ */}
+        {activeTab === 20 && (
+          <AdminOverviewTab stats={stats} onNavigate={navigateAdminSlug} />
+        )}
+
         {/* ═══ TAB 0: USERS ═══ */}
         {activeTab === 0 && (
           <UsersAdminTab
-            filteredUsers={filteredUsers}
+            allUsers={allUsers || []}
             userSearch={userSearch}
             setUserSearch={setUserSearch}
-            xpInputs={xpInputs}
-            setXpInputs={setXpInputs}
-            identityInputs={identityInputs}
-            setIdentityInputs={setIdentityInputs}
-            tempPwPanels={tempPwPanels}
-            setTempPwPanels={setTempPwPanels}
             tempPwInputs={tempPwInputs}
             setTempPwInputs={setTempPwInputs}
             tempPwResults={tempPwResults}
-            dossierPanels={dossierPanels}
-            setDossierPanels={setDossierPanels}
             assignUserRoleMutation={assignUserRoleMutation}
             removeUserRoleMutation={removeUserRoleMutation}
             updateUserCurseMutation={updateUserCurseMutation}
@@ -1105,6 +1130,8 @@ export function Admin() {
         {/* ═══ TAB 11: ROLES & PERMISSIONS ═══ */}
         {activeTab === 11 && (
           <RolesAdminTab
+            allUsers={allUsers || []}
+            onOpenUser={openUserPassport}
             permCategoryFilter={permCategoryFilter}
             setPermCategoryFilter={setPermCategoryFilter}
             rolePerms={rolePerms}
@@ -1116,6 +1143,15 @@ export function Admin() {
             toggleRoleSurfaceAccessMutation={toggleRoleSurfaceAccessMutation}
             resetRoleSurfaceAccessMutation={resetRoleSurfaceAccessMutation}
             ConfirmButton={ConfirmButton}
+          />
+        )}
+
+        {/* ═══ TAB 21: CURSES ═══ */}
+        {activeTab === 21 && (
+          <CursesAdminTab
+            allUsers={allUsers || []}
+            updateUserCurseMutation={updateUserCurseMutation}
+            onOpenUser={openUserPassport}
           />
         )}
 
@@ -1206,6 +1242,9 @@ export function Admin() {
         )}
         {activeTab === 18 && <ChallengeAutomationAdminTab />}
         {activeTab === 19 && <WDigestAdminTab />}
+
+        {/* ═══ TAB 22: EXHAUSTIVE HELP INDEX ═══ */}
+        {activeTab === 22 && <AdminHelpTab onNavigate={navigateAdminSlug} />}
           </AdminTabBody>
         </SuiteBody>
       </AdminFrame>
