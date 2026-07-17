@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import staticPathModule from "../apps/pasta-suite-desktop/src/static-path.cjs";
+
+const { resolveStaticPath } = staticPathModule;
 
 const desktopPackage = JSON.parse(readFileSync("apps/pasta-suite-desktop/package.json", "utf8"));
 const mainSource = readFileSync("apps/pasta-suite-desktop/src/main.cjs", "utf8");
@@ -164,6 +168,7 @@ test("Pasta suite desktop runtime serves local assets and blocks hosted wtfOS AP
   assert.match(mainSource, /baseUrl = `http:\/\/127\.0\.0\.1:\$\{address\.port\}`/);
   assert.match(mainSource, /mainWindow\.loadURL\(`\$\{baseUrl\}\/`\)/);
   assert.match(mainSource, /path\.join\(appRoot\(\), "pasta"\)/);
+  assert.match(mainSource, /resolveStaticPath\(pastaRoot\(\), urlPath\)/);
   assert.match(mainSource, /\/creation-tools\/\$\{id\}\/studio\.html/);
   assert.match(mainSource, /\/creation-tools\/\$\{id\}\/index\.html/);
   assert.match(mainSource, /parsed\.pathname === "\/api\/auth\/user"/);
@@ -196,6 +201,20 @@ test("Pasta suite desktop runtime serves local assets and blocks hosted wtfOS AP
   assert.match(preloadSource, /PASTA_SUITE_DESKTOP/);
   assert.match(preloadSource, /MACARONI_DESKTOP/);
   assert.match(preloadSource, /native: true/);
+});
+
+test("Pasta suite desktop resolves its root document on POSIX and Windows", () => {
+  const posixRoot = "/Applications/Pasta Suite.app/Contents/Resources/app.asar/pasta";
+  const windowsRoot = "C:\\Users\\runner\\AppData\\Local\\Programs\\Pasta Suite\\resources\\app.asar\\pasta";
+
+  assert.equal(resolveStaticPath(posixRoot, "/", path.posix), path.posix.join(posixRoot, "index.html"));
+  assert.equal(resolveStaticPath(windowsRoot, "/", path.win32), path.win32.join(windowsRoot, "index.html"));
+  assert.equal(
+    resolveStaticPath(windowsRoot, "/creation-tools/ch-ease/index.html", path.win32),
+    path.win32.join(windowsRoot, "creation-tools", "ch-ease", "index.html"),
+  );
+  assert.equal(resolveStaticPath(windowsRoot, "../outside.txt", path.win32), null);
+  assert.equal(resolveStaticPath(posixRoot, "%E0%A4%A", path.posix), null);
 });
 
 test("Pasta suite installer workflow builds all target packages", () => {

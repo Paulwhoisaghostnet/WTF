@@ -547,7 +547,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol"],
     ownerSpec:
-      "apps/pasta-suite-desktop/scripts/prepare-assets.mjs, apps/pasta-suite-desktop/package.json, apps/pasta-suite-desktop/build/*, scripts/pasta-suite-desktop-package-policy.test.mjs, scripts/pasta-suite-desktop-artifact-smoke.mjs, scripts/pasta-suite-desktop-review-manifest.mjs, .github/workflows/pasta-suite-desktop-installers.yml, tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs",
+      "apps/pasta-suite-desktop/scripts/prepare-assets.mjs, apps/pasta-suite-desktop/src/static-path.cjs, apps/pasta-suite-desktop/package.json, apps/pasta-suite-desktop/build/*, scripts/pasta-suite-desktop-package-policy.test.mjs, scripts/pasta-suite-desktop-artifact-smoke.mjs, scripts/pasta-suite-desktop-review-manifest.mjs, .github/workflows/pasta-suite-desktop-installers.yml, tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs",
     verificationCommand:
       "npm run pasta-suite:desktop:prepare && npm run pasta-suite:desktop:check && HARNESS_PORT=4375 npx playwright test tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
