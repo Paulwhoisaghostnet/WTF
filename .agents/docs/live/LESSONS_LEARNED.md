@@ -8677,3 +8677,13 @@
 **Rule**: Keep `engines.node`, CI setup, and the production image on the same supported major. Install prerequisites before the earliest discovered test that uses them, and make aggregate test subprocess defaults explicit, local, non-secret, and unable to weaken production fail-closed validation. Reproduce CI with a clean-environment override before blaming individual tests, and lock runtime plus step ordering in policy tests.
 
 ---
+
+## 2026-07-17 - A package proof must invoke the package producer
+
+**What happened**: The full CH-EASE browser story passed locally because an ignored `apps/ch-ease-desktop/pasta` directory remained from an earlier packaging run. On GitHub's clean checkout, the same story intercepted its page request, looked for the absent derived file, and aborted navigation; the other 657 browser stories passed.
+
+**Why it mattered**: The test claimed to prove the standalone desktop package, but actually proved only that a developer's stale prepared output was usable. The missing prerequisite appeared near the end of a long release gate and kept a correct application change out of production.
+
+**Rule**: Tests that inspect ignored, generated, or packaged output must invoke the canonical producer inside their own setup—or consume an explicit artifact from a declared prior job. Never let residue in a developer checkout satisfy a release prerequisite. Keep derived assets ignored, and verify the source-to-package path on every clean run.
+
+---

@@ -8947,6 +8947,29 @@ Priority labels:
   - Focused aggregate-runner and CI workflow policy tests pass 6/6.
   - The complete aggregate suite passes 1,752/1,752 under Node 22 with `DATABASE_URL=postgresql://wtf:wtf@127.0.0.1:5432/wtf_test`, proving a clean environment does not depend on the developer `.env` or a live database.
 
+### WTF-BB-409 - CH-EASE desktop browser proof depends on ignored prepared assets
+
+- Category: CI / desktop release integrity
+- Status: Fixed — focused proof green; complete remote Quality Gates pending
+- Owner/Session: Codex full-send release pass
+- Score: C3 + F4 + S2 + P0(5) = 14
+- Evidence:
+  - GitHub Quality Gates run `29559674518` passed 657/658 inventory browser stories but failed `pasta-chease-standalone.spec.mjs` when `/creation-tools/ch-ease/index.html` returned `net::ERR_FAILED`.
+  - The story serves `apps/ch-ease-desktop/pasta`, which is intentionally ignored and existed in the developer checkout from an earlier packaging pass, but the story did not invoke `apps/ch-ease-desktop/scripts/prepare-assets.mjs` on a clean checkout.
+- Why it matters:
+  - A local green run could conceal a missing installer-test prerequisite, while every clean release run would reject otherwise valid product code near the end of a 15-minute browser matrix.
+- Likely correction direction:
+  - Make the desktop-package browser story invoke the canonical asset preparer before routing requests from the generated package root.
+  - Keep the generated bundle ignored; test the real preparation path instead of checking in derived assets.
+- Verification idea:
+  - Run the focused CH-EASE Playwright file after removing any prepared bundle from a clean checkout, then require the complete GitHub inventory matrix to pass.
+- Resolution:
+  - The package-owned browser story now invokes the canonical CH-EASE desktop asset preparer before it serves files from the ignored generated bundle.
+  - Derived desktop assets remain out of source control, so the proof exercises the same copy-and-validation path used by installer builds.
+- Verification:
+  - Focused `pasta-chease-standalone.spec.mjs` coverage passes 3/3 locally, including the generated-package same-origin handoff story.
+  - GitHub run `29559674518` established that the rest of the clean browser matrix passes 657/657; a new complete run is required for the repaired head.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

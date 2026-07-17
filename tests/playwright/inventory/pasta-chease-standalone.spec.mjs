@@ -1,6 +1,10 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { test, expect } from "@playwright/test";
+
+const execFileAsync = promisify(execFile);
 
 test("portable CH-EASE prepares, recovers, exports, and hands a Colander project to its publisher", async ({ page }) => {
   const projectId = "portable-chease-proof";
@@ -116,6 +120,9 @@ test("portable CH-EASE pins through a creator-owned Kubo node without saving its
 });
 
 test("individual CH-EASE desktop package keeps publisher handoff assets on the same local origin", async ({ page, context }) => {
+  await execFileAsync(process.execPath, ["apps/ch-ease-desktop/scripts/prepare-assets.mjs"], {
+    cwd: process.cwd(),
+  });
   const generatedRoot = path.resolve("apps/ch-ease-desktop/pasta");
   await context.route("**/creation-tools/**", async (route) => {
     const pathname = decodeURIComponent(new URL(route.request().url()).pathname).replace(/^\/+/, "");
