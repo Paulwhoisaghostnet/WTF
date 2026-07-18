@@ -8697,3 +8697,13 @@
 **Rule**: Keep URL parsing separate from filesystem path semantics. For local desktop servers, normalize and strip both separator styles, explicitly map an empty relative URL root to the entry document, verify the final path remains under the package root, and test with both `path.posix` and `path.win32`. A Windows installer is not proven until the installed executable renders its first screen and completes a real interaction.
 
 ---
+
+## 2026-07-18 - Best-effort audit metrics must not prevent terminal job state
+
+**What happened**: Production's Object Storage scan completed in about three seconds and persisted an exact 17,200,859,982-byte usage record, but the scheduler then wrote that byte count into the 32-bit `sync_runs.items_out` column. PostgreSQL rejected the overflow; `recordFinish()` correctly kept the audit-write failure from crashing the process, but the run row remained `running` and eventually degraded public readiness as a stale job.
+
+**Why it mattered**: The maintenance work succeeded while its observability layer reported a hang. A defensive audit catch prevented an application crash but converted a representational mismatch into a durable false incident and a 503 readiness signal.
+
+**Rule**: Treat scheduler roll-up fields as bounded telemetry, not authoritative domain storage. Normalize optional, fractional, non-finite, and out-of-range job counters to their database column range before persistence; keep exact large measurements in job-owned cursor/detail records; and verify both the work product and the terminal audit row when investigating a supposedly hung job.
+
+---

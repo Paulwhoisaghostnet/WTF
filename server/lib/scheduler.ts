@@ -21,6 +21,7 @@ import { db } from "../db";
 import { syncRuns } from "@shared/schema";
 import { and, desc, eq, isNull, lte, sql } from "drizzle-orm";
 import { logSystemEvent } from "./system-log";
+import { normalizeSyncRunCounter } from "./scheduler-counters";
 
 export type JobResult = {
   itemsIn?: number;
@@ -136,8 +137,8 @@ async function recordFinish(
         status: opts.status,
         finishedAt,
         durationMs,
-        itemsIn: opts.result?.itemsIn ?? 0,
-        itemsOut: opts.result?.itemsOut ?? 0,
+        itemsIn: normalizeSyncRunCounter(opts.result?.itemsIn),
+        itemsOut: normalizeSyncRunCounter(opts.result?.itemsOut),
         error: opts.error
           ? String(
               opts.error instanceof Error
