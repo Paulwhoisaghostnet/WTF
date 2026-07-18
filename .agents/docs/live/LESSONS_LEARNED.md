@@ -8737,3 +8737,13 @@
 **Rule**: Every package-level release command must resolve to a checked-in, policy-tested executable. A generic production readiness gate should verify public liveness, dependency readiness, production runtime mode, and a non-placeholder git commit; post-deploy runs must also require the expected commit.
 
 ---
+
+## 2026-07-18 - Run terminal policy checks before beginning a full-send deploy
+
+**What happened**: Double Take passed its feature tests, typecheck, build, inventory coverage, and the full 659-test route smoke, but the final CI step rejected two new-tab links because they specified `noreferrer` without the repository-required explicit `noopener noreferrer` pair.
+
+**Why it mattered**: Production had already deployed a functionally correct commit before the final quality workflow reported the deterministic policy failure, forcing a second promotion cycle for a two-attribute correction.
+
+**Rule**: Mirror every terminal CI policy check in full-send preflight, including `check:external-links`. New `target="_blank"` anchors must use the repository's canonical `rel="noopener noreferrer"` spelling even when browser behavior would infer equivalent isolation.
+
+---

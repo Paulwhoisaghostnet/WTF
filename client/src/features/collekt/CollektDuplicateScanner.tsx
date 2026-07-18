@@ -456,7 +456,7 @@ export function CollektDuplicateScanner({ presentationHost }: { presentationHost
                         </PriceGrid>
                         <MetadataRow><span>Acquired {formatDate(item.acquiredAt)}</span><span>{item.saleCount} sale{item.saleCount === 1 ? "" : "s"}</span></MetadataRow>
                         <MetadataRow>
-                          <a href={tokenUrl(item)} target="_blank" rel="noreferrer">View token <ExternalLink size={12} /></a>
+                          <a href={tokenUrl(item)} target="_blank" rel="noopener noreferrer">View token <ExternalLink size={12} /></a>
                           <ActionButton onClick={() => openOffer(item)} disabled={address === item.ownerAddress} style={{ minHeight: 32 }}><WalletCards size={15} /> Make offer</ActionButton>
                         </MetadataRow>
                       </CardBody>
@@ -475,7 +475,7 @@ export function CollektDuplicateScanner({ presentationHost }: { presentationHost
         <OfferDrawer role="dialog" aria-modal="true" aria-labelledby="duplicate-offer-title">
           <DrawerHead><div><h2 id="duplicate-offer-title">Offer on {offerToken.name}</h2><p>One edition from {shortAddress(offerToken.ownerAddress)}</p></div><button onClick={() => setOfferToken(null)} aria-label="Close offer panel"><X size={20} /></button></DrawerHead>
           {offerStatus === "success" ? (
-            <StatusLine><CheckCircle2 size={18} /> Offer confirmed. <a href={`https://tzkt.io/${offerHash}`} target="_blank" rel="noreferrer">View operation</a></StatusLine>
+            <StatusLine><CheckCircle2 size={18} /> Offer confirmed. <a href={`https://tzkt.io/${offerHash}`} target="_blank" rel="noopener noreferrer">View operation</a></StatusLine>
           ) : (
             <>
               <Terms>
