@@ -46,7 +46,16 @@ function hasSkippedSegment(file) {
 export async function listEnvironmentSourceFiles() {
   const { stdout } = await execFileAsync(
     "git",
-    ["ls-files", "-z", "--", ...SOURCE_ROOTS, ...ROOT_FILES],
+    [
+      "ls-files",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+      "-z",
+      "--",
+      ...SOURCE_ROOTS,
+      ...ROOT_FILES,
+    ],
     { cwd: ROOT, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
   );
 

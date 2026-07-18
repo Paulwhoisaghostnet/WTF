@@ -9021,6 +9021,28 @@ Priority labels:
   - TypeScript, production build, environment inventory, inventory E2E coverage, and the complete aggregate unit suite pass locally; the aggregate suite is 1,757/1,757.
   - Production terminal-row and repeated-readiness verification remains required before advancing this bounty from Fixed to Verified.
 
+### WTF-BB-412 - Environment inventory check ignores new untracked source files locally
+
+- Category: CI / generated environment inventory integrity
+- Status: Fixed
+- Owner/Session: Codex full-send release pass
+- Score: C2 + F3 + S1 + P0(5) = 11
+- Evidence:
+  - Local `npm run env:inventory:check` passed while the new scheduler helper and test were still untracked.
+  - After commit, GitHub Quality Gate run `29654696703` failed because the same files became visible to the inventory generator's tracked-file discovery and changed its source-file count.
+- Why it matters:
+  - A developer can receive a false-green inventory check for a change that introduces files, then discover the generated-document mismatch only after pushing.
+- Likely correction direction:
+  - Regenerate the inventory after new files are staged or committed, and document the ordering requirement; evaluate including staged/untracked source candidates in the generator separately so future checks fail earlier.
+- Verification idea:
+  - Regenerate and commit the inventory with the newly tracked files, require local `--check` to pass, and require clean-checkout push and pull-request Quality Gates to pass.
+- Resolution:
+  - Environment source discovery now includes cached files plus non-ignored untracked files, so a new source file participates in the generated inventory before its first commit.
+  - Updated the policy test to lock the tracked/untracked discovery contract and regenerated the checked-in inventory for 2,003 source files.
+- Verification:
+  - Environment inventory policy passes 3/3 and `npm run env:inventory:check` passes after regeneration.
+  - Clean-checkout push and pull-request Quality Gates remain required before advancing this bounty from Fixed to Verified.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

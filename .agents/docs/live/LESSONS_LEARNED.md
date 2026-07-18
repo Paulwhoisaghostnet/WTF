@@ -8707,3 +8707,13 @@
 **Rule**: Treat scheduler roll-up fields as bounded telemetry, not authoritative domain storage. Normalize optional, fractional, non-finite, and out-of-range job counters to their database column range before persistence; keep exact large measurements in job-owned cursor/detail records; and verify both the work product and the terminal audit row when investigating a supposedly hung job.
 
 ---
+
+## 2026-07-18 - Tracked-file generators must see a file before its first commit
+
+**What happened**: The environment inventory check passed locally while two new scheduler files were untracked, then failed immediately in GitHub after those files became tracked. The generator used `git ls-files`, so its local source count omitted precisely the files whose first commit needed to update the generated document.
+
+**Why it mattered**: The same commit that introduced valid, tested code also carried a predictable clean-checkout failure. The local release signal was false-green because discovery changed at the commit boundary.
+
+**Rule**: Deterministic generators that govern release inputs must include both cached files and non-ignored untracked candidates, or the workflow must stage before checking. Prefer `git ls-files --cached --others --exclude-standard` so ignored build residue stays excluded while new source files participate before their first commit; lock that discovery contract in a policy test.
+
+---
