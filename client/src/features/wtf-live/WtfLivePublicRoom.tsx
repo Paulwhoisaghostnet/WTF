@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, type WheelEvent as ReactWheelEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, Bold, Camera, Check, ChevronDown, ChevronRight, Copy, ExternalLink, FileAudio, Gauge, Gift, Image as ImageIcon, Italic, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Music2, Paperclip, Pause, Pin, Play, Radio, RotateCcw, Send, Settings, Smile, Square, Type as TypeIcon, UserPlus, Users, Volume2, VolumeX, Wifi, WifiOff, X } from "lucide-react";
+import { Activity, Bold, CalendarDays, Camera, Check, ChevronDown, ChevronRight, Copy, ExternalLink, FileAudio, Gauge, Gift, Image as ImageIcon, Italic, LogOut, Maximize2, MessageSquare, Mic, MonitorUp, Move, Music2, Paperclip, Pause, Pin, Play, Radio, RotateCcw, Send, Settings, Smile, Square, Type as TypeIcon, UserPlus, Users, Volume2, VolumeX, Wifi, WifiOff, X } from "lucide-react";
 import styled from "styled-components";
 import { Button, Hourglass, TextField } from "react95";
 import { api } from "../../lib/api";
@@ -7210,6 +7210,23 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 		            <span>{joined ? (socketReady ? "Connected" : "Connecting") : isStageRoom ? "Stage room" : isGameRoom ? "Game room" : joinMode === "wtf_user_private_room" ? "Private room" : "Public room"}</span>
 	            <span>{joined ? attendeeDisplayName : signedInUsername ? signedInUsername : authLoading ? "Checking account" : "Guest setup"}</span>
 	            <span>{peerId ? peerId.slice(0, 12) : "not joined"}</span>
+	            <HeaderCloseButton
+	              aria-label={`Create a calendar event for ${room.title}`}
+	              title="Add room plan to Calendar"
+	              data-wtf-live-room-calendar-handoff={room.id}
+	              onClick={() => {
+	                const params = new URLSearchParams({
+	                  compose: "personal",
+	                  source: "wtf-live",
+	                  title: `${room.title} plan`,
+	                  description: room.description || `Planned from the ${room.title} WTF LIVE room.`,
+	                  location: roomUrl,
+	                });
+	                window.open(presentationRouteHref(`/calendar?${params.toString()}`, presentation.host), "_blank", "noopener,noreferrer");
+	              }}
+	            >
+	              <CalendarDays size={15} aria-hidden />
+	            </HeaderCloseButton>
 	            <HeaderCloseButton aria-label="Close Window" onClick={closeRoomWindow} data-wtf-live-close-window>
 	              <X size={15} aria-hidden />
 	            </HeaderCloseButton>

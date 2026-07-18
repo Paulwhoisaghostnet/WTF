@@ -19,6 +19,7 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { usePresentationShell } from "../lib/presentation-shell";
+import { CALENDAR_PERSONAL_EVENTS_CHANGED, takeCalendarHandoff } from "../features/calendar/calendar-handoff";
 
 const TTC_SUBMIT_URL = "https://thetezos.com/submit-event/";
 const TTC_CALENDAR_URL = "https://thetezos.com/calendar-view/";
@@ -52,6 +53,8 @@ const CalendarSurface = styled.div`
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="browse-actions"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="source-panel"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="event-card"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="calendar-grid"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="event-detail"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="ticket-card"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="personal-form"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="submit-form"],
@@ -87,6 +90,7 @@ const CalendarSurface = styled.div`
   }
 
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="event-card"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="event-detail"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="ticket-card"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="source-panel"] {
     margin-bottom: 10px;
@@ -236,12 +240,111 @@ const SourcePanel = styled(GroupBox)`
   align-self: start;
 `;
 
-const PreviewImage = styled.img`
-  width: 54px;
-  height: 54px;
-  object-fit: cover;
+const CalendarHeading = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+
+  strong {
+    font-size: 20px;
+    line-height: 1.1;
+  }
+
+  span {
+    display: block;
+    color: #555;
+    font-size: 12px;
+  }
+`;
+
+const CalendarWorkspace = styled.div`
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
   border: 1px solid #808080;
   background: #fff;
+`;
+
+const WeekHeader = styled.div<{ $columns: number }>`
+  display: grid;
+  grid-template-columns: repeat(${(props) => props.$columns}, minmax(112px, 1fr));
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #d9e8f8;
+  border-bottom: 1px solid #808080;
+`;
+
+const DayHeading = styled.div<{ $today?: boolean }>`
+  padding: 8px 10px;
+  min-height: 54px;
+  border-right: 1px solid #b8c7d7;
+  font-size: 12px;
+
+  strong {
+    display: block;
+    margin-top: 2px;
+    font-size: 18px;
+    color: ${(props) => (props.$today ? "#b11919" : "#111")};
+  }
+`;
+
+const WeekBody = styled.div<{ $columns: number }>`
+  display: grid;
+  grid-template-columns: repeat(${(props) => props.$columns}, minmax(112px, 1fr));
+  min-height: 360px;
+  overflow-x: auto;
+`;
+
+const DayColumn = styled.section<{ $today?: boolean }>`
+  min-width: 112px;
+  padding: 7px;
+  border-right: 1px solid #d4d4d4;
+  background: ${(props) => (props.$today ? "#fff9e8" : "#fff")};
+`;
+
+const GridEvent = styled.button<{ $source: string }>`
+  display: block;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 6px 7px;
+  text-align: left;
+  border: 1px solid ${(props) => props.$source === "ttc" ? "#087d86" : props.$source === "personal" ? "#39783b" : "#315f9b"};
+  border-left-width: 5px;
+  background: ${(props) => props.$source === "ttc" ? "#e6f7f7" : props.$source === "personal" ? "#edf7e9" : "#eaf2ff"};
+  color: #111;
+  font: inherit;
+  cursor: pointer;
+
+  strong, span { display: block; }
+  strong { font-size: 12px; line-height: 1.25; }
+  span { margin-top: 2px; color: #444; font-size: 11px; }
+
+  &:focus-visible { outline: 2px solid #000080; outline-offset: 1px; }
+`;
+
+const Agenda = styled.div`
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+`;
+
+const AgendaEvent = styled.div`
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #d0d0d0;
+
+  @media (max-width: 560px) { grid-template-columns: 1fr; }
+`;
+
+const EventDetail = styled.div`
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #808080;
+  background: #f7f7f7;
 `;
 
 const SourceBadge = styled.span<{ $source: string }>`
@@ -392,6 +495,12 @@ function toIsoLocal(d: Date): string {
   );
 }
 
+function localInputToIso(value: string, allDay = false): string {
+  if (!allDay) return new Date(value).toISOString();
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0).toISOString();
+}
+
 function rangeFor(view: "today" | "week" | "season"): {
   from: Date;
   to: Date;
@@ -478,6 +587,39 @@ function personalToCalendarEvent(event: PersonalEvent): CalendarEvent {
   };
 }
 
+function startOfCalendarWeek(value: Date): Date {
+  const day = new Date(value);
+  day.setHours(0, 0, 0, 0);
+  day.setDate(day.getDate() - day.getDay());
+  return day;
+}
+
+function calendarDays(view: "today" | "week" | "season"): Date[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (view === "today") return [today];
+  if (view === "season") return [];
+  const start = startOfCalendarWeek(today);
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(start);
+    day.setDate(day.getDate() + index);
+    return day;
+  });
+}
+
+function eventFallsOnDay(event: CalendarEvent, day: Date): boolean {
+  const next = new Date(day);
+  next.setDate(next.getDate() + 1);
+  const start = new Date(event.startsAt);
+  const end = eventEnd(event);
+  return start < next && end > day;
+}
+
+function eventClockLabel(event: CalendarEvent): string {
+  if (event.allDay) return "All day";
+  return new Date(event.startsAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
 export function Calendar() {
   const { user } = useAuth();
   const presentation = usePresentationShell();
@@ -485,6 +627,7 @@ export function Calendar() {
   const [view, setView] = useState<"today" | "week" | "season">("week");
   const [tab, setTab] = useState<"browse" | "personal" | "submit" | "mine">("browse");
   const [showTtcSubmit, setShowTtcSubmit] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   const range = useMemo(() => rangeFor(view), [view]);
   const storageKey = personalStorageKey(user?.id);
@@ -501,6 +644,7 @@ export function Calendar() {
     if (!personalEventsReady) return;
     try {
       window.localStorage.setItem(storageKey, JSON.stringify(personalEvents));
+      window.dispatchEvent(new Event(CALENDAR_PERSONAL_EVENTS_CHANGED));
     } catch {
       // Local calendar entries are best-effort browser state.
     }
@@ -531,6 +675,7 @@ export function Calendar() {
   const [personalStartsAt, setPersonalStartsAt] = useState(toIsoLocal(new Date()));
   const [personalEndsAt, setPersonalEndsAt] = useState("");
   const [personalLocation, setPersonalLocation] = useState("");
+  const [personalAllDay, setPersonalAllDay] = useState(false);
 
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
@@ -541,6 +686,25 @@ export function Calendar() {
     "public" | "contestants" | "hosts"
   >("public");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const days = useMemo(() => calendarDays(view), [view]);
+
+  useEffect(() => {
+    const stored = takeCalendarHandoff();
+    const params = new URLSearchParams(window.location.search);
+    const handoff = stored ?? (params.get("compose") === "personal" && params.get("title") ? {
+      source: (params.get("source") ?? "other") as "wtf-live" | "wim" | "messageboard" | "other",
+      title: params.get("title") ?? "New event",
+      description: params.get("description") ?? undefined,
+      location: params.get("location") ?? undefined,
+    } : null);
+    if (!handoff) return;
+    setPersonalTitle(handoff.title);
+    setPersonalDescription(handoff.description ?? "");
+    setPersonalLocation(handoff.location ?? "");
+    if (handoff.startsAt) setPersonalStartsAt(toIsoLocal(new Date(handoff.startsAt)));
+    if (handoff.endsAt) setPersonalEndsAt(toIsoLocal(new Date(handoff.endsAt)));
+    setTab("personal");
+  }, []);
 
   const visibleEvents = useMemo(() => {
     const personal = personalEvents
@@ -560,6 +724,7 @@ export function Calendar() {
         description: formDescription || undefined,
         startsAt: new Date(formStartsAt).toISOString(),
         endsAt: formEndsAt ? new Date(formEndsAt).toISOString() : undefined,
+        allDay: false,
         kind: formKind,
         visibility: formVisibility,
       }),
@@ -582,8 +747,9 @@ export function Calendar() {
         id: `personal:${Date.now()}`,
         title: personalTitle,
         description: personalDescription || undefined,
-        startsAt: new Date(personalStartsAt).toISOString(),
-        endsAt: personalEndsAt ? new Date(personalEndsAt).toISOString() : undefined,
+        startsAt: localInputToIso(personalStartsAt, personalAllDay),
+        endsAt: personalEndsAt ? localInputToIso(personalEndsAt, personalAllDay) : undefined,
+        allDay: personalAllDay,
         location: personalLocation || undefined,
       },
     ]);
@@ -591,6 +757,7 @@ export function Calendar() {
     setPersonalDescription("");
     setPersonalEndsAt("");
     setPersonalLocation("");
+    setPersonalAllDay(false);
     setTab("browse");
   }
 
@@ -607,6 +774,13 @@ export function Calendar() {
       >
       <Stack data-calendar-region="shell">
         <Row data-calendar-region="source-links">
+          <CalendarHeading>
+            <span aria-hidden style={{ fontSize: 30 }}>📅</span>
+            <div>
+              <strong>WTF Calendar</strong>
+              <span>Your day, the community, and what happens next.</span>
+            </div>
+          </CalendarHeading>
           <Muted data-calendar-region="meta">
             WTF iCal:{" "}
             <a href="/api/calendar/feed.ics" target="_blank" rel="noopener noreferrer">
@@ -623,6 +797,7 @@ export function Calendar() {
               @TezosEvents
             </a>
           </Muted>
+          <Button primary style={{ marginLeft: "auto" }} onClick={() => setTab("personal")}>Create event</Button>
         </Row>
 
         <div data-calendar-region="tabs">
@@ -671,77 +846,71 @@ export function Calendar() {
                   </div>
                 ) : visibleEvents.length === 0 ? (
                   <Muted data-calendar-region="empty">No events in this window.</Muted>
+                ) : view === "season" ? (
+                  <CalendarWorkspace data-calendar-region="calendar-grid" data-calendar-view="agenda">
+                    <Agenda>
+                      {visibleEvents.map((event) => (
+                        <AgendaEvent key={`${event.sourceProvider ?? "wtf"}:${event.id}`} data-calendar-region="event-card">
+                          <div><strong>{new Date(event.startsAt).toLocaleDateString([], { month: "short", day: "numeric" })}</strong><br />{eventClockLabel(event)}</div>
+                          <div>
+                            <Row>
+                              <SourceBadge $source={event.sourceProvider ?? "wtf"} data-calendar-region="source-badge">{(event.sourceProvider ?? "wtf").toUpperCase()}</SourceBadge>
+                              <strong>{event.title}</strong>
+                            </Row>
+                            <Muted data-calendar-region="meta">{event.location || event.categories?.join(", ") || event.kind}</Muted>
+                          </div>
+                        </AgendaEvent>
+                      ))}
+                    </Agenda>
+                  </CalendarWorkspace>
                 ) : (
-                  visibleEvents.map((e) => (
-                    <div
-                      key={`${e.sourceProvider ?? "wtf"}:${e.id}`}
-                      data-calendar-region="event-card"
-                    >
-                      <EventCard label={e.title}>
+                  <>
+                    <CalendarWorkspace data-calendar-region="calendar-grid" data-calendar-view={view}>
+                      <WeekHeader $columns={days.length}>
+                        {days.map((day) => (
+                          <DayHeading key={day.toISOString()} $today={day.toDateString() === new Date().toDateString()}>
+                            {day.toLocaleDateString([], { weekday: "short" })}
+                            <strong>{day.getDate()}</strong>
+                          </DayHeading>
+                        ))}
+                      </WeekHeader>
+                      <WeekBody $columns={days.length}>
+                        {days.map((day) => {
+                          const events = visibleEvents.filter((event) => eventFallsOnDay(event, day));
+                          return (
+                            <DayColumn key={day.toISOString()} $today={day.toDateString() === new Date().toDateString()} aria-label={day.toLocaleDateString()}>
+                              {events.length ? events.map((event) => (
+                                <GridEvent
+                                  key={`${event.sourceProvider ?? "wtf"}:${event.id}`}
+                                  type="button"
+                                  $source={event.sourceProvider ?? "wtf"}
+                                  onClick={() => setSelectedEvent(event)}
+                                  aria-label={`${event.title}, ${formatEventTime(event)}`}
+                                  data-calendar-region="event-card"
+                                >
+                                  <strong>{event.title}</strong>
+                                  <span>{eventClockLabel(event)}</span>
+                                </GridEvent>
+                              )) : <Muted data-calendar-region="meta">No events</Muted>}
+                            </DayColumn>
+                          );
+                        })}
+                      </WeekBody>
+                    </CalendarWorkspace>
+                    {selectedEvent ? (
+                      <EventDetail data-calendar-region="event-detail">
                         <Row>
-                          {e.imageUrl ? (
-                            <PreviewImage
-                              src={e.imageUrl}
-                              alt=""
-                              data-calendar-region="event-media"
-                            />
-                          ) : null}
-                          <Stack>
-                            <Row>
-                              <SourceBadge
-                                $source={e.sourceProvider ?? "wtf"}
-                                data-calendar-region="source-badge"
-                              >
-                                {(e.sourceProvider ?? "wtf").toUpperCase()}
-                              </SourceBadge>
-                              <KindBadge $kind={e.kind} data-calendar-region="kind-badge">
-                                {e.kind}
-                              </KindBadge>
-                              <Muted data-calendar-region="meta">{formatEventTime(e)}</Muted>
-                            </Row>
-                            <Row>
-                              <Muted data-calendar-region="meta">visibility: {e.visibility}</Muted>
-                              {e.location ? (
-                                <Muted data-calendar-region="meta">place: {e.location}</Muted>
-                              ) : null}
-                              {e.categories?.length ? (
-                                <Muted data-calendar-region="meta">{e.categories.join(", ")}</Muted>
-                              ) : null}
-                            </Row>
-                          </Stack>
+                          <SourceBadge $source={selectedEvent.sourceProvider ?? "wtf"} data-calendar-region="source-badge">{(selectedEvent.sourceProvider ?? "wtf").toUpperCase()}</SourceBadge>
+                          <KindBadge $kind={selectedEvent.kind} data-calendar-region="kind-badge">{selectedEvent.kind}</KindBadge>
+                          <Button size="sm" style={{ marginLeft: "auto" }} onClick={() => setSelectedEvent(null)}>Close details</Button>
                         </Row>
-                        {e.description ? (
-                          <div
-                            data-calendar-region="event-description"
-                            style={{ marginTop: 6, fontSize: 13, whiteSpace: "pre-wrap" }}
-                          >
-                            {e.description}
-                          </div>
-                        ) : null}
-                        {Array.isArray(e.linksJson) && e.linksJson.length > 0 ? (
-                          <div data-calendar-region="event-links" style={{ marginTop: 6 }}>
-                            {(e.linksJson as Array<{
-                              label: string;
-                              url: string;
-                            }>).map((l) => (
-                              <div key={l.url}>
-                                <a href={l.url} target="_blank" rel="noopener noreferrer">
-                                  {l.label}
-                                </a>
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
-                        {e.sourceProvider === "personal" ? (
-                          <Row data-calendar-region="event-actions" style={{ marginTop: 8 }}>
-                            <Button size="sm" onClick={() => removePersonalEvent(String(e.id))}>
-                              Remove
-                            </Button>
-                          </Row>
-                        ) : null}
-                      </EventCard>
-                    </div>
-                  ))
+                        <h3>{selectedEvent.title}</h3>
+                        <Muted data-calendar-region="meta">{formatEventTime(selectedEvent)}{selectedEvent.location ? ` · ${selectedEvent.location}` : ""}</Muted>
+                        {selectedEvent.description ? <p data-calendar-region="event-description">{selectedEvent.description}</p> : null}
+                        {selectedEvent.sourceProvider === "personal" ? <Button size="sm" onClick={() => removePersonalEvent(String(selectedEvent.id))}>Remove personal event</Button> : null}
+                      </EventDetail>
+                    ) : null}
+                  </>
                 )}
               </Stack>
 
@@ -782,9 +951,24 @@ export function Calendar() {
                 />
               </Field>
               <Field data-calendar-region="field">
-                <label>Starts at (local)</label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={personalAllDay}
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked;
+                      setPersonalAllDay(checked);
+                      setPersonalStartsAt((value) => checked ? value.slice(0, 10) : `${value.slice(0, 10)}T09:00`);
+                      setPersonalEndsAt((value) => !value ? "" : checked ? value.slice(0, 10) : `${value.slice(0, 10)}T10:00`);
+                    }}
+                  />{" "}
+                  All-day event
+                </label>
+              </Field>
+              <Field data-calendar-region="field">
+                <label>{personalAllDay ? "Date" : "Starts at (local)"}</label>
                 <TextInput
-                  type="datetime-local"
+                  type={personalAllDay ? "date" : "datetime-local"}
                   value={personalStartsAt}
                   onChange={(e: any) => setPersonalStartsAt(e.target.value)}
                   fullWidth
@@ -793,7 +977,7 @@ export function Calendar() {
               <Field data-calendar-region="field">
                 <label>Ends at (optional)</label>
                 <TextInput
-                  type="datetime-local"
+                  type={personalAllDay ? "date" : "datetime-local"}
                   value={personalEndsAt}
                   onChange={(e: any) => setPersonalEndsAt(e.target.value)}
                   fullWidth

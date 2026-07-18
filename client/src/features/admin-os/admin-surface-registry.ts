@@ -263,7 +263,12 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     routePatterns: ["/calendar"],
     adminPanelTabs: ["Automation", "Control Board"],
     nativeSettings: ["event publishing", "attendance triggers", "ticket review"],
-    automationHandles: ["calendar.ticket_submitted", "attendance.claimed", "app.interaction.tracked"],
+    automationHandles: [
+      "calendar.ticket_submitted",
+      "attendance.claimed",
+      "app.interaction.tracked",
+    ],
+    behaviorAssertionIds: ["calendar.tray-reminders-cross-app-handoffs"],
   },
   {
     id: "recapture",
@@ -286,7 +291,11 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Board", "Automation", "XP Log"],
     nativeSettings: ["channels", "permissions", "pins", "slow mode", "post reward triggers"],
     automationHandles: ["messageboard.post.created", "messageboard.channel.post.created", "app.interaction.tracked"],
-    behaviorAssertionIds: ["gamma.daily-sidequest-handoff", "gameshow.side-quests-messageboard-check-in"],
+    behaviorAssertionIds: [
+      "gamma.daily-sidequest-handoff",
+      "gameshow.side-quests-messageboard-check-in",
+      "calendar.tray-reminders-cross-app-handoffs",
+    ],
   },
   {
     id: "messages",
@@ -479,6 +488,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "wtf-live.mobile-and-panel-popout-controls",
       "wtf-live.stage-owner-lifecycle-controls",
       "wtf-live.stage-room-role-controls",
+      "calendar.tray-reminders-cross-app-handoffs",
     ],
   },
   {
@@ -749,6 +759,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "wim.modular-window-roster-tabs",
       "inbox.compose-reply-send-actions",
       "desktop-reggie.summon-wim-messages",
+      "calendar.tray-reminders-cross-app-handoffs",
     ],
   },
   {

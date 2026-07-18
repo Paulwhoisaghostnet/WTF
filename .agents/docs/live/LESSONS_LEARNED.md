@@ -8747,3 +8747,13 @@
 **Rule**: Mirror every terminal CI policy check in full-send preflight, including `check:external-links`. New `target="_blank"` anchors must use the repository's canonical `rel="noopener noreferrer"` spelling even when browser behavior would infer equivalent isolation.
 
 ---
+
+## 2026-07-18 - Shared behavior assertions belong to every owning surface
+
+**What happened**: The Calendar cross-app handoff assertion initially named Calendar, WTF LIVE, WIM, and Messageboard as owners, but only Calendar registered the assertion in the admin surface registry. Inventory coverage correctly rejected the incomplete ownership graph before the browser suite ran.
+
+**Why it mattered**: A cross-app workflow can look covered from its destination while its entry points silently drift or disappear. Partial registration weakens both the operational inventory and the release signal for the apps that initiate the handoff.
+
+**Rule**: When a behavior assertion declares multiple owning surfaces, register it reciprocally with every owner in the same change. Run inventory coverage immediately after adding the assertion, before spending time on the full browser suite.
+
+---

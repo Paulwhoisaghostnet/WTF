@@ -264,6 +264,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The source policy derives the clock from browser Date/Intl state, exposes ISO/time/date attributes on the tray action, routes to the existing `/calendar` route, and the browser proof confirms the Calendar handoff stays in Gamma with no Gamma-specific API, auth mutation, or Classic fallback.",
   },
   {
+    id: "calendar.tray-reminders-cross-app-handoffs",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSurfaceIds: ["calendar", "wtf-live", "wim", "messageboard"],
+    ownerSpec: "client/src/pages/calendar-presentation-policy.test.ts; client/src/features/calendar/calendar-reminders.test.ts",
+    verificationCommand:
+      "npx tsx --test client/src/features/calendar/calendar-reminders.test.ts client/src/pages/calendar-presentation-policy.test.ts",
+    userVisibleAssertion:
+      "Calendar is visible as a desktop and permanent task-tray app, shows at most one reminder popup above its tray icon, replaces an older unviewed threshold for the same event, opens the Calendar when activated, and accepts prefilled event context from WTF LIVE rooms, WIM, and Message Board.",
+    durableSideEffectAssertion:
+      "The focused model proves day, six-hour, one-hour, start-time, and all-day login thresholds; viewed threshold ids persist per user in localStorage so subsequent thresholds remain eligible; cross-app handoffs use one narrow session record or explicit URL fields, and personal events persist in the existing per-user Calendar store.",
+  },
+  {
     id: "gamma.auth-return-continuity",
     domain: "Entry, Authentication, and Account Identity",
     ownerSurfaceIds: ["gamma-shell"],

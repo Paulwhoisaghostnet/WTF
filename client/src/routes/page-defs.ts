@@ -613,7 +613,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
   { pattern: "/messageboard", component: MessageBoardPage, auth: false, title: "Message Board", group: "social", startMenu: true },
   { pattern: "/wtf-recapture", component: WtfRecapturePage, auth: false, title: "WTF Recapture", group: "gameshow", startMenu: true },
-  { pattern: "/calendar", component: CalendarPage, auth: false, title: "Calendar", group: "gameshow", startMenu: true },
+  { pattern: "/calendar", component: CalendarPage, auth: false, title: "Calendar", group: "gameshow", startMenu: true, desktopIcon: true },
   { pattern: "/mint-portal", component: MintPortalPage, auth: true, title: "Mint Portal", group: "gameshow", startMenu: true, desktopIcon: true },
   {
     pattern: "/contract-factory",

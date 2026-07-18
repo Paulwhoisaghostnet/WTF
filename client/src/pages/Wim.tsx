@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Hourglass, Panel, TextInput } from "react95";
 import {
   Bold,
+  CalendarDays,
   Check,
   ChevronDown,
   ChevronRight,
@@ -39,6 +40,7 @@ import { useAuth } from "../lib/auth-context";
 import { resolveTokenThumbnail } from "../lib/media-resolve";
 import { usePresentationShell } from "../lib/presentation-shell";
 import { useWindowManager, WindowPathContext } from "../lib/window-context";
+import { storeCalendarHandoff } from "../features/calendar/calendar-handoff";
 import {
   DEFAULT_DESKTOP_APPEARANCE,
   DESKTOP_WIM_CHAT_FONT_FAMILIES,
@@ -3298,6 +3300,23 @@ export function Wim() {
           <ScreenName>{user?.displayName || user?.username || "WTF User"}</ScreenName>
           <StatusLine>Available</StatusLine>
         </div>
+        <IconButton
+          type="button"
+          aria-label="Create a calendar event from WIM"
+          title="Add WIM plan to Calendar"
+          data-wim-calendar-handoff="true"
+          onClick={() => {
+            storeCalendarHandoff({
+              source: "wim",
+              title: "WIM plan",
+              description: "Planned from a WIM conversation.",
+              location: "/wim",
+            });
+            wm.openPage("/calendar");
+          }}
+        >
+          <CalendarDays size={15} aria-hidden />
+        </IconButton>
         <IconButton
           ref={settingsButtonRef}
           type="button"

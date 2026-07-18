@@ -1,13 +1,23 @@
-import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
 import styled from "styled-components";
 import { AppBar, Toolbar as React95Toolbar, Button, Panel, Window, WindowHeader, WindowContent } from "react95";
-import { Heart, Monitor, Zap } from "lucide-react";
+import { CalendarDays, Heart, Monitor, Zap } from "lucide-react";
 import { useAuth } from "../../lib/auth-context";
 import { MusicMiniPlayer } from "../../features/music/MusicMiniPlayer";
 import { useSharedMusicPlayer } from "../../features/music/MusicPlayerContext";
 import { useWallet } from "../../lib/wallet-context";
 import { useWindowManager } from "../../lib/window-context";
 import { useLocalization } from "../../lib/localization";
+import { api } from "../../lib/api";
+import {
+  readViewedReminderIds,
+  reminderViewedStorageKey,
+  selectCalendarReminder,
+  writeViewedReminderIds,
+  type ReminderEvent,
+} from "../../features/calendar/calendar-reminders";
+import { CALENDAR_PERSONAL_EVENTS_CHANGED } from "../../features/calendar/calendar-handoff";
 import { StartMenu } from "./StartMenu";
 import { Win95ContextMenu, type Win95ContextMenuEntry } from "./Win95ContextMenu";
 import { MOBILE } from "../../global-styles";
@@ -264,6 +274,46 @@ const WeatherPopup = styled(Window)`
   }
 `;
 
+const CalendarPopup = styled(Window)`
+  position: absolute;
+  bottom: 36px;
+  right: 86px;
+  width: min(330px, calc(100vw - 16px));
+  z-index: 220;
+
+  ${MOBILE} {
+    bottom: 48px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+`;
+
+const CalendarPopupContent = styled(WindowContent)`
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+
+  strong, span { display: block; }
+  span { font-size: var(--wtf-type-caption, 13px); }
+`;
+
+const CalendarTrayButton = styled(TrayIconButton)`
+  position: relative;
+
+  &[data-calendar-due="true"]::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #d52828;
+    border: 1px solid #fff;
+  }
+`;
+
 const WeatherPopupContent = styled(WindowContent)`
   padding: 8px;
   display: flex;
@@ -327,6 +377,78 @@ export function Taskbar({
   const { t, translateSystemText, formatDate } = useLocalization();
   const popupRef = useRef<HTMLDivElement>(null);
   const weatherPopupRef = useRef<HTMLDivElement>(null);
+  const reminderStorageKey = reminderViewedStorageKey(user?.id);
+  const [viewedReminderIds, setViewedReminderIds] = useState<Set<string>>(
+    () => readViewedReminderIds(reminderViewedStorageKey(user?.id)),
+  );
+  const [personalCalendarRevision, setPersonalCalendarRevision] = useState(0);
+
+  useEffect(() => {
+    const refreshPersonal = () => setPersonalCalendarRevision((value) => value + 1);
+    window.addEventListener(CALENDAR_PERSONAL_EVENTS_CHANGED, refreshPersonal);
+    return () => window.removeEventListener(CALENDAR_PERSONAL_EVENTS_CHANGED, refreshPersonal);
+  }, []);
+
+  useEffect(() => {
+    setViewedReminderIds(readViewedReminderIds(reminderStorageKey));
+  }, [reminderStorageKey]);
+
+  const reminderRange = useMemo(() => {
+    const from = new Date(time);
+    from.setDate(from.getDate() - 1);
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(time);
+    to.setDate(to.getDate() + 2);
+    to.setHours(23, 59, 59, 999);
+    return { from, to };
+  }, [time.toDateString()]);
+
+  const calendarReminderQuery = useQuery<ReminderEvent[]>({
+    queryKey: ["calendar-tray-reminders", reminderRange.from.toISOString(), reminderRange.to.toISOString()],
+    queryFn: () => api.get<ReminderEvent[]>(
+      `/api/calendar/events?from=${encodeURIComponent(reminderRange.from.toISOString())}&to=${encodeURIComponent(reminderRange.to.toISOString())}`,
+    ),
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
+    enabled: Boolean(user),
+  });
+
+  const personalReminderEvents = useMemo<ReminderEvent[]>(() => {
+    try {
+      const raw = window.localStorage.getItem(`wtf:calendar:personal:${user?.id ?? "guest"}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [user?.id, time, personalCalendarRevision]);
+
+  const activeCalendarReminder = useMemo(
+    () => user ? selectCalendarReminder(
+      [...(calendarReminderQuery.data ?? []), ...personalReminderEvents],
+      viewedReminderIds,
+      time,
+    ) : null,
+    [calendarReminderQuery.data, personalReminderEvents, time, user, viewedReminderIds],
+  );
+
+  const viewCalendarReminder = () => {
+    if (activeCalendarReminder) {
+      const next = new Set(viewedReminderIds);
+      next.add(activeCalendarReminder.id);
+      setViewedReminderIds(next);
+      writeViewedReminderIds(reminderStorageKey, next);
+    }
+    wm.openPage("/calendar");
+  };
+
+  const dismissCalendarReminder = () => {
+    if (!activeCalendarReminder) return;
+    const next = new Set(viewedReminderIds);
+    next.add(activeCalendarReminder.id);
+    setViewedReminderIds(next);
+    writeViewedReminderIds(reminderStorageKey, next);
+  };
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 60000);
@@ -453,6 +575,19 @@ export function Taskbar({
           </WindowButtons>
 
           <SystemTray>
+            <CalendarTrayButton
+              data-compact-control="true"
+              data-calendar-tray="true"
+              data-calendar-due={activeCalendarReminder ? "true" : "false"}
+              size="sm"
+              active={activeCalendarReminder ? true : undefined}
+              aria-label={activeCalendarReminder ? `Calendar reminder: ${activeCalendarReminder.event.title}` : "Open Calendar"}
+              aria-describedby={activeCalendarReminder ? "calendar-tray-reminder-title" : undefined}
+              title={activeCalendarReminder ? `${activeCalendarReminder.label}: ${activeCalendarReminder.event.title}` : "Open Calendar"}
+              onClick={viewCalendarReminder}
+            >
+              <CalendarDays />
+            </CalendarTrayButton>
             <MusicMiniPlayer player={musicPlayer} />
             <ShowDesktopButton
               data-compact-control="true"
@@ -534,6 +669,21 @@ export function Taskbar({
           </SystemTray>
         </TaskbarToolbar>
       </StyledAppBar>
+
+      {activeCalendarReminder ? (
+        <CalendarPopup data-calendar-reminder-popup={activeCalendarReminder.id}>
+          <WindowHeader style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span id="calendar-tray-reminder-title">Calendar reminder</span>
+            <TrayPopupCloseButton size="sm" aria-label="Dismiss calendar reminder" onClick={dismissCalendarReminder}>✕</TrayPopupCloseButton>
+          </WindowHeader>
+          <CalendarPopupContent>
+            <strong>{activeCalendarReminder.event.title}</strong>
+            <span>{activeCalendarReminder.label}</span>
+            <span>{new Date(activeCalendarReminder.event.startsAt).toLocaleString()}</span>
+            <Button primary onClick={viewCalendarReminder}>Open Calendar</Button>
+          </CalendarPopupContent>
+        </CalendarPopup>
+      ) : null}
 
       {walletPopupOpen && (
         <WalletPopup ref={popupRef as any}>

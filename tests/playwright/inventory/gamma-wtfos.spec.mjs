@@ -7091,7 +7091,8 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await setHarnessState(request, { userRole: "anonymous" });
 
     const now = new Date();
-    const gammaEventStart = new Date(now.getTime() + 60 * 60 * 1000);
+    const gammaEventStart = new Date(now);
+    gammaEventStart.setHours(14, 0, 0, 0);
     const gammaEventEnd = new Date(gammaEventStart.getTime() + 60 * 60 * 1000);
 
     await page.route("**/api/calendar/events**", async (route) => {
@@ -7130,6 +7131,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(calendarSurface.locator('[data-calendar-region="source-links"]')).toContainText("/api/calendar/feed.ics");
     await expect(calendarSurface.locator('[data-calendar-region="tabs"]')).toContainText("Browse");
     await expect(calendarSurface.locator('[data-calendar-region="event-card"]')).toContainText("Gamma calendar signal");
+    await calendarSurface.getByRole("button", { name: /Gamma calendar signal/ }).click();
     await expect(calendarSurface.locator('[data-calendar-region="source-badge"]')).toContainText("TTC");
     await expect(calendarSurface.locator('[data-calendar-region="kind-badge"]')).toContainText("x_space");
     await expect(calendarSurface.locator('[data-calendar-region="source-panel"]')).toContainText("Personal entries stay");
@@ -7159,13 +7161,13 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
         tabs: read('[data-calendar-region="tabs"]'),
         tabBody: read('[data-calendar-region="tab-body"]'),
         browseActions: read('[data-calendar-region="browse-actions"]'),
+        calendarGrid: read('[data-calendar-region="calendar-grid"]'),
         eventCard: read('[data-calendar-region="event-card"]'),
-        eventFieldset: read('[data-calendar-region="event-card"] fieldset'),
+        eventDetail: read('[data-calendar-region="event-detail"]'),
         sourcePanel: read('[data-calendar-region="source-panel"]'),
         sourceFieldset: read('[data-calendar-region="source-panel"] fieldset'),
         sourceBadge: read('[data-calendar-region="source-badge"]'),
         kindBadge: read('[data-calendar-region="kind-badge"]'),
-        image: read('[data-calendar-region="event-media"]'),
       };
     });
     expect(calendarMetrics.surface.fontFamily).toMatch(/Inter|sans-serif/i);
@@ -7188,6 +7190,12 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(
       calendarSurface.locator('[data-calendar-region="event-card"]').filter({ hasText: "Gamma personal return" })
     ).toBeVisible();
+
+    await page.setViewportSize({ width: 640, height: 760 });
+    await expect(calendarSurface.locator('[data-calendar-region="calendar-grid"]')).toBeVisible();
+    expect(
+      await calendarSurface.evaluate((surface) => surface.scrollWidth <= surface.clientWidth + 2)
+    ).toBe(true);
 
     await calendarSurface.getByRole("tab", { name: "Submit to WTF" }).click();
     await expect(calendarSurface).toHaveAttribute("data-calendar-active-tab", "submit");

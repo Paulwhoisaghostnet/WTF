@@ -5,6 +5,7 @@ import {
   Separator,
 } from "react95";
 import { AppWindow } from "../components/layout/AppWindow";
+import { CalendarDays } from "lucide-react";
 import { useAuth } from "../lib/auth-context";
 import { usePresentationShell } from "../lib/presentation-shell";
 import type {
@@ -21,6 +22,8 @@ import { BoardMessageList } from "../features/board/BoardMessageList";
 import { BoardComposer } from "../features/board/BoardComposer";
 import { BoardChannelSettings } from "../features/board/BoardChannelSettings";
 import { BoardManagementDialogs } from "../features/board/BoardManagementDialogs";
+import { storeCalendarHandoff } from "../features/calendar/calendar-handoff";
+import { useWindowManager } from "../lib/window-context";
 import {
   ChanHeader,
   ChanIcon,
@@ -44,6 +47,7 @@ import {
 export function MessageBoard() {
   const { user } = useAuth();
   const presentation = usePresentationShell();
+  const wm = useWindowManager();
   const isMod = !!user && ["admin", "host", "cohost"].includes(user.role);
   const initialRouteTargetRef = useRef<{ channelId: number | null; messageId: number | null } | null>(null);
 
@@ -283,6 +287,23 @@ export function MessageBoard() {
                     </>
                   )}
                   <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+                    <Button
+                      aria-label={`Create a calendar event from ${ch.title}`}
+                      title="Add channel plan to Calendar"
+                      size="sm"
+                      data-messageboard-calendar-handoff={ch.id}
+                      onClick={() => {
+                        storeCalendarHandoff({
+                          source: "messageboard",
+                          title: `${ch.title} plan`,
+                          description: ch.topic ? `Planned from Message Board: ${ch.topic}` : `Planned from the ${ch.title} Message Board channel.`,
+                          location: `/messageboard?channel=${ch.id}`,
+                        });
+                        wm.openPage("/calendar");
+                      }}
+                    >
+                      <CalendarDays size={15} aria-hidden />
+                    </Button>
                     {ch.canManage && (
                       <>
                         <Button

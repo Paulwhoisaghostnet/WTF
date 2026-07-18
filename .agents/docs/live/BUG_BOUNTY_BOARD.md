@@ -9063,6 +9063,24 @@ Priority labels:
   - `node --test scripts/production-readiness-blockers.test.mjs` passes 3/3.
   - `npm run production:readiness` successfully verifies current public production; post-deploy expected-commit verification is required for the promoted Double Take commit.
 
+### WTF-BB-414 - WTF Calendar lacks Teia's on-chain event and authoritative MEC ingestion path
+
+- Category: Calendar / TTC interoperability and durable community ownership
+- Status: Open
+- Owner/Session: -
+- Score: C3 + F3 + S2 + P1(3) = 11
+- Evidence:
+  - WTF currently reads TTC through the public WordPress iCal feed in `server/lib/ttc-calendar.ts`, caches for ten minutes, expands a limited RRULE subset, and merges it with server-owned `gameshow_events` rows.
+  - Teia PR [#545](https://github.com/teia-community/teia-ui/pull/545), open and mergeable as of 2026-07-18, instead reads TTC's token-gated MEC REST API for authoritative per-occurrence date/time, merges TTC read-only records with Teia mainnet contract `KT1DEB8KZUADyNEM5h38EwG7Fpmp2C4DTFqs` plus IPFS event documents, supports richer recurrence and linked channels/collabs, moderation proposals, and emits a combined `/calendar.ics` feed.
+  - The current Teia production `main` and live bundle do not contain this calendar yet; it is recent open integration work, not a deployed standard.
+- Why it matters:
+  - WTF's feed is simpler and lower-risk, but can lose MEC-only metadata or recurrence fidelity and does not provide wallet-governed portable event ownership comparable to Teia's proposed design.
+- Likely correction direction:
+  - Coordinate a TTC read token and server-side MEC access first, retaining iCal as fallback; normalize authoritative occurrences and richer TTC metadata without exposing credentials to the browser.
+  - Separately evaluate whether WTF should federate Teia's contract as another read-only source or adopt its own contract/IPFS proposal path. Do not replace WTF's role-based review queue until moderation, edit, hide, recovery, and migration semantics are proven.
+- Verification idea:
+  - Fixture recurring, all-day, multi-location, image, and timezone events against both TTC feeds; require identical occurrence dates, graceful fallback when MEC fails, source-aware de-duplication, bounded IPFS fetches, and an ICS round-trip test before enabling the new adapter.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:
