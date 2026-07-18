@@ -695,7 +695,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "wallet portfolio to commerce loop",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    routes: ["/dashboard", "/hoard", "/my-gallery", "/marketplace", "/rat-race", "/trade-boards", "/swap", "/wtf-subdomains", "/wtf-subdomains/setup", "/settings"],
+    routes: ["/dashboard", "/hoard", "/my-gallery", "/collekt", "/marketplace", "/rat-race", "/trade-boards", "/swap", "/wtf-subdomains", "/wtf-subdomains/setup", "/settings"],
     eventHandles: [
       "wallet.linked",
       "wallet.primary_set",
@@ -713,6 +713,9 @@ export const DOMAIN_WORKFLOWS = [
       "macaroni.drop_shared",
       "macaroni.drop_calendar_added",
       "hoard.viewed",
+      "collekt.duplicates.scanned",
+      "collekt.offer.terms_previewed",
+      "collekt.offer.placed",
       "rat_race.viewed",
       "rat_race.scan_requested",
       "rat_race.card.opened",
@@ -726,6 +729,17 @@ export const DOMAIN_WORKFLOWS = [
     ],
     apiProbes: [
       { method: "GET", path: "/api/profile/tokens?limit=500&sortBy=balance&sortDir=desc" },
+      {
+        method: "GET",
+        path: "/api/collekt/duplicates?wallet=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb",
+        expectedStatuses: [200, 502],
+      },
+      {
+        method: "POST",
+        path: "/api/collekt/events",
+        body: { eventType: "collekt.duplicates.scanned", tokenRef: "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", metadata: { inventory: true } },
+        expectedStatuses: [200, 401, 500],
+      },
       { method: "GET", path: "/api/cockpit/overview" },
       { method: "GET", path: "/api/wtf-subdomains/my" },
       { method: "GET", path: "/api/wtf-subdomains/registrar/config" },

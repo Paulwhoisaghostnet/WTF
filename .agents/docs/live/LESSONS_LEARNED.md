@@ -8717,3 +8717,23 @@
 **Rule**: Deterministic generators that govern release inputs must include both cached files and non-ignored untracked candidates, or the workflow must stage before checking. Prefer `git ls-files --cached --others --exclude-standard` so ignored build residue stays excluded while new source files participate before their first commit; lock that discovery contract in a policy test.
 
 ---
+
+## 2026-07-18 - Unknown token supply must not coerce to a numeric policy value
+
+**What happened**: The first duplicate-art normalizer converted a missing FA2 `totalSupply` with `Number("")`, producing zero. The token was still excluded, but it was misclassified as an out-of-range supply instead of malformed/unproven chain data.
+
+**Why it mattered**: Art-only filtering is a trust boundary. JavaScript numeric coercion can turn absent indexer evidence into a plausible number, making diagnostics misleading and creating an easy path for a future comparison change to admit tokens whose supply was never proven.
+
+**Rule**: Validate null, undefined, and empty numeric chain fields before coercion. Filters that depend on balance, decimals, or total supply must require safe integers and fail closed with an explicit malformed/unknown classification when evidence is absent.
+
+---
+
+## 2026-07-18 - A package-level release gate must own an executable script
+
+**What happened**: The Double Take full-send preflight called the documented `production:readiness` package command, but the command referenced a deleted `scripts/production-readiness-blockers.mjs` file and failed before checking production.
+
+**Why it mattered**: The deployment workflow still had its own readiness probe, so routine deploys could succeed while the operator-facing preflight was silently unusable. That creates two release contracts and makes bypassing the broken one feel normal.
+
+**Rule**: Every package-level release command must resolve to a checked-in, policy-tested executable. A generic production readiness gate should verify public liveness, dependency readiness, production runtime mode, and a non-placeholder git commit; post-deploy runs must also require the expected commit.
+
+---

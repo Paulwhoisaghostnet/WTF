@@ -9045,6 +9045,24 @@ Priority labels:
   - Environment inventory policy passes 3/3 and `npm run env:inventory:check` passes after regeneration.
   - Clean-checkout push run `29654817043`, pull-request run `29654818352`, and merged-main run `29655456182` all passed the environment inventory plus the complete Quality Gates.
 
+### WTF-BB-413 - Production readiness package command points to a missing gate
+
+- Category: Release integrity / production verification
+- Status: Verified
+- Owner/Session: Codex Double Take full-send pass
+- Score: C3 + F4 + S2 + P0(5) = 14
+- Evidence:
+  - `npm run production:readiness` failed before any probe because `scripts/production-readiness-blockers.mjs` did not exist even though `package.json` advertised it as the generic production gate.
+  - The Hetzner workflow still probes `/api/health/ready`, but local release operators had no executable package command that combined liveness, readiness, production runtime, and live commit-marker checks.
+- Why it matters:
+  - A documented release gate that cannot start encourages operators to bypass pre-deploy verification and weakens the evidence required before and after a full send.
+- Resolution:
+  - Restored `scripts/production-readiness-blockers.mjs` as a generic, credential-free probe of `/api/health` and `/api/health/ready` with fail-closed production runtime and git commit validation plus optional `WTFOS_EXPECT_COMMIT` parity.
+  - Added focused policy coverage for the package command, healthy state, placeholder commits, stale expected commits, and degraded readiness.
+- Verification:
+  - `node --test scripts/production-readiness-blockers.test.mjs` passes 3/3.
+  - `npm run production:readiness` successfully verifies current public production; post-deploy expected-commit verification is required for the promoted Double Take commit.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

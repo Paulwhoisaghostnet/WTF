@@ -9,6 +9,7 @@ import {
   getConfiguredCollektModuleUrl,
   useCollektSession,
 } from "./useCollektSession";
+import { CollektDuplicateScanner } from "./CollektDuplicateScanner";
 
 const CollektSurface = styled.div`
   display: grid;
@@ -152,23 +153,24 @@ export function CollektBridge() {
   }, [configuredModuleUrl]);
 
   return (
-    <AppWindow title="colleKT for WTF">
+    <AppWindow title="colleKT · Double Take">
       <CollektSurface
         data-collekt-surface="bridge"
         data-collekt-presentation-host={presentation.host}
         data-collekt-region="surface"
       >
+        <CollektDuplicateScanner presentationHost={presentation.host} />
         {isLoading ? (
           <LoadingRow data-collekt-region="loading-row">
-            <Hourglass size={24} /> Loading profile wallets...
+            <Hourglass size={24} /> Loading your colleKT profile bridge...
           </LoadingRow>
         ) : error ? (
           <GroupBox label="colleKT bridge" data-collekt-region="error-panel">
             <Muted data-collekt-region="muted">{(error as Error).message}</Muted>
           </GroupBox>
         ) : (
-          <Layout data-collekt-region="layout">
-            <GroupBox label="WTF profile source" data-collekt-region="source-panel">
+          <Layout data-collekt-region="layout" style={{ marginTop: 10 }}>
+            <GroupBox label="Your colleKT gallery" data-collekt-region="source-panel">
               <LaunchRow data-collekt-region="launch-row">
                 <strong data-collekt-region="profile-name">
                   {data?.user.displayName || data?.user.username}
@@ -184,8 +186,8 @@ export function CollektBridge() {
                 )}
               </LaunchRow>
               <Muted data-collekt-region="api-note">
-                colleKT reads `/api/collekt/tokens`, which is backed by the same
-                profile wallet holdings used by My Gallery and trade boards.
+                Your linked-wallet gallery remains available separately from the
+                read-only duplicate scanner above.
               </Muted>
             </GroupBox>
 

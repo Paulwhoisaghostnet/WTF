@@ -942,7 +942,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Contract Ledger", "Rewards", "Automation"],
     nativeSettings: ["listing policy", "auction moderation", "trade-board reward triggers"],
     automationHandles: ["marketplace.listing_created", "trade_board.updated", "wallet.provider.preflight.failed"],
-    behaviorAssertionIds: ["marketplace.offer-accept-explicit-terms"],
+    behaviorAssertionIds: [
+      "marketplace.offer-accept-explicit-terms",
+      "collekt.duplicate-art-scan-and-offer",
+    ],
   },
   {
     id: "club-dues",
@@ -986,6 +989,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "auth.wallet-provider-login-lifecycle",
       "wallet.checkout-intent-bound-to-signed-session",
       "wallet.passive-refresh-no-signature",
+      "collekt.duplicate-art-scan-and-offer",
     ],
   },
   {

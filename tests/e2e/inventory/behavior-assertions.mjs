@@ -613,6 +613,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The harness reads the live market/inventory APIs and asserts the required app-pass, play-card, and desktop item balances.",
   },
   {
+    id: "collekt.duplicate-art-scan-and-offer",
+    domain: "Wallets, Tokens, Portfolio, and On-Chain State",
+    ownerSurfaceIds: ["hoard", "marketplace"],
+    ownerSpec:
+      "server/features/collekt/duplicates.test.ts, tests/playwright/inventory/collekt-duplicates.spec.mjs, client/src/lib/tezos/marketplace.ts",
+    verificationCommand:
+      "npx tsx --test server/features/collekt/duplicates.test.ts && npm run check && npm run test:e2e:inventory:coverage && npm run build && npx playwright test tests/playwright/inventory/collekt-duplicates.spec.mjs --project=chromium",
+    userVisibleAssertion:
+      "A signed-in collector can scan any Tezos wallet, see only duplicate zero-decimal FA2 art with proven supply at or below 5,000, compare paid price with last sale and delta, inspect edition share and acquisition date, then preview exact owner/token/quantity/signer terms before connecting a wallet and placing a WTF offer.",
+    durableSideEffectAssertion:
+      "The scan, terms preview, and confirmed offer produce normalized colleKT SystemEvents; offer execution reuses the network-verified marketplace helper, approves the configured WTF FA2 operator, submits one exact V2 place_offer call, waits for confirmation, and records the canonical operation hash.",
+  },
+  {
     id: "marketplace.offer-accept-explicit-terms",
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSurfaceIds: ["marketplace"],
