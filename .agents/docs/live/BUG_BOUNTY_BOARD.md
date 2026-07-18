@@ -8996,6 +8996,53 @@ Priority labels:
   - Native Colander browser behavior passes 4/4 and inventory registry coverage remains complete.
   - Installer run `29562793478` passed on Windows x64, macOS universal, and Raspberry Pi arm64. The Windows job silently installed the NSIS package, found both shortcuts, rendered Colander, created a Shadownet project, opened bundled CH-EASE, and uninstalled without leaving the executable behind.
 
+### WTF-BB-411 - Scheduler audit counters overflow and orphan completed jobs
+
+- Category: Operations / scheduler readiness
+- Status: Fixed
+- Owner/Session: Codex full-send release pass
+- Score: C4 + F5 + S2 + P0(5) = 16
+- Evidence:
+  - Production `object-storage-usage-check` completed its S3 scan and persisted a fresh usage record for 17,200,859,982 bytes, but its matching `sync_runs` row remained `running` for roughly ten hours.
+  - `sync_runs.items_in` and `sync_runs.items_out` are PostgreSQL 32-bit integers. `recordFinish()` writes raw job counters, catches update failures, and therefore leaves the durable row open when a counter exceeds 2,147,483,647.
+  - Public readiness consequently returned HTTP 503 with one scheduler issue even though database, Tezos chain configuration, application liveness, and the deployed commit were healthy.
+- Why it matters:
+  - A successfully completed maintenance job can permanently degrade production readiness and conceal the real completion state merely because its audit metric is larger than the storage type.
+- Likely correction direction:
+  - Normalize scheduler audit counters to the PostgreSQL integer range before persistence while retaining exact large values in job-specific cursor/detail payloads.
+  - Add regression coverage for large, negative, fractional, non-finite, and ordinary counters, then verify the production job closes successfully and readiness recovers.
+- Verification idea:
+  - Run focused scheduler tests and the aggregate release gates, deploy through `main`, invoke or observe `object-storage-usage-check`, and require a terminal `sync_runs` row plus repeated HTTP 200 readiness probes.
+- Resolution:
+  - Added a pure scheduler-counter normalizer that truncates fractions, maps missing/non-finite telemetry to zero, and clamps out-of-range values to PostgreSQL's signed integer bounds before `recordFinish()` persists them.
+  - Kept exact large storage byte measurements in the Object Storage usage record and scheduler cursor payload; only the generic roll-up counter is bounded.
+- Verification:
+  - Focused counter and abandoned-run tests pass 5/5, including the exact 17,200,859,982-byte production value and negative/non-finite boundaries.
+  - TypeScript, production build, environment inventory, inventory E2E coverage, and the complete aggregate unit suite pass locally; the aggregate suite is 1,757/1,757.
+  - Production terminal-row and repeated-readiness verification remains required before advancing this bounty from Fixed to Verified.
+
+### WTF-BB-412 - Environment inventory check ignores new untracked source files locally
+
+- Category: CI / generated environment inventory integrity
+- Status: Fixed
+- Owner/Session: Codex full-send release pass
+- Score: C2 + F3 + S1 + P0(5) = 11
+- Evidence:
+  - Local `npm run env:inventory:check` passed while the new scheduler helper and test were still untracked.
+  - After commit, GitHub Quality Gate run `29654696703` failed because the same files became visible to the inventory generator's tracked-file discovery and changed its source-file count.
+- Why it matters:
+  - A developer can receive a false-green inventory check for a change that introduces files, then discover the generated-document mismatch only after pushing.
+- Likely correction direction:
+  - Regenerate the inventory after new files are staged or committed, and document the ordering requirement; evaluate including staged/untracked source candidates in the generator separately so future checks fail earlier.
+- Verification idea:
+  - Regenerate and commit the inventory with the newly tracked files, require local `--check` to pass, and require clean-checkout push and pull-request Quality Gates to pass.
+- Resolution:
+  - Environment source discovery now includes cached files plus non-ignored untracked files, so a new source file participates in the generated inventory before its first commit.
+  - Updated the policy test to lock the tracked/untracked discovery contract and regenerated the checked-in inventory for 2,003 source files.
+- Verification:
+  - Environment inventory policy passes 3/3 and `npm run env:inventory:check` passes after regeneration.
+  - Clean-checkout push and pull-request Quality Gates remain required before advancing this bounty from Fixed to Verified.
+
 ## Backlog Intake Template
 
 Copy this when adding a new issue:

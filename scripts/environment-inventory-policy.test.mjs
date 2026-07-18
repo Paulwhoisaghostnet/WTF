@@ -8,9 +8,13 @@ import {
   listEnvironmentSourceFiles,
 } from "./generate-environment-inventory.mjs";
 
-test("environment inventory only scans Git-tracked release inputs", async () => {
-  const tracked = new Set(
-    execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" })
+test("environment inventory scans tracked and non-ignored untracked release inputs", async () => {
+  const eligible = new Set(
+    execFileSync(
+      "git",
+      ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+      { encoding: "utf8" },
+    )
       .split("\0")
       .filter(Boolean),
   );
@@ -19,8 +23,11 @@ test("environment inventory only scans Git-tracked release inputs", async () => 
   assert.ok(sources.length > 0);
   for (const source of sources) {
     const relative = path.relative(process.cwd(), source).split(path.sep).join("/");
-    assert.ok(tracked.has(relative), `untracked inventory source: ${relative}`);
+    assert.ok(eligible.has(relative), `ignored inventory source: ${relative}`);
   }
+
+  const generatorSource = readFileSync("scripts/generate-environment-inventory.mjs", "utf8");
+  assert.match(generatorSource, /"ls-files",\s*"--cached",\s*"--others",\s*"--exclude-standard"/);
 });
 
 test("generated environment inventory exposes the required governance fields", async () => {
