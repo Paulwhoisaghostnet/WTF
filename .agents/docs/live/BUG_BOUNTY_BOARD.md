@@ -8999,7 +8999,7 @@ Priority labels:
 ### WTF-BB-411 - Scheduler audit counters overflow and orphan completed jobs
 
 - Category: Operations / scheduler readiness
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex full-send release pass
 - Score: C4 + F5 + S2 + P0(5) = 16
 - Evidence:
@@ -9019,12 +9019,14 @@ Priority labels:
 - Verification:
   - Focused counter and abandoned-run tests pass 5/5, including the exact 17,200,859,982-byte production value and negative/non-finite boundaries.
   - TypeScript, production build, environment inventory, inventory E2E coverage, and the complete aggregate unit suite pass locally; the aggregate suite is 1,757/1,757.
-  - Production terminal-row and repeated-readiness verification remains required before advancing this bounty from Fixed to Verified.
+  - Push run `29654817043`, pull-request run `29654818352`, and merged-main run `29655456182` passed the complete Quality Gates, including SmartPy and all 658 inventory browser stories.
+  - Hetzner deploy run `29655456176` passed at main commit `35c6a9b6`. The first post-fix production Object Storage audit started at `2026-07-18 18:29:26 UTC`, finished successfully in 3,876 ms, recorded 2,449 objects, bounded the generic counter at 2,147,483,647, and retained the exact 17,200,859,982-byte measurement in `object_storage_usage_checks`.
+  - Three public readiness probes after the successful audit returned HTTP 200 with the exact live commit, database/chain/jobs healthy, and zero job issues. Fresh live-browser smoke returned 200, found the expected app marker, and produced zero page errors for CH-EASE, Gnocchi, Rotini, Ravioli, Spaghetti, and Colander.
 
 ### WTF-BB-412 - Environment inventory check ignores new untracked source files locally
 
 - Category: CI / generated environment inventory integrity
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex full-send release pass
 - Score: C2 + F3 + S1 + P0(5) = 11
 - Evidence:
@@ -9041,7 +9043,7 @@ Priority labels:
   - Updated the policy test to lock the tracked/untracked discovery contract and regenerated the checked-in inventory for 2,003 source files.
 - Verification:
   - Environment inventory policy passes 3/3 and `npm run env:inventory:check` passes after regeneration.
-  - Clean-checkout push and pull-request Quality Gates remain required before advancing this bounty from Fixed to Verified.
+  - Clean-checkout push run `29654817043`, pull-request run `29654818352`, and merged-main run `29655456182` all passed the environment inventory plus the complete Quality Gates.
 
 ## Backlog Intake Template
 
