@@ -2372,6 +2372,7 @@ export function Wim() {
   const [collapsedCustomLists, setCollapsedCustomLists] = useState<Record<string, boolean>>({});
   const [dismissedPopupKeys, setDismissedPopupKeys] = useState<string[]>([]);
   const [dismissedPopupsReady, setDismissedPopupsReady] = useState(false);
+  const studioHandoffOpenedRef = useRef<number | null>(null);
   const [conversationPeerHints, setConversationPeerHints] = useState<Record<number, number>>({});
   const [sections, setSections] = useState({
     friends: true,
@@ -2622,6 +2623,18 @@ export function Wim() {
       return [...current, newWindow];
     });
   };
+
+  useEffect(() => {
+    const query = routePath.includes("?")
+      ? routePath.slice(routePath.indexOf("?") + 1)
+      : window.location.search.slice(1);
+    const requestedId = Number(new URLSearchParams(query).get("conversation"));
+    if (!Number.isInteger(requestedId) || requestedId <= 0) return;
+    if (studioHandoffOpenedRef.current === requestedId) return;
+    if (!conversationById.has(requestedId)) return;
+    studioHandoffOpenedRef.current = requestedId;
+    showConversation(requestedId);
+  }, [conversationById, routePath]);
 
   useEffect(() => {
     const key = friendStorageKey(user?.id);

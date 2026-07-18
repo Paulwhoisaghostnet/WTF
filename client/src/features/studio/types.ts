@@ -3,6 +3,7 @@ import type {
   StudioMemberRole,
   StudioMemberSummary,
   StudioStorageBackend,
+  StudioProjectWorkflow,
 } from "@shared/types";
 
 export interface Folder {
@@ -40,6 +41,7 @@ export interface ProjectDetail {
     storageQuotaBytes: number;
     storageUsedBytes: number;
     conversationId: number | null;
+    workflow: StudioProjectWorkflow;
     archived: boolean;
     createdAt: string;
     updatedAt: string;

@@ -867,10 +867,11 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "media creation to arcade publishing loop",
     domain: "Media, Creation, Gallery, and Preservation",
-    routes: ["/my-videos", "/my-photos", "/my-music", "/studio", "/game-studio", "/tools/ch-ease", "/tools/macaroni-packager", "/tools/macaroni", "/arcade"],
+    routes: ["/my-videos", "/my-photos", "/my-music", "/studio", "/game-studio", "/wim", "/tools/broot", "/ipfs-pinning", "/tools/colander", "/mint-portal", "/live", "/tools/ch-ease", "/tools/macaroni-packager", "/tools/macaroni", "/arcade"],
     eventHandles: [
       "media.uploaded",
       "studio.project.created",
+      "studio.workflow_updated",
       "skywire.pipeline.studio_queued",
       "game_studio.project.created",
       "game_studio.asset_pack.checked",
@@ -894,6 +895,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/cockpit/media-service" },
       { method: "GET", path: "/api/cockpit/ipfs-gateways" },
       { method: "GET", path: "/api/studio/projects" },
+      { method: "PATCH", path: "/api/studio/projects/1/workflow", body: { phase: "release", targetNetwork: "shadownet", checklist: { media_pinned: true }, references: { pinCid: "ipfs://bafy-inventory" } }, expectedStatuses: [200, 400, 401, 403, 404, 500] },
       { method: "GET", path: "/api/game-studio/projects" },
       { method: "GET", path: "/api/game-studio/templates" },
       { method: "GET", path: "/api/macaroni/packages", expectedStatuses: [200, 401, 403, 404, 500, 503] },

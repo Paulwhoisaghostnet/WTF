@@ -410,8 +410,14 @@ export function WtfLiveApp() {
   const [stageId, setStageId] = useState(initial.stage || "wtf-stage");
   const [pendingQuote, setPendingQuote] = useState<WtfLivePendingQuote | null>(null);
   const [stageDialog, setStageDialog] = useState(false);
-  const [createTitle, setCreateTitle] = useState("");
-  const [createDescription, setCreateDescription] = useState("");
+  const [createTitle, setCreateTitle] = useState(() => {
+    const projectName = new URLSearchParams(window.location.search).get("projectName")?.trim();
+    return projectName ? `${projectName} launch` : "";
+  });
+  const [createDescription, setCreateDescription] = useState(() => {
+    const projectName = new URLSearchParams(window.location.search).get("projectName")?.trim();
+    return projectName ? `Studio project room for ${projectName}.` : "";
+  });
   const [createLiveUrl, setCreateLiveUrl] = useState("");
   const [createRoomKind, setCreateRoomKind] = useState<"room" | "game">("room");
   const [createRoomAccessMode, setCreateRoomAccessMode] = useState<"public" | "private">("public");

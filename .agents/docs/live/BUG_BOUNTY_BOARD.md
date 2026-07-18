@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-415 | Verified | Codex Studio lifecycle integration pass | 2026-07-18 | Studio / creator journey and cross-app handoffs | P1 | 12 | 7 | 3 | 5 | 0 | Studio now owns a durable Concept-to-Activate creator runway with use-case and Tezos-network context, release evidence, and project-scoped handoffs into WIM, Broot, IPFS Pinning, Pasta Protocol, Mint Portal, and WTF LIVE; verified by focused policy/type/build checks, responsive Studio browser coverage, inventory coverage, and the full 659-test inventory E2E suite |
 | WTF-BB-378 | Fixed | Codex production outage repair | 2026-07-15 | Deploy / runtime and migration failure recovery | P0 | 16 | 1 | 3 | 5 | 3 | Restored public `wtfos.app`, moved immutable migration execution ahead of app stop, pinned both Docker stages to Node 22 for ATProto's `undici@8`, capped abandoned scheduler durations at PostgreSQL int32 max, and repaired 1,100 stale production run rows. Verified by public root/health smoke on `9ce35055`, application build, deploy/migration policy tests 16/16, scheduler policy, inventory coverage, and diff check; clean final deploy rerun remains pending |
 | WTF-BB-325 | Verified | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes no longer fall back to Classic after promotion to commit `6e35117`; verified by Deploy to Hetzner `28421767405`, main Quality Gates `28421767416`, live health, Gamma `/gallery` and `/leaderboard` content selectors, Gamma auth gates for `/admin` and `/swap`, plus Classic/Beta host sanity checks |
 | WTF-BB-326 | Verified | Codex Gamma live verification pass | 2026-06-30 | E2E / inventory workflow timeout | P2 | 7 | 15 | 1 | 3 | 0 | Broad inventory smoke could time out the healthy `social post to reward automation loop` under the fixed 60s Playwright budget; verified fixed by workload-based timeout budgeting, local focused/full domain-interoperability proof, and branch Quality Gates `28420704957` |
@@ -9080,6 +9081,32 @@ Priority labels:
   - Separately evaluate whether WTF should federate Teia's contract as another read-only source or adopt its own contract/IPFS proposal path. Do not replace WTF's role-based review queue until moderation, edit, hide, recovery, and migration semantics are proven.
 - Verification idea:
   - Fixture recurring, all-day, multi-location, image, and timezone events against both TTC feeds; require identical occurrence dates, graceful fallback when MEC fails, source-aware de-duplication, bounded IPFS fetches, and an ICS round-trip test before enabling the new adapter.
+
+### WTF-BB-415 - Studio is isolated from the current wtfOS creator lifecycle
+
+- Category: Studio / creator journey and cross-app handoffs
+- Status: Verified
+- Owner/Session: Codex Studio lifecycle integration pass
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - `client/src/pages/Studio.tsx` introduces Studio as a private file room and opens directly into project cards plus storage configuration, without organizing projects by a concept-to-release lifecycle or current next action.
+  - `client/src/pages/StudioProject.tsx` provides files, preview annotations, chat, and members, but no durable project brief, target network, lifecycle stage, release evidence, or project-scoped handoff into WIM, Broot, IPFS Pinning, Pasta Protocol, Mint Portal, or WTF LIVE.
+  - The neighboring owner surfaces and gates already exist, so creators must currently reconstruct project context manually every time they cross apps.
+- Why it matters:
+  - Studio cannot function as the collaborative project authority when planning, production, preservation, minting, and launch state live only in creators' memory or inside disconnected apps.
+  - Tezos value-bearing steps need visible network and evidence boundaries before users leave Studio for wallet or contract operations.
+- Likely correction direction:
+  - Add a durable, shared Studio workflow contract with use case, target network, lifecycle stage, checklist, and release references.
+  - Redesign the project list and project workspace around a guided lifecycle and explicit cross-app owner handoffs, keeping wallet signing and chain operations in their existing owner surfaces.
+  - Add inventory-owned behavior coverage for the visible workflow and persisted side effect.
+- Verification idea:
+  - Create/open a Studio project, update its workflow, reload to prove durable recovery, and verify project-context handoffs into WIM, Broot, pinning, Pasta/Mint, and WTF LIVE at normal and narrow window sizes.
+- Resolution:
+  - Added a shared, persisted Studio workflow contract and migration, a creator runway organized as Concept, Collaborate, Create, Refine, Release, and Activate, explicit Shadownet/mainnet context and warnings, durable checklist/release evidence, and owner-preserving handoffs into WIM, Broot, IPFS Pinning, Pasta Protocol, Mint Portal, and WTF LIVE.
+  - Updated destination surfaces to consume Studio project context, registered the workflow and normalized event in the interaction/admin inventories, and added a domain-owned durable-side-effect assertion plus responsive browser coverage.
+- Verification:
+  - `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, `npm run env:inventory:check`, and `git diff --check` passed.
+  - Focused Studio/WIM/Mint/IPFS/WTF LIVE/admin/server policy tests passed 33/33; the focused Chromium Studio journey passed at desktop and 390px; `npm run test:e2e:inventory` passed 659/659.
 
 ## Backlog Intake Template
 

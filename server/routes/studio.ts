@@ -27,11 +27,15 @@ import {
   STUDIO_MEMBER_ROLES,
   STUDIO_STORAGE_BACKENDS,
   STUDIO_MEMBER_ROLE_LABELS,
+  STUDIO_PROJECT_NETWORKS,
+  STUDIO_PROJECT_PHASES,
+  STUDIO_PROJECT_USE_CASES,
   studioRoleCanEditFiles,
   studioRoleCanInvite,
   studioRoleCanManageProject,
   type StudioMemberRole,
   type StudioStorageBackend,
+  type StudioProjectWorkflow,
 } from "@shared/types";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import {
@@ -90,8 +94,58 @@ const createProjectSchema = z
       .max(30)
       .optional()
       .default([]),
+    workflow: z
+      .object({
+        useCase: z.enum(STUDIO_PROJECT_USE_CASES).optional(),
+        targetNetwork: z.enum(STUDIO_PROJECT_NETWORKS).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
+
+const workflowPatchSchema = z
+  .object({
+    phase: z.enum(STUDIO_PROJECT_PHASES).optional(),
+    useCase: z.enum(STUDIO_PROJECT_USE_CASES).optional(),
+    targetNetwork: z.enum(STUDIO_PROJECT_NETWORKS).optional(),
+    checklist: z.record(z.string().min(1).max(80), z.boolean()).optional(),
+    references: z
+      .object({
+        pinCid: z.string().trim().max(200).optional(),
+        contractAddress: z.string().trim().max(100).optional(),
+        liveRoomId: z.string().trim().max(200).optional(),
+        releaseUrl: z.string().trim().url().max(1000).or(z.literal("")).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, { message: "No workflow fields provided" });
+
+const DEFAULT_STUDIO_WORKFLOW: StudioProjectWorkflow = {
+  phase: "concept",
+  useCase: "artwork",
+  targetNetwork: "shadownet",
+  checklist: {},
+  references: {},
+};
+
+function normalizeStudioWorkflow(value: unknown): StudioProjectWorkflow {
+  if (!value || typeof value !== "object") return { ...DEFAULT_STUDIO_WORKFLOW };
+  const raw = value as Partial<StudioProjectWorkflow>;
+  return {
+    phase: STUDIO_PROJECT_PHASES.includes(raw.phase as any) ? raw.phase! : "concept",
+    useCase: STUDIO_PROJECT_USE_CASES.includes(raw.useCase as any) ? raw.useCase! : "artwork",
+    targetNetwork: STUDIO_PROJECT_NETWORKS.includes(raw.targetNetwork as any)
+      ? raw.targetNetwork!
+      : "shadownet",
+    checklist: raw.checklist && typeof raw.checklist === "object" ? raw.checklist : {},
+    references: raw.references && typeof raw.references === "object" ? raw.references : {},
+    updatedAt: raw.updatedAt,
+    updatedBy: raw.updatedBy,
+  };
+}
 
 const updateProjectSchema = z
   .object({
@@ -291,6 +345,7 @@ router.get(
           storageUsedBytes: studioProjects.storageUsedBytes,
           archived: studioProjects.archived,
           conversationId: studioProjects.conversationId,
+          workflow: studioProjects.workflow,
           updatedAt: studioProjects.updatedAt,
           ownerDisplayName: users.displayName,
         })
@@ -363,6 +418,7 @@ router.get(
           storageUsedBytes: p.storageUsedBytes,
           archived: p.archived,
           conversationId: p.conversationId,
+          workflow: normalizeStudioWorkflow(p.workflow),
           memberCount: memberCountMap.get(p.id) ?? 0,
           fileCount: fileCountMap.get(p.id) ?? 0,
           unreadMessages: 0,
@@ -396,6 +452,7 @@ router.post(
       description,
       storageBackend: requestedBackend,
       invites,
+      workflow: requestedWorkflow,
     } = parsed.data;
 
     // Resolve the backend + any sticky storage_context bits (the main
@@ -462,6 +519,14 @@ router.post(
             storageQuotaBytes: quota,
             storageUsedBytes: 0,
             conversationId: conversation.id,
+            workflow: {
+              ...DEFAULT_STUDIO_WORKFLOW,
+              useCase: requestedWorkflow?.useCase ?? DEFAULT_STUDIO_WORKFLOW.useCase,
+              targetNetwork:
+                requestedWorkflow?.targetNetwork ?? DEFAULT_STUDIO_WORKFLOW.targetNetwork,
+              updatedAt: new Date().toISOString(),
+              updatedBy: user.id,
+            },
           })
           .returning();
 
@@ -556,6 +621,7 @@ router.post(
         storageUsedBytes: project.storageUsedBytes,
         conversationId: project.conversationId,
         archived: project.archived,
+        workflow: normalizeStudioWorkflow(project.workflow),
         createdAt: project.createdAt.toISOString(),
         updatedAt: project.updatedAt.toISOString(),
         role: "owner" as StudioMemberRole,
@@ -647,6 +713,7 @@ router.get(
           storageQuotaBytes: access.project.storageQuotaBytes,
           storageUsedBytes: access.project.storageUsedBytes,
           conversationId: access.project.conversationId,
+          workflow: normalizeStudioWorkflow(access.project.workflow),
           archived: access.project.archived,
           createdAt: access.project.createdAt.toISOString(),
           updatedAt: access.project.updatedAt.toISOString(),
@@ -694,6 +761,61 @@ router.get(
     } catch (err) {
       console.error("[studio] load project failed:", err);
       res.status(500).json({ error: "Failed to load Studio project" });
+    }
+  }
+);
+
+router.patch(
+  "/api/studio/projects/:id/workflow",
+  isAuthenticated,
+  requirePermission("access_studio"),
+  async (req, res) => {
+    const projectId = parseId(req.params.id);
+    if (!projectId) return res.status(400).json({ error: "Invalid project id" });
+    const parsed = workflowPatchSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid workflow payload" });
+    const user = req.user as { id: number; role: string };
+
+    try {
+      const access = await requireStudioAccess(
+        projectId,
+        { id: user.id, role: user.role as any },
+        (resolved) => studioRoleCanEditFiles(resolved.role),
+        "update project workflow"
+      );
+      const current = normalizeStudioWorkflow(access.project.workflow);
+      const next: StudioProjectWorkflow = {
+        ...current,
+        ...parsed.data,
+        checklist: { ...current.checklist, ...(parsed.data.checklist ?? {}) },
+        references: { ...current.references, ...(parsed.data.references ?? {}) },
+        updatedAt: new Date().toISOString(),
+        updatedBy: user.id,
+      };
+      const [updated] = await db
+        .update(studioProjects)
+        .set({ workflow: next, updatedAt: new Date() })
+        .where(eq(studioProjects.id, projectId))
+        .returning({ workflow: studioProjects.workflow, updatedAt: studioProjects.updatedAt });
+
+      if (access.project.conversationId != null) {
+        await writeStudioSystemMessage(
+          access.project.conversationId,
+          user.id,
+          "studio.workflow_updated",
+          `Project runway updated: ${next.phase} on ${next.targetNetwork}.`,
+          { studioProjectId: projectId, phase: next.phase, targetNetwork: next.targetNetwork }
+        );
+      }
+      broadcastStudioEvent(projectId, "studio_workflow_updated", {
+        workflow: next,
+        updatedAt: updated.updatedAt.toISOString(),
+      });
+      res.json({ workflow: normalizeStudioWorkflow(updated.workflow) });
+    } catch (err) {
+      const { status, body } = mapAccessError(err);
+      if (status === 500) console.error("[studio] workflow update failed:", err);
+      res.status(status).json(body);
     }
   }
 );

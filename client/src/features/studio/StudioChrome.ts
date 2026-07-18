@@ -8,6 +8,27 @@ const studioRegionAttrs = (region: string): any => ({
 
 const gammaStudioScope = `[data-studio-presentation-host="gamma"]`;
 
+export const WorkspaceRoot = styled.div.attrs(studioRegionAttrs("workspace-root"))`
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  background: var(--wtf-app-bg, #f3f4f6);
+
+  &[data-studio-presentation-host="gamma"] {
+    background: #070706;
+    color: #f2ead9;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  }
+
+  > [data-studio-region="workspace-shell"] {
+    flex: 1;
+    min-height: 520px;
+  }
+`;
+
 export const Shell = styled.div.attrs(studioRegionAttrs("workspace-shell"))`
   display: grid;
   grid-template-columns: 260px 1fr 320px;

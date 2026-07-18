@@ -616,8 +616,46 @@ export const STUDIO_EVENT_KEYS = [
   "studio.annotation_added",
   "studio.annotation_resolved",
   "studio.mention",
+  "studio.workflow_updated",
 ] as const;
 export type StudioEventKey = (typeof STUDIO_EVENT_KEYS)[number];
+
+export const STUDIO_PROJECT_PHASES = [
+  "concept",
+  "collaborate",
+  "create",
+  "refine",
+  "release",
+  "activate",
+] as const;
+export type StudioProjectPhase = (typeof STUDIO_PROJECT_PHASES)[number];
+
+export const STUDIO_PROJECT_USE_CASES = [
+  "artwork",
+  "collection",
+  "live_experience",
+  "protocol",
+  "other",
+] as const;
+export type StudioProjectUseCase = (typeof STUDIO_PROJECT_USE_CASES)[number];
+
+export const STUDIO_PROJECT_NETWORKS = ["shadownet", "mainnet"] as const;
+export type StudioProjectNetwork = (typeof STUDIO_PROJECT_NETWORKS)[number];
+
+export interface StudioProjectWorkflow {
+  phase: StudioProjectPhase;
+  useCase: StudioProjectUseCase;
+  targetNetwork: StudioProjectNetwork;
+  checklist: Record<string, boolean>;
+  references: {
+    pinCid?: string;
+    contractAddress?: string;
+    liveRoomId?: string;
+    releaseUrl?: string;
+  };
+  updatedAt?: string;
+  updatedBy?: number;
+}
 
 /**
  * Lightweight shared shapes for the client side; server owns the full row
@@ -641,6 +679,7 @@ export interface StudioProjectSummary {
   unresolvedAnnotations: number;
   updatedAt: string;
   role: StudioMemberRole;
+  workflow: StudioProjectWorkflow;
 }
 
 export interface StudioFolderNode {

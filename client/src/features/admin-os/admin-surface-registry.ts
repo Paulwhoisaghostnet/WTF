@@ -489,6 +489,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "wtf-live.stage-owner-lifecycle-controls",
       "wtf-live.stage-room-role-controls",
       "calendar.tray-reminders-cross-app-handoffs",
+      "studio.creator-runway-persistence",
     ],
   },
   {
@@ -760,6 +761,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "inbox.compose-reply-send-actions",
       "desktop-reggie.summon-wim-messages",
       "calendar.tray-reminders-cross-app-handoffs",
+      "studio.creator-runway-persistence",
     ],
   },
   {
@@ -1093,9 +1095,9 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     routePatterns: ["/studio", "/studio/:id"],
     desktopAppKey: "studio",
     adminPanelTabs: ["Studio", "Content", "Automation"],
-    nativeSettings: ["Drive root", "storage quota", "member permissions", "publish handoff"],
-    automationHandles: ["studio.project.created", "studio.project.updated", "game_studio.project_mutated"],
-    behaviorAssertionIds: ["media.creation-gallery-preservation-proof"],
+    nativeSettings: ["Drive root", "storage quota", "member permissions", "creator runway", "Tezos network", "release evidence", "cross-app handoffs"],
+    automationHandles: ["studio.project.created", "studio.project.updated", "studio.workflow_updated", "game_studio.project_mutated"],
+    behaviorAssertionIds: ["media.creation-gallery-preservation-proof", "studio.creator-runway-persistence"],
   },
   {
     id: "game-studio",
@@ -1246,6 +1248,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "pasta-protocol.colander-context-handoff",
       "pasta-protocol.wtfme-hosted-pages",
       "pasta-protocol.pinning-recovery",
+      "studio.creator-runway-persistence",
     ],
   },
   {
@@ -1340,6 +1343,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "skullzarmy.fafolab-integration-contracts",
       "pasta-protocol.wtfme-hosted-pages",
       "pasta-protocol.pinning-recovery",
+      "studio.creator-runway-persistence",
     ],
   },
   {

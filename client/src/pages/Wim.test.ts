@@ -26,6 +26,9 @@ test("WIM roster is user-driven and keeps Studio rooms out of buddies", () => {
   assert.match(wimSource, /conversation\.peers\.length === 1/);
   assert.match(wimSource, /studioConversations/);
   assert.match(wimSource, /allConversationRows/);
+  assert.match(wimSource, /new URLSearchParams\(query\)\.get\("conversation"\)/);
+  assert.match(wimSource, /studioHandoffOpenedRef/);
+  assert.match(wimSource, /showConversation\(requestedId\)/);
 
   for (const label of [
     "My Friends",

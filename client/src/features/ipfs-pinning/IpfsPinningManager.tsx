@@ -31,6 +31,16 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
   const [includeFuture, setIncludeFuture] = useState(true);
   const [publicDiscovery, setPublicDiscovery] = useState(true);
   const [ackPublic, setAckPublic] = useState(false);
+  const studioContext = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const projectId = params.get("studioProject");
+    if (!projectId) return null;
+    return {
+      projectId,
+      projectName: params.get("projectName") || `Studio project ${projectId}`,
+      network: params.get("network") || "shadownet",
+    };
+  }, []);
 
   const overview = overviewQ.data;
   const submitDisabled =
@@ -77,6 +87,18 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
           </IconButton>
         </HeaderActions>
       </Header>
+
+      {studioContext ? (
+        <Notice data-ipfs-pinning-region="studio-handoff" $tone="neutral">
+          <Archive size={18} />
+          <span>
+            Preserving release media for <strong>{studioContext.projectName}</strong>. Return the resulting CID to Studio before minting on {studioContext.network}.
+          </span>
+          <TextButton onClick={() => wm.openPage(`/studio/${studioContext.projectId}`)}>
+            Return to Studio
+          </TextButton>
+        </Notice>
+      ) : null}
 
       {overviewQ.isLoading ? (
         <Loading data-ipfs-pinning-region="loading">Loading pinning manager...</Loading>

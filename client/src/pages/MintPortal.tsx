@@ -6,6 +6,7 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { usePresentationShell } from "../lib/presentation-shell";
+import { useWindowManager } from "../lib/window-context";
 import { getNetwork, mintOpenEditionFromWtf } from "../lib/tezos";
 import { useWallet } from "../lib/wallet-context";
 import { GenerativeArtPanel } from "../features/mint-portal/GenerativeArtPanel";
@@ -218,6 +219,7 @@ export function MintPortal() {
   const { user } = useAuth();
   const presentation = usePresentationShell();
   const wallet = useWallet();
+  const wm = useWindowManager();
   const qc = useQueryClient();
   const [copied, setCopied] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
@@ -229,6 +231,16 @@ export function MintPortal() {
   const [mintPriceMutez, setMintPriceMutez] = useState("0");
   const [recordChallengeId, setRecordChallengeId] = useState("");
   const [activeTab, setActiveTab] = useState(0);
+  const studioContext = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const projectId = params.get("studioProject");
+    if (!projectId) return null;
+    return {
+      projectId,
+      projectName: params.get("projectName") || `Studio project ${projectId}`,
+      network: params.get("network") || mintNetwork,
+    };
+  }, [mintNetwork]);
 
   const portalQuery = useQuery<MintPortalResponse>({
     queryKey: ["mint-portal"],
@@ -349,6 +361,21 @@ export function MintPortal() {
         data-mint-portal-presentation-host={presentation.host}
         data-mint-portal-region="surface"
       >
+      {studioContext ? (
+        <GroupBox label="Studio release context" data-mint-portal-region="studio-handoff">
+          <Row>
+            <strong>{studioContext.projectName}</strong>
+            <Muted>Target: {studioContext.network}</Muted>
+            <span style={{ flex: 1 }} />
+            <Button onClick={() => wm.openPage(`/studio/${studioContext.projectId}`)}>
+              Return to Studio
+            </Button>
+          </Row>
+          <p style={{ marginBottom: 0 }}>
+            Confirm the wallet network, contract, price, token id, and pinned media before approving a value-bearing operation. Record the confirmed KT1 and operation evidence back in Studio.
+          </p>
+        </GroupBox>
+      ) : null}
       <Tabs value={activeTab} onChange={(v) => setActiveTab(v as number)} data-mint-portal-region="tabs">
         <Tab value={0} data-mint-portal-region="tab">Challenges</Tab>
         <Tab value={1} data-mint-portal-region="tab">Generative Art</Tab>

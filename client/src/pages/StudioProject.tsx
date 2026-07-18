@@ -33,6 +33,7 @@ import {
   Column,
   ErrorBanner,
   Shell,
+  WorkspaceRoot,
 } from "../features/studio/StudioChrome";
 import type {
   PendingAnnotation,
@@ -51,6 +52,7 @@ import { useStudioProjectData } from "../features/studio/useStudioProjectData";
 import { useStudioProjectMutations } from "../features/studio/useStudioProjectMutations";
 import { useStudioSocketEffects } from "../features/studio/useStudioSocketEffects";
 import { useStudioStagePointerHandlers } from "../features/studio/useStudioStagePointerHandlers";
+import { StudioProjectJourney } from "../features/studio/StudioProjectJourney";
 
 void STUDIO_ANNOTATION_KINDS;
 
@@ -311,11 +313,13 @@ export function StudioProject({ projectId }: StudioProjectProps) {
 
   return (
     <AppWindow title={`Studio: ${project.name}`}>
-      <Shell
+      <WorkspaceRoot
         data-studio-presentation-host={presentation.host}
         data-studio-surface="project-workspace"
         data-studio-project-id={project.id}
       >
+        <StudioProjectJourney canEdit={canEdit} projectDetail={projectQuery.data} />
+        <Shell>
         {/* ─── LEFT PANEL: Tree / files / upload ─── */}
         <StudioLeftColumn
           activeFileId={activeFileId}
@@ -425,7 +429,7 @@ export function StudioProject({ projectId }: StudioProjectProps) {
         </Column>
 
         {/* ─── RIGHT PANEL: Chat + notes ─── */}
-        <StudioCollaborationColumn
+          <StudioCollaborationColumn
           canChat={canChat}
           canManage={canManage}
           chatDraft={chatDraft}
@@ -452,8 +456,9 @@ export function StudioProject({ projectId }: StudioProjectProps) {
           presence={presence}
           sendPending={sendChatMutation.isPending}
           userId={user.id}
-        />
-      </Shell>
+          />
+        </Shell>
+      </WorkspaceRoot>
     </AppWindow>
   );
 }

@@ -80,6 +80,19 @@ export const studioProjects = pgTable(
     conversationId: integer("conversation_id").references(() => dmConversations.id, {
       onDelete: "set null",
     }),
+    /** Shared concept-to-release plan and Tezos release evidence. */
+    workflow: jsonb("workflow")
+      .$type<{
+        phase: "concept" | "collaborate" | "create" | "refine" | "release" | "activate";
+        useCase: "artwork" | "collection" | "live_experience" | "protocol" | "other";
+        targetNetwork: "shadownet" | "mainnet";
+        checklist: Record<string, boolean>;
+        references: Record<string, string>;
+        updatedAt?: string;
+        updatedBy?: number;
+      }>()
+      .default(sql`'{"phase":"concept","useCase":"artwork","targetNetwork":"shadownet","checklist":{},"references":{}}'::jsonb`)
+      .notNull(),
     archived: boolean("archived").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),

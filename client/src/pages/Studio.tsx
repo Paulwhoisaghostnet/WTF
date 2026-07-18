@@ -19,6 +19,8 @@ import {
   STUDIO_STORAGE_BACKEND_LABELS,
   type StudioProjectSummary,
   type StudioStorageBackend,
+  type StudioProjectNetwork,
+  type StudioProjectUseCase,
 } from "@shared/types";
 import { MOBILE } from "../global-styles";
 
@@ -89,6 +91,59 @@ const HeaderRow = styled.div.attrs(studioRegionAttrs("list-header"))`
   align-items: flex-end;
   gap: 10px;
   justify-content: space-between;
+`;
+
+const RunwayIntro = styled.section.attrs(studioRegionAttrs("runway-intro"))`
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: color-mix(in srgb, var(--wtf-app-surface-raised, #fff) 90%, #b8f2ff);
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(360px, 2fr);
+  gap: 18px;
+  align-items: center;
+
+  h1 { margin: 0 0 5px; font-size: 22px; }
+  p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--wtf-app-muted-text, #444); }
+
+  ${gammaStudioScope} & {
+    background: #0d0d0b;
+    border-color: rgba(0, 210, 255, 0.35) !important;
+    border-radius: 6px;
+  }
+
+  ${MOBILE} { grid-template-columns: 1fr; }
+`;
+
+const RunwaySteps = styled.ol`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(76px, 1fr));
+  gap: 4px;
+  counter-reset: studio-step;
+
+  li {
+    counter-increment: studio-step;
+    min-height: 54px;
+    padding: 7px;
+    border: 1px solid var(--wtf-app-border, #8b929a);
+    background: var(--wtf-app-surface-raised, #fff);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  li::before { content: "0" counter(studio-step); display: block; margin-bottom: 6px; color: #067c96; font-family: monospace; }
+  ${gammaStudioScope} & li { background: #11110f; border-color: rgba(242,234,217,.2); }
+  @media (max-width: 760px) { grid-template-columns: repeat(3, 1fr); }
+`;
+
+const CreateSelect = styled.select`
+  min-height: var(--wtf-control-height, 32px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #fff);
+  color: var(--wtf-app-text, #111);
+  padding: 4px 7px;
+  font: inherit;
 `;
 
 const Intro = styled.div.attrs(studioRegionAttrs("intro"))`
@@ -408,6 +463,8 @@ export function Studio() {
 
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [newUseCase, setNewUseCase] = useState<StudioProjectUseCase>("artwork");
+  const [newNetwork, setNewNetwork] = useState<StudioProjectNetwork>("shadownet");
   const [createError, setCreateError] = useState<string | null>(null);
   const resumedRef = useRef(false);
 
@@ -498,10 +555,13 @@ export function Studio() {
       name: string;
       description: string | null;
       storageBackend: StudioStorageBackend;
+      workflow: { useCase: StudioProjectUseCase; targetNetwork: StudioProjectNetwork };
     }) => api.post<StudioProjectSummary>("/api/studio/projects", input),
     onSuccess: (created) => {
       setNewName("");
       setNewDescription("");
+      setNewUseCase("artwork");
+      setNewNetwork("shadownet");
       setCreateError(null);
       qc.invalidateQueries({ queryKey: ["studio", "projects"] });
       wm.openPage(`/studio/${created.id}`);
@@ -550,13 +610,19 @@ export function Studio() {
   return (
     <AppWindow title="Studio">
       <Layout data-studio-presentation-host={presentation.host} data-studio-surface="project-list">
-        <HeaderRow>
-          <Intro>
-            <strong>Studio</strong> is the private creator room of WTF. Drop
-            files, drop notes, mark things up, and keep the conversation
-            attached to the work. Everything stays inside the platform.
-          </Intro>
-        </HeaderRow>
+        <RunwayIntro>
+          <div>
+            <h1>Take a Tezos project from idea to release.</h1>
+            <p>
+              Studio is the shared project authority for the work: frame the concept,
+              coordinate in WIM, create with broot, review together, preserve on IPFS,
+              mint through Pasta Protocol, and present through wtf Live.
+            </p>
+          </div>
+          <RunwaySteps aria-label="Studio project lifecycle">
+            <li>Concept</li><li>Collaborate</li><li>Create</li><li>Refine</li><li>Release</li><li>Activate</li>
+          </RunwaySteps>
+        </RunwayIntro>
 
         {canCreate ? (
           <GroupBox label="New project">
@@ -580,6 +646,25 @@ export function Studio() {
                   style={{ flex: 2, minWidth: 220 }}
                   maxLength={500}
                 />
+                <CreateSelect
+                  aria-label="Project use case"
+                  value={newUseCase}
+                  onChange={(event) => setNewUseCase(event.target.value as StudioProjectUseCase)}
+                >
+                  <option value="artwork">Artwork or media</option>
+                  <option value="collection">Collection or edition</option>
+                  <option value="live_experience">Live experience</option>
+                  <option value="protocol">Protocol or application</option>
+                  <option value="other">Other Tezos project</option>
+                </CreateSelect>
+                <CreateSelect
+                  aria-label="Target Tezos network"
+                  value={newNetwork}
+                  onChange={(event) => setNewNetwork(event.target.value as StudioProjectNetwork)}
+                >
+                  <option value="shadownet">Shadownet · prove first</option>
+                  <option value="mainnet">Mainnet · value-bearing</option>
+                </CreateSelect>
                 <Button
                   onClick={() => {
                     const name = newName.trim();
@@ -591,6 +676,7 @@ export function Studio() {
                       name,
                       description: newDescription.trim() || null,
                       storageBackend: "local_disk",
+                      workflow: { useCase: newUseCase, targetNetwork: newNetwork },
                     });
                   }}
                   disabled={createMutation.isPending}
@@ -808,6 +894,13 @@ export function Studio() {
             ) : (
               <Grid>
                 {sorted.map((project) => {
+                  const workflow = project.workflow ?? {
+                    phase: "concept" as const,
+                    useCase: "artwork" as const,
+                    targetNetwork: "shadownet" as const,
+                    checklist: {},
+                    references: {},
+                  };
                   const usedPct = project.storageQuotaBytes
                     ? Math.min(
                         100,
@@ -827,6 +920,7 @@ export function Studio() {
                     >
                       <CardTitle>
                         <span>{project.name}</span>
+                        <Badge $kind="info">{workflow.phase}</Badge>
                         {project.archived ? (
                           <Badge $kind="warn">archived</Badge>
                         ) : null}
@@ -844,6 +938,7 @@ export function Studio() {
                         </Badge>
                         <Badge>{project.memberCount} members</Badge>
                         <Badge>{project.fileCount} files</Badge>
+                        <Badge>{workflow.targetNetwork}</Badge>
                         {project.unresolvedAnnotations > 0 ? (
                           <Badge $kind="info">
                             {project.unresolvedAnnotations} open notes

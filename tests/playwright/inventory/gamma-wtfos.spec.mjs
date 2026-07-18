@@ -3143,6 +3143,13 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
               storageQuotaBytes: 250000000,
               storageUsedBytes: 42000000,
               conversationId: 330,
+              workflow: {
+                phase: "refine",
+                useCase: "collection",
+                targetNetwork: "shadownet",
+                checklist: { feedback_resolved: false, metadata_ready: true },
+                references: {},
+              },
               archived: false,
               createdAt: now,
               updatedAt: now,
@@ -3194,6 +3201,13 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
               storageUsedBytes: 42000000,
               createdAt: now,
               updatedAt: now,
+              workflow: {
+                phase: "refine",
+                useCase: "collection",
+                targetNetwork: "shadownet",
+                checklist: { feedback_resolved: false, metadata_ready: true },
+                references: {},
+              },
             },
           ],
         }),
@@ -3340,6 +3354,12 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     const workspace = page.locator('[data-gamma-application-content] [data-studio-surface="project-workspace"]');
     await expect(workspace).toHaveAttribute("data-studio-presentation-host", "gamma");
     await expect(workspace).toHaveAttribute("data-studio-project-id", "909");
+    await expect(workspace.locator('[data-studio-region="project-journey"]')).toHaveAttribute("data-studio-phase", "refine");
+    await expect(workspace.locator('[data-studio-region="project-journey"]')).toContainText("Connected wtfOS workflow");
+    await expect(workspace.locator('[data-studio-region="project-journey"]')).toContainText("Pasta Protocol");
+    await expect(workspace.getByRole("button", { name: "Coordinate in WIM" })).toBeVisible();
+    await expect(workspace.getByRole("button", { name: "Create in broot" })).toBeVisible();
+    await expect(workspace.getByRole("button", { name: "Prepare wtf Live" })).toBeVisible();
     await expect(workspace.locator('[data-studio-region="project-header"]')).toContainText("Gamma creator room");
     await expect(
       workspace.locator('[data-studio-region="tree-node"]').filter({ hasText: "signal-board.png" }).first()
@@ -3386,6 +3406,14 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     }
     expect(workspaceMetrics.shell?.fontFamily).toMatch(/Inter|sans-serif/i);
     expect(workspaceMetrics.presence?.borderColor).toMatch(/214,\s*255,\s*63/);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(workspace.locator('[data-studio-region="project-journey"]')).toBeVisible();
+    await expect(workspace.locator('[data-studio-region="journey-grid"]')).toBeVisible();
+    const narrowJourneyColumns = await workspace
+      .locator('[data-studio-region="journey-grid"]')
+      .evaluate((node) => window.getComputedStyle(node).gridTemplateColumns.split(" ").length);
+    expect(narrowJourneyColumns).toBe(1);
+    await expect(workspace.getByRole("button", { name: "Save release evidence" })).toBeVisible();
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
   });
 

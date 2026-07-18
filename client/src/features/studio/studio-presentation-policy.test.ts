@@ -6,6 +6,7 @@ const studioListSource = readFileSync(new URL("../../pages/Studio.tsx", import.m
 const studioProjectSource = readFileSync(new URL("../../pages/StudioProject.tsx", import.meta.url), "utf8");
 const studioChromeSource = readFileSync(new URL("./StudioChrome.ts", import.meta.url), "utf8");
 const studioPreviewSource = readFileSync(new URL("./StudioPreviewSurface.tsx", import.meta.url), "utf8");
+const studioJourneySource = readFileSync(new URL("./StudioProjectJourney.tsx", import.meta.url), "utf8");
 
 test("Studio list and project routes expose a Gamma presentation-host boundary", () => {
   assert.match(studioListSource, /usePresentationShell/);
@@ -16,6 +17,7 @@ test("Studio list and project routes expose a Gamma presentation-host boundary",
   assert.match(studioProjectSource, /data-studio-presentation-host=\{presentation\.host\}/);
   assert.match(studioChromeSource, /data-studio-region/);
   assert.match(studioChromeSource, /workspace-shell/);
+  assert.match(studioJourneySource, /project-journey/);
   assert.match(studioChromeSource, /preview-stage/);
   assert.match(studioChromeSource, /chat-message/);
   assert.match(studioChromeSource, /annotation-popover/);
@@ -48,6 +50,10 @@ test("Studio keeps shared app behavior, APIs, storage, and realtime paths raw", 
   assert.match(studioProjectSource, /useStudioSocket/);
   assert.match(studioProjectSource, /fetch\("\/api\/studio\/user-state"/);
   assert.match(studioPreviewSource, /\/api\/studio\/files\/\$\{activeFile\.id\}\/raw/);
+  assert.match(studioJourneySource, /\/api\/studio\/projects\/\$\{project\.id\}\/workflow/);
+  for (const route of ["/wim?conversation=", "/tools/broot?", "/ipfs-pinning?", "/tools/colander?", "/mint-portal?", "/live?tab=overview&"]) {
+    assert.ok(studioJourneySource.includes(route), `${route} must stay connected to Studio`);
+  }
   assert.doesNotMatch(studioListSource, /\/api\/gamma/);
   assert.doesNotMatch(studioProjectSource, /\/api\/gamma/);
   assert.doesNotMatch(studioChromeSource, /\/api\/gamma/);

@@ -892,6 +892,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The live harness verifies public contract visibility, user membership state, admin summaries, arrears dry-sweep behavior, SmartPy/Kiln template compilation, unlinked-wallet rejection, and linked-wallet payment intent creation against the live Club Dues contract.",
   },
   {
+    id: "studio.creator-runway-persistence",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["studio", "wim", "ipfs-pinning", "pasta-protocol", "wtf-live"],
+    ownerSpec:
+      "client/src/features/studio/studio-presentation-policy.test.ts; server/routes/studio-workflow-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      'npx tsx --test client/src/features/studio/studio-presentation-policy.test.ts server/routes/studio-workflow-policy.test.ts && npm run test:e2e:inventory:coverage && npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "hosts Studio project list" --project=chromium --reporter=list',
+    userVisibleAssertion:
+      "A Studio collaborator can see a guided Concept-to-Activate runway, an explicit Tezos network, shared readiness tasks, release evidence fields, and project-context handoffs to WIM, Broot, IPFS Pinning, Pasta Protocol, Mint Portal, and WTF LIVE.",
+    durableSideEffectAssertion:
+      "PATCH /api/studio/projects/:id/workflow merges the shared checklist and release references into the project workflow JSONB row, updates project recency, posts a Studio system message, and broadcasts the updated runway to project clients while retaining each destination app's own access and wallet gates.",
+  },
+  {
     id: "media.creation-gallery-preservation-proof",
     domain: "Media, Creation, Gallery, and Preservation",
     ownerSurfaceIds: ["game-studio", "media-library", "studio"],

@@ -8757,3 +8757,13 @@
 **Rule**: When a behavior assertion declares multiple owning surfaces, register it reciprocally with every owner in the same change. Run inventory coverage immediately after adding the assertion, before spending time on the full browser suite.
 
 ---
+
+## 2026-07-18 - Direct browser checks must not inherit a stale application build
+
+**What happened**: The first focused Studio Playwright run rendered the pre-change workspace even though the new journey source and assertions were present. The direct Playwright command served an existing `dist` directory, so the browser was testing an older application bundle.
+
+**Why it mattered**: A stale build can create an impossible-looking UI failure or, worse, a false pass when source assertions do not exercise the intended marker. The browser result is only meaningful when the served artifact is known to contain the current source change.
+
+**Rule**: After changing UI source, run the canonical application build immediately before any direct Playwright command whose web server serves `dist`, unless the invoked package script explicitly owns that build step. If a result contradicts the source, verify a unique new marker exists in the served bundle before debugging application behavior.
+
+---
